@@ -21,4 +21,13 @@ export class Jwt {
       throw new Error('Invalid token');
     }
   }
+
+  async verifyGitHubApp(token: string): Promise<boolean> {
+    try {
+      let decoded = jwt.verify(token, process.env.JWT_SECRET!);
+      return true;
+    } catch (error) {
+      return false;
+    }
+  }
 }

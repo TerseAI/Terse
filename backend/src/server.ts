@@ -5,13 +5,13 @@ import 'dotenv/config';
 import { createServer } from "http";
 import cors from 'cors';
 import { User } from './types/prisma';
-import { authMiddleware, githubCallback, githubLogin, login, logout } from './routes/auth';
+import { authMiddleware, githubAppAuthMiddleware, githubCallback, githubLogin, login, logout } from './routes/auth';
 import { AgentSocketServer, requestSessionSocketToken } from './agent/socket';
 import { getInstallationUrl } from './routes/githubApp';
+
 export type Session = {
     user: User;
 }
-
 
 const app = express();
 const server = createServer(app);
@@ -59,6 +59,10 @@ app.get('/session/token', authMiddleware, async (req, res) => {
 
 app.get('/github/installation-url', async (req, res) => {
     getInstallationUrl(req, res);
+})
+
+app.post('/github/installation-callback', githubAppAuthMiddleware, async (req, res) => {
+    console.log('githubAppInstallationCallback', req.body);
 })
 
 server.listen(3001, () => {
