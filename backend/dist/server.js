@@ -4,7 +4,7 @@ import cookieParser from 'cookie-parser';
 import 'dotenv/config';
 import { createServer } from "http";
 import cors from 'cors';
-import { authMiddleware, githubCallback, githubLogin, login, logout } from './routes/auth.js';
+import { authMiddleware, githubAppAuthMiddleware, githubCallback, githubLogin, login, logout } from './routes/auth.js';
 import { AgentSocketServer, requestSessionSocketToken } from './agent/socket.js';
 import { getInstallationUrl } from './routes/githubApp.js';
 const app = express();
@@ -40,6 +40,9 @@ app.get('/session/token', authMiddleware, async (req, res) => {
 // MARK: GITHUB APP
 app.get('/github/installation-url', async (req, res) => {
     getInstallationUrl(req, res);
+});
+app.post('/github/installation-callback', githubAppAuthMiddleware, async (req, res) => {
+    console.log('githubAppInstallationCallback', req.body);
 });
 server.listen(3001, () => {
     console.log('🚀 Express backend running on http://localhost:3001');

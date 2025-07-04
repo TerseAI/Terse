@@ -13,6 +13,9 @@ export async function getInstallationUrl(req, res) {
         res.status(500).json({ message: 'Failed to generate installation URL' });
     }
 }
+export async function githubAppInstallationCallback(req, res) {
+    console.log('githubAppInstallationCallback', req.body);
+}
 export default {
     getInstallationUrl
 };
