@@ -23,7 +23,7 @@ export async function findUserByEmail(email: string): Promise<User | null> {
     return user || null;
 }
 
-export async function findUserById(id: number): Promise<User | null> {
+export async function findUserById(id: string): Promise<User | null> {
     const user = await db().users.findUnique({ where: { id } });
     return user || null;
 }
@@ -75,7 +75,7 @@ export async function createPlaceholderUser(email: string, displayName?: string)
         data: {
             email,
             display_name: displayName || email.split('@')[0],
-            is_placeholder: true,
+            // is_placeholder: true,
         },
     });
 
