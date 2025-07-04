@@ -1,3 +1,8 @@
+import { EntityType } from "./Entities.js";
+export type ChangedItem = {
+    type_name: EntityType;
+    id: string;
+};
 export type ActorReference = {
     id: string;
     actor_type: string;
@@ -55,5 +60,6 @@ export type ToolCallComplete = {
     tool_name: string;
     status: string;
     step_id: string;
+    changed_items: ChangedItem[];
 };
 //# sourceMappingURL=ModelEvents.d.ts.map

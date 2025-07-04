@@ -9,3 +9,14 @@ export interface Type {
     component: (id: number) => ReactNode;
     backendRepresentation: EntityType;
 }
+
+export const TicketType: Type = {
+    name: 'Ticket',
+    cacheKey: (id: number) => ['ticket', id],
+    hydatedCacheKey: (id: number) => ['hydrated-ticket', id],
+    suggestedMutiCacheKeys: () => "/api/tickets",
+    component: (id: number) => <div>Ticket</div>,
+    backendRepresentation: EntityType.TICKET,
+}
+
+export const Types: Type[] = [TicketType];
