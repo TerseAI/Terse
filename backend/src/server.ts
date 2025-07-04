@@ -7,6 +7,7 @@ import cors from 'cors';
 import { User } from './types/prisma';
 import { authMiddleware, githubCallback, githubLogin, login, logout } from './routes/auth';
 import { AgentSocketServer, requestSessionSocketToken } from './agent/socket';
+import { getInstallationUrl } from './routes/githubApp';
 export type Session = {
     user: User;
 }
@@ -26,6 +27,7 @@ app.use(cors({
 app.use(bodyParser.json());
 app.use(cookieParser());
 
+// MARK: AUTH
 
 app.get('/me', authMiddleware, (req, res) => {
     res.send(req.session?.user);
@@ -47,9 +49,17 @@ app.post('/logout', async (req, res) => {
     logout(req, res);
 })
 
+// MARK: SESSION
+
 app.get('/session/token', authMiddleware, async (req, res) => {
     requestSessionSocketToken(req, res);
 });
+
+// MARK: GITHUB APP
+
+app.get('/github/installation-url', async (req, res) => {
+    getInstallationUrl(req, res);
+})
 
 server.listen(3001, () => {
     console.log('🚀 Express backend running on http://localhost:3001');
