@@ -31,6 +31,11 @@ interface BackendService {
     terminateSession(): Promise<void>;
 
     /**
+     * Requests a GitHub app installation URL
+     */
+    requestGitHubAppInstallationUrl(): Promise<{ installationUrl: string }>;
+
+    /**
      * Requests a session socket token
      */
     requestSessionSocketToken(): Promise<string>;
@@ -97,6 +102,15 @@ export const BackendProvider: BackendService = {
             })
             .catch(error => {
                 console.error('Error logging out:', error);
+                throw error;
+            });
+    },
+
+    requestGitHubAppInstallationUrl: () => {
+        return axios.get(`${backendBaseUrl}/github/installation-url`, { withCredentials: true })
+            .then(response => response.data)
+            .catch(error => {
+                console.error('Error requesting GitHub app installation URL:', error);
                 throw error;
             });
     },
