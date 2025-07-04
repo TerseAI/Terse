@@ -195,7 +195,7 @@ enum FeedbackState {
     Bad
 }
 
-function FeedbackButtons({ text }: { text: string }) {
+function FeedbackButtons({ }: { text: string }) {
     const [feedback, setFeedback] = useState<FeedbackState>(FeedbackState.None);
 
     const handleFeedback = (feedback: FeedbackState) => {
