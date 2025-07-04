@@ -6,6 +6,7 @@ import { createServer } from "http";
 import cors from 'cors';
 import { User } from './types/prisma';
 import { authMiddleware, githubCallback, githubLogin, login, logout } from './routes/auth';
+import { AgentSocketServer, requestSessionSocketToken } from './agent/socket';
 export type Session = {
     user: User;
 }
@@ -13,6 +14,9 @@ export type Session = {
 
 const app = express();
 const server = createServer(app);
+
+// WebSocket handler, keep in memory as long as the server is running!!
+const agentSocketServer = new AgentSocketServer(server, "/session");
 
 app.use(cors({
     origin: true,
@@ -42,6 +46,10 @@ app.post('/login', async (req, res) => {
 app.post('/logout', async (req, res) => {
     logout(req, res);
 })
+
+app.get('/session/token', authMiddleware, async (req, res) => {
+    requestSessionSocketToken(req, res);
+});
 
 server.listen(3001, () => {
     console.log('🚀 Express backend running on http://localhost:3001');
