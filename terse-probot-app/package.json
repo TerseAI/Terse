@@ -17,14 +17,15 @@
     "test": "vitest"
   },
   "dependencies": {
+    "axios": "^1.10.0",
     "probot": "^13.4.5"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",
     "nock": "^14.0.5",
     "smee-client": "^2.0.0",
-    "vitest": "^2.0.0",
-    "typescript": "^5.8.3"
+    "typescript": "^5.8.3",
+    "vitest": "^2.0.0"
   },
   "overrides": {
     "@types/pg": "8.15.1"
