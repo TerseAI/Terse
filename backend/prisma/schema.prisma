@@ -38,13 +38,13 @@ model github_repositories {
 }
 
 model user_github_repositories {
-  id              String   @id @default(cuid())
-  user_id         String
+  id                   String   @id @default(cuid())
+  user_id              String
   github_repository_id String
-  created_at      DateTime @default(now())
-  updated_at      DateTime @updatedAt
+  created_at           DateTime @default(now())
+  updated_at           DateTime @updatedAt
 
-  user            users      @relation(fields: [user_id], references: [id])
+  user              users               @relation(fields: [user_id], references: [id])
   github_repository github_repositories @relation(fields: [github_repository_id], references: [id])
 
   @@unique([user_id, github_repository_id])
