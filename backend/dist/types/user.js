@@ -19,6 +19,10 @@ export async function findUserByEmail(email) {
     const user = await db().users.findUnique({ where: { email } });
     return user || null;
 }
+export async function findUserByGitHubUsername(githubUsername) {
+    const user = await db().users.findUnique({ where: { github_username: githubUsername } });
+    return user || null;
+}
 export async function findUserById(id) {
     const user = await db().users.findUnique({ where: { id } });
     return user || null;
