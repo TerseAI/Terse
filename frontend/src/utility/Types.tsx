@@ -15,7 +15,7 @@ export const TicketType: Type = {
     cacheKey: (id: number) => ['ticket', id],
     hydatedCacheKey: (id: number) => ['hydrated-ticket', id],
     suggestedMutiCacheKeys: () => "/api/tickets",
-    component: (id: number) => <div>Ticket</div>,
+    component: () => <div>Ticket</div>,
     backendRepresentation: EntityType.TICKET,
 }
 
