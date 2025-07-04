@@ -61,7 +61,7 @@ export async function createPlaceholderUser(email, displayName) {
         data: {
             email,
             display_name: displayName || email.split('@')[0],
-            is_placeholder: true,
+            // is_placeholder: true,
         },
     });
     console.log(chalk.yellow('📝 Placeholder user created for import:'), chalk.cyan(user.email));
