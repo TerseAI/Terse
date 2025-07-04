@@ -1,6 +1,6 @@
 import { NextFunction, Request, Response } from "express";
 import { Jwt } from "../utility/jwt";
-import { login as loginUser, findUserByEmail, createUser, updateUserGitHubUsername } from "../types/user";
+import { login as loginUser, findUserByEmail, createUser, updateUserGitHubUsername, findUserByGitHubUsername } from "../types/user";
 import axios from "axios";
 import crypto from "crypto";
 import { Session } from "../server";
@@ -179,11 +179,10 @@ export async function githubCallback(req: Request, res: Response) {
             return res.status(400).send('Email not available');
         }
 
-        let user = await findUserByEmail(email);
+        let user = await findUserByGitHubUsername(githubUsername);
         if (!user) {
             // Create new user with GitHub username
-            await createUser(name, email, githubUsername);
-            user = await findUserByEmail(email);
+            user = await createUser(name, email, githubUsername);
         } else if (user.github_username !== githubUsername) {
             // Update existing user's GitHub username if it's different
             await updateUserGitHubUsername(user.id, githubUsername);
