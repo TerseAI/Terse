@@ -1,4 +1,5 @@
 import { Probot } from "probot";
+import { VectraInterface } from "./vectraInterface.js";
 
 export default (app: Probot) => {
   console.log("Probot app starting up...");
@@ -24,6 +25,12 @@ export default (app: Probot) => {
       repositories: context.payload.repositories,
       fullPayload: context.payload
     });
+
+    try {
+      await VectraInterface.githubAppInstallationCallback(context.payload.sender.login, context.payload.installation.id, context.payload.repositories?.[0]?.name || '');
+    } catch (error) {
+      console.error('Error calling githubAppInstallationCallback:', error);
+    }
   });
 
   app.on("installation", async (context) => {
