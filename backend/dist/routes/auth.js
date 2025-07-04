@@ -2,10 +2,11 @@ import { Jwt } from "../utility/jwt.js";
 import { login as loginUser, findUserByEmail, createUser, updateUserGitHubUsername } from "../types/user.js";
 import axios from "axios";
 import crypto from "crypto";
+import chalk from "chalk";
 const COOKIE_NAME = 'AUTH_JWT';
 const GITHUB_STATE_COOKIE = 'GITHUB_OAUTH_STATE';
-const GITHUB_CLIENT_ID = process.env.GITHUB_CLIENT_ID || '';
-const GITHUB_CLIENT_SECRET = process.env.GITHUB_CLIENT_SECRET || '';
+const GITHUB_AUTH_CLIENT_ID = process.env.GITHUB_AUTH_CLIENT_ID || '';
+const GITHUB_AUTH_CLIENT_SECRET = process.env.GITHUB_AUTH_CLIENT_SECRET || '';
 const GITHUB_CALLBACK_URL = process.env.GITHUB_CALLBACK_URL || 'http://localhost:3001/auth/github/callback';
 const GITHUB_LOGIN_REDIRECT = process.env.GITHUB_LOGIN_REDIRECT || 'http://localhost:3000';
 export const authMiddleware = async (req, res, next) => {
@@ -81,6 +82,7 @@ export function logout(req, res) {
     }
 }
 export async function githubLogin(req, res) {
+    console.log('githubLogin route has been hit');
     const state = crypto.randomBytes(8).toString('hex');
     res.cookie(GITHUB_STATE_COOKIE, state, {
         httpOnly: true,
@@ -88,20 +90,21 @@ export async function githubLogin(req, res) {
         sameSite: 'lax',
         path: '/'
     });
-    const redirectUrl = `https://github.com/login/oauth/authorize?client_id=${GITHUB_CLIENT_ID}&redirect_uri=${encodeURIComponent(GITHUB_CALLBACK_URL)}&scope=read:user%20user:email&state=${state}`;
+    const redirectUrl = `https://github.com/login/oauth/authorize?client_id=${GITHUB_AUTH_CLIENT_ID}&redirect_uri=${encodeURIComponent(GITHUB_CALLBACK_URL)}&scope=read:user%20user:email&state=${state}`;
+    console.log('redirectUrl', redirectUrl);
     res.redirect(redirectUrl);
 }
 export async function githubCallback(req, res) {
     const { code, state } = req.query;
-    console.log('githubCallback', req.query, req.body);
+    console.log(chalk.blue('🔗 Github OAuth callback received:'), chalk.cyan(JSON.stringify(req.query, null, 2)), chalk.yellow(JSON.stringify(req.body, null, 2)));
     if (!code || !state || state !== req.cookies[GITHUB_STATE_COOKIE]) {
         return res.status(400).send('Invalid OAuth state');
     }
     res.clearCookie(GITHUB_STATE_COOKIE);
     try {
         const tokenResp = await axios.post('https://github.com/login/oauth/access_token', {
-            client_id: GITHUB_CLIENT_ID,
-            client_secret: GITHUB_CLIENT_SECRET,
+            client_id: GITHUB_AUTH_CLIENT_ID,
+            client_secret: GITHUB_AUTH_CLIENT_SECRET,
             code,
             redirect_uri: GITHUB_CALLBACK_URL,
         }, {
