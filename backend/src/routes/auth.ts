@@ -40,6 +40,37 @@ export const authMiddleware = async (req: Request, res: Response, next: NextFunc
     }
 }
 
+export const githubAppAuthMiddleware = async (req: Request, res: Response, next: NextFunction) => {
+    console.log('githubAppAuthMiddleware route has been hit')
+    try {
+        let token: string | null = null;
+
+        // First try to get token from Authorization header
+        const authHeader = req.headers.authorization;
+        if (authHeader && authHeader.startsWith('Bearer ')) {
+            token = authHeader.substring(7); // Remove 'Bearer ' prefix
+        } else if (req.cookies && req.cookies[COOKIE_NAME]) {
+            // Fall back to cookie
+            token = req.cookies[COOKIE_NAME];
+        }
+
+        if (!token) {
+            res.status(401).json({ message: 'Unauthorized - No token provided' });
+            return;
+        }
+
+        const isGitHubApp = await new Jwt().verifyGitHubApp(token);
+        if (!isGitHubApp) {
+            res.status(401).json({ message: 'Unauthorized - Invalid GitHub app token' });
+            return;
+        }
+        next();
+    } catch (error) {
+        console.error('GitHub app auth middleware error:', error);
+        res.status(401).json({ message: 'Unauthorized - Token verification failed' });
+    }
+}
+
 export async function me(req: Request, res: Response) {
     try {
         res.send(req.session?.user);
@@ -82,17 +113,9 @@ export async function login(req: Request, res: Response) {
     }
 }
 
-export function logout(req: Request, res: Response) {
-    console.log('logout route has been hit')
-    try {
-        res.clearCookie(COOKIE_NAME);
-        res.send({
-            message: 'Logout successful',
-        })
-    } catch (error) {
-        console.error('Logout error:', error);
-        res.status(500).json({ message: 'Failed to logout' });
-    }
+export async function logout(req: Request, res: Response) {
+    res.clearCookie(COOKIE_NAME);
+    res.json({ message: 'Logout successful' });
 }
 
 export async function githubLogin(req: Request, res: Response) {

@@ -6,6 +6,7 @@ import { createServer } from "http";
 import cors from 'cors';
 import { authMiddleware, githubCallback, githubLogin, login, logout } from './routes/auth.js';
 import { AgentSocketServer, requestSessionSocketToken } from './agent/socket.js';
+import { getInstallationUrl } from './routes/githubApp.js';
 const app = express();
 const server = createServer(app);
 // WebSocket handler, keep in memory as long as the server is running!!
@@ -16,6 +17,7 @@ app.use(cors({
 }));
 app.use(bodyParser.json());
 app.use(cookieParser());
+// MARK: AUTH
 app.get('/me', authMiddleware, (req, res) => {
     res.send(req.session?.user);
 });
@@ -31,8 +33,13 @@ app.post('/login', async (req, res) => {
 app.post('/logout', async (req, res) => {
     logout(req, res);
 });
+// MARK: SESSION
 app.get('/session/token', authMiddleware, async (req, res) => {
     requestSessionSocketToken(req, res);
+});
+// MARK: GITHUB APP
+app.get('/github/installation-url', async (req, res) => {
+    getInstallationUrl(req, res);
 });
 server.listen(3001, () => {
     console.log('🚀 Express backend running on http://localhost:3001');
