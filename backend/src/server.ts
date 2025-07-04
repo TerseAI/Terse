@@ -7,7 +7,7 @@ import cors from 'cors';
 import { User } from './types/prisma';
 import { authMiddleware, githubAppAuthMiddleware, githubCallback, githubLogin, login, logout } from './routes/auth';
 import { AgentSocketServer, requestSessionSocketToken } from './agent/socket';
-import { getInstallationUrl } from './routes/githubApp';
+import { getInstallationUrl, githubAppInstallationCallback, githubAppInstallationDeleted } from './routes/githubApp';
 
 export type Session = {
     user: User;
@@ -62,7 +62,11 @@ app.get('/github/installation-url', async (req, res) => {
 })
 
 app.post('/github/installation-callback', githubAppAuthMiddleware, async (req, res) => {
-    console.log('githubAppInstallationCallback', req.body);
+    githubAppInstallationCallback(req, res);
+})
+
+app.post('/github/installation-deleted', githubAppAuthMiddleware, async (req, res) => {
+    githubAppInstallationDeleted(req, res);
 })
 
 server.listen(3001, () => {

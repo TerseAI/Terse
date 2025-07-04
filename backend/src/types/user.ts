@@ -23,6 +23,11 @@ export async function findUserByEmail(email: string): Promise<User | null> {
     return user || null;
 }
 
+export async function findUserByGitHubUsername(githubUsername: string): Promise<User | null> {
+    const user = await db().users.findUnique({ where: { github_username: githubUsername } });
+    return user || null;
+}
+
 export async function findUserById(id: string): Promise<User | null> {
     const user = await db().users.findUnique({ where: { id } });
     return user || null;
