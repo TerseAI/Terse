@@ -1,3 +1,7 @@
+import { EntityType } from "./Entities";
+
+export type ChangedItem = { type_name: EntityType, id: string, };
+
 export type ActorReference = { id: string, actor_type: string, };
 
 export type Failure = { error: string, };
@@ -18,4 +22,4 @@ export type TextDelta = { delta: string, step_id: string, };
 
 export type ToolCall = { summary: string, step_id: string, parameters: string, };
 
-export type ToolCallComplete = { tool_name: string, status: string, step_id: string, };
+export type ToolCallComplete = { tool_name: string, status: string, step_id: string, changed_items: ChangedItem[] };
