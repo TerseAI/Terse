@@ -1,6 +1,6 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useRef, useEffect, useCallback } from 'react';
 import { ConnectionType } from './useCompletionSocket';
-import { ItemToDisplay, Turn } from './Turn';
+import { ItemToDisplay } from './Turn';
 import { Types } from '../../utility/Types';
 import AwaitingResponseAnimation from './AwaitingResponseAnimation';
 import { clientBoundTools, ShowTypeToUserParameters } from '../../shared/ClientBoundTools';
