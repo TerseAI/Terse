@@ -4,7 +4,7 @@ import cookieParser from 'cookie-parser';
 import 'dotenv/config';
 import { createServer } from "http";
 import cors from 'cors';
-import { authMiddleware, githubCallback, githubLogin } from './routes/auth.js';
+import { authMiddleware, githubCallback, githubLogin, login, logout } from './routes/auth.js';
 const app = express();
 const server = createServer(app);
 app.use(cors({
@@ -21,6 +21,12 @@ app.get('/auth/github', async (req, res) => {
 });
 app.get('/auth/github/callback', async (req, res) => {
     githubCallback(req, res);
+});
+app.post('/login', async (req, res) => {
+    login(req, res);
+});
+app.post('/logout', async (req, res) => {
+    logout(req, res);
 });
 server.listen(3001, () => {
     console.log('🚀 Express backend running on http://localhost:3001');

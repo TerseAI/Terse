@@ -8,7 +8,7 @@ const GITHUB_STATE_COOKIE = 'GITHUB_OAUTH_STATE';
 const GITHUB_AUTH_CLIENT_ID = process.env.GITHUB_AUTH_CLIENT_ID || '';
 const GITHUB_AUTH_CLIENT_SECRET = process.env.GITHUB_AUTH_CLIENT_SECRET || '';
 const GITHUB_CALLBACK_URL = process.env.GITHUB_CALLBACK_URL || 'http://localhost:3001/auth/github/callback';
-const GITHUB_LOGIN_REDIRECT = process.env.GITHUB_LOGIN_REDIRECT || 'http://localhost:3000';
+const GITHUB_LOGIN_REDIRECT = process.env.GITHUB_LOGIN_REDIRECT || 'http://localhost:5173/';
 export const authMiddleware = async (req, res, next) => {
     try {
         if (!req.cookies || !req.cookies[COOKIE_NAME]) {
@@ -117,7 +117,6 @@ export async function githubCallback(req, res) {
         const userResp = await axios.get('https://api.github.com/user', {
             headers: { Authorization: `Bearer ${accessToken}` }
         });
-        console.log('userResp', userResp.data);
         let email = userResp.data.email;
         const name = userResp.data.name || userResp.data.login;
         const githubUsername = userResp.data.login;
