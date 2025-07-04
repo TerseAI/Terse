@@ -1,5 +1,5 @@
 import { Jwt } from "../utility/jwt.js";
-import { login as loginUser, findUserByEmail, createUser, updateUserGitHubUsername } from "../types/user.js";
+import { login as loginUser, findUserByEmail, createUser, updateUserGitHubUsername, findUserByGitHubUsername } from "../types/user.js";
 import axios from "axios";
 import crypto from "crypto";
 import chalk from "chalk";
@@ -150,11 +150,10 @@ export async function githubCallback(req, res) {
         if (!email) {
             return res.status(400).send('Email not available');
         }
-        let user = await findUserByEmail(email);
+        let user = await findUserByGitHubUsername(githubUsername);
         if (!user) {
             // Create new user with GitHub username
-            await createUser(name, email, githubUsername);
-            user = await findUserByEmail(email);
+            user = await createUser(name, email, githubUsername);
         }
         else if (user.github_username !== githubUsername) {
             // Update existing user's GitHub username if it's different
