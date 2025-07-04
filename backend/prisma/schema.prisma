@@ -15,10 +15,10 @@ datasource db {
 }
 
 model users {
-  id                String   @id @default(cuid())
-  email             String   @unique
-  display_name      String
-  github_username   String?
-  created_at        DateTime @default(now())
-  updated_at        DateTime @updatedAt
+  id              String   @id @default(cuid())
+  email           String   @unique
+  display_name    String
+  github_username String?
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
 }
