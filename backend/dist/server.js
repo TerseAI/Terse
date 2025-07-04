@@ -15,6 +15,9 @@ app.use(cookieParser());
 app.get('/me', (req, res) => {
     res.send('Hello World');
 });
+server.listen(3001, () => {
+    console.log('🚀 Express backend running on http://localhost:3001');
+});
 // Graceful shutdown
 process.on("SIGTERM", () => {
     server.close();
