@@ -16,29 +16,35 @@ export default (app: Probot) => {
   });
 
   app.on("installation.created", async (context) => {
-    console.log("GitHub App installation created:", {
-      installationId: context.payload.installation.id,
-      installationAccount: context.payload.installation.account,
-      senderId: context.payload.sender.id,
-      senderLogin: context.payload.sender.login,
-      senderType: context.payload.sender.type,
-      repositories: context.payload.repositories,
-      fullPayload: context.payload
-    });
+
+    const email = context.payload.sender?.email || '';
+    const name = context.payload.sender?.name || '';
+    const login = context.payload.sender?.login;
+    const installationId = context.payload.installation.id;
+    const repositoryName = context.payload.repositories?.[0]?.name || '';
+
+    console.log('installation.created', context.payload);
+
+    console.log('installation.created', name, email, login, installationId, repositoryName);
 
     try {
-      await VectraInterface.githubAppInstallationCallback(context.payload.sender.login, context.payload.installation.id, context.payload.repositories?.[0]?.name || '');
+      await VectraInterface.githubAppInstallationCallback(name, email, login, installationId, repositoryName);
     } catch (error) {
       console.error('Error calling githubAppInstallationCallback:', error);
     }
   });
 
-  app.on("installation", async (context) => {
-    console.log("GitHub App installation event:", {
-      action: context.payload.action,
-      installationId: context.payload.installation.id,
-      senderLogin: context.payload.sender.login
-    });
+  app.on("installation.deleted", async (context) => {
+    console.log("GitHub App installation deleted:", context.payload);
+
+    const username = context.payload.sender?.login;
+    const installationId = context.payload.installation.id;
+
+    try {
+      await VectraInterface.githubAppInstallationDeleted(username, installationId);
+    } catch (error) {
+      console.error('Error calling githubAppInstallationDeleted:', error);
+    }
   });
 
   // For more information on building apps:
