@@ -1,9 +1,7 @@
 import { Agent, AgentInputItem, AgentOutputType, run, RunResult, user } from "@openai/agents";
 import { ToolBox } from "./Agent";
 import { Session } from "../../server";
-import { SendModelRequest } from "src/shared/ModelEvents";
 import { ticketTools } from "../tools/ticketingTools";
-import { PushEvent } from "src/theOwner/Owner";
 import chalk from "chalk";
 
 export class Analyzer {
@@ -39,7 +37,7 @@ export class Analyzer {
             context: this.session,
         });
 
-        console.log(chalk.blue('Analyzer result'), result);
+        console.log(chalk.blue('Analyzer result'), result.finalOutput);
         return result;
     }
 }
