@@ -90,7 +90,7 @@ export enum RawModelStreamEventType {
             const toolCalledEvent = event as ToolCalledEvent;
             const item = toolCalledEvent.item.rawItem;
             
-            console.log('ToolCalled', item);
+            console.log('ToolCalled', item.name, item.callId);
             
             // Send ToolCall event with the actual parameters
             controller.enqueue({

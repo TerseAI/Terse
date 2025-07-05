@@ -1,4 +1,4 @@
-import { Ticket, TicketSystemType, CreateTicketInput, UpdateTicketInput } from "../shared/TicketSystem";
+import { Ticket, TicketSystemType, CreateTicketInput, UpdateTicketInput, User } from "../shared/TicketSystem";
 import { SearchItem } from "../search/SearchItem";
 import { Team } from "../shared/TicketSystem";
 
@@ -16,11 +16,12 @@ export interface TicketManager {
     // onNewTicket(handler: TicketWebhookHandler): void;
     indexTicket(id: string): Promise<SearchItem[]>;
     getTeams(): Promise<Team[]>;
+    me(): Promise<User | null>;
 }
 
 export type StructuredSearchOptions = {
     teamIds?: string[];
-    assigneeIds?: string[];
+    assigneeEmails?: string[];
     stateIds?: string[];
     priority?: number[];
     labels?: string[];
@@ -28,7 +29,7 @@ export type StructuredSearchOptions = {
     dueDateRange?: { from?: Date; to?: Date };
     createdDateRange?: { from?: Date; to?: Date };
     updatedDateRange?: { from?: Date; to?: Date };
-    sortBy?: 'createdAt' | 'updatedAt' | 'title' | 'priority' | 'dueDate';
+    sortBy?: 'createdAt' | 'updatedAt';
     sortDirection?: 'asc' | 'desc';
     limit?: number;
     includeArchived?: boolean;

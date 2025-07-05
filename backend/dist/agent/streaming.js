@@ -25,7 +25,7 @@ export async function toEventStream(result, agentSession) {
                     event.name === "tool_called") {
                     const toolCalledEvent = event;
                     const item = toolCalledEvent.item.rawItem;
-                    console.log('ToolCalled', item);
+                    console.log('ToolCalled', item.name, item.callId);
                     // Send ToolCall event with the actual parameters
                     controller.enqueue({
                         type: "ToolCall",
