@@ -92,6 +92,7 @@ app.get('/linear/get-api-key', authMiddleware, async (req, res) => {
 })
 
 app.post('/webhooks/linear/:userId', async (req, res) => {
+    console.log("Linear webhook received", req.body, req.params);
     const { userId } = req.params;
     const event = req.body;
 
