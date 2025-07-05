@@ -1,6 +1,7 @@
 import { SearchItem } from "src/search/SearchItem";
 import { CreateTicketInput, Ticket, TicketIntegration, TicketSystemType, TicketWebhookHandler, UpdateTicketInput } from "../shared/TicketSystem";
 import { IssuePayload, LinearClient } from "@linear/sdk";
+import chalk from "chalk";
 
 export class LinearAdapter implements TicketIntegration {
     type: TicketSystemType = TicketSystemType.Linear;
@@ -9,6 +10,17 @@ export class LinearAdapter implements TicketIntegration {
 
     constructor(apiKey: string) {
         this.client = new LinearClient({ apiKey });
+    }
+
+    static async validateKey(apiKey: string): Promise<boolean> {
+        try {
+            const client = new LinearClient({ apiKey });
+            const user = await client.viewer;
+            return user !== null;
+        } catch (error) {
+            console.error(chalk.red('Error validating Linear API key:'), error);
+            return false;
+        }
     }
 
     async createTicket(input: CreateTicketInput): Promise<Ticket> {
