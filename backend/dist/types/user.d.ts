@@ -1,4 +1,4 @@
-import { User } from "./prisma.js";
+import { User } from "./prisma";
 export declare function login(email: string, password: string): Promise<User | null>;
 export declare function findUserByEmail(email: string): Promise<User | null>;
 export declare function findUserByGitHubUsername(githubUsername: string): Promise<User | null>;
