@@ -13,13 +13,13 @@ export interface TicketManager {
     createTicket(input: CreateTicketInput): Promise<Ticket>;
     updateTicket(id: string, input: UpdateTicketInput): Promise<Ticket>;
     deleteComment(ticketId: string, commentId: string): Promise<void>;
-    // onNewTicket(handler: TicketWebhookHandler): void;
     indexTicket(id: string): Promise<SearchItem[]>;
     getTeams(): Promise<Team[]>;
     me(): Promise<User | null>;
 
     // Used for indexing
     getAllTickets(): Promise<Ticket[]>;
+    configureWebhook(): Promise<{ webhookId: string, webhookSecret: string } | null>;
 }
 
 export type StructuredSearchOptions = {
