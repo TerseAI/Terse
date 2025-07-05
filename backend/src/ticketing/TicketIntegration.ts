@@ -17,6 +17,9 @@ export interface TicketManager {
     indexTicket(id: string): Promise<SearchItem[]>;
     getTeams(): Promise<Team[]>;
     me(): Promise<User | null>;
+
+    // Used for indexing
+    getAllTickets(): Promise<Ticket[]>;
 }
 
 export type StructuredSearchOptions = {
