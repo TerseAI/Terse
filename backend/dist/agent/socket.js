@@ -1,8 +1,8 @@
 import { WebSocketServer } from "ws";
 import { run } from "@openai/agents";
-import { Jwt } from "../utility/jwt.js";
-import { AgentSession } from "./agents/Agent.js";
-import { toEventStream } from "./streaming.js";
+import { Jwt } from "../utility/jwt";
+import { AgentSession } from "./agents/Agent";
+import { toEventStream } from "./streaming";
 import chalk from "chalk";
 import { getUserTicketManager } from "src/types/user";
 export class AgentSocketServer {
@@ -127,6 +127,7 @@ export class AgentSocketServer {
             isUserInitiated: true,
             ticketManager: ticketManager,
             teamId: teamId,
+            currentUser: await ticketManager.me() || undefined,
         };
     }
 }
