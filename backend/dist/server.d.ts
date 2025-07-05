@@ -1,9 +1,10 @@
 import 'dotenv/config';
 import { User } from './types/prisma';
-import { TicketIntegration } from './ticketing/TicketIntegration';
+import { TicketManager } from './ticketing/TicketIntegration';
 export type Session = {
     user: User;
-    ticketManager?: TicketIntegration;
+    ticketManager?: TicketManager;
     isUserInitiated: boolean;
+    teamId?: string;
 };
 //# sourceMappingURL=server.d.ts.map
