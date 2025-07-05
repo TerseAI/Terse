@@ -9,9 +9,6 @@ import type { Session } from "../server";
 import { ModelEvent, ModelRequest, SendModelRequest } from "../shared/ModelEvents";
 import chalk from "chalk";
 import { IAgentSession } from "./agents/AgentSession";
-import { db } from "../prismaClient";
-import { LinearApiKey, User } from "../types/prisma";
-import { LinearAdapter } from "src/ticketing/linear";
 import { getUserTicketManager } from "src/types/user";
 
 export class AgentSocketServer {
