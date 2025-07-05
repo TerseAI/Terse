@@ -9,12 +9,13 @@ import { authMiddleware, githubAppAuthMiddleware, githubCallback, githubLogin, l
 import { AgentSocketServer, requestSessionSocketToken } from './agent/socket';
 import { getInstallationUrl, githubAppInstallationCallback, githubAppInstallationDeleted, githubAppRecievedPush } from './routes/githubApp';
 import { getLinearApiKey, setLinearApiKey } from './routes/linear';
-import { TicketIntegration } from './ticketing/TicketIntegration';
+import { TicketManager } from './ticketing/TicketIntegration';
 
 export type Session = {
     user: User;
-    ticketManager?: TicketIntegration;
+    ticketManager?: TicketManager;
     isUserInitiated: boolean; // true if the user has initiated the session, false if the session was initiated by the system
+    teamId?: string;
 }
 
 const app = express();

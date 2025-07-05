@@ -1,9 +1,10 @@
 import { WebSocketServer } from "ws";
 import { run } from "@openai/agents";
-import { Jwt } from "../utility/jwt.js";
-import { AgentSession } from "./agents/Agent.js";
-import { toEventStream } from "./streaming.js";
+import { Jwt } from "../utility/jwt";
+import { AgentSession } from "./agents/Agent";
+import { toEventStream } from "./streaming";
 import chalk from "chalk";
+import { getUserTicketManager } from "src/types/user";
 export class AgentSocketServer {
     wss;
     pending = new WeakMap();
@@ -113,9 +114,15 @@ export class AgentSocketServer {
             console.error(chalk.red.bold('❌ Invalid token. Unable to authenticate user.'));
             return null;
         }
+        const ticketManager = await getUserTicketManager(user.id);
+        if (!ticketManager) {
+            console.error(chalk.red.bold('❌ Unable to get ticket manager. Unable to authenticate user.'));
+            return null;
+        }
         return {
             user: user,
             isUserInitiated: true,
+            ticketManager: ticketManager,
         };
     }
 }

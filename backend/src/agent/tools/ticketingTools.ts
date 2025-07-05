@@ -3,40 +3,39 @@ import { Session } from "../../server";
 import { z } from "zod";
 import chalk from "chalk";
 
-
-const createTicketTool = tool({
-    name: 'Create Ticket',
-    description: 'Create a new ticket',
+const searchTicketTool = tool({
+    name: 'Search Ticket',
+    description: 'Search for a ticket',
     parameters: z.object({
-        title: z.string().describe('The title of the ticket'),
-        description: z.string().optional().describe('The description of the ticket'),
-        state: z.object({
-            id: z.string().describe('The state ID of the ticket'),
-            name: z.string().describe('The state name of the ticket')
-        }).describe('The state of the ticket'),
-        assignee: z.object({
-            id: z.string().describe('The assignee ID'),
-            name: z.string().describe('The assignee name')
-        }).optional().describe('The assignee of the ticket'),
-        priority: z.number().optional().describe('The priority of the ticket'),
-        labels: z.array(z.object({
-            id: z.string().describe('The label ID'),
-            name: z.string().describe('The label name'),
-            color: z.string().describe('The label color')
-        })).optional().describe('The labels for the ticket'),
-        estimate: z.number().optional().describe('The time estimate for the ticket'),
-        dueDate: z.string().optional().describe('The due date for the ticket'),
-        project: z.object({
-            id: z.string().describe('The project ID'),
-            name: z.string().describe('The project name')
-        }).optional().describe('The project for the ticket'),
-        team: z.object({
-            id: z.string().describe('The team ID'),
-            name: z.string().describe('The team name'),
-            key: z.string().describe('The team key')
-        }).optional().describe('The team for the ticket'),
+        query: z.string().describe('The query to search for'),
+        teamIds: z.union([z.array(z.string()), z.null()]).describe('Filter by team IDs'),
+        assigneeIds: z.union([z.array(z.string()), z.null()]).describe('Filter by assignee IDs'),
+        stateIds: z.union([z.array(z.string()), z.null()]).describe('Filter by state IDs'),
+        priority: z.union([z.array(z.number()), z.null()]).describe('Filter by priority levels'),
+        labels: z.union([z.array(z.string()), z.null()]).describe('Filter by label names'),
+        projects: z.union([z.array(z.string()), z.null()]).describe('Filter by project IDs'),
+        dueDateRange: z.union([z.object({
+            from: z.union([z.string(), z.null()]).describe('Due date from (ISO string)'),
+            to: z.union([z.string(), z.null()]).describe('Due date to (ISO string)')
+        }), z.null()]).describe('Filter by due date range'),
+        createdDateRange: z.union([z.object({
+            from: z.union([z.string(), z.null()]).describe('Created date from (ISO string)'),
+            to: z.union([z.string(), z.null()]).describe('Created date to (ISO string)')
+        }), z.null()]).describe('Filter by created date range'),
+        updatedDateRange: z.union([z.object({
+            from: z.union([z.string(), z.null()]).describe('Updated date from (ISO string)'),
+            to: z.union([z.string(), z.null()]).describe('Updated date to (ISO string)')
+        }), z.null()]).describe('Filter by updated date range'),
+        sortBy: z.union([z.enum(['createdAt', 'updatedAt', 'title', 'priority', 'dueDate']), z.null()]).describe('Sort by field'),
+        sortDirection: z.union([z.enum(['asc', 'desc']), z.null()]).describe('Sort direction'),
+        limit: z.union([z.number(), z.null()]).describe('Maximum number of results to return'),
+        includeArchived: z.union([z.boolean(), z.null()]).describe('Include archived tickets'),
+        includeSubIssues: z.union([z.boolean(), z.null()]).describe('Include sub-issues'),
+        includeComments: z.union([z.boolean(), z.null()]).describe('Include comments'),
+        includeAttachments: z.union([z.boolean(), z.null()]).describe('Include attachments'),
+        includeRelations: z.union([z.boolean(), z.null()]).describe('Include related tickets')
     }),
-    execute: async ({ title, description, state, assignee, priority, labels, estimate, dueDate, project, team }, runContext?: RunContext<Session>) => {
+    execute: async ({ query, teamIds, assigneeIds, stateIds, priority, labels, projects, dueDateRange, createdDateRange, updatedDateRange, sortBy, sortDirection, limit, includeArchived, includeSubIssues, includeComments, includeAttachments, includeRelations }, runContext?: RunContext<Session>) => {
         if (!runContext?.context) {
             throw new Error("No context provided");
         }
@@ -47,17 +46,115 @@ const createTicketTool = tool({
         
         let ticketManager = runContext.context.ticketManager;
 
+        // Convert date strings to Date objects if provided and handle null values
+        const options = {
+            teamIds: teamIds || undefined,
+            assigneeIds: assigneeIds || undefined,
+            stateIds: stateIds || undefined,
+            priority: priority || undefined,
+            labels: labels || undefined,
+            projects: projects || undefined,
+            dueDateRange: dueDateRange ? {
+                from: dueDateRange.from ? new Date(dueDateRange.from) : undefined,
+                to: dueDateRange.to ? new Date(dueDateRange.to) : undefined
+            } : undefined,
+            createdDateRange: createdDateRange ? {
+                from: createdDateRange.from ? new Date(createdDateRange.from) : undefined,
+                to: createdDateRange.to ? new Date(createdDateRange.to) : undefined
+            } : undefined,
+            updatedDateRange: updatedDateRange ? {
+                from: updatedDateRange.from ? new Date(updatedDateRange.from) : undefined,
+                to: updatedDateRange.to ? new Date(updatedDateRange.to) : undefined
+            } : undefined,
+            sortBy: sortBy || undefined,
+            sortDirection: sortDirection || undefined,
+            limit: limit || undefined,
+            includeArchived: includeArchived || undefined,
+            includeSubIssues: includeSubIssues || undefined,
+            includeComments: includeComments || undefined,
+            includeAttachments: includeAttachments || undefined,
+            includeRelations: includeRelations || undefined
+        };
+
+        console.log('Ticket Tool: Searching for tickets with options:', options);
+        const tickets = await ticketManager.structuredSearch(query, options);
+        
+        return {
+            tickets: tickets.map(ticket => ({
+                id: ticket.id,
+                identifier: ticket.identifier,
+                title: ticket.title,
+                description: ticket.description,
+                state: ticket.state,
+                assignee: ticket.assignee,
+                priority: ticket.priority,
+                estimate: ticket.estimate,
+                dueDate: ticket.dueDate,
+                project: ticket.project,
+                team: ticket.team,
+                createdAt: ticket.createdAt,
+                updatedAt: ticket.updatedAt
+            }))
+        };
+    }
+});
+
+
+const createTicketTool = tool({
+    name: 'Create Ticket',
+    description: 'Create a new ticket',
+    parameters: z.object({
+        title: z.string().describe('The title of the ticket'),
+        description: z.union([z.string(), z.null()]).describe('The description of the ticket'),
+        state: z.object({
+            id: z.string().describe('The state ID of the ticket'),
+            name: z.string().describe('The state name of the ticket')
+        }).describe('The state of the ticket'),
+        assignee: z.union([z.object({
+            id: z.string().describe('The assignee ID'),
+            name: z.string().describe('The assignee name')
+        }), z.null()]).describe('The assignee of the ticket'),
+        priority: z.union([z.number(), z.null()]).describe('The priority of the ticket'),
+        labels: z.union([z.array(z.object({
+            id: z.string().describe('The label ID'),
+            name: z.string().describe('The label name'),
+            color: z.string().describe('The label color')
+        })), z.null()]).describe('The labels for the ticket'),
+        estimate: z.union([z.number(), z.null()]).describe('The time estimate for the ticket'),
+        dueDate: z.union([z.string(), z.null()]).describe('The due date for the ticket'),
+        project: z.union([z.object({
+            id: z.string().describe('The project ID'),
+            name: z.string().describe('The project name')
+        }), z.null()]).describe('The project for the ticket'),
+    }),
+    execute: async ({ title, description, state, assignee, priority, labels, estimate, dueDate, project }, runContext?: RunContext<Session>) => {
+        if (!runContext?.context) {
+            throw new Error("No context provided");
+        }
+
+        if (!runContext.context.ticketManager) {
+            throw new Error("No ticket manager provided");
+        }
+
+        const teamId = runContext.context.teamId;
+        if (!teamId) {
+            console.error(chalk.red.bold('❌ No team ID provided. Unable to create ticket.'));
+            throw new Error("No team ID provided");
+        }
+
+        let ticketManager = runContext.context.ticketManager;
+
         let ticket = await ticketManager.createTicket({
             title,
-            description,
+            teamId,
+            description: description || undefined,
             state,
-            assignee,
-            priority,
-            labels,
-            estimate,
-            dueDate,
-            project,
-            team,
+            assignee: assignee || undefined,
+            priority: priority || undefined,
+            labels: labels || undefined,
+            estimate: estimate || undefined,
+            dueDate: dueDate || undefined,
+            project: project || undefined,
         });
 
         console.log('Ticket Tool: Created ticket');
@@ -72,32 +169,32 @@ const updateTicketTool = tool({
     parameters: z.object({
         id: z.string().describe('The ID of the ticket'),
         title: z.string().describe('The title of the ticket'),
-        description: z.string().optional().describe('The description of the ticket'),
+        description: z.union([z.string(), z.null()]).describe('The description of the ticket'),
         state: z.object({
             id: z.string().describe('The state ID of the ticket'),
             name: z.string().describe('The state name of the ticket')
         }).describe('The state of the ticket'),
-        assignee: z.object({
+        assignee: z.union([z.object({
             id: z.string().describe('The assignee ID'),
             name: z.string().describe('The assignee name')
-        }).optional().describe('The assignee of the ticket'),
-        priority: z.number().optional().describe('The priority of the ticket'),
-        labels: z.array(z.object({
+        }), z.null()]).describe('The assignee of the ticket'),
+        priority: z.union([z.number(), z.null()]).describe('The priority of the ticket'),
+        labels: z.union([z.array(z.object({
             id: z.string().describe('The label ID'),
             name: z.string().describe('The label name'),
             color: z.string().describe('The label color')
-        })).optional().describe('The labels for the ticket'),
-        estimate: z.number().optional().describe('The time estimate for the ticket'),
-        dueDate: z.string().optional().describe('The due date for the ticket'),
-        project: z.object({
+        })), z.null()]).describe('The labels for the ticket'),
+        estimate: z.union([z.number(), z.null()]).describe('The time estimate for the ticket'),
+        dueDate: z.union([z.string(), z.null()]).describe('The due date for the ticket'),
+        project: z.union([z.object({
             id: z.string().describe('The project ID'),
             name: z.string().describe('The project name')
-        }).optional().describe('The project for the ticket'),
-        team: z.object({
+        }), z.null()]).describe('The project for the ticket'),
+        team: z.union([z.object({
             id: z.string().describe('The team ID'),
             name: z.string().describe('The team name'),
             key: z.string().describe('The team key')
-        }).optional().describe('The team for the ticket'),
+        }), z.null()]).describe('The team for the ticket'),
     }),
     execute: async ({ id, title, description, state, assignee, priority, labels, estimate, dueDate, project, team }, runContext?: RunContext<Session>) => {
         if (!runContext?.context) {
@@ -112,15 +209,15 @@ const updateTicketTool = tool({
 
         let ticket = await ticketManager.updateTicket(id, {
             title,
-            description,
+            description: description || undefined,
             state,
-            assignee,
-            priority,
-            labels,
-            estimate,
-            dueDate,
-            project,
-            team,
+            assignee: assignee || undefined,
+            priority: priority || undefined,
+            labels: labels || undefined,
+            estimate: estimate || undefined,
+            dueDate: dueDate || undefined,
+            project: project || undefined,
+            team: team || undefined,
         });
 
         console.log('Ticket Tool: Created ticket');
@@ -148,4 +245,4 @@ const findIssueTool = tool({
     },
 });
 
-export const ticketTools = [createTicketTool, updateTicketTool, findIssueTool];
+export const ticketTools = [createTicketTool, updateTicketTool, findIssueTool, searchTicketTool];

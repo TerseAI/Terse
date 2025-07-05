@@ -1,5 +1,6 @@
 import { Agent, run, user } from '@openai/agents';
-import { systemPrompt } from '../systemPrompt.js';
+import { systemPrompt } from '../systemPrompt';
+import { ticketTools } from '../tools/ticketingTools';
 export class AgentSession {
     history = [];
     session;
@@ -66,7 +67,7 @@ export class AgentSession {
 export class ToolBox {
     tools = [];
     constructor() {
-        this.tools = [];
+        this.tools = ticketTools;
     }
     getTools(toolBoxType) {
         return this.tools;
