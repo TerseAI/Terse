@@ -152,7 +152,6 @@ export class AgentSocketServer {
         }
 
         const teams = await ticketManager.getTeams();
-        console.log(chalk.green.bold("🔌 Teams: "), teams);
         // HACK: Force the first team to be the default team
         const teamId = teams[0].id;
 
@@ -160,6 +159,8 @@ export class AgentSocketServer {
             user: user,
             isUserInitiated: true,
             ticketManager: ticketManager,
+            teamId: teamId,
+            currentUser: await ticketManager.me() || undefined,
         };
     }
 }

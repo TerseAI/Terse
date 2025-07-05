@@ -1,6 +1,6 @@
 import 'dotenv/config';
-import { User } from './types/prisma';
-import { TicketManager } from './ticketing/TicketIntegration';
+import { User } from './types/prisma.js';
+import { TicketManager } from './ticketing/TicketIntegration.js';
 export type Session = {
     user: User;
     ticketManager?: TicketManager;

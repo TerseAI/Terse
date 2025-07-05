@@ -38,9 +38,15 @@ export interface Ticket {
     updatedAt: string;
 }
 
+export interface User {
+    id: string;
+    name: string;
+    email: string;
+}
+
 export interface Comment {
     id: string;
-    authorId: string;
+    authorEmail: string;
     body: string;
     createdAt: string;
     updatedAt?: string;
@@ -56,7 +62,7 @@ export interface Team {
 export interface CreateTicketInput {
     title: string;
     description?: string;
-    assigneeId?: string;
+    assigneeEmail?: string;
     [key: string]: any;
 }
 
@@ -64,7 +70,7 @@ export interface UpdateTicketInput {
     title?: string;
     description?: string;
     status?: string;
-    assigneeId?: string;
+    assigneeEmail?: string;
     [key: string]: any;
 }
 

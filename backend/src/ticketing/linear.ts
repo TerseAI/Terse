@@ -1,9 +1,11 @@
 import { SearchItem } from "src/search/SearchItem";
 import { CreateTicketInput, Ticket, TicketSystemType, TicketWebhookHandler, UpdateTicketInput } from "../shared/TicketSystem";
-import { IssuePayload, LinearClient } from "@linear/sdk";
+import { IssuePayload, LinearClient, User as LinearUser } from "@linear/sdk";
 import chalk from "chalk";
 import { StructuredSearchOptions, TicketManager } from "./TicketIntegration";
-import { Team } from "../shared/TicketSystem";
+import { Team, User } from "../shared/TicketSystem";
+import { IssueFilter, IssuesQueryVariables } from "@linear/sdk/dist/_generated_documents";
+
 
 export class LinearAdapter implements TicketManager {
     type: TicketSystemType = TicketSystemType.Linear;
@@ -34,108 +36,152 @@ export class LinearAdapter implements TicketManager {
         }));
     }
 
+    async me(): Promise<User | null> {
+        const user: LinearUser = await this.client.viewer;
+        if (!user) {
+            console.error(chalk.red('❌ No user found'));
+            return null;
+        }
+        return {
+            id: user.id,
+            name: user.name,
+            email: user.email,
+        };
+    }
+
+    async resolveUser(email: string): Promise<LinearUser | null> {
+        const user = await this.client.users({
+            filter: {
+                email: {
+                    eq: email
+                }
+            }
+        });
+        if (!user) {
+            console.error(chalk.red('❌ No user found'));
+            return null;
+        }
+        return user.nodes[0];
+    }
+
     async structuredSearch(query: string, options?: StructuredSearchOptions): Promise<Ticket[]> {
         // Build comprehensive filter object
-        const filter: any = {};
+        const filter: IssueFilter = {}; // Pretend this is an IssueFilter
 
         // Text search across multiple fields
-        if (query) {
-            filter.or = [
-                { title: { contains: query } },
-                { description: { contains: query } },
-                { identifier: { contains: query } }
-            ];
+        // if (query) {
+        //     filter.or = [
+        //         { title: { contains: query } },
+        //         { description: { contains: query } },
+        //     ];
+        // }
+
+        // // Team filtering
+        // if (options?.teamIds && options.teamIds.length > 0) {
+        //     filter.team = { id: { in: options.teamIds } };
+        // }
+
+        if (options?.assigneeEmails && options.assigneeEmails.length > 0) {
+            if (options.assigneeEmails.length === 1) {
+                const user = await this.resolveUser(options.assigneeEmails[0]);
+                if (!user) {
+                    console.error(chalk.red('❌ No user found'));
+                    return [];
+                }
+                filter.assignee = { id: { eq: user.id } };
+            } else {
+                // Multiple assignees
+                const users = await Promise.all(options.assigneeEmails.map(async email => {
+                    const user = await this.resolveUser(email);
+                    return user;
+                }));
+                filter.assignee = { id: { in: users.map(user => user?.id || '') } };
+            }
         }
 
-        // Team filtering
-        if (options?.teamIds && options.teamIds.length > 0) {
-            filter.team = { id: { in: options.teamIds } };
-        }
+        // // State filtering
+        // if (options?.stateIds && options.stateIds.length > 0) {
+        //     filter.state = { id: { in: options.stateIds } };
+        // }
 
-        // Assignee filtering
-        if (options?.assigneeIds && options.assigneeIds.length > 0) {
-            filter.assignee = { id: { in: options.assigneeIds } };
-        }
+        // // Priority filtering
+        // if (options?.priority && options.priority.length > 0) {
+        //     filter.priority = { in: options.priority };
+        // }
 
-        // State filtering
-        if (options?.stateIds && options.stateIds.length > 0) {
-            filter.state = { id: { in: options.stateIds } };
-        }
-
-        // Priority filtering
-        if (options?.priority && options.priority.length > 0) {
-            filter.priority = { in: options.priority };
-        }
-
-        // Label filtering
-        if (options?.labels && options.labels.length > 0) {
-            filter.labels = { name: { in: options.labels } };
-        }
+        // // Label filtering
+        // if (options?.labels && options.labels.length > 0) {
+        //     filter.labels = { name: { in: options.labels } };
+        // }
 
         // Project filtering
-        if (options?.projects && options.projects.length > 0) {
-            filter.project = { id: { in: options.projects } };
-        }
+        // if (options?.projects && options.projects.length > 0) {
+        //     filter.project = { id: { in: options.projects } };
+        // }
 
-        // Due date range filtering
-        if (options?.dueDateRange) {
-            filter.dueDate = {};
-            if (options.dueDateRange.from) {
-                filter.dueDate.gte = options.dueDateRange.from;
-            }
-            if (options.dueDateRange.to) {
-                filter.dueDate.lte = options.dueDateRange.to;
-            }
-        }
+        // // Due date range filtering
+        // if (options?.dueDateRange) {
+        //     filter.dueDate = {};
+        //     if (options.dueDateRange.from) {
+        //         filter.dueDate.gte = options.dueDateRange.from;
+        //     }
+        //     if (options.dueDateRange.to) {
+        //         filter.dueDate.lte = options.dueDateRange.to;
+        //     }
+        // }
 
-        // Created date range filtering
-        if (options?.createdDateRange) {
-            filter.createdAt = {};
-            if (options.createdDateRange.from) {
-                filter.createdAt.gte = options.createdDateRange.from;
-            }
-            if (options.createdDateRange.to) {
-                filter.createdAt.lte = options.createdDateRange.to;
-            }
-        }
+        // // Created date range filtering
+        // if (options?.createdDateRange) {
+        //     filter.createdAt = {};
+        //     if (options.createdDateRange.from) {
+        //         filter.createdAt.gte = options.createdDateRange.from;
+        //     }
+        //     if (options.createdDateRange.to) {
+        //         filter.createdAt.lte = options.createdDateRange.to;
+        //     }
+        // }
 
-        // Updated date range filtering
-        if (options?.updatedDateRange) {
-            filter.updatedAt = {};
-            if (options.updatedDateRange.from) {
-                filter.updatedAt.gte = options.updatedDateRange.from;
-            }
-            if (options.updatedDateRange.to) {
-                filter.updatedAt.lte = options.updatedDateRange.to;
-            }
-        }
+        // // Updated date range filtering
+        // if (options?.updatedDateRange) {
+        //     filter.updatedAt = {};
+        //     if (options.updatedDateRange.from) {
+        //         filter.updatedAt.gte = options.updatedDateRange.from;
+        //     }
+        //     if (options.updatedDateRange.to) {
+        //         filter.updatedAt.lte = options.updatedDateRange.to;
+        //     }
+        // }
 
-        // Archive filtering
-        if (options?.includeArchived === false) {
-            filter.archivedAt = { eq: null };
-        }
+        // // Archive filtering
+        // if (options?.includeArchived === false) {
+        //     filter.archivedAt = { eq: null };
+        // }
 
-        // Sub-issues filtering
-        if (options?.includeSubIssues === false) {
-            filter.parentId = { eq: null };
-        }
+        // // Sub-issues filtering
+        // if (options?.includeSubIssues === false) {
+        //     filter.parent = { id: { eq: null } };
+        // }
 
         // Build sort options
-        const sortOptions: any = {};
-        if (options?.sortBy) {
-            sortOptions[options.sortBy] = options.sortDirection || 'desc';
-        } else {
-            // Default sorting by updated date
-            sortOptions.updatedAt = 'desc';
+        let sortOptions: any = options?.sortBy == 'updatedAt' ? 'updatedAt' : 'createdAt'
+
+        let issues
+        try {
+            // Execute the query with comprehensive options
+            const params: IssuesQueryVariables = {
+                filter, 
+                orderBy: sortOptions,
+                first: options?.limit || 50, // Default limit of 50
+                includeArchived: options?.includeArchived || false,
+            }
+            console.log('Searching for issues with params', JSON.stringify(params, null, 2));
+            issues = await this.client.issues(params);
+        } catch (error) {
+            console.error('Failed to search issues', error);
+            throw new Error('Failed to search issues');
         }
 
-        // Execute the query with comprehensive options
-        const issues = await this.client.issues({
-            filter,
-            orderBy: sortOptions,
-            first: options?.limit || 50, // Default limit of 50
-            includeArchived: options?.includeArchived || false,
-        });
+        console.log(chalk.green('✅ Found'), chalk.cyan(issues.nodes.length), chalk.yellow('issues'));
 
         // Fetch detailed information for each issue
         const tickets = await Promise.all(issues.nodes.map(async issue => {
@@ -165,6 +211,7 @@ export class LinearAdapter implements TicketManager {
     }
 
     async findTicket(id: string): Promise<Ticket> {
+        console.log(chalk.green('✅ Finding ticket:'), chalk.cyan(id));
         const issue = await this.client.issue(id);
         if (!issue) {
             throw new Error('Issue not found');
@@ -220,7 +267,7 @@ export class LinearAdapter implements TicketManager {
             throw new Error('Failed to create issue');
         }
 
-        console.log('New issue', newIssue);
+        console.log(chalk.green('✅ New issue created:'), chalk.cyan(newIssue.title), chalk.yellow(`(${newIssue.id})`));
 
         return {
             id: newIssue.id,
