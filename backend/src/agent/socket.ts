@@ -143,6 +143,7 @@ export class AgentSocketServer {
 
         return {
             user: user,
+            isUserInitiated: true,
         };
     }
 }
