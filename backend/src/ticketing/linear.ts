@@ -2,9 +2,10 @@ import { SearchItem } from "src/search/SearchItem";
 import { CreateTicketInput, Ticket, TicketSystemType, TicketWebhookHandler, UpdateTicketInput } from "../shared/TicketSystem";
 import { IssuePayload, LinearClient } from "@linear/sdk";
 import chalk from "chalk";
-import { TicketIntegration } from "./TicketIntegration";
+import { StructuredSearchOptions, TicketManager } from "./TicketIntegration";
+import { Team } from "../shared/TicketSystem";
 
-export class LinearAdapter implements TicketIntegration {
+export class LinearAdapter implements TicketManager {
     type: TicketSystemType = TicketSystemType.Linear;
 
     private client: LinearClient;
@@ -22,6 +23,145 @@ export class LinearAdapter implements TicketIntegration {
             console.error(chalk.red('Error validating Linear API key:'), error);
             return false;
         }
+    }
+
+    async getTeams(): Promise<Team[]> {
+        const teams = await this.client.teams();
+        return teams.nodes.map(team => ({
+            id: team.id,
+            name: team.name,
+            key: team.key
+        }));
+    }
+
+    async structuredSearch(query: string, options?: StructuredSearchOptions): Promise<Ticket[]> {
+        // Build comprehensive filter object
+        const filter: any = {};
+
+        // Text search across multiple fields
+        if (query) {
+            filter.or = [
+                { title: { contains: query } },
+                { description: { contains: query } },
+                { identifier: { contains: query } }
+            ];
+        }
+
+        // Team filtering
+        if (options?.teamIds && options.teamIds.length > 0) {
+            filter.team = { id: { in: options.teamIds } };
+        }
+
+        // Assignee filtering
+        if (options?.assigneeIds && options.assigneeIds.length > 0) {
+            filter.assignee = { id: { in: options.assigneeIds } };
+        }
+
+        // State filtering
+        if (options?.stateIds && options.stateIds.length > 0) {
+            filter.state = { id: { in: options.stateIds } };
+        }
+
+        // Priority filtering
+        if (options?.priority && options.priority.length > 0) {
+            filter.priority = { in: options.priority };
+        }
+
+        // Label filtering
+        if (options?.labels && options.labels.length > 0) {
+            filter.labels = { name: { in: options.labels } };
+        }
+
+        // Project filtering
+        if (options?.projects && options.projects.length > 0) {
+            filter.project = { id: { in: options.projects } };
+        }
+
+        // Due date range filtering
+        if (options?.dueDateRange) {
+            filter.dueDate = {};
+            if (options.dueDateRange.from) {
+                filter.dueDate.gte = options.dueDateRange.from;
+            }
+            if (options.dueDateRange.to) {
+                filter.dueDate.lte = options.dueDateRange.to;
+            }
+        }
+
+        // Created date range filtering
+        if (options?.createdDateRange) {
+            filter.createdAt = {};
+            if (options.createdDateRange.from) {
+                filter.createdAt.gte = options.createdDateRange.from;
+            }
+            if (options.createdDateRange.to) {
+                filter.createdAt.lte = options.createdDateRange.to;
+            }
+        }
+
+        // Updated date range filtering
+        if (options?.updatedDateRange) {
+            filter.updatedAt = {};
+            if (options.updatedDateRange.from) {
+                filter.updatedAt.gte = options.updatedDateRange.from;
+            }
+            if (options.updatedDateRange.to) {
+                filter.updatedAt.lte = options.updatedDateRange.to;
+            }
+        }
+
+        // Archive filtering
+        if (options?.includeArchived === false) {
+            filter.archivedAt = { eq: null };
+        }
+
+        // Sub-issues filtering
+        if (options?.includeSubIssues === false) {
+            filter.parentId = { eq: null };
+        }
+
+        // Build sort options
+        const sortOptions: any = {};
+        if (options?.sortBy) {
+            sortOptions[options.sortBy] = options.sortDirection || 'desc';
+        } else {
+            // Default sorting by updated date
+            sortOptions.updatedAt = 'desc';
+        }
+
+        // Execute the query with comprehensive options
+        const issues = await this.client.issues({
+            filter,
+            orderBy: sortOptions,
+            first: options?.limit || 50, // Default limit of 50
+            includeArchived: options?.includeArchived || false,
+        });
+
+        // Fetch detailed information for each issue
+        const tickets = await Promise.all(issues.nodes.map(async issue => {
+            const ticket = await this.findTicket(issue.id);
+
+            // Optionally include additional data
+            if (options?.includeComments) {
+                const comments = await issue.comments();
+                // You could extend the Ticket interface to include comments
+                // For now, we'll just fetch them but not include in the return
+            }
+
+            if (options?.includeAttachments) {
+                const attachments = await issue.attachments();
+                // Similar to comments, could extend interface
+            }
+
+            if (options?.includeRelations) {
+                const relations = await issue.relations();
+                // Could extend interface to include related issues
+            }
+
+            return ticket;
+        }));
+
+        return tickets;
     }
 
     async findTicket(id: string): Promise<Ticket> {
@@ -61,16 +201,26 @@ export class LinearAdapter implements TicketIntegration {
     }
 
     async createTicket(input: CreateTicketInput): Promise<Ticket> {
-        const issuePayload = await this.client.createIssue({
-            title: input.title,
-            description: input.description,
-            teamId: input.teamId,
-        });
+        console.log('Creating ticket', input);
+        let issuePayload;
+        try {
+            issuePayload = await this.client.createIssue({
+                title: input.title,
+                description: input.description,
+                teamId: input.teamId,
+            });
+        } catch (error) {
+            console.error('Failed to create issue', error);
+            throw new Error('Failed to create issue');
+        }
 
         let newIssue = await issuePayload.issue;
         if (!newIssue) {
+            console.error('Failed to create issue', issuePayload);
             throw new Error('Failed to create issue');
         }
+
+        console.log('New issue', newIssue);
 
         return {
             id: newIssue.id,
@@ -147,10 +297,6 @@ export class LinearAdapter implements TicketIntegration {
         this.client.deleteComment(commentId);
     }
 
-    onNewTicket(handler: TicketWebhookHandler): void {
-        throw new Error("Method not implemented.");
-    }
-
     async indexTicket(id: string): Promise<SearchItem[]> {
         const issue = await this.client.issue(id);
         if (!issue) {
@@ -178,6 +324,178 @@ export class LinearAdapter implements TicketIntegration {
             content: issue.description || '',
             metadata: {}
         }
-    ]
+        ]
+    }
+
+    // Additional utility methods for comprehensive Linear API access
+    async getTeam(teamId: string): Promise<{ id: string; name: string; key: string; description?: string } | null> {
+        try {
+            const team = await this.client.team(teamId);
+            if (!team) return null;
+
+            return {
+                id: team.id,
+                name: team.name,
+                key: team.key,
+                description: team.description || undefined
+            };
+        } catch (error) {
+            console.error('Error fetching team:', error);
+            return null;
+        }
+    }
+
+    async getStates(teamId?: string): Promise<Array<{ id: string; name: string; type: string; color: string; teamId: string }>> {
+        const states = teamId
+            ? await this.client.team(teamId).then(team => team?.states())
+            : await this.client.workflowStates();
+
+        if (!states) return [];
+
+        const statesWithTeams = await Promise.all(states.nodes.map(async state => {
+            const team = await state.team;
+            return {
+                id: state.id,
+                name: state.name,
+                type: state.type,
+                color: state.color,
+                teamId: team?.id || ''
+            };
+        }));
+
+        return statesWithTeams;
+    }
+
+    async getLabels(teamId?: string): Promise<Array<{ id: string; name: string; color: string; teamId: string }>> {
+        const labels = teamId
+            ? await this.client.team(teamId).then(team => team?.labels())
+            : await this.client.issueLabels();
+
+        if (!labels) return [];
+
+        const labelsWithTeams = await Promise.all(labels.nodes.map(async label => {
+            const team = await label.team;
+            return {
+                id: label.id,
+                name: label.name,
+                color: label.color,
+                teamId: team?.id || ''
+            };
+        }));
+
+        return labelsWithTeams;
+    }
+
+    async getProjects(teamId?: string): Promise<Array<{ id: string; name: string; description?: string; teamId: string }>> {
+        const projects = teamId
+            ? await this.client.team(teamId).then(team => team?.projects())
+            : await this.client.projects();
+
+        if (!projects) return [];
+
+        const projectsWithTeams = await Promise.all(projects.nodes.map(async project => {
+            const teams = await project.teams();
+            const teamId = teams.nodes[0]?.id || '';
+            return {
+                id: project.id,
+                name: project.name,
+                description: project.description || undefined,
+                teamId
+            };
+        }));
+
+        return projectsWithTeams;
+    }
+
+    async getUsers(): Promise<Array<{ id: string; name: string; email: string; avatarUrl?: string }>> {
+        const users = await this.client.users();
+        return users.nodes.map(user => ({
+            id: user.id,
+            name: user.name,
+            email: user.email,
+            avatarUrl: user.avatarUrl || undefined
+        }));
+    }
+
+    async getUser(userId: string): Promise<{ id: string; name: string; email: string; avatarUrl?: string } | null> {
+        try {
+            const user = await this.client.user(userId);
+            if (!user) return null;
+
+            return {
+                id: user.id,
+                name: user.name,
+                email: user.email,
+                avatarUrl: user.avatarUrl || undefined
+            };
+        } catch (error) {
+            console.error('Error fetching user:', error);
+            return null;
+        }
+    }
+
+    async getCurrentUser(): Promise<{ id: string; name: string; email: string; avatarUrl?: string } | null> {
+        try {
+            const user = await this.client.viewer;
+            if (!user) return null;
+
+            return {
+                id: user.id,
+                name: user.name,
+                email: user.email,
+                avatarUrl: user.avatarUrl || undefined
+            };
+        } catch (error) {
+            console.error('Error fetching current user:', error);
+            return null;
+        }
+    }
+
+    async getIssueComments(issueId: string): Promise<Array<{ id: string; body: string; authorId: string; createdAt: string }>> {
+        const issue = await this.client.issue(issueId);
+        if (!issue) throw new Error('Issue not found');
+
+        const comments = await issue.comments();
+        const commentsWithUsers = await Promise.all(comments.nodes.map(async comment => {
+            const user = await comment.user;
+            return {
+                id: comment.id,
+                body: comment.body,
+                authorId: user?.id || '',
+                createdAt: comment.createdAt.toISOString()
+            };
+        }));
+
+        return commentsWithUsers;
+    }
+
+    async getIssueAttachments(issueId: string): Promise<Array<{ id: string; title: string; url: string; createdAt: string }>> {
+        const issue = await this.client.issue(issueId);
+        if (!issue) throw new Error('Issue not found');
+
+        const attachments = await issue.attachments();
+        return attachments.nodes.map(attachment => ({
+            id: attachment.id,
+            title: attachment.title,
+            url: attachment.url,
+            createdAt: attachment.createdAt.toISOString()
+        }));
+    }
+
+    async getIssueRelations(issueId: string): Promise<Array<{ id: string; type: string; relatedIssueId: string }>> {
+        const issue = await this.client.issue(issueId);
+        if (!issue) throw new Error('Issue not found');
+
+        const relations = await issue.relations();
+        const relationsWithIssues = await Promise.all(relations.nodes.map(async relation => {
+            const relatedIssue = await relation.relatedIssue;
+            return {
+                id: relation.id,
+                type: relation.type,
+                relatedIssueId: relatedIssue?.id || ''
+            };
+        }));
+
+        return relationsWithIssues;
     }
 }

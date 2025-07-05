@@ -1,6 +1,8 @@
 import { db } from "src/prismaClient";
-import { User } from "./prisma";
+import { LinearApiKey, User } from "./prisma";
 import chalk from "chalk";
+import { TicketIntegration } from "src/ticketing/TicketIntegration";
+import { LinearAdapter } from "src/ticketing/linear";
 
 export async function login(email: string, password: string): Promise<User | null> {
     try {
@@ -87,4 +89,37 @@ export async function createPlaceholderUser(email: string, displayName?: string)
     console.log(chalk.yellow('📝 Placeholder user created for import:'), chalk.cyan(user.email));
 
     return user;
+}
+
+export async function getUserTicketManager(userId: string): Promise<TicketIntegration | null> {
+    const user = await findUserById(userId);
+    if (!user) {
+        return null;
+    }
+
+    // check if user is in the database
+    const userInDatabase: User | null = await db().users.findUnique({ where: { id: user.id } });
+    if (!userInDatabase) {
+        console.error(chalk.red.bold('❌ User not found in database. Unable to authenticate user.'));
+        return null;
+    }
+
+    // check if they have a linear api key
+    const linearApiKey: LinearApiKey | null = await db().linear_api_keys.findUnique({ where: { user_id: user.id } });
+    if (!linearApiKey) {
+        console.error(chalk.red.bold('❌ User does not have a linear api key. Unable to authenticate user.'));
+        return null;
+    }
+
+    // check if the linear api key is valid
+    const linearApiKeyValid: boolean = await LinearAdapter.validateKey(linearApiKey.api_key);
+    if (!linearApiKeyValid) {
+        console.error(chalk.red.bold('❌ Linear api key is invalid. Unable to authenticate user.'));
+        return null;
+    }
+
+    // TODO: Support JIRA
+
+    // initialize the linear adapter
+    return new LinearAdapter(linearApiKey.api_key);
 }
