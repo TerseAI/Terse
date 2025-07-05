@@ -3,6 +3,8 @@ import { ToolBox } from "./Agent";
 import { Session } from "../../server";
 import { SendModelRequest } from "src/shared/ModelEvents";
 import { ticketTools } from "../tools/ticketingTools";
+import { PushEvent } from "src/theOwner/Owner";
+import chalk from "chalk";
 
 export class Analyzer {
     private history: AgentInputItem[] = [];
@@ -16,12 +18,14 @@ export class Analyzer {
         this.toolBox = new ToolBox();
     }
 
-    async analyze(message: SendModelRequest) {
-        this.history.push(user(message.user_message));
+    async analyze(event: string) {
+        console.log(chalk.blue('Analyzing event'), event);
+        this.history.push(user(event));
     }
 
     // There will be no follow up here. 
     async run(): Promise<RunResult<Session, Agent<Session, AgentOutputType>>> {
+        console.log(chalk.blue('Running analyzer'));
         const agent = new Agent<Session, AgentOutputType>({
             name: 'Change Analyzer',
             instructions: await systemPrompt(this.session),
@@ -35,6 +39,7 @@ export class Analyzer {
             context: this.session,
         });
 
+        console.log(chalk.blue('Analyzer result'), result);
         return result;
     }
 }
@@ -59,5 +64,9 @@ const systemPrompt = (session: Session) => {
     You are an agent, but there is no follow up from the user. I am giving you the autonomy of calling whatever tools you need to.
 
     You can take your time as well, there is no UI Initiated follow up.
+
+    Please provide a summary of your actions and the results.
+
+    I will log it for debugging purposes.
     `;
 }
