@@ -6,12 +6,36 @@ export enum TicketSystemType {
 
 export interface Ticket {
     id: string;
+    identifier: string;
     title: string;
     description?: string;
-    status?: string;
-    assigneeId?: string;
-    // Additional provider specific fields can be stored here
-    [key: string]: any;
+    state: {
+        id: string;
+        name: string;
+    };
+    assignee?: {
+        id: string;
+        name: string;
+    } | null;
+    priority?: number;
+    labels?: Array<{
+        id: string;
+        name: string;
+        color: string;
+    }>;
+    estimate?: number;
+    dueDate?: string;
+    project?: {
+        id: string;
+        name: string;
+    } | null;
+    team?: {
+        id: string;
+        name: string;
+        key: string;
+    };
+    createdAt: string;
+    updatedAt: string;
 }
 
 export interface Comment {

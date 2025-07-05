@@ -1,7 +1,7 @@
 import { Agent, AgentOutputType, StreamedRunResult } from "@openai/agents";
-import { ModelEvent } from "../shared/ModelEvents.js";
-import { SessionWithTracking } from "./agents/Agent.js";
-import { IAgentSession } from "./agents/AgentSession.js";
+import { ModelEvent } from "../shared/ModelEvents";
+import { SessionWithTracking } from "./agents/Agent";
+import { IAgentSession } from "./agents/AgentSession";
 export declare enum RawModelStreamEventType {
     OutputTextDelta = "output_text_delta",
     Model = "model"
