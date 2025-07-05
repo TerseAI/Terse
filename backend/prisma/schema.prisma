@@ -24,7 +24,7 @@ model users {
   is_placeholder  Boolean  @default(false)
 
   user_github_repositories user_github_repositories[]
-  linear_api_keys         linear_api_keys[]
+  linear_api_keys          linear_api_keys[]
 }
 
 model github_repositories {
@@ -52,12 +52,13 @@ model user_github_repositories {
 }
 
 model linear_api_keys {
-  id              String   @id @default(cuid())
-  user_id         String
-  api_key         String   @unique
-  created_at      DateTime @default(now())
-  updated_at      DateTime @updatedAt
+  id         String   @id @default(cuid())
+  user_id    String
+  api_key    String   @unique
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
 
-  user              users               @relation(fields: [user_id], references: [id])
+  user users @relation(fields: [user_id], references: [id])
+
   @@unique([user_id])
 }

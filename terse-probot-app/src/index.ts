@@ -4,7 +4,12 @@ import { VectraInterface } from "./vectraInterface.js";
 export default (app: Probot) => {
   console.log("Probot app starting up...");
 
+  app.onAny(async (context) => {
+    console.log("🔔 Event received:", context.name);
+  });
+
   app.on("issues.opened", async (context) => {
+    console.log("📝 Issue opened:", context.payload.issue?.title);
     const issueComment = context.issue({
       body: "Thanks for opening this issue!",
     });
@@ -12,7 +17,44 @@ export default (app: Probot) => {
   });
 
   app.on("push", async (context) => {
-    console.log("push", context.payload);
+    const { payload } = context;
+    const github = context.octokit;
+
+    console.log("🚀 Push event received!");
+    console.log("Repository:", context.payload.repository?.full_name);
+    console.log("Branch:", context.payload.ref);
+    console.log("Commits:", context.payload.commits?.length);
+
+    // Get commit diffs
+    for (const commit of payload.commits) {
+      try {
+        // Fetch commit details with diff
+        const { data: commitData } = await github.rest.repos.getCommit({
+          owner: payload.repository.owner.login,
+          repo: payload.repository.name,
+          ref: commit.id
+        });
+
+        console.log(`Commit: ${commit.id}`);
+        console.log(`Message: ${commit.message}`);
+        console.log(`Files changed: ${commitData.files?.length}`);
+
+        // Inspect each changed file
+        for (const file of commitData.files || []) {
+          console.log(`\nFile: ${file.filename}`);
+          console.log(`Status: ${file.status}`); // added, modified, removed
+          console.log(`Changes: +${file.additions} -${file.deletions}`);
+
+          // The actual diff patch
+          if (file.patch) {
+            console.log('Diff:');
+            console.log(file.patch);
+          }
+        }
+      } catch (error) {
+        console.error(`Error fetching commit ${commit.id}:`, error);
+      }
+    }
   });
 
   app.on("installation.created", async (context) => {
@@ -23,9 +65,7 @@ export default (app: Probot) => {
     const installationId = context.payload.installation.id;
     const repositoryName = context.payload.repositories?.[0]?.name || '';
 
-    console.log('installation.created', context.payload);
-
-    console.log('installation.created', name, email, login, installationId, repositoryName);
+    console.log('🔧 installation.created', name, email, login, installationId, repositoryName);
 
     try {
       await VectraInterface.githubAppInstallationCallback(name, email, login, installationId, repositoryName);
@@ -35,7 +75,7 @@ export default (app: Probot) => {
   });
 
   app.on("installation.deleted", async (context) => {
-    console.log("GitHub App installation deleted:", context.payload);
+    console.log("🗑️ GitHub App installation deleted:", context.payload.sender?.login);
 
     const username = context.payload.sender?.login;
     const installationId = context.payload.installation.id;

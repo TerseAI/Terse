@@ -7,6 +7,7 @@ import cors from 'cors';
 import { authMiddleware, githubAppAuthMiddleware, githubCallback, githubLogin, login, logout } from './routes/auth.js';
 import { AgentSocketServer, requestSessionSocketToken } from './agent/socket.js';
 import { getInstallationUrl, githubAppInstallationCallback, githubAppInstallationDeleted } from './routes/githubApp.js';
+import { getLinearApiKey, setLinearApiKey } from './routes/linear.js';
 const app = express();
 const server = createServer(app);
 // WebSocket handler, keep in memory as long as the server is running!!
@@ -46,6 +47,13 @@ app.post('/github/installation-callback', githubAppAuthMiddleware, async (req, r
 });
 app.post('/github/installation-deleted', githubAppAuthMiddleware, async (req, res) => {
     githubAppInstallationDeleted(req, res);
+});
+// MARK: LINEAR
+app.post('/linear/set-api-key', authMiddleware, async (req, res) => {
+    setLinearApiKey(req, res);
+});
+app.get('/linear/get-api-key', authMiddleware, async (req, res) => {
+    getLinearApiKey(req, res);
 });
 server.listen(3001, () => {
     console.log('🚀 Express backend running on http://localhost:3001');
