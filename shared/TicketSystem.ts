@@ -65,11 +65,3 @@ export interface UpdateTicketInput {
 export interface TicketWebhookHandler {
     (ticket: Ticket): void | Promise<void>;
 }
-
-export interface TicketIntegration {
-    type: TicketSystemType;
-    createTicket(input: CreateTicketInput): Promise<Ticket>;
-    updateTicket(id: string, input: UpdateTicketInput): Promise<Ticket>;
-    deleteComment(ticketId: string, commentId: string): Promise<void>;
-    onNewTicket(handler: TicketWebhookHandler): void;
-}

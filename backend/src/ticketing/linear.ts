@@ -1,7 +1,8 @@
 import { SearchItem } from "src/search/SearchItem";
-import { CreateTicketInput, Ticket, TicketIntegration, TicketSystemType, TicketWebhookHandler, UpdateTicketInput } from "../shared/TicketSystem";
+import { CreateTicketInput, Ticket, TicketSystemType, TicketWebhookHandler, UpdateTicketInput } from "../shared/TicketSystem";
 import { IssuePayload, LinearClient } from "@linear/sdk";
 import chalk from "chalk";
+import { TicketIntegration } from "./TicketIntegration";
 
 export class LinearAdapter implements TicketIntegration {
     type: TicketSystemType = TicketSystemType.Linear;
@@ -20,6 +21,42 @@ export class LinearAdapter implements TicketIntegration {
         } catch (error) {
             console.error(chalk.red('Error validating Linear API key:'), error);
             return false;
+        }
+    }
+
+    async findTicket(id: string): Promise<Ticket> {
+        const issue = await this.client.issue(id);
+        if (!issue) {
+            throw new Error('Issue not found');
+        }
+
+        return {
+            id: issue.id,
+            identifier: issue.identifier,
+            title: issue.title,
+            description: issue.description || undefined,
+            state: {
+                id: (await issue.state)?.id || '',
+                name: (await issue.state)?.name || 'Unknown'
+            },
+            assignee: issue.assignee ? {
+                id: (await issue.assignee)?.id || '',
+                name: (await issue.assignee)?.name || 'Unknown'
+            } : null,
+            priority: issue.priority || undefined,
+            estimate: issue.estimate || undefined,
+            dueDate: issue.dueDate instanceof Date ? issue.dueDate.toISOString() : issue.dueDate || undefined,
+            project: issue.project ? {
+                id: (await issue.project)?.id || '',
+                name: (await issue.project)?.name || 'Unknown'
+            } : null,
+            team: {
+                id: (await issue.team)?.id || '',
+                name: (await issue.team)?.name || 'Unknown',
+                key: (await issue.team)?.key || ''
+            },
+            createdAt: issue.createdAt.toISOString(),
+            updatedAt: issue.updatedAt.toISOString()
         }
     }
 

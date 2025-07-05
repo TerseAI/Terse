@@ -1,10 +1,10 @@
 import { EmbeddingSystem } from "src/search/EmbeddingSystem";
-import { TicketIntegration } from "src/shared/TicketSystem";
+import { TicketIntegration } from "../ticketing/TicketIntegration";
 
 class Owner {
     private ticketingSystem: TicketIntegration;
     private embeddingSystem: EmbeddingSystem;
-    
+
     constructor(ticketingSystem: TicketIntegration, embeddingSystem: EmbeddingSystem) {
         this.ticketingSystem = ticketingSystem;
         this.embeddingSystem = embeddingSystem;

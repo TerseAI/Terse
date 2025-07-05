@@ -7,6 +7,7 @@ export interface TicketWebhookHandler {
 
 export interface TicketIntegration {
     type: TicketSystemType;
+    findTicket(id: string): Promise<Ticket>;
     createTicket(input: CreateTicketInput): Promise<Ticket>;
     updateTicket(id: string, input: UpdateTicketInput): Promise<Ticket>;
     deleteComment(ticketId: string, commentId: string): Promise<void>;
