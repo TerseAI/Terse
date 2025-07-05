@@ -17,6 +17,7 @@ class Owner {
     }
 
     async handlePushEvent(event: PushEvent) {
+        console.log('The owner is handling a push event', event);
         const analyzer = new Analyzer(this.session);
 
         // Run semantic search on the push event
@@ -37,9 +38,6 @@ class Owner {
         const result = await analyzer.run();
 
         console.log(chalk.blue('Analyzer result'), result);
-
-        // Handle the result
-        console.log('The owner is handling a push event', event);
     }
 }
 
