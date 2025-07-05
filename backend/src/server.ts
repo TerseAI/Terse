@@ -7,7 +7,7 @@ import cors from 'cors';
 import { User } from './types/prisma';
 import { authMiddleware, githubAppAuthMiddleware, githubCallback, githubLogin, login, logout } from './routes/auth';
 import { AgentSocketServer, requestSessionSocketToken } from './agent/socket';
-import { getInstallationUrl, githubAppInstallationCallback, githubAppInstallationDeleted } from './routes/githubApp';
+import { getInstallationUrl, githubAppInstallationCallback, githubAppInstallationDeleted, githubAppRecievedPush } from './routes/githubApp';
 import { getLinearApiKey, setLinearApiKey } from './routes/linear';
 
 export type Session = {
@@ -68,6 +68,10 @@ app.post('/github/installation-callback', githubAppAuthMiddleware, async (req, r
 
 app.post('/github/installation-deleted', githubAppAuthMiddleware, async (req, res) => {
     githubAppInstallationDeleted(req, res);
+})
+
+app.post('/github/push-event', githubAppAuthMiddleware, async (req, res) => {
+    githubAppRecievedPush(req, res);
 })
 
 // MARK: LINEAR

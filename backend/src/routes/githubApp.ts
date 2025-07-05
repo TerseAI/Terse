@@ -2,8 +2,12 @@ import chalk from "chalk";
 import { Request, Response } from "express";
 import { db } from "src/prismaClient";
 import { User, GithubRepository } from "../types/prisma";
+import Owner from "src/theOwner/Owner";
+import { LinearAdapter } from "src/ticketing/linear";
+import { EmbeddingSystem } from "src/search/EmbeddingSystem";
 
 const GITHUB_APP_CLIENT_ID = process.env.GITHUB_CLIENT_ID
+const OPENAI_API_KEY = process.env.OPENAI_API_KEY
 
 // Get GitHub App installation URL
 export async function getInstallationUrl(req: Request, res: Response) {
@@ -152,20 +156,75 @@ type GithubAppRecievedPushRequest = {
     username: string;
     installationId: number;
     repositoryName: string;
+    branch: string;
+    commits: number;
 }
 
 export async function githubAppRecievedPush(req: Request, res: Response) {
     const body = req.body as GithubAppRecievedPushRequest;
+
+    console.log('githubAppRecievedPush', body);
+
+    // get the repository
+    const repository = await db().github_repositories.findFirst({ where: { name: body.repositoryName, owner: body.username, installation_id: body.installationId } });
+
+    if (!repository) {
+        console.log(chalk.red('Repository not found'));
+        res.status(404).json({ message: 'Repository not found' });
+        return;
+    }
+
+    // get the user
+    const user = await db().users.findFirst({ where: { github_username: body.username } });
+
+    if (!user) {
+        console.log(chalk.red('User not found'));
+        res.status(404).json({ message: 'User not found' });
+        return;
+    }
+
+    // make sure this user is associated with this repository
+    const userRepository = await db().user_github_repositories.findFirst({ where: { user_id: user.id, github_repository_id: repository.id } });
+
+    if (!userRepository) {
+        console.log(chalk.red('User not associated with this repository'));
+        res.status(404).json({ message: 'User not associated with this repository' });
+        return;
+    }
+
+    // check if user has a linear API Key
+    const linearApiKey = await db().linear_api_keys.findFirst({ where: { user_id: user.id } });
+
+    if (!linearApiKey) {
+        console.log(chalk.red('User does not have a linear API Key'));
+        res.status(404).json({ message: 'User does not have a linear API Key' });
+        return;
+    }
+
+    // init an Owner
+    const owner = new Owner(new LinearAdapter(linearApiKey.api_key), new EmbeddingSystem(OPENAI_API_KEY || ''))
+
+    // handle the push event
+    await owner.handlePushEvent({
+        username: body.username,
+        installationId: body.installationId,
+        repositoryName: body.repositoryName,
+        branch: body.branch,
+        commits: body.commits
+    });
+    
+    res.status(200).json({ message: 'Push event received and processed' });
 }
 
-export async function githubAppRecievedPullRequest(req: Request, res: Response) {
-    const body = req.body as GithubAppRecievedPullRequestRequest;
-}
 
 type GithubAppRecievedPullRequestRequest = {
     username: string;
     installationId: number;
     repositoryName: string;
+}
+
+export async function githubAppRecievedPullRequest(req: Request, res: Response) {
+    const body = req.body as GithubAppRecievedPullRequestRequest;
 }
 
 type GithubAppNewBranch = {
