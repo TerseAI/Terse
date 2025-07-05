@@ -1,7 +1,7 @@
 import { db } from "src/prismaClient";
 import { LinearApiKey, User } from "./prisma";
 import chalk from "chalk";
-import { TicketIntegration } from "src/ticketing/TicketIntegration";
+import { TicketManager } from "src/ticketing/TicketIntegration";
 import { LinearAdapter } from "src/ticketing/linear";
 
 export async function login(email: string, password: string): Promise<User | null> {
@@ -91,7 +91,7 @@ export async function createPlaceholderUser(email: string, displayName?: string)
     return user;
 }
 
-export async function getUserTicketManager(userId: string): Promise<TicketIntegration | null> {
+export async function getUserTicketManager(userId: string): Promise<TicketManager | null> {
     const user = await findUserById(userId);
     if (!user) {
         return null;
