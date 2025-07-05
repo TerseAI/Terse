@@ -52,11 +52,13 @@ model user_github_repositories {
 }
 
 model linear_api_keys {
-  id         String   @id @default(cuid())
-  user_id    String
-  api_key    String   @unique
-  created_at DateTime @default(now())
-  updated_at DateTime @updatedAt
+  id             String   @id @default(cuid())
+  user_id        String
+  api_key        String   @unique
+  webhook_secret String
+  webhook_id     String
+  created_at     DateTime @default(now())
+  updated_at     DateTime @updatedAt
 
   user users @relation(fields: [user_id], references: [id])
 

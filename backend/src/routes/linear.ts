@@ -13,16 +13,25 @@ export const setLinearApiKey = async (req: Request, res: Response) => {
     const { apiKey } = req.body;
     console.log(chalk.blue("🔑 Adding Linear API key for user"), chalk.yellow(user.id));
 
+    let adapter = new LinearAdapter(apiKey);
+
     // Validate the API key before storing
     const isValid = await LinearAdapter.validateKey(apiKey);
     if (!isValid) {
         return res.status(400).json({ error: 'Invalid Linear API key' });
     }
 
+    const configureWebhook = await adapter.configureWebhook();
+    if (!configureWebhook) {
+        return res.status(400).json({ error: 'Failed to configure webhook' });
+    }
+
     await db().linear_api_keys.create({
         data: {
             user_id: user.id,
-            api_key: apiKey
+            api_key: apiKey,
+            webhook_id: configureWebhook.webhookId,
+            webhook_secret: configureWebhook.webhookSecret
         }
     });
 

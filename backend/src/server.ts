@@ -1,4 +1,4 @@
-import express from 'express';
+import express, { Request, Response } from 'express';
 import bodyParser from 'body-parser';
 import cookieParser from 'cookie-parser';
 import 'dotenv/config';
@@ -10,6 +10,7 @@ import { authMiddleware, githubAppAuthMiddleware, githubCallback, githubLogin, l
 import { AgentSocketServer, requestSessionSocketToken } from './agent/socket';
 import { getInstallationUrl, githubAppInstallationCallback, githubAppInstallationDeleted, githubAppRecievedPush } from './routes/githubApp';
 import { getLinearApiKey, setLinearApiKey } from './routes/linear';
+import { LinearWebhooks, LINEAR_WEBHOOK_SIGNATURE_HEADER, LINEAR_WEBHOOK_TS_FIELD } from '@linear/sdk'
 import { TicketManager } from './ticketing/TicketIntegration';
 
 export type Session = {
@@ -89,6 +90,26 @@ app.post('/linear/set-api-key', authMiddleware, async (req, res) => {
 app.get('/linear/get-api-key', authMiddleware, async (req, res) => {
     getLinearApiKey(req, res);
 })
+
+app.post('/webhooks/linear/:userId', async (req, res) => {
+    const { userId } = req.params;
+    const event = req.body;
+
+    // Update your search index based on the event
+    switch (event.type) {
+        case 'Issue':
+            console.log("Issue", event);
+            break;
+        case 'Comment':
+            console.log("Comment", event);
+            break;
+        case 'Project':
+            console.log("Project", event);
+            break;
+    }
+
+    res.json({ received: true });
+});
 
 server.listen(3001, () => {
     console.log('🚀 Express backend running on http://localhost:3001');

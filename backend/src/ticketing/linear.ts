@@ -5,7 +5,7 @@ import chalk from "chalk";
 import { StructuredSearchOptions, TicketManager } from "./TicketIntegration";
 import { Team, User } from "../shared/TicketSystem";
 import { IssueFilter, IssuesQueryVariables } from "@linear/sdk/dist/_generated_documents";
-
+import crypto from 'crypto';
 
 export class LinearAdapter implements TicketManager {
     type: TicketSystemType = TicketSystemType.Linear;
@@ -14,6 +14,37 @@ export class LinearAdapter implements TicketManager {
 
     constructor(apiKey: string) {
         this.client = new LinearClient({ apiKey });
+    }
+
+    async configureWebhook(): Promise<{ webhookId: string, webhookSecret: string } | null> {
+        const user: LinearUser = await this.client.viewer;
+        if (!user) {
+            console.error(chalk.red('❌ No user found'));
+            return null;
+        }
+
+        const webhookSecret = this.generateWebhookSecret();
+
+        const webhook = await this.client.createWebhook({
+            url: `https://x-recorder-literacy-responding.trycloudflare.com/webhooks/linear/${user.id}`,
+            secret: webhookSecret,
+            allPublicTeams: true,
+            resourceTypes: ['Issue', 'Comment', 'Project', 'IssueLabel', 'User']
+        });
+
+        if (!webhook.webhook || !webhook.webhookId) {
+            console.error(chalk.red('❌ No webhook found'));
+            return null;
+        }
+
+        console.log(chalk.green('✅ Webhook created:'), chalk.cyan(webhook.webhookId));
+
+        return { webhookId: webhook.webhookId, webhookSecret: webhookSecret };
+    }
+
+    generateWebhookSecret() {
+        // Generate 32 random bytes and convert to hex
+        return crypto.randomBytes(32).toString('hex');
     }
 
     async getAllTickets(): Promise<Ticket[]> {
@@ -190,7 +221,7 @@ export class LinearAdapter implements TicketManager {
         try {
             // Execute the query with comprehensive options
             const params: IssuesQueryVariables = {
-                filter, 
+                filter,
                 orderBy: sortOptions,
                 first: options?.limit || 50, // Default limit of 50
                 includeArchived: options?.includeArchived || false,
