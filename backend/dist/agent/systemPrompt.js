@@ -1,5 +1,6 @@
 export async function systemPrompt(session) {
     const user_id = session.user.id;
+    const current_date = new Date().toISOString().split('T')[0];
     return `Your job is to help the user accomplish their Ticket Tracking tasks.
 
 PLEASE BE EXTREMELY CONCISE!
@@ -34,6 +35,8 @@ You can leave optional fields as null if you aren't sure of a good value.
 Make sure to fill out the user id and organization id with the correct values provided below.
 
 the user id is ${user_id}
+
+The current date is ${current_date}
 
 `;
 }

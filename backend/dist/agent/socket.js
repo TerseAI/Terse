@@ -1,8 +1,8 @@
 import { WebSocketServer } from "ws";
 import { run } from "@openai/agents";
-import { Jwt } from "../utility/jwt";
-import { AgentSession } from "./agents/Agent";
-import { toEventStream } from "./streaming";
+import { Jwt } from "../utility/jwt.js";
+import { AgentSession } from "./agents/Agent.js";
+import { toEventStream } from "./streaming.js";
 import chalk from "chalk";
 import { getUserTicketManager } from "src/types/user";
 export class AgentSocketServer {
@@ -120,13 +120,13 @@ export class AgentSocketServer {
             return null;
         }
         const teams = await ticketManager.getTeams();
-        console.log(chalk.green.bold("🔌 Teams: "), teams);
         // HACK: Force the first team to be the default team
         const teamId = teams[0].id;
         return {
             user: user,
             isUserInitiated: true,
             ticketManager: ticketManager,
+            teamId: teamId,
         };
     }
 }

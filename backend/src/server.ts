@@ -5,6 +5,7 @@ import 'dotenv/config';
 import { createServer } from "http";
 import cors from 'cors';
 import { User } from './types/prisma';
+import { User as TicketUser } from './shared/TicketSystem';
 import { authMiddleware, githubAppAuthMiddleware, githubCallback, githubLogin, login, logout } from './routes/auth';
 import { AgentSocketServer, requestSessionSocketToken } from './agent/socket';
 import { getInstallationUrl, githubAppInstallationCallback, githubAppInstallationDeleted, githubAppRecievedPush } from './routes/githubApp';
@@ -16,6 +17,7 @@ export type Session = {
     ticketManager?: TicketManager;
     isUserInitiated: boolean; // true if the user has initiated the session, false if the session was initiated by the system
     teamId?: string;
+    currentUser?: TicketUser;
 }
 
 const app = express();

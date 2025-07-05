@@ -1,5 +1,5 @@
 import jwt from 'jsonwebtoken';
-import { db } from '../prismaClient';
+import { db } from '../prismaClient.js';
 export class Jwt {
     async sign(userId) {
         const user = await db().users.findUnique({ where: { id: userId } });
