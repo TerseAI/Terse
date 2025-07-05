@@ -36,6 +36,16 @@ interface BackendService {
     requestGitHubAppInstallationUrl(): Promise<{ installationUrl: string }>;
 
     /**
+     * Gets the Linear API key
+     */
+    getLinearApiKey(): Promise<{ apiKey: string }>;
+
+    /**
+     * Sets the Linear API key
+     */
+    setLinearApiKey(apiKey: string): Promise<void>;
+
+    /**
      * Requests a session socket token
      */
     requestSessionSocketToken(): Promise<string>;
@@ -111,6 +121,24 @@ export const BackendProvider: BackendService = {
             .then(response => response.data)
             .catch(error => {
                 console.error('Error requesting GitHub app installation URL:', error);
+                throw error;
+            });
+    },
+
+    getLinearApiKey: () => {
+        return axios.get(`${backendBaseUrl}/linear/get-api-key`, { withCredentials: true })
+            .then(response => response.data)
+            .catch(error => {
+                console.error('Error getting Linear API key:', error);
+                throw error;
+            });
+    },
+
+    setLinearApiKey: (apiKey: string) => {
+        return axios.post(`${backendBaseUrl}/linear/set-api-key`, { apiKey }, { withCredentials: true })
+            .then(response => response.data)
+            .catch(error => {
+                console.error('Error setting Linear API key:', error);
                 throw error;
             });
     },
