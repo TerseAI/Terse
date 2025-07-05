@@ -6,7 +6,7 @@ import { createServer } from "http";
 import cors from 'cors';
 import { authMiddleware, githubAppAuthMiddleware, githubCallback, githubLogin, login, logout } from './routes/auth.js';
 import { AgentSocketServer, requestSessionSocketToken } from './agent/socket.js';
-import { getInstallationUrl, githubAppInstallationCallback, githubAppInstallationDeleted } from './routes/githubApp.js';
+import { getInstallationUrl, githubAppInstallationCallback, githubAppInstallationDeleted, githubAppRecievedPush } from './routes/githubApp.js';
 import { getLinearApiKey, setLinearApiKey } from './routes/linear.js';
 const app = express();
 const server = createServer(app);
@@ -47,6 +47,9 @@ app.post('/github/installation-callback', githubAppAuthMiddleware, async (req, r
 });
 app.post('/github/installation-deleted', githubAppAuthMiddleware, async (req, res) => {
     githubAppInstallationDeleted(req, res);
+});
+app.post('/github/push-event', githubAppAuthMiddleware, async (req, res) => {
+    githubAppRecievedPush(req, res);
 });
 // MARK: LINEAR
 app.post('/linear/set-api-key', authMiddleware, async (req, res) => {

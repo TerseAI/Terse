@@ -2,7 +2,7 @@ import chalk from "chalk";
 import { Request, Response } from "express";
 import { db } from "src/prismaClient";
 import { User, GithubRepository } from "../types/prisma";
-import Owner from "src/theOwner/Owner";
+import Owner, { Commit } from "src/theOwner/Owner";
 import { LinearAdapter } from "src/ticketing/linear";
 import { EmbeddingSystem } from "src/search/EmbeddingSystem";
 
@@ -157,7 +157,7 @@ type GithubAppRecievedPushRequest = {
     installationId: number;
     repositoryName: string;
     branch: string;
-    commits: number;
+    commits: Commit[];
 }
 
 export async function githubAppRecievedPush(req: Request, res: Response) {

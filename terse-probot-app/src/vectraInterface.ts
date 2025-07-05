@@ -3,10 +3,18 @@ import { Jwt } from "./utility/Jwt.js";
 
 const backendBaseUrl = process.env.VECTRA_BACKEND_URL || 'http://localhost:3001';
 
+export type Commit = {
+    name: string;
+    fileDiffs: FileDiff[];
+}
+export type FileDiff = {
+    filename: string;
+    diff: string;
+}
 interface VectraInterface {
     githubAppInstallationCallback(name: string, email: string, username: string, installationId: number, repositoryName: string): Promise<void>;
     githubAppInstallationDeleted(username: string, installationId: number): Promise<void>;
-    githubPushEvent(username: string, installationId: number, repositoryName: string, branch: string, commits: number): Promise<void>;
+    githubPushEvent(username: string, installationId: number, repositoryName: string, branch: string, commits: Commit[]): Promise<void>;
 }
 
 export const VectraInterface: VectraInterface = {
@@ -46,7 +54,7 @@ export const VectraInterface: VectraInterface = {
         });
     },
 
-    async githubPushEvent(username: string, installationId: number, repositoryName: string, branch: string, commits: number): Promise<void> {
+    async githubPushEvent(username: string, installationId: number, repositoryName: string, branch: string, commits: Commit[]): Promise<void> {
         const token = await new Jwt().sign(username);
         return axios.post(`${backendBaseUrl}/github/push-event`, {
             username,
