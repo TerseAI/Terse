@@ -22,7 +22,7 @@ class Owner {
 
         // Run semantic search on the push event
         const searchResults = await this.searchSystem.search(pushEventToString(event), {
-            teamId: event.installationId.toString(),
+            teamId: this.session.teamId || '',
             entityTypes: ['ticket'],
             minSimilarity: 0.2,
             filters: [],
