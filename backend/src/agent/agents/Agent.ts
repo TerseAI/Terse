@@ -4,7 +4,7 @@ import { systemPrompt } from '../systemPrompt';
 import { SendModelRequest, ChangedItem } from "../../shared/ModelEvents";
 import { IAgentSession } from './AgentSession';
 import { EntityType } from '../../shared/Entities';
-
+import { ticketTools } from '../tools/ticketingTools';
 // Enhanced session type with change tracking
 export type SessionWithTracking = Session & { 
   trackChange: (type: EntityType, id: string | number) => void 
@@ -92,8 +92,7 @@ export class ToolBox {
   private tools: Tool<SessionWithTracking>[] = [];
 
   constructor() {
-    this.tools = [
-    ];
+    this.tools = ticketTools;
   }
 
   getTools(toolBoxType: ToolBoxType) {

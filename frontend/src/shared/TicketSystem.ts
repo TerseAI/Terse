@@ -47,6 +47,12 @@ export interface Comment {
     [key: string]: any;
 }
 
+export interface Team {
+    id: string;
+    name: string;
+    key: string;
+}
+
 export interface CreateTicketInput {
     title: string;
     description?: string;
