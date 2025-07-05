@@ -4,7 +4,11 @@ import { db } from "src/prismaClient";
 import { User, GithubRepository } from "../types/prisma";
 import Owner, { Commit } from "src/theOwner/Owner";
 import { LinearAdapter } from "src/ticketing/linear";
+import { PostgreSQLSearch } from "src/search/SearchProvider";
 import { EmbeddingSystem } from "src/search/EmbeddingSystem";
+import { search } from "src/searchClient";
+import { Session } from "src/server";
+import { TicketManager } from "src/ticketing/TicketIntegration";
 
 const GITHUB_APP_CLIENT_ID = process.env.GITHUB_CLIENT_ID
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY
@@ -201,8 +205,16 @@ export async function githubAppRecievedPush(req: Request, res: Response) {
         return;
     }
 
+    let adapter: TicketManager = new LinearAdapter(linearApiKey.api_key);
+    let session: Session = {
+        user: user,
+        isUserInitiated: false,
+        teamId: (await adapter.getTeams())[0].id,
+        ticketManager: adapter,
+    }
+
     // init an Owner
-    const owner = new Owner(new LinearAdapter(linearApiKey.api_key), new EmbeddingSystem(OPENAI_API_KEY || ''))
+    const owner = new Owner(new LinearAdapter(linearApiKey.api_key), search(), session)
 
     // handle the push event
     await owner.handlePushEvent({

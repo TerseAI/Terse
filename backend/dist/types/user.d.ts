@@ -1,4 +1,4 @@
-import { User } from "./prisma";
+import { User } from "./prisma.js";
 import { TicketManager } from "src/ticketing/TicketIntegration";
 export declare function login(email: string, password: string): Promise<User | null>;
 export declare function findUserByEmail(email: string): Promise<User | null>;

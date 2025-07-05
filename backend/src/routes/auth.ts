@@ -5,7 +5,7 @@ import axios from "axios";
 import crypto from "crypto";
 import { Session } from "../server";
 import chalk from "chalk";
-import { LinearAdapter } from "src/ticketing/linear";
+import { db } from "../prismaClient";
 
 const COOKIE_NAME = 'AUTH_JWT';
 const GITHUB_STATE_COOKIE = 'GITHUB_OAUTH_STATE';
