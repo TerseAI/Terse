@@ -8,6 +8,7 @@ import { User } from './types/prisma';
 import { authMiddleware, githubAppAuthMiddleware, githubCallback, githubLogin, login, logout } from './routes/auth';
 import { AgentSocketServer, requestSessionSocketToken } from './agent/socket';
 import { getInstallationUrl, githubAppInstallationCallback, githubAppInstallationDeleted } from './routes/githubApp';
+import { getLinearApiKey, setLinearApiKey } from './routes/linear';
 
 export type Session = {
     user: User;
@@ -67,6 +68,16 @@ app.post('/github/installation-callback', githubAppAuthMiddleware, async (req, r
 
 app.post('/github/installation-deleted', githubAppAuthMiddleware, async (req, res) => {
     githubAppInstallationDeleted(req, res);
+})
+
+// MARK: LINEAR
+
+app.post('/linear/set-api-key', authMiddleware, async (req, res) => {
+    setLinearApiKey(req, res);
+})
+
+app.get('/linear/get-api-key', authMiddleware, async (req, res) => {
+    getLinearApiKey(req, res);
 })
 
 server.listen(3001, () => {
