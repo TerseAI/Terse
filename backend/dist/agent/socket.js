@@ -119,6 +119,10 @@ export class AgentSocketServer {
             console.error(chalk.red.bold('❌ Unable to get ticket manager. Unable to authenticate user.'));
             return null;
         }
+        const teams = await ticketManager.getTeams();
+        console.log(chalk.green.bold("🔌 Teams: "), teams);
+        // HACK: Force the first team to be the default team
+        const teamId = teams[0].id;
         return {
             user: user,
             isUserInitiated: true,
