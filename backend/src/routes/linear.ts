@@ -3,6 +3,7 @@ import { db } from "../prismaClient";
 import chalk from "chalk";
 import axios from "axios";
 import { LinearAdapter } from "src/ticketing/linear";
+import { findUserById, getUserTicketManager } from "src/types/user";
 
 export const setLinearApiKey = async (req: Request, res: Response) => {
     let user = req.session?.user;
@@ -56,4 +57,18 @@ export const getLinearApiKey = async (req: Request, res: Response) => {
     }
 
     res.status(200).json({ apiKey: linearApiKey.api_key });
+}
+
+export const indexLinearTicket = async (userId: string, body: any) => {
+    let user = await findUserById(userId);
+    if (!user) {
+        return null;
+    }
+
+    const ticketManager = await getUserTicketManager(user.id);
+    if (!ticketManager) {
+        return null;
+    }
+
+    return await ticketManager.indexTicket(body.id);
 }
