@@ -22,5 +22,15 @@ export type PushEvent = {
     installationId: number;
     repositoryName: string;
     branch: string;
-    commits: number;
+    commits: Commit[];
+}
+
+export type Commit = {
+    name: string;
+    fileDiffs: FileDiff[];
+}
+
+export type FileDiff = {
+    filename: string;
+    diff: string;
 }
