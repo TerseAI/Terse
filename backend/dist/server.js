@@ -58,6 +58,23 @@ app.post('/linear/set-api-key', authMiddleware, async (req, res) => {
 app.get('/linear/get-api-key', authMiddleware, async (req, res) => {
     getLinearApiKey(req, res);
 });
+app.post('/webhooks/linear/:userId', async (req, res) => {
+    const { userId } = req.params;
+    const event = req.body;
+    // Update your search index based on the event
+    switch (event.type) {
+        case 'Issue':
+            console.log("Issue", event);
+            break;
+        case 'Comment':
+            console.log("Comment", event);
+            break;
+        case 'Project':
+            console.log("Project", event);
+            break;
+    }
+    res.json({ received: true });
+});
 server.listen(3001, () => {
     console.log('🚀 Express backend running on http://localhost:3001');
 });
