@@ -1,5 +1,5 @@
 import 'dotenv/config';
-import { User } from './types/prisma.js';
+import { User } from './types/prisma';
 export type Session = {
     user: User;
 };

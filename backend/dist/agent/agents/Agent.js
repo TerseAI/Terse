@@ -1,5 +1,5 @@
 import { Agent, run, user } from '@openai/agents';
-import { systemPrompt } from '../systemPrompt.js';
+import { systemPrompt } from '../systemPrompt';
 export class AgentSession {
     history = [];
     session;
