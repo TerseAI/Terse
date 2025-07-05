@@ -2,6 +2,7 @@ import { RunContext, tool } from "@openai/agents";
 import { Session } from "../../server";
 import { z } from "zod";
 import chalk from "chalk";
+import { StructuredSearchOptions } from "src/ticketing/TicketIntegration";
 
 const searchTicketTool = tool({
     name: 'Search Ticket',
@@ -9,7 +10,8 @@ const searchTicketTool = tool({
     parameters: z.object({
         query: z.string().describe('The query to search for'),
         teamIds: z.union([z.array(z.string()), z.null()]).describe('Filter by team IDs'),
-        assigneeEmails: z.union([z.array(z.string()), z.null()]).describe('Filter by assignee emails'),
+        assigneeEmails: z.union([z.array(z.string()), z.null()]).describe('MUST BE A VALID EMAIL. Filter by assignee emails. You should use this if you are looking for a specific user. It helps narrow down the results tremendously.'),
+        createdByEmails: z.union([z.array(z.string()), z.null()]).describe('MUST BE A VALID EMAIL. Filter by created by emails. You should use this if you are looking for a specific user. It helps narrow down the results tremendously.'),
         stateIds: z.union([z.array(z.string()), z.null()]).describe('Filter by state IDs'),
         priority: z.union([z.array(z.number()), z.null()]).describe('Filter by priority levels'),
         labels: z.union([z.array(z.string()), z.null()]).describe('Filter by label names'),
@@ -35,7 +37,7 @@ const searchTicketTool = tool({
         includeAttachments: z.union([z.boolean(), z.null()]).describe('Include attachments'),
         includeRelations: z.union([z.boolean(), z.null()]).describe('Include related tickets')
     }),
-    execute: async ({ query, teamIds, assigneeEmails, stateIds, priority, labels, projects, dueDateRange, createdDateRange, updatedDateRange, sortBy, sortDirection, limit, includeArchived, includeSubIssues, includeComments, includeAttachments, includeRelations }, runContext?: RunContext<Session>) => {
+    execute: async ({ query, teamIds, assigneeEmails, createdByEmails, stateIds, priority, labels, projects, dueDateRange, createdDateRange, updatedDateRange, sortBy, sortDirection, limit, includeArchived, includeSubIssues, includeComments, includeAttachments, includeRelations }, runContext?: RunContext<Session>) => {
         if (!runContext?.context) {
             throw new Error("No context provided");
         }
@@ -45,13 +47,22 @@ const searchTicketTool = tool({
         }
 
         console.log("The Team ID is", runContext.context.teamId);
+
+        // filter out invalid emails
+        if (assigneeEmails) {
+            assigneeEmails = assigneeEmails.filter(email => email.includes('@'));
+        }
+        if (createdByEmails) {
+            createdByEmails = createdByEmails.filter(email => email.includes('@'));
+        }
         
         let ticketManager = runContext.context.ticketManager;
 
         // Convert date strings to Date objects if provided and handle null values
-        const options = {
+        const options: StructuredSearchOptions = {
             teamIds: teamIds || undefined,
             assigneeEmails: assigneeEmails || undefined,
+            createdByEmails: createdByEmails || undefined,
             stateIds: stateIds || undefined,
             priority: priority || undefined,
             labels: labels || undefined,
@@ -265,4 +276,4 @@ const findIssueTool = tool({
     },
 });
 
-export const ticketTools = [createTicketTool, updateTicketTool, findIssueTool, searchTicketTool];
+export const ticketTools = [createTicketTool, updateTicketTool, findIssueTool, searchTicketTool, getCurrentUserTool];

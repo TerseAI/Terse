@@ -39,14 +39,13 @@ export interface Ticket {
 }
 
 export interface User {
-    id: string;
     name: string;
     email: string;
 }
 
 export interface Comment {
     id: string;
-    authorEmail: string;
+    authorId: string;
     body: string;
     createdAt: string;
     updatedAt?: string;
@@ -62,7 +61,7 @@ export interface Team {
 export interface CreateTicketInput {
     title: string;
     description?: string;
-    assigneeEmail?: string;
+    assigneeId?: string;
     [key: string]: any;
 }
 
@@ -70,7 +69,7 @@ export interface UpdateTicketInput {
     title?: string;
     description?: string;
     status?: string;
-    assigneeEmail?: string;
+    assigneeId?: string;
     [key: string]: any;
 }
 

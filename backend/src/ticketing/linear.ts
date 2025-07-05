@@ -43,7 +43,6 @@ export class LinearAdapter implements TicketManager {
             return null;
         }
         return {
-            id: user.id,
             name: user.name,
             email: user.email,
         };
@@ -69,17 +68,17 @@ export class LinearAdapter implements TicketManager {
         const filter: IssueFilter = {}; // Pretend this is an IssueFilter
 
         // Text search across multiple fields
-        // if (query) {
-        //     filter.or = [
-        //         { title: { contains: query } },
-        //         { description: { contains: query } },
-        //     ];
-        // }
+        if (query) {
+            filter.or = [
+                { title: { contains: query } },
+                { description: { contains: query } },
+            ];
+        }
 
-        // // Team filtering
-        // if (options?.teamIds && options.teamIds.length > 0) {
-        //     filter.team = { id: { in: options.teamIds } };
-        // }
+        // Team filtering
+        if (options?.teamIds && options.teamIds.length > 0) {
+            filter.team = { id: { in: options.teamIds } };
+        }
 
         if (options?.assigneeEmails && options.assigneeEmails.length > 0) {
             if (options.assigneeEmails.length === 1) {
@@ -99,68 +98,85 @@ export class LinearAdapter implements TicketManager {
             }
         }
 
-        // // State filtering
-        // if (options?.stateIds && options.stateIds.length > 0) {
-        //     filter.state = { id: { in: options.stateIds } };
-        // }
+        if (options?.createdByEmails && options.createdByEmails.length > 0) {
+            if (options.createdByEmails.length === 1) {
+                const user = await this.resolveUser(options.createdByEmails[0]);
+                if (!user) {
+                    console.error(chalk.red('❌ No user found'));
+                    return [];
+                }
+                filter.creator = { id: { eq: user.id } };
+            } else {
+                const users = await Promise.all(options.createdByEmails.map(async email => {
+                    const user = await this.resolveUser(email);
+                    return user;
+                }));
+                filter.creator = { id: { in: users.map(user => user?.id || '') } };
+            }
+        }
 
-        // // Priority filtering
-        // if (options?.priority && options.priority.length > 0) {
-        //     filter.priority = { in: options.priority };
-        // }
+        // State filtering
+        if (options?.stateIds && options.stateIds.length > 0) {
+            filter.state = { id: { in: options.stateIds } };
+        }
 
-        // // Label filtering
-        // if (options?.labels && options.labels.length > 0) {
-        //     filter.labels = { name: { in: options.labels } };
-        // }
+        // Priority filtering
+        if (options?.priority && options.priority.length > 0) {
+            filter.priority = { in: options.priority };
+        }
+
+        // Label filtering
+        if (options?.labels && options.labels.length > 0) {
+            filter.labels = { name: { in: options.labels } };
+        }
 
         // Project filtering
-        // if (options?.projects && options.projects.length > 0) {
-        //     filter.project = { id: { in: options.projects } };
-        // }
+        if (options?.projects && options.projects.length > 0) {
+            filter.project = { id: { in: options.projects } };
+        }
 
-        // // Due date range filtering
-        // if (options?.dueDateRange) {
-        //     filter.dueDate = {};
-        //     if (options.dueDateRange.from) {
-        //         filter.dueDate.gte = options.dueDateRange.from;
-        //     }
-        //     if (options.dueDateRange.to) {
-        //         filter.dueDate.lte = options.dueDateRange.to;
-        //     }
-        // }
+        // Due date range filtering
+        if (options?.dueDateRange) {
+            filter.dueDate = {};
+            if (options.dueDateRange.from) {
+                filter.dueDate.gte = options.dueDateRange.from;
+            }
+            if (options.dueDateRange.to) {
+                filter.dueDate.lte = options.dueDateRange.to;
+            }
+        }
 
-        // // Created date range filtering
-        // if (options?.createdDateRange) {
-        //     filter.createdAt = {};
-        //     if (options.createdDateRange.from) {
-        //         filter.createdAt.gte = options.createdDateRange.from;
-        //     }
-        //     if (options.createdDateRange.to) {
-        //         filter.createdAt.lte = options.createdDateRange.to;
-        //     }
-        // }
+        // Created date range filtering
+        if (options?.createdDateRange) {
+            filter.createdAt = {};
+            if (options.createdDateRange.from) {
+                filter.createdAt.gte = options.createdDateRange.from;
+            }
+            if (options.createdDateRange.to) {
+                filter.createdAt.lte = options.createdDateRange.to;
+            }
+        }
 
-        // // Updated date range filtering
-        // if (options?.updatedDateRange) {
-        //     filter.updatedAt = {};
-        //     if (options.updatedDateRange.from) {
-        //         filter.updatedAt.gte = options.updatedDateRange.from;
-        //     }
-        //     if (options.updatedDateRange.to) {
-        //         filter.updatedAt.lte = options.updatedDateRange.to;
-        //     }
-        // }
+        // Updated date range filtering
+        if (options?.updatedDateRange) {
+            filter.updatedAt = {};
+            if (options.updatedDateRange.from) {
+                filter.updatedAt.gte = options.updatedDateRange.from;
+            }
+            if (options.updatedDateRange.to) {
+                filter.updatedAt.lte = options.updatedDateRange.to;
+            }
+        }
 
-        // // Archive filtering
-        // if (options?.includeArchived === false) {
-        //     filter.archivedAt = { eq: null };
-        // }
+        // Archive filtering
+        if (options?.includeArchived === false) {
+            filter.archivedAt = { eq: null };
+        }
 
-        // // Sub-issues filtering
-        // if (options?.includeSubIssues === false) {
-        //     filter.parent = { id: { eq: null } };
-        // }
+        // Sub-issues filtering
+        if (options?.includeSubIssues === false) {
+            filter.parent = { id: { eq: null } };
+        }
 
         // Build sort options
         let sortOptions: any = options?.sortBy == 'updatedAt' ? 'updatedAt' : 'createdAt'

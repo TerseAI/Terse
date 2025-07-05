@@ -22,6 +22,7 @@ export interface TicketManager {
 export type StructuredSearchOptions = {
     teamIds?: string[];
     assigneeEmails?: string[];
+    createdByEmails?: string[];
     stateIds?: string[];
     priority?: number[];
     labels?: string[];

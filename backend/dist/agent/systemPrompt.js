@@ -1,9 +1,13 @@
 export async function systemPrompt(session) {
     const user_id = session.user.id;
     const current_date = new Date().toISOString().split('T')[0];
+    const current_user = session.currentUser;
+    console.log("Current user in system prompt", current_user);
     return `Your job is to help the user accomplish their Ticket Tracking tasks.
 
 PLEASE BE EXTREMELY CONCISE!
+
+The current user is ${current_user}. Be sure to copy the user id exactly as it is if needed in a tool call.
 
 We are going to show the user all of the tools calls you do. So no need to repeat them unless there is some intricacy.
 
