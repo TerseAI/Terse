@@ -2,7 +2,7 @@ import chalk from "chalk";
 import { db } from "src/prismaClient";
 import Owner from "src/theOwner/Owner";
 import { LinearAdapter } from "src/ticketing/linear";
-import { EmbeddingSystem } from "src/search/EmbeddingSystem";
+import { search } from "src/searchClient";
 const GITHUB_APP_CLIENT_ID = process.env.GITHUB_CLIENT_ID;
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 // Get GitHub App installation URL
@@ -125,8 +125,15 @@ export async function githubAppRecievedPush(req, res) {
         res.status(404).json({ message: 'User does not have a linear API Key' });
         return;
     }
+    let adapter = new LinearAdapter(linearApiKey.api_key);
+    let session = {
+        user: user,
+        isUserInitiated: false,
+        teamId: (await adapter.getTeams())[0].id,
+        ticketManager: adapter,
+    };
     // init an Owner
-    const owner = new Owner(new LinearAdapter(linearApiKey.api_key), new EmbeddingSystem(OPENAI_API_KEY || ''));
+    const owner = new Owner(new LinearAdapter(linearApiKey.api_key), search(), session);
     // handle the push event
     await owner.handlePushEvent({
         username: body.username,
