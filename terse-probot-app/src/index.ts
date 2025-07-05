@@ -1,5 +1,5 @@
 import { Probot } from "probot";
-import { VectraInterface } from "./vectraInterface.js";
+import { VectraInterface, Commit, FileDiff } from "./vectraInterface.js";
 
 export default (app: Probot) => {
   console.log("Probot app starting up...");
@@ -21,9 +21,9 @@ export default (app: Probot) => {
     const github = context.octokit;
 
     console.log("🚀 Push event received!");
-    console.log("Repository:", context.payload.repository?.full_name);
-    console.log("Branch:", context.payload.ref);
-    console.log("Commits:", context.payload.commits?.length);
+
+    let diffs: Commit[] = [];
+    const installationId = context.payload.installation?.id || 0;
 
     // Get commit diffs
     for (const commit of payload.commits) {
@@ -39,6 +39,7 @@ export default (app: Probot) => {
         console.log(`Message: ${commit.message}`);
         console.log(`Files changed: ${commitData.files?.length}`);
 
+        let fileDiffs: FileDiff[] = [];
         // Inspect each changed file
         for (const file of commitData.files || []) {
           console.log(`\nFile: ${file.filename}`);
@@ -49,11 +50,27 @@ export default (app: Probot) => {
           if (file.patch) {
             console.log('Diff:');
             console.log(file.patch);
+            fileDiffs.push({
+              filename: file.filename,
+              diff: file.patch
+            });
           }
         }
+
+        diffs.push({
+          name: commit.message,
+          fileDiffs: fileDiffs
+        });
+
       } catch (error) {
         console.error(`Error fetching commit ${commit.id}:`, error);
       }
+    }
+
+    try {
+      await VectraInterface.githubPushEvent(context.payload.sender?.login, installationId, context.payload.repository.name, context.payload.ref, diffs);
+    } catch (error) {
+      console.error('Error calling githubAppRecievedPush:', error);
     }
   });
 
