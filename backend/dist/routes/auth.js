@@ -24,6 +24,7 @@ export const authMiddleware = async (req, res, next) => {
         // Create session object
         const session = {
             user: user,
+            isUserInitiated: true,
         };
         req.session = session;
         next();
