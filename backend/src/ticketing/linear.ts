@@ -1,6 +1,6 @@
 import { SearchItem } from "src/search/SearchItem";
 import { CreateTicketInput, Ticket, TicketSystemType, TicketWebhookHandler, UpdateTicketInput } from "../shared/TicketSystem";
-import { IssuePayload, LinearClient, User as LinearUser } from "@linear/sdk";
+import { Issue, IssuePayload, LinearClient, User as LinearUser } from "@linear/sdk";
 import chalk from "chalk";
 import { StructuredSearchOptions, TicketManager } from "./TicketIntegration";
 import { Team, User } from "../shared/TicketSystem";
@@ -14,6 +14,11 @@ export class LinearAdapter implements TicketManager {
 
     constructor(apiKey: string) {
         this.client = new LinearClient({ apiKey });
+    }
+
+    async getAllTickets(): Promise<Ticket[]> {
+        const tickets = await this.client.issues();
+        return await Promise.all(tickets.nodes.map(async ticket => this.convertLinearTicket(ticket)));
     }
 
     static async validateKey(apiKey: string): Promise<boolean> {
@@ -181,7 +186,7 @@ export class LinearAdapter implements TicketManager {
         // Build sort options
         let sortOptions: any = options?.sortBy == 'updatedAt' ? 'updatedAt' : 'createdAt'
 
-        let issues
+        let issues;
         try {
             // Execute the query with comprehensive options
             const params: IssuesQueryVariables = {
@@ -233,34 +238,7 @@ export class LinearAdapter implements TicketManager {
             throw new Error('Issue not found');
         }
 
-        return {
-            id: issue.id,
-            identifier: issue.identifier,
-            title: issue.title,
-            description: issue.description || undefined,
-            state: {
-                id: (await issue.state)?.id || '',
-                name: (await issue.state)?.name || 'Unknown'
-            },
-            assignee: issue.assignee ? {
-                id: (await issue.assignee)?.id || '',
-                name: (await issue.assignee)?.name || 'Unknown'
-            } : null,
-            priority: issue.priority || undefined,
-            estimate: issue.estimate || undefined,
-            dueDate: issue.dueDate instanceof Date ? issue.dueDate.toISOString() : issue.dueDate || undefined,
-            project: issue.project ? {
-                id: (await issue.project)?.id || '',
-                name: (await issue.project)?.name || 'Unknown'
-            } : null,
-            team: {
-                id: (await issue.team)?.id || '',
-                name: (await issue.team)?.name || 'Unknown',
-                key: (await issue.team)?.key || ''
-            },
-            createdAt: issue.createdAt.toISOString(),
-            updatedAt: issue.updatedAt.toISOString()
-        }
+        return this.convertLinearTicket(issue);
     }
 
     async createTicket(input: CreateTicketInput): Promise<Ticket> {
@@ -285,34 +263,7 @@ export class LinearAdapter implements TicketManager {
 
         console.log(chalk.green('✅ New issue created:'), chalk.cyan(newIssue.title), chalk.yellow(`(${newIssue.id})`));
 
-        return {
-            id: newIssue.id,
-            identifier: newIssue.identifier,
-            title: newIssue.title,
-            description: newIssue.description || undefined,
-            state: {
-                id: (await newIssue.state)?.id || '',
-                name: (await newIssue.state)?.name || 'Unknown'
-            },
-            assignee: newIssue.assignee ? {
-                id: (await newIssue.assignee)?.id || '',
-                name: (await newIssue.assignee)?.name || 'Unknown'
-            } : null,
-            priority: newIssue.priority || undefined,
-            estimate: newIssue.estimate || undefined,
-            dueDate: newIssue.dueDate instanceof Date ? newIssue.dueDate.toISOString() : newIssue.dueDate || undefined,
-            project: newIssue.project ? {
-                id: (await newIssue.project)?.id || '',
-                name: (await newIssue.project)?.name || 'Unknown'
-            } : null,
-            team: {
-                id: (await newIssue.team)?.id || '',
-                name: (await newIssue.team)?.name || 'Unknown',
-                key: (await newIssue.team)?.key || ''
-            },
-            createdAt: newIssue.createdAt.toISOString(),
-            updatedAt: newIssue.updatedAt.toISOString()
-        }
+        return this.convertLinearTicket(newIssue);
     }
 
     async updateTicket(id: string, input: UpdateTicketInput): Promise<Ticket> {
@@ -326,34 +277,7 @@ export class LinearAdapter implements TicketManager {
             throw new Error('Failed to update issue');
         }
 
-        return {
-            id: updatedIssue.id,
-            identifier: updatedIssue.identifier,
-            title: updatedIssue.title,
-            description: updatedIssue.description || undefined,
-            state: {
-                id: (await updatedIssue.state)?.id || '',
-                name: (await updatedIssue.state)?.name || 'Unknown'
-            },
-            assignee: updatedIssue.assignee ? {
-                id: (await updatedIssue.assignee)?.id || '',
-                name: (await updatedIssue.assignee)?.name || 'Unknown'
-            } : null,
-            priority: updatedIssue.priority || undefined,
-            estimate: updatedIssue.estimate || undefined,
-            dueDate: updatedIssue.dueDate instanceof Date ? updatedIssue.dueDate.toISOString() : updatedIssue.dueDate || undefined,
-            project: updatedIssue.project ? {
-                id: (await updatedIssue.project)?.id || '',
-                name: (await updatedIssue.project)?.name || 'Unknown'
-            } : null,
-            team: {
-                id: (await updatedIssue.team)?.id || '',
-                name: (await updatedIssue.team)?.name || 'Unknown',
-                key: (await updatedIssue.team)?.key || ''
-            },
-            createdAt: updatedIssue.createdAt.toISOString(),
-            updatedAt: updatedIssue.updatedAt.toISOString()
-        }
+        return this.convertLinearTicket(updatedIssue);
     }
 
     async deleteComment(ticketId: string, commentId: string): Promise<void> {
@@ -382,7 +306,7 @@ export class LinearAdapter implements TicketManager {
         {
             id: issue.id,
             teamId: team.id,
-            entityType: 'description',
+            entityType: 'ticket',
             entityId: issue.id,
             content: issue.description || '',
             metadata: {}
@@ -560,5 +484,37 @@ export class LinearAdapter implements TicketManager {
         }));
 
         return relationsWithIssues;
+    }
+
+    // helper
+    private async convertLinearTicket(issue: Issue): Promise<Ticket> {
+        return {
+            id: issue.id,
+            identifier: issue.identifier,
+            title: issue.title,
+            description: issue.description || undefined,
+            state: {
+                id: (await issue.state)?.id || '',
+                name: (await issue.state)?.name || 'Unknown'
+            },
+            assignee: issue.assignee ? {
+                id: (await issue.assignee)?.id || '',
+                name: (await issue.assignee)?.name || 'Unknown'
+            } : null,
+            priority: issue.priority || undefined,
+            estimate: issue.estimate || undefined,
+            dueDate: issue.dueDate instanceof Date ? issue.dueDate.toISOString() : issue.dueDate || undefined,
+            project: issue.project ? {
+                id: (await issue.project)?.id || '',
+                name: (await issue.project)?.name || 'Unknown'
+            } : null,
+            team: {
+                id: (await issue.team)?.id || '',
+                name: (await issue.team)?.name || 'Unknown',
+                key: (await issue.team)?.key || ''
+            },
+            createdAt: issue.createdAt.toISOString(),
+            updatedAt: issue.updatedAt.toISOString()
+        }
     }
 }
