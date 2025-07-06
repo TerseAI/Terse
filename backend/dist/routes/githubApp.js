@@ -115,27 +115,16 @@ export async function githubAppRecievedCommit(req, res) {
 export async function githubAppRecievedPush(req, res) {
     const body = req.body;
     console.log('githubAppRecievedPush', body);
-    // get the repository
-    const repository = await db().github_repositories.findFirst({ where: { name: body.repositoryName, owner: body.username, installation_id: body.installationId } });
-    if (!repository) {
-        console.log(chalk.red('Repository not found'));
-        res.status(404).json({ message: 'Repository not found' });
-        return;
-    }
+    const { username, repositoryName, installationId } = body;
     // get the user
-    const user = await db().users.findFirst({ where: { github_username: body.username } });
+    const user = await db().users.findFirst({ where: { github_username: username } });
     if (!user) {
         console.log(chalk.red('User not found'));
         res.status(404).json({ message: 'User not found' });
         return;
     }
-    // make sure this user is associated with this repository
-    const userRepository = await db().user_github_repositories.findFirst({ where: { user_id: user.id, github_repository_id: repository.id } });
-    if (!userRepository) {
-        console.log(chalk.red('User not associated with this repository'));
-        res.status(404).json({ message: 'User not associated with this repository' });
-        return;
-    }
+    // resolve the user github relation
+    const repository = await resolveUserGithubRelation(user, username, repositoryName, installationId);
     // check if user has a linear API Key
     const linearApiKey = await db().linear_api_keys.findFirst({ where: { user_id: user.id } });
     if (!linearApiKey) {
@@ -151,7 +140,7 @@ export async function githubAppRecievedPush(req, res) {
         ticketManager: adapter,
     };
     // init an Owner
-    const owner = new Owner(new LinearAdapter(linearApiKey.api_key), search(), session);
+    const owner = new Owner(search(), session);
     // handle the push event
     await owner.handlePushEvent({
         username: body.username,
@@ -161,6 +150,33 @@ export async function githubAppRecievedPush(req, res) {
         commits: body.commits
     });
     res.status(200).json({ message: 'Push event received and processed' });
+}
+// This is important. If we got this request, we know that the app is installed on their repo. IF it's not in our DB, we need to create it.
+async function resolveUserGithubRelation(user, username, repositoryName, installationId) {
+    // check if the repository is in our DB
+    let repository = await db().github_repositories.findFirst({ where: { name: repositoryName, installation_id: installationId } });
+    if (!repository) {
+        console.log(chalk.yellow('Drift detected. This repository is not in our DB but it is a registered repository in the github app. Creating it...'));
+        repository = await db().github_repositories.create({
+            data: {
+                name: repositoryName,
+                owner: username,
+                installation_id: installationId
+            }
+        });
+    }
+    // Make sure the user is associated with the repository
+    let relation = await db().user_github_repositories.findFirst({ where: { user_id: user.id, github_repository_id: repository.id } });
+    if (!relation) {
+        await db().user_github_repositories.create({
+            data: {
+                user_id: user.id,
+                github_repository_id: repository.id
+            }
+        });
+    }
+    // get the user
+    return repository;
 }
 export async function githubAppRecievedPullRequest(req, res) {
     const body = req.body;

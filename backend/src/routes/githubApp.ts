@@ -1,18 +1,14 @@
 import chalk from "chalk";
 import { Request, Response } from "express";
 import { db } from "src/prismaClient";
-import { User, GithubRepository } from "../types/prisma";
+import { User, GithubRepository, UserGithubRepository, LinearApiKey } from "../types/prisma";
 import Owner, { Commit } from "src/theOwner/Owner";
 import { LinearAdapter } from "src/ticketing/linear";
-import { PostgreSQLSearch } from "src/search/SearchProvider";
-import { EmbeddingSystem } from "src/search/EmbeddingSystem";
 import { search } from "src/searchClient";
 import { Session } from "src/server";
 import { TicketManager } from "src/ticketing/TicketIntegration";
 
 const GITHUB_APP_CLIENT_ID = process.env.GITHUB_CLIENT_ID
-const OPENAI_API_KEY = process.env.OPENAI_API_KEY
-
 
 export async function getCurrentGithubIntegration(req: Request, res: Response) {
     if(!req.session?.user) {
@@ -22,14 +18,14 @@ export async function getCurrentGithubIntegration(req: Request, res: Response) {
 
     const user: User = req.session.user;
 
-    const user_github_relation = await db().user_github_repositories.findFirst({ where: { user_id: user.id } });
+    const user_github_relation: UserGithubRepository | null = await db().user_github_repositories.findFirst({ where: { user_id: user.id } });
 
     if(!user_github_relation) {
         res.status(404).json({ message: 'No GitHub integration found' });
         return;
     }
 
-    const repository = await db().github_repositories.findUnique({ where: { id: user_github_relation.github_repository_id } });
+    const repository: GithubRepository | null = await db().github_repositories.findUnique({ where: { id: user_github_relation.github_repository_id } });
 
     if(!repository) {
         res.status(404).json({ message: 'No GitHub repository found' });
@@ -43,7 +39,7 @@ export async function getCurrentGithubIntegration(req: Request, res: Response) {
 export async function getInstallationUrl(req: Request, res: Response) {
     try {
         // Generate GitHub App installation URL with callback
-        const installationUrl = `https://github.com/apps/vectra-github/installations/new?client_id=${GITHUB_APP_CLIENT_ID}&state=vectra&target_type=repositories`;
+        const installationUrl: string = `https://github.com/apps/vectra-github/installations/new?client_id=${GITHUB_APP_CLIENT_ID}&state=vectra&target_type=repositories`;
 
         res.json({
             installationUrl
@@ -63,7 +59,7 @@ type GithubAppInstallationCallbackRequest = {
 }
 
 export async function githubAppInstallationCallback(req: Request, res: Response) {
-    const body = req.body as GithubAppInstallationCallbackRequest;
+    const body: GithubAppInstallationCallbackRequest = req.body as GithubAppInstallationCallbackRequest;
 
     console.log('githubAppInstallationCallback', body);
 
@@ -99,7 +95,7 @@ export async function githubAppInstallationCallback(req: Request, res: Response)
 
     try {
         // create the repository
-        const repository = await db().github_repositories.create({
+        const repository: GithubRepository = await db().github_repositories.create({
             data: {
                 name: body.repositoryName,
                 owner: body.username,
@@ -129,10 +125,10 @@ type GithubAppInstallationDeletedRequest = {
 
 export async function githubAppInstallationDeleted(req: Request, res: Response) {
     console.log('githubAppInstallationDeleted', req.body);
-    const body = req.body as GithubAppInstallationDeletedRequest;
+    const body: GithubAppInstallationDeletedRequest = req.body as GithubAppInstallationDeletedRequest;
 
     // find all repos for this installation
-    const repositories = await db().github_repositories.findMany({ where: { installation_id: body.installationId } });
+    const repositories: GithubRepository[] = await db().github_repositories.findMany({ where: { installation_id: body.installationId } });
 
     if (repositories.length === 0) {
         res.status(404).json({ message: 'No repositories found for this installation' });
@@ -174,7 +170,7 @@ export async function githubAppRecievedCommit(req: Request, res: Response) {
     console.log('githubAppRecievedCommit', body);
 
     // get the repository
-    const repository = await db().github_repositories.findFirst({ where: { name: body.repositoryName, owner: body.username, installation_id: body.installationId } });
+    const repository: GithubRepository | null = await db().github_repositories.findFirst({ where: { name: body.repositoryName, owner: body.username, installation_id: body.installationId } });
 
     if (!repository) {
         res.status(404).json({ message: 'Repository not found' });
@@ -191,14 +187,14 @@ type GithubAppRecievedPushRequest = {
 }
 
 export async function githubAppRecievedPush(req: Request, res: Response) {
-    const body = req.body as GithubAppRecievedPushRequest;
+    const body: GithubAppRecievedPushRequest = req.body as GithubAppRecievedPushRequest;
 
     console.log('githubAppRecievedPush', body);
 
     const { username, repositoryName, installationId } = body;
 
     // get the user
-    const user = await db().users.findFirst({ where: { github_username: username } });
+    const user: User | null = await db().users.findFirst({ where: { github_username: username } });
 
     if (!user) {
         console.log(chalk.red('User not found'));
@@ -207,10 +203,10 @@ export async function githubAppRecievedPush(req: Request, res: Response) {
     }
 
     // resolve the user github relation
-    const repository = await resolveUserGithubRelation(user, username, repositoryName, installationId);
+    const repository: GithubRepository | null = await resolveUserGithubRelation(user, username, repositoryName, installationId);
 
     // check if user has a linear API Key
-    const linearApiKey = await db().linear_api_keys.findFirst({ where: { user_id: user.id } });
+    const linearApiKey: LinearApiKey | null = await db().linear_api_keys.findFirst({ where: { user_id: user.id } });
 
     if (!linearApiKey) {
         console.log(chalk.red('User does not have a linear API Key'));
@@ -218,8 +214,8 @@ export async function githubAppRecievedPush(req: Request, res: Response) {
         return;
     }
 
-    let adapter: TicketManager = new LinearAdapter(linearApiKey.api_key);
-    let session: Session = {
+    const adapter: TicketManager = new LinearAdapter(linearApiKey.api_key);
+    const session: Session = {
         user: user,
         isUserInitiated: false,
         teamId: (await adapter.getTeams())[0].id,
@@ -227,7 +223,7 @@ export async function githubAppRecievedPush(req: Request, res: Response) {
     }
 
     // init an Owner
-    const owner = new Owner(search(), session)
+    const owner: Owner = new Owner(search(), session)
 
     // handle the push event
     await owner.handlePushEvent({
@@ -244,7 +240,7 @@ export async function githubAppRecievedPush(req: Request, res: Response) {
 // This is important. If we got this request, we know that the app is installed on their repo. IF it's not in our DB, we need to create it.
 async function resolveUserGithubRelation(user: User, username: string, repositoryName: string, installationId: number): Promise<GithubRepository | null> {
     // check if the repository is in our DB
-    let repository = await db().github_repositories.findFirst({ where: { name: repositoryName, installation_id: installationId } });
+    let repository: GithubRepository | null = await db().github_repositories.findFirst({ where: { name: repositoryName, installation_id: installationId } });
     if (!repository) {
         console.log(chalk.yellow('Drift detected. This repository is not in our DB but it is a registered repository in the github app. Creating it...'));
         repository = await db().github_repositories.create({
@@ -257,7 +253,7 @@ async function resolveUserGithubRelation(user: User, username: string, repositor
     }
 
     // Make sure the user is associated with the repository
-    let relation = await db().user_github_repositories.findFirst({ where: { user_id: user.id, github_repository_id: repository.id } });
+    let relation: UserGithubRepository | null = await db().user_github_repositories.findFirst({ where: { user_id: user.id, github_repository_id: repository.id } });
     if (!relation) {
         await db().user_github_repositories.create({
         data: {
