@@ -1,4 +1,4 @@
-import { users, github_repositories, linear_api_keys, slack_integrations, user_slack_integrations } from '../generated/prisma';
+import { users, github_repositories, linear_api_keys, slack_integrations, user_slack_integrations, user_github_repositories } from '../generated/prisma';
 
   
   // PascalCase aliases
@@ -12,6 +12,8 @@ import { users, github_repositories, linear_api_keys, slack_integrations, user_s
 
   export type UserSlackIntegration = user_slack_integrations;
 
+  export type UserGithubRepository = user_github_repositories;
+
   // Re-export the original types too
   export {
     users,
@@ -19,4 +21,5 @@ import { users, github_repositories, linear_api_keys, slack_integrations, user_s
     linear_api_keys,
     slack_integrations,
     user_slack_integrations,
+    user_github_repositories
   }; 
