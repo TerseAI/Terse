@@ -46,8 +46,6 @@ const searchTicketTool = tool({
             throw new Error("No ticket manager provided");
         }
 
-        console.log("The Team ID is", runContext.context.teamId);
-
         // filter out invalid emails
         if (assigneeEmails) {
             assigneeEmails = assigneeEmails.filter(email => email.includes('@'));
@@ -89,7 +87,7 @@ const searchTicketTool = tool({
             includeRelations: includeRelations || undefined
         };
 
-        console.log('Ticket Tool: Searching for tickets with options:', options);
+        console.log('Ticket Tool: Searching for tickets with query and options:', query, options);
         const tickets = await ticketManager.structuredSearch(query, options);
         
         return {
