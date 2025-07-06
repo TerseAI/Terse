@@ -67,9 +67,10 @@ export class LinearAdapter implements TicketManager {
         }
 
         const webhookSecret = this.generateWebhookSecret();
+        const backendUrl = process.env.BACKEND_URL;
 
         const webhook = await this.client.createWebhook({
-            url: `https://x-recorder-literacy-responding.trycloudflare.com/webhooks/linear/${user.id}`,
+            url: `${backendUrl}/webhooks/linear/${user.id}`,
             secret: webhookSecret,
             allPublicTeams: true,
             resourceTypes: ['Issue', 'Comment', 'Project', 'IssueLabel', 'User']

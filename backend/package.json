@@ -26,6 +26,7 @@
     "@linear/sdk": "^45.3.0",
     "@openai/agents": "^0.0.10",
     "@prisma/client": "^6.11.1",
+    "@slack/web-api": "^7.9.3",
     "axios": "^1.10.0",
     "chalk": "^5.4.1",
     "cookie-parser": "^1.4.7",
