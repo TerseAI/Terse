@@ -25,7 +25,7 @@ model users {
 
   user_github_repositories user_github_repositories[]
   linear_api_keys          linear_api_keys[]
-  slack_integrations       slack_integrations[]
+  user_slack_integrations  user_slack_integrations[]
 }
 
 model github_repositories {
@@ -67,21 +67,35 @@ model linear_api_keys {
   @@unique([user_id])
 }
 
+model user_slack_integrations {
+  id             String   @id @default(cuid())
+  user_id        String
+  slack_team_id  String
+  dm_channel_id  String?
+  authed_user_id String
+  created_at     DateTime @default(now())
+  updated_at     DateTime @updatedAt
+
+  user              users              @relation(fields: [user_id], references: [id])
+  slack_integration slack_integrations @relation(fields: [slack_team_id], references: [team_id])
+
+  @@unique([user_id, slack_team_id])
+}
+
 model slack_integrations {
-  user_id         String
-  app_id          String   @id
-  authed_user_id  String
+  id              String   @id @default(cuid())
+  app_id          String
   scope           String   @default("")
   access_token    String
   bot_user_id     String
-  team_id         String
+  team_id         String   @unique
   team_name       String
   enterprise_id   String?
   enterprise_name String?
   created_at      DateTime @default(now())
   updated_at      DateTime @updatedAt
 
-  user users @relation(fields: [user_id], references: [id])
+  user_slack_integrations user_slack_integrations[]
 
   @@unique([app_id])
 }

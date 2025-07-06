@@ -64,7 +64,7 @@ const searchTicketTool = tool({
             stateIds: stateIds || undefined,
             priority: priority || undefined,
             labels: labels || undefined,
-            // projects: projects || undefined,
+            // projects: projects || undefined, // This seems dangerous. If tickets aren't in the project, they won't be found. And it could create duplicate tickets.
             dueDateRange: dueDateRange ? {
                 from: dueDateRange.from ? new Date(dueDateRange.from) : undefined,
                 to: dueDateRange.to ? new Date(dueDateRange.to) : undefined

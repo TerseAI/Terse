@@ -1,15 +1,17 @@
 import axios from "axios";
 import { Request, Response } from "express";
-import { User } from "../types/prisma";
+import { SlackIntegration, User, UserSlackIntegration } from "../types/prisma";
 import { db } from "../prismaClient"
 import { Jwt } from "../utility/jwt";
+import { LogLevel, WebClient } from "@slack/web-api";
+import chalk from "chalk";
 
 export async function getSlackOAuthUrl(req: Request, res: Response) {
     const client_id = process.env.SLACK_CLIENT_ID;
     const backendUrl = process.env.BACKEND_URL;
     const redirect_uri = `${backendUrl}/slack/oauth-callback`;
 
-    if(!req.session?.user) {
+    if (!req.session?.user) {
         res.status(500).json({ message: 'User not found' });
         return;
     }
@@ -39,14 +41,14 @@ export async function getSlackOAuthUrl(req: Request, res: Response) {
 }
 
 export async function getCurrentSlackIntegration(req: Request, res: Response) {
-    if(!req.session?.user) {
+    if (!req.session?.user) {
         res.status(500).json({ message: 'User not found' });
         return;
     }
 
     const user: User = req.session.user;
 
-    const slackIntegration = await db().slack_integrations.findFirst({
+    const userSlackIntegration = await db().user_slack_integrations.findFirst({
         where: {
             user_id: user.id
         },
@@ -54,8 +56,14 @@ export async function getCurrentSlackIntegration(req: Request, res: Response) {
             created_at: 'desc'
         }
     });
-    
-    if(!slackIntegration) {
+
+    const slackIntegration = await db().slack_integrations.findFirst({
+        where: {
+            app_id: userSlackIntegration?.slack_team_id
+        }
+    });
+
+    if (!slackIntegration || !userSlackIntegration) {
         res.status(404).json({ teamName: null });
         return;
     }
@@ -71,30 +79,29 @@ export async function slackOAuthCallback(req: Request, res: Response) {
     const jwt = new Jwt();
     const user = await jwt.verify(state);
 
-    if(!user) {
+    if (!user) {
         res.status(500).json({ message: 'User not found' });
         return;
     }
 
     const client_id = process.env.SLACK_CLIENT_ID;
     const client_secret = process.env.SLACK_CLIENT_SECRET;
-
     try {
-        const response= await axios.post<SlackOAuthResponse>('https://slack.com/api/oauth.v2.access', 
+        const response = await axios.post<SlackOAuthResponse>('https://slack.com/api/oauth.v2.access',
             {
                 code: code,
                 client_id: client_id,
                 client_secret: client_secret,
             }, {
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded'
-                }
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded'
             }
+        }
         );
 
         console.log("Slack OAuth response:", response.data);
 
-        const { access_token, authed_user } = response.data;
+        const { access_token, authed_user, scope } = response.data;
 
         if (!response.data.ok) {
             console.error("Slack OAuth response not ok:", response.data);
@@ -102,39 +109,42 @@ export async function slackOAuthCallback(req: Request, res: Response) {
             return;
         }
 
-        // store access token in database
-        await db().slack_integrations.upsert({
+        // check if the slack integration already exists
+        let slackIntegration = await db().slack_integrations.findFirst({
             where: {
                 app_id: response.data.app_id
-            },
-            create: {
-                user_id: user.id,
-                app_id: response.data.app_id,
-                authed_user_id: authed_user.id,
-                bot_user_id: response.data.bot_user_id,
-                team_id: response.data.team.id,
-                team_name: response.data.team.name,
-                access_token: access_token,
-                scope: response.data.scope,
-            },
-            update: {
-                user_id: user.id,
-                app_id: response.data.app_id,
-                authed_user_id: authed_user.id,
-                bot_user_id: response.data.bot_user_id,
-                team_id: response.data.team.id,
-                team_name: response.data.team.name,
-                access_token: access_token,
-                scope: response.data.scope,
             }
         });
 
-        // TODO: We need to open a chat once the user integrates with slack. And then store that thread_ts to use here
-        // const result = await client.chat.postMessage({
-        //     // The token you used to initialize your app
-        //     token: slackIntegration.access_token,
-        //     text: message,
-        // });
+        await db().$transaction(async (tx) => {
+            if (slackIntegration) {
+                console.log("Slack integration already exists, continuing with adding user relation");
+            } else {
+                console.log(chalk.blue("Slack integration does not exist, creating it"));
+                slackIntegration = await db().slack_integrations.create({
+                    data: {
+                        app_id: response.data.app_id,
+                        bot_user_id: response.data.bot_user_id,
+                        team_id: response.data.team.id,
+                        team_name: response.data.team.name,
+                        access_token: access_token,
+                        scope: scope,
+                    }
+                });
+                console.log(chalk.green("Slack integration created"));
+            }
+
+            const dmChannelId = await openChat(access_token, authed_user.id);
+
+            const userSlackIntegration = await db().user_slack_integrations.create({
+                data: {
+                    user_id: user.id,
+                    slack_team_id: slackIntegration.team_id,
+                    dm_channel_id: dmChannelId?.id,
+                    authed_user_id: authed_user.id,
+                }
+            });
+        });
 
         console.log("Access token:", response.data);
     } catch (error) {
@@ -143,10 +153,27 @@ export async function slackOAuthCallback(req: Request, res: Response) {
         return;
     }
 
-    // exchange code for access token
-
-    // store access token in database
     res.json({ received: true });
+}
+
+async function openChat(accessToken: string, authedUserId: string) {
+
+    try {
+
+        const client = new WebClient(accessToken, {
+            // LogLevel can be imported and used to make debugging simpler
+            logLevel: LogLevel.DEBUG
+        });
+
+        const { channel } = await client.conversations.open({
+            users: authedUserId          // ← the U-ID of the person you want to DM
+        });
+
+        return channel;
+    } catch (error) {
+        console.error('Error opening chat:', error);
+        return null;
+    }
 }
 
 export interface SlackOAuthResponse {
