@@ -79,6 +79,7 @@ export class LinearAdapter implements TicketManager {
             return null;
         }
         return {
+            id: user.id,
             name: user.name,
             email: user.email,
         };
@@ -315,7 +316,7 @@ export class LinearAdapter implements TicketManager {
         this.client.deleteComment(commentId);
     }
 
-    async indexTicket(id: string): Promise<SearchItem[]> {
+    async searchItemsForTicket(id: string): Promise<SearchItem[]> {
         const issue = await this.client.issue(id);
         if (!issue) {
             throw new Error('Issue not found');
