@@ -31,14 +31,14 @@ export function ChatLayout({
     customInput
 }: ChatLayoutProps) {
     return (
-        <div className={`h-full w-full backdrop-blur-sm shadow-lg transition-opacity duration-300 opacity-100 rounded-lg flex flex-col ${className}`}>
+        <div className={`h-full w-full flex flex-col bg-white ${className}`}>
             {header && (
-                <div className="flex-shrink-0">
+                <div className="flex-shrink-0 border-b border-gray-200 bg-white p-4">
                     {header}
                 </div>
             )}
             
-            <div className="flex-1 overflow-y-auto p-4 space-y-1">
+            <div className="flex-1 overflow-y-auto p-6 space-y-4">
                 {turns.map((turn, index) => (
                     <TurnView key={index} {...turn} />
                 ))}
@@ -53,7 +53,7 @@ export function ChatLayout({
                 <div ref={messagesEndRef} className="h-1" />
             </div>
 
-            <div className="flex-shrink-0">
+            <div className="flex-shrink-0 border-t border-gray-200 bg-white p-4">
                 {customInput || (
                     <ChatInput 
                         sendMessage={onSendMessage} 

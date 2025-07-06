@@ -38,9 +38,9 @@ function TurnView({ role, text, function_calls, isFailure = false, items, isGene
     // Expanded state - show all steps with status
     return (
         <div className={`flex rounded-lg ${isUser ? 'justify-end animate-fade-in' : 'justify-start'}`}>
-            <div className="space-y-1 max-w-[80%]">
-                <div className="text-[#F1F1F1] text-md py-2 rounded-8xl">
-                    <div className={`prose prose-invert ${isUser ? 'bg-stone-900/80 rounded-lg p-3' : ''}`}>
+            <div className="space-y-2 max-w-[80%]">
+                <div className="text-gray-900 text-md py-2 rounded-lg">
+                    <div className={`prose ${isUser ? 'bg-blue-50 rounded-lg p-3 border border-blue-200' : 'bg-gray-50 rounded-lg p-3 border border-gray-200'}`}>
                         {isFailure && (
                             <svg className="w-4 h-4 text-red-500 inline-block mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -66,13 +66,13 @@ function TurnView({ role, text, function_calls, isFailure = false, items, isGene
                         ) : (
                             <Spin size={Size.Tiny} />
                         )}
-                        <div className="text-sm">
+                        <div className="text-sm text-gray-600">
                             {call.name}
                             {call.isWaitingForApproval && (
-                                <span className="text-yellow-500 ml-1">(waiting for approval)</span>
+                                <span className="text-yellow-600 ml-1">(waiting for approval)</span>
                             )}
                             {call.isRejected && (
-                                <span className="text-red-500 ml-1">(rejected)</span>
+                                <span className="text-red-600 ml-1">(rejected)</span>
                             )}
                         </div>
                     </div>
@@ -147,8 +147,8 @@ function ItemView({ item, turnIndex, itemIndex, step_id, isGenerating, role }: {
             ref={elementRef}
             className={`transition-all duration-200 ${
                 isSelected 
-                    ? 'shadow-xl bg-white/5 scale-[1.02] rounded-lg p-1' 
-                    : 'hover:bg-white/5 rounded-lg p-1'
+                    ? 'shadow-lg bg-blue-50 scale-[1.02] rounded-lg p-1 border border-blue-200' 
+                    : 'hover:bg-gray-50 rounded-lg p-1 border border-transparent'
             }`}
         >
             {Component}
