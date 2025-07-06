@@ -142,6 +142,14 @@ export async function slackOAuthCallback(req: Request, res: Response) {
 
             const dmChannelId = await openChat(access_token, authed_user.id);
 
+            if (!dmChannelId || !dmChannelId.id) {
+                console.error("Error opening chat");
+                res.status(500).json({ message: 'Failed to open chat' });
+                return;
+            }
+
+            sendMessage("Hello, world!", access_token, dmChannelId.id);
+
             const userSlackIntegration = await db().user_slack_integrations.create({
                 data: {
                     user_id: user.id,
@@ -163,7 +171,6 @@ export async function slackOAuthCallback(req: Request, res: Response) {
 }
 
 async function openChat(accessToken: string, authedUserId: string) {
-
     try {
 
         const client = new WebClient(accessToken, {
