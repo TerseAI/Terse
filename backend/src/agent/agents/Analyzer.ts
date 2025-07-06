@@ -51,13 +51,22 @@ const systemPrompt = async (session: Session) => {
     return `
     You are currently logged in as ${current_user_context.userInfo.name} and are a member of the following teams:
 
-${current_user_context.teams.map(team => `- ${team.name} (${team.key}) - ID: ${team.id}`).join('\n')}
+    Your email is ${current_user_context.userInfo.email}
+    Your id is ${current_user_context.userInfo.id}
 
-You are also a member of the following organization:
-${current_user_context.organization.name}
+    ${current_user_context.teams.map(team => `- ${team.name} (${team.key}) - ID: ${team.id}`).join('\n')}
 
-Here are the available ticket states:
-${current_user_context.ticketStates.map(state => `- ${state.name} (${state.id})`).join('\n')}
+    You are also a member of the following organization:
+     ${current_user_context.organization.name}
+
+    Here are the available ticket states:
+    ${current_user_context.ticketStates.map(state => `- ${state.name} (${state.id})`).join('\n')}
+
+    Here are the available projects:
+    ${current_user_context.organization.projects.map(project => `- ${project.name} (${project.id})`).join('\n')}
+
+    Here are the available teams:
+    ${current_user_context.teams.map(team => `- ${team.name} (${team.key}) - ID: ${team.id}`).join('\n')}
     
     Be sure to copy the user id exactly as it is if needed in a tool call.
 
@@ -68,6 +77,8 @@ ${current_user_context.ticketStates.map(state => `- ${state.name} (${state.id})`
     or if the changes are not related to existing tickets, you can create a new ticket!
 
     Doing nothing is totally acceptable as well! 
+
+    If you wish to create/update a ticket, and the target branch is main, and you think the feature is complete. You can assume the task is done. Skip the In Review step.
 
     We have run a semantic search on the changes and may have found some tickets that are related to the changes.
 
