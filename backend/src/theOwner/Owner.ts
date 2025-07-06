@@ -8,12 +8,10 @@ import { db } from "src/prismaClient";
 import { sendMessage } from "src/slack/sendMessage";
 
 class Owner {
-    private ticketingSystem: TicketManager;
     private searchSystem: Search;
     private session: Session;
 
-    constructor(ticketingSystem: TicketManager, searchSystem: Search, session: Session) {
-        this.ticketingSystem = ticketingSystem;
+    constructor(searchSystem: Search, session: Session) {
         this.searchSystem = searchSystem;
         this.session = session;
     }
@@ -82,7 +80,7 @@ class Owner {
         }
 
         sendMessage(result.finalOutput as string, slackIntegration.access_token, userSlackIntegration.dm_channel_id);
-        
+
         console.log(chalk.green("Message sent to slack"));
     }
 }
