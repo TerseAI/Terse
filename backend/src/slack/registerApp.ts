@@ -58,9 +58,14 @@ export async function getCurrentSlackIntegration(req: Request, res: Response) {
         }
     });
 
+    if (!userSlackIntegration) {
+        res.status(404).json({ teamName: null });
+        return;
+    }
+
     const slackIntegration = await db().slack_integrations.findFirst({
         where: {
-            app_id: userSlackIntegration?.slack_team_id
+            team_id: userSlackIntegration?.slack_team_id
         }
     });
 
