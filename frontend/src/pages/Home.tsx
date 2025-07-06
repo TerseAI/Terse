@@ -4,6 +4,7 @@ import { BackendProvider } from "../services/backend";
 import { useEffect, useState } from "react";
 import { AddToSlack } from "../components/AddToSlack";
 import { AddGithub } from "../components/AddGithub";
+import { IntegrationCard } from "../components/IntegrationCard";
 
 function Home() {
     const { user, logout } = useAuth();
@@ -54,11 +55,19 @@ function LinearApiKeyForm() {
     const [input, setInput] = useState<string>('');
     const [error, setError] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);
+    const [isInitialLoading, setIsInitialLoading] = useState(true);
 
     useEffect(() => {
-        BackendProvider.getLinearApiKey().then(({ apiKey }) => {
-            setLinearApiKey(apiKey);
-        });
+        BackendProvider.getLinearApiKey()
+            .then(({ apiKey }) => {
+                setLinearApiKey(apiKey);
+            })
+            .catch((error) => {
+                console.error('Error fetching Linear API key:', error);
+            })
+            .finally(() => {
+                setIsInitialLoading(false);
+            });
     }, []);
 
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -78,55 +87,51 @@ function LinearApiKeyForm() {
         }
     }
 
-    if (linearApiKey) {
-        return (
-            <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-                <div className="flex items-center justify-between mb-2">
-                    <h3 className="text-sm font-medium text-gray-900">Linear API Key</h3>
-                    <div className="flex items-center space-x-2">
-                        <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                        <span className="text-xs text-green-600">Connected</span>
-                    </div>
-                </div>
-                <p className="text-xs text-gray-500 mb-3">Your Linear integration is active</p>
-                <button 
-                    onClick={() => setLinearApiKey(null)}
-                    className="text-xs text-gray-500 hover:text-gray-700 transition-colors"
-                >
-                    Disconnect
-                </button>
-            </div>
-        )
+    const handleDisconnect = () => {
+        setLinearApiKey(null);
+        setInput('');
+        setError(null);
     }
 
-    return (
-        <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-            <h3 className="text-sm font-medium text-gray-900 mb-2">Linear API Key</h3>
-            <p className="text-xs text-gray-500 mb-3">Connect your Linear workspace to manage tickets</p>
-            
+    const connectButton = (
+        <form onSubmit={handleSubmit} className="space-y-3">
             {error && (
-                <div className="mb-3 p-2 bg-red-50 border border-red-200 rounded text-xs text-red-600">
+                <div className="p-2 bg-red-50 border border-red-200 rounded text-xs text-red-600">
                     {error}
                 </div>
             )}
-            
-            <form onSubmit={handleSubmit} className="space-y-3">
-                <input 
-                    type="text" 
-                    placeholder="Enter your Linear API key" 
-                    value={input}
-                    onChange={(e) => setInput(e.target.value)}
-                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
-                />
-                <button 
-                    type="submit" 
-                    disabled={isLoading || !input.trim()}
-                    className="w-full px-3 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                >
-                    {isLoading ? 'Connecting...' : 'Connect Linear'}
-                </button>
-            </form>
-        </div>
+            <input 
+                type="text" 
+                placeholder="Enter your Linear API key" 
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
+            />
+            <button 
+                type="submit" 
+                disabled={isLoading || !input.trim()}
+                className="w-full px-3 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+                {isLoading ? 'Connecting...' : 'Connect Linear'}
+            </button>
+        </form>
+    );
+
+    return (
+        <IntegrationCard
+            title="Linear API Key"
+            description="Connect your Linear workspace to manage tickets"
+            isConnected={!!linearApiKey}
+            isLoading={isInitialLoading}
+            connectionInfo={linearApiKey ? "API Key configured" : undefined}
+            onDisconnect={handleDisconnect}
+            connectButton={connectButton}
+            icon={
+                <svg className="w-4 h-4 text-blue-600" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+                </svg>
+            }
+        />
     )
 }
 
