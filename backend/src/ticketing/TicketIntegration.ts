@@ -13,7 +13,7 @@ export interface TicketManager {
     createTicket(input: CreateTicketInput): Promise<Ticket>;
     updateTicket(id: string, input: UpdateTicketInput): Promise<Ticket>;
     deleteComment(ticketId: string, commentId: string): Promise<void>;
-    indexTicket(id: string): Promise<SearchItem[]>;
+    searchItemsForTicket(id: string): Promise<SearchItem[]>;
     getTeams(): Promise<Team[]>;
     me(): Promise<User | null>;
 

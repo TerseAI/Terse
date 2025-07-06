@@ -4,6 +4,8 @@ import chalk from "chalk";
 import axios from "axios";
 import { LinearAdapter } from "src/ticketing/linear";
 import { findUserById, getUserTicketManager } from "src/types/user";
+import { LinearWebhookPayload } from "src/utility/LinearWebhookPayload";
+import { search } from "../searchClient";
 
 export const setLinearApiKey = async (req: Request, res: Response) => {
     let user = req.session?.user;
@@ -27,9 +29,15 @@ export const setLinearApiKey = async (req: Request, res: Response) => {
         return res.status(400).json({ error: 'Failed to configure webhook' });
     }
 
+    let linearUser = await adapter.me();
+    if (!linearUser) {
+        return res.status(400).json({ error: 'Failed to get Linear user' });
+    }
+
     await db().linear_api_keys.create({
         data: {
             user_id: user.id,
+            linear_user_id: linearUser.id,
             api_key: apiKey,
             webhook_id: configureWebhook.webhookId,
             webhook_secret: configureWebhook.webhookSecret
@@ -59,7 +67,21 @@ export const getLinearApiKey = async (req: Request, res: Response) => {
     res.status(200).json({ apiKey: linearApiKey.api_key });
 }
 
-export const indexLinearTicket = async (userId: string, body: any) => {
+export const indexLinearTicket = async (linerarUserId: string, body: LinearWebhookPayload) => {
+    // check list of linear integrations for this user
+    let linearIntegrations = await db().linear_api_keys.findFirst({
+        where: {
+            linear_user_id: linerarUserId
+        }
+    });
+
+    if (!linearIntegrations) {
+        console.log("No Linear integrations found for user", linerarUserId);
+        return null;
+    }
+
+    let userId = linearIntegrations.user_id;
+    
     let user = await findUserById(userId);
     if (!user) {
         return null;
@@ -70,5 +92,14 @@ export const indexLinearTicket = async (userId: string, body: any) => {
         return null;
     }
 
-    return await ticketManager.indexTicket(body.id);
+    let ticketId = body.data.id;
+
+    let searchItems = await ticketManager.searchItemsForTicket(ticketId);
+    if (searchItems.length === 0) {
+        return null;
+    }
+
+    await search().bulkInsert(searchItems);
+
+    console.log(chalk.green("✅ Indexed ticket"), chalk.yellow(ticketId));
 }

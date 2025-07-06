@@ -9,9 +9,10 @@ import { User as TicketUser } from './shared/TicketSystem';
 import { authMiddleware, githubAppAuthMiddleware, githubCallback, githubLogin, login, logout } from './routes/auth';
 import { AgentSocketServer, requestSessionSocketToken } from './agent/socket';
 import { getInstallationUrl, githubAppInstallationCallback, githubAppInstallationDeleted, githubAppRecievedPush } from './routes/githubApp';
-import { getLinearApiKey, setLinearApiKey } from './routes/linear';
-import { LinearWebhooks, LINEAR_WEBHOOK_SIGNATURE_HEADER, LINEAR_WEBHOOK_TS_FIELD } from '@linear/sdk'
+import { getLinearApiKey, indexLinearTicket, setLinearApiKey } from './routes/linear';
 import { TicketManager } from './ticketing/TicketIntegration';
+import { LinearWebhookPayload } from './utility/LinearWebhookPayload';
+
 
 export type Session = {
     user: User;
@@ -94,12 +95,13 @@ app.get('/linear/get-api-key', authMiddleware, async (req, res) => {
 app.post('/webhooks/linear/:userId', async (req, res) => {
     console.log("Linear webhook received", req.body, req.params);
     const { userId } = req.params;
-    const event = req.body;
+    const event: LinearWebhookPayload = req.body;
 
     // Update your search index based on the event
     switch (event.type) {
         case 'Issue':
             console.log("Issue", event);
+            await indexLinearTicket(userId, event);
             break;
         case 'Comment':
             console.log("Comment", event);
