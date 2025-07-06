@@ -54,6 +54,7 @@ model user_github_repositories {
 model linear_api_keys {
   id             String   @id @default(cuid())
   user_id        String
+  linear_user_id String   @unique
   api_key        String   @unique
   webhook_secret String
   webhook_id     String
