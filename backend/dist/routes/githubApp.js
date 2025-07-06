@@ -4,7 +4,6 @@ import Owner from "src/theOwner/Owner";
 import { LinearAdapter } from "src/ticketing/linear";
 import { search } from "src/searchClient";
 const GITHUB_APP_CLIENT_ID = process.env.GITHUB_CLIENT_ID;
-const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 export async function getCurrentGithubIntegration(req, res) {
     if (!req.session?.user) {
         res.status(500).json({ message: 'User not found' });
@@ -132,8 +131,8 @@ export async function githubAppRecievedPush(req, res) {
         res.status(404).json({ message: 'User does not have a linear API Key' });
         return;
     }
-    let adapter = new LinearAdapter(linearApiKey.api_key);
-    let session = {
+    const adapter = new LinearAdapter(linearApiKey.api_key);
+    const session = {
         user: user,
         isUserInitiated: false,
         teamId: (await adapter.getTeams())[0].id,
