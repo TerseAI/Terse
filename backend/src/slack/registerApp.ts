@@ -5,6 +5,7 @@ import { db } from "../prismaClient"
 import { Jwt } from "../utility/jwt";
 import { LogLevel, WebClient } from "@slack/web-api";
 import chalk from "chalk";
+import { sendMessage } from "./sendMessage";
 
 export async function getSlackOAuthUrl(req: Request, res: Response) {
     const client_id = process.env.SLACK_CLIENT_ID;
@@ -18,7 +19,7 @@ export async function getSlackOAuthUrl(req: Request, res: Response) {
 
     const user: User = req.session.user;
 
-    const scope = "chat:write,users:read,users:read.email";
+    const scope = "chat:write,users:read,users:read.email,im:write,groups:write";
     const user_scope = "";
 
     // create JWT and attach to url as state
