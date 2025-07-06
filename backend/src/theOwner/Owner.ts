@@ -4,6 +4,8 @@ import { Analyzer } from "src/agent/agents/Analyzer";
 import { Session } from "../server";
 import chalk from "chalk";
 import { SearchResult } from "src/search/SearchItem";
+import { db } from "src/prismaClient";
+import { sendMessage } from "src/slack/sendMessage";
 
 class Owner {
     private ticketingSystem: TicketManager;
@@ -48,6 +50,40 @@ class Owner {
 
         // Run the analyzer
         const result = await analyzer.run();
+
+        console.log(chalk.blue('Analyzer result'), result.finalOutput);
+
+        // get user slack integration
+        const userSlackIntegration = await db().user_slack_integrations.findFirst({
+            where: {
+                user_id: this.session.user.id
+            }
+        });
+
+        if (!userSlackIntegration) {
+            console.error("User slack integration not found");
+            return;
+        }
+
+        const slackIntegration = await db().slack_integrations.findFirst({
+            where: {
+                team_id: userSlackIntegration.slack_team_id
+            }
+        });
+
+        if (!slackIntegration) {
+            console.error("Slack integration not found");
+            return;
+        }
+
+        if (!userSlackIntegration.dm_channel_id) {
+            console.error("User slack integration dm channel id not found");
+            return;
+        }
+
+        sendMessage(result.finalOutput as string, slackIntegration.access_token, userSlackIntegration.dm_channel_id);
+        
+        console.log(chalk.green("Message sent to slack"));
     }
 }
 
