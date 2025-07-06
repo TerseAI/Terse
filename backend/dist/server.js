@@ -7,7 +7,7 @@ import cors from 'cors';
 import { authMiddleware, githubAppAuthMiddleware, githubCallback, githubLogin, login, logout } from './routes/auth.js';
 import { AgentSocketServer, requestSessionSocketToken } from './agent/socket.js';
 import { getInstallationUrl, githubAppInstallationCallback, githubAppInstallationDeleted, githubAppRecievedPush } from './routes/githubApp.js';
-import { getLinearApiKey, setLinearApiKey } from './routes/linear.js';
+import { getLinearApiKey, indexLinearTicket, setLinearApiKey } from './routes/linear.js';
 const app = express();
 const server = createServer(app);
 // WebSocket handler, keep in memory as long as the server is running!!
@@ -66,6 +66,7 @@ app.post('/webhooks/linear/:userId', async (req, res) => {
     switch (event.type) {
         case 'Issue':
             console.log("Issue", event);
+            await indexLinearTicket(userId, event);
             break;
         case 'Comment':
             console.log("Comment", event);
