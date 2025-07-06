@@ -4,10 +4,10 @@ import cookieParser from 'cookie-parser';
 import 'dotenv/config';
 import { createServer } from "http";
 import cors from 'cors';
-import { authMiddleware, githubAppAuthMiddleware, githubCallback, githubLogin, login, logout } from './routes/auth.js';
-import { AgentSocketServer, requestSessionSocketToken } from './agent/socket.js';
-import { getInstallationUrl, githubAppInstallationCallback, githubAppInstallationDeleted, githubAppRecievedPush } from './routes/githubApp.js';
-import { getLinearApiKey, indexLinearTicket, setLinearApiKey } from './routes/linear.js';
+import { authMiddleware, githubAppAuthMiddleware, githubCallback, githubLogin, login, logout } from './routes/auth';
+import { AgentSocketServer, requestSessionSocketToken } from './agent/socket';
+import { getInstallationUrl, githubAppInstallationCallback, githubAppInstallationDeleted, githubAppRecievedPush } from './routes/githubApp';
+import { getLinearApiKey, indexLinearTicket, setLinearApiKey } from './routes/linear';
 const app = express();
 const server = createServer(app);
 // WebSocket handler, keep in memory as long as the server is running!!
@@ -59,13 +59,11 @@ app.get('/linear/get-api-key', authMiddleware, async (req, res) => {
     getLinearApiKey(req, res);
 });
 app.post('/webhooks/linear/:userId', async (req, res) => {
-    console.log("Linear webhook received", req.body, req.params);
     const { userId } = req.params;
     const event = req.body;
     // Update your search index based on the event
     switch (event.type) {
         case 'Issue':
-            console.log("Issue", event);
             await indexLinearTicket(userId, event);
             break;
         case 'Comment':

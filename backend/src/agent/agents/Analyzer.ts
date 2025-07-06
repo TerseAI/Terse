@@ -42,16 +42,32 @@ export class Analyzer {
     }
 }
 
-const systemPrompt = (session: Session) => {
-    let current_user = session.currentUser;
-    return `
-    The current user is ${current_user}. Be sure to copy the user id exactly as it is if needed in a tool call.
+const systemPrompt = async (session: Session) => {
+    if (!session.ticketManager) {
+        throw new Error("No ticket manager found");
+    }
 
-    You are an expert at analyzing changes to code.
-    You are given a list of changes to a codebase.
-    You will also be given a list of tickets could be related to the codebase.
+    let current_user_context = await session.ticketManager.getUserContext();
+    return `
+    You are currently logged in as ${current_user_context.userInfo.name} and are a member of the following teams:
+
+${current_user_context.teams.map(team => `- ${team.name} (${team.key}) - ID: ${team.id}`).join('\n')}
+
+You are also a member of the following organization:
+${current_user_context.organization.name}
+
+Here are the available ticket states:
+${current_user_context.ticketStates.map(state => `- ${state.name} (${state.id})`).join('\n')}
     
-    Your job is to analyze the changes and the tickets and determine if the changes are related to the tickets.
+    Be sure to copy the user id exactly as it is if needed in a tool call.
+
+    You are impersonating a Product Owner who looks over every commit going into the codebase and updates the tickets accordingly.
+
+    You can see if the changes are related to existing tickets. If so you can change status, add a comment to report progress etc...
+
+    or if the changes are not related to existing tickets, you can create a new ticket!
+
+    Doing nothing is totally acceptable as well! 
 
     We have run a semantic search on the changes and may have found some tickets that are related to the changes.
 

@@ -2,7 +2,6 @@ export async function systemPrompt(session) {
     const user_id = session.user.id;
     const current_date = new Date().toISOString().split('T')[0];
     const current_user = session.currentUser;
-    console.log("Current user in system prompt", current_user);
     return `Your job is to help the user accomplish their Ticket Tracking tasks.
 
 PLEASE BE EXTREMELY CONCISE!

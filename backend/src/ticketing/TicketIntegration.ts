@@ -1,13 +1,10 @@
-import { Ticket, TicketSystemType, CreateTicketInput, UpdateTicketInput, User } from "../shared/TicketSystem";
+import { Ticket, TicketSystemType, CreateTicketInput, UpdateTicketInput, User, UserContext } from "../shared/TicketSystem";
 import { SearchItem } from "../search/SearchItem";
 import { Team } from "../shared/TicketSystem";
 
-// export interface TicketWebhookHandler {
-//     (ticket: Ticket): void | Promise<void>;
-// }
-
 export interface TicketManager {
     type: TicketSystemType;
+    getUserContext(): Promise<UserContext>;
     findTicket(id: string): Promise<Ticket>;
     structuredSearch(query: string, options?: StructuredSearchOptions): Promise<Ticket[]>;
     createTicket(input: CreateTicketInput): Promise<Ticket>;
