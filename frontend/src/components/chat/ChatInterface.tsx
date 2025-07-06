@@ -49,82 +49,77 @@ function ChatInterfaceContent({ onSnippetSelect }: ChatInterfaceContentProps) {
         onSnippetSelect(handleSnippetSelect);
     }, [handleSnippetSelect, onSnippetSelect]);
 
-    // Connection status indicator
-    const getConnectionStatus = () => {
-        // This will be handled by ChatProvider
-        return (
-            <div className="relative">
-                <div className="w-2 h-2 bg-green-400 rounded-full"></div>
-                <div className="absolute inset-0 w-2 h-2 bg-green-400 rounded-full animate-ping opacity-75"></div>
-            </div>
-        );
-    };
-
-    // Header component for ChatLayout
-    const header = (
-        <div className="flex justify-between items-center">
-            <div className="flex items-center gap-2">
-                <h2 className="font-semibold text-white">Chat</h2>
-                <div className="flex items-center">
-                    {getConnectionStatus()}
-                </div>
-            </div>
-            <div className="text-xs text-gray-400 pr-8">
-                Use ↑↓ to navigate snippets
-            </div>
-        </div>
-    );
-
     return (
         <div className="h-full bg-white">
-                <ChatProvider
-                    connectionType={ConnectionType.MainChat}
-                    onToolCall={(req, addCustomSnippet) => {
-                        if (clientBoundTools.find(tool => tool.id === req.summary)) {
-                            const { items } = clientBoundTools.find(tool => tool.id === req.summary)?.parseParameters(req.parameters) as ShowTypeToUserParameters;
-                            let item: ItemToDisplay[] = formatChangedItems(items.map(item => ({ type_name: item.type as EntityType, id: item.id })));
-                            addCustomSnippet(req.step_id, <TurnView role="assistant" text="" function_calls={[]} items={item} step_id={req.step_id} />);
-                            return;
-                        }
-                    }}
-                >
-                    {({ turns, isPendingAssistantResponse, messagesEndRef, input, setInput, sendMessage, customInput }) => {
-                        const isChatEmpty = turns.length === 0;
+            <ChatProvider
+                connectionType={ConnectionType.MainChat}
+                onToolCall={(req, addCustomSnippet) => {
+                    if (clientBoundTools.find(tool => tool.id === req.summary)) {
+                        const { items } = clientBoundTools.find(tool => tool.id === req.summary)?.parseParameters(req.parameters) as ShowTypeToUserParameters;
+                        let item: ItemToDisplay[] = formatChangedItems(items.map(item => ({ type_name: item.type as EntityType, id: item.id })));
+                        addCustomSnippet(req.step_id, <TurnView role="assistant" text="" function_calls={[]} items={item} step_id={req.step_id} />);
+                        return;
+                    }
+                }}
+            >
+                {({ turns, isPendingAssistantResponse, messagesEndRef, input, setInput, sendMessage, customInput, isConnected }) => {
+                    const isChatEmpty = turns.length === 0;
 
-                        // Empty state content
-                        const emptyStateContent = isChatEmpty ? (
-                            <div className="grid grid-rows-1 h-full place-items-center justify-center animate-slide-in animate-fade-in">
-                                <div className="grid grid-rows-1 place-items-center justify-center gap-2">
-                                    <div className="text-gray-900 space-y-4 max-w-lg text-center">
-                                        <h3 className="text-xl font-semibold mb-4">You can ask me to do anything</h3>
-                                        <div className="text-gray-600 space-y-2 text-left bg-gray-50 rounded-lg p-4 shadow-sm border border-gray-200">
-                                            {suggestionsList.map((suggestion, index) => (
-                                                <p key={index} className="cursor-pointer hover:text-gray-900 transition-colors" onClick={() => sendMessage(suggestion)}>"{suggestion}"</p>
-                                            ))}
-                                        </div>
+                    // Connection status indicator
+                    const getConnectionStatus = () => (
+                        <div className="flex items-center gap-2">
+                            <span className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-400'}`}></span>
+                            <span className={`text-xs font-medium ${isConnected ? 'text-green-600' : 'text-red-500'}`}>{isConnected ? 'Connected' : 'Disconnected'}</span>
+                        </div>
+                    );
+
+                    // Header component for ChatLayout
+                    const header = (
+                        <div className="flex justify-between items-center">
+                            <div className="flex items-center gap-2">
+                                <h2 className="font-semibold text-gray-900">Chat</h2>
+                                {getConnectionStatus()}
+                            </div>
+                            <div className="text-xs text-gray-400 pr-8">
+                                Use ↑↓ to navigate snippets
+                            </div>
+                        </div>
+                    );
+
+                    // Empty state content
+                    const emptyStateContent = isChatEmpty ? (
+                        <div className="grid grid-rows-1 h-full place-items-center justify-center animate-slide-in animate-fade-in">
+                            <div className="grid grid-rows-1 place-items-center justify-center gap-2">
+                                <div className="text-gray-900 space-y-4 max-w-lg text-center">
+                                    <h3 className="text-xl font-semibold mb-4">You can ask me to do anything</h3>
+                                    <div className="text-gray-600 space-y-2 text-left bg-gray-50 rounded-lg p-4 shadow-sm border border-gray-200">
+                                        {suggestionsList.map((suggestion, index) => (
+                                            <p key={index} className="cursor-pointer hover:text-gray-900 transition-colors" onClick={() => sendMessage(suggestion)}>"{suggestion}"</p>
+                                        ))}
                                     </div>
                                 </div>
                             </div>
-                        ) : null;
+                        </div>
+                    ) : null;
 
-                        return (
-                            <ChatLayout
-                                turns={turns}
-                                isPendingAssistantResponse={isPendingAssistantResponse}
-                                messagesEndRef={messagesEndRef}
-                                onSendMessage={sendMessage}
-                                input={input}
-                                setInput={setInput}
-                                placeholders={["Type what you want to do..."]}
-                                className=""
-                                header={header}
-                                customInput={customInput}
-                            >
-                                {emptyStateContent}
-                            </ChatLayout>
-                        );
-                    }}
-                </ChatProvider>
+                    return (
+                        <ChatLayout
+                            turns={turns}
+                            isPendingAssistantResponse={isPendingAssistantResponse}
+                            messagesEndRef={messagesEndRef}
+                            onSendMessage={sendMessage}
+                            input={input}
+                            setInput={setInput}
+                            placeholders={["Type what you want to do..."]}
+                            className=""
+                            header={header}
+                            customInput={customInput}
+                        >
+                            {emptyStateContent}
+                        </ChatLayout>
+                    );
+                }}
+            </ChatProvider>
         </div>
     );
 }
