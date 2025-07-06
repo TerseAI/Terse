@@ -31,9 +31,24 @@ interface BackendService {
     terminateSession(): Promise<void>;
 
     /**
+     * Gets the current GitHub integration
+     */
+    getCurrentGithubIntegration(): Promise<{ repositoryName: string }>;
+
+    /**
      * Requests a GitHub app installation URL
      */
     requestGitHubAppInstallationUrl(): Promise<{ installationUrl: string }>;
+
+    /**
+     * Gets the current Slack integration
+     */
+    getCurrentSlackIntegration(): Promise<{ teamName: string }>;
+
+    /**
+     * Requests a Slack OAuth URL
+     */
+    requestSlackOAuthUrl(): Promise<{ url: string }>;
 
     /**
      * Gets the Linear API key
@@ -116,11 +131,38 @@ export const BackendProvider: BackendService = {
             });
     },
 
+    getCurrentGithubIntegration: () => {
+        return axios.get(`${backendBaseUrl}/github/get-current-integration`, { withCredentials: true })
+            .then(response => response.data)
+            .catch(error => {
+                console.error('Error getting current GitHub integration:', error);
+                throw error;
+            });
+    },
+
     requestGitHubAppInstallationUrl: () => {
         return axios.get(`${backendBaseUrl}/github/installation-url`, { withCredentials: true })
             .then(response => response.data)
             .catch(error => {
                 console.error('Error requesting GitHub app installation URL:', error);
+                throw error;
+            });
+    },
+
+    getCurrentSlackIntegration: () => {
+        return axios.get(`${backendBaseUrl}/slack/get-current-integration`, { withCredentials: true })
+            .then(response => response.data)
+            .catch(error => {
+                console.error('Error getting current Slack integration:', error);
+                throw error;
+            });
+    },
+
+    requestSlackOAuthUrl: () => {
+        return axios.get(`${backendBaseUrl}/slack/get-oauth-url`, { withCredentials: true })
+            .then(response => response.data)
+            .catch(error => {
+                console.error('Error requesting Slack OAuth URL:', error);
                 throw error;
             });
     },
