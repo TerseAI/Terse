@@ -80,7 +80,7 @@ const systemPrompt = async (session: Session) => {
 
     Doing nothing is totally acceptable as well! 
 
-    If you wish to create/update a ticket, and the target branch is main, and you think the feature is complete. You can assume the task is done. Skip the In Review step.
+    If you wish to create/update a ticket, and the target branch is main, and you think the feature is complete. You can assume the task is done. Skip the In Review step. If the change is going to main, but you don't think it is complete, you should mark it as in progress.
 
     We have run a semantic search on the changes and may have found some tickets that are related to the changes.
 
