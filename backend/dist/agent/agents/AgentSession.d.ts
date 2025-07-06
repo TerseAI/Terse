@@ -1,7 +1,7 @@
-import { ChangedItem, SendModelRequest } from "../../shared/ModelEvents";
-import { EntityType } from "../../shared/Entities";
+import { ChangedItem, SendModelRequest } from "../../shared/ModelEvents.js";
+import { EntityType } from "../../shared/Entities.js";
 import { Agent, AgentInputItem, AgentOutputType, StreamedRunResult } from "@openai/agents";
-import { Session } from "../../server";
+import { Session } from "../../server.js";
 export interface IAgentSession<T extends Session> {
     agent?: Agent<T, AgentOutputType>;
     push(message: SendModelRequest): Promise<void>;
