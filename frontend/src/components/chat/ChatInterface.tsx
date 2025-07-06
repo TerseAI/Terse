@@ -2,7 +2,6 @@ import { useRef, useEffect, useCallback } from 'react';
 import { ConnectionType } from './useCompletionSocket';
 import { ItemToDisplay } from './Turn';
 import { Types } from '../../utility/Types';
-import AwaitingResponseAnimation from './AwaitingResponseAnimation';
 import { clientBoundTools, ShowTypeToUserParameters } from '../../shared/ClientBoundTools';
 import { SnippetNavigationProvider } from '../../context/SnippetNavigationContext';
 import { EntityType } from '../../shared/Entities';
