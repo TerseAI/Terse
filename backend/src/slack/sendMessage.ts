@@ -12,14 +12,26 @@ async function replyMessage(message: string, session: Session) {
     }
 
     /// fetch the slack integration
-    const slackIntegration = await db().slack_integrations.findFirst({
+    const userSlackRelation = await db().user_slack_integrations.findFirst({
         where: {
             user_id: session.user.id
         }
     });
 
-    if (!slackIntegration) {
-        throw new Error("Slack integration not found");
+    if (!userSlackRelation) {
+        throw new Error("User slack relation not found");
+    }
+
+    const dmChannelId = userSlackRelation.dm_channel_id;
+
+    const slackIntegration = await db().slack_integrations.findFirst({
+        where: {
+            app_id: userSlackRelation.slack_team_id
+        }
+    });
+
+    if (!slackIntegration || !dmChannelId) {
+        throw new Error("Slack integration not found or dm channel id not found");
     }
 
     const client = new WebClient(slackIntegration.access_token, {
@@ -28,16 +40,12 @@ async function replyMessage(message: string, session: Session) {
     });
 
     try {
-        // Call the chat.postMessage method using the built-in WebClient
-        // TODO: We need to open a chat once the user integrates with slack. And then store that thread_ts to use here
-        // const result = await client.chat.postMessage({
-        //     // The token you used to initialize your app
-        //     token: slackIntegration.access_token,
-        //     text: message,
-        // });
+        const result = await client.chat.postMessage({
+            channel: dmChannelId,
+            text: message
+        });
 
-        // Print result
-        // console.log(result);
+        console.log(result);
     }
     catch (error) {
         console.error(error);
