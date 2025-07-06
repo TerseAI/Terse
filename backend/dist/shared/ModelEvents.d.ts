@@ -1,4 +1,4 @@
-import { EntityType } from "./Entities.js";
+import { EntityType } from "./Entities";
 export type ChangedItem = {
     type_name: EntityType;
     id: string;

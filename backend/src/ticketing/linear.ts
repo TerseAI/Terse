@@ -3,7 +3,7 @@ import { CreateTicketInput, Ticket, TicketSystemType, TicketWebhookHandler, Upda
 import { Issue, IssuePayload, LinearClient, User as LinearUser } from "@linear/sdk";
 import chalk from "chalk";
 import { StructuredSearchOptions, TicketManager } from "./TicketIntegration";
-import { Team, User } from "../shared/TicketSystem";
+import { Team, User, UserContext, Organization } from "../shared/TicketSystem";
 import { IssueFilter, IssuesQueryVariables } from "@linear/sdk/dist/_generated_documents";
 import crypto from 'crypto';
 
@@ -14,6 +14,49 @@ export class LinearAdapter implements TicketManager {
 
     constructor(apiKey: string) {
         this.client = new LinearClient({ apiKey });
+    }
+
+    async getUserContext(): Promise<UserContext> {
+        const viewer = await this.client.viewer;
+        const organization = await this.client.organization;
+        const teams = await viewer.teams();
+
+        const user: User = {
+            id: viewer.id,
+            name: viewer.name,
+            email: viewer.email,
+        };
+
+        const teamsList: Team[] = teams.nodes.map((team) => ({
+            id: team.id,
+            name: team.name,
+            key: team.key,
+        }));
+
+        const projects = await this.client.projects();
+
+        const org: Organization = {
+            name: organization.name,
+            createdAt: organization.createdAt.toISOString(),
+            createdIssueCount: organization.createdIssueCount,
+            userCount: organization.userCount,
+            projects: projects.nodes.map((project) => ({
+                id: project.id,
+                name: project.name,
+            })),
+        };
+
+        const ticketStates = await this.client.workflowStates();
+
+        return {
+            userInfo: user,
+            teams: teamsList,
+            organization: org,
+            ticketStates: ticketStates.nodes.map((state) => ({
+                id: state.id,
+                name: state.name,
+            })),
+        };
     }
 
     async configureWebhook(): Promise<{ webhookId: string, webhookSecret: string } | null> {
@@ -281,6 +324,7 @@ export class LinearAdapter implements TicketManager {
                 title: input.title,
                 description: input.description,
                 teamId: input.teamId,
+                stateId: input.state.id,
             });
         } catch (error) {
             console.error('Failed to create issue', error);
@@ -302,6 +346,8 @@ export class LinearAdapter implements TicketManager {
         const issuePayload: IssuePayload = await this.client.updateIssue(id, {
             title: input.title,
             description: input.description,
+            stateId: input.state,
+            assigneeId: input.assigneeId,
         });
 
         let updatedIssue = await issuePayload.issue;

@@ -201,10 +201,7 @@ const updateTicketTool = tool({
         id: z.string().describe('The ID of the ticket'),
         title: z.string().describe('The title of the ticket'),
         description: z.union([z.string(), z.null()]).describe('The description of the ticket'),
-        state: z.object({
-            id: z.string().describe('The state ID of the ticket'),
-            name: z.string().describe('The state name of the ticket')
-        }).describe('The state of the ticket'),
+        state: z.string().describe('The state of the issue. This is just an ID from the user context. The name is not important.'),
         assignee: z.union([z.object({
             id: z.string().describe('The assignee ID'),
             name: z.string().describe('The assignee name')
@@ -238,6 +235,8 @@ const updateTicketTool = tool({
 
         let ticketManager = runContext.context.ticketManager;
 
+        console.log("Updating state to", state);
+
         let ticket = await ticketManager.updateTicket(id, {
             title,
             description: description || undefined,
@@ -251,7 +250,7 @@ const updateTicketTool = tool({
             team: team || undefined,
         });
 
-        console.log('Ticket Tool: Created ticket');
+        console.log('Ticket Tool: Updated ticket');
 
         return ticket;
     }
