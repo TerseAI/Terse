@@ -1,40 +1,9 @@
 import { LogLevel, WebClient } from "@slack/web-api";
-import { Session } from "../server";
-import { db } from "src/prismaClient";
+import chalk from "chalk";
 
-
-// WebClient instantiates a client that can call API methods
-// When using Bolt, you can use either `app.client` or the `client` passed to listeners.
-
-async function replyMessage(message: string, session: Session) {
-    if (!session.user) {
-        throw new Error("User not found");
-    }
-
-    /// fetch the slack integration
-    const userSlackRelation = await db().user_slack_integrations.findFirst({
-        where: {
-            user_id: session.user.id
-        }
-    });
-
-    if (!userSlackRelation) {
-        throw new Error("User slack relation not found");
-    }
-
-    const dmChannelId = userSlackRelation.dm_channel_id;
-
-    const slackIntegration = await db().slack_integrations.findFirst({
-        where: {
-            app_id: userSlackRelation.slack_team_id
-        }
-    });
-
-    if (!slackIntegration || !dmChannelId) {
-        throw new Error("Slack integration not found or dm channel id not found");
-    }
-
-    const client = new WebClient(slackIntegration.access_token, {
+export async function sendMessage(message: string, accessToken: string, dmChannelId: string) {
+    console.log(chalk.blue("Sending message to channel: ", dmChannelId));
+    const client = new WebClient(accessToken, {
         // LogLevel can be imported and used to make debugging simpler
         logLevel: LogLevel.DEBUG
     });
