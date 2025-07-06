@@ -4,6 +4,7 @@ import { Jwt } from "../utility/jwt.js";
 import { AgentSession } from "./agents/Agent.js";
 import { toEventStream } from "./streaming.js";
 import chalk from "chalk";
+import { getUserTicketManager } from "src/types/user";
 export class AgentSocketServer {
     wss;
     pending = new WeakMap();
@@ -113,8 +114,20 @@ export class AgentSocketServer {
             console.error(chalk.red.bold('❌ Invalid token. Unable to authenticate user.'));
             return null;
         }
+        const ticketManager = await getUserTicketManager(user.id);
+        if (!ticketManager) {
+            console.error(chalk.red.bold('❌ Unable to get ticket manager. Unable to authenticate user.'));
+            return null;
+        }
+        const teams = await ticketManager.getTeams();
+        // HACK: Force the first team to be the default team
+        const teamId = teams[0].id;
         return {
             user: user,
+            isUserInitiated: true,
+            ticketManager: ticketManager,
+            teamId: teamId,
+            currentUser: await ticketManager.me() || undefined,
         };
     }
 }

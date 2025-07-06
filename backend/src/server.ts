@@ -1,16 +1,25 @@
-import express from 'express';
+import express, { Request, Response } from 'express';
 import bodyParser from 'body-parser';
 import cookieParser from 'cookie-parser';
 import 'dotenv/config';
 import { createServer } from "http";
 import cors from 'cors';
 import { User } from './types/prisma';
+import { User as TicketUser } from './shared/TicketSystem';
 import { authMiddleware, githubAppAuthMiddleware, githubCallback, githubLogin, login, logout } from './routes/auth';
 import { AgentSocketServer, requestSessionSocketToken } from './agent/socket';
-import { getInstallationUrl, githubAppInstallationCallback, githubAppInstallationDeleted } from './routes/githubApp';
+import { getInstallationUrl, githubAppInstallationCallback, githubAppInstallationDeleted, githubAppRecievedPush } from './routes/githubApp';
+import { getLinearApiKey, indexLinearTicket, setLinearApiKey } from './routes/linear';
+import { TicketManager } from './ticketing/TicketIntegration';
+import { LinearWebhookPayload } from './utility/LinearWebhookPayload';
+
 
 export type Session = {
     user: User;
+    ticketManager?: TicketManager;
+    isUserInitiated: boolean; // true if the user has initiated the session, false if the session was initiated by the system
+    teamId?: string;
+    currentUser?: TicketUser;
 }
 
 const app = express();
@@ -68,6 +77,40 @@ app.post('/github/installation-callback', githubAppAuthMiddleware, async (req, r
 app.post('/github/installation-deleted', githubAppAuthMiddleware, async (req, res) => {
     githubAppInstallationDeleted(req, res);
 })
+
+app.post('/github/push-event', githubAppAuthMiddleware, async (req, res) => {
+    githubAppRecievedPush(req, res);
+})
+
+// MARK: LINEAR
+
+app.post('/linear/set-api-key', authMiddleware, async (req, res) => {
+    setLinearApiKey(req, res);
+})
+
+app.get('/linear/get-api-key', authMiddleware, async (req, res) => {
+    getLinearApiKey(req, res);
+})
+
+app.post('/webhooks/linear/:userId', async (req, res) => {
+    const { userId } = req.params;
+    const event: LinearWebhookPayload = req.body;
+
+    // Update your search index based on the event
+    switch (event.type) {
+        case 'Issue':
+            await indexLinearTicket(userId, event);
+            break;
+        case 'Comment':
+            console.log("Comment", event);
+            break;
+        case 'Project':
+            console.log("Project", event);
+            break;
+    }
+
+    res.json({ received: true });
+});
 
 server.listen(3001, () => {
     console.log('🚀 Express backend running on http://localhost:3001');
