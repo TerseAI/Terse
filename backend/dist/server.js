@@ -9,6 +9,7 @@ import { AgentSocketServer, requestSessionSocketToken } from './agent/socket.js'
 import { getCurrentGithubIntegration, getInstallationUrl, githubAppInstallationCallback, githubAppInstallationDeleted, githubAppRecievedPush } from './routes/githubApp.js';
 import { getLinearApiKey, indexLinearTicket, setLinearApiKey } from './routes/linear.js';
 import { getCurrentSlackIntegration, getSlackOAuthUrl, slackOAuthCallback } from './slack/registerApp.js';
+import { handleSlackEvent } from './slack/eventHandler.js';
 const app = express();
 const server = createServer(app);
 // WebSocket handler, keep in memory as long as the server is running!!
@@ -88,6 +89,9 @@ app.get('/slack/get-oauth-url', authMiddleware, async (req, res) => {
 });
 app.get('/slack/oauth-callback', async (req, res) => {
     slackOAuthCallback(req, res);
+});
+app.post('/slack/events', async (req, res) => {
+    await handleSlackEvent(req, res);
 });
 server.listen(3001, () => {
     console.log('🚀 Express backend running on http://localhost:3001');
