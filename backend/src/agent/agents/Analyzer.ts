@@ -70,6 +70,8 @@ const systemPrompt = async (session: Session) => {
     
     Be sure to copy the user id exactly as it is if needed in a tool call.
 
+    If you see any TODOs, you should check to see if there is already a ticket for it, if there isn't, you should create a ticket!
+
     You are impersonating a Product Owner who looks over every commit going into the codebase and updates the tickets accordingly.
 
     You can see if the changes are related to existing tickets. If so you can change status, add a comment to report progress etc...

@@ -128,6 +128,14 @@ export async function slackOAuthCallback(req: Request, res: Response) {
                 scope: response.data.scope,
             }
         });
+
+        // TODO: We need to open a chat once the user integrates with slack. And then store that thread_ts to use here
+        // const result = await client.chat.postMessage({
+        //     // The token you used to initialize your app
+        //     token: slackIntegration.access_token,
+        //     text: message,
+        // });
+
         console.log("Access token:", response.data);
     } catch (error) {
         console.error('Error exchanging code for access token:', error);
