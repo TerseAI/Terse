@@ -6,8 +6,9 @@ import { createServer } from "http";
 import cors from 'cors';
 import { authMiddleware, githubAppAuthMiddleware, githubCallback, githubLogin, login, logout } from './routes/auth.js';
 import { AgentSocketServer, requestSessionSocketToken } from './agent/socket.js';
-import { getInstallationUrl, githubAppInstallationCallback, githubAppInstallationDeleted, githubAppRecievedPush } from './routes/githubApp.js';
+import { getCurrentGithubIntegration, getInstallationUrl, githubAppInstallationCallback, githubAppInstallationDeleted, githubAppRecievedPush } from './routes/githubApp.js';
 import { getLinearApiKey, indexLinearTicket, setLinearApiKey } from './routes/linear.js';
+import { getCurrentSlackIntegration, getSlackOAuthUrl, slackOAuthCallback } from './slack/registerApp.js';
 const app = express();
 const server = createServer(app);
 // WebSocket handler, keep in memory as long as the server is running!!
@@ -39,7 +40,10 @@ app.get('/session/token', authMiddleware, async (req, res) => {
     requestSessionSocketToken(req, res);
 });
 // MARK: GITHUB APP
-app.get('/github/installation-url', async (req, res) => {
+app.get('/github/get-current-integration', authMiddleware, async (req, res) => {
+    getCurrentGithubIntegration(req, res);
+});
+app.get('/github/installation-url', authMiddleware, async (req, res) => {
     getInstallationUrl(req, res);
 });
 app.post('/github/installation-callback', githubAppAuthMiddleware, async (req, res) => {
@@ -74,6 +78,16 @@ app.post('/webhooks/linear/:userId', async (req, res) => {
             break;
     }
     res.json({ received: true });
+});
+// MARK: SLACK
+app.get('/slack/get-current-integration', authMiddleware, async (req, res) => {
+    getCurrentSlackIntegration(req, res);
+});
+app.get('/slack/get-oauth-url', authMiddleware, async (req, res) => {
+    getSlackOAuthUrl(req, res);
+});
+app.get('/slack/oauth-callback', async (req, res) => {
+    slackOAuthCallback(req, res);
 });
 server.listen(3001, () => {
     console.log('🚀 Express backend running on http://localhost:3001');

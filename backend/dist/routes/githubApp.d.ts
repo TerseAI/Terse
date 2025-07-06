@@ -1,4 +1,5 @@
 import { Request, Response } from "express";
+export declare function getCurrentGithubIntegration(req: Request, res: Response): Promise<void>;
 export declare function getInstallationUrl(req: Request, res: Response): Promise<void>;
 export declare function githubAppInstallationCallback(req: Request, res: Response): Promise<void>;
 export declare function githubAppInstallationDeleted(req: Request, res: Response): Promise<void>;
