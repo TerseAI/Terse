@@ -36,8 +36,6 @@ class Owner {
 
         // Run the analyzer
         const result = await analyzer.run();
-
-        console.log(chalk.blue('Analyzer result'), result);
     }
 }
 
