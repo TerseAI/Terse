@@ -21,6 +21,7 @@ interface ChatProviderProps {
         setInput: (input: string) => void;
         sendMessage: (message: string) => void;
         customInput?: ReactNode;
+        isConnected: boolean;
     }) => ReactNode;
 }
 
@@ -169,7 +170,8 @@ export function ChatProvider({
                 input,
                 setInput,
                 sendMessage,
-                customInput
+                customInput,
+                isConnected: connection.isConnected
             })}
         </>
     );
