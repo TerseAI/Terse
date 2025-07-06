@@ -8,10 +8,11 @@ import { User } from './types/prisma';
 import { User as TicketUser } from './shared/TicketSystem';
 import { authMiddleware, githubAppAuthMiddleware, githubCallback, githubLogin, login, logout } from './routes/auth';
 import { AgentSocketServer, requestSessionSocketToken } from './agent/socket';
-import { getInstallationUrl, githubAppInstallationCallback, githubAppInstallationDeleted, githubAppRecievedPush } from './routes/githubApp';
+import { getCurrentGithubIntegration, getInstallationUrl, githubAppInstallationCallback, githubAppInstallationDeleted, githubAppRecievedPush } from './routes/githubApp';
 import { getLinearApiKey, indexLinearTicket, setLinearApiKey } from './routes/linear';
 import { TicketManager } from './ticketing/TicketIntegration';
 import { LinearWebhookPayload } from './utility/LinearWebhookPayload';
+import { getCurrentSlackIntegration, getSlackOAuthUrl, slackOAuthCallback } from './slack/registerApp';
 
 
 export type Session = {
@@ -66,7 +67,11 @@ app.get('/session/token', authMiddleware, async (req, res) => {
 
 // MARK: GITHUB APP
 
-app.get('/github/installation-url', async (req, res) => {
+app.get('/github/get-current-integration', authMiddleware, async (req, res) => {
+    getCurrentGithubIntegration(req, res);
+})
+
+app.get('/github/installation-url', authMiddleware, async (req, res) => {
     getInstallationUrl(req, res);
 })
 
@@ -111,6 +116,20 @@ app.post('/webhooks/linear/:userId', async (req, res) => {
 
     res.json({ received: true });
 });
+
+// MARK: SLACK
+
+app.get('/slack/get-current-integration', authMiddleware, async (req, res) => {
+    getCurrentSlackIntegration(req, res);
+})
+
+app.get('/slack/get-oauth-url', authMiddleware, async (req, res) => {
+    getSlackOAuthUrl(req, res);
+})
+
+app.get('/slack/oauth-callback', async (req, res) => {
+    slackOAuthCallback(req, res);
+})
 
 server.listen(3001, () => {
     console.log('🚀 Express backend running on http://localhost:3001');
