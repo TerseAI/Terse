@@ -270,7 +270,6 @@ export class LinearAdapter implements TicketManager {
                 first: options?.limit || 50, // Default limit of 50
                 includeArchived: options?.includeArchived || false,
             }
-            console.log('Searching for issues with params', JSON.stringify(params, null, 2));
             issues = await this.client.issues(params);
         } catch (error) {
             console.error('Failed to search issues', error);
