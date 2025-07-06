@@ -29,14 +29,15 @@ async function replyMessage(message: string, session: Session) {
 
     try {
         // Call the chat.postMessage method using the built-in WebClient
-        const result = await client.chat.postMessage({
-            // The token you used to initialize your app
-            token: slackIntegration.access_token,
-            text: message,
-        });
+        // TODO: We need to open a chat once the user integrates with slack. And then store that thread_ts to use here
+        // const result = await client.chat.postMessage({
+        //     // The token you used to initialize your app
+        //     token: slackIntegration.access_token,
+        //     text: message,
+        // });
 
         // Print result
-        console.log(result);
+        // console.log(result);
     }
     catch (error) {
         console.error(error);
