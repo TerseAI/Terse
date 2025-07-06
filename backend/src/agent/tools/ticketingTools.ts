@@ -64,7 +64,7 @@ const searchTicketTool = tool({
             stateIds: stateIds || undefined,
             priority: priority || undefined,
             labels: labels || undefined,
-            projects: projects || undefined,
+            // projects: projects || undefined,
             dueDateRange: dueDateRange ? {
                 from: dueDateRange.from ? new Date(dueDateRange.from) : undefined,
                 to: dueDateRange.to ? new Date(dueDateRange.to) : undefined
