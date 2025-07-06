@@ -37,7 +37,6 @@ export class Analyzer {
             context: this.session,
         });
 
-        console.log(chalk.blue('Analyzer result'), result.finalOutput);
         return result;
     }
 }
