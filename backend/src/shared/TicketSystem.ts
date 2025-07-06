@@ -44,6 +44,31 @@ export interface User {
     email: string;
 }
 
+export interface UserContext {
+    userInfo: User;
+    teams: Team[];
+    organization: Organization;
+    ticketStates: TicketState[];
+}
+
+export interface TicketState {
+    id: string;
+    name: string;
+}
+
+export interface Organization {
+    name: string;
+    createdAt: string;
+    createdIssueCount: number;
+    userCount: number;
+    projects: Project[];
+}
+
+export type Project = {
+    id: string;
+    name: string;
+}
+
 export interface Comment {
     id: string;
     authorId: string;
