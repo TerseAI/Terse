@@ -1,8 +1,8 @@
 import { Agent, AgentInputItem, StreamedRunResult, AgentOutputType, Tool } from '@openai/agents';
-import { Session } from '../../server';
-import { SendModelRequest, ChangedItem } from "../../shared/ModelEvents";
-import { IAgentSession } from './AgentSession';
-import { EntityType } from '../../shared/Entities';
+import { Session } from '../../server.js';
+import { SendModelRequest, ChangedItem } from "../../shared/ModelEvents.js";
+import { IAgentSession } from './AgentSession.js';
+import { EntityType } from '../../shared/Entities.js';
 export type SessionWithTracking = Session & {
     trackChange: (type: EntityType, id: string | number) => void;
 };
