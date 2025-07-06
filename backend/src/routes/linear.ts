@@ -64,6 +64,18 @@ export const getLinearApiKey = async (req: Request, res: Response) => {
         return res.status(404).json({ error: 'Linear API key not found' });
     }
 
+    // check if the key is valid
+    const isValid = await LinearAdapter.validateKey(linearApiKey.api_key);
+    if (!isValid) {
+        console.log(chalk.red('Invalid Linear API key. Removing key for database along with webhook'));
+        await db().linear_api_keys.delete({
+            where: {
+                user_id: user.id
+            }
+        });
+        return res.status(400).json({ error: 'Invalid Linear API key. Removing key for database along with webhook' });
+    }
+
     res.status(200).json({ apiKey: linearApiKey.api_key });
 }
 

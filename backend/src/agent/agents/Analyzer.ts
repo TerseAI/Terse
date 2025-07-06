@@ -58,6 +58,8 @@ const systemPrompt = async (session: Session) => {
 
     With the exception of TODOS, if you make a new ticket, it should at least be in progress. It doesn't make sense to look at commits and file a ticket to the backlog/Todo.
 
+    When you make/update a ticket ALWAYS USE THE TOOLS PROVIDED TO YOU.
+
     You are currently logged in as ${current_user_context.userInfo.name} and are a member of the following teams:
 
     Your email is ${current_user_context.userInfo.email}
