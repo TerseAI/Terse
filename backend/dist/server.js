@@ -6,7 +6,8 @@ import { createServer } from "http";
 import cors from 'cors';
 import { authMiddleware, githubAppAuthMiddleware, githubCallback, githubLogin, login, logout } from './routes/auth.js';
 import { AgentSocketServer, requestSessionSocketToken } from './agent/socket.js';
-import { getInstallationUrl, githubAppInstallationCallback, githubAppInstallationDeleted } from './routes/githubApp.js';
+import { getInstallationUrl, githubAppInstallationCallback, githubAppInstallationDeleted, githubAppRecievedPush } from './routes/githubApp.js';
+import { getLinearApiKey, indexLinearTicket, setLinearApiKey } from './routes/linear.js';
 const app = express();
 const server = createServer(app);
 // WebSocket handler, keep in memory as long as the server is running!!
@@ -46,6 +47,33 @@ app.post('/github/installation-callback', githubAppAuthMiddleware, async (req, r
 });
 app.post('/github/installation-deleted', githubAppAuthMiddleware, async (req, res) => {
     githubAppInstallationDeleted(req, res);
+});
+app.post('/github/push-event', githubAppAuthMiddleware, async (req, res) => {
+    githubAppRecievedPush(req, res);
+});
+// MARK: LINEAR
+app.post('/linear/set-api-key', authMiddleware, async (req, res) => {
+    setLinearApiKey(req, res);
+});
+app.get('/linear/get-api-key', authMiddleware, async (req, res) => {
+    getLinearApiKey(req, res);
+});
+app.post('/webhooks/linear/:userId', async (req, res) => {
+    const { userId } = req.params;
+    const event = req.body;
+    // Update your search index based on the event
+    switch (event.type) {
+        case 'Issue':
+            await indexLinearTicket(userId, event);
+            break;
+        case 'Comment':
+            console.log("Comment", event);
+            break;
+        case 'Project':
+            console.log("Project", event);
+            break;
+    }
+    res.json({ received: true });
 });
 server.listen(3001, () => {
     console.log('🚀 Express backend running on http://localhost:3001');

@@ -5,6 +5,7 @@ import axios from "axios";
 import crypto from "crypto";
 import { Session } from "../server";
 import chalk from "chalk";
+import { db } from "../prismaClient";
 
 const COOKIE_NAME = 'AUTH_JWT';
 const GITHUB_STATE_COOKIE = 'GITHUB_OAUTH_STATE';
@@ -31,6 +32,7 @@ export const authMiddleware = async (req: Request, res: Response, next: NextFunc
         // Create session object
         const session: Session = {
             user: user,
+            isUserInitiated: true,
         };
 
         req.session = session;
