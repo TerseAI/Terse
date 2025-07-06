@@ -156,7 +156,7 @@ export class AgentSocketServer {
             user: user,
             isUserInitiated: true,
             ticketManager: ticketManager,
-            teamId: teamId,
+            // teamId: teamId,
             currentUser: await ticketManager.me() || undefined,
         };
     }

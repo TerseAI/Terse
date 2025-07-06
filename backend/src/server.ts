@@ -13,7 +13,8 @@ import { getLinearApiKey, indexLinearTicket, setLinearApiKey } from './routes/li
 import { TicketManager } from './ticketing/TicketIntegration';
 import { LinearWebhookPayload } from './utility/LinearWebhookPayload';
 import { getCurrentSlackIntegration, getSlackOAuthUrl, slackOAuthCallback } from './slack/registerApp';
-
+import { handleSlackEvent } from './slack/eventHandler';
+import chalk from 'chalk';
 
 export type Session = {
     user: User;
@@ -130,6 +131,10 @@ app.get('/slack/get-oauth-url', authMiddleware, async (req, res) => {
 app.get('/slack/oauth-callback', async (req, res) => {
     slackOAuthCallback(req, res);
 })
+
+app.post('/slack/events', async (req, res) => {
+    await handleSlackEvent(req, res);
+});
 
 server.listen(3001, () => {
     console.log('🚀 Express backend running on http://localhost:3001');
