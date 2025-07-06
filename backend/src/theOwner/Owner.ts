@@ -24,7 +24,7 @@ class Owner {
         const searchResults = await this.searchSystem.search(pushEventToString(event), {
             teamId: this.session.teamId || '',
             entityTypes: ['ticket'],
-            minSimilarity: 0.2,
+            minSimilarity: 0.4,
             filters: [],
             limit: 10
         });
@@ -70,7 +70,9 @@ export const pushEventToString = (event: PushEvent) => {
 
     ${event.commits.map(commit => `
     commit: ${commit.name}
-    fileDiffs: ${commit.fileDiffs.map(diff => diff.filename).join(', ')}
+    Changed Files: ${commit.fileDiffs.map(diff => diff.filename).join(', ')}
+    diffs: ${commit.fileDiffs.map(diff => diff.diff).join('\n')}
+    }
     `).join('\n')}
 
     Possibly Related Tickets:
