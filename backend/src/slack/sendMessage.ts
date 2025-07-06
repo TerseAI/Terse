@@ -14,7 +14,10 @@ export async function sendMessage(message: string, accessToken: string, dmChanne
             text: message
         });
 
-        console.log(result);
+        console.log(chalk.green('✅ Message sent successfully!'));
+        console.log(chalk.cyan('📨 Channel:'), chalk.white(dmChannelId));
+        console.log(chalk.cyan('🕐 Timestamp:'), chalk.white(result.ts));
+        console.log(chalk.cyan('💬 Message:'), chalk.white(message.substring(0, 100) + (message.length > 100 ? '...' : '')));
     }
     catch (error) {
         console.error(error);
