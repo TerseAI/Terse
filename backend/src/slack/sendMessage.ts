@@ -33,8 +33,6 @@ async function replyMessage(message: string, session: Session) {
             // The token you used to initialize your app
             token: slackIntegration.access_token,
             text: message,
-            channel: slackIntegration.team_id,
-            // You could also use a blocks[] array to send richer content
         });
 
         // Print result

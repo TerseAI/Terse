@@ -5,6 +5,24 @@ import { LinearAdapter } from "src/ticketing/linear";
 import { search } from "src/searchClient";
 const GITHUB_APP_CLIENT_ID = process.env.GITHUB_CLIENT_ID;
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+export async function getCurrentGithubIntegration(req, res) {
+    if (!req.session?.user) {
+        res.status(500).json({ message: 'User not found' });
+        return;
+    }
+    const user = req.session.user;
+    const user_github_relation = await db().user_github_repositories.findFirst({ where: { user_id: user.id } });
+    if (!user_github_relation) {
+        res.status(404).json({ message: 'No GitHub integration found' });
+        return;
+    }
+    const repository = await db().github_repositories.findUnique({ where: { id: user_github_relation.github_repository_id } });
+    if (!repository) {
+        res.status(404).json({ message: 'No GitHub repository found' });
+        return;
+    }
+    res.status(200).json({ repositoryName: repository.name });
+}
 // Get GitHub App installation URL
 export async function getInstallationUrl(req, res) {
     try {
