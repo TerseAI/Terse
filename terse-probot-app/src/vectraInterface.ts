@@ -14,7 +14,7 @@ export type FileDiff = {
 interface VectraInterface {
     githubAppInstallationCallback(name: string, email: string, username: string, installationId: number, repositoryName: string): Promise<void>;
     githubAppInstallationDeleted(username: string, installationId: number): Promise<void>;
-    githubPushEvent(username: string, installationId: number, repositoryName: string, branch: string, commits: Commit[]): Promise<void>;
+    githubPushEvent(username: string, installationId: number, repositoryName: string, branch: string, ref: string, commits: Commit[]): Promise<void>;
 }
 
 export const VectraInterface: VectraInterface = {
@@ -54,13 +54,14 @@ export const VectraInterface: VectraInterface = {
         });
     },
 
-    async githubPushEvent(username: string, installationId: number, repositoryName: string, branch: string, commits: Commit[]): Promise<void> {
+    async githubPushEvent(username: string, installationId: number, repositoryName: string, branch: string, ref: string, commits: Commit[]): Promise<void> {
         const token = await new Jwt().sign(username);
         return axios.post(`${backendBaseUrl}/github/push-event`, {
             username,
             installationId,
             repositoryName,
             branch,
+            ref,
             commits
         }, { 
             headers: {
