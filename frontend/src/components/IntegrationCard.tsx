@@ -18,7 +18,6 @@ export function IntegrationCard({
     isConnected,
     isLoading = false,
     connectionInfo,
-    onConnect,
     onDisconnect,
     connectButton,
     icon
