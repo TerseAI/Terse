@@ -77,7 +77,7 @@ function ChatInterfaceContent({ onSnippetSelect }: ChatInterfaceContentProps) {
     );
 
     return (
-        <div className="h-screen bg-[rgb(8,9,10)]/90 transition-[width] transition-all duration-300 ease-in-out backdrop-blur-sm ${className || ''} relative">
+        <div className="h-full bg-white">
                 <ChatProvider
                     connectionType={ConnectionType.MainChat}
                     onToolCall={(req, addCustomSnippet) => {
@@ -96,11 +96,11 @@ function ChatInterfaceContent({ onSnippetSelect }: ChatInterfaceContentProps) {
                         const emptyStateContent = isChatEmpty ? (
                             <div className="grid grid-rows-1 h-full place-items-center justify-center animate-slide-in animate-fade-in">
                                 <div className="grid grid-rows-1 place-items-center justify-center gap-2">
-                                    <div className="text-[#F1F1F1] space-y-4 max-w-lg text-center">
+                                    <div className="text-gray-900 space-y-4 max-w-lg text-center">
                                         <h3 className="text-xl font-semibold mb-4">You can ask me to do anything</h3>
-                                        <div className="text-[#F1F1F1]/60 space-y-2 text-left bg-white/10 rounded-lg p-4 shadow-lg">
+                                        <div className="text-gray-600 space-y-2 text-left bg-gray-50 rounded-lg p-4 shadow-sm border border-gray-200">
                                             {suggestionsList.map((suggestion, index) => (
-                                                <p key={index} className="cursor-pointer hover:text-[#F1F1F1]/80" onClick={() => sendMessage(suggestion)}>"{suggestion}"</p>
+                                                <p key={index} className="cursor-pointer hover:text-gray-900 transition-colors" onClick={() => sendMessage(suggestion)}>"{suggestion}"</p>
                                             ))}
                                         </div>
                                     </div>
@@ -122,7 +122,6 @@ function ChatInterfaceContent({ onSnippetSelect }: ChatInterfaceContentProps) {
                                 customInput={customInput}
                             >
                                 {emptyStateContent}
-                                {isPendingAssistantResponse && <AwaitingResponseAnimation />}
                             </ChatLayout>
                         );
                     }}

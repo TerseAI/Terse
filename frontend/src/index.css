@@ -6,8 +6,8 @@ body {
     /* overflow-y: auto; */
     overflow-x: hidden;
     margin: 0;
-    background-color: rgb(8, 9, 10);
-    color: white;
+    background-color: #fafafa;
+    color: #111827;
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
         'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
         sans-serif;
@@ -20,13 +20,13 @@ body {
 }
 
 @theme {
-    --gradient-bg-start: rgb(0, 0, 0);
-    --gradient-bg-middle: rgb(17, 17, 17);
-    --gradient-bg-end: rgb(0, 0, 0);
+    --gradient-bg-start: rgb(255, 255, 255);
+    --gradient-bg-middle: rgb(249, 250, 251);
+    --gradient-bg-end: rgb(255, 255, 255);
 
-    --gradient-accent-start: rgb(255, 255, 255);
-    --gradient-accent-middle: rgb(200, 200, 200);
-    --gradient-accent-end: rgb(255, 255, 255);
+    --gradient-accent-start: rgb(59, 130, 246);
+    --gradient-accent-middle: rgb(37, 99, 235);
+    --gradient-accent-end: rgb(59, 130, 246);
 }
 
 @theme {
@@ -169,11 +169,11 @@ body {
     animation: shimmer 1s ease-in-out infinite;
     background: linear-gradient(
         90deg,
-        rgba(0, 0, 0, 0.4) 0%,
-        rgba(17, 17, 17, 0.6) 25%,
-        rgba(255, 255, 255, 0.8) 50%,
-        rgba(17, 17, 17, 0.6) 75%,
-        rgba(0, 0, 0, 0.4) 100%
+        rgba(255, 255, 255, 0.4) 0%,
+        rgba(249, 250, 251, 0.6) 25%,
+        rgba(59, 130, 246, 0.8) 50%,
+        rgba(249, 250, 251, 0.6) 75%,
+        rgba(255, 255, 255, 0.4) 100%
     );
     background-size: 200% 100%;
     background-position: 0% 0%;

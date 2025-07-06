@@ -94,7 +94,7 @@ function TokenStream({ text }: { text: string }) {
     // Show formatted version
     if (showFormatted && finalText) {
         return (
-            <div className="text-[#F1F1F1] text-md leading-relaxed whitespace-pre-wrap text-wrap-pretty">
+            <div className="text-gray-900 text-md leading-relaxed whitespace-pre-wrap text-wrap-pretty">
                 {processMarkdown(finalText)}
             </div>
         );
@@ -102,7 +102,7 @@ function TokenStream({ text }: { text: string }) {
 
     // Show streaming tokens
     return (
-        <div className="text-[#F1F1F1] text-md leading-relaxed whitespace-pre-wrap text-wrap-pretty">
+        <div className="text-gray-900 text-md leading-relaxed whitespace-pre-wrap text-wrap-pretty">
             {tokens.map((token) => (
                 <span
                     key={token.id}

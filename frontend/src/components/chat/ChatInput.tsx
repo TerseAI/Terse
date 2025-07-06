@@ -67,8 +67,8 @@ function ChatInput({ sendMessage, input, setInput, placeholders }: { sendMessage
     };
 
     return (
-        <div className="p-4">
-            <div className="grid grid-cols-[1fr_auto] gap-2">
+        <div className="flex space-x-3">
+            <div className="flex-1">
                 <GlowingTextField
                     isLoading={false}
                     onInputChange={(e) => setInput(e.target.value)}
@@ -80,10 +80,14 @@ function ChatInput({ sendMessage, input, setInput, placeholders }: { sendMessage
                     autoFocus={true}
                     focusOverride={focusOverride}
                 />
-                <button className="px-4 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:ring-offset-gray-900" onClick={() => sanitizeAndSendMessage(input)}>
-                    Send
-                </button>
             </div>
+            <button 
+                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed" 
+                onClick={() => sanitizeAndSendMessage(input)}
+                disabled={!input.trim()}
+            >
+                Send
+            </button>
         </div>
     );
 }
