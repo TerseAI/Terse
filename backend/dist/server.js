@@ -4,11 +4,11 @@ import cookieParser from 'cookie-parser';
 import 'dotenv/config';
 import { createServer } from "http";
 import cors from 'cors';
-import { authMiddleware, githubAppAuthMiddleware, githubCallback, githubLogin, login, logout } from './routes/auth';
-import { AgentSocketServer, requestSessionSocketToken } from './agent/socket';
-import { getCurrentGithubIntegration, getInstallationUrl, githubAppInstallationCallback, githubAppInstallationDeleted, githubAppRecievedPush } from './routes/githubApp';
-import { getLinearApiKey, indexLinearTicket, setLinearApiKey } from './routes/linear';
-import { getCurrentSlackIntegration, getSlackOAuthUrl, slackOAuthCallback } from './slack/registerApp';
+import { authMiddleware, githubAppAuthMiddleware, githubCallback, githubLogin, login, logout } from './routes/auth.js';
+import { AgentSocketServer, requestSessionSocketToken } from './agent/socket.js';
+import { getCurrentGithubIntegration, getInstallationUrl, githubAppInstallationCallback, githubAppInstallationDeleted, githubAppRecievedPush } from './routes/githubApp.js';
+import { getLinearApiKey, indexLinearTicket, setLinearApiKey } from './routes/linear.js';
+import { getCurrentSlackIntegration, getSlackOAuthUrl, slackOAuthCallback } from './slack/registerApp.js';
 const app = express();
 const server = createServer(app);
 // WebSocket handler, keep in memory as long as the server is running!!

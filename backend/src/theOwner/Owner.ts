@@ -83,7 +83,6 @@ export const pushEventToString = (event: PushEvent): string[] => {
         branch: ${event.branch}
         commit: ${commit.name}
         Changed Files: ${commit.fileDiffs.map(diff => diff.filename).join(', ')}
-        diffs: ${commit.fileDiffs.map(diff => diff.diff).join('\n')}
         `;
     });
 

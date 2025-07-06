@@ -1,5 +1,5 @@
-import { Jwt } from "../utility/jwt";
-import { login as loginUser, findUserByEmail, createUser, updateUserGitHubUsername, findUserByGitHubUsername } from "../types/user";
+import { Jwt } from "../utility/jwt.js";
+import { login as loginUser, findUserByEmail, createUser, updateUserGitHubUsername, findUserByGitHubUsername } from "../types/user.js";
 import axios from "axios";
 import crypto from "crypto";
 import chalk from "chalk";
