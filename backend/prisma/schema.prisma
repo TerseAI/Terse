@@ -26,6 +26,7 @@ model users {
   user_github_repositories user_github_repositories[]
   linear_api_keys          linear_api_keys[]
   user_slack_integrations  user_slack_integrations[]
+  jira_api_keys            jira_api_keys[]
 }
 
 model github_repositories {
@@ -98,4 +99,16 @@ model slack_integrations {
   user_slack_integrations user_slack_integrations[]
 
   @@unique([app_id])
+}
+
+model jira_api_keys {
+  id              String   @id @default(cuid())
+  user_id         String   @unique
+  jira_user_email String
+  base_url        String
+  api_token       String   @unique
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
+
+  user users @relation(fields: [user_id], references: [id])
 }

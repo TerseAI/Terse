@@ -61,6 +61,26 @@ interface BackendService {
     setLinearApiKey(apiKey: string): Promise<void>;
 
     /**
+     * Deletes the Linear API key
+     */
+    deleteLinearApiKey(): Promise<void>;
+
+    /**
+     * Gets the Jira API key
+     */
+    getJiraApiKey(): Promise<{ apiKey: string, baseUrl: string, email: string }>;
+
+    /**
+     * Sets the Jira API key
+     */
+    setJiraApiKey(email: string, baseUrl: string, apiKey: string): Promise<void>;
+
+    /**
+     * Deletes the Jira API key
+     */
+    deleteJiraApiKey(): Promise<void>;
+
+    /**
      * Requests a session socket token
      */
     requestSessionSocketToken(): Promise<string>;
@@ -181,6 +201,42 @@ export const BackendProvider: BackendService = {
             .then(response => response.data)
             .catch(error => {
                 console.error('Error setting Linear API key:', error);
+                throw error;
+            });
+    },
+
+    deleteLinearApiKey: () => {
+        return axios.delete(`${backendBaseUrl}/linear/delete-credentials`, { withCredentials: true })
+            .then(response => response.data)
+            .catch(error => {
+                console.error('Error deleting Linear API key:', error);
+                throw error;
+            });
+    },
+
+    getJiraApiKey: () => {
+        return axios.get(`${backendBaseUrl}/jira/get-api-key`, { withCredentials: true })
+            .then(response => response.data)
+            .catch(error => {
+                console.error('Error getting Jira API key:', error);
+                throw error;
+            });
+    },
+
+    setJiraApiKey: (email: string, baseUrl: string, apiKey: string) => {
+        return axios.post(`${backendBaseUrl}/jira/set-api-key`, { email, baseUrl, apiKey }, { withCredentials: true })
+            .then(response => response.data)
+            .catch(error => {
+                console.error('Error setting Jira API key:', error);
+                throw error;
+            });
+    },
+
+    deleteJiraApiKey: () => {
+        return axios.delete(`${backendBaseUrl}/jira/delete-credentials`, { withCredentials: true })
+            .then(response => response.data)
+            .catch(error => {
+                console.error('Error deleting Jira API key:', error);
                 throw error;
             });
     },
