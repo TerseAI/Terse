@@ -1,6 +1,5 @@
 import { Probot } from "probot";
 import { VectraInterface, Commit, FileDiff } from "./vectraInterface.js";
-import { EmitterWebhookEvent } from "@octokit/webhooks";
 
 export default (app: Probot) => {
   console.log("Probot app starting up...");
@@ -9,13 +8,13 @@ export default (app: Probot) => {
     console.log("🔔 Event received:", context.name);
   });
 
-  app.on("issues.opened", async (context) => {
-    console.log("📝 Issue opened:", context.payload.issue?.title);
-    const issueComment = context.issue({
-      body: "Thanks for opening this issue!",
-    });
-    await context.octokit.issues.createComment(issueComment);
-  });
+  // app.on("issues.opened", async (context) => {
+  //   console.log("📝 Issue opened:", context.payload.issue?.title);
+  //   const issueComment = context.issue({
+  //     body: "Thanks for opening this issue!",
+  //   });
+  //   await context.octokit.issues.createComment(issueComment);
+  // });
 
   app.on("push", async (context) => {
     const { payload } = context;
