@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
 import { BackendProvider } from "../services/backend";
 import { IntegrationCard } from "./IntegrationCard";
+import { Integration, useIntegrations } from "../context/Integrations";
 
 export function AddToSlack() {
+    const { addIntegration, removeIntegration } = useIntegrations();
     const [teamName, setTeamName] = useState<string | null>(null);
     const [slackOAuthUrl, setSlackOAuthUrl] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(true);
@@ -16,6 +18,7 @@ export function AddToSlack() {
         .then(([integrationResult, oauthResult]) => {
             setTeamName(integrationResult.teamName);
             setSlackOAuthUrl(oauthResult.url);
+            addIntegration(Integration.SLACK);
         })
         .catch((error) => {
             console.error('Error fetching Slack integration:', error);

@@ -9,8 +9,10 @@ export const setJiraCredentials = async (req: Request, res: Response) => {
         return res.status(401).json({ error: 'Unauthorized' });
     }
 
-    const { baseUrl, email, apiToken } = req.body;
-    const valid = await JiraAdapter.validateCredentials(baseUrl, email, apiToken);
+    const { baseUrl, apiKey } = req.body;
+    console.log(req.body);
+    console.log("Attempting to set Jira credentials", baseUrl, user.email, apiKey);
+    const valid = await JiraAdapter.validateCredentials(baseUrl, user.email, apiKey);
     if (!valid) {
         return res.status(400).json({ error: 'Invalid Jira credentials' });
     }
@@ -18,9 +20,9 @@ export const setJiraCredentials = async (req: Request, res: Response) => {
     await db().jira_api_keys.create({
         data: {
             user_id: user.id,
-            jira_user_email: email,
+            jira_user_email: user.email,
             base_url: baseUrl,
-            api_token: apiToken
+            api_token: apiKey
         }
     });
 

@@ -9,6 +9,7 @@ import { ChangedItem } from '../../shared/ModelEvents';
 import { ChatLayout } from './ChatLayout';
 import { ChatProvider } from './ChatProvider';
 import { TurnView } from './Turn';
+import { Integration, useIntegrations } from '../../context/Integrations';
 
 interface ChatInterfaceContentProps {
     onSnippetSelect: (handler: (snippet: any) => void) => void;
@@ -126,6 +127,20 @@ function ChatInterfaceContent({ onSnippetSelect }: ChatInterfaceContentProps) {
 
 export function ChatInterface() {
     const snippetSelectHandlerRef = useRef<((snippet: any) => void) | null>(null);
+    const { integrations } = useIntegrations();
+
+    if (!integrations.includes(Integration.LINEAR) && !integrations.includes(Integration.JIRA)) {
+        return (
+            <div className="h-full bg-white flex items-center justify-center">
+                <div className="text-center max-w-md mx-auto px-6">
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">No Integrations Found</h3>
+                    <p className="text-gray-500 mb-4">
+                        You need to connect either Linear or Jira to use the chat feature.
+                    </p>
+                </div>
+            </div>
+        )
+    }
 
     return (
         <SnippetNavigationProvider onSnippetSelect={(snippet) => {

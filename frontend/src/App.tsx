@@ -4,6 +4,7 @@ import { AuthProvider, useAuth } from "./services/auth";
 import Spin from "./components/Spin";
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Home from "./pages/Home";
+import { IntegrationProvider } from "./context/Integrations";
 
 function App() {
   return (
@@ -31,6 +32,7 @@ function Content() {
 
   return (
     <>
+    <IntegrationProvider>
       <AnimatePresence mode="wait">
         {user != null ? (
           <div key="main">
@@ -40,6 +42,7 @@ function Content() {
           <Login key="login" />
         )}
       </AnimatePresence>
+      </IntegrationProvider>
     </>
   );
 }
