@@ -1,8 +1,9 @@
 import { db } from "src/prismaClient";
-import { LinearApiKey, User } from "./prisma";
+import { LinearApiKey, JiraApiKey, User } from "./prisma";
 import chalk from "chalk";
 import { TicketManager } from "src/ticketing/TicketIntegration";
 import { LinearAdapter } from "src/ticketing/linear";
+import { JiraAdapter } from "src/ticketing/jira";
 
 export async function login(email: string, password: string): Promise<User | null> {
     try {
@@ -104,22 +105,24 @@ export async function getUserTicketManager(userId: string): Promise<TicketManage
         return null;
     }
 
-    // check if they have a linear api key
+    // Try Linear first
     const linearApiKey: LinearApiKey | null = await db().linear_api_keys.findUnique({ where: { user_id: user.id } });
-    if (!linearApiKey) {
-        console.error(chalk.red.bold('❌ User does not have a linear api key. Unable to authenticate user.'));
-        return null;
+    if (linearApiKey) {
+        const linearApiKeyValid: boolean = await LinearAdapter.validateKey(linearApiKey.api_key);
+        if (linearApiKeyValid) {
+            return new LinearAdapter(linearApiKey.api_key);
+        }
     }
 
-    // check if the linear api key is valid
-    const linearApiKeyValid: boolean = await LinearAdapter.validateKey(linearApiKey.api_key);
-    if (!linearApiKeyValid) {
-        console.error(chalk.red.bold('❌ Linear api key is invalid. Unable to authenticate user.'));
-        return null;
+    // Fallback to Jira
+    const jiraApiKey: JiraApiKey | null = await db().jira_api_keys.findUnique({ where: { user_id: user.id } });
+    if (jiraApiKey) {
+        const valid = await JiraAdapter.validateCredentials(jiraApiKey.base_url, jiraApiKey.jira_user_email, jiraApiKey.api_token);
+        if (valid) {
+            return new JiraAdapter({ baseUrl: jiraApiKey.base_url, email: jiraApiKey.jira_user_email, apiToken: jiraApiKey.api_token });
+        }
     }
 
-    // TODO: Support JIRA
-
-    // initialize the linear adapter
-    return new LinearAdapter(linearApiKey.api_key);
+    console.error(chalk.red.bold('❌ No valid ticketing credentials found for user.'));
+    return null;
 }

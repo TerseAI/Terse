@@ -52,3 +52,14 @@ This service bridges the gap between issue tracking platforms and version contro
 
 Transform your development process with intelligent automation and comprehensive insights!
 
+## 🔧 New Jira Integration
+
+The backend now includes a `JiraAdapter` that implements the shared `TicketManager` interface. Configure your Jira credentials via:
+
+```
+POST /jira/set-credentials
+GET  /jira/get-credentials
+```
+
+Once configured, the service can read and update Jira tickets similarly to the existing Linear integration.
+
