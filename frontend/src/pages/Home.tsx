@@ -4,6 +4,7 @@ import { AddToSlack } from "../components/AddToSlack";
 import { AddGithub } from "../components/AddGithub";
 import { AddLinear } from "../components/AddLinear";
 import { AddJira } from "../components/AddJira";
+import { Integration, IntegrationProvider, useIntegrations } from "../context/Integrations";
 
 function Home() {
     const { user, logout } = useAuth();
@@ -29,12 +30,12 @@ function Home() {
                 </div>
 
                 {/* Integrations Section */}
+
                 <div className="flex-1 p-6 space-y-6">
                     <div>
                         <h2 className="text-sm font-medium text-gray-900 mb-4">Integrations</h2>
                         <div className="space-y-4">
-                            <AddLinear />
-                            <AddJira />
+                            <TicketIntegration />
                             <AddGithub />
                             <AddToSlack />
                         </div>
@@ -48,6 +49,33 @@ function Home() {
             </div>
         </div>
     )
+}
+
+function TicketIntegration() {
+    const { integrations } = useIntegrations();
+    const hasLinear = integrations.includes(Integration.LINEAR);
+    const hasJira = integrations.includes(Integration.JIRA);
+
+    if (!hasLinear && !hasJira) {
+        return (
+            <>
+                <AddLinear />
+                <p>or</p>
+                <AddJira />
+            </>
+        )
+    }
+
+    else if (hasLinear) {
+        return (
+            <AddLinear />
+        )
+    }
+    else {
+        return (
+            <AddJira />
+        )
+    }
 }
 
 export default Home;

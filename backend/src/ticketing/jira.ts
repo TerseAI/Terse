@@ -2,6 +2,7 @@ import JiraClient from 'jira-client';
 import { SearchItem } from '../search/SearchItem';
 import { CreateTicketInput, Ticket, TicketSystemType, UpdateTicketInput, User, UserContext, Team } from '../shared/TicketSystem';
 import { StructuredSearchOptions, TicketManager } from './TicketIntegration';
+import chalk from 'chalk';
 
 export class JiraAdapter implements TicketManager {
     type: TicketSystemType = TicketSystemType.Jira;
@@ -30,6 +31,7 @@ export class JiraAdapter implements TicketManager {
             await client.getCurrentUser();
             return true;
         } catch {
+            console.error(chalk.red("Invalid Jira credentials"), chalk.yellow(baseUrl), chalk.yellow(email), chalk.yellow(apiToken));
             return false;
         }
     }

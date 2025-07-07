@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
 import { BackendProvider } from "../services/backend";
 import { IntegrationCard } from "./IntegrationCard";
+import { Integration, useIntegrations } from "../context/Integrations";
 
 export function AddLinear() {
+    const { addIntegration, removeIntegration } = useIntegrations();
     const [linearApiKey, setLinearApiKey] = useState<string | null>(null);
     const [input, setInput] = useState<string>('');
     const [error, setError] = useState<string | null>(null);
@@ -13,6 +15,7 @@ export function AddLinear() {
         BackendProvider.getLinearApiKey()
             .then(({ apiKey }) => {
                 setLinearApiKey(apiKey);
+                addIntegration(Integration.LINEAR);
             })
             .catch((error) => {
                 console.error('Error fetching Linear API key:', error);

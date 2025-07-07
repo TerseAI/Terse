@@ -1,10 +1,13 @@
 import { useEffect, useState } from "react";
 import { BackendProvider } from "../services/backend";
 import { IntegrationCard } from "./IntegrationCard";
+import { Integration, useIntegrations } from "../context/Integrations";
 
 export function AddJira() {
+    const { addIntegration, removeIntegration } = useIntegrations();
     const [jiraApiKey, setJiraApiKey] = useState<string | null>(null);
     const [input, setInput] = useState<string>('');
+    const [baseUrl, setBaseUrl] = useState<string>('');
     const [error, setError] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [isInitialLoading, setIsInitialLoading] = useState(true);
@@ -13,6 +16,7 @@ export function AddJira() {
         BackendProvider.getJiraApiKey()
             .then(({ apiKey }) => {
                 setJiraApiKey(apiKey);
+                addIntegration(Integration.JIRA);
             })
             .catch((error) => {
                 console.error('Error fetching Linear API key:', error);
@@ -27,8 +31,9 @@ export function AddJira() {
         setIsLoading(true);
         e.preventDefault();
         try {
-            await BackendProvider.setJiraApiKey(input);
+            await BackendProvider.setJiraApiKey(baseUrl, input);
             setJiraApiKey(input);
+            setBaseUrl(baseUrl);
             setInput('');
             setError(null);
         } catch (error) {
@@ -57,6 +62,13 @@ export function AddJira() {
                 placeholder="Enter your Jira API key" 
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
+                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
+            />
+            <input 
+                type="text" 
+                placeholder="Enter your Jira workspace URL" 
+                value={baseUrl}
+                onChange={(e) => setBaseUrl(e.target.value)}
                 className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
             />
             <button 
