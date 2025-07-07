@@ -1,4 +1,4 @@
-import { users, github_repositories, linear_api_keys, jira_api_keys, slack_integrations, user_slack_integrations, user_github_repositories } from '../generated/prisma';
+import { users, github_repositories, linear_api_keys, jira_api_keys, slack_integrations, user_slack_integrations, user_github_repositories } from '@prisma/client';
 
   
   // PascalCase aliases
