@@ -10,6 +10,7 @@ import { authMiddleware, githubAppAuthMiddleware, githubCallback, githubLogin, l
 import { AgentSocketServer, requestSessionSocketToken } from './agent/socket';
 import { getCurrentGithubIntegration, getInstallationUrl, githubAppInstallationCallback, githubAppInstallationDeleted, githubAppRecievedPush } from './routes/githubApp';
 import { getLinearApiKey, indexLinearTicket, setLinearApiKey } from './routes/linear';
+import { getJiraCredentials, setJiraCredentials } from './routes/jira';
 import { TicketManager } from './ticketing/TicketIntegration';
 import { LinearWebhookPayload } from './utility/LinearWebhookPayload';
 import { getCurrentSlackIntegration, getSlackOAuthUrl, slackOAuthCallback } from './slack/registerApp';
@@ -86,6 +87,16 @@ app.post('/github/installation-deleted', githubAppAuthMiddleware, async (req, re
 
 app.post('/github/push-event', githubAppAuthMiddleware, async (req, res) => {
     githubAppRecievedPush(req, res);
+})
+
+// MARK: LINEAR
+
+app.post('/jira/set-credentials', authMiddleware, async (req, res) => {
+    setJiraCredentials(req, res);
+})
+
+app.get('/jira/get-credentials', authMiddleware, async (req, res) => {
+    getJiraCredentials(req, res);
 })
 
 // MARK: LINEAR
