@@ -1,7 +1,7 @@
 {
   "compilerOptions": {
     "target": "ES2022",
-    "module": "commonjs",
+    "module": "ESNext",
     "outDir": "./dist",
     "rootDir": "./src",
     "esModuleInterop": true,
@@ -11,7 +11,7 @@
     "noImplicitReturns": false,
     "strict": false
   },
-  "include": ["src/**/*.ts"],
+  "include": ["**/*.ts"],
   "exclude": ["node_modules", "dist"]
 }
 
