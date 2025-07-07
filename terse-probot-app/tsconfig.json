@@ -4,6 +4,7 @@
     "module": "ESNext",
     "outDir": "./dist",
     "rootDir": "./src",
+    "moduleResolution": "bundler",
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
     "skipLibCheck": true,
@@ -11,7 +12,7 @@
     "noImplicitReturns": false,
     "strict": false
   },
-  "include": ["**/*.ts"],
+  "include": ["src/**/*.ts"],
   "exclude": ["node_modules", "dist"]
 }
 
