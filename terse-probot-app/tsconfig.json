@@ -1,11 +1,11 @@
 {
   "compilerOptions": {
     "incremental": true,
-    "target": "es2022",
-    "module": "Node16",
+    "target": "ES2022",
+    "module": "commonjs",
     "declaration": true,
     "sourceMap": true,
-    "outDir": "./lib",
+    "outDir": "./dist",
     "rootDir": "./src",
     "strict": true,
     "noUnusedLocals": true,
@@ -19,8 +19,8 @@
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,
     "declarationMap": true,
-    "moduleResolution": "Node16",
-    "types": []
+    "moduleResolution": "node",
+    "types": ["node"]
   },
   "include": ["src/**/*.ts"],
   "exclude": ["node_modules", "dist"]
