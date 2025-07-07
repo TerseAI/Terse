@@ -4,29 +4,30 @@ import { AddToSlack } from "../components/AddToSlack";
 import { AddGithub } from "../components/AddGithub";
 import { AddLinear } from "../components/AddLinear";
 import { AddJira } from "../components/AddJira";
-import { Integration, IntegrationProvider, useIntegrations } from "../context/Integrations";
+import { Integration, useIntegrations } from "../context/Integrations";
 
 function Home() {
     const { user, logout } = useAuth();
+    const { integrations } = useIntegrations();
+
+    const needsTicketingIntegration = !integrations.includes(Integration.LINEAR) && !integrations.includes(Integration.JIRA);
 
     return (
         <div className="flex h-screen bg-[#fafafa] text-gray-900">
             {/* Left Sidebar */}
             <div className="w-80 bg-white border-r border-gray-200 flex flex-col">
                 {/* Header */}
-                <div className="p-6 border-b border-gray-200">
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <h1 className="text-lg font-semibold text-gray-900">AI Product Owner</h1>
-                            <p className="text-sm text-gray-500 mt-1">Welcome back, {user?.display_name}</p>
-                        </div>
-                        <button
-                            onClick={logout}
-                            className="text-sm text-gray-500 hover:text-gray-700 transition-colors"
-                        >
-                            Sign out
-                        </button>
+                <div className="px-6 py-8 border-b border-gray-200 bg-white">
+                    <div className="mb-4">
+                        <h1 className="text-xl font-bold text-gray-900">Vectra AI</h1>
+                        <p className="text-sm text-gray-600 mt-1">Welcome back, {user?.display_name}</p>
                     </div>
+                    <button
+                        onClick={logout}
+                        className="w-full px-4 py-3 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors duration-200"
+                    >
+                        Sign out
+                    </button>
                 </div>
 
                 {/* Integrations Section */}
@@ -36,8 +37,12 @@ function Home() {
                         <h2 className="text-sm font-medium text-gray-900 mb-4">Integrations</h2>
                         <div className="space-y-4">
                             <TicketIntegration />
-                            <AddGithub />
-                            <AddToSlack />
+                            {!needsTicketingIntegration && (
+                                <>
+                                    <AddGithub />
+                                    <AddToSlack />
+                                </>
+                            )}
                         </div>
                     </div>
                 </div>

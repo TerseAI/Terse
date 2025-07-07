@@ -5,21 +5,30 @@ import { Integration, useIntegrations } from "../context/Integrations";
 
 export function AddJira() {
     const { addIntegration, removeIntegration } = useIntegrations();
-    const [jiraApiKey, setJiraApiKey] = useState<string | null>(null);
-    const [input, setInput] = useState<string>('');
+    const [key, setKey] = useState<string>('');
     const [baseUrl, setBaseUrl] = useState<string>('');
+    const [email, setEmail] = useState<string>('');
     const [error, setError] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [isInitialLoading, setIsInitialLoading] = useState(true);
 
     useEffect(() => {
         BackendProvider.getJiraApiKey()
-            .then(({ apiKey }) => {
-                setJiraApiKey(apiKey);
-                addIntegration(Integration.JIRA);
+            .then(({ apiKey, baseUrl, email }) => {
+                console.log("Jira API key:", apiKey, baseUrl, email);
+                setKey(apiKey ?? '');
+                setBaseUrl(baseUrl ?? '');
+                setEmail(email ?? '');
+                if (apiKey) {
+                    addIntegration(Integration.JIRA);
+                }
             })
             .catch((error) => {
                 console.error('Error fetching Linear API key:', error);
+                setKey('');
+                setBaseUrl('');
+                setEmail('');
+                removeIntegration(Integration.JIRA);
             })
             .finally(() => {
                 setIsInitialLoading(false);
@@ -31,23 +40,30 @@ export function AddJira() {
         setIsLoading(true);
         e.preventDefault();
         try {
-            await BackendProvider.setJiraApiKey(baseUrl, input);
-            setJiraApiKey(input);
-            setBaseUrl(baseUrl);
-            setInput('');
+            await BackendProvider.setJiraApiKey(email, baseUrl, key);
+            setKey(key ?? '');
+            setBaseUrl(baseUrl ?? '');
+            setEmail(email ?? '');
             setError(null);
         } catch (error) {
             console.error('Error setting Linear API key:', error);
-            setError('Invalid API Key');
+            setError('Invalid Jira credentials');
         } finally {
             setIsLoading(false);
         }
     }
 
     const handleDisconnect = () => {
-        setJiraApiKey(null);
-        setInput('');
-        setError(null);
+        BackendProvider.deleteJiraApiKey()
+            .then(() => {
+                removeIntegration(Integration.JIRA);
+                setKey('');
+                setBaseUrl('');
+                setEmail('');
+            })
+            .catch((error) => {
+                console.error('Error deleting Jira API key:', error);
+            });
     }
 
     const connectButton = (
@@ -60,8 +76,8 @@ export function AddJira() {
             <input 
                 type="text" 
                 placeholder="Enter your Jira API key" 
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
+                value={key}
+                onChange={(e) => setKey(e.target.value)}
                 className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
             />
             <input 
@@ -71,9 +87,16 @@ export function AddJira() {
                 onChange={(e) => setBaseUrl(e.target.value)}
                 className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
             />
+            <input 
+                type="text" 
+                placeholder="Enter your Jira email. Must match the email in your Jira account." 
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
+            />
             <button 
                 type="submit" 
-                disabled={isLoading || !input.trim()}
+                disabled={isLoading || !key.trim() || !baseUrl.trim() || !email.trim()}
                 className="w-full px-3 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
                 {isLoading ? 'Connecting...' : 'Connect Jira'}
@@ -85,9 +108,9 @@ export function AddJira() {
         <IntegrationCard
             title="Jira API Key"
             description="Connect your Jira workspace to manage tickets"
-            isConnected={!!jiraApiKey}
+            isConnected={!!key}
             isLoading={isInitialLoading}
-            connectionInfo={jiraApiKey ? "API Key configured" : undefined}
+            connectionInfo={key ? `API Key configured for ${email} on ${baseUrl}` : undefined}
             onDisconnect={handleDisconnect}
             connectButton={connectButton}
             icon={

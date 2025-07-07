@@ -34,6 +34,7 @@ export function AddLinear() {
             setLinearApiKey(input);
             setInput('');
             setError(null);
+            addIntegration(Integration.LINEAR);
         } catch (error) {
             console.error('Error setting Linear API key:', error);
             setError('Invalid API Key');
@@ -43,9 +44,16 @@ export function AddLinear() {
     }
 
     const handleDisconnect = () => {
-        setLinearApiKey(null);
-        setInput('');
-        setError(null);
+        BackendProvider.deleteLinearApiKey()
+            .then(() => {
+                removeIntegration(Integration.LINEAR);
+                setLinearApiKey(null);
+                setInput('');
+                setError(null);
+            })
+            .catch((error) => {
+                console.error('Error deleting Linear API key:', error);
+            });
     }
 
     const connectButton = (

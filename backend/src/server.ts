@@ -9,8 +9,8 @@ import { User as TicketUser } from './shared/TicketSystem';
 import { authMiddleware, githubAppAuthMiddleware, githubCallback, githubLogin, login, logout } from './routes/auth';
 import { AgentSocketServer, requestSessionSocketToken } from './agent/socket';
 import { getCurrentGithubIntegration, getInstallationUrl, githubAppInstallationCallback, githubAppInstallationDeleted, githubAppRecievedPush } from './routes/githubApp';
-import { getLinearApiKey, indexLinearTicket, setLinearApiKey } from './routes/linear';
-import { getJiraCredentials, setJiraCredentials } from './routes/jira';
+import { deleteLinearCredentials, getLinearApiKey, indexLinearTicket, setLinearApiKey } from './routes/linear';
+import { deleteJiraCredentials, getJiraCredentials, setJiraCredentials } from './routes/jira';
 import { TicketManager } from './ticketing/TicketIntegration';
 import { LinearWebhookPayload } from './utility/LinearWebhookPayload';
 import { getCurrentSlackIntegration, getSlackOAuthUrl, slackOAuthCallback } from './slack/registerApp';
@@ -99,6 +99,10 @@ app.get('/jira/get-api-key', authMiddleware, async (req, res) => {
     getJiraCredentials(req, res);
 })
 
+app.delete('/jira/delete-credentials', authMiddleware, async (req, res) => {
+    deleteJiraCredentials(req, res);
+})
+
 // MARK: LINEAR
 
 app.post('/linear/set-api-key', authMiddleware, async (req, res) => {
@@ -107,6 +111,10 @@ app.post('/linear/set-api-key', authMiddleware, async (req, res) => {
 
 app.get('/linear/get-api-key', authMiddleware, async (req, res) => {
     getLinearApiKey(req, res);
+})
+
+app.delete('/linear/delete-credentials', authMiddleware, async (req, res) => {
+    deleteLinearCredentials(req, res);
 })
 
 app.post('/webhooks/linear/:userId', async (req, res) => {
