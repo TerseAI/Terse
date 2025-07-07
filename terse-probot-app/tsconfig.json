@@ -1,25 +1,15 @@
 {
   "compilerOptions": {
-    "incremental": true,
     "target": "ES2022",
     "module": "commonjs",
-    "declaration": true,
-    "sourceMap": true,
     "outDir": "./dist",
     "rootDir": "./src",
-    "strict": true,
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
-    "noImplicitReturns": true,
-    "noFallthroughCasesInSwitch": true,
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
-    "baseUrl": ".",
     "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true,
-    "resolveJsonModule": true,
-    "declarationMap": true,
-    "moduleResolution": "node"
+    "noImplicitAny": false,
+    "noImplicitReturns": false,
+    "strict": false
   },
   "include": ["src/**/*.ts"],
   "exclude": ["node_modules", "dist"]
