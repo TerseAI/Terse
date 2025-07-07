@@ -4,7 +4,7 @@ import { IntegrationCard } from "./IntegrationCard";
 import { Integration, useIntegrations } from "../context/Integrations";
 
 export function AddGithub() {
-    const { addIntegration, removeIntegration } = useIntegrations();
+    const { addIntegration } = useIntegrations();
     const [repositoryName, setRepositoryName] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(true);
 
