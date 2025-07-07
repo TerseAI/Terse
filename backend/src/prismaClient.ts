@@ -1,5 +1,5 @@
-// import { PrismaClient } from '@prisma/client';
-import { PrismaClient } from './generated/prisma'
+import { PrismaClient } from '@prisma/client';
+// import { PrismaClient } from './generated/prisma'
 
 
 let prisma: PrismaClient | undefined;
