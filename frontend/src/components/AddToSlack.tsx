@@ -4,7 +4,7 @@ import { IntegrationCard } from "./IntegrationCard";
 import { Integration, useIntegrations } from "../context/Integrations";
 
 export function AddToSlack() {
-    const { addIntegration, removeIntegration } = useIntegrations();
+    const { addIntegration } = useIntegrations();
     const [teamName, setTeamName] = useState<string | null>(null);
     const [slackOAuthUrl, setSlackOAuthUrl] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(true);
