@@ -9,7 +9,7 @@ import type { Session } from "../server";
 import { ModelEvent, ModelRequest, SendModelRequest } from "../shared/ModelEvents";
 import chalk from "chalk";
 import { IAgentSession } from "./agents/AgentSession";
-import { getUserTicketManager } from "src/types/user";
+import { getUserTicketManager } from "../types/user";
 
 export class AgentSocketServer {
     private wss: WebSocketServer;

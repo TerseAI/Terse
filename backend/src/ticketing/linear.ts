@@ -1,4 +1,4 @@
-import { SearchItem } from "src/search/SearchItem";
+import { SearchItem } from "../search/SearchItem";
 import { CreateTicketInput, Ticket, TicketSystemType, TicketWebhookHandler, UpdateTicketInput } from "../shared/TicketSystem";
 import { Issue, IssuePayload, LinearClient, User as LinearUser } from "@linear/sdk";
 import chalk from "chalk";

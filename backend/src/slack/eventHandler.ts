@@ -1,7 +1,7 @@
 import chalk from 'chalk';
 import crypto from 'crypto';
 import { Request, Response } from 'express';
-import { db } from 'src/prismaClient';
+import { db } from '../prismaClient';
 
 export function isValidSlackSig(req: Request) {
     const ts = req.headers['x-slack-request-timestamp'];

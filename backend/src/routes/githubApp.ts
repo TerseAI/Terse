@@ -1,12 +1,12 @@
 import chalk from "chalk";
 import { Request, Response } from "express";
-import { db } from "src/prismaClient";
+import { db } from "../prismaClient";
 import { User, GithubRepository, UserGithubRepository, LinearApiKey } from "../types/prisma";
-import Owner, { Commit } from "src/theOwner/Owner";
-import { search } from "src/searchClient";
-import { Session } from "src/server";
-import { TicketManager } from "src/ticketing/TicketIntegration";
-import { getUserTicketManager } from "src/types/user";
+import Owner, { Commit } from "../theOwner/Owner";
+import { search } from "../searchClient";
+import { Session } from "../server";
+import { TicketManager } from "../ticketing/TicketIntegration";
+import { getUserTicketManager } from "../types/user";
 
 const GITHUB_APP_CLIENT_ID = process.env.GITHUB_CLIENT_ID
 
