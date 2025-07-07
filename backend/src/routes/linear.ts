@@ -1,10 +1,9 @@
 import { Request, Response } from "express";
 import { db } from "../prismaClient";
 import chalk from "chalk";
-import axios from "axios";
-import { LinearAdapter } from "src/ticketing/linear";
-import { findUserById, getUserTicketManager } from "src/types/user";
-import { LinearWebhookPayload } from "src/utility/LinearWebhookPayload";
+import { LinearAdapter } from "../ticketing/linear";
+import { findUserById, getUserTicketManager } from "../types/user";
+import { LinearWebhookPayload } from "../utility/LinearWebhookPayload";
 import { search } from "../searchClient";
 
 export const setLinearApiKey = async (req: Request, res: Response) => {

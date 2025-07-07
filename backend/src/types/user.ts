@@ -1,9 +1,9 @@
-import { db } from "src/prismaClient";
+import { db } from "../prismaClient";
 import { LinearApiKey, JiraApiKey, User } from "./prisma";
 import chalk from "chalk";
-import { TicketManager } from "src/ticketing/TicketIntegration";
-import { LinearAdapter } from "src/ticketing/linear";
-import { JiraAdapter } from "src/ticketing/jira";
+import { TicketManager } from "../ticketing/TicketIntegration";
+import { LinearAdapter } from "../ticketing/linear";
+import { JiraAdapter } from "../ticketing/jira";
 
 export async function login(email: string, password: string): Promise<User | null> {
     try {

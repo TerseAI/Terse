@@ -1,11 +1,11 @@
 import { TicketManager } from "../ticketing/TicketIntegration";
 import { Search } from "../search/search";
-import { Analyzer } from "src/agent/agents/Analyzer";
+import { Analyzer } from "../agent/agents/Analyzer";
 import { Session } from "../server";
 import chalk from "chalk";
-import { SearchResult } from "src/search/SearchItem";
-import { db } from "src/prismaClient";
-import { sendMessage } from "src/slack/sendMessage";
+import { SearchResult } from "../search/SearchItem";
+import { db } from "../prismaClient";
+import { sendMessage } from "../slack/sendMessage";
 
 class Owner {
     private searchSystem: Search;
