@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
 import { BackendProvider } from "../services/backend";
 import { IntegrationCard } from "./IntegrationCard";
+import { Integration, useIntegrations } from "../context/Integrations";
 
 export function AddGithub() {
+    const { addIntegration } = useIntegrations();
     const [repositoryName, setRepositoryName] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(true);
 
@@ -10,6 +12,7 @@ export function AddGithub() {
         BackendProvider.getCurrentGithubIntegration()
             .then(({ repositoryName }) => {
                 setRepositoryName(repositoryName);
+                addIntegration(Integration.GITHUB);
             })
             .catch((error) => {
                 console.error('Error fetching GitHub integration:', error);

@@ -3,10 +3,10 @@ import { Request, Response } from "express";
 import { db } from "src/prismaClient";
 import { User, GithubRepository, UserGithubRepository, LinearApiKey } from "../types/prisma";
 import Owner, { Commit } from "src/theOwner/Owner";
-import { LinearAdapter } from "src/ticketing/linear";
 import { search } from "src/searchClient";
 import { Session } from "src/server";
 import { TicketManager } from "src/ticketing/TicketIntegration";
+import { getUserTicketManager } from "src/types/user";
 
 const GITHUB_APP_CLIENT_ID = process.env.GITHUB_CLIENT_ID
 
@@ -214,7 +214,14 @@ export async function githubAppRecievedPush(req: Request, res: Response) {
         return;
     }
 
-    const adapter: TicketManager = new LinearAdapter(linearApiKey.api_key);
+    const adapter: TicketManager | null = await getUserTicketManager(user.id);
+
+    if (!adapter) {
+        console.log(chalk.red('User does not have a ticket manager'));
+        res.status(404).json({ message: 'User does not have a ticket manager' });
+        return;
+    }
+
     const session: Session = {
         user: user,
         isUserInitiated: false,

@@ -16,13 +16,13 @@ export const setLinearApiKey = async (req: Request, res: Response) => {
     const { apiKey } = req.body;
     console.log(chalk.blue("🔑 Adding Linear API key for user"), chalk.yellow(user.id));
 
-    let adapter = new LinearAdapter(apiKey);
-
     // Validate the API key before storing
     const isValid = await LinearAdapter.validateKey(apiKey);
     if (!isValid) {
         return res.status(400).json({ error: 'Invalid Linear API key' });
     }
+
+    let adapter = new LinearAdapter(apiKey);
 
     const configureWebhook = await adapter.configureWebhook();
     if (!configureWebhook) {
@@ -114,4 +114,28 @@ export const indexLinearTicket = async (linerarUserId: string, body: LinearWebho
     await search().bulkInsert(searchItems);
 
     console.log(chalk.green("✅ Indexed ticket"), chalk.yellow(ticketId));
+}
+
+export const deleteLinearCredentials = async (req: Request, res: Response) => {
+    const user = req.session?.user;
+    if (!user) {
+        return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    // Need to tear down webhook
+    const linearApiKey = await db().linear_api_keys.findUnique({
+        where: {
+            user_id: user.id
+        }
+    });
+
+    if (linearApiKey) {
+        const adapter = new LinearAdapter(linearApiKey.api_key);
+        await adapter.tearDownWebhook(linearApiKey.webhook_id);
+    }
+
+    await db().linear_api_keys.delete({ where: { user_id: user.id } });
+    console.log(chalk.green('Deleted Linear credentials for user'), chalk.yellow(user.id));
+    
+    res.status(200).json({ message: 'Credentials deleted' });
 }
