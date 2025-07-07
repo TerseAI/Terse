@@ -6,13 +6,13 @@ exports.default = (app) => {
     app.onAny(async (context) => {
         console.log("🔔 Event received:", context.name);
     });
-    app.on("issues.opened", async (context) => {
-        console.log("📝 Issue opened:", context.payload.issue?.title);
-        const issueComment = context.issue({
-            body: "Thanks for opening this issue!",
-        });
-        await context.octokit.issues.createComment(issueComment);
-    });
+    // app.on("issues.opened", async (context) => {
+    //   console.log("📝 Issue opened:", context.payload.issue?.title);
+    //   const issueComment = context.issue({
+    //     body: "Thanks for opening this issue!",
+    //   });
+    //   await context.octokit.issues.createComment(issueComment);
+    // });
     app.on("push", async (context) => {
         const { payload } = context;
         const github = context.octokit;
