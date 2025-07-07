@@ -89,7 +89,7 @@ export class JiraAdapter implements TicketManager {
     }
 
     async deleteComment(ticketId: string, commentId: string): Promise<void> {
-        await this.client.deleteComment(ticketId, commentId);
+        await this.client.deleteComment(ticketId, parseInt(commentId));
     }
 
     async searchItemsForTicket(id: string): Promise<SearchItem[]> {

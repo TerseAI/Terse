@@ -6,8 +6,9 @@ import { users, github_repositories, linear_api_keys, jira_api_keys, slack_integ
 
   export type GithubRepository = github_repositories;
 
-export type LinearApiKey = linear_api_keys;
-export type JiraApiKey = jira_api_keys;
+  export type LinearApiKey = linear_api_keys;
+  
+  export type JiraApiKey = jira_api_keys;
 
   export type SlackIntegration = slack_integrations;
 
