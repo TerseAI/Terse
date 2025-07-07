@@ -32,16 +32,16 @@ function Content() {
 
   return (
     <>
-    <IntegrationProvider>
-      <AnimatePresence mode="wait">
-        {user != null ? (
-          <div key="main">
-            <Home />
-          </div>
-        ) : (
-          <Login key="login" />
-        )}
-      </AnimatePresence>
+      <IntegrationProvider>
+        <AnimatePresence mode="wait">
+          {user != null ? (
+            <div key="main">
+              <Home />
+            </div>
+          ) : (
+            <Login key="login" />
+          )}
+        </AnimatePresence>
       </IntegrationProvider>
     </>
   );

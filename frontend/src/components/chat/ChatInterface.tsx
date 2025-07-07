@@ -129,6 +129,8 @@ export function ChatInterface() {
     const snippetSelectHandlerRef = useRef<((snippet: any) => void) | null>(null);
     const { integrations } = useIntegrations();
 
+    console.log("Integrations", integrations);
+
     if (!integrations.includes(Integration.LINEAR) && !integrations.includes(Integration.JIRA)) {
         return (
             <div className="h-full bg-white flex items-center justify-center">

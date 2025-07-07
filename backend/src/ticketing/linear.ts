@@ -86,6 +86,11 @@ export class LinearAdapter implements TicketManager {
         return { webhookId: webhook.webhookId, webhookSecret: webhookSecret };
     }
 
+    async tearDownWebhook(webhookId: string): Promise<void> {
+        await this.client.deleteWebhook(webhookId);
+        console.log(chalk.green('✅ Webhook deleted:'), chalk.cyan(webhookId));
+    }
+
     generateWebhookSecret() {
         // Generate 32 random bytes and convert to hex
         return crypto.randomBytes(32).toString('hex');
