@@ -30,8 +30,9 @@ export class JiraAdapter implements TicketManager {
             });
             await client.getCurrentUser();
             return true;
-        } catch {
+        } catch (error) {
             console.error(chalk.red("Invalid Jira credentials"), chalk.yellow(baseUrl), chalk.yellow(email), chalk.yellow(apiToken));
+            console.error(error);
             return false;
         }
     }
