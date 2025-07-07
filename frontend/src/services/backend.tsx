@@ -68,7 +68,7 @@ interface BackendService {
     /**
      * Sets the Jira API key
      */
-    setJiraApiKey(apiKey: string): Promise<void>;
+    setJiraApiKey(baseUrl: string, apiKey: string): Promise<void>;
 
     /**
      * Requests a session socket token
@@ -204,8 +204,8 @@ export const BackendProvider: BackendService = {
             });
     },
 
-    setJiraApiKey: (apiKey: string) => {
-        return axios.post(`${backendBaseUrl}/jira/set-api-key`, { apiKey }, { withCredentials: true })
+    setJiraApiKey: (baseUrl: string, apiKey: string) => {
+        return axios.post(`${backendBaseUrl}/jira/set-api-key`, { baseUrl, apiKey }, { withCredentials: true })
             .then(response => response.data)
             .catch(error => {
                 console.error('Error setting Jira API key:', error);
