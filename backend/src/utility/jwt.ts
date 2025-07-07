@@ -1,6 +1,6 @@
 import jwt from 'jsonwebtoken';
 import { db } from '../prismaClient';
-import { users } from '../generated/prisma';
+import { users } from '@prisma/client';
 
 export class Jwt {
   async sign(userId: string) {
