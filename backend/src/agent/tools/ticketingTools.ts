@@ -2,7 +2,7 @@ import { RunContext, tool } from "@openai/agents";
 import { Session } from "../../server";
 import { z } from "zod";
 import chalk from "chalk";
-import { StructuredSearchOptions } from "src/ticketing/TicketIntegration";
+import { StructuredSearchOptions } from "../../ticketing/TicketIntegration";
 
 const searchTicketTool = tool({
     name: 'Search Ticket',
