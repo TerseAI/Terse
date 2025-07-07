@@ -5,7 +5,7 @@ import { EmitterWebhookEvent } from "@octokit/webhooks";
 export default (app: Probot) => {
   console.log("Probot app starting up...");
 
-  app.onAny(async (context: EmitterWebhookEvent) => {
+  app.onAny(async (context) => {
     console.log("🔔 Event received:", context.name);
   });
 
