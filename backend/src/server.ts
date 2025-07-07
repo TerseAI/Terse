@@ -89,13 +89,13 @@ app.post('/github/push-event', githubAppAuthMiddleware, async (req, res) => {
     githubAppRecievedPush(req, res);
 })
 
-// MARK: LINEAR
+// MARK: JIRA
 
-app.post('/jira/set-credentials', authMiddleware, async (req, res) => {
+app.post('/jira/set-api-key', authMiddleware, async (req, res) => {
     setJiraCredentials(req, res);
 })
 
-app.get('/jira/get-credentials', authMiddleware, async (req, res) => {
+app.get('/jira/get-api-key', authMiddleware, async (req, res) => {
     getJiraCredentials(req, res);
 })
 

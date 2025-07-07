@@ -3,6 +3,7 @@ import { ChatInterface } from "../components/chat/ChatInterface";
 import { AddToSlack } from "../components/AddToSlack";
 import { AddGithub } from "../components/AddGithub";
 import { AddLinear } from "../components/AddLinear";
+import { AddJira } from "../components/AddJira";
 
 function Home() {
     const { user, logout } = useAuth();
@@ -33,6 +34,7 @@ function Home() {
                         <h2 className="text-sm font-medium text-gray-900 mb-4">Integrations</h2>
                         <div className="space-y-4">
                             <AddLinear />
+                            <AddJira />
                             <AddGithub />
                             <AddToSlack />
                         </div>
