@@ -8,7 +8,6 @@ import chalk from "chalk";
 import { db } from "../prismaClient";
 
 const COOKIE_NAME = 'AUTH_JWT';
-const GITHUB_STATE_COOKIE = 'GITHUB_OAUTH_STATE';
 const GITHUB_AUTH_CLIENT_ID = process.env.GITHUB_AUTH_CLIENT_ID || '';
 const GITHUB_AUTH_CLIENT_SECRET = process.env.GITHUB_AUTH_CLIENT_SECRET || '';
 const GITHUB_CALLBACK_URL = process.env.GITHUB_CALLBACK_URL || 'http://localhost:3001/auth/github/callback';
@@ -17,6 +16,7 @@ const GITHUB_LOGIN_REDIRECT = process.env.GITHUB_LOGIN_REDIRECT || 'http://local
 export const authMiddleware = async (req: Request, res: Response, next: NextFunction) => {
     try {
         if (!req.cookies || !req.cookies[COOKIE_NAME]) {
+            console.log('Unauthorized - No cookie provided')
             res.status(401).json({ message: 'Unauthorized' });
             return;
         }
@@ -25,6 +25,7 @@ export const authMiddleware = async (req: Request, res: Response, next: NextFunc
         const user = await new Jwt().verify(token);
 
         if (!user) {
+            console.log('Unauthorized - No user found')
             res.status(401).json({ message: 'Unauthorized' });
             return;
         }
@@ -181,6 +182,8 @@ export async function githubCallback(req: Request, res: Response) {
             // Update existing user's GitHub username if it's different
             await updateUserGitHubUsername(user.id, githubUsername);
             user = await findUserByEmail(email);
+        } else {
+            console.log('Existing user', user)
         }
 
         if (!user) {
@@ -192,7 +195,7 @@ export async function githubCallback(req: Request, res: Response) {
         res.cookie(COOKIE_NAME, token, {
             httpOnly: true,
             secure: process.env.NODE_ENV === 'production',
-            sameSite: 'lax',
+            sameSite: "none",
             path: '/'
         });
 
