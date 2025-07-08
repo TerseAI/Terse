@@ -15,11 +15,11 @@ export function isValidSlackSig(req: Request) {
     console.log('body', body); // This should show the raw JSON string
     
     const hmac = crypto
-        .createHmac('sha256', process.env.SLACK_SIGNING_SECRET || '')
+        .createHmac('sha256', process.env.SLACK_CLIENT_SECRET || '')
         .update(`v0:${ts}:${body}`)
         .digest('hex');
 
-    console.log('secret', process.env.SLACK_SIGNING_SECRET);
+    console.log('secret', process.env.SLACK_CLIENT_SECRET);
     console.log('hmac', hmac);
     console.log('sig === `v0=${hmac}`', sig === `v0=${hmac}`);
     return sig === `v0=${hmac}`;
