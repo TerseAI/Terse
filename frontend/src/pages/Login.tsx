@@ -1,12 +1,60 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import AnimateableBlock from '../components/AnimateableBlock';
+import { BackendProvider } from '../services/backend';
 
 export default function Login() {
   const [isLoading, setIsLoading] = useState(false);
+  const [githubLoginUrl, setGithubLoginUrl] = useState('');
 
-  const handleGitHubLogin = () => {
+  useEffect(() => {
+    const getGithubLoginUrl = async () => {
+      const { url } = await BackendProvider.getGithubLogInURL();
+      setGithubLoginUrl(url);
+      console.log('githubLoginUrl', githubLoginUrl)
+    }
+    getGithubLoginUrl();
+  }, []);
+
+  const handleGithubLogin = () => {
     setIsLoading(true);
-    window.location.href = '/api/auth/github';
+    const popup = window.open(
+      githubLoginUrl, 
+      'github-login',
+      'width=600,height=700,scrollbars=yes,resizable=yes'
+    );
+
+    if (!popup) return;
+  
+    // Listen for popup to close or send message
+    const checkClosed = setInterval(() => {
+      if (popup.closed) {
+        clearInterval(checkClosed);
+        // Popup closed, check if user is now authenticated
+        checkAuthStatus();
+      }
+    }, 1000);
+  
+    // Or listen for postMessage from popup
+    window.addEventListener('message', (event) => {
+      if (event.origin !== 'https://cursor-for-tickets.onrender.com') return;
+      
+      if (event.data.type === 'GITHUB_AUTH_SUCCESS') {
+        popup.close();
+        setIsLoading(false);
+        checkAuthStatus(); // Refresh user state
+      }
+    });
+  };
+  
+  const checkAuthStatus = async () => {
+    try {
+      const user = await BackendProvider.getCurrentUser();
+      console.log('user', user)
+      // Update your app state with user
+    } catch (error) {
+      console.error('error', error)
+      // Still not authenticated
+    }
   };
 
   return (
@@ -34,7 +82,7 @@ export default function Login() {
             <h1 className="text-2xl text-gray-900 font-sans mb-6 relative text-center">Sign in with your GitHub account to continue.</h1>
 
             <button
-              onClick={handleGitHubLogin}
+              onClick={handleGithubLogin}
               disabled={isLoading}
               className="w-full bg-gray-900 hover:bg-gray-800 text-white py-4 px-6 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-500/50 focus:ring-offset-2 focus:ring-offset-black relative overflow-hidden group transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed border border-gray-700 hover:border-gray-600"
             >

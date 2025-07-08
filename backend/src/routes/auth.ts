@@ -10,8 +10,8 @@ import { db } from "../prismaClient";
 const COOKIE_NAME = 'AUTH_JWT';
 const GITHUB_AUTH_CLIENT_ID = process.env.GITHUB_AUTH_CLIENT_ID || '';
 const GITHUB_AUTH_CLIENT_SECRET = process.env.GITHUB_AUTH_CLIENT_SECRET || '';
-const GITHUB_CALLBACK_URL = process.env.GITHUB_CALLBACK_URL || 'http://localhost:3001/auth/github/callback';
-const GITHUB_LOGIN_REDIRECT = process.env.GITHUB_LOGIN_REDIRECT || 'http://localhost:5173/';
+const GITHUB_CALLBACK_URL = process.env.GITHUB_CALLBACK_URL || '';
+const GITHUB_LOGIN_REDIRECT = process.env.GITHUB_LOGIN_REDIRECT || '';
 
 export const authMiddleware = async (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -121,6 +121,12 @@ export async function logout(req: Request, res: Response) {
     res.json({ message: 'Logout successful' });
 }
 
+export function githubLoginURL(req: Request, res: Response) {
+    const state = crypto.randomBytes(8).toString('hex');
+    const redirectUrl = `https://github.com/login/oauth/authorize?client_id=${GITHUB_AUTH_CLIENT_ID}&redirect_uri=${encodeURIComponent(GITHUB_CALLBACK_URL)}&scope=read:user%20user:email&state=${state}`;
+    res.json({ url: redirectUrl });
+}
+
 export async function githubLogin(req: Request, res: Response) {
     console.log('githubLogin route has been hit')
     const state = crypto.randomBytes(8).toString('hex');
@@ -193,7 +199,7 @@ export async function githubCallback(req: Request, res: Response) {
         const token = await new Jwt().sign(user.id);
 
         console.log('Setting cookie', COOKIE_NAME, token)
-        
+
         res.cookie(COOKIE_NAME, token, {
             httpOnly: true,
             secure: process.env.NODE_ENV === 'production',
