@@ -230,12 +230,12 @@ export async function githubCallback(req: Request, res: Response) {
 
         console.log('Setting cookie', COOKIE_NAME, token)
 
-        res.cookie(COOKIE_NAME, token, {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: "none",
-            path: '/'
-        });
+        // res.cookie(COOKIE_NAME, token, {
+        //     httpOnly: true,
+        //     secure: process.env.NODE_ENV === 'production',
+        //     sameSite: "none",
+        //     path: '/'
+        // });
 
         // res.redirect(GITHUB_LOGIN_REDIRECT);
         res.send(`

@@ -37,6 +37,7 @@ export default function Login() {
     // Or listen for postMessage from popup
     window.addEventListener('message', (event) => {
       if (event.data.type === 'GITHUB_AUTH_SUCCESS') {
+        console.log('GITHUB_AUTH_SUCCESS event', event)
         console.log('GITHUB_AUTH_SUCCESS', event.data.token)
         BackendProvider.setSession(event.data.token).then(() => {
           checkAuthStatus();
