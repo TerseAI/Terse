@@ -192,6 +192,8 @@ export async function githubCallback(req: Request, res: Response) {
 
         const token = await new Jwt().sign(user.id);
 
+        console.log('Setting cookie', COOKIE_NAME, token)
+        
         res.cookie(COOKIE_NAME, token, {
             httpOnly: true,
             secure: process.env.NODE_ENV === 'production',
