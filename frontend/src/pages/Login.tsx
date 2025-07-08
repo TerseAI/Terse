@@ -14,7 +14,7 @@ export default function Login() {
       <div className="flex flex-col items-center">
         <AnimateableBlock delay={0}>
           <div className="mb-24">
-            <h1 className="text-7xl font-sans text-white drop-shadow-sm">Welcome to the <span className="text-purple-500">Vectra</span> Closed Alpha.</h1>
+            <h1 className="text-7xl font-sans text-gray-900 drop-shadow-sm">Welcome to the <span className="text-purple-500">Vectra</span> Closed Alpha.</h1>
           </div>
         </AnimateableBlock>
 
@@ -31,7 +31,7 @@ export default function Login() {
           w-full max-w-xl
         `}
           >
-            <h1 className="text-2xl text-white font-sans mb-6 relative text-center">Sign in with your GitHub account to continue.</h1>
+            <h1 className="text-2xl text-gray-900 font-sans mb-6 relative text-center">Sign in with your GitHub account to continue.</h1>
 
             <button
               onClick={handleGitHubLogin}
