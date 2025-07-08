@@ -6,7 +6,7 @@ import { createServer } from "http";
 import cors from 'cors';
 import { User } from './types/prisma';
 import { User as TicketUser } from './shared/TicketSystem';
-import { authMiddleware, githubAppAuthMiddleware, githubCallback, githubLogin, login, logout } from './routes/auth';
+import { authMiddleware, githubAppAuthMiddleware, githubCallback, githubLogin, githubLoginURL, login, logout } from './routes/auth';
 import { AgentSocketServer, requestSessionSocketToken } from './agent/socket';
 import { getCurrentGithubIntegration, getInstallationUrl, githubAppInstallationCallback, githubAppInstallationDeleted, githubAppRecievedPush } from './routes/githubApp';
 import { deleteLinearCredentials, getLinearApiKey, indexLinearTicket, setLinearApiKey } from './routes/linear';
@@ -15,7 +15,6 @@ import { TicketManager } from './ticketing/TicketIntegration';
 import { LinearWebhookPayload } from './utility/LinearWebhookPayload';
 import { getCurrentSlackIntegration, getSlackOAuthUrl, slackOAuthCallback } from './slack/registerApp';
 import { handleSlackEvent } from './slack/eventHandler';
-import chalk from 'chalk';
 
 export type Session = {
     user: User;
@@ -51,6 +50,10 @@ app.get('/auth/github', async (req, res) => {
 
 app.get('/auth/github/callback', async (req, res) => {
     githubCallback(req, res);
+})
+
+app.get('/auth/github/login-url', (req, res) => {
+    githubLoginURL(req, res);
 })
 
 app.post('/login', async (req, res) => {

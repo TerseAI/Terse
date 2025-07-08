@@ -9,6 +9,12 @@ interface BackendService {
      * Retrieves the currently authenticated user
      */
     getCurrentUser(): Promise<User>;
+    
+
+    /**
+     * Retrieves github login URL
+     */
+    getGithubLogInURL(): Promise<{url: string}>;
 
     /**
      * Retrieves users by their IDs
@@ -108,6 +114,15 @@ export const BackendProvider: BackendService = {
                 return response.data;
             })
             .catch(error => {
+                throw error;
+            });
+    },
+
+    getGithubLogInURL: () => {
+        return axios.get<{url: string}>(`${backendBaseUrl}/auth/github/login-url`, { withCredentials: true })
+            .then(response => response.data)
+            .catch(error => {
+                console.error('Error getting GitHub login URL:', error);
                 throw error;
             });
     },
