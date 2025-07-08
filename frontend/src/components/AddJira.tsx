@@ -17,12 +17,11 @@ export function AddJira() {
         BackendProvider.getJiraApiKey()
             .then(({ apiKey, baseUrl, email }) => {
                 console.log("Jira API key:", apiKey, baseUrl, email);
+                setJiraApiKey(apiKey);
                 setKey(apiKey ?? '');
                 setBaseUrl(baseUrl ?? '');
                 setEmail(email ?? '');
-                if (apiKey) {
-                    addIntegration(Integration.JIRA);
-                }
+                addIntegration(Integration.JIRA);
             })
             .catch((error) => {
                 console.error('Error fetching Linear API key:', error);
