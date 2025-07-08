@@ -16,12 +16,16 @@ export function AddToSlack() {
             BackendProvider.requestSlackOAuthUrl()
         ])
         .then(([integrationResult, oauthResult]) => {
+            console.log('integrationResult', integrationResult)
+            console.log('oauthResult', oauthResult)
             setTeamName(integrationResult.teamName);
             setSlackOAuthUrl(oauthResult.url);
             addIntegration(Integration.SLACK);
+            setIsLoading(false);
         })
         .catch((error) => {
             console.error('Error fetching Slack integration:', error);
+            setIsLoading(false);
         })
         .finally(() => {
             setIsLoading(false);
