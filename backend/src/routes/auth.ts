@@ -99,7 +99,7 @@ export async function login(req: Request, res: Response) {
         res.cookie(COOKIE_NAME, token, {
             httpOnly: true,
             secure: process.env.NODE_ENV === 'production',
-            sameSite: 'lax',
+            sameSite: "none",
             path: '/'
         });
 
