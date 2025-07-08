@@ -158,6 +158,8 @@ app.get('/slack/oauth-callback', async (req, res) => {
     slackOAuthCallback(req, res);
 })
 
+app.use('/slack/events', express.raw({ type: 'application/json' }));
+
 app.post('/slack/events', async (req, res) => {
     await handleSlackEvent(req, res);
 });
