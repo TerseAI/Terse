@@ -5,6 +5,7 @@ import { Integration, useIntegrations } from "../context/Integrations";
 
 export function AddJira() {
     const { addIntegration, removeIntegration } = useIntegrations();
+    const [jiraApiKey, setJiraApiKey] = useState<string | null>(null);
     const [key, setKey] = useState<string>('');
     const [baseUrl, setBaseUrl] = useState<string>('');
     const [email, setEmail] = useState<string>('');
@@ -41,13 +42,17 @@ export function AddJira() {
         e.preventDefault();
         try {
             await BackendProvider.setJiraApiKey(email, baseUrl, key);
+            setJiraApiKey(key);
             setKey(key ?? '');
             setBaseUrl(baseUrl ?? '');
             setEmail(email ?? '');
             setError(null);
+            addIntegration(Integration.JIRA);
         } catch (error) {
             console.error('Error setting Linear API key:', error);
+            setJiraApiKey(null);
             setError('Invalid Jira credentials');
+            removeIntegration(Integration.JIRA);
         } finally {
             setIsLoading(false);
         }
@@ -60,6 +65,7 @@ export function AddJira() {
                 setKey('');
                 setBaseUrl('');
                 setEmail('');
+                setJiraApiKey(null);
             })
             .catch((error) => {
                 console.error('Error deleting Jira API key:', error);
@@ -108,7 +114,7 @@ export function AddJira() {
         <IntegrationCard
             title="Jira API Key"
             description="Connect your Jira workspace to manage tickets"
-            isConnected={!!key}
+            isConnected={!!jiraApiKey}
             isLoading={isInitialLoading}
             connectionInfo={key ? `API Key configured for ${email} on ${baseUrl}` : undefined}
             onDisconnect={handleDisconnect}
