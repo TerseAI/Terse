@@ -123,12 +123,6 @@ export async function logout(req: Request, res: Response) {
 export async function githubLogin(req: Request, res: Response) {
     console.log('githubLogin route has been hit')
     const state = crypto.randomBytes(8).toString('hex');
-    res.cookie(GITHUB_STATE_COOKIE, state, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
-        path: '/'
-    });
     const redirectUrl = `https://github.com/login/oauth/authorize?client_id=${GITHUB_AUTH_CLIENT_ID}&redirect_uri=${encodeURIComponent(GITHUB_CALLBACK_URL)}&scope=read:user%20user:email&state=${state}`;
 
     console.log('redirectUrl', redirectUrl)
@@ -140,11 +134,9 @@ export async function githubCallback(req: Request, res: Response) {
 
     console.log(chalk.blue('🔗 Github OAuth callback received:'), chalk.cyan(JSON.stringify(req.query, null, 2)), chalk.yellow(JSON.stringify(req.body, null, 2)));
 
-    if (!code || !state || state !== req.cookies[GITHUB_STATE_COOKIE]) {
+    if (!code || !state) {
         return res.status(400).send('Invalid OAuth state');
     }
-
-    res.clearCookie(GITHUB_STATE_COOKIE);
 
     try {
         const tokenResp = await axios.post('https://github.com/login/oauth/access_token', {

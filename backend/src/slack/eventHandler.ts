@@ -14,6 +14,7 @@ export function isValidSlackSig(req: Request) {
 }
 
 export async function handleSlackEvent(req: Request, res: Response) {
+    console.log('handleSlackEvent route has been hit')
     if (!isValidSlackSig(req)) return res.sendStatus(400);
 
     console.log(chalk.green('Slack event received', JSON.stringify(req.body)));
