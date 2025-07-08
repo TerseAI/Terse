@@ -12,6 +12,8 @@ export async function getSlackOAuthUrl(req: Request, res: Response) {
     const backendUrl = process.env.BACKEND_URL;
     const redirect_uri = `${backendUrl}/slack/oauth-callback`;
 
+    console.log('redirect_uri', redirect_uri)
+
     if (!req.session?.user) {
         res.status(500).json({ message: 'User not found' });
         return;
