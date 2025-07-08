@@ -10,26 +10,26 @@ export function AddToSlack() {
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
-        // Load both Slack integration status and OAuth URL in parallel
-        Promise.all([
-            BackendProvider.getCurrentSlackIntegration(),
-            BackendProvider.requestSlackOAuthUrl()
-        ])
-        .then(([integrationResult, oauthResult]) => {
-            console.log('integrationResult', integrationResult)
-            console.log('oauthResult', oauthResult)
-            setTeamName(integrationResult.teamName);
-            setSlackOAuthUrl(oauthResult.url);
-            addIntegration(Integration.SLACK);
-            setIsLoading(false);
-        })
-        .catch((error) => {
-            console.error('Error fetching Slack integration:', error);
-            setIsLoading(false);
-        })
-        .finally(() => {
-            setIsLoading(false);
-        });
+        setIsLoading(true);
+        const getSlackIntegration = async () => {
+            let integrationResult = await BackendProvider.getCurrentSlackIntegration()
+            if (integrationResult.teamName) {
+                setTeamName(integrationResult.teamName);
+                addIntegration(Integration.SLACK);
+            }
+        }
+
+        getSlackIntegration();
+
+        const getSlackOAuthUrl = async () => {
+            let oauthResult = await BackendProvider.requestSlackOAuthUrl()
+            if (oauthResult.url) {
+                setSlackOAuthUrl(oauthResult.url);
+                setIsLoading(false);
+            }
+        }
+
+        getSlackOAuthUrl()
     }, []);
 
     const connectButton = slackOAuthUrl ? (
