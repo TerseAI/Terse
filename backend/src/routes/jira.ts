@@ -50,7 +50,7 @@ export const getJiraCredentials = async (req: Request, res: Response) => {
         return res.status(200).json({ apiKey: null, baseUrl: null, email: null });
     }
 
-    res.status(200).json({ baseUrl: creds.base_url, email: creds.jira_user_email });
+    res.status(200).json({ apiKey: creds.api_token, baseUrl: creds.base_url, email: creds.jira_user_email });
 };
 
 export const deleteJiraCredentials = async (req: Request, res: Response) => {
