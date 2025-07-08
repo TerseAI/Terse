@@ -96,7 +96,7 @@ export async function login(req: Request, res: Response) {
 
         // Create JWT
         const token = await new Jwt().sign(user.id);
-        
+
         res.cookie(COOKIE_NAME, token, {
             httpOnly: true,
             secure: process.env.NODE_ENV === 'production',
@@ -105,8 +105,8 @@ export async function login(req: Request, res: Response) {
         });
 
         console.log('Login successful for user:', user.email)
-        
-        res.json({ 
+
+        res.json({
             message: 'Login successful',
             user: user
         });
@@ -207,7 +207,19 @@ export async function githubCallback(req: Request, res: Response) {
             path: '/'
         });
 
-        res.redirect(GITHUB_LOGIN_REDIRECT);
+        // res.redirect(GITHUB_LOGIN_REDIRECT);
+        res.send(`
+            <script>
+              if (window.opener) {
+                window.opener.postMessage({
+                  type: 'GITHUB_AUTH_SUCCESS'
+                }, '${GITHUB_LOGIN_REDIRECT}');
+                window.close();
+              } else {
+                window.location.href = '${GITHUB_LOGIN_REDIRECT}';
+              }
+            </script>
+          `);
     } catch (error) {
         console.error('GitHub OAuth error:', error);
         res.status(500).send('Authentication failed');
