@@ -9,7 +9,11 @@ interface BackendService {
      * Retrieves the currently authenticated user
      */
     getCurrentUser(): Promise<User>;
-    
+
+    /**
+     * Sets the session cookie
+     */
+    setSession(token: string): Promise<void>;
 
     /**
      * Retrieves github login URL
@@ -123,6 +127,15 @@ export const BackendProvider: BackendService = {
             .then(response => response.data)
             .catch(error => {
                 console.error('Error getting GitHub login URL:', error);
+                throw error;
+            });
+    },
+
+    setSession: (token: string) => {
+        return axios.post(`${backendBaseUrl}/auth/set-session`, { token }, { withCredentials: true })
+            .then(response => response.data)
+            .catch(error => {
+                console.error('Error setting session:', error);
                 throw error;
             });
     },

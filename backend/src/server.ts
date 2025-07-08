@@ -6,7 +6,7 @@ import { createServer } from "http";
 import cors from 'cors';
 import { User } from './types/prisma';
 import { User as TicketUser } from './shared/TicketSystem';
-import { authMiddleware, githubAppAuthMiddleware, githubCallback, githubLogin, githubLoginURL, login, logout } from './routes/auth';
+import { authMiddleware, githubAppAuthMiddleware, githubCallback, githubLogin, githubLoginURL, login, logout, setSession } from './routes/auth';
 import { AgentSocketServer, requestSessionSocketToken } from './agent/socket';
 import { getCurrentGithubIntegration, getInstallationUrl, githubAppInstallationCallback, githubAppInstallationDeleted, githubAppRecievedPush } from './routes/githubApp';
 import { deleteLinearCredentials, getLinearApiKey, indexLinearTicket, setLinearApiKey } from './routes/linear';
@@ -46,6 +46,10 @@ app.get('/me', authMiddleware, (req, res) => {
 
 app.get('/auth/github', async (req, res) => {
     githubLogin(req, res);
+})
+
+app.post('/auth/set-session', async (req, res) => {
+    setSession(req, res);
 })
 
 app.get('/auth/github/callback', async (req, res) => {
