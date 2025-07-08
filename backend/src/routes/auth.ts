@@ -5,7 +5,6 @@ import axios from "axios";
 import crypto from "crypto";
 import { Session } from "../server";
 import chalk from "chalk";
-import { db } from "../prismaClient";
 
 const COOKIE_NAME = 'AUTH_JWT';
 const GITHUB_AUTH_CLIENT_ID = process.env.GITHUB_AUTH_CLIENT_ID || '';
@@ -78,7 +77,7 @@ export async function setSession(req: Request, res: Response) {
     console.log('setSession route has been hit')
     console.log('req.body', req.body)
 
-    const {token} = req.body;
+    const { token } = req.body;
     
     if (!token) {
         res.status(401).json({ message: 'Unauthorized - No token provided' });
@@ -93,14 +92,19 @@ export async function setSession(req: Request, res: Response) {
         return;
     }
 
+    console.log('User verified', user)
+
     res.cookie(COOKIE_NAME, token, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
-        sameSite: "none",
+        sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
         path: '/'
     });
 
-    res.json({ message: 'Session set successfully' });
+    res.json({
+        message: 'Login successful',
+        user: user
+    });
 }
 
 
@@ -130,7 +134,7 @@ export async function login(req: Request, res: Response) {
         res.cookie(COOKIE_NAME, token, {
             httpOnly: true,
             secure: process.env.NODE_ENV === 'production',
-            sameSite: "none",
+            sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
             path: '/'
         });
 
@@ -228,16 +232,6 @@ export async function githubCallback(req: Request, res: Response) {
 
         const token = await new Jwt().sign(user.id);
 
-        console.log('Setting cookie', COOKIE_NAME, token)
-
-        // res.cookie(COOKIE_NAME, token, {
-        //     httpOnly: true,
-        //     secure: process.env.NODE_ENV === 'production',
-        //     sameSite: "none",
-        //     path: '/'
-        // });
-
-        // res.redirect(GITHUB_LOGIN_REDIRECT);
         res.send(`
             <script>
               if (window.opener) {
