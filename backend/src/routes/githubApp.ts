@@ -205,14 +205,14 @@ export async function githubAppRecievedPush(req: Request, res: Response) {
     // resolve the user github relation
     const repository: GithubRepository | null = await resolveUserGithubRelation(user, username, repositoryName, installationId);
 
-    // check if user has a linear API Key
-    const linearApiKey: LinearApiKey | null = await db().linear_api_keys.findFirst({ where: { user_id: user.id } });
+    // // check if user has a linear API Key
+    // const linearApiKey: LinearApiKey | null = await db().linear_api_keys.findFirst({ where: { user_id: user.id } });
 
-    if (!linearApiKey) {
-        console.log(chalk.red('User does not have a linear API Key'));
-        res.status(404).json({ message: 'User does not have a linear API Key' });
-        return;
-    }
+    // if (!linearApiKey) {
+    //     console.log(chalk.red('User does not have a linear API Key'));
+    //     res.status(404).json({ message: 'User does not have a linear API Key' });
+    //     return;
+    // }
 
     const adapter: TicketManager | null = await getUserTicketManager(user.id);
 
