@@ -6,10 +6,16 @@ import { db } from '../prismaClient';
 export function isValidSlackSig(req: Request) {
     const ts = req.headers['x-slack-request-timestamp'];
     const sig = req.headers['x-slack-signature'];
+    console.log('ts', ts)
+    console.log('sig', sig)
     const hmac = crypto
         .createHmac('sha256', process.env.SLACK_SIGNING_SECRET || '')
         .update(`v0:${ts}:${req.body}`)
         .digest('hex');
+
+    console.log('secret', process.env.SLACK_SIGNING_SECRET)
+    console.log('hmac', hmac)
+    console.log('sig === `v0=${hmac`', sig === `v0=${hmac}`)
     return sig === `v0=${hmac}`;
 }
 
