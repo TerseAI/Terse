@@ -36,12 +36,11 @@ export default function Login() {
   
     // Or listen for postMessage from popup
     window.addEventListener('message', (event) => {
-      if (event.origin !== 'https://cursor-for-tickets.onrender.com') return;
-      
       if (event.data.type === 'GITHUB_AUTH_SUCCESS') {
-        popup.close();
-        setIsLoading(false);
-        checkAuthStatus(); // Refresh user state
+        console.log('GITHUB_AUTH_SUCCESS', event.data.token)
+        BackendProvider.setSession(event.data.token).then(() => {
+          checkAuthStatus();
+        });
       }
     });
   };
@@ -50,10 +49,10 @@ export default function Login() {
     try {
       const user = await BackendProvider.getCurrentUser();
       console.log('user', user)
-      // Update your app state with user
+      setIsLoading(false);
     } catch (error) {
       console.error('error', error)
-      // Still not authenticated
+      setIsLoading(false);
     }
   };
 

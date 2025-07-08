@@ -74,6 +74,36 @@ export const githubAppAuthMiddleware = async (req: Request, res: Response, next:
     }
 }
 
+export async function setSession(req: Request, res: Response) {
+    console.log('setSession route has been hit')
+    console.log('req.body', req.body)
+
+    const {token} = req.body;
+    
+    if (!token) {
+        res.status(401).json({ message: 'Unauthorized - No token provided' });
+        return;
+    }
+
+    // verify token
+    const user = await new Jwt().verify(req.body.token);
+    if (!user) {
+        console.log('Unauthorized - Invalid token')
+        res.status(401).json({ message: 'Unauthorized - Invalid token' });
+        return;
+    }
+
+    res.cookie(COOKIE_NAME, token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: "none",
+        path: '/'
+    });
+
+    res.json({ message: 'Session set successfully' });
+}
+
+
 export async function me(req: Request, res: Response) {
     try {
         res.send(req.session?.user);
@@ -212,11 +242,10 @@ export async function githubCallback(req: Request, res: Response) {
             <script>
               if (window.opener) {
                 window.opener.postMessage({
-                  type: 'GITHUB_AUTH_SUCCESS'
+                  type: 'GITHUB_AUTH_SUCCESS',
+                  token: '${token}'
                 }, '${GITHUB_LOGIN_REDIRECT}');
                 window.close();
-              } else {
-                window.location.href = '${GITHUB_LOGIN_REDIRECT}';
               }
             </script>
           `);
