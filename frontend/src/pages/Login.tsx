@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react';
 import AnimateableBlock from '../components/AnimateableBlock';
 import { BackendProvider } from '../services/backend';
+import { useAuth } from '../services/auth';
 
 export default function Login() {
   const [isLoading, setIsLoading] = useState(false);
   const [githubLoginUrl, setGithubLoginUrl] = useState('');
+  const { initSession } = useAuth();
 
   useEffect(() => {
     const getGithubLoginUrl = async () => {
@@ -39,9 +41,7 @@ export default function Login() {
       if (event.data.type === 'GITHUB_AUTH_SUCCESS') {
         console.log('GITHUB_AUTH_SUCCESS event', event)
         console.log('GITHUB_AUTH_SUCCESS', event.data.token)
-        BackendProvider.setSession(event.data.token).then(() => {
-          checkAuthStatus();
-        });
+        initSession(event.data.token);
       }
     });
   };
@@ -49,8 +49,8 @@ export default function Login() {
   const checkAuthStatus = async () => {
     try {
       const user = await BackendProvider.getCurrentUser();
-      console.log('user', user)
       setIsLoading(false);
+      console.log('user', user)
     } catch (error) {
       console.error('error', error)
       setIsLoading(false);
