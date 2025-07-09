@@ -67,6 +67,13 @@ export class JiraAdapter implements TicketManager {
         return res.issues.map((i: any) => this.convertIssue(i));
     }
 
+    async userIdFromEmail(email: string): Promise<string | null> {
+        const users = await this.client.searchUsers({
+            query: email
+        });
+        return users.length > 0 ? users[0].accountId : null;
+    }
+
     async createTicket(input: CreateTicketInput): Promise<Ticket> {
         const issue = await this.client.addNewIssue({
             fields: {
@@ -74,7 +81,7 @@ export class JiraAdapter implements TicketManager {
                 description: input.description,
                 project: { id: input.teamId },
                 issuetype: { name: 'Task' },
-                assignee: input.assigneeId ? { id: input.assigneeId } : undefined
+                assignee: input.assignee ? { id: await this.userIdFromEmail(input.assignee) } : undefined
             }
         });
         return this.findTicket(issue.key);
