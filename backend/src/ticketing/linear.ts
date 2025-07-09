@@ -322,11 +322,13 @@ export class LinearAdapter implements TicketManager {
     }
 
     async userIdFromEmail(email: string): Promise<string | null> {
+        console.log('Resolving user id from email', email);
         const user = await this.client.users({
             filter: {
                 email: { eq: email }
             }
         });
+        console.log('User', user.nodes[0]);
         if (!user) {
             return null;
         }
