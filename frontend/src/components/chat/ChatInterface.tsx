@@ -173,9 +173,9 @@ function formatChangedItems(changed_items: ChangedItem[]): ItemToDisplay[] {
 }
 
 const suggestions = [
-    "Create a new ticket",
-    "Mark my ticket as done",
-    "What are my open tickets that are due soon?",
-    "What has my team been working on?",
-    "Create release notes using the tickets I completed this week"
+    "What issue should I pick up next?",
+    "Create a new engineering task.",
+    "Show me all my open bugs.",
+    "Summarize what the engineering team completed this week.",
+    "Generate release notes from completed issues."
 ]
