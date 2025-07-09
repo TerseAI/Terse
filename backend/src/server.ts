@@ -1,4 +1,4 @@
-import express, { Request, Response } from 'express';
+import express from 'express';
 import bodyParser from 'body-parser';
 import cookieParser from 'cookie-parser';
 import 'dotenv/config';
@@ -15,7 +15,6 @@ import { TicketManager } from './ticketing/TicketIntegration';
 import { LinearWebhookPayload } from './utility/LinearWebhookPayload';
 import { getCurrentSlackIntegration, getSlackOAuthUrl, slackOAuthCallback } from './slack/registerApp';
 import { handleSlackEvent } from './slack/eventHandler';
-import { db } from './prismaClient';
 import { fetchUserIntegrations } from './routes/integrations';
 
 export type Session = {

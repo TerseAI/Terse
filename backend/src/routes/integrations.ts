@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { db } from "src/prismaClient";
+import { db } from "../prismaClient";
 
 export async function fetchUserIntegrations(req: Request, res: Response) {
     if (!req.session?.user) {
