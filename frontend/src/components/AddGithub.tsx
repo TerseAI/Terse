@@ -4,18 +4,20 @@ import { IntegrationCard } from "./IntegrationCard";
 import { Integration, useIntegrations } from "../context/Integrations";
 
 export function AddGithub() {
-    const { addIntegration } = useIntegrations();
+    const { addIntegration, removeIntegration } = useIntegrations();
     const [repositoryName, setRepositoryName] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
         BackendProvider.getCurrentGithubIntegration()
             .then(({ repositoryName }) => {
+                console.log('repositoryName', repositoryName);
                 setRepositoryName(repositoryName);
                 addIntegration(Integration.GITHUB);
             })
             .catch((error) => {
                 console.error('Error fetching GitHub integration:', error);
+                removeIntegration(Integration.GITHUB);
             })
             .finally(() => {
                 setIsLoading(false);

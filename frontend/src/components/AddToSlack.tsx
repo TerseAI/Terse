@@ -4,7 +4,7 @@ import { IntegrationCard } from "./IntegrationCard";
 import { Integration, useIntegrations } from "../context/Integrations";
 
 export function AddToSlack() {
-    const { addIntegration } = useIntegrations();
+    const { addIntegration, removeIntegration } = useIntegrations();
     const [teamName, setTeamName] = useState<string | null>(null);
     const [slackOAuthUrl, setSlackOAuthUrl] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(true);
@@ -13,9 +13,13 @@ export function AddToSlack() {
         setIsLoading(true);
         const getSlackIntegration = async () => {
             let integrationResult = await BackendProvider.getCurrentSlackIntegration()
+            console.log('integrationResult', integrationResult);
             if (integrationResult.teamName) {
                 setTeamName(integrationResult.teamName);
                 addIntegration(Integration.SLACK);
+            } else {
+                setTeamName(null);
+                removeIntegration(Integration.SLACK);
             }
         }
 
