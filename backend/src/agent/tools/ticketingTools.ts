@@ -204,34 +204,34 @@ const updateTicketTool = tool({
         description: z.union([z.string(), z.null()]).describe('The description of the ticket'),
         state: z.string().describe('The state of the issue. This is just an ID from the user context. The name is not important.'),
         assignee: z.union([z.object({
-            id: z.string().describe('The assignee ID'),
-            name: z.string().describe('The assignee name')
+            email: z.string().describe('The assignee email'),
         }), z.null()]).describe('The assignee of the ticket'),
         priority: z.union([z.number(), z.null()]).describe('The priority of the ticket'),
-        labels: z.union([z.array(z.object({
-            id: z.string().describe('The label ID'),
-            name: z.string().describe('The label name'),
-            color: z.string().describe('The label color')
-        })), z.null()]).describe('The labels for the ticket'),
+        // labels: z.union([z.array(z.object({
+        //     id: z.string().describe('The label ID'),
+        //     name: z.string().describe('The label name'),
+        //     color: z.string().describe('The label color')
+        // })), z.null()]).describe('The labels for the ticket'),
         estimate: z.union([z.number(), z.null()]).describe('The time estimate for the ticket'),
         dueDate: z.union([z.string(), z.null()]).describe('The due date for the ticket'),
         project: z.union([z.object({
             id: z.string().describe('The project ID'),
             name: z.string().describe('The project name')
         }), z.null()]).describe('The project for the ticket'),
-        team: z.union([z.object({
-            id: z.string().describe('The team ID'),
-            name: z.string().describe('The team name'),
-            key: z.string().describe('The team key')
-        }), z.null()]).describe('The team for the ticket'),
     }),
-    execute: async ({ id, title, description, state, assignee, priority, labels, estimate, dueDate, project, team }, runContext?: RunContext<Session>) => {
+    execute: async ({ id, title, description, state, assignee, priority, estimate, dueDate, project }, runContext?: RunContext<Session>) => {
         if (!runContext?.context) {
             throw new Error("No context provided");
         }
 
         if (!runContext.context.ticketManager) {
             throw new Error("No ticket manager provided");
+        }
+
+        const teamId = runContext.context.teamId;
+        if (!teamId) {
+            console.error(chalk.red.bold('❌ No team ID provided. Unable to update ticket.'));
+            throw new Error("No team ID provided");
         }
 
         let ticketManager = runContext.context.ticketManager;
@@ -248,14 +248,14 @@ const updateTicketTool = tool({
         let ticket = await ticketManager.updateTicket(id, {
             title,
             description: description || undefined,
-            state,
-            assignee: assignee || undefined,
+            state: {
+                id: state,
+                name: state
+            },
+            assignee: assignee?.email || undefined,
             priority: priority || undefined,
-            labels: labels || undefined,
-            estimate: estimate || undefined,
-            dueDate: dueDate || undefined,
             project: project || undefined,
-            team: team || undefined,
+            teamId: teamId,
         });
 
         return ticket;

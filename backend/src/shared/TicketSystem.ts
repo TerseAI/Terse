@@ -94,18 +94,26 @@ export interface CreateTicketInput {
     };
     assignee?: string; // email address of the assignee
     priority?: number;
-    projectId?: {
+    project?: {
         id: string;
         name: string;
     };
 }
 
 export interface UpdateTicketInput {
-    title?: string;
+    title: string;
+    teamId: string;
     description?: string;
-    status?: string;
-    assigneeId?: string;
-    [key: string]: any;
+    state?: {
+        id: string;
+        name: string;
+    };
+    assignee?: string; // email address of the assignee
+    priority?: number;
+    project?: {
+        id: string;
+        name: string;
+    };
 }
 
 export interface TicketWebhookHandler {
