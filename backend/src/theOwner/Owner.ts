@@ -1,11 +1,10 @@
-import { TicketManager } from "../ticketing/TicketIntegration";
-import { Search } from "../search/search";
-import { Analyzer } from "../agent/agents/Analyzer";
-import { Session } from "../server";
-import chalk from "chalk";
-import { SearchResult } from "../search/SearchItem";
-import { db } from "../prismaClient";
-import { sendMessage } from "../slack/sendMessage";
+import { Search } from '../searchClient';
+import { Session } from '../server';
+import { SearchResult } from '../search/SearchItem';
+import { Analyzer } from '../agent/agents/Analyzer';
+import chalk from 'chalk';
+import { db } from '../prismaClient';
+import { sendMessage } from '../slack/sendMessage';
 
 class Owner {
     private searchSystem: Search;
@@ -16,26 +15,13 @@ class Owner {
         this.session = session;
     }
 
-    async handlePushEvent(event: PushEvent) {
-        console.log('The owner is handling a push event', event);
+    async handleUnifiedGitHubEvent(event: UnifiedGitHubEvent) {
+        console.log('The owner is handling a unified GitHub event', event);
         const analyzer = new Analyzer(this.session);
 
-
         const results: SearchResult[][] = [];
-        for (const commitString of pushEventToString(event)) {
-            // Run semantic search on the push event
-            const searchResults = await this.searchSystem.search(commitString, {
-                teamId: this.session.teamId || '',
-                entityTypes: ['ticket'],
-                minSimilarity: 0.4,
-                filters: [],
-                limit: 10
-            });
-
-            console.log(chalk.blue('Search results for commit diffs', commitString), searchResults);
-            results.push(searchResults);
-        }
-
+        
+        // Search through commit messages
         for (const commit of event.commits) {
             const searchResults = await this.searchSystem.search(commit.name, {
                 teamId: this.session.teamId || '',
@@ -49,20 +35,38 @@ class Owner {
             results.push(searchResults);
         }
 
+        // Search through PR title and body if available
+        if (event.pullRequest) {
+            const prContent = `${event.pullRequest.title} ${event.pullRequest.body || ''}`;
+            const prSearchResults = await this.searchSystem.search(prContent, {
+                teamId: this.session.teamId || '',
+                entityTypes: ['ticket'],
+                minSimilarity: 0.4,
+                filters: [],
+                limit: 10
+            });
+
+            console.log(chalk.blue('Search results for PR content'), prSearchResults);
+            results.push(prSearchResults);
+        }
+
         // flatten the results
         const flattenedResults = results.flat();
-        // de-duplicate the results. Anything with the same entityId and entityType reference the same entity
+        // de-duplicate the results
         const uniqueResults = flattenedResults.filter((result, index, self) =>
             index === self.findIndex((t) => t.entityId === result.entityId && t.entityType === result.entityType)
         );
 
-        // Run the analyzer
-        analyzer.analyze(eventForAgent(event, uniqueResults));
+        const unifiedEvent = unifiedGitHubEventForAgent(event, uniqueResults);
+        console.log(chalk.blue('Unified event for model'), unifiedEvent);
+
+        // Run the analyzer with comprehensive context
+        analyzer.analyze(unifiedEvent);
 
         // Run the analyzer
         const result = await analyzer.run();
 
-        console.log(chalk.blue('Analyzer result'), result.finalOutput);
+        console.log(chalk.blue('Analyzer result for unified event'), result.finalOutput);
 
         // get user slack integration
         const userSlackIntegration = await db().user_slack_integrations.findFirst({
@@ -100,14 +104,6 @@ class Owner {
 
 export default Owner;
 
-export type PushEvent = {
-    username: string;
-    installationId: number;
-    repositoryName: string;
-    branch: string;
-    commits: Commit[];
-}
-
 export type Commit = {
     name: string;
     fileDiffs: FileDiff[];
@@ -118,34 +114,73 @@ export type FileDiff = {
     diff: string;
 }
 
-// helper function to convert the push event to a string
-export const pushEventToString = (event: PushEvent): string[] => {
-
-    /// For every commit, we want to create a string that is a summary of the commit
-    const commitStrings = event.commits.map(commit => {
-        return `
-        username: ${event.username}
-        installationId: ${event.installationId}
-        repositoryName: ${event.repositoryName}
-        branch: ${event.branch}
-        commit: ${commit.name}
-        Changed Files: ${commit.fileDiffs.map(diff => diff.filename).join(', ')}
-        `;
-    });
-
-    return commitStrings;
+type UnifiedGitHubEvent = {
+    username: string;
+    installationId: number;
+    repositoryName: string;
+    eventType: 'push' | 'pull_request.opened' | 'pull_request.synchronize' | 'pull_request.closed' | 'pull_request.merged';
+    branch?: string;
+    commits: Commit[];
+    pullRequest?: {
+        id: string;
+        number: number;
+        title: string;
+        body?: string;
+        state: 'open' | 'closed';
+        merged: boolean;
+        head: {
+            ref: string;
+            sha: string;
+        };
+        base: {
+            ref: string;
+            sha: string;
+        };
+        user: {
+            login: string;
+            email?: string;
+        };
+    };
+    repository: {
+        name: string;
+        owner: string;
+        defaultBranch: string;
+    };
+    sender: {
+        login: string;
+        email?: string;
+    };
 }
 
-export const commitName = (commit: Commit): string => {
-    return commit.name;
-}
-
-export const eventForAgent = (event: PushEvent, searchResults: SearchResult[]): string => {
-    return `
+export const unifiedGitHubEventForAgent = (event: UnifiedGitHubEvent, searchResults: SearchResult[]): string => {
+    let eventString = `
+    Unified GitHub Event:
     username: ${event.username}
     installationId: ${event.installationId}
     repositoryName: ${event.repositoryName}
-    branch: ${event.branch}
+    eventType: ${event.eventType}
+    `;
+
+    if (event.branch) {
+        eventString += `branch: ${event.branch}\n`;
+    }
+
+    if (event.pullRequest) {
+        eventString += `
+    pullRequest:
+      id: ${event.pullRequest.id}
+      number: ${event.pullRequest.number}
+      title: ${event.pullRequest.title}
+      body: ${event.pullRequest.body || 'No description'}
+      state: ${event.pullRequest.state}
+      merged: ${event.pullRequest.merged}
+      head: ${event.pullRequest.head.ref} (${event.pullRequest.head.sha})
+      base: ${event.pullRequest.base.ref} (${event.pullRequest.base.sha})
+      user: ${event.pullRequest.user.login}
+    `;
+    }
+
+    eventString += `
     commits: ${event.commits.map(commit => commit.name).join(', ')}
 
     ${event.commits.map(commit => `
@@ -156,19 +191,14 @@ export const eventForAgent = (event: PushEvent, searchResults: SearchResult[]): 
     `).join('\n')}
 
     Possibly Related Tickets:
+    ${searchResults.map(result => `- ${result.entityId} (${result.entityType}): ${result.content}`).join('\n')}
+
+    IMPORTANT: For unified events:
+    - If eventType is 'push': Look for related tickets and mark them as "In Progress"
+    - If eventType is 'pull_request.opened': Look for related tickets and mark them as "In Progress" or "In Review"
+    - If eventType is 'pull_request.synchronize': Update progress on related tickets
+    - If eventType is 'pull_request.merged': Mark related tickets as "Done" if the feature/bug fix appears complete
+    - If eventType is 'pull_request.closed' (but not merged): Consider if tickets should be marked as "Cancelled" or left as-is
     `;
+    return eventString;
 }
-
-// export const eventForAgent = (event: PushEvent, searchResults: SearchResult[]): string => {
-//     let eventString = pushEventToString(event);
-
-//     eventString += `
-//     Possibly Related Tickets:
-//     `;
-
-//     eventString += searchResults.map(result => `
-//     ${result.content}
-//     `).join('\n');
-
-//     return eventString;
-// }
