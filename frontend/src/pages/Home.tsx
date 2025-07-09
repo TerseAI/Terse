@@ -7,7 +7,7 @@ import { Integration, useIntegrations } from "../context/Integrations";
 
 function Home() {
     const { user, logout } = useAuth();
-    const { integrations, refreshIntegrations } = useIntegrations();
+    const { integrations, isLoading, refreshIntegrations } = useIntegrations();
 
     const hasGithub = integrations.includes(Integration.GITHUB);
     const hasLinear = integrations.includes(Integration.LINEAR);
@@ -43,85 +43,167 @@ function Home() {
 
             {/* Main Content */}
             <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    {/* System Status */}
-                    <div className="lg:col-span-1 space-y-6">
-                        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-                            <h2 className="text-lg font-semibold text-gray-900 mb-4">System Status</h2>
-                            <div className="space-y-4">
-                                <div>
-                                    <div className="flex items-center justify-between">
-                                        <span className="text-sm text-gray-600">System Status</span>
-                                        <div className="flex items-center space-x-2">
-                                            <div className={`w-2 h-2 rounded-full ${isSetupComplete ? 'bg-green-500' : 'bg-red-500'}`}></div>
-                                            <span className={`text-sm font-medium ${isSetupComplete ? 'text-green-600' : 'text-red-600'}`}>
-                                                {isSetupComplete ? 'Online' : 'Offline'}
+                {isLoading ? (
+                    <LoadingState />
+                ) : (
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        {/* System Status */}
+                        <div className="lg:col-span-1 space-y-6">
+                            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                                <h2 className="text-lg font-semibold text-gray-900 mb-4">System Status</h2>
+                                <div className="space-y-4">
+                                    <div>
+                                        <div className="flex items-center justify-between">
+                                            <span className="text-sm text-gray-600">System Status</span>
+                                            <div className="flex items-center space-x-2">
+                                                <div className={`w-2 h-2 rounded-full ${isSetupComplete ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                                                <span className={`text-sm font-medium ${isSetupComplete ? 'text-green-600' : 'text-red-600'}`}>
+                                                    {isSetupComplete ? 'Online' : 'Offline'}
+                                                </span>
+                                            </div>
+                                        </div>
+                                        <div className="mt-2">
+                                            <span className="text-xs text-gray-500">
+                                                {isSetupComplete 
+                                                    ? 'Listening for pushes to repository...' 
+                                                    : 'Complete setup to enable automation'
+                                                }
                                             </span>
                                         </div>
                                     </div>
-                                    <div className="mt-2">
-                                        <span className="text-xs text-gray-500">
-                                            {isSetupComplete 
-                                                ? 'Listening for pushes to repository...' 
-                                                : 'Complete setup to enable automation'
-                                            }
-                                        </span>
+                                    
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-sm text-gray-600">Slack Summaries</span>
+                                        <div className="flex items-center space-x-2">
+                                            {hasSlack ? (
+                                                <>
+                                                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                                                    <span className="text-sm font-medium text-green-600">Enabled</span>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
+                                                    <span className="text-sm font-medium text-yellow-600">Disabled</span>
+                                                </>
+                                            )}
+                                        </div>
                                     </div>
                                 </div>
+                            </div>
+                            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                                <p className="text-sm text-gray-600">
+                                    We never store your data as part of our service.
+                                    To match code changes to tickets, we generate embeddings of issues, but never retain any plain text content.
+                                </p>
+                            </div>
+                        </div>
+
+                        {/* Integrations */}
+                        <div className="lg:col-span-2">
+                            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                                <h2 className="text-lg font-semibold text-gray-900 mb-6">Integrations</h2>
                                 
-                                <div className="flex items-center justify-between">
-                                    <span className="text-sm text-gray-600">Slack Summaries</span>
-                                    <div className="flex items-center space-x-2">
-                                        {hasSlack ? (
-                                            <>
-                                                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                                                <span className="text-sm font-medium text-green-600">Enabled</span>
-                                            </>
-                                        ) : (
-                                            <>
-                                                <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
-                                                <span className="text-sm font-medium text-yellow-600">Disabled</span>
-                                            </>
-                                        )}
+                                <div className="space-y-6">
+                                    {/* GitHub */}
+                                    <div className="border-b border-gray-100 pb-6">
+                                        <AddGithub onIntegrationChange={refreshIntegrations} />
+                                    </div>
+
+                                    {/* Ticketing System */}
+                                    <div className="border-b border-gray-100 pb-6">
+                                        <TicketIntegration onIntegrationChange={refreshIntegrations} />
+                                    </div>
+
+                                    {/* Slack */}
+                                    <div>
+                                        <AddToSlack onIntegrationChange={refreshIntegrations} />
                                     </div>
                                 </div>
                             </div>
                         </div>
-                        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-                            <p className="text-sm text-gray-600">
-                                We never store your data as part of our service.
-                                To match code changes to tickets, we generate embeddings of issues, but never retain any plain text content.
-                            </p>
+                    </div>
+                )}
+            </div>
+        </div>
+    )
+}
+
+function LoadingState() {
+    return (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* System Status Skeleton */}
+            <div className="lg:col-span-1 space-y-6">
+                <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                    <div className="h-6 bg-gray-200 rounded w-32 mb-4 animate-pulse"></div>
+                    <div className="space-y-4">
+                        <div>
+                            <div className="flex items-center justify-between">
+                                <div className="h-4 bg-gray-200 rounded w-24 animate-pulse"></div>
+                                <div className="flex items-center space-x-2">
+                                    <div className="w-2 h-2 bg-gray-200 rounded-full animate-pulse"></div>
+                                    <div className="h-4 bg-gray-200 rounded w-16 animate-pulse"></div>
+                                </div>
+                            </div>
+                            <div className="mt-2">
+                                <div className="h-3 bg-gray-200 rounded w-48 animate-pulse"></div>
+                            </div>
+                        </div>
+                        
+                        <div className="flex items-center justify-between">
+                            <div className="h-4 bg-gray-200 rounded w-28 animate-pulse"></div>
+                            <div className="flex items-center space-x-2">
+                                <div className="w-2 h-2 bg-gray-200 rounded-full animate-pulse"></div>
+                                <div className="h-4 bg-gray-200 rounded w-20 animate-pulse"></div>
+                            </div>
                         </div>
                     </div>
+                </div>
+                <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                    <div className="space-y-2">
+                        <div className="h-3 bg-gray-200 rounded w-full animate-pulse"></div>
+                        <div className="h-3 bg-gray-200 rounded w-3/4 animate-pulse"></div>
+                        <div className="h-3 bg-gray-200 rounded w-5/6 animate-pulse"></div>
+                    </div>
+                </div>
+            </div>
 
-                    {/* Integrations */}
-                    <div className="lg:col-span-2">
-                        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-                            <h2 className="text-lg font-semibold text-gray-900 mb-6">Integrations</h2>
-                            
-                            <div className="space-y-6">
-                                {/* GitHub */}
-                                <div className="border-b border-gray-100 pb-6">
-                                    <AddGithub onIntegrationChange={refreshIntegrations} />
-                                </div>
+            {/* Integrations Skeleton */}
+            <div className="lg:col-span-2">
+                <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                    <div className="h-6 bg-gray-200 rounded w-32 mb-6 animate-pulse"></div>
+                    
+                    <div className="space-y-6">
+                        {/* GitHub Skeleton */}
+                        <div className="border-b border-gray-100 pb-6">
+                            <div className="space-y-4">
+                                <div className="h-5 bg-gray-200 rounded w-24 animate-pulse"></div>
+                                <div className="h-4 bg-gray-200 rounded w-64 animate-pulse"></div>
+                                <div className="h-10 bg-gray-200 rounded w-32 animate-pulse"></div>
+                            </div>
+                        </div>
 
-                                {/* Ticketing System */}
-                                <div className="border-b border-gray-100 pb-6">
-                                    <TicketIntegration onIntegrationChange={refreshIntegrations} />
-                                </div>
+                        {/* Ticketing System Skeleton */}
+                        <div className="border-b border-gray-100 pb-6">
+                            <div className="space-y-4">
+                                <div className="h-5 bg-gray-200 rounded w-32 animate-pulse"></div>
+                                <div className="h-4 bg-gray-200 rounded w-72 animate-pulse"></div>
+                                <div className="h-10 bg-gray-200 rounded w-32 animate-pulse"></div>
+                            </div>
+                        </div>
 
-                                {/* Slack */}
-                                <div>
-                                    <AddToSlack onIntegrationChange={refreshIntegrations} />
-                                </div>
+                        {/* Slack Skeleton */}
+                        <div>
+                            <div className="space-y-4">
+                                <div className="h-5 bg-gray-200 rounded w-20 animate-pulse"></div>
+                                <div className="h-4 bg-gray-200 rounded w-56 animate-pulse"></div>
+                                <div className="h-10 bg-gray-200 rounded w-32 animate-pulse"></div>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
-    )
+    );
 }
 
 function TicketIntegration({ onIntegrationChange }: { onIntegrationChange: () => Promise<void> }) {
