@@ -1,5 +1,4 @@
 import { useAuth } from "../services/auth";
-import { ChatInterface } from "../components/chat/ChatInterface";
 import { AddToSlack } from "../components/AddToSlack";
 import { AddGithub } from "../components/AddGithub";
 import { AddLinear } from "../components/AddLinear";
@@ -10,47 +9,110 @@ function Home() {
     const { user, logout } = useAuth();
     const { integrations } = useIntegrations();
 
-    const needsTicketingIntegration = !integrations.includes(Integration.LINEAR) && !integrations.includes(Integration.JIRA);
+    const hasGithub = integrations.includes(Integration.GITHUB);
+    const hasLinear = integrations.includes(Integration.LINEAR);
+    const hasJira = integrations.includes(Integration.JIRA);
+    const hasSlack = integrations.includes(Integration.SLACK);
+
+    const isSetupComplete = hasGithub && (hasLinear || hasJira);
 
     return (
-        <div className="flex h-screen bg-[#fafafa] text-gray-900">
-            {/* Left Sidebar */}
-            <div className="w-80 bg-white border-r border-gray-200 flex flex-col">
-                {/* Header */}
-                <div className="px-6 py-8 border-b border-gray-200 bg-white">
-                    <div className="mb-4">
-                        <h1 className="text-xl font-bold text-gray-900">Vectra AI</h1>
-                        <p className="text-sm text-gray-600 mt-1">Welcome back, {user?.display_name}</p>
-                    </div>
-                    <button
-                        onClick={logout}
-                        className="w-full px-4 py-3 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors duration-200"
-                    >
-                        Sign out
-                    </button>
-                </div>
-
-                {/* Integrations Section */}
-
-                <div className="flex-1 p-6 space-y-6">
-                    <div>
-                        <h2 className="text-sm font-medium text-gray-900 mb-4">Integrations</h2>
-                        <div className="space-y-4">
-                            <TicketIntegration />
-                            {!needsTicketingIntegration && (
-                                <>
-                                    <AddGithub />
-                                    <AddToSlack />
-                                </>
-                            )}
+        <div className="min-h-screen bg-gray-50 text-gray-900">
+            {/* Header */}
+            <div className="bg-white border-b border-gray-200">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                    <div className="flex justify-between items-center py-4">
+                        <div className="flex items-center space-x-3">
+                            <div>
+                                <h1 className="text-xl font-semibold text-gray-900">Vectra AI</h1>
+                                <p className="text-sm text-gray-600">Dashboard</p>
+                            </div>
+                        </div>
+                        <div className="flex items-center space-x-4">
+                            <span className="text-sm text-gray-600">{user?.display_name}</span>
+                            <button
+                                onClick={logout}
+                                className="px-3 py-1.5 text-sm text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors"
+                            >
+                                Sign out
+                            </button>
                         </div>
                     </div>
                 </div>
             </div>
 
-            {/* Main Chat Area */}
-            <div className="flex-1 flex flex-col">
-                <ChatInterface />
+            {/* Main Content */}
+            <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    {/* System Status */}
+                    <div className="lg:col-span-1">
+                        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                            <h2 className="text-lg font-semibold text-gray-900 mb-4">System Status</h2>
+                            <div className="space-y-4">
+                                <div>
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-sm text-gray-600">System Status</span>
+                                        <div className="flex items-center space-x-2">
+                                            <div className={`w-2 h-2 rounded-full ${isSetupComplete ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                                            <span className={`text-sm font-medium ${isSetupComplete ? 'text-green-600' : 'text-red-600'}`}>
+                                                {isSetupComplete ? 'Online' : 'Offline'}
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <div className="mt-2">
+                                        <span className="text-xs text-gray-500">
+                                            {isSetupComplete 
+                                                ? 'Listening for pushes to repository...' 
+                                                : 'Complete setup to enable automation'
+                                            }
+                                        </span>
+                                    </div>
+                                </div>
+                                
+                                <div className="flex items-center justify-between">
+                                    <span className="text-sm text-gray-600">Slack Summaries</span>
+                                    <div className="flex items-center space-x-2">
+                                        {hasSlack ? (
+                                            <>
+                                                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                                                <span className="text-sm font-medium text-green-600">Enabled</span>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
+                                                <span className="text-sm font-medium text-yellow-600">Disabled</span>
+                                            </>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Integrations */}
+                    <div className="lg:col-span-2">
+                        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                            <h2 className="text-lg font-semibold text-gray-900 mb-6">Integrations</h2>
+                            
+                            <div className="space-y-6">
+                                {/* GitHub */}
+                                <div className="border-b border-gray-100 pb-6">
+                                    <AddGithub />
+                                </div>
+
+                                {/* Ticketing System */}
+                                <div className="border-b border-gray-100 pb-6">
+                                    <TicketIntegration />
+                                </div>
+
+                                {/* Slack */}
+                                <div>
+                                    <AddToSlack />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     )
@@ -63,23 +125,21 @@ function TicketIntegration() {
 
     if (!hasLinear && !hasJira) {
         return (
-            <>
+            <div className="space-y-3">
                 <AddLinear />
-                <p>or</p>
+                <div className="text-center">
+                    <span className="text-sm text-gray-500">or</span>
+                </div>
                 <AddJira />
-            </>
+            </div>
         )
     }
 
     else if (hasLinear) {
-        return (
-            <AddLinear />
-        )
+        return <AddLinear />
     }
     else {
-        return (
-            <AddJira />
-        )
+        return <AddJira />
     }
 }
 
