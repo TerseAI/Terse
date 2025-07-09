@@ -1,11 +1,18 @@
 import axios from "axios";
 import { Request, Response } from "express";
-import { SlackIntegration, User, UserSlackIntegration } from "../types/prisma";
+import { User } from "../types/prisma";
 import { db } from "../prismaClient"
 import { Jwt } from "../utility/jwt";
 import { LogLevel, WebClient } from "@slack/web-api";
 import chalk from "chalk";
 import { sendMessage } from "./sendMessage";
+
+
+const welcomeMessage = `
+Hello, I'm Vectra AI, your AI assistant for managing your tickets.
+
+I work in the background, but I'll shoot you a message here whenever I make changes to your tickets!
+`;
 
 export async function getSlackOAuthUrl(req: Request, res: Response) {
     const client_id = process.env.SLACK_CLIENT_ID;
@@ -150,7 +157,7 @@ export async function slackOAuthCallback(req: Request, res: Response) {
                 return;
             }
 
-            sendMessage("Hello, world!", access_token, dmChannelId.id);
+            sendMessage(welcomeMessage, access_token, dmChannelId.id);
 
             const userSlackIntegration = await db().user_slack_integrations.create({
                 data: {

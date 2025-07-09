@@ -22,6 +22,14 @@ export default (app: Probot) => {
   //   await context.octokit.issues.createComment(issueComment);
   // });
 
+  app.on("pull_request.synchronize", async (context) => {
+    console.log("🔔 Pull request synchronized:", context.payload.pull_request?.title);
+
+    const { payload } = context;
+    const github = context.octokit;
+
+  });
+
   app.on("push", async (context) => {
     const { payload } = context;
     const github = context.octokit;
