@@ -91,7 +91,7 @@ const systemPrompt = async (session: Session) => {
 
     We have run a semantic search on the changes and may have found some tickets that are related to the changes.
 
-    If they are, and the ticket is not marked as in progress, you should mark it as in progress.
+    If there are tickets that come up in the search and you believe it's related to the changes. You should mark it as in progress.
 
     If there are no tickets that come up in the search. But the changes seem to indicate a bug fix, new feature or anything else that should be a ticket, you should create a ticket.
 
