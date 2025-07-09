@@ -99,6 +99,8 @@ const systemPrompt = async (session: Session) => {
 
     Please provide a summary of your actions and the results.
 
-    I will log it for debugging purposes.
+    I will send this summary to the user who triggered the event.
+
+    Make sure it's legible in Slack!
     `;
 }
