@@ -7,7 +7,7 @@ import { Integration, useIntegrations } from "../context/Integrations";
 
 function Home() {
     const { user, logout } = useAuth();
-    const { integrations, isLoading, refreshIntegrations } = useIntegrations();
+    const { integrations, refreshIntegrations } = useIntegrations();
 
     const hasGithub = integrations.includes(Integration.GITHUB);
     const hasLinear = integrations.includes(Integration.LINEAR);
