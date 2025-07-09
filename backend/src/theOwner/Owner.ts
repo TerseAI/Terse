@@ -32,7 +32,20 @@ class Owner {
                 limit: 10
             });
 
-            console.log(chalk.blue('Search results for commit', commitString), searchResults);
+            console.log(chalk.blue('Search results for commit diffs', commitString), searchResults);
+            results.push(searchResults);
+        }
+
+        for (const commit of event.commits) {
+            const searchResults = await this.searchSystem.search(commit.name, {
+                teamId: this.session.teamId || '',
+                entityTypes: ['ticket'],
+                minSimilarity: 0.4,
+                filters: [],
+                limit: 10
+            });
+
+            console.log(chalk.blue('Search results for commit name', commit.name), searchResults);
             results.push(searchResults);
         }
 
@@ -121,6 +134,10 @@ export const pushEventToString = (event: PushEvent): string[] => {
     });
 
     return commitStrings;
+}
+
+export const commitName = (commit: Commit): string => {
+    return commit.name;
 }
 
 export const eventForAgent = (event: PushEvent, searchResults: SearchResult[]): string => {

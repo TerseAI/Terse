@@ -321,6 +321,18 @@ export class LinearAdapter implements TicketManager {
         return this.convertLinearTicket(issue);
     }
 
+    async userIdFromEmail(email: string): Promise<string | null> {
+        const user = await this.client.users({
+            filter: {
+                email: { eq: email }
+            }
+        });
+        if (!user) {
+            return null;
+        }
+        return user.nodes[0].id;
+    }
+
     async createTicket(input: CreateTicketInput): Promise<Ticket> {
         console.log('Creating ticket', input);
         let issuePayload;
@@ -330,6 +342,7 @@ export class LinearAdapter implements TicketManager {
                 description: input.description,
                 teamId: input.teamId,
                 stateId: input.state.id,
+                assigneeId: await this.userIdFromEmail(input.assignee?.email || ''),
             });
         } catch (error) {
             console.error('Failed to create issue', error);
@@ -352,7 +365,7 @@ export class LinearAdapter implements TicketManager {
             title: input.title,
             description: input.description,
             stateId: input.state,
-            assigneeId: input.assigneeId,
+            assigneeId: await this.userIdFromEmail(input.assignee?.email || ''),
         });
 
         let updatedIssue = await issuePayload.issue;
