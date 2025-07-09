@@ -327,7 +327,6 @@ export class LinearAdapter implements TicketManager {
                 email: { eq: email }
             }
         });
-        console.log('User', user.nodes[0]);
         if (!user) {
             return null;
         }
@@ -344,8 +343,9 @@ export class LinearAdapter implements TicketManager {
                 title: input.title,
                 description: input.description,
                 teamId: input.teamId,
-                stateId: input.state.id,
+                stateId: input.state?.id || undefined,
                 assigneeId: await this.userIdFromEmail(input.assignee || ''),
+                projectId: input.projectId?.id || undefined,
             });
         } catch (error) {
             console.error('Failed to create issue', error);
