@@ -91,6 +91,11 @@ export class JiraAdapter implements TicketManager {
         return this.findTicket(id);
     }
 
+    async commentOnTicket(id: string, comment: string): Promise<void> {
+        await this.client.addComment(id, comment);
+        console.log(chalk.green('✅ Comment added:'), chalk.cyan(comment));
+    }
+
     async deleteComment(ticketId: string, commentId: string): Promise<void> {
         await this.client.deleteComment(ticketId, parseInt(commentId));
     }
