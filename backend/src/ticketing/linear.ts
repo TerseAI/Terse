@@ -345,7 +345,7 @@ export class LinearAdapter implements TicketManager {
                 teamId: input.teamId,
                 stateId: input.state?.id || undefined,
                 assigneeId: await this.userIdFromEmail(input.assignee || ''),
-                projectId: input.projectId?.id || undefined,
+                projectId: input.project?.id || undefined,
             });
         } catch (error) {
             console.error('Failed to create issue', error);
@@ -367,8 +367,8 @@ export class LinearAdapter implements TicketManager {
         const issuePayload: IssuePayload = await this.client.updateIssue(id, {
             title: input.title,
             description: input.description,
-            stateId: input.state || undefined,
-            assigneeId: await this.userIdFromEmail(input.assignee?.email || ''),
+            stateId: input.state?.id || undefined,
+            assigneeId: await this.userIdFromEmail(input.assignee || ''),
         });
 
         let updatedIssue = await issuePayload.issue;
