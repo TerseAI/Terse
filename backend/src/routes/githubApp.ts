@@ -178,18 +178,79 @@ export async function githubAppRecievedCommit(req: Request, res: Response) {
     }
 }
 
-type GithubAppRecievedPushRequest = {
+// This is important. If we got this request, we know that the app is installed on their repo. IF it's not in our DB, we need to create it.
+async function resolveUserGithubRelation(user: User, username: string, repositoryName: string, installationId: number): Promise<GithubRepository | null> {
+    // check if the repository is in our DB
+    let repository: GithubRepository | null = await db().github_repositories.findFirst({ where: { name: repositoryName, installation_id: installationId } });
+    if (!repository) {
+        console.log(chalk.yellow('Drift detected. This repository is not in our DB but it is a registered repository in the github app. Creating it...'));
+        repository = await db().github_repositories.create({
+            data: {
+                name: repositoryName,
+                owner: username,
+                installation_id: installationId
+            }
+        });
+    }
+
+    // Make sure the user is associated with the repository
+    let relation: UserGithubRepository | null = await db().user_github_repositories.findFirst({ where: { user_id: user.id, github_repository_id: repository.id } });
+    if (!relation) {
+        await db().user_github_repositories.create({
+        data: {
+            user_id: user.id,
+            github_repository_id: repository.id
+            }
+        });
+    }
+
+    // get the user
+    return repository;
+}
+
+type GithubAppUnifiedEventRequest = {
     username: string;
     installationId: number;
     repositoryName: string;
-    branch: string;
+    eventType: 'push' | 'pull_request.opened' | 'pull_request.synchronize' | 'pull_request.closed' | 'pull_request.merged';
+    branch?: string;
     commits: Commit[];
+    pullRequest?: {
+        id: string;
+        number: number;
+        title: string;
+        body?: string;
+        state: 'open' | 'closed';
+        merged: boolean;
+        head: {
+            ref: string;
+            sha: string;
+        };
+        base: {
+            ref: string;
+            sha: string;
+        };
+        user: {
+            login: string;
+            email?: string;
+        };
+    };
+    // Additional context
+    repository: {
+        name: string;
+        owner: string;
+        defaultBranch: string;
+    };
+    sender: {
+        login: string;
+        email?: string;
+    };
 }
 
-export async function githubAppRecievedPush(req: Request, res: Response) {
-    const body: GithubAppRecievedPushRequest = req.body as GithubAppRecievedPushRequest;
+export async function githubAppUnifiedEvent(req: Request, res: Response) {
+    const body: GithubAppUnifiedEventRequest = req.body as GithubAppUnifiedEventRequest;
 
-    console.log('githubAppRecievedPush', body);
+    console.log('githubAppUnifiedEvent', body);
 
     const { username, repositoryName, installationId } = body;
 
@@ -223,69 +284,16 @@ export async function githubAppRecievedPush(req: Request, res: Response) {
     // init an Owner
     const owner: Owner = new Owner(search(), session)
 
-    // handle the push event
-    await owner.handlePushEvent({
-        username: body.username,
-        installationId: body.installationId,
-        repositoryName: body.repositoryName,
-        branch: body.branch,
-        commits: body.commits
-    });
+    // handle the unified event
+    await owner.handleUnifiedGitHubEvent(body);
     
-    res.status(200).json({ message: 'Push event received and processed' });
-}
-
-// This is important. If we got this request, we know that the app is installed on their repo. IF it's not in our DB, we need to create it.
-async function resolveUserGithubRelation(user: User, username: string, repositoryName: string, installationId: number): Promise<GithubRepository | null> {
-    // check if the repository is in our DB
-    let repository: GithubRepository | null = await db().github_repositories.findFirst({ where: { name: repositoryName, installation_id: installationId } });
-    if (!repository) {
-        console.log(chalk.yellow('Drift detected. This repository is not in our DB but it is a registered repository in the github app. Creating it...'));
-        repository = await db().github_repositories.create({
-            data: {
-                name: repositoryName,
-                owner: username,
-                installation_id: installationId
-            }
-        });
-    }
-
-    // Make sure the user is associated with the repository
-    let relation: UserGithubRepository | null = await db().user_github_repositories.findFirst({ where: { user_id: user.id, github_repository_id: repository.id } });
-    if (!relation) {
-        await db().user_github_repositories.create({
-        data: {
-            user_id: user.id,
-            github_repository_id: repository.id
-            }
-        });
-    }
-
-    // get the user
-    return repository;
-}
-
-
-type GithubAppRecievedPullRequestRequest = {
-    username: string;
-    installationId: number;
-    repositoryName: string;
-}
-
-export async function githubAppRecievedPullRequest(req: Request, res: Response) {
-    const body = req.body as GithubAppRecievedPullRequestRequest;
-}
-
-type GithubAppNewBranch = {
-    username: string;
-    installationId: number;
-    repositoryName: string;
-}
-
-export async function githubAppRecievedIssueComment(req: Request, res: Response) {
-    const body = req.body as GithubAppNewBranch;
+    res.status(200).json({ message: 'GitHub event received and processed' });
 }
 
 export default {
-    getInstallationUrl
-}; 
+    getCurrentGithubIntegration,
+    getInstallationUrl,
+    githubAppInstallationCallback,
+    githubAppInstallationDeleted,
+    githubAppUnifiedEvent
+} 
