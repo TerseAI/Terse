@@ -176,7 +176,7 @@ const createTicketTool = tool({
 
         let ticket = await ticketManager.createTicket({
             title,
-            teamId,
+            teamId: teamId,
             description: description || undefined,
             state,
             assignee: assignee?.email || undefined,
