@@ -1,6 +1,12 @@
 import { Probot } from "probot";
 import { VectraInterface, Commit, FileDiff } from "./vectraInterface.js";
 
+// Add this temporarily to debug what URL is being constructed
+console.log('Environment variables:', {
+  WEBHOOK_PROXY_URL: process.env.WEBHOOK_PROXY_URL,
+  NODE_ENV: process.env.NODE_ENV
+});
+
 export default (app: Probot) => {
   console.log("Probot app starting up...");
 
