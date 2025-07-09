@@ -263,6 +263,8 @@ export async function githubAppUnifiedEvent(req: Request, res: Response) {
         return;
     }
 
+    // TODO: Support users who are not registered with us.
+
     // resolve the user github relation
     const repository: GithubRepository | null = await resolveUserGithubRelation(user, username, repositoryName, installationId);
 
