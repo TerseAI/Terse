@@ -34,6 +34,7 @@ export function AddToSlack() {
         }
 
         getSlackOAuthUrl()
+        setIsLoading(false);
     }, []);
 
     const connectButton = slackOAuthUrl ? (
