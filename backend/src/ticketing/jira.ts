@@ -93,8 +93,8 @@ export class JiraAdapter implements TicketManager {
             description: input.description,
         };
 
-        if (input.assigneeId) {
-            updateFields.assignee = { id: input.assigneeId };
+        if (input.assignee) {
+            updateFields.assignee = { id: await this.userIdFromEmail(input.assignee) };
         }
 
         if (input.state) {
