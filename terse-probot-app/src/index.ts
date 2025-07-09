@@ -50,7 +50,6 @@ export default (app: Probot) => {
         for (const file of commitData.files || []) {
           console.log(`\nFile: ${file.filename}`);
           console.log(`Status: ${file.status}`); // added, modified, removed
-          console.log(`Changes: +${file.additions} -${file.deletions}`);
 
           // The actual diff patch
           if (file.patch) {
@@ -109,10 +108,4 @@ export default (app: Probot) => {
       console.error('Error calling githubAppInstallationDeleted:', error);
     }
   });
-
-  // For more information on building apps:
-  // https://probot.github.io/docs/
-
-  // To get your app running against GitHub, see:
-  // https://probot.github.io/docs/development/
 };
