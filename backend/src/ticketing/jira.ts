@@ -88,12 +88,21 @@ export class JiraAdapter implements TicketManager {
     }
 
     async updateTicket(id: string, input: UpdateTicketInput): Promise<Ticket> {
+        const updateFields: any = {
+            summary: input.title,
+            description: input.description,
+        };
+
+        if (input.assigneeId) {
+            updateFields.assignee = { id: input.assigneeId };
+        }
+
+        if (input.state) {
+            updateFields.status = { id: input.state };
+        }
+
         await this.client.updateIssue(id, {
-            fields: {
-                summary: input.title,
-                description: input.description,
-                assignee: input.assigneeId ? { id: input.assigneeId } : undefined
-            }
+            fields: updateFields
         });
         return this.findTicket(id);
     }

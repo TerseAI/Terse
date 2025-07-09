@@ -8,7 +8,7 @@ import { User } from './types/prisma';
 import { User as TicketUser } from './shared/TicketSystem';
 import { authMiddleware, githubAppAuthMiddleware, githubCallback, githubLogin, githubLoginURL, login, logout, setSession } from './routes/auth';
 import { AgentSocketServer, requestSessionSocketToken } from './agent/socket';
-import { getCurrentGithubIntegration, getInstallationUrl, githubAppInstallationCallback, githubAppInstallationDeleted, githubAppRecievedPush } from './routes/githubApp';
+import { getCurrentGithubIntegration, getInstallationUrl, githubAppInstallationCallback, githubAppInstallationDeleted, githubAppUnifiedEvent } from './routes/githubApp';
 import { deleteLinearCredentials, getLinearApiKey, indexLinearTicket, setLinearApiKey } from './routes/linear';
 import { deleteJiraCredentials, getJiraCredentials, setJiraCredentials } from './routes/jira';
 import { TicketManager } from './ticketing/TicketIntegration';
@@ -93,9 +93,9 @@ app.post('/github/installation-deleted', githubAppAuthMiddleware, async (req, re
     githubAppInstallationDeleted(req, res);
 })
 
-app.post('/github/push-event', githubAppAuthMiddleware, async (req, res) => {
-    githubAppRecievedPush(req, res);
-})
+app.post('/github/unified-event', async (req, res) => {
+    await githubAppUnifiedEvent(req, res);
+});
 
 // MARK: JIRA
 
