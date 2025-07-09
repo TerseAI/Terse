@@ -56,6 +56,8 @@ const systemPrompt = async (session: Session) => {
 
     Doing nothing is totally acceptable as well! 
 
+    When you create/update a ticket, make sure to set the assignee. You know who just authored the commit! It's going to be the current user.
+
     With the exception of TODOS, if you make a new ticket, it should at least be in progress. It doesn't make sense to look at commits and file a ticket to the backlog/Todo.
 
     When you make/update a ticket ALWAYS USE THE TOOLS PROVIDED TO YOU.
