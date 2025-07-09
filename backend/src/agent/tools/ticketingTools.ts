@@ -124,6 +124,8 @@ const getCurrentUserTool = tool({
             throw new Error("No ticket manager provided");
         }
 
+        console.log('Ticket Tool: Getting current user');
+
         let ticketManager = runContext.context.ticketManager;
 
         return await ticketManager.me();
@@ -174,6 +176,8 @@ const createTicketTool = tool({
 
         let ticketManager = runContext.context.ticketManager;
 
+        console.log('Ticket Tool: Created ticket');
+
         let ticket = await ticketManager.createTicket({
             title,
             teamId: teamId,
@@ -186,8 +190,6 @@ const createTicketTool = tool({
             dueDate: dueDate || undefined,
             project: project || undefined,
         } as CreateTicketInput);
-
-        console.log('Ticket Tool: Created ticket');
 
         return ticket;
     }
@@ -234,6 +236,8 @@ const updateTicketTool = tool({
 
         let ticketManager = runContext.context.ticketManager;
 
+        console.log('Ticket Tool: Updated ticket');
+
         // get valid states for the ticket system
         const userContext: UserContext = await ticketManager.getUserContext();
         if (!userContext.ticketStates.some(s => s.id === state)) {
@@ -253,8 +257,6 @@ const updateTicketTool = tool({
             project: project || undefined,
             team: team || undefined,
         });
-
-        console.log('Ticket Tool: Updated ticket');
 
         return ticket;
     }
