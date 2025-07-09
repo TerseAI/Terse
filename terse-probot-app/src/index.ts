@@ -22,14 +22,6 @@ export default (app: Probot) => {
   //   await context.octokit.issues.createComment(issueComment);
   // });
 
-  app.on("pull_request.synchronize", async (context) => {
-    console.log("🔔 Pull request synchronized:", context.payload.pull_request?.title);
-
-    const { payload } = context;
-    const github = context.octokit;
-
-  });
-
   app.on("push", async (context) => {
     const { payload } = context;
     const github = context.octokit;
@@ -81,11 +73,136 @@ export default (app: Probot) => {
     }
 
     try {
-      await VectraInterface.githubPushEvent(context.payload.sender?.login, installationId, context.payload.repository.name, context.payload.ref, diffs);
+      await VectraInterface.githubUnifiedEvent(
+        context.payload.sender?.login,
+        installationId,
+        context.payload.repository.name,
+        'push',
+        {
+          branch: context.payload.ref,
+          commits: diffs,
+          repository: {
+            name: context.payload.repository.name,
+            owner: context.payload.repository.owner.login,
+            defaultBranch: context.payload.repository.default_branch
+          },
+          sender: {
+            login: context.payload.sender?.login,
+            email: context.payload.sender?.email
+          }
+        }
+      );
     } catch (error) {
-      console.error('Error calling githubAppRecievedPush:', error);
+      console.error('Error calling githubUnifiedEvent:', error);
     }
   });
+
+  app.on("pull_request.synchronize", async (context) => {
+    const pr = context.payload.pull_request as any;
+    console.log("🔔 Pull request synchronized:", pr?.title);
+    await handleUnifiedPullRequestEvent(context, 'pull_request.synchronize');
+  });
+
+  app.on("pull_request.opened", async (context) => {
+    const pr = context.payload.pull_request as any;
+    console.log("🔔 Pull request opened:", pr?.title);
+    await handleUnifiedPullRequestEvent(context, 'pull_request.opened');
+  });
+
+  app.on("pull_request.closed", async (context) => {
+    const pr = context.payload.pull_request as any;
+    console.log("🔔 Pull request closed:", pr?.title);
+    const eventType = pr?.merged ? 'pull_request.merged' : 'pull_request.closed';
+    await handleUnifiedPullRequestEvent(context, eventType);
+  });
+
+  async function handleUnifiedPullRequestEvent(context: any, eventType: string) {
+    const { payload } = context;
+    const github = context.octokit;
+    const installationId = context.payload.installation?.id || 0;
+
+    let diffs: Commit[] = [];
+    
+    // Get commits in the PR
+    try {
+      const { data: commits } = await github.rest.pulls.listCommits({
+        owner: payload.repository.owner.login,
+        repo: payload.repository.name,
+        pull_number: payload.pull_request.number
+      });
+
+      // Get commit diffs
+      for (const commit of commits) {
+        try {
+          const { data: commitData } = await github.rest.repos.getCommit({
+            owner: payload.repository.owner.login,
+            repo: payload.repository.name,
+            ref: commit.sha
+          });
+
+          let fileDiffs: FileDiff[] = [];
+          for (const file of commitData.files || []) {
+            if (file.patch) {
+              fileDiffs.push({
+                filename: file.filename,
+                diff: file.patch
+              });
+            }
+          }
+
+          diffs.push({
+            name: commit.commit.message,
+            fileDiffs: fileDiffs
+          });
+
+        } catch (error) {
+          console.error(`Error fetching commit ${commit.sha}:`, error);
+        }
+      }
+
+      await VectraInterface.githubUnifiedEvent(
+        payload.sender?.login,
+        installationId,
+        payload.repository.name,
+        eventType,
+        {
+          pullRequest: {
+            id: payload.pull_request.id,
+            number: payload.pull_request.number,
+            title: payload.pull_request.title,
+            body: payload.pull_request.body,
+            state: payload.pull_request.state,
+            merged: payload.pull_request.merged,
+            head: {
+              ref: payload.pull_request.head.ref,
+              sha: payload.pull_request.head.sha
+            },
+            base: {
+              ref: payload.pull_request.base.ref,
+              sha: payload.pull_request.base.sha
+            },
+            user: {
+              login: payload.pull_request.user.login,
+              email: payload.pull_request.user.email
+            }
+          },
+          commits: diffs,
+          repository: {
+            name: payload.repository.name,
+            owner: payload.repository.owner.login,
+            defaultBranch: payload.repository.default_branch
+          },
+          sender: {
+            login: payload.sender?.login,
+            email: payload.sender?.email
+          }
+        }
+      );
+
+    } catch (error) {
+      console.error('Error handling unified pull request event:', error);
+    }
+  }
 
   app.on("installation.created", async (context) => {
 
