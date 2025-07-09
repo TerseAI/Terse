@@ -9,6 +9,7 @@ export interface TicketManager {
     structuredSearch(query: string, options?: StructuredSearchOptions): Promise<Ticket[]>;
     createTicket(input: CreateTicketInput): Promise<Ticket>;
     updateTicket(id: string, input: UpdateTicketInput): Promise<Ticket>;
+    commentOnTicket(id: string, comment: string): Promise<void>;
     deleteComment(ticketId: string, commentId: string): Promise<void>;
     searchItemsForTicket(id: string): Promise<SearchItem[]>;
     getTeams(): Promise<Team[]>;

@@ -380,6 +380,20 @@ export class LinearAdapter implements TicketManager {
         return this.convertLinearTicket(updatedIssue);
     }
 
+    async commentOnTicket(id: string, comment: string): Promise<void> {
+        const issue = await this.client.issue(id);
+        if (!issue) {
+            throw new Error('Issue not found');
+        }
+
+        const newComment = await this.client.createComment({
+            body: comment,
+            issueId: id
+        });
+
+        console.log(chalk.green('✅ Comment added:'), chalk.cyan(newComment.comment));
+    }
+
     async deleteComment(ticketId: string, commentId: string): Promise<void> {
         this.client.deleteComment(commentId);
     }
