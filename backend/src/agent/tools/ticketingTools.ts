@@ -3,7 +3,7 @@ import { Session } from "../../server";
 import { z } from "zod";
 import chalk from "chalk";
 import { StructuredSearchOptions } from "../../ticketing/TicketIntegration";
-import { CreateTicketInput } from "../../shared/TicketSystem";
+import { CreateTicketInput, UserContext } from "../../shared/TicketSystem";
 
 const searchTicketTool = tool({
     name: 'Search Ticket',
@@ -234,7 +234,12 @@ const updateTicketTool = tool({
 
         let ticketManager = runContext.context.ticketManager;
 
-        console.log("Updating state to", state);
+        // get valid states for the ticket system
+        const userContext: UserContext = await ticketManager.getUserContext();
+        if (!userContext.ticketStates.some(s => s.id === state)) {
+            console.error(chalk.red.bold('❌ Invalid state. This will fail!.'));
+            throw new Error("Invalid state. Please use a valid state from the user context.");
+        }
 
         let ticket = await ticketManager.updateTicket(id, {
             title,
