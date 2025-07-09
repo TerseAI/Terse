@@ -57,8 +57,11 @@ class Owner {
             index === self.findIndex((t) => t.entityId === result.entityId && t.entityType === result.entityType)
         );
 
+        const unifiedEvent = unifiedGitHubEventForAgent(event, uniqueResults);
+        console.log(chalk.blue('Unified event for model'), unifiedEvent);
+
         // Run the analyzer with comprehensive context
-        analyzer.analyze(unifiedGitHubEventForAgent(event, uniqueResults));
+        analyzer.analyze(unifiedEvent);
 
         // Run the analyzer
         const result = await analyzer.run();
@@ -192,7 +195,7 @@ export const unifiedGitHubEventForAgent = (event: UnifiedGitHubEvent, searchResu
 
     IMPORTANT: For unified events:
     - If eventType is 'push': Look for related tickets and mark them as "In Progress"
-    - If eventType is 'pull_request.opened': Look for related tickets and mark them as "In Progress"
+    - If eventType is 'pull_request.opened': Look for related tickets and mark them as "In Progress" or "In Review"
     - If eventType is 'pull_request.synchronize': Update progress on related tickets
     - If eventType is 'pull_request.merged': Mark related tickets as "Done" if the feature/bug fix appears complete
     - If eventType is 'pull_request.closed' (but not merged): Consider if tickets should be marked as "Cancelled" or left as-is
