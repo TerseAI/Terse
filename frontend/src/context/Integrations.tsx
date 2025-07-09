@@ -30,6 +30,11 @@ export function IntegrationProvider({ children }: { children: ReactNode }) {
 
     return (
         <IntegrationContext.Provider value={{ integrations, addIntegration, removeIntegration }}>
+            <div>
+                {integrations.map(integration => (
+                    <div key={integration}>{integration}</div>
+                ))}
+            </div>
             {children}
         </IntegrationContext.Provider>
     );  
