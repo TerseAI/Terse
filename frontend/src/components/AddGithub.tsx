@@ -1,57 +1,63 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { BackendProvider } from "../services/backend";
 import { IntegrationCard } from "./IntegrationCard";
 import { Integration, useIntegrations } from "../context/Integrations";
 
-export function AddGithub() {
-    const { addIntegration, removeIntegration } = useIntegrations();
-    const [repositoryName, setRepositoryName] = useState<string | null>(null);
-    const [isLoading, setIsLoading] = useState(true);
+interface AddGithubProps {
+    onIntegrationChange: () => Promise<void>;
+}
 
-    useEffect(() => {
-        BackendProvider.getCurrentGithubIntegration()
-            .then(({ repositoryName }) => {
-                console.log('repositoryName', repositoryName);
-                setRepositoryName(repositoryName);
-                addIntegration(Integration.GITHUB);
-            })
-            .catch((error) => {
-                console.error('Error fetching GitHub integration:', error);
-                removeIntegration(Integration.GITHUB);
-            })
-            .finally(() => {
-                setIsLoading(false);
-            });
-    }, []);
+export function AddGithub({ onIntegrationChange }: AddGithubProps) {
+    const { integrations } = useIntegrations();
+    const [repositoryName, setRepositoryName] = useState<string | null>(null);
+    const [isLoading, setIsLoading] = useState(false);
+
+    const hasGithub = integrations.includes(Integration.GITHUB);
 
     const connectButton = (
         <button
-            onClick={() => {
-                BackendProvider.requestGitHubAppInstallationUrl().then(({ installationUrl }) => {
-                    console.log('installationUrl', installationUrl);
+            onClick={async () => {
+                setIsLoading(true);
+                try {
+                    const { installationUrl } = await BackendProvider.requestGitHubAppInstallationUrl();
                     window.open(installationUrl, '_blank', 'width=600,height=700,scrollbars=yes,resizable=yes');
-                });
+                    // Refresh integrations after a short delay to allow for installation
+                    setTimeout(() => {
+                        onIntegrationChange();
+                    }, 2000);
+                } catch (error) {
+                    console.error('Error requesting GitHub app installation:', error);
+                } finally {
+                    setIsLoading(false);
+                }
             }}
-            className="w-full px-3 py-2 text-sm font-medium text-white bg-gray-900 rounded-md hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-colors"
+            disabled={isLoading}
+            className="w-full px-3 py-2 text-sm font-medium text-white bg-gray-900 rounded-md hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
-            Install GitHub App
+            {isLoading ? 'Installing...' : 'Install GitHub App'}
         </button>
     );
 
-    const onDisconnect = () => {
-        BackendProvider.requestGitHubAppInstallationUrl().then(({ installationUrl }) => {
-            console.log('installationUrl', installationUrl);
+    const onDisconnect = async () => {
+        try {
+            const { installationUrl } = await BackendProvider.requestGitHubAppInstallationUrl();
             window.open(installationUrl, '_blank', 'width=600,height=700,scrollbars=yes,resizable=yes');
-        });
+            // Refresh integrations after a short delay
+            setTimeout(() => {
+                onIntegrationChange();
+            }, 2000);
+        } catch (error) {
+            console.error('Error requesting GitHub app installation:', error);
+        }
     }
 
     return (
         <IntegrationCard
             title="GitHub Repository"
             description="Connect your GitHub repository to track issues and pull requests"
-            isConnected={!!repositoryName}
-            isLoading={isLoading}
-            connectionInfo={repositoryName ? `Repository: ${repositoryName}` : undefined}
+            isConnected={hasGithub}
+            isLoading={false}
+            connectionInfo={hasGithub ? "Repository connected" : undefined}
             connectButton={connectButton}
             onDisconnect={onDisconnect}
             disconnectLabel="Manage GitHub App"

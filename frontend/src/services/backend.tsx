@@ -41,6 +41,18 @@ interface BackendService {
     terminateSession(): Promise<void>;
 
     /**
+     * Gets all integrations status in a single call
+     */
+    getIntegrationsStatus(): Promise<{
+        integrations: {
+            github?: { repositoryName: string };
+            linear?: { apiKey: string };
+            jira?: { apiKey: string; baseUrl: string; email: string };
+            slack?: { teamName: string };
+        };
+    }>;
+
+    /**
      * Gets the current GitHub integration
      */
     getCurrentGithubIntegration(): Promise<{ repositoryName: string }>;
@@ -175,6 +187,15 @@ export const BackendProvider: BackendService = {
             })
             .catch(error => {
                 console.error('Error logging out:', error);
+                throw error;
+            });
+    },
+
+    getIntegrationsStatus: () => {
+        return axios.get(`${backendBaseUrl}/integrations/status`, { withCredentials: true })
+            .then(response => response.data)
+            .catch(error => {
+                console.error('Error getting integrations status:', error);
                 throw error;
             });
     },

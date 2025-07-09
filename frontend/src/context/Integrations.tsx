@@ -1,4 +1,5 @@
-import { createContext, useContext, useState, ReactNode } from 'react';
+import { createContext, useContext, useState, ReactNode, useEffect } from 'react';
+import { BackendProvider } from '../services/backend';
 
 export enum Integration {
     JIRA = 'jira',
@@ -6,38 +7,52 @@ export enum Integration {
     SLACK = 'slack',
     GITHUB = 'github',
 }
+
 type IntegrationContextType = {
     integrations: Integration[];
-    addIntegration: (integration: Integration) => void;
-    removeIntegration: (integration: Integration) => void;
+    isLoading: boolean;
+    refreshIntegrations: () => Promise<void>;
 }
 
 const IntegrationContext = createContext<IntegrationContextType | undefined>(undefined);
 
 export function IntegrationProvider({ children }: { children: ReactNode }) {
     const [integrations, setIntegrations] = useState<Integration[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
 
-    const addIntegration = (integration: Integration) => {
-        console.log('addIntegration', integration);
-        // make sure it's not already in the list
-        if (integrations.some(a => a === integration)) {
-            return;
+    const refreshIntegrations = async () => {
+        try {
+            const { integrations: integrationData } = await BackendProvider.getIntegrationsStatus();
+            const activeIntegrations: Integration[] = [];
+            
+            if (integrationData.github) {
+                activeIntegrations.push(Integration.GITHUB);
+            }
+            if (integrationData.linear) {
+                activeIntegrations.push(Integration.LINEAR);
+            }
+            if (integrationData.jira) {
+                activeIntegrations.push(Integration.JIRA);
+            }
+            if (integrationData.slack) {
+                activeIntegrations.push(Integration.SLACK);
+            }
+            
+            setIntegrations(activeIntegrations);
+        } catch (error) {
+            console.error('Error fetching integrations:', error);
+            setIntegrations([]);
+        } finally {
+            setIsLoading(false);
         }
-        setIntegrations([...integrations, integration]);
-    }
-    
-    const removeIntegration = (integration: Integration) => {
-        console.log('removeIntegration', integration);
-        setIntegrations(integrations.filter(a => a !== integration));
-    }
+    };
+
+    useEffect(() => {
+        refreshIntegrations();
+    }, []);
 
     return (
-        <IntegrationContext.Provider value={{ integrations, addIntegration, removeIntegration }}>
-            <div>
-                {integrations.map(integration => (
-                    <div key={integration}>{integration}</div>
-                ))}
-            </div>
+        <IntegrationContext.Provider value={{ integrations, isLoading, refreshIntegrations }}>
             {children}
         </IntegrationContext.Provider>
     );  

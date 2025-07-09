@@ -1,29 +1,20 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { BackendProvider } from "../services/backend";
 import { IntegrationCard } from "./IntegrationCard";
 import { Integration, useIntegrations } from "../context/Integrations";
 
-export function AddLinear() {
-    const { addIntegration, removeIntegration } = useIntegrations();
+interface AddLinearProps {
+    onIntegrationChange: () => Promise<void>;
+}
+
+export function AddLinear({ onIntegrationChange }: AddLinearProps) {
+    const { integrations } = useIntegrations();
     const [linearApiKey, setLinearApiKey] = useState<string | null>(null);
     const [input, setInput] = useState<string>('');
     const [error, setError] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);
-    const [isInitialLoading, setIsInitialLoading] = useState(true);
 
-    useEffect(() => {
-        BackendProvider.getLinearApiKey()
-            .then(({ apiKey }) => {
-                setLinearApiKey(apiKey);
-                addIntegration(Integration.LINEAR);
-            })
-            .catch((error) => {
-                console.error('Error fetching Linear API key:', error);
-            })
-            .finally(() => {
-                setIsInitialLoading(false);
-            });
-    }, []);
+    const hasLinear = integrations.includes(Integration.LINEAR);
 
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         setError(null);
@@ -34,7 +25,7 @@ export function AddLinear() {
             setLinearApiKey(input);
             setInput('');
             setError(null);
-            addIntegration(Integration.LINEAR);
+            await onIntegrationChange();
         } catch (error) {
             console.error('Error setting Linear API key:', error);
             setError('Invalid API Key');
@@ -43,17 +34,16 @@ export function AddLinear() {
         }
     }
 
-    const handleDisconnect = () => {
-        BackendProvider.deleteLinearApiKey()
-            .then(() => {
-                removeIntegration(Integration.LINEAR);
-                setLinearApiKey(null);
-                setInput('');
-                setError(null);
-            })
-            .catch((error) => {
-                console.error('Error deleting Linear API key:', error);
-            });
+    const handleDisconnect = async () => {
+        try {
+            await BackendProvider.deleteLinearApiKey();
+            setLinearApiKey(null);
+            setInput('');
+            setError(null);
+            await onIntegrationChange();
+        } catch (error) {
+            console.error('Error deleting Linear API key:', error);
+        }
     }
 
     const connectButton = (
@@ -84,9 +74,9 @@ export function AddLinear() {
         <IntegrationCard
             title="Linear API Key"
             description="Connect your Linear workspace to manage tickets"
-            isConnected={!!linearApiKey}
-            isLoading={isInitialLoading}
-            connectionInfo={linearApiKey ? "API Key configured" : undefined}
+            isConnected={hasLinear}
+            isLoading={false}
+            connectionInfo={hasLinear ? "API Key configured" : undefined}
             onDisconnect={handleDisconnect}
             connectButton={connectButton}
             icon={

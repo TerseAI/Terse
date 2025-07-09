@@ -7,7 +7,7 @@ import { Integration, useIntegrations } from "../context/Integrations";
 
 function Home() {
     const { user, logout } = useAuth();
-    const { integrations } = useIntegrations();
+    const { integrations, isLoading, refreshIntegrations } = useIntegrations();
 
     const hasGithub = integrations.includes(Integration.GITHUB);
     const hasLinear = integrations.includes(Integration.LINEAR);
@@ -97,17 +97,17 @@ function Home() {
                             <div className="space-y-6">
                                 {/* GitHub */}
                                 <div className="border-b border-gray-100 pb-6">
-                                    <AddGithub />
+                                    <AddGithub onIntegrationChange={refreshIntegrations} />
                                 </div>
 
                                 {/* Ticketing System */}
                                 <div className="border-b border-gray-100 pb-6">
-                                    <TicketIntegration />
+                                    <TicketIntegration onIntegrationChange={refreshIntegrations} />
                                 </div>
 
                                 {/* Slack */}
                                 <div>
-                                    <AddToSlack />
+                                    <AddToSlack onIntegrationChange={refreshIntegrations} />
                                 </div>
                             </div>
                         </div>
@@ -118,7 +118,7 @@ function Home() {
     )
 }
 
-function TicketIntegration() {
+function TicketIntegration({ onIntegrationChange }: { onIntegrationChange: () => Promise<void> }) {
     const { integrations } = useIntegrations();
     const hasLinear = integrations.includes(Integration.LINEAR);
     const hasJira = integrations.includes(Integration.JIRA);
@@ -126,20 +126,20 @@ function TicketIntegration() {
     if (!hasLinear && !hasJira) {
         return (
             <div className="space-y-3">
-                <AddLinear />
+                <AddLinear onIntegrationChange={onIntegrationChange} />
                 <div className="text-center">
                     <span className="text-sm text-gray-500">or</span>
                 </div>
-                <AddJira />
+                <AddJira onIntegrationChange={onIntegrationChange} />
             </div>
         )
     }
 
     else if (hasLinear) {
-        return <AddLinear />
+        return <AddLinear onIntegrationChange={onIntegrationChange} />
     }
     else {
-        return <AddJira />
+        return <AddJira onIntegrationChange={onIntegrationChange} />
     }
 }
 
