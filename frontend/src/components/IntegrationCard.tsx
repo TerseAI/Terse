@@ -8,6 +8,7 @@ interface IntegrationCardProps {
     connectionInfo?: string;
     onConnect?: () => void;
     onDisconnect?: () => void;
+    disconnectLabel?: string;
     connectButton?: ReactNode;
     icon?: ReactNode;
 }
@@ -19,6 +20,7 @@ export function IntegrationCard({
     isLoading = false,
     connectionInfo,
     onDisconnect,
+    disconnectLabel = 'Disconnect',
     connectButton,
     icon
 }: IntegrationCardProps) {
@@ -57,7 +59,7 @@ export function IntegrationCard({
                         onClick={onDisconnect}
                         className="mt-2 text-xs text-gray-500 hover:text-gray-700 transition-colors"
                     >
-                        Disconnect
+                        {disconnectLabel}
                     </button>
                 )}
             </div>
