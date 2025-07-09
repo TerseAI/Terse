@@ -1,43 +1,22 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { BackendProvider } from "../services/backend";
 import { IntegrationCard } from "./IntegrationCard";
 import { Integration, useIntegrations } from "../context/Integrations";
 
-export function AddJira() {
-    const { addIntegration, removeIntegration } = useIntegrations();
+interface AddJiraProps {
+    onIntegrationChange: () => Promise<void>;
+}
+
+export function AddJira({ onIntegrationChange }: AddJiraProps) {
+    const { integrations } = useIntegrations();
     const [jiraApiKey, setJiraApiKey] = useState<string | null>(null);
     const [key, setKey] = useState<string>('');
     const [baseUrl, setBaseUrl] = useState<string>('');
     const [email, setEmail] = useState<string>('');
     const [error, setError] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);
-    const [isInitialLoading, setIsInitialLoading] = useState(true);
 
-    useEffect(() => {
-        BackendProvider.getJiraApiKey()
-            .then(({ apiKey, baseUrl, email }) => {
-                console.log("Jira API key:", apiKey, baseUrl, email);
-                setJiraApiKey(apiKey);
-                setKey(apiKey ?? '');
-                setBaseUrl(baseUrl ?? '');
-                setEmail(email ?? '');
-                if (apiKey) {
-                    addIntegration(Integration.JIRA);
-                } else {
-                    removeIntegration(Integration.JIRA);
-                }
-            })
-            .catch((error) => {
-                console.error('Error fetching Linear API key:', error);
-                setKey('');
-                setBaseUrl('');
-                setEmail('');
-                removeIntegration(Integration.JIRA);
-            })
-            .finally(() => {
-                setIsInitialLoading(false);
-            });
-    }, []);
+    const hasJira = integrations.includes(Integration.JIRA);
 
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
         setError(null);
@@ -50,29 +29,27 @@ export function AddJira() {
             setBaseUrl(baseUrl ?? '');
             setEmail(email ?? '');
             setError(null);
-            addIntegration(Integration.JIRA);
+            await onIntegrationChange();
         } catch (error) {
             console.error('Error setting Linear API key:', error);
             setJiraApiKey(null);
             setError('Invalid Jira credentials');
-            removeIntegration(Integration.JIRA);
         } finally {
             setIsLoading(false);
         }
     }
 
-    const handleDisconnect = () => {
-        BackendProvider.deleteJiraApiKey()
-            .then(() => {
-                removeIntegration(Integration.JIRA);
-                setKey('');
-                setBaseUrl('');
-                setEmail('');
-                setJiraApiKey(null);
-            })
-            .catch((error) => {
-                console.error('Error deleting Jira API key:', error);
-            });
+    const handleDisconnect = async () => {
+        try {
+            await BackendProvider.deleteJiraApiKey();
+            setKey('');
+            setBaseUrl('');
+            setEmail('');
+            setJiraApiKey(null);
+            await onIntegrationChange();
+        } catch (error) {
+            console.error('Error deleting Jira API key:', error);
+        }
     }
 
     const connectButton = (
@@ -117,9 +94,9 @@ export function AddJira() {
         <IntegrationCard
             title="Jira API Key"
             description="Connect your Jira workspace to manage tickets"
-            isConnected={!!jiraApiKey}
-            isLoading={isInitialLoading}
-            connectionInfo={key ? `API Key configured for ${email} on ${baseUrl}` : undefined}
+            isConnected={hasJira}
+            isLoading={false}
+            connectionInfo={hasJira ? `API Key configured for ${email} on ${baseUrl}` : undefined}
             onDisconnect={handleDisconnect}
             connectButton={connectButton}
             icon={
