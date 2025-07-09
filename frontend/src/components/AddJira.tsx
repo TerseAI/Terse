@@ -21,7 +21,11 @@ export function AddJira() {
                 setKey(apiKey ?? '');
                 setBaseUrl(baseUrl ?? '');
                 setEmail(email ?? '');
-                addIntegration(Integration.JIRA);
+                if (apiKey) {
+                    addIntegration(Integration.JIRA);
+                } else {
+                    removeIntegration(Integration.JIRA);
+                }
             })
             .catch((error) => {
                 console.error('Error fetching Linear API key:', error);
