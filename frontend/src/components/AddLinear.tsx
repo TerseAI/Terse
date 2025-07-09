@@ -9,7 +9,6 @@ interface AddLinearProps {
 
 export function AddLinear({ onIntegrationChange }: AddLinearProps) {
     const { integrations } = useIntegrations();
-    const [linearApiKey, setLinearApiKey] = useState<string | null>(null);
     const [input, setInput] = useState<string>('');
     const [error, setError] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);
@@ -22,7 +21,6 @@ export function AddLinear({ onIntegrationChange }: AddLinearProps) {
         e.preventDefault();
         try {
             await BackendProvider.setLinearApiKey(input);
-            setLinearApiKey(input);
             setInput('');
             setError(null);
             await onIntegrationChange();
@@ -37,7 +35,6 @@ export function AddLinear({ onIntegrationChange }: AddLinearProps) {
     const handleDisconnect = async () => {
         try {
             await BackendProvider.deleteLinearApiKey();
-            setLinearApiKey(null);
             setInput('');
             setError(null);
             await onIntegrationChange();
