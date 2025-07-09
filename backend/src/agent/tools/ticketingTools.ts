@@ -237,7 +237,7 @@ const updateTicketTool = tool({
         // get valid states for the ticket system
         const userContext: UserContext = await ticketManager.getUserContext();
         if (!userContext.ticketStates.some(s => s.id === state)) {
-            console.error(chalk.red.bold('❌ Invalid state. This will fail!.'));
+            console.error(chalk.red.bold('❌ Invalid state. This will fail!'));
             throw new Error("Invalid state. Please use a valid state from the user context.");
         }
 
