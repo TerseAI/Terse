@@ -367,7 +367,7 @@ export class LinearAdapter implements TicketManager {
         const issuePayload: IssuePayload = await this.client.updateIssue(id, {
             title: input.title,
             description: input.description,
-            stateId: input.state,
+            stateId: input.state || undefined,
             assigneeId: await this.userIdFromEmail(input.assignee?.email || ''),
         });
 
