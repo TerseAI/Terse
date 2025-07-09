@@ -54,6 +54,8 @@ const systemPrompt = async (session: Session) => {
 
     or if the changes are not related to existing tickets, you can create a new ticket!
 
+    You may also leave a comment on an existing ticket as well. This is useful for reporting progress when moving the state isn't appropriate.
+
     Doing nothing is totally acceptable as well! 
 
     When you create/update a ticket, make sure to set the assignee. You know who just authored the commit! It's going to be the current user.

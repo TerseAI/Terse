@@ -274,4 +274,24 @@ const findIssueTool = tool({
     },
 });
 
-export const ticketTools = [createTicketTool, updateTicketTool, findIssueTool, searchTicketTool, getCurrentUserTool];
+const commentOnTicketTool = tool({
+    name: 'commentOnTicket',
+    description: "comment on a ticket",
+    parameters: z.object({
+        issueId: z.string().describe('The ID of the issue to comment on'),
+        comment: z.string().describe('The comment to add to the ticket'),
+    }),
+    execute: async ({ issueId, comment }: { issueId: string, comment: string }, runContext?: RunContext<Session>) => {
+        if (!runContext?.context.ticketManager) {
+            throw new Error("No ticket manager provided");
+        }
+
+        let ticketManager = runContext.context.ticketManager;
+
+        console.log(chalk.cyan('\nCommenting on ticket: ' + issueId));
+
+        return await ticketManager.commentOnTicket(issueId, comment);
+    },
+});
+
+export const ticketTools = [createTicketTool, updateTicketTool, findIssueTool, searchTicketTool, getCurrentUserTool, commentOnTicketTool];
