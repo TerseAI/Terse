@@ -18,6 +18,7 @@ export function IntegrationProvider({ children }: { children: ReactNode }) {
     const [integrations, setIntegrations] = useState<Integration[]>([]);
 
     const addIntegration = (integration: Integration) => {
+        console.log('addIntegration', integration);
         // make sure it's not already in the list
         if (integrations.some(a => a === integration)) {
             return;
@@ -25,6 +26,7 @@ export function IntegrationProvider({ children }: { children: ReactNode }) {
         setIntegrations([...integrations, integration]);
     }
     const removeIntegration = (integration: Integration) => {
+        console.log('removeIntegration', integration);
         setIntegrations(integrations.filter(a => !(a == integration)));
     }
 
