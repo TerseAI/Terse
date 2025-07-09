@@ -45,7 +45,7 @@ function Home() {
             <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                     {/* System Status */}
-                    <div className="lg:col-span-1">
+                    <div className="lg:col-span-1 space-y-6">
                         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
                             <h2 className="text-lg font-semibold text-gray-900 mb-4">System Status</h2>
                             <div className="space-y-4">
@@ -86,6 +86,12 @@ function Home() {
                                     </div>
                                 </div>
                             </div>
+                        </div>
+                        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                            <p className="text-sm text-gray-600">
+                                We never store your data as part of our service.
+                                To match code changes to tickets, we generate embeddings of issues, but never retain any plain text content.
+                            </p>
                         </div>
                     </div>
 
