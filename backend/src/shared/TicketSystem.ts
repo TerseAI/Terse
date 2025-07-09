@@ -86,9 +86,18 @@ export interface Team {
 
 export interface CreateTicketInput {
     title: string;
+    teamId: string;
     description?: string;
-    assigneeId?: string;
-    [key: string]: any;
+    state?: {
+        id: string;
+        name: string;
+    };
+    assignee?: string; // email address of the assignee
+    priority?: number;
+    projectId?: {
+        id: string;
+        name: string;
+    };
 }
 
 export interface UpdateTicketInput {
