@@ -16,7 +16,7 @@ class Owner {
     }
 
     async handleUnifiedGitHubEvent(event: UnifiedGitHubEvent) {
-        console.log('The owner is handling a unified GitHub event', event);
+        console.log('The owner is handling a unified GitHub event', event.eventType, event.repositoryName, event.username);
         const analyzer = new Analyzer(this.session);
 
         const results: SearchResult[][] = [];
@@ -58,8 +58,7 @@ class Owner {
         );
 
         const unifiedEvent = unifiedGitHubEventForAgent(event, uniqueResults);
-        console.log(chalk.blue('Unified event for model'), unifiedEvent);
-
+        
         // Run the analyzer with comprehensive context
         analyzer.analyze(unifiedEvent);
 
