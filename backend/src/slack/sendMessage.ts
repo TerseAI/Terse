@@ -11,7 +11,8 @@ export async function sendMessage(message: string, accessToken: string, dmChanne
     try {
         const result = await client.chat.postMessage({
             channel: dmChannelId,
-            text: message
+            text: message,
+            mrkdwn: true
         });
 
         console.log(chalk.green('✅ Message sent successfully!'));

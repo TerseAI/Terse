@@ -103,6 +103,8 @@ const systemPrompt = async (session: Session) => {
 
     I will send this summary to the user who triggered the event.
 
+    When you do the summary, make sure everyhing conforms to mrkdwn. So no **Bold** syntax.
+
     Make sure it's legible in Slack!
     `;
 }
