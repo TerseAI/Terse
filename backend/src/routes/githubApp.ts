@@ -250,9 +250,8 @@ type GithubAppUnifiedEventRequest = {
 export async function githubAppUnifiedEvent(req: Request, res: Response) {
     const body: GithubAppUnifiedEventRequest = req.body as GithubAppUnifiedEventRequest;
 
-    console.log('githubAppUnifiedEvent', body);
-
     const { username, repositoryName, installationId } = body;
+    console.log(chalk.blue('githubAppUnifiedEvent'), body.eventType, body.repositoryName, body.username);
 
     // get the user
     const user: User | null = await db().users.findFirst({ where: { github_username: username } });
