@@ -9,7 +9,6 @@ interface AddGithubProps {
 
 export function AddGithub({ onIntegrationChange }: AddGithubProps) {
     const { integrations } = useIntegrations();
-    const [repositoryName, setRepositoryName] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);
 
     const hasGithub = integrations.includes(Integration.GITHUB);

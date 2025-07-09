@@ -9,7 +9,6 @@ interface AddJiraProps {
 
 export function AddJira({ onIntegrationChange }: AddJiraProps) {
     const { integrations } = useIntegrations();
-    const [jiraApiKey, setJiraApiKey] = useState<string | null>(null);
     const [key, setKey] = useState<string>('');
     const [baseUrl, setBaseUrl] = useState<string>('');
     const [email, setEmail] = useState<string>('');
@@ -24,7 +23,6 @@ export function AddJira({ onIntegrationChange }: AddJiraProps) {
         e.preventDefault();
         try {
             await BackendProvider.setJiraApiKey(email, baseUrl, key);
-            setJiraApiKey(key);
             setKey(key ?? '');
             setBaseUrl(baseUrl ?? '');
             setEmail(email ?? '');
@@ -32,7 +30,6 @@ export function AddJira({ onIntegrationChange }: AddJiraProps) {
             await onIntegrationChange();
         } catch (error) {
             console.error('Error setting Linear API key:', error);
-            setJiraApiKey(null);
             setError('Invalid Jira credentials');
         } finally {
             setIsLoading(false);
@@ -45,7 +42,6 @@ export function AddJira({ onIntegrationChange }: AddJiraProps) {
             setKey('');
             setBaseUrl('');
             setEmail('');
-            setJiraApiKey(null);
             await onIntegrationChange();
         } catch (error) {
             console.error('Error deleting Jira API key:', error);
