@@ -337,6 +337,8 @@ export class LinearAdapter implements TicketManager {
 
     async createTicket(input: CreateTicketInput): Promise<Ticket> {
         console.log('Creating ticket', input);
+        console.log('Assignee email', input.assignee);
+        console.log('Assignee id', await this.userIdFromEmail(input.assignee || ''));
         let issuePayload;
         try {
             issuePayload = await this.client.createIssue({
@@ -344,7 +346,7 @@ export class LinearAdapter implements TicketManager {
                 description: input.description,
                 teamId: input.teamId,
                 stateId: input.state.id,
-                assigneeId: await this.userIdFromEmail(input.assignee?.email || ''),
+                assigneeId: await this.userIdFromEmail(input.assignee || ''),
             });
         } catch (error) {
             console.error('Failed to create issue', error);

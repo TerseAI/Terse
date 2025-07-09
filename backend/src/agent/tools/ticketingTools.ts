@@ -3,6 +3,7 @@ import { Session } from "../../server";
 import { z } from "zod";
 import chalk from "chalk";
 import { StructuredSearchOptions } from "../../ticketing/TicketIntegration";
+import { CreateTicketInput } from "../../shared/TicketSystem";
 
 const searchTicketTool = tool({
     name: 'Search Ticket',
@@ -184,7 +185,7 @@ const createTicketTool = tool({
             estimate: estimate || undefined,
             dueDate: dueDate || undefined,
             project: project || undefined,
-        });
+        } as CreateTicketInput);
 
         console.log('Ticket Tool: Created ticket');
 
