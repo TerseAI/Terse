@@ -59,9 +59,13 @@ class Owner {
             index === self.findIndex((t) => t.entityId === result.entityId && t.entityType === result.entityType)
         );
 
-        // TODO: Filter out tickets marked as done
+        // filter out completed tickets
+        const filteredResults = uniqueResults.filter(async (result) => {
+            const isComplete = await this.session.ticketManager?.isTicketComplete(result.entityId);
+            return !isComplete;
+        });
 
-        const unifiedEvent = unifiedGitHubEventForAgent(event, uniqueResults);
+        const unifiedEvent = unifiedGitHubEventForAgent(event, filteredResults);
 
         // Run the analyzer with comprehensive context
         analyzer.analyze(unifiedEvent);
