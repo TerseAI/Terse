@@ -1,6 +1,6 @@
 import { SearchItem } from "../search/SearchItem";
-import { CreateTicketInput, Ticket, TicketSystemType, TicketWebhookHandler, UpdateTicketInput } from "../shared/TicketSystem";
-import { Issue, IssuePayload, LinearClient, User as LinearUser } from "@linear/sdk";
+import { CreateTicketInput, Ticket, TicketSystemType, TicketWebhookHandler, UpdateTicketInput, Project } from "../shared/TicketSystem";
+import { Issue, IssuePayload, LinearClient, User as LinearUser, Project as LinearProject } from "@linear/sdk";
 import chalk from "chalk";
 import { StructuredSearchOptions, TicketManager } from "./TicketIntegration";
 import { Team, User, UserContext, Organization } from "../shared/TicketSystem";
@@ -99,6 +99,16 @@ export class LinearAdapter implements TicketManager {
     async getAllTickets(): Promise<Ticket[]> {
         const tickets = await this.client.issues();
         return await Promise.all(tickets.nodes.map(async ticket => this.convertLinearTicket(ticket)));
+    }
+
+    async getAllProjects(): Promise<Project[]> {
+        const projects = await this.client.projects();
+        return Promise.all(projects.nodes.map(async project => ({
+            id: project.id,
+            name: project.name,
+            description: project.description || undefined,
+            teamId: (await project.teams())?.nodes[0]?.id || ''
+        })));
     }
 
     static async validateKey(apiKey: string): Promise<boolean> {
@@ -432,6 +442,27 @@ export class LinearAdapter implements TicketManager {
             metadata: {}
         }
         ]
+    }
+
+    async searchItemsForProject(id: string): Promise<SearchItem[]> {
+        const project: LinearProject = await this.client.project(id);
+        if (!project) {
+            throw new Error('Project not found');
+        }
+
+        let teams = await project.teams();
+        if (!teams) {
+            throw new Error('Team not found');
+        }
+        /// This may be an issue but it seems projects can span multiple teams.
+        return [{
+            id: project.id,
+            teamId: teams.nodes[0]?.id || '',
+            entityType: 'project',
+            entityId: project.id,
+            content: project.name,
+            metadata: {}
+        }]
     }
 
     // Additional utility methods for comprehensive Linear API access
