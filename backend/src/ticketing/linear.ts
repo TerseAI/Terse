@@ -321,6 +321,13 @@ export class LinearAdapter implements TicketManager {
         return this.convertLinearTicket(issue);
     }
 
+    async getTickets(ids: string[]): Promise<Ticket[]> {
+        const issues = await this.client.issues({
+            filter: { id: { in: ids } }
+        });
+        return await Promise.all(issues.nodes.map(async issue => this.convertLinearTicket(issue)));
+    }
+
     async userIdFromEmail(email: string): Promise<string | null> {
         const user = await this.client.users({
             filter: {
