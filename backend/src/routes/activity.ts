@@ -33,6 +33,9 @@ export async function getActivityFeed(req: Request, res: Response) {
             github_repository_id: {
                 in: githubRepositories.map(repo => repo.id)
             }
+        },
+        orderBy: {
+            created_at: 'desc'
         }
     });
 
@@ -42,6 +45,9 @@ export async function getActivityFeed(req: Request, res: Response) {
             activity_event_id: {
                 in: activityEvents.map(event => event.id)
             }
+        },
+        orderBy: {
+            created_at: 'desc'
         }
     });
 
@@ -51,7 +57,6 @@ export async function getActivityFeed(req: Request, res: Response) {
         return res.status(500).json({ error: "Ticket manager not found" });
     }
     const tickets = await ticketManager.getTickets(ticketActivityEvents.map(event => event.ticket_id));
-    
 
     // create map of ticket id to ticket
     const ticketMap = new Map<string, Ticket>();
