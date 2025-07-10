@@ -6,6 +6,7 @@ export interface TicketManager {
     type: TicketSystemType;
     getUserContext(): Promise<UserContext>;
     findTicket(id: string): Promise<Ticket>;
+    getTickets(ids: string[]): Promise<Ticket[]>;
     structuredSearch(query: string, options?: StructuredSearchOptions): Promise<Ticket[]>;
     createTicket(input: CreateTicketInput): Promise<Ticket>;
     updateTicket(id: string, input: UpdateTicketInput): Promise<Ticket>;

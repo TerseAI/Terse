@@ -3,6 +3,7 @@ import { AddToSlack } from "../components/AddToSlack";
 import { AddGithub } from "../components/AddGithub";
 import { AddLinear } from "../components/AddLinear";
 import { AddJira } from "../components/AddJira";
+import { ActivityFeed } from "../components/ActivityFeed";
 import { Integration, useIntegrations } from "../context/Integrations";
 
 function Home() {
@@ -42,14 +43,20 @@ function Home() {
             </div>
 
             {/* Main Content */}
-            <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
                 {isLoading ? (
                     <LoadingState />
                 ) : (
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                        {/* System Status */}
+                    <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+                        {/* Activity Feed - Main Content */}
+                        <div className="lg:col-span-3">
+                            <ActivityFeed />
+                        </div>
+
+                        {/* Sidebar */}
                         <div className="lg:col-span-1 space-y-6">
-                            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                            {/* System Status */}
+                            <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
                                 <h2 className="text-lg font-semibold text-gray-900 mb-4">System Status</h2>
                                 <div className="space-y-4">
                                     <div>
@@ -90,27 +97,19 @@ function Home() {
                                     </div>
                                 </div>
                             </div>
-                            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-                                <p className="text-sm text-gray-600">
-                                    We never store your data as part of our service.
-                                    To match code changes to tickets, we generate embeddings of issues, but never retain any plain text content.
-                                </p>
-                            </div>
-                        </div>
 
-                        {/* Integrations */}
-                        <div className="lg:col-span-2">
-                            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-                                <h2 className="text-lg font-semibold text-gray-900 mb-6">Integrations</h2>
+                            {/* Integrations */}
+                            <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
+                                <h2 className="text-lg font-semibold text-gray-900 mb-4">Integrations</h2>
                                 
-                                <div className="space-y-6">
+                                <div className="space-y-4">
                                     {/* GitHub */}
-                                    <div className="border-b border-gray-100 pb-6">
+                                    <div className="border-b border-gray-100 pb-4">
                                         <AddGithub onIntegrationChange={refreshIntegrations} />
                                     </div>
 
                                     {/* Ticketing System */}
-                                    <div className="border-b border-gray-100 pb-6">
+                                    <div className="border-b border-gray-100 pb-4">
                                         <TicketIntegration onIntegrationChange={refreshIntegrations} />
                                     </div>
 
@@ -119,6 +118,14 @@ function Home() {
                                         <AddToSlack onIntegrationChange={refreshIntegrations} />
                                     </div>
                                 </div>
+                            </div>
+
+                            {/* Privacy Notice */}
+                            <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
+                                <p className="text-sm text-gray-600">
+                                    We never store your data as part of our service.
+                                    To match code changes to tickets, we generate embeddings of issues, but never retain any plain text content.
+                                </p>
                             </div>
                         </div>
                     </div>
@@ -130,10 +137,32 @@ function Home() {
 
 function LoadingState() {
     return (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* System Status Skeleton */}
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+            {/* Activity Feed Skeleton */}
+            <div className="lg:col-span-3">
+                <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
+                    <div className="flex items-center justify-between mb-6">
+                        <div className="h-6 bg-gray-200 rounded w-32 animate-pulse"></div>
+                        <div className="w-6 h-6 bg-gray-200 rounded animate-pulse"></div>
+                    </div>
+                    <div className="space-y-4">
+                        {[...Array(5)].map((_, i) => (
+                            <div key={i} className="flex items-start space-x-3 p-4 border border-gray-200 rounded-lg">
+                                <div className="w-5 h-5 bg-gray-200 rounded animate-pulse"></div>
+                                <div className="flex-1 space-y-2">
+                                    <div className="h-4 bg-gray-200 rounded w-3/4 animate-pulse"></div>
+                                    <div className="h-3 bg-gray-200 rounded w-1/2 animate-pulse"></div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </div>
+
+            {/* Sidebar Skeleton */}
             <div className="lg:col-span-1 space-y-6">
-                <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                {/* System Status Skeleton */}
+                <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
                     <div className="h-6 bg-gray-200 rounded w-32 mb-4 animate-pulse"></div>
                     <div className="space-y-4">
                         <div>
@@ -158,47 +187,47 @@ function LoadingState() {
                         </div>
                     </div>
                 </div>
-                <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-                    <div className="space-y-2">
-                        <div className="h-3 bg-gray-200 rounded w-full animate-pulse"></div>
-                        <div className="h-3 bg-gray-200 rounded w-3/4 animate-pulse"></div>
-                        <div className="h-3 bg-gray-200 rounded w-5/6 animate-pulse"></div>
-                    </div>
-                </div>
-            </div>
 
-            {/* Integrations Skeleton */}
-            <div className="lg:col-span-2">
-                <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-                    <div className="h-6 bg-gray-200 rounded w-32 mb-6 animate-pulse"></div>
+                {/* Integrations Skeleton */}
+                <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
+                    <div className="h-6 bg-gray-200 rounded w-32 mb-4 animate-pulse"></div>
                     
-                    <div className="space-y-6">
+                    <div className="space-y-4">
                         {/* GitHub Skeleton */}
-                        <div className="border-b border-gray-100 pb-6">
-                            <div className="space-y-4">
-                                <div className="h-5 bg-gray-200 rounded w-24 animate-pulse"></div>
-                                <div className="h-4 bg-gray-200 rounded w-64 animate-pulse"></div>
-                                <div className="h-10 bg-gray-200 rounded w-32 animate-pulse"></div>
+                        <div className="border-b border-gray-100 pb-4">
+                            <div className="space-y-2">
+                                <div className="h-4 bg-gray-200 rounded w-20 animate-pulse"></div>
+                                <div className="h-3 bg-gray-200 rounded w-48 animate-pulse"></div>
+                                <div className="h-8 bg-gray-200 rounded w-24 animate-pulse"></div>
                             </div>
                         </div>
 
                         {/* Ticketing System Skeleton */}
-                        <div className="border-b border-gray-100 pb-6">
-                            <div className="space-y-4">
-                                <div className="h-5 bg-gray-200 rounded w-32 animate-pulse"></div>
-                                <div className="h-4 bg-gray-200 rounded w-72 animate-pulse"></div>
-                                <div className="h-10 bg-gray-200 rounded w-32 animate-pulse"></div>
+                        <div className="border-b border-gray-100 pb-4">
+                            <div className="space-y-2">
+                                <div className="h-4 bg-gray-200 rounded w-28 animate-pulse"></div>
+                                <div className="h-3 bg-gray-200 rounded w-56 animate-pulse"></div>
+                                <div className="h-8 bg-gray-200 rounded w-24 animate-pulse"></div>
                             </div>
                         </div>
 
                         {/* Slack Skeleton */}
                         <div>
-                            <div className="space-y-4">
-                                <div className="h-5 bg-gray-200 rounded w-20 animate-pulse"></div>
-                                <div className="h-4 bg-gray-200 rounded w-56 animate-pulse"></div>
-                                <div className="h-10 bg-gray-200 rounded w-32 animate-pulse"></div>
+                            <div className="space-y-2">
+                                <div className="h-4 bg-gray-200 rounded w-16 animate-pulse"></div>
+                                <div className="h-3 bg-gray-200 rounded w-40 animate-pulse"></div>
+                                <div className="h-8 bg-gray-200 rounded w-24 animate-pulse"></div>
                             </div>
                         </div>
+                    </div>
+                </div>
+
+                {/* Privacy Notice Skeleton */}
+                <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
+                    <div className="space-y-2">
+                        <div className="h-3 bg-gray-200 rounded w-full animate-pulse"></div>
+                        <div className="h-3 bg-gray-200 rounded w-3/4 animate-pulse"></div>
+                        <div className="h-3 bg-gray-200 rounded w-5/6 animate-pulse"></div>
                     </div>
                 </div>
             </div>

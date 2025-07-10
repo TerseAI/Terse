@@ -16,6 +16,7 @@ import { LinearWebhookPayload } from './utility/LinearWebhookPayload';
 import { getCurrentSlackIntegration, getSlackOAuthUrl, slackOAuthCallback } from './slack/registerApp';
 import { handleSlackEvent } from './slack/eventHandler';
 import { fetchUserIntegrations } from './routes/integrations';
+import { getActivityFeed } from './routes/activity';
 
 export type Session = {
     user: User;
@@ -67,6 +68,12 @@ app.post('/login', async (req, res) => {
 
 app.post('/logout', async (req, res) => {
     logout(req, res);
+})
+
+// MARK ACTIVITY FEED
+
+app.get('/activity-feed', authMiddleware, async (req, res) => {
+    getActivityFeed(req, res);
 })
 
 // MARK: SESSION
