@@ -14,6 +14,7 @@ export interface TicketManager {
     deleteComment(ticketId: string, commentId: string): Promise<void>;
     getTeams(): Promise<Team[]>;
     me(): Promise<User | null>;
+    isTicketComplete(ticketId: string): Promise<boolean>;
 
     // Used for indexing
     getAllTickets(): Promise<Ticket[]>;

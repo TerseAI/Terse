@@ -321,6 +321,11 @@ export class LinearAdapter implements TicketManager {
         return tickets;
     }
 
+    async isTicketComplete(ticketId: string): Promise<boolean> {
+        const ticket = await this.findTicket(ticketId);
+        return ticket.state.name === 'Done';
+    }
+
     async findTicket(id: string): Promise<Ticket> {
         console.log(chalk.green('✅ Finding ticket:'), chalk.cyan(id));
         const issue = await this.client.issue(id);
