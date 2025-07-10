@@ -1,9 +1,11 @@
 import { RunContext, tool } from "@openai/agents";
-import { Session } from "../../server";
 import { z } from "zod";
 import chalk from "chalk";
 import { StructuredSearchOptions } from "../../ticketing/TicketIntegration";
 import { CreateTicketInput, UserContext } from "../../shared/TicketSystem";
+import { SessionWithTracking } from "../agents/Analyzer";
+import { EntityType } from "../../shared/Entities";
+import { ChangeEventType } from "src/shared/ModelEvents";
 
 const searchTicketTool = tool({
     name: 'Search Ticket',
@@ -38,7 +40,7 @@ const searchTicketTool = tool({
         includeAttachments: z.union([z.boolean(), z.null()]).describe('Include attachments'),
         includeRelations: z.union([z.boolean(), z.null()]).describe('Include related tickets')
     }),
-    execute: async ({ query, teamIds, assigneeEmails, createdByEmails, stateIds, priority, labels, projects, dueDateRange, createdDateRange, updatedDateRange, sortBy, sortDirection, limit, includeArchived, includeSubIssues, includeComments, includeAttachments, includeRelations }, runContext?: RunContext<Session>) => {
+    execute: async ({ query, teamIds, assigneeEmails, createdByEmails, stateIds, priority, labels, projects, dueDateRange, createdDateRange, updatedDateRange, sortBy, sortDirection, limit, includeArchived, includeSubIssues, includeComments, includeAttachments, includeRelations }, runContext?: RunContext<SessionWithTracking>) => {
         if (!runContext?.context) {
             throw new Error("No context provided");
         }
@@ -115,7 +117,7 @@ const getCurrentUserTool = tool({
     name: 'Get Current User',
     description: 'Get the current user',
     parameters: z.object({}),
-    execute: async (_, runContext?: RunContext<Session>) => {
+    execute: async (_, runContext?: RunContext<SessionWithTracking  >) => {
         if (!runContext?.context) {
             throw new Error("No context provided");
         }
@@ -159,7 +161,7 @@ const createTicketTool = tool({
             name: z.string().describe('The project name')
         }), z.null()]).describe('The project for the ticket'),
     }),
-    execute: async ({ title, description, state, assignee, priority, labels, estimate, dueDate, project }, runContext?: RunContext<Session>) => {
+    execute: async ({ title, description, state, assignee, priority, labels, estimate, dueDate, project }, runContext?: RunContext<SessionWithTracking>) => {
         if (!runContext?.context) {
             throw new Error("No context provided");
         }
@@ -191,6 +193,8 @@ const createTicketTool = tool({
             project: project || undefined,
         } as CreateTicketInput);
 
+        runContext?.context.trackChange(EntityType.TICKET, ticket.id, ChangeEventType.CREATED);
+
         return ticket;
     }
 });
@@ -219,7 +223,7 @@ const updateTicketTool = tool({
             name: z.string().describe('The project name')
         }), z.null()]).describe('The project for the ticket'),
     }),
-    execute: async ({ id, title, description, state, assignee, priority, estimate, dueDate, project }, runContext?: RunContext<Session>) => {
+    execute: async ({ id, title, description, state, assignee, priority, estimate, dueDate, project }, runContext?: RunContext<SessionWithTracking>) => {
         if (!runContext?.context) {
             throw new Error("No context provided");
         }
@@ -258,6 +262,8 @@ const updateTicketTool = tool({
             teamId: teamId,
         });
 
+        runContext?.context.trackChange(EntityType.TICKET, ticket.id, ChangeEventType.UPDATED);
+
         return ticket;
     }
 });
@@ -268,7 +274,7 @@ const findIssueTool = tool({
     parameters: z.object({
         issueId: z.string().describe('The ID of the issue to find'),
     }),
-    execute: async ({ issueId }: { issueId: string }, runContext?: RunContext<Session>) => {
+    execute: async ({ issueId }: { issueId: string }, runContext?: RunContext<SessionWithTracking>) => {
         console.log(chalk.cyan('\nFetching issue with ID: ' + issueId));
 
         if (!runContext?.context.ticketManager) {
@@ -288,7 +294,7 @@ const commentOnTicketTool = tool({
         issueId: z.string().describe('The ID of the issue to comment on'),
         comment: z.string().describe('The comment to add to the ticket'),
     }),
-    execute: async ({ issueId, comment }: { issueId: string, comment: string }, runContext?: RunContext<Session>) => {
+    execute: async ({ issueId, comment }: { issueId: string, comment: string }, runContext?: RunContext<SessionWithTracking>) => {
         if (!runContext?.context.ticketManager) {
             throw new Error("No ticket manager provided");
         }
