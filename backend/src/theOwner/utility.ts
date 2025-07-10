@@ -82,9 +82,9 @@ export const unifiedGitHubEventForAgent = (event: UnifiedGitHubEvent, searchResu
     ${event.commits.map(commit => `
     commit: ${commit.name}
     Changed Files: ${commit.fileDiffs.map(diff => diff.filename).join(', ')}
-    diffs: ${commit.fileDiffs.map(diff => diff.diff).join('\n')}
     }
     `).join('\n')}
+    
 
     Possibly Related Tickets:
     ${searchResults.map(result => `- ${result.entityId} (${result.entityType}): ${result.content}`).join('\n')}
@@ -98,3 +98,5 @@ export const unifiedGitHubEventForAgent = (event: UnifiedGitHubEvent, searchResu
     `;
     return eventString;
 }
+
+// diffs: ${commit.fileDiffs.map(diff => diff.diff).join('\n')}
