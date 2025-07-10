@@ -168,7 +168,7 @@ export function ActivityFeed({ className = "" }: ActivityFeedProps) {
                         >
                             <div className="flex items-start space-x-3">
                                 <div className="flex-shrink-0 mt-1">
-                                    <GitHubAvatar username={activity.github_repository_owner_id} />
+                                    <GitHubAvatar username={activity.github_repository_owner_id} size={60} />
                                     {getEventIcon(activity.event_type)}
                                 </div>
                                 
