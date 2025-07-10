@@ -8,8 +8,8 @@ import { search } from "../searchClient";
 import { Session } from "../server";
 import { TicketManager } from "../ticketing/TicketIntegration";
 import { getUserTicketManager } from "../types/user";
-import { formatTitleForEvent } from "src/feed/formatters";
-import { ChangedItem, ChangeEventType } from "src/shared/ModelEvents";
+import { formatTitleForEvent } from "../feed/formatters";
+import { ChangedItem, ChangeEventType } from "../shared/ModelEvents";
 
 const GITHUB_APP_CLIENT_ID = process.env.GITHUB_CLIENT_ID
 
