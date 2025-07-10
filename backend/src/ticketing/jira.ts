@@ -1,6 +1,6 @@
 import JiraClient from 'jira-client';
 import { SearchItem } from '../search/SearchItem';
-import { CreateTicketInput, Ticket, TicketSystemType, UpdateTicketInput, User, UserContext, Team } from '../shared/TicketSystem';
+import { CreateTicketInput, Ticket, TicketSystemType, UpdateTicketInput, User, UserContext, Team, Project } from '../shared/TicketSystem';
 import { StructuredSearchOptions, TicketManager } from './TicketIntegration';
 import chalk from 'chalk';
 
@@ -156,6 +156,11 @@ export class JiraAdapter implements TicketManager {
     async getAllTickets(): Promise<Ticket[]> {
         const res = await this.client.searchJira('');
         return res.issues.map((i: any) => this.convertIssue(i));
+    }
+
+    async getAllProjects(): Promise<Project[]> {
+        const projects = await this.client.listProjects();
+        return projects.map((p: any) => ({ id: p.id, name: p.name, description: p.description, teamId: p.lead.accountId }));
     }
 
     async configureWebhook(): Promise<{ webhookId: string; webhookSecret: string } | null> {
