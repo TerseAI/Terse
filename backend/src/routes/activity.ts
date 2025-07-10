@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import { db } from "../prismaClient";
 import { ActivityEvent, TicketActivityEvent as ClientTicketActivityEvent } from "../shared/types";
-import { GithubRepository, TicketActivityEvent } from "../types/prisma";
+import { GithubRepository, TicketActivityEvent, ActivityEvent as PrismaActivityEvent } from "../types/prisma";
 import { getUserTicketManager } from "../types/user";
 import { Ticket } from "../shared/TicketSystem";
 
@@ -28,7 +28,7 @@ export async function getActivityFeed(req: Request, res: Response) {
     });
 
     // get all activity events for the user
-    const activityEvents = await db().activity_events.findMany({
+    const activityEvents: PrismaActivityEvent[] = await db().activity_events.findMany({
         where: {
             github_repository_id: {
                 in: githubRepositories.map(repo => repo.id)
@@ -44,7 +44,7 @@ export async function getActivityFeed(req: Request, res: Response) {
             }
         }
     });
-    
+
     // let's take all of our ticket ids, and map them to tickets
     const ticketManager = await getUserTicketManager(user.id);
     if (!ticketManager) {
