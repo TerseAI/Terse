@@ -294,6 +294,7 @@ export async function githubAppUnifiedEvent(req: Request, res: Response) {
     const owner: Owner = new Owner(search(), session)
     // handle the unified event
     const changedItems = await owner.handleUnifiedGitHubEvent(body);
+    console.log(chalk.green('Saving activity event for changed items:'), changedItems);
     await saveActivityEvent(body, changedItems, user.id);
     
     res.status(200).json({ message: 'GitHub event received and processed' });
