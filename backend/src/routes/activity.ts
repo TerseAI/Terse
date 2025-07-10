@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import { db } from "../prismaClient";
 import { ActivityEvent, TicketActivityEvent as ClientTicketActivityEvent } from "../shared/types";
-import { GithubRepository, TicketActivityEvent } from "../types/prisma";
+import { GithubRepository, TicketActivityEvent, ActivityEvent as PrismaActivityEvent, User } from "../types/prisma";
 import { getUserTicketManager } from "../types/user";
 import { Ticket } from "../shared/TicketSystem";
 
@@ -28,11 +28,14 @@ export async function getActivityFeed(req: Request, res: Response) {
     });
 
     // get all activity events for the user
-    const activityEvents = await db().activity_events.findMany({
+    const activityEvents: PrismaActivityEvent[] = await db().activity_events.findMany({
         where: {
             github_repository_id: {
                 in: githubRepositories.map(repo => repo.id)
             }
+        },
+        orderBy: {
+            created_at: 'desc'
         }
     });
 
@@ -42,16 +45,30 @@ export async function getActivityFeed(req: Request, res: Response) {
             activity_event_id: {
                 in: activityEvents.map(event => event.id)
             }
+        },
+        orderBy: {
+            created_at: 'desc'
         }
     });
-    
+
     // let's take all of our ticket ids, and map them to tickets
     const ticketManager = await getUserTicketManager(user.id);
     if (!ticketManager) {
         return res.status(500).json({ error: "Ticket manager not found" });
     }
     const tickets = await ticketManager.getTickets(ticketActivityEvents.map(event => event.ticket_id));
-    
+
+    // Take all user_ids and map them to github usernames
+    const users = activityEvents.map(event => event.user_id);
+    const userMap = new Map<string, User>();
+    for (const user of users) {
+        const userData = await db().users.findUnique({
+            where: { id: user }
+        });
+        if (userData) {
+            userMap.set(user, userData);
+        }
+    }
 
     // create map of ticket id to ticket
     const ticketMap = new Map<string, Ticket>();
@@ -68,6 +85,7 @@ export async function getActivityFeed(req: Request, res: Response) {
         groupedActivityEvents.push({
             event_type: activityEvent.event_type,
             title: activityEvent.title,
+            github_repository_owner_id: userMap.get(activityEvent.user_id)?.github_username || 'Unknown',
             github_repository_name: githubRepository?.name || 'Unknown',
             created_at: activityEvent.created_at,
             ticket_activity_events: ticketActivityEventsForEvent
