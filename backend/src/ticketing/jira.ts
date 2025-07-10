@@ -143,6 +143,10 @@ export class JiraAdapter implements TicketManager {
         ];
     }
 
+    async searchItemsForProject(id: string): Promise<SearchItem[]> {
+        return [];
+    }
+
     async getTeams(): Promise<Team[]> {
         const projects = await this.client.listProjects();
         return projects.map((p: any) => ({ id: p.id, name: p.name, key: p.key }));
