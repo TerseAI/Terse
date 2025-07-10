@@ -97,8 +97,6 @@ model slack_integrations {
   updated_at      DateTime @updatedAt
 
   user_slack_integrations user_slack_integrations[]
-
-  @@unique([app_id])
 }
 
 model jira_api_keys {
