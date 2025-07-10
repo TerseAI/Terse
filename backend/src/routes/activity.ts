@@ -70,11 +70,13 @@ export async function getActivityFeed(req: Request, res: Response) {
             title: activityEvent.title,
             github_repository_name: githubRepository?.name || 'Unknown',
             created_at: activityEvent.created_at,
-            ticket_activity_events: ticketActivityEventsForEvent.map(ticketEvent => ({
-                ticket: ticketMap.get(ticketEvent.ticket_id)!, // non-null assertion, since TicketActivityEvent expects Ticket, not null
-                event_type: ticketEvent.event_type,
-                title: ticketEvent.title
-            }))
+            ticket_activity_events: ticketActivityEventsForEvent
+                .filter(ticketEvent => ticketMap.has(ticketEvent.ticket_id))
+                .map(ticketEvent => ({
+                    ticket: ticketMap.get(ticketEvent.ticket_id)!,
+                    event_type: ticketEvent.event_type,
+                    title: ticketEvent.title
+                }))
         });
     }
 
