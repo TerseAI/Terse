@@ -4,6 +4,7 @@ import { Jwt } from "./utility/Jwt.js";
 const backendBaseUrl = process.env.VECTRA_BACKEND_URL || 'http://localhost:3001';
 
 export type Commit = {
+    sha: string;
     name: string;
     fileDiffs: FileDiff[];
 }

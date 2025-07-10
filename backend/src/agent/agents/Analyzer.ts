@@ -5,22 +5,33 @@ import { ticketTools } from "../tools/ticketingTools";
 import chalk from "chalk";
 import { EntityType } from "../../shared/Entities";
 import { ChangedItem, ChangeEventType } from "../../shared/ModelEvents";
+import { Commit } from "../../theOwner/utility";
 
 // Enhanced session type with change tracking
 export type SessionWithTracking = Session & {
-    trackChange: (type: EntityType, id: string | number, eventType: ChangeEventType) => void
-};
+    trackChange: (type: EntityType, id: string | number, eventType: ChangeEventType) => void;
+    commitContext?: { commits: Commit[]; repository: { name: string; owner: string }; branch?: string } | null;
+}
 
 export class Analyzer {
     private history: AgentInputItem[] = [];
     private session: Session;
     private changedItems: ChangedItem[] = [];
+    private commitContext: { commits: Commit[]; repository: { name: string; owner: string }; branch?: string } | null = null;
     agent?: Agent<SessionWithTracking, AgentOutputType>;
 
     constructor(session: Session) {
         this.history = [];
         this.session = session;
         this.changedItems = [];
+    }
+
+    setCommitContext(commits: Commit[], repository: { name: string; owner: string }, branch?: string) {
+        this.commitContext = { commits, repository, branch };
+    }
+
+    getCommitContext() {
+        return this.commitContext;
     }
 
     async analyze(event: string) {
@@ -33,7 +44,7 @@ export class Analyzer {
         console.log(chalk.blue('Running analyzer'));
         const agent = new Agent<SessionWithTracking, AgentOutputType>({
             name: 'Change Analyzer',
-            instructions: await systemPrompt(this.session),
+            instructions: await systemPrompt(this.session, this.commitContext),
             model: 'gpt-4o',
             tools: [
                 ...ticketTools
@@ -51,7 +62,8 @@ export class Analyzer {
     getContext(): SessionWithTracking {
         return {
             ...this.session,
-            trackChange: (type: EntityType, id: string | number, eventType: ChangeEventType) => this.trackChange(type, id, eventType)
+            trackChange: (type: EntityType, id: string | number, eventType: ChangeEventType) => this.trackChange(type, id, eventType),
+            commitContext: this.commitContext
         };
     }
 
@@ -72,7 +84,7 @@ export class Analyzer {
     }
 }
 
-const systemPrompt = async (session: Session) => {
+const systemPrompt = async (session: Session, commitContext?: { commits: Commit[]; repository: { name: string; owner: string }; branch?: string } | null) => {
     if (!session.ticketManager) {
         throw new Error("No ticket manager found");
     }
@@ -169,5 +181,17 @@ const systemPrompt = async (session: Session) => {
     When you do the summary, make sure everything conforms to mrkdwn. So no **Bold** syntax.
 
     Make sure it's legible in Slack!
+
+    ${commitContext ? `
+    COMMIT CONTEXT:
+    The following commits are available for association with tickets (use their indices in the associatedCommits parameter):
+    ${commitContext.commits.map((commit, index) => `${index}: ${commit.sha.substring(0, 8)} - ${commit.name}`).join('\n')}
+    
+    Repository: ${commitContext.repository.owner}/${commitContext.repository.name}
+    Branch: ${commitContext.branch || 'main'}
+    
+    When creating or updating tickets, you can associate relevant commits by providing their indices in the associatedCommits parameter.
+    This helps track the relationship between code changes and project management.
+    ` : ''}
     `;
 }

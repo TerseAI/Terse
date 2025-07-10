@@ -63,6 +63,7 @@ export default (app: Probot) => {
         }
 
         diffs.push({
+          sha: commit.id,
           name: commit.message,
           fileDiffs: fileDiffs
         });
@@ -151,6 +152,7 @@ export default (app: Probot) => {
           }
 
           diffs.push({
+            sha: commit.sha,
             name: commit.commit.message,
             fileDiffs: fileDiffs
           });
