@@ -116,9 +116,9 @@ export async function slackOAuthCallback(req: Request, res: Response) {
 
         console.log("Slack OAuth response:", response.data);
 
-        const { access_token, authed_user, scope } = response.data;
+        const { access_token, authed_user, scope, team } = response.data;
 
-        if (!response.data.ok) {
+        if (!response.data.ok || !team || !team.id) {
             console.error("Slack OAuth response not ok:", response.data);
             res.status(500).json({ message: 'Failed to exchange code for access token' });
             return;
@@ -127,7 +127,7 @@ export async function slackOAuthCallback(req: Request, res: Response) {
         // check if the slack integration already exists
         let slackIntegration = await db().slack_integrations.findFirst({
             where: {
-                app_id: response.data.app_id
+                team_id: team.id
             }
         });
 
