@@ -1,4 +1,4 @@
-import { ChangedItem, SendModelRequest } from "../../shared/ModelEvents";
+import { ChangedItem, ChangeEventType, SendModelRequest } from "../../shared/ModelEvents";
 import { EntityType } from "../../shared/Entities";
 import { Agent, AgentInputItem, AgentOutputType, StreamedRunResult } from "@openai/agents";
 import { Session } from "../../server";
@@ -12,7 +12,7 @@ export interface IAgentSession<T extends Session> {
     run(): Promise<StreamedRunResult<T, Agent<T, AgentOutputType>>>;
     setHistory(history: AgentInputItem[]): void;
     getSession(): Session;
-    trackChange(type: EntityType, id: string | number): void;
+    trackChange(type: EntityType, id: string | number, eventType: ChangeEventType): void;
     getAndClearChangedItems(): ChangedItem[];
     getChangedItems(): ChangedItem[];
     getContext(): T;
