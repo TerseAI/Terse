@@ -5,8 +5,7 @@ import { Analyzer } from '../agent/agents/Analyzer';
 import chalk from 'chalk';
 import { db } from '../prismaClient';
 import { sendMessage } from '../slack/sendMessage';
-import { formatTitleForEvent } from '../feed/formatters';
-import { ChangedItem, ChangeEventType } from '../shared/ModelEvents';
+import { ChangedItem } from '../shared/ModelEvents';
 import { UnifiedGitHubEvent, unifiedGitHubEventForAgent } from './utility';
 
 class Owner {
