@@ -1,4 +1,4 @@
-import { Ticket, TicketSystemType, CreateTicketInput, UpdateTicketInput, User, UserContext } from "../shared/TicketSystem";
+import { Ticket, TicketSystemType, CreateTicketInput, UpdateTicketInput, User, UserContext, Project } from "../shared/TicketSystem";
 import { SearchItem } from "../search/SearchItem";
 import { Team } from "../shared/TicketSystem";
 
@@ -12,13 +12,16 @@ export interface TicketManager {
     updateTicket(id: string, input: UpdateTicketInput): Promise<Ticket>;
     commentOnTicket(id: string, comment: string): Promise<void>;
     deleteComment(ticketId: string, commentId: string): Promise<void>;
-    searchItemsForTicket(id: string): Promise<SearchItem[]>;
     getTeams(): Promise<Team[]>;
     me(): Promise<User | null>;
 
     // Used for indexing
     getAllTickets(): Promise<Ticket[]>;
+    getAllProjects(): Promise<Project[]>;
     configureWebhook(): Promise<{ webhookId: string, webhookSecret: string } | null>;
+
+    searchItemsForTicket(id: string): Promise<SearchItem[]>;
+    searchItemsForProject(id: string): Promise<SearchItem[]>;
 }
 
 export type StructuredSearchOptions = {
