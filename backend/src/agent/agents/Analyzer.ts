@@ -4,11 +4,11 @@ import { Session } from "../../server";
 import { ticketTools } from "../tools/ticketingTools";
 import chalk from "chalk";
 import { EntityType } from "../../shared/Entities";
-import { ChangedItem } from "../../shared/ModelEvents";
+import { ChangedItem, ChangeEventType } from "../../shared/ModelEvents";
 
 // Enhanced session type with change tracking
 export type SessionWithTracking = Session & {
-    trackChange: (type: EntityType, id: string | number) => void
+    trackChange: (type: EntityType, id: string | number, eventType: ChangeEventType) => void
 };
 
 export class Analyzer {
@@ -51,15 +51,16 @@ export class Analyzer {
     getContext(): SessionWithTracking {
         return {
             ...this.session,
-            trackChange: (type: EntityType, id: string | number) => this.trackChange(type, id)
+            trackChange: (type: EntityType, id: string | number, eventType: ChangeEventType) => this.trackChange(type, id, eventType)
         };
     }
 
     // Track changes made by tools
-    trackChange(type: EntityType, id: string | number) {
+    trackChange(type: EntityType, id: string | number, eventType: ChangeEventType) {
         this.changedItems.push({
             type_name: type,
-            id: id.toString()
+            id: id.toString(),
+            change_event_type: eventType
         });
     }
 

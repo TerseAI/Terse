@@ -5,6 +5,7 @@ import { StructuredSearchOptions } from "../../ticketing/TicketIntegration";
 import { CreateTicketInput, UserContext } from "../../shared/TicketSystem";
 import { SessionWithTracking } from "../agents/Analyzer";
 import { EntityType } from "../../shared/Entities";
+import { ChangeEventType } from "src/shared/ModelEvents";
 
 const searchTicketTool = tool({
     name: 'Search Ticket',
@@ -192,7 +193,7 @@ const createTicketTool = tool({
             project: project || undefined,
         } as CreateTicketInput);
 
-        runContext?.context.trackChange(EntityType.TICKET, ticket.id);
+        runContext?.context.trackChange(EntityType.TICKET, ticket.id, ChangeEventType.CREATED);
 
         return ticket;
     }
@@ -261,7 +262,7 @@ const updateTicketTool = tool({
             teamId: teamId,
         });
 
-        runContext?.context.trackChange(EntityType.TICKET, ticket.id);
+        runContext?.context.trackChange(EntityType.TICKET, ticket.id, ChangeEventType.UPDATED);
 
         return ticket;
     }
