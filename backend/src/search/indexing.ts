@@ -1,4 +1,4 @@
-import { TicketManager } from "src/ticketing/TicketIntegration";
+import { TicketManager } from "../ticketing/TicketIntegration";
 import { Search } from "./search";
 import { SearchItem } from "./SearchItem";
 import chalk from "chalk";

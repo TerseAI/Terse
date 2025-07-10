@@ -5,7 +5,7 @@ import { StructuredSearchOptions } from "../../ticketing/TicketIntegration";
 import { CreateTicketInput, UserContext } from "../../shared/TicketSystem";
 import { SessionWithTracking } from "../agents/Analyzer";
 import { EntityType } from "../../shared/Entities";
-import { ChangeEventType } from "src/shared/ModelEvents";
+import { ChangeEventType } from "../../shared/ModelEvents";
 
 const searchTicketTool = tool({
     name: 'Search Ticket',
