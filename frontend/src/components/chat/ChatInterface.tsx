@@ -5,7 +5,7 @@ import { Types } from '../../utility/Types';
 import { clientBoundTools, ShowTypeToUserParameters } from '../../shared/ClientBoundTools';
 import { SnippetNavigationProvider } from '../../context/SnippetNavigationContext';
 import { EntityType } from '../../shared/Entities';
-import { ChangedItem } from '../../shared/ModelEvents';
+import { ChangedItem, ChangeEventType } from '../../shared/ModelEvents';
 import { ChatLayout } from './ChatLayout';
 import { ChatProvider } from './ChatProvider';
 import { TurnView } from './Turn';
@@ -57,8 +57,8 @@ function ChatInterfaceContent({ onSnippetSelect }: ChatInterfaceContentProps) {
                 onToolCall={(req, addCustomSnippet) => {
                     if (clientBoundTools.find(tool => tool.id === req.summary)) {
                         const { items } = clientBoundTools.find(tool => tool.id === req.summary)?.parseParameters(req.parameters) as ShowTypeToUserParameters;
-                        // let item: ItemToDisplay[] = formatChangedItems(items.map(item => ({ type_name: item.type as EntityType, id: item.id })));
-                        // addCustomSnippet(req.step_id, <TurnView role="assistant" text="" function_calls={[]} items={item} step_id={req.step_id} />);
+                        let item: ItemToDisplay[] = formatChangedItems(items.map(item => ({ type_name: item.type as EntityType, id: item.id, change_event_type: ChangeEventType.UPDATED })));
+                        addCustomSnippet(req.step_id, <TurnView role="assistant" text="" function_calls={[]} items={item} step_id={req.step_id} />);
                         return;
                     }
                 }}
