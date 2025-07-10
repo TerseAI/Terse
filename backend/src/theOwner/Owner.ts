@@ -6,7 +6,8 @@ import chalk from 'chalk';
 import { db } from '../prismaClient';
 import { sendMessage } from '../slack/sendMessage';
 import { ChangedItem } from '../shared/ModelEvents';
-import { UnifiedGitHubEvent, unifiedGitHubEventForAgent } from './utility';
+import { Commit, UnifiedGitHubEvent, unifiedGitHubEventForAgent } from './utility';
+import { TicketManager } from 'src/ticketing/TicketIntegration';
 
 class Owner {
     private searchSystem: Search;
@@ -66,6 +67,9 @@ class Owner {
         });
 
         const unifiedEvent = unifiedGitHubEventForAgent(event, filteredResults);
+
+        // Set commit context in the analyzer
+        analyzer.setCommitContext(event.commits, event.repository, event.branch);
 
         // Run the analyzer with comprehensive context
         analyzer.analyze(unifiedEvent);

@@ -1,5 +1,5 @@
 import { SearchItem } from "../search/SearchItem";
-import { CreateTicketInput, Ticket, TicketSystemType, TicketWebhookHandler, UpdateTicketInput, Project } from "../shared/TicketSystem";
+import { CreateTicketInput, Ticket, TicketSystemType, TicketWebhookHandler, UpdateTicketInput, Project, CommitAssociation } from "../shared/TicketSystem";
 import { Issue, IssuePayload, LinearClient, User as LinearUser, Project as LinearProject } from "@linear/sdk";
 import chalk from "chalk";
 import { StructuredSearchOptions, TicketManager } from "./TicketIntegration";
@@ -324,6 +324,39 @@ export class LinearAdapter implements TicketManager {
     async isTicketComplete(ticketId: string): Promise<boolean> {
         const ticket = await this.findTicket(ticketId);
         return ticket.state.name === 'Done';
+    }
+
+    async associateCommitsToTicket(ticketId: string, commits: CommitAssociation[], branchName: string): Promise<void> {
+        const issue = await this.client.issue(ticketId);
+        if (!issue) {
+            throw new Error(`Issue ${ticketId} not found`);
+        }
+
+        // Get existing comments to avoid duplicates
+        const comments = await issue.comments();
+        
+        for (const commit of commits) {
+            // Check if commit is already mentioned in comments
+            const existing = comments.nodes.find(c => c.body.includes(commit.sha.substring(0, 8)));
+            if (existing) {
+                console.log(`Commit ${commit.sha} already associated with ${ticketId}`);
+                continue;
+            }
+
+            // Create comment for the commit
+            const comment = `🔗 **Commit**: ${commit.sha.substring(0, 8)}\n` +
+                           `📝 **Message**: ${commit.message}\n` +
+                           `🌿 **Branch**: ${commit.branch || 'main'}\n` +
+                           `📦 **Repository**: ${commit.repository}\n` +
+                           `🔗 **Link**: ${commit.url}`;
+            
+            await this.client.createComment({
+                body: comment,
+                issueId: ticketId
+            });
+            
+            console.log(`✅ Associated commit ${commit.sha} with ${ticketId}`);
+        }
     }
 
     async findTicket(id: string): Promise<Ticket> {

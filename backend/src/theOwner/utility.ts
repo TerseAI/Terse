@@ -1,6 +1,7 @@
 import { SearchResult } from "../search/SearchItem";
 
 export type Commit = {
+    sha: string;
     name: string;
     fileDiffs: FileDiff[];
 }

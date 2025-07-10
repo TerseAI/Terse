@@ -160,8 +160,9 @@ const createTicketTool = tool({
             id: z.string().describe('The project ID'),
             name: z.string().describe('The project name')
         }), z.null()]).describe('The project for the ticket'),
+        associatedCommits: z.union([z.array(z.number()), z.null()]).describe('The indices of commits to associate with this ticket (0-based, from the event context)'),
     }),
-    execute: async ({ title, description, state, assignee, priority, labels, estimate, dueDate, project }, runContext?: RunContext<SessionWithTracking>) => {
+    execute: async ({ title, description, state, assignee, priority, labels, estimate, dueDate, project, associatedCommits }, runContext?: RunContext<SessionWithTracking>) => {
         if (!runContext?.context) {
             throw new Error("No context provided");
         }
@@ -191,7 +192,37 @@ const createTicketTool = tool({
             estimate: estimate || undefined,
             dueDate: dueDate || undefined,
             project: project || undefined,
+            associatedCommits: associatedCommits || undefined,
         } as CreateTicketInput);
+
+        // Associate commits after ticket creation if provided
+        if (associatedCommits && associatedCommits.length > 0) {
+            // Get commit context from the session
+            const session = runContext?.context as SessionWithTracking;
+            const commitContext = session?.commitContext;
+            
+            if (commitContext) {
+                const commitAssociations = associatedCommits.map(index => {
+                    const commit = commitContext.commits[index];
+                    if (!commit) {
+                        console.warn(`Commit index ${index} not found in context`);
+                        return null;
+                    }
+                    
+                    return {
+                        sha: commit.sha,
+                        message: commit.name,
+                        url: `https://github.com/${commitContext.repository.owner}/${commitContext.repository.name}/commit/${commit.sha}`,
+                        repository: `${commitContext.repository.owner}/${commitContext.repository.name}`,
+                        branch: commitContext.branch || 'main'
+                    };
+                }).filter((commit): commit is NonNullable<typeof commit> => commit !== null);
+                
+                if (commitAssociations.length > 0) {
+                    await ticketManager.associateCommitsToTicket(ticket.id, commitAssociations, commitContext.branch || 'main');
+                }
+            }
+        }
 
         runContext?.context.trackChange(EntityType.TICKET, ticket.id, ChangeEventType.CREATED);
 
@@ -222,8 +253,9 @@ const updateTicketTool = tool({
             id: z.string().describe('The project ID'),
             name: z.string().describe('The project name')
         }), z.null()]).describe('The project for the ticket'),
+        associatedCommits: z.union([z.array(z.number()), z.null()]).describe('The indices of commits to associate with this ticket (0-based, from the event context)'),
     }),
-    execute: async ({ id, title, description, state, assignee, priority, estimate, dueDate, project }, runContext?: RunContext<SessionWithTracking>) => {
+    execute: async ({ id, title, description, state, assignee, priority, estimate, dueDate, project, associatedCommits }, runContext?: RunContext<SessionWithTracking>) => {
         if (!runContext?.context) {
             throw new Error("No context provided");
         }
@@ -261,6 +293,35 @@ const updateTicketTool = tool({
             project: project || undefined,
             teamId: teamId,
         });
+
+        // Associate commits after ticket update if provided
+        if (associatedCommits && associatedCommits.length > 0) {
+            // Get commit context from the session
+            const session = runContext?.context as SessionWithTracking;
+            const commitContext = session?.commitContext;
+            
+            if (commitContext) {
+                const commitAssociations = associatedCommits.map(index => {
+                    const commit = commitContext.commits[index];
+                    if (!commit) {
+                        console.warn(`Commit index ${index} not found in context`);
+                        return null;
+                    }
+                    
+                    return {
+                        sha: commit.sha,
+                        message: commit.name,
+                        url: `https://github.com/${commitContext.repository.owner}/${commitContext.repository.name}/commit/${commit.sha}`,
+                        repository: `${commitContext.repository.owner}/${commitContext.repository.name}`,
+                        branch: commitContext.branch || 'main'
+                    };
+                }).filter((commit): commit is NonNullable<typeof commit> => commit !== null);
+                
+                if (commitAssociations.length > 0) {
+                    await ticketManager.associateCommitsToTicket(ticket.id, commitAssociations, commitContext.branch || 'main');
+                }
+            }
+        }
 
         runContext?.context.trackChange(EntityType.TICKET, ticket.id, ChangeEventType.UPDATED);
 
