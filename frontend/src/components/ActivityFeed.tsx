@@ -9,6 +9,7 @@ import {
     ClockIcon,
     FolderIcon
 } from '@heroicons/react/24/outline';
+import GitHubAvatar from './GithubPhoto';
 
 interface ActivityFeedProps {
     className?: string;
@@ -167,6 +168,7 @@ export function ActivityFeed({ className = "" }: ActivityFeedProps) {
                         >
                             <div className="flex items-start space-x-3">
                                 <div className="flex-shrink-0 mt-1">
+                                    <GitHubAvatar username={activity.github_repository_owner_id} />
                                     {getEventIcon(activity.event_type)}
                                 </div>
                                 
