@@ -84,14 +84,6 @@ export interface Team {
     key: string;
 }
 
-export interface CommitAssociation {
-    sha: string;
-    message: string;
-    url: string;
-    repository: string;
-    branch?: string;
-}
-
 export interface CreateTicketInput {
     title: string;
     teamId: string;
@@ -106,7 +98,6 @@ export interface CreateTicketInput {
         id: string;
         name: string;
     };
-    associatedCommits?: CommitAssociation[];
 }
 
 export interface UpdateTicketInput {
@@ -123,7 +114,6 @@ export interface UpdateTicketInput {
         id: string;
         name: string;
     };
-    associatedCommits?: CommitAssociation[];
 }
 
 export interface TicketWebhookHandler {
