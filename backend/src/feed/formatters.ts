@@ -1,4 +1,4 @@
-import { UnifiedGitHubEvent } from "../theOwner/Owner";
+import { UnifiedGitHubEvent } from "../theOwner/utility";
 
 export function formatTitleForEvent(event: UnifiedGitHubEvent): string {
     if (event.eventType === 'push') {

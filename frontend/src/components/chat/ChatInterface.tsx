@@ -57,8 +57,8 @@ function ChatInterfaceContent({ onSnippetSelect }: ChatInterfaceContentProps) {
                 onToolCall={(req, addCustomSnippet) => {
                     if (clientBoundTools.find(tool => tool.id === req.summary)) {
                         const { items } = clientBoundTools.find(tool => tool.id === req.summary)?.parseParameters(req.parameters) as ShowTypeToUserParameters;
-                        let item: ItemToDisplay[] = formatChangedItems(items.map(item => ({ type_name: item.type as EntityType, id: item.id })));
-                        addCustomSnippet(req.step_id, <TurnView role="assistant" text="" function_calls={[]} items={item} step_id={req.step_id} />);
+                        // let item: ItemToDisplay[] = formatChangedItems(items.map(item => ({ type_name: item.type as EntityType, id: item.id })));
+                        // addCustomSnippet(req.step_id, <TurnView role="assistant" text="" function_calls={[]} items={item} step_id={req.step_id} />);
                         return;
                     }
                 }}
