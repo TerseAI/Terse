@@ -18,7 +18,7 @@ class Owner {
         this.session = session;
     }
 
-    async handleUnifiedGitHubEvent(event: UnifiedGitHubEvent) {
+    async handleUnifiedGitHubEvent(event: UnifiedGitHubEvent): Promise<ChangedItem[]> {
         console.log('The owner is handling a unified GitHub event', event.eventType, event.repositoryName, event.username);
         const analyzer = new Analyzer(this.session);
 
@@ -76,34 +76,9 @@ class Owner {
         console.log(chalk.blue('Changed items'), changedItems);
 
         // Save activity, send slack message
-
-        await this.saveActivityEvent(event, changedItems);
-
         await this.sendSlackMessage(result.finalOutput as string);
-    }
 
-    async saveActivityEvent(event: UnifiedGitHubEvent, changedItems: ChangedItem[]) {
-        const githubActivityEvent = await db().activity_events.create({
-            data: {
-                user_id: this.session.user.id,
-                event_type: event.eventType === 'push' ? 'PUSH' : event.eventType === 'pull_request.opened' ? 'PULL_REQUEST_OPENED' : event.eventType === 'pull_request.synchronize' ? 'PULL_REQUEST_UPDATED' : event.eventType === 'pull_request.merged' ? 'PULL_REQUEST_MERGED' : event.eventType === 'pull_request.closed' ? 'PULL_REQUEST_CLOSED' : 'PUSH',
-                title: formatTitleForEvent(event),
-                github_repository_id: event.repository.name
-            }
-        });
-
-        // create ticket activity events
-        for (const changedItem of changedItems) {
-            await db().ticket_activity_events.create({
-                data: {
-                    user_id: this.session.user.id,
-                    activity_event_id: githubActivityEvent.id,
-                    ticket_id: changedItem.id,
-                    event_type: changedItem.change_event_type === ChangeEventType.CREATED ? 'TICKET_CREATED' : 'TICKET_UPDATED',
-                    title: formatTitleForEvent(event)
-                }
-            });
-        }
+        return changedItems;
     }
 
     async sendSlackMessage(message: string) {

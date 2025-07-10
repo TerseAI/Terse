@@ -3,11 +3,13 @@ import { Request, Response } from "express";
 import { db } from "../prismaClient";
 import { User, GithubRepository, UserGithubRepository, LinearApiKey } from "../types/prisma";
 import Owner from "../theOwner/Owner";
-import { Commit } from "../theOwner/utility";
+import { Commit, UnifiedGitHubEvent } from "../theOwner/utility";
 import { search } from "../searchClient";
 import { Session } from "../server";
 import { TicketManager } from "../ticketing/TicketIntegration";
 import { getUserTicketManager } from "../types/user";
+import { formatTitleForEvent } from "src/feed/formatters";
+import { ChangedItem, ChangeEventType } from "src/shared/ModelEvents";
 
 const GITHUB_APP_CLIENT_ID = process.env.GITHUB_CLIENT_ID
 
@@ -255,15 +257,19 @@ export async function githubAppUnifiedEvent(req: Request, res: Response) {
     console.log(chalk.blue('githubAppUnifiedEvent'), body.eventType, body.repositoryName, body.username);
 
     // get the user
-    const user: User | null = await db().users.findFirst({ where: { github_username: username } });
-
+    let user: User | null = await db().users.findFirst({ where: { github_username: username } });
     if (!user) {
-        console.log(chalk.red('User not found'));
-        res.status(404).json({ message: 'User not found' });
-        return;
+        console.log(chalk.yellow('User not found, creating placeholder user'));
+        user = await db().users.create({
+            data: {
+                github_username: username,
+                is_placeholder: true,
+                email: body.sender.email || '',
+                display_name: body.sender.login
+            }
+        });
+        console.log(chalk.green('Placeholder user created:'), user);
     }
-
-    // TODO: Support users who are not registered with us.
 
     // resolve the user github relation
     const repository: GithubRepository | null = await resolveUserGithubRelation(user, username, repositoryName, installationId);
@@ -272,7 +278,8 @@ export async function githubAppUnifiedEvent(req: Request, res: Response) {
 
     if (!adapter) {
         console.log(chalk.red('User does not have a ticket manager'));
-        res.status(404).json({ message: 'User does not have a ticket manager' });
+        await saveActivityEvent(body, [], user.id);
+        res.status(200).json({ message: 'User does not have a ticket manager> Registering event, but no action will be taken' });
         return;
     }
 
@@ -285,11 +292,35 @@ export async function githubAppUnifiedEvent(req: Request, res: Response) {
 
     // init an Owner
     const owner: Owner = new Owner(search(), session)
-
     // handle the unified event
-    await owner.handleUnifiedGitHubEvent(body);
+    const changedItems = await owner.handleUnifiedGitHubEvent(body);
+    await saveActivityEvent(body, changedItems, user.id);
     
     res.status(200).json({ message: 'GitHub event received and processed' });
+}
+
+async function saveActivityEvent(event: UnifiedGitHubEvent, changedItems: ChangedItem[], userId: string) {
+    const githubActivityEvent = await db().activity_events.create({
+        data: {
+            user_id: userId,
+            event_type: event.eventType === 'push' ? 'PUSH' : event.eventType === 'pull_request.opened' ? 'PULL_REQUEST_OPENED' : event.eventType === 'pull_request.synchronize' ? 'PULL_REQUEST_UPDATED' : event.eventType === 'pull_request.merged' ? 'PULL_REQUEST_MERGED' : event.eventType === 'pull_request.closed' ? 'PULL_REQUEST_CLOSED' : 'PUSH',
+            title: formatTitleForEvent(event),
+            github_repository_id: event.repository.name
+        }
+    });
+
+    // create ticket activity events
+    for (const changedItem of changedItems) {
+        await db().ticket_activity_events.create({
+            data: {
+                user_id: userId,
+                activity_event_id: githubActivityEvent.id,
+                ticket_id: changedItem.id,
+                event_type: changedItem.change_event_type === ChangeEventType.CREATED ? 'TICKET_CREATED' : 'TICKET_UPDATED',
+                title: formatTitleForEvent(event)
+            }
+        });
+    }
 }
 
 export default {
