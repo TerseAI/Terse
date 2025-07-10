@@ -11,6 +11,7 @@ export type User = {
   export type ActivityEvent = {
     event_type: string;
     title: string;
+    github_repository_owner_id: string;
     github_repository_name: string;
     created_at: Date;
     ticket_activity_events: TicketActivityEvent[];
