@@ -57,6 +57,8 @@ class Owner {
             index === self.findIndex((t) => t.entityId === result.entityId && t.entityType === result.entityType)
         );
 
+        // TODO: Filter out tickets marked as done
+
         const unifiedEvent = unifiedGitHubEventForAgent(event, uniqueResults);
         
         // Run the analyzer with comprehensive context
