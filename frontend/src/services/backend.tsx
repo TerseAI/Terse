@@ -1,4 +1,5 @@
 import { ModelEvent, ModelRequest } from "../shared/ModelEvents";
+import { ActivityEvent } from "../shared/types";
 import { User } from "../types/User";
 import axios from 'axios';
 
@@ -39,6 +40,11 @@ interface BackendService {
      * Terminates the current user session
      */
     terminateSession(): Promise<void>;
+
+    /**
+     * Gets the activity feed
+     */
+    getActivityFeed(): Promise<ActivityEvent[]>;
 
     /**
      * Gets all integrations status in a single call
@@ -187,6 +193,15 @@ export const BackendProvider: BackendService = {
             })
             .catch(error => {
                 console.error('Error logging out:', error);
+                throw error;
+            });
+    },
+
+    getActivityFeed: () => {
+        return axios.get(`${backendBaseUrl}/activity-feed`, { withCredentials: true })
+            .then(response => response.data)
+            .catch(error => {
+                console.error('Error getting activity feed:', error);
                 throw error;
             });
     },

@@ -1,13 +1,13 @@
 import { Agent, AgentInputItem, run, StreamedRunResult, user, AgentOutputType, RunRawModelStreamEvent, Tool } from '@openai/agents';
 import { Session } from '../../server';
 import { systemPrompt } from '../systemPrompt';
-import { SendModelRequest, ChangedItem } from "../../shared/ModelEvents";
+import { SendModelRequest, ChangedItem, ChangeEventType } from "../../shared/ModelEvents";
 import { IAgentSession } from './AgentSession';
 import { EntityType } from '../../shared/Entities';
 import { ticketTools } from '../tools/ticketingTools';
 // Enhanced session type with change tracking
 export type SessionWithTracking = Session & { 
-  trackChange: (type: EntityType, id: string | number) => void 
+  trackChange: (type: EntityType, id: string | number, eventType: ChangeEventType) => void 
 };
 
 
@@ -56,10 +56,11 @@ export class AgentSession implements IAgentSession<SessionWithTracking> {
   }
 
   // Track changes made by tools
-  trackChange(type: EntityType, id: string | number) {
+  trackChange(type: EntityType, id: string | number, eventType: ChangeEventType) {
     this.changedItems.push({
       type_name: type,
-      id: id.toString()
+      id: id.toString(),
+      change_event_type: eventType
     });
   }
 
@@ -79,12 +80,12 @@ export class AgentSession implements IAgentSession<SessionWithTracking> {
   getContext(): SessionWithTracking {
     return {
       ...this.session,
-      trackChange: (type: EntityType, id: string | number) => this.trackChange(type, id)
+      trackChange: (type: EntityType, id: string | number, eventType: ChangeEventType) => this.trackChange(type, id, eventType)
     };
   }
 
   getAgent(): Agent<SessionWithTracking, AgentOutputType> | undefined {
-    return this.agent;
+    return this.agent;  
   }
 }
 
