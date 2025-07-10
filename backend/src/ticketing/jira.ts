@@ -1,6 +1,6 @@
 import JiraClient from 'jira-client';
 import { SearchItem } from '../search/SearchItem';
-import { CreateTicketInput, Ticket, TicketSystemType, UpdateTicketInput, User, UserContext, Team, Project } from '../shared/TicketSystem';
+import { CreateTicketInput, Ticket, TicketSystemType, UpdateTicketInput, User, UserContext, Team, Project, CommitAssociation } from '../shared/TicketSystem';
 import { StructuredSearchOptions, TicketManager } from './TicketIntegration';
 import chalk from 'chalk';
 
@@ -174,6 +174,30 @@ export class JiraAdapter implements TicketManager {
 
     async configureWebhook(): Promise<{ webhookId: string; webhookSecret: string } | null> {
         return null; // Webhooks not implemented
+    }
+
+    async associateCommitsToTicket(ticketId: string, commits: CommitAssociation[], branchName: string): Promise<void> {
+        // Get existing comments to avoid duplicates
+        const comments = await this.client.getComments(ticketId);
+        
+        for (const commit of commits) {
+            // Check if commit is already mentioned in comments
+            const existing = comments.comments.find((c: any) => c.body.includes(commit.sha.substring(0, 8)));
+            if (existing) {
+                console.log(`Commit ${commit.sha} already associated with ${ticketId}`);
+                continue;
+            }
+
+            // Create comment for the commit
+            const comment = `🔗 **Commit**: ${commit.sha.substring(0, 8)}\n` +
+                           `📝 **Message**: ${commit.message}\n` +
+                           `🌿 **Branch**: ${commit.branch || 'main'}\n` +
+                           `📦 **Repository**: ${commit.repository}\n` +
+                           `🔗 **Link**: ${commit.url}`;
+            
+            await this.client.addComment(ticketId, comment);
+            console.log(`✅ Associated commit ${commit.sha} with ${ticketId}`);
+        }
     }
 
     private convertIssue(issue: any): Ticket {

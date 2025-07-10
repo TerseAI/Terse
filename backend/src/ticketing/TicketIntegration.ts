@@ -1,4 +1,4 @@
-import { Ticket, TicketSystemType, CreateTicketInput, UpdateTicketInput, User, UserContext, Project } from "../shared/TicketSystem";
+import { Ticket, TicketSystemType, CreateTicketInput, UpdateTicketInput, User, UserContext, Project, CommitAssociation } from "../shared/TicketSystem";
 import { SearchItem } from "../search/SearchItem";
 import { Team } from "../shared/TicketSystem";
 
@@ -23,6 +23,8 @@ export interface TicketManager {
 
     searchItemsForTicket(id: string): Promise<SearchItem[]>;
     searchItemsForProject(id: string): Promise<SearchItem[]>;
+
+    associateCommitsToTicket(ticketId: string, commits: CommitAssociation[], branchName: string): Promise<void>;
 }
 
 export type StructuredSearchOptions = {
