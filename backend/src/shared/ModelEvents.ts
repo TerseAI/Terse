@@ -1,6 +1,11 @@
 import { EntityType } from "./Entities";
 
-export type ChangedItem = { type_name: EntityType, id: string, };
+export enum ChangeEventType {
+    CREATED = 'CREATED',
+    UPDATED = 'UPDATED',
+}
+
+export type ChangedItem = { type_name: EntityType, id: string, change_event_type: ChangeEventType };
 
 export type ActorReference = { id: string, actor_type: string, };
 
