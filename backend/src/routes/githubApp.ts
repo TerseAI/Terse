@@ -182,7 +182,7 @@ export async function githubAppRecievedCommit(req: Request, res: Response) {
 }
 
 // This is important. If we got this request, we know that the app is installed on their repo. IF it's not in our DB, we need to create it.
-async function resolveUserGithubRelation(user: User, username: string, repositoryName: string, installationId: number): Promise<GithubRepository | null> {
+async function resolveUserGithubRelation(user: User, username: string, repositoryName: string, installationId: number): Promise<GithubRepository> {
     // check if the repository is in our DB
     let repository: GithubRepository | null = await db().github_repositories.findFirst({ where: { name: repositoryName, installation_id: installationId } });
     if (!repository) {
@@ -272,13 +272,12 @@ export async function githubAppUnifiedEvent(req: Request, res: Response) {
     }
 
     // resolve the user github relation
-    const repository: GithubRepository | null = await resolveUserGithubRelation(user, username, repositoryName, installationId);
-
+    const repository: GithubRepository= await resolveUserGithubRelation(user, username, repositoryName, installationId);
     const adapter: TicketManager | null = await getUserTicketManager(user.id);
 
     if (!adapter) {
         console.log(chalk.red('User does not have a ticket manager'));
-        await saveActivityEvent(body, [], user.id);
+        await saveActivityEvent(repository, body, [], user.id);
         res.status(200).json({ message: 'User does not have a ticket manager> Registering event, but no action will be taken' });
         return;
     }
@@ -295,18 +294,18 @@ export async function githubAppUnifiedEvent(req: Request, res: Response) {
     // handle the unified event
     const changedItems = await owner.handleUnifiedGitHubEvent(body);
     console.log(chalk.green('Saving activity event for changed items:'), changedItems);
-    await saveActivityEvent(body, changedItems, user.id);
+    await saveActivityEvent(repository, body, changedItems, user.id);
     
     res.status(200).json({ message: 'GitHub event received and processed' });
 }
 
-async function saveActivityEvent(event: UnifiedGitHubEvent, changedItems: ChangedItem[], userId: string) {
+async function saveActivityEvent(repository: GithubRepository, event: UnifiedGitHubEvent, changedItems: ChangedItem[], userId: string) {
     const githubActivityEvent = await db().activity_events.create({
         data: {
             user_id: userId,
             event_type: event.eventType === 'push' ? 'PUSH' : event.eventType === 'pull_request.opened' ? 'PULL_REQUEST_OPENED' : event.eventType === 'pull_request.synchronize' ? 'PULL_REQUEST_UPDATED' : event.eventType === 'pull_request.merged' ? 'PULL_REQUEST_MERGED' : event.eventType === 'pull_request.closed' ? 'PULL_REQUEST_CLOSED' : 'PUSH',
             title: formatTitleForEvent(event),
-            github_repository_id: event.repository.name
+            github_repository_id: repository.id
         }
     });
 
