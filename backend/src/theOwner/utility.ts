@@ -1,4 +1,4 @@
-import { SearchResult } from "src/search/SearchItem";
+import { SearchResult } from "../search/SearchItem";
 
 export type Commit = {
     name: string;
