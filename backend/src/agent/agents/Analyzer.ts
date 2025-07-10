@@ -3,17 +3,24 @@ import { ToolBox } from "./Agent";
 import { Session } from "../../server";
 import { ticketTools } from "../tools/ticketingTools";
 import chalk from "chalk";
+import { EntityType } from "../../shared/Entities";
+import { ChangedItem } from "../../shared/ModelEvents";
+
+// Enhanced session type with change tracking
+export type SessionWithTracking = Session & {
+    trackChange: (type: EntityType, id: string | number) => void
+};
 
 export class Analyzer {
     private history: AgentInputItem[] = [];
     private session: Session;
-    private toolBox: ToolBox;
-    agent?: Agent<Session, AgentOutputType>;
+    private changedItems: ChangedItem[] = [];
+    agent?: Agent<SessionWithTracking, AgentOutputType>;
 
     constructor(session: Session) {
         this.history = [];
         this.session = session;
-        this.toolBox = new ToolBox();
+        this.changedItems = [];
     }
 
     async analyze(event: string) {
@@ -22,9 +29,9 @@ export class Analyzer {
     }
 
     // There will be no follow up here. 
-    async run(): Promise<RunResult<Session, Agent<Session, AgentOutputType>>> {
+    async run(): Promise<RunResult<SessionWithTracking, Agent<SessionWithTracking, AgentOutputType>>> {
         console.log(chalk.blue('Running analyzer'));
-        const agent = new Agent<Session, AgentOutputType>({
+        const agent = new Agent<SessionWithTracking, AgentOutputType>({
             name: 'Change Analyzer',
             instructions: await systemPrompt(this.session),
             model: 'gpt-4o',
@@ -34,10 +41,33 @@ export class Analyzer {
         });
 
         const result = await run(agent, this.history, {
-            context: this.session,
+            context: this.getContext(),
         });
 
         return result;
+    }
+
+    // Helper to get session context for tools
+    getContext(): SessionWithTracking {
+        return {
+            ...this.session,
+            trackChange: (type: EntityType, id: string | number) => this.trackChange(type, id)
+        };
+    }
+
+    // Track changes made by tools
+    trackChange(type: EntityType, id: string | number) {
+        this.changedItems.push({
+            type_name: type,
+            id: id.toString()
+        });
+    }
+
+    // Get and clear the changed items
+    getAndClearChangedItems(): ChangedItem[] {
+        const items = [...this.changedItems];
+        this.changedItems = [];
+        return items;
     }
 }
 
