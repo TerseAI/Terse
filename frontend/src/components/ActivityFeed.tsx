@@ -7,7 +7,6 @@ import {
     CheckCircleIcon, 
     XCircleIcon,
     ClockIcon,
-    UserIcon,
     FolderIcon
 } from '@heroicons/react/24/outline';
 
