@@ -259,12 +259,13 @@ export async function githubAppUnifiedEvent(req: Request, res: Response) {
     // get the user
     let user: User | null = await db().users.findFirst({ where: { github_username: username } });
     if (!user) {
-        console.log(chalk.yellow('User not found, creating placeholder user'));
+        const email = username + '@username.ai';
+        console.log(chalk.yellow('User not found, creating placeholder user with fake email ' + email));
         user = await db().users.create({
             data: {
                 github_username: username,
                 is_placeholder: true,
-                email: body.sender.email || '',
+                email: email,
                 display_name: body.sender.login
             }
         });
