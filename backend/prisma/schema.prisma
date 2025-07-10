@@ -27,6 +27,8 @@ model users {
   linear_api_keys          linear_api_keys[]
   user_slack_integrations  user_slack_integrations[]
   jira_api_keys            jira_api_keys[]
+  activity_events          activity_events[]
+  ticket_activity_events   ticket_activity_events[]
 }
 
 model github_repositories {
@@ -38,6 +40,7 @@ model github_repositories {
   updated_at      DateTime @updatedAt
 
   user_github_repositories user_github_repositories[]
+  activity_events          activity_events[]
 }
 
 model user_github_repositories {
@@ -109,4 +112,52 @@ model jira_api_keys {
   updated_at      DateTime @updatedAt
 
   user users @relation(fields: [user_id], references: [id])
+}
+
+// Activity Feed - Starting with GitHub Events
+model activity_events {
+  id                   String          @id @default(cuid())
+  user_id              String
+  title                String
+  event_type           GitHubEventType
+  github_repository_id String
+  created_at           DateTime        @default(now())
+  updated_at           DateTime        @updatedAt
+
+  github_repository      github_repositories      @relation(fields: [github_repository_id], references: [id])
+  users                  users?                   @relation(fields: [user_id], references: [id])
+  ticket_activity_events ticket_activity_events[]
+
+  @@index([event_type])
+}
+
+model ticket_activity_events {
+  id                String          @id @default(cuid())
+  user_id           String
+  event_type        TicketEventType
+  ticket_id         String // External ticket ID (Linear/Jira)
+  activity_event_id String
+  title             String
+  created_at        DateTime        @default(now())
+  updated_at        DateTime        @updatedAt
+
+  user            users           @relation(fields: [user_id], references: [id])
+  activity_events activity_events @relation(fields: [activity_event_id], references: [id])
+
+  @@index([ticket_id])
+}
+
+enum TicketEventType {
+  TICKET_CREATED
+  TICKET_UPDATED
+  COMMENT_ADDED
+}
+
+// GitHub Event Types
+enum GitHubEventType {
+  PUSH
+  PULL_REQUEST_OPENED
+  PULL_REQUEST_UPDATED
+  PULL_REQUEST_MERGED
+  PULL_REQUEST_CLOSED
 }
