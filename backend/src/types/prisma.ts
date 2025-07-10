@@ -6,7 +6,8 @@ import {
   slack_integrations,
   user_slack_integrations,
   user_github_repositories,
-  activity_events
+  activity_events,
+  ticket_activity_events
 } from '@prisma/client';
 
 
@@ -27,6 +28,8 @@ export type UserGithubRepository = user_github_repositories;
 
 export type ActivityEvent = activity_events;
 
+export type TicketActivityEvent = ticket_activity_events;
+
 // Re-export the original types too
 export {
   users,
@@ -36,5 +39,6 @@ export {
   slack_integrations,
   user_slack_integrations,
   user_github_repositories,
-  activity_events
+  activity_events,
+  ticket_activity_events
 }; 

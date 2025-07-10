@@ -62,6 +62,11 @@ export class JiraAdapter implements TicketManager {
         return this.convertIssue(issue);
     }
 
+    async getTickets(ids: string[]): Promise<Ticket[]> {
+        const issues = await this.client.searchJira(`id in (${ids.join(',')})`);
+        return issues.issues.map((i: any) => this.convertIssue(i));
+    }
+
     async structuredSearch(jql: string, _options?: StructuredSearchOptions): Promise<Ticket[]> {
         const res = await this.client.searchJira(jql);
         return res.issues.map((i: any) => this.convertIssue(i));
