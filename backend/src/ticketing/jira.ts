@@ -143,6 +143,11 @@ export class JiraAdapter implements TicketManager {
         ];
     }
 
+    async isTicketComplete(ticketId: string): Promise<boolean> {
+        const ticket = await this.findTicket(ticketId);
+        return ticket.state.name === 'Done';
+    }
+
     async searchItemsForProject(id: string): Promise<SearchItem[]> {
         return [];
     }
