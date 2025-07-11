@@ -162,6 +162,8 @@ export default (app: Probot) => {
         }
       }
 
+      console.log('diffs sha', diffs.map(d => d.sha));
+
       await VectraInterface.githubUnifiedEvent(
         payload.sender?.login,
         installationId,
