@@ -5,13 +5,15 @@ import Spin from "./components/Spin";
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Home from "./pages/Home";
 import { IntegrationProvider } from "./context/Integrations";
+import LandingPage from "./pages/LandingPage";
 
 function App() {
   return (
     <AuthProvider>
       <Router>
         <Routes>
-          <Route path="/" element={<Content />} />
+          <Route path="/app" element={<Content />} />
+          <Route path="/" element={<LandingPage />} />
         </Routes>
       </Router>
     </AuthProvider>
