@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
+import GitHubAvatar from './GithubPhoto';
 import { ActivityEvent } from '../shared/types';
 import { ActivityFeedService } from '../services/activityFeed';
 import { 
@@ -9,35 +10,35 @@ import {
     ClockIcon,
     FolderIcon
 } from '@heroicons/react/24/outline';
-import GitHubAvatar from './GithubPhoto';
 
-interface ActivityFeedProps {
-    className?: string;
-}
+// Ticket Activity Events Component
+const TicketActivityEvents: React.FC<{ ticketEvents: ActivityEvent['ticket_activity_events'] }> = ({ ticketEvents }) => {
+    if (ticketEvents.length === 0) return null;
 
-export function ActivityFeed({ className = "" }: ActivityFeedProps) {
-    const [activities, setActivities] = useState<ActivityEvent[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
+    return (
+        <div className="mt-3 pt-3 border-t border-gray-200">
+            <div className="space-y-2">
+                {ticketEvents.map((ticketEvent, ticketIndex) => (
+                    <div
+                        key={ticketIndex}
+                        className="flex items-center space-x-2 p-2 bg-white rounded border border-gray-200"
+                    >
+                        <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                        <span className="text-sm text-gray-700">
+                            {ticketEvent.ticket.title}
+                        </span>
+                        <span className="text-xs text-gray-500">
+                            ({ticketEvent.event_type.toLowerCase().replace('_', ' ')})
+                        </span>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+};
 
-    useEffect(() => {
-        loadActivities();
-    }, []);
-
-    const loadActivities = async () => {
-        try {
-            setIsLoading(true);
-            setError(null);
-            const data = await ActivityFeedService.getActivityFeed();
-            setActivities(data);
-        } catch (err) {
-            setError('Failed to load activity feed');
-            console.error('Error loading activity feed:', err);
-        } finally {
-            setIsLoading(false);
-        }
-    };
-
+// Activity Event Item Component
+const ActivityEventItem: React.FC<{ activity: ActivityEvent }> = ({ activity }) => {
     const getEventIcon = (eventType: string) => {
         switch (eventType) {
             case 'PUSH':
@@ -80,6 +81,67 @@ export function ActivityFeed({ className = "" }: ActivityFeedProps) {
         if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m ago`;
         if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h ago`;
         return `${Math.floor(diffInSeconds / 86400)}d ago`;
+    };
+
+    return (
+        <div className={`p-4 rounded-lg border ${getEventColor(activity.event_type)} transition-all hover:shadow-sm`}>
+            <div className="flex items-start space-x-3">
+                <div className="flex-shrink-0 mt-1">
+                    <GitHubAvatar username={activity.github_repository_owner_id} size={60} />
+                    {getEventIcon(activity.event_type)}
+                </div>
+                
+                <div className="flex-1 min-w-0">
+                    <div className="flex items-center space-x-2 mb-2">
+                        <span className="text-sm font-medium text-gray-900">
+                            {activity.title}
+                        </span>
+                        <span className="text-xs text-gray-500">
+                            {formatTimeAgo(activity.created_at)}
+                        </span>
+                    </div>
+                    
+                    <div className="flex items-center space-x-4 text-xs text-gray-600">
+                        <div className="flex items-center space-x-1">
+                            <FolderIcon className="w-4 h-4" />
+                            <span>{activity.github_repository_name}</span>
+                        </div>
+                    </div>
+                    
+                    {activity.ticket_activity_events.length > 0 && (
+                        <TicketActivityEvents ticketEvents={activity.ticket_activity_events} />
+                    )}
+                </div>
+            </div>
+        </div>
+    );
+};
+
+interface ActivityFeedProps {
+    className?: string;
+}
+
+export function ActivityFeed({ className = "" }: ActivityFeedProps) {
+    const [activities, setActivities] = useState<ActivityEvent[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+
+    useEffect(() => {
+        loadActivities();
+    }, []);
+
+    const loadActivities = async () => {
+        try {
+            setIsLoading(true);
+            setError(null);
+            const data = await ActivityFeedService.getActivityFeed();
+            setActivities(data);
+        } catch (err) {
+            setError('Failed to load activity feed');
+            console.error('Error loading activity feed:', err);
+        } finally {
+            setIsLoading(false);
+        }
     };
 
     if (isLoading) {
@@ -162,56 +224,7 @@ export function ActivityFeed({ className = "" }: ActivityFeedProps) {
                 
                 <div className="space-y-4">
                     {activities.map((activity, index) => (
-                        <div
-                            key={index}
-                            className={`p-4 rounded-lg border ${getEventColor(activity.event_type)} transition-all hover:shadow-sm`}
-                        >
-                            <div className="flex items-start space-x-3">
-                                <div className="flex-shrink-0 mt-1">
-                                    <GitHubAvatar username={activity.github_repository_owner_id} size={60} />
-                                    {getEventIcon(activity.event_type)}
-                                </div>
-                                
-                                <div className="flex-1 min-w-0">
-                                    <div className="flex items-center space-x-2 mb-2">
-                                        <span className="text-sm font-medium text-gray-900">
-                                            {activity.title}
-                                        </span>
-                                        <span className="text-xs text-gray-500">
-                                            {formatTimeAgo(activity.created_at)}
-                                        </span>
-                                    </div>
-                                    
-                                    <div className="flex items-center space-x-4 text-xs text-gray-600">
-                                        <div className="flex items-center space-x-1">
-                                            <FolderIcon className="w-4 h-4" />
-                                            <span>{activity.github_repository_name}</span>
-                                        </div>
-                                    </div>
-                                    
-                                    {activity.ticket_activity_events.length > 0 && (
-                                        <div className="mt-3 pt-3 border-t border-gray-200">
-                                            <div className="space-y-2">
-                                                {activity.ticket_activity_events.map((ticketEvent, ticketIndex) => (
-                                                    <div
-                                                        key={ticketIndex}
-                                                        className="flex items-center space-x-2 p-2 bg-white rounded border border-gray-200"
-                                                    >
-                                                        <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                                                        <span className="text-sm text-gray-700">
-                                                            {ticketEvent.ticket.title}
-                                                        </span>
-                                                        <span className="text-xs text-gray-500">
-                                                            ({ticketEvent.event_type.toLowerCase().replace('_', ' ')})
-                                                        </span>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                        </div>
+                        <ActivityEventItem key={index} activity={activity} />
                     ))}
                 </div>
             </div>
