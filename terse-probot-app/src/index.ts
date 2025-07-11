@@ -215,8 +215,9 @@ export default (app: Probot) => {
     const login = context.payload.sender?.login;
     const installationId = context.payload.installation.id;
     const repositoryName = context.payload.repositories?.[0]?.name || '';
+    const fullRepositoryName = context.payload.repositories.map((repo) => repo.full_name).join(', ');
 
-    console.log('🔧 installation.created', name, email, login, installationId, repositoryName);
+    console.log('🔧 installation.created', name, email, login, installationId, repositoryName, fullRepositoryName);
 
     try {
       await VectraInterface.githubAppInstallationCallback(name, email, login, installationId, repositoryName);
