@@ -68,6 +68,8 @@ class Owner {
 
         const unifiedEvent = unifiedGitHubEventForAgent(event, filteredResults);
 
+        console.log(chalk.blue('Commits Shas'), event.commits.map(c => c.sha));
+
         // Set commit context in the analyzer
         analyzer.setCommitContext(event.commits, event.repository, event.branch);
 
