@@ -8,7 +8,6 @@ import {
     CheckCircleIcon, 
     XCircleIcon,
     ClockIcon,
-    FolderIcon
 } from '@heroicons/react/24/outline';
 
 // Ticket Activity Events Component
