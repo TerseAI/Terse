@@ -21,14 +21,14 @@ const TicketActivityEvents: React.FC<{ ticketEvents: ActivityEvent['ticket_activ
                 {ticketEvents.map((ticketEvent, ticketIndex) => (
                     <div
                         key={ticketIndex}
-                        className="flex items-center space-x-2 p-2 bg-white rounded border border-gray-200"
+                        className="flex items-center space-x-3 p-3 bg-white rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-shadow"
                     >
-                        <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                        <span className="text-sm text-gray-700">
+                        <div className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0"></div>
+                        <span className="text-sm font-normal text-gray-700 flex-1">
                             {ticketEvent.ticket.title}
                         </span>
-                        <span className="text-xs text-gray-500">
-                            ({ticketEvent.event_type.toLowerCase().replace('_', ' ')})
+                        <span className="text-xs text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded-full">
+                            {ticketEvent.event_type.toLowerCase().replace('_', ' ')}
                         </span>
                     </div>
                 ))}
@@ -42,17 +42,17 @@ const ActivityEventItem: React.FC<{ activity: ActivityEvent }> = ({ activity }) 
     const getEventIcon = (eventType: string) => {
         switch (eventType) {
             case 'PUSH':
-                return <CodeBracketIcon className="w-5 h-5 text-blue-500" />;
+                return <CodeBracketIcon className="w-4 h-4 text-blue-600" />;
             case 'PULL_REQUEST_OPENED':
-                return <ArrowPathIcon className="w-5 h-5 text-green-500" />;
+                return <ArrowPathIcon className="w-4 h-4 text-green-600" />;
             case 'PULL_REQUEST_MERGED':
-                return <CheckCircleIcon className="w-5 h-5 text-purple-500" />;
+                return <CheckCircleIcon className="w-4 h-4 text-purple-600" />;
             case 'PULL_REQUEST_CLOSED':
-                return <XCircleIcon className="w-5 h-5 text-red-500" />;
+                return <XCircleIcon className="w-4 h-4 text-red-600" />;
             case 'PULL_REQUEST_UPDATED':
-                return <ArrowPathIcon className="w-5 h-5 text-yellow-500" />;
+                return <ArrowPathIcon className="w-4 h-4 text-yellow-600" />;
             default:
-                return <ClockIcon className="w-5 h-5 text-gray-500" />;
+                return <ClockIcon className="w-4 h-4 text-gray-600" />;
         }
     };
 
@@ -85,27 +85,30 @@ const ActivityEventItem: React.FC<{ activity: ActivityEvent }> = ({ activity }) 
 
     return (
         <div className={`p-4 rounded-lg border ${getEventColor(activity.event_type)} transition-all hover:shadow-sm`}>
-            <div className="flex items-start space-x-3">
-                <div className="flex-shrink-0 mt-1">
-                    <GitHubAvatar username={activity.github_repository_owner_id} size={60} />
-                    {getEventIcon(activity.event_type)}
+            <div className="flex items-start space-x-4">
+                <div className="flex-shrink-0">
+                    <div className="relative">
+                        <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-gray-200 shadow-sm">
+                            <GitHubAvatar username={activity.github_repository_owner_id} size={48} />
+                        </div>
+                        <div className="absolute -bottom-1 -right-1 bg-white rounded-full p-1 shadow-sm border border-gray-200">
+                            {getEventIcon(activity.event_type)}
+                        </div>
+                    </div>
                 </div>
                 
                 <div className="flex-1 min-w-0">
-                    <div className="flex items-center space-x-2 mb-2">
+                    <div className="flex items-center space-x-3 mb-2">
                         <span className="text-sm font-medium text-gray-900">
-                            {activity.title}
+                            {activity.github_repository_name}
                         </span>
                         <span className="text-xs text-gray-500">
                             {formatTimeAgo(activity.created_at)}
                         </span>
                     </div>
                     
-                    <div className="flex items-center space-x-4 text-xs text-gray-600">
-                        <div className="flex items-center space-x-1">
-                            <FolderIcon className="w-4 h-4" />
-                            <span>{activity.github_repository_name}</span>
-                        </div>
+                    <div className="text-sm font-normal text-gray-700 mb-3">
+                        {activity.title}
                     </div>
                     
                     {activity.ticket_activity_events.length > 0 && (
