@@ -14,13 +14,13 @@ export default (app: Probot) => {
     console.log("🔔 Event received:", context.name);
   });
 
-  // app.on("issues.opened", async (context) => {
-  //   console.log("📝 Issue opened:", context.payload.issue?.title);
-  //   const issueComment = context.issue({
-  //     body: "Thanks for opening this issue!",
-  //   });
-  //   await context.octokit.issues.createComment(issueComment);
-  // });
+  app.on("issues.opened", async (context) => {
+      console.log("📝 Issue opened:", context.payload.issue);
+      const issueComment = context.issue({
+        body: "Thanks for opening this issue!",
+      });
+      await context.octokit.issues.createComment(issueComment);
+  });
 
   app.on("push", async (context) => {
     const { payload } = context;
@@ -123,7 +123,7 @@ export default (app: Probot) => {
     const installationId = context.payload.installation?.id || 0;
 
     let diffs: Commit[] = [];
-    
+
     // Get commits in the PR
     try {
       const { data: commits } = await github.rest.pulls.listCommits({
