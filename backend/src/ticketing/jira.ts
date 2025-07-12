@@ -4,6 +4,13 @@ import { CreateTicketInput, Ticket, TicketSystemType, UpdateTicketInput, User, U
 import { StructuredSearchOptions, TicketManager } from './TicketIntegration';
 import chalk from 'chalk';
 
+interface JiraUpdateFields {
+    summary?: string;
+    description?: string;
+    assignee?: { id: string };
+    status?: { id: string };
+}
+
 export class JiraAdapter implements TicketManager {
     type: TicketSystemType = TicketSystemType.Jira;
 
@@ -95,17 +102,20 @@ export class JiraAdapter implements TicketManager {
     }
 
     async updateTicket(id: string, input: UpdateTicketInput): Promise<Ticket> {
-        const updateFields: any = {
+        const updateFields: JiraUpdateFields = {
             summary: input.title,
             description: input.description,
         };
 
         if (input.assignee) {
-            updateFields.assignee = { id: await this.userIdFromEmail(input.assignee) };
+            const userId = await this.userIdFromEmail(input.assignee);
+            if (userId) {
+                updateFields.assignee = { id: userId };
+            }
         }
 
         if (input.state) {
-            updateFields.status = { id: input.state };
+            updateFields.status = { id: input.state.id };
         }
 
         await this.client.updateIssue(id, {
