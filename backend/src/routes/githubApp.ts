@@ -58,7 +58,78 @@ type GithubAppInstallationCallbackRequest = {
     email: string;
     username: string;
     installationId: number;
-    repositoryName: string;
+    repositories: Repository[];
+}
+
+export type Repository = {
+    name: string;
+    owner: string;
+    id: number;
+}
+
+async function processRepository(
+    repositoryData: Repository, 
+    user: User, 
+    installationId: number
+): Promise<{ name: string; status: string; error?: string }> {
+    console.log(chalk.blue('Processing repository:'), repositoryData);
+
+    // Check if repository already exists
+    let repository: GithubRepository | null = await db().github_repositories.findFirst({ 
+        where: { 
+            name: repositoryData.name, 
+            owner: repositoryData.owner, 
+            installation_id: installationId 
+        } 
+    });
+
+    // Check if this user <-> repository is already associated
+    if (repository) {
+        const userRepository = await db().user_github_repositories.findFirst({ 
+            where: { 
+                user_id: user.id, 
+                github_repository_id: repository.id 
+            } 
+        });
+
+        if (userRepository) {
+            console.log(chalk.yellow('User already associated with repository:'), repositoryData.name);
+            return { name: repositoryData.name, status: 'already_associated' };
+        }
+    }
+
+    try {
+        // Create the repository if it doesn't exist
+        if (!repository) {
+            repository = await db().github_repositories.create({
+                data: {
+                    name: repositoryData.name,
+                    owner: repositoryData.owner,
+                    installation_id: installationId
+                }
+            });
+            console.log(chalk.green('Repository created:'), repository);
+        }
+
+        // Associate the user with the repository
+        await db().user_github_repositories.create({
+            data: {
+                user_id: user.id,
+                github_repository_id: repository.id
+            }
+        });
+
+        console.log(chalk.green('User associated with repository:'), repositoryData.name);
+        return { name: repositoryData.name, status: 'associated' };
+
+    } catch (error) {
+        console.error(chalk.red('Error processing repository:'), repositoryData.name, error);
+        return { 
+            name: repositoryData.name, 
+            status: 'error', 
+            error: error instanceof Error ? error.message : 'Unknown error' 
+        };
+    }
 }
 
 export async function githubAppInstallationCallback(req: Request, res: Response) {
@@ -81,44 +152,17 @@ export async function githubAppInstallationCallback(req: Request, res: Response)
         console.log(chalk.green('Placeholder user created:'), user);
     }
 
-    // check if repository exists
-    const repository: GithubRepository | null = await db().github_repositories.findFirst({ where: { name: body.repositoryName, owner: body.username, installation_id: body.installationId } });
-    console.log(chalk.green('Repository found:'), repository);
+    // Process each repository in the array
+    const processedRepositories = await Promise.all(
+        body.repositories.map(repositoryData => 
+            processRepository(repositoryData, user, body.installationId)
+        )
+    );
 
-    // check if this user <-> repository is already associated
-    const userRepository = await db().user_github_repositories.findFirst({ where: { user_id: user.id, github_repository_id: body.repositoryName } });
-
-    if (userRepository) {
-        console.log(chalk.red('User already associated with this repository'));
-        res.status(400).json({ message: 'User already associated with this repository' });
-        return;
-    }
-
-    console.log(chalk.green('User repository found:'), userRepository);
-
-    try {
-        // create the repository
-        const repository: GithubRepository = await db().github_repositories.create({
-            data: {
-                name: body.repositoryName,
-                owner: body.username,
-                installation_id: body.installationId
-            }
-        });
-
-        // associate the user with the repository
-        await db().user_github_repositories.create({
-            data: {
-                user_id: user.id,
-                github_repository_id: repository.id
-            }
-        });
-
-        res.status(200).json({ message: 'Repository associated with user' });
-    } catch (error) {
-        console.error(chalk.red('Error associating user with repository:'), error);
-        res.status(500).json({ message: 'Failed to associate user with repository' });
-    }
+    res.status(200).json({ 
+        message: 'Repository installation callback processed', 
+        processedRepositories 
+    });
 }
 
 type GithubAppInstallationDeletedRequest = {
