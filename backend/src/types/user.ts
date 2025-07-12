@@ -95,12 +95,6 @@ export async function createPlaceholderUser(email: string, displayName?: string)
 export async function getUserTicketManager(userId: string): Promise<TicketManager | null> {
     const user = await findUserById(userId);
     if (!user) {
-        return null;
-    }
-
-    // check if user is in the database
-    const userInDatabase: User | null = await db().users.findUnique({ where: { id: user.id } });
-    if (!userInDatabase) {
         console.error(chalk.red.bold('❌ User not found in database. Unable to authenticate user.'));
         return null;
     }
