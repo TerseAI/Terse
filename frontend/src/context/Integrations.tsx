@@ -1,8 +1,5 @@
 import { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import { BackendProvider } from '../services/backend';
-import posthog from 'posthog-js';
-import { PosthogEvents } from '../utility/PosthogEvents';
-import { useAuth } from '../services/auth';
 
 export enum Integration {
     JIRA = 'jira',
@@ -22,7 +19,6 @@ const IntegrationContext = createContext<IntegrationContextType | undefined>(und
 export function IntegrationProvider({ children }: { children: ReactNode }) {
     const [integrations, setIntegrations] = useState<Integration[]>([]);
     const [isLoading, setIsLoading] = useState(true);
-    const { user } = useAuth();
 
     const refreshIntegrations = async () => {
         try {
@@ -30,27 +26,15 @@ export function IntegrationProvider({ children }: { children: ReactNode }) {
             const activeIntegrations: Integration[] = [];
             
             if (integrationData.github) {
-                posthog.capture(PosthogEvents.USER_INTEGRATED_GITHUB, {
-                    email: user?.email || 'unknown',
-                }); 
                 activeIntegrations.push(Integration.GITHUB);
             }
             if (integrationData.linear) {
-                posthog.capture(PosthogEvents.USER_INTEGRATED_LINEAR, {
-                    email: user?.email || 'unknown',
-                });
                 activeIntegrations.push(Integration.LINEAR);
             }
             if (integrationData.jira) {
-                posthog.capture(PosthogEvents.USER_INTEGRATED_JIRA, {
-                    email: user?.email || 'unknown',
-                });
                 activeIntegrations.push(Integration.JIRA);
             }
             if (integrationData.slack) {
-                posthog.capture(PosthogEvents.USER_INTEGRATED_SLACK, {
-                    email: user?.email || 'unknown',
-                });
                 activeIntegrations.push(Integration.SLACK);
             }
             

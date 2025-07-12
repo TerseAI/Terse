@@ -30,6 +30,9 @@ export function AddJira({ onIntegrationChange }: AddJiraProps) {
             setBaseUrl(baseUrl ?? '');
             setEmail(email ?? '');
             setError(null);
+            posthog.capture(PosthogEvents.USER_INTEGRATED_JIRA, {
+                email: user?.email || 'unknown',
+            }); 
             await onIntegrationChange();
         } catch (error) {
             console.error('Error setting Linear API key:', error);
