@@ -5,6 +5,8 @@ import { SendModelRequest, ChangedItem, ChangeEventType } from "../../shared/Mod
 import { IAgentSession } from './AgentSession';
 import { EntityType } from '../../shared/Entities';
 import { ticketTools } from '../tools/ticketingTools';
+import { jiraTicketTools } from '../tools/jiraTicketingTools';
+import { TicketSystemType } from 'src/shared/TicketSystem';
 // Enhanced session type with change tracking
 export type SessionWithTracking = Session & { 
   trackChange: (type: EntityType, id: string | number, eventType: ChangeEventType) => void 
@@ -30,11 +32,14 @@ export class AgentSession implements IAgentSession<SessionWithTracking> {
   }
 
   async run(): Promise<StreamedRunResult<SessionWithTracking, Agent<SessionWithTracking, AgentOutputType>>> {
+    const ticketSystemType = this.session.ticketManager?.type || TicketSystemType.Linear;
+    const toolBoxType = ticketSystemType === TicketSystemType.Jira ? ToolBoxType.jira : ToolBoxType.linear;
+    console.log('🔧 Tool box type', toolBoxType);
     const agent = new Agent<SessionWithTracking, AgentOutputType>({
       name: 'LLM ticket manager',
       instructions: await systemPrompt(this.session),
       model: 'gpt-4o',
-      tools: this.toolBox.getTools(ToolBoxType.standard)
+      tools: this.toolBox.getTools(toolBoxType)
     });
 
     this.agent = agent;
@@ -93,15 +98,22 @@ export class ToolBox {
   private tools: Tool<SessionWithTracking>[] = [];
 
   constructor() {
-    this.tools = ticketTools;
   }
 
   getTools(toolBoxType: ToolBoxType) {
-    return this.tools;
+    if (toolBoxType === ToolBoxType.jira) {
+      return jiraTicketTools;
+    } else if (toolBoxType === ToolBoxType.linear) {
+      return ticketTools;
+    } else {
+      return ticketTools;
+    }
   }
 }
 
 enum ToolBoxType {
   standard = 'standard',
   onboarding = 'onboarding',
+  jira = 'jira',
+  linear = 'linear'
 }
