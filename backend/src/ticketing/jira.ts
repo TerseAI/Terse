@@ -80,12 +80,14 @@ export class JiraAdapter implements TicketManager {
     }
 
     async createTicket(input: CreateTicketInput): Promise<Ticket> {
+        console.log('🔧 Creating ticket via Jira', input);
         const issue = await this.client.addNewIssue({
             fields: {
                 summary: input.title,
                 description: input.description,
                 project: { id: input.teamId },
                 issuetype: { name: 'Task' },
+                team: { id: input.teamId },
                 assignee: input.assignee ? { id: await this.userIdFromEmail(input.assignee) } : undefined
             }
         });
