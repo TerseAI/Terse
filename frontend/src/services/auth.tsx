@@ -5,6 +5,7 @@ import { User } from "../types/User";
 interface AuthContextType {
   user: User | null;
   login: (username: string, password: string) => Promise<void>;
+  loginWithGithub: () => Promise<void>;
   logout: () => Promise<void>;
   isLoading: boolean;
   initSession: (token: string) => Promise<void>;
@@ -52,8 +53,18 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     setUser(null);
   };
 
+  const loginWithGithub = async () => {
+    try {
+      const { url } = await BackendProvider.getGithubLogInURL();
+      window.location.href = url;
+    } catch (error) {
+      console.error('GitHub login error:', error);
+      throw new Error('GitHub login failed');
+    }
+  };
+
   return (
-    <AuthContext.Provider value={{ user, login, logout, isLoading, initSession }}>
+    <AuthContext.Provider value={{ user, login, loginWithGithub, logout, isLoading, initSession }}>
       {children}
     </AuthContext.Provider>
   );
