@@ -107,6 +107,7 @@ export interface CreateTicketInput {
         name: string;
     };
     associatedCommits?: CommitAssociation[];
+    issueType?: string; // For Jira: Task, Bug, Story, Epic, etc.
 }
 
 export interface UpdateTicketInput {
