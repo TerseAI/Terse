@@ -2,6 +2,9 @@ import { useState } from "react";
 import { BackendProvider } from "../services/backend";
 import { IntegrationCard } from "./IntegrationCard";
 import { Integration, useIntegrations } from "../context/Integrations";
+import posthog from "posthog-js";
+import { PosthogEvents } from "../utility/PosthogEvents";
+import { useAuth } from "../services/auth";
 
 interface AddJiraProps {
     onIntegrationChange: () => Promise<void>;
@@ -14,7 +17,7 @@ export function AddJira({ onIntegrationChange }: AddJiraProps) {
     const [email, setEmail] = useState<string>('');
     const [error, setError] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);
-
+    const { user } = useAuth();
     const hasJira = integrations.includes(Integration.JIRA);
 
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -42,6 +45,9 @@ export function AddJira({ onIntegrationChange }: AddJiraProps) {
             setKey('');
             setBaseUrl('');
             setEmail('');
+            posthog.capture(PosthogEvents.USER_DISCONNECTED_JIRA, {
+                email: user?.email || 'unknown',
+            });     
             await onIntegrationChange();
         } catch (error) {
             console.error('Error deleting Jira API key:', error);
