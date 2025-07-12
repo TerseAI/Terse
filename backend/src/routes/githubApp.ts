@@ -318,7 +318,16 @@ export async function githubAppUnifiedEvent(req: Request, res: Response) {
 
     // resolve the user github relation
     const repository: GithubRepository= await resolveUserGithubRelation(user, username, repositoryName, installationId);
-    const adapter: TicketManager | null = await getUserTicketManager(user.id);
+    
+    let adapter: TicketManager | null = await getUserTicketManager(user.id);
+    if (!adapter) {
+        // attempt to fallback to owner's ticket manager
+        const owner = await db().users.findFirst({ where: { github_username: repository.owner } });
+        if (owner) {
+            console.log(chalk.yellow('No ticket manager found for user, using the owner\'s ticket manager'));
+            adapter = await getUserTicketManager(owner.id);
+        }
+    }
 
     if (!adapter) {
         console.log(chalk.red('User does not have a ticket manager'));
