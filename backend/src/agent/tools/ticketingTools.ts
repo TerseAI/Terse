@@ -160,9 +160,13 @@ const createTicketTool = tool({
             id: z.string().describe('The project ID'),
             name: z.string().describe('The project name')
         }), z.null()]).describe('The project for the ticket'),
+        milestone: z.union([z.object({
+            id: z.string().describe('The milestone ID'),
+            name: z.string().describe('The milestone name')
+        }), z.null()]).describe('The milestone for the ticket'),
         associatedCommits: z.union([z.array(z.number()), z.null()]).describe('The indices of commits to associate with this ticket (0-based, from the event context)'),
     }),
-    execute: async ({ title, description, state, assignee, priority, labels, estimate, dueDate, project, associatedCommits }, runContext?: RunContext<SessionWithTracking>) => {
+    execute: async ({ title, description, state, assignee, priority, labels, estimate, dueDate, project, milestone, associatedCommits }, runContext?: RunContext<SessionWithTracking>) => {
         if (!runContext?.context) {
             throw new Error("No context provided");
         }
@@ -192,6 +196,7 @@ const createTicketTool = tool({
             estimate: estimate || undefined,
             dueDate: dueDate || undefined,
             project: project || undefined,
+            milestone: milestone || undefined,
             associatedCommits: associatedCommits || undefined,
         } as CreateTicketInput);
 
@@ -253,9 +258,13 @@ const updateTicketTool = tool({
             id: z.string().describe('The project ID'),
             name: z.string().describe('The project name')
         }), z.null()]).describe('The project for the ticket'),
+        milestone: z.union([z.object({
+            id: z.string().describe('The milestone ID'),
+            name: z.string().describe('The milestone name')
+        }), z.null()]).describe('The milestone for the ticket'),
         associatedCommits: z.union([z.array(z.number()), z.null()]).describe('The indices of commits to associate with this ticket (0-based, from the event context)'),
     }),
-    execute: async ({ id, title, description, state, assignee, priority, estimate, dueDate, project, associatedCommits }, runContext?: RunContext<SessionWithTracking>) => {
+    execute: async ({ id, title, description, state, assignee, priority, estimate, dueDate, project, milestone, associatedCommits }, runContext?: RunContext<SessionWithTracking>) => {
         if (!runContext?.context) {
             throw new Error("No context provided");
         }
@@ -292,6 +301,7 @@ const updateTicketTool = tool({
             priority: priority || undefined,
             project: project || undefined,
             teamId: teamId,
+            milestone: milestone || undefined,
         });
 
         // Associate commits after ticket update if provided
