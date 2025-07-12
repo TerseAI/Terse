@@ -103,11 +103,14 @@ export class JiraAdapter implements TicketManager {
 
         const transitions = await this.client.listTransitions(projects[0].id);
 
+        const versions = await this.client.getAllVersions(projects[0].id);
+
         const context: UserContext = {
             userInfo: user,
             teams,
             organization: org,
-            ticketStates: transitions.transitions.map((s: any) => ({ id: s.id, name: s.name }))
+            ticketStates: transitions.transitions.map((s: any) => ({ id: s.id, name: s.name })),
+            milestones: versions.map((v: any) => ({ id: v.id, name: v.name }))
         };
 
         return context;

@@ -49,9 +49,16 @@ export interface UserContext {
     teams: Team[];
     organization: Organization;
     ticketStates: TicketState[];
+    milestones: Milestone[];
 }
 
 export interface TicketState {
+    id: string;
+    name: string;
+}
+
+// These are called Versions in Jira
+export interface Milestone {
     id: string;
     name: string;
 }
@@ -106,6 +113,10 @@ export interface CreateTicketInput {
         id: string;
         name: string;
     };
+    milestone?: {
+        id: string;
+        name: string;
+    };
     associatedCommits?: CommitAssociation[];
     issueType?: string; // For Jira: Task, Bug, Story, Epic, etc.
 }
@@ -121,6 +132,10 @@ export interface UpdateTicketInput {
     assignee?: string; // email address of the assignee
     priority?: number;
     project?: {
+        id: string;
+        name: string;
+    };
+    milestone?: {
         id: string;
         name: string;
     };
