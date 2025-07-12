@@ -68,11 +68,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   
     // Or listen for postMessage from popup
-    window.addEventListener('message', (event) => {
+    window.addEventListener('message', async (event) => {
       if (event.data.type === 'GITHUB_AUTH_SUCCESS') {
         console.log('GITHUB_AUTH_SUCCESS event', event)
         console.log('GITHUB_AUTH_SUCCESS', event.data.token)
-        initSession(event.data.token);
+        await initSession(event.data.token);
         setIsLoading(false);
         window.location.href = '/app';
       }
