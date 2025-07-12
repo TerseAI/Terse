@@ -23,6 +23,25 @@ export default function LandingPage() {
         return () => window.removeEventListener('message', handleMessage);
     }, [initSession]);
 
+    useEffect(() => {
+        // Track scroll to features section
+        let hasScrolledToFeatures = false;
+        
+        const handleScroll = () => {
+            const scrollY = window.scrollY;
+            const windowHeight = window.innerHeight;
+            
+            // Trigger when user scrolls past the hero section (roughly 80% of viewport height)
+            if (scrollY > windowHeight * 0.8 && !hasScrolledToFeatures) {
+                hasScrolledToFeatures = true;
+                posthog.capture(PosthogEvents.LANDING_PAGE_SCROLL_TO_FEATURES);
+            }
+        };
+
+        window.addEventListener('scroll', handleScroll, { passive: true });
+        return () => window.removeEventListener('scroll', handleScroll);
+    }, []);
+
 
     const ctaClicked = () => {
         posthog.capture(PosthogEvents.LANDING_PAGE_CTA_CLICKED);
