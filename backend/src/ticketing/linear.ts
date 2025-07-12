@@ -48,6 +48,8 @@ export class LinearAdapter implements TicketManager {
 
         const ticketStates = await this.client.workflowStates();
 
+        const milestones = await this.client.projectMilestones();
+
         return {
             userInfo: user,
             teams: teamsList,
@@ -55,6 +57,10 @@ export class LinearAdapter implements TicketManager {
             ticketStates: ticketStates.nodes.map((state) => ({
                 id: state.id,
                 name: state.name,
+            })),
+            milestones: milestones.nodes.map((milestone) => ({
+                id: milestone.id,
+                name: milestone.name,
             })),
         };
     }
@@ -401,6 +407,7 @@ export class LinearAdapter implements TicketManager {
                 stateId: input.state?.id || undefined,
                 assigneeId: await this.userIdFromEmail(input.assignee || ''),
                 projectId: input.project?.id || undefined,
+                projectMilestoneId: input.milestone?.id || undefined,
             });
         } catch (error) {
             console.error('Failed to create issue', error);
@@ -424,6 +431,7 @@ export class LinearAdapter implements TicketManager {
             description: input.description,
             stateId: input.state?.id || undefined,
             assigneeId: await this.userIdFromEmail(input.assignee || ''),
+            projectMilestoneId: input.milestone?.id || undefined,
         });
 
         let updatedIssue = await issuePayload.issue;
