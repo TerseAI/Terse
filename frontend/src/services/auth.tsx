@@ -74,6 +74,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         console.log('GITHUB_AUTH_SUCCESS', event.data.token)
         initSession(event.data.token);
         setIsLoading(false);
+        window.location.href = '/app';
       }
     });
   };
