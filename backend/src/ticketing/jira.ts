@@ -101,14 +101,15 @@ export class JiraAdapter implements TicketManager {
             projects: projects.map((p: any) => ({ id: p.id, name: p.name }))
         };
 
+        const transitions = await this.client.listTransitions(projects[0].id);
+
         const context: UserContext = {
             userInfo: user,
             teams,
             organization: org,
-            ticketStates: []
+            ticketStates: transitions.transitions.map((s: any) => ({ id: s.id, name: s.name }))
         };
 
-        console.log('🔧 User context', context);     
         return context;
     }
 
@@ -136,10 +137,10 @@ export class JiraAdapter implements TicketManager {
 
     async createTicket(input: CreateTicketInput): Promise<Ticket> {
         console.log('🔧 Creating ticket via Jira', input);
-        
+
         // Determine issue type - default to Task if not specified
         const issueType = input.issueType || 'Task';
-        
+
         const issue = await this.client.addNewIssue({
             fields: {
                 summary: input.title,
@@ -153,25 +154,38 @@ export class JiraAdapter implements TicketManager {
     }
 
     async updateTicket(id: string, input: UpdateTicketInput): Promise<Ticket> {
-        const updateFields: JiraUpdateFields = {
+        const updateFields: Record<string, any> = {
             summary: input.title,
-            description: input.description ? textToADF(input.description) : undefined,
         };
+
+        if (input.description) {
+            updateFields.description = textToADF(input.description);
+        }
 
         if (input.assignee) {
             const userId = await this.userIdFromEmail(input.assignee);
             if (userId) {
-                updateFields.assignee = { id: userId };
+                updateFields.assignee = { accountId: userId }; // 🔧 use accountId, not id
             }
         }
 
-        if (input.state) {
-            updateFields.status = { id: input.state.id };
+        try {
+            // First, update the editable fields
+            await this.client.updateIssue(id, {
+                fields: updateFields,
+            });
+
+            // Then, if there's a state transition, do it separately
+            if (input.state) {
+                await this.client.transitionIssue(id, {
+                    transition: { id: input.state.id },
+                });
+            }
+        } catch (error) {
+            console.error('🔧 Error updating ticket', error);
+            throw error;
         }
 
-        await this.client.updateIssue(id, {
-            fields: updateFields
-        });
         return this.findTicket(id);
     }
 
@@ -252,7 +266,7 @@ export class JiraAdapter implements TicketManager {
                 { id: '10005', name: 'Improvement', description: 'An improvement or enhancement to an existing feature' },
                 { id: '10006', name: 'New Feature', description: 'A new feature of the product' }
             ];
-            
+
             return commonIssueTypes;
         } catch (error) {
             console.error('Error getting issue types:', error);
@@ -263,7 +277,7 @@ export class JiraAdapter implements TicketManager {
     async associateCommitsToTicket(ticketId: string, commits: CommitAssociation[], branchName: string): Promise<void> {
         // Get existing comments to avoid duplicates
         const comments = await this.client.getComments(ticketId);
-        
+
         for (const commit of commits) {
             // Check if commit is already mentioned in comments
             const existing = comments.comments.find((c: any) => c.body.includes(commit.sha.substring(0, 8)));
@@ -274,11 +288,11 @@ export class JiraAdapter implements TicketManager {
 
             // Create comment for the commit
             const comment = `🔗 **Commit**: ${commit.sha.substring(0, 8)}\n` +
-                           `📝 **Message**: ${commit.message}\n` +
-                           `🌿 **Branch**: ${commit.branch || 'main'}\n` +
-                           `📦 **Repository**: ${commit.repository}\n` +
-                           `🔗 **Link**: ${commit.url}`;
-            
+                `📝 **Message**: ${commit.message}\n` +
+                `🌿 **Branch**: ${commit.branch || 'main'}\n` +
+                `📦 **Repository**: ${commit.repository}\n` +
+                `🔗 **Link**: ${commit.url}`;
+
             await this.client.addComment(ticketId, comment);
             console.log(`✅ Associated commit ${commit.sha} with ${ticketId}`);
         }
