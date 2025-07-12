@@ -2,6 +2,9 @@ import { useState } from "react";
 import { BackendProvider } from "../services/backend";
 import { IntegrationCard } from "./IntegrationCard";
 import { Integration, useIntegrations } from "../context/Integrations";
+import posthog from "posthog-js";
+import { PosthogEvents } from "../utility/PosthogEvents";
+import { useAuth } from "../services/auth";
 
 interface AddToSlackProps {
     onIntegrationChange: () => Promise<void>;
@@ -10,14 +13,17 @@ interface AddToSlackProps {
 export function AddToSlack({ onIntegrationChange }: AddToSlackProps) {
     const { integrations } = useIntegrations();
     const [isLoading, setIsLoading] = useState(false);
-
+    const { user } = useAuth();
     const hasSlack = integrations.includes(Integration.SLACK);
 
     const connectButton = (
         <button
             onClick={async () => {
                 setIsLoading(true);
-                try {
+                try {   
+                    posthog.capture(PosthogEvents.USER_INTEGRATED_SLACK, {
+                        email: user?.email || 'unknown',
+                    });
                     const { url } = await BackendProvider.requestSlackOAuthUrl();
                     window.open(url, '_blank', 'width=600,height=700,scrollbars=yes,resizable=yes');
                     // Refresh integrations after a short delay to allow for installation

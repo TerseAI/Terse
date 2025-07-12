@@ -2,6 +2,9 @@ import { useState } from "react";
 import { BackendProvider } from "../services/backend";
 import { IntegrationCard } from "./IntegrationCard";
 import { Integration, useIntegrations } from "../context/Integrations";
+import { PosthogEvents } from "../utility/PosthogEvents";
+import posthog from "posthog-js";
+import { useAuth } from "../services/auth";
 
 interface AddGithubProps {
     onIntegrationChange: () => Promise<void>;
@@ -10,7 +13,7 @@ interface AddGithubProps {
 export function AddGithub({ onIntegrationChange }: AddGithubProps) {
     const { integrations } = useIntegrations();
     const [isLoading, setIsLoading] = useState(false);
-
+    const { user } = useAuth();
     const hasGithub = integrations.includes(Integration.GITHUB);
 
     const connectButton = (
@@ -18,6 +21,9 @@ export function AddGithub({ onIntegrationChange }: AddGithubProps) {
             onClick={async () => {
                 setIsLoading(true);
                 try {
+                    posthog.capture(PosthogEvents.USER_INTEGRATED_GITHUB, {
+                        email: user?.email || 'unknown',
+                    });
                     const { installationUrl } = await BackendProvider.requestGitHubAppInstallationUrl();
                     window.open(installationUrl, '_blank', 'width=600,height=700,scrollbars=yes,resizable=yes');
                     // Refresh integrations after a short delay to allow for installation
@@ -39,6 +45,9 @@ export function AddGithub({ onIntegrationChange }: AddGithubProps) {
 
     const onDisconnect = async () => {
         try {
+            posthog.capture(PosthogEvents.USER_DISCONNECTED_GITHUB, {
+                email: user?.email || 'unknown',
+            });
             const { installationUrl } = await BackendProvider.requestGitHubAppInstallationUrl();
             window.open(installationUrl, '_blank', 'width=600,height=700,scrollbars=yes,resizable=yes');
             // Refresh integrations after a short delay

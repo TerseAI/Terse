@@ -8,4 +8,8 @@ export enum PosthogEvents {
     USER_INTEGRATED_JIRA = 'user_integrated_jira',
     USER_DISCONNECTED_LINEAR = 'user_disconnected_linear',
     USER_DISCONNECTED_JIRA = 'user_disconnected_slack',
+    USER_DISCONNECTED_GITHUB = 'user_disconnected_github',
+    LANDING_PAGE_VIEWED = 'landing_page_viewed',
+    LANDING_PAGE_CTA_CLICKED = 'landing_page_cta_clicked',
+    LANDING_PAGE_SCROLL_TO_FEATURES = 'landing_page_scroll_to_features',
 }

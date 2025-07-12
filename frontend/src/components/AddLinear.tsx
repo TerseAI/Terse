@@ -26,6 +26,9 @@ export function AddLinear({ onIntegrationChange }: AddLinearProps) {
             await BackendProvider.setLinearApiKey(input);
             setInput('');
             setError(null);
+            posthog.capture(PosthogEvents.USER_INTEGRATED_LINEAR, {
+                email: user?.email || 'unknown',
+            });
             await onIntegrationChange();
         } catch (error) {
             console.error('Error setting Linear API key:', error);
