@@ -5,7 +5,7 @@ import { User } from "../types/User";
 interface AuthContextType {
   user: User | null;
   login: (username: string, password: string) => Promise<void>;
-  loginWithGithub: () => Promise<void>;
+  loginWithGithub: () => void;
   logout: () => Promise<void>;
   isLoading: boolean;
   initSession: (token: string) => Promise<void>;
@@ -16,8 +16,15 @@ const AuthContext = createContext<AuthContextType | null>(null);
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [githubLoginUrl, setGithubLoginUrl] = useState('');
 
   useEffect(() => {
+    const getGithubLoginUrl = async () => {
+      const { url } = await BackendProvider.getGithubLogInURL();
+      setGithubLoginUrl(url);
+    }
+    getGithubLoginUrl();
+
     const checkUser = async () => {
       setIsLoading(true);
       try {
@@ -53,11 +60,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     setUser(null);
   };
 
-  const loginWithGithub = async () => {
-    const { url } = await BackendProvider.getGithubLogInURL();
+  const loginWithGithub = () => {
     setIsLoading(true);
     const popup = window.open(
-      url, 
+      githubLoginUrl, 
       'github-login',
       'width=600,height=700,scrollbars=yes,resizable=yes'
     );
