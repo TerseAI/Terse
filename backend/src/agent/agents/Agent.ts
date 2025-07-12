@@ -6,7 +6,7 @@ import { IAgentSession } from './AgentSession';
 import { EntityType } from '../../shared/Entities';
 import { ticketTools } from '../tools/ticketingTools';
 import { jiraTicketTools } from '../tools/jiraTicketingTools';
-import { TicketSystemType } from 'src/shared/TicketSystem';
+import { TicketSystemType } from '../../shared/TicketSystem';
 // Enhanced session type with change tracking
 export type SessionWithTracking = Session & { 
   trackChange: (type: EntityType, id: string | number, eventType: ChangeEventType) => void 

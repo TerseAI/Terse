@@ -6,8 +6,7 @@ import chalk from 'chalk';
 import { db } from '../prismaClient';
 import { sendMessage } from '../slack/sendMessage';
 import { ChangedItem } from '../shared/ModelEvents';
-import { Commit, UnifiedGitHubEvent, unifiedGitHubEventForAgent } from './utility';
-import { TicketManager } from 'src/ticketing/TicketIntegration';
+import { UnifiedGitHubEvent, unifiedGitHubEventForAgent } from './utility';
 
 class Owner {
     private searchSystem: Search;
