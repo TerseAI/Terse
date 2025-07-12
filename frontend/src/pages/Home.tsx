@@ -5,7 +5,7 @@ import { AddLinear } from "../components/AddLinear";
 import { AddJira } from "../components/AddJira";
 import { ActivityFeed } from "../components/ActivityFeed";
 import { Integration, useIntegrations } from "../context/Integrations";
-import { ChatInterface } from "../components/chat/ChatInterface";
+// import { ChatInterface } from "../components/chat/ChatInterface";
 
 function Home() {
     const { user, logout } = useAuth();
@@ -51,8 +51,8 @@ function Home() {
                     <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
                         {/* Activity Feed - Main Content */}
                         <div className="lg:col-span-3">
-                            {/* <ActivityFeed /> */}
-                            <ChatInterface />
+                            <ActivityFeed />
+                            {/* <ChatInterface /> */}
                         </div>
 
                         {/* Sidebar */}
