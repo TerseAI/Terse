@@ -136,12 +136,16 @@ export class JiraAdapter implements TicketManager {
 
     async createTicket(input: CreateTicketInput): Promise<Ticket> {
         console.log('🔧 Creating ticket via Jira', input);
+        
+        // Determine issue type - default to Task if not specified
+        const issueType = input.issueType || 'Task';
+        
         const issue = await this.client.addNewIssue({
             fields: {
                 summary: input.title,
                 description: input.description ? textToADF(input.description) : undefined,
                 project: { key: input.project?.id },
-                issuetype: { name: 'Task' },
+                issuetype: { name: issueType },
                 assignee: input.assignee ? { id: await this.userIdFromEmail(input.assignee) } : undefined
             }
         });
@@ -233,6 +237,27 @@ export class JiraAdapter implements TicketManager {
 
     async configureWebhook(): Promise<{ webhookId: string; webhookSecret: string } | null> {
         return null; // Webhooks not implemented
+    }
+
+    async getIssueTypes(projectKey?: string): Promise<Array<{ id: string; name: string; description?: string }>> {
+        try {
+            // For now, return common Jira issue types
+            // In a full implementation, you'd fetch these from the Jira API
+            const commonIssueTypes = [
+                { id: '10000', name: 'Task', description: 'A task that needs to be done' },
+                { id: '10001', name: 'Bug', description: 'A problem which impairs or prevents the functions of the product' },
+                { id: '10002', name: 'Story', description: 'A user story' },
+                { id: '10003', name: 'Epic', description: 'A big user story that needs to be broken down' },
+                { id: '10004', name: 'Subtask', description: 'A sub-task of the parent issue' },
+                { id: '10005', name: 'Improvement', description: 'An improvement or enhancement to an existing feature' },
+                { id: '10006', name: 'New Feature', description: 'A new feature of the product' }
+            ];
+            
+            return commonIssueTypes;
+        } catch (error) {
+            console.error('Error getting issue types:', error);
+            return [];
+        }
     }
 
     async associateCommitsToTicket(ticketId: string, commits: CommitAssociation[], branchName: string): Promise<void> {
