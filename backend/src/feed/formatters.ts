@@ -21,10 +21,8 @@ function formatTitleForPushEvent(event: UnifiedGitHubEvent): string {
     const allFiles = event.commits.flatMap(commit => commit.fileDiffs.map(diff => diff.filename));
     const uniqueFiles = [...new Set(allFiles)];
     const fileCount = uniqueFiles.length;
-    const fileNames = uniqueFiles.slice(0, 3).join(', ');
-    const moreFiles = fileCount > 3 ? ` and ${fileCount - 3} more` : '';
     
-    return `Push to ${event.repository.name} by ${event.username} (${commitCount} commit${commitCount > 1 ? 's' : ''}: ${commitNames}) - ${fileCount} file${fileCount > 1 ? 's' : ''} changed: ${fileNames}${moreFiles}`;
+    return `Push to ${event.repository.name} by ${event.username} (${commitCount} commit${commitCount > 1 ? 's' : ''}: ${commitNames}, ${fileCount} file${fileCount > 1 ? 's' : ''} changed)`;
 }
 
 function formatTitleForPullRequestEvent(event: UnifiedGitHubEvent): string {
@@ -33,10 +31,8 @@ function formatTitleForPullRequestEvent(event: UnifiedGitHubEvent): string {
     const allFiles = event.commits.flatMap(commit => commit.fileDiffs.map(diff => diff.filename));
     const uniqueFiles = [...new Set(allFiles)];
     const fileCount = uniqueFiles.length;
-    const fileNames = uniqueFiles.slice(0, 3).join(', ');
-    const moreFiles = fileCount > 3 ? ` and ${fileCount - 3} more` : '';
     
-    return `Pull request ${event.pullRequest?.number} opened in ${event.repository.name} by ${event.username} (${commitCount} commit${commitCount > 1 ? 's' : ''}: ${commitNames}) - ${fileCount} file${fileCount > 1 ? 's' : ''} changed: ${fileNames}${moreFiles}`;
+    return `Pull request ${event.pullRequest?.number} opened in ${event.repository.name} by ${event.username} (${commitCount} commit${commitCount > 1 ? 's' : ''}: ${commitNames}, ${fileCount} file${fileCount > 1 ? 's' : ''} changed)`;
 }
 
 function formatTitleForPullRequestUpdateEvent(event: UnifiedGitHubEvent): string {
@@ -45,10 +41,8 @@ function formatTitleForPullRequestUpdateEvent(event: UnifiedGitHubEvent): string
     const allFiles = event.commits.flatMap(commit => commit.fileDiffs.map(diff => diff.filename));
     const uniqueFiles = [...new Set(allFiles)];
     const fileCount = uniqueFiles.length;
-    const fileNames = uniqueFiles.slice(0, 3).join(', ');
-    const moreFiles = fileCount > 3 ? ` and ${fileCount - 3} more` : '';
     
-    return `Pull request ${event.pullRequest?.number} updated in ${event.repository.name} by ${event.username} (${commitCount} commit${commitCount > 1 ? 's' : ''}: ${commitNames}) - ${fileCount} file${fileCount > 1 ? 's' : ''} changed: ${fileNames}${moreFiles}`;
+    return `Pull request ${event.pullRequest?.number} updated in ${event.repository.name} by ${event.username} (${commitCount} commit${commitCount > 1 ? 's' : ''}: ${commitNames}, ${fileCount} file${fileCount > 1 ? 's' : ''} changed)`;
 }
 
 function formatTitleForPullRequestMergeEvent(event: UnifiedGitHubEvent): string {
@@ -57,10 +51,8 @@ function formatTitleForPullRequestMergeEvent(event: UnifiedGitHubEvent): string 
     const allFiles = event.commits.flatMap(commit => commit.fileDiffs.map(diff => diff.filename));
     const uniqueFiles = [...new Set(allFiles)];
     const fileCount = uniqueFiles.length;
-    const fileNames = uniqueFiles.slice(0, 3).join(', ');
-    const moreFiles = fileCount > 3 ? ` and ${fileCount - 3} more` : '';
     
-    return `Pull request ${event.pullRequest?.number} merged in ${event.repository.name} by ${event.username} (${commitCount} commit${commitCount > 1 ? 's' : ''}: ${commitNames}) - ${fileCount} file${fileCount > 1 ? 's' : ''} changed: ${fileNames}${moreFiles}`;
+    return `Pull request ${event.pullRequest?.number} merged in ${event.repository.name} by ${event.username} (${commitCount} commit${commitCount > 1 ? 's' : ''}: ${commitNames}, ${fileCount} file${fileCount > 1 ? 's' : ''} changed)`;
 }
 
 function formatTitleForPullRequestCloseEvent(event: UnifiedGitHubEvent): string {
@@ -69,8 +61,6 @@ function formatTitleForPullRequestCloseEvent(event: UnifiedGitHubEvent): string 
     const allFiles = event.commits.flatMap(commit => commit.fileDiffs.map(diff => diff.filename));
     const uniqueFiles = [...new Set(allFiles)];
     const fileCount = uniqueFiles.length;
-    const fileNames = uniqueFiles.slice(0, 3).join(', ');
-    const moreFiles = fileCount > 3 ? ` and ${fileCount - 3} more` : '';
     
-    return `Pull request ${event.pullRequest?.number} closed in ${event.repository.name} by ${event.username} (${commitCount} commit${commitCount > 1 ? 's' : ''}: ${commitNames}) - ${fileCount} file${fileCount > 1 ? 's' : ''} changed: ${fileNames}${moreFiles}`;
+    return `Pull request ${event.pullRequest?.number} closed in ${event.repository.name} by ${event.username} (${commitCount} commit${commitCount > 1 ? 's' : ''}: ${commitNames}, ${fileCount} file${fileCount > 1 ? 's' : ''} changed)`;
 }
