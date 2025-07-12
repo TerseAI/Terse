@@ -12,21 +12,26 @@ export type FileDiff = {
     filename: string;
     diff: string;
 }
+export type Repository = {
+    name: string;
+    owner: string;
+    id: number;
+}
 interface VectraInterface {
-    githubAppInstallationCallback(name: string, email: string, username: string, installationId: number, repositoryName: string): Promise<void>;
+    githubAppInstallationCallback(name: string, email: string, username: string, installationId: number, repositories: Repository[]): Promise<void>;
     githubAppInstallationDeleted(username: string, installationId: number): Promise<void>;
     githubUnifiedEvent(username: string, installationId: number, repositoryName: string, eventType: string, eventData: any): Promise<void>;
 }
 
 export const VectraInterface: VectraInterface = {
-    async githubAppInstallationCallback(name: string, email: string, username: string, installationId: number, repositoryName: string): Promise<void> {
+    async githubAppInstallationCallback(name: string, email: string, username: string, installationId: number, repositories: Repository[]): Promise<void> {
         const token = await new Jwt().sign(username);
         return axios.post(`${backendBaseUrl}/github/installation-callback`, {
             name,
             email,
             username,
             installationId,
-            repositoryName
+            repositories
         }, { 
             headers: {
                 'Authorization': `Bearer ${token}`,
