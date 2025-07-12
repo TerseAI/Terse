@@ -155,6 +155,50 @@ export default function LandingPage() {
                 </div>
             </div>
 
+            {/* Pain Points Section */}
+            <div className="px-6 py-20">
+                <div className="max-w-7xl mx-auto">
+                    <div className="text-center mb-12">
+                        <h2 className="text-4xl font-bold text-white mb-4">
+                            Stop These Frustrations
+                        </h2>
+                        <p className="text-xl text-gray-300">
+                            Common problems that Vectra AI eliminates
+                        </p>
+                    </div>
+                    
+                    <div className="grid md:grid-cols-2 gap-8 max-w-5xl mx-auto">
+                        <div className="bg-gradient-to-br from-gray-800/50 to-gray-900/50 rounded-2xl p-8 border border-gray-700/50 hover:border-gray-600/50 transition-all duration-300">
+                            <div className="flex items-center gap-4 mb-4">
+                                <div className="w-12 h-12 bg-red-500/20 rounded-xl flex items-center justify-center">
+                                    <svg className="w-6 h-6 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                </div>
+                                <h3 className="text-2xl font-bold text-white">No More Pinging for Updates</h3>
+                            </div>
+                            <p className="text-gray-300 text-lg leading-relaxed">
+                                Stop chasing developers for status updates. Vectra AI automatically tracks progress from your Git commits, so you always know what's actually happening.
+                            </p>
+                        </div>
+                        
+                        <div className="bg-gradient-to-br from-gray-800/50 to-gray-900/50 rounded-2xl p-8 border border-gray-700/50 hover:border-gray-600/50 transition-all duration-300">
+                            <div className="flex items-center gap-4 mb-4">
+                                <div className="w-12 h-12 bg-red-500/20 rounded-xl flex items-center justify-center">
+                                    <svg className="w-6 h-6 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                                    </svg>
+                                </div>
+                                <h3 className="text-2xl font-bold text-white">No More Hidden Features Sneaking In</h3>
+                            </div>
+                            <p className="text-gray-300 text-lg leading-relaxed">
+                                Every code change is automatically detected and documented. No surprises in production - you'll know exactly what's being built.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             {/* Bottom CTA */}
             <div className="px-6 py-16 text-center">
                 <div className="max-w-4xl mx-auto">
