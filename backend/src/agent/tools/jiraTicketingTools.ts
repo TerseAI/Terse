@@ -124,6 +124,44 @@ const getJiraCurrentUserTool = tool({
     }
 });
 
+const getJiraIssueTypesTool = tool({
+    name: 'Get Jira Issue Types',
+    description: 'Get available Jira issue types',
+    parameters: z.object({
+        projectKey: z.union([z.string(), z.null()]).describe('Optional project key to get issue types for a specific project'),
+    }),
+    execute: async ({ projectKey }, runContext?: RunContext<SessionWithTracking>) => {
+        if (!runContext?.context) {
+            throw new Error("No context provided");
+        }
+
+        if (!runContext.context.ticketManager) {
+            throw new Error("No ticket manager provided");
+        }
+
+        console.log('Jira Ticket Tool: Getting issue types');
+
+        let ticketManager = runContext.context.ticketManager;
+
+        // Cast to JiraAdapter to access getIssueTypes method
+        const jiraAdapter = ticketManager as any;
+        if (jiraAdapter.getIssueTypes) {
+            return await jiraAdapter.getIssueTypes(projectKey || undefined);
+        } else {
+            // Fallback to common issue types
+            return [
+                { id: '10000', name: 'Task', description: 'A task that needs to be done' },
+                { id: '10001', name: 'Bug', description: 'A problem which impairs or prevents the functions of the product' },
+                { id: '10002', name: 'Story', description: 'A user story' },
+                { id: '10003', name: 'Epic', description: 'A big user story that needs to be broken down' },
+                { id: '10004', name: 'Subtask', description: 'A sub-task of the parent issue' },
+                { id: '10005', name: 'Improvement', description: 'An improvement or enhancement to an existing feature' },
+                { id: '10006', name: 'New Feature', description: 'A new feature of the product' }
+            ];
+        }
+    }
+});
+
 const createJiraTicketTool = tool({
     name: 'Create Jira Ticket',
     description: 'Create a new Jira ticket',
@@ -131,7 +169,7 @@ const createJiraTicketTool = tool({
         title: z.string().describe('The title/summary of the Jira ticket'),
         description: z.union([z.string(), z.null()]).describe('The description of the Jira ticket'),
         projectKey: z.string().describe('The Jira project key (e.g., "PROJ", "TEAM")'),
-        issueType: z.string().describe('The Jira issue type (e.g., "Task", "Bug", "Story")').default('Task'),
+        issueType: z.string().describe('The Jira issue type (e.g., "Task", "Bug", "Story", "Epic", "Subtask", "Improvement", "New Feature")').default('Task'),
         assignee: z.union([z.object({
             email: z.string().describe('The assignee email'),
         }), z.null()]).describe('The assignee of the ticket'),
@@ -175,6 +213,7 @@ const createJiraTicketTool = tool({
             estimate: estimate || undefined,
             dueDate: dueDate || undefined,
             project: { id: project.key, name: project.name },
+            issueType: issueType,
             associatedCommits: associatedCommits || undefined,
         } as CreateTicketInput);
         } catch (error) {
@@ -293,5 +332,6 @@ export const jiraTicketTools = [
     findJiraIssueTool, 
     searchJiraTicketTool, 
     getJiraCurrentUserTool, 
+    getJiraIssueTypesTool,
     commentOnJiraTicketTool
 ]; 
