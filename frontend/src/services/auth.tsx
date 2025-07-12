@@ -54,13 +54,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   const loginWithGithub = async () => {
-    try {
-      const { url } = await BackendProvider.getGithubLogInURL();
-      window.location.href = url;
-    } catch (error) {
-      console.error('GitHub login error:', error);
-      throw new Error('GitHub login failed');
-    }
+    const { installationUrl } = await BackendProvider.requestGitHubAppInstallationUrl();
+    window.open(installationUrl, '_blank', 'width=600,height=700,scrollbars=yes,resizable=yes');
   };
 
   return (
