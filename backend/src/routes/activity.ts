@@ -56,7 +56,14 @@ export async function getActivityFeed(req: Request, res: Response) {
     if (!ticketManager) {
         return res.status(500).json({ error: "Ticket manager not found" });
     }
-    const tickets = await ticketManager.getTickets(ticketActivityEvents.map(event => event.ticket_id));
+
+    let tickets: Ticket[] = [];
+    try {
+        tickets = await ticketManager.getTickets(ticketActivityEvents.map(event => event.ticket_id));
+    } catch (error) {
+        console.error('Error getting tickets: usually caused by a switch in TicketManager. Continuing without tickets.', error);
+        tickets = [];
+    }
 
     // Take all user_ids and map them to github usernames
     const users = activityEvents.map(event => event.user_id);
