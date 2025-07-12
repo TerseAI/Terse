@@ -2,7 +2,7 @@ import { RunContext, tool } from "@openai/agents";
 import { z } from "zod";
 import chalk from "chalk";
 import { StructuredSearchOptions } from "../../ticketing/TicketIntegration";
-import { CreateTicketInput, UserContext } from "../../shared/TicketSystem";
+import { CreateTicketInput, TicketSystemType, UserContext } from "../../shared/TicketSystem";
 import { SessionWithTracking } from "../agents/Analyzer";
 import { EntityType } from "../../shared/Entities";
 import { ChangeEventType } from "../../shared/ModelEvents";
@@ -171,13 +171,13 @@ const createTicketTool = tool({
             throw new Error("No ticket manager provided");
         }
 
+        const ticketManager = runContext.context.ticketManager;
+
         const teamId = runContext.context.teamId;
-        if (!teamId) {
+        if (!teamId && ticketManager.type === TicketSystemType.Linear) {
             console.error(chalk.red.bold('❌ No team ID provided. Unable to create ticket.'));
             throw new Error("No team ID provided");
         }
-
-        let ticketManager = runContext.context.ticketManager;
 
         console.log('Ticket Tool: Created ticket');
 

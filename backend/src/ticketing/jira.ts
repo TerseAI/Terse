@@ -1,14 +1,51 @@
 import JiraClient from 'jira-client';
 import { SearchItem } from '../search/SearchItem';
-import { CreateTicketInput, Ticket, TicketSystemType, UpdateTicketInput, User, UserContext, Team, Project, CommitAssociation } from '../shared/TicketSystem';
+import { CreateTicketInput, Ticket, TicketSystemType, UpdateTicketInput, User, UserContext, Team, Project, CommitAssociation, Organization } from '../shared/TicketSystem';
 import { StructuredSearchOptions, TicketManager } from './TicketIntegration';
 import chalk from 'chalk';
 
+// Atlassian Document Format (ADF) interfaces
+interface ADFText {
+    type: "text";
+    text: string;
+    marks?: Array<{ type: string; attrs?: Record<string, any> }>;
+}
+
+interface ADFParagraph {
+    type: "paragraph";
+    content: ADFText[];
+}
+
+interface ADFDocument {
+    version: 1;
+    type: "doc";
+    content: ADFParagraph[];
+}
+
 interface JiraUpdateFields {
     summary?: string;
-    description?: string;
+    description?: ADFDocument;
     assignee?: { id: string };
     status?: { id: string };
+}
+
+// Helper function to convert plain text to Atlassian Document Format
+function textToADF(text: string): ADFDocument {
+    return {
+        version: 1,
+        type: "doc",
+        content: [
+            {
+                type: "paragraph",
+                content: [
+                    {
+                        type: "text",
+                        text: text
+                    }
+                ]
+            }
+        ]
+    };
 }
 
 export class JiraAdapter implements TicketManager {
@@ -56,12 +93,23 @@ export class JiraAdapter implements TicketManager {
 
         const teams: Team[] = projects.map((p: any) => ({ id: p.id, name: p.name, key: p.key }));
 
-        return {
+        const org: Organization = {
+            name: '',
+            createdAt: '',
+            createdIssueCount: 0,
+            userCount: 0,
+            projects: projects.map((p: any) => ({ id: p.id, name: p.name }))
+        };
+
+        const context: UserContext = {
             userInfo: user,
             teams,
-            organization: { name: '', createdAt: '', createdIssueCount: 0, userCount: 0, projects: [] },
+            organization: org,
             ticketStates: []
         };
+
+        console.log('🔧 User context', context);     
+        return context;
     }
 
     async findTicket(id: string): Promise<Ticket> {
@@ -91,10 +139,9 @@ export class JiraAdapter implements TicketManager {
         const issue = await this.client.addNewIssue({
             fields: {
                 summary: input.title,
-                description: input.description,
-                project: { id: input.teamId },
+                description: input.description ? textToADF(input.description) : undefined,
+                project: { key: input.project?.id },
                 issuetype: { name: 'Task' },
-                team: { id: input.teamId },
                 assignee: input.assignee ? { id: await this.userIdFromEmail(input.assignee) } : undefined
             }
         });
@@ -104,7 +151,7 @@ export class JiraAdapter implements TicketManager {
     async updateTicket(id: string, input: UpdateTicketInput): Promise<Ticket> {
         const updateFields: JiraUpdateFields = {
             summary: input.title,
-            description: input.description,
+            description: input.description ? textToADF(input.description) : undefined,
         };
 
         if (input.assignee) {
