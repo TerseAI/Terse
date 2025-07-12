@@ -121,14 +121,6 @@ function Home() {
                                     </div>
                                 </div>
                             </div>
-
-                            {/* Privacy Notice */}
-                            <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
-                                <p className="text-sm text-gray-600">
-                                    We never store your data as part of our service.
-                                    To match code changes to tickets, we generate embeddings of issues, but never retain any plain text content.
-                                </p>
-                            </div>
                         </div>
                     </div>
                 )}
