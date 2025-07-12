@@ -54,8 +54,28 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   const loginWithGithub = async () => {
-    const { installationUrl } = await BackendProvider.requestGitHubAppInstallationUrl();
-    window.open(installationUrl, '_blank', 'width=600,height=700,scrollbars=yes,resizable=yes');
+    const { url } = await BackendProvider.getGithubLogInURL();
+    setIsLoading(true);
+    const popup = window.open(
+      url, 
+      'github-login',
+      'width=600,height=700,scrollbars=yes,resizable=yes'
+    );
+
+    if (!popup) {
+      setIsLoading(false);
+      return;
+    }
+  
+    // Or listen for postMessage from popup
+    window.addEventListener('message', (event) => {
+      if (event.data.type === 'GITHUB_AUTH_SUCCESS') {
+        console.log('GITHUB_AUTH_SUCCESS event', event)
+        console.log('GITHUB_AUTH_SUCCESS', event.data.token)
+        initSession(event.data.token);
+        setIsLoading(false);
+      }
+    });
   };
 
   return (
