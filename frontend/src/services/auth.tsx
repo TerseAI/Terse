@@ -1,6 +1,8 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { BackendProvider } from "./backend";
 import { User } from "../types/User";
+import { posthog } from "posthog-js";
+import { PosthogEvents } from "../utility/PosthogEvents";
 
 interface AuthContextType {
   user: User | null;
@@ -43,6 +45,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     try {
       await BackendProvider.authenticateUser(email, password);
       let me = await BackendProvider.getCurrentUser();
+      posthog.capture(PosthogEvents.USER_SIGNED_IN, {
+        email: me.email,
+      });
       setUser(me);
     } catch (error) {
       throw new Error("Login failed");
@@ -56,6 +61,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }
 
   const logout = async () => {
+    posthog.capture(PosthogEvents.USER_SIGNED_OUT, {
+      email: user?.email || 'unknown',
+    });
     await BackendProvider.terminateSession();
     setUser(null);
   };
@@ -79,6 +87,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         console.log('GITHUB_AUTH_SUCCESS event', event)
         console.log('GITHUB_AUTH_SUCCESS', event.data.token)
         await initSession(event.data.token);
+        posthog.capture(PosthogEvents.USER_INTEGRATED_GITHUB, {
+          email: user?.email || 'unknown',
+        });
         setIsLoading(false);
         window.location.href = '/app';
       }

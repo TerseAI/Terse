@@ -2,6 +2,9 @@ import { useState } from "react";
 import { BackendProvider } from "../services/backend";
 import { IntegrationCard } from "./IntegrationCard";
 import { Integration, useIntegrations } from "../context/Integrations";
+import posthog from "posthog-js";
+import { PosthogEvents } from "../utility/PosthogEvents";
+import { useAuth } from "../services/auth";
 
 interface AddLinearProps {
     onIntegrationChange: () => Promise<void>;
@@ -12,7 +15,7 @@ export function AddLinear({ onIntegrationChange }: AddLinearProps) {
     const [input, setInput] = useState<string>('');
     const [error, setError] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);
-
+    const { user } = useAuth();
     const hasLinear = integrations.includes(Integration.LINEAR);
 
     const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -38,6 +41,9 @@ export function AddLinear({ onIntegrationChange }: AddLinearProps) {
             setInput('');
             setError(null);
             await onIntegrationChange();
+            posthog.capture(PosthogEvents.USER_DISCONNECTED_LINEAR, {
+                email: user?.email || 'unknown',
+            });
         } catch (error) {
             console.error('Error deleting Linear API key:', error);
         }
