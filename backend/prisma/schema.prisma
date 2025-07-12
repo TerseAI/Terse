@@ -124,7 +124,7 @@ model activity_events {
   created_at           DateTime        @default(now())
   updated_at           DateTime        @updatedAt
 
-  github_repository      github_repositories      @relation(fields: [github_repository_id], references: [id])
+  github_repository      github_repositories      @relation(fields: [github_repository_id], references: [id], onDelete: Cascade)
   users                  users?                   @relation(fields: [user_id], references: [id])
   ticket_activity_events ticket_activity_events[]
 
@@ -142,7 +142,7 @@ model ticket_activity_events {
   updated_at        DateTime        @updatedAt
 
   user            users           @relation(fields: [user_id], references: [id])
-  activity_events activity_events @relation(fields: [activity_event_id], references: [id])
+  activity_events activity_events @relation(fields: [activity_event_id], references: [id], onDelete: Cascade)
 
   @@index([ticket_id])
 }
