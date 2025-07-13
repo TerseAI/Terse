@@ -41,8 +41,9 @@ export async function getCurrentGithubIntegration(req: Request, res: Response) {
 // Get GitHub App installation URL
 export async function getInstallationUrl(req: Request, res: Response) {
     try {
-        // Generate GitHub App installation URL with callback
-        const installationUrl: string = `https://github.com/apps/vectra-github/installations/new?client_id=${GITHUB_APP_CLIENT_ID}&state=vectra&target_type=repositories`;
+        // Generate GitHub App installation URL with our custom callback
+        const callbackUrl = `${process.env.BACKEND_URL}/github/installation-success`;
+        const installationUrl: string = `https://github.com/apps/vectra-github/installations/new?client_id=${GITHUB_APP_CLIENT_ID}&state=vectra&target_type=repositories&redirect_uri=${encodeURIComponent(callbackUrl)}`;
 
         res.json({
             installationUrl
@@ -51,6 +52,46 @@ export async function getInstallationUrl(req: Request, res: Response) {
         console.error('Error generating installation URL:', error);
         res.status(500).json({ message: 'Failed to generate installation URL' });
     }
+}
+
+// New endpoint to handle GitHub App installation success
+export async function githubAppInstallationSuccess(req: Request, res: Response) {
+    const { installation_id, setup_action } = req.query;
+    
+    console.log('GitHub App installation success:', { installation_id, setup_action });
+    
+    // Send success message to opener window and close
+    res.send(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>GitHub App Installed</title>
+        </head>
+        <body>
+            <div style="text-align: center; padding: 40px; font-family: Arial, sans-serif;">
+                <h2>✅ GitHub App Installed Successfully!</h2>
+                <p>You can close this window now.</p>
+            </div>
+            <script>
+                if (window.opener) {
+                    window.opener.postMessage({
+                        type: 'GITHUB_APP_INSTALLED',
+                        success: true,
+                        installationId: '${installation_id}'
+                    }, '*');
+                    
+                    // Close the window after a short delay
+                    setTimeout(() => {
+                        window.close();
+                    }, 1000);
+                } else {
+                    // If no opener, redirect to the main app
+                    window.location.href = '${process.env.FRONTEND_URL || 'http://localhost:5173'}/app';
+                }
+            </script>
+        </body>
+        </html>
+    `);
 }
 
 type GithubAppInstallationCallbackRequest = {
