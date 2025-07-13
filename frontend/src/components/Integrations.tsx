@@ -15,7 +15,7 @@ export function Integrations({ onIntegrationChange, className = "" }: Integratio
             <div className="space-y-4">
                 {/* GitHub */}
                 <div className="border-b border-gray-100 pb-4">
-                    <AddGithub onIntegrationChange={onIntegrationChange} />
+                    <AddGithub />
                 </div>
 
                 {/* Ticketing System */}
@@ -25,7 +25,7 @@ export function Integrations({ onIntegrationChange, className = "" }: Integratio
 
                 {/* Slack */}
                 <div>
-                    <AddToSlack onIntegrationChange={onIntegrationChange} />
+                    <AddToSlack />
                 </div>
             </div>
         </div>

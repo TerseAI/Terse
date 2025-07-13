@@ -6,11 +6,7 @@ import { PosthogEvents } from "../utility/PosthogEvents";
 import posthog from "posthog-js";
 import { useAuth } from "../services/auth";
 
-interface AddGithubProps {
-    onIntegrationChange: () => Promise<void>;
-}
-
-export function AddGithub({ onIntegrationChange }: AddGithubProps) {
+export function AddGithub() {
     const { hasGithub, isPolling, startPolling } = useIntegrations();
     const [isLoading, setIsLoading] = useState(false);
     const { user } = useAuth();
