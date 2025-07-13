@@ -9,7 +9,7 @@ import { ChangedItem, ChangeEventType } from '../../shared/ModelEvents';
 import { ChatLayout } from './ChatLayout';
 import { ChatProvider } from './ChatProvider';
 import { TurnView } from './Turn';
-import { Integration, useIntegrations } from '../../context/Integrations';
+import { useIntegrations } from '../../context/Integrations';
 
 interface ChatInterfaceContentProps {
     onSnippetSelect: (handler: (snippet: any) => void) => void;
@@ -127,11 +127,9 @@ function ChatInterfaceContent({ onSnippetSelect }: ChatInterfaceContentProps) {
 
 export function ChatInterface() {
     const snippetSelectHandlerRef = useRef<((snippet: any) => void) | null>(null);
-    const { integrations } = useIntegrations();
+    const { hasLinear, hasJira } = useIntegrations();
 
-    console.log("Integrations", integrations);
-
-    if (!integrations.includes(Integration.LINEAR) && !integrations.includes(Integration.JIRA)) {
+    if (!hasLinear && !hasJira) {
         return (
             <div className="h-full bg-white flex items-center justify-center">
                 <div className="text-center max-w-md mx-auto px-6">
@@ -140,7 +138,7 @@ export function ChatInterface() {
                         You need to connect either Linear or Jira to use the chat feature.
                     </p>
                 </div>
-            </div>
+            </div>  
         )
     }
 
