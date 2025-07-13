@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, ReactNode, useEffect } from 'react';
+import { createContext, useContext, useState, ReactNode, useEffect, useRef } from 'react';
 import { BackendProvider } from '../services/backend';
 
 export enum Integration {
@@ -17,6 +17,9 @@ type IntegrationContextType = {
     hasJira: boolean;
     hasSlack: boolean;
     isSetupComplete: boolean;
+    isPolling: boolean;
+    startPolling: () => void;
+    stopPolling: () => void;
 }
 
 const IntegrationContext = createContext<IntegrationContextType | undefined>(undefined);
@@ -24,6 +27,11 @@ const IntegrationContext = createContext<IntegrationContextType | undefined>(und
 export function IntegrationProvider({ children }: { children: ReactNode }) {
     const [integrations, setIntegrations] = useState<Integration[]>([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [isPolling, setIsPolling] = useState(false);
+    const pollingIntervalRef = useRef<number | null>(null);
+    const pollingTimeoutRef = useRef<number | null>(null);
+    const lastIntegrationStateRef = useRef<string>('');
+    const pollingStartTimeRef = useRef<number>(0);
 
     const refreshIntegrations = async () => {
         try {
@@ -52,8 +60,97 @@ export function IntegrationProvider({ children }: { children: ReactNode }) {
         }
     };
 
+    const startPolling = () => {
+        if (pollingIntervalRef.current) {
+            clearInterval(pollingIntervalRef.current);
+        }
+        if (pollingTimeoutRef.current) {
+            clearTimeout(pollingTimeoutRef.current);
+        }
+
+        // Get current state from the server as baseline
+        const getCurrentState = async () => {
+            try {
+                const { integrations: integrationData } = await BackendProvider.getIntegrationsStatus();
+                lastIntegrationStateRef.current = JSON.stringify(integrationData);
+                console.log('Polling started with baseline state:', integrationData);
+            } catch (error) {
+                console.error('Error getting baseline state:', error);
+                // Fallback to current local state
+                const currentIntegrations = {
+                    github: integrations.includes(Integration.GITHUB),
+                    linear: integrations.includes(Integration.LINEAR),
+                    jira: integrations.includes(Integration.JIRA),
+                    slack: integrations.includes(Integration.SLACK)
+                };
+                lastIntegrationStateRef.current = JSON.stringify(currentIntegrations);
+            }
+        };
+
+        getCurrentState();
+        pollingStartTimeRef.current = Date.now();
+        setIsPolling(true);
+        
+        // Set a timeout to stop polling after 2 minutes
+        pollingTimeoutRef.current = window.setTimeout(() => {
+            console.log('Polling timeout reached, stopping');
+            stopPolling();
+        }, 120000);
+
+        pollingIntervalRef.current = setInterval(async () => {
+            try {
+                const { integrations: integrationData } = await BackendProvider.getIntegrationsStatus();
+                const currentState = JSON.stringify(integrationData);
+                const lastState = lastIntegrationStateRef.current;
+                
+                console.log('Polling check:', {
+                    current: integrationData,
+                    last: JSON.parse(lastState),
+                    changed: currentState !== lastState,
+                    elapsed: Date.now() - pollingStartTimeRef.current
+                });
+                
+                // If state changed, update integrations and stop polling
+                if (currentState !== lastState) {
+                    console.log('Integration state changed, stopping polling');
+                    lastIntegrationStateRef.current = currentState;
+                    
+                    // Update local state
+                    const activeIntegrations: Integration[] = [];
+                    if (integrationData.github) activeIntegrations.push(Integration.GITHUB);
+                    if (integrationData.linear) activeIntegrations.push(Integration.LINEAR);
+                    if (integrationData.jira) activeIntegrations.push(Integration.JIRA);
+                    if (integrationData.slack) activeIntegrations.push(Integration.SLACK);
+                    
+                    setIntegrations(activeIntegrations);
+                    stopPolling();
+                }
+            } catch (error) {
+                console.error('Error polling integrations:', error);
+            }
+        }, 2000); // Poll every 2 seconds
+    };
+
+    const stopPolling = () => {
+        if (pollingIntervalRef.current) {
+            clearInterval(pollingIntervalRef.current);
+            pollingIntervalRef.current = null;
+        }
+        if (pollingTimeoutRef.current) {
+            clearTimeout(pollingTimeoutRef.current);
+            pollingTimeoutRef.current = null;
+        }
+        setIsPolling(false);
+        console.log('Polling stopped');
+    };
+
     useEffect(() => {
         refreshIntegrations();
+        
+        // Cleanup polling on unmount
+        return () => {
+            stopPolling();
+        };
     }, []);
 
     // Compute integration status
@@ -72,11 +169,14 @@ export function IntegrationProvider({ children }: { children: ReactNode }) {
             hasLinear,
             hasJira,
             hasSlack,
-            isSetupComplete
+            isSetupComplete,
+            isPolling,
+            startPolling,
+            stopPolling
         }}>
             {children}
         </IntegrationContext.Provider>
-    );  
+    );
 }
 
 export function useIntegrations() {

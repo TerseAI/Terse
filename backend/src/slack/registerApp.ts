@@ -170,44 +170,13 @@ export async function slackOAuthCallback(req: Request, res: Response) {
         });
 
         console.log("Access token:", response.data);
-        
-        // Send success message to opener window and close
-        res.send(`
-            <!DOCTYPE html>
-            <html>
-            <head>
-                <title>Slack Connected</title>
-            </head>
-            <body>
-                <div style="text-align: center; padding: 40px; font-family: Arial, sans-serif;">
-                    <h2>✅ Slack Connected Successfully!</h2>
-                    <p>You can close this window now.</p>
-                </div>
-                <script>
-                    if (window.opener) {
-                        window.opener.postMessage({
-                            type: 'SLACK_CONNECTED',
-                            success: true,
-                            teamName: '${team.name}'
-                        }, '*');
-                        
-                        // Close the window after a short delay
-                        setTimeout(() => {
-                            window.close();
-                        }, 1000);
-                    } else {
-                        // If no opener, redirect to the main app
-                        window.location.href = '${process.env.FRONTEND_URL || 'http://localhost:5173'}/app';
-                    }
-                </script>
-            </body>
-            </html>
-        `);
     } catch (error) {
         console.error('Error exchanging code for access token:', error);
         res.status(500).json({ message: 'Failed to exchange code for access token' });
         return;
     }
+
+    res.json({ received: true });
 }
 
 async function openChat(accessToken: string, authedUserId: string) {
