@@ -37,7 +37,14 @@ app.use(cors({
     credentials: true
 }));
 
-app.use(bodyParser.json());
+// Parse JSON for all routes except Slack events (which needs raw body for signature verification)
+app.use((req, res, next) => {
+    if (req.path === '/slack/events') {
+        next();
+    } else {
+        bodyParser.json()(req, res, next);
+    }
+});
 app.use(cookieParser());
 
 // MARK: AUTH
