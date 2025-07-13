@@ -96,8 +96,11 @@ export async function handleSlackEvent(req: Request, res: Response) {
         return res.send((body as { challenge: string }).challenge);
     }
 
+    // Log the event type for debugging
     const team_id = body.team_id as string;
     const ev = body.event as Record<string, unknown>;
+    console.log(chalk.blue('Event type:', ev?.type));
+    console.log(chalk.blue('Team ID:', team_id));
 
     switch (ev.type) {
         case 'app_uninstalled':
