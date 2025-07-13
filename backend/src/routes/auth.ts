@@ -29,6 +29,16 @@ export const authMiddleware = async (req: Request, res: Response, next: NextFunc
             return;
         }
 
+        // If user is verified, refresh the token to extend session
+        const newToken = await new Jwt().sign(user.id);
+        res.cookie(COOKIE_NAME, newToken, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+            path: '/',
+            maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+        });
+
         // Create session object
         const session: Session = {
             user: user,
@@ -94,12 +104,14 @@ export async function setSession(req: Request, res: Response) {
 
     console.log('User verified', user)
 
-    res.cookie(COOKIE_NAME, token, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
-        path: '/'
-    });
+            res.cookie(COOKIE_NAME, token, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+            path: '/',
+            maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+            domain: process.env.COOKIE_DOMAIN || undefined // Allow setting custom domain
+        });
 
     res.json({
         message: 'Login successful',
@@ -128,14 +140,16 @@ export async function login(req: Request, res: Response) {
             return res.status(401).json({ message: 'Invalid credentials' });
         }
 
-        // Create JWT
+        // Create JWT token
         const token = await new Jwt().sign(user.id);
 
         res.cookie(COOKIE_NAME, token, {
             httpOnly: true,
             secure: process.env.NODE_ENV === 'production',
             sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
-            path: '/'
+            path: '/',
+            maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+            domain: process.env.COOKIE_DOMAIN || undefined // Allow setting custom domain
         });
 
         console.log('Login successful for user:', user.email)
@@ -189,13 +203,13 @@ export async function githubCallback(req: Request, res: Response) {
             headers: { Accept: 'application/json' }
         });
 
-        const accessToken = tokenResp.data.access_token;
-        if (!accessToken) {
+        const githubAccessToken = tokenResp.data.access_token;
+        if (!githubAccessToken) {
             return res.status(400).send('Failed to obtain access token');
         }
 
         const userResp = await axios.get('https://api.github.com/user', {
-            headers: { Authorization: `Bearer ${accessToken}` }
+            headers: { Authorization: `Bearer ${githubAccessToken}` }
         });
 
         let email = userResp.data.email as string | null;
@@ -204,7 +218,7 @@ export async function githubCallback(req: Request, res: Response) {
 
         if (!email) {
             const emailsResp = await axios.get('https://api.github.com/user/emails', {
-                headers: { Authorization: `Bearer ${accessToken}` }
+                headers: { Authorization: `Bearer ${githubAccessToken}` }
             });
             const primary = emailsResp.data.find((e: any) => e.primary) || emailsResp.data[0];
             email = primary?.email;
