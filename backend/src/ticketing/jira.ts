@@ -3,6 +3,7 @@ import { SearchItem } from '../search/SearchItem';
 import { CreateTicketInput, Ticket, TicketSystemType, UpdateTicketInput, User, UserContext, Team, Project, CommitAssociation, Organization } from '../shared/TicketSystem';
 import { StructuredSearchOptions, TicketManager } from './TicketIntegration';
 import chalk from 'chalk';
+import crypto from 'crypto';
 
 // Atlassian Document Format (ADF) interfaces
 interface ADFText {
@@ -252,8 +253,39 @@ export class JiraAdapter implements TicketManager {
         return projects.map((p: any) => ({ id: p.id, name: p.name, description: p.description, teamId: p.lead.accountId }));
     }
 
+    async tearDownWebhook(webhookId: string): Promise<void> {
+        await this.client.deleteWebhook(webhookId);
+        console.log(chalk.green('✅ Webhook deleted:'), chalk.cyan(webhookId));
+    }
+
     async configureWebhook(): Promise<{ webhookId: string; webhookSecret: string } | null> {
-        return null; // Webhooks not implemented
+        const user = await this.client.getCurrentUser();
+        if (!user) {
+            console.error(chalk.red('❌ No user found'));
+            return null;
+        }
+
+        const webhookSecret = this.generateWebhookSecret();
+        const backendUrl = process.env.BACKEND_URL;
+
+        const webhook = await this.client.registerWebhook({
+            name: 'Vectra AI',
+            url: `${backendUrl}/webhooks/jira/${user.accountId}`,
+            secret: webhookSecret,
+            events: ['jira:issue_created', 'jira:issue_updated', 'jira:issue_deleted']
+        });
+        console.log('🔧 Webhook created:', webhook);
+
+        // Extract webhook ID from the self URL
+        const webhookId = webhook.self.split('/').pop();
+        console.log('🔧 Extracted webhook ID:', webhookId);
+        
+        return { webhookId: webhookId, webhookSecret: webhook.secret };
+    }
+
+    generateWebhookSecret() {
+        // Generate 32 random bytes and convert to hex
+        return crypto.randomBytes(32).toString('hex');
     }
 
     async getIssueTypes(projectKey?: string): Promise<Array<{ id: string; name: string; description?: string }>> {

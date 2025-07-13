@@ -107,6 +107,7 @@ model jira_api_keys {
   user_id         String   @unique
   jira_user_email String
   base_url        String
+  webhook_id      String?
   api_token       String   @unique
   created_at      DateTime @default(now())
   updated_at      DateTime @updatedAt
