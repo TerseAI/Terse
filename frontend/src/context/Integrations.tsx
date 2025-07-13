@@ -12,6 +12,11 @@ type IntegrationContextType = {
     integrations: Integration[];
     isLoading: boolean;
     refreshIntegrations: () => Promise<void>;
+    hasGithub: boolean;
+    hasLinear: boolean;
+    hasJira: boolean;
+    hasSlack: boolean;
+    isSetupComplete: boolean;
 }
 
 const IntegrationContext = createContext<IntegrationContextType | undefined>(undefined);
@@ -51,8 +56,24 @@ export function IntegrationProvider({ children }: { children: ReactNode }) {
         refreshIntegrations();
     }, []);
 
+    // Compute integration status
+    const hasGithub = integrations.includes(Integration.GITHUB);
+    const hasLinear = integrations.includes(Integration.LINEAR);
+    const hasJira = integrations.includes(Integration.JIRA);
+    const hasSlack = integrations.includes(Integration.SLACK);
+    const isSetupComplete = hasGithub && (hasLinear || hasJira);
+
     return (
-        <IntegrationContext.Provider value={{ integrations, isLoading, refreshIntegrations }}>
+        <IntegrationContext.Provider value={{ 
+            integrations, 
+            isLoading, 
+            refreshIntegrations,
+            hasGithub,
+            hasLinear,
+            hasJira,
+            hasSlack,
+            isSetupComplete
+        }}>
             {children}
         </IntegrationContext.Provider>
     );  

@@ -54,7 +54,9 @@ export async function getActivityFeed(req: Request, res: Response) {
     // let's take all of our ticket ids, and map them to tickets
     const ticketManager = await getUserTicketManager(user.id);
     if (!ticketManager) {
-        return res.status(500).json({ error: "Ticket manager not found" });
+        console.log('No ticket manager found for user, returning empty activity feed');
+        res.json([]);
+        return;
     }
 
     let tickets: Ticket[] = [];

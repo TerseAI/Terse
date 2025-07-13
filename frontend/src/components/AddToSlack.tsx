@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { BackendProvider } from "../services/backend";
 import { IntegrationCard } from "./IntegrationCard";
-import { Integration, useIntegrations } from "../context/Integrations";
+import { useIntegrations } from "../context/Integrations";
 import posthog from "posthog-js";
 import { PosthogEvents } from "../utility/PosthogEvents";
 import { useAuth } from "../services/auth";
@@ -11,10 +11,9 @@ interface AddToSlackProps {
 }
 
 export function AddToSlack({ onIntegrationChange }: AddToSlackProps) {
-    const { integrations } = useIntegrations();
+    const { hasSlack } = useIntegrations();
     const [isLoading, setIsLoading] = useState(false);
     const { user } = useAuth();
-    const hasSlack = integrations.includes(Integration.SLACK);
 
     const connectButton = (
         <button

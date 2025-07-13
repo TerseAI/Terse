@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { BackendProvider } from "../services/backend";
 import { IntegrationCard } from "./IntegrationCard";
-import { Integration, useIntegrations } from "../context/Integrations";
+import { useIntegrations } from "../context/Integrations";
 import { PosthogEvents } from "../utility/PosthogEvents";
 import posthog from "posthog-js";
 import { useAuth } from "../services/auth";
@@ -11,10 +11,9 @@ interface AddGithubProps {
 }
 
 export function AddGithub({ onIntegrationChange }: AddGithubProps) {
-    const { integrations } = useIntegrations();
+    const { hasGithub } = useIntegrations();
     const [isLoading, setIsLoading] = useState(false);
     const { user } = useAuth();
-    const hasGithub = integrations.includes(Integration.GITHUB);
 
     const connectButton = (
         <button
