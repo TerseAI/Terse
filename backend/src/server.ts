@@ -10,9 +10,10 @@ import { authMiddleware, githubAppAuthMiddleware, githubCallback, githubLogin, g
 import { AgentSocketServer, requestSessionSocketToken } from './agent/socket';
 import { getCurrentGithubIntegration, getInstallationUrl, githubAppInstallationCallback, githubAppInstallationDeleted, githubAppUnifiedEvent } from './routes/githubApp';
 import { deleteLinearCredentials, getLinearApiKey, indexLinearTicket, setLinearApiKey } from './routes/linear';
-import { deleteJiraCredentials, getJiraCredentials, setJiraCredentials } from './routes/jira';
+import { deleteJiraCredentials, getJiraCredentials, indexJiraTicket, setJiraCredentials } from './routes/jira';
 import { TicketManager } from './ticketing/TicketIntegration';
 import { LinearWebhookPayload } from './utility/LinearWebhookPayload';
+import { JiraWebhookPayload } from './utility/JiraWebhookPayload';
 import { getCurrentSlackIntegration, getSlackOAuthUrl, slackOAuthCallback } from './slack/registerApp';
 import { handleSlackEvent } from './slack/eventHandler';
 import { fetchUserIntegrations } from './routes/integrations';
@@ -154,6 +155,25 @@ app.post('/webhooks/linear/:userId', async (req, res) => {
         case 'Project':
             console.log("Project", event);
             break;
+    }
+
+    res.json({ received: true });
+});
+
+app.post('/webhooks/jira/:userId', async (req, res) => {
+    const { userId } = req.params;
+    const event: JiraWebhookPayload = req.body;
+
+    console.log('Jira webhook event received:', event.webhookEvent);
+
+    // Update your search index based on the event
+    if (event.webhookEvent.startsWith('jira:issue_')) {
+        await indexJiraTicket(userId, event);
+    } else if (event.webhookEvent.includes('comment_')) {
+        console.log("Jira Comment event", event.webhookEvent);
+        // Could also index comments if needed
+    } else {
+        console.log("Other Jira event", event.webhookEvent);
     }
 
     res.json({ received: true });
