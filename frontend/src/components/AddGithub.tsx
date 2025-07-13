@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { BackendProvider } from "../services/backend";
 import { IntegrationCard } from "./IntegrationCard";
 import { useIntegrations } from "../context/Integrations";
@@ -11,22 +11,9 @@ interface AddGithubProps {
 }
 
 export function AddGithub({ onIntegrationChange }: AddGithubProps) {
-    const { hasGithub } = useIntegrations();
+    const { hasGithub, isPolling, startPolling } = useIntegrations();
     const [isLoading, setIsLoading] = useState(false);
     const { user } = useAuth();
-
-    // Listen for GitHub App installation success
-    useEffect(() => {
-        const handleMessage = (event: MessageEvent) => {
-            if (event.data.type === 'GITHUB_APP_INSTALLED' && event.data.success) {
-                console.log('GitHub App installed successfully:', event.data);
-                onIntegrationChange();
-            }
-        };
-
-        window.addEventListener('message', handleMessage);
-        return () => window.removeEventListener('message', handleMessage);
-    }, [onIntegrationChange]);
 
     const connectButton = (
         <button
@@ -38,16 +25,21 @@ export function AddGithub({ onIntegrationChange }: AddGithubProps) {
                     });
                     const { installationUrl } = await BackendProvider.requestGitHubAppInstallationUrl();
                     window.open(installationUrl, '_blank', 'width=600,height=700,scrollbars=yes,resizable=yes');
+                    
+                    // Start polling for installation completion
+                    startPolling();
                 } catch (error) {
                     console.error('Error requesting GitHub app installation:', error);
                 } finally {
                     setIsLoading(false);
                 }
             }}
-            disabled={isLoading}
+            disabled={isLoading || isPolling}
             className="w-full px-3 py-2 text-sm font-medium text-white bg-gray-900 rounded-md hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
-            {isLoading ? 'Opening GitHub...' : 'Install GitHub App'}
+            {isLoading ? 'Opening GitHub...' : 
+             isPolling ? 'Checking installation...' : 
+             'Install GitHub App'}
         </button>
     );
 
@@ -68,8 +60,8 @@ export function AddGithub({ onIntegrationChange }: AddGithubProps) {
             title="GitHub Repository"
             description="Connect your GitHub repository to track issues and pull requests"
             isConnected={hasGithub}
-            isLoading={false}
-            connectionInfo={hasGithub ? "Repository connected" : undefined}
+            isLoading={isLoading || isPolling}
+            connectionInfo={isPolling ? "Checking installation..." : hasGithub ? "Repository connected" : undefined}
             connectButton={connectButton}
             onDisconnect={onDisconnect}
             disconnectLabel="Manage GitHub App"

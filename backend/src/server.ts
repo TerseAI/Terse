@@ -8,7 +8,7 @@ import { User } from './types/prisma';
 import { User as TicketUser } from './shared/TicketSystem';
 import { authMiddleware, githubAppAuthMiddleware, githubCallback, githubLogin, githubLoginURL, login, logout, setSession } from './routes/auth';
 import { AgentSocketServer, requestSessionSocketToken } from './agent/socket';
-import { getCurrentGithubIntegration, getInstallationUrl, githubAppInstallationCallback, githubAppInstallationDeleted, githubAppUnifiedEvent, githubAppInstallationSuccess } from './routes/githubApp';
+import { getCurrentGithubIntegration, getInstallationUrl, githubAppInstallationCallback, githubAppInstallationDeleted, githubAppUnifiedEvent } from './routes/githubApp';
 import { deleteLinearCredentials, getLinearApiKey, indexLinearTicket, setLinearApiKey } from './routes/linear';
 import { deleteJiraCredentials, getJiraCredentials, setJiraCredentials } from './routes/jira';
 import { TicketManager } from './ticketing/TicketIntegration';
@@ -97,10 +97,6 @@ app.get('/github/get-current-integration', authMiddleware, async (req, res) => {
 
 app.get('/github/installation-url', authMiddleware, async (req, res) => {
     getInstallationUrl(req, res);
-})
-
-app.get('/github/installation-success', async (req, res) => {
-    githubAppInstallationSuccess(req, res);
 })
 
 app.post('/github/installation-callback', githubAppAuthMiddleware, async (req, res) => {
