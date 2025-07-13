@@ -45,8 +45,8 @@ export function isValidSlackSig(req: Request) {
     
     // Convert buffer to string for signature validation
     const body = Buffer.isBuffer(req.body) ? req.body.toString() : req.body;
-    console.log('Body string length:', body.length);
-    console.log('Body preview:', body.substring(0, 100));
+    console.log('Body string length:', typeof body === 'string' ? body.length : 'not a string');
+    console.log('Body preview:', typeof body === 'string' ? body.substring(0, 100) : 'body is not string');
     
     const baseString = `v0:${ts}:${body}`;
     console.log('Base string:', baseString);
