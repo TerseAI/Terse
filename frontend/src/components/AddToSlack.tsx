@@ -6,11 +6,7 @@ import posthog from "posthog-js";
 import { PosthogEvents } from "../utility/PosthogEvents";
 import { useAuth } from "../services/auth";
 
-interface AddToSlackProps {
-    onIntegrationChange: () => Promise<void>;
-}
-
-export function AddToSlack({ onIntegrationChange }: AddToSlackProps) {
+export function AddToSlack() {
     const { hasSlack, isPolling, startPolling } = useIntegrations();
     const [isLoading, setIsLoading] = useState(false);
     const { user } = useAuth();
