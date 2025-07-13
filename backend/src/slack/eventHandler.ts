@@ -36,10 +36,18 @@ export function isValidSlackSig(req: Request) {
     console.log('Timestamp:', ts);
     console.log('Signature:', sig);
     console.log('Body type:', Buffer.isBuffer(req.body) ? 'Buffer' : typeof req.body);
+    console.log('Has SLACK_SIGNING_SECRET:', !!process.env.SLACK_SIGNING_SECRET);
     console.log('Has SLACK_CLIENT_SECRET:', !!process.env.SLACK_CLIENT_SECRET);
     
     if (!ts || !sig) {
         console.log('Missing timestamp or signature headers');
+        return false;
+    }
+    
+    // Use SLACK_SIGNING_SECRET for signature verification (fallback to CLIENT_SECRET for backwards compatibility)
+    const signingSecret = process.env.SLACK_SIGNING_SECRET || process.env.SLACK_CLIENT_SECRET;
+    if (!signingSecret) {
+        console.log('No signing secret found - need SLACK_SIGNING_SECRET environment variable');
         return false;
     }
     
@@ -52,7 +60,7 @@ export function isValidSlackSig(req: Request) {
     console.log('Base string:', baseString);
     
     const hmac = crypto
-        .createHmac('sha256', process.env.SLACK_CLIENT_SECRET || '')
+        .createHmac('sha256', signingSecret)
         .update(baseString)
         .digest('hex');
 
