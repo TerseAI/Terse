@@ -1,9 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { BackendProvider } from "../services/backend";
 import { IntegrationCard } from "./IntegrationCard";
 import { useIntegrations } from "../context/Integrations";
-import posthog from "posthog-js";
 import { PosthogEvents } from "../utility/PosthogEvents";
+import posthog from "posthog-js";
 import { useAuth } from "../services/auth";
 
 interface AddToSlackProps {
@@ -15,6 +15,19 @@ export function AddToSlack({ onIntegrationChange }: AddToSlackProps) {
     const [isLoading, setIsLoading] = useState(false);
     const { user } = useAuth();
 
+    // Listen for Slack connection success
+    useEffect(() => {
+        const handleMessage = (event: MessageEvent) => {
+            if (event.data.type === 'SLACK_CONNECTED' && event.data.success) {
+                console.log('Slack connected successfully:', event.data);
+                onIntegrationChange();
+            }
+        };
+
+        window.addEventListener('message', handleMessage);
+        return () => window.removeEventListener('message', handleMessage);
+    }, [onIntegrationChange]);
+
     const connectButton = (
         <button
             onClick={async () => {
@@ -25,10 +38,6 @@ export function AddToSlack({ onIntegrationChange }: AddToSlackProps) {
                     });
                     const { url } = await BackendProvider.requestSlackOAuthUrl();
                     window.open(url, '_blank', 'width=600,height=700,scrollbars=yes,resizable=yes');
-                    // Refresh integrations after a short delay to allow for installation
-                    setTimeout(() => {
-                        onIntegrationChange();
-                    }, 2000);
                 } catch (error) {
                     console.error('Error requesting Slack OAuth URL:', error);
                 } finally {
@@ -38,18 +47,32 @@ export function AddToSlack({ onIntegrationChange }: AddToSlackProps) {
             disabled={isLoading}
             className="w-full px-3 py-2 text-sm font-medium text-white bg-purple-600 rounded-md hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
-            {isLoading ? 'Connecting...' : 'Connect to Slack'}
+            {isLoading ? 'Opening Slack...' : 'Connect to Slack'}
         </button>
     );
 
+    const onDisconnect = async () => {
+        try {
+            posthog.capture(PosthogEvents.USER_DISCONNECTED_JIRA, {
+                email: user?.email || 'unknown',
+            });
+            const { url } = await BackendProvider.requestSlackOAuthUrl();
+            window.open(url, '_blank', 'width=600,height=700,scrollbars=yes,resizable=yes');
+        } catch (error) {
+            console.error('Error requesting Slack OAuth URL:', error);
+        }
+    }
+
     return (
         <IntegrationCard
-            title="Slack Notifications"
-            description="Get updates on automation in Slack"
+            title="Slack Workspace"
+            description="Connect your Slack workspace to receive notifications about ticket updates"
             isConnected={hasSlack}
             isLoading={false}
-            connectionInfo={hasSlack ? "Slack connected" : undefined}
+            connectionInfo={hasSlack ? "Workspace connected" : undefined}
             connectButton={connectButton}
+            onDisconnect={onDisconnect}
+            disconnectLabel="Manage Slack App"
             icon={
                 <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -63,5 +86,5 @@ export function AddToSlack({ onIntegrationChange }: AddToSlackProps) {
             </svg>
             }
         />
-    )
+    );
 }
