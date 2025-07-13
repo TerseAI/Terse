@@ -1,0 +1,48 @@
+{
+    "display_information": {
+        "name": "Vectra",
+        "description": "Removes Engineering Over-head. Just code",
+        "background_color": "#081640",
+        "long_description": "A simple Slack app that pushes updates that are done by the Vectra AI.\r\n\r\nVectra AI acts as a virtual Product Manager that looks over GitHub activity and will update your Tickets on your behalf.\r\n\r\nWhen it makes an updaete, it will notify you on slack."
+    },
+    "features": {
+        "bot_user": {
+            "display_name": "Vectra",
+            "always_online": false
+        }
+    },
+    "oauth_config": {
+        "redirect_urls": [
+            "https://cursor-for-tickets.onrender.com/slack/oauth-callback"
+        ],
+        "scopes": {
+            "user": [
+                "admin.apps:read"
+            ],
+            "bot": [
+                "chat:write",
+                "groups:write",
+                "im:write",
+                "mpim:write",
+                "users:read",
+                "users:read.email",
+                "app_mentions:read",
+                "im:read"
+            ]
+        }
+    },
+    "settings": {
+        "event_subscriptions": {
+            "request_url": "https://loss-occupation-usa-video.trycloudflare.com/slack/events",
+            "user_events": [
+                "app_uninstalled_team"
+            ],
+            "bot_events": [
+                "app_uninstalled"
+            ]
+        },
+        "org_deploy_enabled": false,
+        "socket_mode_enabled": false,
+        "token_rotation_enabled": false
+    }
+}
