@@ -282,31 +282,31 @@ export default function LandingPage() {
                                     <div className="w-12 h-12 bg-green-600 rounded-full flex items-center justify-center text-white font-bold text-xl">
                                         3
                                     </div>
-                                    <h3 className="text-3xl font-bold text-white">See the Magic</h3>
+                                                                    <h3 className="text-3xl font-bold text-white">Get Summaries</h3>
+                            </div>
+                            <p className="text-xl text-gray-300 mb-6 leading-relaxed">
+                                Receive automatic summaries of changes in Slack. Stay informed about what's happening without checking multiple tools.
+                            </p>
+                            <div className="space-y-3">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-2 h-2 bg-green-400 rounded-full"></div>
+                                    <span className="text-gray-300">Automatic change summaries</span>
                                 </div>
-                                <p className="text-xl text-gray-300 mb-6 leading-relaxed">
-                                    Watch your Linear board update automatically. Tickets are created, updated, and completed based on your actual code changes.
-                                </p>
-                                <div className="space-y-3">
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-2 h-2 bg-green-400 rounded-full"></div>
-                                        <span className="text-gray-300">Tickets update automatically</span>
-                                    </div>
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-2 h-2 bg-green-400 rounded-full"></div>
-                                        <span className="text-gray-300">Progress tracked in real-time</span>
-                                    </div>
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-2 h-2 bg-green-400 rounded-full"></div>
-                                        <span className="text-gray-300">No manual updates needed</span>
-                                    </div>
+                                <div className="flex items-center gap-3">
+                                    <div className="w-2 h-2 bg-green-400 rounded-full"></div>
+                                    <span className="text-gray-300">Delivered to your Slack channel</span>
                                 </div>
+                                <div className="flex items-center gap-3">
+                                    <div className="w-2 h-2 bg-green-400 rounded-full"></div>
+                                    <span className="text-gray-300">Stay updated without context switching</span>
+                                </div>
+                            </div>
                             </div>
                             <div className="lg:w-1/2">
                                 <div className="bg-gray-800/30 rounded-xl p-4 border border-gray-700/50">
                                     <img 
-                                        src="/linear.png" 
-                                        alt="Linear Board Updates" 
+                                        src="/Slack.png" 
+                                        alt="Slack Change Summaries" 
                                         className="w-full h-auto rounded-lg shadow-2xl"
                                     />
                                 </div>
