@@ -13,13 +13,13 @@ export async function sendMessage(message: string, accessToken: string, dmChanne
 
         const result = await client.chat.postMessage({
             channel: dmChannelId,
-            text: cleaned,
+            text: "Fallback text for notifications",
             blocks: [
                 {
                     type: "section",
                     text: {
                         type: "mrkdwn",
-                        text: cleaned
+                        text: message
                     }
                 }
             ]
