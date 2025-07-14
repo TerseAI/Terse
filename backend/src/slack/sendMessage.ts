@@ -9,10 +9,20 @@ export async function sendMessage(message: string, accessToken: string, dmChanne
     });
 
     try {
+        const cleaned = sanitizeForSlack(message);
+
         const result = await client.chat.postMessage({
             channel: dmChannelId,
-            text: message,
-            mrkdwn: true
+            text: cleaned,
+            blocks: [
+                {
+                    type: "section",
+                    text: {
+                        type: "mrkdwn",
+                        text: cleaned
+                    }
+                }
+            ]
         });
 
         console.log(chalk.green('✅ Message sent successfully!'));
@@ -23,4 +33,12 @@ export async function sendMessage(message: string, accessToken: string, dmChanne
     catch (error) {
         console.error(error);
     }
+}
+
+function sanitizeForSlack(text: string): string {
+    return text
+        .replace(/```/g, '``')          // Slack doesn't always like triple backticks
+        .replace(/\*/g, '*')            // Make sure asterisks are balanced
+        .replace(/_(?!_)/g, '_')        // Underscores for italics should be balanced
+        .replace(/<\/?[^>]+(>|$)/g, ""); // Strip HTML
 }
