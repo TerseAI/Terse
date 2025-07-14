@@ -178,9 +178,7 @@ const systemPrompt = async (session: Session, commitContext?: { commits: Commit[
 
     I will send this summary to the user who triggered the event.
 
-    When you do the summary, make sure everything conforms to mrkdwn. So no **Bold** syntax.
-
-    Make sure it's legible in Slack!
+    Format your response in Slack-flavored markdown using *bold*, _italic_, and \`\`\`code blocks\`\`\`, avoiding HTML or unsupported Markdown.
 
     ${commitContext ? `
     COMMIT CONTEXT:
