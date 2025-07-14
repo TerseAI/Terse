@@ -71,12 +71,12 @@ export default function LandingPage() {
                 <div className="max-w-7xl mx-auto text-center">
                     {/* Tagline */}
                     <h1 className="text-6xl md:text-7xl font-bold text-white mb-8">
-                        No More Ticket Tracking
+                        No More Ticket Tracking.
                     </h1>
                     
                     {/* Subtitle */}
                     <p className="text-xl md:text-2xl text-gray-300 mb-8 max-w-4xl mx-auto leading-relaxed">
-                        Boards look green, but deadlines slip. We track the real state of work — straight from your tools, not secondhand updates.
+                        Your own personal AI board babysitter. We track the real state of work, straight from the code in real time.
                     </p>
 
                     {/* Setup time and integration info */}
@@ -140,7 +140,7 @@ export default function LandingPage() {
                                 </div>
                                 <div>
                                     <h3 className="text-xl font-semibold text-white mb-2">AI Manages Your Tickets</h3>
-                                    <p className="text-gray-400">Our AI automatically creates, updates, and comments on tickets in Linear/Jira based on your actual code changes.</p>
+                                    <p className="text-gray-400">Our AI automatically creates, updates, and comments on tickets in Linear based on your actual code changes.</p>
                                 </div>
                             </div>
                             
@@ -179,6 +179,138 @@ export default function LandingPage() {
                                 <div className="flex items-center gap-3">
                                     <div className="w-2 h-2 bg-red-400 rounded-full"></div>
                                     <span className="text-gray-300">Identifies blockers and delays</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {/* Step-by-Step Process Section */}
+            <div className="px-6 py-20">
+                <div className="max-w-7xl mx-auto">
+                    <div className="text-center mb-16">
+                        <h2 className="text-4xl font-bold text-white mb-6">
+                            See It In Action
+                        </h2>
+                        <p className="text-xl text-gray-300 max-w-3xl mx-auto">
+                            Three simple steps to transform how you track work
+                        </p>
+                    </div>
+                    
+                    <div className="space-y-16">
+                        {/* Step 1: Set Up */}
+                        <div className="flex flex-col lg:flex-row items-center gap-12">
+                            <div className="lg:w-1/2">
+                                <div className="flex items-center gap-4 mb-6">
+                                    <div className="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold text-xl">
+                                        1
+                                    </div>
+                                    <h3 className="text-3xl font-bold text-white">Set Up</h3>
+                                </div>
+                                <p className="text-xl text-gray-300 mb-6 leading-relaxed">
+                                    Connect your GitHub repository and Linear workspace. Vectra AI will start monitoring your commits immediately.
+                                </p>
+                                <div className="space-y-3">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-2 h-2 bg-blue-400 rounded-full"></div>
+                                        <span className="text-gray-300">Connect GitHub repository</span>
+                                    </div>
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-2 h-2 bg-blue-400 rounded-full"></div>
+                                        <span className="text-gray-300">Link Linear workspace</span>
+                                    </div>
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-2 h-2 bg-blue-400 rounded-full"></div>
+                                        <span className="text-gray-300">Configure project settings</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="lg:w-1/2">
+                                <div className="bg-gray-800/30 rounded-xl p-4 border border-gray-700/50">
+                                    <img 
+                                        src="/set-up-screenshot.png" 
+                                        alt="Vectra AI Setup Process" 
+                                        className="w-full h-auto rounded-lg shadow-2xl"
+                                    />
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Step 2: Make Changes */}
+                        <div className="flex flex-col lg:flex-row-reverse items-center gap-12">
+                            <div className="lg:w-1/2">
+                                <div className="flex items-center gap-4 mb-6">
+                                    <div className="w-12 h-12 bg-purple-600 rounded-full flex items-center justify-center text-white font-bold text-xl">
+                                        2
+                                    </div>
+                                    <h3 className="text-3xl font-bold text-white">Make Changes</h3>
+                                </div>
+                                <p className="text-xl text-gray-300 mb-6 leading-relaxed">
+                                    Work normally in your repository. Commit and push your changes. Vectra AI automatically detects what you're working on.
+                                </p>
+                                <div className="space-y-3">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-2 h-2 bg-purple-400 rounded-full"></div>
+                                        <span className="text-gray-300">Write code as usual</span>
+                                    </div>
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-2 h-2 bg-purple-400 rounded-full"></div>
+                                        <span className="text-gray-300">Commit with descriptive messages</span>
+                                    </div>
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-2 h-2 bg-purple-400 rounded-full"></div>
+                                        <span className="text-gray-300">Push to your repository</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="lg:w-1/2">
+                                <div className="bg-gray-800/30 rounded-xl p-8 border border-gray-700/50 min-h-[300px] flex items-center justify-center">
+                                    <div className="text-center">
+                                        <svg className="w-16 h-16 text-gray-500 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                        </svg>
+                                        <p className="text-gray-400 text-lg">Git commit screenshot coming soon</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Step 3: See Magic */}
+                        <div className="flex flex-col lg:flex-row items-center gap-12">
+                            <div className="lg:w-1/2">
+                                <div className="flex items-center gap-4 mb-6">
+                                    <div className="w-12 h-12 bg-green-600 rounded-full flex items-center justify-center text-white font-bold text-xl">
+                                        3
+                                    </div>
+                                    <h3 className="text-3xl font-bold text-white">See the Magic</h3>
+                                </div>
+                                <p className="text-xl text-gray-300 mb-6 leading-relaxed">
+                                    Watch your Linear board update automatically. Tickets are created, updated, and completed based on your actual code changes.
+                                </p>
+                                <div className="space-y-3">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-2 h-2 bg-green-400 rounded-full"></div>
+                                        <span className="text-gray-300">Tickets update automatically</span>
+                                    </div>
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-2 h-2 bg-green-400 rounded-full"></div>
+                                        <span className="text-gray-300">Progress tracked in real-time</span>
+                                    </div>
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-2 h-2 bg-green-400 rounded-full"></div>
+                                        <span className="text-gray-300">No manual updates needed</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="lg:w-1/2">
+                                <div className="bg-gray-800/30 rounded-xl p-8 border border-gray-700/50 min-h-[300px] flex items-center justify-center">
+                                    <div className="text-center">
+                                        <svg className="w-16 h-16 text-gray-500 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                                        </svg>
+                                        <p className="text-gray-400 text-lg">Linear board screenshot coming soon</p>
+                                    </div>
                                 </div>
                             </div>
                         </div>
