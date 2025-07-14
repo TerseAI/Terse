@@ -67,7 +67,7 @@ class Owner {
             const isComplete = await this.session.ticketManager?.isTicketComplete(result.entityId);
             return !isComplete;
         });
-
+        console.log(chalk.blue(`[${eventId}] Filtered results going into the analyzer`), filteredResults.length);
         const unifiedEvent = unifiedGitHubEventForAgent(event, filteredResults);
 
         console.log(chalk.blue(`[${eventId}] Commits Shas`), event.commits.map(c => c.sha));
