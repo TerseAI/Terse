@@ -178,7 +178,7 @@ const systemPrompt = async (session: Session, commitContext?: { commits: Commit[
 
     I will send this summary to the user who triggered the event.
 
-    Format your response in Slack-flavored markdown using *bold*, _italic_, and \`\`\`code blocks\`\`\`, avoiding HTML or unsupported Markdown.
+    DO NOT USE MARKDOWN IN YOUR RESPONSE. SLACK WILL NOT RENDER IT CORRECTLY.
 
     ${commitContext ? `
     COMMIT CONTEXT:
