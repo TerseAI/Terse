@@ -204,6 +204,7 @@ export class JiraAdapter implements TicketManager {
 
     async searchItemsForTicket(id: string): Promise<SearchItem[]> {
         const issue = await this.client.findIssue(id);
+        console.log('🔧 Issue to be indexed:', issue);
         return [
             {
                 id: issue.id,
