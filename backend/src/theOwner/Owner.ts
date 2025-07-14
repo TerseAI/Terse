@@ -18,7 +18,10 @@ class Owner {
     }
 
     async handleUnifiedGitHubEvent(event: UnifiedGitHubEvent): Promise<ChangedItem[]> {
-        console.log('The owner is handling a unified GitHub event', event.eventType, event.repositoryName, event.username);
+        const eventId = `${event.username}-${event.repositoryName}-${event.eventType}-${Date.now()}`;
+        console.log(chalk.blue(`[${eventId}] The owner is handling a unified GitHub event`), event.eventType, event.repositoryName, event.username);
+        console.log(chalk.blue(`[${eventId}] Session user:`, this.session.user.github_username, 'Team ID:', this.session.teamId));
+        
         const analyzer = new Analyzer(this.session);
 
         const results: SearchResult[][] = [];
@@ -33,7 +36,7 @@ class Owner {
                 limit: 10
             });
 
-            console.log(chalk.blue('Search results for commit name', commit.name), searchResults);
+            console.log(chalk.blue(`[${eventId}] Search results for commit name`, commit.name), searchResults);
             results.push(searchResults);
         }
 
@@ -48,7 +51,7 @@ class Owner {
                 limit: 10
             });
 
-            console.log(chalk.blue('Search results for PR content'), prSearchResults);
+            console.log(chalk.blue(`[${eventId}] Search results for PR content`), prSearchResults);
             results.push(prSearchResults);
         }
 
@@ -67,7 +70,7 @@ class Owner {
 
         const unifiedEvent = unifiedGitHubEventForAgent(event, filteredResults);
 
-        console.log(chalk.blue('Commits Shas'), event.commits.map(c => c.sha));
+        console.log(chalk.blue(`[${eventId}] Commits Shas`), event.commits.map(c => c.sha));
 
         // Set commit context in the analyzer
         analyzer.setCommitContext(event.commits, event.repository, event.branch);
@@ -78,18 +81,19 @@ class Owner {
         // Run the analyzer
         const result = await analyzer.run();
 
-        console.log(chalk.blue('Analyzer result for unified event'), result.finalOutput);
+        console.log(chalk.blue(`[${eventId}] Analyzer result for unified event`), result.finalOutput);
 
         const changedItems = analyzer.getAndClearChangedItems();
-        console.log(chalk.blue('Changed items'), changedItems);
+        console.log(chalk.blue(`[${eventId}] Changed items`), changedItems);
 
         // Save activity, send slack message
-        await this.sendSlackMessage(result.finalOutput as string);
+        await this.sendSlackMessage(result.finalOutput as string, eventId);
 
+        console.log(chalk.green(`[${eventId}] Event processing completed successfully`));
         return changedItems;
     }
 
-    async sendSlackMessage(message: string) {
+    async sendSlackMessage(message: string, eventId: string) {
         // get user slack integration
         const userSlackIntegration = await db().user_slack_integrations.findFirst({
             where: {
@@ -120,7 +124,7 @@ class Owner {
 
         sendMessage(message, slackIntegration.access_token, userSlackIntegration.dm_channel_id);
 
-        console.log(chalk.green("Message sent to slack"));
+        console.log(chalk.green(`[${eventId}] Message sent to slack`));
     }
 }
 

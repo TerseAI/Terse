@@ -227,32 +227,40 @@ export async function githubAppRecievedCommit(req: Request, res: Response) {
 
 // This is important. If we got this request, we know that the app is installed on their repo. IF it's not in our DB, we need to create it.
 async function resolveUserGithubRelation(user: User, username: string, repositoryName: string, installationId: number): Promise<GithubRepository> {
-    // check if the repository is in our DB
-    let repository: GithubRepository | null = await db().github_repositories.findFirst({ where: { name: repositoryName, installation_id: installationId } });
-    if (!repository) {
-        console.log(chalk.yellow('Drift detected. This repository is not in our DB but it is a registered repository in the github app. Creating it...'));
-        repository = await db().github_repositories.create({
-            data: {
-                name: repositoryName,
-                owner: username,
-                installation_id: installationId
-            }
+    // Use a transaction to prevent race conditions when multiple events arrive simultaneously
+    return await db().$transaction(async (tx) => {
+        // check if the repository is in our DB
+        let repository: GithubRepository | null = await tx.github_repositories.findFirst({ 
+            where: { name: repositoryName, installation_id: installationId } 
         });
-    }
+        
+        if (!repository) {
+            console.log(chalk.yellow('Drift detected. This repository is not in our DB but it is a registered repository in the github app. Creating it...'));
+            repository = await tx.github_repositories.create({
+                data: {
+                    name: repositoryName,
+                    owner: username,
+                    installation_id: installationId
+                }
+            });
+        }
 
-    // Make sure the user is associated with the repository
-    let relation: UserGithubRepository | null = await db().user_github_repositories.findFirst({ where: { user_id: user.id, github_repository_id: repository.id } });
-    if (!relation) {
-        await db().user_github_repositories.create({
-        data: {
-            user_id: user.id,
-            github_repository_id: repository.id
-            }
+        // Make sure the user is associated with the repository
+        let relation: UserGithubRepository | null = await tx.user_github_repositories.findFirst({ 
+            where: { user_id: user.id, github_repository_id: repository.id } 
         });
-    }
+        
+        if (!relation) {
+            await tx.user_github_repositories.create({
+                data: {
+                    user_id: user.id,
+                    github_repository_id: repository.id
+                }
+            });
+        }
 
-    // get the user
-    return repository;
+        return repository;
+    });
 }
 
 type GithubAppUnifiedEventRequest = {
@@ -300,57 +308,71 @@ export async function githubAppUnifiedEvent(req: Request, res: Response) {
     const { username, repositoryName, installationId } = body;
     console.log(chalk.blue('githubAppUnifiedEvent'), body.eventType, body.repositoryName, body.username);
 
-    // get the user
-    let user: User | null = await db().users.findFirst({ where: { github_username: username } });
-    if (!user) {
-        const email = username + '@username.ai';
-        console.log(chalk.yellow('User not found, creating placeholder user with fake email ' + email));
-        user = await db().users.create({
-            data: {
-                github_username: username,
-                is_placeholder: true,
-                email: email,
-                display_name: body.sender.login
+    try {
+        // get the user with transaction safety
+        let user: User | null = await db().$transaction(async (tx) => {
+            let foundUser = await tx.users.findFirst({ where: { github_username: username } });
+            if (!foundUser) {
+                const email = username + '@username.ai';
+                console.log(chalk.yellow('User not found, creating placeholder user with fake email ' + email));
+                foundUser = await tx.users.create({
+                    data: {
+                        github_username: username,
+                        is_placeholder: true,
+                        email: email,
+                        display_name: body.sender.login
+                    }
+                });
+                console.log(chalk.green('Placeholder user created:'), foundUser);
             }
+            return foundUser;
         });
-        console.log(chalk.green('Placeholder user created:'), user);
-    }
 
-    // resolve the user github relation
-    const repository: GithubRepository= await resolveUserGithubRelation(user, username, repositoryName, installationId);
-    
-    let adapter: TicketManager | null = await getUserTicketManager(user.id);
-    if (!adapter) {
-        // attempt to fallback to owner's ticket manager
-        const owner = await db().users.findFirst({ where: { github_username: repository.owner } });
-        if (owner) {
-            console.log(chalk.yellow('No ticket manager found for user, using the owner\'s ticket manager'));
-            adapter = await getUserTicketManager(owner.id);
+        // resolve the user github relation
+        const repository: GithubRepository= await resolveUserGithubRelation(user, username, repositoryName, installationId);
+        
+        let adapter: TicketManager | null = await getUserTicketManager(user.id);
+        if (!adapter) {
+            // attempt to fallback to owner's ticket manager
+            const owner = await db().users.findFirst({ where: { github_username: repository.owner } });
+            if (owner) {
+                console.log(chalk.yellow('No ticket manager found for user, using the owner\'s ticket manager'));
+                adapter = await getUserTicketManager(owner.id);
+            }
         }
-    }
 
-    if (!adapter) {
-        console.log(chalk.red('User does not have a ticket manager'));
-        await saveActivityEvent(repository, body, [], user.id);
-        res.status(200).json({ message: 'User does not have a ticket manager> Registering event, but no action will be taken' });
-        return;
-    }
+        if (!adapter) {
+            console.log(chalk.red('User does not have a ticket manager'));
+            await saveActivityEvent(repository, body, [], user.id);
+            res.status(200).json({ message: 'User does not have a ticket manager> Registering event, but no action will be taken' });
+            return;
+        }
 
-    const session: Session = {
-        user: user,
-        isUserInitiated: false,
-        teamId: (await adapter.getTeams())[0].id,
-        ticketManager: adapter,
-    }
+        const teamId = (await adapter.getTeams())[0].id;
+        console.log(chalk.blue('Team ID used for search:', teamId));
+        // Create isolated session for this specific event
+        const session: Session = {
+            user: user,
+            isUserInitiated: false,
+            teamId: teamId,
+            ticketManager: adapter,
+        }
 
-    // init an Owner
-    const owner: Owner = new Owner(search(), session)
-    // handle the unified event
-    const changedItems = await owner.handleUnifiedGitHubEvent(body);
-    console.log(chalk.green('Saving activity event for changed items:'), changedItems);
-    await saveActivityEvent(repository, body, changedItems, user.id);
-    
-    res.status(200).json({ message: 'GitHub event received and processed' });
+        console.log(chalk.blue('Processing event for user:', user.github_username, 'team:', session.teamId));
+
+        // init an Owner with isolated session
+        const owner: Owner = new Owner(search(), session)
+        
+        // handle the unified event with proper error handling
+        const changedItems = await owner.handleUnifiedGitHubEvent(body);
+        console.log(chalk.green('Saving activity event for changed items:'), changedItems);
+        await saveActivityEvent(repository, body, changedItems, user.id);
+        
+        res.status(200).json({ message: 'GitHub event received and processed' });
+    } catch (error) {
+        console.error(chalk.red('Error processing GitHub event:'), error);
+        res.status(500).json({ message: 'Error processing GitHub event', error: error instanceof Error ? error.message : 'Unknown error' });
+    }
 }
 
 async function saveActivityEvent(repository: GithubRepository, event: UnifiedGitHubEvent, changedItems: ChangedItem[], userId: string) {
