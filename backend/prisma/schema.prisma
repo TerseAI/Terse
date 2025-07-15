@@ -119,19 +119,37 @@ model jira_api_keys {
 model activity_events {
   id                   String          @id @default(cuid())
   user_id              String
-  title                String
+  title                String // this is really a summary now
   event_type           GitHubEventType
   github_repository_id String
   created_at           DateTime        @default(now())
   updated_at           DateTime        @updatedAt
 
-  github_repository      github_repositories      @relation(fields: [github_repository_id], references: [id], onDelete: Cascade)
-  users                  users?                   @relation(fields: [user_id], references: [id])
-  ticket_activity_events ticket_activity_events[]
+  github_repository github_repositories @relation(fields: [github_repository_id], references: [id], onDelete: Cascade)
+  users             users?              @relation(fields: [user_id], references: [id])
+  related_activity_items    related_activity_items[]
 
   @@index([event_type])
 }
 
+model related_activity_items {
+  id                String   @id @default(cuid())
+  summary           String
+  created_at        DateTime @default(now())
+  updated_at        DateTime @updatedAt
+  activity_event_id String
+
+  activity_events activity_events @relation(fields: [activity_event_id], references: [id], onDelete: Cascade)
+}
+
+
+enum RelatedActivityItemType {
+  TICKET
+  SLACK_THREAD
+  DOCS_PAGE
+}
+
+// DEPRECATED
 model ticket_activity_events {
   id                String          @id @default(cuid())
   user_id           String
@@ -143,7 +161,6 @@ model ticket_activity_events {
   updated_at        DateTime        @updatedAt
 
   user            users           @relation(fields: [user_id], references: [id])
-  activity_events activity_events @relation(fields: [activity_event_id], references: [id], onDelete: Cascade)
 
   @@index([ticket_id])
 }
