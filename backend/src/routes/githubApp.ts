@@ -330,32 +330,13 @@ export async function githubAppUnifiedEvent(req: Request, res: Response) {
 
         // resolve the user github relation
         const repository: GithubRepository= await resolveUserGithubRelation(user, username, repositoryName, installationId);
-        
-        let adapter: TicketManager | null = await getUserTicketManager(user.id);
-        if (!adapter) {
-            // attempt to fallback to owner's ticket manager
-            const owner = await db().users.findFirst({ where: { github_username: repository.owner } });
-            if (owner) {
-                console.log(chalk.yellow('No ticket manager found for user, using the owner\'s ticket manager'));
-                adapter = await getUserTicketManager(owner.id);
-            }
-        }
 
-        if (!adapter) {
-            console.log(chalk.red('User does not have a ticket manager'));
-            await saveActivityEvent(repository, body, [], user.id);
-            res.status(200).json({ message: 'User does not have a ticket manager> Registering event, but no action will be taken' });
-            return;
-        }
-
-        const teamId = (await adapter.getTeams())[0].id;
-        console.log(chalk.blue('Team ID used for search:', teamId));
         // Create isolated session for this specific event
         const session: Session = {
             user: user,
             isUserInitiated: false,
-            teamId: teamId,
-            ticketManager: adapter,
+            teamId: '',
+            ticketManager: undefined,
         }
 
         console.log(chalk.blue('Processing event for user:', user.github_username, 'team:', session.teamId));
@@ -364,9 +345,9 @@ export async function githubAppUnifiedEvent(req: Request, res: Response) {
         const owner: Owner = new Owner(search(), session)
         
         // handle the unified event with proper error handling
-        const changedItems = await owner.handleUnifiedGitHubEvent(body);
-        console.log(chalk.green('Saving activity event for changed items:'), changedItems);
-        await saveActivityEvent(repository, body, changedItems, user.id);
+        const summary = await owner.handleUnifiedGitHubEvent(body);
+        console.log(chalk.green('Saving activity event for changed items:'), summary);
+        await saveActivityEvent(repository, body, summary, user.id);
         
         res.status(200).json({ message: 'GitHub event received and processed' });
     } catch (error) {
@@ -375,28 +356,15 @@ export async function githubAppUnifiedEvent(req: Request, res: Response) {
     }
 }
 
-async function saveActivityEvent(repository: GithubRepository, event: UnifiedGitHubEvent, changedItems: ChangedItem[], userId: string) {
+async function saveActivityEvent(repository: GithubRepository, event: UnifiedGitHubEvent, summary: string, userId: string) {
     const githubActivityEvent = await db().activity_events.create({
         data: {
             user_id: userId,
             event_type: event.eventType === 'push' ? 'PUSH' : event.eventType === 'pull_request.opened' ? 'PULL_REQUEST_OPENED' : event.eventType === 'pull_request.synchronize' ? 'PULL_REQUEST_UPDATED' : event.eventType === 'pull_request.merged' ? 'PULL_REQUEST_MERGED' : event.eventType === 'pull_request.closed' ? 'PULL_REQUEST_CLOSED' : 'PUSH',
-            title: formatTitleForEvent(event),
+            title: summary,
             github_repository_id: repository.id
         }
     });
-
-    // create ticket activity events
-    for (const changedItem of changedItems) {
-        await db().ticket_activity_events.create({
-            data: {
-                user_id: userId,
-                activity_event_id: githubActivityEvent.id,
-                ticket_id: changedItem.id,
-                event_type: changedItem.change_event_type === ChangeEventType.CREATED ? 'TICKET_CREATED' : 'TICKET_UPDATED',
-                title: formatTitleForEvent(event)
-            }
-        });
-    }
 }
 
 export default {
