@@ -9,7 +9,6 @@ import {
     XCircleIcon,
     ClockIcon,
     UserIcon,
-    FireIcon,
 } from '@heroicons/react/24/outline';
 
 // Utility function for formatting time
