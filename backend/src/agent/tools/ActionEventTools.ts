@@ -24,11 +24,16 @@ export const createActionSummaryTool = tool({
         if (!runContext?.context) {
             throw new Error("No context provided");
         }
+        if (!runContext.context.commitContext) {
+            console.warn("No commit context provided");
+        }
+
         const topLevelSumary = summary;
 
         // go through each sub activity summary. Take the summary + Create an arrya of associated commits
         const subActivityOverviews: SubActivityOverview[] = [];
         for (const subActivitySummary of subActivitySummaries) {
+            console.log("Creating sub activity summary associated commits", subActivitySummary.associatedCommits);
             const subActivityOverview: SubActivityOverview = {
                 summary: subActivitySummary.summary,
                 sub_activity_commit_associations: subActivitySummary.associatedCommits?.map(commitIndex => {
@@ -70,6 +75,8 @@ export const createCommitSummaryTool = tool({
         if (!runContext?.context) {
             throw new Error("No context provided");
         }
+
+        console.log("Creating commit summary", summary);
 
         return {
             summary: summary,
