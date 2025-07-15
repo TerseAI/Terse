@@ -1,8 +1,6 @@
 import { RunContext, tool } from "@openai/agents";
-import { ActivityOverview, SessionWithTracking, SubActivityCommitAssociation, SubActivityOverview } from "../agents/Analyzer";
+import { ActivityOverview, SessionWithTracking, SubActivityOverview } from "../agents/Analyzer";
 import { z } from "zod";
-import { ChangeEventType } from "../../shared/ModelEvents";
-import { EntityType } from "../../shared/Entities";
 
 export const createActionSummaryTool = tool({
     name: 'Create Action Event',
