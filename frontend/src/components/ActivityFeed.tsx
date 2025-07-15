@@ -99,7 +99,7 @@ const ActivityEventItem: React.FC<{ activity: ActivityEvent }> = ({ activity }) 
                 <div className="flex-1 min-w-0">
                     <div className="flex items-center space-x-3 mb-2">
                         <span className="text-sm font-medium text-gray-900">
-                            {activity.github_repository_name}
+                            {activity.github_repository_owner_id}/{activity.github_repository_name} {activity.event_type}
                         </span>
                         <span className="text-xs text-gray-500">
                             {formatTimeAgo(activity.created_at)}
