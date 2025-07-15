@@ -10,13 +10,13 @@ export const createActionSummaryTool = tool({
         subActivitySummaries: z.array(
             z.object({
                 summary: z.string().describe('A summary of the sub activity'),
-                associatedCommits: z.union([z.array(z.number()), z.null()]).describe('The indices of commits to associate with this sub activity (0-based, from the event context)'),
+                associatedCommits: z.array(z.number()).describe('The indices of commits to associate with this sub activity (0-based, from the event context)'),
                 associatedPullRequests: z.array(z.object({
                     id: z.string().describe('The ID of the pull request'),
                     number: z.number().describe('The number of the pull request'),
                     title: z.string().describe('The title of the pull request'),
                     url: z.string().describe('The URL of the pull request'),
-                })).describe('The pull requests to associate with this sub activity. OK to'),
+                })).describe('The pull requests to associate with this sub activity. OK to be empty if no pull requests are associated.'),
             })
         ).describe('A list of summaries for each sub activity'),
     }), 
@@ -71,7 +71,7 @@ export const createCommitSummaryTool = tool({
     parameters: z.object({
         summary: z.string().describe('A summary of the commit'),
     }),
-    execute: async ({summary}, runContext?: RunContext<SessionWithTracking  >) => {
+    execute: async ({summary}, runContext?: RunContext<SessionWithTracking>) => {
         if (!runContext?.context) {
             throw new Error("No context provided");
         }
