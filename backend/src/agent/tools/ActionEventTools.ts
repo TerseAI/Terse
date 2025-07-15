@@ -1,70 +1,64 @@
 import { RunContext, tool } from "@openai/agents";
-import { SessionWithTracking } from "../agents/Analyzer";
+import { ActivityOverview, SessionWithTracking, SubActivityCommitAssociation, SubActivityOverview } from "../agents/Analyzer";
 import { z } from "zod";
-import { ChangeEventType } from "src/shared/ModelEvents";
-import { EntityType } from "src/shared/Entities";
-import { Commit } from "src/theOwner/utility";
+import { ChangeEventType } from "../../shared/ModelEvents";
+import { EntityType } from "../../shared/Entities";
 
 export const createActionSummaryTool = tool({
     name: 'Create Action Event',
     description: 'Create an action event',
     parameters: z.object({
-        summary: z.string().describe('A summary of the event'),
-        associatedCommits: z.union([z.array(z.number()), z.null()]).describe('The indices of commits to associate with this ticket (0-based, from the event context)'),
-        associatedPullRequests: z.union([z.array(z.number()), z.null()]).describe('The indices of pull requests to associate with this ticket (0-based, from the event context)'),
+        summary: z.string().describe('A top level summary of the event'),
+        subActivitySummaries: z.array(
+            z.object({
+                summary: z.string().describe('A summary of the sub activity'),
+                associatedCommits: z.union([z.array(z.number()), z.null()]).describe('The indices of commits to associate with this sub activity (0-based, from the event context)'),
+                associatedPullRequests: z.array(z.object({
+                    id: z.string().describe('The ID of the pull request'),
+                    number: z.number().describe('The number of the pull request'),
+                    title: z.string().describe('The title of the pull request'),
+                    url: z.string().describe('The URL of the pull request'),
+                })).describe('The pull requests to associate with this sub activity. OK to'),
+            })
+        ).describe('A list of summaries for each sub activity'),
     }), 
-    execute: async ({summary, associatedCommits, associatedPullRequests}, runContext?: RunContext<SessionWithTracking  >) => {
+    execute: async ({summary, subActivitySummaries}, runContext?: RunContext<SessionWithTracking  >) => {
         if (!runContext?.context) {
             throw new Error("No context provided");
         }
+        const topLevelSumary = summary;
 
-        let commitAssociations: {
-            sha: string;
-            message: string;
-            url: string;
-            repository: string;
-            branch: string;
-        }[] = [];
-        if (associatedCommits && associatedCommits.length > 0) {
-            // Get commit context from the session
-            const session = runContext?.context as SessionWithTracking;
-            const commitContext = session?.commitContext;
-            
-            if (commitContext) {
-                commitAssociations = associatedCommits.map(index => {
-                    const commit = commitContext.commits[index];
+        // go through each sub activity summary. Take the summary + Create an arrya of associated commits
+        const subActivityOverviews: SubActivityOverview[] = [];
+        for (const subActivitySummary of subActivitySummaries) {
+            const subActivityOverview: SubActivityOverview = {
+                summary: subActivitySummary.summary,
+                sub_activity_commit_associations: subActivitySummary.associatedCommits?.map(commitIndex => {
+                    const commit = runContext.context.commitContext?.commits[commitIndex];
                     if (!commit) {
-                        console.warn(`Commit index ${index} not found in context`);
+                        console.warn(`Commit index ${commitIndex} not found in context`);
                         return null;
                     }
-                    
                     return {
                         sha: commit.sha,
                         message: commit.name,
-                        url: `https://github.com/${commitContext.repository.owner}/${commitContext.repository.name}/commit/${commit.sha}`,
-                        repository: `${commitContext.repository.owner}/${commitContext.repository.name}`,
-                        branch: commitContext.branch || 'main'
-                    };
-                }).filter((commit): commit is NonNullable<typeof commit> => commit !== null);
-            }
+                        url: `https://github.com/${runContext.context.commitContext?.repository.owner}/${runContext.context.commitContext?.repository.name}/commit/${commit.sha}`,
+                        repository: `${runContext.context.commitContext?.repository.owner}/${runContext.context.commitContext?.repository.name}`,
+                        branch: runContext.context.commitContext?.branch || 'main',
+                    }
+                }).filter((commit): commit is NonNullable<typeof commit> => commit !== null) || [],
+            };
+            subActivityOverviews.push(subActivityOverview);
         }
 
-        runContext?.context.trackChange(EntityType.ACTION_EVENT, summary, ChangeEventType.CREATED);
-
-        // format final summary
-        const finalSummary = `
-        ${summary}
-        Associated commits: ${commitAssociations.map(commit => `[${commit.message}](${commit.url})`).join(', ')}
-        Associated pull requests: ${associatedPullRequests?.join(', ')}
-        `;
-
-        runContext?.context.setFinalSummary(finalSummary);
-
-        return {
-            summary: summary,
-            associatedCommits: commitAssociations,
-            associatedPullRequests: associatedPullRequests,
+        const overview: ActivityOverview = {
+            summary: topLevelSumary,
+            sub_activity_overviews: subActivityOverviews,
         };
+
+        runContext?.context.setFinalSummary(overview);
+
+        return overview;
     }
 });
 
