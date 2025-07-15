@@ -47,7 +47,7 @@ export class Analyzer {
             instructions: await systemPrompt(this.session, this.commitContext),
             model: 'gpt-4o',
             tools: [
-                ...ticketTools
+                // ...ticketTools
             ]
         });
 
