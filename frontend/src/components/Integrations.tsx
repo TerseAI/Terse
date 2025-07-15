@@ -5,7 +5,7 @@ interface IntegrationsProps {
     className?: string;
 }
 
-export function Integrations({ onIntegrationChange, className = "" }: IntegrationsProps) {
+export function Integrations({ className = "" }: IntegrationsProps) {
     return (
         <div className={`bg-white rounded-xl border border-gray-200 shadow-sm p-6 ${className}`}>
             <h2 className="text-lg font-semibold text-gray-900 mb-4">Integrations</h2>
