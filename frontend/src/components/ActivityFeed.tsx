@@ -116,25 +116,41 @@ const EnhancedActivityEventItem: React.FC<{ activity: ActivityEvent }> = ({ acti
                         {activity.title}
                     </h3>
                     
-                    {/* Ticket Activity Events */}
-                    {activity.ticket_activity_events.length > 0 && (
-                        <div className="mt-4 space-y-2">
-                            <div className="flex items-center gap-2 mb-2">
-                                <span className="text-sm font-medium text-gray-700">Related Tickets</span>
-                            </div>
-                            <div className="space-y-2">
-                                {activity.ticket_activity_events.map((ticketEvent, index) => (
-                                    <div key={index} className="flex items-center gap-3 p-2 bg-blue-50 rounded-lg border border-blue-100">
-                                        <span className="text-xs font-mono text-blue-700 bg-blue-100 px-2 py-1 rounded">
-                                            {ticketEvent.ticket.id}
-                                        </span>
-                                        <span className="text-sm text-gray-700 flex-1">{ticketEvent.ticket.title}</span>
-                                        <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
-                                            {ticketEvent.event_type.toLowerCase().replace('_', ' ')}
-                                        </span>
-                                    </div>
-                                ))}
-                            </div>
+                    {/* Sub Activities */}
+                    {activity.sub_activities.length > 0 && (
+                        <div className="mt-4 space-y-3">
+                            {activity.sub_activities.map((subActivity, index) => (
+                                <div key={index} className="bg-gray-50 rounded-lg p-4 border border-gray-100">
+                                    <p className="text-sm text-gray-700 mb-3">{subActivity.summary}</p>
+                                    
+                                    {/* Associated Commits */}
+                                    {subActivity.commits.length > 0 && (
+                                        <div className="space-y-2">
+                                            <div className="flex items-center gap-2 mb-2">
+                                                <span className="text-xs font-medium text-gray-600">Related Commits</span>
+                                            </div>
+                                            <div className="space-y-2">
+                                                {subActivity.commits.map((commit, commitIndex) => (
+                                                    <div key={commitIndex} className="flex items-center gap-3 p-2 bg-blue-50 rounded-lg border border-blue-100">
+                                                        <span className="text-xs font-mono text-blue-700 bg-blue-100 px-2 py-1 rounded">
+                                                            {commit.sha.substring(0, 7)}
+                                                        </span>
+                                                        <span className="text-sm text-gray-700 flex-1">{commit.message}</span>
+                                                        <a 
+                                                            href={commit.url} 
+                                                            target="_blank" 
+                                                            rel="noopener noreferrer"
+                                                            className="text-xs text-blue-600 hover:text-blue-800 underline"
+                                                        >
+                                                            View
+                                                        </a>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            ))}
                         </div>
                     )}
                 </div>
