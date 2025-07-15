@@ -162,6 +162,18 @@ const systemPrompt = async (session: Session, commitContext?: { commits: Commit[
     At the end, i'll send you a final response to indicate that you are done.
 
     Then You need to pump out a summary of the changes. You will call the CreateActionSummaryTool to do this. You call it once. Per github event. But youc an attach as many commits as you want to the action event.
+
+     ${commitContext ? `
+    COMMIT CONTEXT:
+    The following commits are available for association with tickets (use their indices in the associatedCommits parameter):
+    ${commitContext.commits.map((commit, index) => `${index}: ${commit.sha.substring(0, 8)} - ${commit.name}`).join('\n')}
+    
+    Repository: ${commitContext.repository.owner}/${commitContext.repository.name}
+    Branch: ${commitContext.branch || 'main'}
+    
+    You can associate relevant commits by providing their indices in the associatedCommits parameter.
+    This helps track the relationship between code changes and any sub activities you create.
+    ` : ''}
     `;
 }
 
