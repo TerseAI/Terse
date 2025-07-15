@@ -119,7 +119,7 @@ model jira_api_keys {
 model activity_events {
   id                   String          @id @default(cuid())
   user_id              String
-  title                String 
+  title                String
   event_type           GitHubEventType
   github_repository_id String
   created_at           DateTime        @default(now())
@@ -139,16 +139,16 @@ model sub_activity_events {
   updated_at        DateTime @updatedAt
   activity_event_id String
 
-  activity_events activity_events @relation(fields: [activity_event_id], references: [id], onDelete: Cascade)
+  activity_events                  activity_events                    @relation(fields: [activity_event_id], references: [id], onDelete: Cascade)
   sub_activity_commit_associations sub_activity_commit_associations[]
 }
 
 model sub_activity_commit_associations {
-  id             String   @id @default(cuid())
-  commit_sha     String
-  commit_message String
-  commit_url     String
-  created_at     DateTime @default(now())
+  id                    String   @id @default(cuid())
+  commit_sha            String
+  commit_message        String
+  commit_url            String
+  created_at            DateTime @default(now())
   sub_activity_event_id String
 
   sub_activity_events sub_activity_events @relation(fields: [sub_activity_event_id], references: [id], onDelete: Cascade)
