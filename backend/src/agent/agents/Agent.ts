@@ -39,7 +39,7 @@ export class AgentSession implements IAgentSession<SessionWithTracking> {
       name: 'LLM ticket manager',
       instructions: await systemPrompt(this.session),
       model: 'gpt-4o',
-      tools: this.toolBox.getTools(toolBoxType)
+      tools: this.toolBox.getTools(toolBoxType) as Tool<SessionWithTracking>[]
     });
 
     this.agent = agent;
