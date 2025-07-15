@@ -6,7 +6,7 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Home from "./pages/Home";
 import { IntegrationProvider } from "./context/Integrations";
 import LandingPage from "./pages/LandingPage";
-import LandingPageChangelog from "./pages/LandingPage_changelog";
+// import LandingPageChangelog from "./pages/LandingPage_changelog";
 
 function App() {
   return (
@@ -15,7 +15,7 @@ function App() {
         <Routes>
           <Route path="/app" element={<Content />} />
           <Route path="/" element={<LandingPage />} />
-          <Route path="/changelog" element={<LandingPageChangelog />} />
+          {/* <Route path="/changelog" element={<LandingPageChangelog />} /> */}
         </Routes>
       </Router>
     </AuthProvider>
