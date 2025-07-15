@@ -5,12 +5,12 @@ interface SetupProgressProps {
 }
 
 export function SetupProgress({ className = "" }: SetupProgressProps) {
-    const { hasGithub, hasLinear, hasJira, hasSlack } = useIntegrations();
+    const { hasGithub } = useIntegrations();
 
     const steps = [
         { id: 'github', label: 'GitHub', completed: hasGithub },
-        { id: 'ticketing', label: 'Ticketing', completed: hasLinear || hasJira },
-        { id: 'slack', label: 'Slack', completed: hasSlack }
+        // { id: 'ticketing', label: 'Ticketing', completed: hasLinear || hasJira },
+        // { id: 'slack', label: 'Slack', completed: hasSlack }
     ];
 
     return (
