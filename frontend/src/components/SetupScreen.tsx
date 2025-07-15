@@ -52,3 +52,5 @@ export function SetupScreen({ onIntegrationChange, className = "" }: SetupScreen
         </div>
     );
 } 
+
+// idk rabdom trigger
