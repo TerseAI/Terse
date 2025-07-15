@@ -8,50 +8,37 @@ import {
     CheckCircleIcon, 
     XCircleIcon,
     ClockIcon,
+    UserIcon,
+    FireIcon,
 } from '@heroicons/react/24/outline';
 
-// Ticket Activity Events Component
-const TicketActivityEvents: React.FC<{ ticketEvents: ActivityEvent['ticket_activity_events'] }> = ({ ticketEvents }) => {
-    if (ticketEvents.length === 0) return null;
-
-    return (
-        <div className="mt-3 pt-3 border-t border-gray-200">
-            <div className="space-y-2">
-                {ticketEvents.map((ticketEvent, ticketIndex) => (
-                    <div
-                        key={ticketIndex}
-                        className="flex items-center space-x-3 p-3 bg-white rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-shadow"
-                    >
-                        <div className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0"></div>
-                        <span className="text-sm font-normal text-gray-700 flex-1">
-                            {ticketEvent.ticket.title}
-                        </span>
-                        <span className="text-xs text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded-full">
-                            {ticketEvent.event_type.toLowerCase().replace('_', ' ')}
-                        </span>
-                    </div>
-                ))}
-            </div>
-        </div>
-    );
+// Utility function for formatting time
+const formatTimeAgo = (date: Date) => {
+    const now = new Date();
+    const diffInSeconds = Math.floor((now.getTime() - new Date(date).getTime()) / 1000);
+    
+    if (diffInSeconds < 60) return 'just now';
+    if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m ago`;
+    if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h ago`;
+    return `${Math.floor(diffInSeconds / 86400)}d ago`;
 };
 
-// Activity Event Item Component
-const ActivityEventItem: React.FC<{ activity: ActivityEvent }> = ({ activity }) => {
+// Enhanced Activity Event Item Component
+const EnhancedActivityEventItem: React.FC<{ activity: ActivityEvent }> = ({ activity }) => {
     const getEventIcon = (eventType: string) => {
         switch (eventType) {
             case 'PUSH':
-                return <CodeBracketIcon className="w-4 h-4 text-blue-600" />;
+                return <CodeBracketIcon className="w-5 h-5 text-blue-600" />;
             case 'PULL_REQUEST_OPENED':
-                return <ArrowPathIcon className="w-4 h-4 text-green-600" />;
+                return <ArrowPathIcon className="w-5 h-5 text-green-600" />;
             case 'PULL_REQUEST_MERGED':
-                return <CheckCircleIcon className="w-4 h-4 text-purple-600" />;
+                return <CheckCircleIcon className="w-5 h-5 text-purple-600" />;
             case 'PULL_REQUEST_CLOSED':
-                return <XCircleIcon className="w-4 h-4 text-red-600" />;
+                return <XCircleIcon className="w-5 h-5 text-red-600" />;
             case 'PULL_REQUEST_UPDATED':
-                return <ArrowPathIcon className="w-4 h-4 text-yellow-600" />;
+                return <ArrowPathIcon className="w-5 h-5 text-yellow-600" />;
             default:
-                return <ClockIcon className="w-4 h-4 text-gray-600" />;
+                return <ClockIcon className="w-5 h-5 text-gray-600" />;
         }
     };
 
@@ -72,46 +59,84 @@ const ActivityEventItem: React.FC<{ activity: ActivityEvent }> = ({ activity }) 
         }
     };
 
-    const formatTimeAgo = (date: Date) => {
-        const now = new Date();
-        const diffInSeconds = Math.floor((now.getTime() - new Date(date).getTime()) / 1000);
-        
-        if (diffInSeconds < 60) return 'just now';
-        if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m ago`;
-        if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h ago`;
-        return `${Math.floor(diffInSeconds / 86400)}d ago`;
+    const getEventTypeLabel = (eventType: string) => {
+        switch (eventType) {
+            case 'PUSH':
+                return 'Commit';
+            case 'PULL_REQUEST_OPENED':
+                return 'PR Opened';
+            case 'PULL_REQUEST_MERGED':
+                return 'PR Merged';
+            case 'PULL_REQUEST_CLOSED':
+                return 'PR Closed';
+            case 'PULL_REQUEST_UPDATED':
+                return 'PR Updated';
+            default:
+                return eventType;
+        }
     };
 
     return (
-        <div className={`p-4 rounded-lg border ${getEventColor(activity.event_type)} transition-all hover:shadow-sm`}>
+        <div className={`p-6 rounded-xl border ${getEventColor(activity.event_type)} transition-all hover:shadow-lg`}>
             <div className="flex items-start space-x-4">
                 <div className="flex-shrink-0">
                     <div className="relative">
                         <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-gray-200 shadow-sm">
                             <GitHubAvatar username={activity.github_repository_owner_id} size={48} />
                         </div>
-                        <div className="absolute -bottom-1 -right-1 bg-white rounded-full p-1 shadow-sm border border-gray-200">
+                        <div className="absolute -bottom-1 -right-1 bg-white rounded-full p-0.5 shadow-sm border border-gray-200">
                             {getEventIcon(activity.event_type)}
                         </div>
                     </div>
                 </div>
                 
                 <div className="flex-1 min-w-0">
-                    <div className="flex items-center space-x-3 mb-2">
-                        <span className="text-sm font-medium text-gray-900">
-                            {activity.github_repository_owner_id}/{activity.github_repository_name} {activity.event_type}
-                        </span>
-                        <span className="text-xs text-gray-500">
-                            {formatTimeAgo(activity.created_at)}
-                        </span>
+                    {/* Header */}
+                    <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center space-x-3">
+                            <span className="text-sm font-medium text-gray-900">
+                                {activity.github_repository_owner_id}/{activity.github_repository_name}
+                            </span>
+                            <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
+                                {getEventTypeLabel(activity.event_type)}
+                            </span>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                            <span className="text-xs text-gray-500">
+                                {formatTimeAgo(activity.created_at)}
+                            </span>
+                            <UserIcon className="w-4 h-4 text-gray-400" />
+                            <span className="text-xs font-medium text-gray-700">
+                                {activity.github_repository_owner_id}
+                            </span>
+                        </div>
                     </div>
                     
-                    <div className="text-sm font-normal text-gray-700 mb-3">
+                    {/* Title and Summary */}
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2">
                         {activity.title}
-                    </div>
+                    </h3>
                     
+                    {/* Ticket Activity Events */}
                     {activity.ticket_activity_events.length > 0 && (
-                        <TicketActivityEvents ticketEvents={activity.ticket_activity_events} />
+                        <div className="mt-4 space-y-2">
+                            <div className="flex items-center gap-2 mb-2">
+                                <span className="text-sm font-medium text-gray-700">Related Tickets</span>
+                            </div>
+                            <div className="space-y-2">
+                                {activity.ticket_activity_events.map((ticketEvent, index) => (
+                                    <div key={index} className="flex items-center gap-3 p-2 bg-blue-50 rounded-lg border border-blue-100">
+                                        <span className="text-xs font-mono text-blue-700 bg-blue-100 px-2 py-1 rounded">
+                                            {ticketEvent.ticket.id}
+                                        </span>
+                                        <span className="text-sm text-gray-700 flex-1">{ticketEvent.ticket.title}</span>
+                                        <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
+                                            {ticketEvent.event_type.toLowerCase().replace('_', ' ')}
+                                        </span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
                     )}
                 </div>
             </div>
@@ -155,12 +180,13 @@ export function ActivityFeed({ className = "" }: ActivityFeedProps) {
                         <div className="w-6 h-6 bg-gray-200 rounded animate-pulse"></div>
                     </div>
                     <div className="space-y-4">
-                        {[...Array(5)].map((_, i) => (
-                            <div key={i} className="flex items-start space-x-3 p-4 border border-gray-200 rounded-lg">
-                                <div className="w-5 h-5 bg-gray-200 rounded animate-pulse"></div>
-                                <div className="flex-1 space-y-2">
+                        {[...Array(3)].map((_, i) => (
+                            <div key={i} className="flex items-start space-x-4 p-6 border border-gray-200 rounded-xl">
+                                <div className="w-12 h-12 bg-gray-200 rounded-full animate-pulse"></div>
+                                <div className="flex-1 space-y-3">
                                     <div className="h-4 bg-gray-200 rounded w-3/4 animate-pulse"></div>
                                     <div className="h-3 bg-gray-200 rounded w-1/2 animate-pulse"></div>
+                                    <div className="h-3 bg-gray-200 rounded w-2/3 animate-pulse"></div>
                                 </div>
                             </div>
                         ))}
@@ -215,18 +241,20 @@ export function ActivityFeed({ className = "" }: ActivityFeedProps) {
             <div className="p-6">
                 <div className="flex items-center justify-between mb-6">
                     <h2 className="text-xl font-semibold text-gray-900">Activity Feed</h2>
-                    <button
-                        onClick={loadActivities}
-                        className="p-2 text-gray-400 hover:text-gray-600 transition-colors"
-                        title="Refresh"
-                    >
-                        <ArrowPathIcon className="w-5 h-5" />
-                    </button>
+                    <div className="flex items-center space-x-2">
+                        <button
+                            onClick={loadActivities}
+                            className="p-2 text-gray-400 hover:text-gray-600 transition-colors"
+                            title="Refresh"
+                        >
+                            <ArrowPathIcon className="w-5 h-5" />
+                        </button>
+                    </div>
                 </div>
                 
-                <div className="space-y-4">
+                <div className="space-y-6">
                     {activities.map((activity, index) => (
-                        <ActivityEventItem key={index} activity={activity} />
+                        <EnhancedActivityEventItem key={index} activity={activity} />
                     ))}
                 </div>
             </div>
