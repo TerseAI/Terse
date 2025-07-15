@@ -10,6 +10,7 @@ import { TicketManager } from "../ticketing/TicketIntegration";
 import { getUserTicketManager } from "../types/user";
 import { formatTitleForEvent } from "../feed/formatters";
 import { ChangedItem, ChangeEventType } from "../shared/ModelEvents";
+import { ActivityOverview } from "src/agent/agents/Analyzer";
 
 const GITHUB_APP_CLIENT_ID = process.env.GITHUB_CLIENT_ID
 
@@ -346,6 +347,11 @@ export async function githubAppUnifiedEvent(req: Request, res: Response) {
         
         // handle the unified event with proper error handling
         const summary = await owner.handleUnifiedGitHubEvent(body);
+        if (!summary) {
+            res.status(200).json({ message: 'No summary generated. No action will be taken.' });
+            return;
+        }
+
         console.log(chalk.green('Saving activity event for changed items:'), summary);
         await saveActivityEvent(repository, body, summary, user.id);
         
@@ -356,15 +362,37 @@ export async function githubAppUnifiedEvent(req: Request, res: Response) {
     }
 }
 
-async function saveActivityEvent(repository: GithubRepository, event: UnifiedGitHubEvent, summary: string, userId: string) {
+async function saveActivityEvent(repository: GithubRepository, event: UnifiedGitHubEvent, summary: ActivityOverview, userId: string) {
     const githubActivityEvent = await db().activity_events.create({
         data: {
             user_id: userId,
             event_type: event.eventType === 'push' ? 'PUSH' : event.eventType === 'pull_request.opened' ? 'PULL_REQUEST_OPENED' : event.eventType === 'pull_request.synchronize' ? 'PULL_REQUEST_UPDATED' : event.eventType === 'pull_request.merged' ? 'PULL_REQUEST_MERGED' : event.eventType === 'pull_request.closed' ? 'PULL_REQUEST_CLOSED' : 'PUSH',
-            title: summary,
+            title: summary.summary,
             github_repository_id: repository.id
         }
     });
+
+    // save sub activity events
+    for (const subActivityOverview of summary.sub_activity_overviews) {
+        const subActivityEvent = await db().sub_activity_events.create({
+            data: {
+                summary: subActivityOverview.summary,
+                activity_event_id: githubActivityEvent.id
+            }
+        });
+
+        // save sub activity commit associations
+        for (const subActivityCommitAssociation of subActivityOverview.sub_activity_commit_associations) {  
+            await db().sub_activity_commit_associations.create({
+                data: {
+                    sub_activity_event_id: subActivityEvent.id,
+                    commit_sha: subActivityCommitAssociation.sha,
+                    commit_message: subActivityCommitAssociation.message,
+                    commit_url: subActivityCommitAssociation.url,   
+                }
+            });
+        }
+    }
 }
 
 export default {

@@ -8,10 +8,28 @@ import { ChangedItem, ChangeEventType } from "../../shared/ModelEvents";
 import { Commit } from "../../theOwner/utility";
 import { actionEventTools, createActionSummaryTool, createCommitSummaryTool } from "../tools/ActionEventTools";
 
+export type ActivityOverview = {
+    summary: string;
+    sub_activity_overviews: SubActivityOverview[];
+}
+
+export type SubActivityOverview = {
+    summary: string;
+    sub_activity_commit_associations: SubActivityCommitAssociation[];
+}
+
+export type SubActivityCommitAssociation = {
+    sha: string;
+    message: string;
+    url: string;
+    repository: string;
+    branch: string;
+}
+
 // Enhanced session type with change tracking
 export type SessionWithTracking = Session & {
     trackChange: (type: EntityType, id: string | number, eventType: ChangeEventType) => void;
-    setFinalSummary: (summary: string) => void;
+    setFinalSummary: (summary: ActivityOverview) => void;
     commitContext?: { commits: Commit[]; repository: { name: string; owner: string }; branch?: string } | null;
 }
 
@@ -20,7 +38,7 @@ export class Analyzer {
     private session: Session;
     private changedItems: ChangedItem[] = [];
     private commitContext: { commits: Commit[]; repository: { name: string; owner: string }; branch?: string } | null = null;
-    private finalSummary: string | null = null;
+    private finalSummary: ActivityOverview | null = null;
     agent?: Agent<SessionWithTracking, AgentOutputType>;
 
     constructor(session: Session) {
@@ -84,7 +102,7 @@ export class Analyzer {
             ...this.session,
             trackChange: (type: EntityType, id: string | number, eventType: ChangeEventType) => this.trackChange(type, id, eventType),
             commitContext: this.commitContext,
-            setFinalSummary: (summary: string) => this.setFinalSummary(summary)
+            setFinalSummary: (summary: ActivityOverview) => this.setFinalSummary(summary)
         };
     }
 
@@ -97,12 +115,12 @@ export class Analyzer {
         });
     }
 
-    setFinalSummary(summary: string) {
+    setFinalSummary(summary: ActivityOverview) {
         this.finalSummary = summary;
     }
 
     // Get and clear the changed items
-    getAndClearFinalSummary(): string | null {
+    getAndClearFinalSummary(): ActivityOverview | null {
         const summary = this.finalSummary;
         this.finalSummary = null;
         return summary;
