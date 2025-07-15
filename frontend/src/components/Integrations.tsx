@@ -1,6 +1,4 @@
-import { AddToSlack } from "./AddToSlack";
 import { AddGithub } from "./AddGithub";
-import { TicketIntegration } from "./TicketIntegration";
 
 interface IntegrationsProps {
     onIntegrationChange: () => Promise<void>;
@@ -19,14 +17,14 @@ export function Integrations({ onIntegrationChange, className = "" }: Integratio
                 </div>
 
                 {/* Ticketing System */}
-                <div className="border-b border-gray-100 pb-4">
+                {/* <div className="border-b border-gray-100 pb-4">
                     <TicketIntegration onIntegrationChange={onIntegrationChange} />
-                </div>
+                </div> */}
 
                 {/* Slack */}
-                <div>
+                {/* <div>
                     <AddToSlack />
-                </div>
+                </div> */}
             </div>
         </div>
     );
