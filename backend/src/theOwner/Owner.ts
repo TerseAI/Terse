@@ -1,7 +1,7 @@
 import { Search } from '../searchClient';
 import { Session } from '../server';
 import { SearchResult } from '../search/SearchItem';
-import { Analyzer } from '../agent/agents/Analyzer';
+import { ActivityOverview, Analyzer } from '../agent/agents/Analyzer';
 import chalk from 'chalk';
 import { db } from '../prismaClient';
 import { sendMessage } from '../slack/sendMessage';
@@ -17,7 +17,7 @@ class Owner {
         this.session = session;
     }
 
-    async handleUnifiedGitHubEvent(event: UnifiedGitHubEvent): Promise<string> {
+    async handleUnifiedGitHubEvent(event: UnifiedGitHubEvent): Promise<ActivityOverview | null> {
         const eventId = `${event.username}-${event.repositoryName}-${event.eventType}-${Date.now()}`;
         console.log(chalk.blue(`[${eventId}] The owner is handling a unified GitHub event`), event.eventType, event.repositoryName, event.username);
         console.log(chalk.blue(`[${eventId}] Session user:`, this.session.user.github_username, 'Team ID:', this.session.teamId));
@@ -43,7 +43,7 @@ class Owner {
         const finalSummary = analyzer.getAndClearFinalSummary();
         console.log(chalk.blue(`[${eventId}] Final summary`), finalSummary);
         console.log(chalk.green(`[${eventId}] Event processing completed successfully`));
-        return finalSummary || '';
+        return finalSummary || null;
     }
 
     async sendSlackMessage(message: string, eventId: string) {
