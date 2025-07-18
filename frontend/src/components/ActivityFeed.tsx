@@ -89,27 +89,29 @@ const EnhancedActivityEventItem: React.FC<{ activity: ActivityEvent }> = ({ acti
     };
 
     return (
-        <div className={`p-6 rounded-xl border ${getEventColor(activity.event_type)} transition-all hover:shadow-lg`}>
-            <div className="flex items-start space-x-4">
+        <div className={`p-4 rounded-lg border ${getEventColor(activity.event_type)} transition-all hover:shadow-md`}>
+            <div className="flex items-start space-x-3">
                 <div className="flex-shrink-0">
                     <div className="relative">
-                        <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-gray-200 shadow-sm">
-                            <GitHubAvatar username={activity.github_repository_owner_id} size={48} />
+                        <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-gray-200 shadow-sm">
+                            <GitHubAvatar username={activity.github_repository_owner_id} size={40} />
                         </div>
-                        <div className="absolute -bottom-1 -right-1 bg-white rounded-full p-0.5 shadow-sm border border-gray-200">
-                            {getEventIcon(activity.event_type)}
+                        <div className="absolute -bottom-0.5 -right-0.5 bg-white rounded-full p-0.5 shadow-sm border border-gray-200">
+                            <div className="w-3 h-3 flex items-center justify-center">
+                                {getEventIcon(activity.event_type)}
+                            </div>
                         </div>
                     </div>
                 </div>
                 
                 <div className="flex-1 min-w-0">
                     {/* Header */}
-                    <div className="flex items-center justify-between mb-3">
-                        <div className="flex items-center space-x-3">
+                    <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center space-x-2">
                             <span className="text-sm font-medium text-gray-900">
                                 {activity.github_repository_owner_id}/{activity.github_repository_name}
                             </span>
-                            <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
+                            <span className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">
                                 {getEventTypeLabel(activity.event_type)}
                             </span>
                         </div>
@@ -117,7 +119,7 @@ const EnhancedActivityEventItem: React.FC<{ activity: ActivityEvent }> = ({ acti
                             <span className="text-xs text-gray-500">
                                 {formatTimeAgo(activity.created_at)}
                             </span>
-                            <UserIcon className="w-4 h-4 text-gray-400" />
+                            <UserIcon className="w-3 h-3 text-gray-400" />
                             <span className="text-xs font-medium text-gray-700">
                                 {activity.github_repository_owner_id}
                             </span>
@@ -125,16 +127,16 @@ const EnhancedActivityEventItem: React.FC<{ activity: ActivityEvent }> = ({ acti
                     </div>
                     
                     {/* Title and Summary */}
-                    <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                    <h3 className="text-base font-semibold text-gray-900 mb-2">
                         {activity.title}
                     </h3>
                     
                     {/* Sub Activities */}
                     {activity.sub_activities.length > 0 && (
-                        <div className="mt-4 space-y-3">
+                        <div className="mt-3 space-y-2">
                             {activity.sub_activities.map((subActivity, index) => (
-                                <div key={index} className="bg-gray-50 rounded-lg border border-gray-100">
-                                    <div className="p-4">
+                                <div key={index} className="bg-gray-50 rounded-md border border-gray-100">
+                                    <div className="p-3">
                                         <div className="flex items-center justify-between">
                                             <p className="text-sm text-gray-700 flex-1">{subActivity.summary}</p>
                                             {subActivity.commits.length > 0 && (
@@ -159,17 +161,17 @@ const EnhancedActivityEventItem: React.FC<{ activity: ActivityEvent }> = ({ acti
                                         
                                         {/* Associated Commits - Collapsible */}
                                         {subActivity.commits.length > 0 && expandedSubActivities.has(index) && (
-                                            <div className="mt-3 space-y-2">
-                                                <div className="flex items-center gap-2 mb-2">
+                                            <div className="mt-2 space-y-1.5">
+                                                <div className="flex items-center gap-2 mb-1.5">
                                                     <span className="text-xs font-medium text-gray-600">Related Commits</span>
                                                 </div>
-                                                <div className="space-y-2">
+                                                <div className="space-y-1.5">
                                                     {subActivity.commits.map((commit, commitIndex) => (
-                                                        <div key={commitIndex} className="flex items-center gap-3 p-2 bg-blue-50 rounded-lg border border-blue-100">
-                                                            <span className="text-xs font-mono text-blue-700 bg-blue-100 px-2 py-1 rounded">
+                                                        <div key={commitIndex} className="flex items-center gap-2 p-1.5 bg-blue-50 rounded-md border border-blue-100">
+                                                            <span className="text-xs font-mono text-blue-700 bg-blue-100 px-1.5 py-0.5 rounded">
                                                                 {commit.sha.substring(0, 7)}
                                                             </span>
-                                                            <span className="text-sm text-gray-700 flex-1">{commit.message}</span>
+                                                            <span className="text-xs text-gray-700 flex-1">{commit.message}</span>
                                                             <a 
                                                                 href={commit.url} 
                                                                 target="_blank" 
@@ -224,19 +226,19 @@ export function ActivityFeed({ className = "" }: ActivityFeedProps) {
     if (isLoading) {
         return (
             <div className={`bg-white rounded-xl border border-gray-200 shadow-sm ${className}`}>
-                <div className="p-6">
-                    <div className="flex items-center justify-between mb-6">
-                        <h2 className="text-xl font-semibold text-gray-900">Activity Feed</h2>
-                        <div className="w-6 h-6 bg-gray-200 rounded animate-pulse"></div>
+                <div className="p-4">
+                    <div className="flex items-center justify-between mb-4">
+                        <h2 className="text-lg font-semibold text-gray-900">Activity Feed</h2>
+                        <div className="w-5 h-5 bg-gray-200 rounded animate-pulse"></div>
                     </div>
-                    <div className="space-y-4">
+                    <div className="space-y-3">
                         {[...Array(3)].map((_, i) => (
-                            <div key={i} className="flex items-start space-x-4 p-6 border border-gray-200 rounded-xl">
-                                <div className="w-12 h-12 bg-gray-200 rounded-full animate-pulse"></div>
-                                <div className="flex-1 space-y-3">
-                                    <div className="h-4 bg-gray-200 rounded w-3/4 animate-pulse"></div>
-                                    <div className="h-3 bg-gray-200 rounded w-1/2 animate-pulse"></div>
-                                    <div className="h-3 bg-gray-200 rounded w-2/3 animate-pulse"></div>
+                            <div key={i} className="flex items-start space-x-3 p-4 border border-gray-200 rounded-lg">
+                                <div className="w-10 h-10 bg-gray-200 rounded-full animate-pulse"></div>
+                                <div className="flex-1 space-y-2">
+                                    <div className="h-3 bg-gray-200 rounded w-3/4 animate-pulse"></div>
+                                    <div className="h-2 bg-gray-200 rounded w-1/2 animate-pulse"></div>
+                                    <div className="h-2 bg-gray-200 rounded w-2/3 animate-pulse"></div>
                                 </div>
                             </div>
                         ))}
@@ -249,16 +251,16 @@ export function ActivityFeed({ className = "" }: ActivityFeedProps) {
     if (error) {
         return (
             <div className={`bg-white rounded-xl border border-gray-200 shadow-sm ${className}`}>
-                <div className="p-6">
+                <div className="p-4">
                     <div className="text-center">
-                        <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                            <XCircleIcon className="w-6 h-6 text-red-500" />
+                        <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                            <XCircleIcon className="w-5 h-5 text-red-500" />
                         </div>
-                        <h3 className="text-lg font-medium text-gray-900 mb-2">Failed to load activity feed</h3>
-                        <p className="text-gray-500 mb-4">{error}</p>
+                        <h3 className="text-base font-medium text-gray-900 mb-2">Failed to load activity feed</h3>
+                        <p className="text-gray-500 mb-3">{error}</p>
                         <button
                             onClick={loadActivities}
-                            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                            className="px-3 py-1.5 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors text-sm"
                         >
                             Try again
                         </button>
@@ -271,13 +273,13 @@ export function ActivityFeed({ className = "" }: ActivityFeedProps) {
     if (activities.length === 0) {
         return (
             <div className={`bg-white rounded-xl border border-gray-200 shadow-sm ${className}`}>
-                <div className="p-6">
+                <div className="p-4">
                     <div className="text-center">
-                        <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                            <ClockIcon className="w-6 h-6 text-gray-400" />
+                        <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                            <ClockIcon className="w-5 h-5 text-gray-400" />
                         </div>
-                        <h3 className="text-lg font-medium text-gray-900 mb-2">No activity yet</h3>
-                        <p className="text-gray-500">
+                        <h3 className="text-base font-medium text-gray-900 mb-2">No activity yet</h3>
+                        <p className="text-gray-500 text-sm">
                             Activity will appear here once you start making changes to your repositories.
                         </p>
                     </div>
@@ -288,21 +290,21 @@ export function ActivityFeed({ className = "" }: ActivityFeedProps) {
 
     return (
         <div className={`bg-white rounded-xl border border-gray-200 shadow-sm ${className}`}>
-            <div className="p-6">
-                <div className="flex items-center justify-between mb-6">
-                    <h2 className="text-xl font-semibold text-gray-900">Activity Feed</h2>
+            <div className="p-4">
+                <div className="flex items-center justify-between mb-4">
+                    <h2 className="text-lg font-semibold text-gray-900">Activity Feed</h2>
                     <div className="flex items-center space-x-2">
                         <button
                             onClick={loadActivities}
                             className="p-2 text-gray-400 hover:text-gray-600 transition-colors"
                             title="Refresh"
                         >
-                            <ArrowPathIcon className="w-5 h-5" />
+                            <ArrowPathIcon className="w-4 h-4" />
                         </button>
                     </div>
                 </div>
                 
-                <div className="space-y-6">
+                <div className="space-y-4">
                     {activities.map((activity, index) => (
                         <EnhancedActivityEventItem key={index} activity={activity} />
                     ))}
