@@ -71,24 +71,24 @@ export default function LandingPage() {
                 <div className="max-w-7xl mx-auto text-center">
                     {/* Tagline */}
                     <h1 className="text-6xl md:text-7xl font-bold text-white mb-8">
-                        No More Ticket Tracking.
+                        See What Your Team Is Building.
                     </h1>
                     
                     {/* Subtitle */}
                     <p className="text-xl md:text-2xl text-gray-300 mb-8 max-w-4xl mx-auto leading-relaxed">
-                        Your own personal AI board babysitter. We track the real state of work, straight from the code in real time.
+                        Get AI-powered insights into your team's activity with a beautiful activity dashboard that shows you exactly what's happening in your GitHub repositories.
                     </p>
 
                     {/* Setup time and integration info */}
                     <div className="mb-12">
                         <p className="text-lg text-blue-300 font-semibold mb-2">
-                            ⚡ 2-minute setup • Built on GitHub, Linear & Slack
+                            ⚡ 2-minute setup • GitHub integration only
                         </p>
                         <p className="text-gray-400 text-sm">
-                            No new tools to learn. We integrate with your existing workflow.
+                            Connect your GitHub repositories and instantly see team activity.
                         </p>
                         <p className="text-gray-400 text-sm">
-                            Immediate results. Starts tracking immediately.
+                            AI summarizes commits, PRs, and issues in real-time.
                         </p>
                     </div>
 
@@ -111,10 +111,10 @@ export default function LandingPage() {
                 <div className="max-w-7xl mx-auto">
                     <div className="text-center mb-16">
                         <h2 className="text-4xl font-bold text-white mb-6">
-                            How Vectra AI Solves This
+                            How Vectra AI Works
                         </h2>
                         <p className="text-xl text-gray-300 max-w-3xl mx-auto">
-                            We monitor every Git commit in your repository and use AI to automatically manage your tickets
+                            We monitor your GitHub activity and use AI to create meaningful summaries of what your team is working on
                         </p>
                     </div>
                     
@@ -127,8 +127,8 @@ export default function LandingPage() {
                                     </svg>
                                 </div>
                                 <div>
-                                    <h3 className="text-xl font-semibold text-white mb-2">Monitor Every Git Commit</h3>
-                                    <p className="text-gray-400">We track all commits that go into your repository, understanding what code changes actually happened and when.</p>
+                                    <h3 className="text-xl font-semibold text-white mb-2">Monitor GitHub Activity</h3>
+                                    <p className="text-gray-400">We track all commits, pull requests, and issues in your repositories to understand what your team is working on.</p>
                                 </div>
                             </div>
                             
@@ -139,8 +139,8 @@ export default function LandingPage() {
                                     </svg>
                                 </div>
                                 <div>
-                                    <h3 className="text-xl font-semibold text-white mb-2">AI Manages Your Tickets</h3>
-                                    <p className="text-gray-400">Our AI automatically creates, updates, and comments on tickets in Linear based on your actual code changes.</p>
+                                    <h3 className="text-xl font-semibold text-white mb-2">AI-Powered Summaries</h3>
+                                    <p className="text-gray-400">Our AI analyzes code changes and creates intelligent summaries that help you understand the impact and context of each update.</p>
                                 </div>
                             </div>
                             
@@ -151,34 +151,34 @@ export default function LandingPage() {
                                     </svg>
                                 </div>
                                 <div>
-                                    <h3 className="text-xl font-semibold text-white mb-2">Real-time Accuracy</h3>
-                                    <p className="text-gray-400">Your project boards now reflect the true state of work, not manual updates that get forgotten or delayed.</p>
+                                    <h3 className="text-xl font-semibold text-white mb-2">Beautiful Activity Dashboard</h3>
+                                    <p className="text-gray-400">Get a real-time view of your team's progress with a clean, intuitive dashboard that shows you exactly what's happening.</p>
                                 </div>
                             </div>
                         </div>
                         
                         <div className="bg-gray-800/50 rounded-xl p-8 border border-gray-700">
-                            <h3 className="text-xl font-semibold text-white mb-4">What Vectra AI Does For You</h3>
+                            <h3 className="text-xl font-semibold text-white mb-4">What You'll See</h3>
                             <div className="space-y-4">
                                 <div className="flex items-center gap-3">
                                     <div className="w-2 h-2 bg-green-400 rounded-full"></div>
-                                    <span className="text-gray-300">Creates tickets for new features</span>
+                                    <span className="text-gray-300">Daily activity summaries</span>
                                 </div>
                                 <div className="flex items-center gap-3">
                                     <div className="w-2 h-2 bg-blue-400 rounded-full"></div>
-                                    <span className="text-gray-300">Updates progress based on commits</span>
+                                    <span className="text-gray-300">Commit analysis and context</span>
                                 </div>
                                 <div className="flex items-center gap-3">
                                     <div className="w-2 h-2 bg-yellow-400 rounded-full"></div>
-                                    <span className="text-gray-300">Adds context from code changes</span>
+                                    <span className="text-gray-300">Pull request insights</span>
                                 </div>
                                 <div className="flex items-center gap-3">
                                     <div className="w-2 h-2 bg-purple-400 rounded-full"></div>
-                                    <span className="text-gray-300">Marks tickets as complete when done</span>
+                                    <span className="text-gray-300">Issue tracking and updates</span>
                                 </div>
                                 <div className="flex items-center gap-3">
                                     <div className="w-2 h-2 bg-red-400 rounded-full"></div>
-                                    <span className="text-gray-300">Identifies blockers and delays</span>
+                                    <span className="text-gray-300">Team productivity metrics</span>
                                 </div>
                             </div>
                         </div>
@@ -191,38 +191,38 @@ export default function LandingPage() {
                 <div className="max-w-7xl mx-auto">
                     <div className="text-center mb-16">
                         <h2 className="text-4xl font-bold text-white mb-6">
-                            See It In Action
+                            Get Started in Minutes
                         </h2>
                         <p className="text-xl text-gray-300 max-w-3xl mx-auto">
-                            Three simple steps to transform how you track work
+                            Three simple steps to start seeing your team's activity
                         </p>
                     </div>
                     
                     <div className="space-y-16">
-                        {/* Step 1: Set Up */}
+                        {/* Step 1: Connect GitHub */}
                         <div className="flex flex-col lg:flex-row items-center gap-12">
                             <div className="lg:w-1/2">
                                 <div className="flex items-center gap-4 mb-6">
                                     <div className="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold text-xl">
                                         1
                                     </div>
-                                    <h3 className="text-3xl font-bold text-white">Set Up</h3>
+                                    <h3 className="text-3xl font-bold text-white">Connect GitHub</h3>
                                 </div>
                                 <p className="text-xl text-gray-300 mb-6 leading-relaxed">
-                                    Connect your GitHub repository and Linear workspace. Vectra AI will start monitoring your commits immediately.
+                                    Sign in with your GitHub account and select the repositories you want to monitor. Vectra AI will start tracking activity immediately.
                                 </p>
                                 <div className="space-y-3">
                                     <div className="flex items-center gap-3">
                                         <div className="w-2 h-2 bg-blue-400 rounded-full"></div>
-                                        <span className="text-gray-300">Connect GitHub repository</span>
+                                        <span className="text-gray-300">Authenticate with GitHub</span>
                                     </div>
                                     <div className="flex items-center gap-3">
                                         <div className="w-2 h-2 bg-blue-400 rounded-full"></div>
-                                        <span className="text-gray-300">Link Linear workspace</span>
+                                        <span className="text-gray-300">Select repositories to monitor</span>
                                     </div>
                                     <div className="flex items-center gap-3">
                                         <div className="w-2 h-2 bg-blue-400 rounded-full"></div>
-                                        <span className="text-gray-300">Configure project settings</span>
+                                        <span className="text-gray-300">Configure notification preferences</span>
                                     </div>
                                 </div>
                             </div>
@@ -237,30 +237,30 @@ export default function LandingPage() {
                             </div>
                         </div>
 
-                        {/* Step 2: Make Changes */}
+                        {/* Step 2: Team Works */}
                         <div className="flex flex-col lg:flex-row-reverse items-center gap-12">
                             <div className="lg:w-1/2">
                                 <div className="flex items-center gap-4 mb-6">
                                     <div className="w-12 h-12 bg-purple-600 rounded-full flex items-center justify-center text-white font-bold text-xl">
                                         2
                                     </div>
-                                    <h3 className="text-3xl font-bold text-white">Make Changes</h3>
+                                    <h3 className="text-3xl font-bold text-white">Team Works</h3>
                                 </div>
                                 <p className="text-xl text-gray-300 mb-6 leading-relaxed">
-                                    Work normally in your repository. Commit and push your changes. Vectra AI automatically detects what you're working on.
+                                    Your team continues working normally in GitHub. Every commit, PR, and issue is automatically detected and analyzed by our AI.
                                 </p>
                                 <div className="space-y-3">
                                     <div className="flex items-center gap-3">
                                         <div className="w-2 h-2 bg-purple-400 rounded-full"></div>
-                                        <span className="text-gray-300">Write code as usual</span>
+                                        <span className="text-gray-300">Team commits code as usual</span>
                                     </div>
                                     <div className="flex items-center gap-3">
                                         <div className="w-2 h-2 bg-purple-400 rounded-full"></div>
-                                        <span className="text-gray-300">Commit with descriptive messages</span>
+                                        <span className="text-gray-300">Creates pull requests</span>
                                     </div>
                                     <div className="flex items-center gap-3">
                                         <div className="w-2 h-2 bg-purple-400 rounded-full"></div>
-                                        <span className="text-gray-300">Push to your repository</span>
+                                        <span className="text-gray-300">Opens and updates issues</span>
                                     </div>
                                 </div>
                             </div>
@@ -268,45 +268,45 @@ export default function LandingPage() {
                                 <div className="bg-gray-800/30 rounded-xl p-4 border border-gray-700/50">
                                     <img 
                                         src="/terminal.png" 
-                                        alt="Git Commit Process" 
+                                        alt="Git Activity" 
                                         className="w-full h-auto rounded-lg shadow-2xl"
                                     />
                                 </div>
                             </div>
                         </div>
 
-                        {/* Step 3: See Magic */}
+                        {/* Step 3: See Insights */}
                         <div className="flex flex-col lg:flex-row items-center gap-12">
                             <div className="lg:w-1/2">
                                 <div className="flex items-center gap-4 mb-6">
                                     <div className="w-12 h-12 bg-green-600 rounded-full flex items-center justify-center text-white font-bold text-xl">
                                         3
                                     </div>
-                                                                    <h3 className="text-3xl font-bold text-white">Get Summaries</h3>
-                            </div>
-                            <p className="text-xl text-gray-300 mb-6 leading-relaxed">
-                                Receive automatic summaries of changes in Slack. Stay informed about what's happening without checking multiple tools.
-                            </p>
-                            <div className="space-y-3">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-2 h-2 bg-green-400 rounded-full"></div>
-                                    <span className="text-gray-300">Automatic change summaries</span>
+                                    <h3 className="text-3xl font-bold text-white">See Insights</h3>
                                 </div>
-                                <div className="flex items-center gap-3">
-                                    <div className="w-2 h-2 bg-green-400 rounded-full"></div>
-                                    <span className="text-gray-300">Delivered to your Slack channel</span>
+                                <p className="text-xl text-gray-300 mb-6 leading-relaxed">
+                                    View your beautiful activity dashboard with AI-generated summaries. Understand what your team is building without digging through commits.
+                                </p>
+                                <div className="space-y-3">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-2 h-2 bg-green-400 rounded-full"></div>
+                                        <span className="text-gray-300">Real-time activity feed</span>
+                                    </div>
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-2 h-2 bg-green-400 rounded-full"></div>
+                                        <span className="text-gray-300">AI-powered summaries</span>
+                                    </div>
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-2 h-2 bg-green-400 rounded-full"></div>
+                                        <span className="text-gray-300">Team productivity insights</span>
+                                    </div>
                                 </div>
-                                <div className="flex items-center gap-3">
-                                    <div className="w-2 h-2 bg-green-400 rounded-full"></div>
-                                    <span className="text-gray-300">Stay updated without context switching</span>
-                                </div>
-                            </div>
                             </div>
                             <div className="lg:w-1/2">
                                 <div className="bg-gray-800/30 rounded-xl p-4 border border-gray-700/50">
                                     <img 
                                         src="/Slack.png" 
-                                        alt="Slack Change Summaries" 
+                                        alt="Activity Dashboard" 
                                         className="w-full h-auto rounded-lg shadow-2xl"
                                     />
                                 </div>
@@ -324,7 +324,7 @@ export default function LandingPage() {
                             Stop These Frustrations
                         </h2>
                         <p className="text-xl text-gray-300">
-                            Common problems that Vectra AI eliminates
+                            Common problems that Vectra AI solves
                         </p>
                     </div>
                     
@@ -336,10 +336,10 @@ export default function LandingPage() {
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                                     </svg>
                                 </div>
-                                <h3 className="text-2xl font-bold text-white">No More Pinging for Updates</h3>
+                                <h3 className="text-2xl font-bold text-white">No More Manual Updates</h3>
                             </div>
                             <p className="text-gray-300 text-lg leading-relaxed">
-                                Stop chasing developers for status updates. Vectra AI automatically tracks progress from your Git commits, so you always know what's actually happening.
+                                Stop asking "what are you working on?" and digging through commit logs. Get automatic insights into your team's activity without any manual work.
                             </p>
                         </div>
                         
@@ -350,10 +350,10 @@ export default function LandingPage() {
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
                                     </svg>
                                 </div>
-                                <h3 className="text-2xl font-bold text-white">No More Hidden Features Sneaking In</h3>
+                                <h3 className="text-2xl font-bold text-white">No More Context Switching</h3>
                             </div>
                             <p className="text-gray-300 text-lg leading-relaxed">
-                                Every code change is automatically detected and documented. No surprises in production - you'll know exactly what's being built.
+                                Get a single dashboard that shows you everything happening across your repositories. No need to check multiple tools or dig through individual commits.
                             </p>
                         </div>
                     </div>
@@ -364,10 +364,10 @@ export default function LandingPage() {
             <div className="px-6 py-16 text-center">
                 <div className="max-w-4xl mx-auto">
                     <h2 className="text-4xl font-bold text-white mb-6">
-                        Ready to see the real picture?
+                        Ready to see your team's activity?
                     </h2>
                     <p className="text-xl text-gray-300 mb-8">
-                        Join teams that have stopped guessing and started knowing
+                        Join teams that have stopped guessing and started knowing what's being built
                     </p>
                     <button 
                         onClick={loginWithGithub}

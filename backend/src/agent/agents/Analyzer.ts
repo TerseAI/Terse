@@ -1,12 +1,10 @@
 import { Agent, AgentInputItem, AgentOutputType, run, RunResult, user } from "@openai/agents";
-import { ToolBox } from "./Agent";
 import { Session } from "../../server";
-import { ticketTools } from "../tools/ticketingTools";
 import chalk from "chalk";
 import { EntityType } from "../../shared/Entities";
 import { ChangedItem, ChangeEventType } from "../../shared/ModelEvents";
 import { Commit } from "../../theOwner/utility";
-import { actionEventTools, createActionSummaryTool, createCommitSummaryTool } from "../tools/ActionEventTools";
+import { createActionSummaryTool, createCommitSummaryTool } from "../tools/ActionEventTools";
 
 export type ActivityOverview = {
     summary: string;
