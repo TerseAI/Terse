@@ -5,7 +5,6 @@ import {
     ChevronRightIcon,
     ClockIcon,
     CodeBracketIcon,
-    UserIcon,
     XCircleIcon,
 } from '@heroicons/react/24/outline';
 import React, { useEffect, useState } from 'react';
