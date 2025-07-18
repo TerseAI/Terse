@@ -9,6 +9,8 @@ import {
     XCircleIcon,
     ClockIcon,
     UserIcon,
+    ChevronDownIcon,
+    ChevronRightIcon,
 } from '@heroicons/react/24/outline';
 
 // Utility function for formatting time
@@ -24,6 +26,7 @@ const formatTimeAgo = (date: Date) => {
 
 // Enhanced Activity Event Item Component
 const EnhancedActivityEventItem: React.FC<{ activity: ActivityEvent }> = ({ activity }) => {
+    const [expandedSubActivities, setExpandedSubActivities] = useState<Set<number>>(new Set());
     const getEventIcon = (eventType: string) => {
         switch (eventType) {
             case 'PUSH':
@@ -75,6 +78,16 @@ const EnhancedActivityEventItem: React.FC<{ activity: ActivityEvent }> = ({ acti
         }
     };
 
+    const toggleSubActivity = (index: number) => {
+        const newExpanded = new Set(expandedSubActivities);
+        if (newExpanded.has(index)) {
+            newExpanded.delete(index);
+        } else {
+            newExpanded.add(index);
+        }
+        setExpandedSubActivities(newExpanded);
+    };
+
     return (
         <div className={`p-6 rounded-xl border ${getEventColor(activity.event_type)} transition-all hover:shadow-lg`}>
             <div className="flex items-start space-x-4">
@@ -120,35 +133,57 @@ const EnhancedActivityEventItem: React.FC<{ activity: ActivityEvent }> = ({ acti
                     {activity.sub_activities.length > 0 && (
                         <div className="mt-4 space-y-3">
                             {activity.sub_activities.map((subActivity, index) => (
-                                <div key={index} className="bg-gray-50 rounded-lg p-4 border border-gray-100">
-                                    <p className="text-sm text-gray-700 mb-3">{subActivity.summary}</p>
-                                    
-                                    {/* Associated Commits */}
-                                    {subActivity.commits.length > 0 && (
-                                        <div className="space-y-2">
-                                            <div className="flex items-center gap-2 mb-2">
-                                                <span className="text-xs font-medium text-gray-600">Related Commits</span>
-                                            </div>
-                                            <div className="space-y-2">
-                                                {subActivity.commits.map((commit, commitIndex) => (
-                                                    <div key={commitIndex} className="flex items-center gap-3 p-2 bg-blue-50 rounded-lg border border-blue-100">
-                                                        <span className="text-xs font-mono text-blue-700 bg-blue-100 px-2 py-1 rounded">
-                                                            {commit.sha.substring(0, 7)}
-                                                        </span>
-                                                        <span className="text-sm text-gray-700 flex-1">{commit.message}</span>
-                                                        <a 
-                                                            href={commit.url} 
-                                                            target="_blank" 
-                                                            rel="noopener noreferrer"
-                                                            className="text-xs text-blue-600 hover:text-blue-800 underline"
-                                                        >
-                                                            View
-                                                        </a>
-                                                    </div>
-                                                ))}
-                                            </div>
+                                <div key={index} className="bg-gray-50 rounded-lg border border-gray-100">
+                                    <div className="p-4">
+                                        <div className="flex items-center justify-between">
+                                            <p className="text-sm text-gray-700 flex-1">{subActivity.summary}</p>
+                                            {subActivity.commits.length > 0 && (
+                                                <button
+                                                    onClick={() => toggleSubActivity(index)}
+                                                    className="ml-3 flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700 transition-colors"
+                                                >
+                                                    {expandedSubActivities.has(index) ? (
+                                                        <>
+                                                            <ChevronDownIcon className="w-4 h-4" />
+                                                            Hide commits
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <ChevronRightIcon className="w-4 h-4" />
+                                                            Show {subActivity.commits.length} commit{subActivity.commits.length !== 1 ? 's' : ''}
+                                                        </>
+                                                    )}
+                                                </button>
+                                            )}
                                         </div>
-                                    )}
+                                        
+                                        {/* Associated Commits - Collapsible */}
+                                        {subActivity.commits.length > 0 && expandedSubActivities.has(index) && (
+                                            <div className="mt-3 space-y-2">
+                                                <div className="flex items-center gap-2 mb-2">
+                                                    <span className="text-xs font-medium text-gray-600">Related Commits</span>
+                                                </div>
+                                                <div className="space-y-2">
+                                                    {subActivity.commits.map((commit, commitIndex) => (
+                                                        <div key={commitIndex} className="flex items-center gap-3 p-2 bg-blue-50 rounded-lg border border-blue-100">
+                                                            <span className="text-xs font-mono text-blue-700 bg-blue-100 px-2 py-1 rounded">
+                                                                {commit.sha.substring(0, 7)}
+                                                            </span>
+                                                            <span className="text-sm text-gray-700 flex-1">{commit.message}</span>
+                                                            <a 
+                                                                href={commit.url} 
+                                                                target="_blank" 
+                                                                rel="noopener noreferrer"
+                                                                className="text-xs text-blue-600 hover:text-blue-800 underline"
+                                                            >
+                                                                View
+                                                            </a>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
                             ))}
                         </div>
