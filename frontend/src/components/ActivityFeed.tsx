@@ -24,15 +24,6 @@ const formatTimeAgo = (date: Date) => {
     return `${Math.floor(diffInSeconds / 86400)}d ago`;
 };
 
-// Utility function to convert event type to camel case
-const formatEventType = (eventType: string) => {
-    return eventType
-        .toLowerCase()
-        .split('_')
-        .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-        .join(' ');
-};
-
 // Enhanced Activity Event Item Component
 const EnhancedActivityEventItem: React.FC<{ activity: ActivityEvent }> = ({ activity }) => {
     const [expandedSubActivities, setExpandedSubActivities] = useState<Set<number>>(new Set());
