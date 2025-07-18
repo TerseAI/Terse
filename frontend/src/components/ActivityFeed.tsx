@@ -1,17 +1,17 @@
-import React, { useEffect, useState } from 'react';
-import GitHubAvatar from './GithubPhoto';
-import { ActivityEvent } from '../shared/types';
-import { ActivityFeedService } from '../services/activityFeed';
-import { 
-    CodeBracketIcon, 
-    ArrowPathIcon, 
-    CheckCircleIcon, 
-    XCircleIcon,
-    ClockIcon,
-    UserIcon,
+import {
+    ArrowPathIcon,
+    CheckCircleIcon,
     ChevronDownIcon,
     ChevronRightIcon,
+    ClockIcon,
+    CodeBracketIcon,
+    UserIcon,
+    XCircleIcon,
 } from '@heroicons/react/24/outline';
+import React, { useEffect, useState } from 'react';
+import { ActivityFeedService } from '../services/activityFeed';
+import { ActivityEvent } from '../shared/types';
+import GitHubAvatar from './GithubPhoto';
 
 // Utility function for formatting time
 const formatTimeAgo = (date: Date) => {
@@ -22,6 +22,15 @@ const formatTimeAgo = (date: Date) => {
     if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m ago`;
     if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h ago`;
     return `${Math.floor(diffInSeconds / 86400)}d ago`;
+};
+
+// Utility function to convert event type to camel case
+const formatEventType = (eventType: string) => {
+    return eventType
+        .toLowerCase()
+        .split('_')
+        .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+        .join(' ');
 };
 
 // Enhanced Activity Event Item Component
@@ -64,7 +73,7 @@ const EnhancedActivityEventItem: React.FC<{ activity: ActivityEvent }> = ({ acti
     const getEventTypeLabel = (eventType: string) => {
         switch (eventType) {
             case 'PUSH':
-                return 'Commit';
+                return 'push to remote';
             case 'PULL_REQUEST_OPENED':
                 return 'PR Opened';
             case 'PULL_REQUEST_MERGED':
@@ -89,7 +98,7 @@ const EnhancedActivityEventItem: React.FC<{ activity: ActivityEvent }> = ({ acti
     };
 
     return (
-        <div className={`p-4 rounded-lg border ${getEventColor(activity.event_type)} transition-all hover:shadow-md`}>
+        <div className={`p-4 rounded-lg border ${getEventColor(activity.event_type)} transition-all`}>
             <div className="flex items-start space-x-3">
                 <div className="flex-shrink-0">
                     <div className="relative">
@@ -109,7 +118,7 @@ const EnhancedActivityEventItem: React.FC<{ activity: ActivityEvent }> = ({ acti
                     <div className="flex items-center justify-between mb-2">
                         <div className="flex items-center space-x-2">
                             <span className="text-sm font-medium text-gray-900">
-                                {activity.github_repository_owner_id}/{activity.github_repository_name}
+                                {activity.github_repository_name}
                             </span>
                             <span className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">
                                 {getEventTypeLabel(activity.event_type)}

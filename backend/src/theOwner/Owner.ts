@@ -6,7 +6,7 @@ import chalk from 'chalk';
 import { db } from '../prismaClient';
 import { sendMessage } from '../slack/sendMessage';
 import { ChangedItem } from '../shared/ModelEvents';
-import { UnifiedGitHubEvent, unifiedGitHubEventForAgent } from './utility';
+import { Commit, UnifiedGitHubEvent, unifiedGitHubEventForAgent } from './utility';
 
 class Owner {
     private searchSystem: Search;
@@ -30,7 +30,7 @@ class Owner {
         analyzer.setCommitContext(event.commits, event.repository, event.branch);
 
         for (const commit of event.commits) {
-            await analyzer.analyze(commit.name);
+            await analyzer.analyze(this.generateCommitString(commit));
             const runResult = await analyzer.run();
             analyzer.history = runResult.history
         }
@@ -78,6 +78,41 @@ class Owner {
         sendMessage(message, slackIntegration.access_token, userSlackIntegration.dm_channel_id);
 
         console.log(chalk.green(`[${eventId}] Message sent to slack`));
+    }
+
+    // Generates a string representation of a commit for LLM ingestion.
+    // Includes patch diffs only if their total length is less than 1000 characters.
+    generateCommitString(commit: Commit): string {
+        let result = `Commit: ${commit.sha}\n`;
+        result += `Message: ${commit.name}\n`;
+
+        if (commit.fileDiffs && Array.isArray(commit.fileDiffs)) {
+            // Calculate total patch length
+            let totalPatchLength = 0;
+            for (const file of commit.fileDiffs) {
+                if (file.diff) {
+                    totalPatchLength += file.diff.length;
+                }
+            }
+
+            if (totalPatchLength < 1000) {
+                result += `Files changed (${commit.fileDiffs.length}):\n`;
+                for (const file of commit.fileDiffs) {
+                    result += `- ${file.filename}\n`;
+                    if (file.diff) {
+                        result += `Patch:\n${file.diff}\n`;
+                    }
+                }
+            } else {
+                result += `Files changed (${commit.fileDiffs.length}):\n`;
+                for (const file of commit.fileDiffs) {
+                    result += `- ${file.filename}\n`;
+                }
+                result += `\n(Patch diffs omitted due to size)\n`;
+            }
+        }
+
+        return result.trim();
     }
 }
 
