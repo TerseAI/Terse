@@ -136,6 +136,8 @@ const systemPrompt = async (session: Session, commitContext?: { commits: Commit[
     return `
     You are an agent that analyzes GitHub events and provides a summary of the changes.
 
+    Make sure the summaries are very Business focused. Very Product Owner focused.
+
     You will be given a GitHub event and you will need to analyze the changes and provide a summary of the changes.
 
     You will be given the following information:
