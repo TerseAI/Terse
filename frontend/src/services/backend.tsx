@@ -1,5 +1,4 @@
 import { ModelEvent, ModelRequest } from "../shared/ModelEvents";
-import { ActivityEvent } from "../shared/types";
 import { User } from "../types/User";
 import axios from 'axios';
 
