@@ -2,6 +2,7 @@ import { useIntegrations } from "../context/Integrations";
 import { MainContent } from "./MainContent";
 import { Sidebar } from "./Sidebar";
 import { SetupScreen } from "./SetupScreen";
+import { LoadingDashboard } from "./LoadingDashboard";
 
 interface DashboardProps {
     onIntegrationChange: () => Promise<void>;
@@ -9,11 +10,16 @@ interface DashboardProps {
 }
 
 export function Dashboard({ onIntegrationChange, className = "" }: DashboardProps) {
-    const { isSetupComplete } = useIntegrations();
+    const { isSetupComplete, isLoading } = useIntegrations();
+
+    if (isLoading) {
+        return <LoadingDashboard />;
+    }
 
     if (!isSetupComplete) {
         return <SetupScreen onIntegrationChange={onIntegrationChange} className={className} />;
     }
+
     return (
         <div className={`grid grid-cols-1 lg:grid-cols-4 gap-8 ${className}`}>
             <MainContent />
