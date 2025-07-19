@@ -8,7 +8,7 @@ import {
     XCircleIcon,
 } from '@heroicons/react/24/outline';
 import React, { useEffect, useState } from 'react';
-import { ActivityFeedService } from '../services/activityFeed';
+import { ActivityFeedService, PaginatedActivityResponse } from '../services/activityFeed';
 import { ActivityEvent } from '../shared/types';
 import GitHubAvatar from './GithubPhoto';
 
@@ -211,25 +211,66 @@ interface ActivityFeedProps {
 export function ActivityFeed({ className = "" }: ActivityFeedProps) {
     const [activities, setActivities] = useState<ActivityEvent[]>([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [isLoadingMore, setIsLoadingMore] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [hasMore, setHasMore] = useState(true);
+    const [nextCursor, setNextCursor] = useState<string | undefined>(undefined);
 
-    useEffect(() => {
-        loadActivities();
-    }, []);
-
-    const loadActivities = async () => {
+    const loadActivities = async (cursor?: string) => {
         try {
-            setIsLoading(true);
+            if (cursor) {
+                setIsLoadingMore(true);
+            } else {
+                setIsLoading(true);
+            }
             setError(null);
-            const data = await ActivityFeedService.getActivityFeed();
-            setActivities(data);
+            
+            const response: PaginatedActivityResponse = await ActivityFeedService.getActivityFeed({
+                cursor,
+                limit: 25
+            });
+            
+            if (cursor) {
+                // Append new activities for pagination
+                setActivities(prev => [...prev, ...response.activities]);
+            } else {
+                // Replace activities for initial load
+                setActivities(response.activities);
+            }
+            
+            setHasMore(response.pagination.hasMore);
+            setNextCursor(response.pagination.nextCursor);
         } catch (err) {
             setError('Failed to load activity feed');
             console.error('Error loading activity feed:', err);
         } finally {
             setIsLoading(false);
+            setIsLoadingMore(false);
         }
     };
+
+    const loadMore = () => {
+        if (!isLoadingMore && hasMore && nextCursor) {
+            loadActivities(nextCursor);
+        }
+    };
+
+    // Simple scroll handler for infinite scroll
+    useEffect(() => {
+        const handleScroll = () => {
+            if (window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 100) {
+                loadMore();
+            }
+        };
+
+        window.addEventListener('scroll', handleScroll);
+        return () => window.removeEventListener('scroll', handleScroll);
+    }, [isLoadingMore, hasMore, nextCursor]);
+
+    // Initial load
+    useEffect(() => {
+        loadActivities();
+    }, []);
 
     if (isLoading) {
         return (
@@ -267,7 +308,7 @@ export function ActivityFeed({ className = "" }: ActivityFeedProps) {
                         <h3 className="text-lg font-medium text-slate-900 mb-2 tracking-tight">Unable to load activity</h3>
                         <p className="text-slate-500 mb-4 leading-relaxed text-sm">{error}</p>
                         <button
-                            onClick={loadActivities}
+                            onClick={() => loadActivities()}
                             className="px-4 py-2 bg-slate-900 text-white rounded-lg hover:bg-slate-800 transition-colors duration-200 text-sm font-medium tracking-wide"
                         >
                             Try again
@@ -302,7 +343,7 @@ export function ActivityFeed({ className = "" }: ActivityFeedProps) {
                 <div className="flex items-center justify-between mb-6">
                     <h2 className="text-xl font-light text-slate-900 tracking-tight">Activity</h2>
                     <button
-                        onClick={loadActivities}
+                        onClick={() => loadActivities()}
                         className="p-2 text-slate-400 hover:text-slate-600 transition-colors duration-200 rounded-full hover:bg-slate-100/50"
                         title="Refresh"
                     >
@@ -312,8 +353,18 @@ export function ActivityFeed({ className = "" }: ActivityFeedProps) {
                 
                 <div className="space-y-4">
                     {activities.map((activity, index) => (
-                        <EnhancedActivityEventItem key={index} activity={activity} />
+                        <EnhancedActivityEventItem key={`${activity.title}-${index}`} activity={activity} />
                     ))}
+                    
+                    {/* Loading indicator for pagination */}
+                    {isLoadingMore && (
+                        <div className="flex justify-center py-4">
+                            <div className="flex items-center space-x-2 text-slate-500">
+                                <div className="w-4 h-4 border-2 border-slate-300 border-t-slate-600 rounded-full animate-spin"></div>
+                                <span className="text-sm">Loading more...</span>
+                            </div>
+                        </div>
+                    )}
                 </div>
             </div>
         </div>

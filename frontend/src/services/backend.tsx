@@ -44,7 +44,7 @@ interface BackendService {
     /**
      * Gets the activity feed
      */
-    getActivityFeed(): Promise<ActivityEvent[]>;
+    getActivityFeed(url?: string): Promise<any>;
 
     /**
      * Gets all integrations status in a single call
@@ -197,8 +197,9 @@ export const BackendProvider: BackendService = {
             });
     },
 
-    getActivityFeed: () => {
-        return axios.get(`${backendBaseUrl}/activity-feed`, { withCredentials: true })
+    getActivityFeed: (url?: string) => {
+        const endpoint = url ? `${backendBaseUrl}${url}` : `${backendBaseUrl}/activity-feed`;
+        return axios.get(endpoint, { withCredentials: true })
             .then(response => response.data)
             .catch(error => {
                 console.error('Error getting activity feed:', error);
