@@ -229,7 +229,7 @@ export default function LandingPage() {
                             <div className="lg:w-1/2">
                                 <div className="bg-gray-800/30 rounded-xl p-4 border border-gray-700/50">
                                     <img 
-                                        src="/set-up-screenshot.png" 
+                                        src="/setup-github.png" 
                                         alt="Vectra AI Setup Process" 
                                         className="w-full h-auto rounded-lg shadow-2xl"
                                     />
@@ -305,7 +305,7 @@ export default function LandingPage() {
                             <div className="lg:w-1/2">
                                 <div className="bg-gray-800/30 rounded-xl p-4 border border-gray-700/50">
                                     <img 
-                                        src="/Slack.png" 
+                                        src="/activity.png" 
                                         alt="Activity Dashboard" 
                                         className="w-full h-auto rounded-lg shadow-2xl"
                                     />
