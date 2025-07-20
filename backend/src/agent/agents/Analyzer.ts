@@ -54,7 +54,7 @@ export class Analyzer {
     }
 
     async analyze(event: string) {
-        console.log(chalk.blue('Analyzing event'));
+        console.log(chalk.blue(`Analyzing event: ${event}`));
         this.history.push(user(event));
     }
 
