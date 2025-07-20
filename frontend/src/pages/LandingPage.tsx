@@ -71,12 +71,12 @@ export default function LandingPage() {
                 <div className="max-w-7xl mx-auto text-center">
                     {/* Tagline */}
                     <h1 className="text-6xl md:text-7xl font-bold text-white mb-8">
-                        See What Your Team Is Building.
+                        An Alternative to Ticket Tracking.
                     </h1>
                     
                     {/* Subtitle */}
                     <p className="text-xl md:text-2xl text-gray-300 mb-8 max-w-4xl mx-auto leading-relaxed">
-                        Get AI-powered insights into your team's activity with a beautiful activity dashboard that shows you exactly what's happening in your GitHub repositories.
+                        Track your team's activity with a beautiful activity dashboard that shows you exactly what's happening in your GitHub repositories.
                     </p>
 
                     {/* Setup time and integration info */}
