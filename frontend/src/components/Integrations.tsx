@@ -12,19 +12,7 @@ export function Integrations({ className = "" }: IntegrationsProps) {
             
             <div className="space-y-4">
                 {/* GitHub */}
-                <div className="border-b border-gray-100 pb-4">
-                    <AddGithub />
-                </div>
-
-                {/* Ticketing System */}
-                {/* <div className="border-b border-gray-100 pb-4">
-                    <TicketIntegration onIntegrationChange={onIntegrationChange} />
-                </div> */}
-
-                {/* Slack */}
-                {/* <div>
-                    <AddToSlack />
-                </div> */}
+                <AddGithub />
             </div>
         </div>
     );

@@ -30,23 +30,6 @@ export function SystemStatus({ className = "" }: SystemStatusProps) {
                         </span>
                     </div>
                 </div>
-                
-                <div className="flex items-center justify-between">
-                    <span className="text-sm text-gray-600">Slack Summaries</span>
-                    <div className="flex items-center space-x-2">
-                        {hasSlack ? (
-                            <>
-                                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                                <span className="text-sm font-medium text-green-600">Enabled</span>
-                            </>
-                        ) : (
-                            <>
-                                <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
-                                <span className="text-sm font-medium text-yellow-600">Disabled</span>
-                            </>
-                        )}
-                    </div>
-                </div>
             </div>
         </div>
     );
