@@ -5,7 +5,7 @@ interface SystemStatusProps {
 }
 
 export function SystemStatus({ className = "" }: SystemStatusProps) {
-    const { hasSlack, isSetupComplete } = useIntegrations();
+    const { isSetupComplete } = useIntegrations();
 
     return (
         <div className={`bg-white rounded-xl border border-gray-200 shadow-sm p-6 ${className}`}>
