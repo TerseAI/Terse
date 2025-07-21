@@ -258,7 +258,7 @@ export function ActivityFeed({ className = "" }: ActivityFeedProps) {
     // Simple scroll handler for infinite scroll
     useEffect(() => {
         const handleScroll = () => {
-            if (window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 100) {
+            if (window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 400) {
                 loadMore();
             }
         };
