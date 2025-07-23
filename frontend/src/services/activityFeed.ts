@@ -15,6 +15,12 @@ export interface PaginationParams {
     limit?: number;
 }
 
+export interface DailyActivitySummary {
+    date: string;
+    summary: string;
+    eventCount: number;
+}
+
 export class ActivityFeedService {
     static async getActivityFeed(params?: PaginationParams): Promise<PaginatedActivityResponse> {
         const queryParams = new URLSearchParams();
@@ -30,5 +36,10 @@ export class ActivityFeedService {
         const url = params ? `/activity-feed?${queryParams.toString()}` : '/activity-feed';
         const response = await BackendProvider.getActivityFeed(url);
         return response as PaginatedActivityResponse;
+    }
+
+    static async getDailyActivitySummary(): Promise<DailyActivitySummary> {
+        const response = await BackendProvider.getDailyActivitySummary();
+        return response as DailyActivitySummary;
     }
 } 

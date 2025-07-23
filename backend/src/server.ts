@@ -17,7 +17,7 @@ import { JiraWebhookPayload } from './utility/JiraWebhookPayload';
 import { getCurrentSlackIntegration, getSlackOAuthUrl, slackOAuthCallback } from './slack/registerApp';
 import { handleSlackEvent } from './slack/eventHandler';
 import { fetchUserIntegrations } from './routes/integrations';
-import { getActivityFeed } from './routes/activity';
+import { getActivityFeed, getDailyActivitySummary } from './routes/activity';
 
 export type Session = {
     user: User;
@@ -83,6 +83,11 @@ app.post('/logout', async (req, res) => {
 app.get('/activity-feed', authMiddleware, async (req, res) => {
     getActivityFeed(req, res);
 })
+
+// Add daily summary route
+app.get('/activity/daily-summary', authMiddleware, async (req, res) => {
+    getDailyActivitySummary(req, res);
+});
 
 // MARK: SESSION
 

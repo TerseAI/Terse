@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import { db } from "../prismaClient";
 import { ActivityEvent } from "../shared/types";
+import { callOpenAISummary } from '../utility/openai';
 
 interface PaginationQuery {
     cursor?: string; // ISO timestamp string
@@ -152,4 +153,85 @@ export async function getActivityFeed(req: Request, res: Response) {
     };
 
     res.json(response);
+}
+
+export async function getDailyActivitySummary(req: Request, res: Response) {
+    const user = req.session?.user;
+    if (!user) {
+        return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    // Calculate yesterday's date range (UTC)
+    const now = new Date();
+    const end = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())); // today at 00:00 UTC
+    const start = new Date(end.getTime() - 24 * 60 * 60 * 1000); // yesterday at 00:00 UTC
+
+    console.log('Daily summary date range:', {
+        start: start.toISOString(),
+        end: end.toISOString(),
+        userId: user.id
+    });
+
+    // Start with a simpler query to debug
+    const sql = `
+        SELECT 
+            ae.id,
+            ae.title,
+            ae.event_type,
+            ae.created_at,
+            u.github_username,
+            gr.name as repository_name
+        FROM activity_events ae
+        INNER JOIN user_github_repositories ugr ON ugr.github_repository_id = ae.github_repository_id
+        LEFT JOIN users u ON ae.user_id = u.id
+        LEFT JOIN github_repositories gr ON ae.github_repository_id = gr.id
+        WHERE ugr.user_id = $1
+          AND ae.created_at >= $2::timestamp
+          AND ae.created_at < $3::timestamp
+        ORDER BY ae.created_at ASC, ae.id ASC
+    `;
+    const params = [user.id, start.toISOString(), end.toISOString()];
+
+    try {
+        console.log('Executing SQL query with params:', params);
+        const result = await db().$queryRawUnsafe<any[]>(sql, ...params);
+        console.log('Query result count:', result.length);
+        
+        const eventCount = result.length;
+        let summary = '';
+        
+        if (eventCount === 0) {
+            summary = 'No activity events were recorded yesterday.';
+            console.log('No events found for yesterday, using fallback summary');
+        } else {
+            console.log('Found events, generating AI summary for', eventCount, 'events');
+            // Format events into a prompt for OpenAI
+            const prompt = result.map((row, i) => {
+                return `${i + 1}. [${row.event_type}] ${row.title} (${row.repository_name || 'Unknown repo'}) by ${row.github_username || 'Unknown user'} at ${row.created_at.toISOString()}`;
+            }).join('\n');
+            
+            try {
+                summary = await callOpenAISummary(`Summarize the following activity events for a daily team update.\n\n${prompt}`);
+                console.log('AI summary generated successfully');
+            } catch (openaiError) {
+                console.error('OpenAI API error:', openaiError);
+                summary = `Yesterday had ${eventCount} activity events, but there was an issue generating the summary.`;
+            }
+        }
+        
+        const response = {
+            date: start.toISOString().slice(0, 10),
+            summary,
+            eventCount
+        };
+        
+        console.log('Returning daily summary response:', response);
+        return res.json(response);
+    } catch (err) {
+        console.error('Error fetching daily activity summary:', err);
+        return res.status(500).json({ 
+            error: 'Failed to fetch daily summary',
+            details: err instanceof Error ? err.message : 'Unknown error'
+        });
+    }
 }
