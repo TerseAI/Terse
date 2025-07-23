@@ -46,6 +46,15 @@ interface BackendService {
     getActivityFeed(url?: string): Promise<any>;
 
     /**
+     * Gets the daily activity summary
+     */
+    getDailyActivitySummary(): Promise<{
+        date: string;
+        summary: string;
+        eventCount: number;
+    }>;
+
+    /**
      * Gets all integrations status in a single call
      */
     getIntegrationsStatus(): Promise<{
@@ -202,6 +211,15 @@ export const BackendProvider: BackendService = {
             .then(response => response.data)
             .catch(error => {
                 console.error('Error getting activity feed:', error);
+                throw error;
+            });
+    },
+
+    getDailyActivitySummary: () => {
+        return axios.get(`${backendBaseUrl}/activity/daily-summary`, { withCredentials: true })
+            .then(response => response.data)
+            .catch(error => {
+                console.error('Error getting daily activity summary:', error);
                 throw error;
             });
     },
