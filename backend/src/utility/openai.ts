@@ -13,7 +13,7 @@ export async function callOpenAISummary(prompt: string): Promise<string> {
     const completion = await openai.chat.completions.create({
       model: 'gpt-4o',
       messages: [
-        { role: 'system', content: 'You are an expert product owner assistant. Summarize the following activity events for a daily team update. Be concise, clear, and focus on what matters to a product owner.' },
+        { role: 'system', content: 'You are an expert product owner assistant. Summarize the following activity events for a daily team update. Be concise, clear, and focus on what matters to a product owner. Make sure to separate by each team member.' },
         { role: 'user', content: prompt }
       ],
       max_tokens: 256,
