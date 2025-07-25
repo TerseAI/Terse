@@ -1,5 +1,5 @@
-import { ActivityFeed } from "./ActivityFeed";
-import { DailySummary } from "./DailySummary";
+import { ActivityFeed } from "../activity/ActivityFeed";
+import { DailySummary } from "../activity/DailySummary";
 
 interface MainContentProps {
     className?: string;

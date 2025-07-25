@@ -1,4 +1,4 @@
-import { useIntegrations } from "../context/Integrations";
+import { useIntegrations } from "../../context/Integrations";
 
 interface SystemStatusProps {
     className?: string;
