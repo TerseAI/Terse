@@ -1,5 +1,5 @@
-import { TopMenuBar } from "../components/TopMenuBar";
-import { Dashboard } from "../components/Dashboard";
+import { TopMenuBar } from "../components/layout/TopMenuBar";
+import { Dashboard } from "../components/dashboard/Dashboard";
 import { useIntegrations } from "../context/Integrations";
 
 function Home() {
