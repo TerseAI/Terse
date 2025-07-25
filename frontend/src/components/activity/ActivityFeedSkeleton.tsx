@@ -1,5 +1,3 @@
-import React from 'react';
-
 export function ActivityFeedSkeleton({ className = '' }: { className?: string }) {
     return (
         <div className={`bg-white/80 backdrop-blur-sm rounded-3xl border border-slate-200/60 shadow-xl ${className}`}>
