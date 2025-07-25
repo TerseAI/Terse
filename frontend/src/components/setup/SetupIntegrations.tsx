@@ -1,4 +1,4 @@
-import { Integrations } from "./Integrations";
+import { Integrations } from "../integrations/Integrations";
 
 interface SetupIntegrationsProps {
     onIntegrationChange: () => Promise<void>;

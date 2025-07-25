@@ -1,7 +1,7 @@
 import { useIntegrations } from "../context/Integrations";
-import { MainContent } from "./MainContent";
-import { Sidebar } from "./Sidebar";
-import { SetupScreen } from "./SetupScreen";
+import { MainContent } from "../layout/MainContent";
+import { Sidebar } from "../layout/Sidebar";
+import { SetupScreen } from "../setup/SetupScreen";
 import { LoadingDashboard } from "./LoadingDashboard";
 
 interface DashboardProps {

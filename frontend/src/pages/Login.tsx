@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import AnimateableBlock from '../components/AnimateableBlock';
+import AnimateableBlock from '../components/ui/AnimateableBlock';
 import { BackendProvider } from '../services/backend';
 import { useAuth } from '../services/auth';
 

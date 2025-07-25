@@ -1,3 +1,4 @@
+import React, { useState } from 'react';
 import {
     ArrowPathIcon,
     CheckCircleIcon,
@@ -7,24 +8,20 @@ import {
     CodeBracketIcon,
     XCircleIcon,
 } from '@heroicons/react/24/outline';
-import React, { useEffect, useState } from 'react';
-import { ActivityFeedService, PaginatedActivityResponse } from '../services/activityFeed';
-import { ActivityEvent } from '../shared/types';
-import GitHubAvatar from './GithubPhoto';
+import { ActivityEvent } from '../../shared/types';
+import GitHubAvatar from '../ui/GithubPhoto';
 
-// Refined time formatting with elegant typography
 const formatTimeAgo = (date: Date) => {
     const now = new Date();
     const diffInSeconds = Math.floor((now.getTime() - new Date(date).getTime()) / 1000);
-    
+
     if (diffInSeconds < 60) return 'just now';
     if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m`;
     if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h`;
     return `${Math.floor(diffInSeconds / 86400)}d`;
 };
 
-// Jonny Ive-inspired Activity Event Item
-const EnhancedActivityEventItem: React.FC<{ activity: ActivityEvent }> = ({ activity }) => {
+export function ActivityEventItem({ activity }: { activity: ActivityEvent }) {
     const [expandedSubActivities, setExpandedSubActivities] = useState<Set<number>>(new Set());
 
     const getEventIcon = (eventType: string) => {
@@ -89,12 +86,12 @@ const EnhancedActivityEventItem: React.FC<{ activity: ActivityEvent }> = ({ acti
     };
 
     return (
-        <div 
+        <div
             className={`
                 group relative overflow-hidden rounded-2xl border bg-gradient-to-br ${getEventColor(activity.event_type)}
                 transition-all duration-500 ease-out
             `}
-        >   
+        >
             <div className="relative p-4">
                 <div className="flex items-start space-x-3">
                     {/* Avatar with refined styling */}
@@ -108,7 +105,7 @@ const EnhancedActivityEventItem: React.FC<{ activity: ActivityEvent }> = ({ acti
                             </div>
                         </div>
                     </div>
-                    
+
                     <div className="flex-1 min-w-0 space-y-2">
                         {/* Header with refined typography */}
                         <div className="flex items-center justify-between">
@@ -130,12 +127,12 @@ const EnhancedActivityEventItem: React.FC<{ activity: ActivityEvent }> = ({ acti
                                 </span>
                             </div>
                         </div>
-                        
+
                         {/* Title with elegant typography */}
                         <h3 className="text-base font-semibold text-slate-900 leading-tight tracking-tight">
                             {activity.title}
                         </h3>
-                        
+
                         {/* Sub Activities with refined design */}
                         {activity.sub_activities.length > 0 && (
                             <div className="space-y-2 pt-1">
@@ -165,7 +162,7 @@ const EnhancedActivityEventItem: React.FC<{ activity: ActivityEvent }> = ({ acti
                                                     </button>
                                                 )}
                                             </div>
-                                            
+
                                             {/* Associated Commits with elegant styling */}
                                             {subActivity.commits.length > 0 && expandedSubActivities.has(index) && (
                                                 <div className="mt-3 space-y-1.5 animate-in slide-in-from-top-2 duration-300">
@@ -179,9 +176,9 @@ const EnhancedActivityEventItem: React.FC<{ activity: ActivityEvent }> = ({ acti
                                                                     {commit.sha.substring(0, 7)}
                                                                 </span>
                                                                 <span className="text-xs text-slate-700 flex-1 leading-relaxed">{commit.message}</span>
-                                                                <a 
-                                                                    href={commit.url} 
-                                                                    target="_blank" 
+                                                                <a
+                                                                    href={commit.url}
+                                                                    target="_blank"
                                                                     rel="noopener noreferrer"
                                                                     className="text-xs text-slate-600 hover:text-slate-800 transition-colors duration-200 font-medium"
                                                                 >
@@ -202,171 +199,4 @@ const EnhancedActivityEventItem: React.FC<{ activity: ActivityEvent }> = ({ acti
             </div>
         </div>
     );
-};
-
-interface ActivityFeedProps {
-    className?: string;
 }
-
-export function ActivityFeed({ className = "" }: ActivityFeedProps) {
-    const [activities, setActivities] = useState<ActivityEvent[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
-    const [isLoadingMore, setIsLoadingMore] = useState(false);
-    const [error, setError] = useState<string | null>(null);
-    const [hasMore, setHasMore] = useState(true);
-    const [nextCursor, setNextCursor] = useState<string | undefined>(undefined);
-
-    const loadActivities = async (cursor?: string) => {
-        try {
-            if (cursor) {
-                setIsLoadingMore(true);
-            } else {
-                setIsLoading(true);
-            }
-            setError(null);
-            
-            const response: PaginatedActivityResponse = await ActivityFeedService.getActivityFeed({
-                cursor,
-                limit: 25
-            });
-            
-            if (cursor) {
-                // Append new activities for pagination
-                setActivities(prev => [...prev, ...response.activities]);
-            } else {
-                // Replace activities for initial load
-                setActivities(response.activities);
-            }
-            
-            setHasMore(response.pagination.hasMore);
-            setNextCursor(response.pagination.nextCursor);
-        } catch (err) {
-            setError('Failed to load activity feed');
-            console.error('Error loading activity feed:', err);
-        } finally {
-            setIsLoading(false);
-            setIsLoadingMore(false);
-        }
-    };
-
-    const loadMore = () => {
-        if (!isLoadingMore && hasMore && nextCursor) {
-            loadActivities(nextCursor);
-        }
-    };
-
-    // Simple scroll handler for infinite scroll
-    useEffect(() => {
-        const handleScroll = () => {
-            if (window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 400) {
-                loadMore();
-            }
-        };
-
-        window.addEventListener('scroll', handleScroll);
-        return () => window.removeEventListener('scroll', handleScroll);
-    }, [isLoadingMore, hasMore, nextCursor]);
-
-    // Initial load
-    useEffect(() => {
-        loadActivities();
-    }, []);
-
-    if (isLoading) {
-        return (
-            <div className={`bg-white/80 backdrop-blur-sm rounded-3xl border border-slate-200/60 shadow-xl ${className}`}>
-                <div className="p-6">
-                    <div className="flex items-center justify-between mb-6">
-                        <h2 className="text-xl font-light text-slate-900 tracking-tight">Activity</h2>
-                        <div className="w-5 h-5 bg-slate-200 rounded-full animate-pulse"></div>
-                    </div>
-                    <div className="space-y-4">
-                        {[...Array(3)].map((_, i) => (
-                            <div key={i} className="flex items-start space-x-3 p-4 border border-slate-200/60 rounded-2xl bg-gradient-to-br from-slate-50 to-slate-25">
-                                <div className="w-10 h-10 bg-slate-200 rounded-full animate-pulse"></div>
-                                <div className="flex-1 space-y-2">
-                                    <div className="h-3 bg-slate-200 rounded-lg w-3/4 animate-pulse"></div>
-                                    <div className="h-2 bg-slate-200 rounded-lg w-1/2 animate-pulse"></div>
-                                    <div className="h-2 bg-slate-200 rounded-lg w-2/3 animate-pulse"></div>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            </div>
-        );
-    }
-
-    if (error) {
-        return (
-            <div className={`bg-white/80 backdrop-blur-sm rounded-3xl border border-slate-200/60 shadow-xl ${className}`}>
-                <div className="p-6">
-                    <div className="text-center">
-                        <div className="w-12 h-12 bg-rose-50 rounded-full flex items-center justify-center mx-auto mb-4">
-                            <XCircleIcon className="w-6 h-6 text-rose-500" />
-                        </div>
-                        <h3 className="text-lg font-medium text-slate-900 mb-2 tracking-tight">Unable to load activity</h3>
-                        <p className="text-slate-500 mb-4 leading-relaxed text-sm">{error}</p>
-                        <button
-                            onClick={() => loadActivities()}
-                            className="px-4 py-2 bg-slate-900 text-white rounded-lg hover:bg-slate-800 transition-colors duration-200 text-sm font-medium tracking-wide"
-                        >
-                            Try again
-                        </button>
-                    </div>
-                </div>
-            </div>
-        );
-    }
-
-    if (activities.length === 0) {
-        return (
-            <div className={`bg-white/80 backdrop-blur-sm rounded-3xl border border-slate-200/60 shadow-xl ${className}`}>
-                <div className="p-6">
-                    <div className="text-center">
-                        <div className="w-12 h-12 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                            <ClockIcon className="w-6 h-6 text-slate-400" />
-                        </div>
-                        <h3 className="text-lg font-medium text-slate-900 mb-2 tracking-tight">No activity yet</h3>
-                        <p className="text-slate-500 leading-relaxed max-w-md mx-auto text-sm">
-                            Activity will appear here once you start making changes to your repositories.
-                        </p>
-                    </div>
-                </div>
-            </div>
-        );
-    }
-
-    return (
-        <div className={`bg-white/80 backdrop-blur-sm rounded-3xl border border-slate-200/60 shadow-xl ${className}`}>
-            <div className="p-6">
-                <div className="flex items-center justify-between mb-6">
-                    <h2 className="text-xl font-light text-slate-900 tracking-tight">Activity</h2>
-                    <button
-                        onClick={() => loadActivities()}
-                        className="p-2 text-slate-400 hover:text-slate-600 transition-colors duration-200 rounded-full hover:bg-slate-100/50"
-                        title="Refresh"
-                    >
-                        <ArrowPathIcon className="w-4 h-4" />
-                    </button>
-                </div>
-                
-                <div className="space-y-4">
-                    {activities.map((activity, index) => (
-                        <EnhancedActivityEventItem key={`${activity.title}-${index}`} activity={activity} />
-                    ))}
-                    
-                    {/* Loading indicator for pagination */}
-                    {isLoadingMore && (
-                        <div className="flex justify-center py-4">
-                            <div className="flex items-center space-x-2 text-slate-500">
-                                <div className="w-4 h-4 border-2 border-slate-300 border-t-slate-600 rounded-full animate-spin"></div>
-                                <span className="text-sm">Loading more...</span>
-                            </div>
-                        </div>
-                    )}
-                </div>
-            </div>
-        </div>
-    );
-} 
