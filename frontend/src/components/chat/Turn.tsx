@@ -1,4 +1,4 @@
-import Spin, { Size } from "../Spin";
+import Spin, { Size } from "../ui/Spin";
 import { HandThumbUpIcon, HandThumbDownIcon, CheckIcon, DocumentDuplicateIcon, ClockIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import { HandThumbUpIcon as HandThumbUpFilledIcon, HandThumbDownIcon as HandThumbDownFilledIcon } from '@heroicons/react/24/solid';
 import { ReactNode, useState, useRef, useEffect } from "react";
