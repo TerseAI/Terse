@@ -1,4 +1,4 @@
-import { useIntegrations } from "../context/Integrations";
+import { useIntegrations } from "../../context/Integrations";
 import { MainContent } from "../layout/MainContent";
 import { Sidebar } from "../layout/Sidebar";
 import { SetupScreen } from "../setup/SetupScreen";
