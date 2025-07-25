@@ -95,7 +95,7 @@ class Owner {
                 }
             }
 
-            if (totalPatchLength < 1000) {
+            if (totalPatchLength < 10000) {
                 result += `Files changed (${commit.fileDiffs.length}):\n`;
                 for (const file of commit.fileDiffs) {
                     result += `- ${file.filename}\n`;
