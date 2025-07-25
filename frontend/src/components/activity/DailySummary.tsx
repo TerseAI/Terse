@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ActivityFeedService, DailyActivitySummary } from '../services/activityFeed';
+import { ActivityFeedService, DailyActivitySummary } from '../../services/activityFeed';
 
 export const DailySummary: React.FC = () => {
     const [summary, setSummary] = useState<DailyActivitySummary | null>(null);

@@ -1,4 +1,4 @@
-import GlowingTextField, { Size } from "../GlowingTextField";
+import GlowingTextField, { Size } from "../ui/GlowingTextField";
 import { useSnippetNavigationContext } from "../../context/SnippetNavigationContext";
 import { useEffect, useRef } from "react";
 
