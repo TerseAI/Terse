@@ -1,7 +1,7 @@
 import { AnimatePresence } from "framer-motion";
 import Login from "./pages/Login";
 import { AuthProvider, useAuth } from "./services/auth";
-import Spin from "./components/Spin";
+import Spin from "./components/ui/Spin";
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Home from "./pages/Home";
 import { IntegrationProvider } from "./context/Integrations";

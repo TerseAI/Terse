@@ -2,7 +2,7 @@ import { SetupHero } from "./SetupHero";
 import { SetupProgress } from "./SetupProgress";
 import { SetupIntegrations } from "./SetupIntegrations";
 import { SetupBenefits } from "./SetupBenefits";
-import { useIntegrations } from "../context/Integrations";
+import { useIntegrations } from "../../context/Integrations";
 
 interface SetupScreenProps {
     onIntegrationChange: () => Promise<void>;

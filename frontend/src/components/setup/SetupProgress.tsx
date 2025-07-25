@@ -1,4 +1,4 @@
-import { useIntegrations } from "../context/Integrations";
+import { useIntegrations } from "../../context/Integrations";
 
 interface SetupProgressProps {
     className?: string;

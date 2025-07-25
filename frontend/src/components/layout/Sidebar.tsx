@@ -1,5 +1,5 @@
-import { SystemStatus } from "./SystemStatus";
-import { Integrations } from "./Integrations";
+import { SystemStatus } from "../ui/SystemStatus";
+import { Integrations } from "../integrations/Integrations";
 
 interface SidebarProps {
     onIntegrationChange: () => Promise<void>;

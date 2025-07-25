@@ -1,10 +1,10 @@
 import { useState } from "react";
-import { BackendProvider } from "../services/backend";
+import { BackendProvider } from "../../services/backend";
 import { IntegrationCard } from "./IntegrationCard";
-import { useIntegrations } from "../context/Integrations";
-import { PosthogEvents } from "../utility/PosthogEvents";
+import { useIntegrations } from "../../context/Integrations";
+import { PosthogEvents } from "../../utility/PosthogEvents";
 import posthog from "posthog-js";
-import { useAuth } from "../services/auth";
+import { useAuth } from "../../services/auth";
 
 export function AddGithub() {
     const { hasGithub, isPolling, startPolling } = useIntegrations();
