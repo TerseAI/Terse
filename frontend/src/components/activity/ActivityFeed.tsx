@@ -1,6 +1,6 @@
 
 import { ArrowPathIcon } from '@heroicons/react/24/outline';
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ActivityFeedService, PaginatedActivityResponse } from '../../services/activityFeed';
 import { ActivityEvent } from '../../shared/types';
 import { ActivityEventItem } from './ActivityEventItem';
