@@ -1,12 +1,11 @@
 import { AnimatePresence } from "framer-motion";
-import Login from "./pages/Login";
 import { AuthProvider, useAuth } from "./services/auth";
-import Spin from "./components/ui/Spin";
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import Home from "./pages/Home";
 import { IntegrationProvider } from "./context/Integrations";
 import LandingPage from "./pages/LandingPage";
 import LandingPageChangelog from "./pages/LandingPage_changelog";
+import Spin from "./components/loading/Spin";
+import Home from "./pages/Home";
 
 function App() {
   return (
@@ -43,7 +42,9 @@ function Content() {
               <Home />
             </div>
           ) : (
-            <Login key="login" />
+            <div key="login">
+              <h1>Login</h1>
+            </div>
           )}
         </AnimatePresence>
       </IntegrationProvider>
