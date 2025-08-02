@@ -1,15 +1,18 @@
 import { useEffect, useState } from "react";
 import Card from "../components/Card";
+import DailySummary from "../components/DailySummary";
 import { ActivityFeedService, DailyActivitySummary } from '../services/activityFeed';
-import Spin from "../components/loading/Spin";
+import { useAuth } from "../services/auth";
+import Sidebar from "../components/Sidebar";
 
 function Home() {
     return (
-        <div className="grid grid-cols-20 gap-4 p-4">
-            <div className="col-span-2">
-                <h1 className="text-2xl font-bold">Home</h1>
+        <div className="h-full flex gap-4">
+            <div className="h-full bg-[theme(background-elevated)] rounded-md flex-shrink-0">
+                <Sidebar />
             </div>
-            <div className="col-span-18">
+            <div className="flex-1 min-w-0 pl-4">
+                <Welcome />
                 <OverallSummary />
             </div>
         </div>
@@ -20,7 +23,7 @@ function OverallSummary() {
     const [summary, setSummary] = useState<DailyActivitySummary | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
-    
+
     useEffect(() => {
         const fetchDailySummary = async () => {
             try {
@@ -39,20 +42,25 @@ function OverallSummary() {
         fetchDailySummary();
     }, []);
 
-
-    if (loading) {
-        return <Spin />;
-    }
-
-    if (error) {
-        return <div className="text-red-500">{error}</div>;
-    }
-
     return (
-        <Card>
-            <h1 className="text-2xl font-bold">Overall Summary</h1>
-            <p>{summary?.summary}</p>
-        </Card>
+        <>
+            <h1 className="text-2xl font-bold pb-4">Overall Summary</h1>
+            <Card>
+                <DailySummary summary={summary} loading={loading} error={error} />
+            </Card>
+        </>
+    )
+}
+
+function Welcome() {
+    const { user } = useAuth();
+    return (
+        <div className="pt-4 pb-4">
+            <h1 className="text-xl font-bold pb-2">👋 Hi {user?.display_name}!</h1>
+            <p className="text-md">
+                here's what your team has been up to
+            </p>
+        </div>
     )
 }
 
