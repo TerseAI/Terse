@@ -1,7 +1,8 @@
 @import "tailwindcss";
 
 html,
-body {
+body,
+#root {
     height: 100%;
     /* overflow-y: auto; */
     overflow-x: hidden;
@@ -20,7 +21,7 @@ body {
     --background-surface: #242320;
     --background-elevated: #2E2C28;
 
-    --border: #2C333A;
+    --border: #333333;
 
     --text-primary: #E6EDF3;
     --text-secondary: #8B949E;
