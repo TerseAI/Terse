@@ -38,7 +38,7 @@ function Content() {
       <IntegrationProvider>
         <AnimatePresence mode="wait">
           {user != null ? (
-            <div key="main">
+            <div key="main" className="h-full">
               <Home />
             </div>
           ) : (
