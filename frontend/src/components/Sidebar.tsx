@@ -46,12 +46,4 @@ function LinkLabel({ title, icon }: { title: string, icon: React.ReactNode }) {
     )
 }
 
-function SidebarIcon({ icon }: { icon: React.ReactNode }) {
-    return (
-        <div className="flex items-center gap-2">
-            {icon}
-        </div>
-    )
-}
-
 export default Sidebar;
