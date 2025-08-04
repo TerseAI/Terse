@@ -6,7 +6,7 @@ function EventDetails({ event }: { event: ActivityEvent }) {
     return (
         <div className="grid auto-cols-max grid-flow-col gap-2">
             <div>
-                <span className="p-2 bg-green-800 text-green-100 rounded-md">
+                <span className="text-sm p-2 bg-green-800 rounded-md">
                     {formatEventTitle(event)}
                 </span>
             </div>
