@@ -1,5 +1,7 @@
+import { AddToSlack } from "../components/integrations/addIntengrations/AddSlack";
 import { GithubIntegration } from "../components/integrations/GithubIntegration";
 import { Integration, useIntegrations } from "../context/Integrations";
+import { AddLinear } from "../components/integrations/addIntengrations/AddLinear";
 
 function Integrations() {
     const { integrations } = useIntegrations();
@@ -11,29 +13,33 @@ function Integrations() {
     return (
         <div className="grid grid-cols-1 grid-rows-1 pt-4 pb-4">
             <h1 className="text-4xl font-bold pb-8">Your Integrations</h1>
-            <div className="flex flex-col gap-4">
-                <IntegrationSection integrations={sourceControlIntegrations} title="Source Control" />
-                <IntegrationSection integrations={issueTrackingIntegrations} title="Issue Tracking" />
-                <IntegrationSection integrations={communicationIntegrations} title="Communication" />
+            <div className="flex flex-col gap-8">
+                <IntegrationSection integrations={sourceControlIntegrations} title="Source Control" fallback={<AddToSlack />} />
+                <IntegrationSection
+                    integrations={issueTrackingIntegrations}
+                    title="Issue Tracking"
+                    fallback={<AddLinear onIntegrationChange={async () => {}} />}
+                />
+                <IntegrationSection integrations={communicationIntegrations} title="Communication" fallback={<AddToSlack />} />
             </div>
         </div>
     )
 }
 
-function IntegrationSection({ integrations, title }: { integrations: Integration[], title: string }) {
+function IntegrationSection({ integrations, title, fallback }: { integrations: Integration[], title: string, fallback: React.ReactNode }) {
     return (
-        <div className="flex flex-col gap-4">
+        <div className="grid grid-flow-row gap-4">
             <h1 className="text-lg font-bold text-[theme(text-primary)]">{title}</h1>
-            <IntegrationCardContent integrations={integrations} />
+            <IntegrationCardContent integrations={integrations} fallback={fallback} />
         </div>
     )
 }
 
-function IntegrationCardContent({ integrations }: { integrations: Integration[] }) {
+function IntegrationCardContent({ integrations, fallback }: { integrations: Integration[], fallback: React.ReactNode }) {
     if (integrations.length === 0) {
         return (
-            <div className="flex flex-col gap-4">
-                <h1>No integrations</h1>
+            <div className="grid">
+                {fallback}
             </div>
         )
     }
