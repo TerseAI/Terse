@@ -7,7 +7,7 @@ import { useAuth } from "../services/auth";
 function Home() {
     return (
         <div className="h-full flex gap-4">
-            <div className="flex-1 min-w-0 pl-4 overflow-y-auto pr-30">
+            <div className="flex-1 min-w-0 overflow-y-auto pr-30">
                 <Welcome />
                 <OverallSummary />
             </div>
