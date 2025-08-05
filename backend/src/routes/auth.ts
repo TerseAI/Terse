@@ -14,6 +14,21 @@ const GITHUB_LOGIN_REDIRECT = process.env.GITHUB_LOGIN_REDIRECT || '';
 
 export const authMiddleware = async (req: Request, res: Response, next: NextFunction) => {
     try {
+        // Convenience for development
+        if (process.env.ENV === 'development') {
+            req.session = {
+                user: {
+                    id: 'ca3ea202e2bb24b43a8f16665',
+                    email: 'thomas.karatzas@mail.mcgill.ca',
+                    is_placeholder: false,
+                    github_username: 'tekaratzas',
+                    display_name: 'Thomas Karatzas',
+                },
+                isUserInitiated: true,
+            };
+            return next();
+        }
+
         if (!req.cookies || !req.cookies[COOKIE_NAME]) {
             console.log('Unauthorized - No cookie provided')
             res.status(401).json({ message: 'Unauthorized' });
@@ -88,7 +103,7 @@ export async function setSession(req: Request, res: Response) {
     console.log('req.body', req.body)
 
     const { token } = req.body;
-    
+
     if (!token) {
         res.status(401).json({ message: 'Unauthorized - No token provided' });
         return;
@@ -104,14 +119,14 @@ export async function setSession(req: Request, res: Response) {
 
     console.log('User verified', user)
 
-            res.cookie(COOKIE_NAME, token, {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
-            path: '/',
-            maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-            domain: process.env.COOKIE_DOMAIN || undefined // Allow setting custom domain
-        });
+    res.cookie(COOKIE_NAME, token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+        path: '/',
+        maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+        domain: process.env.COOKIE_DOMAIN || undefined // Allow setting custom domain
+    });
 
     res.json({
         message: 'Login successful',

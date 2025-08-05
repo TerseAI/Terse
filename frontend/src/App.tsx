@@ -8,6 +8,7 @@ import Spin from "./components/loading/Spin";
 import Home from "./pages/Home";
 import ActivityFeed from "./pages/ActivityFeed";
 import Sidebar from "./components/Sidebar";
+import Login from "./pages/Login";
 
 function App() {
   return (
@@ -49,7 +50,7 @@ function Content() {
             </div>
           ) : (
             <div key="login">
-              <h1>Login</h1>
+              <Login />
             </div>
           )}
         </AnimatePresence>
