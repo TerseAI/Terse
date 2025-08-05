@@ -20,7 +20,7 @@ function ActivityFeed() {
 
     return (
         <div className="pt-4 pb-4">
-            <h1 className="text-xl font-bold pb-2">Activity Feed</h1>
+            <h1 className="text-4xl font-bold pb-8">Activity Feed</h1>
             <div className="flex flex-col gap-4 animate-fade-in">
                 <FeedContent activity={activity} />
             </div>

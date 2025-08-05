@@ -9,6 +9,7 @@ import Home from "./pages/Home";
 import ActivityFeed from "./pages/ActivityFeed";
 import Sidebar from "./components/Sidebar";
 import Login from "./pages/Login";
+import Integrations from "./pages/Integrations";
 
 function App() {
   return (
@@ -18,6 +19,7 @@ function App() {
           <Route path="/app" element={<Content />}>
             <Route index element={<Home />} />
             <Route path="activity" element={<ActivityFeed />} />
+            <Route path="integrations" element={<Integrations />} />
           </Route>
           <Route path="/" element={<LandingPage />} />
           <Route path="/changelog" element={<LandingPageChangelog />} />
@@ -65,7 +67,7 @@ function AppLayout() {
       <div className="col-span-2 h-full bg-[theme(background-elevated)] rounded-md flex-shrink-0 ">
         <Sidebar />
       </div>
-      <div className="col-span-18 min-w-0 pl-4 overflow-y-auto pr-30">
+      <div className="col-span-18 min-w-0 pl-8 overflow-y-auto pr-30">
         <Outlet />
       </div>
     </div>
