@@ -57,7 +57,7 @@ export function GithubIntegration() {
             description="Connect your GitHub repository to track issues and pull requests"
             isConnected={hasGithub}
             isLoading={isLoading || isPolling}
-            connectionInfo={isPolling ? "Checking installation..." : hasGithub ? "Repository connected" : undefined}
+            connectionInfo={isPolling ? "Checking installation..." : hasGithub ? "Connected" : undefined}
             connectButton={connectButton}
             onDisconnect={onDisconnect}
             disconnectLabel="Manage GitHub App"

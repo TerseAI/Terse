@@ -47,10 +47,7 @@ export function IntegrationCard({
                             {icon}
                             <h3 className="text-lg font-medium text-[theme(text-primary)]">{title}</h3>
                         </div>
-                        <div className="flex items-center space-x-2">
-                            <div className="w-2 h-2 bg-[theme(accent)] rounded-full"></div>
-                            <span className="text-xs text-[theme(accent)]">Connected</span>
-                        </div>
+                        <ConnectionInfo connectionInfo={connectionInfo} />
                     </div>
                 </div>
                 {onDisconnect && (
@@ -66,13 +63,40 @@ export function IntegrationCard({
     }
 
     return (
-        <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-            <div className="flex items-center gap-2 mb-2">
-                {icon}
-                <h3 className="text-sm font-medium text-gray-900">{title}</h3>
+        <Card className="w-fit">
+            <div className="w-fit">
+                <div className="grid grid-flow-col items-center gap-2 mb-2 w-fit">
+                    {icon}
+                    <h3 className="text-sm font-medium text-[theme(text-primary)]">{title}</h3>
+                </div>
+                <p className="text-sm text-[theme(text-secondary)] mb-3">{description}</p>
+                {connectButton}
             </div>
-            <p className="text-xs text-gray-500 mb-3">{description}</p>
-            {connectButton}
-        </div>
+        </Card>
     );
-} 
+}
+
+function ConnectionInfo({ connectionInfo }: { connectionInfo?: string }) {
+    if (connectionInfo === "Checking installation...") {
+        return (
+            <div className="flex items-center space-x-2">
+                <div className="w-2 h-2 bg-orange-400 rounded-full animate-pulse"></div>
+                <span className="text-xs text-gray-400">{connectionInfo}</span>
+            </div>
+        )
+    }
+    if (connectionInfo === "Connected") {
+        return (
+            <div className="flex items-center space-x-2">
+                <div className="w-2 h-2 bg-[theme(accent)] rounded-full"></div>
+                <span className="text-xs text-[theme(accent)]">{connectionInfo}</span>
+            </div>
+        )
+    }
+    return (
+        <div className="flex items-center space-x-2">
+            <div className="w-2 h-2 bg-[theme(accent)] rounded-full"></div>
+            <span className="text-xs text-[theme(accent)]">{connectionInfo}</span>
+        </div>
+    )
+}
