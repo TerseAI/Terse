@@ -6,10 +6,13 @@ import { useAuth } from "../services/auth";
 
 function Home() {
     return (
-        <div className="h-full flex gap-4">
-            <div className="flex-1 min-w-0 overflow-y-auto pr-30">
+        <div className="grid grid-flow-row gap-4 overflow-y-auto min-w-0-auto">
+            <div className="grid grid-flow-row">
                 <Welcome />
                 <OverallSummary />
+            </div>
+            <div className="grid grid-flow-col min-w-0 overflow-y-auto pr-30">
+                <TeamSection />
             </div>
         </div>
     )
@@ -59,4 +62,13 @@ function Welcome() {
         </div>
     )
 }
+
+function TeamSection() {
+    return (
+        <div className="grid grid-flow-row">
+            <h1 className="text-2xl font-bold pb-4">Team Activity</h1>
+        </div>
+    )
+}
+
 export default Home;

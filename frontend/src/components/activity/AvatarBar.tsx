@@ -1,17 +1,20 @@
 import { ActivityEvent } from "../../shared/types";
+import { formatEventTitle } from "../../utility/TextFormatters";
 import GitHubAvatar from "../ui/GithubAvatar";
 
 function AvatarBar({ event }: { event: ActivityEvent }) {
     return (
         <div className="flex items-center gap-3">
             <GitHubAvatar username={event.github_repository_owner_id} size={48} />
-            <div>
-                <h3 className="font-semibold text-lg text-gray-900 dark:text-gray-100">
+            <div className="grid auto-cols-max grid-flow-col gap-2">
+                <h3 className="font-semibold text-lg text-[theme(text-primary)]">
                     {event.github_repository_name}
                 </h3>
-                <p className="text-sm text-gray-600 dark:text-gray-400">
-                    {event.github_repository_owner_id}
-                </p>
+                <div>
+                    <span className="text-sm p-2 bg-[theme(background-elevated)] rounded-md">
+                        {formatEventTitle(event)}
+                    </span>
+                </div>
             </div>
         </div>
     )

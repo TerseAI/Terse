@@ -11,6 +11,10 @@ const formatEventTitle = (event: ActivityEvent) => {
             return `PR Opened`;
         case 'PULL_REQUEST_UPDATED':
             return `PR Updated`;
+        case 'PULL_REQUEST_CLOSED':
+            return `PR Closed`;
+        default:
+            return event.title;
     }
 }
 
