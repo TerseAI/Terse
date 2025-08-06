@@ -24,6 +24,7 @@ function ActivityFeed() {
         fetchActivity();
     }, []);
 
+    // TODO: Better loading state with skeleton loading
     return (
         <div className="pt-4 pb-4">
             <h1 className="text-4xl font-bold pb-8">Activity Feed</h1>
