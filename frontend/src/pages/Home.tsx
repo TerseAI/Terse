@@ -64,12 +64,4 @@ function Welcome() {
     )
 }
 
-function TeamSection() {
-    return (
-        <div className="grid grid-flow-row">
-            <h1 className="text-2xl font-bold pb-4">Team Activity</h1>
-        </div>
-    )
-}
-
 export default Home;
