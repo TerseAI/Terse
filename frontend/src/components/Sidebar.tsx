@@ -8,7 +8,7 @@ function Sidebar() {
     
     return (
         <div className="grid grid-flow-row p-2">
-            <div className="grid grid-cols-[auto_1fr] items-center gap-2 p-2 mb-4">
+            <div className="grid grid-cols-[auto_1fr] items-center gap-2 p-2 mb-8">
                 <div className="bg-[theme(accent)] rounded-md h-7 w-7">
                     <img src="/logo-inverted.png" alt="Logo" className="w-7 h-7" />
                 </div>
@@ -31,7 +31,7 @@ function SidebarItem({ to, children, isActive }: { to: string, children: React.R
     return (
         <Link 
             to={to} 
-            className={`p-2 m-1 rounded-md transition-colors ${
+            className={`p-2 rounded-md transition-colors ${
                 isActive 
                     ? 'bg-[theme(background-surface)]' 
                     : 'hover:bg-[theme(background-surface)]'
@@ -46,7 +46,7 @@ function LinkLabel({ title, icon }: { title: string, icon: React.ReactNode }) {
     return (
         <div className="flex items-center gap-2">
             {icon}
-            <span>{title}</span>
+            <span className="text-sm text-[theme(text-primary)]">{title}</span>
         </div>
     )
 }
