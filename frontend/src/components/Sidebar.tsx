@@ -1,6 +1,6 @@
 import { Link, useLocation } from "react-router-dom";
 import { HomeIcon } from "@heroicons/react/24/outline";
-import { ListBulletIcon } from "@heroicons/react/24/outline";
+// import { ListBulletIcon } from "@heroicons/react/24/outline";
 import { Squares2X2Icon } from "@heroicons/react/24/outline";  
 
 function Sidebar() {
@@ -17,9 +17,9 @@ function Sidebar() {
             <SidebarItem to="/app" isActive={location.pathname === "/app"}>
                 <LinkLabel title="Home" icon={<HomeIcon className="w-5 h-5 text-[theme(accent)]" />} />
             </SidebarItem>
-            <SidebarItem to="/app/activity" isActive={location.pathname === "/app/activity"}>
+            {/* <SidebarItem to="/app/activity" isActive={location.pathname === "/app/activity"}>
                 <LinkLabel title="Activity Feed" icon={<ListBulletIcon className="w-5 h-5 text-[theme(accent)]" />} />
-            </SidebarItem>
+            </SidebarItem> */}
             <SidebarItem to="/app/integrations" isActive={location.pathname === "/app/integrations"}>
                 <LinkLabel title="Integrations" icon={<Squares2X2Icon className="w-5 h-5 text-[theme(accent)]" />} />
             </SidebarItem>
