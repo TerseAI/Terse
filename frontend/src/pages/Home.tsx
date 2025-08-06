@@ -3,16 +3,17 @@ import Card from "../components/Card";
 import DailySummary from "../components/DailySummary";
 import { ActivityFeedService, DailyActivitySummary } from '../services/activityFeed';
 import { useAuth } from "../services/auth";
+import ActivityFeed from "./ActivityFeed";
 
 function Home() {
     return (
-        <div className="grid grid-flow-row gap-4 overflow-y-auto min-w-0-auto">
+        <div className="grid grid-flow-row gap-4 overflow-y-auto min-w-0-auto pr-30">
             <div className="grid grid-flow-row">
                 <Welcome />
                 <OverallSummary />
             </div>
             <div className="grid grid-flow-col min-w-0 overflow-y-auto pr-30">
-                <TeamSection />
+                <ActivityFeed />
             </div>
         </div>
     )
