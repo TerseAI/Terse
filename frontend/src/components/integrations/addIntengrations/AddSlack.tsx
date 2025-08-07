@@ -1,10 +1,10 @@
 import { useState } from "react";
-import { BackendProvider } from "../../services/backend";
-import { IntegrationCard } from "./IntegrationCard";
-import { useIntegrations } from "../../context/Integrations";
+import { BackendProvider } from "../../../services/backend";
+import { IntegrationCard } from "../IntegrationCard";
+import { useIntegrations } from "../../../context/Integrations";
 import posthog from "posthog-js";
-import { PosthogEvents } from "../../utility/PosthogEvents";
-import { useAuth } from "../../services/auth";
+import { PosthogEvents } from "../../../utility/PosthogEvents";
+import { useAuth } from "../../../services/auth";
 
 export function AddToSlack() {
     const { hasSlack, isPolling, startPolling } = useIntegrations();

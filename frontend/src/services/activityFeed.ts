@@ -35,6 +35,7 @@ export class ActivityFeedService {
         
         const url = params ? `/activity-feed?${queryParams.toString()}` : '/activity-feed';
         const response = await BackendProvider.getActivityFeed(url);
+        console.log(response);
         return response as PaginatedActivityResponse;
     }
 
