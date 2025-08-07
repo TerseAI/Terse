@@ -152,7 +152,7 @@ const systemPrompt = async (session: Session, commitContext?: { commits: Commit[
     - the branch the commit was made to
     - the repository the commit was made to
     - the organization the repository belongs to
-    - the diff of the changes
+    - the diff of the changesg
 
     At the end, i'll send you a final response to indicate that you are done.
 
