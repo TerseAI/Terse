@@ -39,7 +39,7 @@ function ActivityFeedContent({ activity, isLoading }: { activity: ActivityEvent[
     if (isLoading) {
         return <LoadingState />
     }
-    
+
     if (activity.length === 0) {
         return emptyActivityFeed();
     }
@@ -53,9 +53,9 @@ function LoadingState() {
     // three skeleton cards with pulse animation
     return (
         <div className="grid grid-cols-1 gap-4">
-            <div className="animate-pulse rounded-lg bg-[theme(background-secondary)] h-24 w-full"></div>
-            <div className="animate-pulse rounded-lg bg-[theme(background-secondary)] h-24 w-full"></div>
-            <div className="animate-pulse rounded-lg bg-[theme(background-secondary)] h-24 w-full"></div>
+            <div className="animate-pulse rounded-lg bg-[theme(background-elevated)] h-24 w-full"></div>
+            <div className="animate-pulse rounded-lg bg-[theme(background-elevated)] h-24 w-full"></div>
+            <div className="animate-pulse rounded-lg bg-[theme(background-elevated)] h-24 w-full"></div>
         </div>
     )       
 }
