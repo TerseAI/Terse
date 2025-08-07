@@ -48,13 +48,8 @@ export default (app: Probot) => {
         let fileDiffs: FileDiff[] = [];
         // Inspect each changed file
         for (const file of commitData.files || []) {
-          console.log(`\nFile: ${file.filename}`);
-          console.log(`Status: ${file.status}`); // added, modified, removed
-
           // The actual diff patch
           if (file.patch) {
-            console.log('Diff:');
-            console.log(file.patch);
             fileDiffs.push({
               filename: file.filename,
               diff: file.patch
@@ -161,8 +156,6 @@ export default (app: Probot) => {
           console.error(`Error fetching commit ${commit.sha}:`, error);
         }
       }
-
-      console.log('diffs sha', diffs.map(d => d.sha));
 
       await VectraInterface.githubUnifiedEvent(
         payload.sender?.login,

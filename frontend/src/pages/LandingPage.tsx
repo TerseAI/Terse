@@ -71,7 +71,7 @@ export default function LandingPage() {
                 <div className="max-w-7xl mx-auto text-center">
                     {/* Tagline */}
                     <h1 className="text-6xl md:text-7xl font-bold text-white mb-8">
-                        Your GitHub Activity. Translated into Clarity.
+                        10,000 ft view of your projects, direct from your GitHub activity
                     </h1>
                     
                     {/* Subtitle */}

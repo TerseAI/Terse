@@ -1,21 +1,29 @@
 import { AnimatePresence } from "framer-motion";
-import Login from "./pages/Login";
 import { AuthProvider, useAuth } from "./services/auth";
-import Spin from "./components/ui/Spin";
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import Home from "./pages/Home";
+import { BrowserRouter as Router, Routes, Route, Outlet } from 'react-router-dom';
 import { IntegrationProvider } from "./context/Integrations";
 import LandingPage from "./pages/LandingPage";
 import LandingPageChangelog from "./pages/LandingPage_changelog";
+import Spin from "./components/loading/Spin";
+import Home from "./pages/Home";
+import ActivityFeed from "./pages/ActivityFeed";
+import Sidebar from "./components/Sidebar";
+import Login from "./pages/Login";
+import Integrations from "./pages/Integrations";
 
 function App() {
   return (
     <AuthProvider>
       <Router>
         <Routes>
-          <Route path="/app" element={<Content />} />
+          <Route path="/app" element={<Content />}>
+            <Route index element={<Home />} />
+            <Route path="activity" element={<ActivityFeed />} />
+            <Route path="integrations" element={<Integrations />} />
+          </Route>
           <Route path="/" element={<LandingPage />} />
           <Route path="/changelog" element={<LandingPageChangelog />} />
+          <Route path="*" element={<div>Not Found</div>} />
         </Routes>
       </Router>
     </AuthProvider>
@@ -39,16 +47,31 @@ function Content() {
       <IntegrationProvider>
         <AnimatePresence mode="wait">
           {user != null ? (
-            <div key="main">
-              <Home />
+            <div key="main" className="h-full">
+              <AppLayout />
             </div>
           ) : (
-            <Login key="login" />
+            <div key="login">
+              <Login />
+            </div>
           )}
         </AnimatePresence>
       </IntegrationProvider>
     </>
   );
+}
+
+function AppLayout() {
+  return (
+    <div className="h-full grid grid-cols-20">
+      <div className="col-span-2 h-full bg-[theme(background-elevated)] rounded-md flex-shrink-0 ">
+        <Sidebar />
+      </div>
+      <div className="col-span-18 min-w-0 pl-8 overflow-y-auto pr-30">
+        <Outlet />
+      </div>
+    </div>
+  )
 }
 
 export default App
