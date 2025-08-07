@@ -1,4 +1,5 @@
 import { DailyActivitySummary } from "../services/activityFeed";
+import processMarkdown from "../utility/Markdown";
 
 function DailySummary({ summary, loading, error }: { summary: DailyActivitySummary | null, loading: boolean, error: string | null }) {
     if (loading) {
@@ -15,7 +16,7 @@ function DailySummary({ summary, loading, error }: { summary: DailyActivitySumma
     }
     return (
         <>
-            <p>{summary?.summary}</p>
+            <p>{processMarkdown(summary?.summary ?? "")}</p>
         </>
     )
 }
