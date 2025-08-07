@@ -29,12 +29,35 @@ function ActivityFeed() {
         <div className="pt-4 pb-4">
             <h1 className="text-2xl font-bold pb-8">Activity Feed</h1>
             <div className="flex flex-col gap-4 animate-fade-in">
-                {isLoading ? <div className="grid place-items-center">
-                    <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[theme(text-primary)]"></div>
-                </div> : <FeedContent activity={activity} />}
+                <ActivityFeedContent activity={activity} isLoading={isLoading} />
             </div>
         </div>
     )
+}
+
+function ActivityFeedContent({ activity, isLoading }: { activity: ActivityEvent[], isLoading: boolean }) {
+    if (isLoading) {
+        return <LoadingState />
+    }
+    
+    if (activity.length === 0) {
+        return emptyActivityFeed();
+    }
+
+    return (
+        <FeedContent activity={activity} />
+    )
+}
+
+function LoadingState() {
+    // three skeleton cards with pulse animation
+    return (
+        <div className="grid grid-cols-1 gap-4">
+            <div className="animate-pulse rounded-lg bg-[theme(background-secondary)] h-24 w-full"></div>
+            <div className="animate-pulse rounded-lg bg-[theme(background-secondary)] h-24 w-full"></div>
+            <div className="animate-pulse rounded-lg bg-[theme(background-secondary)] h-24 w-full"></div>
+        </div>
+    )       
 }
 
 function FeedContent({ activity }: { activity: ActivityEvent[] }) {
@@ -121,9 +144,9 @@ function AssociatedCommits({ commits }: { commits: CommitAssociation[] }) {
                 <div key={index} className="flex items-start space-x-2 p-2 bg-[theme(background-secondary)] rounded-md">
                     <div className="flex-shrink-0 w-2 h-2 bg-[theme(accent)] rounded-full mt-2"></div>
                     <div className="flex-1 min-w-0">
-                        <a 
-                            href={commit.url} 
-                            target="_blank" 
+                        <a
+                            href={commit.url}
+                            target="_blank"
                             rel="noopener noreferrer"
                             className="text-[theme(text-primary)] text-sm hover:text-[theme(accent)] transition-colors duration-200 break-words"
                         >
