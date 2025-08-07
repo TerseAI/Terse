@@ -10,6 +10,8 @@ function Integrations() {
     const issueTrackingIntegrations = integrations.filter((integration) => integration === Integration.JIRA || integration === Integration.LINEAR);
     const communicationIntegrations = integrations.filter((integration) => integration === Integration.SLACK);
 
+    console.log(integrations);
+
     return (
         <div className="grid grid-cols-1 grid-rows-1 pt-4 pb-4">
             <h1 className="text-4xl font-bold pb-8">Your Integrations</h1>
@@ -55,6 +57,12 @@ function IntegrationCardContent({ integrations, fallback }: { integrations: Inte
 function IntegrationSwitch({ integration }: { integration: Integration }) {
     if (integration === Integration.GITHUB) {
         return <GithubIntegration />
+    }
+    if (integration === Integration.LINEAR) {
+        return <AddLinear onIntegrationChange={async () => {}} />
+    }
+    if (integration === Integration.SLACK) {
+        return <AddToSlack />
     }
     return null;
 }
