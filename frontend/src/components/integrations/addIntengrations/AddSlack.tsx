@@ -7,12 +7,9 @@ import { PosthogEvents } from "../../../utility/PosthogEvents";
 import { useAuth } from "../../../services/auth";
 
 export function AddToSlack() {
-    const { hasSlack, isPolling, startPolling, integrations } = useIntegrations();
+    const { hasSlack, isPolling, startPolling } = useIntegrations();
     const [isLoading, setIsLoading] = useState(false);
     const { user } = useAuth();
-
-    console.log("integrations in Slack button", integrations);
-    console.log("hasSlack in Slack button", hasSlack);
 
     const connectButton = (
         <button
