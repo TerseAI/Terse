@@ -1,4 +1,4 @@
-import { Ticket } from "./TicketSystem";
+import { Project, Ticket } from "./TicketSystem";
 
 export type User = {
     id: string;
@@ -30,6 +30,12 @@ export type ActivityEvent = {
 
 export type TicketActivityEvent = {
     ticket: Ticket;
+    event_type: string;
+    title: string;
+}
+
+export type ProjectActivityEvent = {
+    project: Project;
     event_type: string;
     title: string;
 }

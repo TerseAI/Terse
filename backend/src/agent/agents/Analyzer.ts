@@ -5,10 +5,14 @@ import { EntityType } from "../../shared/Entities";
 import { ChangedItem, ChangeEventType } from "../../shared/ModelEvents";
 import { Commit } from "../../theOwner/utility";
 import { createActionSummaryTool, createCommitSummaryTool } from "../tools/ActionEventTools";
+import { Project, Ticket } from "src/shared/TicketSystem";
+import { ProjectActivityEvent, TicketActivityEvent } from "src/shared/types";
 
 export type ActivityOverview = {
     summary: string;
     sub_activity_overviews: SubActivityOverview[];
+    project_activity_events: ProjectActivityEvent[];
+    ticket_activity_events: TicketActivityEvent[];
 }
 
 export type SubActivityOverview = {
@@ -28,14 +32,22 @@ export type SubActivityCommitAssociation = {
 export type SessionWithTracking = Session & {
     trackChange: (type: EntityType, id: string | number, eventType: ChangeEventType) => void;
     setFinalSummary: (summary: ActivityOverview) => void;
-    commitContext?: { commits: Commit[]; repository: { name: string; owner: string }; branch?: string } | null;
+    commitContext?: CommitContext | null;
+}
+
+export type CommitContext = {
+    commits: Commit[];
+    repository: { name: string; owner: string };
+    branch?: string;
+    ticket?: Ticket;
+    project?: Project;
 }
 
 export class Analyzer {
     history: AgentInputItem[] = [];
     private session: Session;
     private changedItems: ChangedItem[] = [];
-    private commitContext: { commits: Commit[]; repository: { name: string; owner: string }; branch?: string } | null = null;
+    private commitContext: CommitContext | null = null;
     private finalSummary: ActivityOverview | null = null;
     agent?: Agent<SessionWithTracking, AgentOutputType>;
 
@@ -45,8 +57,8 @@ export class Analyzer {
         this.changedItems = [];
     }
 
-    setCommitContext(commits: Commit[], repository: { name: string; owner: string }, branch?: string) {
-        this.commitContext = { commits, repository, branch };
+    setCommitContext(commitContext: CommitContext) {
+        this.commitContext = commitContext;
     }
 
     getCommitContext() {
@@ -132,9 +144,18 @@ export class Analyzer {
     }
 }
 
-const systemPrompt = async (session: Session, commitContext?: { commits: Commit[]; repository: { name: string; owner: string }; branch?: string } | null) => {
+const systemPrompt = async (session: Session, commitContext?: CommitContext | null) => {
+    if (commitContext?.ticket) {
+        console.log(chalk.green("✓ Ticket context found"));
+    }
+    if (commitContext?.project) {
+        console.log(chalk.green("✓ Project context found"));
+    }
+
     return `
     You are an agent that analyzes GitHub events and provides a summary of the changes.
+
+    The end goal is to provide a birds eye view of the changes throughout the day/week. The reader will be a Product Owner/Tech Lead/CEO/CTO.
 
     Make sure the summaries are very Business focused. Very Product Owner focused.
 
@@ -150,18 +171,28 @@ const systemPrompt = async (session: Session, commitContext?: { commits: Commit[
     - the branch the commit was made to
     - the repository the commit was made to
     - the organization the repository belongs to
-    - the diff of the changes
-
-    I am going to feed you the changes commit by commit. Whenever you see an something that seems like it would be a ticket, you should create a ticket.
-
-    ex:
-    - Fixed issue with login tokens
-    - Added new feature to allow users to upload their own profile picture
-
+    - the diff of the changesg
 
     At the end, i'll send you a final response to indicate that you are done.
 
-    Then You need to pump out a summary of the changes. You will call the CreateActionSummaryTool to do this. You call it once. Per github event. But youc an attach as many commits as you want to the action event.
+    Then You need to pump out a summary of the changes. You will call the CreateActionSummaryTool to do this. You call it once. Per github event. But you can attach as many commits as you want to the action event.
+
+    ${commitContext?.ticket ? `
+        We have detected that the chanages are related to the following ticket. Please use this ticket to create a summary of the changes.
+    TICKET CONTEXT:
+    The following ticket is available for association with the commits:
+    ${commitContext.ticket.title}
+    ${commitContext.ticket.description}
+    ${commitContext.ticket.state.name}
+    ` : ''}
+
+    ${commitContext?.project ? `
+    We have detected that the chanages are related to the following project. Please use this project to create a summary of the changes.
+    PROJECT CONTEXT:
+    The following project is available for association with the commits:
+    ${commitContext.project.name}
+    ${commitContext.project.description}
+    ` : ''}
 
      ${commitContext ? `
     COMMIT CONTEXT:

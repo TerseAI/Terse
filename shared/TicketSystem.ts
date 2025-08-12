@@ -74,6 +74,14 @@ export interface Organization {
 export type Project = {
     id: string;
     name: string;
+    description?: string;
+    updates: Update[];
+}
+
+export type Update = {
+    id: string;
+    title: string;
+    description?: string;
 }
 
 export interface Comment {
