@@ -1,12 +1,11 @@
 import { Search } from '../searchClient';
 import { Session } from '../server';
-import { SearchResult } from '../search/SearchItem';
 import { ActivityOverview, Analyzer } from '../agent/agents/Analyzer';
 import chalk from 'chalk';
 import { db } from '../prismaClient';
 import { sendMessage } from '../slack/sendMessage';
-import { ChangedItem } from '../shared/ModelEvents';
-import { Commit, UnifiedGitHubEvent, unifiedGitHubEventForAgent } from './utility';
+import { Commit, UnifiedGitHubEvent } from './utility';
+import { enrich } from './Enrich';
 
 class Owner {
     private searchSystem: Search;
@@ -18,13 +17,18 @@ class Owner {
     }
 
     async handleUnifiedGitHubEvent(event: UnifiedGitHubEvent): Promise<ActivityOverview | null> {
-        const eventId = `${event.username}-${event.repositoryName}-${event.eventType}-${Date.now()}`;
+        const eventId = `${event.username}-${event.repositoryName}-${event.eventType}-${event.branch}-${Date.now()}`;
         console.log(chalk.blue(`[${eventId}] The owner is handling a unified GitHub event`), event.eventType, event.repositoryName, event.username);
         console.log(chalk.blue(`[${eventId}] Session user:`, this.session.user.github_username, 'Team ID:', this.session.teamId));
         
         const analyzer = new Analyzer(this.session);
 
         console.log(chalk.blue(`[${eventId}] Commits Shas`), event.commits.map(c => c.sha));
+
+        // Get the branch and attempt to enrich it
+        if (event.branch && event.commits.length > 0) {
+            await enrich(event.branch, event.commits[0].name, this.session);
+        }
 
         // Set commit context in the analyzer
         analyzer.setCommitContext(event.commits, event.repository, event.branch);

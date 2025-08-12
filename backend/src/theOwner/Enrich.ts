@@ -1,13 +1,15 @@
-import { ActivityEvent } from "src/types/prisma";
 import { Session } from "../../src/server";
+import chalk from "chalk";
 
-async function enrich(branch: string, commitMessage: string, session: Session) {
+
+export async function enrich(branch: string, commitMessage: string, session: Session) {
     if (!session.ticketManager) {
-        console.error("No ticket manager found. Unable to enrich activity event.");
+        console.error(chalk.red.bold("✗ No ticket manager found. Unable to enrich activity event."));
         return;
     }
     let linearTicket = extractLinearTicketFromBranchName(branch);
     if (linearTicket) {
+        console.log(chalk.green("✓ Linear ticket found in branch name"), linearTicket);
     }   
 
     if (!linearTicket) { 
@@ -15,7 +17,7 @@ async function enrich(branch: string, commitMessage: string, session: Session) {
     }
 
     if (!linearTicket) {
-        console.error("No linear ticket found. Unable to enrich activity event.");
+        console.error(chalk.red.bold("✗ No linear ticket found. Unable to enrich activity event."));
         return;
     }
 
@@ -25,34 +27,37 @@ async function enrich(branch: string, commitMessage: string, session: Session) {
     const tickets = await ticketManager.getTickets([linearTicket]);
 
     if (tickets.length === 0) {
-        console.error("No linear ticket found. Unable to enrich activity event.");
+        console.error(chalk.red.bold("✗ No linear ticket found. Unable to enrich activity event."));
         return;
     }
 
-    console.log("tickets for enrich", tickets);
+    console.log(chalk.green("✓ Tickets for enrich"), tickets);
 
     // Check if there is a project associated with the ticket
     const project = tickets[0].project;
     if (!project) {
-        console.error("No project found. Unable to enrich activity event.");
+        console.error(chalk.red.bold("✗ No project found. Unable to enrich activity event."));
         return;
     }
 
     // Grab the project information from linear
     const projects = await ticketManager.getAllProjects();
     const projectInfo = projects.find(p => p.id === project.id);
-    console.log("projectInfo for enrich", projectInfo);
+    console.log(chalk.green("✓ Project info for enrich"), projectInfo);
 }
 
 // Utility
 function extractLinearTicketFromBranchName(branchName: string) {
-    const linearTicketRegex = /(?:LT-)?(\d+)/;
+    console.log(chalk.green("✓ Branch name for enrich"), branchName);
+    // Updated regex to capture the full ticket identifier (e.g., ENG-123, LT-456)
+    const linearTicketRegex = /([A-Z]+-\d+)/;
     const match = branchName.match(linearTicketRegex);
     return match ? match[1] : null;
 }
 
 function extractLinearTicketFromCommitMessage(commitMessage: string) {
-    const linearTicketRegex = /(?:LT-)?(\d+)/;
+    // Updated regex to capture the full ticket identifier (e.g., ENG-123, LT-456)
+    const linearTicketRegex = /([A-Z]+-\d+)/;
     const match = commitMessage.match(linearTicketRegex);
     return match ? match[1] : null;
 }

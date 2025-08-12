@@ -1,6 +1,4 @@
 import { OwnerTestEnvironment, TestScenario } from './OwnerTestEnvironment';
-import { Commit, FileDiff } from '../theOwner/utility';
-import { Ticket, TicketState, User, Team, Project } from '../shared/TicketSystem';
 import chalk from 'chalk';
 
 async function main() {
@@ -96,7 +94,7 @@ function setupTestScenarios(testEnv: OwnerTestEnvironment) {
             installationId: 123,
             repositoryName: 'test-repo',
             eventType: 'push',
-            branch: 'main',
+            branch: 'ENG-123-fix-resolve-authentication-bug',
             commits: [
                 {
                     sha: 'def456',
@@ -123,7 +121,7 @@ function setupTestScenarios(testEnv: OwnerTestEnvironment) {
             tickets: [
                 {
                     id: 'ticket-1',
-                    identifier: 'AUTH-001',
+                    identifier: 'ENG-123',
                     title: 'Fix authentication bug',
                     description: 'Users are able to access protected routes without proper authentication',
                     state: { id: 'in-progress', name: 'In Progress' },

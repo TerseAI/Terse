@@ -1,5 +1,5 @@
 import { UnifiedGitHubEvent, Commit, FileDiff } from '../theOwner/utility';
-import { Ticket, TicketState, User as TicketUser, Team, Project } from '../shared/TicketSystem';
+import { Ticket, TicketState, User as TicketUser, Team, Project, TicketSystemType } from '../shared/TicketSystem';
 import { Session } from '../server';
 import { Search } from '../searchClient';
 import { SearchItem, SearchResult, SearchOptions } from '../search/SearchItem';
@@ -8,6 +8,7 @@ import { db } from '../prismaClient';
 import { User } from '../types/prisma';
 import { TicketManager } from '../ticketing/TicketIntegration';
 import { ActivityOverview } from '../agent/agents/Analyzer';
+import { MockTicketManager } from './MockTicketManager';
 
 export interface TestScenario {
     name: string;
@@ -86,15 +87,17 @@ export class OwnerTestEnvironment {
     private scenarios: TestScenario[] = [];
     private mockSearch: MockSearch;
     private mockSession: MockSession;
+    private mockTicketManager: MockTicketManager;
 
     constructor() {
         this.mockSearch = new MockSearch();
+        this.mockTicketManager = new MockTicketManager();
         this.mockSession = new MockSession(
             {
                 id: 'test-user-id',
                 github_username: 'testuser',
                 email: 'test@example.com',
-                display_name: 'Test User',
+                display_name: ' Test User',
                 created_at: new Date(),
                 updated_at: new Date(),
                 is_placeholder: false
@@ -102,6 +105,9 @@ export class OwnerTestEnvironment {
             'test-team-id',
             this.mockSearch
         );
+        
+        // Wire up the mock ticket manager to the session
+        this.mockSession.ticketManager = this.mockTicketManager;
     }
 
     addScenario(scenario: TestScenario) {
@@ -164,9 +170,27 @@ export class OwnerTestEnvironment {
     }
 
     private async setupMockTicketSystem(state: TestScenario['ticketSystemState']) {
-        // This would typically mock the database calls
-        // For now, we'll just store the state for reference
-        console.log('Setting up mock ticket system state:', state);
+        // Clear any existing data and initialize with the scenario's ticket system state
+        this.mockTicketManager.clearAllData();
+        
+        // Initialize the mock ticket manager with the scenario data (defaulting to Linear)
+        this.mockTicketManager.initializeWithData({
+            tickets: state.tickets,
+            states: state.states,
+            users: state.users,
+            teams: state.teams,
+            projects: state.projects,
+            type: TicketSystemType.Linear
+        });
+        
+        console.log('Mock ticket system initialized with:', {
+            tickets: state.tickets.length,
+            states: state.states.length,
+            users: state.users.length,
+            teams: state.teams.length,
+            projects: state.projects.length,
+            type: 'Linear'
+        });
     }
 
     private generateMockSearchResults(tickets: Ticket[]): SearchResult[] {
@@ -186,6 +210,11 @@ export class OwnerTestEnvironment {
     }
 
 
+
+    // Getter for the mock ticket manager (useful for testing)
+    getMockTicketManager(): MockTicketManager {
+        return this.mockTicketManager;
+    }
 
     // Helper methods to create common test scenarios
     static createPushEventScenario(
