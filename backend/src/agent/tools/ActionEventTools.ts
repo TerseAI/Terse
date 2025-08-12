@@ -19,8 +19,10 @@ export const createActionSummaryTool = tool({
                 })).describe('The pull requests to associate with this sub activity. OK to be empty if no pull requests are associated.'),
             })
         ).describe('A list of summaries for each sub activity'),
+        associatedProjectDescription: z.string().describe('The description of the project to associate with this event. OK to be empty if no project is associated.'),
+        associatedTicketDescription: z.string().describe('The description of the ticket to associate with this event. OK to be empty if no ticket is associated.'),
     }), 
-    execute: async ({summary, subActivitySummaries}, runContext?: RunContext<SessionWithTracking  >) => {
+    execute: async ({summary, subActivitySummaries, associatedProjectDescription, associatedTicketDescription}, runContext?: RunContext<SessionWithTracking  >) => {
         if (!runContext?.context) {
             throw new Error("No context provided");
         }
@@ -30,7 +32,7 @@ export const createActionSummaryTool = tool({
 
         const topLevelSumary = summary;
 
-        // go through each sub activity summary. Take the summary + Create an arrya of associated commits
+        // go through each sub activity summary. Take the summary + Create an array of associated commits
         const subActivityOverviews: SubActivityOverview[] = [];
         for (const subActivitySummary of subActivitySummaries) {
             console.log("Creating sub activity summary associated commits", subActivitySummary.associatedCommits);
@@ -57,6 +59,16 @@ export const createActionSummaryTool = tool({
         const overview: ActivityOverview = {
             summary: topLevelSumary,
             sub_activity_overviews: subActivityOverviews,
+            project_activity_events: (associatedProjectDescription && runContext.context.commitContext?.project) ? [{
+                project: runContext.context.commitContext?.project || undefined,
+                event_type: 'project_activity_event',
+                title: associatedProjectDescription
+            }] : [],
+            ticket_activity_events: (associatedTicketDescription && runContext.context.commitContext?.ticket) ? [{
+                ticket: runContext.context.commitContext.ticket,
+                event_type: 'ticket_activity_event',
+                title: associatedTicketDescription
+            }] : [],
         };
 
         runContext?.context.setFinalSummary(overview);

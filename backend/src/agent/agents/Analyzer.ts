@@ -6,10 +6,13 @@ import { ChangedItem, ChangeEventType } from "../../shared/ModelEvents";
 import { Commit } from "../../theOwner/utility";
 import { createActionSummaryTool, createCommitSummaryTool } from "../tools/ActionEventTools";
 import { Project, Ticket } from "src/shared/TicketSystem";
+import { ProjectActivityEvent, TicketActivityEvent } from "src/shared/types";
 
 export type ActivityOverview = {
     summary: string;
     sub_activity_overviews: SubActivityOverview[];
+    project_activity_events: ProjectActivityEvent[];
+    ticket_activity_events: TicketActivityEvent[];
 }
 
 export type SubActivityOverview = {
@@ -29,7 +32,7 @@ export type SubActivityCommitAssociation = {
 export type SessionWithTracking = Session & {
     trackChange: (type: EntityType, id: string | number, eventType: ChangeEventType) => void;
     setFinalSummary: (summary: ActivityOverview) => void;
-    commitContext?: { commits: Commit[]; repository: { name: string; owner: string }; branch?: string } | null;
+    commitContext?: CommitContext | null;
 }
 
 export type CommitContext = {
