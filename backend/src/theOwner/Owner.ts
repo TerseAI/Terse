@@ -56,10 +56,12 @@ class Owner {
         const runResult = await analyzer.executeFinalSummary();
         analyzer.history = runResult.history
 
-        const finalSummary = analyzer.getAndClearFinalSummary();
+        let finalSummary = analyzer.getAndClearFinalSummary();
+
         console.log(chalk.blue(`[${eventId}] Final summary`), finalSummary);
         console.log(chalk.green(`[${eventId}] Event processing completed successfully`));
-        return finalSummary || null;
+
+        return finalSummary;
     }
 
     async sendSlackMessage(message: string, eventId: string) {
