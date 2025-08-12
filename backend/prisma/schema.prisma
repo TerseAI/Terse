@@ -126,11 +126,11 @@ model activity_events {
   created_at           DateTime        @default(now())
   updated_at           DateTime        @updatedAt
 
-  github_repository   github_repositories   @relation(fields: [github_repository_id], references: [id], onDelete: Cascade)
-  users               users?                @relation(fields: [user_id], references: [id])
-  sub_activity_events sub_activity_events[]
+  github_repository       github_repositories       @relation(fields: [github_repository_id], references: [id], onDelete: Cascade)
+  users                   users?                    @relation(fields: [user_id], references: [id])
+  sub_activity_events     sub_activity_events[]
   project_activity_events project_activity_events[]
-  ticket_activity_events ticket_activity_events[]
+  ticket_activity_events  ticket_activity_events[]
 
   @@index([event_type])
 }
@@ -174,13 +174,13 @@ model ticket_activity_events {
 }
 
 model project_activity_events {
-  id                String          @id @default(cuid())
+  id                String   @id @default(cuid())
   user_id           String
   project_id        String
   activity_event_id String
   title             String // This should be a summary of change in relation to this project
-  created_at        DateTime        @default(now())
-  updated_at        DateTime        @updatedAt
+  created_at        DateTime @default(now())
+  updated_at        DateTime @updatedAt
 
   activity_events activity_events @relation(fields: [activity_event_id], references: [id], onDelete: Cascade)
   users           users           @relation(fields: [user_id], references: [id], onDelete: Cascade)
