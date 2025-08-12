@@ -1,12 +1,11 @@
 import { Search } from '../searchClient';
 import { Session } from '../server';
-import { SearchResult } from '../search/SearchItem';
 import { ActivityOverview, Analyzer } from '../agent/agents/Analyzer';
 import chalk from 'chalk';
 import { db } from '../prismaClient';
 import { sendMessage } from '../slack/sendMessage';
-import { ChangedItem } from '../shared/ModelEvents';
-import { Commit, UnifiedGitHubEvent, unifiedGitHubEventForAgent } from './utility';
+import { Commit, UnifiedGitHubEvent } from './utility';
+import { enrich, EnrichmentResult } from './Enrich';
 
 class Owner {
     private searchSystem: Search;
@@ -18,7 +17,7 @@ class Owner {
     }
 
     async handleUnifiedGitHubEvent(event: UnifiedGitHubEvent): Promise<ActivityOverview | null> {
-        const eventId = `${event.username}-${event.repositoryName}-${event.eventType}-${Date.now()}`;
+        const eventId = `${event.username}-${event.repositoryName}-${event.eventType}-${event.branch}-${Date.now()}`;
         console.log(chalk.blue(`[${eventId}] The owner is handling a unified GitHub event`), event.eventType, event.repositoryName, event.username);
         console.log(chalk.blue(`[${eventId}] Session user:`, this.session.user.github_username, 'Team ID:', this.session.teamId));
         
@@ -26,8 +25,25 @@ class Owner {
 
         console.log(chalk.blue(`[${eventId}] Commits Shas`), event.commits.map(c => c.sha));
 
+        // Get the branch and attempt to enrich it
+        let enrichmentResult: EnrichmentResult | null = null;
+        if (event.branch && event.commits.length > 0) {
+            enrichmentResult = await enrich(event.branch, event.commits[0].name, this.session);
+        }
+
+        if (!enrichmentResult) {
+            console.error(chalk.red.bold("✗ No enrichment result found. Unable to enrich activity event."));
+            return null;
+        }
+
         // Set commit context in the analyzer
-        analyzer.setCommitContext(event.commits, event.repository, event.branch);
+        analyzer.setCommitContext({
+            commits: event.commits,
+            repository: event.repository,
+            branch: event.branch,
+            ticket: enrichmentResult.ticket,
+            project: enrichmentResult.project || undefined
+        });
 
         for (const commit of event.commits) {
             await analyzer.analyze(this.generateCommitString(commit));
@@ -40,10 +56,12 @@ class Owner {
         const runResult = await analyzer.executeFinalSummary();
         analyzer.history = runResult.history
 
-        const finalSummary = analyzer.getAndClearFinalSummary();
+        let finalSummary = analyzer.getAndClearFinalSummary();
+
         console.log(chalk.blue(`[${eventId}] Final summary`), finalSummary);
         console.log(chalk.green(`[${eventId}] Event processing completed successfully`));
-        return finalSummary || null;
+
+        return finalSummary;
     }
 
     async sendSlackMessage(message: string, eventId: string) {

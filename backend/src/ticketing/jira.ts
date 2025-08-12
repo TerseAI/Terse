@@ -99,7 +99,7 @@ export class JiraAdapter implements TicketManager {
             createdAt: '',
             createdIssueCount: 0,
             userCount: 0,
-            projects: projects.map((p: any) => ({ id: p.id, name: p.name }))
+            projects: projects.map((p: any) => ({ id: p.id, name: p.name, description: p.description, updates: [] }))
         };
 
         const transitions = await this.client.listTransitions(projects[0].id);
@@ -252,7 +252,7 @@ export class JiraAdapter implements TicketManager {
 
     async getAllProjects(): Promise<Project[]> {
         const projects = await this.client.listProjects();
-        return projects.map((p: any) => ({ id: p.id, name: p.name, description: p.description, teamId: p.lead.accountId }));
+        return projects.map((p: any) => ({ id: p.id, name: p.name, description: p.description, updates: [] }));
     }
 
     async tearDownWebhook(webhookId: string): Promise<void> {
