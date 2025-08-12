@@ -149,7 +149,12 @@ function setupTestScenarios(testEnv: OwnerTestEnvironment) {
                 { id: 'team-1', name: 'Backend Team', key: 'BE' }
             ],
             projects: [
-                { id: 'proj-1', name: 'Authentication System' }
+                { 
+                    id: 'proj-1', 
+                    name: 'Authentication System', 
+                    description: 'A project focused on implementing and maintaining secure user authentication and access control for the application.', 
+                    updates: [] 
+                }
             ]
         },
 

@@ -1,11 +1,16 @@
+import { Project, Ticket } from "src/shared/TicketSystem";
 import { Session } from "../../src/server";
 import chalk from "chalk";
 
+export type EnrichmentResult = {
+    ticket: Ticket;
+    project: Project | null;
+}
 
-export async function enrich(branch: string, commitMessage: string, session: Session) {
+export async function enrich(branch: string, commitMessage: string, session: Session): Promise<EnrichmentResult | null> {
     if (!session.ticketManager) {
         console.error(chalk.red.bold("✗ No ticket manager found. Unable to enrich activity event."));
-        return;
+        return null;
     }
     let linearTicket = extractLinearTicketFromBranchName(branch);
     if (linearTicket) {
@@ -18,7 +23,7 @@ export async function enrich(branch: string, commitMessage: string, session: Ses
 
     if (!linearTicket) {
         console.error(chalk.red.bold("✗ No linear ticket found. Unable to enrich activity event."));
-        return;
+        return null;
     }
 
     let ticketManager = session.ticketManager;
@@ -28,7 +33,7 @@ export async function enrich(branch: string, commitMessage: string, session: Ses
 
     if (tickets.length === 0) {
         console.error(chalk.red.bold("✗ No linear ticket found. Unable to enrich activity event."));
-        return;
+        return null;
     }
 
     console.log(chalk.green("✓ Tickets for enrich"), tickets);
@@ -37,13 +42,18 @@ export async function enrich(branch: string, commitMessage: string, session: Ses
     const project = tickets[0].project;
     if (!project) {
         console.error(chalk.red.bold("✗ No project found. Unable to enrich activity event."));
-        return;
+        return null;
     }
 
     // Grab the project information from linear
     const projects = await ticketManager.getAllProjects();
     const projectInfo = projects.find(p => p.id === project.id);
     console.log(chalk.green("✓ Project info for enrich"), projectInfo);
+
+    return {
+        ticket: tickets[0],
+        project: projectInfo || null
+    };
 }
 
 // Utility
