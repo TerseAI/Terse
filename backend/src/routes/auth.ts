@@ -18,7 +18,7 @@ export const authMiddleware = async (req: Request, res: Response, next: NextFunc
         if (process.env.ENV === 'development') {
             req.session = {
                 user: {
-                    id: 'cmcuncuvo0000io3t9s01glu7',
+                    id: 'ca3ea202e2bb24b43a8f16665',
                     email: 'thomas.karatzas@mail.mcgill.ca',
                     is_placeholder: false,
                     github_username: 'tekaratzas',
