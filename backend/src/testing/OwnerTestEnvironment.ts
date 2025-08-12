@@ -306,7 +306,9 @@ export class OwnerTestEnvironment {
                 projects: [
                     {
                         id: 'proj-1',
-                        name: 'Authentication System'
+                        name: 'Authentication System',
+                        description: 'A project focused on implementing and maintaining secure user authentication and access control for the application.',
+                        updates: []
                     }
                 ]
             }

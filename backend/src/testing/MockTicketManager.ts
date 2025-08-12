@@ -444,7 +444,9 @@ export class MockTicketManager implements TicketManager {
 
         const defaultProject: Project = {
             id: 'mock-project-1',
-            name: 'Mock Project'
+            name: 'Mock Project',
+            description: 'A project focused on implementing and maintaining secure user authentication and access control for the application.',
+            updates: []
         };
 
         const defaultState: TicketState = {

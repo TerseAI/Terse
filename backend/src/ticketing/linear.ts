@@ -43,6 +43,8 @@ export class LinearAdapter implements TicketManager {
             projects: projects.nodes.map((project) => ({
                 id: project.id,
                 name: project.name,
+                description: project.description || undefined,
+                updates: []
             })),
         };
 
@@ -113,7 +115,7 @@ export class LinearAdapter implements TicketManager {
             id: project.id,
             name: project.name,
             description: project.description || undefined,
-            teamId: (await project.teams())?.nodes[0]?.id || ''
+            updates: []
         })));
     }
 

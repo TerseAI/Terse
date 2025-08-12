@@ -5,7 +5,7 @@ import chalk from 'chalk';
 import { db } from '../prismaClient';
 import { sendMessage } from '../slack/sendMessage';
 import { Commit, UnifiedGitHubEvent } from './utility';
-import { enrich } from './Enrich';
+import { enrich, EnrichmentResult } from './Enrich';
 
 class Owner {
     private searchSystem: Search;
@@ -26,12 +26,24 @@ class Owner {
         console.log(chalk.blue(`[${eventId}] Commits Shas`), event.commits.map(c => c.sha));
 
         // Get the branch and attempt to enrich it
+        let enrichmentResult: EnrichmentResult | null = null;
         if (event.branch && event.commits.length > 0) {
-            await enrich(event.branch, event.commits[0].name, this.session);
+            enrichmentResult = await enrich(event.branch, event.commits[0].name, this.session);
+        }
+
+        if (!enrichmentResult) {
+            console.error(chalk.red.bold("✗ No enrichment result found. Unable to enrich activity event."));
+            return null;
         }
 
         // Set commit context in the analyzer
-        analyzer.setCommitContext(event.commits, event.repository, event.branch);
+        analyzer.setCommitContext({
+            commits: event.commits,
+            repository: event.repository,
+            branch: event.branch,
+            ticket: enrichmentResult.ticket,
+            project: enrichmentResult.project || undefined
+        });
 
         for (const commit of event.commits) {
             await analyzer.analyze(this.generateCommitString(commit));
