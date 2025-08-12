@@ -11,6 +11,7 @@ import { getUserTicketManager } from "../types/user";
 import { formatTitleForEvent } from "../feed/formatters";
 import { ChangedItem, ChangeEventType } from "../shared/ModelEvents";
 import { ActivityOverview } from "src/agent/agents/Analyzer";
+import { TicketEventType } from "@prisma/client";
 
 const GITHUB_APP_CLIENT_ID = process.env.GITHUB_CLIENT_ID
 
@@ -392,6 +393,29 @@ async function saveActivityEvent(repository: GithubRepository, event: UnifiedGit
                 }
             });
         }
+    }
+
+    for (const projectActivityEvent of summary.project_activity_events) {
+        await db().project_activity_events.create({
+            data: {
+                project_id: projectActivityEvent.project.id,
+                activity_event_id: githubActivityEvent.id,
+                title: projectActivityEvent.title,
+                user_id: userId
+            }
+        });
+    }
+
+    for (const ticketActivityEvent of summary.ticket_activity_events) {
+        await db().ticket_activity_events.create({
+            data: {
+                ticket_id: ticketActivityEvent.ticket.id,
+                activity_event_id: githubActivityEvent.id,
+                title: ticketActivityEvent.title,
+                user_id: userId,
+                event_type: 'TICKET_CREATED' as TicketEventType
+            }
+        });
     }
 }
 
