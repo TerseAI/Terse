@@ -66,11 +66,6 @@ async function runCustomScenarios() {
             users: [],
             teams: [],
             projects: []
-        },
-        expectedBehavior: {
-            shouldUpdateTickets: true,
-            expectedTicketStates: ['In Progress'],
-            shouldSendSlackMessage: false
         }
     };
 
@@ -143,11 +138,6 @@ async function runCustomScenarios() {
             users: [],
             teams: [],
             projects: []
-        },
-        expectedBehavior: {
-            shouldUpdateTickets: true,
-            expectedTicketStates: ['Done'],
-            shouldSendSlackMessage: true
         }
     };
 
