@@ -32,8 +32,7 @@ class Owner {
         }
 
         if (!enrichmentResult) {
-            console.error(chalk.red.bold("✗ No enrichment result found. Unable to enrich activity event."));
-            return null;
+            console.warn(chalk.yellow.bold("✗ No enrichment result found. Unable to enrich activity event."));
         }
 
         // Set commit context in the analyzer
@@ -41,8 +40,8 @@ class Owner {
             commits: event.commits,
             repository: event.repository,
             branch: event.branch,
-            ticket: enrichmentResult.ticket,
-            project: enrichmentResult.project || undefined
+            ticket: enrichmentResult?.ticket,
+            project: enrichmentResult?.project || undefined
         });
 
         for (const commit of event.commits) {
