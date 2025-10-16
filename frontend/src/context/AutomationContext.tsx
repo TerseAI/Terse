@@ -1,15 +1,16 @@
 import { createContext, useContext, useState } from "react";
+import { Integration } from "./Integrations";
 
 export interface Input {
-    name: string;
+    integration: Integration;
 }
 
 export interface Output {
-    name: string;
+    integration: Integration;
 }
 
 export interface Prompt {
-    name: string;
+    text: string;
 }
 
 type AutomationContextType = {

@@ -2,6 +2,7 @@ import TextareaAutosize from 'react-textarea-autosize';
 import { AutomationProvider, useAutomationContext } from "../../context/AutomationContext";
 import { InputsSection } from "./InputSection";
 import { OutputSection } from "./OutputSection";
+import { SectionLayout } from "./components/SectionLayout";
 
 function Automations() {
     return (
@@ -20,16 +21,13 @@ function Automations() {
 function PromptSection() {
     const { prompt, setPrompt } = useAutomationContext();
     return (
-        <div className="grid grid-flow-col gap-4">
-            <h1 className="text-lg font-bold text-[theme(text-primary)]">Then Do...</h1>
-            <div className="grid grid-flow-col gap-4">
-                <TextareaAutosize
-                    value={prompt?.name}
-                    onChange={(e) => setPrompt({ name: e.target.value })}
-                    className="w-full h-full border-2 border-[theme(border)] rounded-md p-2"
-                />
-            </div>
-        </div>
+        <SectionLayout title="Then Do...">
+            <TextareaAutosize
+                value={prompt?.text}
+                onChange={(e) => setPrompt({ text: e.target.value })}
+                className="w-full h-full min-w-96 border-2 border-[theme(border)] rounded-md p-2"
+            />
+        </SectionLayout>
     )
 }
 
