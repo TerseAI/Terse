@@ -50,7 +50,6 @@ function PromptSection() {
                     }}
                     inputValue={prompt?.text || ''}
                     placeholders={['Write a short description of the task to be performed...']}
-                    compact={true}
                     size={Size.Large}
                     shouldAllowKeyboardShortcutForFocus={true}
                     autoFocus={true}

@@ -9,10 +9,11 @@ export function OutputSection() {
     const { output, setOutput } = useAutomationContext();
     return (
         <SectionLayout title="And Put it Into">
-            {output && (
+            {output ? (
                 <IntegrationInput input={output} onRemove={() => setOutput(undefined)} />
+            ) : (
+                <AddOutputButton />
             )}
-            <AddOutputButton />
         </SectionLayout>
     )
 }
