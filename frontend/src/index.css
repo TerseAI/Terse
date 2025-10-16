@@ -55,61 +55,60 @@ body,
     --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
 }
 
+@keyframes gradient-wave {
+    0%,
+    100% {
+        background-position: 0% 10%
+    }
+
+    50% {
+        background-position: 100% 50%
+    }
+}
+
 @theme {
     --animate-gradient-wave: gradient-wave 8s ease-in-out infinite;
+}
 
-    @keyframes gradient-wave {
+@keyframes fade-in {
+    from {
+        opacity: 0;
+    }
 
-        0%,
-        100% {
-            background-position: 0% 10%
-        }
+    to {
+        opacity: 1;
+    }
+}
 
-        50% {
-            background-position: 100% 50%
-        }
+@keyframes slide-in {
+    from {
+        transform: translateY(20px);
+        opacity: 0;
+    }
+
+    to {
+        transform: translateY(0);
+        opacity: 1;
     }
 }
 
 @theme {
     --animate-fade-in: fade-in 0.2s ease-out forwards;
     --animate-slide-in: slide-in 0.3s ease-out;
+}
 
-    @keyframes fade-in {
-        from {
-            opacity: 0;
-        }
-
-        to {
-            opacity: 1;
-        }
+@keyframes orbit {
+    from {
+        transform: rotate(0deg);
     }
 
-    @keyframes slide-in {
-        from {
-            transform: translateY(20px);
-            opacity: 0;
-        }
-
-        to {
-            transform: translateY(0);
-            opacity: 1;
-        }
+    to {
+        transform: rotate(360deg);
     }
 }
 
 @theme {
     --animate-orbit: orbit 3s linear infinite;
-
-    @keyframes orbit {
-        from {
-            transform: rotate(0deg);
-        }
-
-        to {
-            transform: rotate(360deg);
-        }
-    }
 }
 
 .animate-orbit {
@@ -118,72 +117,87 @@ body,
 }
 
 
+@keyframes rect-orbit {
+    0% {
+        top: 0;
+        left: 0;
+    }
+
+    25% {
+        top: 0;
+        left: 100%;
+    }
+
+    50% {
+        top: 100%;
+        left: 100%;
+    }
+
+    75% {
+        top: 100%;
+        left: 0%;
+    }
+
+    100% {
+        top: 0%;
+        left: 0%;
+    }
+}
+
 @theme {
     --animate-rect-orbit: rect-orbit 4s linear infinite;
+}
 
-    @keyframes rect-orbit {
-        0% {
-            top: 0;
-            left: 0;
-        }
+@keyframes gradient-glow {
+    0% {
+        background-position: 0% 50%;
+    }
 
-        25% {
-            top: 0;
-            left: 100%;
-        }
+    50% {
+        background-position: 100% 50%;
+    }
 
-        50% {
-            top: 100%;
-            left: 100%;
-        }
-
-        75% {
-            top: 100%;
-            left: 0%;
-        }
-
-        100% {
-            top: 0%;
-            left: 0%;
-        }
+    100% {
+        background-position: 0% 50%;
     }
 }
 
 @theme {
     --animate-gradient-glow: gradient-glow 3s ease infinite;
+}
 
-    @keyframes gradient-glow {
-        0% {
-            background-position: 0% 50%;
-        }
+@keyframes pop {
+    0% {
+        transform: scale(1);
+    }
 
-        50% {
-            background-position: 100% 50%;
-        }
+    50% {
+        transform: scale(1.2);
+    }
 
-        100% {
-            background-position: 0% 50%;
-        }
+    100% {
+        transform: scale(1);
     }
 }
 
 @theme {
     --animate-pop: pop 300ms ease-out;
+}
 
-    @keyframes pop {
-        0% {
-            transform: scale(1);
-        }
+@keyframes breathe {
+    0%, 100% {
+        transform: scale(1);
+    }
 
-        50% {
-            transform: scale(1.2);
-        }
-
-        100% {
-            transform: scale(1);
-        }
+    50% {
+        transform: scale(1.05);
     }
 }
+
+.animate-breathe {
+    animation: breathe 4s ease-in-out infinite !important;
+}
+
 
 .shimmer {
     animation: shimmer 1s ease-in-out infinite;
