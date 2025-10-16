@@ -142,13 +142,13 @@ function AssociatedCommits({ commits }: { commits: CommitAssociation[] }) {
         <div className="space-y-2">
             {commits.map((commit, index) => (
                 <div key={index} className="flex items-start space-x-2 p-2 bg-[theme(background-secondary)] rounded-md">
-                    <div className="flex-shrink-0 w-2 h-2 bg-[theme(accent)] rounded-full mt-2"></div>
+                    <div className="flex-shrink-0 w-2 h-2 bg-[theme(--color-accent)] rounded-full mt-2"></div>
                     <div className="flex-1 min-w-0">
                         <a
                             href={commit.url}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-[theme(text-primary)] text-sm hover:text-[theme(accent)] transition-colors duration-200 break-words"
+                            className="text-[theme(text-primary)] text-sm hover:text-[theme(--color-accent)] transition-colors duration-200 break-words"
                         >
                             {commit.message}
                         </a>
@@ -166,7 +166,7 @@ function emptyActivityFeed() {
     return (
         <div className="w-full min-h-screen grid place-items-center animate-fade-in">
             <div className="grid place-items-center">
-                <InboxIcon className="w-8 h-8 text-[theme(accent)] mb-4" />
+                <InboxIcon className="w-8 h-8 text-[theme(--color-accent)] mb-4" />
                 <h1 className="text-xl font-bold pb-2 text-[theme(text-primary)]">No activity yet</h1>
                 <p className="text-[theme(text-secondary)]">
                     Push a commit, open a PR, or merge a PR to see your activity here.

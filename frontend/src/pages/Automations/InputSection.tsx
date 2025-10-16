@@ -6,12 +6,12 @@ import { SectionLayout } from "./components/SectionLayout";
 import { AddInputModal } from "./components/AddInputModal";
 
 export function InputsSection() {
-    const { inputs } = useAutomationContext();
+    const { inputs, setInputs } = useAutomationContext();
 
     return (
-        <SectionLayout title="Using Information From">
+        <SectionLayout title="Listening For Events From">
             {inputs.map((input) => (
-                <IntegrationInput key={input.integration} input={input} />
+                <IntegrationInput key={input.integration} input={input} onRemove={() => setInputs(inputs.filter((i) => i.integration !== input.integration))} />
             ))}
             <AddInputButton />
         </SectionLayout>
