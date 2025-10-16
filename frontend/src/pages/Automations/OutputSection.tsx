@@ -10,7 +10,7 @@ export function OutputSection() {
     return (
         <SectionLayout title="And Put it Into">
             {output ? (
-                <IntegrationInput input={output} onRemove={() => setOutput(undefined)} />
+                <IntegrationInput input={output} onRemove={() => setOutput(undefined)} isOutput={true} />
             ) : (
                 <AddOutputButton />
             )}
