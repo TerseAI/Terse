@@ -8,7 +8,7 @@ import { AddOutputModal } from "./components/AddOutputModal";
 export function OutputSection() {
     const { output, setOutput } = useAutomationContext();
     return (
-        <SectionLayout title="And Put it Into">
+        <SectionLayout title="And Continuously Update">
             {output ? (
                 <IntegrationInput input={output} onRemove={() => setOutput(undefined)} isOutput={true} />
             ) : (

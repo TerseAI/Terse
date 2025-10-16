@@ -16,7 +16,7 @@ export function IntegrationInput({ input, onRemove, isOutput }: { input: Input, 
             onMouseLeave={() => setIsHovered(false)}
         >
             <div className="relative flex flex-col items-center justify-center">
-                <IntegrationBox>
+                <IntegrationBox isOutput={isOutput}>
                     <IconForInputType type={input.integration} />
                 </IntegrationBox>
                 {isOutput ? <LiveDocumentIndicator /> : <IntegrationStatus />}
@@ -69,11 +69,11 @@ function LiveDocumentIndicator() {
     )
 }
 
-export function IntegrationBox({ children }: { children: React.ReactNode }) {
+export function IntegrationBox({ children, isOutput }: { children: React.ReactNode, isOutput?: boolean }) {
     const boxSize = 24
     return (
         <div
-            className={`w-${boxSize} h-${boxSize} flex items-center justify-center p-3 rounded transition-[background-color] duration-200 hover:duration-0 hover:bg-[theme(background-surface)]`}
+            className={`w-${boxSize} h-${boxSize} flex items-center justify-center p-3 rounded transition-[background-color] duration-200 hover:duration-0 hover:bg-[theme(background-surface)] ${isOutput ? 'animate-breathe' : ''}`}
         >
             {children}
         </div>
