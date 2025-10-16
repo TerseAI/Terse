@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Input } from "../../../context/AutomationContext";
 import { Integration } from "../../../context/Integrations";
 
-export function IntegrationInput({ input, onRemove }: { input: Input, onRemove?: () => void }) {
+export function IntegrationInput({ input, onRemove, isOutput }: { input: Input, onRemove?: () => void, isOutput?: boolean }) {
     const [isHovered, setIsHovered] = useState(false);
 
     const handleRemove = () => {
@@ -19,7 +19,7 @@ export function IntegrationInput({ input, onRemove }: { input: Input, onRemove?:
                 <IntegrationBox>
                     <IconForInputType type={input.integration} />
                 </IntegrationBox>
-                <IntegrationStatus integration={input.integration} />
+                {isOutput ? <LiveDocumentIndicator /> : <IntegrationStatus />}
             </div>
             {isHovered && (
                 <button
@@ -35,7 +35,7 @@ export function IntegrationInput({ input, onRemove }: { input: Input, onRemove?:
     )
 }
 
-function IntegrationStatus({ integration }: { integration: Integration }) {
+function IntegrationStatus() {
     return (
         <>
             <div className="absolute left-1/2 -translate-x-1/2 top-full -mt-3 flex items-center justify-center">
@@ -45,6 +45,27 @@ function IntegrationStatus({ integration }: { integration: Integration }) {
                 </div>
             </div>
         </>
+    )
+}
+
+function LiveDocumentIndicator() {
+    return (
+        <div className="absolute left-1/2 -translate-x-1/2 top-full -mt-3 flex items-center justify-center">
+            <svg
+                className="w-4 h-4 text-[theme(--color-accent-tertiary)] animate-spin"
+                style={{ animationDuration: '3s' }}
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+                strokeWidth={2.5}
+            >
+                <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                />
+            </svg>
+        </div>
     )
 }
 
