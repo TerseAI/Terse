@@ -2,13 +2,13 @@ import { Dialog, DialogPanel, DialogTitle } from "@headlessui/react";
 import { Integration } from "../../../context/Integrations";
 import { IconForInputType } from "./Integration";
 
-interface AddInputModalProps {
+interface AddOutputModalProps {
     isOpen: boolean;
     onClose: () => void;
     onSelectIntegration: (integration: Integration) => void;
 }
 
-export function AddInputModal({ isOpen, onClose, onSelectIntegration }: AddInputModalProps) {
+export function AddOutputModal({ isOpen, onClose, onSelectIntegration }: AddOutputModalProps) {
     const availableIntegrations = [
         { type: Integration.GITHUB, name: "GitHub" },
         { type: Integration.LINEAR, name: "Linear" },
@@ -23,7 +23,7 @@ export function AddInputModal({ isOpen, onClose, onSelectIntegration }: AddInput
             <div className="fixed inset-0 flex items-center justify-center p-4">
                 <DialogPanel className="w-full max-w-md rounded-lg bg-[theme(background-elevated)] p-6 shadow-xl">
                     <DialogTitle className="text-lg font-bold text-[theme(text-primary)] mb-4">
-                        Select Integration
+                        Select Output Integration
                     </DialogTitle>
 
                     <div className="grid grid-cols-2 gap-4">
@@ -52,3 +52,4 @@ export function AddInputModal({ isOpen, onClose, onSelectIntegration }: AddInput
         </Dialog>
     );
 }
+
