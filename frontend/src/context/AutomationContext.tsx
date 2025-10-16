@@ -28,9 +28,11 @@ export interface Prompt {
 }
 
 type AutomationContextType = {
+    name: string;
     inputs: Input[];
     output: Output | undefined;
     prompt: Prompt | undefined;
+    setName: (name: string) => void;
     setInputs: (inputs: Input[]) => void;
     setOutput: (output: Output | undefined) => void;
     setPrompt: (prompt: Prompt | undefined) => void;
@@ -42,9 +44,10 @@ export function AutomationProvider({ children }: { children: React.ReactNode }) 
     const [inputs, setInputs] = useState<Input[]>([]);
     const [output, setOutput] = useState<Output | undefined>(undefined);
     const [prompt, setPrompt] = useState<Prompt | undefined>(undefined);
+    const [name, setName] = useState<string>('');
 
     return (
-        <AutomationContext.Provider value={{ inputs, output, prompt, setInputs, setOutput, setPrompt }}>
+        <AutomationContext.Provider value={{ name, inputs, output, prompt, setName, setInputs, setOutput, setPrompt }}>
             {children}
         </AutomationContext.Provider>
     )

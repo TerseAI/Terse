@@ -14,7 +14,7 @@ export function OutputSection() {
             )}
             <AddOutputButton />
         </SectionLayout>
-    )   
+    )
 }
 
 function AddOutputButton() {
@@ -29,16 +29,16 @@ function AddOutputButton() {
 
     return (
         <>
-            <IntegrationBox>
-                <button
-                    onClick={() => setIsModalOpen(true)}
-                >
+            <button
+                onClick={() => setIsModalOpen(true)}
+            >
+                <IntegrationBox>
                     <svg className="w-6 h-6 text-[theme(text-primary)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                    </svg>    
-                </button>
-            </IntegrationBox>
-            <AddOutputModal 
+                    </svg>
+                </IntegrationBox>
+            </button>
+            <AddOutputModal
                 isOpen={isModalOpen}
                 onClose={() => setIsModalOpen(false)}
                 onSelectIntegration={handleSelectIntegration}
