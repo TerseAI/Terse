@@ -28,7 +28,7 @@ body,
     --text-disabled: #6E7681;
 
     --color-accent: oklch(0.7 0.17 172);
-    --color-accent-secondary: oklch(0.7 0.17 150);
+    --color-accent-secondary: oklch(0.7 0.17 10);
     --color-accent-tertiary: oklch(0.7 0.17 250);
     --color-accent-quaternary: oklch(0.7 0.17 320);
     --color-accent-danger: oklch(0.7 0.17 350);
