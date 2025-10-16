@@ -1,5 +1,5 @@
 import { Link, useLocation } from "react-router-dom";
-import { HomeIcon } from "@heroicons/react/24/outline";
+import { Cog6ToothIcon, HomeIcon } from "@heroicons/react/24/outline";
 // import { ListBulletIcon } from "@heroicons/react/24/outline";
 import { Squares2X2Icon } from "@heroicons/react/24/outline";  
 
@@ -22,6 +22,9 @@ function Sidebar() {
             </SidebarItem> */}
             <SidebarItem to="/app/integrations" isActive={location.pathname === "/app/integrations"}>
                 <LinkLabel title="Integrations" icon={<Squares2X2Icon className="w-5 h-5 text-[theme(accent)]" />} />
+            </SidebarItem>
+            <SidebarItem to="/app/automations" isActive={location.pathname === "/app/automations"}>
+                <LinkLabel title="Automations" icon={<Cog6ToothIcon className="w-5 h-5 text-[theme(accent)]" />} />
             </SidebarItem>
         </div>
     )
