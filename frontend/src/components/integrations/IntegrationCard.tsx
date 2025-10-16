@@ -88,15 +88,15 @@ function ConnectionInfo({ connectionInfo }: { connectionInfo?: string }) {
     if (connectionInfo === "Connected") {
         return (
             <div className="flex items-center space-x-2">
-                <div className="w-2 h-2 bg-[theme(accent)] rounded-full"></div>
-                <span className="text-xs text-[theme(accent)]">{connectionInfo}</span>
+                <div className="w-2 h-2 bg-[theme(--color-accent)] rounded-full"></div>
+                <span className="text-xs text-[theme(--color-accent)]">{connectionInfo}</span>
             </div>
         )
     }
     return (
         <div className="flex items-center space-x-2">
-            <div className="w-2 h-2 bg-[theme(accent)] rounded-full"></div>
-            <span className="text-xs text-[theme(accent)]">{connectionInfo}</span>
+            <div className="w-2 h-2 bg-[theme(--color-accent)] rounded-full"></div>
+            <span className="text-xs text-[theme(--color-accent)]">{connectionInfo}</span>
         </div>
     )
 }

@@ -5,6 +5,20 @@ export interface Input {
     integration: Integration;
 }
 
+export interface GithubInput {
+    repositoryNames: string[];
+    eventTypes: string[];
+}
+
+export enum GithubEventType {
+    PUSH = 'push',
+    PULL_REQUEST_OPENED = 'pull_request.opened',
+    PULL_REQUEST_UPDATED = 'pull_request.updated',
+    PULL_REQUEST_MERGED = 'pull_request.merged',
+    PULL_REQUEST_CLOSED = 'pull_request.closed',
+    PULL_REQUEST_COMMENT_ADDED = 'pull_request.comment_added',
+}
+
 export interface Output {
     integration: Integration;
 }
