@@ -62,7 +62,3 @@ function SlackIcon() {
 function NotionIcon() {
     return <img src="/notion.png" alt="Notion" className="w-full h-full object-contain" />;
 }
-
-function JiraIcon() {
-    return <img src="/jira.png" alt="Jira" className="w-full h-full object-contain" />;
-}
