@@ -23,7 +23,7 @@ export function SectionLayout({ title, subtitle, children, icon }: SectionLayout
                     )}
                 </div>
             </div>
-            <div className="bg-[theme(background-elevated)] rounded-lg p-4 border border-[theme(border)] transition-all duration-200 hover:border-[theme(text-secondary)]">
+            <div className=" rounded-lg p-4  transition-all duration-200">
                 <div className="flex justify-center items-center min-h-[60px]">
                     <div className="flex flex-wrap gap-3 justify-center">
                         {children}
