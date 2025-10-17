@@ -4,15 +4,25 @@ import { Integration } from "../../context/Integrations";
 import { IntegrationBox, IntegrationInput } from "./components/Integration";
 import { SectionLayout } from "./components/SectionLayout";
 import { AddOutputModal } from "./components/AddOutputModal";
+import { DocumentTextIcon } from "@heroicons/react/24/outline";
 
 export function OutputSection() {
     const { output, setOutput } = useAutomationContext();
     return (
-        <SectionLayout title="And Continuously Update">
+        <SectionLayout
+            title="Update Living Document"
+            subtitle="The AI will continuously update this document as events come in"
+            icon={<DocumentTextIcon className="w-5 h-5 text-[theme(--color-accent-tertiary)]" />}
+        >
             {output ? (
                 <IntegrationInput input={output} onRemove={() => setOutput(undefined)} isOutput={true} />
             ) : (
-                <AddOutputButton />
+                <div className="text-center py-4 px-4">
+                    <p className="text-xs text-[theme(text-secondary)] mb-3">
+                        Choose where your living document will be updated
+                    </p>
+                    <AddOutputButton />
+                </div>
             )}
         </SectionLayout>
     )
