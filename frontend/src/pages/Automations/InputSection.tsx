@@ -4,16 +4,32 @@ import { Integration } from "../../context/Integrations";
 import { IntegrationBox, IntegrationInput } from "./components/Integration";
 import { SectionLayout } from "./components/SectionLayout";
 import { AddInputModal } from "./components/AddInputModal";
+import { BoltIcon } from "@heroicons/react/24/outline";
 
 export function InputsSection() {
     const { inputs, setInputs } = useAutomationContext();
 
     return (
-        <SectionLayout title="Listening For Events From">
-            {inputs.map((input) => (
-                <IntegrationInput key={input.integration} input={input} onRemove={() => setInputs(inputs.filter((i) => i.integration !== input.integration))} />
-            ))}
-            <AddInputButton />
+        <SectionLayout
+            title="Listen For Events"
+            subtitle="Choose which integrations trigger this automation"
+            icon={<BoltIcon className="w-5 h-5 text-[theme(--color-accent)]" />}
+        >
+            {inputs.length === 0 ? (
+                <div className="text-center py-4 px-4">
+                    <p className="text-xs text-[theme(text-secondary)] mb-3">
+                        No event sources yet. Add an integration to get started.
+                    </p>
+                    <AddInputButton />
+                </div>
+            ) : (
+                <>
+                    {inputs.map((input) => (
+                        <IntegrationInput key={input.integration} input={input} onRemove={() => setInputs(inputs.filter((i) => i.integration !== input.integration))} />
+                    ))}
+                    <AddInputButton />
+                </>
+            )}
         </SectionLayout>
     )
 }
