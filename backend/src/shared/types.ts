@@ -39,3 +39,37 @@ export type ProjectActivityEvent = {
     event_type: string;
     title: string;
 }
+
+export type GithubIntegration = {
+    repositoryName: string;
+};
+
+export type LinearIntegration = {
+    apiKey: string;
+};
+
+export type JiraIntegration = {
+    apiKey: string;
+    baseUrl: string;
+    email: string;
+};
+
+export type SlackIntegration = {
+    teamName: string;
+};
+
+export type GmailIntegration = {
+    email: string;              // User's Gmail address
+    historyId: string;          // For tracking changes since last sync
+    watchExpiration: Date;      // When the watch needs to be renewed (max 7 days)
+};
+
+export type IntegrationsStatus = {
+    integrations: {
+        github?: GithubIntegration;
+        linear?: LinearIntegration;
+        jira?: JiraIntegration;
+        slack?: SlackIntegration;
+        gmail?: GmailIntegration;
+    };
+};
