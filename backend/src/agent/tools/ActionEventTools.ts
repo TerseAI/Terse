@@ -1,8 +1,8 @@
-import { RunContext, tool } from "@openai/agents";
+import { RunContext, Tool, tool } from "@openai/agents";
 import { ActivityOverview, SessionWithTracking, SubActivityOverview } from "../agents/Analyzer";
 import { z } from "zod";
 
-export const createActionSummaryTool = tool({
+export const createActionSummaryTool: Tool<SessionWithTracking> = tool({
     name: 'Create Action Event',
     description: 'Create an action event',
     parameters: z.object({

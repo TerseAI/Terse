@@ -100,13 +100,13 @@ export class ToolBox {
   constructor() {
   }
 
-  getTools(toolBoxType: ToolBoxType) {
+  getTools(toolBoxType: ToolBoxType): Tool<SessionWithTracking>[] {
     if (toolBoxType === ToolBoxType.jira) {
-      return jiraTicketTools;
+      return jiraTicketTools as Tool<SessionWithTracking>[];
     } else if (toolBoxType === ToolBoxType.linear) {
-      return ticketTools;
+      return ticketTools as Tool<SessionWithTracking>[];
     } else {
-      return ticketTools;
+      return ticketTools as Tool<SessionWithTracking>[];
     }
   }
 }
