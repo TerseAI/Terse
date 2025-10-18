@@ -99,7 +99,7 @@ export default function LandingPageChangelog() {
                 <div className="max-w-7xl mx-auto flex justify-between items-center">
                     <div className="text-white text-3xl font-light tracking-wider">
                         <span className="bg-gradient-to-r from-white to-gray-300 bg-clip-text text-transparent">
-                            Vectra
+                            Terse AI
                         </span>
                         <span className="text-gray-400 ml-2">AI</span>
                     </div>
