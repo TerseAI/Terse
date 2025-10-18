@@ -58,9 +58,12 @@ export async function fetchUserIntegrations(req: Request, res: Response) {
             }
         }
 
-        // Check Gmail integration (get the first one if multiple exist)
+        // Check Gmail integration (get the first active one if multiple exist)
         const gmailIntegration = await db().gmail_integrations.findFirst({
-            where: { user_id: user.id },
+            where: {
+                user_id: user.id,
+                is_active: true
+            },
             orderBy: { created_at: 'desc' }
         });
         if (gmailIntegration) {
