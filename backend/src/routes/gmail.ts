@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import { google } from "googleapis";
 import { db } from "../prismaClient";
 import crypto from "crypto";
+import chalk from "chalk";
 
 // Validate required environment variables
 const GMAIL_CLIENT_ID = process.env.GMAIL_CLIENT_ID;
@@ -264,7 +265,7 @@ export async function deleteGmailIntegration(req: Request, res: Response) {
  * Webhook handler for Gmail Pub/Sub notifications
  */
 export async function handleGmailWebhook(req: Request, res: Response) {
-    console.log('Gmail webhook received:', JSON.stringify(req.body, null, 2));
+    console.log(chalk.bgMagenta.white('Gmail webhook received:'), chalk.magentaBright(JSON.stringify(req.body, null, 2)));
 
     try {
         const { message } = req.body;
