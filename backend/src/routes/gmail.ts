@@ -210,13 +210,41 @@ export async function deleteGmailIntegration(req: Request, res: Response) {
     }
 
     try {
-        // TODO: Stop the Gmail watch before deleting
+        // Get the integration to retrieve tokens
+        const integration = await db().gmail_integrations.findFirst({
+            where: { user_id: req.session.user.id }
+        });
 
+        if (!integration) {
+            return res.status(404).json({ error: 'No Gmail integration found' });
+        }
+
+        // Set up OAuth client with stored credentials
+        const oauth2Client = getOAuth2Client();
+        oauth2Client.setCredentials({
+            access_token: integration.access_token,
+            refresh_token: integration.refresh_token,
+            expiry_date: integration.token_expiry.getTime()
+        });
+
+        try {
+            // Stop the Gmail watch
+            const gmail = google.gmail({ version: 'v1', auth: oauth2Client });
+            await gmail.users.stop({ userId: 'me' });
+            console.log(`Gmail watch stopped for ${integration.email}`);
+        } catch (stopError) {
+            // Log but don't fail the deletion if watch stop fails
+            // (watch might already be expired or stopped)
+            console.warn('Error stopping Gmail watch:', stopError);
+        }
+
+        // Delete from database
         await db().gmail_integrations.deleteMany({
             where: { user_id: req.session.user.id }
         });
 
-        res.json({ message: 'Gmail integration deleted' });
+        console.log(`Gmail integration deleted for user ${req.session.user.id}`);
+        res.json({ message: 'Gmail integration deleted successfully' });
     } catch (error) {
         console.error('Error deleting Gmail integration:', error);
         res.status(500).json({ error: 'Failed to delete Gmail integration' });
