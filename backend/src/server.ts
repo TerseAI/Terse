@@ -6,7 +6,9 @@ import { createServer } from "http";
 import cors from 'cors';
 import { User } from './types/prisma';
 import { User as TicketUser } from './shared/TicketSystem';
-import { authMiddleware, githubAppAuthMiddleware, githubCallback, githubLogin, githubLoginURL, login, logout, setSession } from './routes/auth';
+import { authMiddleware, login, logout, setSession } from './routes/auth';
+import { githubAppAuthMiddleware, githubCallback, githubLogin, githubLoginURL } from './routes/auth/githubAuth';
+import { googleCallback, googleLogin, googleLoginURL } from './routes/auth/googleAuth';
 import { AgentSocketServer, requestSessionSocketToken } from './agent/socket';
 import { getCurrentGithubIntegration, getInstallationUrl, githubAppInstallationCallback, githubAppInstallationDeleted, githubAppUnifiedEvent } from './routes/githubApp';
 import { deleteLinearCredentials, getLinearApiKey, indexLinearTicket, setLinearApiKey } from './routes/linear';
@@ -59,6 +61,10 @@ app.get('/auth/github', async (req, res) => {
     githubLogin(req, res);
 })
 
+app.get('/auth/google', async (req, res) => {
+    googleLogin(req, res);
+})
+
 app.post('/auth/set-session', async (req, res) => {
     setSession(req, res);
 })
@@ -67,8 +73,16 @@ app.get('/auth/github/callback', async (req, res) => {
     githubCallback(req, res);
 })
 
+app.get('/auth/google/callback', async (req, res) => {
+    googleCallback(req, res);
+})
+
 app.get('/auth/github/login-url', (req, res) => {
     githubLoginURL(req, res);
+})
+
+app.get('/auth/google/login-url', (req, res) => {
+    googleLoginURL(req, res);
 })
 
 app.post('/login', async (req, res) => {
