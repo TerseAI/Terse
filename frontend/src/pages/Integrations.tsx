@@ -2,6 +2,7 @@ import { AddToSlack } from "../components/integrations/addIntengrations/AddSlack
 import { GithubIntegration } from "../components/integrations/GithubIntegration";
 import { Integration, useIntegrations } from "../context/Integrations";
 import { AddLinear } from "../components/integrations/addIntengrations/AddLinear";
+import AddGmail from "../components/integrations/addIntengrations/AddGmail";
 
 function Integrations() {
     const { integrations, isLoading } = useIntegrations();
@@ -9,6 +10,7 @@ function Integrations() {
     const sourceControlIntegrations = integrations.filter((integration) => integration === Integration.GITHUB);
     const issueTrackingIntegrations = integrations.filter((integration) => integration === Integration.JIRA || integration === Integration.LINEAR);
     const communicationIntegrations = integrations.filter((integration) => integration === Integration.SLACK);
+    const emailIntegrations = integrations.filter((integration) => integration === Integration.GMAIL);
 
     return (
         <div className="grid grid-cols-1 grid-rows-1 pt-4 pb-4">
@@ -22,6 +24,7 @@ function Integrations() {
                     isLoading={isLoading}
                 />
                 <IntegrationSection integrations={communicationIntegrations} title="Communication" fallback={<AddToSlack />} isLoading={isLoading} />
+                <IntegrationSection integrations={emailIntegrations} title="Email" fallback={<AddGmail />} isLoading={isLoading} />
             </div>
         </div>
     )
