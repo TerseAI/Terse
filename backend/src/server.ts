@@ -11,6 +11,7 @@ import { AgentSocketServer, requestSessionSocketToken } from './agent/socket';
 import { getCurrentGithubIntegration, getInstallationUrl, githubAppInstallationCallback, githubAppInstallationDeleted, githubAppUnifiedEvent } from './routes/githubApp';
 import { deleteLinearCredentials, getLinearApiKey, indexLinearTicket, setLinearApiKey } from './routes/linear';
 import { deleteJiraCredentials, getJiraCredentials, indexJiraTicket, setJiraCredentials } from './routes/jira';
+import { deleteGmailIntegration, getGmailIntegration, getGmailOAuthUrl, gmailCallback, handleGmailWebhook } from './routes/gmail';
 import { TicketManager } from './ticketing/TicketIntegration';
 import { LinearWebhookPayload } from './utility/LinearWebhookPayload';
 import { JiraWebhookPayload } from './utility/JiraWebhookPayload';
@@ -130,6 +131,27 @@ app.get('/jira/get-api-key', authMiddleware, async (req, res) => {
 app.delete('/jira/delete-credentials', authMiddleware, async (req, res) => {
     deleteJiraCredentials(req, res);
 })
+
+// MARK: GMAIL
+app.get('/gmail/get-oauth-url', authMiddleware, async (req, res) => {
+    getGmailOAuthUrl(req, res);
+});
+
+app.get('/gmail/callback', async (req, res) => {
+    gmailCallback(req, res);
+});
+
+app.get('/gmail/get-integration', authMiddleware, async (req, res) => {
+    getGmailIntegration(req, res);
+});
+
+app.delete('/gmail/delete-integration', authMiddleware, async (req, res) => {
+    deleteGmailIntegration(req, res);
+});
+
+app.post('/webhooks/gmail', async (req, res) => {
+    handleGmailWebhook(req, res);
+});
 
 // MARK: LINEAR
 

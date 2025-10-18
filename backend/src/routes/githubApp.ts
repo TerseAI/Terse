@@ -1,15 +1,11 @@
 import chalk from "chalk";
 import { Request, Response } from "express";
 import { db } from "../prismaClient";
-import { User, GithubRepository, UserGithubRepository, LinearApiKey } from "../types/prisma";
+import { User, GithubRepository, UserGithubRepository } from "../types/prisma";
 import Owner from "../theOwner/Owner";
 import { Commit, UnifiedGitHubEvent } from "../theOwner/utility";
 import { search } from "../searchClient";
 import { Session } from "../server";
-import { TicketManager } from "../ticketing/TicketIntegration";
-import { getUserTicketManager } from "../types/user";
-import { formatTitleForEvent } from "../feed/formatters";
-import { ChangedItem, ChangeEventType } from "../shared/ModelEvents";
 import { ActivityOverview } from "src/agent/agents/Analyzer";
 import { TicketEventType } from "@prisma/client";
 
