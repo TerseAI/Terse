@@ -6,6 +6,7 @@ export enum Integration {
     LINEAR = 'linear',
     SLACK = 'slack',
     GITHUB = 'github',
+    NOTION = 'notion',
 }
 
 type IntegrationContextType = {

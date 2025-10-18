@@ -10,6 +10,7 @@ import ActivityFeed from "./pages/ActivityFeed";
 import Sidebar from "./components/Sidebar";
 import Login from "./pages/Login";
 import Integrations from "./pages/Integrations";
+import Automations from "./pages/Automations/Automations";
 
 function App() {
   return (
@@ -20,6 +21,9 @@ function App() {
             <Route index element={<Home />} />
             <Route path="activity" element={<ActivityFeed />} />
             <Route path="integrations" element={<Integrations />} />
+            {import.meta.env.VITE_FEATURE_AUTOMATIONS === 'true' && (
+              <Route path="automations" element={<Automations />} />
+            )}
           </Route>
           <Route path="/" element={<LandingPage />} />
           <Route path="/changelog" element={<LandingPageChangelog />} />
