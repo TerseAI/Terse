@@ -22,6 +22,11 @@ interface BackendService {
     getGithubLogInURL(): Promise<{url: string}>;
 
     /**
+     * Retrieves google login URL
+     */
+    getGoogleLogInURL(): Promise<{url: string}>;
+
+    /**
      * Retrieves users by their IDs
      */
     getUserById(id: string): Promise<User>
@@ -162,6 +167,15 @@ export const BackendProvider: BackendService = {
             .then(response => response.data)
             .catch(error => {
                 console.error('Error getting GitHub login URL:', error);
+                throw error;
+            });
+    },
+
+    getGoogleLogInURL: () => {
+        return axios.get<{url: string}>(`${backendBaseUrl}/auth/google/login-url`, { withCredentials: true })
+            .then(response => response.data)
+            .catch(error => {
+                console.error('Error getting Google login URL:', error);
                 throw error;
             });
     },
