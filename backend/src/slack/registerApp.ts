@@ -9,7 +9,7 @@ import { sendMessage } from "./sendMessage";
 
 
 const welcomeMessage = `
-Hello, I'm Vectra AI, your AI assistant for managing your tickets.
+Hello, I'm Terse AI, your AI assistant for managing your tickets.
 
 I work in the background, but I'll shoot you a message here whenever I make changes to your tickets!
 `;
