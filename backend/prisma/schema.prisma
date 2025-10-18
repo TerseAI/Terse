@@ -126,6 +126,7 @@ model gmail_integrations {
   access_token     String
   refresh_token    String
   token_expiry     DateTime
+  is_active        Boolean  @default(true)
   created_at       DateTime @default(now())
   updated_at       DateTime @updatedAt
 
@@ -134,6 +135,7 @@ model gmail_integrations {
   @@unique([user_id, email]) // Allow multiple Gmail accounts per user, but not duplicates
   @@index([email])
   @@index([watch_expiration]) // For finding watches that need renewal
+  @@index([is_active]) // For finding active integrations
 }
 
 // Activity Feed - Starting with GitHub Events

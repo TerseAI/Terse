@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import { google } from "googleapis";
 import { db } from "../prismaClient";
 import crypto from "crypto";
+import chalk from "chalk";
 
 // Validate required environment variables
 const GMAIL_CLIENT_ID = process.env.GMAIL_CLIENT_ID;
@@ -136,7 +137,7 @@ export async function gmailCallback(req: Request, res: Response) {
             ? new Date(tokens.expiry_date)
             : new Date(Date.now() + 3600 * 1000); // Default 1 hour
 
-        // Store in database
+        // Store in database and set is_active to true
         await db().gmail_integrations.upsert({
             where: {
                 user_id_email: {
@@ -151,18 +152,20 @@ export async function gmailCallback(req: Request, res: Response) {
                 watch_expiration: new Date(parseInt(expiration)),
                 access_token: tokens.access_token,
                 refresh_token: tokens.refresh_token,
-                token_expiry: tokenExpiry
+                token_expiry: tokenExpiry,
+                is_active: true
             },
             update: {
                 history_id: historyId,
                 watch_expiration: new Date(parseInt(expiration)),
                 access_token: tokens.access_token,
                 refresh_token: tokens.refresh_token,
-                token_expiry: tokenExpiry
+                token_expiry: tokenExpiry,
+                is_active: true // Reactivate if it was previously disabled
             }
         });
 
-        console.log(`Gmail integration created for ${emailAddress}`);
+        console.log(`Gmail integration activated for ${emailAddress}`);
 
         // Redirect to frontend
         res.redirect(GMAIL_FRONTEND_REDIRECT || '');
@@ -182,12 +185,15 @@ export async function getGmailIntegration(req: Request, res: Response) {
 
     try {
         const integration = await db().gmail_integrations.findFirst({
-            where: { user_id: req.session.user.id },
+            where: {
+                user_id: req.session.user.id,
+                is_active: true
+            },
             orderBy: { created_at: 'desc' }
         });
 
         if (!integration) {
-            return res.status(404).json({ error: 'No Gmail integration found' });
+            return res.status(404).json({ error: 'No active Gmail integration found' });
         }
 
         res.json({
@@ -202,7 +208,7 @@ export async function getGmailIntegration(req: Request, res: Response) {
 }
 
 /**
- * Delete Gmail integration
+ * Disable Gmail integration (set is_active to false)
  */
 export async function deleteGmailIntegration(req: Request, res: Response) {
     if (!req.session?.user) {
@@ -210,16 +216,48 @@ export async function deleteGmailIntegration(req: Request, res: Response) {
     }
 
     try {
-        // TODO: Stop the Gmail watch before deleting
-
-        await db().gmail_integrations.deleteMany({
-            where: { user_id: req.session.user.id }
+        // Get the active integration
+        const integration = await db().gmail_integrations.findFirst({
+            where: {
+                user_id: req.session.user.id,
+                is_active: true
+            }
         });
 
-        res.json({ message: 'Gmail integration deleted' });
+        if (!integration) {
+            return res.status(404).json({ error: 'No active Gmail integration found' });
+        }
+
+        // Set up OAuth client with stored credentials
+        const oauth2Client = getOAuth2Client();
+        oauth2Client.setCredentials({
+            access_token: integration.access_token,
+            refresh_token: integration.refresh_token,
+            expiry_date: integration.token_expiry.getTime()
+        });
+
+        try {
+            // Stop the Gmail watch
+            const gmail = google.gmail({ version: 'v1', auth: oauth2Client });
+            await gmail.users.stop({ userId: 'me' });
+            console.log(`Gmail watch stopped for ${integration.email}`);
+        } catch (stopError) {
+            // Log but don't fail the deactivation if watch stop fails
+            // (watch might already be expired or stopped)
+            console.warn('Error stopping Gmail watch:', stopError);
+        }
+
+        // Set is_active to false instead of deleting
+        await db().gmail_integrations.update({
+            where: { id: integration.id },
+            data: { is_active: false }
+        });
+
+        console.log(`Gmail integration deactivated for user ${req.session.user.id}`);
+        res.json({ message: 'Gmail integration disabled successfully' });
     } catch (error) {
-        console.error('Error deleting Gmail integration:', error);
-        res.status(500).json({ error: 'Failed to delete Gmail integration' });
+        console.error('Error disabling Gmail integration:', error);
+        res.status(500).json({ error: 'Failed to disable Gmail integration' });
     }
 }
 
@@ -227,7 +265,7 @@ export async function deleteGmailIntegration(req: Request, res: Response) {
  * Webhook handler for Gmail Pub/Sub notifications
  */
 export async function handleGmailWebhook(req: Request, res: Response) {
-    console.log('Gmail webhook received:', JSON.stringify(req.body, null, 2));
+    console.log(chalk.bgMagenta.white('Gmail webhook received:'), chalk.magentaBright(JSON.stringify(req.body, null, 2)));
 
     try {
         const { message } = req.body;
@@ -246,13 +284,16 @@ export async function handleGmailWebhook(req: Request, res: Response) {
 
         console.log(`Gmail notification for ${emailAddress}, historyId: ${newHistoryId}`);
 
-        // Look up user by email
+        // Look up active integration by email
         const integration = await db().gmail_integrations.findFirst({
-            where: { email: emailAddress }
+            where: {
+                email: emailAddress,
+                is_active: true
+            }
         });
 
         if (!integration) {
-            console.log('No integration found for email:', emailAddress);
+            console.log('No active integration found for email:', emailAddress);
             return res.status(200).send('OK');
         }
 

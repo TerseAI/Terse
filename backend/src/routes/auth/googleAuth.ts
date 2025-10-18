@@ -104,6 +104,8 @@ export async function googleCallback(req: Request, res: Response) {
         if (!user) {
             // Create new user
             user = await createUser(name, email, '');
+        } else {
+            console.log('Existing user', user)
         }
 
         if (!user) {

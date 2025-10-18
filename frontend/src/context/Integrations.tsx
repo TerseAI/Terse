@@ -49,7 +49,7 @@ export function IntegrationProvider({ children }: { children: ReactNode }) {
         try {
             const { integrations: integrationData } = await BackendProvider.getIntegrationsStatus();
             const activeIntegrations: Integration[] = [];
-            
+
             if (integrationData.github) {
                 activeIntegrations.push(Integration.GITHUB);
             }
@@ -62,7 +62,10 @@ export function IntegrationProvider({ children }: { children: ReactNode }) {
             if (integrationData.slack) {
                 activeIntegrations.push(Integration.SLACK);
             }
-            
+            if (integrationData.gmail) {
+                activeIntegrations.push(Integration.GMAIL);
+            }
+
             setIntegrations(activeIntegrations);
         } catch (error) {
             console.error('Error fetching integrations:', error);
@@ -93,7 +96,8 @@ export function IntegrationProvider({ children }: { children: ReactNode }) {
                     github: integrations.includes(Integration.GITHUB),
                     linear: integrations.includes(Integration.LINEAR),
                     jira: integrations.includes(Integration.JIRA),
-                    slack: integrations.includes(Integration.SLACK)
+                    slack: integrations.includes(Integration.SLACK),
+                    gmail: integrations.includes(Integration.GMAIL)
                 };
                 lastIntegrationStateRef.current = JSON.stringify(currentIntegrations);
             }
@@ -133,7 +137,8 @@ export function IntegrationProvider({ children }: { children: ReactNode }) {
                     if (integrationData.linear) activeIntegrations.push(Integration.LINEAR);
                     if (integrationData.jira) activeIntegrations.push(Integration.JIRA);
                     if (integrationData.slack) activeIntegrations.push(Integration.SLACK);
-                    
+                    if (integrationData.gmail) activeIntegrations.push(Integration.GMAIL);
+
                     setIntegrations(activeIntegrations);
                     stopPolling();
                 }
