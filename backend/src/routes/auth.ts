@@ -142,6 +142,7 @@ export async function login(req: Request, res: Response) {
 }
 
 export async function logout(req: Request, res: Response) {
+    console.log('logout route has been hit')
     res.clearCookie(COOKIE_NAME);
     res.json({ message: 'Logout successful' });
 }
