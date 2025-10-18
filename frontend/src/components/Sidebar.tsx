@@ -23,9 +23,11 @@ function Sidebar() {
             <SidebarItem to="/app/integrations" isActive={location.pathname === "/app/integrations"}>
                 <LinkLabel title="Integrations" icon={<Squares2X2Icon className="w-5 h-5 text-[theme(--color-accent)]" />} />
             </SidebarItem>
-            <SidebarItem to="/app/automations" isActive={location.pathname === "/app/automations"}>
-                <LinkLabel title="Automations" icon={<Cog6ToothIcon className="w-5 h-5 text-[theme(--color-accent)]" />} />
-            </SidebarItem>
+            {import.meta.env.VITE_FEATURE_AUTOMATIONS === 'true' && (
+                <SidebarItem to="/app/automations" isActive={location.pathname === "/app/automations"}>
+                    <LinkLabel title="Automations" icon={<Cog6ToothIcon className="w-5 h-5 text-[theme(--color-accent)]" />} />
+                </SidebarItem>
+            )}
         </div>
     )
 }
