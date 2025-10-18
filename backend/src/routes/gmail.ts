@@ -280,7 +280,8 @@ export async function handleGmailWebhook(req: Request, res: Response) {
         );
 
         const emailAddress = decoded.emailAddress;
-        const newHistoryId = decoded.historyId;
+        const newHistoryId: number = decoded.historyId;
+        const newHistoryIdString: string = newHistoryId.toString();
 
         console.log(`Gmail notification for ${emailAddress}, historyId: ${newHistoryId}`);
 
@@ -303,7 +304,7 @@ export async function handleGmailWebhook(req: Request, res: Response) {
 
         await db().gmail_integrations.update({
             where: { id: integration.id },
-            data: { history_id: newHistoryId }
+            data: { history_id: newHistoryIdString }
         });
 
         console.log(`Updated history ID for ${emailAddress}`);
