@@ -120,7 +120,7 @@ model jira_api_keys {
 model gmail_integrations {
   id               String   @id @default(cuid())
   user_id          String
-  email            String 
+  email            String
   history_id       String
   watch_expiration DateTime
   access_token     String
