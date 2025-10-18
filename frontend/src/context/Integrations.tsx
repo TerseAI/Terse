@@ -2,11 +2,21 @@ import { createContext, useContext, useState, ReactNode, useEffect, useRef } fro
 import { BackendProvider } from '../services/backend';
 
 export enum Integration {
+    // Ticketing systems
     JIRA = 'jira',
     LINEAR = 'linear',
+
+    // Messaging systems
     SLACK = 'slack',
+
+    // Source control
     GITHUB = 'github',
+
+    // Note-taking systems
     NOTION = 'notion',
+    
+    // Mail
+    GMAIL = 'gmail',
 }
 
 type IntegrationContextType = {
@@ -17,6 +27,7 @@ type IntegrationContextType = {
     hasLinear: boolean;
     hasJira: boolean;
     hasSlack: boolean;
+    hasGmail: boolean;
     isSetupComplete: boolean;
     isPolling: boolean;
     startPolling: () => void;
@@ -159,6 +170,7 @@ export function IntegrationProvider({ children }: { children: ReactNode }) {
     const hasLinear = integrations.includes(Integration.LINEAR);
     const hasJira = integrations.includes(Integration.JIRA);
     const hasSlack = integrations.includes(Integration.SLACK);
+    const hasGmail = integrations.includes(Integration.GMAIL)
     const isSetupComplete = hasGithub && (hasLinear || hasJira);
 
     return (
@@ -170,6 +182,7 @@ export function IntegrationProvider({ children }: { children: ReactNode }) {
             hasLinear,
             hasJira,
             hasSlack,
+            hasGmail,
             isSetupComplete,
             isPolling,
             startPolling,

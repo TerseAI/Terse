@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import { db } from "../prismaClient";
+import { IntegrationsStatus } from "../shared/types";
 
 export async function fetchUserIntegrations(req: Request, res: Response) {
     if (!req.session?.user) {
@@ -8,7 +9,7 @@ export async function fetchUserIntegrations(req: Request, res: Response) {
     }
 
     const user = req.session.user;
-    const integrations: { [key: string]: any } = {};
+    const result: IntegrationsStatus = { integrations: {} };
 
     try {
         // Check GitHub integration
@@ -20,7 +21,7 @@ export async function fetchUserIntegrations(req: Request, res: Response) {
                 where: { id: userGithubRepo.github_repository_id }
             });
             if (repo) {
-                integrations.github = { repositoryName: repo.name };
+                result.integrations.github = { repositoryName: repo.name };
             }
         }
 
@@ -29,7 +30,7 @@ export async function fetchUserIntegrations(req: Request, res: Response) {
             where: { user_id: user.id }
         });
         if (linearKey) {
-            integrations.linear = { apiKey: linearKey.api_key };
+            result.integrations.linear = { apiKey: linearKey.api_key };
         }
 
         // Check Jira integration
@@ -37,7 +38,7 @@ export async function fetchUserIntegrations(req: Request, res: Response) {
             where: { user_id: user.id }
         });
         if (jiraKey) {
-            integrations.jira = {
+            result.integrations.jira = {
                 apiKey: jiraKey.api_token,
                 baseUrl: jiraKey.base_url,
                 email: jiraKey.jira_user_email
@@ -53,11 +54,24 @@ export async function fetchUserIntegrations(req: Request, res: Response) {
                 where: { team_id: userSlackIntegration.slack_team_id }
             });
             if (slackIntegration) {
-                integrations.slack = { teamName: slackIntegration.team_name };
+                result.integrations.slack = { teamName: slackIntegration.team_name };
             }
         }
 
-        res.status(200).json({ integrations });
+        // Check Gmail integration (get the first one if multiple exist)
+        const gmailIntegration = await db().gmail_integrations.findFirst({
+            where: { user_id: user.id },
+            orderBy: { created_at: 'desc' }
+        });
+        if (gmailIntegration) {
+            result.integrations.gmail = {
+                email: gmailIntegration.email,
+                historyId: gmailIntegration.history_id,
+                watchExpiration: gmailIntegration.watch_expiration
+            };
+        }
+
+        res.status(200).json(result);
     } catch (error) {
         console.error('Error fetching integrations status:', error);
         res.status(500).json({ error: 'Failed to fetch integrations status' });

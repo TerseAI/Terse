@@ -1,5 +1,6 @@
 import { ModelEvent, ModelRequest } from "../shared/ModelEvents";
 import { User } from "../types/User";
+import { IntegrationsStatus, GithubIntegration, LinearIntegration, JiraIntegration, SlackIntegration, GmailIntegration } from "../shared/types";
 import axios from 'axios';
 
 const backendBaseUrl = '/api';
@@ -19,6 +20,11 @@ interface BackendService {
      * Retrieves github login URL
      */
     getGithubLogInURL(): Promise<{url: string}>;
+
+    /**
+     * Retrieves google login URL
+     */
+    getGoogleLogInURL(): Promise<{url: string}>;
 
     /**
      * Retrieves users by their IDs
@@ -57,19 +63,12 @@ interface BackendService {
     /**
      * Gets all integrations status in a single call
      */
-    getIntegrationsStatus(): Promise<{
-        integrations: {
-            github?: { repositoryName: string };
-            linear?: { apiKey: string };
-            jira?: { apiKey: string; baseUrl: string; email: string };
-            slack?: { teamName: string };
-        };
-    }>;
+    getIntegrationsStatus(): Promise<IntegrationsStatus>;
 
     /**
      * Gets the current GitHub integration
      */
-    getCurrentGithubIntegration(): Promise<{ repositoryName: string }>;
+    getCurrentGithubIntegration(): Promise<GithubIntegration>;
 
     /**
      * Requests a GitHub app installation URL
@@ -79,7 +78,7 @@ interface BackendService {
     /**
      * Gets the current Slack integration
      */
-    getCurrentSlackIntegration(): Promise<{ teamName: string }>;
+    getCurrentSlackIntegration(): Promise<SlackIntegration>;
 
     /**
      * Requests a Slack OAuth URL
@@ -89,7 +88,7 @@ interface BackendService {
     /**
      * Gets the Linear API key
      */
-    getLinearApiKey(): Promise<{ apiKey: string }>;
+    getLinearApiKey(): Promise<LinearIntegration>;
 
     /**
      * Sets the Linear API key
@@ -104,7 +103,7 @@ interface BackendService {
     /**
      * Gets the Jira API key
      */
-    getJiraApiKey(): Promise<{ apiKey: string, baseUrl: string, email: string }>;
+    getJiraApiKey(): Promise<JiraIntegration>;
 
     /**
      * Sets the Jira API key
@@ -115,6 +114,21 @@ interface BackendService {
      * Deletes the Jira API key
      */
     deleteJiraApiKey(): Promise<void>;
+
+    /**
+     * Gets the Gmail integration
+     */
+    getGmailIntegration(): Promise<GmailIntegration>;
+
+    /**
+     * Requests a Gmail OAuth URL
+     */
+    requestGmailOAuthUrl(): Promise<{ url: string }>;
+
+    /**
+     * Deletes the Gmail integration
+     */
+    deleteGmailIntegration(): Promise<void>;
 
     /**
      * Requests a session socket token
@@ -153,6 +167,15 @@ export const BackendProvider: BackendService = {
             .then(response => response.data)
             .catch(error => {
                 console.error('Error getting GitHub login URL:', error);
+                throw error;
+            });
+    },
+
+    getGoogleLogInURL: () => {
+        return axios.get<{url: string}>(`${backendBaseUrl}/auth/google/login-url`, { withCredentials: true })
+            .then(response => response.data)
+            .catch(error => {
+                console.error('Error getting Google login URL:', error);
                 throw error;
             });
     },
@@ -319,6 +342,33 @@ export const BackendProvider: BackendService = {
             .then(response => response.data)
             .catch(error => {
                 console.error('Error deleting Jira API key:', error);
+                throw error;
+            });
+    },
+
+    getGmailIntegration: () => {
+        return axios.get(`${backendBaseUrl}/gmail/get-integration`, { withCredentials: true })
+            .then(response => response.data)
+            .catch(error => {
+                console.error('Error getting Gmail integration:', error);
+                throw error;
+            });
+    },
+
+    requestGmailOAuthUrl: () => {
+        return axios.get(`${backendBaseUrl}/gmail/get-oauth-url`, { withCredentials: true })
+            .then(response => response.data)
+            .catch(error => {
+                console.error('Error requesting Gmail OAuth URL:', error);
+                throw error;
+            });
+    },
+
+    deleteGmailIntegration: () => {
+        return axios.delete(`${backendBaseUrl}/gmail/delete-integration`, { withCredentials: true })
+            .then(response => response.data)
+            .catch(error => {
+                console.error('Error deleting Gmail integration:', error);
                 throw error;
             });
     },

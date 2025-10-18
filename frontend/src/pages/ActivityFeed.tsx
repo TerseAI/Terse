@@ -61,7 +61,7 @@ function LoadingState() {
 }
 
 function FeedContent({ activity }: { activity: ActivityEvent[] }) {
-    if (activity.length !== 0) {
+    if (activity.length === 0) {
         return emptyActivityFeed();
     }
 

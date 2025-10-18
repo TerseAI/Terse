@@ -1,0 +1,283 @@
+import { Request, Response } from "express";
+import { google } from "googleapis";
+import { db } from "../prismaClient";
+import crypto from "crypto";
+
+// Validate required environment variables
+const GMAIL_CLIENT_ID = process.env.GMAIL_CLIENT_ID;
+const GMAIL_CLIENT_SECRET = process.env.GMAIL_CLIENT_SECRET;
+const GMAIL_REDIRECT_URI = process.env.GMAIL_REDIRECT_URI;
+const GMAIL_PUBSUB_TOPIC = process.env.GMAIL_PUBSUB_TOPIC;
+const GMAIL_FRONTEND_REDIRECT = process.env.GMAIL_FRONTEND_REDIRECT;
+
+if (!GMAIL_CLIENT_ID) {
+    throw new Error('GMAIL_CLIENT_ID is not set in environment variables');
+}
+if (!GMAIL_CLIENT_SECRET) {
+    throw new Error('GMAIL_CLIENT_SECRET is not set in environment variables');
+}
+if (!GMAIL_REDIRECT_URI) {
+    throw new Error('GMAIL_REDIRECT_URI is not set in environment variables');
+}
+if (!GMAIL_PUBSUB_TOPIC) {
+    throw new Error('GMAIL_PUBSUB_TOPIC is not set in environment variables');
+}
+if (!GMAIL_FRONTEND_REDIRECT) {
+    throw new Error('GMAIL_FRONTEND_REDIRECT is not set in environment variables');
+}
+
+// OAuth2 scopes for Gmail
+const SCOPES = [
+    'https://www.googleapis.com/auth/gmail.readonly',
+    'https://www.googleapis.com/auth/gmail.modify',
+    'https://mail.google.com/'
+];
+
+// Create OAuth2 client
+function getOAuth2Client() {
+    return new google.auth.OAuth2(
+        GMAIL_CLIENT_ID,
+        GMAIL_CLIENT_SECRET,
+        GMAIL_REDIRECT_URI
+    );
+}
+
+/**
+ * Generate Gmail OAuth URL
+ */
+export async function getGmailOAuthUrl(req: Request, res: Response) {
+    console.log('getGmailOAuthUrl route hit');
+
+    if (!req.session?.user) {
+        return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    try {
+        const oauth2Client = getOAuth2Client();
+
+        // Generate state for security (include user ID)
+        const state = Buffer.from(JSON.stringify({
+            userId: req.session.user.id,
+            random: crypto.randomBytes(16).toString('hex')
+        })).toString('base64');
+
+        const authUrl = oauth2Client.generateAuthUrl({
+            access_type: 'offline', // Get refresh token
+            scope: SCOPES,
+            state: state,
+            prompt: 'consent' // Force consent screen to get refresh token
+        });
+
+        res.json({ url: authUrl });
+    } catch (error) {
+        console.error('Error generating Gmail OAuth URL:', error);
+        res.status(500).json({ error: 'Failed to generate OAuth URL' });
+    }
+}
+
+/**
+ * Handle Gmail OAuth callback
+ */
+export async function gmailCallback(req: Request, res: Response) {
+    const { code, state } = req.query as { code?: string; state?: string };
+
+    console.log('Gmail OAuth callback received');
+
+    if (!code || !state) {
+        return res.status(400).send('Invalid OAuth state');
+    }
+
+    try {
+        // Decode state to get user ID
+        const stateData = JSON.parse(Buffer.from(state, 'base64').toString());
+        const userId = stateData.userId;
+
+        if (!userId) {
+            return res.status(400).send('Invalid state: missing user ID');
+        }
+
+        const oauth2Client = getOAuth2Client();
+
+        // Exchange code for tokens
+        const { tokens } = await oauth2Client.getToken(code);
+        oauth2Client.setCredentials(tokens);
+
+        if (!tokens.access_token || !tokens.refresh_token) {
+            return res.status(400).send('Failed to obtain tokens');
+        }
+
+        // Get user's email address
+        const gmail = google.gmail({ version: 'v1', auth: oauth2Client });
+        const profile = await gmail.users.getProfile({ userId: 'me' });
+        const emailAddress = profile.data.emailAddress;
+
+        if (!emailAddress) {
+            return res.status(400).send('Failed to get email address');
+        }
+
+        // Set up Gmail watch
+        const watchResponse = await gmail.users.watch({
+            userId: 'me',
+            requestBody: {
+                topicName: GMAIL_PUBSUB_TOPIC,
+                labelIds: ['INBOX']
+            }
+        });
+
+        const historyId = watchResponse.data.historyId;
+        const expiration = watchResponse.data.expiration;
+
+        if (!historyId || !expiration) {
+            return res.status(500).send('Failed to set up Gmail watch');
+        }
+
+        // Calculate token expiry
+        const tokenExpiry = tokens.expiry_date
+            ? new Date(tokens.expiry_date)
+            : new Date(Date.now() + 3600 * 1000); // Default 1 hour
+
+        // Store in database
+        await db().gmail_integrations.upsert({
+            where: {
+                user_id_email: {
+                    user_id: userId,
+                    email: emailAddress
+                }
+            },
+            create: {
+                user_id: userId,
+                email: emailAddress,
+                history_id: historyId,
+                watch_expiration: new Date(parseInt(expiration)),
+                access_token: tokens.access_token,
+                refresh_token: tokens.refresh_token,
+                token_expiry: tokenExpiry
+            },
+            update: {
+                history_id: historyId,
+                watch_expiration: new Date(parseInt(expiration)),
+                access_token: tokens.access_token,
+                refresh_token: tokens.refresh_token,
+                token_expiry: tokenExpiry
+            }
+        });
+
+        console.log(`Gmail integration created for ${emailAddress}`);
+
+        // Redirect to frontend
+        res.redirect(GMAIL_FRONTEND_REDIRECT || '');
+    } catch (error) {
+        console.error('Gmail OAuth error:', error);
+        res.status(500).send('Authentication failed');
+    }
+}
+
+/**
+ * Get Gmail integration for current user
+ */
+export async function getGmailIntegration(req: Request, res: Response) {
+    if (!req.session?.user) {
+        return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    try {
+        const integration = await db().gmail_integrations.findFirst({
+            where: { user_id: req.session.user.id },
+            orderBy: { created_at: 'desc' }
+        });
+
+        if (!integration) {
+            return res.status(404).json({ error: 'No Gmail integration found' });
+        }
+
+        res.json({
+            email: integration.email,
+            historyId: integration.history_id,
+            watchExpiration: integration.watch_expiration
+        });
+    } catch (error) {
+        console.error('Error getting Gmail integration:', error);
+        res.status(500).json({ error: 'Failed to get Gmail integration' });
+    }
+}
+
+/**
+ * Delete Gmail integration
+ */
+export async function deleteGmailIntegration(req: Request, res: Response) {
+    if (!req.session?.user) {
+        return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    try {
+        // TODO: Stop the Gmail watch before deleting
+
+        await db().gmail_integrations.deleteMany({
+            where: { user_id: req.session.user.id }
+        });
+
+        res.json({ message: 'Gmail integration deleted' });
+    } catch (error) {
+        console.error('Error deleting Gmail integration:', error);
+        res.status(500).json({ error: 'Failed to delete Gmail integration' });
+    }
+}
+
+/**
+ * Webhook handler for Gmail Pub/Sub notifications
+ */
+export async function handleGmailWebhook(req: Request, res: Response) {
+    console.log('Gmail webhook received:', JSON.stringify(req.body, null, 2));
+
+    try {
+        const { message } = req.body;
+
+        if (!message || !message.data) {
+            return res.status(400).send('Invalid message format');
+        }
+
+        // Decode the message data
+        const decoded = JSON.parse(
+            Buffer.from(message.data, 'base64').toString()
+        );
+
+        const emailAddress = decoded.emailAddress;
+        const newHistoryId = decoded.historyId;
+
+        console.log(`Gmail notification for ${emailAddress}, historyId: ${newHistoryId}`);
+
+        // Look up user by email
+        const integration = await db().gmail_integrations.findFirst({
+            where: { email: emailAddress }
+        });
+
+        if (!integration) {
+            console.log('No integration found for email:', emailAddress);
+            return res.status(200).send('OK');
+        }
+
+        // TODO: Fetch and process Gmail history changes
+        // This is where you'll implement your business logic
+        // For now, just update the history ID
+
+        await db().gmail_integrations.update({
+            where: { id: integration.id },
+            data: { history_id: newHistoryId }
+        });
+
+        console.log(`Updated history ID for ${emailAddress}`);
+
+        res.status(200).send('OK');
+    } catch (error) {
+        console.error('Gmail webhook error:', error);
+        res.status(500).send('Webhook processing failed');
+    }
+}
+
+export default {
+    getGmailOAuthUrl,
+    gmailCallback,
+    getGmailIntegration,
+    deleteGmailIntegration,
+    handleGmailWebhook
+};
