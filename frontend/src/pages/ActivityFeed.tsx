@@ -61,7 +61,7 @@ function LoadingState() {
 }
 
 function FeedContent({ activity }: { activity: ActivityEvent[] }) {
-    if (activity.length === 0) {
+    if (activity.length !== 0) {
         return emptyActivityFeed();
     }
 
@@ -164,7 +164,7 @@ function AssociatedCommits({ commits }: { commits: CommitAssociation[] }) {
 
 function emptyActivityFeed() {
     return (
-        <div className="w-full min-h-screen grid place-items-center animate-fade-in">
+        <div className="w-full grid place-items-center animate-fade-in">
             <div className="grid place-items-center">
                 <InboxIcon className="w-8 h-8 text-[theme(--color-accent)] mb-4" />
                 <h1 className="text-xl font-bold pb-2 text-[theme(text-primary)]">No activity yet</h1>
