@@ -21,7 +21,9 @@ function App() {
             <Route index element={<Home />} />
             <Route path="activity" element={<ActivityFeed />} />
             <Route path="integrations" element={<Integrations />} />
-            <Route path="automations" element={<Automations />} />
+            {import.meta.env.VITE_FEATURE_AUTOMATIONS === 'true' && (
+              <Route path="automations" element={<Automations />} />
+            )}
           </Route>
           <Route path="/" element={<LandingPage />} />
           <Route path="/changelog" element={<LandingPageChangelog />} />
