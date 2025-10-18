@@ -7,16 +7,32 @@ import { PosthogEvents } from "../../../utility/PosthogEvents";
 import { useAuth } from "../../../services/auth";
 
 function AddGmail() {
-    const { hasGmail, isPolling, startPolling } = useIntegrations();
+    const { hasGmail, isPolling, startPolling, refreshIntegrations } = useIntegrations();
     const [isLoading, setIsLoading] = useState(false);
     const { user } = useAuth();
+
+    const handleDisconnect = async () => {
+        setIsLoading(true);
+        try {
+            await BackendProvider.deleteGmailIntegration();
+            posthog.capture(PosthogEvents.USER_DISCONNECTED_GMAIL, {
+                email: user?.email || 'unknown',
+                integration: 'gmail'
+            });
+            await refreshIntegrations();
+        } catch (error) {
+            console.error('Error disconnecting Gmail:', error);
+        } finally {
+            setIsLoading(false);
+        }
+    };
 
     const connectButton = (
         <button
             onClick={async () => {
                 setIsLoading(true);
                 try {
-                    posthog.capture(PosthogEvents.USER_INTEGRATED_GITHUB, {
+                    posthog.capture(PosthogEvents.USER_INTEGRATED_GMAIL, {
                         email: user?.email || 'unknown',
                     });
                     const { url } = await BackendProvider.requestGmailOAuthUrl();
@@ -43,7 +59,9 @@ function AddGmail() {
             description="Connect your Gmail account to ingest emails"
             isConnected={hasGmail}
             isLoading={isLoading || isPolling}
-            connectionInfo={isPolling ? "Checking connection..." : hasGmail ? "Gmail connected" : undefined}
+            connectionInfo={isPolling ? "Checking connection..." : hasGmail ? "Connected" : undefined}
+            onDisconnect={handleDisconnect}
+            disconnectLabel="Disconnect Gmail"
             connectButton={connectButton}
             icon={
                 <svg
