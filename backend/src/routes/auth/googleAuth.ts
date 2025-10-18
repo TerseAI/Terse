@@ -1,5 +1,4 @@
-import { NextFunction, Request, Response } from "express";
-import { COOKIE_NAME } from "../auth";
+import { Request, Response } from "express";
 import { Jwt } from "../../utility/jwt";
 import crypto from "crypto";
 import chalk from "chalk";
