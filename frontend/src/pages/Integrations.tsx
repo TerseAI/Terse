@@ -14,9 +14,9 @@ function Integrations() {
         <div className="grid grid-cols-1 grid-rows-1 pt-4 pb-4">
             <h1 className="text-4xl font-bold pb-8">Your Integrations</h1>
             <div className="flex flex-col gap-8">
-                <IntegrationSection integrations={sourceControlIntegrations} title="Source Control" fallback={<AddToSlack />} isLoading={isLoading} />
+                <IntegrationSection integrations={sourceControlIntegrations} title="Source Control" fallback={<GithubIntegration />} isLoading={isLoading} />
                 <IntegrationSection
-                    integrations={issueTrackingIntegrations}
+                    integrations={issueTrackingIntegrations}    
                     title="Issue Tracking"
                     fallback={<AddLinear onIntegrationChange={async () => { }} />}
                     isLoading={isLoading}

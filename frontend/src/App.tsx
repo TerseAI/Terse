@@ -2,7 +2,6 @@ import { AnimatePresence } from "framer-motion";
 import { AuthProvider, useAuth } from "./services/auth";
 import { BrowserRouter as Router, Routes, Route, Outlet } from 'react-router-dom';
 import { IntegrationProvider } from "./context/Integrations";
-import LandingPage from "./pages/LandingPage";
 import LandingPageChangelog from "./pages/LandingPage_changelog";
 import Spin from "./components/loading/Spin";
 import Home from "./pages/Home";
@@ -25,7 +24,7 @@ function App() {
               <Route path="automations" element={<Automations />} />
             )}
           </Route>
-          <Route path="/" element={<LandingPage />} />
+          {/* <Route path="/" element={<LandingPage />} /> */}
           <Route path="/changelog" element={<LandingPageChangelog />} />
           <Route path="*" element={<div>Not Found</div>} />
         </Routes>
