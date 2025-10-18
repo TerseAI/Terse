@@ -27,6 +27,7 @@ model users {
   linear_api_keys          linear_api_keys[]
   user_slack_integrations  user_slack_integrations[]
   jira_api_keys            jira_api_keys[]
+  gmail_integrations       gmail_integrations[]
   activity_events          activity_events[]
   ticket_activity_events   ticket_activity_events[]
   project_activity_events  project_activity_events[]
@@ -114,6 +115,25 @@ model jira_api_keys {
   updated_at      DateTime @updatedAt
 
   user users @relation(fields: [user_id], references: [id])
+}
+
+model gmail_integrations {
+  id               String   @id @default(cuid())
+  user_id          String
+  email            String 
+  history_id       String
+  watch_expiration DateTime
+  access_token     String
+  refresh_token    String
+  token_expiry     DateTime
+  created_at       DateTime @default(now())
+  updated_at       DateTime @updatedAt
+
+  user users @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@unique([user_id, email]) // Allow multiple Gmail accounts per user, but not duplicates
+  @@index([email])
+  @@index([watch_expiration]) // For finding watches that need renewal
 }
 
 // Activity Feed - Starting with GitHub Events
