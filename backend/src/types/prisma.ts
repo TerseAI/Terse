@@ -9,7 +9,8 @@ import {
   activity_events,
   ticket_activity_events,
   sub_activity_events,
-  sub_activity_commit_associations
+  sub_activity_commit_associations,
+  gmail_integrations
 } from '@prisma/client';
 
 
@@ -36,6 +37,8 @@ export type SubActivityEvent = sub_activity_events;
 
 export type SubActivityCommitAssociation = sub_activity_commit_associations;
 
+export type GmailIntegration = gmail_integrations;
+
 
 // Re-export the original types too
 export {
@@ -49,5 +52,6 @@ export {
   activity_events,
   ticket_activity_events,
   sub_activity_events,
-  sub_activity_commit_associations
+  sub_activity_commit_associations,
+  gmail_integrations
 }; 

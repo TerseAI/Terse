@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
-import { google } from "googleapis";
+import { google, gmail_v1 } from "googleapis";
 import { db } from "../prismaClient";
+import { GmailIntegration } from "../types/prisma";
 import crypto from "crypto";
 import chalk from "chalk";
 
@@ -260,6 +261,170 @@ export async function deleteGmailIntegration(req: Request, res: Response) {
 }
 
 /**
+ * Refresh access token if expired
+ */
+async function refreshAccessTokenIfNeeded(integration: GmailIntegration): Promise<string> {
+    const now = new Date();
+
+    // Check if token is expired or will expire in the next 5 minutes
+    if (integration.token_expiry && integration.token_expiry <= new Date(now.getTime() + 5 * 60 * 1000)) {
+        console.log('Access token expired or expiring soon, refreshing...');
+
+        const oauth2Client = getOAuth2Client();
+        oauth2Client.setCredentials({
+            refresh_token: integration.refresh_token
+        });
+
+        const { credentials } = await oauth2Client.refreshAccessToken();
+
+        const newTokenExpiry = credentials.expiry_date
+            ? new Date(credentials.expiry_date)
+            : new Date(Date.now() + 3600 * 1000);
+
+        // Update the database with new tokens
+        await db().gmail_integrations.update({
+            where: { id: integration.id },
+            data: {
+                access_token: credentials.access_token!,
+                token_expiry: newTokenExpiry
+            }
+        });
+
+        console.log('Access token refreshed successfully');
+
+        return credentials.access_token!;
+    }
+
+    return integration.access_token;
+}
+
+/**
+ * Fetch new message IDs from Gmail history
+ */
+async function fetchNewMessageIds(integration: GmailIntegration, oldHistoryId: string): Promise<string[]> {
+    // Refresh token if needed
+    const accessToken = await refreshAccessTokenIfNeeded(integration);
+
+    const oauth2Client = getOAuth2Client();
+    oauth2Client.setCredentials({
+        access_token: accessToken,
+        refresh_token: integration.refresh_token
+    });
+
+    const gmail = google.gmail({ version: 'v1', auth: oauth2Client });
+
+    console.log(`Fetching Gmail history from ${oldHistoryId}`);
+
+    const historyResponse = await gmail.users.history.list({
+        userId: 'me',
+        startHistoryId: oldHistoryId,
+        historyTypes: ['messageAdded']
+    });
+
+    const history = historyResponse.data.history || [];
+
+    if (history.length === 0) {
+        console.log('No new messages in history');
+        return [];
+    }
+
+    // Extract message IDs from history
+    const messageIds: string[] = [];
+    for (const record of history) {
+        if (record.messagesAdded) {
+            for (const added of record.messagesAdded) {
+                if (added.message?.id) {
+                    messageIds.push(added.message.id);
+                }
+            }
+        }
+    }
+
+    console.log(`Found ${messageIds.length} new messages`);
+
+    return messageIds;
+}
+
+/**
+ * Parse email message to extract useful information
+ */
+interface ParsedEmail {
+    id: string;
+    threadId: string;
+    subject: string;
+    from: string;
+    to: string;
+    date: string;
+    messageId: string;
+    body: string;
+    snippet: string;
+}
+
+async function fetchAndParseEmail(gmail: gmail_v1.Gmail, messageId: string): Promise<ParsedEmail | null> {
+    try {
+        const messageResponse = await gmail.users.messages.get({
+            userId: 'me',
+            id: messageId,
+            format: 'full'
+        });
+
+        const message = messageResponse.data;
+        const headers = message.payload?.headers || [];
+
+        const getHeader = (name: string) => {
+            const header = headers.find((h) => h.name?.toLowerCase() === name.toLowerCase());
+            return header?.value || '';
+        };
+
+        const subject = getHeader('Subject');
+        const from = getHeader('From');
+        const to = getHeader('To');
+        const date = getHeader('Date');
+        const messageIdHeader = getHeader('Message-ID');
+
+        // Extract body - Gmail can have different structures
+        const getBody = (payload: gmail_v1.Schema$MessagePart): string => {
+            if (payload.body?.data) {
+                return Buffer.from(payload.body.data, 'base64').toString('utf-8');
+            }
+
+            if (payload.parts) {
+                for (const part of payload.parts) {
+                    if (part.mimeType === 'text/plain' && part.body?.data) {
+                        return Buffer.from(part.body.data, 'base64').toString('utf-8');
+                    }
+
+                    // Recursively check nested parts
+                    const nestedBody = getBody(part);
+                    if (nestedBody) {
+                        return nestedBody;
+                    }
+                }
+            }
+
+            return '';
+        };
+
+        const body = getBody(message.payload || {});
+
+        return {
+            id: message.id || messageId,
+            threadId: message.threadId || '',
+            subject,
+            from,
+            to,
+            date,
+            messageId: messageIdHeader,
+            body,
+            snippet: message.snippet || ''
+        };
+    } catch (error) {
+        console.error(`Error fetching message ${messageId}:`, error);
+        return null;
+    }
+}
+
+/**
  * Webhook handler for Gmail Pub/Sub notifications
  */
 export async function handleGmailWebhook(req: Request, res: Response) {
@@ -296,10 +461,42 @@ export async function handleGmailWebhook(req: Request, res: Response) {
             return res.status(200).send('OK');
         }
 
-        // TODO: Fetch and process Gmail history changes
-        // This is where you'll implement your business logic
-        // For now, just update the history ID
+        const oldHistoryId = integration.history_id;
 
+        // Fetch new message IDs from history
+        try {
+            const messageIds = await fetchNewMessageIds(integration, oldHistoryId);
+
+            if (messageIds.length > 0) {
+                // Refresh token and set up Gmail client
+                const accessToken = await refreshAccessTokenIfNeeded(integration);
+                const oauth2Client = getOAuth2Client();
+                oauth2Client.setCredentials({
+                    access_token: accessToken,
+                    refresh_token: integration.refresh_token
+                });
+                const gmail = google.gmail({ version: 'v1', auth: oauth2Client });
+
+                // Fetch and parse each email
+                for (const messageId of messageIds) {
+                    const parsedEmail = await fetchAndParseEmail(gmail, messageId);
+
+                    if (parsedEmail) {
+                        console.log(chalk.cyan('New email received:'));
+                        console.log(chalk.cyan(`  Subject: ${parsedEmail.subject}`));
+                        console.log(chalk.cyan(`  From: ${parsedEmail.from}`));
+                        console.log(chalk.cyan(`  Snippet: ${parsedEmail.snippet}`));
+
+                        // TODO: Process email with Agent/Owner system
+                    }
+                }
+            }
+        } catch (error) {
+            console.error('Error fetching/processing emails:', error);
+            // Continue to update history ID even if processing fails
+        }
+
+        // Update the history ID
         await db().gmail_integrations.update({
             where: { id: integration.id },
             data: { history_id: newHistoryIdString }
