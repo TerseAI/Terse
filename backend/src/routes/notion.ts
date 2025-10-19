@@ -105,6 +105,21 @@ export const deleteNotionIntegration = async (req: Request, res: Response) => {
             return res.status(404).json({ error: 'No Notion integration found' });
         }
 
+        // Clean up automation inputs/outputs that reference this Notion integration
+        await db().automation_inputs.deleteMany({
+            where: {
+                integration_type: 'NOTION',
+                integration_id: integration.id
+            }
+        });
+
+        await db().automation_outputs.deleteMany({
+            where: {
+                integration_type: 'NOTION',
+                integration_id: integration.id
+            }
+        });
+
         await db().notion_integrations.delete({
             where: { user_id: user.id }
         });
