@@ -6,6 +6,7 @@ import { Button } from "@headlessui/react";
 import { SparklesIcon } from "@heroicons/react/24/outline";
 import { BackendProvider } from "../../services/backend";
 import { useState } from "react";
+import TextareaAutosize from 'react-textarea-autosize';
 
 function Automations() {
     return (
@@ -68,11 +69,13 @@ function PromptSection() {
                     <p className="text-xs text-[theme(text-secondary)] mt-0.5">Describe what you want the AI to do with the incoming events</p>
                 </div>
             </div>
-            <textarea
+            <TextareaAutosize
                 value={prompt?.text || ''}
                 onChange={(e) => setPrompt({ text: e.target.value })}
                 placeholder='e.g., "Summarize all commits and update the changelog", "Create a weekly progress report", etc.'
-                className="w-full min-h-[100px] bg-[theme(background-elevated)] rounded-lg p-4 border border-[theme(border)] text-[theme(text-primary)] placeholder:text-[theme(text-secondary)] focus:outline-none focus:border-[theme(--color-accent)] focus:ring-1 focus:ring-[theme(--color-accent)] transition-all duration-200 resize-none"
+                minRows={3}
+                maxRows={20}
+                className="w-full bg-[theme(background-elevated)] rounded-lg p-4 border border-[theme(border)] text-[theme(text-primary)] placeholder:text-[theme(text-secondary)] focus:outline-none focus:border-[theme(--color-accent)] focus:ring-1 focus:ring-[theme(--color-accent)] transition-all duration-200 resize-none overflow-hidden"
             />
         </div>
     )
