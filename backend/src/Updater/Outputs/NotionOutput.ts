@@ -60,10 +60,14 @@ const notionQueryDatabaseTool = tool({
     description: `ALWAYS CALL THIS FIRST. DO NOT MODIFY ANYTHING WITHOUT CALLING THIS FIRST.
 
 This tool returns TWO critical pieces of information:
-1. DATABASE SCHEMA: The structure of the database including all property names and their types (title, rich_text, select, number, etc.). You MUST use this schema to construct valid properties when calling notion_modify_page.
+1. DATABASE SCHEMA: The structure of the database including:
+   - Property names and their types (title, rich_text, select, status, number, date, etc.)
+   - Valid options for select/multi_select/status fields
+   - EXACT format examples showing how to construct each property type
+   You MUST use the exact format from format_example when calling notion_modify_page.
 2. CURRENT PAGES: All existing pages/rows with their current values in a readable format.
 
-Use the schema to understand what properties exist and their exact types. Use the pages to understand the current state before making modifications.`,
+Use the schema's format_example field to construct properties correctly. Pay special attention to the difference between "select" and "status" types.`,
     parameters: z.object({
         // No parameters needed - returns all pages in the database
     }),
@@ -82,23 +86,52 @@ Use the schema to understand what properties exist and their exact types. Use th
             database_id: runContext.context.notionIntegration.database_id,
         });
 
-        // Extract schema information
+        // Extract schema information with format examples
         const schema: Record<string, any> = {};
         for (const [propertyName, propertyConfig] of Object.entries(databaseInfo.properties as Record<string, any>)) {
-            schema[propertyName] = {
+            const baseSchema: any = {
                 type: propertyConfig.type,
                 id: propertyConfig.id,
-                // Include additional details for select/multi_select/status with their options
-                ...(propertyConfig.type === 'select' && propertyConfig.select?.options ? {
-                    options: propertyConfig.select.options.map((opt: any) => opt.name)
-                } : {}),
-                ...(propertyConfig.type === 'multi_select' && propertyConfig.multi_select?.options ? {
-                    options: propertyConfig.multi_select.options.map((opt: any) => opt.name)
-                } : {}),
-                ...(propertyConfig.type === 'status' && propertyConfig.status?.options ? {
-                    options: propertyConfig.status.options.map((opt: any) => opt.name)
-                } : {}),
             };
+
+            // Add format examples for each type
+            switch (propertyConfig.type) {
+                case 'title':
+                    baseSchema.format_example = `{"${propertyName}": {"title": [{"text": {"content": "Your text here"}}]}}`;
+                    break;
+                case 'rich_text':
+                    baseSchema.format_example = `{"${propertyName}": {"rich_text": [{"text": {"content": "Your text here"}}]}}`;
+                    break;
+                case 'number':
+                    baseSchema.format_example = `{"${propertyName}": {"number": 123}}`;
+                    break;
+                case 'select':
+                    baseSchema.options = propertyConfig.select?.options?.map((opt: any) => opt.name) || [];
+                    baseSchema.format_example = `{"${propertyName}": {"select": {"name": "OptionName"}}}`;
+                    break;
+                case 'multi_select':
+                    baseSchema.options = propertyConfig.multi_select?.options?.map((opt: any) => opt.name) || [];
+                    baseSchema.format_example = `{"${propertyName}": {"multi_select": [{"name": "Option1"}, {"name": "Option2"}]}}`;
+                    break;
+                case 'status':
+                    baseSchema.options = propertyConfig.status?.options?.map((opt: any) => opt.name) || [];
+                    baseSchema.format_example = `{"${propertyName}": {"status": {"name": "StatusOption"}}}`;
+                    break;
+                case 'date':
+                    baseSchema.format_example = `{"${propertyName}": {"date": {"start": "2025-01-15"}}}`;
+                    break;
+                case 'checkbox':
+                    baseSchema.format_example = `{"${propertyName}": {"checkbox": true}}`;
+                    break;
+                case 'url':
+                    baseSchema.format_example = `{"${propertyName}": {"url": "https://example.com"}}`;
+                    break;
+                case 'email':
+                    baseSchema.format_example = `{"${propertyName}": {"email": "user@example.com"}}`;
+                    break;
+            }
+
+            schema[propertyName] = baseSchema;
         }
 
         // Fetch all pages
@@ -182,8 +215,8 @@ Use notion_query_database first to see existing property names and structure.`,
             auth: runContext.context.notionIntegration.integration_token,
         });
 
-        // Validate page_id - must be null or a valid UUID-like string
-        const validPageId = page_id && page_id.length > 10 && page_id !== '.' ? page_id : null;
+        // Validate page_id - must be null or a valid UUID-like string (no slashes, periods, or other special chars)
+        const validPageId = page_id && page_id.length > 30 && !page_id.includes('/') && page_id !== '.' ? page_id : null;
 
         try {
             if (validPageId) {
