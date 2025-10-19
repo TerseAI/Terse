@@ -56,11 +56,16 @@ export class EventProcessor {
             where: {
                 user_id: this.user.id,
                 is_active: true,
+            },
+            include: {
+                prompt: true,
             }
         });
 
         if (!automation) {
             return new ProcessorResult(false, "No automation found for this user", null);
+        } else if (!automation.prompt) {
+            return new ProcessorResult(false, "No prompt found for this automation", null);
         }
 
         // get the output integration!
@@ -93,7 +98,7 @@ export class EventProcessor {
             isUserInitiated: true,
         };
 
-        const automationAgent = new AutomationAgent(session, notionOutput);
+        const automationAgent = new AutomationAgent(session, notionOutput, automation.prompt);
         automationAgent.setInputEvent(this.inputEvent);
 
         const result = await automationAgent.run();
