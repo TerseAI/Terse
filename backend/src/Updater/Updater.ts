@@ -2,6 +2,7 @@ import { AutomationAgent } from "../agent/AutomationAgent/AutomationAgent";
 import { Session } from "../server";
 import chalk from "chalk";
 import { InputEvent } from "./InputEvents";
+import { Output } from "./Outputs/Output";
 
 // Main class from procescing Input Events for the Automation Agent.
 // Lot's do do here, but keeping it simple for now.
@@ -9,9 +10,9 @@ export class Updater {
     private events: InputEvent[];
     private automationAgent: AutomationAgent;
 
-    constructor(events: InputEvent[], session: Session) {
+    constructor(events: InputEvent[], session: Session, output: Output) {
         this.events = events;
-        this.automationAgent = new AutomationAgent(session);
+        this.automationAgent = new AutomationAgent(session, output);
     }
 
     async run() {

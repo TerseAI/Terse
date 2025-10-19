@@ -35,7 +35,7 @@ export class GmailEvent extends InputEvent {
     formatForAutomationAgent(): string {
         return `
         Incoming Email Event.
-        
+
         Gmail Event:
         Subject: ${this.data.subject}
         From: ${this.data.from}
