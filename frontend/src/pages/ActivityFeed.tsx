@@ -12,30 +12,67 @@ import clsx from 'clsx'
 function ActivityFeed() {
     const [activity, setActivity] = useState<ActivityEvent[]>([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [isLoadingMore, setIsLoadingMore] = useState(false);
+    const [hasMore, setHasMore] = useState(false);
+    const [nextCursor, setNextCursor] = useState<string | undefined>(undefined);
 
     useEffect(() => {
         const fetchActivity = async () => {
             setIsLoading(true);
-            const data = await ActivityFeedService.getActivityFeed();
+            const data = await ActivityFeedService.getActivityFeed({ limit: 20 });
             setActivity(data.activities);
+            setHasMore(data.pagination.hasMore);
+            setNextCursor(data.pagination.nextCursor);
             setIsLoading(false);
         }
 
         fetchActivity();
     }, []);
 
+    const loadMore = async () => {
+        if (!nextCursor || isLoadingMore) return;
+
+        setIsLoadingMore(true);
+        const data = await ActivityFeedService.getActivityFeed({
+            cursor: nextCursor,
+            limit: 20
+        });
+        setActivity([...activity, ...data.activities]);
+        setHasMore(data.pagination.hasMore);
+        setNextCursor(data.pagination.nextCursor);
+        setIsLoadingMore(false);
+    };
+
     // TODO: Better loading state with skeleton loading
     return (
         <div className="pt-4 pb-4">
             <h1 className="text-2xl font-bold pb-8">Activity Feed</h1>
             <div className="flex flex-col gap-4 animate-fade-in">
-                <ActivityFeedContent activity={activity} isLoading={isLoading} />
+                <ActivityFeedContent
+                    activity={activity}
+                    isLoading={isLoading}
+                    hasMore={hasMore}
+                    isLoadingMore={isLoadingMore}
+                    onLoadMore={loadMore}
+                />
             </div>
         </div>
     )
 }
 
-function ActivityFeedContent({ activity, isLoading }: { activity: ActivityEvent[], isLoading: boolean }) {
+function ActivityFeedContent({
+    activity,
+    isLoading,
+    hasMore,
+    isLoadingMore,
+    onLoadMore
+}: {
+    activity: ActivityEvent[],
+    isLoading: boolean,
+    hasMore: boolean,
+    isLoadingMore: boolean,
+    onLoadMore: () => void
+}) {
     if (isLoading) {
         return <LoadingState />
     }
@@ -45,7 +82,20 @@ function ActivityFeedContent({ activity, isLoading }: { activity: ActivityEvent[
     }
 
     return (
-        <FeedContent activity={activity} />
+        <>
+            <FeedContent activity={activity} />
+            {hasMore && (
+                <div className="flex justify-center pt-2">
+                    <button
+                        onClick={onLoadMore}
+                        disabled={isLoadingMore}
+                        className="px-6 py-2 bg-[theme(background-surface)] text-[theme(text-primary)] rounded-lg hover:bg-[theme(background-elevated)] transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
+                    >
+                        {isLoadingMore ? 'Loading...' : 'Load More'}
+                    </button>
+                </div>
+            )}
+        </>
     )
 }
 
