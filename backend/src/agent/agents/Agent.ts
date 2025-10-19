@@ -16,7 +16,7 @@ export type SessionWithTracking = Session & {
 export class AgentSession implements IAgentSession<SessionWithTracking> {
   private history: AgentInputItem[] = [];
   private session: Session;
-  private toolBox: ToolBox;
+  private toolBox: ToolBox<SessionWithTracking>;
   private changedItems: ChangedItem[] = [];
   agent?: Agent<SessionWithTracking, AgentOutputType>;
 
@@ -94,8 +94,8 @@ export class AgentSession implements IAgentSession<SessionWithTracking> {
   }
 }
 
-export class ToolBox {
-  private tools: Tool<SessionWithTracking>[] = [];
+export class ToolBox<T extends Session> {
+  private tools: Tool<T>[] = [];
 
   constructor() {
   }
