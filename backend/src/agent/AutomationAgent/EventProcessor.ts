@@ -1,7 +1,9 @@
 import { db } from 'src/prismaClient';
-import { Automation, AutomationOutput, GmailIntegration, User } from 'src/types/prisma';
+import { Automation, AutomationOutput, GmailIntegration, NotionIntegration, User } from 'src/types/prisma';
 import { GmailEvent, InputEvent, InputEventType } from 'src/Updater/InputEvents';
 import { NotionOutput } from 'src/Updater/Outputs/NotionOutput';
+import { AutomationAgent } from './AutomationAgent';
+import { Session } from '../../../src/server';
 
 // The job of this class is to take an Input Event, and check if it's a match for an Automation.
 // It will then create a Session, and summon the Automation Agent with the create user data.
@@ -73,10 +75,30 @@ export class EventProcessor {
         }
 
         // Again, we know this is notion for now, so we can just create a new NotionOutput with the integration_id.
-       // TODO: Add Notion Integration!!!
+        const notionIntegration: NotionIntegration | null = await db().notion_integrations.findFirst({
+            where: {
+                id: outputIntegration.integration_id,
+            }
+        });
 
-       console.log("Treat this as a Success! Just gotta build the output integration!");
+        if (!notionIntegration) {
+            return new ProcessorResult(false, "No notion integration found for this output integration", null);
+        }
 
-        return new ProcessorResult(true, "Event processed successfully", null);
+        const notionOutput = new NotionOutput(notionIntegration.integration_token, notionIntegration.database_id);
+
+        // We have everything we need, create a new Session
+        const session: Session = {
+            user: this.user,
+            isUserInitiated: true,
+        };
+
+        const automationAgent = new AutomationAgent(session, notionOutput);
+        automationAgent.setInputEvent(this.inputEvent);
+
+        const result = await automationAgent.run();
+        console.log(result);
+
+        return new ProcessorResult(result.finalOutput ? true : false, result.finalOutput as string, automation);
     }
 }
