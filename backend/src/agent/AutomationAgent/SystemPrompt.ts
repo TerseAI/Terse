@@ -1,4 +1,4 @@
-import { AutomationInput, AutomationOutput, AutomationPrompt } from "src/types/prisma";
+import { AutomationInput, AutomationOutput, AutomationPrompt } from "../../types/prisma";
 import { Session } from "../../server";
 
 export async function systemPrompt(session: Session, automationPrompt: AutomationPrompt, automationInputs: AutomationInput[], automationOutput: AutomationOutput): Promise<string> {

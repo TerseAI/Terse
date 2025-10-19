@@ -1,5 +1,5 @@
-import { Project, Ticket } from "src/shared/TicketSystem";
-import { Session } from "../../src/server";
+import { Project, Ticket } from "../shared/TicketSystem";
+import { Session } from "../server";
 import chalk from "chalk";
 
 export type EnrichmentResult = {
