@@ -6,7 +6,7 @@ import AddGmail from "../components/integrations/addIntengrations/AddGmail";
 import { AddNotion } from "../components/integrations/addIntengrations/AddNotion";
 
 function Integrations() {
-    const { integrations, isLoading } = useIntegrations();
+    const { integrations, isLoading, refreshIntegrations } = useIntegrations();
 
     const sourceControlIntegrations = integrations.filter((integration) => integration === Integration.GITHUB);
     const issueTrackingIntegrations = integrations.filter((integration) => integration === Integration.JIRA || integration === Integration.LINEAR);
@@ -24,10 +24,10 @@ function Integrations() {
                 <IntegrationSection
                     integrations={issueTrackingIntegrations}    
                     title="Issue Tracking"
-                    fallback={<AddLinear onIntegrationChange={async () => { }} />}
+                    fallback={<AddLinear onIntegrationChange={refreshIntegrations} />}
                     isLoading={isLoading}
                 />
-                <IntegrationSection integrations={noteTakingIntegrations} title="Note Taking" fallback={<AddNotion onIntegrationChange={async () => { }} />} isLoading={isLoading} />
+                <IntegrationSection integrations={noteTakingIntegrations} title="Note Taking" fallback={<AddNotion onIntegrationChange={refreshIntegrations} />} isLoading={isLoading} />
                 <IntegrationSection integrations={communicationIntegrations} title="Communication" fallback={<AddToSlack />} isLoading={isLoading} />
                 <IntegrationSection integrations={emailIntegrations} title="Email" fallback={<AddGmail />} isLoading={isLoading} />
             </div>

@@ -66,6 +66,9 @@ export function IntegrationProvider({ children }: { children: ReactNode }) {
             if (integrationData.gmail) {
                 activeIntegrations.push(Integration.GMAIL);
             }
+            if (integrationData.notion) {
+                activeIntegrations.push(Integration.NOTION);
+            }
 
             setIntegrations(activeIntegrations);
         } catch (error) {
@@ -98,7 +101,8 @@ export function IntegrationProvider({ children }: { children: ReactNode }) {
                     linear: integrations.includes(Integration.LINEAR),
                     jira: integrations.includes(Integration.JIRA),
                     slack: integrations.includes(Integration.SLACK),
-                    gmail: integrations.includes(Integration.GMAIL)
+                    gmail: integrations.includes(Integration.GMAIL),
+                    notion: integrations.includes(Integration.NOTION)
                 };
                 lastIntegrationStateRef.current = JSON.stringify(currentIntegrations);
             }
@@ -139,6 +143,7 @@ export function IntegrationProvider({ children }: { children: ReactNode }) {
                     if (integrationData.jira) activeIntegrations.push(Integration.JIRA);
                     if (integrationData.slack) activeIntegrations.push(Integration.SLACK);
                     if (integrationData.gmail) activeIntegrations.push(Integration.GMAIL);
+                    if (integrationData.notion) activeIntegrations.push(Integration.NOTION);
 
                     setIntegrations(activeIntegrations);
                     stopPolling();

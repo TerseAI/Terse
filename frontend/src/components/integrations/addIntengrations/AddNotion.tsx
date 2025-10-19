@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useAuth } from "../../../services/auth";
 import { useIntegrations } from "../../../context/Integrations";
 import { IntegrationCard } from "../IntegrationCard";
-// import { BackendProvider } from "../../../services/backend";
+import { BackendProvider } from "../../../services/backend";
 import { PosthogEvents } from "../../../utility/PosthogEvents";
 import posthog from "posthog-js";
 
@@ -23,8 +23,8 @@ export function AddNotion({ onIntegrationChange }: AddNotionProps) {
         setIsLoading(true);
         e.preventDefault();
         try {
-            // const databaseId = getDatabaseIdFromUrl(databaseUrl);
-            // await BackendProvider.setLinearApiKey(input);
+            const databaseId = getDatabaseIdFromUrl(databaseUrl);
+            await BackendProvider.setNotionIntegration(integrationToken, databaseId);
             setIntegrationToken('');
             setDatabaseUrl('');
             setError(null);
@@ -33,7 +33,7 @@ export function AddNotion({ onIntegrationChange }: AddNotionProps) {
             });
             await onIntegrationChange();
         } catch (error) {
-            console.error('Error setting Linear API key:', error);
+            console.error('Error setting Notion integration:', error);
             setError('Invalid Integration Token or Database URL');
         } finally {
             setIsLoading(false);
@@ -76,16 +76,16 @@ export function AddNotion({ onIntegrationChange }: AddNotionProps) {
 
     const handleDisconnect = async () => {
         try {
-            // await BackendProvider.deleteLinearApiKey();
+            await BackendProvider.deleteNotionIntegration();
             setIntegrationToken('');
             setDatabaseUrl('');
             setError(null);
             await onIntegrationChange();
-            posthog.capture(PosthogEvents.USER_DISCONNECTED_LINEAR, {
+            posthog.capture(PosthogEvents.USER_DISCONNECTED_NOTION, {
                 email: user?.email || 'unknown',
             });
         } catch (error) {
-            console.error('Error deleting Linear API key:', error);
+            console.error('Error deleting Notion integration:', error);
         }
     }
 
@@ -95,7 +95,7 @@ export function AddNotion({ onIntegrationChange }: AddNotionProps) {
             description="Connect your Notion workspace to manage tickets"
             isConnected={hasNotion}
             isLoading={false}
-            connectionInfo={hasNotion ? "Integration Token and Database URL configured" : undefined}
+            connectionInfo={hasNotion ? "Connected" : undefined}
             onDisconnect={handleDisconnect}
             connectButton={connectButton}
             icon={
@@ -107,13 +107,15 @@ export function AddNotion({ onIntegrationChange }: AddNotionProps) {
     )
 }
 
-// Helper function to get the database ID from the URL
-// function getDatabaseIdFromUrl(url: string): string {
-//     const urlObj = new URL(url);
-//     const pathname = urlObj.pathname;
-//     const databaseId = pathname.split('/').pop();
-//     if (!databaseId) {
-//         throw new Error('No database ID found in URL');
-//     }
-//     return databaseId;
-// }
+//Helper function to get the database ID from the URL
+function getDatabaseIdFromUrl(url: string): string {
+    // Match 32-char hex string with or without dashes
+    const match = url.match(/([a-f0-9]{32})|([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})/i);
+    
+    if (!match) {
+        throw new Error('No valid database ID found in URL');
+    }
+    
+    // Remove dashes if present (API expects no dashes)
+    return match[0].replace(/-/g, '');
+}
