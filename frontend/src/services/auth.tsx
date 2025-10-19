@@ -95,6 +95,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         console.log('GITHUB_AUTH_SUCCESS event', event)
         console.log('GITHUB_AUTH_SUCCESS', event.data.token)
         await initSession(event.data.token);
+        // Store last used auth provider after successful login
+        localStorage.setItem('lastAuthProvider', 'github');
         posthog.capture(PosthogEvents.USER_INTEGRATED_GITHUB, {
           email: user?.email || 'unknown',
         });
@@ -123,6 +125,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         console.log('GOOGLE_AUTH_SUCCESS event', event)
         console.log('GOOGLE_AUTH_SUCCESS', event.data.token)
         await initSession(event.data.token);
+        // Store last used auth provider after successful login
+        localStorage.setItem('lastAuthProvider', 'google');
         posthog.capture(PosthogEvents.USER_SIGNED_IN, {
           email: user?.email || 'unknown',
         });

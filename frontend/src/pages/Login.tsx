@@ -14,15 +14,6 @@ function Login() {
         setLastUsedProvider(lastProvider);
     }, []);
 
-    const handleGithubLogin = () => {
-        localStorage.setItem(LAST_AUTH_PROVIDER_KEY, 'github');
-        loginWithGithub();
-    };
-
-    const handleGoogleLogin = () => {
-        localStorage.setItem(LAST_AUTH_PROVIDER_KEY, 'google');
-        loginWithGoogle();
-    };
 
     return (
         <div className="min-h-screen w-full grid place-items-center text-center">
@@ -30,7 +21,7 @@ function Login() {
                 <h1 className="text-2xl font-bold mb-4">Login to continue</h1>
                 <div className="flex flex-col gap-3">
                     <button
-                        onClick={handleGithubLogin}
+                        onClick={loginWithGithub}
                         className="text-white px-12 py-4 rounded-xl text-xl font-semibold shadow-2xl inline-flex items-center gap-3 hover:brightness-110 hover:scale-[1.02] transition-[filter,transform] duration-100 relative"
                     >
                         <svg className="w-6 h-6" viewBox="0 0 24 24" fill="currentColor">
@@ -44,7 +35,7 @@ function Login() {
                         )}
                     </button>
                     <button
-                        onClick={handleGoogleLogin}
+                        onClick={loginWithGoogle}
                         className="text-white px-12 py-4 rounded-xl text-xl font-semibold shadow-2xl inline-flex items-center gap-3 hover:brightness-110 hover:scale-[1.02] transition-[filter,transform] duration-100 relative"
                     >
                         <svg className="w-6 h-6" viewBox="0 0 24 24">
