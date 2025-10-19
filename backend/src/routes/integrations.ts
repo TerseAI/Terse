@@ -74,6 +74,17 @@ export async function fetchUserIntegrations(req: Request, res: Response) {
             };
         }
 
+        // Check Notion integration
+        const notionIntegration = await db().notion_integrations.findUnique({
+            where: { user_id: user.id }
+        });
+        if (notionIntegration) {
+            result.integrations.notion = {
+                integrationToken: notionIntegration.integration_token,
+                databaseId: notionIntegration.database_id
+            };
+        }
+
         res.status(200).json(result);
     } catch (error) {
         console.error('Error fetching integrations status:', error);
