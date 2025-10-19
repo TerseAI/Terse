@@ -1,9 +1,8 @@
 import { db } from 'src/prismaClient';
 import { Automation, AutomationOutput, GmailIntegration, NotionIntegration, User } from 'src/types/prisma';
-import { GmailEvent, InputEvent, InputEventType } from 'src/Updater/InputEvents';
-import { NotionOutput } from 'src/Updater/Outputs/NotionOutput';
+import { GmailEvent, InputEvent } from 'src/Updater/InputEvents';
+import { NotionOutput, NotionSession } from 'src/Updater/Outputs/NotionOutput';
 import { AutomationAgent } from './AutomationAgent';
-import { Session } from '../../../src/server';
 
 // The job of this class is to take an Input Event, and check if it's a match for an Automation.
 // It will then create a Session, and summon the Automation Agent with the create user data.
@@ -59,6 +58,7 @@ export class EventProcessor {
             },
             include: {
                 prompt: true,
+                inputs: true,
             }
         });
 
@@ -90,15 +90,16 @@ export class EventProcessor {
             return new ProcessorResult(false, "No notion integration found for this output integration", null);
         }
 
-        const notionOutput = new NotionOutput(notionIntegration.integration_token, notionIntegration.database_id);
+        const notionOutput = new NotionOutput();
 
         // We have everything we need, create a new Session
-        const session: Session = {
+        const session: NotionSession = {
+            notionIntegration: notionIntegration,
             user: this.user,
             isUserInitiated: true,
         };
 
-        const automationAgent = new AutomationAgent(session, notionOutput, automation.prompt);
+        const automationAgent = new AutomationAgent<NotionSession>(session, notionOutput, automation.prompt, automation.inputs, outputIntegration);
         automationAgent.setInputEvent(this.inputEvent);
 
         const result = await automationAgent.run();
