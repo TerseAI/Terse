@@ -21,6 +21,7 @@ import { getCurrentSlackIntegration, getSlackOAuthUrl, slackOAuthCallback } from
 import { handleSlackEvent } from './slack/eventHandler';
 import { fetchUserIntegrations } from './routes/integrations';
 import { getActivityFeed, getDailyActivitySummary } from './routes/activity';
+import { getUserAutomation, saveAutomation } from './routes/automations';
 
 export type Session = {
     user: User;
@@ -242,6 +243,16 @@ app.post('/slack/events', async (req, res) => {
 
 app.get('/integrations/status', authMiddleware, async (req, res) => {
     fetchUserIntegrations(req, res);
+});
+
+// MARK: AUTOMATIONS
+
+app.get('/automations', authMiddleware, async (req, res) => {
+    getUserAutomation(req, res);
+});
+
+app.post('/automations', authMiddleware, async (req, res) => {
+    saveAutomation(req, res);
 });
 
 server.listen(3001, () => {

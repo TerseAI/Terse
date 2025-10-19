@@ -4,6 +4,8 @@ import { db } from "../prismaClient";
 import { GmailIntegration } from "../types/prisma";
 import crypto from "crypto";
 import chalk from "chalk";
+import { GmailEvent } from "src/Updater/InputEvents";
+import { EventProcessor } from "src/agent/AutomationAgent/EventProcessor";
 
 // Validate required environment variables
 const GMAIL_CLIENT_ID = process.env.GMAIL_CLIENT_ID;
@@ -348,7 +350,7 @@ async function fetchNewMessageIds(integration: GmailIntegration, oldHistoryId: s
 /**
  * Parse email message to extract useful information
  */
-interface ParsedEmail {
+export interface GmailEventData {
     id: string;
     threadId: string;
     subject: string;
@@ -360,7 +362,7 @@ interface ParsedEmail {
     snippet: string;
 }
 
-async function fetchAndParseEmail(gmail: gmail_v1.Gmail, messageId: string): Promise<ParsedEmail | null> {
+async function fetchAndParseEmail(gmail: gmail_v1.Gmail, messageId: string): Promise<GmailEventData | null> {
     try {
         const messageResponse = await gmail.users.messages.get({
             userId: 'me',
@@ -427,6 +429,11 @@ async function fetchAndParseEmail(gmail: gmail_v1.Gmail, messageId: string): Pro
 /**
  * Webhook handler for Gmail Pub/Sub notifications
  */
+
+type GmailWebhookData = {
+    emailAddress: string;
+    historyId: number;
+}
 export async function handleGmailWebhook(req: Request, res: Response) {
     console.log(chalk.bgMagenta.white('Gmail webhook received:'), chalk.magentaBright(JSON.stringify(req.body, null, 2)));
 
@@ -438,11 +445,11 @@ export async function handleGmailWebhook(req: Request, res: Response) {
         }
 
         // Decode the message data
-        const decoded = JSON.parse(
+        const decoded: GmailWebhookData = JSON.parse(
             Buffer.from(message.data, 'base64').toString()
         );
 
-        const emailAddress = decoded.emailAddress;
+        const emailAddress: string = decoded.emailAddress; // EMAIL of the user who gave permission to read emails!
         const newHistoryId: number = decoded.historyId;
         const newHistoryIdString: string = newHistoryId.toString();
 
@@ -458,6 +465,17 @@ export async function handleGmailWebhook(req: Request, res: Response) {
 
         if (!integration) {
             console.log('No active integration found for email:', emailAddress);
+            return res.status(200).send('OK');
+        }
+
+        const user = await db().users.findUnique({
+            where: {
+                id: integration.user_id
+            }
+        });
+
+        if (!user) {
+            console.log('No user found for integration:', integration.user_id);
             return res.status(200).send('OK');
         }
 
@@ -479,7 +497,7 @@ export async function handleGmailWebhook(req: Request, res: Response) {
 
                 // Fetch and parse each email
                 for (const messageId of messageIds) {
-                    const parsedEmail = await fetchAndParseEmail(gmail, messageId);
+                    const parsedEmail: GmailEventData | null = await fetchAndParseEmail(gmail, messageId);
 
                     if (parsedEmail) {
                         console.log(chalk.cyan('New email received:'));
@@ -487,7 +505,15 @@ export async function handleGmailWebhook(req: Request, res: Response) {
                         console.log(chalk.cyan(`  From: ${parsedEmail.from}`));
                         console.log(chalk.cyan(`  Snippet: ${parsedEmail.snippet}`));
 
-                        // TODO: Process email with Agent/Owner system
+                        const eventProcessor = new EventProcessor(new GmailEvent(parsedEmail), user);
+                        const result = await eventProcessor.process();
+
+                        if (result.success) {
+                            console.log(chalk.green('Email processed successfully'));
+                            console.log(chalk.green('Automation:', result.automation?.name));
+                        } else {
+                            console.log(chalk.red('Email processing failed:', result.message));
+                        }
                     }
                 }
             }
