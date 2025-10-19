@@ -66,7 +66,7 @@ export async function getActivityFeed(req: Request, res: Response) {
 
     // Add cursor condition if provided
     if (cursor) {
-        sql += ` AND ae.created_at < $${paramIndex}`;
+        sql += ` AND ae.created_at < $${paramIndex}::timestamp`;
         params.push(cursor);
         paramIndex++;
     }
