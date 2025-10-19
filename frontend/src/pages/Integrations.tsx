@@ -3,6 +3,7 @@ import { GithubIntegration } from "../components/integrations/GithubIntegration"
 import { Integration, useIntegrations } from "../context/Integrations";
 import { AddLinear } from "../components/integrations/addIntengrations/AddLinear";
 import AddGmail from "../components/integrations/addIntengrations/AddGmail";
+import { AddNotion } from "../components/integrations/addIntengrations/AddNotion";
 
 function Integrations() {
     const { integrations, isLoading } = useIntegrations();
@@ -11,6 +12,7 @@ function Integrations() {
     const issueTrackingIntegrations = integrations.filter((integration) => integration === Integration.JIRA || integration === Integration.LINEAR);
     const communicationIntegrations = integrations.filter((integration) => integration === Integration.SLACK);
     const emailIntegrations = integrations.filter((integration) => integration === Integration.GMAIL);
+    const noteTakingIntegrations = integrations.filter((integration) => integration === Integration.NOTION);
 
     console.log('emailIntegrations', emailIntegrations);
 
@@ -25,6 +27,7 @@ function Integrations() {
                     fallback={<AddLinear onIntegrationChange={async () => { }} />}
                     isLoading={isLoading}
                 />
+                <IntegrationSection integrations={noteTakingIntegrations} title="Note Taking" fallback={<AddNotion onIntegrationChange={async () => { }} />} isLoading={isLoading} />
                 <IntegrationSection integrations={communicationIntegrations} title="Communication" fallback={<AddToSlack />} isLoading={isLoading} />
                 <IntegrationSection integrations={emailIntegrations} title="Email" fallback={<AddGmail />} isLoading={isLoading} />
             </div>
@@ -80,6 +83,9 @@ function IntegrationSwitch({ integration }: { integration: Integration }) {
     }
     if (integration === Integration.GMAIL) {
         return <AddGmail />
+    }
+    if (integration === Integration.NOTION) {
+        return <AddNotion onIntegrationChange={async () => { }} />
     }
     return null;
 }

@@ -28,6 +28,7 @@ type IntegrationContextType = {
     hasJira: boolean;
     hasSlack: boolean;
     hasGmail: boolean;
+    hasNotion: boolean;
     isSetupComplete: boolean;
     isPolling: boolean;
     startPolling: () => void;
@@ -176,7 +177,8 @@ export function IntegrationProvider({ children }: { children: ReactNode }) {
     const hasJira = integrations.includes(Integration.JIRA);
     const hasSlack = integrations.includes(Integration.SLACK);
     const hasGmail = integrations.includes(Integration.GMAIL)
-    const isSetupComplete = hasGithub && (hasLinear || hasJira);
+    const hasNotion = integrations.includes(Integration.NOTION);
+    const isSetupComplete = hasGithub && (hasLinear || hasJira || hasNotion);
 
     return (
         <IntegrationContext.Provider value={{ 
@@ -188,6 +190,7 @@ export function IntegrationProvider({ children }: { children: ReactNode }) {
             hasJira,
             hasSlack,
             hasGmail,
+            hasNotion,
             isSetupComplete,
             isPolling,
             startPolling,
