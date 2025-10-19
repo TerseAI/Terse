@@ -4,7 +4,7 @@ import { RunContext, Tool, tool } from "@openai/agents";
 import { z } from "zod";
 import { Session } from "../../server";
 import { Client } from '@notionhq/client';
-import { NotionIntegration } from "src/types/prisma";
+import { NotionIntegration } from "../../types/prisma";
 import chalk from "chalk";
 
 export interface NotionSession extends Session {

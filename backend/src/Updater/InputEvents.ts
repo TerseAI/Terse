@@ -1,4 +1,4 @@
-import { GmailEventData } from "src/routes/gmail";
+import { GmailEventData } from "../routes/gmail";
 
 export enum InputEventType {
     GitHubEvent = "githubEvent",

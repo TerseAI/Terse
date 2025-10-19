@@ -6,7 +6,7 @@ import Owner from "../theOwner/Owner";
 import { Commit, UnifiedGitHubEvent } from "../theOwner/utility";
 import { search } from "../searchClient";
 import { Session } from "../server";
-import { ActivityOverview } from "src/agent/agents/Analyzer";
+import { ActivityOverview } from "../agent/agents/Analyzer";
 import { TicketEventType } from "@prisma/client";
 
 const GITHUB_APP_CLIENT_ID = process.env.GITHUB_CLIENT_ID
