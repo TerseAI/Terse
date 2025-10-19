@@ -1,5 +1,6 @@
-import { createContext, useContext, useState } from "react";
+import { createContext, useContext, useState, useEffect } from "react";
 import { Integration } from "./Integrations";
+import { BackendProvider } from "../services/backend";
 
 export interface Input {
     integration: Integration;
@@ -44,7 +45,30 @@ export function AutomationProvider({ children }: { children: React.ReactNode }) 
     const [inputs, setInputs] = useState<Input[]>([]);
     const [output, setOutput] = useState<Output | undefined>(undefined);
     const [prompt, setPrompt] = useState<Prompt | undefined>(undefined);
-    const [name, setName] = useState<string>('');
+    const [name, setName] = useState<string>('Untitled Automation');
+
+    // Load automation on mount
+    useEffect(() => {
+        const loadAutomation = async () => {
+            try {
+                const automation = await BackendProvider.getUserAutomation();
+                if (automation) {
+                    setName(automation.name);
+                    setInputs(automation.inputs.map(input => ({
+                        integration: input.integration as Integration
+                    })));
+                    setOutput(automation.output ? {
+                        integration: automation.output.integration as Integration
+                    } : undefined);
+                    setPrompt(automation.prompt);
+                }
+            } catch (error) {
+                console.error('Error loading automation:', error);
+            }
+        };
+
+        loadAutomation();
+    }, []);
 
     return (
         <AutomationContext.Provider value={{ name, inputs, output, prompt, setName, setInputs, setOutput, setPrompt }}>
