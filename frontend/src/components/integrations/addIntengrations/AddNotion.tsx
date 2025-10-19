@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useAuth } from "../../../services/auth";
 import { useIntegrations } from "../../../context/Integrations";
 import { IntegrationCard } from "../IntegrationCard";
-import { BackendProvider } from "../../../services/backend";
+// import { BackendProvider } from "../../../services/backend";
 import { PosthogEvents } from "../../../utility/PosthogEvents";
 import posthog from "posthog-js";
 
@@ -23,7 +23,7 @@ export function AddNotion({ onIntegrationChange }: AddNotionProps) {
         setIsLoading(true);
         e.preventDefault();
         try {
-            const databaseId = getDatabaseIdFromUrl(databaseUrl);
+            // const databaseId = getDatabaseIdFromUrl(databaseUrl);
             // await BackendProvider.setLinearApiKey(input);
             setIntegrationToken('');
             setDatabaseUrl('');
@@ -108,12 +108,12 @@ export function AddNotion({ onIntegrationChange }: AddNotionProps) {
 }
 
 // Helper function to get the database ID from the URL
-function getDatabaseIdFromUrl(url: string): string {
-    const urlObj = new URL(url);
-    const pathname = urlObj.pathname;
-    const databaseId = pathname.split('/').pop();
-    if (!databaseId) {
-        throw new Error('No database ID found in URL');
-    }
-    return databaseId;
-}
+// function getDatabaseIdFromUrl(url: string): string {
+//     const urlObj = new URL(url);
+//     const pathname = urlObj.pathname;
+//     const databaseId = pathname.split('/').pop();
+//     if (!databaseId) {
+//         throw new Error('No database ID found in URL');
+//     }
+//     return databaseId;
+// }
