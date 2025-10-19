@@ -209,11 +209,10 @@ function SaveAutomationButton() {
         <Button
             onClick={handleSave}
             disabled={!isComplete || isSaving}
-            className={`px-8 py-3 rounded-lg font-medium transition-all duration-200 ${
-                isComplete && !isSaving
+            className={`px-8 py-3 rounded-lg font-medium transition-all duration-200 ${isComplete && !isSaving
                     ? 'bg-[var(--color-accent)] text-[theme(text-primary)] hover:scale-[1.02] hover:brightness-110 shadow-lg'
                     : 'bg-[theme(background-surface)] text-[theme(text-disabled)] cursor-not-allowed'
-            }`}
+                }`}
             style={isComplete && !isSaving ? {
                 boxShadow: '0 0 20px -8px var(--color-accent)'
             } : undefined}
