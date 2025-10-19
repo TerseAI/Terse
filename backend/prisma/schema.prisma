@@ -31,6 +31,7 @@ model users {
   activity_events          activity_events[]
   ticket_activity_events   ticket_activity_events[]
   project_activity_events  project_activity_events[]
+  automations              automations[]
 }
 
 model github_repositories {
@@ -210,6 +211,64 @@ model project_activity_events {
   @@index([project_id])
 }
 
+// Automation tables
+model automations {
+  id         String   @id @default(cuid())
+  user_id    String
+  name       String
+  is_active  Boolean  @default(true)
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  user    users                @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  prompt  automation_prompts?
+  inputs  automation_inputs[]
+  output  automation_outputs?
+
+  @@index([user_id])
+  @@index([is_active])
+}
+
+// Separate table for prompts (future-proof for versioning, templates, etc.)
+model automation_prompts {
+  id             String   @id @default(cuid())
+  automation_id  String   @unique
+  content        String   @db.Text
+  created_at     DateTime @default(now())
+  updated_at     DateTime @updatedAt
+
+  automation automations @relation(fields: [automation_id], references: [id], onDelete: Cascade)
+}
+
+// Polymorphic inputs - can reference any integration type
+model automation_inputs {
+  id               String          @id @default(cuid())
+  automation_id    String
+  integration_type IntegrationType
+  integration_id   String
+  created_at       DateTime        @default(now())
+  updated_at       DateTime        @updatedAt
+
+  automation automations @relation(fields: [automation_id], references: [id], onDelete: Cascade)
+
+  @@index([automation_id])
+  @@index([integration_type, integration_id])
+}
+
+// Single output per automation
+model automation_outputs {
+  id               String          @id @default(cuid())
+  automation_id    String          @unique
+  integration_type IntegrationType
+  integration_id   String
+  created_at       DateTime        @default(now())
+  updated_at       DateTime        @updatedAt
+
+  automation automations @relation(fields: [automation_id], references: [id], onDelete: Cascade)
+
+  @@index([integration_type, integration_id])
+}
+
 enum TicketEventType {
   TICKET_CREATED
   TICKET_UPDATED
@@ -223,4 +282,14 @@ enum GitHubEventType {
   PULL_REQUEST_UPDATED
   PULL_REQUEST_MERGED
   PULL_REQUEST_CLOSED
+}
+
+// Integration Types for Automation
+enum IntegrationType {
+  GITHUB
+  GMAIL
+  LINEAR
+  JIRA
+  SLACK
+  NOTION
 }
