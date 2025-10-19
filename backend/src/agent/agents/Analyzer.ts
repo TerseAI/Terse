@@ -5,8 +5,8 @@ import { EntityType } from "../../shared/Entities";
 import { ChangedItem, ChangeEventType } from "../../shared/ModelEvents";
 import { Commit } from "../../theOwner/utility";
 import { createActionSummaryTool, createCommitSummaryTool } from "../tools/ActionEventTools";
-import { Project, Ticket } from "src/shared/TicketSystem";
-import { ProjectActivityEvent, TicketActivityEvent } from "src/shared/types";
+import { Project, Ticket } from "../../shared/TicketSystem";
+import { ProjectActivityEvent, TicketActivityEvent } from "../../shared/types";
 
 export type ActivityOverview = {
     summary: string;

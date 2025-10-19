@@ -1,6 +1,6 @@
 import { ModelEvent, ModelRequest } from "../shared/ModelEvents";
 import { User } from "../types/User";
-import { IntegrationsStatus, GithubIntegration, LinearIntegration, JiraIntegration, SlackIntegration, GmailIntegration, Automation, AutomationInput, AutomationOutput, AutomationPrompt } from "../shared/types";
+import { IntegrationsStatus, GithubIntegration, LinearIntegration, JiraIntegration, SlackIntegration, GmailIntegration, NotionIntegration, Automation, AutomationInput, AutomationOutput, AutomationPrompt } from "../shared/types";
 import axios from 'axios';
 
 const backendBaseUrl = '/api';
@@ -129,6 +129,21 @@ interface BackendService {
      * Deletes the Gmail integration
      */
     deleteGmailIntegration(): Promise<void>;
+
+    /**
+     * Gets the Notion integration
+     */
+    getNotionIntegration(): Promise<NotionIntegration>;
+
+    /**
+     * Sets the Notion integration
+     */
+    setNotionIntegration(integrationToken: string, databaseId: string): Promise<void>;
+
+    /**
+     * Deletes the Notion integration
+     */
+    deleteNotionIntegration(): Promise<void>;
 
     /**
      * Requests a session socket token
@@ -379,6 +394,33 @@ export const BackendProvider: BackendService = {
             .then(response => response.data)
             .catch(error => {
                 console.error('Error deleting Gmail integration:', error);
+                throw error;
+            });
+    },
+
+    getNotionIntegration: () => {
+        return axios.get(`${backendBaseUrl}/notion/get-integration`, { withCredentials: true })
+            .then(response => response.data)
+            .catch(error => {
+                console.error('Error getting Notion integration:', error);
+                throw error;
+            });
+    },
+
+    setNotionIntegration: (integrationToken: string, databaseId: string) => {
+        return axios.post(`${backendBaseUrl}/notion/set-integration`, { integrationToken, databaseId }, { withCredentials: true })
+            .then(response => response.data)
+            .catch(error => {
+                console.error('Error setting Notion integration:', error);
+                throw error;
+            });
+    },
+
+    deleteNotionIntegration: () => {
+        return axios.delete(`${backendBaseUrl}/notion/delete-integration`, { withCredentials: true })
+            .then(response => response.data)
+            .catch(error => {
+                console.error('Error deleting Notion integration:', error);
                 throw error;
             });
     },

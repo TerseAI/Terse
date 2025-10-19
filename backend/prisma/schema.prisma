@@ -28,6 +28,7 @@ model users {
   user_slack_integrations  user_slack_integrations[]
   jira_api_keys            jira_api_keys[]
   gmail_integrations       gmail_integrations[]
+  notion_integrations      notion_integrations[]
   activity_events          activity_events[]
   ticket_activity_events   ticket_activity_events[]
   project_activity_events  project_activity_events[]
@@ -137,6 +138,17 @@ model gmail_integrations {
   @@index([email])
   @@index([watch_expiration]) // For finding watches that need renewal
   @@index([is_active]) // For finding active integrations
+}
+
+model notion_integrations {
+  id                String   @id @default(cuid())
+  user_id           String   @unique
+  integration_token String
+  database_id       String
+  created_at        DateTime @default(now())
+  updated_at        DateTime @updatedAt
+
+  user users @relation(fields: [user_id], references: [id], onDelete: Cascade)
 }
 
 // Activity Feed - Starting with GitHub Events

@@ -4,8 +4,8 @@ import { db } from "../prismaClient";
 import { GmailIntegration } from "../types/prisma";
 import crypto from "crypto";
 import chalk from "chalk";
-import { GmailEvent } from "src/Updater/InputEvents";
-import { EventProcessor } from "src/agent/AutomationAgent/EventProcessor";
+import { GmailEvent } from "../../src/Updater/InputEvents";
+import { EventProcessor } from "../../src/agent/AutomationAgent/EventProcessor";
 
 // Validate required environment variables
 const GMAIL_CLIENT_ID = process.env.GMAIL_CLIENT_ID;

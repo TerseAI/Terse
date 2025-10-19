@@ -64,6 +64,11 @@ export type GmailIntegration = {
     watchExpiration: Date;      // When the watch needs to be renewed (max 7 days)
 };
 
+export type NotionIntegration = {
+    integrationToken: string;
+    databaseId: string;
+};
+
 export type IntegrationsStatus = {
     integrations: {
         github?: GithubIntegration;
@@ -71,6 +76,7 @@ export type IntegrationsStatus = {
         jira?: JiraIntegration;
         slack?: SlackIntegration;
         gmail?: GmailIntegration;
+        notion?: NotionIntegration;
     };
 };
 

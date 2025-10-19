@@ -49,8 +49,10 @@ async function getIntegrationId(userId: string, integrationType: IntegrationType
             return gmailIntegration?.id || null;
 
         case IntegrationType.NOTION:
-            // TODO: Implement when Notion integration is added
-            return null;
+            const notionIntegration = await prisma.notion_integrations.findFirst({
+                where: { user_id: userId }
+            });
+            return notionIntegration?.id || null;
 
         default:
             return null;

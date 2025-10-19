@@ -14,15 +14,24 @@ const DEFAULT_USER_ID = 'thomas.karatzas@mail.mcgill.ca';
 
 // EDIT THIS to test different emails
 const mockEmail: GmailEventData = {
-    id: 'msg_test_001',
-    threadId: 'thread_test_001',
-    subject: 'Urgent: Server Down',
-    from: 'alerts@monitoring.com',
+    id: 'msg_google_001',
+    threadId: 'thread_google_001',
+    subject: 'Your Google Job Application Has Been Received',
+    from: 'noreply-jobs@google.com',
     to: DEFAULT_USER_EMAIL,
     date: new Date().toISOString(),
-    messageId: '<test001@monitoring.com>',
-    body: 'Alert: Production server has been down for 5 minutes. HTTP 500 errors reported.',
-    snippet: 'Alert: Production server has been down for 5 minutes...'
+    messageId: '<application001@google.com>',
+    body: `Dear Applicant,
+
+Thank you for applying to Google.
+
+We have received your application for the Software Engineer position. Our team will review your qualifications and contact you if your skills and experience match our requirements.
+
+We appreciate your interest in joining Google.
+
+Best regards,
+Google Recruiting Team`,
+    snippet: 'Thank you for applying to Google. We have received your application for the Software Engineer position...'
 };
 
 async function runQuickTest() {
