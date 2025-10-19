@@ -25,8 +25,18 @@ export class AutomationAgent {
     async run(): Promise<RunResult<Session, Agent<Session, AgentOutputType>>> {
         console.log("Running Automation Agent");
 
+        // Add the input event as the initial message to the history
+        if (this.inputEvent) {
+            this.history.push({
+                role: 'user',
+                content: JSON.stringify(this.inputEvent, null, 2)
+            });
+        } else {
+            throw new Error("No input event set. Call setInputEvent() before run()");
+        }
+
         const agent = new Agent<Session, AgentOutputType>({
-            name: 'LLM ticket manager',
+            name: 'Living Document Automator',
             instructions: await systemPrompt(this.session),
             model: 'gpt-4o',
             tools: []
@@ -35,7 +45,6 @@ export class AutomationAgent {
         this.agent = agent;
 
         const result = await run(agent, this.history, {
-            stream: true,
             context: this.session,
         });
 

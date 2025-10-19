@@ -97,7 +97,7 @@ export class EventProcessor {
         automationAgent.setInputEvent(this.inputEvent);
 
         const result = await automationAgent.run();
-        console.log(result);
+        console.log(result.finalOutput);
 
         return new ProcessorResult(result.finalOutput ? true : false, result.finalOutput as string, automation);
     }
