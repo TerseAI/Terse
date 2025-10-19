@@ -88,12 +88,15 @@ Use the schema to understand what properties exist and their exact types. Use th
             schema[propertyName] = {
                 type: propertyConfig.type,
                 id: propertyConfig.id,
-                // Include additional details for select/multi_select
+                // Include additional details for select/multi_select/status with their options
                 ...(propertyConfig.type === 'select' && propertyConfig.select?.options ? {
                     options: propertyConfig.select.options.map((opt: any) => opt.name)
                 } : {}),
                 ...(propertyConfig.type === 'multi_select' && propertyConfig.multi_select?.options ? {
                     options: propertyConfig.multi_select.options.map((opt: any) => opt.name)
+                } : {}),
+                ...(propertyConfig.type === 'status' && propertyConfig.status?.options ? {
+                    options: propertyConfig.status.options.map((opt: any) => opt.name)
                 } : {}),
             };
         }
@@ -151,7 +154,7 @@ Properties must use Notion's API format. Common examples:
 
 Use notion_query_database first to see existing property names and structure.`,
     parameters: z.object({
-        page_id: z.string().nullable().describe('The ID of the page to update (from notion_query_database). If null, creates a new page.'),
+        page_id: z.string().nullable().describe('The ID of the page to update (from notion_query_database). MUST be null (not empty string, not period) to create a new page. Only provide a valid page ID string to update an existing page.'),
         properties_json: z.string().describe('JSON string with property names as keys and Notion-formatted values. Example: "{\\"Name\\": {\\"title\\": [{\\"text\\": {\\"content\\": \\"New Item\\"}}]}, \\"Status\\": {\\"select\\": {\\"name\\": \\"In Progress\\"}}}"'),
     }),
     execute: async ({ page_id, properties_json }, runContext?: RunContext<NotionSession>) => {
@@ -170,7 +173,7 @@ Use notion_query_database first to see existing property names and structure.`,
                 hint: 'Ensure properties_json is a valid JSON string'
             };
         }
-        
+
         if (!runContext?.context) {
             throw new Error("No context provided");
         }
@@ -179,11 +182,14 @@ Use notion_query_database first to see existing property names and structure.`,
             auth: runContext.context.notionIntegration.integration_token,
         });
 
+        // Validate page_id - must be null or a valid UUID-like string
+        const validPageId = page_id && page_id.length > 10 && page_id !== '.' ? page_id : null;
+
         try {
-            if (page_id) {
+            if (validPageId) {
                 // Update existing page
                 const response = await notion.pages.update({
-                    page_id: page_id,
+                    page_id: validPageId,
                     properties: properties as Record<string, any>,
                 });
                 return {
