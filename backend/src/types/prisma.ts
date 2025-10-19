@@ -10,7 +10,11 @@ import {
   ticket_activity_events,
   sub_activity_events,
   sub_activity_commit_associations,
-  gmail_integrations
+  gmail_integrations,
+  automations,
+  automation_prompts,
+  automation_inputs,
+  automation_outputs
 } from '@prisma/client';
 
 
@@ -39,6 +43,13 @@ export type SubActivityCommitAssociation = sub_activity_commit_associations;
 
 export type GmailIntegration = gmail_integrations;
 
+export type Automation = automations;
+
+export type AutomationPrompt = automation_prompts;
+
+export type AutomationInput = automation_inputs;
+
+export type AutomationOutput = automation_outputs;
 
 // Re-export the original types too
 export {
@@ -53,5 +64,9 @@ export {
   ticket_activity_events,
   sub_activity_events,
   sub_activity_commit_associations,
-  gmail_integrations
+  gmail_integrations,
+  automations,
+  automation_prompts,
+  automation_inputs,
+  automation_outputs
 }; 

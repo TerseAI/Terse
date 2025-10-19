@@ -4,6 +4,8 @@ import { db } from "../prismaClient";
 import { GmailIntegration } from "../types/prisma";
 import crypto from "crypto";
 import chalk from "chalk";
+import { GmailEvent } from "src/Updater/InputEvents";
+import { EventProcessor } from "src/agent/AutomationAgent/EventProcessor";
 
 // Validate required environment variables
 const GMAIL_CLIENT_ID = process.env.GMAIL_CLIENT_ID;
@@ -466,6 +468,17 @@ export async function handleGmailWebhook(req: Request, res: Response) {
             return res.status(200).send('OK');
         }
 
+        const user = await db().users.findUnique({
+            where: {
+                id: integration.user_id
+            }
+        });
+
+        if (!user) {
+            console.log('No user found for integration:', integration.user_id);
+            return res.status(200).send('OK');
+        }
+
         const oldHistoryId = integration.history_id;
 
         // Fetch new message IDs from history
@@ -492,7 +505,15 @@ export async function handleGmailWebhook(req: Request, res: Response) {
                         console.log(chalk.cyan(`  From: ${parsedEmail.from}`));
                         console.log(chalk.cyan(`  Snippet: ${parsedEmail.snippet}`));
 
-                        // TODO: Process email with Agent/Owner system
+                        const eventProcessor = new EventProcessor(new GmailEvent(parsedEmail), user);
+                        const result = await eventProcessor.process();
+
+                        if (result.success) {
+                            console.log(chalk.green('Email processed successfully'));
+                            console.log(chalk.green('Automation:', result.automation?.name));
+                        } else {
+                            console.log(chalk.red('Email processing failed:', result.message));
+                        }
                     }
                 }
             }

@@ -3,6 +3,7 @@ import { Session } from '../../server';
 import { ToolBox } from '../agents/Agent';
 import { systemPrompt } from './SystemPrompt';
 import { InputEvent } from '../../Updater/InputEvents';
+import { Output } from '../../Updater/Outputs/Output';
 
 export class AutomationAgent {
     private history: AgentInputItem[] = [];
@@ -11,7 +12,7 @@ export class AutomationAgent {
     private inputEvent: InputEvent | null = null;
     agent?: Agent<any, AgentOutputType>;
 
-    constructor(session: Session) {
+    constructor(session: Session, output: Output) {
         this.history = [];
         this.session = session;
         this.toolBox = new ToolBox();
