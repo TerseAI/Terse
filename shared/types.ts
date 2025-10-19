@@ -73,3 +73,24 @@ export type IntegrationsStatus = {
         gmail?: GmailIntegration;
     };
 };
+
+export type AutomationInput = {
+    integration: string;
+};
+
+export type AutomationOutput = {
+    integration: string;
+};
+
+export type AutomationPrompt = {
+    text: string;
+};
+
+export type Automation = {
+    id: string;
+    name: string;
+    isActive: boolean;
+    prompt?: AutomationPrompt;
+    inputs: AutomationInput[];
+    output?: AutomationOutput;
+};

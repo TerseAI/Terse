@@ -220,10 +220,10 @@ model automations {
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
 
-  user    users                @relation(fields: [user_id], references: [id], onDelete: Cascade)
-  prompt  automation_prompts?
-  inputs  automation_inputs[]
-  output  automation_outputs?
+  user   users               @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  prompt automation_prompts?
+  inputs automation_inputs[]
+  output automation_outputs?
 
   @@index([user_id])
   @@index([is_active])
@@ -231,11 +231,11 @@ model automations {
 
 // Separate table for prompts (future-proof for versioning, templates, etc.)
 model automation_prompts {
-  id             String   @id @default(cuid())
-  automation_id  String   @unique
-  content        String   @db.Text
-  created_at     DateTime @default(now())
-  updated_at     DateTime @updatedAt
+  id            String   @id @default(cuid())
+  automation_id String   @unique
+  content       String   @db.Text
+  created_at    DateTime @default(now())
+  updated_at    DateTime @updatedAt
 
   automation automations @relation(fields: [automation_id], references: [id], onDelete: Cascade)
 }

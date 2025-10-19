@@ -1,6 +1,6 @@
 import { ModelEvent, ModelRequest } from "../shared/ModelEvents";
 import { User } from "../types/User";
-import { IntegrationsStatus, GithubIntegration, LinearIntegration, JiraIntegration, SlackIntegration, GmailIntegration } from "../shared/types";
+import { IntegrationsStatus, GithubIntegration, LinearIntegration, JiraIntegration, SlackIntegration, GmailIntegration, Automation, AutomationInput, AutomationOutput, AutomationPrompt } from "../shared/types";
 import axios from 'axios';
 
 const backendBaseUrl = '/api';
@@ -149,6 +149,16 @@ interface BackendService {
         onClose: () => void,
         onError: (error: Event) => void
     }): Promise<Connection>;
+
+    /**
+     * Gets the user's automation (returns null if none exists)
+     */
+    getUserAutomation(): Promise<Automation | null>;
+
+    /**
+     * Saves or updates the user's automation
+     */
+    saveAutomation(name: string, inputs: AutomationInput[], output: AutomationOutput, prompt: AutomationPrompt): Promise<{ success: boolean; id: string }>;
 }
 
 export const BackendProvider: BackendService = {
@@ -388,6 +398,27 @@ export const BackendProvider: BackendService = {
         console.log('Connecting to completion socket', link);
         const socket = new WebSocket(link);
         return new Connection(socket, onOpen, onClose, onError, onMessageReceived);
+    },
+
+    getUserAutomation: () => {
+        return axios.get<Automation | null>(`${backendBaseUrl}/automations`, { withCredentials: true })
+            .then(response => response.data)
+            .catch(error => {
+                console.error('Error getting user automation:', error);
+                throw error;
+            });
+    },
+
+    saveAutomation: (name: string, inputs: AutomationInput[], output: AutomationOutput, prompt: AutomationPrompt) => {
+        return axios.post<{ success: boolean; id: string }>(`${backendBaseUrl}/automations`,
+            { name, inputs, output, prompt },
+            { withCredentials: true }
+        )
+            .then(response => response.data)
+            .catch(error => {
+                console.error('Error saving automation:', error);
+                throw error;
+            });
     },
 }
 
