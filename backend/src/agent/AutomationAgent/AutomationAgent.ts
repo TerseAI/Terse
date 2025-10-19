@@ -44,7 +44,7 @@ export class AutomationAgent<T extends Session> {
         const agent = new Agent<T, AgentOutputType>({
             name: 'Living Document Automator',
             instructions: await systemPrompt(this.session, this.automationPrompt, this.automationInputs, this.automationOutput),
-            model: 'gpt-4o',
+            model: 'gpt-5',
             tools: this.tools
         });
 
