@@ -68,19 +68,14 @@ function FeedContent({ activity }: { activity: ActivityEvent[] }) {
     return (
         activity.map((event, index) => (
             <Card key={index}>
-                <div className="grid grid-flow-row gap-4">
+                <div className="grid grid-flow-row gap-2">
                     {/* Header with avatar, repo info, and date */}
                     <div className="flex justify-between">
                         <AvatarBar event={event} />
                         <EventDetails event={event} />
                     </div>
 
-                    <div className="grid grid-flow-row gap-2">
-                        <h4 className="font-medium text-[theme(text-primary)]">
-                            {event.title}
-                        </h4>
-                        <SubActivityEvents event={event} />
-                    </div>
+                    <SubActivityEvents event={event} />
                 </div>
             </Card>
         ))
@@ -93,10 +88,15 @@ function SubActivityEvents({ event }: { event: ActivityEvent }) {
             <Disclosure>
                 {({ open }) => (
                     <>
-                        <DisclosureButton>
-                            <div className="flex justify-between">
-                                <p>{event.sub_activities.length} events</p>
-                                <ChevronRightIcon className={clsx('w-5', open && 'rotate-90')} />
+                        <DisclosureButton className="w-full">
+                            <div className="flex justify-between items-center">
+                                <h4 className="font-medium text-sm text-[theme(text-primary)]">
+                                    {event.title}
+                                </h4>
+                                <div className="flex items-center gap-2 text-sm text-[theme(text-secondary)]">
+                                    <span>{event.sub_activities.length} events</span>
+                                    <ChevronRightIcon className={clsx('w-4 h-4', open && 'rotate-90')} />
+                                </div>
                             </div>
                         </DisclosureButton>
                         <DisclosurePanel>
@@ -121,8 +121,8 @@ function SubActivityItem({ subActivity }: { subActivity: SubActivity }) {
                     <>
                         <DisclosureButton className="w-full text-left">
                             <div className="flex justify-between items-center">
-                                <p className="text-[theme(text-secondary)]">{subActivity.summary}</p>
-                                <ChevronRightIcon className={clsx('w-4 h-4', open && 'rotate-90')} />
+                                <p className="text-sm text-[theme(text-secondary)]">{subActivity.summary}</p>
+                                <ChevronRightIcon className={clsx('w-4 h-4 flex-shrink-0', open && 'rotate-90')} />
                             </div>
                         </DisclosureButton>
                         <DisclosurePanel>
