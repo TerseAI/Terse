@@ -1,7 +1,8 @@
 import { db } from 'src/prismaClient';
-import { Automation, AutomationOutput, GmailIntegration, User } from 'src/types/prisma';
-import { GmailEvent, InputEvent, InputEventType } from 'src/Updater/InputEvents';
-import { NotionOutput } from 'src/Updater/Outputs/NotionOutput';
+import { Automation, AutomationOutput, GmailIntegration, NotionIntegration, User } from 'src/types/prisma';
+import { GmailEvent, InputEvent } from 'src/Updater/InputEvents';
+import { NotionOutput, NotionSession } from 'src/Updater/Outputs/NotionOutput';
+import { AutomationAgent } from './AutomationAgent';
 
 // The job of this class is to take an Input Event, and check if it's a match for an Automation.
 // It will then create a Session, and summon the Automation Agent with the create user data.
@@ -54,11 +55,17 @@ export class EventProcessor {
             where: {
                 user_id: this.user.id,
                 is_active: true,
+            },
+            include: {
+                prompt: true,
+                inputs: true,
             }
         });
 
         if (!automation) {
             return new ProcessorResult(false, "No automation found for this user", null);
+        } else if (!automation.prompt) {
+            return new ProcessorResult(false, "No prompt found for this automation", null);
         }
 
         // get the output integration!
@@ -73,10 +80,31 @@ export class EventProcessor {
         }
 
         // Again, we know this is notion for now, so we can just create a new NotionOutput with the integration_id.
-       // TODO: Add Notion Integration!!!
+        const notionIntegration: NotionIntegration | null = await db().notion_integrations.findFirst({
+            where: {
+                id: outputIntegration.integration_id,
+            }
+        });
 
-       console.log("Treat this as a Success! Just gotta build the output integration!");
+        if (!notionIntegration) {
+            return new ProcessorResult(false, "No notion integration found for this output integration", null);
+        }
 
-        return new ProcessorResult(true, "Event processed successfully", null);
+        const notionOutput = new NotionOutput();
+
+        // We have everything we need, create a new Session
+        const session: NotionSession = {
+            notionIntegration: notionIntegration,
+            user: this.user,
+            isUserInitiated: true,
+        };
+
+        const automationAgent = new AutomationAgent<NotionSession>(session, notionOutput, automation.prompt, automation.inputs, outputIntegration);
+        automationAgent.setInputEvent(this.inputEvent);
+
+        const result = await automationAgent.run();
+        console.log(result.finalOutput);
+
+        return new ProcessorResult(result.finalOutput ? true : false, result.finalOutput as string, automation);
     }
 }

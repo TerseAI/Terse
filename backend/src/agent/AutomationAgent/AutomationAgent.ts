@@ -1,42 +1,57 @@
 import { Agent, AgentInputItem, run, AgentOutputType, Tool, RunResult } from '@openai/agents';
 import { Session } from '../../server';
-import { ToolBox } from '../agents/Agent';
 import { systemPrompt } from './SystemPrompt';
 import { InputEvent } from '../../Updater/InputEvents';
 import { Output } from '../../Updater/Outputs/Output';
+import { AutomationInput, AutomationOutput, AutomationPrompt } from '../../types/prisma';
 
-export class AutomationAgent {
+export class AutomationAgent<T extends Session> {
     private history: AgentInputItem[] = [];
-    private session: Session;
-    private toolBox: ToolBox;
+    private session: T;
     private inputEvent: InputEvent | null = null;
-    agent?: Agent<any, AgentOutputType>;
+    private automationPrompt: AutomationPrompt;
+    private automationInputs: AutomationInput[];
+    private automationOutput: AutomationOutput;
+    agent?: Agent<T, AgentOutputType>;
+    private tools: Tool<T>[] = [];
 
-    constructor(session: Session, output: Output) {
+    constructor(session: T, output: Output<T>, automationPrompt: AutomationPrompt, automationInputs: AutomationInput[], automationOutput: AutomationOutput) {
         this.history = [];
         this.session = session;
-        this.toolBox = new ToolBox();
+        this.automationPrompt = automationPrompt;
+        this.automationInputs = automationInputs;
+        this.automationOutput = automationOutput;
+        this.tools = output.toolbox;
     }
 
     setInputEvent(event: InputEvent) {
         this.inputEvent = event;
     }
 
-    async run(): Promise<RunResult<Session, Agent<Session, AgentOutputType>>> {
+    async run(): Promise<RunResult<T, Agent<T, AgentOutputType>>> {
         console.log("Running Automation Agent");
 
-        const agent = new Agent<Session, AgentOutputType>({
-            name: 'LLM ticket manager',
-            instructions: await systemPrompt(this.session),
-            model: 'gpt-4o',
-            tools: []
+        // Add the input event as the initial message to the history
+        if (this.inputEvent) {
+            this.history.push({
+                role: 'user',
+                content: JSON.stringify(this.inputEvent, null, 2)
+            });
+        } else {
+            throw new Error("No input event set. Call setInputEvent() before run()");
+        }
+
+        const agent = new Agent<T, AgentOutputType>({
+            name: 'Living Document Automator',
+            instructions: await systemPrompt(this.session, this.automationPrompt, this.automationInputs, this.automationOutput),
+            model: 'gpt-5',
+            tools: this.tools
         });
 
         this.agent = agent;
 
         const result = await run(agent, this.history, {
-            stream: true,
-            context: this.session,
+            context: this.session as T,
         });
 
         return result;

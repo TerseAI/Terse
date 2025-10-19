@@ -14,6 +14,7 @@ import { getCurrentGithubIntegration, getInstallationUrl, githubAppInstallationC
 import { deleteLinearCredentials, getLinearApiKey, indexLinearTicket, setLinearApiKey } from './routes/linear';
 import { deleteJiraCredentials, getJiraCredentials, indexJiraTicket, setJiraCredentials } from './routes/jira';
 import { deleteGmailIntegration, getGmailIntegration, getGmailOAuthUrl, gmailCallback, handleGmailWebhook } from './routes/gmail';
+import { deleteNotionIntegration, getNotionIntegration, setNotionIntegration } from './routes/notion';
 import { TicketManager } from './ticketing/TicketIntegration';
 import { LinearWebhookPayload } from './utility/LinearWebhookPayload';
 import { JiraWebhookPayload } from './utility/JiraWebhookPayload';
@@ -167,6 +168,20 @@ app.delete('/gmail/delete-integration', authMiddleware, async (req, res) => {
 app.post('/webhooks/gmail', async (req, res) => {
     handleGmailWebhook(req, res);
 });
+
+// MARK: NOTION
+
+app.post('/notion/set-integration', authMiddleware, async (req, res) => {
+    setNotionIntegration(req, res);
+})
+
+app.get('/notion/get-integration', authMiddleware, async (req, res) => {
+    getNotionIntegration(req, res);
+})
+
+app.delete('/notion/delete-integration', authMiddleware, async (req, res) => {
+    deleteNotionIntegration(req, res);
+})
 
 // MARK: LINEAR
 

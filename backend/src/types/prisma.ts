@@ -14,7 +14,8 @@ import {
   automations,
   automation_prompts,
   automation_inputs,
-  automation_outputs
+  automation_outputs,
+  notion_integrations
 } from '@prisma/client';
 
 
@@ -51,6 +52,8 @@ export type AutomationInput = automation_inputs;
 
 export type AutomationOutput = automation_outputs;
 
+export type NotionIntegration = notion_integrations;
+
 // Re-export the original types too
 export {
   users,
@@ -68,5 +71,6 @@ export {
   automations,
   automation_prompts,
   automation_inputs,
-  automation_outputs
+  automation_outputs,
+  notion_integrations
 }; 

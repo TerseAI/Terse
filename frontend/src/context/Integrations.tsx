@@ -28,6 +28,7 @@ type IntegrationContextType = {
     hasJira: boolean;
     hasSlack: boolean;
     hasGmail: boolean;
+    hasNotion: boolean;
     isSetupComplete: boolean;
     isPolling: boolean;
     startPolling: () => void;
@@ -65,6 +66,9 @@ export function IntegrationProvider({ children }: { children: ReactNode }) {
             if (integrationData.gmail) {
                 activeIntegrations.push(Integration.GMAIL);
             }
+            if (integrationData.notion) {
+                activeIntegrations.push(Integration.NOTION);
+            }
 
             setIntegrations(activeIntegrations);
         } catch (error) {
@@ -97,7 +101,8 @@ export function IntegrationProvider({ children }: { children: ReactNode }) {
                     linear: integrations.includes(Integration.LINEAR),
                     jira: integrations.includes(Integration.JIRA),
                     slack: integrations.includes(Integration.SLACK),
-                    gmail: integrations.includes(Integration.GMAIL)
+                    gmail: integrations.includes(Integration.GMAIL),
+                    notion: integrations.includes(Integration.NOTION)
                 };
                 lastIntegrationStateRef.current = JSON.stringify(currentIntegrations);
             }
@@ -138,6 +143,7 @@ export function IntegrationProvider({ children }: { children: ReactNode }) {
                     if (integrationData.jira) activeIntegrations.push(Integration.JIRA);
                     if (integrationData.slack) activeIntegrations.push(Integration.SLACK);
                     if (integrationData.gmail) activeIntegrations.push(Integration.GMAIL);
+                    if (integrationData.notion) activeIntegrations.push(Integration.NOTION);
 
                     setIntegrations(activeIntegrations);
                     stopPolling();
@@ -176,7 +182,8 @@ export function IntegrationProvider({ children }: { children: ReactNode }) {
     const hasJira = integrations.includes(Integration.JIRA);
     const hasSlack = integrations.includes(Integration.SLACK);
     const hasGmail = integrations.includes(Integration.GMAIL)
-    const isSetupComplete = hasGithub && (hasLinear || hasJira);
+    const hasNotion = integrations.includes(Integration.NOTION);
+    const isSetupComplete = hasGithub && (hasLinear || hasJira || hasNotion);
 
     return (
         <IntegrationContext.Provider value={{ 
@@ -188,6 +195,7 @@ export function IntegrationProvider({ children }: { children: ReactNode }) {
             hasJira,
             hasSlack,
             hasGmail,
+            hasNotion,
             isSetupComplete,
             isPolling,
             startPolling,
