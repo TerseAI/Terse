@@ -54,10 +54,16 @@ function extractPropertyValue(property: any): any {
     }
 }
 
-// Tool 1: Query the Notion database to see current state
+// Tool 1: Query the Notion database to see current state AND schema
 const notionQueryDatabaseTool = tool({
     name: 'notion_query_database',
-    description: 'ALWAYS CALL THIS FIRST. DO NOT MODIFY ANYTHING WITHOUT CALLING THIS FIRST. Query the Notion database to retrieve all current pages/rows and their properties. Use this to "grep" through the database and understand its current state before making any modifications. Returns pages in a readable format with their IDs and property values.',
+    description: `ALWAYS CALL THIS FIRST. DO NOT MODIFY ANYTHING WITHOUT CALLING THIS FIRST.
+
+This tool returns TWO critical pieces of information:
+1. DATABASE SCHEMA: The structure of the database including all property names and their types (title, rich_text, select, number, etc.). You MUST use this schema to construct valid properties when calling notion_modify_page.
+2. CURRENT PAGES: All existing pages/rows with their current values in a readable format.
+
+Use the schema to understand what properties exist and their exact types. Use the pages to understand the current state before making modifications.`,
     parameters: z.object({
         // No parameters needed - returns all pages in the database
     }),
@@ -70,7 +76,29 @@ const notionQueryDatabaseTool = tool({
         const notion = new Client({
             auth: runContext.context.notionIntegration.integration_token,
         });
-        
+
+        // Fetch database schema
+        const databaseInfo = await notion.databases.retrieve({
+            database_id: runContext.context.notionIntegration.database_id,
+        });
+
+        // Extract schema information
+        const schema: Record<string, any> = {};
+        for (const [propertyName, propertyConfig] of Object.entries(databaseInfo.properties as Record<string, any>)) {
+            schema[propertyName] = {
+                type: propertyConfig.type,
+                id: propertyConfig.id,
+                // Include additional details for select/multi_select
+                ...(propertyConfig.type === 'select' && propertyConfig.select?.options ? {
+                    options: propertyConfig.select.options.map((opt: any) => opt.name)
+                } : {}),
+                ...(propertyConfig.type === 'multi_select' && propertyConfig.multi_select?.options ? {
+                    options: propertyConfig.multi_select.options.map((opt: any) => opt.name)
+                } : {}),
+            };
+        }
+
+        // Fetch all pages
         const response = await notion.databases.query({
             database_id: runContext.context.notionIntegration.database_id,
         });
@@ -94,7 +122,10 @@ const notionQueryDatabaseTool = tool({
             };
         }).filter(Boolean);
 
+        console.log("Notion query database tool response: ", { schema, pages });
+
         return {
+            database_schema: schema,
             total_pages: pages.length,
             pages: pages,
         };
