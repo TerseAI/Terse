@@ -1,3 +1,5 @@
+import { GmailEventData } from "src/routes/gmail";
+
 export enum InputEventType {
     GitHubEvent = "githubEvent",
     GmailEvent = "gmailEvent",
@@ -21,29 +23,27 @@ export class InputEvent {
 }
 
 // MARK: - GMAIL Event
+
 export class GmailEvent extends InputEvent {
-    constructor() {
+    data: GmailEventData;
+    
+    constructor(data: GmailEventData) {
         super(InputEventType.GmailEvent);
+        this.data = data;
     }
 
     formatForAutomationAgent(): string {
         return `
-        You are a Gmail event.
-        You are responsible for automating tasks based on the incoming events.
-        You will be given the following information:
-        - The incoming event
-        - The changes made by the event
-        - the files that were changed
-        - the commit message
-        - the author of the commit
-        - the date of the commit
-        - the branch the commit was made to
-        - the repository the commit was made to
-        - the organization the repository belongs to
-        - the diff of the changes
-        You will need to decide what to do based on the incoming event.
-        You will need to use the tools provided to help you automate the task.
-        You will need to return the result of the automation.
+        Incoming Email Event.
+        
+        Gmail Event:
+        Subject: ${this.data.subject}
+        From: ${this.data.from}
+        To: ${this.data.to}
+        Date: ${this.data.date}
+        Message ID: ${this.data.messageId}
+        Body: ${this.data.body}
+        Snippet: ${this.data.snippet}
         `;
     }
 }

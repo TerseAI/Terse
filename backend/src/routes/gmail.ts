@@ -348,7 +348,7 @@ async function fetchNewMessageIds(integration: GmailIntegration, oldHistoryId: s
 /**
  * Parse email message to extract useful information
  */
-interface ParsedEmail {
+export interface GmailEventData {
     id: string;
     threadId: string;
     subject: string;
@@ -360,7 +360,7 @@ interface ParsedEmail {
     snippet: string;
 }
 
-async function fetchAndParseEmail(gmail: gmail_v1.Gmail, messageId: string): Promise<ParsedEmail | null> {
+async function fetchAndParseEmail(gmail: gmail_v1.Gmail, messageId: string): Promise<GmailEventData | null> {
     try {
         const messageResponse = await gmail.users.messages.get({
             userId: 'me',
@@ -427,6 +427,11 @@ async function fetchAndParseEmail(gmail: gmail_v1.Gmail, messageId: string): Pro
 /**
  * Webhook handler for Gmail Pub/Sub notifications
  */
+
+type GmailWebhookData = {
+    emailAddress: string;
+    historyId: number;
+}
 export async function handleGmailWebhook(req: Request, res: Response) {
     console.log(chalk.bgMagenta.white('Gmail webhook received:'), chalk.magentaBright(JSON.stringify(req.body, null, 2)));
 
@@ -438,11 +443,11 @@ export async function handleGmailWebhook(req: Request, res: Response) {
         }
 
         // Decode the message data
-        const decoded = JSON.parse(
+        const decoded: GmailWebhookData = JSON.parse(
             Buffer.from(message.data, 'base64').toString()
         );
 
-        const emailAddress = decoded.emailAddress;
+        const emailAddress: string = decoded.emailAddress; // EMAIL of the user who gave permission to read emails!
         const newHistoryId: number = decoded.historyId;
         const newHistoryIdString: string = newHistoryId.toString();
 
@@ -479,7 +484,7 @@ export async function handleGmailWebhook(req: Request, res: Response) {
 
                 // Fetch and parse each email
                 for (const messageId of messageIds) {
-                    const parsedEmail = await fetchAndParseEmail(gmail, messageId);
+                    const parsedEmail: GmailEventData | null = await fetchAndParseEmail(gmail, messageId);
 
                     if (parsedEmail) {
                         console.log(chalk.cyan('New email received:'));
