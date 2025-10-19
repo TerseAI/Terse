@@ -248,6 +248,21 @@ export async function deleteGmailIntegration(req: Request, res: Response) {
             console.warn('Error stopping Gmail watch:', stopError);
         }
 
+        // Clean up automation inputs/outputs that reference this Gmail integration
+        await db().automation_inputs.deleteMany({
+            where: {
+                integration_type: 'GMAIL',
+                integration_id: integration.id
+            }
+        });
+
+        await db().automation_outputs.deleteMany({
+            where: {
+                integration_type: 'GMAIL',
+                integration_id: integration.id
+            }
+        });
+
         // Set is_active to false instead of deleting
         await db().gmail_integrations.update({
             where: { id: integration.id },
