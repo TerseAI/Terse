@@ -3,6 +3,7 @@ import { Session } from "../server";
 import chalk from "chalk";
 import { InputEvent } from "./InputEvents";
 import { Output } from "./Outputs/Output";
+import { AutomationPrompt } from "src/types/prisma";
 
 // Main class from procescing Input Events for the Automation Agent.
 // Lot's do do here, but keeping it simple for now.
@@ -10,9 +11,9 @@ export class Updater {
     private events: InputEvent[];
     private automationAgent: AutomationAgent;
 
-    constructor(events: InputEvent[], session: Session, output: Output) {
+    constructor(events: InputEvent[], session: Session, output: Output, automationPrompt: AutomationPrompt) {
         this.events = events;
-        this.automationAgent = new AutomationAgent(session, output);
+        this.automationAgent = new AutomationAgent(session, output, automationPrompt);
     }
 
     async run() {

@@ -4,17 +4,19 @@ import { ToolBox } from '../agents/Agent';
 import { systemPrompt } from './SystemPrompt';
 import { InputEvent } from '../../Updater/InputEvents';
 import { Output } from '../../Updater/Outputs/Output';
-
+import { AutomationPrompt } from '../../types/prisma';
 export class AutomationAgent {
     private history: AgentInputItem[] = [];
     private session: Session;
     private toolBox: ToolBox;
     private inputEvent: InputEvent | null = null;
+    private automationPrompt: AutomationPrompt;
     agent?: Agent<any, AgentOutputType>;
 
-    constructor(session: Session, output: Output) {
+    constructor(session: Session, output: Output, automationPrompt: AutomationPrompt) {
         this.history = [];
         this.session = session;
+        this.automationPrompt = automationPrompt;
         this.toolBox = new ToolBox();
     }
 
@@ -37,7 +39,7 @@ export class AutomationAgent {
 
         const agent = new Agent<Session, AgentOutputType>({
             name: 'Living Document Automator',
-            instructions: await systemPrompt(this.session),
+            instructions: await systemPrompt(this.session, this.automationPrompt),
             model: 'gpt-4o',
             tools: []
         });
