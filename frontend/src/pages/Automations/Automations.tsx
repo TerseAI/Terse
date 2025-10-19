@@ -4,6 +4,8 @@ import { OutputSection } from "./OutputSection";
 import EditableTextField from '../../components/ui/EditableTextField';
 import { Button } from "@headlessui/react";
 import { SparklesIcon } from "@heroicons/react/24/outline";
+import { BackendProvider } from "../../services/backend";
+import { useState } from "react";
 
 function Automations() {
     return (
@@ -177,22 +179,45 @@ function FlowArrow() {
 }
 
 function SaveAutomationButton() {
-    const { inputs, output, prompt } = useAutomationContext();
+    const { name, inputs, output, prompt } = useAutomationContext();
+    const [isSaving, setIsSaving] = useState(false);
+    const [saveSuccess, setSaveSuccess] = useState(false);
     const isComplete = inputs.length > 0 && output && prompt?.text;
+
+    const handleSave = async () => {
+        if (!isComplete) return;
+
+        setIsSaving(true);
+        try {
+            await BackendProvider.saveAutomation(
+                name,
+                inputs.map(i => ({ integration: i.integration })),
+                { integration: output.integration },
+                prompt
+            );
+            setSaveSuccess(true);
+            setTimeout(() => setSaveSuccess(false), 2000);
+        } catch (error) {
+            console.error('Error saving automation:', error);
+            alert('Failed to save automation. Please try again.');
+        } finally {
+            setIsSaving(false);
+        }
+    };
 
     return (
         <Button
-            disabled={!isComplete}
-            className={`px-8 py-3 rounded-lg font-medium transition-all duration-200 ${
-                isComplete
+            onClick={handleSave}
+            disabled={!isComplete || isSaving}
+            className={`px-8 py-3 rounded-lg font-medium transition-all duration-200 ${isComplete && !isSaving
                     ? 'bg-[var(--color-accent)] text-[theme(text-primary)] hover:scale-[1.02] hover:brightness-110 shadow-lg'
                     : 'bg-[theme(background-surface)] text-[theme(text-disabled)] cursor-not-allowed'
-            }`}
-            style={isComplete ? {
+                }`}
+            style={isComplete && !isSaving ? {
                 boxShadow: '0 0 20px -8px var(--color-accent)'
             } : undefined}
         >
-            {isComplete ? 'Create Automation' : 'Complete All Steps'}
+            {isSaving ? 'Saving...' : saveSuccess ? 'Saved!' : isComplete ? 'Save Automation' : 'Complete All Steps'}
         </Button>
     )
 }
