@@ -1,7 +1,7 @@
-import { db } from 'src/prismaClient';
-import { Automation, AutomationOutput, GmailIntegration, NotionIntegration, User } from 'src/types/prisma';
-import { GmailEvent, InputEvent } from 'src/Updater/InputEvents';
-import { NotionOutput, NotionSession } from 'src/Updater/Outputs/NotionOutput';
+import { db } from '../../prismaClient';
+import { Automation, AutomationOutput, GmailIntegration, NotionIntegration, User } from '../../types/prisma';
+import { GmailEvent, InputEvent } from '../../Updater/InputEvents';
+import { NotionOutput, NotionSession } from '../../Updater/Outputs/NotionOutput';
 import { AutomationAgent } from './AutomationAgent';
 
 // The job of this class is to take an Input Event, and check if it's a match for an Automation.
