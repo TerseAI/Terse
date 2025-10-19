@@ -80,6 +80,21 @@ export const deleteJiraCredentials = async (req: Request, res: Response) => {
         await adapter.tearDownWebhook(creds.webhook_id);
     }
 
+    // Clean up automation inputs/outputs that reference this Jira integration
+    await db().automation_inputs.deleteMany({
+        where: {
+            integration_type: 'JIRA',
+            integration_id: creds.id
+        }
+    });
+
+    await db().automation_outputs.deleteMany({
+        where: {
+            integration_type: 'JIRA',
+            integration_id: creds.id
+        }
+    });
+
     await db().jira_api_keys.delete({ where: { user_id: user.id } });
     console.log(chalk.green('Deleted Jira credentials for user'), chalk.yellow(user.id));
     res.status(200).json({ message: 'Credentials deleted' });
