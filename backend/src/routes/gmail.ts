@@ -371,7 +371,8 @@ export interface GmailEventData {
     subject: string;
     from: string;
     to: string;
-    date: string;
+    date: string; // Header date string (for display)
+    internalDate: string; // Gmail's internal timestamp (milliseconds since epoch)
     messageId: string;
     body: string;
     snippet: string;
@@ -431,6 +432,7 @@ async function fetchAndParseEmail(gmail: gmail_v1.Gmail, messageId: string): Pro
             from,
             to,
             date,
+            internalDate: message.internalDate || '', // Unix timestamp in milliseconds
             messageId: messageIdHeader,
             body,
             snippet: message.snippet || ''
@@ -444,6 +446,8 @@ async function fetchAndParseEmail(gmail: gmail_v1.Gmail, messageId: string): Pro
 /**
  * Webhook handler for Gmail Pub/Sub notifications
  */
+
+// TODO: Might be worth building a summary of the entire thread for added context of the current event.
 
 type GmailWebhookData = {
     emailAddress: string;
@@ -510,14 +514,29 @@ export async function handleGmailWebhook(req: Request, res: Response) {
                 });
                 const gmail = google.gmail({ version: 'v1', auth: oauth2Client });
 
+                const lastProcessedDate: Date | null = integration.last_processed_message_date;
+                let mostRecentEmailDate: Date | null = lastProcessedDate;
+
                 // Fetch and parse each email
                 for (const messageId of messageIds) {
                     const parsedEmail: GmailEventData | null = await fetchAndParseEmail(gmail, messageId);
 
                     if (parsedEmail) {
+                        // Parse the email timestamp - internalDate is milliseconds since epoch as a string
+                        const emailTimestamp = parseInt(parsedEmail.internalDate, 10);
+                        const emailDate = new Date(emailTimestamp);
+
+                        // Skip if we've already processed messages from this timestamp or later
+                        if (lastProcessedDate && emailDate <= lastProcessedDate) {
+                            console.log(chalk.yellow(`Skipping already processed email from ${emailDate.toISOString()}`));
+                            console.log(chalk.yellow(`  Subject: ${parsedEmail.subject}`));
+                            continue;
+                        }
+
                         console.log(chalk.cyan('New email received:'));
                         console.log(chalk.cyan(`  Subject: ${parsedEmail.subject}`));
                         console.log(chalk.cyan(`  From: ${parsedEmail.from}`));
+                        console.log(chalk.cyan(`  Date: ${emailDate.toISOString()}`));
                         console.log(chalk.cyan(`  Snippet: ${parsedEmail.snippet}`));
 
                         const eventProcessor = new EventProcessor(new GmailEvent(parsedEmail), user);
@@ -526,10 +545,24 @@ export async function handleGmailWebhook(req: Request, res: Response) {
                         if (result.success) {
                             console.log(chalk.green('Email processed successfully'));
                             console.log(chalk.green('Automation:', result.automation?.name));
+
+                            // Track the most recent email date
+                            if (!mostRecentEmailDate || emailDate > mostRecentEmailDate) {
+                                mostRecentEmailDate = emailDate;
+                            }
                         } else {
                             console.log(chalk.red('Email processing failed:', result.message));
                         }
                     }
+                }
+
+                // Update the last processed message date if we processed any emails
+                if (mostRecentEmailDate && mostRecentEmailDate !== lastProcessedDate) {
+                    await db().gmail_integrations.update({
+                        where: { id: integration.id },
+                        data: { last_processed_message_date: mostRecentEmailDate }
+                    });
+                    console.log(chalk.green(`Updated last processed message date to ${mostRecentEmailDate.toISOString()}`));
                 }
             }
         } catch (error) {

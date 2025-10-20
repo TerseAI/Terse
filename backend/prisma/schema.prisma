@@ -120,17 +120,18 @@ model jira_api_keys {
 }
 
 model gmail_integrations {
-  id               String   @id @default(cuid())
-  user_id          String
-  email            String
-  history_id       String
-  watch_expiration DateTime
-  access_token     String
-  refresh_token    String
-  token_expiry     DateTime
-  is_active        Boolean  @default(true)
-  created_at       DateTime @default(now())
-  updated_at       DateTime @updatedAt
+  id                         String    @id @default(cuid())
+  user_id                    String
+  email                      String
+  history_id                 String
+  watch_expiration           DateTime
+  access_token               String
+  refresh_token              String
+  token_expiry               DateTime
+  is_active                  Boolean   @default(true)
+  last_processed_message_date DateTime? // Track last processed email date to avoid reprocessing
+  created_at                 DateTime  @default(now())
+  updated_at                 DateTime  @updatedAt
 
   user users @relation(fields: [user_id], references: [id], onDelete: Cascade)
 

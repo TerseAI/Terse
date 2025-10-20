@@ -20,6 +20,7 @@ const mockEmail: GmailEventData = {
     from: 'noreply-jobs@google.com',
     to: DEFAULT_USER_EMAIL,
     date: new Date().toISOString(),
+    internalDate: new Date().getTime().toString(),
     messageId: '<application001@google.com>',
     body: `Dear Applicant,
 
