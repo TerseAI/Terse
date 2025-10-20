@@ -526,11 +526,25 @@ export async function handleGmailWebhook(req: Request, res: Response) {
                         const emailTimestamp = parseInt(parsedEmail.internalDate, 10);
                         const emailDate = new Date(emailTimestamp);
 
-                        // Skip if we've already processed messages from this timestamp or later
-                        if (lastProcessedDate && emailDate <= lastProcessedDate) {
-                            console.log(chalk.yellow(`Skipping already processed email from ${emailDate.toISOString()}`));
-                            console.log(chalk.yellow(`  Subject: ${parsedEmail.subject}`));
-                            continue;
+                        // Try to mark this message as processed atomically
+                        // The unique constraint will prevent duplicate processing even in race conditions
+                        try {
+                            await db().processed_gmail_messages.create({
+                                data: {
+                                    gmail_integration_id: integration.id,
+                                    gmail_message_id: parsedEmail.id,
+                                    internal_date: parsedEmail.internalDate
+                                }
+                            });
+                        } catch (error: any) {
+                            // If unique constraint fails, this message was already processed
+                            if (error.code === 'P2002') {
+                                console.log(chalk.yellow(`Skipping already processed message ${parsedEmail.id}`));
+                                console.log(chalk.yellow(`  Subject: ${parsedEmail.subject}`));
+                                continue;
+                            }
+                            // Re-throw other errors
+                            throw error;
                         }
 
                         console.log(chalk.cyan('New email received:'));

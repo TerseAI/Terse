@@ -120,25 +120,40 @@ model jira_api_keys {
 }
 
 model gmail_integrations {
-  id                         String    @id @default(cuid())
-  user_id                    String
-  email                      String
-  history_id                 String
-  watch_expiration           DateTime
-  access_token               String
-  refresh_token              String
-  token_expiry               DateTime
-  is_active                  Boolean   @default(true)
-  last_processed_message_date DateTime? // Track last processed email date to avoid reprocessing
-  created_at                 DateTime  @default(now())
-  updated_at                 DateTime  @updatedAt
+  id                          String                     @id @default(cuid())
+  user_id                     String
+  email                       String
+  history_id                  String
+  watch_expiration            DateTime
+  access_token                String
+  refresh_token               String
+  token_expiry                DateTime
+  is_active                   Boolean                    @default(true)
+  last_processed_message_date DateTime?                  // Track last processed email date to avoid reprocessing
+  created_at                  DateTime                   @default(now())
+  updated_at                  DateTime                   @updatedAt
 
-  user users @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  user                     users                        @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  processed_gmail_messages processed_gmail_messages[]
 
   @@unique([user_id, email]) // Allow multiple Gmail accounts per user, but not duplicates
   @@index([email])
   @@index([watch_expiration]) // For finding watches that need renewal
   @@index([is_active]) // For finding active integrations
+}
+
+model processed_gmail_messages {
+  id                     String             @id @default(cuid())
+  gmail_integration_id   String
+  gmail_message_id       String             // Gmail's message ID
+  internal_date          String             // Gmail's internalDate timestamp
+  processed_at           DateTime           @default(now())
+
+  gmail_integration gmail_integrations @relation(fields: [gmail_integration_id], references: [id], onDelete: Cascade)
+
+  @@unique([gmail_integration_id, gmail_message_id]) // Prevent processing the same message twice
+  @@index([gmail_integration_id])
+  @@index([processed_at])
 }
 
 model notion_integrations {
