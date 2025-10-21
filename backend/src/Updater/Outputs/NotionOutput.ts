@@ -158,7 +158,7 @@ Use the schema's format_example field to construct properties correctly. Pay spe
             };
         }).filter(Boolean);
 
-        console.log("Notion query database tool response: ", { schema, pages });
+        console.log("Notion query database tool response: ", { schema, pages_count: pages.length });
 
         return {
             database_schema: schema,
@@ -240,6 +240,8 @@ Use notion_query_database first to see existing property names and structure.`,
                     },
                     properties: properties as Record<string, any>,
                 });
+                
+                console.log(chalk.green("Notion database modified successfully"));
                 return {
                     success: true,
                     action: 'created',
