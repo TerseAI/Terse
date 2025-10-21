@@ -154,7 +154,8 @@ export async function gmailCallback(req: Request, res: Response) {
                 access_token: tokens.access_token,
                 refresh_token: tokens.refresh_token,
                 token_expiry: tokenExpiry,
-                is_active: true
+                is_active: true,
+                last_processed_message_date: new Date() // Set initial date to prevent processing historical messages
             },
             update: {
                 history_id: historyId,
@@ -163,6 +164,7 @@ export async function gmailCallback(req: Request, res: Response) {
                 refresh_token: tokens.refresh_token,
                 token_expiry: tokenExpiry,
                 is_active: true // Reactivate if it was previously disabled
+                // Don't reset last_processed_message_date on reactivation - preserve existing value
             }
         });
 
@@ -437,8 +439,14 @@ async function fetchAndParseEmail(gmail: gmail_v1.Gmail, messageId: string): Pro
             body,
             snippet: message.snippet || ''
         };
-    } catch (error) {
-        console.error(`Error fetching message ${messageId}:`, error);
+    } catch (error: any) {
+        // 404 errors are expected - messages can be deleted/moved before we fetch them
+        if (error?.code === 404 || error?.message?.includes('Requested entity was not found')) {
+            console.log(chalk.gray(`Message ${messageId} not found (likely deleted or moved)`));
+        } else {
+            // Log other errors as actual errors
+            console.error(`Error fetching message ${messageId}:`, error);
+        }
         return null;
     }
 }
@@ -525,6 +533,30 @@ export async function handleGmailWebhook(req: Request, res: Response) {
                         // Parse the email timestamp - internalDate is milliseconds since epoch as a string
                         const emailTimestamp = parseInt(parsedEmail.internalDate, 10);
                         const emailDate = new Date(emailTimestamp);
+
+                        // Skip messages older than the last processed message date
+                        // This prevents reprocessing old messages in threads when new replies arrive
+                        if (lastProcessedDate && emailDate <= lastProcessedDate) {
+                            console.log(chalk.gray(`Skipping old message ${parsedEmail.id} from ${emailDate.toISOString()}`));
+                            console.log(chalk.gray(`  Subject: ${parsedEmail.subject}`));
+
+                            // Still mark it as processed to avoid checking it again
+                            try {
+                                await db().processed_gmail_messages.create({
+                                    data: {
+                                        gmail_integration_id: integration.id,
+                                        gmail_message_id: parsedEmail.id,
+                                        internal_date: parsedEmail.internalDate
+                                    }
+                                });
+                            } catch (error: any) {
+                                // Ignore duplicate key errors - message already marked as processed
+                                if (error.code !== 'P2002') {
+                                    throw error;
+                                }
+                            }
+                            continue;
+                        }
 
                         // Try to mark this message as processed atomically
                         // The unique constraint will prevent duplicate processing even in race conditions
