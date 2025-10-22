@@ -1,8 +1,10 @@
+import chalk from 'chalk';
 import { db } from '../../prismaClient';
 import { Automation, AutomationOutput, GmailIntegration, NotionIntegration, User } from '../../types/prisma';
 import { GmailEvent, InputEvent } from '../../Updater/InputEvents';
 import { NotionOutput, NotionSession } from '../../Updater/Outputs/NotionOutput';
 import { AutomationAgent } from './AutomationAgent';
+import { filterEvent } from './EventFilter';
 
 // The job of this class is to take an Input Event, and check if it's a match for an Automation.
 // It will then create a Session, and summon the Automation Agent with the create user data.
@@ -29,7 +31,7 @@ export class EventProcessor {
     }
 
     async process(): Promise<ProcessorResult> {
-        console.log("Processing input event");
+        console.log(chalk.gray(`Processing input event: ${this.inputEvent.debugLog()}`));
 
         // Only gave Gmail right now, EZPZ
         let gmailEvent: GmailEvent | undefined = this.inputEvent as GmailEvent;
@@ -67,6 +69,14 @@ export class EventProcessor {
         } else if (!automation.prompt) {
             return new ProcessorResult(false, "No prompt found for this automation", null);
         }
+
+        // Now we filter the event!!
+        const filterResult = await filterEvent(this.inputEvent, automation.prompt);
+        if (!filterResult.isRelevant) {
+            console.log(chalk.gray(`Event is not relevant to the automation: ${filterResult.reason}`));
+            return new ProcessorResult(false, filterResult.reason, null);
+        }
+
 
         // get the output integration!
         const outputIntegration: AutomationOutput | null = await db().automation_outputs.findFirst({
