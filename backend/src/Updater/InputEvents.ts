@@ -1,3 +1,4 @@
+import chalk from "chalk";
 import { GmailEventData } from "../routes/gmail";
 
 export enum InputEventType {
@@ -19,6 +20,11 @@ export class InputEvent {
     // This method will be used to format the Event into the format expected by the LLM. MUST BE A STRING
     formatForAutomationAgent(): string {
         return this.eventType;
+    }
+
+    // Use this for formatting how we log this
+    debugLog(): string {
+        return `Input Event: ${this.eventType}`;
     }
 }
 
@@ -45,5 +51,9 @@ export class GmailEvent extends InputEvent {
         Body: ${this.data.body}
         Snippet: ${this.data.snippet}
         `;
+    }
+
+    debugLog(): string {
+        return `Gmail Event: ${this.data.subject} message ID: ${this.data.messageId}`;
     }
 }
