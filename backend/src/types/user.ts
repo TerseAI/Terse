@@ -36,7 +36,7 @@ export async function findUserById(id: string): Promise<User | null> {
     return user || null;
 }
 
-export async function createUser(displayName: string, email: string, githubUsername: string): Promise<User> {
+export async function createUser(displayName: string, email: string, githubUsername: string | null): Promise<User> {
     let user = await db().users.create({
         data: {
             display_name: displayName,
