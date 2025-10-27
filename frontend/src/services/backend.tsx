@@ -1,6 +1,6 @@
 import { ModelEvent, ModelRequest } from "../shared/ModelEvents";
 import { User } from "../types/User";
-import { IntegrationsStatus, GithubIntegration, LinearIntegration, JiraIntegration, SlackIntegration, GmailIntegration, NotionIntegration, Automation, AutomationInput, AutomationOutput, AutomationPrompt } from "../shared/types";
+import { IntegrationsStatus, GithubIntegration, LinearIntegration, JiraIntegration, SlackIntegration, GmailIntegration, NotionIntegration, NotionDatabasesResponse, Automation, AutomationInput, AutomationOutput, AutomationPrompt } from "../shared/types";
 import axios from 'axios';
 
 const backendBaseUrl = '/api';
@@ -144,6 +144,21 @@ interface BackendService {
      * Deletes the Notion integration
      */
     deleteNotionIntegration(): Promise<void>;
+
+    /**
+     * Gets the Notion OAuth URL
+     */
+    requestNotionOAuthUrl(): Promise<{ url: string }>;
+
+    /**
+     * Gets available Notion databases
+     */
+    getNotionDatabases(): Promise<NotionDatabasesResponse>;
+
+    /**
+     * Sets the selected Notion database
+     */
+    setNotionDatabase(databaseId: string): Promise<void>;
 
     /**
      * Requests a session socket token
@@ -421,6 +436,33 @@ export const BackendProvider: BackendService = {
             .then(response => response.data)
             .catch(error => {
                 console.error('Error deleting Notion integration:', error);
+                throw error;
+            });
+    },
+
+    requestNotionOAuthUrl: () => {
+        return axios.get(`${backendBaseUrl}/notion/get-oauth-url`, { withCredentials: true })
+            .then(response => response.data)
+            .catch(error => {
+                console.error('Error requesting Notion OAuth URL:', error);
+                throw error;
+            });
+    },
+
+    getNotionDatabases: () => {
+        return axios.get<NotionDatabasesResponse>(`${backendBaseUrl}/notion/get-databases`, { withCredentials: true })
+            .then(response => response.data)
+            .catch(error => {
+                console.error('Error getting Notion databases:', error);
+                throw error;
+            });
+    },
+
+    setNotionDatabase: (databaseId: string) => {
+        return axios.post(`${backendBaseUrl}/notion/set-database`, { databaseId }, { withCredentials: true })
+            .then(response => response.data)
+            .catch(error => {
+                console.error('Error setting Notion database:', error);
                 throw error;
             });
     },

@@ -7,21 +7,6 @@ export const COOKIE_NAME = 'AUTH_JWT';
 
 export const authMiddleware = async (req: Request, res: Response, next: NextFunction) => {
     try {
-        // Convenience for development
-        if (process.env.ENV === 'development') {
-            req.session = {
-                user: {
-                    id: 'ca3ea202e2bb24b43a8f16665',
-                    email: 'thomas.karatzas@mail.mcgill.ca',
-                    is_placeholder: false,
-                    github_username: 'tekaratzas',
-                    display_name: 'Thomas Karatzas',
-                },
-                isUserInitiated: true,
-            };
-            return next();
-        }
-
         if (!req.cookies || !req.cookies[COOKIE_NAME]) {
             console.log('Unauthorized - No cookie provided')
             res.status(401).json({ message: 'Unauthorized' });

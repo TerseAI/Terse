@@ -11,6 +11,7 @@ interface IntegrationCardProps {
     onDisconnect?: () => void;
     disconnectLabel?: string;
     connectButton?: ReactNode;
+    options?: ReactNode;
     icon?: ReactNode;
 }
 
@@ -23,6 +24,7 @@ export function IntegrationCard({
     onDisconnect,
     disconnectLabel = 'Disconnect',
     connectButton,
+    options,
     icon
 }: IntegrationCardProps) {
     if (isLoading) {
@@ -57,6 +59,11 @@ export function IntegrationCard({
                     >
                         {disconnectLabel}
                     </button>
+                )}
+                {options && (
+                    <div className="mt-4">
+                        {options}
+                    </div>
                 )}
             </Card>
         );
