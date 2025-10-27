@@ -10,6 +10,8 @@ import Sidebar from "./components/Sidebar";
 import Login from "./pages/Login";
 import Integrations from "./pages/Integrations";
 import Automations from "./pages/Automations/Automations";
+import OAuthSuccess from "./pages/OAuthSuccess";
+import OAuthError from "./pages/OAuthError";
 
 function App() {
   return (
@@ -26,6 +28,8 @@ function App() {
             )}
           </Route>
           <Route path="/changelog" element={<LandingPageChangelog />} />
+          <Route path="/oauth/success" element={<OAuthSuccess />} />
+          <Route path="/oauth/error" element={<OAuthError />} />
           <Route path="*" element={<div>Not Found</div>} />
         </Routes>
       </Router>
