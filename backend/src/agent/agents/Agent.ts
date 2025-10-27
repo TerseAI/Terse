@@ -1,17 +1,25 @@
-import { Agent, AgentInputItem, run, StreamedRunResult, user, AgentOutputType, RunRawModelStreamEvent, Tool } from '@openai/agents';
-import { Session } from '../../server';
-import { systemPrompt } from '../systemPrompt';
+import {
+  Agent,
+  AgentInputItem,
+  run,
+  StreamedRunResult,
+  user,
+  AgentOutputType,
+  RunRawModelStreamEvent,
+  Tool,
+} from "@openai/agents";
+import { Session } from "../../server";
+import { systemPrompt } from "../systemPrompt";
 import { SendModelRequest, ChangedItem, ChangeEventType } from "../../shared/ModelEvents";
-import { IAgentSession } from './AgentSession';
-import { EntityType } from '../../shared/Entities';
-import { ticketTools } from '../tools/ticketingTools';
-import { jiraTicketTools } from '../tools/jiraTicketingTools';
-import { TicketSystemType } from '../../shared/TicketSystem';
+import { IAgentSession } from "./AgentSession";
+import { EntityType } from "../../shared/Entities";
+import { ticketTools } from "../tools/ticketingTools";
+import { jiraTicketTools } from "../tools/jiraTicketingTools";
+import { TicketSystemType } from "../../shared/TicketSystem";
 // Enhanced session type with change tracking
-export type SessionWithTracking = Session & { 
-  trackChange: (type: EntityType, id: string | number, eventType: ChangeEventType) => void 
+export type SessionWithTracking = Session & {
+  trackChange: (type: EntityType, id: string | number, eventType: ChangeEventType) => void;
 };
-
 
 export class AgentSession implements IAgentSession<SessionWithTracking> {
   private history: AgentInputItem[] = [];
@@ -31,15 +39,18 @@ export class AgentSession implements IAgentSession<SessionWithTracking> {
     this.history.push(user(message.user_message));
   }
 
-  async run(): Promise<StreamedRunResult<SessionWithTracking, Agent<SessionWithTracking, AgentOutputType>>> {
+  async run(): Promise<
+    StreamedRunResult<SessionWithTracking, Agent<SessionWithTracking, AgentOutputType>>
+  > {
     const ticketSystemType = this.session.ticketManager?.type || TicketSystemType.Linear;
-    const toolBoxType = ticketSystemType === TicketSystemType.Jira ? ToolBoxType.jira : ToolBoxType.linear;
-    console.log('🔧 Tool box type', toolBoxType);
+    const toolBoxType =
+      ticketSystemType === TicketSystemType.Jira ? ToolBoxType.jira : ToolBoxType.linear;
+    console.log("🔧 Tool box type", toolBoxType);
     const agent = new Agent<SessionWithTracking, AgentOutputType>({
-      name: 'LLM ticket manager',
+      name: "LLM ticket manager",
       instructions: await systemPrompt(this.session),
-      model: 'gpt-4o',
-      tools: this.toolBox.getTools(toolBoxType) as Tool<SessionWithTracking>[]
+      model: "gpt-4o",
+      tools: this.toolBox.getTools(toolBoxType) as Tool<SessionWithTracking>[],
     });
 
     this.agent = agent;
@@ -65,7 +76,7 @@ export class AgentSession implements IAgentSession<SessionWithTracking> {
     this.changedItems.push({
       type_name: type,
       id: id.toString(),
-      change_event_type: eventType
+      change_event_type: eventType,
     });
   }
 
@@ -85,20 +96,20 @@ export class AgentSession implements IAgentSession<SessionWithTracking> {
   getContext(): SessionWithTracking {
     return {
       ...this.session,
-      trackChange: (type: EntityType, id: string | number, eventType: ChangeEventType) => this.trackChange(type, id, eventType)
+      trackChange: (type: EntityType, id: string | number, eventType: ChangeEventType) =>
+        this.trackChange(type, id, eventType),
     };
   }
 
   getAgent(): Agent<SessionWithTracking, AgentOutputType> | undefined {
-    return this.agent;  
+    return this.agent;
   }
 }
 
 export class ToolBox<T extends Session> {
   private tools: Tool<T>[] = [];
 
-  constructor() {
-  }
+  constructor() {}
 
   getTools(toolBoxType: ToolBoxType): Tool<SessionWithTracking>[] {
     if (toolBoxType === ToolBoxType.jira) {
@@ -112,8 +123,8 @@ export class ToolBox<T extends Session> {
 }
 
 enum ToolBoxType {
-  standard = 'standard',
-  onboarding = 'onboarding',
-  jira = 'jira',
-  linear = 'linear'
+  standard = "standard",
+  onboarding = "onboarding",
+  jira = "jira",
+  linear = "linear",
 }

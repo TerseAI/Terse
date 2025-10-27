@@ -1,4 +1,4 @@
-import React from 'react';
+import React from "react";
 
 type GitHubAvatarProps = {
   username: string;
@@ -15,7 +15,7 @@ const GitHubAvatar: React.FC<GitHubAvatarProps> = ({ username, size = 100 }) => 
       alt={`${username}'s GitHub avatar`}
       width={size}
       height={size}
-      style={{ borderRadius: '50%', objectFit: 'cover' }}
+      style={{ borderRadius: "50%", objectFit: "cover" }}
     />
   );
 };

@@ -15,9 +15,8 @@ import {
   automation_prompts,
   automation_inputs,
   automation_outputs,
-  notion_integrations
-} from '@prisma/client';
-
+  notion_integrations,
+} from "@prisma/client";
 
 // PascalCase aliases
 export type User = users;
@@ -72,5 +71,5 @@ export {
   automation_prompts,
   automation_inputs,
   automation_outputs,
-  notion_integrations
-}; 
+  notion_integrations,
+};

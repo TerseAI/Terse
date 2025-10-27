@@ -1,29 +1,29 @@
-import chalk from 'chalk';
-import { Search, SearchError, EmbeddingError, EmbeddingProvider } from './search';
-import { SearchItem, SearchResult, SearchOptions } from './SearchItem';
-import { Pool } from 'pg';
-import { toSql } from 'pgvector';
+import chalk from "chalk";
+import { Search, SearchError, EmbeddingError, EmbeddingProvider } from "./search";
+import { SearchItem, SearchResult, SearchOptions } from "./SearchItem";
+import { Pool } from "pg";
+import { toSql } from "pgvector";
 
 export class PostgreSQLSearch implements Search {
-    private pool: Pool;
-    private embeddingClient: EmbeddingProvider;
+  private pool: Pool;
+  private embeddingClient: EmbeddingProvider;
 
-    constructor(pool: Pool, embeddingClient: EmbeddingProvider) {
-        this.pool = pool;
-        this.embeddingClient = embeddingClient;
-    }
+  constructor(pool: Pool, embeddingClient: EmbeddingProvider) {
+    this.pool = pool;
+    this.embeddingClient = embeddingClient;
+  }
 
-    async search(query: string, options: SearchOptions): Promise<SearchResult[]> {
-        const embedding = await this.embed(query);
-        const embeddingVector = toSql(embedding);
+  async search(query: string, options: SearchOptions): Promise<SearchResult[]> {
+    const embedding = await this.embed(query);
+    const embeddingVector = toSql(embedding);
 
-        const limit = Math.min(options.limit || 20, 100);
+    const limit = Math.min(options.limit || 20, 100);
 
-        console.log(chalk.blue(`🔍 Search options: ${chalk.cyan(JSON.stringify(options, null, 2))}`));
+    console.log(chalk.blue(`🔍 Search options: ${chalk.cyan(JSON.stringify(options, null, 2))}`));
 
-        try {
-            const results = await this.pool.query(
-                `SELECT id, entity_type, entity_id, content, metadata,
+    try {
+      const results = await this.pool.query(
+        `SELECT id, entity_type, entity_id, content, metadata,
                         (1 - (embedding <=> $1)) as similarity
                  FROM semantic_search_index 
                  WHERE team_id = $2 
@@ -31,47 +31,47 @@ export class PostgreSQLSearch implements Search {
                    AND (1 - (embedding <=> $1)) > $4
                  ORDER BY embedding <=> $1 
                  LIMIT $5`,
-                [
-                    embeddingVector,
-                    options.teamId,
-                    options.entityTypes || null,
-                    options.minSimilarity || 0.0,
-                    limit
-                ]
-            );
+        [
+          embeddingVector,
+          options.teamId,
+          options.entityTypes || null,
+          options.minSimilarity || 0.0,
+          limit,
+        ]
+      );
 
-            console.log(`results count: ${results.rows.length}`);
+      console.log(`results count: ${results.rows.length}`);
 
-            return results.rows.map(row => ({
-                id: row.id,
-                entityType: row.entity_type,
-                entityId: row.entity_id,
-                content: row.content,
-                similarity: (row.similarity || 0.0) as number,
-                metadata: row.metadata || {}
-            }));
-        } catch (error) {
-            console.error('error:', error);
-            throw new SearchError('Database error', error as Error);
-        }
+      return results.rows.map((row) => ({
+        id: row.id,
+        entityType: row.entity_type,
+        entityId: row.entity_id,
+        content: row.content,
+        similarity: (row.similarity || 0.0) as number,
+        metadata: row.metadata || {},
+      }));
+    } catch (error) {
+      console.error("error:", error);
+      throw new SearchError("Database error", error as Error);
     }
+  }
 
-    async embed(text: string): Promise<number[]> {
-        try {
-            return await this.embeddingClient.embed(text);
-        } catch (error) {
-            throw new EmbeddingError('Invalid response', error as Error);
-        }
+  async embed(text: string): Promise<number[]> {
+    try {
+      return await this.embeddingClient.embed(text);
+    } catch (error) {
+      throw new EmbeddingError("Invalid response", error as Error);
     }
+  }
 
-    async insert(item: SearchItem): Promise<void> {
-        const content = item.content;
-        const embedding = await this.embed(content);
-        const embeddingVector = toSql(embedding);
+  async insert(item: SearchItem): Promise<void> {
+    const content = item.content;
+    const embedding = await this.embed(content);
+    const embeddingVector = toSql(embedding);
 
-        try {
-            await this.pool.query(
-                `INSERT INTO semantic_search_index 
+    try {
+      await this.pool.query(
+        `INSERT INTO semantic_search_index 
                  (id, team_id, entity_type, entity_id, content, embedding, metadata)
                  VALUES ($1, $2, $3, $4, $5, $6, $7)
                  ON CONFLICT (id) DO UPDATE SET
@@ -79,62 +79,64 @@ export class PostgreSQLSearch implements Search {
                     embedding = EXCLUDED.embedding,
                     metadata = EXCLUDED.metadata,
                     updated_at = NOW()`,
-                [
-                    item.id,
-                    item.teamId,
-                    item.entityType,
-                    item.entityId,
-                    item.content,
-                    embeddingVector,
-                    item.metadata
-                ]
-            );
-        } catch (error) {
-            console.error('error inserting content:', error);
-            throw new SearchError('Database error', error as Error);
-        }
+        [
+          item.id,
+          item.teamId,
+          item.entityType,
+          item.entityId,
+          item.content,
+          embeddingVector,
+          item.metadata,
+        ]
+      );
+    } catch (error) {
+      console.error("error inserting content:", error);
+      throw new SearchError("Database error", error as Error);
     }
+  }
 
-    async delete(entityId: string, entityType: string, teamId: string): Promise<void> {
-        try {
-            await this.pool.query(
-                `DELETE FROM semantic_search_index 
+  async delete(entityId: string, entityType: string, teamId: string): Promise<void> {
+    try {
+      await this.pool.query(
+        `DELETE FROM semantic_search_index 
                  WHERE entity_id = $1 AND entity_type = $2 AND team_id = $3`,
-                [entityId, entityType, teamId]
-            );
-        } catch (error) {
-            throw new SearchError('Database error', error as Error);
-        }
+        [entityId, entityType, teamId]
+      );
+    } catch (error) {
+      throw new SearchError("Database error", error as Error);
+    }
+  }
+
+  async bulkInsert(items: SearchItem[]): Promise<void> {
+    if (items.length === 0) {
+      return;
     }
 
-    async bulkInsert(items: SearchItem[]): Promise<void> {
-        if (items.length === 0) {
-            return;
-        }
+    // Batch embed all items
+    const embeddings: number[][] = [];
+    for (const item of items) {
+      const embedding = await this.embed(item.content);
+      embeddings.push(embedding);
+    }
 
-        // Batch embed all items
-        const embeddings: number[][] = [];
-        for (const item of items) {
-            const embedding = await this.embed(item.content);
-            embeddings.push(embedding);
-        }
+    console.log(`inserting ${items.length} items`);
 
-        console.log(`inserting ${items.length} items`);
+    // Use proper parameterized queries for each item
+    const client = await this.pool.connect();
+    try {
+      await client.query("BEGIN");
 
-        // Use proper parameterized queries for each item
-        const client = await this.pool.connect();
+      for (let i = 0; i < items.length; i++) {
+        const item = items[i];
+        const embeddingVector = toSql(embeddings[i]);
+
+        console.log(
+          `inserting params. Content: ${item.content}, id: ${item.id}, type: ${item.entityType}, teamId: ${item.teamId}`
+        );
+
         try {
-            await client.query('BEGIN');
-
-            for (let i = 0; i < items.length; i++) {
-                const item = items[i];
-                const embeddingVector = toSql(embeddings[i]);
-
-                console.log(`inserting params. Content: ${item.content}, id: ${item.id}, type: ${item.entityType}, teamId: ${item.teamId}`);
-
-                try {
-                    await client.query(
-                        `INSERT INTO semantic_search_index 
+          await client.query(
+            `INSERT INTO semantic_search_index 
                          (id, team_id, entity_type, entity_id, content, embedding, metadata)
                          VALUES ($1, $2, $3, $4, $5, $6, $7)
                          ON CONFLICT (id) DO UPDATE SET 
@@ -142,53 +144,53 @@ export class PostgreSQLSearch implements Search {
                             embedding = EXCLUDED.embedding, 
                             metadata = EXCLUDED.metadata, 
                             updated_at = NOW()`,
-                        [
-                            item.id,
-                            item.teamId,
-                            item.entityType,
-                            item.entityId,
-                            item.content,
-                            embeddingVector,
-                            item.metadata
-                        ]
-                    );
-                    console.log(`✅ Successfully inserted item ${i + 1}/${items.length}`);
-                } catch (insertError) {
-                    console.error(`❌ Failed to insert item ${i + 1}/${items.length}:`, insertError);
-                    console.error(`Item details:`, {
-                        id: item.id,
-                        teamId: item.teamId,
-                        entityType: item.entityType,
-                        entityId: item.entityId,
-                        contentLength: item.content?.length,
-                        metadata: item.metadata
-                    });
-                    throw insertError;
-                }
-            }
-
-            await client.query('COMMIT');
-            console.log(`✅ Successfully committed all ${items.length} items`);
-        } catch (error) {
-            console.error('❌ Transaction failed, rolling back:', error);
-            await client.query('ROLLBACK');
-            throw new SearchError('Database error', error as Error);
-        } finally {
-            client.release();
+            [
+              item.id,
+              item.teamId,
+              item.entityType,
+              item.entityId,
+              item.content,
+              embeddingVector,
+              item.metadata,
+            ]
+          );
+          console.log(`✅ Successfully inserted item ${i + 1}/${items.length}`);
+        } catch (insertError) {
+          console.error(`❌ Failed to insert item ${i + 1}/${items.length}:`, insertError);
+          console.error(`Item details:`, {
+            id: item.id,
+            teamId: item.teamId,
+            entityType: item.entityType,
+            entityId: item.entityId,
+            contentLength: item.content?.length,
+            metadata: item.metadata,
+          });
+          throw insertError;
         }
-    }
+      }
 
-    async update(item: SearchItem): Promise<void> {
-        // For PostgreSQL, update is the same as insert due to ON CONFLICT
-        await this.insert(item);
+      await client.query("COMMIT");
+      console.log(`✅ Successfully committed all ${items.length} items`);
+    } catch (error) {
+      console.error("❌ Transaction failed, rolling back:", error);
+      await client.query("ROLLBACK");
+      throw new SearchError("Database error", error as Error);
+    } finally {
+      client.release();
     }
+  }
+
+  async update(item: SearchItem): Promise<void> {
+    // For PostgreSQL, update is the same as insert due to ON CONFLICT
+    await this.insert(item);
+  }
 }
 
 interface SearchResultRow {
-    id: string;
-    entity_type: string;
-    entity_id: number;
-    content: string;
-    metadata: any;
-    similarity: number | null;
+  id: string;
+  entity_type: string;
+  entity_id: number;
+  content: string;
+  metadata: any;
+  similarity: number | null;
 }

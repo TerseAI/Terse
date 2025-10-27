@@ -1,17 +1,17 @@
-import { Session } from '../server';
+import { Session } from "../server";
 
 export async function systemPrompt(session: Session): Promise<string> {
-    const user_id = session.user.id;
-    const current_date = new Date().toISOString().split('T')[0];
-    const current_user = session.currentUser;
+  const user_id = session.user.id;
+  const current_date = new Date().toISOString().split("T")[0];
+  const current_user = session.currentUser;
 
-    if (!session.ticketManager) {
-        throw new Error("No ticket manager found");
-    }
+  if (!session.ticketManager) {
+    throw new Error("No ticket manager found");
+  }
 
-    let current_user_context = await session.ticketManager.getUserContext();
+  let current_user_context = await session.ticketManager.getUserContext();
 
-    return `Your job is to help the user accomplish their Ticket Tracking tasks.
+  return `Your job is to help the user accomplish their Ticket Tracking tasks.
 
 PLEASE BE EXTREMELY CONCISE!
 
@@ -20,13 +20,13 @@ You are currently logged in as ${current_user_context.userInfo.name} and are a m
 Your email is ${current_user_context.userInfo.email}
 Your id is ${current_user_context.userInfo.id}
 
-${current_user_context.teams.map(team => `- ${team.name} (${team.key}) - ID: ${team.id}`).join('\n')}
+${current_user_context.teams.map((team) => `- ${team.name} (${team.key}) - ID: ${team.id}`).join("\n")}
 
 You are also a member of the following organization:
 ${current_user_context.organization.name}
 
 Here are the available ticket states:
-${current_user_context.ticketStates.map(state => `- ${state.name} (${state.id})`).join('\n')}
+${current_user_context.ticketStates.map((state) => `- ${state.name} (${state.id})`).join("\n")}
 
 Be sure to copy the user id exactly as it is if needed in a tool call.
 

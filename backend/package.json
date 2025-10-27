@@ -20,7 +20,9 @@
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
     "db:studio": "prisma studio",
-    "index-tickets": "./index-tickets.sh"
+    "index-tickets": "./index-tickets.sh",
+    "format": "prettier --write \"src/**/*.{ts,js,json}\"",
+    "format:check": "prettier --check \"src/**/*.{ts,js,json}\""
   },
   "keywords": [],
   "author": "",
@@ -54,6 +56,7 @@
     "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^24.0.10",
     "@types/pg": "^8.15.4",
+    "prettier": "^3.6.2",
     "prisma": "^6.14.0",
     "ts-node-dev": "^2.0.0",
     "typescript": "^5.8.3"

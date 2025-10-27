@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient } from "@prisma/client";
 
 let prisma: PrismaClient | undefined;
 
@@ -10,4 +10,4 @@ export function db(): PrismaClient {
 }
 
 // Export the PrismaClient type for convenience
-export type { PrismaClient }; 
+export type { PrismaClient };

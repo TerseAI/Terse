@@ -1,22 +1,22 @@
-import jwt from 'jsonwebtoken';
-import { db } from '../prismaClient';
-import { users } from '@prisma/client';
+import jwt from "jsonwebtoken";
+import { db } from "../prismaClient";
+import { users } from "@prisma/client";
 
 export class Jwt {
-  private readonly TOKEN_EXPIRY = '7d'; // 7 days
+  private readonly TOKEN_EXPIRY = "7d"; // 7 days
 
   async sign(userId: string) {
     const user = await db().users.findUnique({ where: { id: userId } });
     if (!user) {
-      throw new Error('User not found');
+      throw new Error("User not found");
     }
 
-    const payload = { 
-      userId: user.id
+    const payload = {
+      userId: user.id,
     };
 
     return jwt.sign(payload, process.env.JWT_SECRET!, {
-      expiresIn: this.TOKEN_EXPIRY
+      expiresIn: this.TOKEN_EXPIRY,
     });
   }
 
@@ -26,7 +26,7 @@ export class Jwt {
       const user = await db().users.findUnique({ where: { id: decoded.userId } });
       return user || null;
     } catch (error) {
-      throw new Error('Invalid token');
+      throw new Error("Invalid token");
     }
   }
 

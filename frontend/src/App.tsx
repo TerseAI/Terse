@@ -1,6 +1,6 @@
 import { AnimatePresence } from "framer-motion";
 import { AuthProvider, useAuth } from "./services/auth";
-import { BrowserRouter as Router, Routes, Route, Outlet, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Outlet, Navigate } from "react-router-dom";
 import { IntegrationProvider } from "./context/Integrations";
 import LandingPageChangelog from "./pages/LandingPage_changelog";
 import Spin from "./components/loading/Spin";
@@ -21,7 +21,7 @@ function App() {
             <Route index element={<Home />} />
             <Route path="activity" element={<ActivityFeed />} />
             <Route path="integrations" element={<Integrations />} />
-            {import.meta.env.VITE_FEATURE_AUTOMATIONS === 'true' && (
+            {import.meta.env.VITE_FEATURE_AUTOMATIONS === "true" && (
               <Route path="automations" element={<Automations />} />
             )}
           </Route>
@@ -30,11 +30,11 @@ function App() {
         </Routes>
       </Router>
     </AuthProvider>
-  )
+  );
 }
 
 function Content() {
-  const { user, isLoading } = useAuth()
+  const { user, isLoading } = useAuth();
 
   if (isLoading) {
     return <Spin />;
@@ -42,7 +42,7 @@ function Content() {
 
   // If user is not part of an organization, redirect to onboarding
   if (user != null && user.is_placeholder) {
-    window.location.href = '/onboard';
+    window.location.href = "/onboard";
   }
 
   return (
@@ -74,7 +74,7 @@ function AppLayout() {
         <Outlet />
       </div>
     </div>
-  )
+  );
 }
 
-export default App
+export default App;

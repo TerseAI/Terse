@@ -1,30 +1,33 @@
 import { InputEvent } from "../../Updater/InputEvents";
 import { AutomationPrompt } from "../../types/prisma";
-import OpenAI from 'openai';
+import OpenAI from "openai";
 
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 
 if (!OPENAI_API_KEY) {
-    throw new Error('OPENAI_API_KEY is not set in environment variables');
+  throw new Error("OPENAI_API_KEY is not set in environment variables");
 }
 
 const openai = new OpenAI({ apiKey: OPENAI_API_KEY });
 
 export interface EventFilterResult {
-    isRelevant: boolean;
-    reason: string;
-    confidence: number; // 0-1 scale
+  isRelevant: boolean;
+  reason: string;
+  confidence: number; // 0-1 scale
 }
 
 /**
  * Filters a single event to determine if it's relevant to the automation based on user instructions
  */
-export async function filterEvent(event: InputEvent, automationPrompt: AutomationPrompt): Promise<EventFilterResult> {
-    try {
-        const eventContent = event.formatForAutomationAgent();
-        const userInstructions = automationPrompt.content || 'No specific instructions provided';
+export async function filterEvent(
+  event: InputEvent,
+  automationPrompt: AutomationPrompt
+): Promise<EventFilterResult> {
+  try {
+    const eventContent = event.formatForAutomationAgent();
+    const userInstructions = automationPrompt.content || "No specific instructions provided";
 
-        const systemPrompt = `You are an event relevance analyzer. Your job is to determine if an incoming event is relevant to a user's automation instructions.
+    const systemPrompt = `You are an event relevance analyzer. Your job is to determine if an incoming event is relevant to a user's automation instructions.
 
         You are responsible for protecting the main Updater agent from spam and noise. Since Emails are a common source of Inputs, we need to make sure only relevant ones make it to the main agent.
 
@@ -49,7 +52,7 @@ Guidelines:
 - If the event is completely unrelated or spam-like, mark it as not relevant with high confidence
 - If unsure, err on the side of caution with lower confidence`;
 
-        const userPrompt = `User's Automation Instructions:
+    const userPrompt = `User's Automation Instructions:
 ${userInstructions}
 
 ---
@@ -61,44 +64,45 @@ ${eventContent}
 
 Is this event relevant to the user's automation? Respond with JSON only.`;
 
-        const completion = await openai.chat.completions.create({
-            model: 'gpt-4o-mini',
-            messages: [
-                { role: 'system', content: systemPrompt },
-                { role: 'user', content: userPrompt }
-            ],
-            response_format: { type: "json_object" },
-            temperature: 0.3,
-            max_tokens: 200
-        });
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt },
+      ],
+      response_format: { type: "json_object" },
+      temperature: 0.3,
+      max_tokens: 200,
+    });
 
-        const responseContent = completion.choices?.[0]?.message?.content?.trim();
-        if (!responseContent) {
-            throw new Error('No response from OpenAI');
-        }
-
-        const result = JSON.parse(responseContent) as EventFilterResult;
-
-        // Validate the response structure
-        if (typeof result.isRelevant !== 'boolean' ||
-            typeof result.reason !== 'string' ||
-            typeof result.confidence !== 'number') {
-            throw new Error('Invalid response structure from OpenAI');
-        }
-
-        // Ensure confidence is between 0 and 1
-        result.confidence = Math.max(0, Math.min(1, result.confidence));
-
-        console.log(`Event filter result for ${event.eventType}:`, result);
-        return result;
-
-    } catch (error) {
-        console.error('Error filtering event:', error);
-        // In case of error, default to allowing the event through with low confidence
-        return {
-            isRelevant: true,
-            reason: `Error during filtering: ${error instanceof Error ? error.message : 'Unknown error'}. Defaulting to relevant.`,
-            confidence: 0.1
-        };
+    const responseContent = completion.choices?.[0]?.message?.content?.trim();
+    if (!responseContent) {
+      throw new Error("No response from OpenAI");
     }
+
+    const result = JSON.parse(responseContent) as EventFilterResult;
+
+    // Validate the response structure
+    if (
+      typeof result.isRelevant !== "boolean" ||
+      typeof result.reason !== "string" ||
+      typeof result.confidence !== "number"
+    ) {
+      throw new Error("Invalid response structure from OpenAI");
+    }
+
+    // Ensure confidence is between 0 and 1
+    result.confidence = Math.max(0, Math.min(1, result.confidence));
+
+    console.log(`Event filter result for ${event.eventType}:`, result);
+    return result;
+  } catch (error) {
+    console.error("Error filtering event:", error);
+    // In case of error, default to allowing the event through with low confidence
+    return {
+      isRelevant: true,
+      reason: `Error during filtering: ${error instanceof Error ? error.message : "Unknown error"}. Defaulting to relevant.`,
+      confidence: 0.1,
+    };
+  }
 }

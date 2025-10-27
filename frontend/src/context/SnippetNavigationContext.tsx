@@ -1,5 +1,5 @@
-import React, { createContext, useContext, useState, useRef, useEffect } from 'react';
-import { Type } from '../utility/Types';
+import React, { createContext, useContext, useState, useRef, useEffect } from "react";
+import { Type } from "../utility/Types";
 
 interface SnippetRef {
   turnIndex: number;
@@ -9,26 +9,26 @@ interface SnippetRef {
   element: HTMLElement | null;
   turnId: string;
   isGenerating: boolean;
-  role: 'user' | 'assistant';
+  role: "user" | "assistant";
 }
 
 interface SnippetNavigationContextType {
   // Current state
   selectedSnippetIndex: number | null;
   availableSnippets: SnippetRef[];
-  
+
   // Actions
   selectSnippet: (index: number) => void;
   selectNextSnippet: () => void;
   selectPreviousSnippet: () => void;
   openSelectedSnippet: () => void;
   clearSelection: () => void;
-  
+
   // Registration
-  registerSnippet: (snippet: Omit<SnippetRef, 'element'>) => number;
+  registerSnippet: (snippet: Omit<SnippetRef, "element">) => number;
   updateSnippetElement: (index: number, element: HTMLElement | null) => void;
   clearSnippets: () => void;
-  
+
   // Callback for when Enter is pressed
   onSnippetSelect?: (snippet: SnippetRef) => void;
 }
@@ -56,7 +56,7 @@ export function useSnippetNavigation(onSnippetSelect?: (snippet: SnippetRef) => 
     if (snippets.length === 0) {
       return;
     }
-    setSelectedIndex(prev => {
+    setSelectedIndex((prev) => {
       if (prev === null) {
         return 0; // Start from first element
       }
@@ -71,7 +71,7 @@ export function useSnippetNavigation(onSnippetSelect?: (snippet: SnippetRef) => 
     if (snippets.length === 0) {
       return;
     }
-    setSelectedIndex(prev => {
+    setSelectedIndex((prev) => {
       if (prev === null) {
         return snippets.length - 1; // Start from last element
       }
@@ -94,22 +94,22 @@ export function useSnippetNavigation(onSnippetSelect?: (snippet: SnippetRef) => 
     // Only handle arrow keys, Enter, and Escape for navigation
     // Let all other keys pass through normally for typing
     switch (event.key) {
-      case 'ArrowDown':
+      case "ArrowDown":
         event.preventDefault();
         selectNext();
         break;
-      case 'ArrowUp':
+      case "ArrowUp":
         event.preventDefault();
         selectPrevious();
         break;
-      case 'Enter':
+      case "Enter":
         // Only handle Enter if we have a selected snippet
         if (selectedIndexRef.current !== null) {
           event.preventDefault();
           openSelected();
         }
         break;
-      case 'Escape':
+      case "Escape":
         event.preventDefault();
         setSelectedIndex(null);
         break;
@@ -119,9 +119,9 @@ export function useSnippetNavigation(onSnippetSelect?: (snippet: SnippetRef) => 
     }
   };
 
-  const registerSnippet = (snippet: Omit<SnippetRef, 'element'>) => {
+  const registerSnippet = (snippet: Omit<SnippetRef, "element">) => {
     const index = nextIndexRef.current;
-    setSnippets(prev => [...prev, { ...snippet, element: null }]);
+    setSnippets((prev) => [...prev, { ...snippet, element: null }]);
     nextIndexRef.current++;
     return index;
   };
@@ -133,9 +133,9 @@ export function useSnippetNavigation(onSnippetSelect?: (snippet: SnippetRef) => 
   };
 
   const updateSnippetElement = (index: number, element: HTMLElement | null) => {
-    setSnippets(prev => prev.map((snippet, i) => 
-      i === index ? { ...snippet, element } : snippet
-    ));
+    setSnippets((prev) =>
+      prev.map((snippet, i) => (i === index ? { ...snippet, element } : snippet))
+    );
   };
 
   const clearSelection = () => {
@@ -153,9 +153,9 @@ export function useSnippetNavigation(onSnippetSelect?: (snippet: SnippetRef) => 
     if (selectedIndex !== null && selectedIndex < snippets.length) {
       const snippet = snippets[selectedIndex];
       if (snippet.element) {
-        snippet.element.scrollIntoView({ 
-          behavior: 'smooth', 
-          block: 'nearest' 
+        snippet.element.scrollIntoView({
+          behavior: "smooth",
+          block: "nearest",
         });
       }
     }
@@ -177,10 +177,10 @@ export function useSnippetNavigation(onSnippetSelect?: (snippet: SnippetRef) => 
   };
 }
 
-export function SnippetNavigationProvider({ 
-  children, 
-  onSnippetSelect 
-}: { 
+export function SnippetNavigationProvider({
+  children,
+  onSnippetSelect,
+}: {
   children: React.ReactNode;
   onSnippetSelect?: (snippet: SnippetRef) => void;
 }) {
@@ -192,8 +192,8 @@ export function SnippetNavigationProvider({
       navigation.handleKeyDown(event);
     };
 
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
   }, [navigation]);
 
   return (
@@ -206,7 +206,7 @@ export function SnippetNavigationProvider({
 export function useSnippetNavigationContext() {
   const context = useContext(SnippetNavigationContext);
   if (!context) {
-    throw new Error('useSnippetNavigationContext must be used within a SnippetNavigationProvider');
+    throw new Error("useSnippetNavigationContext must be used within a SnippetNavigationProvider");
   }
   return context;
-} 
+}

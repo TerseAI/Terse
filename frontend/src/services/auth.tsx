@@ -19,20 +19,20 @@ const AuthContext = createContext<AuthContextType | null>(null);
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [githubLoginUrl, setGithubLoginUrl] = useState('');
-  const [googleLoginUrl, setGoogleLoginUrl] = useState('');
+  const [githubLoginUrl, setGithubLoginUrl] = useState("");
+  const [googleLoginUrl, setGoogleLoginUrl] = useState("");
 
   useEffect(() => {
     const getGithubLoginUrl = async () => {
       const { url } = await BackendProvider.getGithubLogInURL();
       setGithubLoginUrl(url);
-    }
+    };
     getGithubLoginUrl();
 
     const getGoogleLoginUrl = async () => {
       const { url } = await BackendProvider.getGoogleLogInURL();
       setGoogleLoginUrl(url);
-    }
+    };
     getGoogleLoginUrl();
 
     const checkUser = async () => {
@@ -66,11 +66,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     await BackendProvider.setSession(token);
     let me = await BackendProvider.getCurrentUser();
     setUser(me);
-  }
+  };
 
   const logout = async () => {
     posthog.capture(PosthogEvents.USER_SIGNED_OUT, {
-      email: user?.email || 'unknown',
+      email: user?.email || "unknown",
     });
     await BackendProvider.terminateSession();
     setUser(null);
@@ -80,8 +80,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     setIsLoading(true);
     const popup = window.open(
       githubLoginUrl,
-      'github-login',
-      'width=600,height=700,scrollbars=yes,resizable=yes'
+      "github-login",
+      "width=600,height=700,scrollbars=yes,resizable=yes"
     );
 
     if (!popup) {
@@ -90,18 +90,18 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
 
     // Or listen for postMessage from popup
-    window.addEventListener('message', async (event) => {
-      if (event.data.type === 'GITHUB_AUTH_SUCCESS') {
-        console.log('GITHUB_AUTH_SUCCESS event', event)
-        console.log('GITHUB_AUTH_SUCCESS', event.data.token)
+    window.addEventListener("message", async (event) => {
+      if (event.data.type === "GITHUB_AUTH_SUCCESS") {
+        console.log("GITHUB_AUTH_SUCCESS event", event);
+        console.log("GITHUB_AUTH_SUCCESS", event.data.token);
         await initSession(event.data.token);
         // Store last used auth provider after successful login
-        localStorage.setItem('lastAuthProvider', 'github');
+        localStorage.setItem("lastAuthProvider", "github");
         posthog.capture(PosthogEvents.USER_INTEGRATED_GITHUB, {
-          email: user?.email || 'unknown',
+          email: user?.email || "unknown",
         });
         setIsLoading(false);
-        window.location.href = '/app';
+        window.location.href = "/app";
       }
     });
   };
@@ -110,8 +110,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     setIsLoading(true);
     const popup = window.open(
       googleLoginUrl,
-      'google-login',
-      'width=600,height=700,scrollbars=yes,resizable=yes'
+      "google-login",
+      "width=600,height=700,scrollbars=yes,resizable=yes"
     );
 
     if (!popup) {
@@ -120,24 +120,26 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
 
     // Listen for postMessage from popup
-    window.addEventListener('message', async (event) => {
-      if (event.data.type === 'GOOGLE_AUTH_SUCCESS') {
-        console.log('GOOGLE_AUTH_SUCCESS event', event)
-        console.log('GOOGLE_AUTH_SUCCESS', event.data.token)
+    window.addEventListener("message", async (event) => {
+      if (event.data.type === "GOOGLE_AUTH_SUCCESS") {
+        console.log("GOOGLE_AUTH_SUCCESS event", event);
+        console.log("GOOGLE_AUTH_SUCCESS", event.data.token);
         await initSession(event.data.token);
         // Store last used auth provider after successful login
-        localStorage.setItem('lastAuthProvider', 'google');
+        localStorage.setItem("lastAuthProvider", "google");
         posthog.capture(PosthogEvents.USER_SIGNED_IN, {
-          email: user?.email || 'unknown',
+          email: user?.email || "unknown",
         });
         setIsLoading(false);
-        window.location.href = '/app';
+        window.location.href = "/app";
       }
     });
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, loginWithGithub, loginWithGoogle, logout, isLoading, initSession }}>
+    <AuthContext.Provider
+      value={{ user, login, loginWithGithub, loginWithGoogle, logout, isLoading, initSession }}
+    >
       {children}
     </AuthContext.Provider>
   );

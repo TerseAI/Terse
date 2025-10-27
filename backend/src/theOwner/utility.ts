@@ -1,56 +1,64 @@
 import { SearchResult } from "../search/SearchItem";
 
 export type Commit = {
-    sha: string;
-    name: string;
-    fileDiffs: FileDiff[];
-}
+  sha: string;
+  name: string;
+  fileDiffs: FileDiff[];
+};
 
 export type FileDiff = {
-    filename: string;
-    diff: string;
-}
+  filename: string;
+  diff: string;
+};
 
 export type UnifiedGitHubEvent = {
-    username: string;
-    installationId: number;
-    repositoryName: string;
-    eventType: 'push' | 'pull_request.opened' | 'pull_request.synchronize' | 'pull_request.closed' | 'pull_request.merged';
-    branch?: string;
-    commits: Commit[];
-    pullRequest?: {
-        id: string;
-        number: number;
-        title: string;
-        body?: string;
-        state: 'open' | 'closed';
-        merged: boolean;
-        head: {
-            ref: string;
-            sha: string;
-        };
-        base: {
-            ref: string;
-            sha: string;
-        };
-        user: {
-            login: string;
-            email?: string;
-        };
+  username: string;
+  installationId: number;
+  repositoryName: string;
+  eventType:
+    | "push"
+    | "pull_request.opened"
+    | "pull_request.synchronize"
+    | "pull_request.closed"
+    | "pull_request.merged";
+  branch?: string;
+  commits: Commit[];
+  pullRequest?: {
+    id: string;
+    number: number;
+    title: string;
+    body?: string;
+    state: "open" | "closed";
+    merged: boolean;
+    head: {
+      ref: string;
+      sha: string;
     };
-    repository: {
-        name: string;
-        owner: string;
-        defaultBranch: string;
+    base: {
+      ref: string;
+      sha: string;
     };
-    sender: {
-        login: string;
-        email?: string;
+    user: {
+      login: string;
+      email?: string;
     };
-}
+  };
+  repository: {
+    name: string;
+    owner: string;
+    defaultBranch: string;
+  };
+  sender: {
+    login: string;
+    email?: string;
+  };
+};
 
-export const unifiedGitHubEventForAgent = (event: UnifiedGitHubEvent, searchResults: SearchResult[]): string => {
-    let eventString = `
+export const unifiedGitHubEventForAgent = (
+  event: UnifiedGitHubEvent,
+  searchResults: SearchResult[]
+): string => {
+  let eventString = `
     Unified GitHub Event:
     username: ${event.username}
     installationId: ${event.installationId}
@@ -58,37 +66,41 @@ export const unifiedGitHubEventForAgent = (event: UnifiedGitHubEvent, searchResu
     eventType: ${event.eventType}
     `;
 
-    if (event.branch) {
-        eventString += `branch: ${event.branch}\n`;
-    }
+  if (event.branch) {
+    eventString += `branch: ${event.branch}\n`;
+  }
 
-    if (event.pullRequest) {
-        eventString += `
+  if (event.pullRequest) {
+    eventString += `
     pullRequest:
       id: ${event.pullRequest.id}
       number: ${event.pullRequest.number}
       title: ${event.pullRequest.title}
-      body: ${event.pullRequest.body || 'No description'}
+      body: ${event.pullRequest.body || "No description"}
       state: ${event.pullRequest.state}
       merged: ${event.pullRequest.merged}
       head: ${event.pullRequest.head.ref} (${event.pullRequest.head.sha})
       base: ${event.pullRequest.base.ref} (${event.pullRequest.base.sha})
       user: ${event.pullRequest.user.login}
     `;
-    }
+  }
 
-    eventString += `
-    commits: ${event.commits.map(commit => commit.name).join(', ')}
+  eventString += `
+    commits: ${event.commits.map((commit) => commit.name).join(", ")}
 
-    ${event.commits.map(commit => `
+    ${event.commits
+      .map(
+        (commit) => `
     commit: ${commit.name}
-    Changed Files: ${commit.fileDiffs.map(diff => diff.filename).join(', ')}
+    Changed Files: ${commit.fileDiffs.map((diff) => diff.filename).join(", ")}
     }
-    `).join('\n')}
+    `
+      )
+      .join("\n")}
     
 
     Possibly Related Tickets:
-    ${searchResults.map(result => `- ${result.entityId} (${result.entityType}): ${result.content}`).join('\n')}
+    ${searchResults.map((result) => `- ${result.entityId} (${result.entityType}): ${result.content}`).join("\n")}
 
     IMPORTANT: For unified events:
     - If eventType is 'push': Look for related tickets and mark them as "In Progress"
@@ -97,7 +109,7 @@ export const unifiedGitHubEventForAgent = (event: UnifiedGitHubEvent, searchResu
     - If eventType is 'pull_request.merged': Mark related tickets as "Done" if the feature/bug fix appears complete
     - If eventType is 'pull_request.closed' (but not merged): Consider if tickets should be marked as "Cancelled" or left as-is
     `;
-    return eventString;
-}
+  return eventString;
+};
 
 // diffs: ${commit.fileDiffs.map(diff => diff.diff).join('\n')}

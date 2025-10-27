@@ -1,8 +1,13 @@
 import { AutomationInput, AutomationOutput, AutomationPrompt } from "../../types/prisma";
 import { Session } from "../../server";
 
-export async function systemPrompt(session: Session, automationPrompt: AutomationPrompt, automationInputs: AutomationInput[], automationOutput: AutomationOutput): Promise<string> {
-    return `
+export async function systemPrompt(
+  session: Session,
+  automationPrompt: AutomationPrompt,
+  automationInputs: AutomationInput[],
+  automationOutput: AutomationOutput
+): Promise<string> {
+  return `
     This is the current user: 
     ${JSON.stringify(session.user, null, 2)}
 
@@ -25,7 +30,7 @@ export async function systemPrompt(session: Session, automationPrompt: Automatio
     ${JSON.stringify(automationInputs, null, 2)}
 
     Here are the instructions provided by the user:
-    ${automationPrompt.content || 'No instructions provided'}
+    ${automationPrompt.content || "No instructions provided"}
 
     Here are the output destination provided by the user:
     ${JSON.stringify(automationOutput, null, 2)}

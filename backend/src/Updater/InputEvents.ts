@@ -2,44 +2,44 @@ import chalk from "chalk";
 import { GmailEventData } from "../routes/gmail";
 
 export enum InputEventType {
-    GitHubEvent = "githubEvent",
-    GmailEvent = "gmailEvent",
-    SlackEvent = "slackEvent",
-    EmailEvent = "emailEvent",
-    CalendarEvent = "calendarEvent",
-    TaskEvent = "taskEvent",
+  GitHubEvent = "githubEvent",
+  GmailEvent = "gmailEvent",
+  SlackEvent = "slackEvent",
+  EmailEvent = "emailEvent",
+  CalendarEvent = "calendarEvent",
+  TaskEvent = "taskEvent",
 }
 
 export class InputEvent {
-    eventType: InputEventType;
+  eventType: InputEventType;
 
-    constructor(eventType: InputEventType) {
-        this.eventType = eventType;
-    }
+  constructor(eventType: InputEventType) {
+    this.eventType = eventType;
+  }
 
-    // This method will be used to format the Event into the format expected by the LLM. MUST BE A STRING
-    formatForAutomationAgent(): string {
-        return this.eventType;
-    }
+  // This method will be used to format the Event into the format expected by the LLM. MUST BE A STRING
+  formatForAutomationAgent(): string {
+    return this.eventType;
+  }
 
-    // Use this for formatting how we log this
-    debugLog(): string {
-        return `Input Event: ${this.eventType}`;
-    }
+  // Use this for formatting how we log this
+  debugLog(): string {
+    return `Input Event: ${this.eventType}`;
+  }
 }
 
 // MARK: - GMAIL Event
 
 export class GmailEvent extends InputEvent {
-    data: GmailEventData;
-    
-    constructor(data: GmailEventData) {
-        super(InputEventType.GmailEvent);
-        this.data = data;
-    }
+  data: GmailEventData;
 
-    formatForAutomationAgent(): string {
-        return `
+  constructor(data: GmailEventData) {
+    super(InputEventType.GmailEvent);
+    this.data = data;
+  }
+
+  formatForAutomationAgent(): string {
+    return `
         Incoming Email Event.
 
         Gmail Event:
@@ -51,9 +51,9 @@ export class GmailEvent extends InputEvent {
         Body: ${this.data.body}
         Snippet: ${this.data.snippet}
         `;
-    }
+  }
 
-    debugLog(): string {
-        return `Gmail Event: ${this.data.subject} message ID: ${this.data.messageId}`;
-    }
+  debugLog(): string {
+    return `Gmail Event: ${this.data.subject} message ID: ${this.data.messageId}`;
+  }
 }

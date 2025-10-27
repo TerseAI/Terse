@@ -9,150 +9,151 @@ import { Project, Ticket } from "../../shared/TicketSystem";
 import { ProjectActivityEvent, TicketActivityEvent } from "../../shared/types";
 
 export type ActivityOverview = {
-    summary: string;
-    sub_activity_overviews: SubActivityOverview[];
-    project_activity_events: ProjectActivityEvent[];
-    ticket_activity_events: TicketActivityEvent[];
-}
+  summary: string;
+  sub_activity_overviews: SubActivityOverview[];
+  project_activity_events: ProjectActivityEvent[];
+  ticket_activity_events: TicketActivityEvent[];
+};
 
 export type SubActivityOverview = {
-    summary: string;
-    sub_activity_commit_associations: SubActivityCommitAssociation[];
-}
+  summary: string;
+  sub_activity_commit_associations: SubActivityCommitAssociation[];
+};
 
 export type SubActivityCommitAssociation = {
-    sha: string;
-    message: string;
-    url: string;
-    repository: string;
-    branch: string;
-}
+  sha: string;
+  message: string;
+  url: string;
+  repository: string;
+  branch: string;
+};
 
 // Enhanced session type with change tracking
 export type SessionWithTracking = Session & {
-    trackChange: (type: EntityType, id: string | number, eventType: ChangeEventType) => void;
-    setFinalSummary: (summary: ActivityOverview) => void;
-    commitContext?: CommitContext | null;
-}
+  trackChange: (type: EntityType, id: string | number, eventType: ChangeEventType) => void;
+  setFinalSummary: (summary: ActivityOverview) => void;
+  commitContext?: CommitContext | null;
+};
 
 export type CommitContext = {
-    commits: Commit[];
-    repository: { name: string; owner: string };
-    branch?: string;
-    ticket?: Ticket;
-    project?: Project;
-}
+  commits: Commit[];
+  repository: { name: string; owner: string };
+  branch?: string;
+  ticket?: Ticket;
+  project?: Project;
+};
 
 export class Analyzer {
-    history: AgentInputItem[] = [];
-    private session: Session;
-    private changedItems: ChangedItem[] = [];
-    private commitContext: CommitContext | null = null;
-    private finalSummary: ActivityOverview | null = null;
-    agent?: Agent<SessionWithTracking, AgentOutputType>;
+  history: AgentInputItem[] = [];
+  private session: Session;
+  private changedItems: ChangedItem[] = [];
+  private commitContext: CommitContext | null = null;
+  private finalSummary: ActivityOverview | null = null;
+  agent?: Agent<SessionWithTracking, AgentOutputType>;
 
-    constructor(session: Session) {
-        this.history = [];
-        this.session = session;
-        this.changedItems = [];
-    }
+  constructor(session: Session) {
+    this.history = [];
+    this.session = session;
+    this.changedItems = [];
+  }
 
-    setCommitContext(commitContext: CommitContext) {
-        this.commitContext = commitContext;
-    }
+  setCommitContext(commitContext: CommitContext) {
+    this.commitContext = commitContext;
+  }
 
-    getCommitContext() {
-        return this.commitContext;
-    }
+  getCommitContext() {
+    return this.commitContext;
+  }
 
-    async analyze(event: string) {
-        console.log(chalk.blue(`Analyzing event: ${event}`));
-        this.history.push(user(event));
-    }
+  async analyze(event: string) {
+    console.log(chalk.blue(`Analyzing event: ${event}`));
+    this.history.push(user(event));
+  }
 
-    // There will be no follow up here. 
-    async run(): Promise<RunResult<SessionWithTracking, Agent<SessionWithTracking, AgentOutputType>>> {
-        console.log(chalk.blue('Running analyzer'));
-        const agent = new Agent<SessionWithTracking, AgentOutputType>({
-            name: 'Change Analyzer',
-            instructions: await systemPrompt(this.session, this.commitContext),
-            model: 'gpt-4o',
-            tools: [
-                createCommitSummaryTool
-            ]
-        });
+  // There will be no follow up here.
+  async run(): Promise<
+    RunResult<SessionWithTracking, Agent<SessionWithTracking, AgentOutputType>>
+  > {
+    console.log(chalk.blue("Running analyzer"));
+    const agent = new Agent<SessionWithTracking, AgentOutputType>({
+      name: "Change Analyzer",
+      instructions: await systemPrompt(this.session, this.commitContext),
+      model: "gpt-4o",
+      tools: [createCommitSummaryTool],
+    });
 
-        const result = await run(agent, this.history, {
-            context: this.getContext(),
-        });
+    const result = await run(agent, this.history, {
+      context: this.getContext(),
+    });
 
-        return result;
-    }
+    return result;
+  }
 
-    async executeFinalSummary(): Promise<RunResult<SessionWithTracking, Agent<SessionWithTracking, AgentOutputType>>> {
-        const agent = new Agent<SessionWithTracking, AgentOutputType>({
-            name: 'Change Analyzer',
-            instructions: await systemPrompt(this.session, this.commitContext),
-            model: 'gpt-4o',
-            tools: [
-                createActionSummaryTool
-            ]
-        });
+  async executeFinalSummary(): Promise<
+    RunResult<SessionWithTracking, Agent<SessionWithTracking, AgentOutputType>>
+  > {
+    const agent = new Agent<SessionWithTracking, AgentOutputType>({
+      name: "Change Analyzer",
+      instructions: await systemPrompt(this.session, this.commitContext),
+      model: "gpt-4o",
+      tools: [createActionSummaryTool],
+    });
 
-        const result = await run(agent, this.history, {
-            context: this.getContext(),
-        });
+    const result = await run(agent, this.history, {
+      context: this.getContext(),
+    });
 
-        return result;
-    }
+    return result;
+  }
 
-    // Helper to get session context for tools
-    getContext(): SessionWithTracking {
-        return {
-            ...this.session,
-            trackChange: (type: EntityType, id: string | number, eventType: ChangeEventType) => this.trackChange(type, id, eventType),
-            commitContext: this.commitContext,
-            setFinalSummary: (summary: ActivityOverview) => this.setFinalSummary(summary)
-        };
-    }
+  // Helper to get session context for tools
+  getContext(): SessionWithTracking {
+    return {
+      ...this.session,
+      trackChange: (type: EntityType, id: string | number, eventType: ChangeEventType) =>
+        this.trackChange(type, id, eventType),
+      commitContext: this.commitContext,
+      setFinalSummary: (summary: ActivityOverview) => this.setFinalSummary(summary),
+    };
+  }
 
-    // Track changes made by tools
-    trackChange(type: EntityType, id: string | number, eventType: ChangeEventType) {
-        this.changedItems.push({
-            type_name: type,
-            id: id.toString(),
-            change_event_type: eventType
-        });
-    }
+  // Track changes made by tools
+  trackChange(type: EntityType, id: string | number, eventType: ChangeEventType) {
+    this.changedItems.push({
+      type_name: type,
+      id: id.toString(),
+      change_event_type: eventType,
+    });
+  }
 
-    setFinalSummary(summary: ActivityOverview) {
-        this.finalSummary = summary;
-    }
+  setFinalSummary(summary: ActivityOverview) {
+    this.finalSummary = summary;
+  }
 
-    // Get and clear the changed items
-    getAndClearFinalSummary(): ActivityOverview | null {
-        const summary = this.finalSummary;
-        this.finalSummary = null;
-        return summary;
-    }
+  // Get and clear the changed items
+  getAndClearFinalSummary(): ActivityOverview | null {
+    const summary = this.finalSummary;
+    this.finalSummary = null;
+    return summary;
+  }
 
-    // Get and clear the changed items
-    getAndClearChangedItems(): ChangedItem[] {
-        const items = [...this.changedItems];
-        this.changedItems = [];
-        return items;
-    }
+  // Get and clear the changed items
+  getAndClearChangedItems(): ChangedItem[] {
+    const items = [...this.changedItems];
+    this.changedItems = [];
+    return items;
+  }
 }
 
 const systemPrompt = async (session: Session, commitContext?: CommitContext | null) => {
-    if (commitContext?.ticket) {
-        console.log(chalk.green("✓ Ticket context found"));
-    }
-    if (commitContext?.project) {
-        console.log(chalk.green("✓ Project context found"));
-    }
+  if (commitContext?.ticket) {
+    console.log(chalk.green("✓ Ticket context found"));
+  }
+  if (commitContext?.project) {
+    console.log(chalk.green("✓ Project context found"));
+  }
 
-    return `
+  return `
     You are an agent that analyzes GitHub events and provides a summary of the changes.
 
     The end goal is to provide a birds eye view of the changes throughout the day/week. The reader will be a Product Owner/Tech Lead/CEO/CTO.
@@ -177,36 +178,48 @@ const systemPrompt = async (session: Session, commitContext?: CommitContext | nu
 
     Then You need to pump out a summary of the changes. You will call the CreateActionSummaryTool to do this. You call it once. Per github event. But you can attach as many commits as you want to the action event.
 
-    ${commitContext?.ticket ? `
+    ${
+      commitContext?.ticket
+        ? `
         We have detected that the chanages are related to the following ticket. Please use this ticket to create a summary of the changes.
     TICKET CONTEXT:
     The following ticket is available for association with the commits:
     ${commitContext.ticket.title}
     ${commitContext.ticket.description}
     ${commitContext.ticket.state.name}
-    ` : ''}
+    `
+        : ""
+    }
 
-    ${commitContext?.project ? `
+    ${
+      commitContext?.project
+        ? `
     We have detected that the chanages are related to the following project. Please use this project to create a summary of the changes.
     PROJECT CONTEXT:
     The following project is available for association with the commits:
     ${commitContext.project.name}
     ${commitContext.project.description}
-    ` : ''}
+    `
+        : ""
+    }
 
-     ${commitContext ? `
+     ${
+       commitContext
+         ? `
     COMMIT CONTEXT:
     The following commits are available for association with tickets (use their indices in the associatedCommits parameter):
-    ${commitContext.commits.map((commit, index) => `${index}: ${commit.sha.substring(0, 8)} - ${commit.name}`).join('\n')}
+    ${commitContext.commits.map((commit, index) => `${index}: ${commit.sha.substring(0, 8)} - ${commit.name}`).join("\n")}
     
     Repository: ${commitContext.repository.owner}/${commitContext.repository.name}
-    Branch: ${commitContext.branch || 'main'}
+    Branch: ${commitContext.branch || "main"}
     
     You can associate relevant commits by providing their indices in the associatedCommits parameter.
     This helps track the relationship between code changes and any sub activities you create.
-    ` : ''}
+    `
+         : ""
+     }
     `;
-}
+};
 
 // const systemPrompt = async (session: Session, commitContext?: { commits: Commit[]; repository: { name: string; owner: string }; branch?: string } | null) => {
 //     if (!session.ticketManager) {
@@ -218,7 +231,7 @@ const systemPrompt = async (session: Session, commitContext?: CommitContext | nu
 //     You are impersonating a Product Owner who looks over every GitHub event and updates the ticketing system accordingly.
 
 //     This is a software team and you must make Tickets accordingly.
-    
+
 //     DO NOT MOVE TICKETS THAT ARE DONE TO IN PROGRESS.
 
 //     Be selective on the tickets you update. You dont' want to spam. You should rarely need to change the title of a ticket.
@@ -270,7 +283,7 @@ const systemPrompt = async (session: Session, commitContext?: CommitContext | nu
 
 //     Here are the available teams:
 //     ${current_user_context.teams.map(team => `- ${team.name} (${team.key}) - ID: ${team.id}`).join('\n')}
-    
+
 //     Be sure to copy the user id exactly as it is if needed in a tool call.
 
 //     IMPORTANT: Use your judgment based on the event type and content:
@@ -312,10 +325,10 @@ const systemPrompt = async (session: Session, commitContext?: CommitContext | nu
 //     COMMIT CONTEXT:
 //     The following commits are available for association with tickets (use their indices in the associatedCommits parameter):
 //     ${commitContext.commits.map((commit, index) => `${index}: ${commit.sha.substring(0, 8)} - ${commit.name}`).join('\n')}
-    
+
 //     Repository: ${commitContext.repository.owner}/${commitContext.repository.name}
 //     Branch: ${commitContext.branch || 'main'}
-    
+
 //     When creating or updating tickets, you can associate relevant commits by providing their indices in the associatedCommits parameter.
 //     This helps track the relationship between code changes and project management.
 //     ` : ''}
