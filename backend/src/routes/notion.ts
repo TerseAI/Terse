@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import { db } from "../prismaClient";
 import chalk from "chalk";
-import { NotionIntegration } from "../shared/types";
+import { NotionIntegration, NotionDatabase, NotionDatabasesResponse } from "../shared/types";
 import jwt from 'jsonwebtoken';
 import { Client } from '@notionhq/client';
 
@@ -226,7 +226,7 @@ export const notionOAuthCallback = async (req: Request, res: Response) => {
             page_size: 100
         });
 
-        const databases = databasesResponse.results.map((db: any) => ({
+        const databases: NotionDatabase[] = databasesResponse.results.map((db: any) => ({
             id: db.id,
             title: db.title?.[0]?.plain_text || 'Untitled Database',
             url: db.url
@@ -288,7 +288,7 @@ export const getNotionDatabases = async (req: Request, res: Response) => {
             page_size: 100
         });
 
-        const databases = databasesResponse.results.map((db: any) => ({
+        const databases: NotionDatabase[] = databasesResponse.results.map((db: any) => ({
             id: db.id,
             title: db.title?.[0]?.plain_text || 'Untitled Database',
             url: db.url
@@ -296,10 +296,12 @@ export const getNotionDatabases = async (req: Request, res: Response) => {
 
         console.log(chalk.blue(`📊 Retrieved ${databases.length} databases for user`), chalk.yellow(user.id));
 
-        res.json({
+        const response: NotionDatabasesResponse = {
             databases,
             selectedDatabaseId: integration.database_id || null
-        });
+        };
+
+        res.json(response);
     } catch (error) {
         console.error(chalk.red('Error fetching Notion databases:'), error);
         res.status(500).json({ error: 'Failed to fetch databases' });

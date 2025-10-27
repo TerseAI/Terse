@@ -69,6 +69,17 @@ export type NotionIntegration = {
     databaseId: string;
 };
 
+export type NotionDatabase = {
+    id: string;
+    title: string;
+    url: string;
+};
+
+export type NotionDatabasesResponse = {
+    databases: NotionDatabase[];
+    selectedDatabaseId: string | null;
+};
+
 export type IntegrationsStatus = {
     integrations: {
         github?: GithubIntegration;

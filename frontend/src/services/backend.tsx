@@ -1,6 +1,6 @@
 import { ModelEvent, ModelRequest } from "../shared/ModelEvents";
 import { User } from "../types/User";
-import { IntegrationsStatus, GithubIntegration, LinearIntegration, JiraIntegration, SlackIntegration, GmailIntegration, NotionIntegration, Automation, AutomationInput, AutomationOutput, AutomationPrompt } from "../shared/types";
+import { IntegrationsStatus, GithubIntegration, LinearIntegration, JiraIntegration, SlackIntegration, GmailIntegration, NotionIntegration, NotionDatabasesResponse, Automation, AutomationInput, AutomationOutput, AutomationPrompt } from "../shared/types";
 import axios from 'axios';
 
 const backendBaseUrl = '/api';
@@ -153,7 +153,7 @@ interface BackendService {
     /**
      * Gets available Notion databases
      */
-    getNotionDatabases(): Promise<{ databases: Array<{ id: string; title: string; url: string }>; selectedDatabaseId: string | null }>;
+    getNotionDatabases(): Promise<NotionDatabasesResponse>;
 
     /**
      * Sets the selected Notion database
@@ -450,7 +450,7 @@ export const BackendProvider: BackendService = {
     },
 
     getNotionDatabases: () => {
-        return axios.get(`${backendBaseUrl}/notion/get-databases`, { withCredentials: true })
+        return axios.get<NotionDatabasesResponse>(`${backendBaseUrl}/notion/get-databases`, { withCredentials: true })
             .then(response => response.data)
             .catch(error => {
                 console.error('Error getting Notion databases:', error);
