@@ -5,15 +5,10 @@ import { useAuth } from "../../../services/auth";
 import { BackendProvider } from "../../../services/backend";
 import { PosthogEvents } from "../../../utility/PosthogEvents";
 import { IntegrationCard } from "../IntegrationCard";
+import { NotionDatabase } from "../../../shared/types";
 
 interface AddNotionProps {
     onIntegrationChange: () => Promise<void>;
-}
-
-interface NotionDatabase {
-    id: string;
-    title: string;
-    url: string;
 }
 
 export function AddNotion({ onIntegrationChange }: AddNotionProps) {
