@@ -21,7 +21,7 @@ function Sidebar() {
     return (
         <div className="flex flex-col h-full p-2">
             <div className="grid grid-cols-[auto_1fr] items-center gap-2 p-2 mb-8">
-                <div className="bg-[theme(--color-accent)] rounded-md h-7 w-7">
+                <div className="rounded-md h-7 w-7">
                     <img src="/terse.png" alt="Logo" className="w-7 h-7" />
                 </div>
                 <h1 className="text-2xl font-bold text-[theme(text-primary)]">Terse AI</h1>
