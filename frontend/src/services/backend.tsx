@@ -1,6 +1,6 @@
 import { ModelEvent, ModelRequest } from "../shared/ModelEvents";
 import { User } from "../types/User";
-import { IntegrationsStatus, GithubIntegration, LinearIntegration, JiraIntegration, SlackIntegration, GmailIntegration, NotionIntegration, NotionDatabasesResponse, Automation, AutomationInput, AutomationOutput, AutomationPrompt } from "../shared/types";
+import { IntegrationsStatus, GithubIntegration, LinearIntegration, JiraIntegration, SlackIntegration, GmailIntegration, NotionIntegration, NotionDatabasesResponse, Automation, AutomationInput, AutomationOutput, AutomationPrompt, AutomationUpdate, AutomationsResponse } from "../shared/types";
 import axios from 'axios';
 
 const backendBaseUrl = '/api';
@@ -182,13 +182,40 @@ interface BackendService {
 
     /**
      * Gets the user's automation (returns null if none exists)
+     * @deprecated Use getUserAutomations instead
      */
     getUserAutomation(): Promise<Automation | null>;
 
     /**
-     * Saves or updates the user's automation
+     * Saves or updates the user's automation (legacy)
+     * @deprecated Use createAutomation or updateAutomation instead
      */
     saveAutomation(name: string, inputs: AutomationInput[], output: AutomationOutput, prompt: AutomationPrompt): Promise<{ success: boolean; id: string }>;
+
+    /**
+     * Gets all automations for the user with pagination
+     */
+    getUserAutomations(page?: number, limit?: number, isActive?: boolean): Promise<AutomationsResponse>;
+
+    /**
+     * Gets a single automation by ID
+     */
+    getAutomationById(id: string): Promise<Automation>;
+
+    /**
+     * Creates a new automation
+     */
+    createAutomation(name: string, inputs: AutomationInput[], output: AutomationOutput, prompt: AutomationPrompt, isActive?: boolean): Promise<{ success: boolean; id: string }>;
+
+    /**
+     * Updates an existing automation
+     */
+    updateAutomation(id: string, data: AutomationUpdate): Promise<{ success: boolean; id: string }>;
+
+    /**
+     * Deletes an automation
+     */
+    deleteAutomation(id: string): Promise<{ success: boolean; message: string }>;
 }
 
 export const BackendProvider: BackendService = {
@@ -494,13 +521,71 @@ export const BackendProvider: BackendService = {
     },
 
     saveAutomation: (name: string, inputs: AutomationInput[], output: AutomationOutput, prompt: AutomationPrompt) => {
-        return axios.post<{ success: boolean; id: string }>(`${backendBaseUrl}/automations`,
+        return axios.post<{ success: boolean; id: string }>(`${backendBaseUrl}/automations/save`,
             { name, inputs, output, prompt },
             { withCredentials: true }
         )
             .then(response => response.data)
             .catch(error => {
                 console.error('Error saving automation:', error);
+                throw error;
+            });
+    },
+
+    getUserAutomations: (page = 1, limit = 10, isActive?: boolean) => {
+        const params = new URLSearchParams();
+        params.append('page', page.toString());
+        params.append('limit', limit.toString());
+        if (isActive !== undefined) {
+            params.append('isActive', isActive.toString());
+        }
+
+        return axios.get<AutomationsResponse>(`${backendBaseUrl}/automations?${params.toString()}`, { withCredentials: true })
+            .then(response => response.data)
+            .catch(error => {
+                console.error('Error getting automations:', error);
+                throw error;
+            });
+    },
+
+    getAutomationById: (id: string) => {
+        return axios.get<Automation>(`${backendBaseUrl}/automations/${id}`, { withCredentials: true })
+            .then(response => response.data)
+            .catch(error => {
+                console.error('Error getting automation:', error);
+                throw error;
+            });
+    },
+
+    createAutomation: (name: string, inputs: AutomationInput[], output: AutomationOutput, prompt: AutomationPrompt, isActive = true) => {
+        return axios.post<{ success: boolean; id: string }>(`${backendBaseUrl}/automations`,
+            { name, inputs, output, prompt, isActive },
+            { withCredentials: true }
+        )
+            .then(response => response.data)
+            .catch(error => {
+                console.error('Error creating automation:', error);
+                throw error;
+            });
+    },
+
+    updateAutomation: (id: string, data: AutomationUpdate) => {
+        return axios.patch<{ success: boolean; id: string }>(`${backendBaseUrl}/automations/${id}`,
+            data,
+            { withCredentials: true }
+        )
+            .then(response => response.data)
+            .catch(error => {
+                console.error('Error updating automation:', error);
+                throw error;
+            });
+    },
+
+    deleteAutomation: (id: string) => {
+        return axios.delete<{ success: boolean; message: string }>(`${backendBaseUrl}/automations/${id}`, { withCredentials: true })
+            .then(response => response.data)
+            .catch(error => {
+                console.error('Error deleting automation:', error);
                 throw error;
             });
     },

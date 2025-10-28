@@ -1,17 +1,18 @@
 import { AnimatePresence } from "framer-motion";
-import { AuthProvider, useAuth } from "./services/auth";
-import { BrowserRouter as Router, Routes, Route, Outlet, Navigate } from 'react-router-dom';
-import { IntegrationProvider } from "./context/Integrations";
-import LandingPageChangelog from "./pages/LandingPage_changelog";
+import { Navigate, Outlet, Route, BrowserRouter as Router, Routes } from 'react-router-dom';
 import Spin from "./components/loading/Spin";
-import Home from "./pages/Home";
-import ActivityFeed from "./pages/ActivityFeed";
 import Sidebar from "./components/Sidebar";
-import Login from "./pages/Login";
-import Integrations from "./pages/Integrations";
+import { IntegrationProvider } from "./context/Integrations";
+import ActivityFeed from "./pages/ActivityFeed";
 import Automations from "./pages/Automations/Automations";
-import OAuthSuccess from "./pages/OAuthSuccess";
+import AutomationsList from "./pages/Automations/AutomationsList";
+import Home from "./pages/Home";
+import Integrations from "./pages/Integrations";
+import LandingPageChangelog from "./pages/LandingPage_changelog";
+import Login from "./pages/Login";
 import OAuthError from "./pages/OAuthError";
+import OAuthSuccess from "./pages/OAuthSuccess";
+import { AuthProvider, useAuth } from "./services/auth";
 
 function App() {
   return (
@@ -23,9 +24,9 @@ function App() {
             <Route index element={<Home />} />
             <Route path="activity" element={<ActivityFeed />} />
             <Route path="integrations" element={<Integrations />} />
-            {import.meta.env.VITE_FEATURE_AUTOMATIONS === 'true' && (
-              <Route path="automations" element={<Automations />} />
-            )}
+            <Route path="automations" element={<AutomationsList />} />
+            <Route path="automations/new" element={<Automations />} />
+            <Route path="automations/:id" element={<Automations />} />
           </Route>
           <Route path="/changelog" element={<LandingPageChangelog />} />
           <Route path="/oauth/success" element={<OAuthSuccess />} />
