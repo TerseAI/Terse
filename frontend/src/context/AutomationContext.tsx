@@ -1,6 +1,6 @@
-import { createContext, useContext, useState, useEffect } from "react";
-import { Integration } from "./Integrations";
+import { createContext, useContext, useEffect, useState } from "react";
 import { BackendProvider } from "../services/backend";
+import { Integration } from "./Integrations";
 
 export interface Input {
     integration: Integration;
@@ -29,49 +29,89 @@ export interface Prompt {
 }
 
 type AutomationContextType = {
+    automationId: string | null;
     name: string;
     inputs: Input[];
     output: Output | undefined;
     prompt: Prompt | undefined;
+    isActive: boolean;
+    isLoading: boolean;
     setName: (name: string) => void;
     setInputs: (inputs: Input[]) => void;
     setOutput: (output: Output | undefined) => void;
     setPrompt: (prompt: Prompt | undefined) => void;
+    setIsActive: (isActive: boolean) => void;
+    loadAutomation: (id: string) => Promise<void>;
+    reset: () => void;
 }
 
 const AutomationContext = createContext<AutomationContextType | undefined>(undefined);
 
-export function AutomationProvider({ children }: { children: React.ReactNode }) {
+export function AutomationProvider({ children, automationId }: { children: React.ReactNode; automationId?: string }) {
+    const [id, setId] = useState<string | null>(automationId || null);
     const [inputs, setInputs] = useState<Input[]>([]);
     const [output, setOutput] = useState<Output | undefined>(undefined);
     const [prompt, setPrompt] = useState<Prompt | undefined>(undefined);
     const [name, setName] = useState<string>('Untitled Automation');
+    const [isActive, setIsActive] = useState<boolean>(true);
+    const [isLoading, setIsLoading] = useState<boolean>(false);
 
-    // Load automation on mount
-    useEffect(() => {
-        const loadAutomation = async () => {
-            try {
-                const automation = await BackendProvider.getUserAutomation();
-                if (automation) {
-                    setName(automation.name);
-                    setInputs(automation.inputs.map(input => ({
-                        integration: input.integration as Integration
-                    })));
-                    setOutput(automation.output ? {
-                        integration: automation.output.integration as Integration
-                    } : undefined);
-                    setPrompt(automation.prompt);
-                }
-            } catch (error) {
-                console.error('Error loading automation:', error);
+    const loadAutomation = async (automationId: string) => {
+        try {
+            setIsLoading(true);
+            const automation = await BackendProvider.getAutomationById(automationId);
+            if (automation) {
+                setId(automation.id);
+                setName(automation.name);
+                setInputs(automation.inputs.map(input => ({
+                    integration: input.integration as Integration
+                })));
+                setOutput(automation.output ? {
+                    integration: automation.output.integration as Integration
+                } : undefined);
+                setPrompt(automation.prompt);
+                setIsActive(automation.isActive);
             }
-        };
+        } catch (error) {
+            console.error('Error loading automation:', error);
+        } finally {
+            setIsLoading(false);
+        }
+    };
 
-        loadAutomation();
-    }, []);
+    const reset = () => {
+        setId(null);
+        setName('Untitled Automation');
+        setInputs([]);
+        setOutput(undefined);
+        setPrompt(undefined);
+        setIsActive(true);
+    };
+
+    // Load automation on mount if ID is provided
+    useEffect(() => {
+        if (automationId) {
+            loadAutomation(automationId);
+        }
+    }, [automationId]);
 
     return (
-        <AutomationContext.Provider value={{ name, inputs, output, prompt, setName, setInputs, setOutput, setPrompt }}>
+        <AutomationContext.Provider value={{
+            automationId: id,
+            name,
+            inputs,
+            output,
+            prompt,
+            isActive,
+            isLoading,
+            setName,
+            setInputs,
+            setOutput,
+            setPrompt,
+            setIsActive,
+            loadAutomation,
+            reset
+        }}>
             {children}
         </AutomationContext.Provider>
     )

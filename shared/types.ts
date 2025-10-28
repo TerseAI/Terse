@@ -111,3 +111,21 @@ export type Automation = {
     inputs: AutomationInput[];
     output?: AutomationOutput;
 };
+
+export type AutomationUpdate = {
+    name?: string;
+    inputs?: AutomationInput[];
+    output?: AutomationOutput;
+    prompt?: AutomationPrompt;
+    isActive?: boolean;
+};
+
+export type AutomationsResponse = {
+    automations: Automation[];
+    pagination: {
+        page: number;
+        limit: number;
+        total: number;
+        totalPages: number;
+    };
+};

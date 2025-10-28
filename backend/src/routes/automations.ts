@@ -59,7 +59,8 @@ async function getIntegrationId(userId: string, integrationType: IntegrationType
     }
 }
 
-export async function getUserAutomation(req: Request, res: Response) {
+// GET /automations - List all automations with pagination
+export async function getUserAutomations(req: Request, res: Response) {
     if (!req.session?.user) {
         res.status(401).json({ error: 'Unauthorized' });
         return;
@@ -67,9 +68,83 @@ export async function getUserAutomation(req: Request, res: Response) {
 
     const userId = req.session.user.id;
 
+    // Parse pagination parameters
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 10;
+    const skip = (page - 1) * limit;
+
+    // Optional filter by active status
+    const isActive = req.query.isActive === 'true' ? true : req.query.isActive === 'false' ? false : undefined;
+
+    try {
+        const prisma = db();
+
+        const where = {
+            user_id: userId,
+            ...(isActive !== undefined && { is_active: isActive })
+        };
+
+        // Get total count for pagination
+        const total = await prisma.automations.count({ where });
+
+        // Get paginated results
+        const automations = await prisma.automations.findMany({
+            where,
+            include: {
+                prompt: true,
+                inputs: true,
+                output: true
+            },
+            orderBy: { created_at: 'desc' },
+            skip,
+            take: limit
+        });
+
+        // Transform the data to match frontend format
+        const response = {
+            automations: automations.map(automation => ({
+                id: automation.id,
+                name: automation.name,
+                isActive: automation.is_active,
+                prompt: automation.prompt ? { text: automation.prompt.content } : undefined,
+                inputs: automation.inputs.map(input => ({
+                    integration: input.integration_type.toLowerCase()
+                })),
+                output: automation.output ? {
+                    integration: automation.output.integration_type.toLowerCase()
+                } : undefined
+            })),
+            pagination: {
+                page,
+                limit,
+                total,
+                totalPages: Math.ceil(total / limit)
+            }
+        };
+
+        res.status(200).json(response);
+    } catch (error) {
+        console.error('Error fetching automations:', error);
+        res.status(500).json({ error: 'Failed to fetch automations' });
+    }
+}
+
+// GET /automations/:id - Get single automation by ID
+export async function getUserAutomation(req: Request, res: Response) {
+    if (!req.session?.user) {
+        res.status(401).json({ error: 'Unauthorized' });
+        return;
+    }
+
+    const userId = req.session.user.id;
+    const automationId = req.params.id;
+
     try {
         const automation = await db().automations.findFirst({
-            where: { user_id: userId },
+            where: {
+                id: automationId,
+                user_id: userId
+            },
             include: {
                 prompt: true,
                 inputs: true,
@@ -78,7 +153,7 @@ export async function getUserAutomation(req: Request, res: Response) {
         });
 
         if (!automation) {
-            res.status(200).json(null);
+            res.status(404).json({ error: 'Automation not found' });
             return;
         }
 
@@ -108,8 +183,98 @@ interface SaveAutomationRequest {
     inputs: AutomationInput[];
     output: AutomationOutput;
     prompt: AutomationPrompt;
+    isActive?: boolean;
 }
 
+// POST /automations - Create a new automation
+export async function createAutomation(req: Request, res: Response) {
+    if (!req.session?.user) {
+        res.status(401).json({ error: 'Unauthorized' });
+        return;
+    }
+
+    const userId = req.session.user.id;
+    const { name, inputs, output, prompt, isActive = true } = req.body as SaveAutomationRequest;
+
+    // Validate request
+    if (!name || !inputs || inputs.length === 0 || !output || !prompt?.text) {
+        res.status(400).json({ error: 'Invalid request: missing required fields' });
+        return;
+    }
+
+    try {
+        const prisma = db();
+
+        // Create new automation
+        const automation = await prisma.$transaction(async (tx) => {
+            // Create automation
+            const newAutomation = await tx.automations.create({
+                data: {
+                    user_id: userId,
+                    name,
+                    is_active: isActive
+                }
+            });
+
+            // Create prompt
+            await tx.automation_prompts.create({
+                data: {
+                    automation_id: newAutomation.id,
+                    content: prompt.text
+                }
+            });
+
+            // Create inputs
+            for (const input of inputs) {
+                const integrationType = integrationTypeMap[input.integration];
+                if (!integrationType) {
+                    throw new Error(`Unknown integration type: ${input.integration}`);
+                }
+
+                const integrationId = await getIntegrationId(userId, integrationType);
+                if (!integrationId) {
+                    throw new Error(`Integration ${input.integration} not found for user`);
+                }
+
+                await tx.automation_inputs.create({
+                    data: {
+                        automation_id: newAutomation.id,
+                        integration_type: integrationType,
+                        integration_id: integrationId
+                    }
+                });
+            }
+
+            // Create output
+            const outputIntegrationType = integrationTypeMap[output.integration];
+            if (!outputIntegrationType) {
+                throw new Error(`Unknown integration type: ${output.integration}`);
+            }
+
+            const outputIntegrationId = await getIntegrationId(userId, outputIntegrationType);
+            if (!outputIntegrationId) {
+                throw new Error(`Integration ${output.integration} not found for user`);
+            }
+
+            await tx.automation_outputs.create({
+                data: {
+                    automation_id: newAutomation.id,
+                    integration_type: outputIntegrationType,
+                    integration_id: outputIntegrationId
+                }
+            });
+
+            return newAutomation;
+        });
+
+        res.status(201).json({ success: true, id: automation.id });
+    } catch (error) {
+        console.error('Error creating automation:', error);
+        res.status(500).json({ error: 'Failed to create automation', details: (error as Error).message });
+    }
+}
+
+// Legacy endpoint - kept for backward compatibility
 export async function saveAutomation(req: Request, res: Response) {
     if (!req.session?.user) {
         res.status(401).json({ error: 'Unauthorized' });
@@ -276,5 +441,164 @@ export async function saveAutomation(req: Request, res: Response) {
     } catch (error) {
         console.error('Error saving automation:', error);
         res.status(500).json({ error: 'Failed to save automation', details: (error as Error).message });
+    }
+}
+
+// PATCH /automations/:id - Update an existing automation
+export async function updateAutomation(req: Request, res: Response) {
+    if (!req.session?.user) {
+        res.status(401).json({ error: 'Unauthorized' });
+        return;
+    }
+
+    const userId = req.session.user.id;
+    const automationId = req.params.id;
+    const { name, inputs, output, prompt, isActive } = req.body as Partial<SaveAutomationRequest>;
+
+    try {
+        const prisma = db();
+
+        // Check if automation exists and belongs to user
+        const existingAutomation = await prisma.automations.findFirst({
+            where: {
+                id: automationId,
+                user_id: userId
+            }
+        });
+
+        if (!existingAutomation) {
+            res.status(404).json({ error: 'Automation not found' });
+            return;
+        }
+
+        // Update automation in transaction
+        await prisma.$transaction(async (tx) => {
+            // Update basic fields if provided
+            if (name !== undefined || isActive !== undefined) {
+                await tx.automations.update({
+                    where: { id: automationId },
+                    data: {
+                        ...(name !== undefined && { name }),
+                        ...(isActive !== undefined && { is_active: isActive })
+                    }
+                });
+            }
+
+            // Update prompt if provided
+            if (prompt?.text) {
+                await tx.automation_prompts.upsert({
+                    where: { automation_id: automationId },
+                    update: { content: prompt.text },
+                    create: {
+                        automation_id: automationId,
+                        content: prompt.text
+                    }
+                });
+            }
+
+            // Update inputs if provided
+            if (inputs && inputs.length > 0) {
+                // Delete old inputs
+                await tx.automation_inputs.deleteMany({
+                    where: { automation_id: automationId }
+                });
+
+                // Create new inputs
+                for (const input of inputs) {
+                    const integrationType = integrationTypeMap[input.integration];
+                    if (!integrationType) {
+                        throw new Error(`Unknown integration type: ${input.integration}`);
+                    }
+
+                    const integrationId = await getIntegrationId(userId, integrationType);
+                    if (!integrationId) {
+                        throw new Error(`Integration ${input.integration} not found for user`);
+                    }
+
+                    await tx.automation_inputs.create({
+                        data: {
+                            automation_id: automationId,
+                            integration_type: integrationType,
+                            integration_id: integrationId
+                        }
+                    });
+                }
+            }
+
+            // Update output if provided
+            if (output) {
+                const outputIntegrationType = integrationTypeMap[output.integration];
+                if (!outputIntegrationType) {
+                    throw new Error(`Unknown integration type: ${output.integration}`);
+                }
+
+                const outputIntegrationId = await getIntegrationId(userId, outputIntegrationType);
+                if (!outputIntegrationId) {
+                    throw new Error(`Integration ${output.integration} not found for user`);
+                }
+
+                // Delete old output
+                const existingOutput = await tx.automation_outputs.findUnique({
+                    where: { automation_id: automationId }
+                });
+                if (existingOutput) {
+                    await tx.automation_outputs.delete({
+                        where: { automation_id: automationId }
+                    });
+                }
+
+                // Create new output
+                await tx.automation_outputs.create({
+                    data: {
+                        automation_id: automationId,
+                        integration_type: outputIntegrationType,
+                        integration_id: outputIntegrationId
+                    }
+                });
+            }
+        });
+
+        res.status(200).json({ success: true, id: automationId });
+    } catch (error) {
+        console.error('Error updating automation:', error);
+        res.status(500).json({ error: 'Failed to update automation', details: (error as Error).message });
+    }
+}
+
+// DELETE /automations/:id - Delete an automation
+export async function deleteAutomation(req: Request, res: Response) {
+    if (!req.session?.user) {
+        res.status(401).json({ error: 'Unauthorized' });
+        return;
+    }
+
+    const userId = req.session.user.id;
+    const automationId = req.params.id;
+
+    try {
+        const prisma = db();
+
+        // Check if automation exists and belongs to user
+        const existingAutomation = await prisma.automations.findFirst({
+            where: {
+                id: automationId,
+                user_id: userId
+            }
+        });
+
+        if (!existingAutomation) {
+            res.status(404).json({ error: 'Automation not found' });
+            return;
+        }
+
+        // Delete automation (cascade will delete related records)
+        await prisma.automations.delete({
+            where: { id: automationId }
+        });
+
+        res.status(200).json({ success: true, message: 'Automation deleted successfully' });
+    } catch (error) {
+        console.error('Error deleting automation:', error);
+        res.status(500).json({ error: 'Failed to delete automation', details: (error as Error).message });
     }
 }
