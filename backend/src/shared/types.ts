@@ -93,10 +93,12 @@ export type IntegrationsStatus = {
 
 export type AutomationInput = {
     integration: string;
+    integrationId?: string;
 };
 
 export type AutomationOutput = {
     integration: string;
+    integrationId?: string;
 };
 
 export type AutomationPrompt = {

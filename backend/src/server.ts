@@ -47,13 +47,10 @@ import {
   setLinearApiKey,
 } from "./routes/linear";
 import {
-  deleteNotionIntegration,
-  getNotionIntegration,
-  setNotionIntegration,
+  getNotionDatabases,
   getNotionOAuthUrl,
   notionOAuthCallback,
-  getNotionDatabases,
-  setNotionDatabase,
+  setNotionDatabase
 } from "./routes/notion";
 import { User as TicketUser } from "./shared/TicketSystem";
 import { handleSlackEvent } from "./slack/eventHandler";
@@ -240,19 +237,6 @@ app.get("/notion/get-databases", authMiddleware, async (req, res) => {
 
 app.post("/notion/set-database", authMiddleware, async (req, res) => {
   setNotionDatabase(req, res);
-});
-
-// Legacy endpoints (keeping for backward compatibility, but will be replaced by OAuth)
-app.post("/notion/set-integration", authMiddleware, async (req, res) => {
-  setNotionIntegration(req, res);
-});
-
-app.get("/notion/get-integration", authMiddleware, async (req, res) => {
-  getNotionIntegration(req, res);
-});
-
-app.delete("/notion/delete-integration", authMiddleware, async (req, res) => {
-  deleteNotionIntegration(req, res);
 });
 
 // MARK: LINEAR
