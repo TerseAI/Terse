@@ -28,7 +28,6 @@ import {
 } from "./routes/githubApp";
 import {
   deleteGmailIntegration,
-  getGmailIntegration,
   getGmailOAuthUrl,
   gmailCallback,
   handleGmailWebhook,
@@ -47,10 +46,8 @@ import {
   setLinearApiKey,
 } from "./routes/linear";
 import {
-  getNotionDatabases,
   getNotionOAuthUrl,
-  notionOAuthCallback,
-  setNotionDatabase
+  notionOAuthCallback
 } from "./routes/notion";
 import { User as TicketUser } from "./shared/TicketSystem";
 import { handleSlackEvent } from "./slack/eventHandler";
@@ -207,10 +204,6 @@ app.get("/gmail/callback", async (req, res) => {
   gmailCallback(req, res);
 });
 
-app.get("/gmail/get-integration", authMiddleware, async (req, res) => {
-  getGmailIntegration(req, res);
-});
-
 app.delete("/gmail/delete-integration", authMiddleware, async (req, res) => {
   deleteGmailIntegration(req, res);
 });
@@ -228,15 +221,6 @@ app.get("/notion/get-oauth-url", authMiddleware, async (req, res) => {
 
 app.get("/notion/oauth/callback", async (req, res) => {
   notionOAuthCallback(req, res);
-});
-
-// Database management endpoints
-app.get("/notion/get-databases", authMiddleware, async (req, res) => {
-  getNotionDatabases(req, res);
-});
-
-app.post("/notion/set-database", authMiddleware, async (req, res) => {
-  setNotionDatabase(req, res);
 });
 
 // MARK: LINEAR

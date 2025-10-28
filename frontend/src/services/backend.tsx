@@ -1,7 +1,7 @@
-import { ModelEvent, ModelRequest } from "../shared/ModelEvents";
-import { User } from "../types/User";
-import { IntegrationsStatus, GithubIntegration, LinearIntegration, JiraIntegration, SlackIntegration, GmailIntegration, NotionIntegration, NotionDatabasesResponse, Automation, AutomationInput, AutomationOutput, AutomationPrompt } from "../shared/types";
 import axios from 'axios';
+import { ModelEvent, ModelRequest } from "../shared/ModelEvents";
+import { Automation, AutomationInput, AutomationOutput, AutomationPrompt, GithubIntegration, IntegrationsStatus, JiraIntegration, LinearIntegration, SlackIntegration } from "../shared/types";
+import { User } from "../types/User";
 
 const backendBaseUrl = '/api';
 
@@ -19,12 +19,12 @@ interface BackendService {
     /**
      * Retrieves github login URL
      */
-    getGithubLogInURL(): Promise<{url: string}>;
+    getGithubLogInURL(): Promise<{ url: string }>;
 
     /**
      * Retrieves google login URL
      */
-    getGoogleLogInURL(): Promise<{url: string}>;
+    getGoogleLogInURL(): Promise<{ url: string }>;
 
     /**
      * Retrieves users by their IDs
@@ -116,11 +116,6 @@ interface BackendService {
     deleteJiraApiKey(): Promise<void>;
 
     /**
-     * Gets the Gmail integration
-     */
-    getGmailIntegration(): Promise<GmailIntegration>;
-
-    /**
      * Requests a Gmail OAuth URL
      */
     requestGmailOAuthUrl(): Promise<{ url: string }>;
@@ -129,17 +124,6 @@ interface BackendService {
      * Deletes the Gmail integration
      */
     deleteGmailIntegration(): Promise<void>;
-
-    /**
-     * Gets the Notion integration
-     */
-    getNotionIntegration(): Promise<NotionIntegration>;
-
-    /**
-     * Sets the Notion integration
-     */
-    setNotionIntegration(integrationToken: string, databaseId: string): Promise<void>;
-
     /**
      * Deletes the Notion integration
      */
@@ -149,16 +133,6 @@ interface BackendService {
      * Gets the Notion OAuth URL
      */
     requestNotionOAuthUrl(): Promise<{ url: string }>;
-
-    /**
-     * Gets available Notion databases
-     */
-    getNotionDatabases(): Promise<NotionDatabasesResponse>;
-
-    /**
-     * Sets the selected Notion database
-     */
-    setNotionDatabase(databaseId: string): Promise<void>;
 
     /**
      * Requests a session socket token
@@ -203,7 +177,7 @@ export const BackendProvider: BackendService = {
     },
 
     getGithubLogInURL: () => {
-        return axios.get<{url: string}>(`${backendBaseUrl}/auth/github/login-url`, { withCredentials: true })
+        return axios.get<{ url: string }>(`${backendBaseUrl}/auth/github/login-url`, { withCredentials: true })
             .then(response => response.data)
             .catch(error => {
                 console.error('Error getting GitHub login URL:', error);
@@ -212,7 +186,7 @@ export const BackendProvider: BackendService = {
     },
 
     getGoogleLogInURL: () => {
-        return axios.get<{url: string}>(`${backendBaseUrl}/auth/google/login-url`, { withCredentials: true })
+        return axios.get<{ url: string }>(`${backendBaseUrl}/auth/google/login-url`, { withCredentials: true })
             .then(response => response.data)
             .catch(error => {
                 console.error('Error getting Google login URL:', error);
@@ -386,15 +360,6 @@ export const BackendProvider: BackendService = {
             });
     },
 
-    getGmailIntegration: () => {
-        return axios.get(`${backendBaseUrl}/gmail/get-integration`, { withCredentials: true })
-            .then(response => response.data)
-            .catch(error => {
-                console.error('Error getting Gmail integration:', error);
-                throw error;
-            });
-    },
-
     requestGmailOAuthUrl: () => {
         return axios.get(`${backendBaseUrl}/gmail/get-oauth-url`, { withCredentials: true })
             .then(response => response.data)
@@ -413,24 +378,6 @@ export const BackendProvider: BackendService = {
             });
     },
 
-    getNotionIntegration: () => {
-        return axios.get(`${backendBaseUrl}/notion/get-integration`, { withCredentials: true })
-            .then(response => response.data)
-            .catch(error => {
-                console.error('Error getting Notion integration:', error);
-                throw error;
-            });
-    },
-
-    setNotionIntegration: (integrationToken: string, databaseId: string) => {
-        return axios.post(`${backendBaseUrl}/notion/set-integration`, { integrationToken, databaseId }, { withCredentials: true })
-            .then(response => response.data)
-            .catch(error => {
-                console.error('Error setting Notion integration:', error);
-                throw error;
-            });
-    },
-
     deleteNotionIntegration: () => {
         return axios.delete(`${backendBaseUrl}/notion/delete-integration`, { withCredentials: true })
             .then(response => response.data)
@@ -445,24 +392,6 @@ export const BackendProvider: BackendService = {
             .then(response => response.data)
             .catch(error => {
                 console.error('Error requesting Notion OAuth URL:', error);
-                throw error;
-            });
-    },
-
-    getNotionDatabases: () => {
-        return axios.get<NotionDatabasesResponse>(`${backendBaseUrl}/notion/get-databases`, { withCredentials: true })
-            .then(response => response.data)
-            .catch(error => {
-                console.error('Error getting Notion databases:', error);
-                throw error;
-            });
-    },
-
-    setNotionDatabase: (databaseId: string) => {
-        return axios.post(`${backendBaseUrl}/notion/set-database`, { databaseId }, { withCredentials: true })
-            .then(response => response.data)
-            .catch(error => {
-                console.error('Error setting Notion database:', error);
                 throw error;
             });
     },

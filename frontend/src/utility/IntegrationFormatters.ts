@@ -1,4 +1,8 @@
 import { Integration } from "../context/Integrations";
+import {
+    getIntegrationName,
+    getIntegrationDescription
+} from "./IntegrationUtils";
 
 export interface IntegrationInstance {
     id: string;
@@ -10,16 +14,16 @@ export interface IntegrationInstance {
     databaseId?: string;
     databaseName?: string;
     // Linear
-    teamId?: string;
-    teamName?: string;
+    linearTeamId?: string;
+    linearTeamName?: string;
     // Jira
     baseUrl?: string;
     siteName?: string;
     projectKey?: string;
     projectName?: string;
     // Slack
-    teamId?: string;
-    teamName?: string;
+    slackTeamId?: string;
+    slackTeamName?: string;
     // GitHub
     owner?: string;
     repositoryName?: string;
@@ -43,8 +47,8 @@ export function formatIntegrationDisplay(
             return integration.databaseName || integration.databaseId || 'Unknown Database';
 
         case Integration.LINEAR:
-            if (integration.workspaceName && integration.teamName) {
-                return `${integration.workspaceName} (${integration.teamName})`;
+            if (integration.workspaceName && integration.linearTeamName) {
+                return `${integration.workspaceName} (${integration.linearTeamName})`;
             }
             return integration.workspaceName || 'Unknown Workspace';
 
@@ -58,7 +62,7 @@ export function formatIntegrationDisplay(
             return integration.baseUrl || 'Unknown Site';
 
         case Integration.SLACK:
-            return integration.teamName || 'Unknown Workspace';
+            return integration.slackTeamName || 'Unknown Workspace';
 
         case Integration.GITHUB:
             if (integration.owner && integration.repositoryName) {
@@ -73,44 +77,16 @@ export function formatIntegrationDisplay(
 
 /**
  * Gets a short display name for an integration type
+ * @deprecated Use getIntegrationName from IntegrationUtils instead
  */
 export function getIntegrationTypeName(type: Integration): string {
-    switch (type) {
-        case Integration.GMAIL:
-            return 'Gmail';
-        case Integration.NOTION:
-            return 'Notion';
-        case Integration.LINEAR:
-            return 'Linear';
-        case Integration.JIRA:
-            return 'Jira';
-        case Integration.SLACK:
-            return 'Slack';
-        case Integration.GITHUB:
-            return 'GitHub';
-        default:
-            return type;
-    }
+    return getIntegrationName(type);
 }
 
 /**
  * Gets a description for an integration type
+ * @deprecated Use getIntegrationDescription from IntegrationUtils instead
  */
 export function getIntegrationTypeDescription(type: Integration): string {
-    switch (type) {
-        case Integration.GMAIL:
-            return 'Monitor incoming emails';
-        case Integration.NOTION:
-            return 'Update living documents';
-        case Integration.LINEAR:
-            return 'Track ticket updates';
-        case Integration.JIRA:
-            return 'Monitor issue changes';
-        case Integration.SLACK:
-            return 'Listen to messages';
-        case Integration.GITHUB:
-            return 'Watch commits and PRs';
-        default:
-            return '';
-    }
+    return getIntegrationDescription(type);
 }
