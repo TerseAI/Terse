@@ -71,7 +71,7 @@ function Content() {
 function AppLayout() {
   return (
     <div className="h-full grid grid-cols-20">
-      <div className="col-span-2 h-full bg-[theme(background-elevated)] rounded-md flex-shrink-0 ">
+      <div className="col-span-2 h-full bg-[theme(background-elevated)] flex-shrink-0 ">
         <Sidebar />
       </div>
       <div className="col-span-18 min-w-0 pl-8 overflow-y-auto pr-30">
