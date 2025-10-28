@@ -195,7 +195,7 @@ interface BackendService {
     /**
      * Gets all automations for the user with pagination
      */
-    getUserAutomations(page?: number, limit?: number, isActive?: boolean): Promise<AutomationsResponse>;
+    getUserAutomations(page?: number, limit?: number, isActive?: boolean, search?: string): Promise<AutomationsResponse>;
 
     /**
      * Gets a single automation by ID
@@ -532,12 +532,15 @@ export const BackendProvider: BackendService = {
             });
     },
 
-    getUserAutomations: (page = 1, limit = 10, isActive?: boolean) => {
+    getUserAutomations: (page = 1, limit = 10, isActive?: boolean, search?: string) => {
         const params = new URLSearchParams();
         params.append('page', page.toString());
         params.append('limit', limit.toString());
         if (isActive !== undefined) {
             params.append('isActive', isActive.toString());
+        }
+        if (search) {
+            params.append('search', search);
         }
 
         return axios.get<AutomationsResponse>(`${backendBaseUrl}/automations?${params.toString()}`, { withCredentials: true })

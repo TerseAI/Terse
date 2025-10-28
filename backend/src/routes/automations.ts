@@ -76,12 +76,16 @@ export async function getUserAutomations(req: Request, res: Response) {
     // Optional filter by active status
     const isActive = req.query.isActive === 'true' ? true : req.query.isActive === 'false' ? false : undefined;
 
+    // Optional search by name
+    const search = req.query.search as string | undefined;
+
     try {
         const prisma = db();
 
         const where = {
             user_id: userId,
-            ...(isActive !== undefined && { is_active: isActive })
+            ...(isActive !== undefined && { is_active: isActive }),
+            ...(search && { name: { contains: search, mode: 'insensitive' as const } })
         };
 
         // Get total count for pagination
