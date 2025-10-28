@@ -54,6 +54,13 @@ export type AutomationOutput = automation_outputs;
 
 export type NotionIntegration = notion_integrations;
 
+// Extended type for Automation with included relations (for queries with include)
+export type AutomationWithRelations = Automation & {
+  prompt: AutomationPrompt | null;
+  inputs: AutomationInput[];
+  output?: AutomationOutput | null;
+};
+
 // Re-export the original types too
 export {
   users,
