@@ -1,5 +1,5 @@
 import { Dialog, DialogPanel, DialogTitle } from "@headlessui/react";
-import { Integration, useIntegrations } from "../../../context/Integrations";
+import { Integration } from "../../../context/Integrations";
 import { getAllInputIntegrationMetadata } from "../../../utility/IntegrationUtils";
 import { IconForInputType } from "./Integration";
 
@@ -10,15 +10,9 @@ interface AddInputModalProps {
 }
 
 export function AddInputModal({ isOpen, onClose, onSelectIntegration }: AddInputModalProps) {
-    const { integrations } = useIntegrations();
 
     // Get all integration metadata with input-specific descriptions
     const allIntegrations = getAllInputIntegrationMetadata();
-
-    // Filter to only show integrations the user has configured
-    const availableIntegrations = allIntegrations.filter(integration =>
-        integrations.includes(integration.type)
-    );
 
     return (
         <Dialog open={isOpen} onClose={onClose} className="relative z-50">
@@ -34,7 +28,7 @@ export function AddInputModal({ isOpen, onClose, onSelectIntegration }: AddInput
                     </p>
 
                     <div className="grid grid-cols-2 gap-3">
-                        {availableIntegrations.map((integration) => (
+                        {allIntegrations.map((integration) => (
                             <button
                                 key={integration.type}
                                 onClick={() => onSelectIntegration(integration.type)}

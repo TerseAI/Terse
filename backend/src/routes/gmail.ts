@@ -88,7 +88,7 @@ export async function gmailCallback(req: Request, res: Response) {
   console.log("Gmail OAuth callback received");
 
   if (!code || !state) {
-    return res.status(400).send("Invalid OAuth state");
+    return res.redirect(`${process.env.FRONTEND_URL}/oauth/error`);
   }
 
   try {
@@ -97,7 +97,7 @@ export async function gmailCallback(req: Request, res: Response) {
     const userId = stateData.userId;
 
     if (!userId) {
-      return res.status(400).send("Invalid state: missing user ID");
+      return res.redirect(`${process.env.FRONTEND_URL}/oauth/error`);
     }
 
     const oauth2Client = getOAuth2Client();
@@ -107,7 +107,7 @@ export async function gmailCallback(req: Request, res: Response) {
     oauth2Client.setCredentials(tokens);
 
     if (!tokens.access_token || !tokens.refresh_token) {
-      return res.status(400).send("Failed to obtain tokens");
+      return res.redirect(`${process.env.FRONTEND_URL}/oauth/error`);
     }
 
     // Get user's email address
@@ -116,7 +116,7 @@ export async function gmailCallback(req: Request, res: Response) {
     const emailAddress = profile.data.emailAddress;
 
     if (!emailAddress) {
-      return res.status(400).send("Failed to get email address");
+      return res.redirect(`${process.env.FRONTEND_URL}/oauth/error`);
     }
 
     // Set up Gmail watch
@@ -132,7 +132,7 @@ export async function gmailCallback(req: Request, res: Response) {
     const expiration = watchResponse.data.expiration;
 
     if (!historyId || !expiration) {
-      return res.status(500).send("Failed to set up Gmail watch");
+      return res.redirect(`${process.env.FRONTEND_URL}/oauth/error`);
     }
 
     // Calculate token expiry
@@ -172,11 +172,11 @@ export async function gmailCallback(req: Request, res: Response) {
 
     console.log(`Gmail integration activated for ${emailAddress}`);
 
-    // Redirect to frontend
-    res.redirect(GMAIL_FRONTEND_REDIRECT || "");
+    // Redirect to success page which will auto-close the popup
+    res.redirect(`${process.env.FRONTEND_URL}/oauth/success`);
   } catch (error) {
     console.error("Gmail OAuth error:", error);
-    res.status(500).send("Authentication failed");
+    res.redirect(`${process.env.FRONTEND_URL}/oauth/error`);
   }
 }
 

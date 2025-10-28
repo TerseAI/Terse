@@ -1,24 +1,10 @@
 import { createContext, useContext, useState, ReactNode, useEffect, useRef } from 'react';
 import { BackendProvider } from '../services/backend';
+import { Integration } from '../types/Integration';
 import { INTEGRATION_KEY_MAP } from '../utility/IntegrationUtils';
 
-export enum Integration {
-    // Ticketing systems
-    JIRA = 'jira',
-    LINEAR = 'linear',
-
-    // Messaging systems
-    SLACK = 'slack',
-
-    // Source control
-    GITHUB = 'github',
-
-    // Note-taking systems
-    NOTION = 'notion',
-    
-    // Mail
-    GMAIL = 'gmail',
-}
+// Re-export Integration for backwards compatibility
+export { Integration };
 
 type IntegrationContextType = {
     integrations: Integration[];
