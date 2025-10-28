@@ -19,7 +19,7 @@ function Sidebar() {
     };
 
     return (
-        <div className="flex flex-col h-full p-2 border border-[theme(border)]">
+        <div className="flex flex-col h-full p-2">
             <div className="flex items-center mb-8">
                 <div className="h-12 w-12 flex items-center">
                     <img src="/terse.png" alt="Logo" className="w-10 h-10" />
