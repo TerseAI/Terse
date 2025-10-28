@@ -586,18 +586,22 @@ export async function handleGmailWebhook(req: Request, res: Response) {
                         console.log(chalk.cyan(`  Snippet: ${parsedEmail.snippet}`));
 
                         const eventProcessor = new EventProcessor(new GmailEvent(parsedEmail), user);
-                        const result = await eventProcessor.process();
+                        const results = await eventProcessor.process();
 
-                        if (result.success) {
-                            console.log(chalk.green('Email processed successfully'));
-                            console.log(chalk.green('Automation:', result.automation?.name));
-
-                            // Track the most recent email date
-                            if (!mostRecentEmailDate || emailDate > mostRecentEmailDate) {
-                                mostRecentEmailDate = emailDate;
+                        // Process results from all automations
+                        let hasSuccess = false;
+                        for (const result of results) {
+                            if (result.success) {
+                                console.log(chalk.green(`Email processed successfully by automation: ${result.automation?.name}`));
+                                hasSuccess = true;
+                            } else {
+                                console.log(chalk.gray(`Automation "${result.automation?.name || 'unknown'}" skipped: ${result.message}`));
                             }
-                        } else {
-                            console.log(chalk.red('Email processing failed:', result.message));
+                        }
+
+                        // Track the most recent email date if any automation succeeded
+                        if (hasSuccess && (!mostRecentEmailDate || emailDate > mostRecentEmailDate)) {
+                            mostRecentEmailDate = emailDate;
                         }
                     }
                 }
