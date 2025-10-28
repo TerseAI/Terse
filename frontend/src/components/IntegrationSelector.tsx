@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { Integration } from '../context/Integrations';
 import { BackendProvider } from '../services/backend';
 import { formatIntegrationDisplay, getIntegrationTypeName } from '../utility/IntegrationFormatters';
+import DropdownSelect from './ui/DropdownSelect';
 
 interface IntegrationInstance {
     id: string;
@@ -146,24 +147,26 @@ export function IntegrationSelector({
             </div>
         );
     }
+
+    const connectionSelections = integrations.map((integration) => ({
+        label: formatIntegrationDisplay(integration, integrationType),
+        value: integration.id
+    }));
+    const selectedOption = connectionSelections.find(option => option.value === selectedIntegrationId) || connectionSelections[0];
+    const statusOptions = connectionSelections;
+    const setSelected = (selectedOption: string) => onSelect(selectedOption);
+
     return (
         <div className="flex flex-col gap-3">
             <div className="flex flex-col gap-1.5">
                 <label className="text-sm font-medium text-[theme(text-primary)]">
                     {label}
                 </label>
-                <select
-                    value={selectedIntegrationId || ''}
-                    onChange={(e) => onSelect(e.target.value)}
-                    className="w-full px-3 py-2.5 bg-[theme(background-elevated)] border border-[theme(border)] rounded-lg text-[theme(text-primary)] focus:outline-none focus:border-[theme(--color-accent)] focus:ring-1 focus:ring-[theme(--color-accent)] transition-all"
-                >
-                    <option value="">-- Select {getIntegrationTypeName(integrationType)} --</option>
-                    {integrations.map((integration) => (
-                        <option key={integration.id} value={integration.id}>
-                            {formatIntegrationDisplay(integration, integrationType)}
-                        </option>
-                    ))}
-                </select>
+                <DropdownSelect
+                    statusOptions={statusOptions}
+                    selectedOption={selectedOption}
+                    setSelected={setSelected}
+                />
             </div>
 
             <button
