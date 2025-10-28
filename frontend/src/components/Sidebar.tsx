@@ -20,11 +20,11 @@ function Sidebar() {
 
     return (
         <div className="flex flex-col h-full p-2">
-            <div className="grid grid-cols-[auto_1fr] items-center gap-2 p-2 mb-8">
-                <div className="bg-[theme(--color-accent)] rounded-md h-7 w-7">
-                    <img src="/terse.png" alt="Logo" className="w-7 h-7" />
+            <div className="flex items-center mb-8">
+                <div className="h-12 w-12 flex items-center">
+                    <img src="/terse.png" alt="Logo" className="w-10 h-10" />
                 </div>
-                <h1 className="text-2xl font-bold text-[theme(text-primary)]">Terse AI</h1>
+                <h1 className="text-2xl font-bold text-[theme(text-primary)]">Terse</h1>
             </div>
             <SidebarItem to="/app" isActive={location.pathname === "/app"}>
                 <LinkLabel title="Home" icon={<HomeIcon className="w-5 h-5 text-[theme(--color-accent)]" />} />

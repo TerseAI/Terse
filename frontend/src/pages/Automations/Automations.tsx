@@ -62,7 +62,7 @@ function PromptSection() {
         <div className="flex flex-col gap-3">
             <div className="flex items-center gap-2.5">
                 <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-[theme(background-elevated)]">
-                    <SparklesIcon className="w-5 h-5 text-[theme(--color-accent)]" />
+                    <SparklesIcon className="w-5 h-5 text-[theme(--color-accent-secondary)]" />
                 </div>
                 <div className="flex flex-col">
                     <h2 className="text-base font-semibold text-[theme(text-primary)]">Process With AI</h2>
