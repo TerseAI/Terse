@@ -2,7 +2,8 @@ import { PlusIcon } from '@heroicons/react/24/outline';
 import { useEffect, useState } from 'react';
 import { Integration } from '../context/Integrations';
 import { BackendProvider } from '../services/backend';
-import { formatIntegrationDisplay, getIntegrationTypeName } from '../utility/IntegrationFormatters';
+import { formatIntegrationDisplay } from '../utility/IntegrationFormatters';
+import { getIntegrationInstances, getIntegrationName } from '../utility/IntegrationUtils';
 import DropdownSelect from './ui/DropdownSelect';
 
 interface IntegrationInstance {
@@ -45,30 +46,7 @@ export function IntegrationSelector({
         setIsLoading(true);
         try {
             const response = await BackendProvider.getIntegrationsStatus();
-            const integrationData = response.integrations;
-
-            let instances: IntegrationInstance[] = [];
-
-            switch (integrationType) {
-                case Integration.GMAIL:
-                    instances = integrationData.gmail || [];
-                    break;
-                case Integration.NOTION:
-                    instances = integrationData.notion || [];
-                    break;
-                case Integration.LINEAR:
-                    instances = integrationData.linear || [];
-                    break;
-                case Integration.JIRA:
-                    instances = integrationData.jira || [];
-                    break;
-                case Integration.SLACK:
-                    instances = integrationData.slack || [];
-                    break;
-                case Integration.GITHUB:
-                    instances = integrationData.github || [];
-                    break;
-            }
+            const instances = getIntegrationInstances(response.integrations, integrationType);
 
             setIntegrations(instances);
 
@@ -134,7 +112,7 @@ export function IntegrationSelector({
         return (
             <div className="flex flex-col gap-3 p-4 rounded-lg border border-dashed border-[theme(border)] bg-[theme(background-surface)]">
                 <div className="text-sm text-[theme(text-secondary)]">
-                    No {getIntegrationTypeName(integrationType)} accounts connected
+                    No {getIntegrationName(integrationType)} accounts connected
                 </div>
                 <button
                     onClick={handleConnectNew}
@@ -142,7 +120,7 @@ export function IntegrationSelector({
                     className="flex items-center justify-center gap-2 px-4 py-2 bg-[theme(--color-accent)] text-white rounded-lg hover:brightness-110 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                     <PlusIcon className="w-4 h-4" />
-                    {isConnecting ? 'Connecting...' : `Connect ${getIntegrationTypeName(integrationType)}`}
+                    {isConnecting ? 'Connecting...' : `Connect ${getIntegrationName(integrationType)}`}
                 </button>
             </div>
         );
@@ -175,7 +153,7 @@ export function IntegrationSelector({
                 className="flex items-center justify-center gap-2 px-3 py-2 text-sm bg-[theme(background-surface)] text-[theme(text-secondary)] rounded-lg hover:bg-[theme(background-hover)] hover:text-[theme(text-primary)] transition-all disabled:opacity-50 disabled:cursor-not-allowed border border-[theme(border)]"
             >
                 <PlusIcon className="w-4 h-4" />
-                {isConnecting ? 'Connecting...' : `Connect Another ${getIntegrationTypeName(integrationType)}`}
+                {isConnecting ? 'Connecting...' : `Connect Another ${getIntegrationName(integrationType)}`}
             </button>
 
             {selectedIntegrationId && (

@@ -1,5 +1,6 @@
 import { Dialog, DialogPanel, DialogTitle } from "@headlessui/react";
 import { Integration, useIntegrations } from "../../../context/Integrations";
+import { getAllOutputIntegrationMetadata } from "../../../utility/IntegrationUtils";
 import { IconForInputType } from "./Integration";
 
 interface AddOutputModalProps {
@@ -11,13 +12,8 @@ interface AddOutputModalProps {
 export function AddOutputModal({ isOpen, onClose, onSelectIntegration }: AddOutputModalProps) {
     const { integrations } = useIntegrations();
 
-    const allIntegrations = [
-        { type: Integration.GITHUB, name: "GitHub", description: "Update README or wiki" },
-        { type: Integration.LINEAR, name: "Linear", description: "Update project docs" },
-        { type: Integration.SLACK, name: "Slack", description: "Post to a channel" },
-        { type: Integration.GMAIL, name: "Gmail", description: "Send email summaries" },
-        { type: Integration.NOTION, name: "Notion", description: "Update a living page" },
-    ];
+    // Get all integration metadata with output-specific descriptions
+    const allIntegrations = getAllOutputIntegrationMetadata();
 
     // Filter to only show integrations the user has configured
     const availableIntegrations = allIntegrations.filter(integration =>
