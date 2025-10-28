@@ -21,7 +21,7 @@ const processMarkdown = (text: string) => {
     processed = processed.replace(/^\+ (.*)$/gm, '• $1');
     // Handle numbered lists - simple approach
     processed = processed.replace(/^(\d+)\. (.*)$/gm, '$1. $2');
-    return <span dangerouslySetInnerHTML={{ __html: processed }} />;
+    return <span className="whitespace-pre-line" dangerouslySetInnerHTML={{ __html: processed }} />;
 };
 
 export default processMarkdown;
