@@ -215,9 +215,10 @@ export const notionOAuthCallback = async (req: Request, res: Response) => {
         }
 
         const tokenData = await tokenResponse.json();
-        const { access_token } = tokenData;
+        const { access_token, workspace_id, workspace_name } = tokenData;
 
         console.log(chalk.blue('🔑 Received Notion access token for user'), chalk.yellow(decoded.userId));
+        console.log(chalk.blue('🏢 Workspace:'), chalk.yellow(workspace_name || workspace_id));
 
         // Fetch available databases
         const notionClient = new Client({ auth: access_token });
@@ -239,24 +240,33 @@ export const notionOAuthCallback = async (req: Request, res: Response) => {
             return res.redirect(`${process.env.FRONTEND_URL}/oauth/error`);
         }
 
-        // Store access token and set the first database as default
-        const defaultDatabaseId = databases[0].id;
+        // Create one integration per database
+        for (const database of databases) {
+            // Check if this specific combination already exists
+            const existing = await db().notion_integrations.findFirst({
+                where: {
+                    user_id: decoded.userId,
+                    workspace_id: workspace_id || null,
+                    database_id: database.id
+                }
+            });
 
-        await db().notion_integrations.upsert({
-            where: { user_id: decoded.userId },
-            create: {
-                user_id: decoded.userId,
-                integration_token: access_token,
-                database_id: defaultDatabaseId,
-            },
-            update: {
-                integration_token: access_token,
-                database_id: defaultDatabaseId,
+            if (!existing) {
+                await db().notion_integrations.create({
+                    data: {
+                        user_id: decoded.userId,
+                        workspace_id: workspace_id || null,
+                        workspace_name: workspace_name || null,
+                        database_id: database.id,
+                        database_name: database.title,
+                        integration_token: access_token,
+                    }
+                });
+                console.log(chalk.green('✅ Created Notion integration:'), chalk.yellow(`${workspace_name || 'Workspace'} → ${database.title}`));
             }
-        });
+        }
 
         console.log(chalk.green('✅ Notion OAuth completed for user'), chalk.yellow(decoded.userId));
-        console.log(chalk.blue('📊 Set default database:'), chalk.yellow(databases[0].title));
 
         // Redirect to success page which will auto-close the popup
         res.redirect(`${process.env.FRONTEND_URL}/oauth/success`);
@@ -273,7 +283,7 @@ export const getNotionDatabases = async (req: Request, res: Response) => {
     }
 
     try {
-        const integration = await db().notion_integrations.findUnique({
+        const integration = await db().notion_integrations.findFirst({
             where: { user_id: user.id }
         });
 
