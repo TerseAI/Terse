@@ -17,9 +17,9 @@ body,
 }
 
 @theme {
-    --background: #1B1A17;
-    --background-surface: #242320;
-    --background-elevated: #2E2C28;
+    --background: rgb(33, 33, 33);
+    --background-surface: rgb(48, 48, 48);
+    --background-elevated: rgb(24, 24, 24);
 
     --border: #333333;
 
