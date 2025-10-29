@@ -9,36 +9,50 @@ import { search } from "../searchClient";
 export const setJiraCredentials = async (req: Request, res: Response) => {
     const user = req.session?.user;
     if (!user) {
-        return res.status(401).json({ error: 'Unauthorized' });
+        return res.redirect(`${process.env.FRONTEND_URL}/oauth/error`);
     }
 
-    const { baseUrl, apiKey, email } = req.body;
+    const { baseUrl, apiKey, email, projectKey } = req.body;
     console.log(req.body);
     console.log("Attempting to set Jira credentials", baseUrl, email, apiKey);
     const valid = await JiraAdapter.validateCredentials(baseUrl, email, apiKey);
     if (!valid) {
-        return res.status(400).json({ error: 'Invalid Jira credentials' });
+        return res.redirect(`${process.env.FRONTEND_URL}/oauth/error`);
     }
 
     let adapter = new JiraAdapter({ baseUrl: baseUrl, email: email, apiToken: apiKey });
 
     const configureWebhook = await adapter.configureWebhook();
     if (!configureWebhook) {
-        return res.status(400).json({ error: 'Failed to configure webhook' });
+        return res.redirect(`${process.env.FRONTEND_URL}/oauth/error`);
     }
+
+    // Extract site name from baseUrl
+    let siteName = baseUrl;
+    const siteNameMatch = baseUrl.match(/https?:\/\/([^.]+)/);
+    if (siteNameMatch) {
+        siteName = siteNameMatch[1];
+    }
+
+    // For now, we'll just store the project key and leave project name null
+    // The frontend can fetch project details later if needed
+    let projectName = null;
 
     await db().jira_api_keys.create({
         data: {
             user_id: user.id,
             jira_user_email: email,
             base_url: baseUrl,
+            site_name: siteName,
+            project_key: projectKey || null,
+            project_name: projectName,
             api_token: apiKey,
             webhook_id: configureWebhook.webhookId,
         }
     });
 
-    console.log(chalk.green('Stored Jira credentials for user'), chalk.yellow(user.id));
-    res.status(200).json({ message: 'Credentials set' });
+    console.log(chalk.green('✅ Created Jira integration:'), chalk.yellow(`${siteName}${projectName ? ` (${projectName})` : ''}`));
+    res.redirect(`${process.env.FRONTEND_URL}/oauth/success`);
 };
 
 export const getJiraCredentials = async (req: Request, res: Response) => {
@@ -48,7 +62,7 @@ export const getJiraCredentials = async (req: Request, res: Response) => {
         return res.status(401).json({ apiKey: null, baseUrl: null, email: null });
     }
 
-    const creds = await db().jira_api_keys.findUnique({ where: { user_id: user.id } });
+    const creds = await db().jira_api_keys.findFirst({ where: { user_id: user.id } });
     if (!creds) {
         console.log(chalk.red('No Jira credentials found for user'), chalk.yellow(user.id));
         return res.status(200).json({ apiKey: null, baseUrl: null, email: null });
@@ -57,7 +71,7 @@ export const getJiraCredentials = async (req: Request, res: Response) => {
     const valid = await JiraAdapter.validateCredentials(creds.base_url, creds.jira_user_email, creds.api_token);
     if (!valid) {
         console.log(chalk.red('Invalid Jira credentials found for user'), chalk.yellow(user.id));
-        await db().jira_api_keys.delete({ where: { user_id: user.id } });
+        await db().jira_api_keys.delete({ where: { id: creds.id } });
         return res.status(200).json({ apiKey: null, baseUrl: null, email: null });
     }
 
@@ -70,9 +84,22 @@ export const deleteJiraCredentials = async (req: Request, res: Response) => {
         return res.status(401).json({ error: 'Unauthorized' });
     }
 
-    const creds = await db().jira_api_keys.findUnique({ where: { user_id: user.id } });
+    const { integrationId } = req.body;
+
+    if (!integrationId) {
+        return res.status(400).json({ error: 'Integration ID is required' });
+    }
+
+    // Verify the integration belongs to the user
+    const creds = await db().jira_api_keys.findFirst({
+        where: {
+            id: integrationId,
+            user_id: user.id
+        }
+    });
+
     if (!creds) {
-        return res.status(400).json({ error: 'No Jira credentials found' });
+        return res.status(404).json({ error: 'Jira integration not found' });
     }
 
     const adapter = new JiraAdapter({ baseUrl: creds.base_url, email: creds.jira_user_email, apiToken: creds.api_token });
@@ -95,7 +122,7 @@ export const deleteJiraCredentials = async (req: Request, res: Response) => {
         }
     });
 
-    await db().jira_api_keys.delete({ where: { user_id: user.id } });
+    await db().jira_api_keys.delete({ where: { id: integrationId } });
     console.log(chalk.green('Deleted Jira credentials for user'), chalk.yellow(user.id));
     res.status(200).json({ message: 'Credentials deleted' });
 }

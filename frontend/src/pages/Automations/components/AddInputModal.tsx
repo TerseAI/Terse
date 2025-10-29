@@ -1,5 +1,6 @@
 import { Dialog, DialogPanel, DialogTitle } from "@headlessui/react";
-import { Integration, useIntegrations } from "../../../context/Integrations";
+import { Integration } from "../../../context/Integrations";
+import { getAllInputIntegrationMetadata } from "../../../utility/IntegrationUtils";
 import { IconForInputType } from "./Integration";
 
 interface AddInputModalProps {
@@ -9,20 +10,9 @@ interface AddInputModalProps {
 }
 
 export function AddInputModal({ isOpen, onClose, onSelectIntegration }: AddInputModalProps) {
-    const { integrations } = useIntegrations();
 
-    const allIntegrations = [
-        { type: Integration.GITHUB, name: "GitHub", description: "Listen to commits, PRs, and issues" },
-        { type: Integration.LINEAR, name: "Linear", description: "Track ticket updates" },
-        { type: Integration.SLACK, name: "Slack", description: "Monitor channel messages" },
-        { type: Integration.GMAIL, name: "Gmail", description: "Monitor incoming emails" },
-        { type: Integration.NOTION, name: "Notion", description: "Watch page changes" },
-    ];
-
-    // Filter to only show integrations the user has configured
-    const availableIntegrations = allIntegrations.filter(integration =>
-        integrations.includes(integration.type)
-    );
+    // Get all integration metadata with input-specific descriptions
+    const allIntegrations = getAllInputIntegrationMetadata();
 
     return (
         <Dialog open={isOpen} onClose={onClose} className="relative z-50">
@@ -38,7 +28,7 @@ export function AddInputModal({ isOpen, onClose, onSelectIntegration }: AddInput
                     </p>
 
                     <div className="grid grid-cols-2 gap-3">
-                        {availableIntegrations.map((integration) => (
+                        {allIntegrations.map((integration) => (
                             <button
                                 key={integration.type}
                                 onClick={() => onSelectIntegration(integration.type)}

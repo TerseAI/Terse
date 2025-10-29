@@ -13,49 +13,67 @@ const integrationTypeMap: Record<string, IntegrationType> = {
     'notion': IntegrationType.NOTION,
 };
 
-// Helper function to get integration_id based on integration type
-async function getIntegrationId(userId: string, integrationType: IntegrationType): Promise<string | null> {
+// Helper function to validate that user owns an integration
+async function validateUserOwnsIntegration(userId: string, integrationType: IntegrationType, integrationId: string): Promise<boolean> {
     const prisma = db();
 
     switch (integrationType) {
         case IntegrationType.GITHUB:
             const userGithubRepo = await prisma.user_github_repositories.findFirst({
-                where: { user_id: userId }
+                where: {
+                    user_id: userId,
+                    github_repository_id: integrationId
+                }
             });
-            return userGithubRepo?.github_repository_id || null;
+            return !!userGithubRepo;
 
         case IntegrationType.LINEAR:
-            const linearKey = await prisma.linear_api_keys.findUnique({
-                where: { user_id: userId }
+            const linearKey = await prisma.linear_api_keys.findFirst({
+                where: {
+                    id: integrationId,
+                    user_id: userId
+                }
             });
-            return linearKey?.id || null;
+            return !!linearKey;
 
         case IntegrationType.JIRA:
-            const jiraKey = await prisma.jira_api_keys.findUnique({
-                where: { user_id: userId }
+            const jiraKey = await prisma.jira_api_keys.findFirst({
+                where: {
+                    id: integrationId,
+                    user_id: userId
+                }
             });
-            return jiraKey?.id || null;
+            return !!jiraKey;
 
         case IntegrationType.SLACK:
             const userSlackIntegration = await prisma.user_slack_integrations.findFirst({
-                where: { user_id: userId }
+                where: {
+                    id: integrationId,
+                    user_id: userId
+                }
             });
-            return userSlackIntegration?.id || null;
+            return !!userSlackIntegration;
 
         case IntegrationType.GMAIL:
             const gmailIntegration = await prisma.gmail_integrations.findFirst({
-                where: { user_id: userId, is_active: true }
+                where: {
+                    id: integrationId,
+                    user_id: userId
+                }
             });
-            return gmailIntegration?.id || null;
+            return !!gmailIntegration;
 
         case IntegrationType.NOTION:
             const notionIntegration = await prisma.notion_integrations.findFirst({
-                where: { user_id: userId }
+                where: {
+                    id: integrationId,
+                    user_id: userId
+                }
             });
-            return notionIntegration?.id || null;
+            return !!notionIntegration;
 
         default:
-            return null;
+            return false;
     }
 }
 
@@ -168,10 +186,12 @@ export async function getUserAutomation(req: Request, res: Response) {
             isActive: automation.is_active,
             prompt: automation.prompt ? { text: automation.prompt.content } : undefined,
             inputs: automation.inputs.map(input => ({
-                integration: input.integration_type.toLowerCase()
+                integration: input.integration_type.toLowerCase(),
+                integrationId: input.integration_id
             })),
             output: automation.output ? {
-                integration: automation.output.integration_type.toLowerCase()
+                integration: automation.output.integration_type.toLowerCase(),
+                integrationId: automation.output.integration_id
             } : undefined
         };
 
@@ -342,9 +362,15 @@ export async function saveAutomation(req: Request, res: Response) {
                         throw new Error(`Unknown integration type: ${input.integration}`);
                     }
 
-                    const integrationId = await getIntegrationId(userId, integrationType);
+                    // Validate that user owns the integration
+                    const integrationId = (input as any).integrationId;
                     if (!integrationId) {
-                        throw new Error(`Integration ${input.integration} not found for user`);
+                        throw new Error(`Integration ID is required for ${input.integration}`);
+                    }
+
+                    const isOwner = await validateUserOwnsIntegration(userId, integrationType, integrationId);
+                    if (!isOwner) {
+                        throw new Error(`Integration ${input.integration} not found or not owned by user`);
                     }
 
                     await tx.automation_inputs.create({
@@ -362,9 +388,14 @@ export async function saveAutomation(req: Request, res: Response) {
                     throw new Error(`Unknown integration type: ${output.integration}`);
                 }
 
-                const outputIntegrationId = await getIntegrationId(userId, outputIntegrationType);
+                const outputIntegrationId = (output as any).integrationId;
                 if (!outputIntegrationId) {
-                    throw new Error(`Integration ${output.integration} not found for user`);
+                    throw new Error(`Integration ID is required for ${output.integration}`);
+                }
+
+                const isOwner = await validateUserOwnsIntegration(userId, outputIntegrationType, outputIntegrationId);
+                if (!isOwner) {
+                    throw new Error(`Integration ${output.integration} not found or not owned by user`);
                 }
 
                 await tx.automation_outputs.create({
@@ -404,9 +435,15 @@ export async function saveAutomation(req: Request, res: Response) {
                         throw new Error(`Unknown integration type: ${input.integration}`);
                     }
 
-                    const integrationId = await getIntegrationId(userId, integrationType);
+                    // Validate that user owns the integration
+                    const integrationId = (input as any).integrationId;
                     if (!integrationId) {
-                        throw new Error(`Integration ${input.integration} not found for user`);
+                        throw new Error(`Integration ID is required for ${input.integration}`);
+                    }
+
+                    const isOwner = await validateUserOwnsIntegration(userId, integrationType, integrationId);
+                    if (!isOwner) {
+                        throw new Error(`Integration ${input.integration} not found or not owned by user`);
                     }
 
                     await tx.automation_inputs.create({
@@ -424,9 +461,14 @@ export async function saveAutomation(req: Request, res: Response) {
                     throw new Error(`Unknown integration type: ${output.integration}`);
                 }
 
-                const outputIntegrationId = await getIntegrationId(userId, outputIntegrationType);
+                const outputIntegrationId = (output as any).integrationId;
                 if (!outputIntegrationId) {
-                    throw new Error(`Integration ${output.integration} not found for user`);
+                    throw new Error(`Integration ID is required for ${output.integration}`);
+                }
+
+                const isOwner = await validateUserOwnsIntegration(userId, outputIntegrationType, outputIntegrationId);
+                if (!isOwner) {
+                    throw new Error(`Integration ${output.integration} not found or not owned by user`);
                 }
 
                 await tx.automation_outputs.create({

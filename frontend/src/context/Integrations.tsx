@@ -1,23 +1,10 @@
 import { createContext, useContext, useState, ReactNode, useEffect, useRef } from 'react';
 import { BackendProvider } from '../services/backend';
+import { Integration } from '../types/Integration';
+import { INTEGRATION_KEY_MAP } from '../utility/IntegrationUtils';
 
-export enum Integration {
-    // Ticketing systems
-    JIRA = 'jira',
-    LINEAR = 'linear',
-
-    // Messaging systems
-    SLACK = 'slack',
-
-    // Source control
-    GITHUB = 'github',
-
-    // Note-taking systems
-    NOTION = 'notion',
-    
-    // Mail
-    GMAIL = 'gmail',
-}
+// Re-export Integration for backwards compatibility
+export { Integration };
 
 type IntegrationContextType = {
     integrations: Integration[];
@@ -51,23 +38,12 @@ export function IntegrationProvider({ children }: { children: ReactNode }) {
             const { integrations: integrationData } = await BackendProvider.getIntegrationsStatus();
             const activeIntegrations: Integration[] = [];
 
-            if (integrationData.github) {
-                activeIntegrations.push(Integration.GITHUB);
-            }
-            if (integrationData.linear) {
-                activeIntegrations.push(Integration.LINEAR);
-            }
-            if (integrationData.jira) {
-                activeIntegrations.push(Integration.JIRA);
-            }
-            if (integrationData.slack) {
-                activeIntegrations.push(Integration.SLACK);
-            }
-            if (integrationData.gmail) {
-                activeIntegrations.push(Integration.GMAIL);
-            }
-            if (integrationData.notion) {
-                activeIntegrations.push(Integration.NOTION);
+            // Iterate through all integration types and check if they have data
+            for (const [integrationType, key] of Object.entries(INTEGRATION_KEY_MAP)) {
+                const instances = integrationData[key];
+                if (instances && instances.length > 0) {
+                    activeIntegrations.push(integrationType as Integration);
+                }
             }
 
             setIntegrations(activeIntegrations);
@@ -138,12 +114,12 @@ export function IntegrationProvider({ children }: { children: ReactNode }) {
                     
                     // Update local state
                     const activeIntegrations: Integration[] = [];
-                    if (integrationData.github) activeIntegrations.push(Integration.GITHUB);
-                    if (integrationData.linear) activeIntegrations.push(Integration.LINEAR);
-                    if (integrationData.jira) activeIntegrations.push(Integration.JIRA);
-                    if (integrationData.slack) activeIntegrations.push(Integration.SLACK);
-                    if (integrationData.gmail) activeIntegrations.push(Integration.GMAIL);
-                    if (integrationData.notion) activeIntegrations.push(Integration.NOTION);
+                    for (const [integrationType, key] of Object.entries(INTEGRATION_KEY_MAP)) {
+                        const instances = integrationData[key];
+                        if (instances && instances.length > 0) {
+                            activeIntegrations.push(integrationType as Integration);
+                        }
+                    }
 
                     setIntegrations(activeIntegrations);
                     stopPolling();
