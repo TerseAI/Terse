@@ -255,9 +255,15 @@ export async function createAutomation(req: Request, res: Response) {
                     throw new Error(`Unknown integration type: ${input.integration}`);
                 }
 
-                const integrationId = await getIntegrationId(userId, integrationType);
+                // Validate that user owns the integration
+                const integrationId = (input as any).integrationId;
                 if (!integrationId) {
-                    throw new Error(`Integration ${input.integration} not found for user`);
+                    throw new Error(`Integration ID is required for ${input.integration}`);
+                }
+
+                const isOwner = await validateUserOwnsIntegration(userId, integrationType, integrationId);
+                if (!isOwner) {
+                    throw new Error(`Integration ${input.integration} not found or not owned by user`);
                 }
 
                 await tx.automation_inputs.create({
@@ -275,9 +281,14 @@ export async function createAutomation(req: Request, res: Response) {
                 throw new Error(`Unknown integration type: ${output.integration}`);
             }
 
-            const outputIntegrationId = await getIntegrationId(userId, outputIntegrationType);
+            const outputIntegrationId = (output as any).integrationId;
             if (!outputIntegrationId) {
-                throw new Error(`Integration ${output.integration} not found for user`);
+                throw new Error(`Integration ID is required for ${output.integration}`);
+            }
+
+            const isOwner = await validateUserOwnsIntegration(userId, outputIntegrationType, outputIntegrationId);
+            if (!isOwner) {
+                throw new Error(`Integration ${output.integration} not found or not owned by user`);
             }
 
             await tx.automation_outputs.create({
@@ -556,9 +567,15 @@ export async function updateAutomation(req: Request, res: Response) {
                         throw new Error(`Unknown integration type: ${input.integration}`);
                     }
 
-                    const integrationId = await getIntegrationId(userId, integrationType);
+                    // Validate that user owns the integration
+                    const integrationId = (input as any).integrationId;
                     if (!integrationId) {
-                        throw new Error(`Integration ${input.integration} not found for user`);
+                        throw new Error(`Integration ID is required for ${input.integration}`);
+                    }
+
+                    const isOwner = await validateUserOwnsIntegration(userId, integrationType, integrationId);
+                    if (!isOwner) {
+                        throw new Error(`Integration ${input.integration} not found or not owned by user`);
                     }
 
                     await tx.automation_inputs.create({
@@ -578,9 +595,14 @@ export async function updateAutomation(req: Request, res: Response) {
                     throw new Error(`Unknown integration type: ${output.integration}`);
                 }
 
-                const outputIntegrationId = await getIntegrationId(userId, outputIntegrationType);
+                const outputIntegrationId = (output as any).integrationId;
                 if (!outputIntegrationId) {
-                    throw new Error(`Integration ${output.integration} not found for user`);
+                    throw new Error(`Integration ID is required for ${output.integration}`);
+                }
+
+                const isOwner = await validateUserOwnsIntegration(userId, outputIntegrationType, outputIntegrationId);
+                if (!isOwner) {
+                    throw new Error(`Integration ${output.integration} not found or not owned by user`);
                 }
 
                 // Delete old output

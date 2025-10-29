@@ -66,10 +66,12 @@ export function AutomationProvider({ children, automationId }: { children: React
                 setId(automation.id);
                 setName(automation.name);
                 setInputs(automation.inputs.map(input => ({
-                    integration: input.integration as Integration
+                    integration: input.integration as Integration,
+                    integrationId: input.integrationId
                 })));
                 setOutput(automation.output ? {
-                    integration: automation.output.integration as Integration
+                    integration: automation.output.integration as Integration,
+                    integrationId: automation.output.integrationId
                 } : undefined);
                 setPrompt(automation.prompt);
                 setIsActive(automation.isActive);
