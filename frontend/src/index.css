@@ -17,7 +17,7 @@ body,
 }
 
 @theme {
-    --background: hsl(0, 2%, 0%);
+    --background: hsl(0, 2%, 2%);
     --background-elevated: hsl(0, 2%, 10%);
     --background-surface: hsl(0, 2%, 20%);
 
