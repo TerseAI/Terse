@@ -48,7 +48,7 @@ export function InputsSection() {
                     </button>
                 </div>
             ) : (
-                <div className="p-4 rounded-lg border border-[theme(border)] bg-[theme(background-surface)]">
+                <div className="p-4 rounded-lg border border-[theme(border)] bg-[theme(background-elevated)]">
                     <div className="flex items-start justify-between mb-3">
                         <div className="text-sm font-medium text-[theme(text-primary)]">
                             {getIntegrationTypeName(input.integration)}
