@@ -9,41 +9,57 @@ import { search } from "../searchClient";
 export const setLinearApiKey = async (req: Request, res: Response) => {
     let user = req.session?.user;
     if (!user) {
-        return res.status(401).json({ error: 'Unauthorized' });
+        return res.redirect(`${process.env.FRONTEND_URL}/oauth/error`);
     }
 
-    const { apiKey } = req.body;
+    const { apiKey, teamId } = req.body;
     console.log(chalk.blue("🔑 Adding Linear API key for user"), chalk.yellow(user.id));
 
     // Validate the API key before storing
     const isValid = await LinearAdapter.validateKey(apiKey);
     if (!isValid) {
-        return res.status(400).json({ error: 'Invalid Linear API key' });
+        return res.redirect(`${process.env.FRONTEND_URL}/oauth/error`);
     }
 
     let adapter = new LinearAdapter(apiKey);
 
     const configureWebhook = await adapter.configureWebhook();
     if (!configureWebhook) {
-        return res.status(400).json({ error: 'Failed to configure webhook' });
+        return res.redirect(`${process.env.FRONTEND_URL}/oauth/error`);
     }
 
     let linearUser = await adapter.me();
     if (!linearUser) {
-        return res.status(400).json({ error: 'Failed to get Linear user' });
+        return res.redirect(`${process.env.FRONTEND_URL}/oauth/error`);
+    }
+
+    // Fetch workspace and team info
+    const userContext = await adapter.getUserContext();
+    const organization = userContext.organization;
+
+    let teamName = null;
+    if (teamId) {
+        const team = userContext.teams.find(t => t.id === teamId);
+        teamName = team?.name || null;
     }
 
     await db().linear_api_keys.create({
         data: {
             user_id: user.id,
             linear_user_id: linearUser.id,
+            workspace_id: organization.name, // Using name as ID for now
+            workspace_name: organization.name,
+            team_id: teamId || null,
+            team_name: teamName,
             api_key: apiKey,
             webhook_id: configureWebhook.webhookId,
             webhook_secret: configureWebhook.webhookSecret
         }
     });
 
-    res.status(200).json({ message: 'API key set' });
+    console.log(chalk.green('✅ Created Linear integration:'), chalk.yellow(`${organization.name}${teamName ? ` (${teamName})` : ''}`));
+
+    res.redirect(`${process.env.FRONTEND_URL}/oauth/success`);
 }
 
 export const getLinearApiKey = async (req: Request, res: Response) => {
@@ -52,7 +68,7 @@ export const getLinearApiKey = async (req: Request, res: Response) => {
         return res.status(401).json({ error: 'Unauthorized' });
     }
 
-    const linearApiKey = await db().linear_api_keys.findUnique({
+    const linearApiKey = await db().linear_api_keys.findFirst({
         where: {
             user_id: user.id
         }
@@ -69,7 +85,7 @@ export const getLinearApiKey = async (req: Request, res: Response) => {
         console.log(chalk.red('Invalid Linear API key. Removing key for database along with webhook'));
         await db().linear_api_keys.delete({
             where: {
-                user_id: user.id
+                id: linearApiKey.id
             }
         });
         return res.status(400).json({ error: 'Invalid Linear API key. Removing key for database along with webhook' });
@@ -121,34 +137,44 @@ export const deleteLinearCredentials = async (req: Request, res: Response) => {
         return res.status(401).json({ error: 'Unauthorized' });
     }
 
-    // Need to tear down webhook
-    const linearApiKey = await db().linear_api_keys.findUnique({
+    const { integrationId } = req.body;
+
+    if (!integrationId) {
+        return res.status(400).json({ error: 'Integration ID is required' });
+    }
+
+    // Verify the integration belongs to the user
+    const linearApiKey = await db().linear_api_keys.findFirst({
         where: {
+            id: integrationId,
             user_id: user.id
         }
     });
 
-    if (linearApiKey) {
-        const adapter = new LinearAdapter(linearApiKey.api_key);
-        await adapter.tearDownWebhook(linearApiKey.webhook_id);
-
-        // Clean up automation inputs/outputs that reference this Linear integration
-        await db().automation_inputs.deleteMany({
-            where: {
-                integration_type: 'LINEAR',
-                integration_id: linearApiKey.id
-            }
-        });
-
-        await db().automation_outputs.deleteMany({
-            where: {
-                integration_type: 'LINEAR',
-                integration_id: linearApiKey.id
-            }
-        });
+    if (!linearApiKey) {
+        return res.status(404).json({ error: 'Linear integration not found' });
     }
 
-    await db().linear_api_keys.delete({ where: { user_id: user.id } });
+    // Tear down webhook
+    const adapter = new LinearAdapter(linearApiKey.api_key);
+    await adapter.tearDownWebhook(linearApiKey.webhook_id);
+
+    // Clean up automation inputs/outputs that reference this Linear integration
+    await db().automation_inputs.deleteMany({
+        where: {
+            integration_type: 'LINEAR',
+            integration_id: linearApiKey.id
+        }
+    });
+
+    await db().automation_outputs.deleteMany({
+        where: {
+            integration_type: 'LINEAR',
+            integration_id: linearApiKey.id
+        }
+    });
+
+    await db().linear_api_keys.delete({ where: { id: integrationId } });
     console.log(chalk.green('Deleted Linear credentials for user'), chalk.yellow(user.id));
 
     res.status(200).json({ message: 'Credentials deleted' });

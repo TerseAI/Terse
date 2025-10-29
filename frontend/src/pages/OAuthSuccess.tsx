@@ -2,6 +2,11 @@ import { useEffect } from 'react';
 
 export default function OAuthSuccess() {
     useEffect(() => {
+        // Notify parent window that OAuth was successful
+        if (window.opener) {
+            window.opener.postMessage({ type: 'oauth-success' }, '*');
+        }
+
         // Close the popup window after a short delay
         const timer = setTimeout(() => {
             window.close();

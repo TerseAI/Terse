@@ -4,6 +4,7 @@ import { BackendProvider } from "../services/backend";
 
 export interface Input {
     integration: Integration;
+    integrationId?: string; // ID of the specific integration instance
 }
 
 export interface GithubInput {
@@ -22,6 +23,7 @@ export enum GithubEventType {
 
 export interface Output {
     integration: Integration;
+    integrationId?: string; // ID of the specific integration instance
 }
 
 export interface Prompt {
@@ -55,10 +57,12 @@ export function AutomationProvider({ children }: { children: React.ReactNode }) 
                 if (automation) {
                     setName(automation.name);
                     setInputs(automation.inputs.map(input => ({
-                        integration: input.integration as Integration
+                        integration: input.integration as Integration,
+                        integrationId: input.integrationId
                     })));
                     setOutput(automation.output ? {
-                        integration: automation.output.integration as Integration
+                        integration: automation.output.integration as Integration,
+                        integrationId: automation.output.integrationId
                     } : undefined);
                     setPrompt(automation.prompt);
                 }
