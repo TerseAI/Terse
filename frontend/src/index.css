@@ -24,9 +24,9 @@ body,
 
     --border: #333333;
 
-    --text-primary: #E6EDF3;
-    --text-secondary: #8B949E;
-    --text-disabled: #6E7681;
+    --text-primary: hsl(0, 0%, 95%);
+    --text-secondary: hsl(0, 0%, 70%);
+    --text-disabled: hsl(0, 0%, 50%);
 
     --color-accent: oklch(0.7 0.17 172);
     --color-accent-secondary: oklch(0.7 0.17 10);
