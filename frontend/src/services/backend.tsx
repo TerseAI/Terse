@@ -1,6 +1,6 @@
 import axios from 'axios';
 import { ModelEvent, ModelRequest } from "../shared/ModelEvents";
-import { Automation, AutomationInput, AutomationOutput, AutomationPrompt, GithubIntegration, IntegrationsStatus, JiraIntegration, LinearIntegration, SlackIntegration } from "../shared/types";
+import { Automation, AutomationInput, AutomationOutput, AutomationPrompt, AutomationsResponse, AutomationUpdate, GithubIntegration, IntegrationsStatus, JiraIntegration, LinearIntegration, SlackIntegration } from "../shared/types";
 import { User } from "../types/User";
 
 const backendBaseUrl = '/api';
@@ -159,12 +159,6 @@ interface BackendService {
      * @deprecated Use getUserAutomations instead
      */
     getUserAutomation(): Promise<Automation | null>;
-
-    /**
-     * Saves or updates the user's automation (legacy)
-     * @deprecated Use createAutomation or updateAutomation instead
-     */
-    saveAutomation(name: string, inputs: AutomationInput[], output: AutomationOutput, prompt: AutomationPrompt): Promise<{ success: boolean; id: string }>;
 
     /**
      * Gets all automations for the user with pagination
@@ -445,18 +439,6 @@ export const BackendProvider: BackendService = {
             .then(response => response.data)
             .catch(error => {
                 console.error('Error getting user automation:', error);
-                throw error;
-            });
-    },
-
-    saveAutomation: (name: string, inputs: AutomationInput[], output: AutomationOutput, prompt: AutomationPrompt) => {
-        return axios.post<{ success: boolean; id: string }>(`${backendBaseUrl}/automations/save`,
-            { name, inputs, output, prompt },
-            { withCredentials: true }
-        )
-            .then(response => response.data)
-            .catch(error => {
-                console.error('Error saving automation:', error);
                 throw error;
             });
     },

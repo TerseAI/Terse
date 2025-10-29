@@ -209,10 +209,6 @@ function SaveAutomationButton() {
         inputs.every(i => !!i.integration && !!i.integrationId) &&
         !!output && !!output.integration && !!output.integrationId &&
         !!prompt?.text;
-    console.log("isComplete", isComplete);
-    console.log("inputs", inputs);
-    console.log("output", output);
-    console.log("prompt", prompt);  
     const isEditMode = !!automationId;
 
     const handleSave = async () => {
