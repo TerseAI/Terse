@@ -17,9 +17,10 @@ body,
 }
 
 @theme {
-    --background: rgb(33, 33, 33);
-    --background-surface: rgb(48, 48, 48);
-    --background-elevated: rgb(24, 24, 24);
+    --background: hsl(0, 2%, 0%);
+    --background-elevated: hsl(0, 2%, 10%);
+    --background-surface: hsl(0, 2%, 20%);
+
 
     --border: #333333;
 
