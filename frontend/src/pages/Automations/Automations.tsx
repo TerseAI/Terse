@@ -36,7 +36,6 @@ function Automations() {
 
 function CreateAutomationSection() {
     const { name, setName } = useAutomationContext();
-    console.log("I AM HERE")
     return (
         <div className="flex flex-col h-full">
             <div className="flex-1 overflow-y-auto">
@@ -205,7 +204,15 @@ function SaveAutomationButton() {
     const navigate = useNavigate();
     const [isSaving, setIsSaving] = useState(false);
     const [saveSuccess, setSaveSuccess] = useState(false);
-    const isComplete = inputs.length > 0 && output && prompt?.text;
+    const isComplete =
+        inputs.length > 0 &&
+        inputs.every(i => !!i.integration && !!i.integrationId) &&
+        !!output && !!output.integration && !!output.integrationId &&
+        !!prompt?.text;
+    console.log("isComplete", isComplete);
+    console.log("inputs", inputs);
+    console.log("output", output);
+    console.log("prompt", prompt);  
     const isEditMode = !!automationId;
 
     const handleSave = async () => {
