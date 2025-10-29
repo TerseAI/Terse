@@ -1,15 +1,20 @@
 import { useEffect, useState } from 'react';
 import {
     createColumnHelper,
-    flexRender,
     getCoreRowModel,
     useReactTable,
 } from '@tanstack/react-table';
 import { Automation } from '../shared/types';
 import { BackendProvider } from '../services/backend';
-import { TrashIcon, PencilIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
-import { IconForInputType } from '../pages/Automations/components/Integration';
-import { Integration } from '../context/Integrations';
+import {
+    LoadingState,
+    EmptyState,
+    StatusToggle,
+    AppsList,
+    ActionButtons,
+    PaginationControls,
+    TableContent,
+} from './Automation';
 
 type AutomationsTableProps = {
     onEdit: (automation: Automation) => void;
@@ -90,30 +95,12 @@ export function AutomationsTable({ onEdit, onDelete, refreshTrigger, searchQuery
     const columns = [
         columnHelper.accessor('isActive', {
             header: 'Status',
-            cell: info => {
-                const isActive = info.getValue();
-                const automation = info.row.original;
-
-                return (
-                    <button
-                        onClick={(e) => { e.stopPropagation(); handleToggleStatus(automation); }}
-                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 ${
-                            isActive
-                                ? 'bg-[theme(--color-success)] focus:ring-[theme(--color-success)]'
-                                : 'bg-[theme(text-disabled)] focus:ring-[theme(text-disabled)]'
-                        }`}
-                        role="switch"
-                        aria-checked={isActive}
-                        title={isActive ? 'Active' : 'Inactive'}
-                    >
-                        <span
-                            className={`inline-block h-4 w-4 transform rounded-full bg-[theme(text-primary)] transition-transform ${
-                                isActive ? 'translate-x-6' : 'translate-x-1'
-                            }`}
-                        />
-                    </button>
-                );
-            },
+            cell: info => (
+                <StatusToggle
+                    automation={info.row.original}
+                    onToggle={handleToggleStatus}
+                />
+            ),
         }),
         columnHelper.accessor('name', {
             header: 'Name',
@@ -126,52 +113,17 @@ export function AutomationsTable({ onEdit, onDelete, refreshTrigger, searchQuery
         columnHelper.display({
             id: 'apps',
             header: 'Apps',
-            cell: props => {
-                const automation = props.row.original;
-                const allApps = [
-                    ...automation.inputs.map(input => input.integration),
-                    automation.output?.integration
-                ].filter(Boolean) as Integration[];
-
-                return (
-                    <div className="flex items-center gap-1.5">
-                        {allApps.map((app, idx) => (
-                            <div key={idx} className="flex items-center">
-                                {idx > 0 && (
-                                    <ChevronRightIcon className="w-3 h-3 text-[theme(text-disabled)] mx-0.5" />
-                                )}
-                                <div
-                                    className="w-7 h-7 flex items-center justify-center rounded border border-[theme(border)] bg-[theme(background-elevated)] p-1"
-                                    title={app}
-                                >
-                                    <IconForInputType type={app} />
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                );
-            },
+            cell: props => <AppsList automation={props.row.original} />,
         }),
         columnHelper.display({
             id: 'actions',
             header: 'Actions',
             cell: props => (
-                <div className="flex gap-2">
-                    <button
-                        onClick={(e) => { e.stopPropagation(); onEdit(props.row.original); }}
-                        className="p-1 text-[theme(--color-accent)] hover:text-[theme(--color-accent)]/80 hover:bg-[theme(--color-accent)]/10 rounded transition-colors"
-                        title="Edit automation"
-                    >
-                        <PencilIcon className="h-5 w-5" />
-                    </button>
-                    <button
-                        onClick={(e) => { e.stopPropagation(); onDelete(props.row.original); }}
-                        className="p-1 text-[theme(--color-accent-danger)] hover:text-[theme(--color-accent-danger)]/80 hover:bg-[theme(--color-accent-danger)]/10 rounded transition-colors"
-                        title="Delete automation"
-                    >
-                        <TrashIcon className="h-5 w-5" />
-                    </button>
-                </div>
+                <ActionButtons
+                    automation={props.row.original}
+                    onEdit={onEdit}
+                    onDelete={onDelete}
+                />
             ),
         }),
     ];
@@ -185,127 +137,25 @@ export function AutomationsTable({ onEdit, onDelete, refreshTrigger, searchQuery
     });
 
     if (loading && automations.length === 0) {
-        return (
-            <div className="flex items-center justify-center h-64">
-                <div className="text-[theme(text-secondary)]">Loading automations...</div>
-            </div>
-        );
+        return <LoadingState />;
     }
 
     if (!loading && automations.length === 0) {
-        const hasFilters = searchQuery || statusFilter !== undefined;
-        return (
-            <div className="flex items-center justify-center h-64">
-                <div className="text-center">
-                    <p className="text-[theme(text-secondary)] mb-2">No automations found</p>
-                    {hasFilters ? (
-                        <p className="text-sm text-[theme(text-disabled)]">Try adjusting your search or filters</p>
-                    ) : (
-                        <p className="text-sm text-[theme(text-disabled)]">Create your first automation to get started</p>
-                    )}
-                </div>
-            </div>
-        );
+        const hasFilters: boolean = searchQuery !== '' || statusFilter !== undefined;
+        return <EmptyState hasFilters={hasFilters} />;
     }
 
     return (
         <div className="space-y-4">
-            <div className="overflow-x-auto rounded-lg border border-[theme(border)]">
-                <table className="min-w-full divide-y divide-[theme(border)]">
-                    <thead className="bg-[theme(background-elevated)]">
-                        {table.getHeaderGroups().map(headerGroup => (
-                            <tr key={headerGroup.id}>
-                                {headerGroup.headers.map(header => (
-                                    <th
-                                        key={header.id}
-                                        className="px-6 py-2 text-left text-sm font-bold text-[theme(text-secondary)] tracking-wider"
-                                    >
-                                        {header.isPlaceholder
-                                            ? null
-                                            : flexRender(
-                                                  header.column.columnDef.header,
-                                                  header.getContext()
-                                              )}
-                                    </th>
-                                ))}
-                            </tr>
-                        ))}
-                    </thead>
-                    <tbody className="bg-[theme(background-elevated)] divide-y divide-[theme(border)]">
-                        {table.getRowModel().rows.map(row => (
-                            <tr
-                                key={row.id}
-                                className="hover:bg-[theme(background-surface)] transition-colors cursor-pointer"
-                                onClick={() => onEdit(row.original)}
-                            >
-                                {row.getVisibleCells().map(cell => (
-                                    <td key={cell.id} className="px-6 py-4 whitespace-nowrap text-sm">
-                                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                                    </td>
-                                ))}
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
-            </div>
-
-            {/* Pagination and Count */}
-            <div className="flex items-center justify-between px-4">
-                <div className="flex items-center gap-4">
-                    <div className="text-sm text-[theme(text-secondary)]">
-                        {totalPages > 1 ? (
-                            <>
-                                Showing <span className="font-medium text-[theme(text-primary)]">{(page - 1) * limit + 1}</span> to{' '}
-                                <span className="font-medium text-[theme(text-primary)]">
-                                    {Math.min(page * limit, total)}
-                                </span>{' '}
-                                of <span className="font-medium text-[theme(text-primary)]">{total}</span> automations
-                            </>
-                        ) : (
-                            <>
-                                <span className="font-medium text-[theme(text-primary)]">{total}</span> {total === 1 ? 'automation' : 'automations'}
-                            </>
-                        )}
-                    </div>
-                    {totalPages > 1 && (
-                        <div className="flex items-center gap-2">
-                            <label htmlFor="items-per-page" className="text-sm text-[theme(text-secondary)]">
-                                Per page:
-                            </label>
-                            <select
-                                id="items-per-page"
-                                value={limit}
-                                onChange={(e) => handleLimitChange(Number(e.target.value))}
-                                className="px-3 py-1.5 text-sm text-[theme(text-primary)] bg-[theme(background-surface)] border border-[theme(border)] rounded-md hover:bg-[theme(background-elevated)] focus:outline-none focus:ring-2 focus:ring-[theme(--color-accent)] transition-colors"
-                            >
-                                <option value={25}>25</option>
-                                <option value={50}>50</option>
-                                <option value={100}>100</option>
-                            </select>
-                        </div>
-                    )}
-                </div>
-                {totalPages > 1 && (
-                    <div className="flex gap-2">
-                        {page > 1 && (
-                            <button
-                                onClick={() => setPage(p => Math.max(1, p - 1))}
-                                className="px-4 py-2 text-sm font-medium text-[theme(text-primary)] bg-[theme(background-surface)] border border-[theme(border)] rounded-md hover:bg-[theme(background-elevated)] transition-colors"
-                            >
-                                Previous
-                            </button>
-                        )}
-                        {page < totalPages && (
-                            <button
-                                onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-                                className="px-4 py-2 text-sm font-medium text-[theme(text-primary)] bg-[theme(background-surface)] border border-[theme(border)] rounded-md hover:bg-[theme(background-elevated)] transition-colors"
-                            >
-                                Next
-                            </button>
-                        )}
-                    </div>
-                )}
-            </div>
+            <TableContent table={table} onEdit={onEdit} />
+            <PaginationControls
+                page={page}
+                totalPages={totalPages}
+                total={total}
+                limit={limit}
+                onPageChange={setPage}
+                onLimitChange={handleLimitChange}
+            />
         </div>
     );
 }
