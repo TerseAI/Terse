@@ -48,9 +48,9 @@ export default function AutomationsList() {
     };
 
     return (
-        <div className="flex flex-col h-full">
+        <div className="grid grid-flow-row pt-4">
             <div className="flex-1 overflow-y-auto">
-                <div className="max-w-7xl mx-auto p-6 space-y-6">
+                <div className="max-w-7xl space-y-6">
                     {/* Header */}
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                         <h1 className="text-2xl font-bold text-white">Automations</h1>
@@ -74,7 +74,7 @@ export default function AutomationsList() {
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
                                 placeholder="Search automations by name..."
-                                className="block w-full pl-10 pr-10 py-2.5 text-sm text-[theme(text-primary)] bg-[theme(background-surface)] border border-[theme(border)] rounded-lg placeholder-[theme(text-disabled)] focus:outline-none focus:ring-2 focus:ring-[theme(--color-accent)] focus:border-transparent transition-colors"
+                                className="block w-full pl-10 pr-10 py-2.5 text-sm text-[theme(text-primary)] bg-[theme(background-elevated)] border border-[theme(border)] rounded-lg placeholder-[theme(text-disabled)] focus:outline-none focus:ring-2 focus:ring-[theme(--color-accent)] focus:border-transparent transition-colors"
                             />
                             {searchQuery && (
                                 <button
@@ -87,7 +87,7 @@ export default function AutomationsList() {
                         </div>
                         <Listbox value={selectedOption} onChange={(option) => setStatusFilter(option.value)}>
                             <div className="relative sm:w-auto w-full sm:min-w-[140px]">
-                                <ListboxButton className="relative w-full pl-3 pr-10 py-2.5 text-left text-sm text-[theme(text-primary)] bg-[theme(background-surface)] border border-[theme(border)] rounded-lg hover:bg-[theme(background-elevated)] focus:outline-none focus:ring-2 focus:ring-[theme(--color-accent)] transition-colors cursor-pointer">
+                                <ListboxButton className="relative w-full pl-3 pr-10 py-2.5 text-left text-sm text-[theme(text-primary)] bg-[theme(background-elevated)] border border-[theme(border)] rounded-lg hover:bg-[theme(background-elevated)] focus:outline-none focus:ring-2 focus:ring-[theme(--color-accent)] transition-colors cursor-pointer">
                                     <span className="block truncate">{selectedOption.label}</span>
                                     <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2">
                                         <ChevronDownIcon className="h-5 w-5 text-[theme(text-disabled)]" aria-hidden="true" />

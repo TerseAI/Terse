@@ -218,7 +218,7 @@ export function AutomationsTable({ onEdit, onDelete, refreshTrigger, searchQuery
                                 {headerGroup.headers.map(header => (
                                     <th
                                         key={header.id}
-                                        className="px-6 py-3 text-left text-xs font-medium text-[theme(text-secondary)] uppercase tracking-wider"
+                                        className="px-6 py-2 text-left text-sm font-bold text-[theme(text-secondary)] tracking-wider"
                                     >
                                         {header.isPlaceholder
                                             ? null
@@ -231,11 +231,11 @@ export function AutomationsTable({ onEdit, onDelete, refreshTrigger, searchQuery
                             </tr>
                         ))}
                     </thead>
-                    <tbody className="bg-[theme(background-surface)] divide-y divide-[theme(border)]">
+                    <tbody className="bg-[theme(background-elevated)] divide-y divide-[theme(border)]">
                         {table.getRowModel().rows.map(row => (
                             <tr
                                 key={row.id}
-                                className="hover:bg-[theme(background-elevated)] transition-colors cursor-pointer"
+                                className="hover:bg-[theme(background-surface)] transition-colors cursor-pointer"
                                 onClick={() => onEdit(row.original)}
                             >
                                 {row.getVisibleCells().map(cell => (
