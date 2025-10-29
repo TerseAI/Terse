@@ -5,6 +5,7 @@ import Sidebar from "./components/Sidebar";
 import { IntegrationProvider } from "./context/Integrations";
 import ActivityFeed from "./pages/ActivityFeed";
 import Automations from "./pages/Automations/Automations";
+import AutomationsList from "./pages/Automations/AutomationsList";
 import Home from "./pages/Home";
 import LandingPageChangelog from "./pages/LandingPage_changelog";
 import Login from "./pages/Login";
@@ -21,7 +22,9 @@ function App() {
           <Route path="/app" element={<Content />}>
             <Route index element={<Home />} />
             <Route path="activity" element={<ActivityFeed />} />
-            <Route path="automations" element={<Automations />} />
+            <Route path="automations" element={<AutomationsList />} />
+            <Route path="automations/new" element={<Automations />} />
+            <Route path="automations/:id" element={<Automations />} />
           </Route>
           <Route path="/changelog" element={<LandingPageChangelog />} />
           <Route path="/oauth/success" element={<OAuthSuccess />} />

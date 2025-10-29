@@ -9,8 +9,18 @@ import chalk from 'chalk';
  * Edit the mockEmail object below to test different scenarios
  */
 
-const DEFAULT_USER_EMAIL = 'thomas.karatzas@mail.mcgill.ca';
-const DEFAULT_USER_ID = 'thomas.karatzas@mail.mcgill.ca';
+// Get user email from command line argument or environment variable
+// Usage: npm run test:processor:quick -- user@example.com
+// Or: TEST_USER_EMAIL=user@example.com npm run test:processor:quick
+const getUserEmail = (): string => {
+    const cliEmail = process.argv[2];
+    const envEmail = process.env.TEST_USER_EMAIL;
+    const defaultEmail = 'thomas.karatzas@mail.mcgill.ca';
+
+    return cliEmail || envEmail || defaultEmail;
+};
+
+const USER_EMAIL = getUserEmail();
 
 // EDIT THIS to test different emails
 const mockEmail: GmailEventData = {
@@ -18,7 +28,7 @@ const mockEmail: GmailEventData = {
     threadId: 'thread_google_001',
     subject: 'Your Google Job Application Has Been Received',
     from: 'noreply-jobs@google.com',
-    to: DEFAULT_USER_EMAIL,
+    to: USER_EMAIL,
     date: new Date().toISOString(),
     internalDate: new Date().getTime().toString(),
     messageId: '<application001@google.com>',
@@ -39,14 +49,17 @@ async function runQuickTest() {
     console.log(chalk.bold.cyan('\n=== Quick Event Processor Test ===\n'));
 
     try {
+        console.log(chalk.gray(`Using email: ${USER_EMAIL}\n`));
+
         // Get user
         const user = await db().users.findFirst({
-            where: { email: DEFAULT_USER_EMAIL }
+            where: { email: USER_EMAIL }
         });
 
         if (!user) {
-            console.error(chalk.red(`\nError: User not found with email: ${DEFAULT_USER_EMAIL}`));
+            console.error(chalk.red(`\nError: User not found with email: ${USER_EMAIL}`));
             console.log(chalk.yellow('Please ensure the user exists in the database first.\n'));
+            console.log(chalk.yellow('Tip: Pass a different email as argument: npm run test:processor:quick -- user@example.com\n'));
             process.exit(1);
         }
 
@@ -67,21 +80,30 @@ async function runQuickTest() {
         console.log(chalk.yellow('🔄 Processing event...\n'));
         const startTime = Date.now();
 
-        const result = await processor.process();
+        const results = await processor.process();
 
         const duration = Date.now() - startTime;
 
-        // Display result
-        console.log(chalk.bold('Result:'));
-        if (result.success) {
-            console.log(chalk.green('  ✓ Success'));
-            console.log(chalk.gray('  Message:'), result.message);
-            if (result.automation) {
-                console.log(chalk.gray('  Automation:'), result.automation.name);
-            }
+        // Display results
+        console.log(chalk.bold('Results:'));
+        if (results.length === 0) {
+            console.log(chalk.yellow('  No results returned'));
         } else {
-            console.log(chalk.red('  ✗ Failed'));
-            console.log(chalk.gray('  Message:'), result.message);
+            for (const result of results) {
+                if (result.success) {
+                    console.log(chalk.green('  ✓ Success'));
+                    console.log(chalk.gray('  Message:'), result.message);
+                    if (result.automation) {
+                        console.log(chalk.gray('  Automation:'), result.automation.name);
+                    }
+                } else {
+                    console.log(chalk.red('  ✗ Failed'));
+                    console.log(chalk.gray('  Message:'), result.message);
+                    if (result.automation) {
+                        console.log(chalk.gray('  Automation:'), result.automation.name);
+                    }
+                }
+            }
         }
         console.log(chalk.gray('  Duration:'), `${duration}ms`);
         console.log();

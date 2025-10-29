@@ -462,193 +462,172 @@ export async function handleGmailWebhook(req: Request, res: Response) {
   try {
     const { message } = req.body;
 
-    if (!message || !message.data) {
-      return res.status(400).send("Invalid message format");
-    }
+        if (!message || !message.data) {
+            return res.status(400).send('Invalid message format');
+        }
 
-    // Decode the message data
-    const decoded: GmailWebhookData = JSON.parse(
-      Buffer.from(message.data, "base64").toString()
-    );
+        // Decode the message data
+        const decoded: GmailWebhookData = JSON.parse(
+            Buffer.from(message.data, 'base64').toString()
+        );
 
-    const emailAddress: string = decoded.emailAddress; // EMAIL of the user who gave permission to read emails!
-    const newHistoryId: number = decoded.historyId;
-    const newHistoryIdString: string = newHistoryId.toString();
+        const emailAddress: string = decoded.emailAddress; // EMAIL of the user who gave permission to read emails!
+        const newHistoryId: number = decoded.historyId;
+        const newHistoryIdString: string = newHistoryId.toString();
 
-    console.log(
-      `Gmail notification for ${emailAddress}, historyId: ${newHistoryId}`
-    );
+        console.log(`Gmail notification for ${emailAddress}, historyId: ${newHistoryId}`);
 
-    // Look up active integration by email
-    const integration = await db().gmail_integrations.findFirst({
-      where: {
-        email: emailAddress,
-        is_active: true,
-      },
-    });
-
-    if (!integration) {
-      console.log("No active integration found for email:", emailAddress);
-      return res.status(200).send("OK");
-    }
-
-    const user = await db().users.findUnique({
-      where: {
-        id: integration.user_id,
-      },
-    });
-
-    if (!user) {
-      console.log("No user found for integration:", integration.user_id);
-      return res.status(200).send("OK");
-    }
-
-    const oldHistoryId = integration.history_id;
-
-    // Fetch new message IDs from history
-    try {
-      const messageIds = await fetchNewMessageIds(integration, oldHistoryId);
-
-      if (messageIds.length > 0) {
-        // Refresh token and set up Gmail client
-        const accessToken = await refreshAccessTokenIfNeeded(integration);
-        const oauth2Client = getOAuth2Client();
-        oauth2Client.setCredentials({
-          access_token: accessToken,
-          refresh_token: integration.refresh_token,
+        // Look up active integration by email
+        const integration = await db().gmail_integrations.findFirst({
+            where: {
+                email: emailAddress,
+                is_active: true
+            }
         });
-        const gmail = google.gmail({ version: "v1", auth: oauth2Client });
 
-        const lastProcessedDate: Date | null =
-          integration.last_processed_message_date;
-        let mostRecentEmailDate: Date | null = lastProcessedDate;
+        if (!integration) {
+            console.log('No active integration found for email:', emailAddress);
+            return res.status(200).send('OK');
+        }
 
-        // Fetch and parse each email
-        for (const messageId of messageIds) {
-          const parsedEmail: GmailEventData | null = await fetchAndParseEmail(
-            gmail,
-            messageId
-          );
+        const user = await db().users.findUnique({
+            where: {
+                id: integration.user_id
+            }
+        });
 
-          if (parsedEmail) {
-            // Parse the email timestamp - internalDate is milliseconds since epoch as a string
-            const emailTimestamp = parseInt(parsedEmail.internalDate, 10);
-            const emailDate = new Date(emailTimestamp);
+        if (!user) {
+            console.log('No user found for integration:', integration.user_id);
+            return res.status(200).send('OK');
+        }
 
-            // Skip messages older than the last processed message date
-            // This prevents reprocessing old messages in threads when new replies arrive
-            if (lastProcessedDate && emailDate <= lastProcessedDate) {
-              console.log(
-                chalk.gray(
-                  `Skipping old message ${
-                    parsedEmail.id
-                  } from ${emailDate.toISOString()}`
-                )
-              );
-              console.log(chalk.gray(`  Subject: ${parsedEmail.subject}`));
+        const oldHistoryId = integration.history_id;
 
-              // Still mark it as processed to avoid checking it again
-              try {
-                await db().processed_gmail_messages.create({
-                  data: {
-                    gmail_integration_id: integration.id,
-                    gmail_message_id: parsedEmail.id,
-                    internal_date: parsedEmail.internalDate,
-                  },
+        // Fetch new message IDs from history
+        try {
+            const messageIds = await fetchNewMessageIds(integration, oldHistoryId);
+
+            if (messageIds.length > 0) {
+                // Refresh token and set up Gmail client
+                const accessToken = await refreshAccessTokenIfNeeded(integration);
+                const oauth2Client = getOAuth2Client();
+                oauth2Client.setCredentials({
+                    access_token: accessToken,
+                    refresh_token: integration.refresh_token
                 });
-              } catch (error: any) {
-                // Ignore duplicate key errors - message already marked as processed
-                if (error.code !== "P2002") {
-                  throw error;
+                const gmail = google.gmail({ version: 'v1', auth: oauth2Client });
+
+                const lastProcessedDate: Date | null = integration.last_processed_message_date;
+                let mostRecentEmailDate: Date | null = lastProcessedDate;
+
+                // Fetch and parse each email
+                for (const messageId of messageIds) {
+                    const parsedEmail: GmailEventData | null = await fetchAndParseEmail(gmail, messageId);
+
+                    if (parsedEmail) {
+                        // Parse the email timestamp - internalDate is milliseconds since epoch as a string
+                        const emailTimestamp = parseInt(parsedEmail.internalDate, 10);
+                        const emailDate = new Date(emailTimestamp);
+
+                        // Skip messages older than the last processed message date
+                        // This prevents reprocessing old messages in threads when new replies arrive
+                        if (lastProcessedDate && emailDate <= lastProcessedDate) {
+                            console.log(chalk.gray(`Skipping old message ${parsedEmail.id} from ${emailDate.toISOString()}`));
+                            console.log(chalk.gray(`  Subject: ${parsedEmail.subject}`));
+
+                            // Still mark it as processed to avoid checking it again
+                            try {
+                                await db().processed_gmail_messages.create({
+                                    data: {
+                                        gmail_integration_id: integration.id,
+                                        gmail_message_id: parsedEmail.id,
+                                        internal_date: parsedEmail.internalDate
+                                    }
+                                });
+                            } catch (error: any) {
+                                // Ignore duplicate key errors - message already marked as processed
+                                if (error.code !== 'P2002') {
+                                    throw error;
+                                }
+                            }
+                            continue;
+                        }
+
+                        // Try to mark this message as processed atomically
+                        // The unique constraint will prevent duplicate processing even in race conditions
+                        try {
+                            await db().processed_gmail_messages.create({
+                                data: {
+                                    gmail_integration_id: integration.id,
+                                    gmail_message_id: parsedEmail.id,
+                                    internal_date: parsedEmail.internalDate
+                                }
+                            });
+                        } catch (error: any) {
+                            // If unique constraint fails, this message was already processed
+                            if (error.code === 'P2002') {
+                                console.log(chalk.yellow(`Skipping already processed message ${parsedEmail.id}`));
+                                console.log(chalk.yellow(`  Subject: ${parsedEmail.subject}`));
+                                continue;
+                            }
+                            // Re-throw other errors
+                            throw error;
+                        }
+
+                        console.log(chalk.cyan('New email received:'));
+                        console.log(chalk.cyan(`  Subject: ${parsedEmail.subject}`));
+                        console.log(chalk.cyan(`  From: ${parsedEmail.from}`));
+                        console.log(chalk.cyan(`  Date: ${emailDate.toISOString()}`));
+                        console.log(chalk.cyan(`  Snippet: ${parsedEmail.snippet}`));
+
+                        const eventProcessor = new EventProcessor(new GmailEvent(parsedEmail), user);
+                        const results = await eventProcessor.process();
+
+                        // Process results from all automations
+                        let hasSuccess = false;
+                        for (const result of results) {
+                            if (result.success) {
+                                console.log(chalk.green(`Email processed successfully by automation: ${result.automation?.name}`));
+                                hasSuccess = true;
+                            } else {
+                                console.log(chalk.gray(`Automation "${result.automation?.name || 'unknown'}" skipped: ${result.message}`));
+                            }
+                        }
+
+                        // Track the most recent email date if any automation succeeded
+                        if (hasSuccess && (!mostRecentEmailDate || emailDate > mostRecentEmailDate)) {
+                            mostRecentEmailDate = emailDate;
+                        }
+                    }
                 }
-              }
-              continue;
+
+                // Update the last processed message date if we processed any emails
+                if (mostRecentEmailDate && mostRecentEmailDate !== lastProcessedDate) {
+                    await db().gmail_integrations.update({
+                        where: { id: integration.id },
+                        data: { last_processed_message_date: mostRecentEmailDate }
+                    });
+                    console.log(chalk.green(`Updated last processed message date to ${mostRecentEmailDate.toISOString()}`));
+                }
             }
-
-            // Try to mark this message as processed atomically
-            // The unique constraint will prevent duplicate processing even in race conditions
-            try {
-              await db().processed_gmail_messages.create({
-                data: {
-                  gmail_integration_id: integration.id,
-                  gmail_message_id: parsedEmail.id,
-                  internal_date: parsedEmail.internalDate,
-                },
-              });
-            } catch (error: any) {
-              // If unique constraint fails, this message was already processed
-              if (error.code === "P2002") {
-                console.log(
-                  chalk.yellow(
-                    `Skipping already processed message ${parsedEmail.id}`
-                  )
-                );
-                console.log(chalk.yellow(`  Subject: ${parsedEmail.subject}`));
-                continue;
-              }
-              // Re-throw other errors
-              throw error;
-            }
-
-            console.log(chalk.cyan("New email received:"));
-            console.log(chalk.cyan(`  Subject: ${parsedEmail.subject}`));
-            console.log(chalk.cyan(`  From: ${parsedEmail.from}`));
-            console.log(chalk.cyan(`  Date: ${emailDate.toISOString()}`));
-            console.log(chalk.cyan(`  Snippet: ${parsedEmail.snippet}`));
-
-            const eventProcessor = new EventProcessor(
-              new GmailEvent(parsedEmail),
-              user
-            );
-            const result = await eventProcessor.process();
-
-            if (result.success) {
-              console.log(chalk.green("Email processed successfully"));
-              console.log(chalk.green("Automation:", result.automation?.name));
-
-              // Track the most recent email date
-              if (!mostRecentEmailDate || emailDate > mostRecentEmailDate) {
-                mostRecentEmailDate = emailDate;
-              }
-            } else {
-              console.log(
-                chalk.red("Email processing failed:", result.message)
-              );
-            }
-          }
+        } catch (error) {
+            console.error('Error fetching/processing emails:', error);
+            // Continue to update history ID even if processing fails
         }
 
-        // Update the last processed message date if we processed any emails
-        if (mostRecentEmailDate && mostRecentEmailDate !== lastProcessedDate) {
-          await db().gmail_integrations.update({
+        // Update the history ID
+        await db().gmail_integrations.update({
             where: { id: integration.id },
-            data: { last_processed_message_date: mostRecentEmailDate },
-          });
-          console.log(
-            chalk.green(
-              `Updated last processed message date to ${mostRecentEmailDate.toISOString()}`
-            )
-          );
-        }
-      }
+            data: { history_id: newHistoryIdString }
+        });
+
+        console.log(`Updated history ID for ${emailAddress}`);
+
+        res.status(200).send('OK');
     } catch (error) {
-      console.error("Error fetching/processing emails:", error);
-      // Continue to update history ID even if processing fails
+        console.error('Gmail webhook error:', error);
+        res.status(500).send('Webhook processing failed');
     }
-
-    // Update the history ID
-    await db().gmail_integrations.update({
-      where: { id: integration.id },
-      data: { history_id: newHistoryIdString },
-    });
-
-    console.log(`Updated history ID for ${emailAddress}`);
-
-    res.status(200).send("OK");
-  } catch (error) {
-    console.error("Gmail webhook error:", error);
-    res.status(500).send("Webhook processing failed");
-  }
 }
 
 export default {
