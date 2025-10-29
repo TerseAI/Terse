@@ -33,6 +33,7 @@ body,
     --color-accent-tertiary: oklch(0.7 0.17 250);
     --color-accent-quaternary: oklch(0.7 0.17 320);
     --color-accent-danger: oklch(0.7 0.17 350);
+    --color-success: oklch(0.7 0.15 145);
 }
 
 

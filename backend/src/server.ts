@@ -18,7 +18,13 @@ import {
   googleLogin,
   googleLoginURL,
 } from "./routes/auth/googleAuth";
-import { getUserAutomation, saveAutomation } from "./routes/automations";
+import {
+  createAutomation,
+  deleteAutomation,
+  getUserAutomation,
+  getUserAutomations,
+  updateAutomation,
+} from "./routes/automations";
 import {
   getCurrentGithubIntegration,
   getInstallationUrl,
@@ -303,11 +309,23 @@ app.get("/integrations/status", authMiddleware, async (req, res) => {
 // MARK: AUTOMATIONS
 
 app.get("/automations", authMiddleware, async (req, res) => {
+  getUserAutomations(req, res);
+});
+
+app.get("/automations/:id", authMiddleware, async (req, res) => {
   getUserAutomation(req, res);
 });
 
 app.post("/automations", authMiddleware, async (req, res) => {
-  saveAutomation(req, res);
+  createAutomation(req, res);
+});
+
+app.patch("/automations/:id", authMiddleware, async (req, res) => {
+  updateAutomation(req, res);
+});
+
+app.delete("/automations/:id", authMiddleware, async (req, res) => {
+  deleteAutomation(req, res);
 });
 
 server.listen(3001, () => {
