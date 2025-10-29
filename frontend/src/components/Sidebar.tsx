@@ -1,7 +1,6 @@
+import { ArrowRightOnRectangleIcon, Cog6ToothIcon, HomeIcon } from "@heroicons/react/24/outline";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Cog6ToothIcon, HomeIcon, ArrowRightOnRectangleIcon } from "@heroicons/react/24/outline";
 // import { ListBulletIcon } from "@heroicons/react/24/outline";
-import { Squares2X2Icon } from "@heroicons/react/24/outline";
 import { useAuth } from "../services/auth";
 
 function Sidebar() {
@@ -32,14 +31,9 @@ function Sidebar() {
             {/* <SidebarItem to="/app/activity" isActive={location.pathname === "/app/activity"}>
                 <LinkLabel title="Activity Feed" icon={<ListBulletIcon className="w-5 h-5 text-[theme(--color-accent)]" />} />
             </SidebarItem> */}
-            <SidebarItem to="/app/integrations" isActive={location.pathname === "/app/integrations"}>
-                <LinkLabel title="Integrations" icon={<Squares2X2Icon className="w-5 h-5 text-[theme(--color-accent)]" />} />
+            <SidebarItem to="/app/automations" isActive={location.pathname === "/app/automations"}>
+                <LinkLabel title="Automations" icon={<Cog6ToothIcon className="w-5 h-5 text-[theme(--color-accent)]" />} />
             </SidebarItem>
-            {import.meta.env.VITE_FEATURE_AUTOMATIONS === 'true' && (
-                <SidebarItem to="/app/automations" isActive={location.pathname === "/app/automations"}>
-                    <LinkLabel title="Automations" icon={<Cog6ToothIcon className="w-5 h-5 text-[theme(--color-accent)]" />} />
-                </SidebarItem>
-            )}
             <div className="mt-auto">
                 <button
                     onClick={handleLogout}
@@ -57,13 +51,12 @@ function Sidebar() {
 
 function SidebarItem({ to, children, isActive }: { to: string, children: React.ReactNode, isActive: boolean }) {
     return (
-        <Link 
-            to={to} 
-            className={`p-2 rounded-md transition-colors ${
-                isActive 
-                    ? 'bg-[theme(background-surface)]' 
-                    : 'hover:bg-[theme(background-surface)]'
-            }`}
+        <Link
+            to={to}
+            className={`p-2 rounded-md transition-colors ${isActive
+                ? 'bg-[theme(background-surface)]'
+                : 'hover:bg-[theme(background-surface)]'
+                }`}
         >
             {children}
         </Link>

@@ -185,17 +185,19 @@ function SaveAutomationButton() {
     const { name, inputs, output, prompt } = useAutomationContext();
     const [isSaving, setIsSaving] = useState(false);
     const [saveSuccess, setSaveSuccess] = useState(false);
-    const isComplete = inputs.length > 0 && output && prompt?.text;
+
+    const input = inputs[0];
+    const isComplete = input && input.integrationId && output && output.integrationId && prompt?.text;
 
     const handleSave = async () => {
-        if (!isComplete) return;
+        if (!isComplete || !input || !output) return;
 
         setIsSaving(true);
         try {
             await BackendProvider.saveAutomation(
                 name,
-                inputs.map(i => ({ integration: i.integration })),
-                { integration: output.integration },
+                [{ integration: input.integration, integrationId: input.integrationId }],
+                { integration: output.integration, integrationId: output.integrationId },
                 prompt
             );
             setSaveSuccess(true);
