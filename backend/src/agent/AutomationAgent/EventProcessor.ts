@@ -1,6 +1,6 @@
 import chalk from 'chalk';
 import { db } from '../../prismaClient';
-import { AutomationWithRelations, AutomationOutput, GmailIntegration, NotionIntegration, User } from '../../types/prisma';
+import { Automation, AutomationWithRelations, AutomationOutput, GmailIntegration, NotionIntegration, User } from '../../types/prisma';
 import { GmailEvent, InputEvent } from '../../Updater/InputEvents';
 import { NotionOutput, NotionSession } from '../../Updater/Outputs/NotionOutput';
 import { AutomationAgent } from './AutomationAgent';
@@ -12,9 +12,9 @@ import { filterEvent } from './EventFilter';
 export class ProcessorResult {
     success: boolean;
     message: string;
-    automation: AutomationWithRelations | null;
+    automation: Automation | null;
 
-    constructor(success: boolean, message: string, automation: AutomationWithRelations | null) {
+    constructor(success: boolean, message: string, automation: Automation | null) {
         this.success = success;
         this.message = message;
         this.automation = automation;
