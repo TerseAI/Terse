@@ -54,8 +54,8 @@ function SidebarItem({ to, children, isActive }: { to: string, children: React.R
         <Link
             to={to}
             className={`p-2 rounded-md transition-colors ${isActive
-                ? 'bg-[theme(background-surface)]'
-                : 'hover:bg-[theme(background-surface)]'
+                    ? 'bg-[theme(background-surface)]'
+                    : 'hover:bg-[theme(background-surface)]'
                 }`}
         >
             {children}

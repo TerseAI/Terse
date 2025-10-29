@@ -266,9 +266,9 @@ model automations {
   updated_at DateTime @updatedAt
 
   user   users               @relation(fields: [user_id], references: [id], onDelete: Cascade)
-  prompt automation_prompts?
+  prompt automation_prompts
   inputs automation_inputs[]
-  output automation_outputs?
+  output automation_outputs
 
   @@index([user_id])
   @@index([is_active])

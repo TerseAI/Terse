@@ -4,14 +4,26 @@ A simple CLI tool to test the `EventProcessor` with mock Gmail events without ne
 
 ## Quick Start
 
+### Interactive Test (Full CLI)
+
 ```bash
 cd backend
-npx tsx src/testing/testEventProcessor.ts
+npm run test:processor
 ```
 
-Or add to package.json scripts:
+### Quick Test (Single Email)
+
+Test with a single pre-defined email - great for rapid testing:
+
 ```bash
-npm run test:processor
+# Use default user (thomas.karatzas@mail.mcgill.ca)
+npm run test:processor:quick
+
+# Use a specific user email
+npm run test:processor:quick -- your.email@example.com
+
+# Or with environment variable
+TEST_USER_EMAIL=your.email@example.com npm run test:processor:quick
 ```
 
 ## What it does
@@ -21,7 +33,8 @@ This testing tool allows you to:
 - Create custom emails on the fly
 - See how the processor matches events to automations
 - Test without needing Gmail OAuth or webhook setup
-- Uses default test user (thomas.karatzas@mail.mcgill.ca)
+- **Test with any user** by passing their email as an argument
+- Quick single-email tests or interactive CLI with multiple templates
 
 ## Mock Email Templates
 
@@ -34,14 +47,26 @@ The tool includes several pre-defined email templates:
 
 ## How to Use
 
-1. Run the CLI tool
-2. The tool will automatically use/create the test user (thomas.karatzas@mail.mcgill.ca)
+### Interactive Mode (`test:processor`)
+
+1. Run `npm run test:processor`
+2. The tool will use the default test user (thomas.karatzas@mail.mcgill.ca)
 3. Select a pre-defined email template or create a custom one
 4. The processor will:
    - Check for Gmail integration
    - Look for matching automations
    - Process the event
    - Show the result
+
+### Quick Mode (`test:processor:quick`)
+
+1. Edit the `mockEmail` object in [quickProcessorTest.ts](./quickProcessorTest.ts) to customize the test email
+2. Run with your user email:
+   ```bash
+   npm run test:processor:quick -- your.email@example.com
+   ```
+3. The processor will immediately test with the pre-defined email
+4. Perfect for rapid iteration during development
 
 ## Creating Custom Emails
 

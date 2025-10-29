@@ -1,17 +1,35 @@
+import { Button } from "@headlessui/react";
+import { ArrowLeftIcon, SparklesIcon } from "@heroicons/react/24/outline";
+import { useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import TextareaAutosize from 'react-textarea-autosize';
+import EditableTextField from '../../components/ui/EditableTextField';
 import { AutomationProvider, useAutomationContext } from "../../context/AutomationContext";
+import { BackendProvider } from "../../services/backend";
 import { InputsSection } from "./InputSection";
 import { OutputSection } from "./OutputSection";
-import EditableTextField from '../../components/ui/EditableTextField';
-import { Button } from "@headlessui/react";
-import { SparklesIcon } from "@heroicons/react/24/outline";
-import { BackendProvider } from "../../services/backend";
-import { useState } from "react";
-import TextareaAutosize from 'react-textarea-autosize';
 
 function Automations() {
+    const { id } = useParams<{ id: string }>();
+    const navigate = useNavigate();
+
+    // Only pass automationId if it's not "new"
+    const automationId = id && id !== 'new' ? id : undefined;
+
     return (
-        <AutomationProvider>
-            <CreateAutomationSection />
+        <AutomationProvider automationId={automationId}>
+            <div className="flex flex-col h-full">
+                <div className="border-b border-[theme(border)] px-6 py-3">
+                    <button
+                        onClick={() => navigate('/app/automations')}
+                        className="inline-flex items-center gap-2 text-sm text-[theme(text-secondary)] hover:text-[theme(text-primary)] transition-colors"
+                    >
+                        <ArrowLeftIcon className="h-4 w-4" />
+                        Back to Automations
+                    </button>
+                </div>
+                <CreateAutomationSection />
+            </div>
         </AutomationProvider>
     )
 }
@@ -182,26 +200,50 @@ function FlowArrow() {
 }
 
 function SaveAutomationButton() {
-    const { name, inputs, output, prompt } = useAutomationContext();
+    const { automationId, name, inputs, output, prompt, isActive } = useAutomationContext();
+    const navigate = useNavigate();
     const [isSaving, setIsSaving] = useState(false);
     const [saveSuccess, setSaveSuccess] = useState(false);
-
-    const input = inputs[0];
-    const isComplete = input && input.integrationId && output && output.integrationId && prompt?.text;
+    const isComplete =
+        inputs.length > 0 &&
+        inputs.every(i => !!i.integration && !!i.integrationId) &&
+        !!output && !!output.integration && !!output.integrationId &&
+        !!prompt?.text;
+    const isEditMode = !!automationId;
 
     const handleSave = async () => {
-        if (!isComplete || !input || !output) return;
+        if (!isComplete || !inputs.length || !output) return;
 
         setIsSaving(true);
         try {
-            await BackendProvider.saveAutomation(
+            const automationData = {
                 name,
-                [{ integration: input.integration, integrationId: input.integrationId }],
-                { integration: output.integration, integrationId: output.integrationId },
-                prompt
-            );
+                inputs: inputs.map(i => ({ integration: i.integration, integrationId: i.integrationId })),
+                output: { integration: output.integration, integrationId: output.integrationId },
+                prompt,
+                isActive
+            };
+
+            if (isEditMode) {
+                // Update existing automation
+                await BackendProvider.updateAutomation(automationId, automationData);
+            } else {
+                // Create new automation
+                await BackendProvider.createAutomation(
+                    automationData.name,
+                    automationData.inputs,
+                    automationData.output,
+                    automationData.prompt,
+                    automationData.isActive
+                );
+            }
+
             setSaveSuccess(true);
-            setTimeout(() => setSaveSuccess(false), 2000);
+            setTimeout(() => {
+                setSaveSuccess(false);
+                // Navigate back to list after successful save
+                navigate('/app/automations');
+            }, 1000);
         } catch (error) {
             console.error('Error saving automation:', error);
             alert('Failed to save automation. Please try again.');
@@ -215,14 +257,14 @@ function SaveAutomationButton() {
             onClick={handleSave}
             disabled={!isComplete || isSaving}
             className={`px-8 py-3 rounded-lg font-medium transition-all duration-200 ${isComplete && !isSaving
-                    ? 'bg-[var(--color-accent)] text-[theme(text-primary)] hover:scale-[1.02] hover:brightness-110 shadow-lg'
-                    : 'bg-[theme(background-surface)] text-[theme(text-disabled)] cursor-not-allowed'
+                ? 'bg-[var(--color-accent)] text-[theme(text-primary)] hover:scale-[1.02] hover:brightness-110 shadow-lg'
+                : 'bg-[theme(background-surface)] text-[theme(text-disabled)] cursor-not-allowed'
                 }`}
             style={isComplete && !isSaving ? {
                 boxShadow: '0 0 20px -8px var(--color-accent)'
             } : undefined}
         >
-            {isSaving ? 'Saving...' : saveSuccess ? 'Saved!' : isComplete ? 'Save Automation' : 'Complete All Steps'}
+            {isSaving ? 'Saving...' : saveSuccess ? 'Saved!' : isComplete ? (isEditMode ? 'Update Automation' : 'Save Automation') : 'Complete All Steps'}
         </Button>
     )
 }

@@ -15,7 +15,8 @@ import {
   automation_prompts,
   automation_inputs,
   automation_outputs,
-  notion_integrations
+  notion_integrations,
+  Prisma
 } from '@prisma/client';
 
 
@@ -53,6 +54,11 @@ export type AutomationInput = automation_inputs;
 export type AutomationOutput = automation_outputs;
 
 export type NotionIntegration = notion_integrations;
+
+// Extended type for Automation with included relations (kept in sync with include used in queries)
+export type AutomationWithRelations = Prisma.automationsGetPayload<{
+  include: { prompt: true; inputs: true };
+}>;
 
 // Re-export the original types too
 export {

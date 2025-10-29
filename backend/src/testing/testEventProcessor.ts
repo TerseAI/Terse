@@ -193,20 +193,29 @@ async function main() {
                 console.log(chalk.yellow('\n🔄 Processing event...'));
                 const startTime = Date.now();
 
-                const result = await processor.process();
+                const results = await processor.process();
 
                 const duration = Date.now() - startTime;
 
-                console.log(chalk.bold.cyan('\n--- Result ---'));
-                if (result.success) {
-                    console.log(chalk.green('✓ Success'));
-                    console.log(chalk.gray('Message:'), result.message);
-                    if (result.automation) {
-                        console.log(chalk.gray('Automation:'), result.automation.name);
-                    }
+                console.log(chalk.bold.cyan('\n--- Results ---'));
+                if (results.length === 0) {
+                    console.log(chalk.yellow('No results returned'));
                 } else {
-                    console.log(chalk.red('✗ Failed'));
-                    console.log(chalk.gray('Message:'), result.message);
+                    for (const result of results) {
+                        if (result.success) {
+                            console.log(chalk.green('✓ Success'));
+                            console.log(chalk.gray('Message:'), result.message);
+                            if (result.automation) {
+                                console.log(chalk.gray('Automation:'), result.automation.name);
+                            }
+                        } else {
+                            console.log(chalk.red('✗ Failed'));
+                            console.log(chalk.gray('Message:'), result.message);
+                            if (result.automation) {
+                                console.log(chalk.gray('Automation:'), result.automation.name);
+                            }
+                        }
+                    }
                 }
                 console.log(chalk.gray('Duration:'), `${duration}ms`);
             }
