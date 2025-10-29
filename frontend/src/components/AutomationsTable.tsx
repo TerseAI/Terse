@@ -96,7 +96,7 @@ export function AutomationsTable({ onEdit, onDelete, refreshTrigger, searchQuery
 
                 return (
                     <button
-                        onClick={() => handleToggleStatus(automation)}
+                        onClick={(e) => { e.stopPropagation(); handleToggleStatus(automation); }}
                         className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 ${
                             isActive
                                 ? 'bg-[theme(--color-success)] focus:ring-[theme(--color-success)]'
@@ -158,14 +158,14 @@ export function AutomationsTable({ onEdit, onDelete, refreshTrigger, searchQuery
             cell: props => (
                 <div className="flex gap-2">
                     <button
-                        onClick={() => onEdit(props.row.original)}
+                        onClick={(e) => { e.stopPropagation(); onEdit(props.row.original); }}
                         className="p-1 text-[theme(--color-accent)] hover:text-[theme(--color-accent)]/80 hover:bg-[theme(--color-accent)]/10 rounded transition-colors"
                         title="Edit automation"
                     >
                         <PencilIcon className="h-5 w-5" />
                     </button>
                     <button
-                        onClick={() => onDelete(props.row.original)}
+                        onClick={(e) => { e.stopPropagation(); onDelete(props.row.original); }}
                         className="p-1 text-[theme(--color-accent-danger)] hover:text-[theme(--color-accent-danger)]/80 hover:bg-[theme(--color-accent-danger)]/10 rounded transition-colors"
                         title="Delete automation"
                     >
@@ -233,7 +233,11 @@ export function AutomationsTable({ onEdit, onDelete, refreshTrigger, searchQuery
                     </thead>
                     <tbody className="bg-[theme(background-surface)] divide-y divide-[theme(border)]">
                         {table.getRowModel().rows.map(row => (
-                            <tr key={row.id} className="hover:bg-[theme(background-elevated)] transition-colors">
+                            <tr
+                                key={row.id}
+                                className="hover:bg-[theme(background-elevated)] transition-colors cursor-pointer"
+                                onClick={() => onEdit(row.original)}
+                            >
                                 {row.getVisibleCells().map(cell => (
                                     <td key={cell.id} className="px-6 py-4 whitespace-nowrap text-sm">
                                         {flexRender(cell.column.columnDef.cell, cell.getContext())}
