@@ -23,7 +23,6 @@ import {
   deleteAutomation,
   getUserAutomation,
   getUserAutomations,
-  saveAutomation,
   updateAutomation,
 } from "./routes/automations";
 import {
@@ -319,11 +318,6 @@ app.get("/automations/:id", authMiddleware, async (req, res) => {
 
 app.post("/automations", authMiddleware, async (req, res) => {
   createAutomation(req, res);
-});
-
-// Legacy endpoint for backward compatibility (used by frontend)
-app.post("/automations/save", authMiddleware, async (req, res) => {
-  saveAutomation(req, res);
 });
 
 app.patch("/automations/:id", authMiddleware, async (req, res) => {
