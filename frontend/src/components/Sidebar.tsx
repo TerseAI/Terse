@@ -1,7 +1,6 @@
 import { ArrowRightOnRectangleIcon, Cog6ToothIcon, HomeIcon } from "@heroicons/react/24/outline";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 // import { ListBulletIcon } from "@heroicons/react/24/outline";
-import { Squares2X2Icon } from "@heroicons/react/24/outline";
 import { useAuth } from "../services/auth";
 
 function Sidebar() {
@@ -20,11 +19,11 @@ function Sidebar() {
 
     return (
         <div className="flex flex-col h-full p-2">
-            <div className="grid grid-cols-[auto_1fr] items-center gap-2 p-2 mb-8">
-                <div className="bg-[theme(--color-accent)] rounded-md h-7 w-7">
-                    <img src="/terse.png" alt="Logo" className="w-7 h-7" />
+            <div className="flex items-center mb-8">
+                <div className="h-12 w-12 flex items-center">
+                    <img src="/terse.png" alt="Logo" className="w-10 h-10" />
                 </div>
-                <h1 className="text-2xl font-bold text-[theme(text-primary)]">Terse AI</h1>
+                <h1 className="text-2xl font-bold text-[theme(text-primary)]">Terse</h1>
             </div>
             <SidebarItem to="/app" isActive={location.pathname === "/app"}>
                 <LinkLabel title="Home" icon={<HomeIcon className="w-5 h-5 text-[theme(--color-accent)]" />} />
@@ -32,9 +31,6 @@ function Sidebar() {
             {/* <SidebarItem to="/app/activity" isActive={location.pathname === "/app/activity"}>
                 <LinkLabel title="Activity Feed" icon={<ListBulletIcon className="w-5 h-5 text-[theme(--color-accent)]" />} />
             </SidebarItem> */}
-            <SidebarItem to="/app/integrations" isActive={location.pathname === "/app/integrations"}>
-                <LinkLabel title="Integrations" icon={<Squares2X2Icon className="w-5 h-5 text-[theme(--color-accent)]" />} />
-            </SidebarItem>
             <SidebarItem to="/app/automations" isActive={location.pathname === "/app/automations"}>
                 <LinkLabel title="Automations" icon={<Cog6ToothIcon className="w-5 h-5 text-[theme(--color-accent)]" />} />
             </SidebarItem>

@@ -63,7 +63,11 @@ model user_github_repositories {
 model linear_api_keys {
   id             String   @id @default(cuid())
   user_id        String
-  linear_user_id String   @unique
+  linear_user_id String
+  workspace_id   String?
+  workspace_name String?
+  team_id        String?
+  team_name      String?
   api_key        String   @unique
   webhook_secret String
   webhook_id     String
@@ -72,7 +76,8 @@ model linear_api_keys {
 
   user users @relation(fields: [user_id], references: [id])
 
-  @@unique([user_id])
+  @@index([user_id])
+  @@index([workspace_id, team_id])
 }
 
 model user_slack_integrations {
@@ -108,15 +113,21 @@ model slack_integrations {
 
 model jira_api_keys {
   id              String   @id @default(cuid())
-  user_id         String   @unique
+  user_id         String
   jira_user_email String
   base_url        String
+  site_name       String?
+  project_key     String?
+  project_name    String?
   webhook_id      String?
   api_token       String   @unique
   created_at      DateTime @default(now())
   updated_at      DateTime @updatedAt
 
   user users @relation(fields: [user_id], references: [id])
+
+  @@index([user_id])
+  @@index([base_url, project_key])
 }
 
 model gmail_integrations {
@@ -158,13 +169,19 @@ model processed_gmail_messages {
 
 model notion_integrations {
   id                String   @id @default(cuid())
-  user_id           String   @unique
-  integration_token String
+  user_id           String
+  workspace_id      String?
+  workspace_name    String?
   database_id       String
+  database_name     String?
+  integration_token String
   created_at        DateTime @default(now())
   updated_at        DateTime @updatedAt
 
   user users @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id])
+  @@index([workspace_id, database_id])
 }
 
 // Activity Feed - Starting with GitHub Events

@@ -9,81 +9,115 @@ export async function fetchUserIntegrations(req: Request, res: Response) {
     }
 
     const user = req.session.user;
-    const result: IntegrationsStatus = { integrations: {} };
+    const result: any = { integrations: {} };
 
     try {
         // Check GitHub integration
-        const userGithubRepo = await db().user_github_repositories.findFirst({
-            where: { user_id: user.id }
+        const userGithubRepos = await db().user_github_repositories.findMany({
+            where: { user_id: user.id },
+            include: { github_repository: true }
         });
-        if (userGithubRepo) {
-            const repo = await db().github_repositories.findUnique({
-                where: { id: userGithubRepo.github_repository_id }
-            });
-            if (repo) {
-                result.integrations.github = { repositoryName: repo.name };
+        result.integrations.github = userGithubRepos.map(ugr => ({
+            id: ugr.github_repository.id,
+            repositoryName: ugr.github_repository.name,
+            owner: ugr.github_repository.owner
+        }));
+
+        // Check Linear integrations (now multiple)
+        const linearKeys = await db().linear_api_keys.findMany({
+            where: { user_id: user.id },
+            select: {
+                id: true,
+                workspace_id: true,
+                workspace_name: true,
+                team_id: true,
+                team_name: true,
+                api_key: true
             }
-        }
-
-        // Check Linear integration
-        const linearKey = await db().linear_api_keys.findUnique({
-            where: { user_id: user.id }
         });
-        if (linearKey) {
-            result.integrations.linear = { apiKey: linearKey.api_key };
-        }
+        result.integrations.linear = linearKeys.map(lk => ({
+            id: lk.id,
+            workspaceId: lk.workspace_id,
+            workspaceName: lk.workspace_name,
+            teamId: lk.team_id,
+            teamName: lk.team_name,
+            apiKey: lk.api_key
+        }));
 
-        // Check Jira integration
-        const jiraKey = await db().jira_api_keys.findUnique({
-            where: { user_id: user.id }
+        // Check Jira integrations (now multiple)
+        const jiraKeys = await db().jira_api_keys.findMany({
+            where: { user_id: user.id },
+            select: {
+                id: true,
+                base_url: true,
+                site_name: true,
+                project_key: true,
+                project_name: true,
+                jira_user_email: true,
+                api_token: true
+            }
         });
-        if (jiraKey) {
-            result.integrations.jira = {
-                apiKey: jiraKey.api_token,
-                baseUrl: jiraKey.base_url,
-                email: jiraKey.jira_user_email
-            };
-        }
+        result.integrations.jira = jiraKeys.map(jk => ({
+            id: jk.id,
+            baseUrl: jk.base_url,
+            siteName: jk.site_name,
+            projectKey: jk.project_key,
+            projectName: jk.project_name,
+            email: jk.jira_user_email,
+            apiKey: jk.api_token
+        }));
 
         // Check Slack integration
-        const userSlackIntegration = await db().user_slack_integrations.findFirst({
-            where: { user_id: user.id }
+        const userSlackIntegrations = await db().user_slack_integrations.findMany({
+            where: { user_id: user.id },
+            include: { slack_integration: true }
         });
-        if (userSlackIntegration) {
-            const slackIntegration = await db().slack_integrations.findFirst({
-                where: { team_id: userSlackIntegration.slack_team_id }
-            });
-            if (slackIntegration) {
-                result.integrations.slack = { teamName: slackIntegration.team_name };
-            }
-        }
+        result.integrations.slack = userSlackIntegrations.map(usi => ({
+            id: usi.id,
+            teamId: usi.slack_integration.team_id,
+            teamName: usi.slack_integration.team_name
+        }));
 
-        // Check Gmail integration (get the first active one if multiple exist)
-        const gmailIntegration = await db().gmail_integrations.findFirst({
+        // Check Gmail integrations (already supports multiple)
+        const gmailIntegrations = await db().gmail_integrations.findMany({
             where: {
                 user_id: user.id,
                 is_active: true
             },
-            orderBy: { created_at: 'desc' }
+            select: {
+                id: true,
+                email: true,
+                history_id: true,
+                watch_expiration: true
+            }
         });
-        if (gmailIntegration) {
-            result.integrations.gmail = {
-                email: gmailIntegration.email,
-                historyId: gmailIntegration.history_id,
-                watchExpiration: gmailIntegration.watch_expiration
-            };
-        }
+        result.integrations.gmail = gmailIntegrations.map(gi => ({
+            id: gi.id,
+            email: gi.email,
+            historyId: gi.history_id,
+            watchExpiration: gi.watch_expiration
+        }));
 
-        // Check Notion integration
-        const notionIntegration = await db().notion_integrations.findUnique({
-            where: { user_id: user.id }
+        // Check Notion integrations (now multiple)
+        const notionIntegrations = await db().notion_integrations.findMany({
+            where: { user_id: user.id },
+            select: {
+                id: true,
+                workspace_id: true,
+                workspace_name: true,
+                database_id: true,
+                database_name: true,
+                integration_token: true
+            }
         });
-        if (notionIntegration) {
-            result.integrations.notion = {
-                integrationToken: notionIntegration.integration_token,
-                databaseId: notionIntegration.database_id
-            };
-        }
+        result.integrations.notion = notionIntegrations.map(ni => ({
+            id: ni.id,
+            workspaceId: ni.workspace_id,
+            workspaceName: ni.workspace_name,
+            databaseId: ni.database_id,
+            databaseName: ni.database_name,
+            integrationToken: ni.integration_token
+        }));
 
         res.status(200).json(result);
     } catch (error) {

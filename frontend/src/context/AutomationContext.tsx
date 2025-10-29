@@ -4,6 +4,7 @@ import { Integration } from "./Integrations";
 
 export interface Input {
     integration: Integration;
+    integrationId?: string; // ID of the specific integration instance
 }
 
 export interface GithubInput {
@@ -22,6 +23,7 @@ export enum GithubEventType {
 
 export interface Output {
     integration: Integration;
+    integrationId?: string; // ID of the specific integration instance
 }
 
 export interface Prompt {
