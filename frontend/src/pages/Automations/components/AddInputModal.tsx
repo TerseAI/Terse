@@ -19,7 +19,7 @@ export function AddInputModal({ isOpen, onClose, onSelectIntegration }: AddInput
             <div className="fixed inset-0 bg-black/50 backdrop-blur-sm" aria-hidden="true" />
 
             <div className="fixed inset-0 flex items-center justify-center p-4">
-                <DialogPanel className="w-full max-w-lg rounded-xl bg-[theme(background)] p-6 shadow-2xl border border-[theme(border)]">
+                <DialogPanel className="w-full max-w-lg rounded-xl bg-[theme(background)] p-6 shadow-2xl border border-[theme(border)] overflow-hidden">
                     <DialogTitle className="text-xl font-bold text-[theme(text-primary)] mb-2">
                         Add Event Source
                     </DialogTitle>

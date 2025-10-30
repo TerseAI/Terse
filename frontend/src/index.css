@@ -14,23 +14,24 @@ body,
         sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    color-scheme: light;
 }
 
 @theme {
-    --background-dark: hsl(30, 0%, 4%);
-    --background: hsl(180, 4%, 6%);
-    --background-light: hsl(211, 6%, 9%);
+    --background-dark: light-dark(hsl(30, 0%, 91%), hsl(30, 0%, 4%));
+    --background: light-dark(hsl(180, 4%, 94%), hsl(180, 4%, 6%));
+    --background-light: light-dark(hsl(211, 6%, 96%), hsl(211, 6%, 9%));
 
-    --background-hover: hsl(211, 6%, 12%);
+    --background-hover: light-dark(hsl(211, 6%, 84%), hsl(211, 6%, 14%));
 
 
-    --border: hsl(0, 0%, 20%);
+    --border: light-dark(hsl(0, 0%, 80%), hsl(0, 0%, 80%));
 
     --shadow: 0 2px 2px hsla(0, 0%, 0%, 0.07), 0 4px 4px hsla(0, 0%, 0%, 0.15);
 
-    --text-primary: hsl(0, 0%, 95%);
-    --text-secondary: hsl(0, 0%, 70%);
-    --text-disabled: hsl(0, 0%, 50%);
+    --text-primary: light-dark(hsl(0, 0%, 5%), hsl(0, 0%, 95%));
+    --text-secondary: light-dark(hsl(0, 0%, 30%), hsl(0, 0%, 70%));
+    --text-disabled: light-dark(hsl(0, 0%, 40%), hsl(0, 0%, 50%));
 
     --color-accent: oklch(0.7 0.17 172);
     --color-accent-secondary: oklch(0.7 0.27 10);

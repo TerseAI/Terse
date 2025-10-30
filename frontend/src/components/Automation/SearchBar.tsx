@@ -8,7 +8,7 @@ interface SearchBarProps {
 
 export function SearchBar({ searchQuery, className, onSearchChange }: SearchBarProps) {
     return (
-        <div className={`relative flex-1 ${className}  shadow-[var(--shadow)]`}>
+        <div className={`relative flex-1 ${className}`}>
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                 <MagnifyingGlassIcon className="h-5 w-5 text-[theme(text-disabled)]" />
             </div>
@@ -17,7 +17,7 @@ export function SearchBar({ searchQuery, className, onSearchChange }: SearchBarP
                 value={searchQuery}
                 onChange={(e) => onSearchChange(e.target.value)}
                 placeholder="Search automations by name..."
-                className="block w-full pl-10 pr-10 py-2.5 text-sm text-[theme(text-primary)] bg-[theme(background)] border border-[theme(border)] rounded-lg placeholder-[theme(text-disabled)] focus:outline-none focus:border-[theme(--color-accent)] transition-colors"
+                className="block w-full pl-10 pr-10 py-2.5 text-sm text-[theme(text-primary)] bg-[theme(background)] border border-[theme(border)] rounded-lg placeholder-[theme(text-disabled)] focus:outline-none focus:border-[theme(--color-accent)] transition-colors shadow-[var(--shadow)]"
             />
             {searchQuery && (
                 <button
