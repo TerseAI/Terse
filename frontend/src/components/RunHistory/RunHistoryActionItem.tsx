@@ -1,4 +1,4 @@
-import { ChevronRight, XCircle, Database, Calendar as CalendarIcon, MessageSquare, FileText, ExternalLink, Copy } from "lucide-react";
+import { ChevronRight, XCircle, Database, Calendar as CalendarIcon, MessageSquare, FileText, ExternalLink } from "lucide-react";
 import type { RunHistoryAction, RunHistoryStatus } from "../../shared/RunHistoryTypes";
 
 type Props = {
@@ -8,10 +8,9 @@ type Props = {
     runStatus: RunHistoryStatus;
     isExpanded: boolean;
     onToggle: (actionKey: string) => void;
-    onCopy: (text: string) => void;
 };
 
-export default function RunHistoryActionItem({ runId, index, action, runStatus, isExpanded, onToggle, onCopy }: Props) {
+export default function RunHistoryActionItem({ runId, index, action, runStatus, isExpanded, onToggle }: Props) {
     const actionKey = `${runId}-action-${index}`;
 
     const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
@@ -62,16 +61,6 @@ export default function RunHistoryActionItem({ runId, index, action, runStatus, 
                         <div className={`flex-1 ${runStatus === "failed" ? "text-red-400" : "text-slate-400"}`}>
                             {action.details}
                         </div>
-                        <button
-                            className="h-6 w-6 p-0 text-slate-500 hover:text-slate-300"
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                onCopy(action.details);
-                            }}
-                            type="button"
-                        >
-                            <Copy className="w-3 h-3" />
-                        </button>
                     </div>
                 </div>
             )}
