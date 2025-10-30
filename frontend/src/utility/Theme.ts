@@ -1,5 +1,5 @@
 function initTheme() {
-    const savedTheme = localStorage.getItem('theme') || 'light';
+    const savedTheme = localStorage.getItem('theme') || 'dark';
     document.documentElement.style.colorScheme = savedTheme;
 }
 
