@@ -22,7 +22,7 @@ function Automations() {
                 <div className="py-3">
                     <button
                         onClick={() => navigate('/app/automations')}
-                        className="inline-flex items-center gap-2 text-sm text-[theme(text-secondary)] hover:text-[theme(text-primary)] transition-colors"
+                        className="inline-flex items-center gap-2 text-sm text-[theme(text-secondary)] hover:text-[theme(text-primary)] transition-colors pl-2"
                     >
                         <ArrowLeftIcon className="h-4 w-4" />
                         Back to Automations
@@ -81,7 +81,7 @@ function PromptSection() {
                 placeholder='e.g., "Summarize all commits and update the changelog", "Create a weekly progress report", etc.'
                 minRows={3}
                 maxRows={20}
-                className="w-full bg-[theme(background-elevated)] rounded-lg p-4 border border-[theme(border)] text-[theme(text-primary)] placeholder:text-[theme(text-secondary)] focus:outline-none focus:border-[theme(--color-accent)] focus:ring-1 focus:ring-[theme(--color-accent)] transition-all duration-200 resize-none overflow-hidden"
+                className="w-full bg-[theme(background)] rounded-lg p-4 border border-[theme(border)] text-[theme(text-primary)] placeholder:text-[theme(text-secondary)] focus:outline-none focus:border-[theme(--color-accent)] focus:ring-1 focus:ring-[theme(--color-accent)] transition-all duration-200 resize-none overflow-hidden"
             />
         </div>
     )

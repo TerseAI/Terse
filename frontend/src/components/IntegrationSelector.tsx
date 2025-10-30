@@ -110,7 +110,7 @@ export function IntegrationSelector({
 
     if (integrations.length === 0) {
         return (
-            <div className="flex flex-col gap-3 p-4 rounded-lg border border-dashed border-[theme(border)] bg-[theme(background-surface)]">
+            <div className="flex flex-col gap-3 p-4 rounded-lg border border-dashed border-[theme(border)] bg-[theme(background-light)]">
                 <div className="text-sm text-[theme(text-secondary)]">
                     No {getIntegrationName(integrationType)} accounts connected
                 </div>
@@ -150,7 +150,7 @@ export function IntegrationSelector({
             <button
                 onClick={handleConnectNew}
                 disabled={isConnecting}
-                className="flex items-center justify-center gap-2 px-3 py-2 text-sm bg-[theme(background-surface)] text-[theme(text-secondary)] rounded-lg hover:bg-[theme(background-hover)] hover:text-[theme(text-primary)] transition-all disabled:opacity-50 disabled:cursor-not-allowed border border-[theme(border)]"
+                className="flex items-center justify-center gap-2 px-3 py-2 text-sm bg-[theme(background-light)] text-[theme(text-secondary)] rounded-lg hover:bg-[theme(background-hover)] hover:text-[theme(text-primary)] transition-all disabled:opacity-50 disabled:cursor-not-allowed border border-[theme(border)]"
             >
                 <PlusIcon className="w-4 h-4" />
                 {isConnecting ? 'Connecting...' : `Connect Another ${getIntegrationName(integrationType)}`}

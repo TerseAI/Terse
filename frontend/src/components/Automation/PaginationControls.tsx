@@ -42,7 +42,7 @@ export function PaginationControls({
                             id="items-per-page"
                             value={limit}
                             onChange={(e) => onLimitChange(Number(e.target.value))}
-                            className="px-3 py-1.5 text-sm text-[theme(text-primary)] bg-[theme(background-surface)] border border-[theme(border)] rounded-md hover:bg-[theme(background-elevated)] focus:outline-none focus:ring-2 focus:ring-[theme(--color-accent)] transition-colors"
+                            className="px-3 py-1.5 text-sm text-[theme(text-primary)] bg-[theme(background-light)] border border-[theme(border)] rounded-md hover:bg-[theme(background)] focus:outline-none focus:ring-2 focus:ring-[theme(--color-accent)] transition-colors"
                         >
                             <option value={25}>25</option>
                             <option value={50}>50</option>
@@ -56,7 +56,7 @@ export function PaginationControls({
                     {page > 1 && (
                         <button
                             onClick={() => onPageChange(Math.max(1, page - 1))}
-                            className="px-4 py-2 text-sm font-medium text-[theme(text-primary)] bg-[theme(background-surface)] border border-[theme(border)] rounded-md hover:bg-[theme(background-elevated)] transition-colors"
+                            className="px-4 py-2 text-sm font-medium text-[theme(text-primary)] bg-[theme(background-light)] border border-[theme(border)] rounded-md hover:bg-[theme(background)] transition-colors"
                         >
                             Previous
                         </button>
@@ -64,7 +64,7 @@ export function PaginationControls({
                     {page < totalPages && (
                         <button
                             onClick={() => onPageChange(Math.min(totalPages, page + 1))}
-                            className="px-4 py-2 text-sm font-medium text-[theme(text-primary)] bg-[theme(background-surface)] border border-[theme(border)] rounded-md hover:bg-[theme(background-elevated)] transition-colors"
+                            className="px-4 py-2 text-sm font-medium text-[theme(text-primary)] bg-[theme(background-light)] border border-[theme(border)] rounded-md hover:bg-[theme(background)] transition-colors"
                         >
                             Next
                         </button>
