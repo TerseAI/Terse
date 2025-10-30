@@ -15,7 +15,7 @@ export function ActionButtons({ automation, onEdit, onDelete }: ActionButtonsPro
                     e.stopPropagation();
                     onEdit(automation);
                 }}
-                className="p-1 text-[theme(--color-accent)] hover:text-[theme(--color-accent)]/80 hover:bg-[theme(--color-accent)]/10 rounded transition-colors"
+                className="p-1 text-[theme(--color-accent)] hover:scale-110 rounded transition-colors"
                 title="Edit automation"
             >
                 <PencilIcon className="h-5 w-5" />
@@ -25,7 +25,7 @@ export function ActionButtons({ automation, onEdit, onDelete }: ActionButtonsPro
                     e.stopPropagation();
                     onDelete(automation);
                 }}
-                className="p-1 text-[theme(--color-accent-danger)] hover:text-[theme(--color-accent-danger)]/80 hover:bg-[theme(--color-accent-danger)]/10 rounded transition-colors"
+                className="p-1 text-[theme(--color-accent-danger)] hover:scale-110 rounded transition-colors"
                 title="Delete automation"
             >
                 <TrashIcon className="h-5 w-5" />
