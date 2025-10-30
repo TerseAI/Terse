@@ -33,10 +33,10 @@ export default function RunHistoryActionItem({ runId, index, action, runStatus, 
                 type="button"
             >
                 <div className="flex items-start gap-2">
-                    {getActionIcon(action.type, runStatus)}
+                    {getActionIcon(action.action, runStatus)}
                     <div className="flex-1">
                         <div className="flex items-center gap-2">
-                            <span className="text-slate-300">{capitalize(action.type)} on {capitalize(action.integration)} → {action.target}</span>
+                            <span className="text-slate-300">{capitalize(action.action)} on {capitalize(action.integration)} → {action.target}</span>
                             {action.url && (
                                 <a
                                     href={action.url}

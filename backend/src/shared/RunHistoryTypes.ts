@@ -13,7 +13,7 @@ export type Integration =
 
 export type RunHistoryAction = {
     // What action was taken (free-text, e.g. "create database entry", "send notification")
-    type: string;
+    action: string;
     // Which integration this action targeted (used for icons and grouping)
     integration: Integration;
     // The concrete target, e.g. database name, channel name, repo, inbox, etc.
@@ -26,7 +26,7 @@ export type RunHistoryAction = {
 
 export type RunHistoryTrigger = {
     // What event occurred to trigger the run (free-text, e.g. "email received", "database row created")
-    type: string;
+    event: string;
     // Which integration this trigger came from (used for icons and grouping)
     integration: Integration;
     // Source or context of the trigger (e.g. Gmail, Notion DB name, repo name)

@@ -46,8 +46,13 @@ export default function RunHistoryItem({
         }
     };
 
-    const allActionsExpanded = !!run.actions && run.actions.length > 0 &&
-        Array.from({ length: run.actions.length }, (_, i) => `${run.id}-action-${i}`).every((k) => isActionExpanded(k));
+    const areAllActionsExpanded = (runId: string, actionCount: number) => {
+        if (!actionCount) return false;
+        const keys = Array.from({ length: actionCount }, (_, i) => `${runId}-action-${i}`);
+        return keys.every((k) => isActionExpanded(k));
+    };
+
+    const allActionsExpanded = !!run.actions && areAllActionsExpanded(run.id, run.actions.length);
 
     return (
         <div className="overflow-hidden bg-[#242424] border border-slate-800 rounded-lg md:mb-3 min-w-[640px] md:min-w-0 shrink-0 md:shrink">
