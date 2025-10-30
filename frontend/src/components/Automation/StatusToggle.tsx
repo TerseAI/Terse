@@ -16,7 +16,7 @@ export function StatusToggle({ automation, onToggle }: StatusToggleProps) {
             }}
             className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 ${
                 isActive
-                    ? 'bg-[theme(--color-success)] focus:ring-[theme(--color-success)]'
+                    ? 'bg-[theme(--color-accent)] focus:ring-[theme(--color-accent)]'
                     : 'bg-[theme(text-disabled)] focus:ring-[theme(text-disabled)]'
             }`}
             role="switch"
