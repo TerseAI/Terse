@@ -66,7 +66,10 @@ export default function RunHistoryItem({
 
             {isExpanded && (
                 <div className="px-4 pb-4">
-                    <div className="ml-9 mt-3">
+                    <div className="text-slate-300">
+                        Agent Decision:
+                    </div>
+                    <div className="mt-3">
                         <RunHistoryItemDecision
                             filtered={run.filtered}
                             reasoning={run.decision.reasoning}

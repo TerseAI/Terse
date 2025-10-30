@@ -27,7 +27,7 @@ export default function RunHistoryItemDecision({ filtered, reasoning, isExpanded
                     <div className="flex-1">
                         <div className="flex items-center gap-2">
                             <span className="text-slate-300">
-                                {filtered ? "Agent Decision: Skip" : "Agent Decision: Take Action"}
+                                {filtered ? "Skip" : "Take Action"}
                             </span>
                         </div>
                     </div>
