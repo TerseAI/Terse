@@ -1,5 +1,4 @@
-import { Button } from "@headlessui/react";
-import { ArrowLeftIcon, SparklesIcon } from "@heroicons/react/24/outline";
+import { ArrowLeftIcon } from "@heroicons/react/24/outline";
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import TextareaAutosize from 'react-textarea-autosize';
@@ -8,6 +7,7 @@ import { AutomationProvider, useAutomationContext } from "../../context/Automati
 import { BackendProvider } from "../../services/backend";
 import { InputsSection } from "./InputSection";
 import { OutputSection } from "./OutputSection";
+import { Button } from "../../components/ui/Button";
 
 function Automations() {
     const { id } = useParams<{ id: string }>();
@@ -19,10 +19,10 @@ function Automations() {
     return (
         <AutomationProvider automationId={automationId}>
             <div className="flex flex-col h-full">
-                <div className="border-b border-[theme(border)] px-6 py-3">
+                <div className="py-3">
                     <button
                         onClick={() => navigate('/app/automations')}
-                        className="inline-flex items-center gap-2 text-sm text-[theme(text-secondary)] hover:text-[theme(text-primary)] transition-colors"
+                        className="inline-flex items-center gap-2 text-sm text-[theme(text-secondary)] hover:text-[theme(text-primary)] transition-colors pl-2 mt-1"
                     >
                         <ArrowLeftIcon className="h-4 w-4" />
                         Back to Automations
@@ -43,9 +43,6 @@ function CreateAutomationSection() {
 
                     <div className="space-y-2">
                         <EditableTextField value={name} onSave={(value) => setName(value)} />
-                        <p className="text-xs text-[theme(text-secondary)]">
-                            Create an automation that listens to events and continuously updates a living document
-                        </p>
                     </div>
 
                     <div className="space-y-3">
@@ -78,22 +75,13 @@ function PromptSection() {
     const { prompt, setPrompt } = useAutomationContext();
     return (
         <div className="flex flex-col gap-3">
-            <div className="flex items-center gap-2.5">
-                <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-[theme(background-elevated)]">
-                    <SparklesIcon className="w-5 h-5 text-[theme(--color-accent-secondary)]" />
-                </div>
-                <div className="flex flex-col">
-                    <h2 className="text-base font-semibold text-[theme(text-primary)]">Process With AI</h2>
-                    <p className="text-xs text-[theme(text-secondary)] mt-0.5">Describe what you want the AI to do with the incoming events</p>
-                </div>
-            </div>
             <TextareaAutosize
                 value={prompt?.text || ''}
                 onChange={(e) => setPrompt({ text: e.target.value })}
                 placeholder='e.g., "Summarize all commits and update the changelog", "Create a weekly progress report", etc.'
                 minRows={3}
                 maxRows={20}
-                className="w-full bg-[theme(background-elevated)] rounded-lg p-4 border border-[theme(border)] text-[theme(text-primary)] placeholder:text-[theme(text-secondary)] focus:outline-none focus:border-[theme(--color-accent)] focus:ring-1 focus:ring-[theme(--color-accent)] transition-all duration-200 resize-none overflow-hidden"
+                className="w-full bg-[theme(background)] rounded-lg p-4 border border-[theme(border)] text-[theme(text-primary)] placeholder:text-[theme(text-secondary)] focus:outline-none focus:border-[theme(--color-accent)] focus:ring-1 focus:ring-[theme(--color-accent)] transition-all duration-200 resize-none overflow-hidden"
             />
         </div>
     )
@@ -256,13 +244,8 @@ function SaveAutomationButton() {
         <Button
             onClick={handleSave}
             disabled={!isComplete || isSaving}
-            className={`px-8 py-3 rounded-lg font-medium transition-all duration-200 ${isComplete && !isSaving
-                ? 'bg-[var(--color-accent)] text-[theme(text-primary)] hover:scale-[1.02] hover:brightness-110 shadow-lg'
-                : 'bg-[theme(background-surface)] text-[theme(text-disabled)] cursor-not-allowed'
-                }`}
-            style={isComplete && !isSaving ? {
-                boxShadow: '0 0 20px -8px var(--color-accent)'
-            } : undefined}
+            isComplete={isComplete}
+            isSaving={isSaving}
         >
             {isSaving ? 'Saving...' : saveSuccess ? 'Saved!' : isComplete ? (isEditMode ? 'Update Automation' : 'Save Automation') : 'Complete All Steps'}
         </Button>

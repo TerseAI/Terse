@@ -1,29 +1,29 @@
-import { Listbox, ListboxButton, ListboxOption, ListboxOptions } from "@headlessui/react";
-import { ChevronDownIcon } from "@heroicons/react/20/solid";
-import { CheckIcon } from "@heroicons/react/24/outline";
+import { Listbox, ListboxButton, ListboxOptions, ListboxOption } from '@headlessui/react';
+import { CheckIcon, ChevronDownIcon } from '@heroicons/react/24/outline';
 
-type StatusOption = {
+interface StatusOption {
+    value: boolean | undefined;
     label: string;
-    value: string;
 }
 
-type DropdownSelectProps = {
+interface StatusFilterProps {
     statusOptions: StatusOption[];
     selectedOption: StatusOption;
-    setSelected: (value: string) => void;
+    onStatusChange: (option: StatusOption) => void;
+    className?: string;
 }
 
-const DropdownSelect = ({ statusOptions, selectedOption, setSelected }: DropdownSelectProps) => {
+export function StatusFilter({ statusOptions, selectedOption, onStatusChange, className }: StatusFilterProps) {
     return (
-        <Listbox value={selectedOption} onChange={(option) => setSelected(option.value)}>
-            <div className="relative sm:w-auto w-full">
-                <ListboxButton className="relative w-full pl-3 pr-10 py-2.5 text-left text-sm text-[theme(text-primary)] bg-[theme(background-light)] border border-[theme(border)] rounded-lg hover:bg-[theme(background)] focus:outline-none focus:ring-2 focus:ring-[theme(--color-accent)] transition-colors cursor-pointer">
+        <Listbox value={selectedOption} onChange={onStatusChange}>
+            <div className={`relative sm:w-auto w-full sm:min-w-[140px] ${className} shadow-[var(--shadow)]`}>
+                <ListboxButton className="relative w-full pl-3 pr-10 py-2.5 text-left text-sm text-[theme(text-primary)] bg-[theme(background)] border border-[theme(border)] rounded-lg hover:bg-[theme(background)] focus:outline-none focus:ring-2 focus:ring-[theme(--color-accent)] transition-colors cursor-pointer">
                     <span className="block truncate">{selectedOption.label}</span>
                     <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2">
                         <ChevronDownIcon className="h-5 w-5 text-[theme(text-disabled)]" aria-hidden="true" />
                     </span>
                 </ListboxButton>
-                <ListboxOptions className="absolute z-10 mt-1 w-full max-h-60 overflow-auto rounded-lg bg-[theme(background)] border border-[theme(border)] py-1 shadow-[var(--shadow)] focus:outline-none">
+                <ListboxOptions className="absolute z-10 mt-1 w-full max-h-60 overflow-auto rounded-lg bg-[theme(background-light)] border border-[theme(border)] py-1 shadow-[var(--shadow)] focus:outline-none">
                     {statusOptions.map((option, idx) => (
                         <ListboxOption
                             key={idx}
@@ -47,7 +47,5 @@ const DropdownSelect = ({ statusOptions, selectedOption, setSelected }: Dropdown
                 </ListboxOptions>
             </div>
         </Listbox>
-    )
+    );
 }
-
-export default DropdownSelect

@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import TextareaAutosize from 'react-textarea-autosize';
+import { PencilIcon } from "@heroicons/react/24/outline";
 
 type EditableTextProps = {
     value: string;
@@ -60,9 +61,12 @@ function EditableText({ value, onSave, onChange, className = "", placeholder = "
             ) : (
                 <div
                     onClick={handleClick}
-                    className="text-4xl w-full box-border text-[theme(text-primary)] border border-transparent hover:border-[theme(--color-accent-primary)] hover:cursor-pointer rounded cursor-text min-h-[40px]"
+                    className="text-4xl w-full box-border text-[theme(text-primary)] border border-transparent hover:border-[theme(--color-accent-primary)] hover:cursor-pointer rounded cursor-text min-h-[40px] flex items-center gap-2"
                 >
-                    {value || <span className="text-[theme(text-secondary)]">{placeholder}</span>}
+                    <span className="leading-tight">
+                        {value || <span className="text-[theme(text-secondary)]">{placeholder}</span>}
+                    </span>
+                    <PencilIcon className="w-7 h-7 text-[theme(text-secondary)] flex-shrink-0 self-center" />
                 </div>
             )}
             {isEditing && (

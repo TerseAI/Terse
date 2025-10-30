@@ -73,7 +73,7 @@ export function IntegrationBox({ children, isOutput }: { children: React.ReactNo
     const boxSize = 24
     return (
         <div
-            className={`w-${boxSize} h-${boxSize} flex items-center justify-center p-4 rounded-lg bg-[theme(background-surface)] border border-[theme(border)] transition-all duration-200 hover:border-[theme(--color-accent)] hover:shadow-lg ${isOutput ? 'animate-breathe' : ''}`}
+            className={`w-${boxSize} h-${boxSize} flex items-center justify-center p-4 rounded-lg bg-[theme(background-light)] border border-[theme(border)] transition-all duration-200 hover:border-[theme(--color-accent)] hover:shadow-[var(--shadow) ${isOutput ? 'animate-breathe' : ''}`}
             style={isOutput ? {
                 boxShadow: '0 0 20px -8px var(--color-accent-tertiary)'
             } : undefined}

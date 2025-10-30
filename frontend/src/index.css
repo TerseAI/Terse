@@ -17,22 +17,27 @@ body,
 }
 
 @theme {
-    --background: rgb(33, 33, 33);
-    --background-surface: rgb(48, 48, 48);
-    --background-elevated: rgb(24, 24, 24);
+    --background-dark: hsl(30, 0%, 4%);
+    --background: hsl(180, 4%, 6%);
+    --background-light: hsl(211, 6%, 9%);
 
-    --border: #333333;
+    --background-hover: hsl(211, 6%, 12%);
 
-    --text-primary: #E6EDF3;
-    --text-secondary: #8B949E;
-    --text-disabled: #6E7681;
+
+    --border: hsl(0, 0%, 20%);
+
+    --shadow: 0 2px 2px hsla(0, 0%, 0%, 0.07), 0 4px 4px hsla(0, 0%, 0%, 0.15);
+
+    --text-primary: hsl(0, 0%, 95%);
+    --text-secondary: hsl(0, 0%, 70%);
+    --text-disabled: hsl(0, 0%, 50%);
 
     --color-accent: oklch(0.7 0.17 172);
-    --color-accent-secondary: oklch(0.7 0.17 10);
-    --color-accent-tertiary: oklch(0.7 0.17 250);
-    --color-accent-quaternary: oklch(0.7 0.17 320);
-    --color-accent-danger: oklch(0.7 0.17 350);
-    --color-success: oklch(0.7 0.15 145);
+    --color-accent-secondary: oklch(0.7 0.27 10);
+    --color-accent-tertiary: oklch(0.7 0.27 250);
+    --color-accent-quaternary: oklch(0.7 0.27 320);
+    --color-accent-danger: oklch(0.7 0.27 350);
+    --color-success: oklch(0.7 0.27 145);
 }
 
 

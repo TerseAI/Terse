@@ -89,7 +89,7 @@ function ActivityFeedContent({
                     <button
                         onClick={onLoadMore}
                         disabled={isLoadingMore}
-                        className="px-6 py-2 bg-[theme(background-surface)] text-[theme(text-primary)] rounded-lg hover:bg-[theme(background-elevated)] transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
+                        className="px-6 py-2 bg-[theme(background-light)] text-[theme(text-primary)] rounded-lg hover:bg-[theme(background)] transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-[var(--shadow)]"
                     >
                         {isLoadingMore ? 'Loading...' : 'Load More'}
                     </button>
@@ -103,9 +103,9 @@ function LoadingState() {
     // three skeleton cards with pulse animation
     return (
         <div className="grid grid-cols-1 gap-4">
-            <div className="animate-pulse rounded-lg bg-[theme(background-elevated)] h-24 w-full"></div>
-            <div className="animate-pulse rounded-lg bg-[theme(background-elevated)] h-24 w-full"></div>
-            <div className="animate-pulse rounded-lg bg-[theme(background-elevated)] h-24 w-full"></div>
+            <div className="animate-pulse rounded-lg bg-[theme(background)] h-24 w-full"></div>
+            <div className="animate-pulse rounded-lg bg-[theme(background)] h-24 w-full"></div>
+            <div className="animate-pulse rounded-lg bg-[theme(background)] h-24 w-full"></div>
         </div>
     )       
 }
