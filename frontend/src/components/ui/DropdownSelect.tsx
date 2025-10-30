@@ -23,7 +23,8 @@ const DropdownSelect = ({ statusOptions, selectedOption, setSelected }: Dropdown
                         <ChevronDownIcon className="h-5 w-5 text-[theme(text-disabled)]" aria-hidden="true" />
                     </span>
                 </ListboxButton>
-                <ListboxOptions className="absolute z-10 mt-1 w-full max-h-60 overflow-auto rounded-lg bg-[theme(background)] border border-[theme(border)] py-1 shadow-[var(--shadow)] focus:outline-none">
+                <ListboxOptions className="absolute z-10 mt-1 w-full max-h-60 rounded-lg bg-[theme(background)] border border-[theme(border)] py-1 shadow-[var(--shadow)] focus:outline-none overflow-hidden">
+                    <div className="max-h-60 overflow-auto">
                     {statusOptions.map((option, idx) => (
                         <ListboxOption
                             key={idx}
@@ -44,6 +45,7 @@ const DropdownSelect = ({ statusOptions, selectedOption, setSelected }: Dropdown
                             )}
                         </ListboxOption>
                     ))}
+                    </div>
                 </ListboxOptions>
             </div>
         </Listbox>

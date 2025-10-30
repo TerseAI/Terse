@@ -10,7 +10,7 @@ export type ButtonProps = {
 export function Button({ children, onClick, disabled, className, isComplete = true, isSaving = false }: ButtonProps) {
     return (
         <button onClick={onClick} disabled={disabled} className={
-            `px-8 py-3 rounded-lg font-medium transition-all duration-200 cursor-pointer hover:shadow-[var(--shadow-hover)] ${isComplete && !isSaving
+            `px-8 py-3 rounded-lg font-medium transition-all duration-200 cursor-pointer hover:shadow-[var(--shadow-hover)] overflow-hidden ${isComplete && !isSaving
             ? 'bg-[var(--color-accent)] text-[theme(text-primary)] hover:brightness-110'
             : 'bg-[theme(background-light)] text-[theme(text-disabled)] cursor-not-allowed'
             } ${className}`}>
