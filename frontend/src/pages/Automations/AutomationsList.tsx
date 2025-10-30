@@ -47,17 +47,18 @@ export default function AutomationsList() {
     };
 
     return (
-        <div className="grid grid-flow-row pt-4">
+        <div className="grid grid-flow-row pt-4 pl-8">
             <div className="flex-1 overflow-y-auto">
                 <div className="max-w-7xl space-y-6">
                     <AutomationsHeader onCreateNew={handleCreateNew} />
 
-                    <div className="flex flex-col sm:flex-row gap-3">
-                        <SearchBar searchQuery={searchQuery} onSearchChange={setSearchQuery} />
+                    <div className="grid grid-cols-20 sm:grid-flow-row gap-3">
+                        <SearchBar searchQuery={searchQuery} className="col-span-16" onSearchChange={setSearchQuery} />
                         <StatusFilter
                             statusOptions={statusOptions}
                             selectedOption={selectedOption}
                             onStatusChange={(option) => setStatusFilter(option.value)}
+                            className="col-span-4"
                         />
                     </div>
 
