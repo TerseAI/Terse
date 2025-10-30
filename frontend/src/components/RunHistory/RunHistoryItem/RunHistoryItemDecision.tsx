@@ -15,8 +15,8 @@ export default function RunHistoryItemDecision({ filtered, reasoning, isExpanded
                 onClick={onToggle}
                 type="button"
             >
-                <div className="flex items-start gap-2">
-                    <div className="mt-0.5">
+                <div className="flex items-center gap-2">
+                    <div>
                         {filtered ? (
                             <FilterIcon className="w-4 h-4 text-slate-400" />
                         ) : (
@@ -30,7 +30,7 @@ export default function RunHistoryItemDecision({ filtered, reasoning, isExpanded
                             </span>
                         </div>
                     </div>
-                    <ChevronRight className={`w-4 h-4 text-slate-400 transition-transform mt-0.5 ${
+                    <ChevronRight className={`w-4 h-4 text-slate-400 transition-transform ${
                         isExpanded ? "rotate-90" : ""
                     }`} />
                 </div>
