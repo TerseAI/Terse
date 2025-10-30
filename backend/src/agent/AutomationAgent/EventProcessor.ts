@@ -5,7 +5,7 @@ import { GmailEvent, InputEvent } from '../../Updater/InputEvents';
 import { NotionOutput, NotionSession } from '../../Updater/Outputs/NotionOutput';
 import { AutomationAgent } from './AutomationAgent';
 import { filterEvent } from './EventFilter';
-import { createRunRecord, finalizeRunStatus, markRunProcessed, markRunSkipped } from './runHistory';
+import { appendRunAction, createRunRecord, finalizeRunStatus, markRunProcessed, markRunSkipped } from './runHistory';
 
 // The job of this class is to take an Input Event, and check if it's a match for an Automation.
 // It will then create a Session, and summon the Automation Agent with the create user data.
@@ -193,7 +193,7 @@ export class EventProcessor {
         if (runId && session.runActions && session.runActions.length > 0) {
             for (const action of session.runActions) {
                 try {
-                    await (await import('./runHistory')).appendRunAction(runId, {
+                    await appendRunAction(runId, {
                         type: action.type,
                         integration: action.integration,
                         target: action.target,
