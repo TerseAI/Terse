@@ -3,6 +3,7 @@ import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import { Calendar as CalendarIcon, CheckCircle2, ChevronLeft, ChevronRight, Filter as FilterIcon, Search as SearchIcon } from "lucide-react";
 import type { RunHistoryStatus } from "../../shared/RunHistoryTypes";
+import RunHistoryPagination from "./RunHistoryPagination";
 
 type DateRange = { from: Date | undefined; to: Date | undefined };
 
@@ -107,18 +108,18 @@ export default function RunHistoryToolBar({
             </div>
 
             <div className="flex items-center justify-between gap-4">
-                <div className="flex items-center gap-4 flex-1">
-                    <div className="relative max-w-xs flex-1">
-                        <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                        <input
-                            type="text"
-                            placeholder="Search runs..."
-                            value={searchQuery}
-                            onChange={(e) => onSearchChange(e.target.value)}
-                            className="pl-9 w-full rounded-md border border-slate-700 bg-[#242424] text-slate-300 placeholder:text-slate-500 h-9 px-3"
-                        />
-                    </div>
+                <div className="relative flex-1">
+                    <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                    <input
+                        type="text"
+                        placeholder="Search runs..."
+                        value={searchQuery}
+                        onChange={(e) => onSearchChange(e.target.value)}
+                        className="pl-9 w-full rounded-md border border-slate-700 bg-[#242424] text-slate-300 placeholder:text-slate-500 h-9 px-3"
+                    />
+                </div>
 
+                <div className="flex items-center gap-4">
                     <div className="relative">
                         <button
                             ref={dateButtonRef}
@@ -234,14 +235,14 @@ export default function RunHistoryToolBar({
                             type="button"
                         >
                             <FilterIcon className="w-4 h-4 mr-2" />
-                            {selectedStatuses.size === 3
+                            {selectedStatuses.size === 4
                                 ? "All Status"
                                 : selectedStatuses.size === 0
                                 ? "No Status"
                                 : `${selectedStatuses.size} Status`}
                             <ChevronRight className="ml-2 h-4 w-4 rotate-90" />
                         </button>
-                        <div id="status-filter-panel" ref={statusPanelRef} className="hidden absolute z-50 mt-2 w-56 p-3 rounded-md border bg-[#242424] border-slate-700">
+                        <div id="status-filter-panel" ref={statusPanelRef} className="hidden absolute z-50 right-0 mt-2 w-56 p-3 rounded-md border bg-[#242424] border-slate-700">
                             <div className="space-y-3">
                                 <label className="flex items-center gap-2 text-slate-300 cursor-pointer">
                                     <input
@@ -266,6 +267,16 @@ export default function RunHistoryToolBar({
                                 <label className="flex items-center gap-2 text-slate-300 cursor-pointer">
                                     <input
                                         type="checkbox"
+                                        className="accent-blue-500"
+                                        checked={selectedStatuses.has("in_progress")}
+                                        onChange={() => onToggleStatus("in_progress")}
+                                    />
+                                    <span className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-blue-500/20"><span className="sr-only">In Progress</span></span>
+                                    <span>In Progress</span>
+                                </label>
+                                <label className="flex items-center gap-2 text-slate-300 cursor-pointer">
+                                    <input
+                                        type="checkbox"
                                         className="accent-slate-400"
                                         checked={selectedStatuses.has("skipped")}
                                         onChange={() => onToggleStatus("skipped")}
@@ -276,6 +287,16 @@ export default function RunHistoryToolBar({
                             </div>
                         </div>
                     </div>
+                </div>
+            </div>
+
+            <div className="flex items-center justify-between gap-4">
+                <div className="flex items-center justify-start gap-4">
+                    <RunHistoryPagination
+                        currentPage={currentPage}
+                        totalPages={totalPages}
+                        onPageChange={onPageChange}
+                    />
                 </div>
 
                 <div className="flex items-center gap-2">
@@ -291,30 +312,6 @@ export default function RunHistoryToolBar({
                     </select>
                 </div>
             </div>
-
-            {totalPages > 1 && (
-                <div className="flex items-center justify-center gap-2">
-                    <button
-                        className="h-9 px-3 rounded-md border text-sm border-slate-700 text-slate-400 hover:text-white hover:bg-slate-800 disabled:opacity-50"
-                        onClick={() => onPageChange(Math.max(1, currentPage - 1))}
-                        disabled={currentPage === 1}
-                        type="button"
-                    >
-                        <ChevronLeft className="w-4 h-4 mr-1" />
-                        Previous
-                    </button>
-                    <span className="text-slate-400">Page {currentPage} of {totalPages}</span>
-                    <button
-                        className="h-9 px-3 rounded-md border text-sm border-slate-700 text-slate-400 hover:text-white hover:bg-slate-800 disabled:opacity-50"
-                        onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))}
-                        disabled={currentPage === totalPages}
-                        type="button"
-                    >
-                        Next
-                        <ChevronRight className="w-4 h-4 ml-1" />
-                    </button>
-                </div>
-            )}
         </div>
     );
 }

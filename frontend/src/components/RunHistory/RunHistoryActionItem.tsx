@@ -14,12 +14,14 @@ type Props = {
 export default function RunHistoryActionItem({ runId, index, action, runStatus, isExpanded, onToggle, onCopy }: Props) {
     const actionKey = `${runId}-action-${index}`;
 
+    const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+
     const getActionIcon = (actionType: string, status: RunHistoryStatus) => {
         if (status === "failed") return <XCircle className="w-4 h-4 text-red-400 mt-0.5 flex-shrink-0" />;
         const type = actionType.toLowerCase();
         if (type.includes("database")) return <Database className="w-4 h-4 text-purple-400 mt-0.5 flex-shrink-0" />;
         if (type.includes("calendar")) return <CalendarIcon className="w-4 h-4 text-blue-400 mt-0.5 flex-shrink-0" />;
-        if (type.includes("slack") || type.includes("notification"))
+        if (type.includes("notification"))
             return <MessageSquare className="w-4 h-4 text-green-400 mt-0.5 flex-shrink-0" />;
         return <FileText className="w-4 h-4 text-blue-400 mt-0.5 flex-shrink-0" />;
     };
@@ -35,14 +37,14 @@ export default function RunHistoryActionItem({ runId, index, action, runStatus, 
                     {getActionIcon(action.type, runStatus)}
                     <div className="flex-1">
                         <div className="flex items-center gap-2">
-                            <span className="text-slate-300">{action.type} → {action.target}</span>
+                            <span className="text-slate-300">{capitalize(action.type)} on {capitalize(action.integration)} → {action.target}</span>
                             {action.url && (
                                 <a
                                     href={action.url}
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     onClick={(e) => e.stopPropagation()}
-                                    className="text-blue-400 hover:text-blue-300 transition-colors"
+                                    className="text-[var(--color-accent)] hover:opacity-80 transition-opacity"
                                 >
                                     <ExternalLink className="w-3 h-3" />
                                 </a>

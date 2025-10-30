@@ -43,7 +43,7 @@ export default function RunHistoryItemHeader({ run, isExpanded, formattedTimesta
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     onClick={(e) => e.stopPropagation()}
-                                    className="flex items-center gap-1 text-blue-400 hover:text-blue-300 transition-colors flex-shrink-0"
+                                    className="flex items-center gap-1 text-[var(--color-accent)] hover:opacity-80 transition-opacity flex-shrink-0"
                                 >
                                     <ExternalLink className="w-3 h-3" />
                                 </a>
