@@ -6,8 +6,8 @@ type Props = {
     className?: string;
 };
 
-export default function RunHistoryStatusBadge({ status, filtered, className }: Props) {
-    if (filtered)
+export default function RunHistoryStatusBadge({ status, filtered: _filtered, className }: Props) {
+    if (status === "skipped")
         return (
             <span className={className ?? "inline-flex items-center px-2 py-0.5 text-xs rounded bg-slate-800 text-slate-400 border border-slate-700"}>
                 Filtered

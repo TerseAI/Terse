@@ -5,6 +5,7 @@ import { GmailEvent, InputEvent } from '../../Updater/InputEvents';
 import { NotionOutput, NotionSession } from '../../Updater/Outputs/NotionOutput';
 import { AutomationAgent } from './AutomationAgent';
 import { filterEvent } from './EventFilter';
+import { createRunRecord, finalizeRunStatus, markRunProcessed, markRunSkipped } from './runHistory';
 
 // The job of this class is to take an Input Event, and check if it's a match for an Automation.
 // It will then create a Session, and summon the Automation Agent with the create user data.
@@ -105,11 +106,46 @@ export class EventProcessor {
             return new ProcessorResult(false, "No prompt found for this automation", automation);
         }
 
+        // Initialize run history record with trigger details
+        let runId: string | null = null;
+        try {
+            const gmailEvent = this.inputEvent as GmailEvent;
+            const trigger = {
+                type: 'email_received',
+                integration: 'gmail' as const,
+                source: gmailEvent?.data?.to || this.user.email,
+                title: gmailEvent?.data?.subject,
+                subheader: gmailEvent?.data?.from,
+                url: undefined,
+            };
+            runId = await createRunRecord({
+                automationId: automation.id,
+                trigger,
+            });
+        } catch (e) {
+            console.error(chalk.yellow('Failed to create run history record'), e);
+        }
+
         // Filter the event using AI to see if it's relevant to this automation
         const filterResult = await filterEvent(this.inputEvent, automation.prompt);
         if (!filterResult.isRelevant) {
             console.log(chalk.gray(`Event is not relevant to automation "${automation.name}": ${filterResult.reason}`));
+            if (runId) {
+                try {
+                    await markRunSkipped(runId, filterResult.reason);
+                } catch (e) {
+                    console.error(chalk.yellow('Failed to mark run skipped'), e);
+                }
+            }
             return new ProcessorResult(false, `Not relevant: ${filterResult.reason}`, automation);
+        }
+
+        if (runId) {
+            try {
+                await markRunProcessed(runId, filterResult.reason);
+            } catch (e) {
+                console.error(chalk.yellow('Failed to mark run processed'), e);
+            }
         }
 
         console.log(chalk.green(`Event is relevant to automation "${automation.name}"`));
@@ -139,17 +175,45 @@ export class EventProcessor {
         const notionOutput = new NotionOutput();
 
         // Create a new Session
-        const session: NotionSession = {
+        const session = {
             notionIntegration: notionIntegration,
             user: this.user,
             isUserInitiated: true,
-        };
+            // Collect actions from tools; will be persisted after run
+            runActions: [],
+        } as NotionSession;
 
         const automationAgent = new AutomationAgent<NotionSession>(session, notionOutput, automation.prompt, automation.inputs, outputIntegration);
         automationAgent.setInputEvent(this.inputEvent);
 
         const result = await automationAgent.run();
         console.log(chalk.green(`Automation "${automation.name}" completed:`), result.finalOutput);
+
+        // Persist reported actions (if any)
+        if (runId && session.runActions && session.runActions.length > 0) {
+            for (const action of session.runActions) {
+                try {
+                    await (await import('./runHistory')).appendRunAction(runId, {
+                        type: action.type,
+                        integration: action.integration,
+                        target: action.target,
+                        details: action.details,
+                        url: action.url,
+                    });
+                } catch (e) {
+                    console.error(chalk.yellow('Failed to append run action'), e);
+                }
+            }
+        }
+
+        // Finalize run status
+        if (runId) {
+            try {
+                await finalizeRunStatus(runId, result.finalOutput ? 'success' : 'failed');
+            } catch (e) {
+                console.error(chalk.yellow('Failed to finalize run status'), e);
+            }
+        }
 
         return new ProcessorResult(
             result.finalOutput ? true : false,
