@@ -8,7 +8,7 @@ interface SearchBarProps {
 
 export function SearchBar({ searchQuery, className, onSearchChange }: SearchBarProps) {
     return (
-        <div className={`relative flex-1 ${className}`}>
+        <div className={`relative flex-1 ${className}  shadow-[var(--shadow)]`}>
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                 <MagnifyingGlassIcon className="h-5 w-5 text-[theme(text-disabled)]" />
             </div>

@@ -69,7 +69,7 @@ function CurrentUser() {
                 <ChevronDownIcon className="w-3 h-3 text-[theme(text-disabled)] mx-0.5" />
             </MenuButton>
             
-            <MenuItems className="mt-1 bg-[theme(background-light)] rounded-sm shadow-lg z-50">
+            <MenuItems className="mt-1 bg-[theme(background-light)] rounded-sm shadow-[var(--shadow)] z-50">
                 <MenuItem>
                     <button
                         onClick={handleLogout}

@@ -8,7 +8,7 @@ interface TableContentProps {
 
 export function TableContent({ table, onEdit }: TableContentProps) {
     return (
-        <div className="overflow-x-auto rounded-lg border border-[theme(border)]">
+        <div className="overflow-x-auto rounded-lg border border-[theme(border)] shadow-[var(--shadow)]">
             <table className="min-w-full divide-y divide-[theme(border)]">
                 <thead className="bg-[theme(background)]">
                     {table.getHeaderGroups().map(headerGroup => (
