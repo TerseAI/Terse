@@ -1,4 +1,3 @@
-import { Button } from "@headlessui/react";
 import { ArrowLeftIcon, SparklesIcon } from "@heroicons/react/24/outline";
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
@@ -8,6 +7,7 @@ import { AutomationProvider, useAutomationContext } from "../../context/Automati
 import { BackendProvider } from "../../services/backend";
 import { InputsSection } from "./InputSection";
 import { OutputSection } from "./OutputSection";
+import { Button } from "../../components/ui/Button";
 
 function Automations() {
     const { id } = useParams<{ id: string }>();
@@ -43,19 +43,16 @@ function CreateAutomationSection() {
 
                     <div className="space-y-2">
                         <EditableTextField value={name} onSave={(value) => setName(value)} />
-                        <p className="text-xs text-[theme(text-secondary)]">
-                            Create an automation that listens to events and continuously updates a living document
-                        </p>
                     </div>
 
                     <div className="space-y-3">
                         <InputsSection />
 
-                        <FlowArrow />
+                        {/* <FlowArrow /> */}
 
                         <PromptSection />
 
-                        <FlowArrow />
+                        {/* <FlowArrow /> */}
 
                         <OutputSection />
                     </div>
@@ -247,13 +244,8 @@ function SaveAutomationButton() {
         <Button
             onClick={handleSave}
             disabled={!isComplete || isSaving}
-            className={`px-8 py-3 rounded-lg font-medium transition-all duration-200 ${isComplete && !isSaving
-                ? 'bg-[var(--color-accent)] text-[theme(text-primary)] hover:scale-[1.02] hover:brightness-110 shadow-lg'
-                : 'bg-[theme(background-surface)] text-[theme(text-disabled)] cursor-not-allowed'
-                }`}
-            style={isComplete && !isSaving ? {
-                boxShadow: '0 0 20px -8px var(--color-accent)'
-            } : undefined}
+            isComplete={isComplete}
+            isSaving={isSaving}
         >
             {isSaving ? 'Saving...' : saveSuccess ? 'Saved!' : isComplete ? (isEditMode ? 'Update Automation' : 'Save Automation') : 'Complete All Steps'}
         </Button>

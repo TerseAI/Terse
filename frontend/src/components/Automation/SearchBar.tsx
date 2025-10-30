@@ -2,12 +2,13 @@ import { MagnifyingGlassIcon, XMarkIcon } from '@heroicons/react/24/outline';
 
 interface SearchBarProps {
     searchQuery: string;
+    className?: string;
     onSearchChange: (query: string) => void;
 }
 
-export function SearchBar({ searchQuery, onSearchChange }: SearchBarProps) {
+export function SearchBar({ searchQuery, className, onSearchChange }: SearchBarProps) {
     return (
-        <div className="relative flex-1">
+        <div className={`relative flex-1 ${className}`}>
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                 <MagnifyingGlassIcon className="h-5 w-5 text-[theme(text-disabled)]" />
             </div>
@@ -16,7 +17,7 @@ export function SearchBar({ searchQuery, onSearchChange }: SearchBarProps) {
                 value={searchQuery}
                 onChange={(e) => onSearchChange(e.target.value)}
                 placeholder="Search automations by name..."
-                className="block w-full pl-10 pr-10 py-2.5 text-sm text-[theme(text-primary)] bg-[theme(background-elevated)] border border-[theme(border)] rounded-lg placeholder-[theme(text-disabled)] focus:outline-none focus:ring-2 focus:ring-[theme(--color-accent)] focus:border-transparent transition-colors"
+                className="block w-full pl-10 pr-10 py-2.5 text-sm text-[theme(text-primary)] bg-[theme(background-elevated)] border border-[theme(border)] rounded-lg placeholder-[theme(text-disabled)] focus:outline-none focus:border-[theme(--color-accent)] transition-colors"
             />
             {searchQuery && (
                 <button

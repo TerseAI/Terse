@@ -10,12 +10,13 @@ interface StatusFilterProps {
     statusOptions: StatusOption[];
     selectedOption: StatusOption;
     onStatusChange: (option: StatusOption) => void;
+    className?: string;
 }
 
-export function StatusFilter({ statusOptions, selectedOption, onStatusChange }: StatusFilterProps) {
+export function StatusFilter({ statusOptions, selectedOption, onStatusChange, className }: StatusFilterProps) {
     return (
         <Listbox value={selectedOption} onChange={onStatusChange}>
-            <div className="relative sm:w-auto w-full sm:min-w-[140px]">
+            <div className={`relative sm:w-auto w-full sm:min-w-[140px] ${className}`}>
                 <ListboxButton className="relative w-full pl-3 pr-10 py-2.5 text-left text-sm text-[theme(text-primary)] bg-[theme(background-elevated)] border border-[theme(border)] rounded-lg hover:bg-[theme(background-elevated)] focus:outline-none focus:ring-2 focus:ring-[theme(--color-accent)] transition-colors cursor-pointer">
                     <span className="block truncate">{selectedOption.label}</span>
                     <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2">

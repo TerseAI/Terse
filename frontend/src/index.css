@@ -22,7 +22,9 @@ body,
     --background-surface: hsl(0, 0%, 20%);
 
 
-    --border: #333333;
+    --border: hsl(0, 0%, 30%);
+
+    --shadow: 0 2px 2px hsla(0, 0%, 0%, 0.07), 0 4px 4px hsla(0, 0%, 0%, 0.15);
 
     --text-primary: hsl(0, 0%, 95%);
     --text-secondary: hsl(0, 0%, 70%);
