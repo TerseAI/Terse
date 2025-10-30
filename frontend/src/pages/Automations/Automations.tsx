@@ -1,4 +1,4 @@
-import { ArrowLeftIcon, SparklesIcon } from "@heroicons/react/24/outline";
+import { ArrowLeftIcon } from "@heroicons/react/24/outline";
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import TextareaAutosize from 'react-textarea-autosize';
@@ -48,11 +48,11 @@ function CreateAutomationSection() {
                     <div className="space-y-3">
                         <InputsSection />
 
-                        {/* <FlowArrow /> */}
+                        <FlowArrow />
 
                         <PromptSection />
 
-                        {/* <FlowArrow /> */}
+                        <FlowArrow />
 
                         <OutputSection />
                     </div>
