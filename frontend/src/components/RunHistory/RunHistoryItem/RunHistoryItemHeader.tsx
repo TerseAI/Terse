@@ -1,6 +1,5 @@
 import { ChevronRight, Mail, ExternalLink, Copy } from "lucide-react";
 import type { RunHistoryRecord } from "../../../shared/RunHistoryTypes";
-import RunHistoryStatusIcon from "../RunHistoryStatusIcon";
 import RunHistoryStatusBadge from "../RunHistoryStatusBadge";
 
 type Props = {
@@ -16,7 +15,6 @@ export default function RunHistoryItemHeader({ run, isExpanded, formattedTimesta
             <div className="flex items-start gap-4">
                 <div className="mt-0.5 flex items-center gap-2">
                     <ChevronRight className={`w-4 h-4 text-slate-400 transition-transform ${isExpanded ? "rotate-90" : ""}`} />
-                    <RunHistoryStatusIcon status={run.status} filtered={run.filtered} />
                 </div>
                 <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
