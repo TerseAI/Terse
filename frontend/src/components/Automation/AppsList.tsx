@@ -21,7 +21,7 @@ export function AppsList({ automation }: AppsListProps) {
                         <ChevronRightIcon className="w-3 h-3 text-[theme(text-disabled)] mx-0.5" />
                     )}
                     <div
-                        className="w-7 h-7 flex items-center justify-center rounded bg-[theme(background-elevated)] p-1"
+                        className="w-7 h-7 flex items-center justify-center rounded bg-[theme(background)] p-1"
                         title={app}
                     >
                         <IconForInputType type={app} />

@@ -17,7 +17,7 @@ export function SearchBar({ searchQuery, className, onSearchChange }: SearchBarP
                 value={searchQuery}
                 onChange={(e) => onSearchChange(e.target.value)}
                 placeholder="Search automations by name..."
-                className="block w-full pl-10 pr-10 py-2.5 text-sm text-[theme(text-primary)] bg-[theme(background-elevated)] border border-[theme(border)] rounded-lg placeholder-[theme(text-disabled)] focus:outline-none focus:border-[theme(--color-accent)] transition-colors"
+                className="block w-full pl-10 pr-10 py-2.5 text-sm text-[theme(text-primary)] bg-[theme(background)] border border-[theme(border)] rounded-lg placeholder-[theme(text-disabled)] focus:outline-none focus:border-[theme(--color-accent)] transition-colors"
             />
             {searchQuery && (
                 <button

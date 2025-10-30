@@ -12,7 +12,7 @@ export function Button({ children, onClick, disabled, className, isComplete = tr
         <button onClick={onClick} disabled={disabled} className={
             `px-8 py-3 rounded-lg font-medium transition-all duration-200 shadow-[var(--shadow)] ${isComplete && !isSaving
             ? 'bg-[var(--color-accent)] text-[theme(text-primary)] hover:scale-[1.02] hover:brightness-110'
-            : 'bg-[theme(background-surface)] text-[theme(text-disabled)] cursor-not-allowed'
+            : 'bg-[theme(background-light)] text-[theme(text-disabled)] cursor-not-allowed'
             } ${className}`}>
             {children}
         </button>

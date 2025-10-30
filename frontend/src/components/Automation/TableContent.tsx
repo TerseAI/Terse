@@ -10,7 +10,7 @@ export function TableContent({ table, onEdit }: TableContentProps) {
     return (
         <div className="overflow-x-auto rounded-lg border border-[theme(border)]">
             <table className="min-w-full divide-y divide-[theme(border)]">
-                <thead className="bg-[theme(background-elevated)]">
+                <thead className="bg-[theme(background)]">
                     {table.getHeaderGroups().map(headerGroup => (
                         <tr key={headerGroup.id}>
                             {headerGroup.headers.map(header => (
@@ -29,11 +29,11 @@ export function TableContent({ table, onEdit }: TableContentProps) {
                         </tr>
                     ))}
                 </thead>
-                <tbody className="bg-[theme(background-elevated)] divide-y divide-[theme(border)]">
+                <tbody className="bg-[theme(background)] divide-y divide-[theme(border)]">
                     {table.getRowModel().rows.map(row => (
                         <tr
                             key={row.id}
-                            className="hover:bg-[theme(background-surface)] transition-colors cursor-pointer"
+                            className="hover:bg-[theme(background-light)] transition-colors cursor-pointer"
                             onClick={() => onEdit(row.original)}
                         >
                             {row.getVisibleCells().map(cell => (

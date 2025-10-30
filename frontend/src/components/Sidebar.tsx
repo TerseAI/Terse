@@ -19,19 +19,17 @@ function Sidebar() {
 
     return (
         <div className="flex flex-col h-full p-2">
+            <CurrentUser />
             <SidebarItem to="/app" isActive={location.pathname === "/app"}>
                 <LinkLabel title="Home" icon={<HomeIcon className="w-5 h-5 text-[theme(--color-accent)]" />} />
             </SidebarItem>
-            {/* <SidebarItem to="/app/activity" isActive={location.pathname === "/app/activity"}>
-                <LinkLabel title="Activity Feed" icon={<ListBulletIcon className="w-5 h-5 text-[theme(--color-accent)]" />} />
-            </SidebarItem> */}
             <SidebarItem to="/app/automations" isActive={location.pathname === "/app/automations"}>
                 <LinkLabel title="Automations" icon={<Cog6ToothIcon className="w-5 h-5 text-[theme(--color-accent)]" />} />
             </SidebarItem>
             <div className="mt-auto">
                 <button
                     onClick={handleLogout}
-                    className="w-full p-2 rounded-md transition-colors hover:bg-[theme(background-surface)]"
+                    className="w-full p-2 rounded-md transition-colors hover:bg-[theme(background-light)]"
                 >
                     <div className="flex items-center gap-2">
                         <ArrowRightOnRectangleIcon className="w-5 h-5 text-[theme(--color-accent)]" />
@@ -47,9 +45,9 @@ function SidebarItem({ to, children, isActive }: { to: string, children: React.R
     return (
         <Link
             to={to}
-            className={`p-2 rounded-md transition-colors ${isActive
-                    ? 'bg-[theme(background-surface)]'
-                    : 'hover:bg-[theme(background-surface)]'
+            className={`p-2 rounded-sm transition-colors ${isActive
+                ? 'bg-[theme(background-light)]'
+                : 'hover:bg-[theme(background-hover)]'
                 }`}
         >
             {children}
@@ -62,6 +60,22 @@ function LinkLabel({ title, icon }: { title: string, icon: React.ReactNode }) {
         <div className="flex items-center gap-2">
             {icon}
             <span className="text-sm text-[theme(text-primary)]">{title}</span>
+        </div>
+    )
+}
+
+function CurrentUser() {
+    const { user } = useAuth();
+
+    if (!user) {
+        return null;
+    }
+
+    return (
+        <div className="p-2">
+            <p className="font-semibold text-md text-[theme(text-secondary)]">
+                {user.display_name}
+            </p>
         </div>
     )
 }
