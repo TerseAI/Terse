@@ -57,7 +57,7 @@ async function main() {
       data: {
         automation_id: automationId,
         timestamp: s.timestamp,
-        trigger_type: s.trigger.event,
+        event: s.trigger.event,
         trigger_integration: s.trigger.integration,
         trigger_source: s.trigger.source,
         trigger_title: s.trigger.title,
@@ -74,7 +74,7 @@ async function main() {
       await prisma.run_history_actions.create({
         data: {
           run_history_record_id: rec.id,
-          type: a.action,
+          action: a.action,
           integration: a.integration,
           target: a.target,
           details: a.details,

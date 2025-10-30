@@ -57,7 +57,7 @@ export async function seedRunHistory(automationId: string): Promise<void> {
       data: {
         automation_id: automationId,
         timestamp,
-        trigger_type: template.trigger.event,
+        event: template.trigger.event,
         trigger_integration: template.trigger.integration as any,
         trigger_source: template.trigger.source,
         trigger_title: template.trigger.title,
@@ -75,7 +75,7 @@ export async function seedRunHistory(automationId: string): Promise<void> {
       await (prisma as any).run_history_actions.create({
         data: {
           run_history_record_id: rec.id,
-          type: a.action,
+          action: a.action,
           integration: a.integration as any,
           target: a.target,
           details: a.details,

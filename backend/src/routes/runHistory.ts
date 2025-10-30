@@ -133,7 +133,7 @@ export async function getRunHistory(req: Request, res: Response) {
       automationId: r.automation_id,
       timestamp: r.timestamp.toISOString(),
       trigger: {
-        event: r.trigger_type,
+        event: r.event,
         integration: r.trigger_integration,
         source: r.trigger_source,
         title: r.trigger_title ?? undefined,
@@ -146,7 +146,7 @@ export async function getRunHistory(req: Request, res: Response) {
         reasoning: r.decision_reason,
       },
       actions: (r.actions ?? []).map((a: any) => ({
-        action: a.type,
+        action: a.action,
         integration: a.integration,
         target: a.target,
         details: a.details,

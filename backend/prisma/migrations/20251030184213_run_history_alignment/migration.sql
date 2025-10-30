@@ -12,7 +12,7 @@ CREATE TABLE "run_history_records" (
     "id" TEXT NOT NULL,
     "automation_id" TEXT NOT NULL,
     "timestamp" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "trigger_type" TEXT NOT NULL,
+    "event" TEXT NOT NULL,
     "trigger_integration" "RunHistoryIntegration" NOT NULL,
     "trigger_source" TEXT NOT NULL,
     "trigger_title" TEXT,
@@ -32,7 +32,7 @@ CREATE TABLE "run_history_records" (
 CREATE TABLE "run_history_actions" (
     "id" TEXT NOT NULL,
     "run_history_record_id" TEXT NOT NULL,
-    "type" TEXT NOT NULL,
+    "action" TEXT NOT NULL,
     "integration" "RunHistoryIntegration" NOT NULL,
     "target" TEXT NOT NULL,
     "details" TEXT NOT NULL,

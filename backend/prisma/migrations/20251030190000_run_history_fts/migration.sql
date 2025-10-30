@@ -1,6 +1,6 @@
 ALTER TABLE run_history_records
 ADD COLUMN search_fts tsvector GENERATED ALWAYS AS (
-  setweight(to_tsvector('simple', coalesce(trigger_type, '')), 'A') ||
+  setweight(to_tsvector('simple', coalesce(event, '')), 'A') ||
   setweight(to_tsvector('simple', coalesce(trigger_source, '')), 'B') ||
   setweight(to_tsvector('simple', coalesce(trigger_title, '')), 'B') ||
   setweight(to_tsvector('simple', coalesce(trigger_subheader, '')), 'C') ||
@@ -10,7 +10,7 @@ ADD COLUMN search_fts tsvector GENERATED ALWAYS AS (
 
 ALTER TABLE run_history_actions
 ADD COLUMN search_fts tsvector GENERATED ALWAYS AS (
-  setweight(to_tsvector('simple', coalesce(type, '')), 'A') ||
+  setweight(to_tsvector('simple', coalesce(action, '')), 'A') ||
   setweight(to_tsvector('simple', coalesce(target, '')), 'B') ||
   setweight(to_tsvector('simple', coalesce(details, '')), 'B') ||
   setweight(to_tsvector('simple', coalesce(url, '')), 'C')
