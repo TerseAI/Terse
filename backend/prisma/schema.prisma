@@ -266,9 +266,9 @@ model automations {
   updated_at DateTime @updatedAt
 
   user   users               @relation(fields: [user_id], references: [id], onDelete: Cascade)
-  prompt automation_prompts
+  prompt automation_prompts?
   inputs automation_inputs[]
-  output automation_outputs
+  output automation_outputs?
   run_history_records run_history_records[]
 
   @@index([user_id])
@@ -353,27 +353,14 @@ enum RunHistoryDecisionAction {
   skipped
 }
 
-enum RunHistoryTriggerType {
-  email
-  database
-  calendar
-  notification
-  other
-}
-
-enum RunHistoryActionType {
-  email
-  database
-  calendar
-  notification
-  other
-}
-
-enum PlatformType {
+// Integration values for Run History (matches backend/src/shared/RunHistoryTypes.ts)
+enum RunHistoryIntegration {
+  jira
+  linear
+  slack
+  github
   notion
   gmail
-  slack
-  other
 }
 
 // Run History tables
@@ -383,7 +370,8 @@ model run_history_records {
   // Timestamp of the run (when the trigger was processed)
   timestamp        DateTime                @default(now())
   // Trigger details (denormalized onto the record for fast reads)
-  trigger_type     RunHistoryTriggerType
+  trigger_type     String
+  trigger_integration RunHistoryIntegration
   trigger_source   String
   trigger_title    String?
   trigger_subheader String?
@@ -409,8 +397,8 @@ model run_history_records {
 model run_history_actions {
   id                   String               @id @default(cuid())
   run_history_record_id String
-  type                 RunHistoryActionType
-  target_platform      PlatformType
+  type                 String
+  integration          RunHistoryIntegration
   target               String
   details              String
   url                  String?
