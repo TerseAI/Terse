@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
-import { Calendar as CalendarIcon, CheckCircle2, ChevronLeft, ChevronRight, Filter as FilterIcon, Search as SearchIcon } from "lucide-react";
+import { Calendar as CalendarIcon, CheckCircle2, ChevronLeft, ChevronRight, Filter as FilterIcon, Search as SearchIcon, XCircle, Loader2 } from "lucide-react";
 import type { RunHistoryStatus } from "../../shared/RunHistoryTypes";
 import RunHistoryPagination from "./RunHistoryPagination";
 
@@ -261,7 +261,7 @@ export default function RunHistoryToolBar({
                                         checked={selectedStatuses.has("failed")}
                                         onChange={() => onToggleStatus("failed")}
                                     />
-                                    <span className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-red-500/20"><span className="sr-only">Failed</span></span>
+                                    <XCircle className="w-4 h-4 text-red-400" />
                                     <span>Failed</span>
                                 </label>
                                 <label className="flex items-center gap-2 text-slate-300 cursor-pointer">
@@ -271,7 +271,7 @@ export default function RunHistoryToolBar({
                                         checked={selectedStatuses.has("in_progress")}
                                         onChange={() => onToggleStatus("in_progress")}
                                     />
-                                    <span className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-blue-500/20"><span className="sr-only">In Progress</span></span>
+                                    <Loader2 className="w-4 h-4 text-blue-400" />
                                     <span>In Progress</span>
                                 </label>
                                 <label className="flex items-center gap-2 text-slate-300 cursor-pointer">
