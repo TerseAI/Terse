@@ -75,7 +75,6 @@ export default function RunHistoryItem({
                             reasoning={run.decision.reasoning}
                             isExpanded={isDecisionExpanded}
                             onToggle={() => onToggleDecision(run.id)}
-                            onCopy={copyToClipboard}
                         />
                     </div>
 
@@ -108,7 +107,6 @@ export default function RunHistoryItem({
                                             runStatus={run.status}
                                             isExpanded={isActionExpanded(actionKey)}
                                             onToggle={onToggleAction}
-                                            onCopy={copyToClipboard}
                                         />
                                     );
                                 })}

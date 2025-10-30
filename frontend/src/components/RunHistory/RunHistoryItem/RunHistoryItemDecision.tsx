@@ -1,14 +1,13 @@
-import { ChevronRight, CheckCircle2, Filter as FilterIcon, Copy } from "lucide-react";
+import { ChevronRight, CheckCircle2, Filter as FilterIcon } from "lucide-react";
 
 type Props = {
     filtered: boolean;
     reasoning: string;
     isExpanded: boolean;
     onToggle: () => void;
-    onCopy: (text: string) => void;
 };
 
-export default function RunHistoryItemDecision({ filtered, reasoning, isExpanded, onToggle, onCopy }: Props) {
+export default function RunHistoryItemDecision({ filtered, reasoning, isExpanded, onToggle }: Props) {
     return (
         <div className="bg-[#1a1a1a] rounded border border-slate-800">
             <button
@@ -40,16 +39,6 @@ export default function RunHistoryItemDecision({ filtered, reasoning, isExpanded
                 <div className="px-2 pb-2 pt-1">
                     <div className="flex items-start gap-2 pl-6">
                         <div className="flex-1 text-slate-400">{reasoning}</div>
-                        <button
-                            className="h-6 w-6 p-0 text-slate-500 hover:text-slate-300"
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                onCopy(reasoning);
-                            }}
-                            type="button"
-                        >
-                            <Copy className="w-3 h-3" />
-                        </button>
                     </div>
                 </div>
             )}
