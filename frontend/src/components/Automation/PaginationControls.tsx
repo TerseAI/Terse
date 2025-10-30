@@ -16,8 +16,8 @@ export function PaginationControls({
     onLimitChange,
 }: PaginationControlsProps) {
     return (
-        <div className="flex items-center justify-between px-4">
-            <div className="flex items-center gap-4">
+        <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4 px-1">
                 <div className="text-sm text-[theme(text-secondary)]">
                     {totalPages > 1 ? (
                         <>

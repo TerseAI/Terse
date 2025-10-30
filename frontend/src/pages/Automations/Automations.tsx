@@ -22,7 +22,7 @@ function Automations() {
                 <div className="py-3">
                     <button
                         onClick={() => navigate('/app/automations')}
-                        className="inline-flex items-center gap-2 text-sm text-[theme(text-secondary)] hover:text-[theme(text-primary)] transition-colors pl-2"
+                        className="inline-flex items-center gap-2 text-sm text-[theme(text-secondary)] hover:text-[theme(text-primary)] transition-colors pl-2 mt-1"
                     >
                         <ArrowLeftIcon className="h-4 w-4" />
                         Back to Automations
