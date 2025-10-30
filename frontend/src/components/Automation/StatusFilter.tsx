@@ -16,14 +16,15 @@ interface StatusFilterProps {
 export function StatusFilter({ statusOptions, selectedOption, onStatusChange, className }: StatusFilterProps) {
     return (
         <Listbox value={selectedOption} onChange={onStatusChange}>
-            <div className={`relative sm:w-auto w-full sm:min-w-[140px] ${className} shadow-[var(--shadow)]`}>
-                <ListboxButton className="relative w-full pl-3 pr-10 py-2.5 text-left text-sm text-[theme(text-primary)] bg-[theme(background)] border border-[theme(border)] rounded-lg hover:bg-[theme(background)] focus:outline-none focus:ring-2 focus:ring-[theme(--color-accent)] transition-colors cursor-pointer">
+            <div className={`relative sm:w-auto w-full sm:min-w-[140px] ${className}`}>
+                <ListboxButton className="relative w-full pl-3 pr-10 py-2.5 text-left text-sm text-[theme(text-primary)] bg-[theme(background)] border border-[theme(border)] rounded-lg hover:bg-[theme(background)] focus:outline-none focus:ring-2 focus:ring-[theme(--color-accent)] transition-colors cursor-pointer shadow-[var(--shadow)]">
                     <span className="block truncate">{selectedOption.label}</span>
                     <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2">
                         <ChevronDownIcon className="h-5 w-5 text-[theme(text-disabled)]" aria-hidden="true" />
                     </span>
                 </ListboxButton>
-                <ListboxOptions className="absolute z-10 mt-1 w-full max-h-60 overflow-auto rounded-lg bg-[theme(background-light)] border border-[theme(border)] py-1 shadow-[var(--shadow)] focus:outline-none">
+                <ListboxOptions className="absolute z-10 mt-1 w-full max-h-60 rounded-lg bg-[theme(background-light)] border border-[theme(border)] py-1 shadow-[var(--shadow)] focus:outline-none overflow-hidden">
+                    <div className="max-h-60 overflow-auto">
                     {statusOptions.map((option, idx) => (
                         <ListboxOption
                             key={idx}
@@ -44,6 +45,7 @@ export function StatusFilter({ statusOptions, selectedOption, onStatusChange, cl
                             )}
                         </ListboxOption>
                     ))}
+                    </div>
                 </ListboxOptions>
             </div>
         </Listbox>
