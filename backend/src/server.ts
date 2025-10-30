@@ -55,6 +55,7 @@ import {
   getNotionOAuthUrl,
   notionOAuthCallback
 } from "./routes/notion";
+import { getRunHistory } from "./routes/runHistory";
 import { User as TicketUser } from "./shared/TicketSystem";
 import { handleSlackEvent } from "./slack/eventHandler";
 import {
@@ -149,6 +150,12 @@ app.get("/activity-feed", authMiddleware, async (req, res) => {
 // Add daily summary route
 app.get("/activity/daily-summary", authMiddleware, async (req, res) => {
   getDailyActivitySummary(req, res);
+});
+
+// MARK: RUN HISTORY
+
+app.get("/run-history/:automationId", authMiddleware, async (req, res) => {
+  getRunHistory(req, res);
 });
 
 // MARK: SESSION
