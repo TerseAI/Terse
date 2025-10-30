@@ -2,14 +2,13 @@ import { ChevronRight, CheckCircle2, Filter as FilterIcon, Copy } from "lucide-r
 
 type Props = {
     filtered: boolean;
-    confidence: number;
     reasoning: string;
     isExpanded: boolean;
     onToggle: () => void;
     onCopy: (text: string) => void;
 };
 
-export default function RunHistoryItemDecision({ filtered, confidence, reasoning, isExpanded, onToggle, onCopy }: Props) {
+export default function RunHistoryItemDecision({ filtered, reasoning, isExpanded, onToggle, onCopy }: Props) {
     return (
         <div className="bg-[#1a1a1a] rounded border border-slate-800">
             <button
@@ -29,9 +28,6 @@ export default function RunHistoryItemDecision({ filtered, confidence, reasoning
                         <div className="flex items-center gap-2">
                             <span className="text-slate-300">
                                 {filtered ? "Agent Decision: Skip" : "Agent Decision: Take Action"}
-                            </span>
-                            <span className="inline-flex items-center px-2 py-0.5 text-xs rounded bg-blue-500/10 text-blue-400 border border-blue-500/20">
-                                {confidence}% confident
                             </span>
                         </div>
                     </div>

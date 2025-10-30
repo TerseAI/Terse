@@ -69,7 +69,6 @@ export default function RunHistoryItem({
                     <div className="ml-9 mt-3">
                         <RunHistoryItemDecision
                             filtered={run.filtered}
-                            confidence={run.decision.confidence}
                             reasoning={run.decision.reasoning}
                             isExpanded={isDecisionExpanded}
                             onToggle={() => onToggleDecision(run.id)}
