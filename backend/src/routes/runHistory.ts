@@ -2,6 +2,8 @@ import { Request, Response } from "express";
 import { db } from "../prismaClient";
 import { Prisma } from "@prisma/client";
 import type { RunHistoryRecord } from "../shared/RunHistoryTypes";
+import { buildSearchTsQuery } from "../utility/tokenize";
+import { parsePageParams } from "../utility/pagination";
 
 function parseDate(value?: string): Date | undefined {
   if (!value) return undefined;
@@ -27,13 +29,7 @@ export async function getRunHistory(req: Request, res: Response) {
       ? statusParam.split(",").map((s) => s.trim()).filter(Boolean)
       : [];
 
-    const page = Math.max(parseInt((req.query.page as string) ?? "1", 10) || 1, 1);
-    const pageSize = Math.min(
-      Math.max(parseInt((req.query.pageSize as string) ?? "20", 10) || 20, 1),
-      100
-    );
-    const skip = (page - 1) * pageSize;
-    const take = pageSize;
+    const { page, pageSize, skip, take } = parsePageParams(req, 20, 100);
 
     const where: any = { automation_id: automationId };
 
@@ -60,8 +56,7 @@ export async function getRunHistory(req: Request, res: Response) {
       const endSql = end ? Prisma.sql`AND r.timestamp <= ${end}` : Prisma.sql``;
 
       // Build a prefix-matching tsquery like 'foo:* & bar:*'
-      const tokens = (q.match(/[a-zA-Z0-9]+/g) || []).map(t => t.toLowerCase());
-      const ts = tokens.length > 0 ? tokens.map(t => `${t}:*`).join(' & ') : '';
+      const { ts } = buildSearchTsQuery(q);
 
       const ids = await prisma.$queryRaw(Prisma.sql`
         SELECT r.id
@@ -138,7 +133,7 @@ export async function getRunHistory(req: Request, res: Response) {
       automationId: r.automation_id,
       timestamp: r.timestamp.toISOString(),
       trigger: {
-        type: r.trigger_type,
+        event: r.trigger_type,
         integration: r.trigger_integration,
         source: r.trigger_source,
         title: r.trigger_title ?? undefined,
@@ -151,7 +146,7 @@ export async function getRunHistory(req: Request, res: Response) {
         reasoning: r.decision_reason,
       },
       actions: (r.actions ?? []).map((a: any) => ({
-        type: a.type,
+        action: a.type,
         integration: a.integration,
         target: a.target,
         details: a.details,

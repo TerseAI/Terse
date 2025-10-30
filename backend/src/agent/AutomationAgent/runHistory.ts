@@ -13,11 +13,11 @@ export async function createRunRecord(params: {
     trigger: RunTrigger;
 }): Promise<string> {
     const { automationId, trigger } = params;
-
-    const record = await (db() as any).run_history_records.create({
+    const prisma = db() as any;
+    const record = await prisma.run_history_records.create({
         data: {
             automation_id: automationId,
-            trigger_type: trigger.type,
+            trigger_type: trigger.event,
             trigger_integration: mapIntegration(trigger.integration) as any,
             trigger_source: trigger.source,
             trigger_title: trigger.title ?? null,
@@ -35,7 +35,8 @@ export async function createRunRecord(params: {
 }
 
 export async function markRunSkipped(runId: string, reason: string): Promise<void> {
-    await (db() as any).run_history_records.update({
+    const prisma = db() as any;
+    await prisma.run_history_records.update({
         where: { id: runId },
         data: {
             filtered: true,
@@ -47,7 +48,8 @@ export async function markRunSkipped(runId: string, reason: string): Promise<voi
 }
 
 export async function markRunProcessed(runId: string, reason?: string): Promise<void> {
-    await (db() as any).run_history_records.update({
+    const prisma = db() as any;
+    await prisma.run_history_records.update({
         where: { id: runId },
         data: {
             filtered: false,
@@ -61,10 +63,11 @@ export async function appendRunAction(
     runId: string,
     action: SharedRunHistoryAction,
 ): Promise<void> {
-    await (db() as any).run_history_actions.create({
+    const prisma = db() as any;
+    await prisma.run_history_actions.create({
         data: {
             run_history_record_id: runId,
-            type: action.type,
+            type: action.action,
             integration: mapIntegration(action.integration) as any,
             target: action.target,
             details: action.details,
@@ -74,7 +77,8 @@ export async function appendRunAction(
 }
 
 export async function finalizeRunStatus(runId: string, status: Extract<RunHistoryStatus, "success" | "failed">): Promise<void> {
-    await (db() as any).run_history_records.update({
+    const prisma = db() as any;
+    await prisma.run_history_records.update({
         where: { id: runId },
         data: { status },
     });

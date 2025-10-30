@@ -111,7 +111,7 @@ export class EventProcessor {
         try {
             const gmailEvent = this.inputEvent as GmailEvent;
             const trigger = {
-                type: 'email_received',
+                event: 'email_received',
                 integration: 'gmail' as const,
                 source: gmailEvent?.data?.to || this.user.email,
                 title: gmailEvent?.data?.subject,
@@ -194,12 +194,12 @@ export class EventProcessor {
             for (const action of session.runActions) {
                 try {
                     await appendRunAction(runId, {
-                        type: action.type,
+                        action: action.type,
                         integration: action.integration,
                         target: action.target,
                         details: action.details,
                         url: action.url,
-                    });
+                    } as any);
                 } catch (e) {
                     console.error(chalk.yellow('Failed to append run action'), e);
                 }

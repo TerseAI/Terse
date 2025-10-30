@@ -12,23 +12,23 @@ export async function seedRunHistory(automationId: string): Promise<void> {
   const samples = [
     {
       timestamp: daysAgo(0),
-      trigger: { type: 'email received', integration: 'gmail', source: 'Gmail', title: 'Intro call follow-up', subheader: 'recruiter@company.com', url: 'https://mail.google.com/' },
+      trigger: { event: 'email received', integration: 'gmail', source: 'Gmail', title: 'Intro call follow-up', subheader: 'recruiter@company.com', url: 'https://mail.google.com/' },
       filtered: false,
       decision: { action: 'processed', reason: 'Matches criteria' },
       status: 'success' as const,
-      actions: [ { type: 'create database entry', integration: 'notion', target: 'Hiring DB', details: 'Created candidate record', url: 'https://notion.so/' } ],
+      actions: [ { action: 'create database entry', integration: 'notion', target: 'Hiring DB', details: 'Created candidate record', url: 'https://notion.so/' } ],
     },
     {
       timestamp: daysAgo(1),
-      trigger: { type: 'github push', integration: 'github', source: 'repo/name', title: 'Push to main', subheader: '12 files changed', url: 'https://github.com/' },
+      trigger: { event: 'github push', integration: 'github', source: 'repo/name', title: 'Push to main', subheader: '12 files changed', url: 'https://github.com/' },
       filtered: false,
       decision: { action: 'processed', reason: 'Watched repository' },
       status: 'success' as const,
-      actions: [ { type: 'notify', integration: 'slack', target: '#engineering', details: 'Posted summary to Slack' } ],
+      actions: [ { action: 'notify', integration: 'slack', target: '#engineering', details: 'Posted summary to Slack' } ],
     },
     {
       timestamp: daysAgo(2),
-      trigger: { type: 'notion db change', integration: 'notion', source: 'Project Tasks', title: 'Task updated', subheader: 'Refactor module', url: 'https://notion.so/' },
+      trigger: { event: 'notion db change', integration: 'notion', source: 'Project Tasks', title: 'Task updated', subheader: 'Refactor module', url: 'https://notion.so/' },
       filtered: true,
       decision: { action: 'skipped', reason: 'Did not meet rules' },
       status: 'skipped' as const,
@@ -36,11 +36,11 @@ export async function seedRunHistory(automationId: string): Promise<void> {
     },
     {
       timestamp: daysAgo(3),
-      trigger: { type: 'linear issue created', integration: 'linear', source: 'ENG', title: 'Bug: crash on save', subheader: 'High priority', url: 'https://linear.app/' },
+      trigger: { event: 'linear issue created', integration: 'linear', source: 'ENG', title: 'Bug: crash on save', subheader: 'High priority', url: 'https://linear.app/' },
       filtered: false,
       decision: { action: 'processed', reason: 'Auto triage' },
       status: 'failed' as const,
-      actions: [ { type: 'create comment', integration: 'linear', target: 'ENG-123', details: 'Added triage comment' } ],
+      actions: [ { action: 'create comment', integration: 'linear', target: 'ENG-123', details: 'Added triage comment' } ],
     },
   ];
   // Generate at least 50 records by cycling the sample templates across past days
@@ -57,7 +57,7 @@ export async function seedRunHistory(automationId: string): Promise<void> {
       data: {
         automation_id: automationId,
         timestamp,
-        trigger_type: template.trigger.type,
+        trigger_type: template.trigger.event,
         trigger_integration: template.trigger.integration as any,
         trigger_source: template.trigger.source,
         trigger_title: template.trigger.title,
@@ -75,7 +75,7 @@ export async function seedRunHistory(automationId: string): Promise<void> {
       await (prisma as any).run_history_actions.create({
         data: {
           run_history_record_id: rec.id,
-          type: a.type,
+          type: a.action,
           integration: a.integration as any,
           target: a.target,
           details: a.details,
