@@ -17,7 +17,7 @@ export async function createRunRecord(params: {
     const record = await prisma.run_history_records.create({
         data: {
             automation_id: automationId,
-            trigger_type: trigger.event,
+            event: trigger.event,
             trigger_integration: mapIntegration(trigger.integration) as any,
             trigger_source: trigger.source,
             trigger_title: trigger.title ?? null,
@@ -67,7 +67,7 @@ export async function appendRunAction(
     await prisma.run_history_actions.create({
         data: {
             run_history_record_id: runId,
-            type: action.action,
+            action: action.action,
             integration: mapIntegration(action.integration) as any,
             target: action.target,
             details: action.details,
