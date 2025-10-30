@@ -1,10 +1,20 @@
 export type RunHistoryStatus = "success" | "failed" | "skipped" | "in_progress";
 export type RunHistoryDecisionAction = "processed" | "skipped";
 
+export type Integration =
+    | "jira"
+    | "linear"
+    | "slack"
+    | "github"
+    | "notion"
+    | "gmail";
+
 export type RunHistoryAction = {
-    // System we are operating on (Notion, Gmail, etc.)
+    // What action was taken (free-text)
     type: string;
-    // Target we are operating on (Notion database, Gmail inbox, etc.)
+    // Which integration this action targeted
+    integration: Integration;
+    // What we are operating on (Database name, Inbox name, etc.)
     target: string;
     // Justification for the action or extra details about why the AI did this.
     details: string;
@@ -13,23 +23,23 @@ export type RunHistoryAction = {
 };
 
 export type RunHistoryTrigger = {
-    // Make this an enum
+    // What event occurred to trigger the run (free-text)
     type: string;
+    // Which integration this trigger came from
+    integration: Integration;
+    // Source of the trigger (Gmail, Notion database name, etc.)
     source: string;
-    // Change this to subject --> title and from --> subheader
+    // Title of the trigger (Subject of the email, name of the database, etc.)
     title?: string;
+    // Subheader of the trigger (From of the email, description of the database, etc.)
     subheader?: string;
-    // Get rid of this
-    preview?: string;
-    // I want to link to something relevant for this run.
+    // Link to the trigger (Email URL, Database URL, etc.)
     url?: string;
 };
 
 export type RunHistoryDecision = {
     action: RunHistoryDecisionAction;
     reasoning: string;
-    // Remove confidence
-    confidence: number;
 };
 
 export type RunHistoryRecord = {

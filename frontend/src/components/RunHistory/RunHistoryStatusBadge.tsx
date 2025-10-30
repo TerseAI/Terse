@@ -25,6 +25,12 @@ export default function RunHistoryStatusBadge({ status, filtered, className }: P
                 Failed
             </span>
         );
+    if (status === "in_progress")
+        return (
+            <span className={className ?? "inline-flex items-center px-2 py-0.5 text-xs rounded bg-blue-500/10 text-blue-400 border border-blue-500/20"}>
+                In Progress
+            </span>
+        );
     return (
         <span className={className ?? "inline-flex items-center px-2 py-0.5 text-xs rounded border border-slate-700 text-slate-400"}>
             Pending

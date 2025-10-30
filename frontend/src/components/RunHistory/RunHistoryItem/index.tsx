@@ -66,10 +66,10 @@ export default function RunHistoryItem({
 
             {isExpanded && (
                 <div className="px-4 pb-4">
-                    <div className="text-slate-300">
+                    <div className="text-slate-300 pl-8">
                         Agent Decision:
                     </div>
-                    <div className="mt-3">
+                    <div className="mt-3 pl-8">
                         <RunHistoryItemDecision
                             filtered={run.filtered}
                             reasoning={run.decision.reasoning}
@@ -80,7 +80,7 @@ export default function RunHistoryItem({
                     </div>
 
                     {run.actions && run.actions.length > 0 && (
-                        <div className="mt-3">
+                        <div className="mt-3 pl-8">
                             <div className="flex items-center justify-between mb-3">
                                 <div className="text-slate-300">
                                     {run.status === "failed" ? "Error Details:" : `Actions Taken (${run.actions.length}):`}
