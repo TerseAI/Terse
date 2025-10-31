@@ -1,5 +1,6 @@
-import { ChevronRight, XCircle, Database, Calendar as CalendarIcon, MessageSquare, FileText, ExternalLink } from "lucide-react";
+import { ChevronRight, ExternalLink } from "lucide-react";
 import type { RunHistoryAction, RunHistoryStatus } from "../../shared/RunHistoryTypes";
+import ActionIcon from "./ActionIcon";
 
 type Props = {
     runId: string;
@@ -15,16 +16,6 @@ export default function RunHistoryActionItem({ runId, index, action, runStatus, 
 
     const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
-    const getActionIcon = (actionType: string, status: RunHistoryStatus) => {
-        if (status === "failed") return <XCircle className="w-4 h-4 text-red-400 flex-shrink-0" />;
-        const type = actionType.toLowerCase();
-        if (type.includes("database")) return <Database className="w-4 h-4 text-purple-400 flex-shrink-0" />;
-        if (type.includes("calendar")) return <CalendarIcon className="w-4 h-4 text-blue-400 flex-shrink-0" />;
-        if (type.includes("notification"))
-            return <MessageSquare className="w-4 h-4 text-green-400 flex-shrink-0" />;
-        return <FileText className="w-4 h-4 text-blue-400 flex-shrink-0" />;
-    };
-
     return (
         <div className="bg-[#1a1a1a] rounded border border-slate-800">
             <button
@@ -33,7 +24,7 @@ export default function RunHistoryActionItem({ runId, index, action, runStatus, 
                 type="button"
             >
                 <div className="flex items-center gap-2">
-                    {getActionIcon(action.action, runStatus)}
+                    <ActionIcon actionType={action.action} status={runStatus} />
                     <div className="flex-1">
                         <div className="flex items-center gap-2">
                             <span className="text-slate-300">{capitalize(action.action)} on {capitalize(action.integration)} → {action.target}</span>
