@@ -1,5 +1,13 @@
 import { flexRender, Table } from '@tanstack/react-table';
 import { Automation } from '../../shared/types';
+import {
+    Table as ShadcnTable,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from '../ui/table';
 
 interface TableContentProps {
     table: Table<Automation>;
@@ -8,45 +16,49 @@ interface TableContentProps {
 
 export function TableContent({ table, onEdit }: TableContentProps) {
     return (
-        <div className="overflow-hidden rounded-lg border border-[theme(border)] shadow-[var(--shadow)]">
-            <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-[theme(border)]">
-                <thead className="bg-[theme(background)]">
+        <div className="rounded-lg border shadow-sm">
+            <ShadcnTable>
+                <TableHeader>
                     {table.getHeaderGroups().map(headerGroup => (
-                        <tr key={headerGroup.id}>
+                        <TableRow key={headerGroup.id}>
                             {headerGroup.headers.map(header => (
-                                <th
-                                    key={header.id}
-                                    className="px-6 py-2 text-left text-sm font-bold text-[theme(text-secondary)] tracking-wider"
-                                >
+                                <TableHead key={header.id}>
                                     {header.isPlaceholder
                                         ? null
                                         : flexRender(
                                               header.column.columnDef.header,
                                               header.getContext()
                                           )}
-                                </th>
+                                </TableHead>
                             ))}
-                        </tr>
+                        </TableRow>
                     ))}
-                </thead>
-                <tbody className="bg-[theme(background)] divide-y divide-[theme(border)]">
-                    {table.getRowModel().rows.map(row => (
-                        <tr
-                            key={row.id}
-                            className="hover:bg-[theme(background-light)] transition-colors cursor-pointer"
-                            onClick={() => onEdit(row.original)}
-                        >
-                            {row.getVisibleCells().map(cell => (
-                                <td key={cell.id} className="px-6 py-4 whitespace-nowrap text-sm">
-                                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                                </td>
-                            ))}
-                        </tr>
-                    ))}
-                </tbody>
-            </table>
-            </div>
+                </TableHeader>
+                <TableBody>
+                    {table.getRowModel().rows?.length ? (
+                        table.getRowModel().rows.map(row => (
+                            <TableRow
+                                key={row.id}
+                                data-state={row.getIsSelected() && "selected"}
+                                className="cursor-pointer"
+                                onClick={() => onEdit(row.original)}
+                            >
+                                {row.getVisibleCells().map(cell => (
+                                    <TableCell key={cell.id}>
+                                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                                    </TableCell>
+                                ))}
+                            </TableRow>
+                        ))
+                    ) : (
+                        <TableRow>
+                            <TableCell colSpan={table.getAllColumns().length} className="h-24 text-center">
+                                No results.
+                            </TableCell>
+                        </TableRow>
+                    )}
+                </TableBody>
+            </ShadcnTable>
         </div>
     );
 }
