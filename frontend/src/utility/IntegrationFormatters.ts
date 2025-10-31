@@ -41,10 +41,7 @@ export function formatIntegrationDisplay(
             return integration.email || 'Unknown Email';
 
         case Integration.NOTION:
-            if (integration.workspaceName && integration.databaseName) {
-                return `${integration.workspaceName} → ${integration.databaseName}`;
-            }
-            return integration.databaseName || integration.databaseId || 'Unknown Database';
+            return integration.workspaceName || integration.workspaceId || 'Unknown Workspace';
 
         case Integration.LINEAR:
             if (integration.workspaceName && integration.linearTeamName) {

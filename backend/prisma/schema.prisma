@@ -66,8 +66,8 @@ model linear_api_keys {
   linear_user_id String
   workspace_id   String?
   workspace_name String?
-  team_id        String?
-  team_name      String?
+  team_id        String? // Connection-level default project/team. Can be overridden per automation via automation_linear_configs.project_id
+  team_name      String? // Connection-level default project name. Can be overridden per automation via automation_linear_configs.project_name
   api_key        String   @unique
   webhook_secret String
   webhook_id     String
@@ -117,8 +117,8 @@ model jira_api_keys {
   jira_user_email String
   base_url        String
   site_name       String?
-  project_key     String?
-  project_name    String?
+  project_key     String? // Connection-level default project key. Can be overridden per automation via automation_jira_configs.project_key
+  project_name    String? // Connection-level default project name (display only, not migrated to config table)
   webhook_id      String?
   api_token       String   @unique
   created_at      DateTime @default(now())
@@ -172,8 +172,8 @@ model notion_integrations {
   user_id           String
   workspace_id      String?
   workspace_name    String?
-  database_id       String
-  database_name     String?
+  database_id       String // Connection-level default database (required). Can be overridden per automation via automation_notion_configs.database_id
+  database_name     String? // Connection-level default database name. Can be overridden per automation via automation_notion_configs.database_name
   integration_token String
   created_at        DateTime @default(now())
   updated_at        DateTime @updatedAt
@@ -265,10 +265,10 @@ model automations {
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
 
-  user   users               @relation(fields: [user_id], references: [id], onDelete: Cascade)
-  prompt automation_prompts?
-  inputs automation_inputs[]
-  output automation_outputs?
+  user                users                 @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  prompt              automation_prompts?
+  inputs              automation_inputs[]
+  output              automation_outputs?
   run_history_records run_history_records[]
 
   @@index([user_id])
@@ -297,6 +297,14 @@ model automation_inputs {
 
   automation automations @relation(fields: [automation_id], references: [id], onDelete: Cascade)
 
+  // Configuration relations (one per integration type)
+  slack_config  automation_slack_configs?
+  notion_config automation_notion_configs?
+  linear_config automation_linear_configs?
+  jira_config   automation_jira_configs?
+  github_config automation_github_configs?
+  gmail_config  automation_gmail_configs?
+
   @@index([automation_id])
   @@index([integration_type, integration_id])
 }
@@ -312,7 +320,123 @@ model automation_outputs {
 
   automation automations @relation(fields: [automation_id], references: [id], onDelete: Cascade)
 
+  // Configuration relations (one per integration type)
+  slack_config  automation_slack_configs?
+  notion_config automation_notion_configs?
+  linear_config automation_linear_configs?
+  jira_config   automation_jira_configs?
+  github_config automation_github_configs?
+  gmail_config  automation_gmail_configs?
+
   @@index([integration_type, integration_id])
+}
+
+// Automation Configuration Tables - Typed config per integration type
+// Slack Configuration
+model automation_slack_configs {
+  id                   String  @id @default(cuid())
+  automation_input_id  String? @unique // FK to automation_inputs (mutually exclusive with output_id)
+  automation_output_id String? @unique // FK to automation_outputs (unique constraint)
+
+  channel_id   String? // Channel ID (required for outputs, optional for inputs)
+  channel_name String? // Channel display name (for UI, optional)
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  automation_input  automation_inputs?  @relation(fields: [automation_input_id], references: [id], onDelete: Cascade)
+  automation_output automation_outputs? @relation(fields: [automation_output_id], references: [id], onDelete: Cascade)
+
+  @@index([channel_id])
+}
+
+// Notion Configuration
+model automation_notion_configs {
+  id                   String  @id @default(cuid())
+  automation_input_id  String? @unique // FK to automation_inputs (mutually exclusive with output_id)
+  automation_output_id String? @unique // FK to automation_outputs (unique constraint)
+
+  database_id   String? // Database ID (required for outputs, optional for inputs)
+  database_name String? // Database display name (for UI, optional)
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  automation_input  automation_inputs?  @relation(fields: [automation_input_id], references: [id], onDelete: Cascade)
+  automation_output automation_outputs? @relation(fields: [automation_output_id], references: [id], onDelete: Cascade)
+
+  @@index([database_id])
+}
+
+// Linear Configuration
+model automation_linear_configs {
+  id                   String  @id @default(cuid())
+  automation_input_id  String? @unique // FK to automation_inputs (mutually exclusive with output_id)
+  automation_output_id String? @unique // FK to automation_outputs (unique constraint)
+
+  project_id   String? // Project ID (optional - scopes to specific project)
+  project_name String? // Project display name (for UI, optional)
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  automation_input  automation_inputs?  @relation(fields: [automation_input_id], references: [id], onDelete: Cascade)
+  automation_output automation_outputs? @relation(fields: [automation_output_id], references: [id], onDelete: Cascade)
+
+  @@index([project_id])
+}
+
+// Jira Configuration
+model automation_jira_configs {
+  id                   String  @id @default(cuid())
+  automation_input_id  String? @unique // FK to automation_inputs (mutually exclusive with output_id)
+  automation_output_id String? @unique // FK to automation_outputs (unique constraint)
+
+  project_key String? // Project key (optional - can override connection default)
+  project_id  String? // Project ID (optional - can be used instead of key)
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  automation_input  automation_inputs?  @relation(fields: [automation_input_id], references: [id], onDelete: Cascade)
+  automation_output automation_outputs? @relation(fields: [automation_output_id], references: [id], onDelete: Cascade)
+
+  @@index([project_key])
+  @@index([project_id])
+}
+
+// GitHub Configuration
+model automation_github_configs {
+  id                   String  @id @default(cuid())
+  automation_input_id  String? @unique // FK to automation_inputs (mutually exclusive with output_id)
+  automation_output_id String? @unique // FK to automation_outputs (unique constraint)
+
+  repository_id String? // Repository ID (optional - references github_repositories.id if different from connection default)
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  automation_input  automation_inputs?  @relation(fields: [automation_input_id], references: [id], onDelete: Cascade)
+  automation_output automation_outputs? @relation(fields: [automation_output_id], references: [id], onDelete: Cascade)
+  // Future: could add branch, path filters for more granular control
+
+  @@index([repository_id])
+}
+
+// Gmail Configuration
+model automation_gmail_configs {
+  id                   String  @id @default(cuid())
+  automation_input_id  String? @unique // FK to automation_inputs (mutually exclusive with output_id)
+  automation_output_id String? @unique // FK to automation_outputs (unique constraint)
+
+  // Currently no additional config fields needed, but table exists for consistency
+  // Future: could add email filters, label configuration, etc.
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  automation_input  automation_inputs?  @relation(fields: [automation_input_id], references: [id], onDelete: Cascade)
+  automation_output automation_outputs? @relation(fields: [automation_output_id], references: [id], onDelete: Cascade)
 }
 
 enum TicketEventType {
@@ -365,28 +489,28 @@ enum RunHistoryIntegration {
 
 // Run History tables
 model run_history_records {
-  id               String                  @id @default(cuid())
-  automation_id    String
+  id                  String                   @id @default(cuid())
+  automation_id       String
   // Timestamp of the run (when the trigger was processed)
-  timestamp        DateTime                @default(now())
+  timestamp           DateTime                 @default(now())
   // Trigger details (denormalized onto the record for fast reads)
-  event            String
+  event               String
   trigger_integration RunHistoryIntegration
-  trigger_source   String
-  trigger_title    String?
-  trigger_subheader String?
-  trigger_url      String?
+  trigger_source      String
+  trigger_title       String?
+  trigger_subheader   String?
+  trigger_url         String?
   // Whether this item was filtered out by rules before action
-  filtered         Boolean                 @default(false)
+  filtered            Boolean                  @default(false)
   // Decision summary
-  decision_action  RunHistoryDecisionAction
-  decision_reason  String
+  decision_action     RunHistoryDecisionAction
+  decision_reason     String
   // Run status
-  status           RunHistoryStatus
-  created_at       DateTime                @default(now())
-  updated_at       DateTime                @updatedAt
+  status              RunHistoryStatus
+  created_at          DateTime                 @default(now())
+  updated_at          DateTime                 @updatedAt
 
-  automation automations @relation(fields: [automation_id], references: [id], onDelete: Cascade)
+  automation automations           @relation(fields: [automation_id], references: [id], onDelete: Cascade)
   actions    run_history_actions[]
 
   @@index([automation_id])
@@ -395,14 +519,14 @@ model run_history_records {
 }
 
 model run_history_actions {
-  id                   String               @id @default(cuid())
+  id                    String                @id @default(cuid())
   run_history_record_id String
-  action               String
-  integration          RunHistoryIntegration
-  target               String
-  details              String
-  url                  String?
-  created_at           DateTime             @default(now())
+  action                String
+  integration           RunHistoryIntegration
+  target                String
+  details               String
+  url                   String?
+  created_at            DateTime              @default(now())
 
   run_history_record run_history_records @relation(fields: [run_history_record_id], references: [id], onDelete: Cascade)
 
