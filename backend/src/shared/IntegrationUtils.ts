@@ -88,7 +88,7 @@ export function isIntegrationInstance<T extends IntegrationInstance>(
     case Integration.JIRA:
       return 'baseUrl' in integration;
     case Integration.SLACK:
-      return 'slackTeamId' in integration;
+      return 'teamId' in integration;
     case Integration.GMAIL:
       return 'email' in integration && 'historyId' in integration;
     case Integration.NOTION:
