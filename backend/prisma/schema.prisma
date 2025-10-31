@@ -269,6 +269,7 @@ model automations {
   prompt automation_prompts?
   inputs automation_inputs[]
   output automation_outputs?
+  run_history_records run_history_records[]
 
   @@index([user_id])
   @@index([is_active])
@@ -337,4 +338,73 @@ enum IntegrationType {
   JIRA
   SLACK
   NOTION
+}
+
+// Run History enums to mirror backend/shared RunHistoryTypes
+enum RunHistoryStatus {
+  success
+  failed
+  skipped
+  in_progress
+}
+
+enum RunHistoryDecisionAction {
+  processed
+  skipped
+}
+
+// Integration values for Run History (matches backend/src/shared/RunHistoryTypes.ts)
+enum RunHistoryIntegration {
+  jira
+  linear
+  slack
+  github
+  notion
+  gmail
+}
+
+// Run History tables
+model run_history_records {
+  id               String                  @id @default(cuid())
+  automation_id    String
+  // Timestamp of the run (when the trigger was processed)
+  timestamp        DateTime                @default(now())
+  // Trigger details (denormalized onto the record for fast reads)
+  event            String
+  trigger_integration RunHistoryIntegration
+  trigger_source   String
+  trigger_title    String?
+  trigger_subheader String?
+  trigger_url      String?
+  // Whether this item was filtered out by rules before action
+  filtered         Boolean                 @default(false)
+  // Decision summary
+  decision_action  RunHistoryDecisionAction
+  decision_reason  String
+  // Run status
+  status           RunHistoryStatus
+  created_at       DateTime                @default(now())
+  updated_at       DateTime                @updatedAt
+
+  automation automations @relation(fields: [automation_id], references: [id], onDelete: Cascade)
+  actions    run_history_actions[]
+
+  @@index([automation_id])
+  @@index([status])
+  @@index([timestamp])
+}
+
+model run_history_actions {
+  id                   String               @id @default(cuid())
+  run_history_record_id String
+  action               String
+  integration          RunHistoryIntegration
+  target               String
+  details              String
+  url                  String?
+  created_at           DateTime             @default(now())
+
+  run_history_record run_history_records @relation(fields: [run_history_record_id], references: [id], onDelete: Cascade)
+
+  @@index([run_history_record_id])
 }

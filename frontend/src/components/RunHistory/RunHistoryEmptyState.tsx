@@ -1,0 +1,32 @@
+import { FileText } from "lucide-react";
+
+type Props = {
+    hasActiveFilters: boolean;
+    onClearAll: () => void;
+};
+
+export default function RunHistoryEmptyState({ hasActiveFilters, onClearAll }: Props) {
+    return (
+        <div className="text-center py-16">
+            <FileText className="w-16 h-16 text-[theme(text-secondary)] mx-auto mb-4" />
+            <h3 className="text-[theme(text-secondary)] mb-2">No runs found</h3>
+            <p className="text-[theme(text-secondary)]">
+                {hasActiveFilters
+                    ? "Try adjusting your filters or search query"
+                    : "Run history will appear here as your automation processes events"}
+            </p>
+            {hasActiveFilters && (
+                <button
+                    className="mt-4 h-8 px-3 rounded-md border text-sm border-[theme(border)] text-[theme(text-secondary)] hover:text-[theme(text-primary)] hover:bg-[theme(background-hover)]"
+                    onClick={onClearAll}
+                    type="button"
+                >
+                    Clear All Filters
+                </button>
+            )}
+        </div>
+    );
+}
+
+
+
