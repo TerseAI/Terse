@@ -1,9 +1,9 @@
-import { useEffect, useRef, useState } from "react";
-import { CheckCircle2, Filter as FilterIcon, XCircle, Loader2, ChevronRight } from "lucide-react";
+import { useState } from "react";
 import type { RunHistoryStatus } from "../../shared/RunHistoryTypes";
 import RunHistoryPagination from "./RunHistoryPagination";
 import { SearchBar } from "../Automation/SearchBar";
 import DateRangePicker from "./DatePicker";
+import StatusFilter from "./StatusFilter";
 
 type DateRangeType = { from: Date | undefined; to: Date | undefined };
 
@@ -46,27 +46,7 @@ export default function RunHistoryToolBar({
     onPageChange
 }: Props) {
     const [isDateOpen, setIsDateOpen] = useState(false);
-    const statusPanelRef = useRef<HTMLDivElement | null>(null);
-    const statusButtonRef = useRef<HTMLButtonElement | null>(null);
-
-    useEffect(() => {
-        const handleClickOutsideStatus = (e: MouseEvent) => {
-            const target = e.target as Node;
-            const panel = statusPanelRef.current;
-            const button = statusButtonRef.current;
-            if (!panel) return;
-            const isHidden = panel.classList.contains('hidden');
-            if (isHidden) return;
-            if (
-                (!panel.contains(target)) &&
-                (!button || !button.contains(target))
-            ) {
-                panel.classList.add('hidden');
-            }
-        };
-        document.addEventListener('mousedown', handleClickOutsideStatus);
-        return () => document.removeEventListener('mousedown', handleClickOutsideStatus);
-    }, []);
+    const [isStatusOpen, setIsStatusOpen] = useState(false);
 
     return (
         <div className="mb-6 space-y-4 relative">
@@ -85,78 +65,22 @@ export default function RunHistoryToolBar({
                         onOpenChange={(open) => {
                             setIsDateOpen(open);
                             if (open) {
-                                const statusPanel = document.getElementById("status-filter-panel");
-                                if (statusPanel && !statusPanel.classList.contains("hidden")) {
-                                    statusPanel.classList.add("hidden");
-                                }
+                                setIsStatusOpen(false);
                             }
                         }}
                     />
 
-                    <div className="relative">
-                        <button
-                            ref={statusButtonRef}
-                            className="h-9 px-3 rounded-md border text-sm transition-colors flex items-center border-input text-muted-foreground hover:text-foreground hover:bg-accent/10"
-                            onClick={() => {
-                                const statusPanel = document.getElementById("status-filter-panel");
+                    <StatusFilter
+                        selectedStatuses={selectedStatuses}
+                        onToggleStatus={onToggleStatus}
+                        open={isStatusOpen}
+                        onOpenChange={(open) => {
+                            setIsStatusOpen(open);
+                            if (open) {
                                 setIsDateOpen(false);
-                                if (statusPanel) statusPanel.classList.toggle("hidden");
-                            }}
-                            type="button"
-                        >
-                            <FilterIcon className="w-4 h-4 mr-2" />
-                            {selectedStatuses.size === 4
-                                ? "All Status"
-                                : selectedStatuses.size === 0
-                                ? "No Status"
-                                : `${selectedStatuses.size} Status`}
-                            <ChevronRight className="ml-2 h-4 w-4 rotate-90" />
-                        </button>
-                        <div id="status-filter-panel" ref={statusPanelRef} className="hidden absolute z-50 right-0 mt-2 w-56 p-3 rounded-md border bg-card border-input">
-                            <div className="space-y-3">
-                                <label className="flex items-center gap-2 text-foreground cursor-pointer">
-                                    <input
-                                        type="checkbox"
-                                        className="accent-green-600 dark:accent-green-400"
-                                        checked={selectedStatuses.has("success")}
-                                        onChange={() => onToggleStatus("success")}
-                                    />
-                                    <CheckCircle2 className="w-4 h-4 text-green-600 dark:text-green-400" />
-                                    <span>Success</span>
-                                </label>
-                                <label className="flex items-center gap-2 text-foreground cursor-pointer">
-                                    <input
-                                        type="checkbox"
-                                        className="accent-destructive"
-                                        checked={selectedStatuses.has("failed")}
-                                        onChange={() => onToggleStatus("failed")}
-                                    />
-                                    <XCircle className="w-4 h-4 text-destructive" />
-                                    <span>Failed</span>
-                                </label>
-                                <label className="flex items-center gap-2 text-foreground cursor-pointer">
-                                    <input
-                                        type="checkbox"
-                                        className="accent-accent"
-                                        checked={selectedStatuses.has("in_progress")}
-                                        onChange={() => onToggleStatus("in_progress")}
-                                    />
-                                    <Loader2 className="w-4 h-4 text-accent" />
-                                    <span>In Progress</span>
-                                </label>
-                                <label className="flex items-center gap-2 text-foreground cursor-pointer">
-                                    <input
-                                        type="checkbox"
-                                        className="accent-muted-foreground"
-                                        checked={selectedStatuses.has("skipped")}
-                                        onChange={() => onToggleStatus("skipped")}
-                                    />
-                                    <FilterIcon className="w-4 h-4 text-muted-foreground" />
-                                    <span>Filtered</span>
-                                </label>
-                            </div>
-                        </div>
-                    </div>
+                            }
+                        }}
+                    />
                 </div>
             </div>
 
