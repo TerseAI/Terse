@@ -55,7 +55,7 @@ export default function RunHistoryItem({
     const allActionsExpanded = !!run.actions && areAllActionsExpanded(run.id, run.actions.length);
 
     return (
-        <div className="overflow-hidden bg-[#242424] border border-slate-800 rounded-lg md:mb-3 min-w-[640px] md:min-w-0 shrink-0 md:shrink">
+        <div className="overflow-hidden bg-[theme(background-light)] border border-[theme(border)] rounded-lg md:mb-3 min-w-[640px] md:min-w-0 shrink-0 md:shrink">
             <button
                 className="w-full text-left"
                 onClick={() => onToggleRun(run.id)}
@@ -71,7 +71,7 @@ export default function RunHistoryItem({
 
             {isExpanded && (
                 <div className="px-4 pb-4">
-                    <div className="text-slate-300 pl-8">
+                    <div className="text-[theme(text-primary)] pl-8">
                         Agent Decision:
                     </div>
                     <div className="mt-3 pl-8">
@@ -86,12 +86,12 @@ export default function RunHistoryItem({
                     {run.actions && run.actions.length > 0 && (
                         <div className="mt-3 pl-8">
                             <div className="flex items-center justify-between mb-3">
-                                <div className="text-slate-300">
+                                <div className="text-[theme(text-primary)]">
                                     {run.status === "failed" ? "Error Details:" : `Actions Taken (${run.actions.length}):`}
                                 </div>
                                 {run.actions.length > 1 && (
                                     <button
-                                        className="h-7 px-2 rounded-md text-sm text-slate-400 hover:text-white hover:bg-slate-800 border border-transparent hover:border-slate-700"
+                                        className="h-7 px-2 rounded-md text-sm text-[theme(text-secondary)] hover:text-[theme(text-primary)] hover:bg-[theme(background-hover)] border border-transparent hover:border-[theme(border)]"
                                         onClick={() => onToggleAllActionsForRun(run.id, run.actions!.length)}
                                         type="button"
                                     >

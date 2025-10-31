@@ -17,9 +17,9 @@ export default function RunHistoryActionItem({ runId, index, action, runStatus, 
     const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
     return (
-        <div className="bg-[#1a1a1a] rounded border border-slate-800">
+        <div className="bg-[theme(background)] rounded border border-[theme(border)]">
             <button
-                className="w-full text-left p-2 hover:bg-[#222222] transition-colors rounded"
+                className="w-full text-left p-2 hover:bg-[theme(background-hover)] transition-colors rounded"
                 onClick={() => onToggle(actionKey)}
                 type="button"
             >
@@ -27,7 +27,7 @@ export default function RunHistoryActionItem({ runId, index, action, runStatus, 
                     <ActionIcon actionType={action.action} status={runStatus} />
                     <div className="flex-1">
                         <div className="flex items-center gap-2">
-                            <span className="text-slate-300">{capitalize(action.action)} on {capitalize(action.integration)} → {action.target}</span>
+                            <span className="text-[theme(text-primary)]">{capitalize(action.action)} on {capitalize(action.integration)} → {action.target}</span>
                             {action.url && (
                                 <a
                                     href={action.url}
@@ -41,7 +41,7 @@ export default function RunHistoryActionItem({ runId, index, action, runStatus, 
                             )}
                         </div>
                     </div>
-                    <ChevronRight className={`w-4 h-4 text-slate-400 transition-transform ${
+                    <ChevronRight className={`w-4 h-4 text-[theme(text-secondary)] transition-transform ${
                         isExpanded ? "rotate-90" : ""
                     }`} />
                 </div>
@@ -49,7 +49,7 @@ export default function RunHistoryActionItem({ runId, index, action, runStatus, 
             {isExpanded && (
                 <div className="px-2 pb-2 pt-1">
                     <div className="flex items-start gap-2 pl-6">
-                        <div className={`flex-1 ${runStatus === "failed" ? "text-red-400" : "text-slate-400"}`}>
+                        <div className={`flex-1 ${runStatus === "failed" ? "text-red-400" : "text-[theme(text-secondary)]"}`}>
                             {action.details}
                         </div>
                     </div>

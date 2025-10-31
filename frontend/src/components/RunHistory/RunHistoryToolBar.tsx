@@ -103,19 +103,19 @@ export default function RunHistoryToolBar({
 
     return (
         <div className="mb-6 space-y-4 relative">
-            <div className="mb-4 text-slate-400">
+            <div className="mb-4 text-[theme(text-secondary)]">
                 Showing {filteredCount === 0 ? 0 : startIndex + 1}-{Math.min(startIndex + runsPerPage, filteredCount)} of {filteredCount} runs
             </div>
 
             <div className="flex items-center justify-between gap-4">
                 <div className="relative flex-1">
-                    <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                    <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[theme(text-secondary)]" />
                     <input
                         type="text"
                         placeholder="Search runs..."
                         value={searchQuery}
                         onChange={(e) => onSearchChange(e.target.value)}
-                        className="pl-9 w-full rounded-md border border-slate-700 bg-[#242424] text-slate-300 placeholder:text-slate-500 h-9 px-3"
+                        className="pl-9 w-full rounded-md border border-[theme(border)] bg-[theme(background-light)] text-[theme(text-primary)] placeholder:text-[theme(text-secondary)] h-9 px-3"
                     />
                 </div>
 
@@ -123,7 +123,7 @@ export default function RunHistoryToolBar({
                     <div className="relative">
                         <button
                             ref={dateButtonRef}
-                            className={`h-9 px-3 rounded-md border text-sm transition-colors flex items-center border-slate-700 text-slate-400 hover:text-white hover:bg-slate-800 ${
+                            className={`h-9 px-3 rounded-md border text-sm transition-colors flex items-center border-[theme(border)] text-[theme(text-secondary)] hover:text-[theme(text-primary)] hover:bg-[theme(background-hover)] ${
                                 dateRange.from || dateRange.to ? "border-emerald-500/50 text-emerald-400" : ""
                             }`}
                             onClick={() => {
@@ -175,11 +175,11 @@ export default function RunHistoryToolBar({
                                     }`
                                 }
                                 renderCustomHeader={({ date, decreaseMonth, increaseMonth, prevMonthButtonDisabled, nextMonthButtonDisabled }) => (
-                                    <div className="flex items-center justify-between px-2 py-1 text-slate-300">
+                                    <div className="flex items-center justify-between px-2 py-1 text-[theme(text-primary)]">
                                         <button
                                             onClick={decreaseMonth}
                                             disabled={prevMonthButtonDisabled}
-                                            className="h-7 w-7 inline-flex items-center justify-center rounded border border-slate-700 hover:bg-slate-800 disabled:opacity-40"
+                                            className="h-7 w-7 inline-flex items-center justify-center rounded border border-[theme(border)] hover:bg-[theme(background-hover)] disabled:opacity-40"
                                             type="button"
                                         >
                                             <ChevronLeft className="w-4 h-4" />
@@ -190,7 +190,7 @@ export default function RunHistoryToolBar({
                                         <button
                                             onClick={increaseMonth}
                                             disabled={nextMonthButtonDisabled}
-                                            className="h-7 w-7 inline-flex items-center justify-center rounded border border-slate-700 hover:bg-slate-800 disabled:opacity-40"
+                                            className="h-7 w-7 inline-flex items-center justify-center rounded border border-[theme(border)] hover:bg-[theme(background-hover)] disabled:opacity-40"
                                             type="button"
                                         >
                                             <ChevronRight className="w-4 h-4" />
@@ -201,7 +201,7 @@ export default function RunHistoryToolBar({
                             <div className="mt-3 flex gap-2">
                                 {(dateRange.from || dateRange.to) && (
                                     <button
-                                        className="flex-1 h-8 rounded-md border text-sm border-slate-700 text-slate-400 hover:text-white hover:bg-slate-800"
+                                        className="flex-1 h-8 rounded-md border text-sm border-[theme(border)] text-[theme(text-secondary)] hover:text-[theme(text-primary)] hover:bg-[theme(background-hover)]"
                                         onClick={() => {
                                             onDateRangeChange({ from: undefined, to: undefined });
                                         }}
@@ -211,7 +211,7 @@ export default function RunHistoryToolBar({
                                     </button>
                                 )}
                                 <button
-                                    className="h-8 px-3 rounded-md border text-sm border-slate-700 text-slate-400 hover:text-white hover:bg-slate-800"
+                                    className="h-8 px-3 rounded-md border text-sm border-[theme(border)] text-[theme(text-secondary)] hover:text-[theme(text-primary)] hover:bg-[theme(background-hover)]"
                                     onClick={() => {
                                         setIsDateOpen(false);
                                     }}
@@ -226,7 +226,7 @@ export default function RunHistoryToolBar({
                     <div className="relative">
                         <button
                             ref={statusButtonRef}
-                            className="h-9 px-3 rounded-md border text-sm transition-colors flex items-center border-slate-700 text-slate-400 hover:text-white hover:bg-slate-800"
+                            className="h-9 px-3 rounded-md border text-sm transition-colors flex items-center border-[theme(border)] text-[theme(text-secondary)] hover:text-[theme(text-primary)] hover:bg-[theme(background-hover)]"
                             onClick={() => {
                                 const statusPanel = document.getElementById("status-filter-panel");
                                 setIsDateOpen(false);
@@ -242,9 +242,9 @@ export default function RunHistoryToolBar({
                                 : `${selectedStatuses.size} Status`}
                             <ChevronRight className="ml-2 h-4 w-4 rotate-90" />
                         </button>
-                        <div id="status-filter-panel" ref={statusPanelRef} className="hidden absolute z-50 right-0 mt-2 w-56 p-3 rounded-md border bg-[#242424] border-slate-700">
+                        <div id="status-filter-panel" ref={statusPanelRef} className="hidden absolute z-50 right-0 mt-2 w-56 p-3 rounded-md border bg-[theme(background-light)] border-[theme(border)]">
                             <div className="space-y-3">
-                                <label className="flex items-center gap-2 text-slate-300 cursor-pointer">
+                                <label className="flex items-center gap-2 text-[theme(text-primary)] cursor-pointer">
                                     <input
                                         type="checkbox"
                                         className="accent-emerald-500"
@@ -254,7 +254,7 @@ export default function RunHistoryToolBar({
                                     <CheckCircle2 className="w-4 h-4 text-emerald-500" />
                                     <span>Success</span>
                                 </label>
-                                <label className="flex items-center gap-2 text-slate-300 cursor-pointer">
+                                <label className="flex items-center gap-2 text-[theme(text-primary)] cursor-pointer">
                                     <input
                                         type="checkbox"
                                         className="accent-red-500"
@@ -264,7 +264,7 @@ export default function RunHistoryToolBar({
                                     <XCircle className="w-4 h-4 text-red-400" />
                                     <span>Failed</span>
                                 </label>
-                                <label className="flex items-center gap-2 text-slate-300 cursor-pointer">
+                                <label className="flex items-center gap-2 text-[theme(text-primary)] cursor-pointer">
                                     <input
                                         type="checkbox"
                                         className="accent-blue-500"
@@ -274,7 +274,7 @@ export default function RunHistoryToolBar({
                                     <Loader2 className="w-4 h-4 text-blue-400" />
                                     <span>In Progress</span>
                                 </label>
-                                <label className="flex items-center gap-2 text-slate-300 cursor-pointer">
+                                <label className="flex items-center gap-2 text-[theme(text-primary)] cursor-pointer">
                                     <input
                                         type="checkbox"
                                         className="accent-slate-400"
@@ -300,9 +300,9 @@ export default function RunHistoryToolBar({
                 </div>
 
                 <div className="flex items-center gap-2">
-                    <span className="text-slate-400 text-sm">Runs per page:</span>
+                    <span className="text-[theme(text-secondary)] text-sm">Runs per page:</span>
                     <select
-                        className="w-20 h-9 rounded-md border border-slate-700 bg-[#242424] text-slate-300 px-2"
+                        className="w-20 h-9 rounded-md border border-[theme(border)] bg-[theme(background-light)] text-[theme(text-primary)] px-2"
                         value={String(runsPerPageValue)}
                         onChange={(e) => onRunsPerPageChange(Number(e.target.value))}
                     >

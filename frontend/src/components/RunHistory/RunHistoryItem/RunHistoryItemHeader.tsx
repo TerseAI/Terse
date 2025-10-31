@@ -11,15 +11,15 @@ type Props = {
 
 export default function RunHistoryItemHeader({ run, isExpanded, formattedTimestamp, onCopy }: Props) {
     return (
-        <div className="p-4 hover:bg-[#2a2a2a] transition-colors group">
+        <div className="p-4 hover:bg-[theme(background-hover)] transition-colors group">
             <div className="flex items-start gap-4">
                 <div className="mt-0.5 flex items-center gap-2">
-                    <ChevronRight className={`w-4 h-4 text-slate-400 transition-transform ${isExpanded ? "rotate-90" : ""}`} />
+                    <ChevronRight className={`w-4 h-4 text-[theme(text-secondary)] transition-transform ${isExpanded ? "rotate-90" : ""}`} />
                 </div>
                 <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
-                        <Mail className="w-4 h-4 text-slate-500 flex-shrink-0" />
-                        <span className="text-white truncate">{run.trigger.title}</span>
+                        <Mail className="w-4 h-4 text-[theme(text-secondary)] flex-shrink-0" />
+                        <span className="text-[theme(text-primary)] truncate">{run.trigger.title}</span>
                         {run.trigger.url && (
                             <a
                                 href={run.trigger.url}
@@ -32,7 +32,7 @@ export default function RunHistoryItemHeader({ run, isExpanded, formattedTimesta
                             </a>
                         )}
                         <button
-                            className="h-6 w-6 p-0 text-slate-500 hover:text-slate-300 opacity-0 group-hover:opacity-100 transition-opacity"
+                            className="h-6 w-6 p-0 text-[theme(text-secondary)] hover:text-[theme(text-primary)] opacity-0 group-hover:opacity-100 transition-opacity"
                             onClick={(e) => {
                                 e.stopPropagation();
                                 onCopy(run.trigger.title ?? "");
@@ -42,7 +42,7 @@ export default function RunHistoryItemHeader({ run, isExpanded, formattedTimesta
                             <Copy className="w-3 h-3" />
                         </button>
                     </div>
-                    <div className="flex items-center gap-2 text-slate-500">
+                    <div className="flex items-center gap-2 text-[theme(text-secondary)]">
                         <span className="truncate">{run.trigger.subheader}</span>
                         <span>•</span>
                         <span className="flex-shrink-0">{formattedTimestamp}</span>
