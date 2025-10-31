@@ -4,6 +4,13 @@ import RunHistoryPagination from "./RunHistoryPagination";
 import { SearchBar } from "../Automation/SearchBar";
 import DateRangePicker from "./DatePicker";
 import StatusFilter from "./StatusFilter";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "../ui/select";
 
 type DateRangeType = { from: Date | undefined; to: Date | undefined };
 
@@ -95,15 +102,19 @@ export default function RunHistoryToolBar({
 
                 <div className="flex items-center gap-2">
                     <span className="text-muted-foreground text-sm">Runs per page:</span>
-                    <select
-                        className="w-20 h-9 rounded-md border border-input bg-card text-foreground px-2"
+                    <Select
                         value={String(runsPerPageValue)}
-                        onChange={(e) => onRunsPerPageChange(Number(e.target.value))}
+                        onValueChange={(value) => onRunsPerPageChange(Number(value))}
                     >
-                        <option value="10">10</option>
-                        <option value="25">25</option>
-                        <option value="100">100</option>
-                    </select>
+                        <SelectTrigger className="w-20">
+                            <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="10">10</SelectItem>
+                            <SelectItem value="25">25</SelectItem>
+                            <SelectItem value="100">100</SelectItem>
+                        </SelectContent>
+                    </Select>
                 </div>
             </div>
         </div>
