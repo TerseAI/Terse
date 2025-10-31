@@ -44,7 +44,7 @@ function OverallSummary() {
 
     return (
         <>
-            <h1 className="text-2xl font-bold pb-4">Overall Summary</h1>
+            <h1 className="text-2xl pb-4">Overall Summary</h1>
             <Card>
                 <CardContent>
                     <DailySummary summary={summary} loading={loading} error={error} />
@@ -58,7 +58,7 @@ function Welcome() {
     const { user } = useAuth();
     return (
         <div className="pt-4 pb-4">
-            <h1 className="text-xl font-bold pb-2">👋 Hi {user?.display_name}!</h1>
+            <h1 className="text-xl pb-2">👋 Hi {user?.display_name}!</h1>
             <p className="text-md">
                 here's what your team has been up to
             </p>
