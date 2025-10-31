@@ -145,21 +145,6 @@ function SaveAutomationButton() {
         name.trim().length > 0; // Ensure name is not empty
     
     const isEditMode = !!automationId;
-    
-    // Debug logging (remove in production if not needed)
-    if (!isComplete) {
-        console.debug('Automation incomplete:', {
-            hasInputs: inputs.length > 0,
-            inputsValid: inputs.every(i => !!i.integration && !!i.integrationId),
-            hasOutput: !!output,
-            outputValid: !!output && !!output.integration && !!output.integrationId,
-            hasPrompt: !!prompt?.text,
-            hasName: name.trim().length > 0,
-            inputs,
-            output,
-            prompt
-        });
-    }
 
     const handleSave = async () => {
         if (!isComplete || !inputs.length || !output) return;
