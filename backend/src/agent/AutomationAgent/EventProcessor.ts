@@ -193,13 +193,7 @@ export class EventProcessor {
         if (runId && session.runActions && session.runActions.length > 0) {
             for (const action of session.runActions) {
                 try {
-                    await appendRunAction(runId, {
-                        action: action.type,
-                        integration: action.integration,
-                        target: action.target,
-                        details: action.details,
-                        url: action.url,
-                    } as any);
+                    await appendRunAction(runId, action);
                 } catch (e) {
                     console.error(chalk.yellow('Failed to append run action'), e);
                 }

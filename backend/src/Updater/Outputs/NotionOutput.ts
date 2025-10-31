@@ -6,17 +6,12 @@ import { Session } from "../../server";
 import { Client } from '@notionhq/client';
 import { NotionIntegration } from "../../types/prisma";
 import chalk from "chalk";
+import { RunHistoryAction } from "../../shared/RunHistoryTypes";
 
 export interface NotionSession extends Session {
     notionIntegration: NotionIntegration;
     // Collect actions here (report-only); DB writes happen after agent finishes
-    runActions?: {
-        type: string;
-        integration: 'notion';
-        target: string;
-        details: string;
-        url?: string;
-    }[];
+    runActions?: RunHistoryAction[];
 }
 
 export class NotionOutput extends Output<NotionSession> {
@@ -236,7 +231,7 @@ Use notion_query_database first to see existing property names and structure.`,
                     // Report action (no DB writes here)
                     runContext.context.runActions = runContext.context.runActions || [];
                     runContext.context.runActions.push({
-                        type: 'update_page',
+                        action: 'update_page',
                         integration: 'notion',
                         target: runContext.context.notionIntegration.database_name || runContext.context.notionIntegration.database_id,
                         details: 'Notion page updated',
@@ -261,7 +256,7 @@ Use notion_query_database first to see existing property names and structure.`,
                     // Report action (no DB writes here)
                     runContext.context.runActions = runContext.context.runActions || [];
                     runContext.context.runActions.push({
-                        type: 'create_page',
+                        action: 'create_page',
                         integration: 'notion',
                         target: runContext.context.notionIntegration.database_name || runContext.context.notionIntegration.database_id,
                         details: 'Notion page created',
