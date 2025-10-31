@@ -5,8 +5,7 @@ import { SectionLayout } from "./components/SectionLayout";
 import { AddInputModal } from "./components/AddInputModal";
 import { BoltIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import { IntegrationSelector } from "../../components/IntegrationSelector";
-import { getIntegrationTypeName } from "../../utility/IntegrationFormatters";
-import { clearIntegrationConfigs } from "../../utility/IntegrationUtils";
+import { clearIntegrationConfigs, getIntegrationName } from "../../utility/IntegrationUtils";
 
 export function InputsSection() {
     const { inputs, setInputs } = useAutomationContext();
@@ -63,7 +62,7 @@ export function InputsSection() {
                 <div className="p-4 rounded-lg border border-[theme(border)] bg-[theme(background)]">
                     <div className="flex items-start justify-between mb-3">
                         <div className="text-sm font-medium text-[theme(text-primary)]">
-                            {getIntegrationTypeName(input.integration)}
+                            {getIntegrationName(input.integration)}
                         </div>
                         <button
                             onClick={handleRemove}

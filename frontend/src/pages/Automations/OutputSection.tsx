@@ -5,8 +5,7 @@ import { SectionLayout } from "./components/SectionLayout";
 import { AddOutputModal } from "./components/AddOutputModal";
 import { DocumentTextIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import { IntegrationSelector } from "../../components/IntegrationSelector";
-import { getIntegrationTypeName } from "../../utility/IntegrationFormatters";
-import { clearIntegrationConfigs } from "../../utility/IntegrationUtils";
+import { clearIntegrationConfigs, getIntegrationName } from "../../utility/IntegrationUtils";
 
 export function OutputSection() {
     const { output, setOutput } = useAutomationContext();
@@ -61,7 +60,7 @@ export function OutputSection() {
                 <div className="p-4 rounded-lg border border-[theme(border)] bg-[theme(background)]">
                     <div className="flex items-start justify-between mb-3">
                         <div className="text-sm font-medium text-[theme(text-primary)]">
-                            {getIntegrationTypeName(output.integration)}
+                            {getIntegrationName(output.integration)}
                         </div>
                         <button
                             onClick={handleRemove}

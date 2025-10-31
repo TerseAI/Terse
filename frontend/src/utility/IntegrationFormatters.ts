@@ -1,9 +1,5 @@
 import { Integration } from "../types/Integration";
 import {
-    getIntegrationName,
-    getIntegrationDescription
-} from "./IntegrationUtils";
-import {
     GmailIntegration,
     NotionIntegration,
     SlackIntegration,
@@ -112,20 +108,4 @@ export function formatIntegrationDisplay(
         default:
             return integration.id;
     }
-}
-
-/**
- * Gets a short display name for an integration type
- * @deprecated Use getIntegrationName from IntegrationUtils instead
- */
-export function getIntegrationTypeName(type: Integration): string {
-    return getIntegrationName(type);
-}
-
-/**
- * Gets a description for an integration type
- * @deprecated Use getIntegrationDescription from IntegrationUtils instead
- */
-export function getIntegrationTypeDescription(type: Integration): string {
-    return getIntegrationDescription(type);
 }
