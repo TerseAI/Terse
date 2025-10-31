@@ -11,7 +11,7 @@ type Props = {
 
 export default function RunHistoryItemHeader({ run, isExpanded, formattedTimestamp, onCopy }: Props) {
     return (
-        <div className="p-4 hover:bg-[theme(background-hover)] transition-colors group">
+        <div className="p-4 hover:bg-[theme(background-hover)] transition-colors group w-full">
             <div className="flex items-start gap-4">
                 <div className="mt-0.5 flex items-center gap-2">
                     <ChevronRight className={`w-4 h-4 text-[theme(text-secondary)] transition-transform ${isExpanded ? "rotate-90" : ""}`} />
@@ -26,7 +26,7 @@ export default function RunHistoryItemHeader({ run, isExpanded, formattedTimesta
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 onClick={(e) => e.stopPropagation()}
-                                className="flex items-center gap-1 text-[var(--color-accent)] hover:opacity-80 transition-opacity flex-shrink-0"
+                                className="flex items-center gap-1 text-[var(--color-primary)] hover:opacity-80 transition-opacity flex-shrink-0"
                             >
                                 <ExternalLink className="w-3 h-3" />
                             </a>
