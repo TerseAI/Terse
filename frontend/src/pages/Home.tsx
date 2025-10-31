@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import Card from "../components/Card";
+import { Card } from "../components/ui/card";
 import DailySummary from "../components/DailySummary";
 import { ActivityFeedService, DailyActivitySummary } from '../services/activityFeed';
 import { useAuth } from "../services/auth";

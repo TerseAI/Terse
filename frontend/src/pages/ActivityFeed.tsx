@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Inbox, ChevronRight } from "lucide-react";
 import AvatarBar from "../components/activity/AvatarBar";
-import Card from "../components/Card";
+import { Card } from "../components/ui/card";
 import { ActivityEvent, SubActivity, CommitAssociation } from "../shared/types";
 import { ActivityFeedService } from "../services/activityFeed";
 import EventDetails from "../components/activity/EventDetails";
