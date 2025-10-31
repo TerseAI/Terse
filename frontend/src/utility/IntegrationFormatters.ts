@@ -43,7 +43,7 @@ function isJiraIntegration(integration: IntegrationInstance): integration is Jir
 }
 
 function isSlackIntegration(integration: IntegrationInstance): integration is SlackIntegration {
-    return 'slackTeamId' in integration || 'slackTeamName' in integration;
+    return 'teamId' in integration || 'teamName' in integration;
 }
 
 function isGithubIntegration(integration: IntegrationInstance): integration is GithubIntegration {
@@ -94,8 +94,9 @@ export function formatIntegrationDisplay(
             return 'Unknown Site';
 
         case Integration.SLACK:
+            console.log('integration', integration)
             if (isSlackIntegration(integration)) {
-                return integration.slackTeamName || 'Unknown Workspace';
+                return integration.teamName || 'Unknown Workspace';
             }
             return 'Unknown Workspace';
 

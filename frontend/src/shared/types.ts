@@ -66,8 +66,8 @@ export type JiraIntegration = {
 
 export type SlackIntegration = {
   id: string;
-  slackTeamId?: string;
-  slackTeamName?: string;
+  teamId?: string;
+  teamName?: string;
 };
 
 export type GmailIntegration = {
