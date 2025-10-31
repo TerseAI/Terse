@@ -4,6 +4,9 @@ import { Integration } from '../context/Integrations';
 import { BackendProvider } from '../services/backend';
 import { formatIntegrationDisplay } from '../utility/IntegrationFormatters';
 import { getIntegrationInstances, getIntegrationName } from '../utility/IntegrationUtils';
+import { NotionConfig, SlackConfig } from '../shared/types';
+import { NotionDatabaseSelector } from './NotionDatabaseSelector';
+import { SlackChannelSelector } from './SlackChannelSelector';
 import DropdownSelect from './ui/DropdownSelect';
 
 interface IntegrationInstance {
@@ -16,13 +19,22 @@ interface IntegrationSelectorProps {
     selectedIntegrationId?: string;
     onSelect: (integrationId: string) => void;
     label?: string;
+    // Optional config handlers for integration-specific settings
+    notionConfig?: NotionConfig;
+    onNotionConfigChange?: (config: NotionConfig) => void;
+    slackConfig?: SlackConfig;
+    onSlackConfigChange?: (config: SlackConfig) => void;
 }
 
 export function IntegrationSelector({
     integrationType,
     selectedIntegrationId,
     onSelect,
-    label = 'Connection'
+    label = 'Connection',
+    notionConfig,
+    onNotionConfigChange,
+    slackConfig,
+    onSlackConfigChange
 }: IntegrationSelectorProps) {
     const [integrations, setIntegrations] = useState<IntegrationInstance[]>([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -50,8 +62,8 @@ export function IntegrationSelector({
 
             setIntegrations(instances);
 
-            // Auto-select if only one option and none selected
-            if (instances.length === 1 && !selectedIntegrationId) {
+            // Auto-select first integration if none is selected and we have options
+            if (instances.length > 0 && !selectedIntegrationId) {
                 onSelect(instances[0].id);
             }
         } catch (error) {
@@ -162,6 +174,38 @@ export function IntegrationSelector({
                         integrations.find(i => i.id === selectedIntegrationId)!,
                         integrationType
                     )}
+                </div>
+            )}
+
+            {/* Notion-specific database selector */}
+            {integrationType === Integration.NOTION && selectedIntegrationId && onNotionConfigChange && (
+                <div className="mt-3 pt-3 border-t border-[theme(border)]">
+                    <NotionDatabaseSelector
+                        integrationId={selectedIntegrationId}
+                        selectedDatabaseId={notionConfig?.databaseId}
+                        onSelect={(databaseId, databaseName) => {
+                            onNotionConfigChange({
+                                databaseId,
+                                databaseName
+                            });
+                        }}
+                    />
+                </div>
+            )}
+
+            {/* Slack-specific channel selector */}
+            {integrationType === Integration.SLACK && selectedIntegrationId && onSlackConfigChange && (
+                <div className="mt-3 pt-3 border-t border-[theme(border)]">
+                    <SlackChannelSelector
+                        integrationId={selectedIntegrationId}
+                        selectedChannelId={slackConfig?.channelId}
+                        onSelect={(channelId, channelName) => {
+                            onSlackConfigChange({
+                                channelId,
+                                channelName
+                            });
+                        }}
+                    />
                 </div>
             )}
         </div>

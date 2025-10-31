@@ -14,14 +14,25 @@ export function InputsSection() {
     const input = inputs[0]; // Only one input allowed
 
     const handleSelectPlatform = (integration: Integration) => {
-        const newInput: Input = { integration };
+        // Clear config if switching away from integration types that use it
+        const newInput: Input = { 
+            integration,
+            ...(input?.integration === 'notion' && integration !== 'notion' ? { notionConfig: undefined } : {}),
+            ...(input?.integration === 'slack' && integration !== 'slack' ? { slackConfig: undefined } : {})
+        };
         setInputs([newInput]);
         setShowAddModal(false);
     };
 
     const handleSelectIntegration = (integrationId: string) => {
         if (input) {
-            setInputs([{ ...input, integrationId }]);
+            // Clear config when switching integrations (will be re-selected when selector loads)
+            setInputs([{ 
+                ...input, 
+                integrationId,
+                ...(input.integration === 'notion' && { notionConfig: undefined }),
+                ...(input.integration === 'slack' && { slackConfig: undefined })
+            }]);
         }
     };
 
@@ -64,6 +75,18 @@ export function InputsSection() {
                         integrationType={input.integration}
                         selectedIntegrationId={input.integrationId}
                         onSelect={handleSelectIntegration}
+                        notionConfig={input.notionConfig}
+                        onNotionConfigChange={(config) => {
+                            if (input) {
+                                setInputs([{ ...input, notionConfig: config }]);
+                            }
+                        }}
+                        slackConfig={input.slackConfig}
+                        onSlackConfigChange={(config) => {
+                            if (input) {
+                                setInputs([{ ...input, slackConfig: config }]);
+                            }
+                        }}
                     />
                 </div>
             )}

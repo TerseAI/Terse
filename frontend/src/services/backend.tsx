@@ -1,6 +1,6 @@
 import axios from 'axios';
 import { ModelEvent, ModelRequest } from "../shared/ModelEvents";
-import { Automation, AutomationInput, AutomationOutput, AutomationPrompt, AutomationsResponse, AutomationUpdate, GithubIntegration, IntegrationsStatus, JiraIntegration, LinearIntegration, SlackIntegration } from "../shared/types";
+import { Automation, AutomationInput, AutomationOutput, AutomationPrompt, AutomationsResponse, AutomationUpdate, GithubIntegration, IntegrationsStatus, JiraIntegration, LinearIntegration, NotionDatabasesResponse, SlackChannelsResponse, SlackIntegration } from "../shared/types";
 import { User } from "../types/User";
 import { RunHistoryRecord } from '../shared/RunHistoryTypes';
 
@@ -134,6 +134,16 @@ interface BackendService {
      * Gets the Notion OAuth URL
      */
     requestNotionOAuthUrl(): Promise<{ url: string }>;
+
+    /**
+     * Gets available databases for a Notion integration
+     */
+    getNotionDatabases(integrationId: string): Promise<NotionDatabasesResponse>;
+
+    /**
+     * Gets available channels for a Slack integration
+     */
+    getSlackChannels(integrationId: string): Promise<SlackChannelsResponse>;
 
     /**
      * Requests a session socket token
@@ -426,6 +436,24 @@ export const BackendProvider: BackendService = {
             .then(response => response.data)
             .catch(error => {
                 console.error('Error requesting Notion OAuth URL:', error);
+                throw error;
+            });
+    },
+
+    getNotionDatabases: (integrationId: string) => {
+        return axios.get<NotionDatabasesResponse>(`${backendBaseUrl}/notion/databases?integrationId=${encodeURIComponent(integrationId)}`, { withCredentials: true })
+            .then(response => response.data)
+            .catch(error => {
+                console.error('Error fetching Notion databases:', error);
+                throw error;
+            });
+    },
+
+    getSlackChannels: (integrationId: string) => {
+        return axios.get<SlackChannelsResponse>(`${backendBaseUrl}/slack/channels?integrationId=${encodeURIComponent(integrationId)}`, { withCredentials: true })
+            .then(response => response.data)
+            .catch(error => {
+                console.error('Error fetching Slack channels:', error);
                 throw error;
             });
     },

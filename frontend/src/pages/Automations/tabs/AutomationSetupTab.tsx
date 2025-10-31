@@ -134,12 +134,32 @@ function SaveAutomationButton() {
     const navigate = useNavigate();
     const [isSaving, setIsSaving] = useState(false);
     const [saveSuccess, setSaveSuccess] = useState(false);
+    
+    // Validation: all required fields must be present
+    // Note: Config (notionConfig, slackConfig) is optional - defaults are used if not provided
     const isComplete =
         inputs.length > 0 &&
         inputs.every(i => !!i.integration && !!i.integrationId) &&
         !!output && !!output.integration && !!output.integrationId &&
-        !!prompt?.text;
+        !!prompt?.text &&
+        name.trim().length > 0; // Ensure name is not empty
+    
     const isEditMode = !!automationId;
+    
+    // Debug logging (remove in production if not needed)
+    if (!isComplete) {
+        console.debug('Automation incomplete:', {
+            hasInputs: inputs.length > 0,
+            inputsValid: inputs.every(i => !!i.integration && !!i.integrationId),
+            hasOutput: !!output,
+            outputValid: !!output && !!output.integration && !!output.integrationId,
+            hasPrompt: !!prompt?.text,
+            hasName: name.trim().length > 0,
+            inputs,
+            output,
+            prompt
+        });
+    }
 
     const handleSave = async () => {
         if (!isComplete || !inputs.length || !output) return;
@@ -148,8 +168,18 @@ function SaveAutomationButton() {
         try {
             const automationData = {
                 name,
-                inputs: inputs.map(i => ({ integration: i.integration, integrationId: i.integrationId })),
-                output: { integration: output.integration, integrationId: output.integrationId },
+                inputs: inputs.map(i => ({ 
+                    integration: i.integration, 
+                    integrationId: i.integrationId,
+                    ...(i.notionConfig && { notionConfig: i.notionConfig }),
+                    ...(i.slackConfig && { slackConfig: i.slackConfig })
+                })),
+                output: { 
+                    integration: output.integration, 
+                    integrationId: output.integrationId,
+                    ...(output.notionConfig && { notionConfig: output.notionConfig }),
+                    ...(output.slackConfig && { slackConfig: output.slackConfig })
+                },
                 prompt,
                 isActive
             };
