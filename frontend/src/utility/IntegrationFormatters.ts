@@ -3,34 +3,57 @@ import {
     getIntegrationName,
     getIntegrationDescription
 } from "./IntegrationUtils";
+import {
+    GmailIntegration,
+    NotionIntegration,
+    SlackIntegration,
+    LinearIntegration,
+    JiraIntegration,
+    GithubIntegration
+} from "../shared/types";
 
-export interface IntegrationInstance {
-    id: string;
-    // Gmail
-    email?: string;
-    // Notion
-    workspaceId?: string;
-    workspaceName?: string;
-    databaseId?: string;
-    databaseName?: string;
-    // Linear
-    linearTeamId?: string;
-    linearTeamName?: string;
-    // Jira
-    baseUrl?: string;
-    siteName?: string;
-    projectKey?: string;
-    projectName?: string;
-    // Slack
-    slackTeamId?: string;
-    slackTeamName?: string;
-    // GitHub
-    owner?: string;
-    repositoryName?: string;
+/**
+ * Union type for all integration instances using shared types
+ */
+export type IntegrationInstance =
+    | GmailIntegration
+    | NotionIntegration
+    | SlackIntegration
+    | LinearIntegration
+    | JiraIntegration
+    | GithubIntegration;
+
+/**
+ * Type guard functions for narrowing IntegrationInstance union
+ */
+function isGmailIntegration(integration: IntegrationInstance): integration is GmailIntegration {
+    return 'email' in integration;
+}
+
+function isNotionIntegration(integration: IntegrationInstance): integration is NotionIntegration {
+    return 'workspaceId' in integration || 'workspaceName' in integration || 'databaseId' in integration;
+}
+
+function isLinearIntegration(integration: IntegrationInstance): integration is LinearIntegration {
+    return 'linearTeamId' in integration || 'linearTeamName' in integration;
+}
+
+function isJiraIntegration(integration: IntegrationInstance): integration is JiraIntegration {
+    return 'baseUrl' in integration || 'siteName' in integration || 'projectKey' in integration;
+}
+
+function isSlackIntegration(integration: IntegrationInstance): integration is SlackIntegration {
+    return 'slackTeamId' in integration || 'slackTeamName' in integration;
+}
+
+function isGithubIntegration(integration: IntegrationInstance): integration is GithubIntegration {
+    // repositoryName is unique to GithubIntegration and required
+    return 'repositoryName' in integration && !('email' in integration) && !('slackTeamId' in integration) && !('apiKey' in integration);
 }
 
 /**
  * Formats an integration instance for display in dropdowns and UI
+ * Uses type narrowing based on the integration type
  */
 export function formatIntegrationDisplay(
     integration: IntegrationInstance,
@@ -38,34 +61,52 @@ export function formatIntegrationDisplay(
 ): string {
     switch (type) {
         case Integration.GMAIL:
-            return integration.email || 'Unknown Email';
+            if (isGmailIntegration(integration)) {
+                return integration.email || 'Unknown Email';
+            }
+            return 'Unknown Email';
 
         case Integration.NOTION:
-            return integration.workspaceName || integration.workspaceId || 'Unknown Workspace';
+            if (isNotionIntegration(integration)) {
+                return integration.workspaceName || integration.workspaceId || 'Unknown Workspace';
+            }
+            return 'Unknown Workspace';
 
         case Integration.LINEAR:
-            if (integration.workspaceName && integration.linearTeamName) {
-                return `${integration.workspaceName} (${integration.linearTeamName})`;
+            if (isLinearIntegration(integration)) {
+                if (integration.workspaceName && integration.linearTeamName) {
+                    return `${integration.workspaceName} (${integration.linearTeamName})`;
+                }
+                return integration.workspaceName || 'Unknown Workspace';
             }
-            return integration.workspaceName || 'Unknown Workspace';
+            return 'Unknown Workspace';
 
         case Integration.JIRA:
-            if (integration.siteName && integration.projectName) {
-                return `${integration.siteName} (${integration.projectName})`;
+            if (isJiraIntegration(integration)) {
+                if (integration.siteName && integration.projectName) {
+                    return `${integration.siteName} (${integration.projectName})`;
+                }
+                if (integration.siteName) {
+                    return integration.siteName;
+                }
+                return integration.baseUrl || 'Unknown Site';
             }
-            if (integration.siteName) {
-                return integration.siteName;
-            }
-            return integration.baseUrl || 'Unknown Site';
+            return 'Unknown Site';
 
         case Integration.SLACK:
-            return integration.slackTeamName || 'Unknown Workspace';
+            if (isSlackIntegration(integration)) {
+                return integration.slackTeamName || 'Unknown Workspace';
+            }
+            return 'Unknown Workspace';
 
         case Integration.GITHUB:
-            if (integration.owner && integration.repositoryName) {
-                return `${integration.owner}/${integration.repositoryName}`;
+            if (isGithubIntegration(integration)) {
+                if (integration.owner && integration.repositoryName) {
+                    return `${integration.owner}/${integration.repositoryName}`;
+                }
+                return integration.repositoryName || 'Unknown Repository';
             }
-            return integration.repositoryName || 'Unknown Repository';
+            return 'Unknown Repository';
 
         default:
             return integration.id;
