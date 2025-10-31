@@ -4,6 +4,7 @@ import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { AutomationProvider } from "../../context/AutomationContext";
 import AutomationSetupTab from "./tabs/AutomationSetupTab";
 import AutomationRunHistoryTab from "./tabs/AutomationRunHistoryTab";
+import { useEffect, useState } from "react";
 
 function Automations() {
     const { id } = useParams<{ id: string }>();
@@ -13,16 +14,26 @@ function Automations() {
     // Only pass automationId if it's not "new"
     const automationId = id && id !== 'new' ? id : undefined;
 
-    const tabFromQuery = searchParams.get('tab');
     const tabs = ['setup', 'history'] as const;
-    const initialIndex = Math.max(0, tabs.indexOf((tabFromQuery as typeof tabs[number]) || 'setup'));
+    const tabFromQuery = searchParams.get('tab');
+    const [selectedIndex, setSelectedIndex] = useState(() => {
+        return Math.max(0, tabs.indexOf((tabFromQuery as typeof tabs[number]) || 'setup'));
+    });
+
+    // Update selected index when URL changes
+    useEffect(() => {
+        const tabFromQuery = searchParams.get('tab');
+        const newIndex = Math.max(0, tabs.indexOf((tabFromQuery as typeof tabs[number]) || 'setup'));
+        setSelectedIndex(newIndex);
+    }, [searchParams]);
 
     return (
         <AutomationProvider automationId={automationId}>
             <div className="grid grid-cols-20 h-full pt-1">
                 <div className="h-full min-h-0 col-span-20">
                     <div className="mx-auto px-6 h-full min-h-0 flex flex-col">
-                        <TabGroup defaultIndex={initialIndex} onChange={(index) => {
+                        <TabGroup selectedIndex={selectedIndex} onChange={(index) => {
+                            setSelectedIndex(index);
                             const next = tabs[index];
                             const nextParams = new URLSearchParams(searchParams);
                             nextParams.set('tab', next);
