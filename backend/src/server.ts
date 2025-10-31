@@ -44,12 +44,14 @@ import {
   getJiraCredentials,
   indexJiraTicket,
   setJiraCredentials,
+  validateJiraCredentials,
 } from "./routes/jira";
 import {
   deleteLinearCredentials,
   getLinearApiKey,
   indexLinearTicket,
   setLinearApiKey,
+  validateLinearApiKey,
 } from "./routes/linear";
 import {
   getNotionOAuthUrl,
@@ -202,6 +204,10 @@ app.post("/jira/set-api-key", authMiddleware, async (req, res) => {
   setJiraCredentials(req, res);
 });
 
+app.post("/jira/validate-and-fetch-projects", authMiddleware, async (req, res) => {
+  validateJiraCredentials(req, res);
+});
+
 app.get("/jira/get-api-key", authMiddleware, async (req, res) => {
   getJiraCredentials(req, res);
 });
@@ -246,6 +252,10 @@ app.get("/notion/databases", authMiddleware, async (req, res) => {
 
 app.post("/linear/set-api-key", authMiddleware, async (req, res) => {
   setLinearApiKey(req, res);
+});
+
+app.post("/linear/validate-and-fetch-teams", authMiddleware, async (req, res) => {
+  validateLinearApiKey(req, res);
 });
 
 app.get("/linear/get-api-key", authMiddleware, async (req, res) => {
