@@ -1,12 +1,9 @@
 import { useEffect, useRef, useState } from "react";
-import { Calendar as CalendarIcon, CheckCircle2, Filter as FilterIcon, XCircle, Loader2, ChevronRight } from "lucide-react";
+import { CheckCircle2, Filter as FilterIcon, XCircle, Loader2, ChevronRight } from "lucide-react";
 import type { RunHistoryStatus } from "../../shared/RunHistoryTypes";
 import RunHistoryPagination from "./RunHistoryPagination";
 import { SearchBar } from "../Automation/SearchBar";
-import { Button } from "../ui/button";
-import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
-import { Calendar } from "../ui/calendar";
-import { DateRange } from "react-day-picker";
+import DateRangePicker from "./DatePicker";
 
 type DateRangeType = { from: Date | undefined; to: Date | undefined };
 
@@ -81,61 +78,20 @@ export default function RunHistoryToolBar({
                <SearchBar searchQuery={searchQuery} onSearchChange={onSearchChange} placeholder="Search runs..." />
 
                 <div className="flex items-center gap-4">
-                    <Popover open={isDateOpen} onOpenChange={setIsDateOpen}>
-                        <PopoverTrigger asChild>
-                            <Button
-                                variant="outline"
-                                className={`justify-start text-left font-normal ${
-                                    dateRange.from || dateRange.to ? "border-green-600 dark:border-green-400 text-green-600 dark:text-green-400" : ""
-                                }`}
-                                onClick={() => {
-                                    const statusPanel = document.getElementById("status-filter-panel");
-                                    if (statusPanel && !statusPanel.classList.contains("hidden")) {
-                                        statusPanel.classList.add("hidden");
-                                    }
-                                }}
-                            >
-                                <CalendarIcon className="w-4 h-4 mr-2" />
-                                {dateRange.from ? (
-                                    dateRange.to ? (
-                                        `${dateRange.from.toLocaleDateString("en-US", { month: "short", day: "2-digit" })} - ${dateRange.to.toLocaleDateString("en-US", { month: "short", day: "2-digit" })}`
-                                    ) : (
-                                        dateRange.from.toLocaleDateString("en-US", { month: "short", day: "2-digit", year: "numeric" })
-                                    )
-                                ) : (
-                                    "Date Range"
-                                )}
-                            </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0" align="start">
-                            <Calendar
-                                mode="range"
-                                selected={{ from: dateRange.from, to: dateRange.to } as DateRange}
-                                onSelect={(range: DateRange | undefined) => {
-                                    if (range) {
-                                        onDateRangeChange({ from: range.from, to: range.to });
-                                    } else {
-                                        onDateRangeChange({ from: undefined, to: undefined });
-                                    }
-                                }}
-                                numberOfMonths={1}
-                                initialFocus
-                            />
-                            {(dateRange.from || dateRange.to) && (
-                                <div className="p-3 border-t">
-                                    <Button
-                                        variant="outline"
-                                        className="w-full"
-                                        onClick={() => {
-                                            onDateRangeChange({ from: undefined, to: undefined });
-                                        }}
-                                    >
-                                        Clear Date Range
-                                    </Button>
-                                </div>
-                            )}
-                        </PopoverContent>
-                    </Popover>
+                    <DateRangePicker
+                        dateRange={dateRange}
+                        onDateRangeChange={onDateRangeChange}
+                        open={isDateOpen}
+                        onOpenChange={(open) => {
+                            setIsDateOpen(open);
+                            if (open) {
+                                const statusPanel = document.getElementById("status-filter-panel");
+                                if (statusPanel && !statusPanel.classList.contains("hidden")) {
+                                    statusPanel.classList.add("hidden");
+                                }
+                            }
+                        }}
+                    />
 
                     <div className="relative">
                         <button
