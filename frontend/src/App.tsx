@@ -12,7 +12,7 @@ import Login from "./pages/Login";
 import OAuthError from "./pages/OAuthError";
 import OAuthSuccess from "./pages/OAuthSuccess";
 import { AuthProvider, useAuth } from "./services/auth";
-import { SidebarProvider, SidebarTrigger } from "./components/ui/sidebar";
+import { SidebarProvider } from "./components/ui/sidebar";
 
 function App() {
   return (
