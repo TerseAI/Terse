@@ -9,57 +9,112 @@ import { search } from "../searchClient";
 export const setLinearApiKey = async (req: Request, res: Response) => {
     let user = req.session?.user;
     if (!user) {
-        return res.redirect(`${process.env.FRONTEND_URL}/oauth/error`);
+        return res.status(401).json({ success: false, error: 'Unauthorized' });
     }
 
     const { apiKey, teamId } = req.body;
     console.log(chalk.blue("🔑 Adding Linear API key for user"), chalk.yellow(user.id));
 
-    // Validate the API key before storing
-    const isValid = await LinearAdapter.validateKey(apiKey);
-    if (!isValid) {
-        return res.redirect(`${process.env.FRONTEND_URL}/oauth/error`);
-    }
-
-    let adapter = new LinearAdapter(apiKey);
-
-    const configureWebhook = await adapter.configureWebhook();
-    if (!configureWebhook) {
-        return res.redirect(`${process.env.FRONTEND_URL}/oauth/error`);
-    }
-
-    let linearUser = await adapter.me();
-    if (!linearUser) {
-        return res.redirect(`${process.env.FRONTEND_URL}/oauth/error`);
-    }
-
-    // Fetch workspace and team info
-    const userContext = await adapter.getUserContext();
-    const organization = userContext.organization;
-
-    let teamName = null;
-    if (teamId) {
-        const team = userContext.teams.find(t => t.id === teamId);
-        teamName = team?.name || null;
-    }
-
-    await db().linear_api_keys.create({
-        data: {
-            user_id: user.id,
-            linear_user_id: linearUser.id,
-            workspace_id: organization.name, // Using name as ID for now
-            workspace_name: organization.name,
-            team_id: teamId || null,
-            team_name: teamName,
-            api_key: apiKey,
-            webhook_id: configureWebhook.webhookId,
-            webhook_secret: configureWebhook.webhookSecret
+    try {
+        // Validate the API key before storing
+        const isValid = await LinearAdapter.validateKey(apiKey);
+        if (!isValid) {
+            return res.status(400).json({ success: false, error: 'Invalid API key' });
         }
-    });
 
-    console.log(chalk.green('✅ Created Linear integration:'), chalk.yellow(`${organization.name}${teamName ? ` (${teamName})` : ''}`));
+        let adapter = new LinearAdapter(apiKey);
 
-    res.redirect(`${process.env.FRONTEND_URL}/oauth/success`);
+        const configureWebhook = await adapter.configureWebhook();
+        if (!configureWebhook) {
+            return res.status(500).json({ success: false, error: 'Failed to configure webhook' });
+        }
+
+        let linearUser = await adapter.me();
+        if (!linearUser) {
+            return res.status(500).json({ success: false, error: 'Failed to fetch user information' });
+        }
+
+        // Fetch workspace and team info
+        const userContext = await adapter.getUserContext();
+        const organization = userContext.organization;
+
+        let teamName = null;
+        if (teamId) {
+            const team = userContext.teams.find(t => t.id === teamId);
+            teamName = team?.name || null;
+        }
+
+        const connection = await db().linear_api_keys.create({
+            data: {
+                user_id: user.id,
+                linear_user_id: linearUser.id,
+                workspace_id: organization.name, // Using name as ID for now
+                workspace_name: organization.name,
+                team_id: teamId || null,
+                team_name: teamName,
+                api_key: apiKey,
+                webhook_id: configureWebhook.webhookId,
+                webhook_secret: configureWebhook.webhookSecret
+            }
+        });
+
+        console.log(chalk.green('✅ Created Linear integration:'), chalk.yellow(`${organization.name}${teamName ? ` (${teamName})` : ''}`));
+
+        return res.status(200).json({
+            success: true,
+            connection: {
+                id: connection.id,
+                workspaceId: connection.workspace_id,
+                workspaceName: connection.workspace_name,
+                teamId: connection.team_id,
+                teamName: connection.team_name
+            }
+        });
+    } catch (error) {
+        console.error(chalk.red('Error creating Linear connection:'), error);
+        return res.status(500).json({ success: false, error: 'Failed to create connection' });
+    }
+}
+
+export const validateLinearApiKey = async (req: Request, res: Response) => {
+    let user = req.session?.user;
+    if (!user) {
+        return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const { apiKey } = req.body;
+    if (!apiKey) {
+        return res.status(400).json({ error: 'API key is required' });
+    }
+
+    try {
+        // Validate the API key
+        const isValid = await LinearAdapter.validateKey(apiKey);
+        if (!isValid) {
+            return res.status(400).json({ valid: false, error: 'Invalid API key' });
+        }
+
+        // Fetch workspace and teams
+        const adapter = new LinearAdapter(apiKey);
+        const userContext = await adapter.getUserContext();
+        const organization = userContext.organization;
+
+        return res.status(200).json({
+            valid: true,
+            workspace: {
+                name: organization.name,
+                id: organization.name // Using name as ID for now
+            },
+            teams: userContext.teams.map(team => ({
+                id: team.id,
+                name: team.name,
+                key: team.key
+            }))
+        });
+    } catch (error) {
+        console.error(chalk.red('Error validating Linear API key:'), error);
+        return res.status(500).json({ valid: false, error: 'Failed to validate API key' });
+    }
 }
 
 export const getLinearApiKey = async (req: Request, res: Response) => {

@@ -31,7 +31,7 @@ function isNotionIntegration(integration: IntegrationInstance): integration is N
 }
 
 function isLinearIntegration(integration: IntegrationInstance): integration is LinearIntegration {
-    return 'linearTeamId' in integration || 'linearTeamName' in integration;
+    return 'teamId' in integration || 'teamName' in integration;
 }
 
 function isJiraIntegration(integration: IntegrationInstance): integration is JiraIntegration {
