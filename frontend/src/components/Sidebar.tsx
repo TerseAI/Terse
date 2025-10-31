@@ -1,5 +1,5 @@
 import { ChevronDown, ChevronUp, Home, User2, Zap } from "lucide-react"
-
+import type { LucideIcon } from "lucide-react"
 import {
     Sidebar,
     SidebarContent,
@@ -11,6 +11,7 @@ import {
     SidebarMenu,
     SidebarMenuButton,
     SidebarMenuItem,
+    SidebarMenuSkeleton,
     SidebarMenuSub,
     SidebarMenuSubButton,
     SidebarMenuSubItem,
@@ -22,9 +23,13 @@ import { useEffect, useState } from "react";
 import { BackendProvider } from "@/services/backend";
 import { Automation } from "@/shared/types";
 
+interface NavItem {
+    title: string;
+    url: string;
+    icon: LucideIcon;
+}
 
-// Menu items.
-const items = [
+const items: NavItem[] = [
     {
         title: "Home",
         url: "/app",
@@ -38,7 +43,6 @@ const items = [
 ]
 
 export function AppSidebar() {
-    const location = useLocation()
     const [automations, setAutomations] = useState<Automation[]>([]);
     const [loading, setLoading] = useState(true);
 
@@ -65,29 +69,7 @@ export function AppSidebar() {
                 <SidebarGroup>
                     <SidebarGroupLabel>Application</SidebarGroupLabel>
                     <SidebarGroupContent>
-                        <SidebarMenu>
-                            {items.map((item) => (
-                                <SidebarMenuItem key={item.title}>
-                                    <SidebarMenuButton asChild data-active={location.pathname === item.url}>
-                                        <Link to={item.url}>
-                                            <item.icon />
-                                            <span>{item.title}</span>
-                                        </Link>
-                                    </SidebarMenuButton>
-                                    {item.title === "Automations" && automations.map((automation) => (
-                                        <SidebarMenuSub>
-                                            <SidebarMenuSubItem>
-                                                <SidebarMenuSubButton asChild data-active={location.pathname === `/app/automations/${automation.id}`}>
-                                                    <Link to={`/app/automations/${automation.id}`}>
-                                                        <span>{automation.name}</span>
-                                                    </Link>
-                                                </SidebarMenuSubButton>
-                                            </SidebarMenuSubItem>
-                                        </SidebarMenuSub>
-                                    ))}
-                                </SidebarMenuItem>
-                            ))}
-                        </SidebarMenu>
+                        <SidebarNavigation automations={automations} loading={loading} />
                     </SidebarGroupContent>
                 </SidebarGroup>
             </SidebarContent>
@@ -152,99 +134,83 @@ function AppSidebarFooter() {
     )
 }
 
-// function Sidebar() {
-//     const location = useLocation();
+interface SidebarNavigationProps {
+    automations: Automation[];
+    loading: boolean;
+}
 
-//     return (
-//         <div className="flex flex-col h-full p-2">
-//             <CurrentUser />
-//             <SidebarItem to="/app" isActive={location.pathname === "/app"}>
-//                 <LinkLabel title="Home" icon={<HomeIcon className="w-5 h-5 text-[theme(--color-accent)]" />} />
-//             </SidebarItem>
-//             <SidebarItem to="/app/automations" isActive={location.pathname === "/app/automations"}>
-//                 <LinkLabel title="Automations" icon={<Cog6ToothIcon className="w-5 h-5 text-[theme(--color-accent)]" />} />
-//             </SidebarItem>
-//         </div>
-//     )
-// }
+function SidebarNavigation({ automations, loading }: SidebarNavigationProps) {
+    const location = useLocation();
 
-// function SidebarItem({ to, children, isActive }: { to: string, children: React.ReactNode, isActive: boolean }) {
-//     return (
-//         <Link
-//             to={to}
-//             className={`p-2 rounded-sm transition-colors ${isActive
-//                 ? 'bg-[theme(background-light)]'
-//                 : 'hover:bg-[theme(background-hover)]'
-//                 }`}
-//         >
-//             {children}
-//         </Link>
-//     )
-// }
+    return (
+        <SidebarMenu>
+            {items.map((item) => (
+                <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton asChild data-active={location.pathname === item.url}>
+                        <Link to={item.url}>
+                            <item.icon />
+                            <span>{item.title}</span>
+                        </Link>
+                    </SidebarMenuButton>
+                    {item.title === "Automations" && (
+                        <AutomationsList automations={automations} loading={loading} />
+                    )}
+                </SidebarMenuItem>
+            ))}
+        </SidebarMenu>
+    )
+}
 
-// function LinkLabel({ title, icon }: { title: string, icon: React.ReactNode }) {
-//     return (
-//         <div className="flex items-center gap-2">
-//             {icon}
-//             <span className="text-sm text-[theme(text-primary)]">{title}</span>
-//         </div>
-//     )
-// }
+interface AutomationsListProps {
+    automations: Automation[];
+    loading: boolean;
+}
 
-// function CurrentUser() {
-//     const { user, logout } = useAuth();
-//     const navigate = useNavigate();
+function AutomationsList({ automations, loading }: AutomationsListProps) {
+    if (loading) {
+        return (
+            <SidebarMenuSub>
+                <SidebarMenuSubItem>
+                    <SidebarMenuSkeleton />
+                </SidebarMenuSubItem>
+                <SidebarMenuSubItem>
+                    <SidebarMenuSkeleton />
+                </SidebarMenuSubItem>
+                <SidebarMenuSubItem>
+                    <SidebarMenuSkeleton />
+                </SidebarMenuSubItem>
+            </SidebarMenuSub>
+        )
+    }
 
-//     const handleLogout = async () => {
-//         try {
-//             await logout();
-//             navigate('/app');
-//         } catch (error) {
-//             console.error('Logout failed:', error);
-//         }
-//     };
+    return (
+        <>
+            {automations.map((automation) => (
+                <AutomationListItem key={automation.id} automation={automation} />
+            ))}
+        </>
+    )
+}
 
-//     if (!user) {
-//         return null;
-//     }
+interface AutomationListItemProps {
+    automation: Automation;
+}
 
-//     return (
-//         <Menu>
-//             <div className="relative mb-4">
-//                 <MenuButton className="flex items-center gap-2 p-2 cursor-pointer hover:bg-[theme(background-hover)] rounded-sm w-full">
-//                     <p className="font-semibold text-md text-[theme(text-secondary)] truncate">
-//                         {user.display_name}
-//                     </p>
-//                     <ChevronDownIcon className="w-3 h-3 text-[theme(text-disabled)] mx-0.5" />
-//                 </MenuButton>
+function AutomationListItem({ automation }: AutomationListItemProps) {
+    const location = useLocation();
+    const isActive = location.pathname === `/app/automations/${automation.id}`;
 
-//                 <MenuItems anchor="top start" className="w-max bg-[theme(background-light)] rounded-sm shadow-[var(--shadow)] z-50 overflow-hidden border border-[theme(border)]">
-//                     <MenuItem>
-//                         {({ focus }) => (
-//                             <button
-//                                 onClick={toggleTheme}
-//                                 className={`w-full p-2 text-left transition-colors flex items-center gap-2 ${focus ? 'bg-[theme(--color-accent)]/10' : ''}`}
-//                             >
-//                                 <SunIcon className="w-4 h-4 text-[theme(--color-accent)]" />
-//                                 <span className="text-sm text-[theme(text-primary)]">Switch to {CurrentTheme() === 'dark' ? 'Light Mode' : 'Dark Mode'}</span>
-//                             </button>
-//                         )}
-//                     </MenuItem>
-//                     <MenuItem>
-//                         {({ focus }) => (
-//                             <button
-//                                 onClick={handleLogout}
-//                                 className={`w-full p-2 text-left transition-colors flex items-center gap-2 ${focus ? 'bg-[theme(--color-accent)]/10' : ''}`}
-//                             >
-//                                 <ArrowRightOnRectangleIcon className="w-4 h-4 text-[theme(--color-accent)]" />
-//                                 <span className="text-sm text-[theme(text-primary)]">Logout</span>
-//                             </button>
-//                         )}
-//                     </MenuItem>
-//                 </MenuItems>
-//             </div>
-//         </Menu>
-//     )
-// }
+    return (
+        <SidebarMenuSub>
+            <SidebarMenuSubItem>
+                <SidebarMenuSubButton asChild data-active={isActive}>
+                    <Link to={`/app/automations/${automation.id}`}>
+                        <span>{automation.name}</span>
+                    </Link>
+                </SidebarMenuSubButton>
+            </SidebarMenuSubItem>
+        </SidebarMenuSub>
+    )
+}
 
 export default Sidebar;
