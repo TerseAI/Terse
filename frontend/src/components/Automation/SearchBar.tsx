@@ -1,4 +1,4 @@
-import { Search, SearchIcon, X } from 'lucide-react';
+import { SearchIcon, X } from 'lucide-react';
 import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from '../ui/input-group';
 
 interface SearchBarProps {
