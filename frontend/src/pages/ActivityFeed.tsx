@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Inbox, ChevronRight, InboxIcon } from "lucide-react";
+import { Inbox, ChevronRight } from "lucide-react";
 import AvatarBar from "../components/activity/AvatarBar";
 import Card from "../components/Card";
 import { ActivityEvent, SubActivity, CommitAssociation } from "../shared/types";
@@ -144,7 +144,7 @@ function SubActivityEvents({ event }: { event: ActivityEvent }) {
                                 </h4>
                                 <div className="flex items-center gap-2 text-sm text-[theme(text-secondary)]">
                                     <span>{event.sub_activities.length} events</span>
-                                    <ChevronRightIcon className={clsx('w-4 h-4', open && 'rotate-90')} />
+                                    <ChevronRight className={clsx('w-4 h-4', open && 'rotate-90')} />
                                 </div>
                             </div>
                         </DisclosureButton>
@@ -171,7 +171,7 @@ function SubActivityItem({ subActivity }: { subActivity: SubActivity }) {
                         <DisclosureButton className="w-full text-left">
                             <div className="flex justify-between items-center">
                                 <p className="text-sm text-[theme(text-secondary)]">{subActivity.summary}</p>
-                                <ChevronRightIcon className={clsx('w-4 h-4 flex-shrink-0', open && 'rotate-90')} />
+                                <ChevronRight className={clsx('w-4 h-4 flex-shrink-0', open && 'rotate-90')} />
                             </div>
                         </DisclosureButton>
                         <DisclosurePanel>
@@ -215,7 +215,7 @@ function emptyActivityFeed() {
     return (
         <div className="w-full grid place-items-center animate-fade-in">
             <div className="grid place-items-center">
-                <InboxIcon className="w-8 h-8 text-[theme(--color-accent)] mb-4" />
+                <Inbox className="w-8 h-8 text-[theme(--color-accent)] mb-4" />
                 <h1 className="text-xl font-bold pb-2 text-[theme(text-primary)]">No activity yet</h1>
                 <p className="text-[theme(text-secondary)]">
                     Push a commit, open a PR, or merge a PR to see your activity here.
