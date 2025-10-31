@@ -7,6 +7,8 @@ import { ActivityFeedService } from "../services/activityFeed";
 import EventDetails from "../components/activity/EventDetails";
 import { Disclosure, DisclosureButton, DisclosurePanel } from '@headlessui/react';
 import clsx from 'clsx'
+import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
+import { Button } from "@/components/ui/button";
 
 function ActivityFeed() {
     const [activity, setActivity] = useState<ActivityEvent[]>([]);
@@ -77,7 +79,7 @@ function ActivityFeedContent({
     }
 
     if (activity.length === 0) {
-        return emptyActivityFeed();
+        return <EmptyActivityFeed />;
     }
 
     return (
@@ -106,12 +108,12 @@ function LoadingState() {
             <div className="animate-pulse rounded-lg bg-[theme(background)] h-24 w-full"></div>
             <div className="animate-pulse rounded-lg bg-[theme(background)] h-24 w-full"></div>
         </div>
-    )       
+    )
 }
 
 function FeedContent({ activity }: { activity: ActivityEvent[] }) {
     if (activity.length === 0) {
-        return emptyActivityFeed();
+        return <EmptyActivityFeed />;
     }
 
     return (
@@ -211,17 +213,17 @@ function AssociatedCommits({ commits }: { commits: CommitAssociation[] }) {
     )
 }
 
-function emptyActivityFeed() {
+function EmptyActivityFeed() {
     return (
-        <div className="w-full grid place-items-center animate-fade-in">
-            <div className="grid place-items-center">
-                <Inbox className="w-8 h-8 text-[theme(--color-accent)] mb-4" />
-                <h1 className="text-xl font-bold pb-2 text-[theme(text-primary)]">No activity yet</h1>
-                <p className="text-[theme(text-secondary)]">
-                    Push a commit, open a PR, or merge a PR to see your activity here.
-                </p>
-            </div>
-        </div >
+        <Empty>
+            <EmptyHeader>
+                <EmptyMedia variant="icon">
+                    <Inbox className="text-[theme(--color-primary)]" />
+                </EmptyMedia>
+                <EmptyTitle>No activity yet</EmptyTitle>
+                <EmptyDescription>Push a commit, open a PR, or merge a PR to see your activity here.</EmptyDescription>
+            </EmptyHeader>
+        </Empty>
     )
 }
 

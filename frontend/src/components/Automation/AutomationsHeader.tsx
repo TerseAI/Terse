@@ -10,8 +10,9 @@ export function AutomationsHeader({ onCreateNew }: AutomationsHeaderProps) {
         <div className="grid grid-cols-20 sm:grid-flow-row sm:items-center sm:justify-between gap-4 pt-1">
             <h1 className="text-xl font-bold text-foreground col-span-16">Automations</h1>
             <Button
+                variant="secondary"
                 onClick={onCreateNew}
-                className="col-span-4 inline-flex items-center justify-center text-sm font-medium transition-colors"
+                className="col-span-4 inline-flex items-center justify-center"
             >
                 <Plus className="h-5 w-5" />
                 New Automation
