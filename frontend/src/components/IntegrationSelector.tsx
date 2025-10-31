@@ -2,16 +2,11 @@ import { PlusIcon } from '@heroicons/react/24/outline';
 import { useEffect, useState } from 'react';
 import { Integration } from '../context/Integrations';
 import { BackendProvider } from '../services/backend';
-import { formatIntegrationDisplay } from '../utility/IntegrationFormatters';
+import { formatIntegrationDisplay, IntegrationInstance } from '../utility/IntegrationFormatters';
 import { getIntegrationInstances, getIntegrationName } from '../utility/IntegrationUtils';
 import DropdownSelect from './ui/DropdownSelect';
 import { LinearApiKeyModal } from './LinearApiKeyModal';
 import { JiraApiKeyModal } from './JiraApiKeyModal';
-
-interface IntegrationInstance {
-    id: string;
-    [key: string]: any;
-}
 
 interface IntegrationSelectorProps {
     integrationType: Integration;

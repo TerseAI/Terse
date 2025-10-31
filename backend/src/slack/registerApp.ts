@@ -8,16 +8,11 @@ import chalk from "chalk";
 import { sendMessage } from "./sendMessage";
 
 
-const welcomeMessage = `
-Hello, I'm Terse AI, your AI assistant for managing your tickets.
 
-I work in the background, but I'll shoot you a message here whenever I make changes to your tickets!
-`;
 
 export async function getSlackOAuthUrl(req: Request, res: Response) {
     const client_id = process.env.SLACK_CLIENT_ID;
-    const backendUrl = process.env.BACKEND_URL;
-    const redirect_uri = `${backendUrl}/slack/oauth-callback`;
+    const redirect_uri = process.env.SLACK_OAUTH_CALLBACK_URL || ''
 
     console.log('redirect_uri', redirect_uri)
 
@@ -101,17 +96,23 @@ export async function slackOAuthCallback(req: Request, res: Response) {
 
     const client_id = process.env.SLACK_CLIENT_ID;
     const client_secret = process.env.SLACK_CLIENT_SECRET;
+    const redirect_uri = process.env.SLACK_OAUTH_CALLBACK_URL || ''
     try {
-        const response = await axios.post<SlackOAuthResponse>('https://slack.com/api/oauth.v2.access',
+        const form = new URLSearchParams({
+            code,
+            client_id: client_id || '',
+            client_secret: client_secret || '',
+            redirect_uri,
+        });
+
+        const response = await axios.post<SlackOAuthResponse>(
+            'https://slack.com/api/oauth.v2.access',
+            form.toString(),
             {
-                code: code,
-                client_id: client_id,
-                client_secret: client_secret,
-            }, {
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded'
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                }
             }
-        }
         );
 
         console.log("Slack OAuth response:", response.data);
@@ -120,8 +121,7 @@ export async function slackOAuthCallback(req: Request, res: Response) {
 
         if (!response.data.ok || !team || !team.id) {
             console.error("Slack OAuth response not ok:", response.data);
-            res.status(500).json({ message: 'Failed to exchange code for access token' });
-            return;
+            return res.redirect(`${process.env.FRONTEND_URL}/oauth/error`);
         }
 
         // check if the slack integration already exists
@@ -133,10 +133,24 @@ export async function slackOAuthCallback(req: Request, res: Response) {
 
         await db().$transaction(async (tx) => {
             if (slackIntegration) {
-                console.log("Slack integration already exists, continuing with adding user relation");
+                console.log("Slack integration already exists, updating it");
+                // Update existing slack integration with fresh tokens and metadata
+                slackIntegration = await tx.slack_integrations.update({
+                    where: {
+                        team_id: team.id
+                    },
+                    data: {
+                        app_id: response.data.app_id,
+                        bot_user_id: response.data.bot_user_id,
+                        team_name: response.data.team.name,
+                        access_token: access_token,
+                        scope: scope,
+                    }
+                });
+                console.log(chalk.green("Slack integration updated"));
             } else {
                 console.log(chalk.blue("Slack integration does not exist, creating it"));
-                slackIntegration = await db().slack_integrations.create({
+                slackIntegration = await tx.slack_integrations.create({
                     data: {
                         app_id: response.data.app_id,
                         bot_user_id: response.data.bot_user_id,
@@ -149,34 +163,53 @@ export async function slackOAuthCallback(req: Request, res: Response) {
                 console.log(chalk.green("Slack integration created"));
             }
 
+            // Check if user_slack_integrations already exists
+            const existingUserSlackIntegration = await tx.user_slack_integrations.findFirst({
+                where: {
+                    user_id: user.id,
+                    slack_team_id: slackIntegration.team_id,
+                }
+            });
+
             const dmChannelId = await openChat(access_token, authed_user.id);
 
             if (!dmChannelId || !dmChannelId.id) {
                 console.error("Error opening chat");
-                res.status(500).json({ message: 'Failed to open chat' });
-                return;
+                return res.redirect(`${process.env.FRONTEND_URL}/oauth/error`);
             }
 
-            sendMessage(welcomeMessage, access_token, dmChannelId.id);
-
-            const userSlackIntegration = await db().user_slack_integrations.create({
-                data: {
-                    user_id: user.id,
-                    slack_team_id: slackIntegration.team_id,
-                    dm_channel_id: dmChannelId?.id,
-                    authed_user_id: authed_user.id,
-                }
-            });
+            if (existingUserSlackIntegration) {
+                console.log(chalk.yellow("User already exists for this Slack team, updating metadata"));
+                await tx.user_slack_integrations.update({
+                    where: {
+                        id: existingUserSlackIntegration.id
+                    },
+                    data: {
+                        dm_channel_id: dmChannelId.id,
+                        authed_user_id: authed_user.id,
+                    }
+                });
+                console.log(chalk.green("User Slack integration metadata updated"));
+            } else {
+                await tx.user_slack_integrations.create({
+                    data: {
+                        user_id: user.id,
+                        slack_team_id: slackIntegration.team_id,
+                        dm_channel_id: dmChannelId.id,
+                        authed_user_id: authed_user.id,
+                    }
+                });
+                console.log(chalk.green("User Slack integration created"));
+            }
         });
 
         console.log("Access token:", response.data);
     } catch (error) {
         console.error('Error exchanging code for access token:', error);
-        res.status(500).json({ message: 'Failed to exchange code for access token' });
-        return;
+        return res.redirect(`${process.env.FRONTEND_URL}/oauth/error`);
     }
 
-    res.json({ received: true });
+    return res.redirect(`${process.env.FRONTEND_URL}/oauth/success`);
 }
 
 async function openChat(accessToken: string, authedUserId: string) {

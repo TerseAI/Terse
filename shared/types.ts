@@ -1,5 +1,24 @@
 import { Project, Ticket } from "./TicketSystem";
 
+// Integration type enum - central source of truth for all integrations
+export enum Integration {
+  // Ticketing systems
+  JIRA = 'jira',
+  LINEAR = 'linear',
+  
+  // Messaging systems
+  SLACK = 'slack',
+  
+  // Source control
+  GITHUB = 'github',
+  
+  // Note-taking systems
+  NOTION = 'notion',
+  
+  // Mail
+  GMAIL = 'gmail',
+}
+
 export type User = {
   id: string;
   email: string;
@@ -66,8 +85,8 @@ export type JiraIntegration = {
 
 export type SlackIntegration = {
   id: string;
-  slackTeamId?: string;
-  slackTeamName?: string;
+  teamId?: string;
+  teamName?: string;
 };
 
 export type GmailIntegration = {
@@ -96,6 +115,24 @@ export type NotionDatabasesResponse = {
   databases: NotionDatabase[];
   selectedDatabaseId: string | null;
 };
+
+// Union type of all integration instances
+export type IntegrationInstance = 
+  | GithubIntegration 
+  | LinearIntegration 
+  | JiraIntegration 
+  | SlackIntegration 
+  | GmailIntegration 
+  | NotionIntegration;
+
+// Metadata for each integration type
+export interface IntegrationMetadata {
+  type: Integration;
+  name: string;
+  description: string;
+  inputDescription?: string;
+  outputDescription?: string;
+}
 
 export type IntegrationsStatus = {
   integrations: {
