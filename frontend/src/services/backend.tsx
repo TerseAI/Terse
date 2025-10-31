@@ -2,6 +2,7 @@ import axios from 'axios';
 import { ModelEvent, ModelRequest } from "../shared/ModelEvents";
 import { Automation, AutomationInput, AutomationOutput, AutomationPrompt, AutomationsResponse, AutomationUpdate, GithubIntegration, IntegrationsStatus, JiraIntegration, LinearIntegration, SlackIntegration } from "../shared/types";
 import { User } from "../types/User";
+import { RunHistoryRecord } from '../shared/RunHistoryTypes';
 
 const backendBaseUrl = '/api';
 
@@ -184,6 +185,18 @@ interface BackendService {
      * Deletes an automation
      */
     deleteAutomation(id: string): Promise<{ success: boolean; message: string }>;
+
+    /**
+     * Fetch run history for a specific automation with filters and pagination
+     */
+    getRunHistory(automationId: string, params: {
+        q?: string;
+        start?: string; // ISO
+        end?: string;   // ISO
+        status?: string[]; // ["success","failed",...]
+        page?: number;
+        pageSize?: number;
+    }): Promise<{ items: RunHistoryRecord[]; page: number; pageSize: number; total: number }>;
 }
 
 export const BackendProvider: BackendService = {
@@ -503,6 +516,23 @@ export const BackendProvider: BackendService = {
                 throw error;
             });
     },
+
+    getRunHistory: (automationId, params) => {
+        const usp = new URLSearchParams();
+        if (params.page) usp.append('page', String(params.page));
+        if (params.pageSize) usp.append('pageSize', String(params.pageSize));
+        if (params.q) usp.append('q', params.q);
+        if (params.start) usp.append('start', params.start);
+        if (params.end) usp.append('end', params.end);
+        if (params.status && params.status.length) usp.append('status', params.status.join(','));
+        const url = `${backendBaseUrl}/run-history/${encodeURIComponent(automationId)}${usp.toString() ? `?${usp.toString()}` : ''}`;
+        return axios.get<{ items: RunHistoryRecord[]; page: number; pageSize: number; total: number }>(url, { withCredentials: true })
+            .then(r => r.data)
+            .catch(error => {
+                console.error('Error fetching run history:', error);
+                throw error;
+            });
+    }
 }
 
 export class Connection {

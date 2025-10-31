@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import { db } from "../prismaClient";
 import { Automation, AutomationInput, AutomationOutput, AutomationPrompt } from "../shared/types";
 import { IntegrationType } from "@prisma/client";
+import { parsePageParams } from "../utility/pagination";
 
 // Map frontend integration string to backend IntegrationType enum
 const integrationTypeMap: Record<string, IntegrationType> = {
@@ -86,10 +87,8 @@ export async function getUserAutomations(req: Request, res: Response) {
 
     const userId = req.session.user.id;
 
-    // Parse pagination parameters
-    const page = parseInt(req.query.page as string) || 1;
-    const limit = parseInt(req.query.limit as string) || 10;
-    const skip = (page - 1) * limit;
+    // Parse pagination parameters (normalize to page/pageSize)
+    const { page, pageSize, skip, take } = parsePageParams(req, 10, 100);
 
     // Optional filter by active status
     const isActive = req.query.isActive === 'true' ? true : req.query.isActive === 'false' ? false : undefined;
@@ -119,7 +118,7 @@ export async function getUserAutomations(req: Request, res: Response) {
             },
             orderBy: { created_at: 'desc' },
             skip,
-            take: limit
+            take
         });
 
         // Transform the data to match frontend format
@@ -138,9 +137,9 @@ export async function getUserAutomations(req: Request, res: Response) {
             })),
             pagination: {
                 page,
-                limit,
+                pageSize,
                 total,
-                totalPages: Math.ceil(total / limit)
+                totalPages: Math.ceil(total / pageSize)
             }
         };
 
