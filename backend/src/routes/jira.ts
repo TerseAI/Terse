@@ -9,7 +9,7 @@ import { search } from "../searchClient";
 export const setJiraCredentials = async (req: Request, res: Response) => {
     const user = req.session?.user;
     if (!user) {
-        return res.redirect(`${process.env.FRONTEND_URL}/oauth/error`);
+        return res.status(401).json({ error: 'Unauthorized' });
     }
 
     const { baseUrl, apiKey, email, projectKey } = req.body;
@@ -17,14 +17,14 @@ export const setJiraCredentials = async (req: Request, res: Response) => {
     console.log("Attempting to set Jira credentials", baseUrl, email, apiKey);
     const valid = await JiraAdapter.validateCredentials(baseUrl, email, apiKey);
     if (!valid) {
-        return res.redirect(`${process.env.FRONTEND_URL}/oauth/error`);
+        return res.status(400).json({ error: 'Invalid Jira credentials' });
     }
 
     let adapter = new JiraAdapter({ baseUrl: baseUrl, email: email, apiToken: apiKey });
 
     const configureWebhook = await adapter.configureWebhook();
     if (!configureWebhook) {
-        return res.redirect(`${process.env.FRONTEND_URL}/oauth/error`);
+        return res.status(500).json({ error: 'Failed to configure webhook' });
     }
 
     // Extract site name from baseUrl
@@ -52,7 +52,12 @@ export const setJiraCredentials = async (req: Request, res: Response) => {
     });
 
     console.log(chalk.green('✅ Created Jira integration:'), chalk.yellow(`${siteName}${projectName ? ` (${projectName})` : ''}`));
-    res.redirect(`${process.env.FRONTEND_URL}/oauth/success`);
+    res.status(200).json({ 
+        success: true,
+        message: 'Jira integration created successfully',
+        siteName: siteName,
+        projectKey: projectKey || null
+    });
 };
 
 export const getJiraCredentials = async (req: Request, res: Response) => {

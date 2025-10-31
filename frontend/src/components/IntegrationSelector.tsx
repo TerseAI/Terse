@@ -5,6 +5,8 @@ import { BackendProvider } from '../services/backend';
 import { formatIntegrationDisplay } from '../utility/IntegrationFormatters';
 import { getIntegrationInstances, getIntegrationName } from '../utility/IntegrationUtils';
 import DropdownSelect from './ui/DropdownSelect';
+import { LinearApiKeyModal } from './LinearApiKeyModal';
+import { JiraApiKeyModal } from './JiraApiKeyModal';
 
 interface IntegrationInstance {
     id: string;
@@ -27,6 +29,13 @@ export function IntegrationSelector({
     const [integrations, setIntegrations] = useState<IntegrationInstance[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isConnecting, setIsConnecting] = useState(false);
+    const [showLinearModal, setShowLinearModal] = useState(false);
+    const [showJiraModal, setShowJiraModal] = useState(false);
+
+    // Debug logging
+    useEffect(() => {
+        console.log('showLinearModal state changed:', showLinearModal);
+    }, [showLinearModal]);
 
     useEffect(() => {
         fetchIntegrations();
@@ -62,7 +71,25 @@ export function IntegrationSelector({
         }
     };
 
-    const handleConnectNew = async () => {
+    const handleConnectNew = async (e?: React.MouseEvent) => {
+        e?.preventDefault();
+        e?.stopPropagation();
+        
+        console.log('handleConnectNew', integrationType, 'Integration.LINEAR:', Integration.LINEAR);
+        // Handle API key-based integrations with modals
+        if (integrationType === Integration.LINEAR) {
+            console.log('Setting showLinearModal to true');
+            setShowLinearModal(true);
+            console.log('After setState, showLinearModal should be true');
+            return;
+        }
+
+        if (integrationType === Integration.JIRA) {
+            setShowJiraModal(true);
+            return;
+        }
+
+        // Handle OAuth-based integrations
         setIsConnecting(true);
         try {
             let oauthUrl = '';
@@ -85,7 +112,7 @@ export function IntegrationSelector({
                     oauthUrl = githubResponse.installationUrl;
                     break;
                 default:
-                    console.error('OAuth not supported for this integration type');
+                    console.error('Connection not supported for this integration type');
                     return;
             }
 
@@ -99,6 +126,10 @@ export function IntegrationSelector({
         }
     };
 
+    const handleModalSuccess = () => {
+        fetchIntegrations();
+    };
+
     if (isLoading) {
         return (
             <div className="flex items-center gap-2 text-sm text-[theme(text-secondary)]">
@@ -107,7 +138,6 @@ export function IntegrationSelector({
             </div>
         );
     }
-
     if (integrations.length === 0) {
         return (
             <div className="flex flex-col gap-3 p-4 rounded-lg border border-dashed border-[theme(border)] bg-[theme(background-light)]">
@@ -115,6 +145,7 @@ export function IntegrationSelector({
                     No {getIntegrationName(integrationType)} accounts connected
                 </div>
                 <button
+                    type="button"
                     onClick={handleConnectNew}
                     disabled={isConnecting}
                     className="flex items-center justify-center gap-2 px-4 py-2 bg-[theme(--color-accent)] text-white rounded-lg hover:brightness-110 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
@@ -122,6 +153,17 @@ export function IntegrationSelector({
                     <PlusIcon className="w-4 h-4" />
                     {isConnecting ? 'Connecting...' : `Connect ${getIntegrationName(integrationType)}`}
                 </button>
+                    <LinearApiKeyModal
+                    isOpen={showLinearModal}
+                    onClose={() => setShowLinearModal(false)}
+                    onSuccess={handleModalSuccess}
+                />
+
+                <JiraApiKeyModal
+                    isOpen={showJiraModal}
+                    onClose={() => setShowJiraModal(false)}
+                    onSuccess={handleModalSuccess}
+                />
             </div>
         );
     }
@@ -134,36 +176,52 @@ export function IntegrationSelector({
     const statusOptions = connectionSelections;
     const setSelected = (selectedOption: string) => onSelect(selectedOption);
 
+    console.log({showLinearModal, showJiraModal});
     return (
-        <div className="flex flex-col gap-3">
-            <div className="flex flex-col gap-1.5">
-                <label className="text-sm font-medium text-[theme(text-primary)]">
-                    {label}
-                </label>
-                <DropdownSelect
-                    statusOptions={statusOptions}
-                    selectedOption={selectedOption}
-                    setSelected={setSelected}
-                />
+        <>
+            <div className="flex flex-col gap-3">
+                <div className="flex flex-col gap-1.5">
+                    <label className="text-sm font-medium text-[theme(text-primary)]">
+                        {label}
+                    </label>
+                    <DropdownSelect
+                        statusOptions={statusOptions}
+                        selectedOption={selectedOption}
+                        setSelected={setSelected}
+                    />
+                </div>
+
+                <button
+                    type="button"
+                    onClick={handleConnectNew}
+                    disabled={isConnecting}
+                    className="flex items-center justify-center gap-2 px-3 py-2 text-sm bg-[theme(background-light)] text-[theme(text-secondary)] rounded-lg hover:bg-[theme(background-hover)] hover:text-[theme(text-primary)] transition-all disabled:opacity-50 disabled:cursor-not-allowed border border-[theme(border)]"
+                >
+                    <PlusIcon className="w-4 h-4" />
+                    {isConnecting ? 'Connecting...' : `Connect Another ${getIntegrationName(integrationType)}`}
+                </button>
+
+                {selectedIntegrationId && (
+                    <div className="text-xs text-[theme(text-secondary)] px-1">
+                        ✓ Selected: {formatIntegrationDisplay(
+                            integrations.find(i => i.id === selectedIntegrationId)!,
+                            integrationType
+                        )}
+                    </div>
+                )}
             </div>
 
-            <button
-                onClick={handleConnectNew}
-                disabled={isConnecting}
-                className="flex items-center justify-center gap-2 px-3 py-2 text-sm bg-[theme(background-light)] text-[theme(text-secondary)] rounded-lg hover:bg-[theme(background-hover)] hover:text-[theme(text-primary)] transition-all disabled:opacity-50 disabled:cursor-not-allowed border border-[theme(border)]"
-            >
-                <PlusIcon className="w-4 h-4" />
-                {isConnecting ? 'Connecting...' : `Connect Another ${getIntegrationName(integrationType)}`}
-            </button>
+            <LinearApiKeyModal
+                isOpen={showLinearModal}
+                onClose={() => setShowLinearModal(false)}
+                onSuccess={handleModalSuccess}
+            />
 
-            {selectedIntegrationId && (
-                <div className="text-xs text-[theme(text-secondary)] px-1">
-                    ✓ Selected: {formatIntegrationDisplay(
-                        integrations.find(i => i.id === selectedIntegrationId)!,
-                        integrationType
-                    )}
-                </div>
-            )}
-        </div>
+            <JiraApiKeyModal
+                isOpen={showJiraModal}
+                onClose={() => setShowJiraModal(false)}
+                onSuccess={handleModalSuccess}
+            />
+        </>
     );
 }

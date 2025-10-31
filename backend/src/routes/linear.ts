@@ -9,7 +9,7 @@ import { search } from "../searchClient";
 export const setLinearApiKey = async (req: Request, res: Response) => {
     let user = req.session?.user;
     if (!user) {
-        return res.redirect(`${process.env.FRONTEND_URL}/oauth/error`);
+        return res.status(401).json({ error: 'Unauthorized' });
     }
 
     const { apiKey, teamId } = req.body;
@@ -18,19 +18,28 @@ export const setLinearApiKey = async (req: Request, res: Response) => {
     // Validate the API key before storing
     const isValid = await LinearAdapter.validateKey(apiKey);
     if (!isValid) {
-        return res.redirect(`${process.env.FRONTEND_URL}/oauth/error`);
+        return res.status(400).json({ error: 'Invalid Linear API key' });
     }
 
     let adapter = new LinearAdapter(apiKey);
 
-    const configureWebhook = await adapter.configureWebhook();
+    let configureWebhook;
+    try {
+        configureWebhook = await adapter.configureWebhook();
+    } catch (err: any) {
+        // Return the API error payload as-is so the frontend can decide messaging
+        const apiErrorPayload = err?.response?.data || { error: 'Failed to configure webhook' };
+        const statusCode = err?.response?.status && err.response.status !== 200 ? err.response.status : 400;
+        console.error(chalk.red('Failed to configure Linear webhook:'), err);
+        return res.status(statusCode).json(apiErrorPayload);
+    }
     if (!configureWebhook) {
-        return res.redirect(`${process.env.FRONTEND_URL}/oauth/error`);
+        return res.status(500).json({ error: 'Failed to configure webhook' });
     }
 
     let linearUser = await adapter.me();
     if (!linearUser) {
-        return res.redirect(`${process.env.FRONTEND_URL}/oauth/error`);
+        return res.status(500).json({ error: 'Failed to fetch user information' });
     }
 
     // Fetch workspace and team info
@@ -59,7 +68,12 @@ export const setLinearApiKey = async (req: Request, res: Response) => {
 
     console.log(chalk.green('✅ Created Linear integration:'), chalk.yellow(`${organization.name}${teamName ? ` (${teamName})` : ''}`));
 
-    res.redirect(`${process.env.FRONTEND_URL}/oauth/success`);
+    res.status(200).json({ 
+        success: true,
+        message: 'Linear integration created successfully',
+        workspaceName: organization.name,
+        teamName: teamName
+    });
 }
 
 export const getLinearApiKey = async (req: Request, res: Response) => {

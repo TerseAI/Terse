@@ -1,19 +1,20 @@
 {
     "display_information": {
-        "name": "Vectra",
-        "description": "Removes Engineering Over-head. Just code",
+        "name": "Terse",
+        "description": "Never Update Documents Again",
         "background_color": "#081640",
-        "long_description": "A simple Slack app that pushes updates that are done by the Vectra AI.\r\n\r\nVectra AI acts as a virtual Product Manager that looks over GitHub activity and will update your Tickets on your behalf.\r\n\r\nWhen it makes an updaete, it will notify you on slack."
+        "long_description": "A Slack app for listening to messages and posting messages to channels."
     },
     "features": {
         "bot_user": {
-            "display_name": "Vectra",
+            "display_name": "Terse",
             "always_online": false
         }
     },
     "oauth_config": {
         "redirect_urls": [
-            "https://cursor-for-tickets.onrender.com/slack/oauth-callback"
+            "https://app.useterse.ai/api/slack/oauth-callback",
+            "http://localhost:3001/slack/oauth-callback"
         ],
         "scopes": {
             "user": [
@@ -33,7 +34,7 @@
     },
     "settings": {
         "event_subscriptions": {
-            "request_url": "https://loss-occupation-usa-video.trycloudflare.com/slack/events",
+            "request_url": "https://app.useterse.ai/api/slack/events",
             "user_events": [
                 "app_uninstalled_team"
             ],
