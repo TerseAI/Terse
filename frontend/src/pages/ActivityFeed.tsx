@@ -1,13 +1,13 @@
 import { useEffect, useState } from "react";
-import { InboxIcon } from "@heroicons/react/24/outline";
+import { Inbox, ChevronRight } from "lucide-react";
 import AvatarBar from "../components/activity/AvatarBar";
-import Card from "../components/Card";
+import { Card } from "../components/ui/card";
 import { ActivityEvent, SubActivity, CommitAssociation } from "../shared/types";
 import { ActivityFeedService } from "../services/activityFeed";
 import EventDetails from "../components/activity/EventDetails";
 import { Disclosure, DisclosureButton, DisclosurePanel } from '@headlessui/react';
-import { ChevronRightIcon } from '@heroicons/react/20/solid'
 import clsx from 'clsx'
+import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 
 function ActivityFeed() {
     const [activity, setActivity] = useState<ActivityEvent[]>([]);
@@ -78,7 +78,7 @@ function ActivityFeedContent({
     }
 
     if (activity.length === 0) {
-        return emptyActivityFeed();
+        return <EmptyActivityFeed />;
     }
 
     return (
@@ -89,7 +89,7 @@ function ActivityFeedContent({
                     <button
                         onClick={onLoadMore}
                         disabled={isLoadingMore}
-                        className="px-6 py-2 bg-[theme(background-light)] text-[theme(text-primary)] rounded-lg hover:bg-[theme(background)] transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-[var(--shadow)] overflow-hidden"
+                        className="px-6 py-2 bg-card text-foreground rounded-lg hover:bg-accent/10 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm overflow-hidden"
                     >
                         {isLoadingMore ? 'Loading...' : 'Load More'}
                     </button>
@@ -107,12 +107,12 @@ function LoadingState() {
             <div className="animate-pulse rounded-lg bg-[theme(background)] h-24 w-full"></div>
             <div className="animate-pulse rounded-lg bg-[theme(background)] h-24 w-full"></div>
         </div>
-    )       
+    )
 }
 
 function FeedContent({ activity }: { activity: ActivityEvent[] }) {
     if (activity.length === 0) {
-        return emptyActivityFeed();
+        return <EmptyActivityFeed />;
     }
 
     return (
@@ -145,7 +145,7 @@ function SubActivityEvents({ event }: { event: ActivityEvent }) {
                                 </h4>
                                 <div className="flex items-center gap-2 text-sm text-[theme(text-secondary)]">
                                     <span>{event.sub_activities.length} events</span>
-                                    <ChevronRightIcon className={clsx('w-4 h-4', open && 'rotate-90')} />
+                                    <ChevronRight className={clsx('w-4 h-4', open && 'rotate-90')} />
                                 </div>
                             </div>
                         </DisclosureButton>
@@ -172,7 +172,7 @@ function SubActivityItem({ subActivity }: { subActivity: SubActivity }) {
                         <DisclosureButton className="w-full text-left">
                             <div className="flex justify-between items-center">
                                 <p className="text-sm text-[theme(text-secondary)]">{subActivity.summary}</p>
-                                <ChevronRightIcon className={clsx('w-4 h-4 flex-shrink-0', open && 'rotate-90')} />
+                                <ChevronRight className={clsx('w-4 h-4 flex-shrink-0', open && 'rotate-90')} />
                             </div>
                         </DisclosureButton>
                         <DisclosurePanel>
@@ -212,17 +212,17 @@ function AssociatedCommits({ commits }: { commits: CommitAssociation[] }) {
     )
 }
 
-function emptyActivityFeed() {
+function EmptyActivityFeed() {
     return (
-        <div className="w-full grid place-items-center animate-fade-in">
-            <div className="grid place-items-center">
-                <InboxIcon className="w-8 h-8 text-[theme(--color-accent)] mb-4" />
-                <h1 className="text-xl font-bold pb-2 text-[theme(text-primary)]">No activity yet</h1>
-                <p className="text-[theme(text-secondary)]">
-                    Push a commit, open a PR, or merge a PR to see your activity here.
-                </p>
-            </div>
-        </div >
+        <Empty>
+            <EmptyHeader>
+                <EmptyMedia variant="icon">
+                    <Inbox className="text-[theme(--color-primary)]" />
+                </EmptyMedia>
+                <EmptyTitle>No activity yet</EmptyTitle>
+                <EmptyDescription>Push a commit, open a PR, or merge a PR to see your activity here.</EmptyDescription>
+            </EmptyHeader>
+        </Empty>
     )
 }
 

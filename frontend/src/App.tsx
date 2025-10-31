@@ -1,7 +1,7 @@
 import { AnimatePresence } from "framer-motion";
 import { Navigate, Outlet, Route, BrowserRouter as Router, Routes } from 'react-router-dom';
 import Spin from "./components/loading/Spin";
-import Sidebar from "./components/Sidebar";
+import { AppSidebar } from "./components/Sidebar";
 import { IntegrationProvider } from "./context/Integrations";
 import ActivityFeed from "./pages/ActivityFeed";
 import Automations from "./pages/Automations/Automations";
@@ -12,6 +12,7 @@ import Login from "./pages/Login";
 import OAuthError from "./pages/OAuthError";
 import OAuthSuccess from "./pages/OAuthSuccess";
 import { AuthProvider, useAuth } from "./services/auth";
+import { SidebarProvider } from "./components/ui/sidebar";
 
 function App() {
   return (
@@ -69,14 +70,12 @@ function Content() {
 
 function AppLayout() {
   return (
-    <div className="h-full grid grid-cols-20">
-      <div className="col-span-2 h-full bg-[theme(background-dark)] flex-shrink-0 ">
-        <Sidebar />
-      </div>
-      <div className="col-span-18 min-w-0 overflow-y-auto pr-30">
+    <SidebarProvider>
+      <AppSidebar />
+      <main className="w-full">
         <Outlet />
-      </div>
-    </div>
+      </main>
+    </SidebarProvider>
   )
 }
 

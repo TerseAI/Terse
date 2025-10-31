@@ -1,6 +1,8 @@
-import { ChevronRight, ExternalLink } from "lucide-react";
+import { ExternalLink } from "lucide-react";
 import type { RunHistoryAction, RunHistoryStatus } from "../../shared/RunHistoryTypes";
 import ActionIcon from "./ActionIcon";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "../ui/accordion";
+import { cn } from "@/lib/utils";
 
 type Props = {
     runId: string;
@@ -17,45 +19,50 @@ export default function RunHistoryActionItem({ runId, index, action, runStatus, 
     const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
     return (
-        <div className="bg-[theme(background)] rounded border border-[theme(border)]">
-            <button
-                className="w-full text-left p-2 hover:bg-[theme(background-hover)] transition-colors rounded"
-                onClick={() => onToggle(actionKey)}
-                type="button"
-            >
-                <div className="flex items-center gap-2">
-                    <ActionIcon actionType={action.action} status={runStatus} />
-                    <div className="flex-1">
-                        <div className="flex items-center gap-2">
-                            <span className="text-[theme(text-primary)]">{capitalize(action.action)} on {capitalize(action.integration)} → {action.target}</span>
-                            {action.url && (
-                                <a
-                                    href={action.url}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    onClick={(e) => e.stopPropagation()}
-                                    className="text-[var(--color-accent)] hover:opacity-80 transition-opacity"
-                                >
-                                    <ExternalLink className="w-3 h-3" />
-                                </a>
-                            )}
+        <Accordion
+            type="single"
+            collapsible
+            value={isExpanded ? actionKey : ""}
+            onValueChange={() => onToggle(actionKey)}
+        >
+            <div className="rounded-lg border border-border">
+                <AccordionItem value={actionKey} className="border-b-0">
+                    <AccordionTrigger className="py-2 px-2 hover:no-underline hover:bg-accent/50">
+                        <div className="flex items-center gap-2 w-full mr-2">
+                            <ActionIcon actionType={action.action} status={runStatus} />
+                            <div className="flex-1">
+                                <div className="flex items-center gap-2">
+                                    <span className="text-foreground">
+                                        {capitalize(action.action)} on {capitalize(action.integration)} → {action.target}
+                                    </span>
+                                    {action.url && (
+                                        <a
+                                            href={action.url}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            onClick={(e) => e.stopPropagation()}
+                                            className="text-primary hover:opacity-80 transition-opacity"
+                                        >
+                                            <ExternalLink className="w-3 h-3" />
+                                        </a>
+                                    )}
+                                </div>
+                            </div>
                         </div>
-                    </div>
-                    <ChevronRight className={`w-4 h-4 text-[theme(text-secondary)] transition-transform ${
-                        isExpanded ? "rotate-90" : ""
-                    }`} />
-                </div>
-            </button>
-            {isExpanded && (
-                <div className="px-2 pb-2 pt-1">
-                    <div className="flex items-start gap-2 pl-6">
-                        <div className={`flex-1 ${runStatus === "failed" ? "text-red-400" : "text-[theme(text-secondary)]"}`}>
+                    </AccordionTrigger>
+                    <AccordionContent>
+                        <div
+                            className={cn(
+                                "p-2",
+                                runStatus === "failed" ? "text-destructive" : "text-muted-foreground"
+                            )}
+                        >
                             {action.details}
                         </div>
-                    </div>
-                </div>
-            )}
-        </div>
+                    </AccordionContent>
+                </AccordionItem>
+            </div>
+        </Accordion>
     );
 }
 

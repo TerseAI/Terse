@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import TextareaAutosize from 'react-textarea-autosize';
-import { PencilIcon } from "@heroicons/react/24/outline";
+import { Pencil } from "lucide-react";
 
 type EditableTextProps = {
     value: string;
@@ -55,22 +55,22 @@ function EditableText({ value, onSave, onChange, className = "", placeholder = "
                     onChange={(e) => { const v = e.target.value; setText(v); onChange?.(v); }}
                     onBlur={handleBlur}
                     onKeyDown={handleKeyDown}
-                    className="min-w-96 box-border p-2 text-[theme(text-primary)] border border-[theme(--color-accent-primary)] rounded focus:outline-none focus:ring-2 focus:ring-[theme(--color-accent-primary)]"
+                    className="min-w-96 box-border p-2 text-foreground border border-accent rounded focus:outline-none focus:ring-2 focus:ring-accent"
                     placeholder={placeholder}
                 />
             ) : (
                 <div
                     onClick={handleClick}
-                    className="text-4xl w-full box-border text-[theme(text-primary)] border border-transparent hover:border-[theme(--color-accent-primary)] hover:cursor-pointer rounded cursor-text min-h-[40px] flex items-center gap-2"
+                    className="text-4xl w-full box-border text-foreground border border-transparent hover:border-accent hover:cursor-pointer rounded cursor-text min-h-[40px] flex items-center gap-2"
                 >
                     <span className="leading-tight">
-                        {value || <span className="text-[theme(text-secondary)]">{placeholder}</span>}
+                        {value || <span className="text-muted-foreground">{placeholder}</span>}
                     </span>
-                    <PencilIcon className="w-7 h-7 text-[theme(text-secondary)] flex-shrink-0 self-center" />
+                    <Pencil className="w-7 h-7 text-muted-foreground flex-shrink-0 self-center" />
                 </div>
             )}
             {isEditing && (
-                <div className="text-xs text-[theme(text-secondary)] mt-1">
+                <div className="text-xs text-muted-foreground mt-1">
                     Press ⌘+Enter to save, Esc to cancel, or click away to save
                 </div>
             )}
