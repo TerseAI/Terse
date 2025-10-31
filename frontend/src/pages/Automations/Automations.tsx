@@ -1,6 +1,6 @@
 import { Tab, TabGroup, TabList, TabPanel, TabPanels } from "@headlessui/react";
-import { ArrowLeft, Settings, Clock } from "lucide-react";
-import { useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { Settings, Clock } from "lucide-react";
+import { useParams, useSearchParams } from "react-router-dom";
 import { AutomationProvider } from "../../context/AutomationContext";
 import AutomationSetupTab from "./tabs/AutomationSetupTab";
 import AutomationRunHistoryTab from "./tabs/AutomationRunHistoryTab";
@@ -8,7 +8,6 @@ import { useEffect, useState } from "react";
 
 function Automations() {
     const { id } = useParams<{ id: string }>();
-    const navigate = useNavigate();
     const [searchParams, setSearchParams] = useSearchParams();
 
     // Only pass automationId if it's not "new"
