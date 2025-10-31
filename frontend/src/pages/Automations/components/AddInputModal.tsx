@@ -19,7 +19,7 @@ export function AddInputModal({ isOpen, onClose, onSelectIntegration }: AddInput
             <div className="fixed inset-0 bg-black/50 backdrop-blur-sm" aria-hidden="true" />
 
             <div className="fixed inset-0 flex items-center justify-center p-4">
-                <DialogPanel className="w-full max-w-lg rounded-xl bg-[theme(background-elevated)] p-6 shadow-2xl border border-[theme(border)]">
+                <DialogPanel className="w-full max-w-lg rounded-xl bg-[theme(background)] p-6 shadow-2xl border border-[theme(border)] overflow-hidden">
                     <DialogTitle className="text-xl font-bold text-[theme(text-primary)] mb-2">
                         Add Event Source
                     </DialogTitle>
@@ -32,7 +32,7 @@ export function AddInputModal({ isOpen, onClose, onSelectIntegration }: AddInput
                             <button
                                 key={integration.type}
                                 onClick={() => onSelectIntegration(integration.type)}
-                                className="flex flex-col items-center gap-3 p-5 rounded-lg border-2 border-[theme(border)] hover:border-[theme(--color-accent)] hover:bg-[theme(background-surface)] transition-all duration-200 group"
+                                className="flex flex-col items-center gap-3 p-5 rounded-lg border-2 border-[theme(border)] hover:border-[theme(--color-accent)] hover:bg-[theme(background-light)] transition-all duration-200 group"
                             >
                                 <div className="w-16 h-16 flex items-center justify-center">
                                     <IconForInputType type={integration.type} />
@@ -47,7 +47,7 @@ export function AddInputModal({ isOpen, onClose, onSelectIntegration }: AddInput
 
                     <button
                         onClick={onClose}
-                        className="mt-6 w-full px-4 py-2.5 bg-[theme(background-surface)] text-[theme(text-primary)] rounded-lg hover:bg-[theme(background-hover)] transition-colors font-medium"
+                        className="mt-6 w-full px-4 py-2.5 bg-[theme(background-light)] text-[theme(text-primary)] rounded-lg hover:bg-[theme(background-hover)] transition-colors font-medium"
                     >
                         Cancel
                     </button>

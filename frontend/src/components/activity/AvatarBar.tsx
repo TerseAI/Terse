@@ -11,7 +11,7 @@ function AvatarBar({ event }: { event: ActivityEvent }) {
                     {event.github_repository_name}
                 </h3>
                 <div>
-                    <span className="text-sm p-2 bg-[theme(background-elevated)] rounded-md">
+                    <span className="text-sm p-2 bg-[theme(background)] rounded-md">
                         {formatEventTitle(event)}
                     </span>
                 </div>

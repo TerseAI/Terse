@@ -100,7 +100,7 @@ function GlowingTextField({ isLoading, onInputChange, onKeyDown, inputValue, pla
                         transition-all
                         duration-400
                         p-1
-                        bg-[theme(background-elevated)]
+                        bg-[theme(background)]
                         overflow-visible
                     `}
                 style={isFocused ? {

@@ -10,7 +10,7 @@ const GitHubAvatar: React.FC<GitHubAvatarProps> = ({ username, size = 100 }) => 
 
   return (
     <img
-      className="rounded-full border border-gray-800 shadow-sm animate-fade-in"
+      className="rounded-full border border-gray-800 shadow-sm animate-fade-in overflow-hidden"
       src={imageUrl}
       alt={`${username}'s GitHub avatar`}
       width={size}
