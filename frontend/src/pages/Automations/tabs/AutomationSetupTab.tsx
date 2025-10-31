@@ -1,5 +1,4 @@
 import { Button } from "@headlessui/react";
-import { SparklesIcon } from "@heroicons/react/24/outline";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import TextareaAutosize from 'react-textarea-autosize';
@@ -9,26 +8,22 @@ import { BackendProvider } from "../../../services/backend";
 import { InputsSection } from "../InputSection";
 import { OutputSection } from "../OutputSection";
 
+
+
+
+
+
 function PromptSection() {
     const { prompt, setPrompt } = useAutomationContext();
     return (
         <div className="flex flex-col gap-3">
-            <div className="flex items-center gap-2.5">
-                <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-[theme(background-elevated)]">
-                    <SparklesIcon className="w-5 h-5 text-[theme(--color-accent-secondary)]" />
-                </div>
-                <div className="flex flex-col">
-                    <h2 className="text-base font-semibold text-[theme(text-primary)]">Process With AI</h2>
-                    <p className="text-xs text-[theme(text-secondary)] mt-0.5">Describe what you want the AI to do with the incoming events</p>
-                </div>
-            </div>
             <TextareaAutosize
                 value={prompt?.text || ''}
                 onChange={(e) => setPrompt({ text: e.target.value })}
                 placeholder='e.g., "Summarize all commits and update the changelog", "Create a weekly progress report", etc.'
                 minRows={3}
                 maxRows={20}
-                className="w-full bg-[theme(background-elevated)] rounded-lg p-4 border border-[theme(border)] text-[theme(text-primary)] placeholder:text-[theme(text-secondary)] focus:outline-none focus:border-[theme(--color-accent)] focus:ring-1 focus:ring-[theme(--color-accent)] transition-all duration-200 resize-none overflow-hidden"
+                className="w-full bg-[theme(background)] rounded-lg p-4 border border-[theme(border)] text-[theme(text-primary)] placeholder:text-[theme(text-secondary)] focus:outline-none focus:border-[theme(--color-accent)] focus:ring-1 focus:ring-[theme(--color-accent)] transition-all duration-200 resize-none overflow-hidden"
             />
         </div>
     )
@@ -144,7 +139,6 @@ function SaveAutomationButton() {
         inputs.every(i => !!i.integration && !!i.integrationId) &&
         !!output && !!output.integration && !!output.integrationId &&
         !!prompt?.text;
-
     const isEditMode = !!automationId;
 
     const handleSave = async () => {
@@ -161,8 +155,10 @@ function SaveAutomationButton() {
             };
 
             if (isEditMode) {
+                // Update existing automation
                 await BackendProvider.updateAutomation(automationId, automationData);
             } else {
+                // Create new automation
                 await BackendProvider.createAutomation(
                     automationData.name,
                     automationData.inputs,
@@ -175,6 +171,7 @@ function SaveAutomationButton() {
             setSaveSuccess(true);
             setTimeout(() => {
                 setSaveSuccess(false);
+                // Navigate back to list after successful save
                 navigate('/app/automations');
             }, 1000);
         } catch (error) {
@@ -189,18 +186,12 @@ function SaveAutomationButton() {
         <Button
             onClick={handleSave}
             disabled={!isComplete || isSaving}
-            className={`px-8 py-3 rounded-lg font-medium transition-all duration-200 ${isComplete && !isSaving
-                ? 'bg-[var(--color-accent)] text-[theme(text-primary)] hover:scale-[1.02] hover:brightness-110 shadow-lg'
-                : 'bg-[theme(background-surface)] text-[theme(text-disabled)] cursor-not-allowed'
-                }`}
-            style={isComplete && !isSaving ? {
-                boxShadow: '0 0 20px -8px var(--color-accent)'
-            } : undefined}
         >
             {isSaving ? 'Saving...' : saveSuccess ? 'Saved!' : isComplete ? (isEditMode ? 'Update Automation' : 'Save Automation') : 'Complete All Steps'}
         </Button>
     )
 }
+
 
 export default function AutomationSetupTab() {
     const { name, setName } = useAutomationContext();
@@ -208,18 +199,20 @@ export default function AutomationSetupTab() {
         <div className="flex flex-col h-full">
             <div className="flex-1 overflow-y-auto">
                 <div className="max-w-6xl mx-auto p-6 space-y-4">
+
                     <div className="space-y-2">
                         <EditableTextField value={name} onSave={(value) => setName(value)} />
-                        <p className="text-xs text-[theme(text-secondary)]">
-                            Create an automation that listens to events and continuously updates a living document
-                        </p>
                     </div>
 
                     <div className="space-y-3">
                         <InputsSection />
+
                         <FlowArrow />
+
                         <PromptSection />
+
                         <FlowArrow />
+
                         <OutputSection />
                     </div>
                 </div>

@@ -20,10 +20,10 @@ function Automations() {
     return (
         <AutomationProvider automationId={automationId}>
             <div className="flex flex-col h-full">
-                <div className="border-b border-[theme(border)] px-6 py-3">
+                <div className="py-3">
                     <button
                         onClick={() => navigate('/app/automations')}
-                        className="inline-flex items-center gap-2 text-sm text-[theme(text-secondary)] hover:text-[theme(text-primary)] transition-colors"
+                        className="inline-flex items-center gap-2 text-sm text-[theme(text-secondary)] hover:text-[theme(text-primary)] transition-colors pl-2 mt-1"
                     >
                         <ArrowLeftIcon className="h-4 w-4" />
                         Back to Automations

@@ -12,7 +12,7 @@ export function SectionLayout({ title, subtitle, children, icon }: SectionLayout
         <div className="flex flex-col gap-3">
             <div className="flex items-center gap-2.5">
                 {icon && (
-                    <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-[theme(background-elevated)]">
+                    <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-[theme(background)]">
                         {icon}
                     </div>
                 )}
