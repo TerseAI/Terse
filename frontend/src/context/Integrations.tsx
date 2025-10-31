@@ -94,7 +94,7 @@ export function IntegrationProvider({ children }: { children: ReactNode }) {
             stopPolling();
         }, 120000);
 
-        pollingIntervalRef.current = setInterval(async () => {
+        pollingIntervalRef.current = window.setInterval(async () => {
             try {
                 const { integrations: integrationData } = await BackendProvider.getIntegrationsStatus();
                 const currentState = JSON.stringify(integrationData);
