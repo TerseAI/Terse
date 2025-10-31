@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, ReactNode, useEffect, useRef } from 'react';
 import { BackendProvider } from '../services/backend';
 import { Integration } from '../types/Integration';
-import { INTEGRATION_KEY_MAP } from '../utility/IntegrationUtils';
+import { getIntegrationInstances } from '../utility/IntegrationUtils';
 
 // Re-export Integration for backwards compatibility
 export { Integration };
@@ -39,10 +39,10 @@ export function IntegrationProvider({ children }: { children: ReactNode }) {
             const activeIntegrations: Integration[] = [];
 
             // Iterate through all integration types and check if they have data
-            for (const [integrationType, key] of Object.entries(INTEGRATION_KEY_MAP)) {
-                const instances = integrationData[key];
+            for (const integrationType of Object.values(Integration)) {
+                const instances = getIntegrationInstances(integrationData, integrationType);
                 if (instances && instances.length > 0) {
-                    activeIntegrations.push(integrationType as Integration);
+                    activeIntegrations.push(integrationType);
                 }
             }
 
@@ -114,10 +114,10 @@ export function IntegrationProvider({ children }: { children: ReactNode }) {
                     
                     // Update local state
                     const activeIntegrations: Integration[] = [];
-                    for (const [integrationType, key] of Object.entries(INTEGRATION_KEY_MAP)) {
-                        const instances = integrationData[key];
+                    for (const integrationType of Object.values(Integration)) {
+                        const instances = getIntegrationInstances(integrationData, integrationType);
                         if (instances && instances.length > 0) {
-                            activeIntegrations.push(integrationType as Integration);
+                            activeIntegrations.push(integrationType);
                         }
                     }
 
