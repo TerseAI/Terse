@@ -15,7 +15,7 @@ export function ActionButtons({ automation, onEdit, onDelete }: ActionButtonsPro
                     e.stopPropagation();
                     onEdit(automation);
                 }}
-                className="p-1 text-accent hover:scale-110 rounded transition-colors cursor-pointer"
+                className="p-1 text-primary hover:scale-110 rounded transition-colors cursor-pointer"
                 title="Edit automation"
             >
                 <Pencil className="h-5 w-5" />

@@ -1,11 +1,14 @@
 import { useEffect, useRef, useState } from "react";
-import DatePicker from "react-datepicker";
-import "react-datepicker/dist/react-datepicker.css";
-import { Calendar as CalendarIcon, CheckCircle2, ChevronLeft, ChevronRight, Filter as FilterIcon, Search as SearchIcon, XCircle, Loader2 } from "lucide-react";
+import { Calendar as CalendarIcon, CheckCircle2, Filter as FilterIcon, XCircle, Loader2, ChevronRight } from "lucide-react";
 import type { RunHistoryStatus } from "../../shared/RunHistoryTypes";
 import RunHistoryPagination from "./RunHistoryPagination";
+import { SearchBar } from "../Automation/SearchBar";
+import { Button } from "../ui/button";
+import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
+import { Calendar } from "../ui/calendar";
+import { DateRange } from "react-day-picker";
 
-type DateRange = { from: Date | undefined; to: Date | undefined };
+type DateRangeType = { from: Date | undefined; to: Date | undefined };
 
 type Props = {
     filteredCount: number;
@@ -15,8 +18,8 @@ type Props = {
     searchQuery: string;
     onSearchChange: (value: string) => void;
 
-    dateRange: DateRange;
-    onDateRangeChange: (next: DateRange) => void;
+    dateRange: DateRangeType;
+    onDateRangeChange: (next: DateRangeType) => void;
 
     selectedStatuses: Set<RunHistoryStatus>;
     onToggleStatus: (status: RunHistoryStatus) => void;
@@ -46,33 +49,8 @@ export default function RunHistoryToolBar({
     onPageChange
 }: Props) {
     const [isDateOpen, setIsDateOpen] = useState(false);
-    const datePanelRef = useRef<HTMLDivElement | null>(null);
-    const dateButtonRef = useRef<HTMLButtonElement | null>(null);
     const statusPanelRef = useRef<HTMLDivElement | null>(null);
     const statusButtonRef = useRef<HTMLButtonElement | null>(null);
-    const [datePanelPosition, setDatePanelPosition] = useState<{ top: number; left: number } | null>(null);
-
-    useEffect(() => {
-        const handleClickOutside = (e: MouseEvent) => {
-            if (!isDateOpen) return;
-            const target = e.target as Node;
-            if (
-                datePanelRef.current && !datePanelRef.current.contains(target) &&
-                dateButtonRef.current && !dateButtonRef.current.contains(target)
-            ) {
-                setIsDateOpen(false);
-            }
-        };
-        document.addEventListener('mousedown', handleClickOutside);
-        return () => document.removeEventListener('mousedown', handleClickOutside);
-    }, [isDateOpen]);
-
-    useEffect(() => {
-        if (isDateOpen && dateButtonRef.current) {
-            const rect = dateButtonRef.current.getBoundingClientRect();
-            setDatePanelPosition({ top: rect.bottom + 8, left: rect.left });
-        }
-    }, [isDateOpen]);
 
     useEffect(() => {
         const handleClickOutsideStatus = (e: MouseEvent) => {
@@ -93,14 +71,6 @@ export default function RunHistoryToolBar({
         return () => document.removeEventListener('mousedown', handleClickOutsideStatus);
     }, []);
 
-    const isDateInRange = (d: Date, from?: Date, to?: Date) => {
-        if (!from && !to) return false;
-        const day = new Date(d.getFullYear(), d.getMonth(), d.getDate());
-        if (from && !to) return day.getTime() === new Date(from.getFullYear(), from.getMonth(), from.getDate()).getTime();
-        if (!from && to) return day.getTime() === new Date(to.getFullYear(), to.getMonth(), to.getDate()).getTime();
-        return !!from && !!to && day >= new Date(from.getFullYear(), from.getMonth(), from.getDate()) && day <= new Date(to.getFullYear(), to.getMonth(), to.getDate());
-    };
-
     return (
         <div className="mb-6 space-y-4 relative">
             <div className="mb-4 text-muted-foreground">
@@ -108,120 +78,64 @@ export default function RunHistoryToolBar({
             </div>
 
             <div className="flex items-center justify-between gap-4">
-                <div className="relative flex-1">
-                    <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                    <input
-                        type="text"
-                        placeholder="Search runs..."
-                        value={searchQuery}
-                        onChange={(e) => onSearchChange(e.target.value)}
-                        className="pl-9 w-full rounded-md border border-input bg-card text-foreground placeholder:text-muted-foreground h-9 px-3"
-                    />
-                </div>
+               <SearchBar searchQuery={searchQuery} onSearchChange={onSearchChange} placeholder="Search runs..." />
 
                 <div className="flex items-center gap-4">
-                    <div className="relative">
-                        <button
-                            ref={dateButtonRef}
-                            className={`h-9 px-3 rounded-md border text-sm transition-colors flex items-center border-input text-muted-foreground hover:text-foreground hover:bg-accent/10 ${
-                                dateRange.from || dateRange.to ? "border-green-600 dark:border-green-400 text-green-600 dark:text-green-400" : ""
-                            }`}
-                            onClick={() => {
-                                const statusPanel = document.getElementById("status-filter-panel");
-                                if (statusPanel && !statusPanel.classList.contains("hidden")) statusPanel.classList.add("hidden");
-                                setIsDateOpen(!isDateOpen);
-                            }}
-                            aria-expanded={isDateOpen}
-                            type="button"
-                        >
-                            <CalendarIcon className="w-4 h-4 mr-2" />
-                            {dateRange.from ? (
-                                dateRange.to ? (
-                                    `${dateRange.from.toLocaleDateString("en-US", { month: "short", day: "2-digit" })} - ${dateRange.to.toLocaleDateString("en-US", { month: "short", day: "2-digit" })}`
-                                ) : (
-                                    dateRange.from.toLocaleDateString("en-US", { month: "short", day: "2-digit", year: "numeric" })
-                                )
-                            ) : (
-                                "Date Range"
-                            )}
-                        </button>
-                        <div
-                            id="date-range-panel"
-                            ref={datePanelRef}
-                            className={`${isDateOpen ? '' : 'hidden'} fixed z-50 p-3 rounded-md border bg-card border-input shadow-lg`}
-                            style={datePanelPosition ? { top: `${datePanelPosition.top}px`, left: `${datePanelPosition.left}px` } : undefined}
-                        >
-                            <DatePicker
-                                selected={dateRange.from ?? null}
-                                onChange={(dates) => {
-                                    const [start, end] = dates as [Date | null, Date | null];
-                                    onDateRangeChange({ from: start ?? undefined, to: end ?? undefined });
-                                    if (start && end) {
-                                        setIsDateOpen(false);
+                    <Popover open={isDateOpen} onOpenChange={setIsDateOpen}>
+                        <PopoverTrigger asChild>
+                            <Button
+                                variant="outline"
+                                className={`justify-start text-left font-normal ${
+                                    dateRange.from || dateRange.to ? "border-green-600 dark:border-green-400 text-green-600 dark:text-green-400" : ""
+                                }`}
+                                onClick={() => {
+                                    const statusPanel = document.getElementById("status-filter-panel");
+                                    if (statusPanel && !statusPanel.classList.contains("hidden")) {
+                                        statusPanel.classList.add("hidden");
                                     }
                                 }}
-                                startDate={dateRange.from ?? null}
-                                endDate={dateRange.to ?? null}
-                                selectsRange
-                                inline
-                                monthsShown={1}
-                                calendarClassName="rounded-md bg-card border border-input text-foreground"
-                                wrapperClassName="react-datepicker-wrapper"
-                                dayClassName={(d) =>
-                                    `h-8 w-8 leading-8 text-center rounded text-sm text-foreground hover:bg-accent/10 ${
-                                        isDateInRange(d, dateRange.from, dateRange.to)
-                                            ? 'bg-accent text-accent-foreground'
-                                            : ''
-                                    }`
-                                }
-                                renderCustomHeader={({ date, decreaseMonth, increaseMonth, prevMonthButtonDisabled, nextMonthButtonDisabled }) => (
-                                    <div className="flex items-center justify-between px-2 py-1 text-foreground">
-                                        <button
-                                            onClick={decreaseMonth}
-                                            disabled={prevMonthButtonDisabled}
-                                            className="h-7 w-7 inline-flex items-center justify-center rounded border border-input hover:bg-accent/10 disabled:opacity-40"
-                                            type="button"
-                                        >
-                                            <ChevronLeft className="w-4 h-4" />
-                                        </button>
-                                        <span className="text-sm">
-                                            {date.toLocaleString('en-US', { month: 'long', year: 'numeric' })}
-                                        </span>
-                                        <button
-                                            onClick={increaseMonth}
-                                            disabled={nextMonthButtonDisabled}
-                                            className="h-7 w-7 inline-flex items-center justify-center rounded border border-input hover:bg-accent/10 disabled:opacity-40"
-                                            type="button"
-                                        >
-                                            <ChevronRight className="w-4 h-4" />
-                                        </button>
-                                    </div>
+                            >
+                                <CalendarIcon className="w-4 h-4 mr-2" />
+                                {dateRange.from ? (
+                                    dateRange.to ? (
+                                        `${dateRange.from.toLocaleDateString("en-US", { month: "short", day: "2-digit" })} - ${dateRange.to.toLocaleDateString("en-US", { month: "short", day: "2-digit" })}`
+                                    ) : (
+                                        dateRange.from.toLocaleDateString("en-US", { month: "short", day: "2-digit", year: "numeric" })
+                                    )
+                                ) : (
+                                    "Date Range"
                                 )}
+                            </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                            <Calendar
+                                mode="range"
+                                selected={{ from: dateRange.from, to: dateRange.to } as DateRange}
+                                onSelect={(range: DateRange | undefined) => {
+                                    if (range) {
+                                        onDateRangeChange({ from: range.from, to: range.to });
+                                    } else {
+                                        onDateRangeChange({ from: undefined, to: undefined });
+                                    }
+                                }}
+                                numberOfMonths={1}
+                                initialFocus
                             />
-                            <div className="mt-3 flex gap-2">
-                                {(dateRange.from || dateRange.to) && (
-                                    <button
-                                        className="flex-1 h-8 rounded-md border text-sm border-input text-muted-foreground hover:text-foreground hover:bg-accent/10"
+                            {(dateRange.from || dateRange.to) && (
+                                <div className="p-3 border-t">
+                                    <Button
+                                        variant="outline"
+                                        className="w-full"
                                         onClick={() => {
                                             onDateRangeChange({ from: undefined, to: undefined });
                                         }}
-                                        type="button"
                                     >
                                         Clear Date Range
-                                    </button>
-                                )}
-                                <button
-                                    className="h-8 px-3 rounded-md border text-sm border-input text-muted-foreground hover:text-foreground hover:bg-accent/10"
-                                    onClick={() => {
-                                        setIsDateOpen(false);
-                                    }}
-                                    type="button"
-                                >
-                                    Close
-                                </button>
-                            </div>
-                        </div>
-                    </div>
+                                    </Button>
+                                </div>
+                            )}
+                        </PopoverContent>
+                    </Popover>
 
                     <div className="relative">
                         <button
