@@ -48,8 +48,8 @@ export default function RunHistoryPagination({ currentPage, totalPages, onPageCh
                     key={index}
                     className={`h-9 px-3 rounded-md border text-sm transition-colors ${
                         page === currentPage
-                            ? "border-[var(--color-accent)] bg-[var(--color-accent)]/20 text-[var(--color-accent)]"
-                            : "border-[theme(border)] text-[theme(text-secondary)] hover:text-[theme(text-primary)] hover:bg-[theme(background-hover)]"
+                            ? "border-[var(--color-primary)] text-[var(--color-foreground)]"
+                            : "border-[theme(border)] text-accent hover:text-[theme(text-primary)] hover:bg-[theme(background-hover)]"
                     } ${page === "..." ? "cursor-default hover:bg-transparent hover:text-[theme(text-secondary)]" : ""}`}
                     onClick={() => typeof page === "number" && onPageChange(page)}
                     disabled={page === "..." || page === currentPage}
