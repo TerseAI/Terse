@@ -1,4 +1,4 @@
-import { ChevronDown, ChevronUp, Home, Inbox, User2 } from "lucide-react"
+import { ChevronDown, ChevronUp, Home, User2, Zap } from "lucide-react"
 
 import {
     Sidebar,
@@ -11,10 +11,16 @@ import {
     SidebarMenu,
     SidebarMenuButton,
     SidebarMenuItem,
+    SidebarMenuSub,
+    SidebarMenuSubButton,
+    SidebarMenuSubItem,
 } from "@/components/ui/sidebar"
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "./ui/dropdown-menu";
 import { useAuth } from "@/services/auth";
+import { useEffect, useState } from "react";
+import { BackendProvider } from "@/services/backend";
+import { Automation } from "@/shared/types";
 
 
 // Menu items.
@@ -27,12 +33,31 @@ const items = [
     {
         title: "Automations",
         url: "/app/automations",
-        icon: Inbox,
+        icon: Zap,
     },
 ]
 
 export function AppSidebar() {
     const location = useLocation()
+    const [automations, setAutomations] = useState<Automation[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const loadAutomations = async () => {
+            try {
+                setLoading(true);
+                const response = await BackendProvider.getUserAutomations();
+                setAutomations(response.automations);
+            } catch (error) {
+                console.error('Failed to load automations:', error);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        loadAutomations();
+    }, []);
+
     return (
         <Sidebar>
             <AppSidebarHeader />
@@ -49,6 +74,17 @@ export function AppSidebar() {
                                             <span>{item.title}</span>
                                         </Link>
                                     </SidebarMenuButton>
+                                    {item.title === "Automations" && automations.map((automation) => (
+                                        <SidebarMenuSub>
+                                            <SidebarMenuSubItem>
+                                                <SidebarMenuSubButton asChild data-active={location.pathname === `/app/automations/${automation.id}`}>
+                                                    <Link to={`/app/automations/${automation.id}`}>
+                                                        <span>{automation.name}</span>
+                                                    </Link>
+                                                </SidebarMenuSubButton>
+                                            </SidebarMenuSubItem>
+                                        </SidebarMenuSub>
+                                    ))}
                                 </SidebarMenuItem>
                             ))}
                         </SidebarMenu>
@@ -72,14 +108,6 @@ function AppSidebarHeader() {
                                 <ChevronDown className="ml-auto" />
                             </SidebarMenuButton>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent className="w-[--radix-popper-anchor-width]">
-                            <DropdownMenuItem>
-                                <span>Acme Inc</span>
-                            </DropdownMenuItem>
-                            <DropdownMenuItem>
-                                <span>Acme Corp.</span>
-                            </DropdownMenuItem>
-                        </DropdownMenuContent>
                     </DropdownMenu>
                 </SidebarMenuItem>
             </SidebarMenu>
@@ -110,7 +138,8 @@ function AppSidebarFooter() {
                         </DropdownMenuTrigger>
                         <DropdownMenuContent
                             side="top"
-                            className="w-[--radix-popper-anchor-width]"
+                            className="min-w-56"
+                            align="start"
                         >
                             <DropdownMenuItem onClick={handleLogout}>
                                 <span>Logout</span>

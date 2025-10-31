@@ -24,7 +24,7 @@ function Login() {
                 </CardHeader>
                 <CardContent>
                     <div className="flex flex-col gap-3">
-                        <Button
+                        <Button variant="outline"
                             onClick={loginWithGithub}
                         >
                             <svg className="w-6 h-6" viewBox="0 0 24 24" fill="currentColor">
@@ -38,6 +38,7 @@ function Login() {
                             )}
                         </Button>
                         <Button
+                            variant="outline"
                             onClick={loginWithGoogle}
                             className="relative"
                         >
