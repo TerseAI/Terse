@@ -1,12 +1,11 @@
 import { useEffect, useState } from "react";
-import { InboxIcon } from "@heroicons/react/24/outline";
+import { Inbox, ChevronRight, InboxIcon } from "lucide-react";
 import AvatarBar from "../components/activity/AvatarBar";
 import Card from "../components/Card";
 import { ActivityEvent, SubActivity, CommitAssociation } from "../shared/types";
 import { ActivityFeedService } from "../services/activityFeed";
 import EventDetails from "../components/activity/EventDetails";
 import { Disclosure, DisclosureButton, DisclosurePanel } from '@headlessui/react';
-import { ChevronRightIcon } from '@heroicons/react/20/solid'
 import clsx from 'clsx'
 
 function ActivityFeed() {
@@ -89,7 +88,7 @@ function ActivityFeedContent({
                     <button
                         onClick={onLoadMore}
                         disabled={isLoadingMore}
-                        className="px-6 py-2 bg-[theme(background-light)] text-[theme(text-primary)] rounded-lg hover:bg-[theme(background)] transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-[var(--shadow)] overflow-hidden"
+                        className="px-6 py-2 bg-card text-foreground rounded-lg hover:bg-accent/10 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm overflow-hidden"
                     >
                         {isLoadingMore ? 'Loading...' : 'Load More'}
                     </button>
