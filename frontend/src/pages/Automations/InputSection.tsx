@@ -6,6 +6,7 @@ import { AddInputModal } from "./components/AddInputModal";
 import { BoltIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import { IntegrationSelector } from "../../components/IntegrationSelector";
 import { getIntegrationTypeName } from "../../utility/IntegrationFormatters";
+import { clearIntegrationConfigs } from "../../utility/IntegrationUtils";
 
 export function InputsSection() {
     const { inputs, setInputs } = useAutomationContext();
@@ -14,11 +15,11 @@ export function InputsSection() {
     const input = inputs[0]; // Only one input allowed
 
     const handleSelectPlatform = (integration: Integration) => {
-        // Clear config if switching away from integration types that use it
+        // Clear all configs when switching platform (new integration type)
+        const clearedConfigs = input ? clearIntegrationConfigs(input) : {};
         const newInput: Input = { 
             integration,
-            ...(input?.integration === 'notion' && integration !== 'notion' ? { notionConfig: undefined } : {}),
-            ...(input?.integration === 'slack' && integration !== 'slack' ? { slackConfig: undefined } : {})
+            ...clearedConfigs
         };
         setInputs([newInput]);
         setShowAddModal(false);
@@ -26,12 +27,12 @@ export function InputsSection() {
 
     const handleSelectIntegration = (integrationId: string) => {
         if (input) {
-            // Clear config when switching integrations (will be re-selected when selector loads)
+            // Clear all configs when switching integration instances (will be re-selected when selector loads)
+            const clearedConfigs = clearIntegrationConfigs(input);
             setInputs([{ 
                 ...input, 
                 integrationId,
-                ...(input.integration === 'notion' && { notionConfig: undefined }),
-                ...(input.integration === 'slack' && { slackConfig: undefined })
+                ...clearedConfigs
             }]);
         }
     };

@@ -6,17 +6,18 @@ import { AddOutputModal } from "./components/AddOutputModal";
 import { DocumentTextIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import { IntegrationSelector } from "../../components/IntegrationSelector";
 import { getIntegrationTypeName } from "../../utility/IntegrationFormatters";
+import { clearIntegrationConfigs } from "../../utility/IntegrationUtils";
 
 export function OutputSection() {
     const { output, setOutput } = useAutomationContext();
     const [showAddModal, setShowAddModal] = useState(false);
 
     const handleSelectPlatform = (integration: Integration) => {
+        // Clear all configs when switching platform (new integration type)
+        const clearedConfigs = output ? clearIntegrationConfigs(output) : {};
         const newOutput: Output = { 
             integration,
-            // Clear config if switching away from integration types that use it
-            ...(output?.integration === 'notion' && integration !== 'notion' ? { notionConfig: undefined } : {}),
-            ...(output?.integration === 'slack' && integration !== 'slack' ? { slackConfig: undefined } : {})
+            ...clearedConfigs
         };
         setOutput(newOutput);
         setShowAddModal(false);
@@ -24,12 +25,12 @@ export function OutputSection() {
 
     const handleSelectIntegration = (integrationId: string) => {
         if (output) {
-            // Clear config when switching integrations (will be re-selected when selector loads)
+            // Clear all configs when switching integration instances (will be re-selected when selector loads)
+            const clearedConfigs = clearIntegrationConfigs(output);
             setOutput({ 
                 ...output, 
                 integrationId,
-                ...(output.integration === 'notion' && { notionConfig: undefined }),
-                ...(output.integration === 'slack' && { slackConfig: undefined })
+                ...clearedConfigs
             });
         }
     };
