@@ -5,14 +5,14 @@ function DailySummary({ summary, loading, error }: { summary: DailyActivitySumma
     if (loading) {
         return (
             <div className="animate-pulse space-y-4">
-                <div className="h-8 bg-[theme(background)] rounded w-1/3 mb-2"></div>
-                <div className="h-4 bg-[theme(background)] rounded w-full mb-1"></div>
+                <div className="h-8 bg-background rounded w-1/3 mb-2"></div>
+                <div className="h-4 bg-background rounded w-full mb-1"></div>
             </div>
         );
     }
 
     if (error) {
-        return <div className="text-red-500">{error}</div>;
+        return <div className="text-destructive">{error}</div>;
     }
     return (
         <>

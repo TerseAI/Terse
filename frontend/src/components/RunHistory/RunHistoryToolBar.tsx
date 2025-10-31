@@ -103,19 +103,19 @@ export default function RunHistoryToolBar({
 
     return (
         <div className="mb-6 space-y-4 relative">
-            <div className="mb-4 text-[theme(text-secondary)]">
+            <div className="mb-4 text-muted-foreground">
                 Showing {filteredCount === 0 ? 0 : startIndex + 1}-{Math.min(startIndex + runsPerPage, filteredCount)} of {filteredCount} runs
             </div>
 
             <div className="flex items-center justify-between gap-4">
                 <div className="relative flex-1">
-                    <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[theme(text-secondary)]" />
+                    <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                     <input
                         type="text"
                         placeholder="Search runs..."
                         value={searchQuery}
                         onChange={(e) => onSearchChange(e.target.value)}
-                        className="pl-9 w-full rounded-md border border-[theme(border)] bg-[theme(background-light)] text-[theme(text-primary)] placeholder:text-[theme(text-secondary)] h-9 px-3"
+                        className="pl-9 w-full rounded-md border border-input bg-card text-foreground placeholder:text-muted-foreground h-9 px-3"
                     />
                 </div>
 
@@ -123,8 +123,8 @@ export default function RunHistoryToolBar({
                     <div className="relative">
                         <button
                             ref={dateButtonRef}
-                            className={`h-9 px-3 rounded-md border text-sm transition-colors flex items-center border-[theme(border)] text-[theme(text-secondary)] hover:text-[theme(text-primary)] hover:bg-[theme(background-hover)] ${
-                                dateRange.from || dateRange.to ? "border-emerald-500/50 text-emerald-400" : ""
+                            className={`h-9 px-3 rounded-md border text-sm transition-colors flex items-center border-input text-muted-foreground hover:text-foreground hover:bg-accent/10 ${
+                                dateRange.from || dateRange.to ? "border-green-600 dark:border-green-400 text-green-600 dark:text-green-400" : ""
                             }`}
                             onClick={() => {
                                 const statusPanel = document.getElementById("status-filter-panel");
@@ -148,7 +148,7 @@ export default function RunHistoryToolBar({
                         <div
                             id="date-range-panel"
                             ref={datePanelRef}
-                            className={`${isDateOpen ? '' : 'hidden'} fixed z-50 p-3 rounded-md border bg-[theme(background-elevated)] border-[theme(border)] shadow-lg`}
+                            className={`${isDateOpen ? '' : 'hidden'} fixed z-50 p-3 rounded-md border bg-card border-input shadow-lg`}
                             style={datePanelPosition ? { top: `${datePanelPosition.top}px`, left: `${datePanelPosition.left}px` } : undefined}
                         >
                             <DatePicker
@@ -165,21 +165,21 @@ export default function RunHistoryToolBar({
                                 selectsRange
                                 inline
                                 monthsShown={1}
-                                calendarClassName="rounded-md bg-[theme(background-elevated)] border border-[theme(border)] text-[theme(text-primary)]"
+                                calendarClassName="rounded-md bg-card border border-input text-foreground"
                                 wrapperClassName="react-datepicker-wrapper"
                                 dayClassName={(d) =>
-                                    `h-8 w-8 leading-8 text-center rounded text-sm text-[theme(text-primary)] hover:bg-[theme(background-surface)] ${
+                                    `h-8 w-8 leading-8 text-center rounded text-sm text-foreground hover:bg-accent/10 ${
                                         isDateInRange(d, dateRange.from, dateRange.to)
-                                            ? 'bg-[var(--color-accent)] text-black'
+                                            ? 'bg-accent text-accent-foreground'
                                             : ''
                                     }`
                                 }
                                 renderCustomHeader={({ date, decreaseMonth, increaseMonth, prevMonthButtonDisabled, nextMonthButtonDisabled }) => (
-                                    <div className="flex items-center justify-between px-2 py-1 text-[theme(text-primary)]">
+                                    <div className="flex items-center justify-between px-2 py-1 text-foreground">
                                         <button
                                             onClick={decreaseMonth}
                                             disabled={prevMonthButtonDisabled}
-                                            className="h-7 w-7 inline-flex items-center justify-center rounded border border-[theme(border)] hover:bg-[theme(background-hover)] disabled:opacity-40"
+                                            className="h-7 w-7 inline-flex items-center justify-center rounded border border-input hover:bg-accent/10 disabled:opacity-40"
                                             type="button"
                                         >
                                             <ChevronLeft className="w-4 h-4" />
@@ -190,7 +190,7 @@ export default function RunHistoryToolBar({
                                         <button
                                             onClick={increaseMonth}
                                             disabled={nextMonthButtonDisabled}
-                                            className="h-7 w-7 inline-flex items-center justify-center rounded border border-[theme(border)] hover:bg-[theme(background-hover)] disabled:opacity-40"
+                                            className="h-7 w-7 inline-flex items-center justify-center rounded border border-input hover:bg-accent/10 disabled:opacity-40"
                                             type="button"
                                         >
                                             <ChevronRight className="w-4 h-4" />
@@ -201,7 +201,7 @@ export default function RunHistoryToolBar({
                             <div className="mt-3 flex gap-2">
                                 {(dateRange.from || dateRange.to) && (
                                     <button
-                                        className="flex-1 h-8 rounded-md border text-sm border-[theme(border)] text-[theme(text-secondary)] hover:text-[theme(text-primary)] hover:bg-[theme(background-hover)]"
+                                        className="flex-1 h-8 rounded-md border text-sm border-input text-muted-foreground hover:text-foreground hover:bg-accent/10"
                                         onClick={() => {
                                             onDateRangeChange({ from: undefined, to: undefined });
                                         }}
@@ -211,7 +211,7 @@ export default function RunHistoryToolBar({
                                     </button>
                                 )}
                                 <button
-                                    className="h-8 px-3 rounded-md border text-sm border-[theme(border)] text-[theme(text-secondary)] hover:text-[theme(text-primary)] hover:bg-[theme(background-hover)]"
+                                    className="h-8 px-3 rounded-md border text-sm border-input text-muted-foreground hover:text-foreground hover:bg-accent/10"
                                     onClick={() => {
                                         setIsDateOpen(false);
                                     }}
@@ -226,7 +226,7 @@ export default function RunHistoryToolBar({
                     <div className="relative">
                         <button
                             ref={statusButtonRef}
-                            className="h-9 px-3 rounded-md border text-sm transition-colors flex items-center border-[theme(border)] text-[theme(text-secondary)] hover:text-[theme(text-primary)] hover:bg-[theme(background-hover)]"
+                            className="h-9 px-3 rounded-md border text-sm transition-colors flex items-center border-input text-muted-foreground hover:text-foreground hover:bg-accent/10"
                             onClick={() => {
                                 const statusPanel = document.getElementById("status-filter-panel");
                                 setIsDateOpen(false);
@@ -242,46 +242,46 @@ export default function RunHistoryToolBar({
                                 : `${selectedStatuses.size} Status`}
                             <ChevronRight className="ml-2 h-4 w-4 rotate-90" />
                         </button>
-                        <div id="status-filter-panel" ref={statusPanelRef} className="hidden absolute z-50 right-0 mt-2 w-56 p-3 rounded-md border bg-[theme(background-light)] border-[theme(border)]">
+                        <div id="status-filter-panel" ref={statusPanelRef} className="hidden absolute z-50 right-0 mt-2 w-56 p-3 rounded-md border bg-card border-input">
                             <div className="space-y-3">
-                                <label className="flex items-center gap-2 text-[theme(text-primary)] cursor-pointer">
+                                <label className="flex items-center gap-2 text-foreground cursor-pointer">
                                     <input
                                         type="checkbox"
-                                        className="accent-emerald-500"
+                                        className="accent-green-600 dark:accent-green-400"
                                         checked={selectedStatuses.has("success")}
                                         onChange={() => onToggleStatus("success")}
                                     />
-                                    <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                                    <CheckCircle2 className="w-4 h-4 text-green-600 dark:text-green-400" />
                                     <span>Success</span>
                                 </label>
-                                <label className="flex items-center gap-2 text-[theme(text-primary)] cursor-pointer">
+                                <label className="flex items-center gap-2 text-foreground cursor-pointer">
                                     <input
                                         type="checkbox"
-                                        className="accent-red-500"
+                                        className="accent-destructive"
                                         checked={selectedStatuses.has("failed")}
                                         onChange={() => onToggleStatus("failed")}
                                     />
-                                    <XCircle className="w-4 h-4 text-red-400" />
+                                    <XCircle className="w-4 h-4 text-destructive" />
                                     <span>Failed</span>
                                 </label>
-                                <label className="flex items-center gap-2 text-[theme(text-primary)] cursor-pointer">
+                                <label className="flex items-center gap-2 text-foreground cursor-pointer">
                                     <input
                                         type="checkbox"
-                                        className="accent-blue-500"
+                                        className="accent-accent"
                                         checked={selectedStatuses.has("in_progress")}
                                         onChange={() => onToggleStatus("in_progress")}
                                     />
-                                    <Loader2 className="w-4 h-4 text-blue-400" />
+                                    <Loader2 className="w-4 h-4 text-accent" />
                                     <span>In Progress</span>
                                 </label>
-                                <label className="flex items-center gap-2 text-[theme(text-primary)] cursor-pointer">
+                                <label className="flex items-center gap-2 text-foreground cursor-pointer">
                                     <input
                                         type="checkbox"
-                                        className="accent-slate-400"
+                                        className="accent-muted-foreground"
                                         checked={selectedStatuses.has("skipped")}
                                         onChange={() => onToggleStatus("skipped")}
                                     />
-                                    <FilterIcon className="w-4 h-4 text-slate-400" />
+                                    <FilterIcon className="w-4 h-4 text-muted-foreground" />
                                     <span>Filtered</span>
                                 </label>
                             </div>
@@ -300,9 +300,9 @@ export default function RunHistoryToolBar({
                 </div>
 
                 <div className="flex items-center gap-2">
-                    <span className="text-[theme(text-secondary)] text-sm">Runs per page:</span>
+                    <span className="text-muted-foreground text-sm">Runs per page:</span>
                     <select
-                        className="w-20 h-9 rounded-md border border-[theme(border)] bg-[theme(background-light)] text-[theme(text-primary)] px-2"
+                        className="w-20 h-9 rounded-md border border-input bg-card text-foreground px-2"
                         value={String(runsPerPageValue)}
                         onChange={(e) => onRunsPerPageChange(Number(e.target.value))}
                     >

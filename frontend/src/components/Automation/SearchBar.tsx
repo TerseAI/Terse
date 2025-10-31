@@ -1,4 +1,4 @@
-import { MagnifyingGlassIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import { Search, X } from 'lucide-react';
 
 interface SearchBarProps {
     searchQuery: string;
@@ -10,21 +10,21 @@ export function SearchBar({ searchQuery, className, onSearchChange }: SearchBarP
     return (
         <div className={`relative flex-1 ${className}`}>
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <MagnifyingGlassIcon className="h-5 w-5 text-[theme(text-disabled)]" />
+                <Search className="h-5 w-5 text-muted-foreground" />
             </div>
             <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => onSearchChange(e.target.value)}
                 placeholder="Search automations by name..."
-                className="block w-full pl-10 pr-10 py-2.5 text-sm text-[theme(text-primary)] bg-[theme(background)] border border-[theme(border)] rounded-lg placeholder-[theme(text-disabled)] focus:outline-none focus:border-[theme(--color-accent)] transition-colors shadow-[var(--shadow)]"
+                className="block w-full pl-10 pr-10 py-2.5 text-sm text-foreground bg-background border border-input rounded-lg placeholder-muted-foreground focus:outline-none focus:border-accent transition-colors shadow-sm"
             />
             {searchQuery && (
                 <button
                     onClick={() => onSearchChange('')}
-                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-[theme(text-disabled)] hover:text-[theme(text-secondary)] transition-colors"
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-muted-foreground hover:text-foreground transition-colors"
                 >
-                    <XMarkIcon className="h-5 w-5" />
+                    <X className="h-5 w-5" />
                 </button>
             )}
         </div>
