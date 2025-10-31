@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Card } from "../components/ui/card";
+import { Card, CardContent } from "../components/ui/card";
 import DailySummary from "../components/DailySummary";
 import { ActivityFeedService, DailyActivitySummary } from '../services/activityFeed';
 import { useAuth } from "../services/auth";
@@ -46,7 +46,9 @@ function OverallSummary() {
         <>
             <h1 className="text-2xl font-bold pb-4">Overall Summary</h1>
             <Card>
-                <DailySummary summary={summary} loading={loading} error={error} />
+                <CardContent>
+                    <DailySummary summary={summary} loading={loading} error={error} />
+                </CardContent>
             </Card>
         </>
     )

@@ -265,10 +265,10 @@ model automations {
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
 
-  user   users               @relation(fields: [user_id], references: [id], onDelete: Cascade)
-  prompt automation_prompts?
-  inputs automation_inputs[]
-  output automation_outputs?
+  user                users                 @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  prompt              automation_prompts?
+  inputs              automation_inputs[]
+  output              automation_outputs?
   run_history_records run_history_records[]
 
   @@index([user_id])
@@ -365,28 +365,28 @@ enum RunHistoryIntegration {
 
 // Run History tables
 model run_history_records {
-  id               String                  @id @default(cuid())
-  automation_id    String
+  id                  String                   @id @default(cuid())
+  automation_id       String
   // Timestamp of the run (when the trigger was processed)
-  timestamp        DateTime                @default(now())
+  timestamp           DateTime                 @default(now())
   // Trigger details (denormalized onto the record for fast reads)
-  event            String
+  event               String
   trigger_integration RunHistoryIntegration
-  trigger_source   String
-  trigger_title    String?
-  trigger_subheader String?
-  trigger_url      String?
+  trigger_source      String
+  trigger_title       String?
+  trigger_subheader   String?
+  trigger_url         String?
   // Whether this item was filtered out by rules before action
-  filtered         Boolean                 @default(false)
+  filtered            Boolean                  @default(false)
   // Decision summary
-  decision_action  RunHistoryDecisionAction
-  decision_reason  String
+  decision_action     RunHistoryDecisionAction
+  decision_reason     String
   // Run status
-  status           RunHistoryStatus
-  created_at       DateTime                @default(now())
-  updated_at       DateTime                @updatedAt
+  status              RunHistoryStatus
+  created_at          DateTime                 @default(now())
+  updated_at          DateTime                 @updatedAt
 
-  automation automations @relation(fields: [automation_id], references: [id], onDelete: Cascade)
+  automation automations           @relation(fields: [automation_id], references: [id], onDelete: Cascade)
   actions    run_history_actions[]
 
   @@index([automation_id])
@@ -395,14 +395,14 @@ model run_history_records {
 }
 
 model run_history_actions {
-  id                   String               @id @default(cuid())
+  id                    String                @id @default(cuid())
   run_history_record_id String
-  action               String
-  integration          RunHistoryIntegration
-  target               String
-  details              String
-  url                  String?
-  created_at           DateTime             @default(now())
+  action                String
+  integration           RunHistoryIntegration
+  target                String
+  details               String
+  url                   String?
+  created_at            DateTime              @default(now())
 
   run_history_record run_history_records @relation(fields: [run_history_record_id], references: [id], onDelete: Cascade)
 
