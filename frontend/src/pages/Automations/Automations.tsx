@@ -19,18 +19,9 @@ function Automations() {
 
     return (
         <AutomationProvider automationId={automationId}>
-            <div className="flex flex-col h-full">
-                <div className="py-3">
-                    <button
-                        onClick={() => navigate('/app/automations')}
-                        className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors pl-2 mt-1"
-                    >
-                        <ArrowLeft className="h-4 w-4" />
-                        Back to Automations
-                    </button>
-                </div>
-                <div className="flex-1 h-full min-h-0">
-                    <div className="max-w-6xl mx-auto px-6 pt-4 h-full min-h-0 flex flex-col">
+            <div className="grid grid-cols-20 h-full pt-1">
+                <div className="h-full min-h-0 col-span-20">
+                    <div className="mx-auto px-6 h-full min-h-0 flex flex-col">
                         <TabGroup defaultIndex={initialIndex} onChange={(index) => {
                             const next = tabs[index];
                             const nextParams = new URLSearchParams(searchParams);

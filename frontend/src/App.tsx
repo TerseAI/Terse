@@ -73,7 +73,6 @@ function AppLayout() {
     <SidebarProvider>
       <AppSidebar />
       <main className="w-full">
-        <SidebarTrigger />
         <Outlet />
       </main>
     </SidebarProvider>

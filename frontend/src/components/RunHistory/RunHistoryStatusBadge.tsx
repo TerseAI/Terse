@@ -1,5 +1,7 @@
 import { CheckCircle2, XCircle, Loader2, Filter } from "lucide-react";
 import type { RunHistoryStatus } from "../../shared/RunHistoryTypes";
+import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
 
 type Props = {
     status: RunHistoryStatus;
@@ -10,36 +12,36 @@ type Props = {
 export default function RunHistoryStatusBadge({ status, filtered: _filtered, className }: Props) {
     if (status === "skipped")
         return (
-            <span className={className ?? "inline-flex items-center gap-1.5 px-2 py-0.5 text-xs rounded border border-input text-foreground bg-transparent"}>
-                <Filter className="w-3.5 h-3.5 text-muted-foreground" />
+            <Badge variant="outline" className={cn("gap-1.5", className)}>
+                <Filter className="text-muted-foreground" />
                 Filtered
-            </span>
+            </Badge>
         );
     if (status === "success")
         return (
-            <span className={className ?? "inline-flex items-center gap-1.5 px-2 py-0.5 text-xs rounded text-foreground border border-input bg-transparent"}>
-                <CheckCircle2 className="w-3.5 h-3.5 text-green-600 dark:text-green-400" />
+            <Badge variant="outline" className={cn("gap-1.5", className)}>
+                <CheckCircle2 className="text-green-600 dark:text-green-400" />
                 Success
-            </span>
+            </Badge>
         );
     if (status === "failed")
         return (
-            <span className={className ?? "inline-flex items-center gap-1.5 px-2 py-0.5 text-xs rounded border border-input text-foreground bg-transparent"}>
-                <XCircle className="w-3.5 h-3.5 text-destructive" />
+            <Badge variant="outline" className={cn("gap-1.5", className)}>
+                <XCircle className="text-destructive" />
                 Failed
-            </span>
+            </Badge>
         );
     if (status === "in_progress")
         return (
-            <span className={className ?? "inline-flex items-center gap-1.5 px-2 py-0.5 text-xs rounded border border-input text-foreground bg-transparent"}>
-                <Loader2 className="w-3.5 h-3.5 text-accent" />
+            <Badge variant="outline" className={cn("gap-1.5", className)}>
+                <Loader2 className="text-accent" />
                 In Progress
-            </span>
+            </Badge>
         );
     return (
-        <span className={className ?? "inline-flex items-center px-2 py-0.5 text-xs rounded border border-input text-foreground"}>
+        <Badge variant="outline" className={className}>
             Pending
-        </span>
+        </Badge>
     );
 }
 
