@@ -5,10 +5,14 @@ import { db } from '../prismaClient';
 import { User } from '../types/prisma';
 import * as readline from 'readline';
 import chalk from 'chalk';
+import { PendingApprovalState, promptForApprovalDecision, resumeApprovalFlow } from './helpers/ApprovalTestHelper';
 
 // Default user info
 const DEFAULT_USER_EMAIL = 'thomas.karatzas@mail.mcgill.ca';
 const DEFAULT_USER_ID = 'thomas.karatzas@mail.mcgill.ca';
+
+// In-memory storage for pending approval state
+let pendingApprovalState: PendingApprovalState | null = null;
 
 // Mock email templates - Interview process progression
 const mockEmails = {
@@ -218,6 +222,31 @@ async function main() {
                     }
                 }
                 console.log(chalk.gray('Duration:'), `${duration}ms`);
+
+                // Check if any result has a pending approval
+                for (const result of results) {
+                    if (result.approvalResult && result.approvalResult.status === 'awaiting_approval' && result.automation) {
+                        pendingApprovalState = {
+                            automationId: result.automation.id,
+                            serializedState: JSON.stringify(result.approvalResult.state),
+                            interruptions: result.approvalResult.interruptions,
+                        };
+
+                        console.log(chalk.cyan('\n⏸️  Automation paused awaiting approval'));
+                        console.log(chalk.gray(`Automation: ${result.automation.name}`));
+                        console.log(chalk.gray(`Pending interruptions: ${pendingApprovalState.interruptions.length}`));
+                        console.log();
+
+                        const approved = await promptForApprovalDecision(rl);
+
+                        if (approved) {
+                            console.log(chalk.green('\n✓ Approved! Resuming automation...\n'));
+                            await resumeApprovalFlow(pendingApprovalState);
+                        } else {
+                            console.log(chalk.yellow('\n✗ Rejected. Automation cancelled.\n'));
+                        }
+                    }
+                }
             }
         }
 
