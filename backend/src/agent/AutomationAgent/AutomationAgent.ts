@@ -13,7 +13,7 @@ export class AutomationAgent<T extends Session> {
     private automationPrompt: AutomationPrompt;
     private automationInputs: AutomationInput[];
     private automationOutput: AutomationOutput;
-    agent?: Agent<T, AgentOutputType>;
+    private agent?: Agent<T, AgentOutputType>;
     private tools: Tool<T>[] = [];
 
     constructor(session: T, output: Output<T>, automationPrompt: AutomationPrompt, automationInputs: AutomationInput[], automationOutput: AutomationOutput) {
@@ -25,12 +25,35 @@ export class AutomationAgent<T extends Session> {
         this.tools = output.toolbox;
     }
 
+    async initializeAgent(): Promise<Agent<T, AgentOutputType>> {
+        const agent = new Agent<T, AgentOutputType>({
+            name: 'Living Document Automator',
+            instructions: await systemPrompt(this.session, this.automationPrompt, this.automationInputs, this.automationOutput),
+            model: 'gpt-5',
+            tools: this.tools
+        });
+
+        this.agent = agent;
+        return agent;
+    }
+
+    getAgent(): Agent<T, AgentOutputType> {
+        if (!this.agent) {
+            throw new Error("Agent not initialized. Call initializeAgent() before getAgent()");
+        }
+        return this.agent;
+    }
+
     setInputEvent(event: InputEvent) {
         this.inputEvent = event;
     }
 
     async run(): Promise<ApprovalResult<T, Agent<T, AgentOutputType>>> {
         console.log("Running Automation Agent");
+
+        if (!this.agent) {
+            throw new Error("Agent not initialized. Call initializeAgent() before run()");
+        }
 
         // Add the input event as the initial message to the history
         if (this.inputEvent) {
@@ -42,15 +65,6 @@ export class AutomationAgent<T extends Session> {
             throw new Error("No input event set. Call setInputEvent() before run()");
         }
 
-        const agent = new Agent<T, AgentOutputType>({
-            name: 'Living Document Automator',
-            instructions: await systemPrompt(this.session, this.automationPrompt, this.automationInputs, this.automationOutput),
-            model: 'gpt-5',
-            tools: this.tools
-        });
-
-        this.agent = agent;
-
-        return ApprovalInterceptor.run(agent, this.history, this.session as T);
+        return ApprovalInterceptor.run(this.agent, this.history, this.session as T);
     }
 }

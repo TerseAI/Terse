@@ -16,6 +16,8 @@ export type ApprovalResult<T extends Session, AgentType extends Agent<T, AgentOu
     interruptions: RunToolApprovalItem[];
   };
 
+export type Decision = 'approve' | 'reject';
+
 /**
  * ApprovalInterceptor wraps the OpenAI Agents SDK run() function to detect
  * and handle approval interruptions.
@@ -49,7 +51,7 @@ export class ApprovalInterceptor {
   static async resume<T extends Session, AgentType extends Agent<T, AgentOutputType>>(
     agent: AgentType,
     serializedState: string,
-    decision: 'approve' | 'reject',
+    decision: Decision,
     interruption: RunToolApprovalItem,
   ): Promise<ApprovalResult<T, AgentType>> {
     // Deserialize the saved state
