@@ -4,11 +4,7 @@ import { GmailEventData } from '../routes/gmail';
 import { db } from '../prismaClient';
 import chalk from 'chalk';
 import * as readline from 'readline';
-import { ApprovalInterceptor, ApprovalResult, Decision } from '../agent/approval/ApprovalInterceptor';
-import { AutomationAgent } from '../agent/AutomationAgent/AutomationAgent';
-import { NotionOutput, NotionSession } from '../Updater/Outputs/NotionOutput';
-import { Agent, AgentOutputType, RunToolApprovalItem } from '@openai/agents';
-import { AutomationAgentFactory } from 'src/agent/AutomationAgentFactory';
+import { PendingApprovalState, promptForApprovalDecision, resumeApprovalFlow } from './helpers/ApprovalTestHelper';
 
 /**
  * Quick test script for EventProcessor
@@ -28,69 +24,8 @@ const getUserEmail = (): string => {
 
 const USER_EMAIL = getUserEmail();
 
-// In-memory storage for pending approval state (for test script only)
-let pendingApprovalState: {
-    automationId: string;
-    serializedState: string;
-    interruptions: RunToolApprovalItem[];
-} | null = null;
-
-/**
- * Prompt user for approval decision
- */
-function promptForApproval(): Promise<boolean> {
-    return new Promise((resolve) => {
-        const rl = readline.createInterface({
-            input: process.stdin,
-            output: process.stdout,
-        });
-
-        rl.question(chalk.yellow('Do you approve this action? (yes/no): '), (answer) => {
-            rl.close();
-            resolve(answer.toLowerCase() === 'yes' || answer.toLowerCase() === 'y');
-        });
-    });
-}
-
-/**
- * Resume an automation from saved approval state
- */
-async function resumeApproval(state: typeof pendingApprovalState, decision: Decision): Promise<void> {
-    if (!state) return;
-
-    try {
-        console.log(chalk.yellow('\n🔄 Resuming automation...\n'));
-
-        // Get the first interruption to approve/reject
-        const interruption: RunToolApprovalItem = state.interruptions[0];
-        if (!interruption) {
-            console.error(chalk.red('No interruption found to process'));
-            return;
-        }
-
-        const automationAgent: AutomationAgent<NotionSession> = await AutomationAgentFactory.createFromAutomationId(state.automationId);
-        await automationAgent.initializeAgent();
-
-        // Call resume on the ApprovalInterceptor
-        const resumed: ApprovalResult<NotionSession, Agent<NotionSession, AgentOutputType>> = await ApprovalInterceptor.resume(
-            automationAgent.getAgent(),
-            state.serializedState,
-            decision,
-            interruption
-        );
-
-        if (resumed.status === 'completed') {
-            console.log(chalk.green('✓ Automation completed successfully!'));
-            console.log(chalk.gray('Final output:'), resumed.result.finalOutput);
-        } else {
-            console.log(chalk.yellow('⏸️  Another approval is needed'));
-            console.log(chalk.gray(`Pending interruptions: ${resumed.interruptions.length}`));
-            // Could loop here to handle multiple approvals, but for MVP just show it
-        }
-    } catch (error) {
-        console.error(chalk.red('Error resuming automation:'), error);
-    }
-}
+// In-memory storage for pending approval state
+let pendingApprovalState: PendingApprovalState | null = null;
 
 // EDIT THIS to test different emails
 // This email should trigger a CRM update in Notion
@@ -200,11 +135,17 @@ async function runQuickTest() {
                 console.log(chalk.gray(`Pending interruptions: ${pendingApprovalState.interruptions.length}`));
                 console.log();
 
-                const approved = await promptForApproval();
+                const rl = readline.createInterface({
+                    input: process.stdin,
+                    output: process.stdout,
+                });
+
+                const approved = await promptForApprovalDecision(rl);
+                rl.close();
 
                 if (approved) {
                     console.log(chalk.green('\n✓ Approved! Resuming automation...\n'));
-                    await resumeApproval(pendingApprovalState, 'approve');
+                    await resumeApprovalFlow(pendingApprovalState);
                 } else {
                     console.log(chalk.yellow('\n✗ Rejected. Automation cancelled.\n'));
                 }
