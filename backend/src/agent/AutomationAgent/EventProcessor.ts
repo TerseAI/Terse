@@ -188,6 +188,7 @@ export class EventProcessor {
         } as NotionSession;
 
         const automationAgent = new AutomationAgent<NotionSession>(session, notionOutput, automation.prompt, automation.inputs, outputIntegration);
+        await automationAgent.initializeAgent();
         automationAgent.setInputEvent(this.inputEvent);
 
         const result: ApprovalResult<NotionSession, Agent<NotionSession, AgentOutputType>> = await automationAgent.run();
