@@ -19,7 +19,7 @@ export default function RunHistoryEmptyState({ hasActiveFilters, onClearAll }: P
         <Empty>
             <EmptyHeader>
                 <EmptyMedia variant="icon">
-                    <FileText />
+                    <FileText className="text-primary"/>
                 </EmptyMedia>
                 <EmptyTitle>No runs found</EmptyTitle>
                 <EmptyDescription>
