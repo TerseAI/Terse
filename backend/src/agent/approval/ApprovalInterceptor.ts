@@ -5,16 +5,16 @@ import { Session } from '../../server';
  * Result from approval-aware execution.
  * Discriminated union: either completed or awaiting approval.
  */
-export type ApprovalResult<T extends Session, AgentType extends Agent<T, any>> =
+export type ApprovalResult<T extends Session, AgentType extends Agent<T, AgentOutputType>> =
   | {
-      status: 'completed';
-      result: RunResult<T, AgentType>;
-    }
+    status: 'completed';
+    result: RunResult<T, AgentType>;
+  }
   | {
-      status: 'awaiting_approval';
-      state: RunState<T, AgentType>;
-      interruptions: RunToolApprovalItem[];
-    };
+    status: 'awaiting_approval';
+    state: RunState<T, AgentType>;
+    interruptions: RunToolApprovalItem[];
+  };
 
 /**
  * ApprovalInterceptor wraps the OpenAI Agents SDK run() function to detect
@@ -57,9 +57,9 @@ export class ApprovalInterceptor {
 
     // Apply the user's decision  
     if (decision === 'approve') {
-        state.approve(interruption);
+      state.approve(interruption);
     } else {
-        state.reject(interruption);
+      state.reject(interruption);
     }
 
     // Resume execution
