@@ -45,4 +45,39 @@ export class ApprovalInterceptor {
       result,
     };
   }
+
+  static async resume<T extends Session, AgentType extends Agent<T, AgentOutputType>>(
+    agent: AgentType,
+    serializedState: string,
+    decision: 'approve' | 'reject',
+    interruption: RunToolApprovalItem,
+  ): Promise<ApprovalResult<T, AgentType>> {
+    // Deserialize the saved state
+    const state: RunState<T, AgentType> = await RunState.fromString(agent, serializedState);
+
+    // Apply the user's decision  
+    if (decision === 'approve') {
+        state.approve(interruption);
+    } else {
+        state.reject(interruption);
+    }
+
+    // Resume execution
+    const result = await run(agent, state);
+
+    const hasInterruptions = result.interruptions && result.interruptions.length > 0;
+
+    if (hasInterruptions) {
+      return {
+        status: 'awaiting_approval',
+        state: result.state,
+        interruptions: result.interruptions,
+      };
+    }
+
+    return {
+      status: 'completed',
+      result,
+    };
+  }
 }
