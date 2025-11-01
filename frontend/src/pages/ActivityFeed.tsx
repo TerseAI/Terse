@@ -1,13 +1,14 @@
 import { useEffect, useState } from "react";
 import { Inbox, ChevronRight } from "lucide-react";
 import AvatarBar from "../components/activity/AvatarBar";
-import { Card } from "../components/ui/card";
+import { Card, CardContent, CardHeader } from "../components/ui/card";
 import { ActivityEvent, SubActivity, CommitAssociation } from "../shared/types";
 import { ActivityFeedService } from "../services/activityFeed";
 import EventDetails from "../components/activity/EventDetails";
 import { Disclosure, DisclosureButton, DisclosurePanel } from '@headlessui/react';
 import clsx from 'clsx'
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
+import { Skeleton } from "@/components/ui/skeleton";
 
 function ActivityFeed() {
     const [activity, setActivity] = useState<ActivityEvent[]>([]);
@@ -100,12 +101,30 @@ function ActivityFeedContent({
 }
 
 function LoadingState() {
-    // three skeleton cards with pulse animation
     return (
         <div className="grid grid-cols-1 gap-4">
-            <div className="animate-pulse rounded-lg bg-[theme(background)] h-24 w-full"></div>
-            <div className="animate-pulse rounded-lg bg-[theme(background)] h-24 w-full"></div>
-            <div className="animate-pulse rounded-lg bg-[theme(background)] h-24 w-full"></div>
+            {[1, 2, 3].map((i) => (
+                <Card key={i}>
+                    <CardHeader className="flex justify-between">
+                        {/* Avatar and repo info skeleton */}
+                        <div className="flex items-center gap-3">
+                            <Skeleton className="h-10 w-10 rounded-full" />
+                            <div className="space-y-2">
+                                <Skeleton className="h-4 w-[200px]" />
+                                <Skeleton className="h-3 w-[150px]" />
+                            </div>
+                        </div>
+                        {/* Date skeleton */}
+                        <Skeleton className="h-4 w-[100px]" />
+                    </CardHeader>
+
+                    {/* Title and event count skeleton */}
+                    <CardContent className="flex justify-between items-center">
+                        <Skeleton className="h-5 w-[250px]" />
+                        <Skeleton className="h-4 w-[80px]" />
+                    </CardContent>
+                </Card>
+            ))}
         </div>
     )
 }
@@ -118,15 +137,15 @@ function FeedContent({ activity }: { activity: ActivityEvent[] }) {
     return (
         activity.map((event, index) => (
             <Card key={index}>
-                <div className="grid grid-flow-row gap-2">
-                    {/* Header with avatar, repo info, and date */}
-                    <div className="flex justify-between">
-                        <AvatarBar event={event} />
-                        <EventDetails event={event} />
-                    </div>
+                {/* Header with avatar, repo info, and date */}
+                <CardHeader className="flex justify-between">
+                    <AvatarBar event={event} />
+                    <EventDetails event={event} />
+                </CardHeader>
 
+                <CardContent className="grid grid-flow-row gap-2">
                     <SubActivityEvents event={event} />
-                </div>
+                </CardContent>
             </Card>
         ))
     )
