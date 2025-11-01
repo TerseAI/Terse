@@ -13,27 +13,30 @@ import OAuthError from "./pages/OAuthError";
 import OAuthSuccess from "./pages/OAuthSuccess";
 import { AuthProvider, useAuth } from "./services/auth";
 import { SidebarProvider } from "./components/ui/sidebar";
+import { ThemeProvider } from "./components/theme-provider";
 
 function App() {
   return (
-    <AuthProvider>
-      <Router>
-        <Routes>
-          <Route path="/" element={<Navigate to="/app" replace />} />
-          <Route path="/app" element={<Content />}>
-            <Route index element={<Home />} />
-            <Route path="activity" element={<ActivityFeed />} />
-            <Route path="automations" element={<AutomationsList />} />
-            <Route path="automations/new" element={<Automations />} />
-            <Route path="automations/:id" element={<Automations />} />
-          </Route>
-          <Route path="/changelog" element={<LandingPageChangelog />} />
-          <Route path="/oauth/success" element={<OAuthSuccess />} />
-          <Route path="/oauth/error" element={<OAuthError />} />
-          <Route path="*" element={<div>Not Found</div>} />
-        </Routes>
-      </Router>
-    </AuthProvider>
+    <ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme">
+      <AuthProvider>
+        <Router>
+          <Routes>
+            <Route path="/" element={<Navigate to="/app" replace />} />
+            <Route path="/app" element={<Content />}>
+              <Route index element={<Home />} />
+              <Route path="activity" element={<ActivityFeed />} />
+              <Route path="automations" element={<AutomationsList />} />
+              <Route path="automations/new" element={<Automations />} />
+              <Route path="automations/:id" element={<Automations />} />
+            </Route>
+            <Route path="/changelog" element={<LandingPageChangelog />} />
+            <Route path="/oauth/success" element={<OAuthSuccess />} />
+            <Route path="/oauth/error" element={<OAuthError />} />
+            <Route path="*" element={<div>Not Found</div>} />
+          </Routes>
+        </Router>
+      </AuthProvider>
+    </ThemeProvider>
   )
 }
 

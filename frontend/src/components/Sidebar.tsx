@@ -22,6 +22,7 @@ import { useAuth } from "@/services/auth";
 import { useEffect, useState } from "react";
 import { BackendProvider } from "@/services/backend";
 import { Automation } from "@/shared/types";
+import { useTheme } from "./theme-provider";
 
 interface NavItem {
     title: string;
@@ -100,6 +101,7 @@ function AppSidebarHeader() {
 function AppSidebarFooter() {
     const { user, logout } = useAuth();
     const navigate = useNavigate();
+    const { setTheme, theme } = useTheme()
 
     const handleLogout = async () => {
         await logout();
@@ -123,6 +125,9 @@ function AppSidebarFooter() {
                             className="min-w-56"
                             align="start"
                         >
+                            <DropdownMenuItem onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}>
+                                <span>{theme === 'light' ? 'Switch to Dark Mode' : 'Switch to Light Mode'}</span>
+                            </DropdownMenuItem>
                             <DropdownMenuItem onClick={handleLogout}>
                                 <span>Logout</span>
                             </DropdownMenuItem>
