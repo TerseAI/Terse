@@ -15,7 +15,7 @@ import chalk from 'chalk';
 const getUserEmail = (): string => {
     const cliEmail = process.argv[2];
     const envEmail = process.env.TEST_USER_EMAIL;
-    const defaultEmail = 'thomas.karatzas@mail.mcgill.ca';
+    const defaultEmail = 'thomas@useterse.ai';
 
     return cliEmail || envEmail || defaultEmail;
 };
@@ -23,26 +23,34 @@ const getUserEmail = (): string => {
 const USER_EMAIL = getUserEmail();
 
 // EDIT THIS to test different emails
+// This email should trigger a CRM update in Notion
 const mockEmail: GmailEventData = {
-    id: 'msg_google_001',
-    threadId: 'thread_google_001',
-    subject: 'Your Google Job Application Has Been Received',
-    from: 'noreply-jobs@google.com',
+    id: 'msg_crm_update_001',
+    threadId: 'thread_crm_001',
+    subject: 'Re: Demo Follow-up - Moving Forward with Enterprise Plan',
+    from: 'sarah.johnson@acmecorp.com',
     to: USER_EMAIL,
     date: new Date().toISOString(),
     internalDate: new Date().getTime().toString(),
-    messageId: '<application001@google.com>',
-    body: `Dear Applicant,
+    messageId: '<crm_update_001@acmecorp.com>',
+    body: `Hi,
 
-Thank you for applying to Google.
+Great speaking with you yesterday! After our demo call, the team is excited to move forward.
 
-We have received your application for the Software Engineer position. Our team will review your qualifications and contact you if your skills and experience match our requirements.
+Here's where we're at:
 
-We appreciate your interest in joining Google.
+DEAL STATUS: Ready to proceed with Enterprise plan
+COMPANY: Acme Corporation
+CONTACT: Sarah Johnson, VP of Engineering
+EMAIL: sarah.johnson@acmecorp.com
+PHONE: +1 (555) 123-4567
+DEAL SIZE: $85,000 annually
+CLOSE DATE: December 15, 2025
 
-Best regards,
-Google Recruiting Team`,
-    snippet: 'Thank you for applying to Google. We have received your application for the Software Engineer position...'
+Best,
+Sarah Johnson
+VP of Engineering, Acme Corp`,
+    snippet: 'Deal update: Acme Corp moving forward with $85K Enterprise plan. Close date Dec 15. Technical evaluation scheduled...'
 };
 
 async function runQuickTest() {
