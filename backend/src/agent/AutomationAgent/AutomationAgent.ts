@@ -1,9 +1,10 @@
-import { Agent, AgentInputItem, run, AgentOutputType, Tool, RunResult } from '@openai/agents';
+import { Agent, AgentInputItem, run, AgentOutputType, Tool, RunResult, RunState } from '@openai/agents';
 import { Session } from '../../server';
 import { systemPrompt } from './SystemPrompt';
 import { InputEvent } from '../../Updater/InputEvents';
 import { Output } from '../../Updater/Outputs/Output';
 import { AutomationInput, AutomationOutput, AutomationPrompt } from '../../types/prisma';
+import { ApprovalInterceptor, ApprovalResult } from '../approval/ApprovalInterceptor';
 
 export class AutomationAgent<T extends Session> {
     private history: AgentInputItem[] = [];
@@ -28,7 +29,7 @@ export class AutomationAgent<T extends Session> {
         this.inputEvent = event;
     }
 
-    async run(): Promise<RunResult<T, Agent<T, AgentOutputType>>> {
+    async run(): Promise<ApprovalResult<T, Agent<T, AgentOutputType>>> {
         console.log("Running Automation Agent");
 
         // Add the input event as the initial message to the history
@@ -50,10 +51,6 @@ export class AutomationAgent<T extends Session> {
 
         this.agent = agent;
 
-        const result = await run(agent, this.history, {
-            context: this.session as T,
-        });
-
-        return result;
+        return ApprovalInterceptor.run(agent, this.history, this.session as T);
     }
 }
