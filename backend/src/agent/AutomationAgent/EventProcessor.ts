@@ -16,11 +16,13 @@ export class ProcessorResult {
     success: boolean;
     message: string;
     automation: Automation | null;
+    approvalResult?: ApprovalResult<NotionSession, Agent<NotionSession, AgentOutputType>> | null;
 
-    constructor(success: boolean, message: string, automation: Automation | null) {
+    constructor(success: boolean, message: string, automation: Automation | null, approvalResult?: ApprovalResult<NotionSession, Agent<NotionSession, AgentOutputType>> | null) {
         this.success = success;
         this.message = message;
         this.automation = automation;
+        this.approvalResult = approvalResult;
     }
 }
 
@@ -191,15 +193,21 @@ export class EventProcessor {
         const result: ApprovalResult<NotionSession, Agent<NotionSession, AgentOutputType>> = await automationAgent.run();
         if (result.status === 'completed') {
             console.log(chalk.green(`Automation "${automation.name}" completed:`), result.result.finalOutput);
-            return persistRunResult(runId, result.result, session, automation);
+            return persistRunResult(runId, result.result, session, automation, result);
         } else {
-            console.log(chalk.yellow(`Automation "${automation.name}" awaiting approval:`), result.interruptions);
-            return new ProcessorResult(false, "Automation awaiting approval", automation);
+            console.log(chalk.yellow(`Automation "${automation.name}" awaiting approval:`));
+            return new ProcessorResult(false, "Automation awaiting approval", automation, result);
         }
     }
 }
 
-async function persistRunResult(runId: string | null, result: RunResult<NotionSession, Agent<NotionSession, AgentOutputType>>, session: NotionSession, automation: Automation): Promise<ProcessorResult> {
+async function persistRunResult(
+    runId: string | null, 
+    result: RunResult<NotionSession, Agent<NotionSession, AgentOutputType>>, 
+    session: NotionSession, 
+    automation: Automation, 
+    approvalResult?: ApprovalResult<NotionSession, Agent<NotionSession, AgentOutputType>> | null
+): Promise<ProcessorResult> {
     if (runId && session.runActions && session.runActions.length > 0) {
         for (const action of session.runActions) {
             try {
@@ -222,6 +230,7 @@ async function persistRunResult(runId: string | null, result: RunResult<NotionSe
     return new ProcessorResult(
         result.finalOutput ? true : false,
         result.finalOutput as string,
-        automation
+        automation,
+        approvalResult
     );
 }

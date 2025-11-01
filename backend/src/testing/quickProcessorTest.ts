@@ -3,6 +3,7 @@ import { GmailEvent } from '../Updater/InputEvents';
 import { GmailEventData } from '../routes/gmail';
 import { db } from '../prismaClient';
 import chalk from 'chalk';
+import * as readline from 'readline';
 
 /**
  * Quick test script for EventProcessor
@@ -21,6 +22,29 @@ const getUserEmail = (): string => {
 };
 
 const USER_EMAIL = getUserEmail();
+
+// In-memory storage for pending approval state
+let pendingApprovalState: {
+  serializedState: string;
+  interruptions: any[];
+} | null = null;
+
+/**
+ * Prompt user for approval decision
+ */
+function promptForApproval(): Promise<boolean> {
+  return new Promise((resolve) => {
+    const rl = readline.createInterface({
+      input: process.stdin,
+      output: process.stdout,
+    });
+
+    rl.question(chalk.yellow('Do you approve this action? (yes/no): '), (answer) => {
+      rl.close();
+      resolve(answer.toLowerCase() === 'yes' || answer.toLowerCase() === 'y');
+    });
+  });
+}
 
 // EDIT THIS to test different emails
 // This email should trigger a CRM update in Notion
@@ -115,6 +139,31 @@ async function runQuickTest() {
         }
         console.log(chalk.gray('  Duration:'), `${duration}ms`);
         console.log();
+
+        // Check if any result has a pending approval
+        for (const result of results) {
+            if (result.approvalResult && result.approvalResult.status === 'awaiting_approval') {
+                pendingApprovalState = {
+                    serializedState: JSON.stringify(result.approvalResult.state),
+                    interruptions: result.approvalResult.interruptions,
+                };
+
+                console.log(chalk.cyan('\n⏸️  Automation paused awaiting approval'));
+                console.log(chalk.gray(`Automation: ${result.automation?.name}`));
+                console.log(chalk.gray(`Pending interruptions: ${pendingApprovalState.interruptions.length}`));
+                console.log();
+
+                const approved = await promptForApproval();
+
+                if (approved) {
+                    console.log(chalk.green('\n✓ Approved! Resuming automation...\n'));
+                    console.log(chalk.yellow('Resume logic not yet implemented'));
+                    // TODO: Call ApprovalInterceptor.resume() here with serializedState and interruptions
+                } else {
+                    console.log(chalk.yellow('\n✗ Rejected. Automation cancelled.\n'));
+                }
+            }
+        }
 
     } catch (error) {
         console.error(chalk.red('\nError:'), error);
