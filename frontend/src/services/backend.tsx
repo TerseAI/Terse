@@ -1,6 +1,6 @@
 import axios from 'axios';
 import { ModelEvent, ModelRequest } from "../shared/ModelEvents";
-import { Automation, AutomationInput, AutomationOutput, AutomationPrompt, AutomationsResponse, AutomationUpdate, GithubIntegration, IntegrationsStatus, JiraIntegration, LinearIntegration, NotionDatabasesResponse, SlackChannelsResponse, SlackIntegration } from "../shared/types";
+import { Automation, AutomationInput, AutomationOutput, AutomationPrompt, AutomationsResponse, AutomationUpdate, GithubIntegration, IntegrationsStatus, JiraCredentialsValidationResponse, JiraIntegration, LinearApiKeyValidationResponse, LinearIntegration, NotionDatabasesResponse, SlackChannelsResponse, SlackIntegration } from "../shared/types";
 import { User } from "../types/User";
 import { RunHistoryRecord } from '../shared/RunHistoryTypes';
 
@@ -99,7 +99,7 @@ interface BackendService {
     /**
      * Validates Linear API key and fetches available teams
      */
-    validateLinearApiKey(apiKey: string): Promise<{ valid: boolean; workspace?: { name: string; id: string }; teams?: Array<{ id: string; name: string; key: string }>; error?: string }>;
+    validateLinearApiKey(apiKey: string): Promise<LinearApiKeyValidationResponse>;
 
     /**
      * Deletes the Linear API key
@@ -119,7 +119,7 @@ interface BackendService {
     /**
      * Validates Jira credentials and fetches available projects
      */
-    validateJiraCredentials(baseUrl: string, email: string, apiKey: string): Promise<{ valid: boolean; projects?: Array<{ id: string; key: string; name: string }>; error?: string }>;
+    validateJiraCredentials(baseUrl: string, email: string, apiKey: string): Promise<JiraCredentialsValidationResponse>;
 
     /**
      * Deletes the Jira API key

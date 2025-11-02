@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { BackendProvider } from "../services/backend";
 import { NotionDatabase, NotionDatabasesResponse } from "../shared/types";
-import { ArrowPathIcon } from "@heroicons/react/24/outline";
+import { RotateCw } from "lucide-react";
 
 interface NotionDatabaseSelectorProps {
     integrationId: string;
@@ -108,7 +108,7 @@ export function NotionDatabaseSelector({
                     className="flex items-center gap-1 text-xs text-[theme(--color-accent)] hover:underline disabled:opacity-50"
                     title="Refresh database list"
                 >
-                    <ArrowPathIcon className={`w-3 h-3 ${isRefreshing ? 'animate-spin' : ''}`} />
+                    <RotateCw className={`w-3 h-3 ${isRefreshing ? 'animate-spin' : ''}`} />
                     Refresh
                 </button>
             </div>
