@@ -3,7 +3,7 @@ import { db } from "../prismaClient";
 import { Automation, AutomationInput, AutomationOutput, AutomationPrompt } from "../shared/types";
 import { IntegrationType } from "@prisma/client";
 import { parsePageParams } from "../utility/pagination";
-import { WebhookManager } from "../webhooks/WebhookManager";
+import { AutomationInputSetup } from "../setup/AutomationInputSetup";
 
 // Map frontend integration string to backend IntegrationType enum
 const integrationTypeMap: Record<string, IntegrationType> = {
@@ -567,7 +567,7 @@ export async function createAutomation(req: Request, res: Response) {
         });
 
         // Setup webhooks for all inputs after transaction commits
-        await WebhookManager.setupAutomationWebhooks(automation.id);
+        await AutomationInputSetup.setupAutomationInputs(automation.id);
 
         res.status(201).json({ success: true, id: automation.id });
     } catch (error) {
@@ -912,7 +912,7 @@ export async function updateAutomation(req: Request, res: Response) {
         });
 
         // Setup/update webhooks for all inputs after transaction commits
-        await WebhookManager.setupAutomationWebhooks(automationId);
+        await AutomationInputSetup.setupAutomationInputs(automationId);
 
         res.status(200).json({ success: true, id: automationId });
     } catch (error) {
@@ -948,7 +948,7 @@ export async function deleteAutomation(req: Request, res: Response) {
         }
 
         // Tear down webhooks for all inputs before deleting automation
-        await WebhookManager.tearDownAutomationWebhooks(automationId);
+        await AutomationInputSetup.tearDownAutomationInputs(automationId);
 
         // Delete automation (cascade will delete related records)
         await prisma.automations.delete({
