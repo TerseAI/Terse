@@ -10,6 +10,7 @@ import { OutputSection } from "../OutputSection";
 import { SectionLayout } from "../components/SectionLayout";
 import { MessageCircle } from "lucide-react";
 import { AutomationUpdate } from "@/shared/types";
+import { toast } from "sonner";
 
 function PromptSection() {
     const { prompt, setPrompt } = useAutomationContext();
@@ -182,8 +183,7 @@ function SaveAutomationButton() {
             setSaveSuccess(true);
             setTimeout(() => {
                 setSaveSuccess(false);
-                // Navigate back to list after successful save
-                navigate('/app/automations');
+                toast.success('Automation saved successfully');
             }, 1000);
         } catch (error) {
             console.error('Error saving automation:', error);
