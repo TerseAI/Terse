@@ -111,7 +111,6 @@ export function NotionDatabaseSelector({
                     disabled={isRefreshing}
                     variant="ghost"
                     size="sm"
-                    className="h-auto py-0 px-1 text-xs text-primary hover:text-primary hover:underline"
                     title="Refresh database list"
                 >
                     <RefreshCw className={`w-3 h-3 mr-1 ${isRefreshing ? 'animate-spin' : ''}`} />
