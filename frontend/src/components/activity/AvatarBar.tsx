@@ -1,6 +1,8 @@
 import { ActivityEvent } from "../../shared/types";
-import { formatEventTitle } from "../../utility/TextFormatters";
+import { formatEventTitle, getEventBadgeStyle } from "../../utility/TextFormatters";
 import GitHubAvatar from "../ui/GithubAvatar";
+import { Badge } from "../ui/badge";
+import { cn } from "@/lib/utils";
 
 function AvatarBar({ event }: { event: ActivityEvent }) {
     return (
@@ -10,11 +12,9 @@ function AvatarBar({ event }: { event: ActivityEvent }) {
                 <h3 className="font-semibold text-lg text-[theme(text-primary)]">
                     {event.github_repository_name}
                 </h3>
-                <div>
-                    <span className="text-sm p-2 bg-[theme(background)] rounded-md">
-                        {formatEventTitle(event)}
-                    </span>
-                </div>
+                <Badge variant="outline" className={cn(getEventBadgeStyle(event.event_type))}>
+                    {formatEventTitle(event)}
+                </Badge>
             </div>
         </div>
     )

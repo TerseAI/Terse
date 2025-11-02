@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import {
-    createColumnHelper,
+    ColumnDef,
     getCoreRowModel,
     useReactTable,
 } from '@tanstack/react-table';
@@ -23,8 +23,6 @@ type AutomationsTableProps = {
     searchQuery?: string;
     statusFilter?: boolean;
 };
-
-const columnHelper = createColumnHelper<Automation>();
 
 export function AutomationsTable({ onEdit, onDelete, refreshTrigger, searchQuery, statusFilter }: AutomationsTableProps) {
     const [automations, setAutomations] = useState<Automation[]>([]);
@@ -92,40 +90,42 @@ export function AutomationsTable({ onEdit, onDelete, refreshTrigger, searchQuery
         }
     };
 
-    const columns = [
-        columnHelper.accessor('isActive', {
+    const columns: ColumnDef<Automation>[] = [
+        {
+            accessorKey: 'isActive',
             header: 'Status',
-            cell: info => (
+            cell: ({ row }) => (
                 <StatusToggle
-                    automation={info.row.original}
+                    automation={row.original}
                     onToggle={handleToggleStatus}
                 />
             ),
-        }),
-        columnHelper.accessor('name', {
+        },
+        {
+            accessorKey: 'name',
             header: 'Name',
-            cell: info => (
-                <div className="font-medium text-[theme(text-primary)]">
-                    {info.getValue()}
+            cell: ({ getValue }) => (
+                <div className="font-medium">
+                    {getValue() as string}
                 </div>
             ),
-        }),
-        columnHelper.display({
+        },
+        {
             id: 'apps',
             header: 'Apps',
-            cell: props => <AppsList automation={props.row.original} />,
-        }),
-        columnHelper.display({
+            cell: ({ row }) => <AppsList automation={row.original} />,
+        },
+        {
             id: 'actions',
             header: 'Actions',
-            cell: props => (
+            cell: ({ row }) => (
                 <ActionButtons
-                    automation={props.row.original}
+                    automation={row.original}
                     onEdit={onEdit}
                     onDelete={onDelete}
                 />
             ),
-        }),
+        },
     ];
 
     const table = useReactTable({

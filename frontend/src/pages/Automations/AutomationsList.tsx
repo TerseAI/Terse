@@ -53,7 +53,7 @@ export default function AutomationsList() {
                     <AutomationsHeader onCreateNew={handleCreateNew} />
 
                     <div className="grid grid-cols-20 sm:grid-flow-row gap-3">
-                        <SearchBar searchQuery={searchQuery} className="col-span-16" onSearchChange={setSearchQuery} />
+                        <SearchBar searchQuery={searchQuery} placeholder="Search automations by name..." className="col-span-16" onSearchChange={setSearchQuery} />
                         <StatusFilter
                             statusOptions={statusOptions}
                             selectedOption={selectedOption}

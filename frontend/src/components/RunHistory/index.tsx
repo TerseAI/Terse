@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import RunHistoryEmptyState from "./RunHistoryEmptyState"
 import RunHistoryToolBar from "./RunHistoryToolBar";
 import RunHistoryItem from "./RunHistoryItem";
+import RunHistoryLoadingState from "./RunHistoryLoadingState";
 import { RunHistoryRecord, RunHistoryStatus } from "../../shared/RunHistoryTypes";
 import { useAutomationContext } from "../../context/AutomationContext";
 import { BackendProvider } from "../../services/backend";
@@ -18,6 +19,7 @@ export default function RunHistory() {
     const [runsPerPage, setRunsPerPage] = useState(10);
     const [total, setTotal] = useState(0);
     const [remoteRuns, setRemoteRuns] = useState<RunHistoryRecord[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
 
     const [selectedStatuses, setSelectedStatuses] = useState<Set<RunHistoryStatus>>(
         new Set(["success", "failed", "skipped", "in_progress"])
@@ -42,6 +44,7 @@ export default function RunHistory() {
         };
         const run = async () => {
             if (!automationId) return;
+            setIsLoading(true);
             const params = {
                 page: currentPage,
                 pageSize: runsPerPage,
@@ -59,6 +62,10 @@ export default function RunHistory() {
             } catch (e) {
                 if (!controller.signal.aborted) {
                     console.error('Failed to fetch run history', e);
+                }
+            } finally {
+                if (!controller.signal.aborted) {
+                    setIsLoading(false);
                 }
             }
         };
@@ -117,7 +124,7 @@ export default function RunHistory() {
     };
 
     return (
-        <div className="max-w-5xl mx-auto px-6 py-8 h-full">
+        <div className="max-w-5xl mx-auto px-6 py-4 h-full">
             <RunHistoryToolBar
                 filteredCount={total}
                 startIndex={startIndex}
@@ -135,7 +142,9 @@ export default function RunHistory() {
                 onPageChange={setCurrentPage}
             />
 
-            {filteredRuns.length === 0 && (
+            {isLoading ? (
+                <RunHistoryLoadingState />
+            ) : filteredRuns.length === 0 ? (
                 <RunHistoryEmptyState
                     hasActiveFilters={!!searchQuery || !!dateRange.from || !!dateRange.to || selectedStatuses.size < 4}
                     onClearAll={() => {
@@ -145,25 +154,25 @@ export default function RunHistory() {
                         setCurrentPage(1);
                     }}
                 />
-            )}
-
-            <div className="mb-6">
-                <div className="flex flex-col gap-3 overflow-x-auto md:overflow-visible pb-3 md:pb-0">
-                    {paginatedRuns.map((run) => (
-                        <RunHistoryItem
-                            key={run.id}
-                            run={run}
-                            isExpanded={expandedRuns.has(run.id)}
-                            onToggleRun={toggleRun}
-                            isDecisionExpanded={expandedDecisions.has(run.id)}
-                            onToggleDecision={toggleDecision}
-                            isActionExpanded={(key) => expandedIndividualActions.has(key)}
-                            onToggleAction={toggleIndividualAction}
-                            onToggleAllActionsForRun={toggleAllActionsForRun}
-                        />
-                    ))}
+            ) : (
+                <div className="mb-6">
+                    <div className="flex flex-col gap-3 overflow-x-auto md:overflow-visible pb-3 md:pb-0">
+                        {paginatedRuns.map((run) => (
+                            <RunHistoryItem
+                                key={run.id}
+                                run={run}
+                                isExpanded={expandedRuns.has(run.id)}
+                                onToggleRun={toggleRun}
+                                isDecisionExpanded={expandedDecisions.has(run.id)}
+                                onToggleDecision={toggleDecision}
+                                isActionExpanded={(key) => expandedIndividualActions.has(key)}
+                                onToggleAction={toggleIndividualAction}
+                                onToggleAllActionsForRun={toggleAllActionsForRun}
+                            />
+                        ))}
+                    </div>
                 </div>
-            </div>
+            )}
         </div>
     );
 }

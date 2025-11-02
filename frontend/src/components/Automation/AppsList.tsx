@@ -1,4 +1,4 @@
-import { ChevronRightIcon } from '@heroicons/react/24/outline';
+import { ChevronRight } from 'lucide-react';
 import { Automation } from '../../shared/types';
 import { IconForInputType } from '../../pages/Automations/components/Integration';
 import { Integration } from '../../context/Integrations';
@@ -18,10 +18,10 @@ export function AppsList({ automation }: AppsListProps) {
             {allApps.map((app, idx) => (
                 <div key={idx} className="flex items-center">
                     {idx > 0 && (
-                        <ChevronRightIcon className="w-3 h-3 text-[theme(text-disabled)] mx-0.5" />
+                        <ChevronRight className="w-3 h-3 text-muted-foreground mx-0.5" />
                     )}
                     <div
-                        className="w-7 h-7 flex items-center justify-center rounded bg-[theme(background)] p-1"
+                        className="w-7 h-7 flex items-center justify-center rounded bg-card p-1"
                         title={app}
                     >
                         <IconForInputType type={app} />
