@@ -8,18 +8,6 @@
 -- AlterEnum
 ALTER TYPE "RunHistoryStatus" ADD VALUE 'awaiting_approval';
 
--- DropIndex
-DROP INDEX "public"."idx_run_history_actions_search_fts";
-
--- DropIndex
-DROP INDEX "public"."idx_run_history_records_search_fts";
-
--- AlterTable
-ALTER TABLE "run_history_actions" DROP COLUMN "search_fts";
-
--- AlterTable
-ALTER TABLE "run_history_records" DROP COLUMN "search_fts";
-
 -- CreateTable
 CREATE TABLE "pending_approvals" (
     "id" TEXT NOT NULL,
