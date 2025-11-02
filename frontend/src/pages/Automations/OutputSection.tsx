@@ -3,19 +3,17 @@ import { Output, useAutomationContext } from "../../context/AutomationContext";
 import { Integration } from "../../context/Integrations";
 import { SectionLayout } from "./components/SectionLayout";
 import { AddOutputModal } from "./components/AddOutputModal";
-import { FileText } from "lucide-react";
+import { FileText, Plus } from "lucide-react";
 import { IntegrationSelector } from "../../components/IntegrationSelector";
 import { clearIntegrationConfigs } from "../../utility/IntegrationUtils";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Card, CardAction, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { IntegrationTitle } from "./components/IntegrationTitle";
-import { IntegrationBadge } from "./components/IntegrationBadge";
+import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 
 export function OutputSection() {
     const { output, setOutput } = useAutomationContext();
     const [showAddModal, setShowAddModal] = useState(false);
-    const [showDetailsModal, setShowDetailsModal] = useState(false);
 
     const handleSelectPlatform = (integration: Integration) => {
         // Clear all configs when switching platform (new integration type)
@@ -51,28 +49,9 @@ export function OutputSection() {
             icon={<FileText className="w-5 h-5 text-destructive" />}
         >
             {!output ? (
-                <div className="text-center py-4 px-4">
-                    <p className="text-xs text-muted-foreground mb-3">
-                        Choose where your living document will be updated
-                    </p>
-                    <Button
-                        onClick={() => setShowAddModal(true)}
-                    >
-                        + Add Output
-                    </Button>
-                </div>
+                <EmptyOutputSection onCreateNew={() => setShowAddModal(true)} />
             ) : (
-                <>
-                    <OutputCard output={output} onDetails={() => setShowDetailsModal(true)} />
-                    <OutputDetailsDialog
-                        output={output}
-                        isOpen={showDetailsModal}
-                        onClose={() => setShowDetailsModal(false)}
-                        handleRemove={handleRemove}
-                        handleSelectIntegration={handleSelectIntegration}
-                        setOutput={setOutput}
-                    />
-                </>
+                <OutputCard output={output} handleRemove={handleRemove} handleSelectIntegration={handleSelectIntegration} setOutput={setOutput} />
             )}
 
             <AddOutputModal
@@ -84,47 +63,21 @@ export function OutputSection() {
     );
 }
 
-function OutputCard({ output, onDetails }: { output: Output, onDetails: () => void }) {
+function OutputCard({ 
+    output, 
+    handleRemove,
+    handleSelectIntegration,
+    setOutput
+}: { output: Output, handleRemove: () => void, handleSelectIntegration: (integrationId: string) => void, setOutput: (output: Output) => void }) {
     return (
-        <Card onClick={onDetails} className="cursor-pointer">
+        <Card>
             <CardHeader>
-                <CardTitle>
+                <CardTitle className="flex justify-between">
                     <IntegrationTitle integration={output.integration} iconSize="lg" />
                 </CardTitle>
             </CardHeader>
             <CardContent>
-                <IntegrationBadge integrationId={output.integrationId} integrationType={output.integration} />
-            </CardContent>
-        </Card>
-    );
-}
-
-function OutputDetailsDialog({
-    output,
-    isOpen,
-    onClose,
-    handleRemove,
-    handleSelectIntegration,
-    setOutput
-}: {
-    output: Output,
-    isOpen: boolean,
-    onClose: () => void,
-    handleRemove: () => void,
-    handleSelectIntegration: (integrationId: string) => void,
-    setOutput: (output: Output) => void
-}) {
-
-    return (
-        <Dialog open={isOpen} onOpenChange={onClose}>
-            <DialogContent>
-                <DialogHeader>
-                    <DialogTitle>
-                        <IntegrationTitle integration={output.integration} iconSize="sm" />
-                    </DialogTitle>
-                </DialogHeader>
-
-                <IntegrationSelector
+            <IntegrationSelector
                     integrationType={output.integration}
                     selectedIntegrationId={output.integrationId}
                     onSelect={handleSelectIntegration}
@@ -141,14 +94,39 @@ function OutputDetailsDialog({
                         }
                     }}
                 />
-                <DialogFooter>
-                    <div className="flex items-center justify-start gap-2 w-full">
-                        <Button variant="destructive" onClick={handleRemove}>
-                            Remove Output
-                        </Button>
-                    </div>
-                </DialogFooter>
-            </DialogContent>
-        </Dialog>
+            </CardContent>
+            <CardFooter>
+                <CardAction>
+                    <Button variant="destructive" onClick={handleRemove}>
+                        Remove
+                    </Button>
+                </CardAction>
+            </CardFooter>
+        </Card>
+    );
+}
+
+function EmptyOutputSection({ onCreateNew }: { onCreateNew: () => void }) {
+    return (
+        <Empty>
+            <EmptyHeader>
+                <EmptyMedia variant="icon">
+                    <FileText className="text-destructive" />
+                </EmptyMedia>
+                <EmptyTitle>No output yet</EmptyTitle>
+                <EmptyDescription>
+                    No output yet. Add an integration to get started.
+                </EmptyDescription>
+            </EmptyHeader>
+            <EmptyContent>
+                <Button
+                    variant="outline"
+                    onClick={onCreateNew}
+                >
+                    <Plus className="h-4 w-4" />
+                    Add Output
+                </Button>
+            </EmptyContent>
+        </Empty>
     );
 }

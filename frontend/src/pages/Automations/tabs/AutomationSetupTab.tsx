@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import EditableTextField from '../../../components/ui/EditableTextField';
 import { Textarea } from "@/components/ui/textarea";
 import { useAutomationContext } from "../../../context/AutomationContext";
@@ -10,6 +10,7 @@ import { SectionLayout } from "../components/SectionLayout";
 import { MessageCircle } from "lucide-react";
 import { AutomationUpdate } from "@/shared/types";
 import { toast } from "sonner";
+import { getDefaultAutomationName } from "@/utility/AutomationUtils";
 
 function PromptSection() {
     const { prompt, setPrompt } = useAutomationContext();
@@ -127,7 +128,7 @@ function FlowArrow() {
     )
 }
 
-function SaveAutomationButton() {
+function SaveAutomationButton({ defaultName }: { defaultName: string | null }) {
     const { automationId, name, inputs, output, prompt, isActive } = useAutomationContext();
     const [isSaving, setIsSaving] = useState(false);
     const [saveSuccess, setSaveSuccess] = useState(false);
@@ -138,8 +139,7 @@ function SaveAutomationButton() {
         inputs.length > 0 &&
         inputs.every(i => !!i.integration && !!i.integrationId) &&
         !!output && !!output.integration && !!output.integrationId &&
-        !!prompt?.text &&
-        name.trim().length > 0; // Ensure name is not empty
+        !!prompt?.text; // Ensure name is not empty
 
     const isEditMode = !!automationId;
 
@@ -149,7 +149,7 @@ function SaveAutomationButton() {
         setIsSaving(true);
         try {
             const automationData: AutomationUpdate = {
-                name,
+                name: name || defaultName || '',
                 inputs: inputs.map(i => ({
                     integration: i.integration,
                     integrationId: i.integrationId,
@@ -166,6 +166,7 @@ function SaveAutomationButton() {
                 isActive
             };
 
+            toast.success('Automation saved successfully');
             if (isEditMode) {
                 // Update existing automation
                 await BackendProvider.updateAutomation(automationId, automationData);
@@ -183,7 +184,6 @@ function SaveAutomationButton() {
             setSaveSuccess(true);
             setTimeout(() => {
                 setSaveSuccess(false);
-                toast.success('Automation saved successfully');
             }, 1000);
         } catch (error) {
             console.error('Error saving automation:', error);
@@ -205,14 +205,26 @@ function SaveAutomationButton() {
 
 
 export default function AutomationSetupTab() {
-    const { name, setName } = useAutomationContext();
+    const { name, setName, inputs, output } = useAutomationContext();
+    const [defaultName, setDefaultName] = useState<string | null>(null);
+
+    useEffect(() => {
+        async function getDefaultName() {
+            const name = await getDefaultAutomationName(inputs, output);
+            setDefaultName(name);
+        }
+        getDefaultName();
+    }, [inputs, output]);
+
     return (
         <div className="flex flex-col h-full p-4">
             <div className="flex-1 overflow-y-auto">
 
                 <div className="flex justify-between items-center">
-                    <EditableTextField value={name} onSave={(value) => setName(value)} />
-                    <SaveAutomationButton />
+                    <div className="flex items-center gap-2">
+                        <EditableTextField value={name || defaultName || ''} onSave={(value) => setName(value)} />
+                    </div>
+                    <SaveAutomationButton defaultName={defaultName}/>
                 </div>
 
                 <div className="flex flex-col gap-3">

@@ -50,7 +50,7 @@ export function IntegrationBadge({ integrationId, integrationType }: Integration
 
     return (
         <Badge variant="secondary">
-            <Check className="size-3" />
+            <Check className="size-3 text-primary" />
             {displayText}
         </Badge>
     );
@@ -63,11 +63,11 @@ function NotionIntegrationBadge({ integration }: { integration: IntegrationInsta
     return (
         <div className="flex flex-col gap-1">
             <Badge variant="secondary">
-                <Check className="size-3" />
+                <Check className="size-3 text-primary" />
                 {workspaceName}
             </Badge>
             <Badge variant="secondary">
-                <Check className="size-3" />
+                <Check className="size-3 text-primary" />
                 {databaseName}
             </Badge>
         </div>
