@@ -7,7 +7,7 @@ interface SectionLayoutProps {
     icon?: ReactNode;
 }
 
-export function SectionLayout({ title, subtitle, children, icon }: SectionLayoutProps) {
+export function SectionLayout({ title = "", subtitle = "", children, icon }: SectionLayoutProps) {
     return (
         <div className="grid grid-cols-20">
             <div className="flex items-center gap-2.5 col-span-4">

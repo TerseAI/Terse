@@ -8,7 +8,6 @@ import { parsePageParams } from "../utility/pagination";
 const VALID_STATUSES: RunHistoryStatus[] = ["success", "failed", "skipped", "in_progress"];
 
 export async function getRunHistory(req: Request, res: Response) {
-  console.log("getRunHistory", req.query);
   try {
     const prisma: PrismaClient = db();
 
