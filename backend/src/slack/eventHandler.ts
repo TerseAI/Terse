@@ -75,8 +75,19 @@ export function isValidSlackSig(req: Request) {
 }
 
 export async function handleSlackEvent(req: Request, res: Response) {
-    console.log('handleSlackEvent route has been hit')
-    if (!isValidSlackSig(req)) return res.sendStatus(400);
+    console.log(chalk.cyan('🔵 [EVENT HANDLER] handleSlackEvent function called'));
+    console.log(chalk.cyan('🔵 [EVENT HANDLER] Request method:', req.method));
+    console.log(chalk.cyan('🔵 [EVENT HANDLER] Request path:', req.path));
+    
+    const isValid = isValidSlackSig(req);
+    console.log(chalk.cyan('🔵 [EVENT HANDLER] Signature valid:', isValid));
+    
+    if (!isValid) {
+        console.log(chalk.red('❌ [EVENT HANDLER] Invalid signature - returning 400'));
+        return res.sendStatus(400);
+    }
+    
+    console.log(chalk.green('✅ [EVENT HANDLER] Signature validated - proceeding to parse body'));
 
     // Parse the raw buffer as JSON
     let body: Record<string, unknown>;
@@ -98,8 +109,44 @@ export async function handleSlackEvent(req: Request, res: Response) {
     // Log the event type for debugging
     const team_id = body.team_id as string;
     const ev = body.event as Record<string, unknown>;
+    const event_id = body.event_id as string | undefined;
     console.log(chalk.blue('Event type:', ev?.type));
     console.log(chalk.blue('Team ID:', team_id));
+    if (event_id) {
+        console.log(chalk.blue('Event ID:', event_id));
+    }
+
+    // For event_callback types, check if we've already processed this event
+    if (body.type === 'event_callback' && event_id) {
+        const slackIntegration = await db().slack_integrations.findFirst({
+            where: {
+                team_id: team_id
+            }
+        });
+
+        if (slackIntegration) {
+            // Try to mark this event as processed atomically
+            // The unique constraint will prevent duplicate processing even in race conditions
+            try {
+                await db().processed_slack_events.create({
+                    data: {
+                        slack_integration_id: slackIntegration.id,
+                        event_id: event_id
+                    }
+                });
+                console.log(chalk.green(`✅ New event ${event_id} - processing...`));
+            } catch (error: any) {
+                // If unique constraint fails, this event was already processed
+                if (error.code === 'P2002') {
+                    console.log(chalk.yellow(`⚠️  Skipping already processed event ${event_id}`));
+                    // Still return 200 OK to Slack to prevent retries
+                    return res.sendStatus(200);
+                }
+                // Re-throw other errors
+                throw error;
+            }
+        }
+    }
 
     switch (ev.type) {
         case 'app_uninstalled':
