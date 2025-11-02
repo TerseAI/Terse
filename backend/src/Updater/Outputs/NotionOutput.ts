@@ -194,7 +194,7 @@ Use notion_query_database first to see existing property names and structure.`,
         properties_json: z.string().describe('JSON string with property names as keys and Notion-formatted values. Example: "{\\"Name\\": {\\"title\\": [{\\"text\\": {\\"content\\": \\"New Item\\"}}]}, \\"Status\\": {\\"select\\": {\\"name\\": \\"In Progress\\"}}}"'),
     }),
     needsApproval: async (_context, { page_id, properties_json }) => {
-        return true;
+        return false; // DISABLE UNTIL HUMAN IN THE LOOP IS IMPLEMENTED
     },
     execute: async ({ page_id, properties_json }, runContext?: RunContext<NotionSession>) => {
         console.log(chalk.bgMagenta.white.bold('🛠️ Executing notion_modify_page tool'));
