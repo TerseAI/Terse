@@ -1,6 +1,7 @@
 import chalk from 'chalk';
 import crypto from 'crypto';
 import { Request, Response } from 'express';
+import { WebClient, LogLevel } from '@slack/web-api';
 import { db } from '../prismaClient';
 import { SlackEvent, SlackEventData } from '../Updater/InputEvents';
 import { EventProcessor } from '../agent/AutomationAgent/EventProcessor';
@@ -191,6 +192,194 @@ async function deactivateToken(token: string) {
     console.log(chalk.red('Token deactivated'));
 }
 
+/**
+ * Type for Slack API responses that follow the standard { ok: boolean; error?: string } pattern
+ */
+type SlackApiResponse<T = unknown> = { ok: boolean; error?: string } & T;
+
+/**
+ * Type for Promise.allSettled results from Slack API calls
+ */
+type SlackApiSettledResult<T = unknown> = PromiseSettledResult<SlackApiResponse<T>>;
+
+/**
+ * Slack user profile object from users.info API
+ */
+interface SlackUserProfile {
+    avatar_hash?: string;
+    status_text?: string;
+    status_emoji?: string;
+    real_name?: string;
+    display_name?: string;
+    real_name_normalized?: string;
+    display_name_normalized?: string;
+    email?: string;
+    image_original?: string;
+    image_24?: string;
+    image_32?: string;
+    image_48?: string;
+    image_72?: string;
+    image_192?: string;
+    image_512?: string;
+    team?: string;
+}
+
+/**
+ * Slack user object from users.info API
+ */
+interface SlackUser {
+    id: string;
+    team_id?: string;
+    name?: string;
+    deleted?: boolean;
+    color?: string;
+    real_name?: string;
+    tz?: string;
+    tz_label?: string;
+    tz_offset?: number;
+    profile?: SlackUserProfile;
+    is_admin?: boolean;
+    is_owner?: boolean;
+    is_primary_owner?: boolean;
+    is_restricted?: boolean;
+    is_ultra_restricted?: boolean;
+    is_bot?: boolean;
+    updated?: number;
+    is_app_user?: boolean;
+    has_2fa?: boolean;
+}
+
+/**
+ * Slack channel/conversation object from conversations.info API
+ * Can represent public channels, private channels, DMs, or group DMs
+ */
+interface SlackChannel {
+    id: string;
+    name?: string;
+    is_channel?: boolean;
+    is_group?: boolean;
+    is_im?: boolean;
+    is_mpim?: boolean;
+    is_private?: boolean;
+    is_archived?: boolean;
+    is_general?: boolean;
+    is_shared?: boolean;
+    is_org_shared?: boolean;
+    is_member?: boolean;
+    created?: number;
+    creator?: string;
+    name_normalized?: string;
+    user?: string; // For DMs, the user ID of the other person
+    last_read?: string;
+    members?: string[];
+    topic?: {
+        value?: string;
+        creator?: string;
+        last_set?: number;
+    };
+    purpose?: {
+        value?: string;
+        creator?: string;
+        last_set?: number;
+    };
+    previous_names?: string[];
+}
+
+/**
+ * Helper function to process Promise.allSettled results from Slack API calls
+ * Handles fulfilled+ok, rejected, and fulfilled but not ok states
+ */
+function processSlackApiResult<T>(
+    result: SlackApiSettledResult<T>,
+    successLabel: string,
+    errorPrefix: string
+): { success: boolean; data?: T; error?: string } {
+    if (result.status === 'fulfilled' && result.value.ok) {
+        // Successfully fulfilled and ok
+        const { ok, error, ...data } = result.value;
+        return { success: true, data: data as T };
+    } else if (result.status === 'rejected') {
+        // Promise was rejected
+        console.warn(chalk.yellow(`⚠ ${errorPrefix}: ${result.reason}`));
+        return { success: false, error: String(result.reason) };
+    } else if (result.status === 'fulfilled' && !result.value.ok) {
+        // Fulfilled but API returned error
+        const errorMsg = result.value.error || 'Unknown error';
+        console.warn(chalk.yellow(`⚠ ${errorPrefix}: ${errorMsg}`));
+        return { success: false, error: errorMsg };
+    }
+    return { success: false, error: 'Unknown state' };
+}
+
+/**
+ * Extract channel name from Slack channel info, handling different channel types
+ */
+function extractChannelName(
+    channelResult: { success: boolean; data?: { channel?: SlackChannel }; error?: string },
+    userResult: { success: boolean; data?: { user?: SlackUser }; error?: string },
+    eventUserId: string,
+    defaultChannelId: string
+): string | undefined {
+    if (!channelResult.success || !channelResult.data?.channel) {
+        return undefined;
+    }
+
+    const channel = channelResult.data.channel;
+
+    // Handle different channel types
+    if ('name' in channel && channel.name) {
+        // Public/private channel
+        const channelName = channel.name;
+        console.log(chalk.green(`✓ Fetched channel name: ${channelName}`));
+        return channelName;
+    } else if ('is_im' in channel && channel.is_im) {
+        // Direct message - try to get user info from the channel user ID
+        const dmUserId = 'user' in channel ? channel.user : undefined;
+        let channelName: string | undefined;
+        
+        if (dmUserId && userResult.success && userResult.data?.user) {
+            const user = userResult.data.user;
+            if (user && dmUserId === eventUserId) {
+                // This is a DM with the message sender - use their name
+                channelName = user.real_name || user.profile?.display_name || user.name || 'Direct Message';
+            }
+        }
+        
+        if (!channelName) {
+            channelName = 'Direct Message';
+        }
+        console.log(chalk.green(`✓ Identified channel as DM: ${channelName}`));
+        return channelName;
+    } else if ('is_group' in channel && channel.is_group) {
+        // Group DM
+        const channelName = 'name' in channel && channel.name ? channel.name : 'Group Message';
+        console.log(chalk.green(`✓ Identified channel as Group DM: ${channelName}`));
+        return channelName;
+    } else {
+        // Fallback to channel ID
+        const channelName = channel.id || defaultChannelId;
+        console.log(chalk.yellow(`⚠ Using channel ID as name: ${channelName}`));
+        return channelName;
+    }
+}
+
+/**
+ * Extract user name from Slack user info
+ */
+function extractUserName(
+    userResult: { success: boolean; data?: { user?: SlackUser }; error?: string }
+): string | undefined {
+    if (!userResult.success || !userResult.data?.user) {
+        return undefined;
+    }
+
+    const user = userResult.data.user;
+    // Prefer real_name, fallback to display_name, then name, then id
+    const userName = user.real_name || user.profile?.display_name || user.profile?.real_name || user.name || user.id;
+    console.log(chalk.green(`✓ Fetched user name: ${userName}`));
+    return userName;
+}
+
 interface SlackMessageEvent {
     type: 'message';
     channel: string;
@@ -200,6 +389,61 @@ interface SlackMessageEvent {
     bot_id?: string;
     subtype?: string;
     thread_ts?: string;
+    // Additional fields that may be present in Slack message events
+    edited?: {
+        user: string;
+        ts: string;
+    };
+    files?: Array<{
+        id: string;
+        name: string;
+        title: string;
+        mimetype: string;
+        filetype: string;
+        pretty_type: string;
+        user: string;
+        size: number;
+        url_private?: string;
+        url_private_download?: string;
+        permalink?: string;
+        permalink_public?: string;
+    }>;
+    reactions?: Array<{
+        name: string;
+        users: string[];
+        count: number;
+    }>;
+    attachments?: Array<{
+        fallback?: string;
+        color?: string;
+        pretext?: string;
+        author_name?: string;
+        author_link?: string;
+        author_icon?: string;
+        title?: string;
+        title_link?: string;
+        text?: string;
+        fields?: Array<{
+            title: string;
+            value: string;
+            short: boolean;
+        }>;
+        image_url?: string;
+        thumb_url?: string;
+        footer?: string;
+        footer_icon?: string;
+        ts?: number;
+    }>;
+    blocks?: unknown[];
+    client_msg_id?: string;
+    parent_user_id?: string;
+    reply_count?: number;
+    reply_users?: string[];
+    reply_users_count?: number;
+    latest_reply?: string;
+    team?: string;
+    event_ts?: string;
+    channel_type?: string;
 }
 
 async function handleSlackMessage(event: SlackMessageEvent, teamId: string) {
@@ -239,19 +483,72 @@ async function handleSlackMessage(event: SlackMessageEvent, teamId: string) {
             return;
         }
 
-        // Build SlackEventData from the Slack message event
-        // Note: channelName and userName could be fetched from Slack API if needed,
-        // but for now we'll use IDs. Permalink could also be constructed if needed.
+        // Initialize Slack WebClient to fetch additional data
+        const client = new WebClient(slackIntegration.access_token, {
+            logLevel: LogLevel.INFO
+        });
+
+        console.log(chalk.blue(`📡 Fetching additional Slack data for channel ${event.channel}, user ${event.user}, message ${event.ts}`));
+
+        // Fetch all available data from Slack API in parallel
+        const [channelInfo, userInfo, permalinkResult] = await Promise.allSettled([
+            // Fetch channel information
+            client.conversations.info({
+                channel: event.channel
+            }),
+            // Fetch user information
+            client.users.info({
+                user: event.user
+            }),
+            // Get message permalink
+            client.chat.getPermalink({
+                channel: event.channel,
+                message_ts: event.ts
+            })
+        ]);
+
+        // Process all API results
+        const channelResult = processSlackApiResult<{ channel?: SlackChannel }>(
+            channelInfo as SlackApiSettledResult<{ channel?: SlackChannel }>,
+            'Channel info',
+            'Failed to fetch channel info'
+        );
+        
+        const userResult = processSlackApiResult<{ user?: SlackUser }>(
+            userInfo as SlackApiSettledResult<{ user?: SlackUser }>,
+            'User info',
+            'Failed to fetch user info'
+        );
+
+        const permalinkApiResult = processSlackApiResult<{ permalink?: string }>(
+            permalinkResult as SlackApiSettledResult<{ permalink?: string }>,
+            'Message permalink',
+            'Failed to fetch message permalink'
+        );
+        
+        // Extract channel name and metadata
+        const channelName = extractChannelName(channelResult, userResult, event.user, event.channel);
+
+        // Extract user information
+        const userName = extractUserName(userResult);
+
+        // Extract permalink
+        const permalink = permalinkApiResult.success ? permalinkApiResult.data?.permalink : undefined;
+        if (permalink) {
+            console.log(chalk.green(`✓ Fetched message permalink: ${permalink}`));
+        }
+
+        // Build SlackEventData with all available information
         const slackEventData: SlackEventData = {
             channelId: event.channel,
-            channelName: undefined, // Could fetch from Slack API if needed
+            channelName: channelName,
             userId: event.user,
-            userName: undefined, // Could fetch from Slack API if needed
+            userName: userName,
             text: event.text,
             timestamp: event.ts,
             threadTimestamp: event.thread_ts,
             teamId: teamId,
-            permalink: undefined, // Could construct from team/channel/ts if needed
+            permalink: permalink,
         };
 
         // Create SlackEvent once
