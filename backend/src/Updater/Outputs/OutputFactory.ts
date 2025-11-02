@@ -1,0 +1,41 @@
+import { IntegrationType } from "@prisma/client";
+import { Output } from "./Output";
+import { NotionOutput } from "./NotionOutput";
+import { Session } from "../../server";
+
+/**
+ * Factory for creating Output instances based on IntegrationType.
+ * Uses a registry pattern to map integration types to their corresponding Output implementations.
+ * No switch statements - each output type is registered independently.
+ */
+export class OutputFactory {
+    private static readonly outputRegistry: Map<IntegrationType, () => Output<Session>> = new Map([
+        [IntegrationType.NOTION, () => new NotionOutput() as Output<Session>],
+        // Future outputs can be added here:
+        // [IntegrationType.SLACK, () => new SlackOutput() as Output<Session>],
+        // [IntegrationType.GMAIL, () => new GmailOutput() as Output<Session>],
+    ]);
+
+    /**
+     * Create an Output instance for the given integration type.
+     * @param integrationType The integration type to create an output for
+     * @returns An Output instance, or null if the integration type is not supported
+     */
+    static createOutput(integrationType: IntegrationType): Output<Session> | null {
+        const factory = this.outputRegistry.get(integrationType);
+        if (!factory) {
+            return null;
+        }
+        return factory();
+    }
+
+    /**
+     * Check if an integration type is supported as an output.
+     * @param integrationType The integration type to check
+     * @returns true if the integration type is supported as an output
+     */
+    static isSupported(integrationType: IntegrationType): boolean {
+        return this.outputRegistry.has(integrationType);
+    }
+}
+

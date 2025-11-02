@@ -1,24 +1,25 @@
 import chalk from 'chalk';
 import { db } from '../../prismaClient';
-import { Automation, AutomationWithRelations, AutomationOutput, GmailIntegration, NotionIntegration, User } from '../../types/prisma';
-import { GmailEvent, InputEvent } from '../../Updater/InputEvents';
-import { NotionOutput, NotionSession } from '../../Updater/Outputs/NotionOutput';
+import { Automation, AutomationWithRelations, AutomationOutput, User } from '../../types/prisma';
+import { InputEvent } from '../../Updater/InputEvents';
+import { OutputFactory } from '../../Updater/Outputs/OutputFactory';
 import { AutomationAgent } from './AutomationAgent';
 import { filterEvent } from './EventFilter';
 import { appendRunAction, createRunRecord, finalizeRunStatus, markRunProcessed, markRunSkipped } from './runHistory';
 import { ApprovalResult } from './AutomationAgent';
 import { Agent, AgentOutputType, RunResult } from '@openai/agents';
+import { Session } from '../../server';
 
 // The job of this class is to take an Input Event, and check if it's a match for an Automation.
 // It will then create a Session, and summon the Automation Agent with the create user data.
 
-export class ProcessorResult {
+export class ProcessorResult<T extends Session = Session> {
     success: boolean;
     message: string;
     automation: Automation | null;
-    approvalResult?: ApprovalResult<NotionSession, Agent<NotionSession, AgentOutputType>> | null;
+    approvalResult?: ApprovalResult<T, Agent<T, AgentOutputType>> | null;
 
-    constructor(success: boolean, message: string, automation: Automation | null, approvalResult?: ApprovalResult<NotionSession, Agent<NotionSession, AgentOutputType>> | null) {
+    constructor(success: boolean, message: string, automation: Automation | null, approvalResult?: ApprovalResult<T, Agent<T, AgentOutputType>> | null) {
         this.success = success;
         this.message = message;
         this.automation = automation;
@@ -40,25 +41,10 @@ export class EventProcessor {
 
         const results: ProcessorResult[] = [];
 
-        // Only have Gmail right now, EZPZ
-        let gmailEvent: GmailEvent | undefined = this.inputEvent as GmailEvent;
-        if (!gmailEvent) {
-            return [new ProcessorResult(false, "Event is not a Gmail event", null)];
-        }
+        // Get integration type from event itself (no hardcoded checks)
+        const integrationType = this.inputEvent.integrationType;
 
-        // See if we have a Gmail integration for this event.
-        const gmailIntegration: GmailIntegration | null = await db().gmail_integrations.findFirst({
-            where: {
-                user_id: this.user.id,
-                is_active: true,
-            }
-        });
-
-        if (!gmailIntegration) {
-            return [new ProcessorResult(false, "No Gmail integration found for this user", null)];
-        }
-
-        // Find all active automations for this user that have Gmail as an input
+        // Find all active automations for this user (already includes all config relations)
         const automations = await db().automations.findMany({
             where: {
                 user_id: this.user.id,
@@ -93,19 +79,20 @@ export class EventProcessor {
             return [new ProcessorResult(false, "No automations found for this user", null)];
         }
 
-        // Filter automations that have Gmail as an input
-        const gmailAutomations = automations.filter(automation =>
-            automation.inputs.some(input => input.integration_type === 'GMAIL')
+        // Filter automations using event's own filtering method
+        // Each event type handles its own matching logic (no switch statements)
+        const matchingAutomations = automations.filter(automation =>
+            automation.inputs.some(input => this.inputEvent.matchesAutomationInput(input))
         );
 
-        if (gmailAutomations.length === 0) {
-            return [new ProcessorResult(false, "No automations with Gmail input found for this user", null)];
+        if (matchingAutomations.length === 0) {
+            return [new ProcessorResult(false, `No automations match this ${integrationType} event`, null)];
         }
 
-        console.log(chalk.cyan(`Found ${gmailAutomations.length} automation(s) with Gmail input`));
+        console.log(chalk.cyan(`Found ${matchingAutomations.length} matching automation(s) for ${integrationType} event`));
 
         // Process each matching automation
-        for (const automation of gmailAutomations) {
+        for (const automation of matchingAutomations) {
             try {
                 const result = await this.processAutomation(automation);
                 results.push(result);
@@ -130,17 +117,10 @@ export class EventProcessor {
         }
 
         // Initialize run history record with trigger details
+        // Use event's own trigger metadata creation (no hardcoded trigger creation)
         let runId: string | null = null;
         try {
-            const gmailEvent = this.inputEvent as GmailEvent;
-            const trigger = {
-                event: 'email_received',
-                integration: 'gmail' as const,
-                source: gmailEvent?.data?.to || this.user.email,
-                title: gmailEvent?.data?.subject,
-                subheader: gmailEvent?.data?.from,
-                url: undefined,
-            };
+            const trigger = this.inputEvent.createTriggerMetadata();
             runId = await createRunRecord({
                 automationId: automation.id,
                 trigger,
@@ -180,43 +160,38 @@ export class EventProcessor {
             return new ProcessorResult(false, "No output integration found for this automation", automation);
         }
 
-        // Currently only support Notion output
-        const notionIntegration: NotionIntegration | null = await db().notion_integrations.findFirst({
-            where: {
-                id: outputIntegration.integration_id,
-            }
-        });
-
-        if (!notionIntegration) {
-            return new ProcessorResult(false, "No notion integration found for this output integration", automation);
+        // Use OutputFactory to create output based on integration type (no hardcoded Notion logic)
+        const output = OutputFactory.createOutput(outputIntegration.integration_type);
+        if (!output) {
+            return new ProcessorResult(false, `Output type ${outputIntegration.integration_type} is not supported`, automation);
         }
 
-        // Override database_id from config if provided
-        // Config takes precedence over connection default
-        const notionConfig = outputIntegration.notion_config;
-        const databaseId = notionConfig?.database_id || notionIntegration.database_id;
-        const databaseName = notionConfig?.database_name || notionIntegration.database_name;
+        // Use output's config-aware session creation (no hardcoded config extraction)
+        // Each output type knows how to fetch its own integration and extract its config
+        let session: Session;
+        try {
+            session = await output.createSessionFromConfig(
+                outputIntegration.integration_id,
+                outputIntegration,
+                this.user
+            );
+        } catch (error) {
+            return new ProcessorResult(
+                false,
+                `Failed to create session: ${error instanceof Error ? error.message : 'Unknown error'}`,
+                automation
+            );
+        }
 
-        const notionOutput = new NotionOutput();
-
-        // Create a new Session with config overrides
-        const session = {
-            notionIntegration: {
-                ...notionIntegration,
-                database_id: databaseId,
-                database_name: databaseName || undefined,
-            },
-            user: this.user,
-            isUserInitiated: true,
-            // Collect actions from tools; will be persisted after run
-            runActions: [],
-        } as NotionSession;
-
-        const automationAgent = new AutomationAgent<NotionSession>(session, notionOutput, automation.prompt, automation.inputs, outputIntegration);
+        // Create automation agent with the session and output
+        const automationAgent = new AutomationAgent(session, output, automation.prompt, automation.inputs, outputIntegration);
         await automationAgent.initializeAgent();
         automationAgent.setInputEvent(this.inputEvent);
 
-        const result: ApprovalResult<NotionSession, Agent<NotionSession, AgentOutputType>> = await automationAgent.run();
+        // Run the automation agent
+        // Type assertion needed because TypeScript can't narrow the generic type at runtime
+        const result = await automationAgent.run() as ApprovalResult<Session, Agent<Session, AgentOutputType>>;
+        
         if (result.status === 'completed') {
             console.log(chalk.green(`Automation "${automation.name}" completed:`), result.result.finalOutput);
             return persistRunResult(runId, result.result, session, automation, result);
@@ -227,15 +202,16 @@ export class EventProcessor {
     }
 }
 
-async function persistRunResult(
+async function persistRunResult<T extends Session>(
     runId: string | null, 
-    result: RunResult<NotionSession, Agent<NotionSession, AgentOutputType>>, 
-    session: NotionSession, 
+    result: RunResult<T, Agent<T, AgentOutputType>>, 
+    session: T, 
     automation: Automation, 
-    approvalResult?: ApprovalResult<NotionSession, Agent<NotionSession, AgentOutputType>> | null
-): Promise<ProcessorResult> {
-    if (runId && session.runActions && session.runActions.length > 0) {
-        for (const action of session.runActions) {
+    approvalResult?: ApprovalResult<T, Agent<T, AgentOutputType>> | null
+): Promise<ProcessorResult<T>> {
+    // Check if session has runActions (NotionSession and future session types may have this)
+    if (runId && (session as any).runActions && Array.isArray((session as any).runActions) && (session as any).runActions.length > 0) {
+        for (const action of (session as any).runActions) {
             try {
                 await appendRunAction(runId, action);
             } catch (e) {
@@ -253,7 +229,7 @@ async function persistRunResult(
         }
     }
 
-    return new ProcessorResult(
+    return new ProcessorResult<T>(
         result.finalOutput ? true : false,
         result.finalOutput as string,
         automation,
