@@ -9,6 +9,7 @@ import { Disclosure, DisclosureButton, DisclosurePanel } from '@headlessui/react
 import clsx from 'clsx'
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion";
 
 function ActivityFeed() {
     const [activity, setActivity] = useState<ActivityEvent[]>([]);
@@ -153,32 +154,27 @@ function FeedContent({ activity }: { activity: ActivityEvent[] }) {
 
 function SubActivityEvents({ event }: { event: ActivityEvent }) {
     return (
-        <div className="transition duration-200">
-            <Disclosure>
-                {({ open }) => (
-                    <>
-                        <DisclosureButton className="w-full">
-                            <div className="flex justify-between items-center">
-                                <h4 className="font-medium text-sm text-[theme(text-primary)]">
-                                    {event.title}
-                                </h4>
-                                <div className="flex items-center gap-2 text-sm text-[theme(text-secondary)]">
-                                    <span>{event.sub_activities.length} events</span>
-                                    <ChevronRight className={clsx('w-4 h-4', open && 'rotate-90')} />
-                                </div>
-                            </div>
-                        </DisclosureButton>
-                        <DisclosurePanel>
-                            <div className="mt-2 ml-4 border-l-2 border-[theme(text-secondary)] pl-4">
-                                {event.sub_activities.map((subActivity, index) => (
-                                    <SubActivityItem key={index} subActivity={subActivity} />
-                                ))}
-                            </div>
-                        </DisclosurePanel>
-                    </>
-                )}
-            </Disclosure>
-        </div>
+        <Accordion type="single" collapsible>
+            <AccordionItem value="sub-activities" className="border-none">
+                <AccordionTrigger className="py-2 hover:no-underline">
+                    <div className="flex justify-between items-center w-full pr-2">
+                        <h4 className="font-medium text-sm text-[theme(text-primary)]">
+                            {event.title}
+                        </h4>
+                        <span className="text-sm text-[theme(text-secondary)]">
+                            {event.sub_activities.length} events
+                        </span>
+                    </div>
+                </AccordionTrigger>
+                <AccordionContent>
+                    <div className="ml-4 border-l-2 border-[theme(text-secondary)] pl-4">
+                        {event.sub_activities.map((subActivity, index) => (
+                            <SubActivityItem key={index} subActivity={subActivity} />
+                        ))}
+                    </div>
+                </AccordionContent>
+            </AccordionItem>
+        </Accordion>
     )
 }
 
