@@ -4,7 +4,6 @@ import { GmailEventData } from "../routes/gmail";
 import { AutomationInput } from "../types/prisma";
 import { RunHistoryTrigger } from "../shared/RunHistoryTypes";
 
-// MARK: - Slack Event Data Type
 
 export interface SlackEventData {
     channelId: string;
@@ -47,8 +46,6 @@ export abstract class InputEvent {
      */
     abstract createTriggerMetadata(): RunHistoryTrigger;
 }
-
-// MARK: - GMAIL Event
 
 export class GmailEvent extends InputEvent {
     readonly integrationType: IntegrationType = IntegrationType.GMAIL;

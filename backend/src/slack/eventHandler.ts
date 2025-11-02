@@ -116,6 +116,10 @@ export async function handleSlackEvent(req: Request, res: Response) {
         console.log(chalk.blue('Event ID:', event_id));
     }
 
+    // IMPORTANT: Acknowledge to Slack immediately (within 3 seconds)
+    // Process the event asynchronously in the background to avoid timeouts and retries
+    res.sendStatus(200);
+
     // For event_callback types, check if we've already processed this event
     if (body.type === 'event_callback' && event_id) {
         const slackIntegration = await db().slack_integrations.findFirst({
@@ -139,8 +143,7 @@ export async function handleSlackEvent(req: Request, res: Response) {
                 // If unique constraint fails, this event was already processed
                 if (error.code === 'P2002') {
                     console.log(chalk.yellow(`⚠️  Skipping already processed event ${event_id}`));
-                    // Still return 200 OK to Slack to prevent retries
-                    return res.sendStatus(200);
+                    return; // Already acknowledged above
                 }
                 // Re-throw other errors
                 throw error;
@@ -148,6 +151,7 @@ export async function handleSlackEvent(req: Request, res: Response) {
         }
     }
 
+    // Process events asynchronously (already acknowledged to Slack)
     switch (ev.type) {
         case 'app_uninstalled':
             await markWorkspaceUninstalled(team_id); // delete tokens, close queues
@@ -158,10 +162,12 @@ export async function handleSlackEvent(req: Request, res: Response) {
             await tokensEvent.tokens?.oauth?.forEach(deactivateToken);
             break;
         case 'message':
-            await handleSlackMessage(ev as unknown as SlackMessageEvent, team_id);
+            // Process message asynchronously (fire and forget - errors are logged but don't affect Slack)
+            handleSlackMessage(ev as unknown as SlackMessageEvent, team_id).catch((error) => {
+                console.error(chalk.red('Error processing Slack message in background:'), error);
+            });
             break;
     }
-    res.sendStatus(200);
 }
 
 async function markWorkspaceUninstalled(team_id: string) {

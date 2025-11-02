@@ -1,11 +1,15 @@
-import { WebhookHandler } from '../WebhookManager';
+import { InputSetupHandler } from '../AutomationInputSetup';
 import { WebClient, LogLevel } from '@slack/web-api';
 import { db } from '../../prismaClient';
 import { IntegrationType } from '@prisma/client';
 import chalk from 'chalk';
 
-export class SlackWebhookHandler implements WebhookHandler {
-    async setupWebhook(integrationId: string, automationInput: any): Promise<void> {
+/**
+ * Slack input setup handler.
+ * Ensures the bot joins channels specified in automations.
+ */
+export class SlackInputSetup implements InputSetupHandler {
+    async setup(integrationId: string, automationInput: any): Promise<void> {
         const channelId = automationInput.slack_config?.channel_id;
 
         // Get Slack integration
@@ -30,7 +34,7 @@ export class SlackWebhookHandler implements WebhookHandler {
         }
     }
 
-    async tearDownWebhook(integrationId: string, automationInput: any): Promise<void> {
+    async tearDown(integrationId: string, automationInput: any): Promise<void> {
         const channelId = automationInput.slack_config?.channel_id;
 
         // Check if any other active automations are using this channel
@@ -76,7 +80,7 @@ export class SlackWebhookHandler implements WebhookHandler {
                 return;
             }
 
-            const members = channelInfo.channel.members || [];
+            const members = (channelInfo.channel as any).members || [];
             const isBotInChannel = members.includes(botUserId);
 
             if (!isBotInChannel) {
