@@ -1,10 +1,22 @@
-import { Agent, AgentInputItem, run, AgentOutputType, Tool, RunResult, RunState } from '@openai/agents';
+import { Agent, AgentInputItem, run, AgentOutputType, Tool, RunResult, RunState, RunToolApprovalItem } from '@openai/agents';
 import { Session } from '../../server';
 import { systemPrompt } from './SystemPrompt';
 import { InputEvent } from '../../Updater/InputEvents';
 import { Output } from '../../Updater/Outputs/Output';
 import { AutomationInput, AutomationOutput, AutomationPrompt } from '../../types/prisma';
-import { ApprovalInterceptor, ApprovalResult } from '../approval/ApprovalInterceptor';
+
+export type ApprovalResult<T extends Session, AgentType extends Agent<T, AgentOutputType>> =
+  | {
+    status: 'completed';
+    result: RunResult<T, AgentType>;
+  }
+  | {
+    status: 'awaiting_approval';
+    state: RunState<T, AgentType>;
+    interruptions: RunToolApprovalItem[];
+  };
+
+export type Decision = 'approve' | 'reject';
 
 export class AutomationAgent<T extends Session> {
     private history: AgentInputItem[] = [];
@@ -65,6 +77,61 @@ export class AutomationAgent<T extends Session> {
             throw new Error("No input event set. Call setInputEvent() before run()");
         }
 
-        return ApprovalInterceptor.run(this.agent, this.history, this.session as T);
+        const result = await run(this.agent, this.history, {
+            context: this.session as T,
+        });
+
+        const hasInterruptions = result.interruptions && result.interruptions.length > 0;
+
+        if (hasInterruptions) {
+            return {
+                status: 'awaiting_approval',
+                state: result.state,
+                interruptions: result.interruptions,
+            };
+        }
+
+        return {
+            status: 'completed',
+            result,
+        };
+    }
+
+    async resume(
+        serializedState: string,
+        decision: Decision,
+        interruption: RunToolApprovalItem,
+    ): Promise<ApprovalResult<T, Agent<T, AgentOutputType>>> {
+        if (!this.agent) {
+            throw new Error("Agent not initialized. Call initializeAgent() before resume()");
+        }
+
+        // Deserialize the saved state
+        const state: RunState<T, Agent<T, AgentOutputType>> = await RunState.fromString(this.agent, serializedState);
+
+        // Apply the user's decision
+        if (decision === 'approve') {
+            state.approve(interruption);
+        } else {
+            state.reject(interruption);
+        }
+
+        // Resume execution
+        const result = await run(this.agent, state);
+
+        const hasInterruptions = result.interruptions && result.interruptions.length > 0;
+
+        if (hasInterruptions) {
+            return {
+                status: 'awaiting_approval',
+                state: result.state,
+                interruptions: result.interruptions,
+            };
+        }
+
+        return {
+            status: 'completed',
+            result,
+        };
     }
 }

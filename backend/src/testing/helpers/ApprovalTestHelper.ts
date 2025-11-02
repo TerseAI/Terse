@@ -1,10 +1,10 @@
 import * as readline from 'readline';
 import chalk from 'chalk';
-import { ApprovalInterceptor, ApprovalResult } from '../../agent/approval/ApprovalInterceptor';
+import { ApprovalResult } from '../../agent/AutomationAgent/AutomationAgent';
 import { AutomationAgentFactory } from '../../agent/AutomationAgentFactory';
 import { NotionSession } from '../../Updater/Outputs/NotionOutput';
 import { Agent, AgentOutputType, RunToolApprovalItem } from '@openai/agents';
-import { AutomationAgent } from 'src/agent/AutomationAgent/AutomationAgent';
+import { AutomationAgent } from '../../agent/AutomationAgent/AutomationAgent';
 
 /**
  * Type for pending approval state in test scripts
@@ -46,9 +46,8 @@ export async function resumeApprovalFlow(state: PendingApprovalState | null): Pr
     const automationAgent: AutomationAgent<NotionSession> = await AutomationAgentFactory.createFromAutomationId(state.automationId);
     await automationAgent.initializeAgent();
 
-    // Call resume on the ApprovalInterceptor
-    const resumed: ApprovalResult<NotionSession, Agent<NotionSession, AgentOutputType>> = await ApprovalInterceptor.resume(
-      automationAgent.getAgent(),
+    // Call resume on the AutomationAgent
+    const resumed: ApprovalResult<NotionSession, Agent<NotionSession, AgentOutputType>> = await automationAgent.resume(
       state.serializedState,
       'approve',
       interruption
