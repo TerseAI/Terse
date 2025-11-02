@@ -97,6 +97,20 @@ export const getSlackChannels = async (req: Request, res: Response) => {
     res.status(200).json(response);
   } catch (error: any) {
     console.error(chalk.red("Error fetching Slack channels:"), error);
+    
+    // Check if this is an invalid_auth error from Slack
+    const isInvalidAuth = 
+      (error?.data?.error === 'invalid_auth') ||
+      (error?.code === 'slack_webapi_platform_error' && error?.data?.error === 'invalid_auth');
+    
+    if (isInvalidAuth) {
+      return res.status(401).json({
+        error: "Slack authentication failed",
+        details: "The Slack integration token is invalid or expired. Please reconnect your Slack integration.",
+        code: "SLACK_INVALID_AUTH",
+      });
+    }
+    
     res.status(500).json({
       error: "Failed to fetch channels",
       details: error.message,

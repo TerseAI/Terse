@@ -93,6 +93,13 @@ app.use(
   })
 );
 
+// Request logging middleware - logs ALL incoming requests
+app.use((req, res, next) => {
+  console.log(`📥 [REQUEST] ${req.method} ${req.path}`);
+  console.log(`📥 [REQUEST] Headers present: ${Object.keys(req.headers).length} headers`);
+  next();
+});
+
 // Parse JSON for all routes except Slack events (which needs raw body for signature verification)
 app.use((req, res, next) => {
   if (req.path === "/slack/events") {
@@ -322,6 +329,12 @@ app.get("/slack/oauth-callback", async (req, res) => {
 app.use("/slack/events", express.raw({ type: "application/json" }));
 
 app.post("/slack/events", async (req, res) => {
+  console.log("📨 [SERVER] Slack events endpoint hit - method:", req.method, "path:", req.path);
+  console.log("📨 [SERVER] Headers:", {
+    'x-slack-request-timestamp': req.headers['x-slack-request-timestamp'],
+    'x-slack-signature': req.headers['x-slack-signature'] ? 'present' : 'missing',
+    'content-type': req.headers['content-type'],
+  });
   await handleSlackEvent(req, res);
 });
 
@@ -357,6 +370,8 @@ app.delete("/automations/:id", authMiddleware, async (req, res) => {
 
 server.listen(3001, () => {
   console.log("🚀 Express backend running on http://localhost:3001");
+  console.log("📝 Logging is enabled - all console.log statements should appear");
+  console.log("📝 Testing log output...");
 });
 
 // Graceful shutdown

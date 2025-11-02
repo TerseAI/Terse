@@ -16,9 +16,7 @@
             "https://cursor-for-tickets.onrender.com/slack/oauth-callback"
         ],
         "scopes": {
-            "user": [
-                "admin.apps:read"
-            ],
+            "user": [],
             "bot": [
                 "chat:write",
                 "groups:write",
@@ -27,18 +25,27 @@
                 "users:read",
                 "users:read.email",
                 "app_mentions:read",
-                "im:read"
+                "channels:read",
+                "channels:history",
+                "channels:join",
+                "groups:read",
+                "groups:history",
+                "im:read",
+                "im:history",
+                "mpim:read",
+                "mpim:history"
             ]
         }
     },
     "settings": {
         "event_subscriptions": {
-            "request_url": "https://loss-occupation-usa-video.trycloudflare.com/slack/events",
+            "request_url": "https://destiny-gym-doctor-motorcycles.trycloudflare.com/slack/events",
             "user_events": [
                 "app_uninstalled_team"
             ],
             "bot_events": [
-                "app_uninstalled"
+                "app_uninstalled",
+                "message"
             ]
         },
         "org_deploy_enabled": false,
