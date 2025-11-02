@@ -2,9 +2,8 @@ import chalk from 'chalk';
 import crypto from 'crypto';
 import { Request, Response } from 'express';
 import { db } from '../prismaClient';
-import { AgentSession } from '../agent/agents/Agent';
-import { getUserTicketManager } from '../types/user';
-import { sendMessage } from './sendMessage';
+import { SlackEvent, SlackEventData } from '../Updater/InputEvents';
+import { EventProcessor } from '../agent/AutomationAgent/EventProcessor';
 
 // export function isValidSlackSig(req: Request) {
 //     const ts = req.headers['x-slack-request-timestamp'];
@@ -150,12 +149,6 @@ interface SlackMessageEvent {
     thread_ts?: string;
 }
 
-interface SlackEvent {
-    type: string;
-    team_id: string;
-    event: SlackMessageEvent | { type: string; [key: string]: unknown };
-}
-
 async function handleSlackMessage(event: SlackMessageEvent, teamId: string) {
     try {
         console.log(chalk.blue('Processing Slack message event'), JSON.stringify(event, null, 2));
@@ -165,7 +158,7 @@ async function handleSlackMessage(event: SlackMessageEvent, teamId: string) {
             return;
         }
         
-        // Get the Slack integration first to check bot user ID
+        // Get the Slack integration
         const slackIntegration = await db().slack_integrations.findFirst({
             where: {
                 team_id: teamId
@@ -174,16 +167,6 @@ async function handleSlackMessage(event: SlackMessageEvent, teamId: string) {
         
         if (!slackIntegration) {
             console.log(chalk.yellow('Slack integration not found'));
-            return;
-        }
-        
-        // Check if the bot is mentioned in the message or if it's a DM
-        const botMentionPattern = new RegExp(`<@${slackIntegration.bot_user_id}>`);
-        const isDM = event.channel.startsWith('D');
-        const isMentioned = botMentionPattern.test(event.text);
-        
-        if (!isDM && !isMentioned) {
-            console.log(chalk.yellow('Bot not mentioned in channel message, ignoring'));
             return;
         }
         
@@ -200,109 +183,42 @@ async function handleSlackMessage(event: SlackMessageEvent, teamId: string) {
         
         if (!userSlackIntegration) {
             console.log(chalk.yellow('User not found for Slack message'));
-            await sendMessage(
-                "I don't recognize you. Please make sure you've connected your account through the web app.",
-                slackIntegration.access_token,
-                event.channel
-            );
             return;
         }
-        
-        // Set up session for the Agent
-        const ticketManager = await getUserTicketManager(userSlackIntegration.user.id);
-        if (!ticketManager) {
-            console.log(chalk.yellow('No ticket manager found for user'));
-            await sendMessage(
-                '❌ Unable to access your ticket system. Please check your Linear/Jira integration in the web app.',
-                slackIntegration.access_token,
-                event.channel
-            );
-            return;
-        }
-        
-        const teams = await ticketManager.getTeams();
-        const session = {
-            user: userSlackIntegration.user,
-            isUserInitiated: true,
-            ticketManager: ticketManager,
-            teamId: teams[0]?.id,
-            currentUser: await ticketManager.me() || undefined,
+
+        // Build SlackEventData from the Slack message event
+        // Note: channelName and userName could be fetched from Slack API if needed,
+        // but for now we'll use IDs. Permalink could also be constructed if needed.
+        const slackEventData: SlackEventData = {
+            channelId: event.channel,
+            channelName: undefined, // Could fetch from Slack API if needed
+            userId: event.user,
+            userName: undefined, // Could fetch from Slack API if needed
+            text: event.text,
+            timestamp: event.ts,
+            threadTimestamp: event.thread_ts,
+            teamId: teamId,
+            permalink: undefined, // Could construct from team/channel/ts if needed
         };
-        
-        // Clean the message text (remove bot mention if present)
-        let cleanText = event.text;
-        if (isMentioned) {
-            cleanText = event.text.replace(botMentionPattern, '').trim();
+
+        // Create SlackEvent and process through EventProcessor
+        const slackEvent = new SlackEvent(slackEventData);
+        const eventProcessor = new EventProcessor(slackEvent, userSlackIntegration.user);
+        const results = await eventProcessor.process();
+
+        // Log results (automations will handle their own outputs via NotionOutput, etc.)
+        console.log(chalk.green(`Slack message processed - ${results.length} automation(s) matched`));
+        for (const result of results) {
+            if (result.success) {
+                console.log(chalk.green(`  ✓ Automation "${result.automation?.name}" processed successfully`));
+            } else {
+                console.log(chalk.yellow(`  ⚠ Automation "${result.automation?.name}": ${result.message}`));
+            }
         }
-        
-        console.log(chalk.blue('Processing ticket command via Agent:', cleanText));
-        
-        // Create agent session and process the message
-        const agentSession = new AgentSession(session);
-        
-        // Format the message for the agent with context
-        const agentMessage = `
-User sent a message via Slack: "${cleanText}"
-
-${isDM ? 'This is a direct message to the bot.' : 'This is a channel message where the bot was mentioned.'}
-
-The user wants to interact with tickets using natural language. They might want to:
-- Check ticket status
-- Update ticket status  
-- Add comments to tickets
-- Create new tickets
-- Assign tickets
-- Search for tickets
-- Get help with available commands
-
-Please analyze their request and take appropriate action with the available ticket management tools.
-
-If you cannot understand the request or need more information, respond with a helpful message explaining what you can do.
-
-Always provide clear feedback on what actions you took or what information you found.
-
-Remember to format your response for Slack (use *bold* for emphasis, not **bold**).
-        `.trim();
-        
-        await agentSession.push({ user_message: agentMessage, visible_actors: [], timezone: 'America/New_York' });
-        const result = await agentSession.run();
-        
-        // Send the agent's response back to Slack
-        if (result.finalOutput) {
-            const response = result.finalOutput as string;
-            await sendMessage(
-                response,
-                slackIntegration.access_token,
-                event.channel
-            );
-        } else {
-            await sendMessage(
-                "I processed your request but didn't have anything specific to report back.",
-                slackIntegration.access_token,
-                event.channel
-            );
-        }
-        
-        console.log(chalk.green('Slack message processed successfully'));
         
     } catch (error) {
         console.error(chalk.red('Error handling Slack message:'), error);
-        
-        // Try to send an error message back to the user
-        try {
-            const slackIntegration = await db().slack_integrations.findFirst({
-                where: { team_id: teamId }
-            });
-            
-            if (slackIntegration) {
-                await sendMessage(
-                    '❌ Sorry, I encountered an error processing your request. Please try again or contact support.',
-                    slackIntegration.access_token,
-                    event.channel
-                );
-            }
-        } catch (sendError) {
-            console.error(chalk.red('Error sending error message to Slack:'), sendError);
-        }
+        // Note: We don't send error messages back to Slack anymore since this is now
+        // event-driven automations, not interactive bot responses
     }
 }
