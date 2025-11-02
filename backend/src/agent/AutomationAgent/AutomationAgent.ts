@@ -37,7 +37,7 @@ export class AutomationAgent<T extends Session> {
         this.tools = output.toolbox;
     }
 
-    async initializeAgent(): Promise<Agent<T, AgentOutputType>> {
+    async initializeAgent(): Promise<void> {
         const agent = new Agent<T, AgentOutputType>({
             name: 'Living Document Automator',
             instructions: await systemPrompt(this.session, this.automationPrompt, this.automationInputs, this.automationOutput),
@@ -46,14 +46,6 @@ export class AutomationAgent<T extends Session> {
         });
 
         this.agent = agent;
-        return agent;
-    }
-
-    getAgent(): Agent<T, AgentOutputType> {
-        if (!this.agent) {
-            throw new Error("Agent not initialized. Call initializeAgent() before getAgent()");
-        }
-        return this.agent;
     }
 
     setInputEvent(event: InputEvent) {
@@ -62,6 +54,8 @@ export class AutomationAgent<T extends Session> {
 
     async run(): Promise<ApprovalResult<T, Agent<T, AgentOutputType>>> {
         console.log("Running Automation Agent");
+
+        await this.initializeAgent();
 
         if (!this.agent) {
             throw new Error("Agent not initialized. Call initializeAgent() before run()");
@@ -102,6 +96,8 @@ export class AutomationAgent<T extends Session> {
         decision: Decision,
         interruption: RunToolApprovalItem,
     ): Promise<ApprovalResult<T, Agent<T, AgentOutputType>>> {
+        await this.initializeAgent();
+
         if (!this.agent) {
             throw new Error("Agent not initialized. Call initializeAgent() before resume()");
         }
