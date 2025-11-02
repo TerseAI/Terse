@@ -6,7 +6,6 @@ import { getIntegrationInstances } from "../../../utility/IntegrationUtils";
 import { BackendProvider } from "../../../services/backend";
 import { Badge } from "@/components/ui/badge";
 import { Spinner } from "@/components/ui/spinner";
-import { NotionDatabase, NotionDatabasesResponse, NotionIntegration } from "@/shared/types";
 
 interface IntegrationBadgeProps {
     integrationId?: string;
@@ -63,14 +62,14 @@ function NotionIntegrationBadge({ integration }: { integration: IntegrationInsta
 
     return (
         <div className="flex flex-col gap-1">
-                <Badge variant="secondary">
-                    <Check className="size-3" />
-                    {workspaceName}
-                </Badge>
-                <Badge variant="secondary">
-                    <Check className="size-3" />
-                    {databaseName}
-                </Badge>
-            </div>
+            <Badge variant="secondary">
+                <Check className="size-3" />
+                {workspaceName}
+            </Badge>
+            <Badge variant="secondary">
+                <Check className="size-3" />
+                {databaseName}
+            </Badge>
+        </div>
     );
 }
