@@ -7,6 +7,7 @@ import { Zap, X } from "lucide-react";
 import { IntegrationSelector } from "../../components/IntegrationSelector";
 import { getIntegrationTypeName } from "../../utility/IntegrationFormatters";
 import { clearIntegrationConfigs } from "../../utility/IntegrationUtils";
+import { Button } from "@/components/ui/button";
 
 export function InputsSection() {
     const { inputs, setInputs } = useAutomationContext();
@@ -45,19 +46,18 @@ export function InputsSection() {
         <SectionLayout
             title="Listen For Events"
             subtitle="Choose which integration triggers this automation"
-            icon={<Zap className="w-5 h-5 text-accent" />}
+            icon={<Zap className="w-5 h-5 text-primary" />}
         >
             {!input ? (
                 <div className="text-center py-4 px-4">
                     <p className="text-xs text-muted-foreground mb-3">
                         No event source yet. Add an integration to get started.
                     </p>
-                    <button
+                    <Button
                         onClick={() => setShowAddModal(true)}
-                        className="px-4 py-2 bg-accent text-accent-foreground rounded-lg hover:brightness-110 transition-all text-sm font-medium"
                     >
                         + Add Event Source
-                    </button>
+                    </Button>
                 </div>
             ) : (
                 <div className="p-4 rounded-lg border border-input bg-background">

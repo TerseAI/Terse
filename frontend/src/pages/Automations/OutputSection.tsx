@@ -7,6 +7,7 @@ import { FileText, X } from "lucide-react";
 import { IntegrationSelector } from "../../components/IntegrationSelector";
 import { getIntegrationTypeName } from "../../utility/IntegrationFormatters";
 import { clearIntegrationConfigs } from "../../utility/IntegrationUtils";
+import { Button } from "@/components/ui/button";
 
 export function OutputSection() {
     const { output, setOutput } = useAutomationContext();
@@ -50,12 +51,11 @@ export function OutputSection() {
                     <p className="text-xs text-muted-foreground mb-3">
                         Choose where your living document will be updated
                     </p>
-                    <button
+                    <Button
                         onClick={() => setShowAddModal(true)}
-                        className="px-4 py-2 bg-accent text-accent-foreground rounded-lg hover:brightness-110 transition-all text-sm font-medium"
                     >
                         + Add Output
-                    </button>
+                    </Button>
                 </div>
             ) : (
                 <div className="p-4 rounded-lg border border-input bg-background">
