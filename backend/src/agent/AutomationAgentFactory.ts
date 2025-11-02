@@ -19,7 +19,26 @@ export class AutomationAgentFactory {
         where: { id: automationId },
         include: {
           prompt: true,
-          inputs: true,
+          inputs: {
+            include: {
+              slack_config: true,
+              notion_config: true,
+              linear_config: true,
+              jira_config: true,
+              github_config: true,
+              gmail_config: true,
+            },
+          },
+          output: {
+            include: {
+              slack_config: true,
+              notion_config: true,
+              linear_config: true,
+              jira_config: true,
+              github_config: true,
+              gmail_config: true,
+            },
+          },
         },
       });
 
