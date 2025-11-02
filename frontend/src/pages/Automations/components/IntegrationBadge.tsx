@@ -6,6 +6,7 @@ import { getIntegrationInstances } from "../../../utility/IntegrationUtils";
 import { BackendProvider } from "../../../services/backend";
 import { Badge } from "@/components/ui/badge";
 import { Spinner } from "@/components/ui/spinner";
+import { NotionDatabase, NotionDatabasesResponse, NotionIntegration } from "@/shared/types";
 
 interface IntegrationBadgeProps {
     integrationId?: string;
@@ -37,6 +38,15 @@ export function IntegrationBadge({ integrationId, integrationType }: Integration
     }
 
     const integration = integrations.find(i => i.id === integrationId);
+
+    // Special handling for Notion - two badges vertically stacked
+    if (integrationType === Integration.NOTION && integration) {
+        return (
+            <NotionIntegrationBadge integration={integration} />
+        );
+    }
+
+    // Default behavior for other integrations
     const displayText = integration ? formatIntegrationDisplay(integration, integrationType) : 'Loading...';
 
     return (
@@ -47,3 +57,20 @@ export function IntegrationBadge({ integrationId, integrationType }: Integration
     );
 }
 
+function NotionIntegrationBadge({ integration }: { integration: IntegrationInstance }) {
+    const workspaceName = integration.workspaceName || integration.workspaceId || 'Unknown Workspace';
+    const databaseName = integration.databaseName || 'Unknown Database';
+
+    return (
+        <div className="flex flex-col gap-1">
+                <Badge variant="secondary">
+                    <Check className="size-3" />
+                    {workspaceName}
+                </Badge>
+                <Badge variant="secondary">
+                    <Check className="size-3" />
+                    {databaseName}
+                </Badge>
+            </div>
+    );
+}
