@@ -223,19 +223,19 @@ async function handleSlackMessage(event: SlackMessageEvent, teamId: string) {
             return;
         }
         
-        // Get the user who sent the message
-        const userSlackIntegration = await db().user_slack_integrations.findFirst({
+        // Get all users who have Slack integrations for this workspace
+        // This allows us to process messages from any workspace user, not just the bot installer
+        const workspaceUserIntegrations = await db().user_slack_integrations.findMany({
             where: {
-                slack_team_id: teamId,
-                authed_user_id: event.user
+                slack_team_id: teamId
             },
             include: {
                 user: true
             }
         });
         
-        if (!userSlackIntegration) {
-            console.log(chalk.yellow('User not found for Slack message'));
+        if (workspaceUserIntegrations.length === 0) {
+            console.log(chalk.yellow('No users found with Slack integrations for this workspace'));
             return;
         }
 
@@ -254,20 +254,36 @@ async function handleSlackMessage(event: SlackMessageEvent, teamId: string) {
             permalink: undefined, // Could construct from team/channel/ts if needed
         };
 
-        // Create SlackEvent and process through EventProcessor
+        // Create SlackEvent once
         const slackEvent = new SlackEvent(slackEventData);
-        const eventProcessor = new EventProcessor(slackEvent, userSlackIntegration.user);
-        const results = await eventProcessor.process();
-
-        // Log results (automations will handle their own outputs via NotionOutput, etc.)
-        console.log(chalk.green(`Slack message processed - ${results.length} automation(s) matched`));
-        for (const result of results) {
-            if (result.success) {
-                console.log(chalk.green(`  ✓ Automation "${result.automation?.name}" processed successfully`));
-            } else {
-                console.log(chalk.yellow(`  ⚠ Automation "${result.automation?.name}": ${result.message}`));
+        
+        // Process the event against automations for all users in this workspace
+        // This ensures messages from any workspace user can trigger automations
+        let totalMatches = 0;
+        for (const userSlackIntegration of workspaceUserIntegrations) {
+            try {
+                const eventProcessor = new EventProcessor(slackEvent, userSlackIntegration.user);
+                const results = await eventProcessor.process();
+                
+                // Log results for this user
+                if (results.length > 0 && results.some(r => r.success || r.automation !== null)) {
+                    totalMatches += results.filter(r => r.success || r.automation !== null).length;
+                    console.log(chalk.green(`User ${userSlackIntegration.user.email}: ${results.length} automation(s) matched`));
+                    for (const result of results) {
+                        if (result.success) {
+                            console.log(chalk.green(`  ✓ Automation "${result.automation?.name}" processed successfully`));
+                        } else if (result.automation) {
+                            console.log(chalk.yellow(`  ⚠ Automation "${result.automation.name}": ${result.message}`));
+                        }
+                    }
+                }
+            } catch (error) {
+                console.error(chalk.red(`Error processing automations for user ${userSlackIntegration.user.email}:`), error);
+                // Continue processing other users even if one fails
             }
         }
+        
+        console.log(chalk.green(`Slack message processed - ${totalMatches} total automation(s) matched across all workspace users`));
         
     } catch (error) {
         console.error(chalk.red('Error handling Slack message:'), error);
