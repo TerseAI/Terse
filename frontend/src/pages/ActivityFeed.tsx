@@ -1,13 +1,15 @@
 import { useEffect, useState } from "react";
-import { InboxIcon } from "@heroicons/react/24/outline";
+import { Inbox, ChevronRight } from "lucide-react";
 import AvatarBar from "../components/activity/AvatarBar";
-import Card from "../components/Card";
+import { Card, CardContent, CardHeader } from "../components/ui/card";
 import { ActivityEvent, SubActivity, CommitAssociation } from "../shared/types";
 import { ActivityFeedService } from "../services/activityFeed";
 import EventDetails from "../components/activity/EventDetails";
 import { Disclosure, DisclosureButton, DisclosurePanel } from '@headlessui/react';
-import { ChevronRightIcon } from '@heroicons/react/20/solid'
 import clsx from 'clsx'
+import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "@/components/ui/accordion";
 
 function ActivityFeed() {
     const [activity, setActivity] = useState<ActivityEvent[]>([]);
@@ -78,7 +80,7 @@ function ActivityFeedContent({
     }
 
     if (activity.length === 0) {
-        return emptyActivityFeed();
+        return <EmptyActivityFeed />;
     }
 
     return (
@@ -89,7 +91,7 @@ function ActivityFeedContent({
                     <button
                         onClick={onLoadMore}
                         disabled={isLoadingMore}
-                        className="px-6 py-2 bg-[theme(background-light)] text-[theme(text-primary)] rounded-lg hover:bg-[theme(background)] transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-[var(--shadow)] overflow-hidden"
+                        className="px-6 py-2 bg-card text-foreground rounded-lg hover:bg-accent/10 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm overflow-hidden"
                     >
                         {isLoadingMore ? 'Loading...' : 'Load More'}
                     </button>
@@ -100,33 +102,51 @@ function ActivityFeedContent({
 }
 
 function LoadingState() {
-    // three skeleton cards with pulse animation
     return (
         <div className="grid grid-cols-1 gap-4">
-            <div className="animate-pulse rounded-lg bg-[theme(background)] h-24 w-full"></div>
-            <div className="animate-pulse rounded-lg bg-[theme(background)] h-24 w-full"></div>
-            <div className="animate-pulse rounded-lg bg-[theme(background)] h-24 w-full"></div>
+            {[1, 2, 3].map((i) => (
+                <Card key={i}>
+                    <CardHeader className="flex justify-between">
+                        {/* Avatar and repo info skeleton */}
+                        <div className="flex items-center gap-3">
+                            <Skeleton className="h-10 w-10 rounded-full" />
+                            <div className="space-y-2">
+                                <Skeleton className="h-4 w-[200px]" />
+                                <Skeleton className="h-3 w-[150px]" />
+                            </div>
+                        </div>
+                        {/* Date skeleton */}
+                        <Skeleton className="h-4 w-[100px]" />
+                    </CardHeader>
+
+                    {/* Title and event count skeleton */}
+                    <CardContent className="flex justify-between items-center">
+                        <Skeleton className="h-5 w-[250px]" />
+                        <Skeleton className="h-4 w-[80px]" />
+                    </CardContent>
+                </Card>
+            ))}
         </div>
-    )       
+    )
 }
 
 function FeedContent({ activity }: { activity: ActivityEvent[] }) {
     if (activity.length === 0) {
-        return emptyActivityFeed();
+        return <EmptyActivityFeed />;
     }
 
     return (
         activity.map((event, index) => (
             <Card key={index}>
-                <div className="grid grid-flow-row gap-2">
-                    {/* Header with avatar, repo info, and date */}
-                    <div className="flex justify-between">
-                        <AvatarBar event={event} />
-                        <EventDetails event={event} />
-                    </div>
+                {/* Header with avatar, repo info, and date */}
+                <CardHeader className="flex justify-between">
+                    <AvatarBar event={event} />
+                    <EventDetails event={event} />
+                </CardHeader>
 
+                <CardContent className="grid grid-flow-row gap-2">
                     <SubActivityEvents event={event} />
-                </div>
+                </CardContent>
             </Card>
         ))
     )
@@ -134,32 +154,27 @@ function FeedContent({ activity }: { activity: ActivityEvent[] }) {
 
 function SubActivityEvents({ event }: { event: ActivityEvent }) {
     return (
-        <div className="transition duration-200">
-            <Disclosure>
-                {({ open }) => (
-                    <>
-                        <DisclosureButton className="w-full">
-                            <div className="flex justify-between items-center">
-                                <h4 className="font-medium text-sm text-[theme(text-primary)]">
-                                    {event.title}
-                                </h4>
-                                <div className="flex items-center gap-2 text-sm text-[theme(text-secondary)]">
-                                    <span>{event.sub_activities.length} events</span>
-                                    <ChevronRightIcon className={clsx('w-4 h-4', open && 'rotate-90')} />
-                                </div>
-                            </div>
-                        </DisclosureButton>
-                        <DisclosurePanel>
-                            <div className="mt-2 ml-4 border-l-2 border-[theme(text-secondary)] pl-4">
-                                {event.sub_activities.map((subActivity, index) => (
-                                    <SubActivityItem key={index} subActivity={subActivity} />
-                                ))}
-                            </div>
-                        </DisclosurePanel>
-                    </>
-                )}
-            </Disclosure>
-        </div>
+        <Accordion type="single" collapsible>
+            <AccordionItem value="sub-activities" className="border-none">
+                <AccordionTrigger className="py-2 hover:no-underline">
+                    <div className="flex justify-between items-center w-full pr-2">
+                        <h4 className="font-medium text-sm text-[theme(text-primary)]">
+                            {event.title}
+                        </h4>
+                        <span className="text-sm text-[theme(text-secondary)]">
+                            {event.sub_activities.length} events
+                        </span>
+                    </div>
+                </AccordionTrigger>
+                <AccordionContent>
+                    <div className="ml-4 border-l-2 border-[theme(text-secondary)] pl-4">
+                        {event.sub_activities.map((subActivity, index) => (
+                            <SubActivityItem key={index} subActivity={subActivity} />
+                        ))}
+                    </div>
+                </AccordionContent>
+            </AccordionItem>
+        </Accordion>
     )
 }
 
@@ -172,7 +187,7 @@ function SubActivityItem({ subActivity }: { subActivity: SubActivity }) {
                         <DisclosureButton className="w-full text-left">
                             <div className="flex justify-between items-center">
                                 <p className="text-sm text-[theme(text-secondary)]">{subActivity.summary}</p>
-                                <ChevronRightIcon className={clsx('w-4 h-4 flex-shrink-0', open && 'rotate-90')} />
+                                <ChevronRight className={clsx('w-4 h-4 flex-shrink-0', open && 'rotate-90')} />
                             </div>
                         </DisclosureButton>
                         <DisclosurePanel>
@@ -212,17 +227,17 @@ function AssociatedCommits({ commits }: { commits: CommitAssociation[] }) {
     )
 }
 
-function emptyActivityFeed() {
+function EmptyActivityFeed() {
     return (
-        <div className="w-full grid place-items-center animate-fade-in">
-            <div className="grid place-items-center">
-                <InboxIcon className="w-8 h-8 text-[theme(--color-accent)] mb-4" />
-                <h1 className="text-xl font-bold pb-2 text-[theme(text-primary)]">No activity yet</h1>
-                <p className="text-[theme(text-secondary)]">
-                    Push a commit, open a PR, or merge a PR to see your activity here.
-                </p>
-            </div>
-        </div >
+        <Empty>
+            <EmptyHeader>
+                <EmptyMedia variant="icon">
+                    <Inbox className="text-[theme(--color-primary)]" />
+                </EmptyMedia>
+                <EmptyTitle>No activity yet</EmptyTitle>
+                <EmptyDescription>Push a commit, open a PR, or merge a PR to see your activity here.</EmptyDescription>
+            </EmptyHeader>
+        </Empty>
     )
 }
 

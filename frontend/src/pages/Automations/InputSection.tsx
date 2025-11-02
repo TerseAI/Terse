@@ -3,7 +3,7 @@ import { Input, useAutomationContext } from "../../context/AutomationContext";
 import { Integration } from "../../context/Integrations";
 import { SectionLayout } from "./components/SectionLayout";
 import { AddInputModal } from "./components/AddInputModal";
-import { BoltIcon, XMarkIcon } from "@heroicons/react/24/outline";
+import { Zap, X } from "lucide-react";
 import { IntegrationSelector } from "../../components/IntegrationSelector";
 import { clearIntegrationConfigs, getIntegrationName } from "../../utility/IntegrationUtils";
 
@@ -44,31 +44,31 @@ export function InputsSection() {
         <SectionLayout
             title="Listen For Events"
             subtitle="Choose which integration triggers this automation"
-            icon={<BoltIcon className="w-5 h-5 text-[theme(--color-accent)]" />}
+            icon={<Zap className="w-5 h-5 text-accent" />}
         >
             {!input ? (
                 <div className="text-center py-4 px-4">
-                    <p className="text-xs text-[theme(text-secondary)] mb-3">
+                    <p className="text-xs text-muted-foreground mb-3">
                         No event source yet. Add an integration to get started.
                     </p>
                     <button
                         onClick={() => setShowAddModal(true)}
-                        className="px-4 py-2 bg-[theme(--color-accent)] text-white rounded-lg hover:brightness-110 transition-all text-sm font-medium"
+                        className="px-4 py-2 bg-accent text-accent-foreground rounded-lg hover:brightness-110 transition-all text-sm font-medium"
                     >
                         + Add Event Source
                     </button>
                 </div>
             ) : (
-                <div className="p-4 rounded-lg border border-[theme(border)] bg-[theme(background)]">
+                <div className="p-4 rounded-lg border border-input bg-background">
                     <div className="flex items-start justify-between mb-3">
-                        <div className="text-sm font-medium text-[theme(text-primary)]">
+                        <div className="text-sm font-medium text-foreground">
                             {getIntegrationName(input.integration)}
                         </div>
                         <button
                             onClick={handleRemove}
-                            className="text-[theme(text-secondary)] hover:text-[theme(--color-accent-danger)] transition-colors"
+                            className="text-muted-foreground hover:text-destructive transition-colors"
                         >
-                            <XMarkIcon className="w-5 h-5" />
+                            <X className="w-5 h-5" />
                         </button>
                     </div>
                     <IntegrationSelector

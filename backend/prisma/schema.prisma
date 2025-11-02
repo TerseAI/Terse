@@ -33,6 +33,7 @@ model users {
   ticket_activity_events   ticket_activity_events[]
   project_activity_events  project_activity_events[]
   automations              automations[]
+  pending_approvals        pending_approvals[]
 }
 
 model github_repositories {
@@ -470,6 +471,7 @@ enum RunHistoryStatus {
   failed
   skipped
   in_progress
+  awaiting_approval
 }
 
 enum RunHistoryDecisionAction {
@@ -510,8 +512,9 @@ model run_history_records {
   created_at          DateTime                 @default(now())
   updated_at          DateTime                 @updatedAt
 
-  automation automations           @relation(fields: [automation_id], references: [id], onDelete: Cascade)
-  actions    run_history_actions[]
+  automation       automations           @relation(fields: [automation_id], references: [id], onDelete: Cascade)
+  actions          run_history_actions[]
+  pending_approval pending_approvals?
 
   @@index([automation_id])
   @@index([status])
@@ -531,4 +534,23 @@ model run_history_actions {
   run_history_record run_history_records @relation(fields: [run_history_record_id], references: [id], onDelete: Cascade)
 
   @@index([run_history_record_id])
+}
+
+// Pending approvals for tools that require human approval
+// Status is tracked via run_history_record.status (awaiting_approval)
+model pending_approvals {
+  id                    String    @id @default(cuid())
+  user_id               String
+  run_history_record_id String    @unique
+  run_state_json        String    @db.Text // Serialized OpenAI RunState for resumption
+  created_at            DateTime  @default(now())
+  updated_at            DateTime  @updatedAt
+  approved_at           DateTime?
+  expires_at            DateTime  @default(dbgenerated("now() + interval '24 hours'"))
+
+  user               users               @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  run_history_record run_history_records @relation(fields: [run_history_record_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id])
+  @@index([created_at])
 }
