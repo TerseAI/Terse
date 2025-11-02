@@ -2,7 +2,7 @@ import axios from 'axios';
 import { ModelEvent, ModelRequest } from "../shared/ModelEvents";
 import { Automation, AutomationInput, AutomationOutput, AutomationPrompt, AutomationsResponse, AutomationUpdate, GithubIntegration, IntegrationsStatus, JiraIntegration, LinearIntegration, NotionDatabasesResponse, SlackChannelsResponse, SlackIntegration } from "../shared/types";
 import { User } from "../types/User";
-import { RunHistoryRecord } from '../shared/RunHistoryTypes';
+import { GetRunHistoryParams, GetRunHistoryResponse } from '../shared/RunHistoryTypes';
 
 const backendBaseUrl = '/api';
 
@@ -199,14 +199,7 @@ interface BackendService {
     /**
      * Fetch run history for a specific automation with filters and pagination
      */
-    getRunHistory(automationId: string, params: {
-        q?: string;
-        start?: string; // ISO
-        end?: string;   // ISO
-        status?: string[]; // ["success","failed",...]
-        page?: number;
-        pageSize?: number;
-    }): Promise<{ items: RunHistoryRecord[]; page: number; pageSize: number; total: number }>;
+    getRunHistory(automationId: string, params: GetRunHistoryParams): Promise<GetRunHistoryResponse>;
 }
 
 export const BackendProvider: BackendService = {
@@ -554,7 +547,7 @@ export const BackendProvider: BackendService = {
         if (params.end) usp.append('end', params.end);
         if (params.status && params.status.length) usp.append('status', params.status.join(','));
         const url = `${backendBaseUrl}/run-history/${encodeURIComponent(automationId)}${usp.toString() ? `?${usp.toString()}` : ''}`;
-        return axios.get<{ items: RunHistoryRecord[]; page: number; pageSize: number; total: number }>(url, { withCredentials: true })
+        return axios.get<GetRunHistoryResponse>(url, { withCredentials: true })
             .then(r => r.data)
             .catch(error => {
                 console.error('Error fetching run history:', error);
