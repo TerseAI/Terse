@@ -53,7 +53,8 @@ import {
 } from "./routes/linear";
 import {
   getNotionOAuthUrl,
-  notionOAuthCallback
+  notionOAuthCallback,
+  getNotionDatabases
 } from "./routes/notion";
 import { getRunHistory } from "./routes/runHistory";
 import { User as TicketUser } from "./shared/TicketSystem";
@@ -63,6 +64,7 @@ import {
   getSlackOAuthUrl,
   slackOAuthCallback,
 } from "./slack/registerApp";
+import { getSlackChannels } from "./routes/slack";
 import { TicketManager } from "./ticketing/TicketIntegration";
 import { User } from "./types/prisma";
 import { JiraWebhookPayload } from "./utility/JiraWebhookPayload";
@@ -236,6 +238,10 @@ app.get("/notion/oauth/callback", async (req, res) => {
   notionOAuthCallback(req, res);
 });
 
+app.get("/notion/databases", authMiddleware, async (req, res) => {
+  getNotionDatabases(req, res);
+});
+
 // MARK: LINEAR
 
 app.post("/linear/set-api-key", authMiddleware, async (req, res) => {
@@ -307,6 +313,10 @@ app.use("/slack/events", express.raw({ type: "application/json" }));
 
 app.post("/slack/events", async (req, res) => {
   await handleSlackEvent(req, res);
+});
+
+app.get("/slack/channels", authMiddleware, async (req, res) => {
+  getSlackChannels(req, res);
 });
 
 app.get("/integrations/status", authMiddleware, async (req, res) => {

@@ -14,6 +14,238 @@ const integrationTypeMap: Record<string, IntegrationType> = {
     'notion': IntegrationType.NOTION,
 };
 
+// Helper function to create config record for an automation input
+async function createInputConfig(
+    tx: any,
+    inputId: string,
+    integrationType: IntegrationType,
+    config: AutomationInput
+): Promise<void> {
+    switch (integrationType) {
+        case IntegrationType.SLACK:
+            if (config.slackConfig) {
+                await tx.automation_slack_configs.create({
+                    data: {
+                        automation_input_id: inputId,
+                        channel_id: config.slackConfig.channelId || null,
+                        channel_name: config.slackConfig.channelName || null,
+                    },
+                });
+            }
+            break;
+        case IntegrationType.NOTION:
+            if (config.notionConfig) {
+                await tx.automation_notion_configs.create({
+                    data: {
+                        automation_input_id: inputId,
+                        database_id: config.notionConfig.databaseId || null,
+                        database_name: config.notionConfig.databaseName || null,
+                    },
+                });
+            }
+            break;
+        case IntegrationType.LINEAR:
+            if (config.linearConfig) {
+                await tx.automation_linear_configs.create({
+                    data: {
+                        automation_input_id: inputId,
+                        project_id: config.linearConfig.projectId || null,
+                        project_name: config.linearConfig.projectName || null,
+                    },
+                });
+            }
+            break;
+        case IntegrationType.JIRA:
+            if (config.jiraConfig) {
+                await tx.automation_jira_configs.create({
+                    data: {
+                        automation_input_id: inputId,
+                        project_key: config.jiraConfig.projectKey || null,
+                        project_id: config.jiraConfig.projectId || null,
+                    },
+                });
+            }
+            break;
+        case IntegrationType.GITHUB:
+            if (config.githubConfig) {
+                await tx.automation_github_configs.create({
+                    data: {
+                        automation_input_id: inputId,
+                        repository_id: config.githubConfig.repositoryId || null,
+                    },
+                });
+            }
+            break;
+        case IntegrationType.GMAIL:
+            // Gmail configs are empty for now, but create record for consistency
+            await tx.automation_gmail_configs.create({
+                data: {
+                    automation_input_id: inputId,
+                },
+            });
+            break;
+    }
+}
+
+// Helper function to create config record for an automation output
+async function createOutputConfig(
+    tx: any,
+    outputId: string,
+    integrationType: IntegrationType,
+    config: AutomationOutput
+): Promise<void> {
+    switch (integrationType) {
+        case IntegrationType.SLACK:
+            if (config.slackConfig) {
+                await tx.automation_slack_configs.create({
+                    data: {
+                        automation_output_id: outputId,
+                        channel_id: config.slackConfig.channelId || null,
+                        channel_name: config.slackConfig.channelName || null,
+                    },
+                });
+            }
+            break;
+        case IntegrationType.NOTION:
+            if (config.notionConfig) {
+                await tx.automation_notion_configs.create({
+                    data: {
+                        automation_output_id: outputId,
+                        database_id: config.notionConfig.databaseId || null,
+                        database_name: config.notionConfig.databaseName || null,
+                    },
+                });
+            }
+            break;
+        case IntegrationType.LINEAR:
+            if (config.linearConfig) {
+                await tx.automation_linear_configs.create({
+                    data: {
+                        automation_output_id: outputId,
+                        project_id: config.linearConfig.projectId || null,
+                        project_name: config.linearConfig.projectName || null,
+                    },
+                });
+            }
+            break;
+        case IntegrationType.JIRA:
+            if (config.jiraConfig) {
+                await tx.automation_jira_configs.create({
+                    data: {
+                        automation_output_id: outputId,
+                        project_key: config.jiraConfig.projectKey || null,
+                        project_id: config.jiraConfig.projectId || null,
+                    },
+                });
+            }
+            break;
+        case IntegrationType.GITHUB:
+            if (config.githubConfig) {
+                await tx.automation_github_configs.create({
+                    data: {
+                        automation_output_id: outputId,
+                        repository_id: config.githubConfig.repositoryId || null,
+                    },
+                });
+            }
+            break;
+        case IntegrationType.GMAIL:
+            // Gmail configs are empty for now, but create record for consistency
+            await tx.automation_gmail_configs.create({
+                data: {
+                    automation_output_id: outputId,
+                },
+            });
+            break;
+    }
+}
+
+// Helper function to transform config from database to API format
+function transformInputConfig(input: any): AutomationInput {
+    const base: AutomationInput = {
+        integration: input.integration_type.toLowerCase(),
+        integrationId: input.integration_id,
+    };
+
+    if (input.slack_config) {
+        base.slackConfig = {
+            channelId: input.slack_config.channel_id || undefined,
+            channelName: input.slack_config.channel_name || undefined,
+        };
+    }
+    if (input.notion_config) {
+        base.notionConfig = {
+            databaseId: input.notion_config.database_id || undefined,
+            databaseName: input.notion_config.database_name || undefined,
+        };
+    }
+    if (input.linear_config) {
+        base.linearConfig = {
+            projectId: input.linear_config.project_id || undefined,
+            projectName: input.linear_config.project_name || undefined,
+        };
+    }
+    if (input.jira_config) {
+        base.jiraConfig = {
+            projectKey: input.jira_config.project_key || undefined,
+            projectId: input.jira_config.project_id || undefined,
+        };
+    }
+    if (input.github_config) {
+        base.githubConfig = {
+            repositoryId: input.github_config.repository_id || undefined,
+        };
+    }
+    if (input.gmail_config) {
+        base.gmailConfig = {};
+    }
+
+    return base;
+}
+
+// Helper function to transform output config from database to API format
+function transformOutputConfig(output: any): AutomationOutput {
+    const base: AutomationOutput = {
+        integration: output.integration_type.toLowerCase(),
+        integrationId: output.integration_id,
+    };
+
+    if (output.slack_config) {
+        base.slackConfig = {
+            channelId: output.slack_config.channel_id || undefined,
+            channelName: output.slack_config.channel_name || undefined,
+        };
+    }
+    if (output.notion_config) {
+        base.notionConfig = {
+            databaseId: output.notion_config.database_id || undefined,
+            databaseName: output.notion_config.database_name || undefined,
+        };
+    }
+    if (output.linear_config) {
+        base.linearConfig = {
+            projectId: output.linear_config.project_id || undefined,
+            projectName: output.linear_config.project_name || undefined,
+        };
+    }
+    if (output.jira_config) {
+        base.jiraConfig = {
+            projectKey: output.jira_config.project_key || undefined,
+            projectId: output.jira_config.project_id || undefined,
+        };
+    }
+    if (output.github_config) {
+        base.githubConfig = {
+            repositoryId: output.github_config.repository_id || undefined,
+        };
+    }
+    if (output.gmail_config) {
+        base.gmailConfig = {};
+    }
+
+    return base;
+}
+
 // Helper function to validate that user owns an integration
 async function validateUserOwnsIntegration(userId: string, integrationType: IntegrationType, integrationId: string): Promise<boolean> {
     const prisma = db();
@@ -113,8 +345,26 @@ export async function getUserAutomations(req: Request, res: Response) {
             where,
             include: {
                 prompt: true,
-                inputs: true,
-                output: true
+                inputs: {
+                    include: {
+                        slack_config: true,
+                        notion_config: true,
+                        linear_config: true,
+                        jira_config: true,
+                        github_config: true,
+                        gmail_config: true,
+                    }
+                },
+                output: {
+                    include: {
+                        slack_config: true,
+                        notion_config: true,
+                        linear_config: true,
+                        jira_config: true,
+                        github_config: true,
+                        gmail_config: true,
+                    }
+                }
             },
             orderBy: { created_at: 'desc' },
             skip,
@@ -128,12 +378,8 @@ export async function getUserAutomations(req: Request, res: Response) {
                 name: automation.name,
                 isActive: automation.is_active,
                 prompt: automation.prompt ? { text: automation.prompt.content } : undefined,
-                inputs: automation.inputs.map(input => ({
-                    integration: input.integration_type.toLowerCase()
-                })),
-                output: automation.output ? {
-                    integration: automation.output.integration_type.toLowerCase()
-                } : undefined
+                inputs: automation.inputs.map(input => transformInputConfig(input)),
+                output: automation.output ? transformOutputConfig(automation.output) : undefined
             })),
             pagination: {
                 page,
@@ -168,8 +414,26 @@ export async function getUserAutomation(req: Request, res: Response) {
             },
             include: {
                 prompt: true,
-                inputs: true,
-                output: true
+                inputs: {
+                    include: {
+                        slack_config: true,
+                        notion_config: true,
+                        linear_config: true,
+                        jira_config: true,
+                        github_config: true,
+                        gmail_config: true,
+                    }
+                },
+                output: {
+                    include: {
+                        slack_config: true,
+                        notion_config: true,
+                        linear_config: true,
+                        jira_config: true,
+                        github_config: true,
+                        gmail_config: true,
+                    }
+                }
             }
         });
 
@@ -184,14 +448,8 @@ export async function getUserAutomation(req: Request, res: Response) {
             name: automation.name,
             isActive: automation.is_active,
             prompt: automation.prompt ? { text: automation.prompt.content } : undefined,
-            inputs: automation.inputs.map(input => ({
-                integration: input.integration_type.toLowerCase(),
-                integrationId: input.integration_id
-            })),
-            output: automation.output ? {
-                integration: automation.output.integration_type.toLowerCase(),
-                integrationId: automation.output.integration_id
-            } : undefined
+            inputs: automation.inputs.map(input => transformInputConfig(input)),
+            output: automation.output ? transformOutputConfig(automation.output) : undefined
         };
 
         res.status(200).json(response);
@@ -265,13 +523,16 @@ export async function createAutomation(req: Request, res: Response) {
                     throw new Error(`Integration ${input.integration} not found or not owned by user`);
                 }
 
-                await tx.automation_inputs.create({
+                const newInput = await tx.automation_inputs.create({
                     data: {
                         automation_id: newAutomation.id,
                         integration_type: integrationType,
                         integration_id: integrationId
                     }
                 });
+
+                // Create config record if provided
+                await createInputConfig(tx, newInput.id, integrationType, input);
             }
 
             // Create output
@@ -290,13 +551,16 @@ export async function createAutomation(req: Request, res: Response) {
                 throw new Error(`Integration ${output.integration} not found or not owned by user`);
             }
 
-            await tx.automation_outputs.create({
+            const newOutput = await tx.automation_outputs.create({
                 data: {
                     automation_id: newAutomation.id,
                     integration_type: outputIntegrationType,
                     integration_id: outputIntegrationId
                 }
             });
+
+            // Create config record if provided
+            await createOutputConfig(tx, newOutput.id, outputIntegrationType, output);
 
             return newAutomation;
         });
@@ -383,13 +647,16 @@ export async function saveAutomation(req: Request, res: Response) {
                         throw new Error(`Integration ${input.integration} not found or not owned by user`);
                     }
 
-                    await tx.automation_inputs.create({
+                    const newInput = await tx.automation_inputs.create({
                         data: {
                             automation_id: existingAutomation.id,
                             integration_type: integrationType,
                             integration_id: integrationId
                         }
                     });
+
+                    // Create config record if provided
+                    await createInputConfig(tx, newInput.id, integrationType, input);
                 }
 
                 // Create new output
@@ -408,13 +675,16 @@ export async function saveAutomation(req: Request, res: Response) {
                     throw new Error(`Integration ${output.integration} not found or not owned by user`);
                 }
 
-                await tx.automation_outputs.create({
+                const newOutput = await tx.automation_outputs.create({
                     data: {
                         automation_id: existingAutomation.id,
                         integration_type: outputIntegrationType,
                         integration_id: outputIntegrationId
                     }
                 });
+
+                // Create config record if provided
+                await createOutputConfig(tx, newOutput.id, outputIntegrationType, output);
             });
 
             res.status(200).json({ success: true, id: existingAutomation.id });
@@ -456,13 +726,16 @@ export async function saveAutomation(req: Request, res: Response) {
                         throw new Error(`Integration ${input.integration} not found or not owned by user`);
                     }
 
-                    await tx.automation_inputs.create({
+                    const newInput = await tx.automation_inputs.create({
                         data: {
                             automation_id: newAutomation.id,
                             integration_type: integrationType,
                             integration_id: integrationId
                         }
                     });
+
+                    // Create config record if provided
+                    await createInputConfig(tx, newInput.id, integrationType, input);
                 }
 
                 // Create output
@@ -481,13 +754,16 @@ export async function saveAutomation(req: Request, res: Response) {
                     throw new Error(`Integration ${output.integration} not found or not owned by user`);
                 }
 
-                await tx.automation_outputs.create({
+                const newOutput = await tx.automation_outputs.create({
                     data: {
                         automation_id: newAutomation.id,
                         integration_type: outputIntegrationType,
                         integration_id: outputIntegrationId
                     }
                 });
+
+                // Create config record if provided
+                await createOutputConfig(tx, newOutput.id, outputIntegrationType, output);
 
                 return newAutomation;
             });
@@ -554,7 +830,7 @@ export async function updateAutomation(req: Request, res: Response) {
 
             // Update inputs if provided
             if (inputs && inputs.length > 0) {
-                // Delete old inputs
+                // Delete old inputs (configs cascade delete)
                 await tx.automation_inputs.deleteMany({
                     where: { automation_id: automationId }
                 });
@@ -577,13 +853,16 @@ export async function updateAutomation(req: Request, res: Response) {
                         throw new Error(`Integration ${input.integration} not found or not owned by user`);
                     }
 
-                    await tx.automation_inputs.create({
+                    const newInput = await tx.automation_inputs.create({
                         data: {
                             automation_id: automationId,
                             integration_type: integrationType,
                             integration_id: integrationId
                         }
                     });
+
+                    // Create config record if provided
+                    await createInputConfig(tx, newInput.id, integrationType, input);
                 }
             }
 
@@ -604,7 +883,7 @@ export async function updateAutomation(req: Request, res: Response) {
                     throw new Error(`Integration ${output.integration} not found or not owned by user`);
                 }
 
-                // Delete old output
+                // Delete old output (configs cascade delete)
                 const existingOutput = await tx.automation_outputs.findUnique({
                     where: { automation_id: automationId }
                 });
@@ -615,13 +894,16 @@ export async function updateAutomation(req: Request, res: Response) {
                 }
 
                 // Create new output
-                await tx.automation_outputs.create({
+                const newOutput = await tx.automation_outputs.create({
                     data: {
                         automation_id: automationId,
                         integration_type: outputIntegrationType,
                         integration_id: outputIntegrationId
                     }
                 });
+
+                // Create config record if provided
+                await createOutputConfig(tx, newOutput.id, outputIntegrationType, output);
             }
         });
 

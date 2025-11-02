@@ -97,6 +97,18 @@ export type NotionDatabasesResponse = {
   selectedDatabaseId: string | null;
 };
 
+export type SlackChannel = {
+  id: string;
+  name: string;
+  isPrivate: boolean;
+  isArchived: boolean;
+};
+
+export type SlackChannelsResponse = {
+  channels: SlackChannel[];
+  selectedChannelId: string | null;
+};
+
 export type IntegrationsStatus = {
   integrations: {
     github?: GithubIntegration[];
@@ -108,14 +120,59 @@ export type IntegrationsStatus = {
   };
 };
 
+// Typed config per integration type
+export type SlackConfig = {
+  channelId?: string;
+  channelName?: string;
+};
+
+export type NotionConfig = {
+  databaseId?: string;
+  databaseName?: string;
+};
+
+export type LinearConfig = {
+  projectId?: string;
+  projectName?: string;
+};
+
+export type JiraConfig = {
+  projectKey?: string;
+  projectId?: string;
+};
+
+export type GitHubConfig = {
+  repositoryId?: string;
+  // Note: owner and name not needed - they're part of repository identity
+  // Future: branch, path filters
+};
+
+export type GmailConfig = {
+  // Currently empty, but typed for future extensibility
+};
+
 export type AutomationInput = {
   integration: string;
   integrationId?: string;
+  // Typed config based on integration type
+  slackConfig?: SlackConfig;
+  notionConfig?: NotionConfig;
+  linearConfig?: LinearConfig;
+  jiraConfig?: JiraConfig;
+  githubConfig?: GitHubConfig;
+  gmailConfig?: GmailConfig;
 };
 
 export type AutomationOutput = {
   integration: string;
   integrationId?: string;
+  // Typed config based on integration type
+  slackConfig?: SlackConfig;
+  notionConfig?: NotionConfig;
+  linearConfig?: LinearConfig;
+  jiraConfig?: JiraConfig;
+  githubConfig?: GitHubConfig;
+  gmailConfig?: GmailConfig;
 };
 
 export type AutomationPrompt = {

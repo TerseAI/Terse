@@ -57,7 +57,29 @@ export type NotionIntegration = notion_integrations;
 
 // Extended type for Automation with included relations (kept in sync with include used in queries)
 export type AutomationWithRelations = Prisma.automationsGetPayload<{
-  include: { prompt: true; inputs: true };
+  include: { 
+    prompt: true; 
+    inputs: { 
+      include: {
+        slack_config: true;
+        notion_config: true;
+        linear_config: true;
+        jira_config: true;
+        github_config: true;
+        gmail_config: true;
+      }
+    };
+    output: {
+      include: {
+        slack_config: true;
+        notion_config: true;
+        linear_config: true;
+        jira_config: true;
+        github_config: true;
+        gmail_config: true;
+      }
+    };
+  };
 }>;
 
 // Re-export the original types too

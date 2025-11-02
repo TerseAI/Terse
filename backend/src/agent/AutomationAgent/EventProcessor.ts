@@ -66,9 +66,28 @@ export class EventProcessor {
             },
             include: {
                 prompt: true,
-                inputs: true,
+                inputs: {
+                    include: {
+                        slack_config: true,
+                        notion_config: true,
+                        linear_config: true,
+                        jira_config: true,
+                        github_config: true,
+                        gmail_config: true,
+                    }
+                },
+                output: {
+                    include: {
+                        slack_config: true,
+                        notion_config: true,
+                        linear_config: true,
+                        jira_config: true,
+                        github_config: true,
+                        gmail_config: true,
+                    }
+                }
             }
-        });
+        }) as AutomationWithRelations[];
 
         if (automations.length === 0) {
             return [new ProcessorResult(false, "No automations found for this user", null)];
@@ -154,12 +173,8 @@ export class EventProcessor {
 
         console.log(chalk.green(`Event is relevant to automation "${automation.name}"`));
 
-        // Get the output integration
-        const outputIntegration: AutomationOutput | null = await db().automation_outputs.findFirst({
-            where: {
-                automation_id: automation.id,
-            }
-        });
+        // Get the output from automation relations (already fetched with config)
+        const outputIntegration = automation.output;
 
         if (!outputIntegration) {
             return new ProcessorResult(false, "No output integration found for this automation", automation);
@@ -176,11 +191,21 @@ export class EventProcessor {
             return new ProcessorResult(false, "No notion integration found for this output integration", automation);
         }
 
+        // Override database_id from config if provided
+        // Config takes precedence over connection default
+        const notionConfig = outputIntegration.notion_config;
+        const databaseId = notionConfig?.database_id || notionIntegration.database_id;
+        const databaseName = notionConfig?.database_name || notionIntegration.database_name;
+
         const notionOutput = new NotionOutput();
 
-        // Create a new Session
+        // Create a new Session with config overrides
         const session = {
-            notionIntegration: notionIntegration,
+            notionIntegration: {
+                ...notionIntegration,
+                database_id: databaseId,
+                database_name: databaseName || undefined,
+            },
             user: this.user,
             isUserInitiated: true,
             // Collect actions from tools; will be persisted after run
