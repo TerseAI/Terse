@@ -128,7 +128,6 @@ function FlowArrow() {
 
 function SaveAutomationButton() {
     const { automationId, name, inputs, output, prompt, isActive } = useAutomationContext();
-    const navigate = useNavigate();
     const [isSaving, setIsSaving] = useState(false);
     const [saveSuccess, setSaveSuccess] = useState(false);
 
