@@ -5,17 +5,6 @@
   - You are about to drop the column `search_fts` on the `run_history_records` table. All the data in the column will be lost.
 
 */
--- DropIndex
-DROP INDEX "public"."idx_run_history_actions_search_fts";
-
--- DropIndex
-DROP INDEX "public"."idx_run_history_records_search_fts";
-
--- AlterTable
-ALTER TABLE "run_history_actions" DROP COLUMN "search_fts";
-
--- AlterTable
-ALTER TABLE "run_history_records" DROP COLUMN "search_fts";
 
 -- CreateTable
 CREATE TABLE "automation_slack_configs" (
