@@ -94,7 +94,12 @@ interface BackendService {
     /**
      * Sets the Linear API key
      */
-    setLinearApiKey(apiKey: string): Promise<void>;
+    setLinearApiKey(apiKey: string, teamId?: string): Promise<{ success: boolean; connection?: any; error?: string }>;
+
+    /**
+     * Validates Linear API key and fetches available teams
+     */
+    validateLinearApiKey(apiKey: string): Promise<{ valid: boolean; workspace?: { name: string; id: string }; teams?: Array<{ id: string; name: string; key: string }>; error?: string }>;
 
     /**
      * Deletes the Linear API key
@@ -109,7 +114,12 @@ interface BackendService {
     /**
      * Sets the Jira API key
      */
-    setJiraApiKey(email: string, baseUrl: string, apiKey: string): Promise<void>;
+    setJiraApiKey(email: string, baseUrl: string, apiKey: string, projectKey?: string): Promise<{ success: boolean; connection?: any; error?: string }>;
+
+    /**
+     * Validates Jira credentials and fetches available projects
+     */
+    validateJiraCredentials(baseUrl: string, email: string, apiKey: string): Promise<{ valid: boolean; projects?: Array<{ id: string; key: string; name: string }>; error?: string }>;
 
     /**
      * Deletes the Jira API key
@@ -359,12 +369,23 @@ export const BackendProvider: BackendService = {
             });
     },
 
-    setLinearApiKey: (apiKey: string) => {
-        return axios.post(`${backendBaseUrl}/linear/set-api-key`, { apiKey }, { withCredentials: true })
+    setLinearApiKey: (apiKey: string, teamId?: string) => {
+        return axios.post(`${backendBaseUrl}/linear/set-api-key`, { apiKey, teamId }, { withCredentials: true })
             .then(response => response.data)
             .catch(error => {
                 console.error('Error setting Linear API key:', error);
-                throw error;
+                const errorMessage = error.response?.data?.error || 'Failed to create Linear connection';
+                throw { success: false, error: errorMessage };
+            });
+    },
+
+    validateLinearApiKey: (apiKey: string) => {
+        return axios.post(`${backendBaseUrl}/linear/validate-and-fetch-teams`, { apiKey }, { withCredentials: true })
+            .then(response => response.data)
+            .catch(error => {
+                console.error('Error validating Linear API key:', error);
+                const errorMessage = error.response?.data?.error || 'Failed to validate API key';
+                return { valid: false, error: errorMessage };
             });
     },
 
@@ -386,12 +407,23 @@ export const BackendProvider: BackendService = {
             });
     },
 
-    setJiraApiKey: (email: string, baseUrl: string, apiKey: string) => {
-        return axios.post(`${backendBaseUrl}/jira/set-api-key`, { email, baseUrl, apiKey }, { withCredentials: true })
+    setJiraApiKey: (email: string, baseUrl: string, apiKey: string, projectKey?: string) => {
+        return axios.post(`${backendBaseUrl}/jira/set-api-key`, { email, baseUrl, apiKey, projectKey }, { withCredentials: true })
             .then(response => response.data)
             .catch(error => {
                 console.error('Error setting Jira API key:', error);
-                throw error;
+                const errorMessage = error.response?.data?.error || 'Failed to create Jira connection';
+                throw { success: false, error: errorMessage };
+            });
+    },
+
+    validateJiraCredentials: (baseUrl: string, email: string, apiKey: string) => {
+        return axios.post(`${backendBaseUrl}/jira/validate-and-fetch-projects`, { baseUrl, email, apiKey }, { withCredentials: true })
+            .then(response => response.data)
+            .catch(error => {
+                console.error('Error validating Jira credentials:', error);
+                const errorMessage = error.response?.data?.error || 'Failed to validate credentials';
+                return { valid: false, error: errorMessage };
             });
     },
 
