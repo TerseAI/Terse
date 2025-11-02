@@ -1,6 +1,5 @@
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
 import EditableTextField from '../../../components/ui/EditableTextField';
 import { Textarea } from "@/components/ui/textarea";
 import { useAutomationContext } from "../../../context/AutomationContext";
