@@ -6,6 +6,8 @@ import { NotionOutput, NotionSession } from '../../Updater/Outputs/NotionOutput'
 import { AutomationAgent } from './AutomationAgent';
 import { filterEvent } from './EventFilter';
 import { appendRunAction, createRunRecord, finalizeRunStatus, markRunProcessed, markRunSkipped } from './runHistory';
+import { ApprovalResult } from './AutomationAgent';
+import { Agent, AgentOutputType, RunResult } from '@openai/agents';
 
 // The job of this class is to take an Input Event, and check if it's a match for an Automation.
 // It will then create a Session, and summon the Automation Agent with the create user data.
@@ -14,11 +16,13 @@ export class ProcessorResult {
     success: boolean;
     message: string;
     automation: Automation | null;
+    approvalResult?: ApprovalResult<NotionSession, Agent<NotionSession, AgentOutputType>> | null;
 
-    constructor(success: boolean, message: string, automation: Automation | null) {
+    constructor(success: boolean, message: string, automation: Automation | null, approvalResult?: ApprovalResult<NotionSession, Agent<NotionSession, AgentOutputType>> | null) {
         this.success = success;
         this.message = message;
         this.automation = automation;
+        this.approvalResult = approvalResult;
     }
 }
 
@@ -184,35 +188,50 @@ export class EventProcessor {
         } as NotionSession;
 
         const automationAgent = new AutomationAgent<NotionSession>(session, notionOutput, automation.prompt, automation.inputs, outputIntegration);
+        await automationAgent.initializeAgent();
         automationAgent.setInputEvent(this.inputEvent);
 
-        const result = await automationAgent.run();
-        console.log(chalk.green(`Automation "${automation.name}" completed:`), result.finalOutput);
-
-        // Persist reported actions (if any)
-        if (runId && session.runActions && session.runActions.length > 0) {
-            for (const action of session.runActions) {
-                try {
-                    await appendRunAction(runId, action);
-                } catch (e) {
-                    console.error(chalk.yellow('Failed to append run action'), e);
-                }
-            }
+        const result: ApprovalResult<NotionSession, Agent<NotionSession, AgentOutputType>> = await automationAgent.run();
+        if (result.status === 'completed') {
+            console.log(chalk.green(`Automation "${automation.name}" completed:`), result.result.finalOutput);
+            return persistRunResult(runId, result.result, session, automation, result);
+        } else {
+            console.log(chalk.yellow(`Automation "${automation.name}" awaiting approval:`));
+            return new ProcessorResult(false, "Automation awaiting approval", automation, result);
         }
-
-        // Finalize run status
-        if (runId) {
-            try {
-                await finalizeRunStatus(runId, result.finalOutput ? 'success' : 'failed');
-            } catch (e) {
-                console.error(chalk.yellow('Failed to finalize run status'), e);
-            }
-        }
-
-        return new ProcessorResult(
-            result.finalOutput ? true : false,
-            result.finalOutput as string,
-            automation
-        );
     }
+}
+
+async function persistRunResult(
+    runId: string | null, 
+    result: RunResult<NotionSession, Agent<NotionSession, AgentOutputType>>, 
+    session: NotionSession, 
+    automation: Automation, 
+    approvalResult?: ApprovalResult<NotionSession, Agent<NotionSession, AgentOutputType>> | null
+): Promise<ProcessorResult> {
+    if (runId && session.runActions && session.runActions.length > 0) {
+        for (const action of session.runActions) {
+            try {
+                await appendRunAction(runId, action);
+            } catch (e) {
+                console.error(chalk.yellow('Failed to append run action'), e);
+            }
+        }
+    }
+
+    // Finalize run status
+    if (runId) {
+        try {
+            await finalizeRunStatus(runId, result.finalOutput ? 'success' : 'failed');
+        } catch (e) {
+            console.error(chalk.yellow('Failed to finalize run status'), e);
+        }
+    }
+
+    return new ProcessorResult(
+        result.finalOutput ? true : false,
+        result.finalOutput as string,
+        automation,
+        approvalResult
+    );
 }
