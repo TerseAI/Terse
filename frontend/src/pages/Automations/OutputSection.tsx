@@ -1,18 +1,24 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Output, useAutomationContext } from "../../context/AutomationContext";
 import { Integration } from "../../context/Integrations";
 import { SectionLayout } from "./components/SectionLayout";
 import { AddOutputModal } from "./components/AddOutputModal";
-import { FileText, X } from "lucide-react";
+import { Check, FileText } from "lucide-react";
 import { IntegrationSelector } from "../../components/IntegrationSelector";
-import { getIntegrationTypeName } from "../../utility/IntegrationFormatters";
-import { clearIntegrationConfigs } from "../../utility/IntegrationUtils";
+import { formatIntegrationDisplay, IntegrationInstance } from "../../utility/IntegrationFormatters";
+import { clearIntegrationConfigs, getIntegrationInstances } from "../../utility/IntegrationUtils";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { IntegrationTitle } from "./components/IntegrationTitle";
+import { Badge } from "@/components/ui/badge";
+import { Spinner } from "@/components/ui/spinner";
+import { BackendProvider } from "@/services/backend";
 
 export function OutputSection() {
     const { output, setOutput } = useAutomationContext();
     const [showAddModal, setShowAddModal] = useState(false);
+    const [showDetailsModal, setShowDetailsModal] = useState(false);
 
     const handleSelectPlatform = (integration: Integration) => {
         // Clear all configs when switching platform (new integration type)
@@ -59,37 +65,17 @@ export function OutputSection() {
                     </Button>
                 </div>
             ) : (
-                <Card>
-                    <CardHeader>
-                        <CardTitle>
-                            <div className="flex items-center gap-2 justify-between">
-                                {getIntegrationTypeName(output.integration)}
-                                <Button variant="ghost" size="icon" onClick={handleRemove}>
-                                    <X className="w-5 h-5" />
-                                </Button>
-                            </div>
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <IntegrationSelector
-                            integrationType={output.integration}
-                            selectedIntegrationId={output.integrationId}
-                            onSelect={handleSelectIntegration}
-                            notionConfig={output.notionConfig}
-                            onNotionConfigChange={(config) => {
-                                if (output) {
-                                    setOutput({ ...output, notionConfig: config });
-                                }
-                            }}
-                            slackConfig={output.slackConfig}
-                            onSlackConfigChange={(config) => {
-                                if (output) {
-                                    setOutput({ ...output, slackConfig: config });
-                                }
-                            }}
-                        />
-                    </CardContent>
-                </Card>
+                <>
+                    <OutputCard output={output} onDetails={() => setShowDetailsModal(true)} />
+                    <OutputDetailsDialog
+                        output={output}
+                        isOpen={showDetailsModal}
+                        onClose={() => setShowDetailsModal(false)}
+                        handleRemove={handleRemove}
+                        handleSelectIntegration={handleSelectIntegration}
+                        setOutput={setOutput}
+                    />
+                </>
             )}
 
             <AddOutputModal
@@ -98,5 +84,104 @@ export function OutputSection() {
                 onSelectIntegration={handleSelectPlatform}
             />
         </SectionLayout>
+    );
+}
+
+function OutputCard({ output, onDetails }: { output: Output, onDetails: () => void }) {
+    const [integrations, setIntegrations] = useState<IntegrationInstance[]>([]);
+    const [isLoading, setIsLoading] = useState(false);
+
+    useEffect(() => {
+        const fetchIntegrations = async () => {
+            setIsLoading(true);
+            try {
+                const response = await BackendProvider.getIntegrationsStatus();
+                const instances = getIntegrationInstances(response.integrations, output.integration);
+                setIntegrations(instances);
+            } catch (error) {
+                console.error('Error fetching integrations:', error);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+        fetchIntegrations();
+    }, []);
+
+    if (isLoading) {
+        return <Spinner />;
+    }
+
+    return (
+        <Card onClick={onDetails} className="cursor-pointer">
+            <CardHeader>
+                <CardTitle>
+                    <IntegrationTitle integration={output.integration} iconSize="lg" />
+                </CardTitle>
+            </CardHeader>
+            <CardContent>
+                {isLoading ? (
+                    <Spinner />
+                ) : (
+                    <Badge variant="secondary">
+                        <Check className="size-3" />
+                        {integrations.find(integration => integration.id === output.integrationId) ? formatIntegrationDisplay(integrations.find(integration => integration.id === output.integrationId)!, output.integration) : 'Loading...'}
+                    </Badge>
+                )}
+            </CardContent>
+        </Card>
+    );
+}
+
+function OutputDetailsDialog({
+    output,
+    isOpen,
+    onClose,
+    handleRemove,
+    handleSelectIntegration,
+    setOutput
+}: {
+    output: Output,
+    isOpen: boolean,
+    onClose: () => void,
+    handleRemove: () => void,
+    handleSelectIntegration: (integrationId: string) => void,
+    setOutput: (output: Output) => void
+}) {
+
+    return (
+        <Dialog open={isOpen} onOpenChange={onClose}>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>
+                        <IntegrationTitle integration={output.integration} iconSize="sm" />
+                    </DialogTitle>
+                </DialogHeader>
+
+                <IntegrationSelector
+                    integrationType={output.integration}
+                    selectedIntegrationId={output.integrationId}
+                    onSelect={handleSelectIntegration}
+                    notionConfig={output.notionConfig}
+                    onNotionConfigChange={(config) => {
+                        if (output) {
+                            setOutput({ ...output, notionConfig: config });
+                        }
+                    }}
+                    slackConfig={output.slackConfig}
+                    onSlackConfigChange={(config) => {
+                        if (output) {
+                            setOutput({ ...output, slackConfig: config });
+                        }
+                    }}
+                />
+                <DialogFooter>
+                    <div className="flex items-center justify-start gap-2 w-full">
+                        <Button variant="destructive" onClick={handleRemove}>
+                            Remove Output
+                        </Button>
+                    </div>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
     );
 }

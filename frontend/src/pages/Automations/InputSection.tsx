@@ -5,12 +5,12 @@ import { SectionLayout } from "./components/SectionLayout";
 import { AddInputModal } from "./components/AddInputModal";
 import { Zap, Plus, Settings, Check } from "lucide-react";
 import { IntegrationSelector } from "../../components/IntegrationSelector";
-import { formatIntegrationDisplay, getIntegrationTypeName, IntegrationInstance } from "../../utility/IntegrationFormatters";
+import { formatIntegrationDisplay, IntegrationInstance } from "../../utility/IntegrationFormatters";
 import { clearIntegrationConfigs, getIntegrationInstances } from "../../utility/IntegrationUtils";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
-import { IconForInputType } from "./components/Integration";
+import { IntegrationTitle } from "./components/IntegrationTitle";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Spinner } from "@/components/ui/spinner"
 import { Badge } from "@/components/ui/badge";
@@ -109,12 +109,7 @@ function InputCard({ input, onDetails }: { input: Input, onDetails: () => void }
         <Card onClick={onDetails} className="cursor-pointer">
             <CardHeader>
                 <CardTitle>
-                    <div className="flex items-center gap-2">
-                        <div className="w-5 h-5 flex items-center justify-center">
-                            <IconForInputType type={input.integration} />
-                        </div>
-                        {getIntegrationTypeName(input.integration)}
-                    </div>
+                    <IntegrationTitle integration={input.integration} iconSize="sm" />
                 </CardTitle>
             </CardHeader>
 
@@ -145,12 +140,7 @@ function InputDetailsDialog({
             <DialogContent className="max-w-sm">
                 <DialogHeader>
                     <DialogTitle>
-                        <div className="flex items-center gap-2">
-                            <div className="w-5 h-5 flex items-center justify-center">
-                                <IconForInputType type={input.integration} />
-                            </div>
-                            {getIntegrationTypeName(input.integration)}
-                        </div>
+                        <IntegrationTitle integration={input.integration} iconSize="sm" />
                     </DialogTitle>
                     <DialogDescription>
                         Configure your event source integration
