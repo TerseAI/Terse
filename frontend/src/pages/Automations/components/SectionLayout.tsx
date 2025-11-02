@@ -9,8 +9,8 @@ interface SectionLayoutProps {
 
 export function SectionLayout({ title, subtitle, children, icon }: SectionLayoutProps) {
     return (
-        <div className="flex flex-col gap-3">
-            <div className="flex items-center gap-2.5">
+        <div className="grid grid-cols-20">
+            <div className="flex items-center gap-2.5 col-span-4">
                 {icon && (
                     <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-[theme(background)]">
                         {icon}
@@ -23,12 +23,8 @@ export function SectionLayout({ title, subtitle, children, icon }: SectionLayout
                     )}
                 </div>
             </div>
-            <div className=" rounded-lg p-4  transition-all duration-200">
-                <div className="flex justify-center items-center min-h-[60px]">
-                    <div className="flex flex-wrap gap-3 justify-center">
-                        {children}
-                    </div>
-                </div>
+            <div className="p-4 col-span-16 items-center">
+                {children}
             </div>
         </div>
     );

@@ -8,6 +8,7 @@ import { IntegrationSelector } from "../../components/IntegrationSelector";
 import { getIntegrationTypeName } from "../../utility/IntegrationFormatters";
 import { clearIntegrationConfigs } from "../../utility/IntegrationUtils";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export function InputsSection() {
     const { inputs, setInputs } = useAutomationContext();
@@ -18,7 +19,7 @@ export function InputsSection() {
     const handleSelectPlatform = (integration: Integration) => {
         // Clear all configs when switching platform (new integration type)
         const clearedConfigs = input ? clearIntegrationConfigs(input) : {};
-        const newInput: Input = { 
+        const newInput: Input = {
             integration,
             ...clearedConfigs
         };
@@ -30,8 +31,8 @@ export function InputsSection() {
         if (input) {
             // Clear all configs when switching integration instances (will be re-selected when selector loads)
             const clearedConfigs = clearIntegrationConfigs(input);
-            setInputs([{ 
-                ...input, 
+            setInputs([{
+                ...input,
                 integrationId,
                 ...clearedConfigs
             }]);
@@ -60,36 +61,37 @@ export function InputsSection() {
                     </Button>
                 </div>
             ) : (
-                <div className="p-4 rounded-lg border border-input bg-background">
-                    <div className="flex items-start justify-between mb-3">
-                        <div className="text-sm font-medium text-foreground">
-                            {getIntegrationTypeName(input.integration)}
-                        </div>
-                        <button
-                            onClick={handleRemove}
-                            className="text-muted-foreground hover:text-destructive transition-colors"
-                        >
-                            <X className="w-5 h-5" />
-                        </button>
-                    </div>
-                    <IntegrationSelector
-                        integrationType={input.integration}
-                        selectedIntegrationId={input.integrationId}
-                        onSelect={handleSelectIntegration}
-                        notionConfig={input.notionConfig}
-                        onNotionConfigChange={(config) => {
-                            if (input) {
-                                setInputs([{ ...input, notionConfig: config }]);
-                            }
-                        }}
-                        slackConfig={input.slackConfig}
-                        onSlackConfigChange={(config) => {
-                            if (input) {
-                                setInputs([{ ...input, slackConfig: config }]);
-                            }
-                        }}
-                    />
-                </div>
+                <Card>
+                    <CardHeader>
+                        <CardTitle>
+                            <div className="flex items-center gap-2 justify-between">
+                                {getIntegrationTypeName(input.integration)}
+                                <Button variant="ghost" size="icon" onClick={handleRemove}>
+                                    <X className="w-5 h-5" />
+                                </Button>
+                            </div>
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <IntegrationSelector
+                            integrationType={input.integration}
+                            selectedIntegrationId={input.integrationId}
+                            onSelect={handleSelectIntegration}
+                            notionConfig={input.notionConfig}
+                            onNotionConfigChange={(config) => {
+                                if (input) {
+                                    setInputs([{ ...input, notionConfig: config }]);
+                                }
+                            }}
+                            slackConfig={input.slackConfig}
+                            onSlackConfigChange={(config) => {
+                                if (input) {
+                                    setInputs([{ ...input, slackConfig: config }]);
+                                }
+                            }}
+                        />
+                    </CardContent>
+                </Card>
             )}
 
             <AddInputModal

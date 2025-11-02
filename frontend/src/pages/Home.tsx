@@ -7,7 +7,7 @@ import ActivityFeed from "./ActivityFeed";
 
 function Home() {
     return (
-        <div className="grid grid-flow-row gap-4 overflow-y-auto min-w-0-auto pl-8">
+        <div className="grid grid-flow-row gap-4 overflow-y-auto max-w-7xl mx-auto pl-8">
             <div className="grid grid-flow-row pr-30">
                 <Welcome />
                 <OverallSummary />
