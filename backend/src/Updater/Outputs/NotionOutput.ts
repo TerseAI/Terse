@@ -74,7 +74,7 @@ Use the schema's format_example field to construct properties correctly. Pay spe
     parameters: z.object({
         // No parameters needed - returns all pages in the database
     }),
-    execute: async ({}, runContext?: RunContext<NotionSession>) => {
+    execute: async ({ }, runContext?: RunContext<NotionSession>) => {
         console.log("Executing notion_query_database tool");
         if (!runContext?.context) {
             throw new Error("No context provided");
@@ -193,6 +193,9 @@ Use notion_query_database first to see existing property names and structure.`,
         page_id: z.string().nullable().describe('The ID of the page to update (from notion_query_database). MUST be null (not empty string, not period) to create a new page. Only provide a valid page ID string to update an existing page.'),
         properties_json: z.string().describe('JSON string with property names as keys and Notion-formatted values. Example: "{\\"Name\\": {\\"title\\": [{\\"text\\": {\\"content\\": \\"New Item\\"}}]}, \\"Status\\": {\\"select\\": {\\"name\\": \\"In Progress\\"}}}"'),
     }),
+    needsApproval: async (_context, { page_id, properties_json }) => {
+        return true;
+    },
     execute: async ({ page_id, properties_json }, runContext?: RunContext<NotionSession>) => {
         console.log(chalk.bgMagenta.white.bold('🛠️ Executing notion_modify_page tool'));
         console.log(chalk.cyan('  Page ID: '), chalk.yellow(page_id ?? '(new page)'));
@@ -222,21 +225,21 @@ Use notion_query_database first to see existing property names and structure.`,
         const validPageId = page_id && page_id.length > 30 && !page_id.includes('/') && page_id !== '.' ? page_id : null;
 
         try {
-                if (validPageId) {
+            if (validPageId) {
                 // Update existing page
                 const response = await notion.pages.update({
                     page_id: validPageId,
                     properties: properties as Record<string, any>,
                 });
-                    // Report action (no DB writes here)
-                    runContext.context.runActions = runContext.context.runActions || [];
-                    runContext.context.runActions.push({
-                        action: 'update_page',
-                        integration: 'notion',
-                        target: runContext.context.notionIntegration.database_name || runContext.context.notionIntegration.database_id,
-                        details: 'Notion page updated',
-                        url: 'url' in response ? (response as any).url : undefined,
-                    });
+                // Report action (no DB writes here)
+                runContext.context.runActions = runContext.context.runActions || [];
+                runContext.context.runActions.push({
+                    action: 'update_page',
+                    integration: 'notion',
+                    target: runContext.context.notionIntegration.database_name || runContext.context.notionIntegration.database_id,
+                    details: 'Notion page updated',
+                    url: 'url' in response ? (response as any).url : undefined,
+                });
                 return {
                     success: true,
                     action: 'updated',
@@ -252,16 +255,16 @@ Use notion_query_database first to see existing property names and structure.`,
                     },
                     properties: properties as Record<string, any>,
                 });
-                    console.log(chalk.green("Notion database modified successfully"));
-                    // Report action (no DB writes here)
-                    runContext.context.runActions = runContext.context.runActions || [];
-                    runContext.context.runActions.push({
-                        action: 'create_page',
-                        integration: 'notion',
-                        target: runContext.context.notionIntegration.database_name || runContext.context.notionIntegration.database_id,
-                        details: 'Notion page created',
-                        url: 'url' in response ? (response as any).url : undefined,
-                    });
+                console.log(chalk.green("Notion database modified successfully"));
+                // Report action (no DB writes here)
+                runContext.context.runActions = runContext.context.runActions || [];
+                runContext.context.runActions.push({
+                    action: 'create_page',
+                    integration: 'notion',
+                    target: runContext.context.notionIntegration.database_name || runContext.context.notionIntegration.database_id,
+                    details: 'Notion page created',
+                    url: 'url' in response ? (response as any).url : undefined,
+                });
                 return {
                     success: true,
                     action: 'created',
