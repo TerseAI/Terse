@@ -43,7 +43,6 @@ export default function RunHistory() {
             return new Date(local.getTime() - local.getTimezoneOffset() * 60000).toISOString();
         };
         const run = async () => {
-            console.log("getRunHistory", automationId);
             if (!automationId) return;
             setIsLoading(true);
             const params: GetRunHistoryParams = {

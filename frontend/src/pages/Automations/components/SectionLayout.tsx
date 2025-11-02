@@ -23,7 +23,7 @@ export function SectionLayout({ title, subtitle, children, icon }: SectionLayout
                     )}
                 </div>
             </div>
-            <div className="p-4 col-span-16 items-center justify-center">
+            <div className="p-4 col-span-16 flex flex-col items-center">
                 {children}
             </div>
         </div>
