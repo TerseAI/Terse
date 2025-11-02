@@ -1,19 +1,16 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Output, useAutomationContext } from "../../context/AutomationContext";
 import { Integration } from "../../context/Integrations";
 import { SectionLayout } from "./components/SectionLayout";
 import { AddOutputModal } from "./components/AddOutputModal";
-import { Check, FileText } from "lucide-react";
+import { FileText } from "lucide-react";
 import { IntegrationSelector } from "../../components/IntegrationSelector";
-import { formatIntegrationDisplay, IntegrationInstance } from "../../utility/IntegrationFormatters";
-import { clearIntegrationConfigs, getIntegrationInstances } from "../../utility/IntegrationUtils";
+import { clearIntegrationConfigs } from "../../utility/IntegrationUtils";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { IntegrationTitle } from "./components/IntegrationTitle";
-import { Badge } from "@/components/ui/badge";
-import { Spinner } from "@/components/ui/spinner";
-import { BackendProvider } from "@/services/backend";
+import { IntegrationBadge } from "./components/IntegrationBadge";
 
 export function OutputSection() {
     const { output, setOutput } = useAutomationContext();
@@ -88,29 +85,6 @@ export function OutputSection() {
 }
 
 function OutputCard({ output, onDetails }: { output: Output, onDetails: () => void }) {
-    const [integrations, setIntegrations] = useState<IntegrationInstance[]>([]);
-    const [isLoading, setIsLoading] = useState(false);
-
-    useEffect(() => {
-        const fetchIntegrations = async () => {
-            setIsLoading(true);
-            try {
-                const response = await BackendProvider.getIntegrationsStatus();
-                const instances = getIntegrationInstances(response.integrations, output.integration);
-                setIntegrations(instances);
-            } catch (error) {
-                console.error('Error fetching integrations:', error);
-            } finally {
-                setIsLoading(false);
-            }
-        };
-        fetchIntegrations();
-    }, []);
-
-    if (isLoading) {
-        return <Spinner />;
-    }
-
     return (
         <Card onClick={onDetails} className="cursor-pointer">
             <CardHeader>
@@ -119,14 +93,7 @@ function OutputCard({ output, onDetails }: { output: Output, onDetails: () => vo
                 </CardTitle>
             </CardHeader>
             <CardContent>
-                {isLoading ? (
-                    <Spinner />
-                ) : (
-                    <Badge variant="secondary">
-                        <Check className="size-3" />
-                        {integrations.find(integration => integration.id === output.integrationId) ? formatIntegrationDisplay(integrations.find(integration => integration.id === output.integrationId)!, output.integration) : 'Loading...'}
-                    </Badge>
-                )}
+                <IntegrationBadge integrationId={output.integrationId} integrationType={output.integration} />
             </CardContent>
         </Card>
     );

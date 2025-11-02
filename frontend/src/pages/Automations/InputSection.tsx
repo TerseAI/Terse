@@ -1,20 +1,18 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Input, useAutomationContext } from "../../context/AutomationContext";
 import { Integration } from "../../context/Integrations";
 import { SectionLayout } from "./components/SectionLayout";
 import { AddInputModal } from "./components/AddInputModal";
-import { Zap, Plus, Settings, Check } from "lucide-react";
+import { Zap, Plus, Settings } from "lucide-react";
 import { IntegrationSelector } from "../../components/IntegrationSelector";
-import { formatIntegrationDisplay, IntegrationInstance } from "../../utility/IntegrationFormatters";
-import { clearIntegrationConfigs, getIntegrationInstances } from "../../utility/IntegrationUtils";
+import { clearIntegrationConfigs } from "../../utility/IntegrationUtils";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { IntegrationTitle } from "./components/IntegrationTitle";
+import { IntegrationBadge } from "./components/IntegrationBadge";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Spinner } from "@/components/ui/spinner"
-import { Badge } from "@/components/ui/badge";
-import { BackendProvider } from "@/services/backend";
+import { Spinner } from "@/components/ui/spinner";
 
 export function InputsSection() {
     const { inputs, setInputs, isLoading } = useAutomationContext();
@@ -86,25 +84,6 @@ export function InputsSection() {
 }
 
 function InputCard({ input, onDetails }: { input: Input, onDetails: () => void }) {
-    const [integrations, setIntegrations] = useState<IntegrationInstance[]>([]);
-    const [isLoading, setIsLoading] = useState(false);
-
-    useEffect(() => {
-        const fetchIntegrations = async () => {
-            setIsLoading(true);
-            try {
-                const response = await BackendProvider.getIntegrationsStatus();
-                const instances = getIntegrationInstances(response.integrations, input.integration);
-                setIntegrations(instances);
-            } catch (error) {
-                console.error('Error fetching integrations:', error);
-            } finally {
-                setIsLoading(false);
-            }
-        };
-        fetchIntegrations();
-    }, []);
-
     return (
         <Card onClick={onDetails} className="cursor-pointer">
             <CardHeader>
@@ -114,14 +93,7 @@ function InputCard({ input, onDetails }: { input: Input, onDetails: () => void }
             </CardHeader>
 
             <CardContent>
-                {isLoading ? (
-                    <Spinner />
-                ) : (
-                    <Badge variant="secondary">
-                        <Check className="size-3" />
-                        {integrations.find(integration => integration.id === input.integrationId) ? formatIntegrationDisplay(integrations.find(integration => integration.id === input.integrationId)!, input.integration) : 'Loading...'}
-                    </Badge>
-                )}
+                <IntegrationBadge integrationId={input.integrationId} integrationType={input.integration} />
             </CardContent>
         </Card>
     );
