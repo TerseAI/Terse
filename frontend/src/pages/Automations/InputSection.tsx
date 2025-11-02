@@ -7,17 +7,14 @@ import { Zap, Plus, Settings } from "lucide-react";
 import { IntegrationSelector } from "../../components/IntegrationSelector";
 import { clearIntegrationConfigs } from "../../utility/IntegrationUtils";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardAction, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { IntegrationTitle } from "./components/IntegrationTitle";
-import { IntegrationBadge } from "./components/IntegrationBadge";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Spinner } from "@/components/ui/spinner";
 
 export function InputsSection() {
     const { inputs, setInputs, isLoading } = useAutomationContext();
     const [showAddModal, setShowAddModal] = useState(false);
-    const [showDetailsModal, setShowDetailsModal] = useState(false);
     const input = inputs[0]; // Only one input allowed
 
     const handleSelectPlatform = (integration: Integration) => {
@@ -60,17 +57,7 @@ export function InputsSection() {
             {!input ? (
                 <EmptyInputSection onCreateNew={() => setShowAddModal(true)} />
             ) : (
-                <>
-                    <InputCard input={input} onDetails={() => setShowDetailsModal(true)} />
-                    <InputDetailsDialog
-                        input={input}
-                        isOpen={showDetailsModal}
-                        onClose={() => setShowDetailsModal(false)}
-                        handleRemove={handleRemove}
-                        handleSelectIntegration={handleSelectIntegration}
-                        setInputs={setInputs}
-                    />
-                </>
+                <InputCard input={input} handleSelectIntegration={handleSelectIntegration} setInputs={setInputs} handleRemove={handleRemove} />
             )}
 
             <AddInputModal
@@ -83,69 +70,48 @@ export function InputsSection() {
     );
 }
 
-function InputCard({ input, onDetails }: { input: Input, onDetails: () => void }) {
+function InputCard({
+    input,
+    handleSelectIntegration,
+    setInputs,
+    handleRemove
+}: { input: Input, handleSelectIntegration: (integrationId: string) => void, setInputs: (inputs: Input[]) => void, handleRemove: () => void }) {
     return (
-        <Card onClick={onDetails} className="cursor-pointer">
+        <Card>
             <CardHeader>
-                <CardTitle>
-                    <IntegrationTitle integration={input.integration} iconSize="sm" />
-                </CardTitle>
+                <div className="flex justify-between">
+                    <IntegrationTitle integration={input.integration} iconSize="md" />
+                </div>
             </CardHeader>
 
             <CardContent>
-                <IntegrationBadge integrationId={input.integrationId} integrationType={input.integration} />
+                <IntegrationSelector
+                    integrationType={input.integration}
+                    selectedIntegrationId={input.integrationId}
+                    onSelect={handleSelectIntegration}
+                    notionConfig={input.notionConfig}
+                    onNotionConfigChange={(config) => {
+                        if (input) {
+                            setInputs([{ ...input, notionConfig: config }]);
+                        }
+                    }}
+                    slackConfig={input.slackConfig}
+                    onSlackConfigChange={(config) => {
+                        if (input) {
+                            setInputs([{ ...input, slackConfig: config }]);
+                        }
+                    }}
+                />
             </CardContent>
-        </Card>
-    );
-}
 
-function InputDetailsDialog({
-    input,
-    isOpen,
-    onClose,
-    handleRemove,
-    handleSelectIntegration,
-    setInputs
-}: { input: Input, isOpen: boolean, onClose: () => void, handleRemove: () => void, handleSelectIntegration: (integrationId: string) => void, setInputs: (inputs: Input[]) => void }) {
-    return (
-        <Dialog open={isOpen} onOpenChange={onClose}>
-            <DialogContent className="max-w-sm">
-                <DialogHeader>
-                    <DialogTitle>
-                        <IntegrationTitle integration={input.integration} iconSize="sm" />
-                    </DialogTitle>
-                    <DialogDescription>
-                        Configure your event source integration
-                    </DialogDescription>
-                </DialogHeader>
-                <div className="space-y-4">
-                    <IntegrationSelector
-                        integrationType={input.integration}
-                        selectedIntegrationId={input.integrationId}
-                        onSelect={handleSelectIntegration}
-                        notionConfig={input.notionConfig}
-                        onNotionConfigChange={(config) => {
-                            if (input) {
-                                setInputs([{ ...input, notionConfig: config }]);
-                            }
-                        }}
-                        slackConfig={input.slackConfig}
-                        onSlackConfigChange={(config) => {
-                            if (input) {
-                                setInputs([{ ...input, slackConfig: config }]);
-                            }
-                        }}
-                    />
-                </div>
-                <DialogFooter>
-                    <div className="flex items-center justify-start gap-2 w-full">
-                        <Button variant="destructive" onClick={handleRemove}>
-                            Remove Event Source
-                        </Button>
-                    </div>
-                </DialogFooter>
-            </DialogContent>
-        </Dialog>
+            <CardFooter>
+                <CardAction>
+                    <Button variant="destructive" onClick={handleRemove}>
+                        Remove
+                    </Button>
+                </CardAction>
+            </CardFooter>
+        </Card>
     );
 }
 
@@ -163,7 +129,7 @@ function EmptyInputSection({ onCreateNew }: { onCreateNew: () => void }) {
             </EmptyHeader>
             <EmptyContent>
                 <Button
-                    variant="default"
+                    variant="outline"
                     onClick={onCreateNew}
                 >
                     <Plus className="h-4 w-4" />

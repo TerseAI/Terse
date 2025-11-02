@@ -10,6 +10,7 @@ import { SlackChannelSelector } from './SlackChannelSelector';
 import DropdownSelect from './ui/DropdownSelect';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
+import { IntegrationBadge } from '@/pages/Automations/components/IntegrationBadge';
 
 interface IntegrationInstance {
     id: string;
@@ -169,15 +170,10 @@ export function IntegrationSelector({
                 {isConnecting ? 'Connecting...' : `Connect Another ${getIntegrationName(integrationType)}`}
             </Button>
 
-            {selectedIntegrationId && (
-                <Badge variant="secondary" className="w-fit">
-                    <Check className="size-3" />
-                    Selected: {formatIntegrationDisplay(
-                        integrations.find(i => i.id === selectedIntegrationId)!,
-                        integrationType
-                    )}
-                </Badge>
-            )}
+            {/* {selectedIntegrationId && (
+                <IntegrationBadge integrationId={selectedIntegrationId} integrationType={integrationType} />
+
+            )} */}
 
             {/* Notion-specific database selector */}
             {integrationType === Integration.NOTION && selectedIntegrationId && onNotionConfigChange && (
