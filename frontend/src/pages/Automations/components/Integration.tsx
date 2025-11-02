@@ -126,18 +126,7 @@ function SlackIcon() {
 }
 
 function GmailIcon() {
-    return (
-        <svg
-            xmlns="http://www.w3.org/2000/svg"
-            className="w-full h-full"
-            viewBox="0 0 24 24"
-        >
-            <path fill="#EA4335" d="M24 5.457v13.909c0 .904-.732 1.636-1.636 1.636h-3.819V11.73L12 16.64l-6.545-4.91v9.273H1.636A1.636 1.636 0 0 1 0 19.366V5.457c0-2.023 2.309-3.178 3.927-1.964L12 9.366l8.073-5.873C21.69 2.28 24 3.434 24 5.457z" />
-            <path fill="#FBBC04" d="M0 5.457v.727l12 9 12-9v-.727c0-2.023-2.309-3.178-3.927-1.964L12 9.366 3.927 3.493C2.31 2.28 0 3.434 0 5.457z" />
-            <path fill="#34A853" d="M18.545 7.091v13.818h3.819c.904 0 1.636-.732 1.636-1.636V5.457z" />
-            <path fill="#C5221F" d="M0 19.366c0 .904.732 1.636 1.636 1.636h3.819V7.091z" />
-        </svg>
-    );
+    return <img src="/gmailIcon.png" alt="Gmail" className="w-full h-full object-contain" />;
 }
 
 function NotionIcon() {
