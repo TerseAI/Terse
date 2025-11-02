@@ -1,19 +1,20 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Input, useAutomationContext } from "../../context/AutomationContext";
 import { Integration } from "../../context/Integrations";
 import { SectionLayout } from "./components/SectionLayout";
 import { AddInputModal } from "./components/AddInputModal";
-import { Zap, X, Plus, Settings } from "lucide-react";
+import { Zap, Plus, Settings, Check } from "lucide-react";
 import { IntegrationSelector } from "../../components/IntegrationSelector";
-import { getIntegrationTypeName } from "../../utility/IntegrationFormatters";
-import { clearIntegrationConfigs } from "../../utility/IntegrationUtils";
+import { formatIntegrationDisplay, getIntegrationTypeName, IntegrationInstance } from "../../utility/IntegrationFormatters";
+import { clearIntegrationConfigs, getIntegrationInstances } from "../../utility/IntegrationUtils";
 import { Button } from "@/components/ui/button";
-import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { IconForInputType } from "./components/Integration";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Spinner } from "@/components/ui/spinner"
 import { Badge } from "@/components/ui/badge";
+import { BackendProvider } from "@/services/backend";
 
 export function InputsSection() {
     const { inputs, setInputs, isLoading } = useAutomationContext();
@@ -62,7 +63,7 @@ export function InputsSection() {
                 <EmptyInputSection onCreateNew={() => setShowAddModal(true)} />
             ) : (
                 <>
-                    <InputCard input={input} onDetails={() => setShowDetailsModal(true)} onDelete={handleRemove} />
+                    <InputCard input={input} onDetails={() => setShowDetailsModal(true)} />
                     <InputDetailsDialog
                         input={input}
                         isOpen={showDetailsModal}
@@ -84,29 +85,49 @@ export function InputsSection() {
     );
 }
 
-function InputCard({ input, onDetails, onDelete }: { input: Input, onDetails: () => void, onDelete: () => void }) {
+function InputCard({ input, onDetails }: { input: Input, onDetails: () => void }) {
+    const [integrations, setIntegrations] = useState<IntegrationInstance[]>([]);
+    const [isLoading, setIsLoading] = useState(false);
+
+    useEffect(() => {
+        const fetchIntegrations = async () => {
+            setIsLoading(true);
+            try {
+                const response = await BackendProvider.getIntegrationsStatus();
+                const instances = getIntegrationInstances(response.integrations, input.integration);
+                setIntegrations(instances);
+            } catch (error) {
+                console.error('Error fetching integrations:', error);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+        fetchIntegrations();
+    }, []);
+
     return (
-        <Card onClick={onDetails}>
+        <Card onClick={onDetails} className="cursor-pointer">
             <CardHeader>
                 <CardTitle>
-                    <div className="flex items-center gap-2 justify-between">
-                        <div className="flex items-center gap-2">
-                            <div className="w-5 h-5 flex items-center justify-center">
-                                <IconForInputType type={input.integration} />
-                            </div>
-                            {getIntegrationTypeName(input.integration)}
+                    <div className="flex items-center gap-2">
+                        <div className="w-5 h-5 flex items-center justify-center">
+                            <IconForInputType type={input.integration} />
                         </div>
-                        <Button variant="ghost" size="icon" onClick={onDelete}>
-                            <X className="w-5 h-5" />
-                        </Button>
+                        {getIntegrationTypeName(input.integration)}
                     </div>
                 </CardTitle>
-                <CardDescription>
-                    <Badge>
-                        {input.integrationId}
-                    </Badge>
-                </CardDescription>
             </CardHeader>
+
+            <CardContent>
+                {isLoading ? (
+                    <Spinner />
+                ) : (
+                    <Badge variant="secondary">
+                        <Check className="size-3" />
+                        {integrations.find(integration => integration.id === input.integrationId) ? formatIntegrationDisplay(integrations.find(integration => integration.id === input.integrationId)!, input.integration) : 'Loading...'}
+                    </Badge>
+                )}
+            </CardContent>
         </Card>
     );
 }
@@ -155,10 +176,11 @@ function InputDetailsDialog({
                     />
                 </div>
                 <DialogFooter>
-                    <Button variant="destructive" onClick={handleRemove}>
-                        <X className="w-4 h-4 mr-2" />
-                        Remove Event Source
-                    </Button>
+                    <div className="flex items-center justify-start gap-2 w-full">
+                        <Button variant="destructive" onClick={handleRemove}>
+                            Remove Event Source
+                        </Button>
+                    </div>
                 </DialogFooter>
             </DialogContent>
         </Dialog>
