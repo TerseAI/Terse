@@ -16,8 +16,7 @@ I work in the background, but I'll shoot you a message here whenever I make chan
 
 export async function getSlackOAuthUrl(req: Request, res: Response) {
     const client_id = process.env.SLACK_CLIENT_ID;
-    const backendUrl = process.env.BACKEND_URL;
-    const redirect_uri = `${backendUrl}/slack/oauth-callback`;
+    const redirect_uri = process.env.SLACK_OAUTH_CALLBACK_URL
 
     console.log('redirect_uri', redirect_uri)
 
@@ -26,9 +25,14 @@ export async function getSlackOAuthUrl(req: Request, res: Response) {
         return;
     }
 
+    if (!client_id || !redirect_uri) {
+        res.status(500).json({ message: 'Slack OAuth configuration missing' });
+        return;
+    }
+
     const user: User = req.session.user;
 
-    const scope = "chat:write,users:read,users:read.email,im:write,groups:write,app_mentions:read,channels:history,im:history,mpim:history";
+    const scope = "chat:write,users:read,users:read.email,im:write,groups:write,app_mentions:read,channels:read,channels:history,groups:read,im:read,im:history,mpim:read,mpim:history";
     const user_scope = "";
 
     // create JWT and attach to url as state
@@ -38,7 +42,8 @@ export async function getSlackOAuthUrl(req: Request, res: Response) {
     const state = encodeURIComponent(jwtToken);
 
     try {
-        const url = `https://slack.com/oauth/v2/authorize?scope=${scope}&user_scope=${user_scope}&redirect_uri=${redirect_uri}&client_id=${client_id}&state=${state}`;
+        const encodedRedirectUri = encodeURIComponent(redirect_uri);
+        const url = `https://slack.com/oauth/v2/authorize?scope=${scope}&user_scope=${user_scope}&redirect_uri=${encodedRedirectUri}&client_id=${client_id}&state=${state}`;
         console.log("Slack OAuth URL", url);
 
         res.json({
@@ -87,26 +92,50 @@ export async function getCurrentSlackIntegration(req: Request, res: Response) {
 }
 
 export async function slackOAuthCallback(req: Request, res: Response) {
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+    if (!process.env.FRONTEND_URL) {
+        console.error('FRONTEND_URL environment variable is not set, using default');
+    }
+
+    // Check if Slack returned an error (user denied access, etc.)
+    if (req.query.error) {
+        console.error("Slack OAuth error:", req.query.error);
+        return res.redirect(`${frontendUrl}/oauth/error`);
+    }
+
     // grab temporary code from query
     const code = req.query.code as string;
     const state = req.query.state as string;
+
+    if (!code || !state) {
+        console.error("Missing code or state in OAuth callback");
+        return res.redirect(`${frontendUrl}/oauth/error`);
+    }
 
     const jwt = new Jwt();
     const user = await jwt.verify(state);
 
     if (!user) {
-        res.status(500).json({ message: 'User not found' });
-        return;
+        console.error("Invalid or expired state token");
+        return res.redirect(`${frontendUrl}/oauth/error`);
     }
 
     const client_id = process.env.SLACK_CLIENT_ID;
     const client_secret = process.env.SLACK_CLIENT_SECRET;
+    const redirect_uri = process.env.SLACK_OAUTH_CALLBACK_URL;
+
+    if (!client_id || !client_secret || !redirect_uri) {
+        console.error('Slack OAuth configuration missing');
+        return res.redirect(`${frontendUrl}/oauth/error`);
+    }
+
     try {
         const response = await axios.post<SlackOAuthResponse>('https://slack.com/api/oauth.v2.access',
             {
                 code: code,
                 client_id: client_id,
                 client_secret: client_secret,
+                redirect_uri: redirect_uri,
             }, {
             headers: {
                 'Content-Type': 'application/x-www-form-urlencoded'
@@ -120,8 +149,7 @@ export async function slackOAuthCallback(req: Request, res: Response) {
 
         if (!response.data.ok || !team || !team.id) {
             console.error("Slack OAuth response not ok:", response.data);
-            res.status(500).json({ message: 'Failed to exchange code for access token' });
-            return;
+            return res.redirect(`${frontendUrl}/oauth/error`);
         }
 
         // check if the slack integration already exists
@@ -153,14 +181,23 @@ export async function slackOAuthCallback(req: Request, res: Response) {
 
             if (!dmChannelId || !dmChannelId.id) {
                 console.error("Error opening chat");
-                res.status(500).json({ message: 'Failed to open chat' });
-                return;
+                throw new Error('Failed to open chat');
             }
 
             sendMessage(welcomeMessage, access_token, dmChannelId.id);
 
-            const userSlackIntegration = await db().user_slack_integrations.create({
-                data: {
+            await db().user_slack_integrations.upsert({
+                where: {
+                    user_id_slack_team_id: {
+                        user_id: user.id,
+                        slack_team_id: slackIntegration.team_id,
+                    }
+                },
+                update: {
+                    dm_channel_id: dmChannelId?.id,
+                    authed_user_id: authed_user.id,
+                },
+                create: {
                     user_id: user.id,
                     slack_team_id: slackIntegration.team_id,
                     dm_channel_id: dmChannelId?.id,
@@ -169,14 +206,12 @@ export async function slackOAuthCallback(req: Request, res: Response) {
             });
         });
 
-        console.log("Access token:", response.data);
+        console.log("Slack OAuth completed successfully");
+        return res.redirect(`${frontendUrl}/oauth/success`);
     } catch (error) {
         console.error('Error exchanging code for access token:', error);
-        res.status(500).json({ message: 'Failed to exchange code for access token' });
-        return;
+        return res.redirect(`${frontendUrl}/oauth/error`);
     }
-
-    res.json({ received: true });
 }
 
 async function openChat(accessToken: string, authedUserId: string) {

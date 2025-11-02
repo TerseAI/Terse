@@ -1,10 +1,13 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { BackendProvider } from "../services/backend";
 import { Integration } from "./Integrations";
+import { NotionConfig, SlackConfig } from "../shared/types";
 
 export interface Input {
     integration: Integration;
     integrationId?: string; // ID of the specific integration instance
+    notionConfig?: NotionConfig; // Configuration for Notion input (database selection)
+    slackConfig?: SlackConfig; // Configuration for Slack input (channel selection)
 }
 
 export interface GithubInput {
@@ -24,6 +27,8 @@ export enum GithubEventType {
 export interface Output {
     integration: Integration;
     integrationId?: string; // ID of the specific integration instance
+    notionConfig?: NotionConfig; // Configuration for Notion output (database selection)
+    slackConfig?: SlackConfig; // Configuration for Slack output (channel selection)
 }
 
 export interface Prompt {
@@ -67,11 +72,15 @@ export function AutomationProvider({ children, automationId }: { children: React
                 setName(automation.name);
                 setInputs(automation.inputs.map(input => ({
                     integration: input.integration as Integration,
-                    integrationId: input.integrationId
+                    integrationId: input.integrationId,
+                    notionConfig: input.notionConfig,
+                    slackConfig: input.slackConfig
                 })));
                 setOutput(automation.output ? {
                     integration: automation.output.integration as Integration,
-                    integrationId: automation.output.integrationId
+                    integrationId: automation.output.integrationId,
+                    notionConfig: automation.output.notionConfig,
+                    slackConfig: automation.output.slackConfig
                 } : undefined);
                 setPrompt(automation.prompt);
                 setIsActive(automation.isActive);

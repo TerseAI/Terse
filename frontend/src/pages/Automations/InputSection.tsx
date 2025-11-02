@@ -6,6 +6,7 @@ import { AddInputModal } from "./components/AddInputModal";
 import { Zap, X } from "lucide-react";
 import { IntegrationSelector } from "../../components/IntegrationSelector";
 import { getIntegrationTypeName } from "../../utility/IntegrationFormatters";
+import { clearIntegrationConfigs } from "../../utility/IntegrationUtils";
 
 export function InputsSection() {
     const { inputs, setInputs } = useAutomationContext();
@@ -14,14 +15,25 @@ export function InputsSection() {
     const input = inputs[0]; // Only one input allowed
 
     const handleSelectPlatform = (integration: Integration) => {
-        const newInput: Input = { integration };
+        // Clear all configs when switching platform (new integration type)
+        const clearedConfigs = input ? clearIntegrationConfigs(input) : {};
+        const newInput: Input = { 
+            integration,
+            ...clearedConfigs
+        };
         setInputs([newInput]);
         setShowAddModal(false);
     };
 
     const handleSelectIntegration = (integrationId: string) => {
         if (input) {
-            setInputs([{ ...input, integrationId }]);
+            // Clear all configs when switching integration instances (will be re-selected when selector loads)
+            const clearedConfigs = clearIntegrationConfigs(input);
+            setInputs([{ 
+                ...input, 
+                integrationId,
+                ...clearedConfigs
+            }]);
         }
     };
 
@@ -64,6 +76,18 @@ export function InputsSection() {
                         integrationType={input.integration}
                         selectedIntegrationId={input.integrationId}
                         onSelect={handleSelectIntegration}
+                        notionConfig={input.notionConfig}
+                        onNotionConfigChange={(config) => {
+                            if (input) {
+                                setInputs([{ ...input, notionConfig: config }]);
+                            }
+                        }}
+                        slackConfig={input.slackConfig}
+                        onSlackConfigChange={(config) => {
+                            if (input) {
+                                setInputs([{ ...input, slackConfig: config }]);
+                            }
+                        }}
                     />
                 </div>
             )}

@@ -6,20 +6,32 @@ import { AddOutputModal } from "./components/AddOutputModal";
 import { FileText, X } from "lucide-react";
 import { IntegrationSelector } from "../../components/IntegrationSelector";
 import { getIntegrationTypeName } from "../../utility/IntegrationFormatters";
+import { clearIntegrationConfigs } from "../../utility/IntegrationUtils";
 
 export function OutputSection() {
     const { output, setOutput } = useAutomationContext();
     const [showAddModal, setShowAddModal] = useState(false);
 
     const handleSelectPlatform = (integration: Integration) => {
-        const newOutput: Output = { integration };
+        // Clear all configs when switching platform (new integration type)
+        const clearedConfigs = output ? clearIntegrationConfigs(output) : {};
+        const newOutput: Output = { 
+            integration,
+            ...clearedConfigs
+        };
         setOutput(newOutput);
         setShowAddModal(false);
     };
 
     const handleSelectIntegration = (integrationId: string) => {
         if (output) {
-            setOutput({ ...output, integrationId });
+            // Clear all configs when switching integration instances (will be re-selected when selector loads)
+            const clearedConfigs = clearIntegrationConfigs(output);
+            setOutput({ 
+                ...output, 
+                integrationId,
+                ...clearedConfigs
+            });
         }
     };
 
@@ -62,6 +74,18 @@ export function OutputSection() {
                         integrationType={output.integration}
                         selectedIntegrationId={output.integrationId}
                         onSelect={handleSelectIntegration}
+                        notionConfig={output.notionConfig}
+                        onNotionConfigChange={(config) => {
+                            if (output) {
+                                setOutput({ ...output, notionConfig: config });
+                            }
+                        }}
+                        slackConfig={output.slackConfig}
+                        onSlackConfigChange={(config) => {
+                            if (output) {
+                                setOutput({ ...output, slackConfig: config });
+                            }
+                        }}
                     />
                 </div>
             )}
