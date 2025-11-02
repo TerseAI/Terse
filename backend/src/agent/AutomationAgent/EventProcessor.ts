@@ -6,7 +6,7 @@ import { NotionOutput, NotionSession } from '../../Updater/Outputs/NotionOutput'
 import { AutomationAgent } from './AutomationAgent';
 import { filterEvent } from './EventFilter';
 import { appendRunAction, createRunRecord, finalizeRunStatus, markRunProcessed, markRunSkipped } from './runHistory';
-import { ApprovalResult } from '../approval/ApprovalInterceptor';
+import { ApprovalResult } from './AutomationAgent';
 import { Agent, AgentOutputType, RunResult } from '@openai/agents';
 
 // The job of this class is to take an Input Event, and check if it's a match for an Automation.
