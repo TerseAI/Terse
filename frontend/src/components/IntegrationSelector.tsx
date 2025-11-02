@@ -8,6 +8,7 @@ import { NotionConfig, SlackConfig } from '../shared/types';
 import { NotionDatabaseSelector } from './NotionDatabaseSelector';
 import { SlackChannelSelector } from './SlackChannelSelector';
 import DropdownSelect from './ui/DropdownSelect';
+import { Button } from './ui/button';
 
 interface IntegrationInstance {
     id: string;
@@ -126,14 +127,13 @@ export function IntegrationSelector({
                 <div className="text-sm text-muted-foreground">
                     No {getIntegrationName(integrationType)} accounts connected
                 </div>
-                <button
+                <Button
                     onClick={handleConnectNew}
                     disabled={isConnecting}
-                    className="flex items-center justify-center gap-2 px-4 py-2 bg-accent text-accent-foreground rounded-lg hover:brightness-110 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                     <Plus className="w-4 h-4" />
                     {isConnecting ? 'Connecting...' : `Connect ${getIntegrationName(integrationType)}`}
-                </button>
+                </Button>
             </div>
         );
     }
