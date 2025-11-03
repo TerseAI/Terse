@@ -1,8 +1,9 @@
 import { ExternalLink } from "lucide-react";
 import type { RunHistoryAction, RunHistoryStatus } from "../../shared/RunHistoryTypes";
-import ActionIcon from "./ActionIcon";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "../ui/accordion";
 import { cn } from "@/lib/utils";
+import { IconForInputType } from "../../pages/Automations/components/Integration";
+import { Integration } from "../../types/Integration";
 
 type Props = {
     runId: string;
@@ -15,6 +16,13 @@ type Props = {
 
 export default function RunHistoryActionItem({ runId, index, action, runStatus, isExpanded, onToggle }: Props) {
     const actionKey = `${runId}-action-${index}`;
+
+    const formatAction = (s: string) => {
+        return s
+            .split('_')
+            .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+            .join(' ');
+    };
 
     const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
@@ -29,11 +37,13 @@ export default function RunHistoryActionItem({ runId, index, action, runStatus, 
                 <AccordionItem value={actionKey} className="border-b-0">
                     <AccordionTrigger className="py-2 px-2 hover:no-underline hover:bg-accent/50">
                         <div className="flex items-center gap-2 w-full mr-2">
-                            <ActionIcon actionType={action.action} status={runStatus} />
+                            <div className="w-4 h-4 flex-shrink-0">
+                                <IconForInputType type={action.integration as Integration} />
+                            </div>
                             <div className="flex-1">
                                 <div className="flex items-center gap-2">
                                     <span className="text-foreground">
-                                        {capitalize(action.action)} on {capitalize(action.integration)} → {action.target}
+                                        {formatAction(action.action)} on {capitalize(action.integration)} → {action.target}
                                     </span>
                                     {action.url && (
                                         <a

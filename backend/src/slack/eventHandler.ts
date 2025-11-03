@@ -1,10 +1,10 @@
 import chalk from 'chalk';
 import crypto from 'crypto';
 import { Request, Response } from 'express';
+import { WebClient, LogLevel } from '@slack/web-api';
 import { db } from '../prismaClient';
-import { AgentSession } from '../agent/agents/Agent';
-import { getUserTicketManager } from '../types/user';
-import { sendMessage } from './sendMessage';
+import { SlackEvent, SlackEventData } from '../Updater/InputEvents';
+import { EventProcessor } from '../agent/AutomationAgent/EventProcessor';
 
 // export function isValidSlackSig(req: Request) {
 //     const ts = req.headers['x-slack-request-timestamp'];
@@ -76,8 +76,19 @@ export function isValidSlackSig(req: Request) {
 }
 
 export async function handleSlackEvent(req: Request, res: Response) {
-    console.log('handleSlackEvent route has been hit')
-    if (!isValidSlackSig(req)) return res.sendStatus(400);
+    console.log(chalk.cyan('🔵 [EVENT HANDLER] handleSlackEvent function called'));
+    console.log(chalk.cyan('🔵 [EVENT HANDLER] Request method:', req.method));
+    console.log(chalk.cyan('🔵 [EVENT HANDLER] Request path:', req.path));
+    
+    const isValid = isValidSlackSig(req);
+    console.log(chalk.cyan('🔵 [EVENT HANDLER] Signature valid:', isValid));
+    
+    if (!isValid) {
+        console.log(chalk.red('❌ [EVENT HANDLER] Invalid signature - returning 400'));
+        return res.sendStatus(400);
+    }
+    
+    console.log(chalk.green('✅ [EVENT HANDLER] Signature validated - proceeding to parse body'));
 
     // Parse the raw buffer as JSON
     let body: Record<string, unknown>;
@@ -99,9 +110,49 @@ export async function handleSlackEvent(req: Request, res: Response) {
     // Log the event type for debugging
     const team_id = body.team_id as string;
     const ev = body.event as Record<string, unknown>;
+    const event_id = body.event_id as string | undefined;
     console.log(chalk.blue('Event type:', ev?.type));
     console.log(chalk.blue('Team ID:', team_id));
+    if (event_id) {
+        console.log(chalk.blue('Event ID:', event_id));
+    }
 
+    // IMPORTANT: Acknowledge to Slack immediately (within 3 seconds)
+    // Process the event asynchronously in the background to avoid timeouts and retries
+    res.sendStatus(200);
+
+    // For event_callback types, check if we've already processed this event
+    if (body.type === 'event_callback' && event_id) {
+        const slackIntegration = await db().slack_integrations.findFirst({
+            where: {
+                team_id: team_id
+            }
+        });
+
+        if (slackIntegration) {
+            // Try to mark this event as processed atomically
+            // The unique constraint will prevent duplicate processing even in race conditions
+            try {
+                await db().processed_slack_events.create({
+                    data: {
+                        slack_integration_id: slackIntegration.id,
+                        event_id: event_id
+                    }
+                });
+                console.log(chalk.green(`✅ New event ${event_id} - processing...`));
+            } catch (error: any) {
+                // If unique constraint fails, this event was already processed
+                if (error.code === 'P2002') {
+                    console.log(chalk.yellow(`⚠️  Skipping already processed event ${event_id}`));
+                    return; // Already acknowledged above
+                }
+                // Re-throw other errors
+                throw error;
+            }
+        }
+    }
+
+    // Process events asynchronously (already acknowledged to Slack)
     switch (ev.type) {
         case 'app_uninstalled':
             await markWorkspaceUninstalled(team_id); // delete tokens, close queues
@@ -112,10 +163,12 @@ export async function handleSlackEvent(req: Request, res: Response) {
             await tokensEvent.tokens?.oauth?.forEach(deactivateToken);
             break;
         case 'message':
-            await handleSlackMessage(ev as unknown as SlackMessageEvent, team_id);
+            // Process message asynchronously (fire and forget - errors are logged but don't affect Slack)
+            handleSlackMessage(ev as unknown as SlackMessageEvent, team_id).catch((error) => {
+                console.error(chalk.red('Error processing Slack message in background:'), error);
+            });
             break;
     }
-    res.sendStatus(200);
 }
 
 async function markWorkspaceUninstalled(team_id: string) {
@@ -139,6 +192,194 @@ async function deactivateToken(token: string) {
     console.log(chalk.red('Token deactivated'));
 }
 
+/**
+ * Type for Slack API responses that follow the standard { ok: boolean; error?: string } pattern
+ */
+type SlackApiResponse<T = unknown> = { ok: boolean; error?: string } & T;
+
+/**
+ * Type for Promise.allSettled results from Slack API calls
+ */
+type SlackApiSettledResult<T = unknown> = PromiseSettledResult<SlackApiResponse<T>>;
+
+/**
+ * Slack user profile object from users.info API
+ */
+interface SlackUserProfile {
+    avatar_hash?: string;
+    status_text?: string;
+    status_emoji?: string;
+    real_name?: string;
+    display_name?: string;
+    real_name_normalized?: string;
+    display_name_normalized?: string;
+    email?: string;
+    image_original?: string;
+    image_24?: string;
+    image_32?: string;
+    image_48?: string;
+    image_72?: string;
+    image_192?: string;
+    image_512?: string;
+    team?: string;
+}
+
+/**
+ * Slack user object from users.info API
+ */
+interface SlackUser {
+    id: string;
+    team_id?: string;
+    name?: string;
+    deleted?: boolean;
+    color?: string;
+    real_name?: string;
+    tz?: string;
+    tz_label?: string;
+    tz_offset?: number;
+    profile?: SlackUserProfile;
+    is_admin?: boolean;
+    is_owner?: boolean;
+    is_primary_owner?: boolean;
+    is_restricted?: boolean;
+    is_ultra_restricted?: boolean;
+    is_bot?: boolean;
+    updated?: number;
+    is_app_user?: boolean;
+    has_2fa?: boolean;
+}
+
+/**
+ * Slack channel/conversation object from conversations.info API
+ * Can represent public channels, private channels, DMs, or group DMs
+ */
+interface SlackChannel {
+    id: string;
+    name?: string;
+    is_channel?: boolean;
+    is_group?: boolean;
+    is_im?: boolean;
+    is_mpim?: boolean;
+    is_private?: boolean;
+    is_archived?: boolean;
+    is_general?: boolean;
+    is_shared?: boolean;
+    is_org_shared?: boolean;
+    is_member?: boolean;
+    created?: number;
+    creator?: string;
+    name_normalized?: string;
+    user?: string; // For DMs, the user ID of the other person
+    last_read?: string;
+    members?: string[];
+    topic?: {
+        value?: string;
+        creator?: string;
+        last_set?: number;
+    };
+    purpose?: {
+        value?: string;
+        creator?: string;
+        last_set?: number;
+    };
+    previous_names?: string[];
+}
+
+/**
+ * Helper function to process Promise.allSettled results from Slack API calls
+ * Handles fulfilled+ok, rejected, and fulfilled but not ok states
+ */
+function processSlackApiResult<T>(
+    result: SlackApiSettledResult<T>,
+    successLabel: string,
+    errorPrefix: string
+): { success: boolean; data?: T; error?: string } {
+    if (result.status === 'fulfilled' && result.value.ok) {
+        // Successfully fulfilled and ok
+        const { ok, error, ...data } = result.value;
+        return { success: true, data: data as T };
+    } else if (result.status === 'rejected') {
+        // Promise was rejected
+        console.warn(chalk.yellow(`⚠ ${errorPrefix}: ${result.reason}`));
+        return { success: false, error: String(result.reason) };
+    } else if (result.status === 'fulfilled' && !result.value.ok) {
+        // Fulfilled but API returned error
+        const errorMsg = result.value.error || 'Unknown error';
+        console.warn(chalk.yellow(`⚠ ${errorPrefix}: ${errorMsg}`));
+        return { success: false, error: errorMsg };
+    }
+    return { success: false, error: 'Unknown state' };
+}
+
+/**
+ * Extract channel name from Slack channel info, handling different channel types
+ */
+function extractChannelName(
+    channelResult: { success: boolean; data?: { channel?: SlackChannel }; error?: string },
+    userResult: { success: boolean; data?: { user?: SlackUser }; error?: string },
+    eventUserId: string,
+    defaultChannelId: string
+): string | undefined {
+    if (!channelResult.success || !channelResult.data?.channel) {
+        return undefined;
+    }
+
+    const channel = channelResult.data.channel;
+
+    // Handle different channel types
+    if ('name' in channel && channel.name) {
+        // Public/private channel
+        const channelName = channel.name;
+        console.log(chalk.green(`✓ Fetched channel name: ${channelName}`));
+        return channelName;
+    } else if ('is_im' in channel && channel.is_im) {
+        // Direct message - try to get user info from the channel user ID
+        const dmUserId = 'user' in channel ? channel.user : undefined;
+        let channelName: string | undefined;
+        
+        if (dmUserId && userResult.success && userResult.data?.user) {
+            const user = userResult.data.user;
+            if (user && dmUserId === eventUserId) {
+                // This is a DM with the message sender - use their name
+                channelName = user.real_name || user.profile?.display_name || user.name || 'Direct Message';
+            }
+        }
+        
+        if (!channelName) {
+            channelName = 'Direct Message';
+        }
+        console.log(chalk.green(`✓ Identified channel as DM: ${channelName}`));
+        return channelName;
+    } else if ('is_group' in channel && channel.is_group) {
+        // Group DM
+        const channelName = 'name' in channel && channel.name ? channel.name : 'Group Message';
+        console.log(chalk.green(`✓ Identified channel as Group DM: ${channelName}`));
+        return channelName;
+    } else {
+        // Fallback to channel ID
+        const channelName = channel.id || defaultChannelId;
+        console.log(chalk.yellow(`⚠ Using channel ID as name: ${channelName}`));
+        return channelName;
+    }
+}
+
+/**
+ * Extract user name from Slack user info
+ */
+function extractUserName(
+    userResult: { success: boolean; data?: { user?: SlackUser }; error?: string }
+): string | undefined {
+    if (!userResult.success || !userResult.data?.user) {
+        return undefined;
+    }
+
+    const user = userResult.data.user;
+    // Prefer real_name, fallback to display_name, then name, then id
+    const userName = user.real_name || user.profile?.display_name || user.profile?.real_name || user.name || user.id;
+    console.log(chalk.green(`✓ Fetched user name: ${userName}`));
+    return userName;
+}
+
 interface SlackMessageEvent {
     type: 'message';
     channel: string;
@@ -148,12 +389,61 @@ interface SlackMessageEvent {
     bot_id?: string;
     subtype?: string;
     thread_ts?: string;
-}
-
-interface SlackEvent {
-    type: string;
-    team_id: string;
-    event: SlackMessageEvent | { type: string; [key: string]: unknown };
+    // Additional fields that may be present in Slack message events
+    edited?: {
+        user: string;
+        ts: string;
+    };
+    files?: Array<{
+        id: string;
+        name: string;
+        title: string;
+        mimetype: string;
+        filetype: string;
+        pretty_type: string;
+        user: string;
+        size: number;
+        url_private?: string;
+        url_private_download?: string;
+        permalink?: string;
+        permalink_public?: string;
+    }>;
+    reactions?: Array<{
+        name: string;
+        users: string[];
+        count: number;
+    }>;
+    attachments?: Array<{
+        fallback?: string;
+        color?: string;
+        pretext?: string;
+        author_name?: string;
+        author_link?: string;
+        author_icon?: string;
+        title?: string;
+        title_link?: string;
+        text?: string;
+        fields?: Array<{
+            title: string;
+            value: string;
+            short: boolean;
+        }>;
+        image_url?: string;
+        thumb_url?: string;
+        footer?: string;
+        footer_icon?: string;
+        ts?: number;
+    }>;
+    blocks?: unknown[];
+    client_msg_id?: string;
+    parent_user_id?: string;
+    reply_count?: number;
+    reply_users?: string[];
+    reply_users_count?: number;
+    latest_reply?: string;
+    team?: string;
+    event_ts?: string;
+    channel_type?: string;
 }
 
 async function handleSlackMessage(event: SlackMessageEvent, teamId: string) {
@@ -165,7 +455,7 @@ async function handleSlackMessage(event: SlackMessageEvent, teamId: string) {
             return;
         }
         
-        // Get the Slack integration first to check bot user ID
+        // Get the Slack integration
         const slackIntegration = await db().slack_integrations.findFirst({
             where: {
                 team_id: teamId
@@ -177,132 +467,124 @@ async function handleSlackMessage(event: SlackMessageEvent, teamId: string) {
             return;
         }
         
-        // Check if the bot is mentioned in the message or if it's a DM
-        const botMentionPattern = new RegExp(`<@${slackIntegration.bot_user_id}>`);
-        const isDM = event.channel.startsWith('D');
-        const isMentioned = botMentionPattern.test(event.text);
-        
-        if (!isDM && !isMentioned) {
-            console.log(chalk.yellow('Bot not mentioned in channel message, ignoring'));
-            return;
-        }
-        
-        // Get the user who sent the message
-        const userSlackIntegration = await db().user_slack_integrations.findFirst({
+        // Get all users who have Slack integrations for this workspace
+        // This allows us to process messages from any workspace user, not just the bot installer
+        const workspaceUserIntegrations = await db().user_slack_integrations.findMany({
             where: {
-                slack_team_id: teamId,
-                authed_user_id: event.user
+                slack_team_id: teamId
             },
             include: {
                 user: true
             }
         });
         
-        if (!userSlackIntegration) {
-            console.log(chalk.yellow('User not found for Slack message'));
-            await sendMessage(
-                "I don't recognize you. Please make sure you've connected your account through the web app.",
-                slackIntegration.access_token,
-                event.channel
-            );
+        if (workspaceUserIntegrations.length === 0) {
+            console.log(chalk.yellow('No users found with Slack integrations for this workspace'));
             return;
         }
+
+        // Initialize Slack WebClient to fetch additional data
+        const client = new WebClient(slackIntegration.access_token, {
+            logLevel: LogLevel.INFO
+        });
+
+        console.log(chalk.blue(`📡 Fetching additional Slack data for channel ${event.channel}, user ${event.user}, message ${event.ts}`));
+
+        // Fetch all available data from Slack API in parallel
+        const [channelInfo, userInfo, permalinkResult] = await Promise.allSettled([
+            // Fetch channel information
+            client.conversations.info({
+                channel: event.channel
+            }),
+            // Fetch user information
+            client.users.info({
+                user: event.user
+            }),
+            // Get message permalink
+            client.chat.getPermalink({
+                channel: event.channel,
+                message_ts: event.ts
+            })
+        ]);
+
+        // Process all API results
+        const channelResult = processSlackApiResult<{ channel?: SlackChannel }>(
+            channelInfo as SlackApiSettledResult<{ channel?: SlackChannel }>,
+            'Channel info',
+            'Failed to fetch channel info'
+        );
         
-        // Set up session for the Agent
-        const ticketManager = await getUserTicketManager(userSlackIntegration.user.id);
-        if (!ticketManager) {
-            console.log(chalk.yellow('No ticket manager found for user'));
-            await sendMessage(
-                '❌ Unable to access your ticket system. Please check your Linear/Jira integration in the web app.',
-                slackIntegration.access_token,
-                event.channel
-            );
-            return;
+        const userResult = processSlackApiResult<{ user?: SlackUser }>(
+            userInfo as SlackApiSettledResult<{ user?: SlackUser }>,
+            'User info',
+            'Failed to fetch user info'
+        );
+
+        const permalinkApiResult = processSlackApiResult<{ permalink?: string }>(
+            permalinkResult as SlackApiSettledResult<{ permalink?: string }>,
+            'Message permalink',
+            'Failed to fetch message permalink'
+        );
+        
+        // Extract channel name and metadata
+        const channelName = extractChannelName(channelResult, userResult, event.user, event.channel);
+
+        // Extract user information
+        const userName = extractUserName(userResult);
+
+        // Extract permalink
+        const permalink = permalinkApiResult.success ? permalinkApiResult.data?.permalink : undefined;
+        if (permalink) {
+            console.log(chalk.green(`✓ Fetched message permalink: ${permalink}`));
         }
-        
-        const teams = await ticketManager.getTeams();
-        const session = {
-            user: userSlackIntegration.user,
-            isUserInitiated: true,
-            ticketManager: ticketManager,
-            teamId: teams[0]?.id,
-            currentUser: await ticketManager.me() || undefined,
+
+        // Build SlackEventData with all available information
+        const slackEventData: SlackEventData = {
+            channelId: event.channel,
+            channelName: channelName,
+            userId: event.user,
+            userName: userName,
+            text: event.text,
+            timestamp: event.ts,
+            threadTimestamp: event.thread_ts,
+            teamId: teamId,
+            permalink: permalink,
         };
+
+        // Create SlackEvent once
+        const slackEvent = new SlackEvent(slackEventData);
         
-        // Clean the message text (remove bot mention if present)
-        let cleanText = event.text;
-        if (isMentioned) {
-            cleanText = event.text.replace(botMentionPattern, '').trim();
+        // Process the event against automations for all users in this workspace
+        // This ensures messages from any workspace user can trigger automations
+        let totalMatches = 0;
+        for (const userSlackIntegration of workspaceUserIntegrations) {
+            try {
+                const eventProcessor = new EventProcessor(slackEvent, userSlackIntegration.user);
+                const results = await eventProcessor.process();
+                
+                // Log results for this user
+                if (results.length > 0 && results.some(r => r.success || r.automation !== null)) {
+                    totalMatches += results.filter(r => r.success || r.automation !== null).length;
+                    console.log(chalk.green(`User ${userSlackIntegration.user.email}: ${results.length} automation(s) matched`));
+                    for (const result of results) {
+                        if (result.success) {
+                            console.log(chalk.green(`  ✓ Automation "${result.automation?.name}" processed successfully`));
+                        } else if (result.automation) {
+                            console.log(chalk.yellow(`  ⚠ Automation "${result.automation.name}": ${result.message}`));
+                        }
+                    }
+                }
+            } catch (error) {
+                console.error(chalk.red(`Error processing automations for user ${userSlackIntegration.user.email}:`), error);
+                // Continue processing other users even if one fails
+            }
         }
         
-        console.log(chalk.blue('Processing ticket command via Agent:', cleanText));
-        
-        // Create agent session and process the message
-        const agentSession = new AgentSession(session);
-        
-        // Format the message for the agent with context
-        const agentMessage = `
-User sent a message via Slack: "${cleanText}"
-
-${isDM ? 'This is a direct message to the bot.' : 'This is a channel message where the bot was mentioned.'}
-
-The user wants to interact with tickets using natural language. They might want to:
-- Check ticket status
-- Update ticket status  
-- Add comments to tickets
-- Create new tickets
-- Assign tickets
-- Search for tickets
-- Get help with available commands
-
-Please analyze their request and take appropriate action with the available ticket management tools.
-
-If you cannot understand the request or need more information, respond with a helpful message explaining what you can do.
-
-Always provide clear feedback on what actions you took or what information you found.
-
-Remember to format your response for Slack (use *bold* for emphasis, not **bold**).
-        `.trim();
-        
-        await agentSession.push({ user_message: agentMessage, visible_actors: [], timezone: 'America/New_York' });
-        const result = await agentSession.run();
-        
-        // Send the agent's response back to Slack
-        if (result.finalOutput) {
-            const response = result.finalOutput as string;
-            await sendMessage(
-                response,
-                slackIntegration.access_token,
-                event.channel
-            );
-        } else {
-            await sendMessage(
-                "I processed your request but didn't have anything specific to report back.",
-                slackIntegration.access_token,
-                event.channel
-            );
-        }
-        
-        console.log(chalk.green('Slack message processed successfully'));
+        console.log(chalk.green(`Slack message processed - ${totalMatches} total automation(s) matched across all workspace users`));
         
     } catch (error) {
         console.error(chalk.red('Error handling Slack message:'), error);
-        
-        // Try to send an error message back to the user
-        try {
-            const slackIntegration = await db().slack_integrations.findFirst({
-                where: { team_id: teamId }
-            });
-            
-            if (slackIntegration) {
-                await sendMessage(
-                    '❌ Sorry, I encountered an error processing your request. Please try again or contact support.',
-                    slackIntegration.access_token,
-                    event.channel
-                );
-            }
-        } catch (sendError) {
-            console.error(chalk.red('Error sending error message to Slack:'), sendError);
-        }
+        // Note: We don't send error messages back to Slack anymore since this is now
+        // event-driven automations, not interactive bot responses
     }
 }

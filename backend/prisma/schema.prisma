@@ -110,6 +110,7 @@ model slack_integrations {
   updated_at      DateTime @updatedAt
 
   user_slack_integrations user_slack_integrations[]
+  processed_slack_events processed_slack_events[]
 }
 
 model jira_api_keys {
@@ -165,6 +166,19 @@ model processed_gmail_messages {
 
   @@unique([gmail_integration_id, gmail_message_id]) // Prevent processing the same message twice
   @@index([gmail_integration_id])
+  @@index([processed_at])
+}
+
+model processed_slack_events {
+  id                  String   @id @default(cuid())
+  slack_integration_id String
+  event_id            String // Slack's event_id (e.g., "Ev09R4A73BJL")
+  processed_at        DateTime @default(now())
+
+  slack_integration slack_integrations @relation(fields: [slack_integration_id], references: [id], onDelete: Cascade)
+
+  @@unique([slack_integration_id, event_id]) // Prevent processing the same event twice
+  @@index([slack_integration_id])
   @@index([processed_at])
 }
 

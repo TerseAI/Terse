@@ -1,5 +1,13 @@
 import { Integration } from "../types/Integration";
-import { IntegrationsStatus } from "../shared/types";
+import { 
+    IntegrationsStatus,
+    GmailIntegration,
+    NotionIntegration,
+    SlackIntegration,
+    LinearIntegration,
+    JiraIntegration,
+    GithubIntegration
+} from "../shared/types";
 
 /**
  * Type-safe mapping from Integration enum to IntegrationsStatus keys
@@ -11,6 +19,18 @@ export const INTEGRATION_KEY_MAP: Record<Integration, keyof IntegrationsStatus['
     [Integration.JIRA]: 'jira',
     [Integration.SLACK]: 'slack',
     [Integration.GITHUB]: 'github',
+};
+
+/**
+ * Type mapping from Integration enum to the corresponding integration type
+ */
+type IntegrationTypeMap = {
+    [Integration.GMAIL]: GmailIntegration[];
+    [Integration.NOTION]: NotionIntegration[];
+    [Integration.LINEAR]: LinearIntegration[];
+    [Integration.JIRA]: JiraIntegration[];
+    [Integration.SLACK]: SlackIntegration[];
+    [Integration.GITHUB]: GithubIntegration[];
 };
 
 /**
@@ -71,13 +91,14 @@ export const INTEGRATION_METADATA: Record<Integration, IntegrationMetadata> = {
 
 /**
  * Get the integration instances from IntegrationsStatus for a given integration type
+ * Returns a properly typed array based on the integration type
  */
-export function getIntegrationInstances(
+export function getIntegrationInstances<T extends Integration>(
     integrationData: IntegrationsStatus['integrations'],
-    integrationType: Integration
-) {
+    integrationType: T
+): IntegrationTypeMap[T] {
     const key = INTEGRATION_KEY_MAP[integrationType];
-    return integrationData[key] || [];
+    return (integrationData[key] || []) as IntegrationTypeMap[T];
 }
 
 /**

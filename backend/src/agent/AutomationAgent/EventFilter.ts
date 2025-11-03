@@ -89,7 +89,7 @@ Is this event relevant to the user's automation? Respond with JSON only.`;
         // Ensure confidence is between 0 and 1
         result.confidence = Math.max(0, Math.min(1, result.confidence));
 
-        console.log(`Event filter result for ${event.eventType}:`, result);
+        console.log(`Event filter result for ${event.integrationType}:`, result);
         return result;
 
     } catch (error) {

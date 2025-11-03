@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { BackendProvider } from "../services/backend";
 import { SlackChannel, SlackChannelsResponse } from "../shared/types";
-import { ArrowPathIcon } from "@heroicons/react/24/outline";
+import { RotateCw } from "lucide-react";
 
 interface SlackChannelSelectorProps {
     integrationId: string;
@@ -115,7 +115,7 @@ export function SlackChannelSelector({
                     className="flex items-center gap-1 text-xs text-[theme(--color-accent)] hover:underline disabled:opacity-50"
                     title="Refresh channel list"
                 >
-                    <ArrowPathIcon className={`w-3 h-3 ${isRefreshing ? 'animate-spin' : ''}`} />
+                    <RotateCw className={`w-3 h-3 ${isRefreshing ? 'animate-spin' : ''}`} />
                     Refresh
                 </button>
             </div>
