@@ -75,7 +75,7 @@ function FlowArrow() {
                         />
                     </circle>
 
-                    <circle r="1.5" fill="var(--color-destructive)" opacity="0.8">
+                    <circle r="1.5" fill="var(--color-destructive)" opacity="0">
                         <animateMotion
                             dur="2s"
                             repeatCount="indefinite"
@@ -91,7 +91,7 @@ function FlowArrow() {
                         />
                     </circle>
 
-                    <circle r="1.5" fill="var(--color-destructive)" opacity="0.8">
+                    <circle r="1.5" fill="var(--color-destructive)" opacity="0">
                         <animateMotion
                             dur="2s"
                             repeatCount="indefinite"
@@ -107,7 +107,7 @@ function FlowArrow() {
                         />
                     </circle>
 
-                    <circle r="1.5" fill="var(--color-destructive)" opacity="0.8">
+                    <circle r="1.5" fill="var(--color-destructive)" opacity="0">
                         <animateMotion
                             dur="2s"
                             repeatCount="indefinite"
