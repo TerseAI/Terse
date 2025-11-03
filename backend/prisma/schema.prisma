@@ -311,13 +311,13 @@ model automation_inputs {
   automation automations @relation(fields: [automation_id], references: [id], onDelete: Cascade)
 
   // Configuration relations (one per integration type)
-  slack_config  automation_slack_configs?
-  notion_config automation_notion_configs?
+  slack_config       automation_slack_configs?
+  notion_config      automation_notion_configs?
   notion_page_config automation_notion_page_configs?
-  linear_config automation_linear_configs?
-  jira_config   automation_jira_configs?
-  github_config automation_github_configs?
-  gmail_config  automation_gmail_configs?
+  linear_config      automation_linear_configs?
+  jira_config        automation_jira_configs?
+  github_config      automation_github_configs?
+  gmail_config       automation_gmail_configs?
 
   @@index([automation_id])
   @@index([integration_type, integration_id])
@@ -335,13 +335,13 @@ model automation_outputs {
   automation automations @relation(fields: [automation_id], references: [id], onDelete: Cascade)
 
   // Configuration relations (one per integration type)
-  slack_config  automation_slack_configs?
-  notion_config automation_notion_configs?
+  slack_config       automation_slack_configs?
+  notion_config      automation_notion_configs?
   notion_page_config automation_notion_page_configs?
-  linear_config automation_linear_configs?
-  jira_config   automation_jira_configs?
-  github_config automation_github_configs?
-  gmail_config  automation_gmail_configs?
+  linear_config      automation_linear_configs?
+  jira_config        automation_jira_configs?
+  github_config      automation_github_configs?
+  gmail_config       automation_gmail_configs?
 
   @@index([integration_type, integration_id])
 }
