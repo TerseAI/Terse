@@ -8,6 +8,7 @@ import { NotionConfig, SlackConfig } from '../shared/types';
 import { NotionDatabaseSelector } from './NotionDatabaseSelector';
 import { SlackChannelSelector } from './SlackChannelSelector';
 import DropdownSelect from './ui/DropdownSelect';
+import { Button } from './ui/button';
 
 interface IntegrationInstance {
     id: string;
@@ -126,14 +127,13 @@ export function IntegrationSelector({
                 <div className="text-sm text-muted-foreground">
                     No {getIntegrationName(integrationType)} accounts connected
                 </div>
-                <button
+                <Button
                     onClick={handleConnectNew}
                     disabled={isConnecting}
-                    className="flex items-center justify-center gap-2 px-4 py-2 bg-accent text-accent-foreground rounded-lg hover:brightness-110 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                     <Plus className="w-4 h-4" />
                     {isConnecting ? 'Connecting...' : `Connect ${getIntegrationName(integrationType)}`}
-                </button>
+                </Button>
             </div>
         );
     }
@@ -149,7 +149,7 @@ export function IntegrationSelector({
     return (
         <div className="flex flex-col gap-3">
             <div className="flex flex-col gap-1.5">
-                <label className="text-sm font-medium text-foreground">
+                <label className="font-medium">
                     {label}
                 </label>
                 <DropdownSelect
@@ -159,23 +159,19 @@ export function IntegrationSelector({
                 />
             </div>
 
-            <button
+            <Button
                 onClick={handleConnectNew}
                 disabled={isConnecting}
-                className="flex items-center justify-center gap-2 px-3 py-2 text-sm bg-card text-muted-foreground rounded-lg hover:bg-accent/10 hover:text-foreground transition-all disabled:opacity-50 disabled:cursor-not-allowed border border-input"
+                variant="outline"
             >
                 <Plus className="w-4 h-4" />
                 {isConnecting ? 'Connecting...' : `Connect Another ${getIntegrationName(integrationType)}`}
-            </button>
+            </Button>
 
-            {selectedIntegrationId && (
-                <div className="text-xs text-muted-foreground px-1">
-                    ✓ Selected: {formatIntegrationDisplay(
-                        integrations.find(i => i.id === selectedIntegrationId)!,
-                        integrationType
-                    )}
-                </div>
-            )}
+            {/* {selectedIntegrationId && (
+                <IntegrationBadge integrationId={selectedIntegrationId} integrationType={integrationType} />
+
+            )} */}
 
             {/* Notion-specific database selector */}
             {integrationType === Integration.NOTION && selectedIntegrationId && onNotionConfigChange && (
