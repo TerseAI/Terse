@@ -44,12 +44,14 @@ import {
   getJiraCredentials,
   indexJiraTicket,
   setJiraCredentials,
+  validateJiraCredentials,
 } from "./routes/jira";
 import {
   deleteLinearCredentials,
   getLinearApiKey,
   indexLinearTicket,
   setLinearApiKey,
+  validateLinearApiKey,
 } from "./routes/linear";
 import {
   getNotionOAuthUrl,
@@ -90,6 +92,13 @@ app.use(
     credentials: true,
   })
 );
+
+// Request logging middleware - logs ALL incoming requests
+app.use((req, res, next) => {
+  console.log(`📥 [REQUEST] ${req.method} ${req.path}`);
+  console.log(`📥 [REQUEST] Headers present: ${Object.keys(req.headers).length} headers`);
+  next();
+});
 
 // Parse JSON for all routes except Slack events (which needs raw body for signature verification)
 app.use((req, res, next) => {
@@ -202,6 +211,10 @@ app.post("/jira/set-api-key", authMiddleware, async (req, res) => {
   setJiraCredentials(req, res);
 });
 
+app.post("/jira/validate-and-fetch-projects", authMiddleware, async (req, res) => {
+  validateJiraCredentials(req, res);
+});
+
 app.get("/jira/get-api-key", authMiddleware, async (req, res) => {
   getJiraCredentials(req, res);
 });
@@ -246,6 +259,10 @@ app.get("/notion/databases", authMiddleware, async (req, res) => {
 
 app.post("/linear/set-api-key", authMiddleware, async (req, res) => {
   setLinearApiKey(req, res);
+});
+
+app.post("/linear/validate-and-fetch-teams", authMiddleware, async (req, res) => {
+  validateLinearApiKey(req, res);
 });
 
 app.get("/linear/get-api-key", authMiddleware, async (req, res) => {
@@ -312,6 +329,12 @@ app.get("/slack/oauth-callback", async (req, res) => {
 app.use("/slack/events", express.raw({ type: "application/json" }));
 
 app.post("/slack/events", async (req, res) => {
+  console.log("📨 [SERVER] Slack events endpoint hit - method:", req.method, "path:", req.path);
+  console.log("📨 [SERVER] Headers:", {
+    'x-slack-request-timestamp': req.headers['x-slack-request-timestamp'],
+    'x-slack-signature': req.headers['x-slack-signature'] ? 'present' : 'missing',
+    'content-type': req.headers['content-type'],
+  });
   await handleSlackEvent(req, res);
 });
 
@@ -347,6 +370,8 @@ app.delete("/automations/:id", authMiddleware, async (req, res) => {
 
 server.listen(3001, () => {
   console.log("🚀 Express backend running on http://localhost:3001");
+  console.log("📝 Logging is enabled - all console.log statements should appear");
+  console.log("📝 Testing log output...");
 });
 
 // Graceful shutdown

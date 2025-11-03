@@ -54,6 +54,24 @@ export type LinearIntegration = {
   linearTeamName?: string;
 };
 
+export type LinearTeam = {
+  id: string;
+  name: string;
+  key: string;
+};
+
+export type LinearWorkspace = {
+  id: string;
+  name: string;
+};
+
+export type LinearApiKeyValidationResponse = {
+  valid: boolean;
+  workspace?: LinearWorkspace;
+  teams?: LinearTeam[];
+  error?: string;
+};
+
 export type JiraIntegration = {
   id: string;
   apiKey: string;
@@ -64,10 +82,22 @@ export type JiraIntegration = {
   projectName?: string;
 };
 
+export type JiraProject = {
+  id: string;
+  key: string;
+  name: string;
+};
+
+export type JiraCredentialsValidationResponse = {
+  valid: boolean;
+  projects?: JiraProject[];
+  error?: string;
+};
+
 export type SlackIntegration = {
   id: string;
-  slackTeamId?: string;
-  slackTeamName?: string;
+  teamId?: string;
+  teamName?: string;
 };
 
 export type GmailIntegration = {

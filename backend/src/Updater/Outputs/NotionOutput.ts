@@ -4,7 +4,8 @@ import { RunContext, Tool, tool } from "@openai/agents";
 import { z } from "zod";
 import { Session } from "../../server";
 import { Client } from '@notionhq/client';
-import { NotionIntegration } from "../../types/prisma";
+import { NotionIntegration, AutomationOutput, User } from "../../types/prisma";
+import { db } from "../../prismaClient";
 import chalk from "chalk";
 import { RunHistoryAction } from "../../shared/RunHistoryTypes";
 
@@ -18,6 +19,40 @@ export class NotionOutput extends Output<NotionSession> {
     constructor() {
         const toolbox = [notionQueryDatabaseTool, notionModifyPageTool];
         super(OutputType.Notion, toolbox);
+    }
+
+    async createSessionFromConfig(
+        integrationId: string,
+        automationOutputConfig: AutomationOutput,
+        user: User
+    ): Promise<NotionSession> {
+        // NotionOutput knows how to fetch its own integration
+        const integration = await db().notion_integrations.findFirst({
+            where: { id: integrationId }
+        });
+
+        if (!integration) {
+            throw new Error(`Notion integration ${integrationId} not found`);
+        }
+
+        // Read config from automation output (if provided)
+        const notionConfig = (automationOutputConfig as any).notion_config;
+        
+        // Merge config with integration defaults (config overrides integration defaults)
+        const databaseId = notionConfig?.database_id || integration.database_id;
+        const databaseName = notionConfig?.database_name || integration.database_name;
+
+        return {
+            notionIntegration: {
+                ...integration,
+                database_id: databaseId,
+                database_name: databaseName || undefined,
+            },
+            user: user,
+            isUserInitiated: true,
+            // Collect actions from tools; will be persisted after run
+            runActions: [],
+        };
     }
 }
 

@@ -1,19 +1,16 @@
-import { Plus } from 'lucide-react';
+import { Plus, PlusIcon } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Integration } from '../context/Integrations';
 import { BackendProvider } from '../services/backend';
-import { formatIntegrationDisplay } from '../utility/IntegrationFormatters';
+import { formatIntegrationDisplay, IntegrationInstance } from '../utility/IntegrationFormatters';
 import { getIntegrationInstances, getIntegrationName } from '../utility/IntegrationUtils';
 import { NotionConfig, SlackConfig } from '../shared/types';
 import { NotionDatabaseSelector } from './NotionDatabaseSelector';
 import { SlackChannelSelector } from './SlackChannelSelector';
+import { LinearConnectionForm } from './LinearConnectionForm';
+import { JiraConnectionForm } from './JiraConnectionForm';
 import DropdownSelect from './ui/DropdownSelect';
 import { Button } from './ui/button';
-
-interface IntegrationInstance {
-    id: string;
-    [key: string]: any;
-}
 
 interface IntegrationSelectorProps {
     integrationType: Integration;
@@ -40,6 +37,7 @@ export function IntegrationSelector({
     const [integrations, setIntegrations] = useState<IntegrationInstance[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isConnecting, setIsConnecting] = useState(false);
+    const [showForm, setShowForm] = useState(false);
 
     useEffect(() => {
         fetchIntegrations();
@@ -76,6 +74,12 @@ export function IntegrationSelector({
     };
 
     const handleConnectNew = async () => {
+        // For Jira and Linear, show form instead of OAuth
+        if (integrationType === Integration.JIRA || integrationType === Integration.LINEAR) {
+            setShowForm(true);
+            return;
+        }
+
         setIsConnecting(true);
         try {
             let oauthUrl = '';
@@ -112,6 +116,15 @@ export function IntegrationSelector({
         }
     };
 
+    const handleFormSuccess = async () => {
+        setShowForm(false);
+        await fetchIntegrations();
+    };
+
+    const handleFormCancel = () => {
+        setShowForm(false);
+    };
+
     if (isLoading) {
         return (
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -119,6 +132,59 @@ export function IntegrationSelector({
                 Loading connections...
             </div>
         );
+    }
+
+    // Show form for Jira/Linear if no connections or if showForm is true
+    if ((integrations.length === 0 || showForm) && (integrationType === Integration.JIRA || integrationType === Integration.LINEAR)) {
+        if (integrationType === Integration.LINEAR) {
+            return (
+                <div>
+                    {!showForm && integrations.length === 0 && (
+                        <div className="flex flex-col gap-3 p-4 rounded-lg border border-dashed border-[theme(border)] bg-[theme(background-light)]">
+                            <div className="text-sm text-[theme(text-secondary)]">
+                                No {getIntegrationName(integrationType)} accounts connected
+                            </div>
+                            <button
+                                onClick={handleConnectNew}
+                                disabled={isConnecting}
+                                className="flex items-center justify-center gap-2 px-4 py-2 bg-[theme(--color-accent)] text-white rounded-lg hover:brightness-110 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                <PlusIcon className="w-4 h-4" />
+                                {isConnecting ? 'Connecting...' : `Connect ${getIntegrationName(integrationType)}`}
+                            </button>
+                        </div>
+                    )}
+                    {showForm && (
+                        <LinearConnectionForm onSuccess={handleFormSuccess} onCancel={handleFormCancel} />
+                    )}
+                </div>
+            );
+        }
+        
+        if (integrationType === Integration.JIRA) {
+            return (
+                <div>
+                    {!showForm && integrations.length === 0 && (
+                        <div className="flex flex-col gap-3 p-4 rounded-lg border border-dashed border-[theme(border)] bg-[theme(background-light)]">
+                            <div className="text-sm text-[theme(text-secondary)]">
+                                No {getIntegrationName(integrationType)} accounts connected
+                            </div>
+                            <button
+                                onClick={handleConnectNew}
+                                disabled={isConnecting}
+                                className="flex items-center justify-center gap-2 px-4 py-2 bg-[theme(--color-accent)] text-white rounded-lg hover:brightness-110 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                <PlusIcon className="w-4 h-4" />
+                                {isConnecting ? 'Connecting...' : `Connect ${getIntegrationName(integrationType)}`}
+                            </button>
+                        </div>
+                    )}
+                    {showForm && (
+                        <JiraConnectionForm onSuccess={handleFormSuccess} onCancel={handleFormCancel} />
+                    )}
+                </div>
+            );
+        }
     }
 
     if (integrations.length === 0) {
