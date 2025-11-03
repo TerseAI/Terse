@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
 import { BackendProvider } from "../services/backend";
 import { NotionResource, NotionResourcesResponse, NotionResourceType } from "../shared/types";
-import { RefreshCw } from "lucide-react";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
+import { Check, ChevronsUpDown, RefreshCw } from "lucide-react";
 import { Button } from "./ui/button";
+import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "./ui/command";
+import { cn } from "@/lib/utils";
 
 interface NotionDatabaseSelectorProps {
     integrationId: string;
@@ -117,26 +119,7 @@ export function NotionDatabaseSelector({
                     Refresh
                 </Button>
             </div>
-            <Select
-                value={selectedDatabaseId || ''}
-                onValueChange={(value) => {
-                    const selectedResource = resources.find(resource => resource.id === value);
-                    if (selectedResource) {
-                        onSelect(selectedResource.id, selectedResource.title, selectedResource.type);
-                    }
-                }}
-            >
-                <SelectTrigger className="w-full">
-                    <SelectValue placeholder="-- Select a database --" />
-                </SelectTrigger>
-                <SelectContent>
-                    {resources.map((resource) => (
-                        <SelectItem key={resource.id} value={resource.id}>
-                            {resource.type === 'database' ? 'Database' : 'Page'} - {resource.title}
-                        </SelectItem>
-                    ))}
-                </SelectContent>
-            </Select>
+            <NotionResourceCombobox resources={resources} selectedResourceId={selectedDatabaseId || ''} onSelect={onSelect} />
             {resources.length > 0 && (
                 <div className="text-xs text-muted-foreground">
                     {resources.length} page{resources.length !== 1 ? 's' : ''} or database{resources.length !== 1 ? 's' : ''} available
@@ -146,3 +129,67 @@ export function NotionDatabaseSelector({
     );
 }
 
+
+interface NotionResourceComboboxProps {
+    resources: NotionResource[];
+    selectedResourceId: string;
+    onSelect: (resourceId: string, resourceName: string, resourceType: NotionResourceType) => void;
+}
+function NotionResourceCombobox({
+    resources,
+    selectedResourceId,
+    onSelect
+}: NotionResourceComboboxProps) {
+    const [open, setOpen] = useState(false)
+
+    const selectedResource = resources.find((resource) => resource.id === selectedResourceId);
+
+    return (
+        <Popover open={open} onOpenChange={setOpen}>
+            <PopoverTrigger asChild>
+                <Button
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={open}
+                    className="w-full justify-between"
+                >
+                    {selectedResource
+                        ? `${selectedResource.type === 'database' ? 'Database' : 'Page'} - ${selectedResource.title}`
+                        : "Select page or database..."}
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-full p-0" align="start">
+                <Command>
+                    <CommandInput placeholder="Search pages or databases..." />
+                    <CommandList>
+                        <CommandEmpty>No pages or databases found.</CommandEmpty>
+                        <CommandGroup>
+                            {resources.map((resource) => {
+                                const isSelected = selectedResourceId === resource.id;
+                                return (
+                                    <CommandItem
+                                        key={resource.id}
+                                        value={`${resource.id}-${resource.title}`}
+                                        onSelect={() => {
+                                            onSelect(resource.id, resource.title, resource.type);
+                                            setOpen(false);
+                                        }}
+                                    >
+                                        <Check
+                                            className={cn(
+                                                "mr-2 h-4 w-4",
+                                                isSelected ? "opacity-100" : "opacity-0"
+                                            )}
+                                        />
+                                        <span>{resource.type === 'database' ? 'Database' : 'Page'} - {resource.title}</span>
+                                    </CommandItem>
+                                );
+                            })}
+                        </CommandGroup>
+                    </CommandList>
+                </Command>
+            </PopoverContent>
+        </Popover>
+    );
+}
