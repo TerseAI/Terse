@@ -123,13 +123,17 @@ Use the schema's format_example field to construct properties correctly. Pay spe
             throw new Error("No context provided");
         }
 
+        if (!runContext.context.notionConfig.database_id) {
+            throw new Error("Database ID not found: This should never happen");
+        }
+
         const notion = new Client({
             auth: runContext.context.notionIntegration.integration_token,
         });
 
         // Fetch database schema
         const databaseInfo = await notion.databases.retrieve({
-            database_id: runContext.context.notionIntegration.database_id,
+            database_id: runContext.context.notionConfig.database_id,
         });
 
         // Extract schema information with format examples
@@ -182,7 +186,7 @@ Use the schema's format_example field to construct properties correctly. Pay spe
 
         // Fetch all pages
         const response = await notion.databases.query({
-            database_id: runContext.context.notionIntegration.database_id,
+            database_id: runContext.context.notionConfig.database_id,
         });
 
         // Convert to readable format
@@ -260,6 +264,10 @@ Use notion_query_database first to see existing property names and structure.`,
             throw new Error("No context provided");
         }
 
+        if (!runContext.context.notionConfig.database_id) {
+            throw new Error("Database ID not found: This should never happen");
+        }
+
         const notion = new Client({
             auth: runContext.context.notionIntegration.integration_token,
         });
@@ -279,7 +287,7 @@ Use notion_query_database first to see existing property names and structure.`,
                 runContext.context.runActions.push({
                     action: 'update_page',
                     integration: 'notion',
-                    target: runContext.context.notionIntegration.database_name || runContext.context.notionIntegration.database_id,
+                    target: runContext.context.notionConfig.database_name || runContext.context.notionConfig.database_id,
                     details: 'Notion page updated',
                     url: 'url' in response ? (response as any).url : undefined,
                 });
@@ -294,7 +302,7 @@ Use notion_query_database first to see existing property names and structure.`,
                 const response = await notion.pages.create({
                     parent: {
                         type: 'database_id',
-                        database_id: runContext.context.notionIntegration.database_id,
+                        database_id: runContext.context.notionConfig.database_id,
                     },
                     properties: properties as Record<string, any>,
                 });
