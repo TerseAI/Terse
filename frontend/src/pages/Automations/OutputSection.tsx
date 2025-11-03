@@ -28,8 +28,10 @@ export function OutputSection() {
 
     const handleSelectIntegration = (integrationId: string) => {
         if (output) {
+            console.log("Output:", JSON.stringify(output, null, 2));
             // Clear all configs when switching integration instances (will be re-selected when selector loads)
             const clearedConfigs = clearIntegrationConfigs(output);
+            console.log("Cleared configs:", JSON.stringify(clearedConfigs, null, 2));
             setOutput({
                 ...output,
                 integrationId,
@@ -84,7 +86,21 @@ function OutputCard({
                     notionConfig={output.notionConfig}
                     onNotionConfigChange={(config) => {
                         if (output) {
-                            setOutput({ ...output, notionConfig: config });
+                            setOutput({
+                                integration: Integration.NOTION,
+                                integrationId: output.integrationId,
+                                notionConfig: config
+                            });
+                        }
+                    }}
+                    notionPageConfig={output.notionPageConfig}
+                    onNotionPageConfigChange={(config) => {
+                        if (output) {
+                            setOutput({
+                                integration: Integration.NOTION_PAGE,
+                                integrationId: output.integrationId,
+                                notionPageConfig: config
+                            });
                         }
                     }}
                     slackConfig={output.slackConfig}

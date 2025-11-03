@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { BackendProvider } from "../services/backend";
 import { Integration } from "./Integrations";
-import { NotionConfig, SlackConfig } from "../shared/types";
+import { NotionConfig, NotionPageConfig, SlackConfig } from "../shared/types";
 
 export interface Input {
     integration: Integration;
@@ -28,6 +28,7 @@ export interface Output {
     integration: Integration;
     integrationId?: string; // ID of the specific integration instance
     notionConfig?: NotionConfig; // Configuration for Notion output (database selection)
+    notionPageConfig?: NotionPageConfig; // Configuration for Notion output (page selection)
     slackConfig?: SlackConfig; // Configuration for Slack output (channel selection)
 }
 
@@ -80,6 +81,7 @@ export function AutomationProvider({ children, automationId }: { children: React
                     integration: automation.output.integration as Integration,
                     integrationId: automation.output.integrationId,
                     notionConfig: automation.output.notionConfig,
+                    notionPageConfig: automation.output.notionPageConfig,
                     slackConfig: automation.output.slackConfig
                 } : undefined);
                 setPrompt(automation.prompt);

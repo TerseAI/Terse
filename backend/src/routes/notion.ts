@@ -4,7 +4,8 @@ import { Request, Response } from "express";
 import jwt from "jsonwebtoken";
 import { db } from "../prismaClient";
 import { NotionResource, NotionResourcesResponse } from "../shared/types";
-import { SearchResponse } from "@notionhq/client/build/src/api-endpoints";
+import { PageObjectResponse, PartialPageObjectResponse, SearchResponse } from "@notionhq/client/build/src/api-endpoints";
+import { extractPageTitle } from "../utility/notion";
 
 // OAuth Functions
 
@@ -122,14 +123,14 @@ export const notionOAuthCallback = async (req: Request, res: Response) => {
       })
     );
 
-    const pages: NotionResource[] = pagesResponse.results.map(
-      (page: any) => ({
+    const pages: NotionResource[] = pagesResponse.results
+      .filter((page): page is PageObjectResponse | PartialPageObjectResponse => page.object === 'page')
+      .map((page: PageObjectResponse | PartialPageObjectResponse) => ({
         id: page.id,
-        title: page.title?.[0]?.plain_text || "Untitled Page",
-        url: page.url,
-        type: 'page',
-      })
-    );
+        title: extractPageTitle(page),
+        url: 'url' in page ? page.url : '',
+        type: 'page' as const,
+      }));
 
     const resources: NotionResource[] = [...databases, ...pages];
 
@@ -247,14 +248,14 @@ export const getNotionResources = async (req: Request, res: Response) => {
       })
     );
 
-    const pages: NotionResource[] = pagesResponse.results.map(
-      (page: any) => ({
+    const pages: NotionResource[] = pagesResponse.results
+      .filter((page): page is PageObjectResponse | PartialPageObjectResponse => page.object === 'page')
+      .map((page: PageObjectResponse | PartialPageObjectResponse) => ({
         id: page.id,
-        title: page.title?.[0]?.plain_text || "Untitled Page",
-        url: page.url,
-        type: 'page',
-      })
-    );
+        title: extractPageTitle(page),
+        url: 'url' in page ? page.url : '',
+        type: 'page' as const,
+      }));
     const resources: NotionResource[] = [...databases, ...pages];
 
     const response: NotionResourcesResponse = {
