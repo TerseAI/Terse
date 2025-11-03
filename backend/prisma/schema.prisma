@@ -558,7 +558,6 @@ model pending_approvals {
   created_at            DateTime  @default(now())
   updated_at            DateTime  @updatedAt
   approved_at           DateTime?
-  expires_at            DateTime  @default(dbgenerated("now() + interval '24 hours'"))
 
   user               users               @relation(fields: [user_id], references: [id], onDelete: Cascade)
   run_history_record run_history_records @relation(fields: [run_history_record_id], references: [id], onDelete: Cascade)
