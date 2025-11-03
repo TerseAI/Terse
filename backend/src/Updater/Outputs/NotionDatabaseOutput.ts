@@ -312,7 +312,7 @@ Use notion_query_database first to see existing property names and structure.`,
                 runContext.context.runActions.push({
                     action: 'create_page',
                     integration: 'notion',
-                    target: runContext.context.notionIntegration.database_name || runContext.context.notionIntegration.database_id,
+                    target: runContext.context.notionConfig.database_name || runContext.context.notionConfig.database_id,
                     details: 'Notion page created',
                     url: 'url' in response ? (response as any).url : undefined,
                 });

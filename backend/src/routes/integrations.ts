@@ -105,8 +105,6 @@ export async function fetchUserIntegrations(req: Request, res: Response) {
                 id: true,
                 workspace_id: true,
                 workspace_name: true,
-                database_id: true,
-                database_name: true,
                 integration_token: true
             }
         });
@@ -114,8 +112,6 @@ export async function fetchUserIntegrations(req: Request, res: Response) {
             id: ni.id,
             workspaceId: ni.workspace_id,
             workspaceName: ni.workspace_name,
-            databaseId: ni.database_id,
-            databaseName: ni.database_name,
             integrationToken: ni.integration_token
         }));
 

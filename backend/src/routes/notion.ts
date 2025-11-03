@@ -147,8 +147,6 @@ export const notionOAuthCallback = async (req: Request, res: Response) => {
           user_id: decoded.userId,
           workspace_id: workspace_id || null,
           workspace_name: workspace_name || null,
-          database_id: defaultDatabase.id,
-          database_name: defaultDatabase.title,
           integration_token: access_token,
         },
       });
@@ -228,7 +226,7 @@ export const getNotionDatabases = async (req: Request, res: Response) => {
 
     const response: NotionDatabasesResponse = {
       databases,
-      selectedDatabaseId: integration.database_id,
+      selectedDatabaseId: databases[0].id, // Just choose the first?
     };
 
     res.status(200).json(response);
