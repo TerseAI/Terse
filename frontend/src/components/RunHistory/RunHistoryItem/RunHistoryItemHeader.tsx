@@ -1,6 +1,8 @@
-import { ChevronRight, Mail, ExternalLink, Copy } from "lucide-react";
+import { ChevronRight, ExternalLink, Copy } from "lucide-react";
 import type { RunHistoryRecord } from "../../../shared/RunHistoryTypes";
 import RunHistoryStatusBadge from "../RunHistoryStatusBadge";
+import { IconForInputType } from "../../../pages/Automations/components/Integration";
+import { Integration } from "../../../types/Integration";
 
 type Props = {
     run: RunHistoryRecord;
@@ -18,7 +20,9 @@ export default function RunHistoryItemHeader({ run, isExpanded, formattedTimesta
                 </div>
                 <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
-                        <Mail className="w-4 h-4 text-[theme(text-secondary)] flex-shrink-0" />
+                        <div className="w-4 h-4 text-[theme(text-secondary)] flex-shrink-0">
+                            <IconForInputType type={run.trigger.integration as Integration} />
+                        </div>
                         <span className="text-[theme(text-primary)] truncate">{run.trigger.title}</span>
                         {run.trigger.url && (
                             <a
