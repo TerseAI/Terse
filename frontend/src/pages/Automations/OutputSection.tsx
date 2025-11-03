@@ -3,9 +3,13 @@ import { Output, useAutomationContext } from "../../context/AutomationContext";
 import { Integration } from "../../context/Integrations";
 import { SectionLayout } from "./components/SectionLayout";
 import { AddOutputModal } from "./components/AddOutputModal";
-import { FileText, X } from "lucide-react";
+import { FileText, Plus } from "lucide-react";
 import { IntegrationSelector } from "../../components/IntegrationSelector";
-import { clearIntegrationConfigs, getIntegrationName } from "../../utility/IntegrationUtils";
+import { clearIntegrationConfigs } from "../../utility/IntegrationUtils";
+import { Button } from "@/components/ui/button";
+import { Card, CardAction, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { IntegrationTitle } from "./components/IntegrationTitle";
+import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 
 export function OutputSection() {
     const { output, setOutput } = useAutomationContext();
@@ -14,7 +18,7 @@ export function OutputSection() {
     const handleSelectPlatform = (integration: Integration) => {
         // Clear all configs when switching platform (new integration type)
         const clearedConfigs = output ? clearIntegrationConfigs(output) : {};
-        const newOutput: Output = { 
+        const newOutput: Output = {
             integration,
             ...clearedConfigs
         };
@@ -26,8 +30,8 @@ export function OutputSection() {
         if (output) {
             // Clear all configs when switching integration instances (will be re-selected when selector loads)
             const clearedConfigs = clearIntegrationConfigs(output);
-            setOutput({ 
-                ...output, 
+            setOutput({
+                ...output,
                 integrationId,
                 ...clearedConfigs
             });
@@ -42,51 +46,12 @@ export function OutputSection() {
         <SectionLayout
             title="Update Living Document"
             subtitle="The AI will continuously update this document as events come in"
-            icon={<FileText className="w-5 h-5 text-accent" />}
+            icon={<FileText className="w-5 h-5 text-destructive" />}
         >
             {!output ? (
-                <div className="text-center py-4 px-4">
-                    <p className="text-xs text-muted-foreground mb-3">
-                        Choose where your living document will be updated
-                    </p>
-                    <button
-                        onClick={() => setShowAddModal(true)}
-                        className="px-4 py-2 bg-accent text-accent-foreground rounded-lg hover:brightness-110 transition-all text-sm font-medium"
-                    >
-                        + Add Output
-                    </button>
-                </div>
+                <EmptyOutputSection onCreateNew={() => setShowAddModal(true)} />
             ) : (
-                <div className="p-4 rounded-lg border border-input bg-background">
-                    <div className="flex items-start justify-between mb-3">
-                        <div className="text-sm font-medium text-foreground">
-                            {getIntegrationName(output.integration)}
-                        </div>
-                        <button
-                            onClick={handleRemove}
-                            className="text-muted-foreground hover:text-destructive transition-colors"
-                        >
-                            <X className="w-5 h-5" />
-                        </button>
-                    </div>
-                    <IntegrationSelector
-                        integrationType={output.integration}
-                        selectedIntegrationId={output.integrationId}
-                        onSelect={handleSelectIntegration}
-                        notionConfig={output.notionConfig}
-                        onNotionConfigChange={(config) => {
-                            if (output) {
-                                setOutput({ ...output, notionConfig: config });
-                            }
-                        }}
-                        slackConfig={output.slackConfig}
-                        onSlackConfigChange={(config) => {
-                            if (output) {
-                                setOutput({ ...output, slackConfig: config });
-                            }
-                        }}
-                    />
-                </div>
+                <OutputCard output={output} handleRemove={handleRemove} handleSelectIntegration={handleSelectIntegration} setOutput={setOutput} />
             )}
 
             <AddOutputModal
@@ -95,5 +60,73 @@ export function OutputSection() {
                 onSelectIntegration={handleSelectPlatform}
             />
         </SectionLayout>
+    );
+}
+
+function OutputCard({ 
+    output, 
+    handleRemove,
+    handleSelectIntegration,
+    setOutput
+}: { output: Output, handleRemove: () => void, handleSelectIntegration: (integrationId: string) => void, setOutput: (output: Output) => void }) {
+    return (
+        <Card>
+            <CardHeader>
+                <CardTitle className="flex justify-between">
+                    <IntegrationTitle integration={output.integration} iconSize="lg" />
+                </CardTitle>
+            </CardHeader>
+            <CardContent>
+            <IntegrationSelector
+                    integrationType={output.integration}
+                    selectedIntegrationId={output.integrationId}
+                    onSelect={handleSelectIntegration}
+                    notionConfig={output.notionConfig}
+                    onNotionConfigChange={(config) => {
+                        if (output) {
+                            setOutput({ ...output, notionConfig: config });
+                        }
+                    }}
+                    slackConfig={output.slackConfig}
+                    onSlackConfigChange={(config) => {
+                        if (output) {
+                            setOutput({ ...output, slackConfig: config });
+                        }
+                    }}
+                />
+            </CardContent>
+            <CardFooter>
+                <CardAction>
+                    <Button variant="destructive" onClick={handleRemove}>
+                        Remove
+                    </Button>
+                </CardAction>
+            </CardFooter>
+        </Card>
+    );
+}
+
+function EmptyOutputSection({ onCreateNew }: { onCreateNew: () => void }) {
+    return (
+        <Empty>
+            <EmptyHeader>
+                <EmptyMedia variant="icon">
+                    <FileText className="text-destructive" />
+                </EmptyMedia>
+                <EmptyTitle>No output yet</EmptyTitle>
+                <EmptyDescription>
+                    No output yet. Add an integration to get started.
+                </EmptyDescription>
+            </EmptyHeader>
+            <EmptyContent>
+                <Button
+                    variant="outline"
+                    onClick={onCreateNew}
+                >
+                    <Plus className="h-4 w-4" />
+                    Add Output
+                </Button>
+            </EmptyContent>
+        </Empty>
     );
 }

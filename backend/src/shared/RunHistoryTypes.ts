@@ -55,4 +55,19 @@ export type RunHistoryRecord = {
     status: RunHistoryStatus;
 };
 
+export type GetRunHistoryParams = {
+    q?: string;
+    start?: string; // ISO date string
+    end?: string;   // ISO date string
+    status?: RunHistoryStatus[];
+    page?: number;
+    pageSize?: number;
+};
+
+export type GetRunHistoryResponse = {
+    items: RunHistoryRecord[];
+    page: number;
+    pageSize: number;
+    total: number;
+};
 

@@ -1,6 +1,8 @@
-import { Settings } from "lucide-react";
+import { Plus, Settings } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import {
     Empty,
+    EmptyContent,
     EmptyDescription,
     EmptyHeader,
     EmptyMedia,
@@ -9,9 +11,10 @@ import {
 
 interface EmptyStateProps {
     hasFilters: boolean;
+    onCreateNew?: () => void;
 }
 
-export function EmptyState({ hasFilters }: EmptyStateProps) {
+export function EmptyState({ hasFilters, onCreateNew }: EmptyStateProps) {
     return (
         <Empty>
             <EmptyHeader>
@@ -25,6 +28,17 @@ export function EmptyState({ hasFilters }: EmptyStateProps) {
                         : "Create your first automation to get started"}
                 </EmptyDescription>
             </EmptyHeader>
+            {!hasFilters && onCreateNew && (
+                <EmptyContent>
+                    <Button
+                        variant="default"
+                        onClick={onCreateNew}
+                    >
+                        <Plus className="h-4 w-4" />
+                        Add Automation
+                    </Button>
+                </EmptyContent>
+            )}
         </Empty>
     );
 }

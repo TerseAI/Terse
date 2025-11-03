@@ -3,7 +3,7 @@ import RunHistoryEmptyState from "./RunHistoryEmptyState"
 import RunHistoryToolBar from "./RunHistoryToolBar";
 import RunHistoryItem from "./RunHistoryItem";
 import RunHistoryLoadingState from "./RunHistoryLoadingState";
-import { RunHistoryRecord, RunHistoryStatus } from "../../shared/RunHistoryTypes";
+import { GetRunHistoryParams, GetRunHistoryResponse, RunHistoryRecord, RunHistoryStatus } from "../../shared/RunHistoryTypes";
 import { useAutomationContext } from "../../context/AutomationContext";
 import { BackendProvider } from "../../services/backend";
 
@@ -19,7 +19,7 @@ export default function RunHistory() {
     const [runsPerPage, setRunsPerPage] = useState(10);
     const [total, setTotal] = useState(0);
     const [remoteRuns, setRemoteRuns] = useState<RunHistoryRecord[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
+    const [isLoading, setIsLoading] = useState(false);
 
     const [selectedStatuses, setSelectedStatuses] = useState<Set<RunHistoryStatus>>(
         new Set(["success", "failed", "skipped", "in_progress"])
@@ -45,16 +45,16 @@ export default function RunHistory() {
         const run = async () => {
             if (!automationId) return;
             setIsLoading(true);
-            const params = {
+            const params: GetRunHistoryParams = {
                 page: currentPage,
                 pageSize: runsPerPage,
                 q: searchQuery.trim() || undefined,
                 start: toLocalStartISOString(dateRange.from),
                 end: toLocalEndISOString(dateRange.to ?? dateRange.from),
                 status: Array.from(selectedStatuses).length < 4 ? Array.from(selectedStatuses) : undefined,
-            } as any;
+            };
             try {
-                const data = await BackendProvider.getRunHistory(automationId, params);
+                const data: GetRunHistoryResponse = await BackendProvider.getRunHistory(automationId, params);
                 if (!controller.signal.aborted) {
                     setRemoteRuns(data.items);
                     setTotal(data.total);

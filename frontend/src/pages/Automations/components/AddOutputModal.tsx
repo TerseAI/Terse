@@ -1,7 +1,8 @@
-import { Dialog, DialogPanel, DialogTitle } from "@headlessui/react";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Integration } from "../../../context/Integrations";
 import { getAllOutputIntegrationMetadata } from "../../../utility/IntegrationUtils";
 import { IconForInputType } from "./Integration";
+import { Button } from "@/components/ui/button";
 
 interface AddOutputModalProps {
     isOpen: boolean;
@@ -14,44 +15,45 @@ export function AddOutputModal({ isOpen, onClose, onSelectIntegration }: AddOutp
     const allIntegrations = getAllOutputIntegrationMetadata();
 
     return (
-        <Dialog open={isOpen} onClose={onClose} className="relative z-50">
-            <div className="fixed inset-0 bg-black/50 backdrop-blur-sm" aria-hidden="true" />
-
-            <div className="fixed inset-0 flex items-center justify-center p-4">
-                <DialogPanel className="w-full max-w-lg rounded-xl bg-[theme(background)] p-6 shadow-2xl border border-[theme(border)] overflow-hidden">
-                    <DialogTitle className="text-xl font-bold text-[theme(text-primary)] mb-2">
+        <Dialog open={isOpen} onOpenChange={onClose}>
+            <DialogContent className="max-w-lg">
+                <DialogHeader>
+                    <DialogTitle className="text-xl font-bold">
                         Choose Living Document
                     </DialogTitle>
-                    <p className="text-sm text-[theme(text-secondary)] mb-6">
+                    <DialogDescription>
                         Select where the AI will continuously update content
-                    </p>
+                    </DialogDescription>
+                </DialogHeader>
 
-                    <div className="grid grid-cols-2 gap-3">
-                        {allIntegrations.map((integration) => (
-                            <button
-                                key={integration.type}
-                                onClick={() => onSelectIntegration(integration.type)}
-                                className="flex flex-col items-center gap-3 p-5 rounded-lg border-2 border-[theme(border)] hover:border-[theme(--color-accent-tertiary)] hover:bg-[theme(background-light)] transition-all duration-200 group"
-                            >
-                                <div className="w-16 h-16 flex items-center justify-center">
-                                    <IconForInputType type={integration.type} />
-                                </div>
-                                <div className="text-center">
-                                    <div className="text-sm font-medium text-[theme(text-primary)] mb-1">{integration.name}</div>
-                                    <div className="text-xs text-[theme(text-secondary)] group-hover:text-[theme(text-primary)] transition-colors">{integration.description}</div>
-                                </div>
-                            </button>
-                        ))}
-                    </div>
+                <div className="grid grid-cols-2 gap-3">
+                    {allIntegrations.map((integration) => (
+                        <button
+                            key={integration.type}
+                            onClick={() => onSelectIntegration(integration.type)}
+                            className="flex flex-col items-center gap-3 p-5 rounded-lg border-2 border-border hover:border-primary hover:bg-accent transition-all duration-200 group"
+                        >
+                            <div className="w-16 h-16 flex items-center justify-center">
+                                <IconForInputType type={integration.type} />
+                            </div>
+                            <div className="text-center">
+                                <div className="text-sm font-medium text-foreground mb-1">{integration.name}</div>
+                                <div className="text-xs text-muted-foreground group-hover:text-foreground transition-colors">{integration.description}</div>
+                            </div>
+                        </button>
+                    ))}
+                </div>
 
-                    <button
+                <DialogFooter>
+                    <Button
                         onClick={onClose}
-                        className="mt-6 w-full px-4 py-2.5 bg-[theme(background-light)] text-[theme(text-primary)] rounded-lg hover:bg-[theme(background-hover)] transition-colors font-medium"
+                        variant="outline"
+                        className="mt-6 w-full"
                     >
                         Cancel
-                    </button>
-                </DialogPanel>
-            </div>
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
         </Dialog>
     );
 }
