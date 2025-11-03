@@ -107,6 +107,7 @@ export async function fetchUserIntegrations(req: Request, res: Response) {
                 integration_token: true
             }
         });
+        console.log("Notion integrations:", JSON.stringify(notionIntegrations, null, 2));
         result.integrations.notion = notionIntegrations.map(ni => ({
             id: ni.id,
             workspaceId: ni.workspace_id,

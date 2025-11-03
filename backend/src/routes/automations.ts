@@ -4,6 +4,7 @@ import { Automation, AutomationInput, AutomationOutput, AutomationPrompt } from 
 import { IntegrationType } from "@prisma/client";
 import { parsePageParams } from "../utility/pagination";
 import { AutomationInputSetup } from "../setup/AutomationInputSetup";
+import chalk from "chalk";
 
 // Map frontend integration string to backend IntegrationType enum
 const integrationTypeMap: Record<string, IntegrationType> = {
@@ -13,6 +14,7 @@ const integrationTypeMap: Record<string, IntegrationType> = {
     'jira': IntegrationType.JIRA,
     'slack': IntegrationType.SLACK,
     'notion': IntegrationType.NOTION,
+    'notion_page': IntegrationType.NOTION_PAGE,
 };
 
 // Helper function to create config record for an automation input
@@ -114,6 +116,17 @@ async function createOutputConfig(
                         automation_output_id: outputId,
                         database_id: config.notionConfig.databaseId || null,
                         database_name: config.notionConfig.databaseName || null,
+                    },
+                });
+            }
+            break;
+        case IntegrationType.NOTION_PAGE:
+            if (config.notionPageConfig) {
+                await tx.automation_notion_page_configs.create({
+                    data: {
+                        automation_output_id: outputId,
+                        page_id: config.notionPageConfig.pageId || null,
+                        page_name: config.notionPageConfig.pageName || null,
                     },
                 });
             }
@@ -223,6 +236,12 @@ function transformOutputConfig(output: any): AutomationOutput {
             databaseName: output.notion_config.database_name || undefined,
         };
     }
+    if (output.notion_page_config) {
+        base.notionPageConfig = {
+            pageId: output.notion_page_config.page_id || undefined,
+            pageName: output.notion_page_config.page_name || undefined,
+        };
+    }
     if (output.linear_config) {
         base.linearConfig = {
             projectId: output.linear_config.project_id || undefined,
@@ -305,6 +324,15 @@ async function validateUserOwnsIntegration(userId: string, integrationType: Inte
                 }
             });
             return !!notionIntegration;
+
+        case IntegrationType.NOTION_PAGE:
+            const notionPageIntegration = await prisma.notion_integrations.findFirst({
+                where: {
+                    id: integrationId,
+                    user_id: userId
+                }
+            });
+            return !!notionPageIntegration;
 
         default:
             return false;
@@ -429,6 +457,7 @@ export async function getUserAutomation(req: Request, res: Response) {
                     include: {
                         slack_config: true,
                         notion_config: true,
+                        notion_page_config: true,
                         linear_config: true,
                         jira_config: true,
                         github_config: true,
@@ -477,6 +506,7 @@ export async function createAutomation(req: Request, res: Response) {
 
     const userId = req.session.user.id;
     const { name, inputs, output, prompt, isActive = true } = req.body as SaveAutomationRequest;
+    console.log(chalk.green("Output from frontend:"), chalk.yellow(JSON.stringify(output, null, 2)));
 
     // Validate request
     if (!name || !inputs || inputs.length === 0 || !output || !prompt?.text) {
@@ -551,6 +581,12 @@ export async function createAutomation(req: Request, res: Response) {
             if (!isOwner) {
                 throw new Error(`Integration ${output.integration} not found or not owned by user`);
             }
+
+            console.log(chalk.green("Output integration ID:"), chalk.yellow(outputIntegrationId));
+
+            console.log(chalk.green("Output integration type:"), chalk.yellow(outputIntegrationType));
+
+            console.log(chalk.green("Creating new output:"), chalk.yellow(JSON.stringify(output, null, 2)));
 
             const newOutput = await tx.automation_outputs.create({
                 data: {
@@ -877,7 +913,7 @@ export async function updateAutomation(req: Request, res: Response) {
                     throw new Error(`Unknown integration type: ${output.integration}`);
                 }
 
-                const outputIntegrationId = (output as any).integrationId;
+                const outputIntegrationId = output.integrationId;
                 if (!outputIntegrationId) {
                     throw new Error(`Integration ID is required for ${output.integration}`);
                 }

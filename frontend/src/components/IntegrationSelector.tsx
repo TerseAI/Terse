@@ -4,8 +4,8 @@ import { Integration } from '../context/Integrations';
 import { BackendProvider } from '../services/backend';
 import { formatIntegrationDisplay, IntegrationInstance } from '../utility/IntegrationFormatters';
 import { getIntegrationInstances, getIntegrationName } from '../utility/IntegrationUtils';
-import { NotionConfig, SlackConfig } from '../shared/types';
-import { NotionDatabaseSelector } from './NotionDatabaseSelector';
+import { NotionConfig, NotionPageConfig, NotionResourceType, SlackConfig } from '../shared/types';
+import { NotionResourceSelector } from './NotionResourceSelector';
 import { SlackChannelSelector } from './SlackChannelSelector';
 import { LinearConnectionForm } from './LinearConnectionForm';
 import { JiraConnectionForm } from './JiraConnectionForm';
@@ -19,7 +19,9 @@ interface IntegrationSelectorProps {
     label?: string;
     // Optional config handlers for integration-specific settings
     notionConfig?: NotionConfig;
+    notionPageConfig?: NotionPageConfig;
     onNotionConfigChange?: (config: NotionConfig) => void;
+    onNotionPageConfigChange?: (config: NotionPageConfig) => void;
     slackConfig?: SlackConfig;
     onSlackConfigChange?: (config: SlackConfig) => void;
 }
@@ -31,6 +33,8 @@ export function IntegrationSelector({
     label = 'Connection',
     notionConfig,
     onNotionConfigChange,
+    notionPageConfig,
+    onNotionPageConfigChange,
     slackConfig,
     onSlackConfigChange
 }: IntegrationSelectorProps) {
@@ -160,7 +164,7 @@ export function IntegrationSelector({
                 </div>
             );
         }
-        
+
         if (integrationType === Integration.JIRA) {
             return (
                 <div>
@@ -234,22 +238,24 @@ export function IntegrationSelector({
                 {isConnecting ? 'Connecting...' : `Connect Another ${getIntegrationName(integrationType)}`}
             </Button>
 
-            {/* {selectedIntegrationId && (
-                <IntegrationBadge integrationId={selectedIntegrationId} integrationType={integrationType} />
-
-            )} */}
-
             {/* Notion-specific database selector */}
-            {integrationType === Integration.NOTION && selectedIntegrationId && onNotionConfigChange && (
+            {(integrationType === Integration.NOTION || integrationType === Integration.NOTION_PAGE) && selectedIntegrationId && onNotionConfigChange && (
                 <div className="mt-3 pt-3 border-t border-[theme(border)]">
-                    <NotionDatabaseSelector
+                    <NotionResourceSelector
                         integrationId={selectedIntegrationId}
-                        selectedDatabaseId={notionConfig?.databaseId}
-                        onSelect={(databaseId, databaseName) => {
-                            onNotionConfigChange({
-                                databaseId,
-                                databaseName
-                            });
+                        selectedResourceId={notionPageConfig?.pageId || notionConfig?.databaseId}
+                        onSelect={(resourceId: string, resourceName: string, resourceType: NotionResourceType) => {
+                            if (resourceType === 'database') {
+                                onNotionConfigChange?.({
+                                    databaseId: resourceId,
+                                    databaseName: resourceName
+                                });
+                            } else {
+                                onNotionPageConfigChange?.({
+                                    pageId: resourceId,
+                                    pageName: resourceName
+                                });
+                            }
                         }}
                     />
                 </div>
