@@ -165,9 +165,6 @@ export const notionOAuthCallback = async (req: Request, res: Response) => {
         where: { id: existing.id },
         data: {
           integration_token: access_token,
-          // Update default database if not set
-          database_id: existing.database_id || defaultDatabase.id,
-          database_name: existing.database_name || defaultDatabase.title,
         },
       });
       console.log(

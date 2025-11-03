@@ -2,7 +2,7 @@ import chalk from 'chalk';
 import { db } from '../prismaClient';
 import { AutomationAgent } from './AutomationAgent/AutomationAgent';
 import { NotionDatabaseOutput, NotionDatabaseSession } from '../Updater/Outputs/NotionDatabaseOutput';
-import { AutomationWithRelations, User } from 'src/types/prisma';
+import { AutomationNotionConfig, AutomationWithRelations, User } from 'src/types/prisma';
 
 /**
  * Factory for creating AutomationAgent instances from automation configurations.
@@ -73,16 +73,14 @@ export class AutomationAgentFactory {
         throw new Error(`Notion integration not found: ${outputIntegration.integration_id}`);
       }
 
-      // Reconstruct session
-      const session: NotionDatabaseSession = {
-        notionIntegration,
-        user,
-        isUserInitiated,
-        runActions: [],
-      };
+      const notionOutput = new NotionDatabaseOutput();
+      const session = await notionOutput.createSessionFromConfig(
+        notionIntegration.id,
+        outputIntegration,
+        user
+      );
 
       // Create fresh AutomationAgent
-      const notionOutput = new NotionDatabaseOutput();
       const automationAgent = new AutomationAgent<NotionDatabaseSession>(
         session,
         notionOutput,

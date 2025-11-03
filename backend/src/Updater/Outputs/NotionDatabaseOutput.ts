@@ -9,7 +9,8 @@ import chalk from "chalk";
 import { RunHistoryAction } from "../../shared/RunHistoryTypes";
 
 export interface NotionDatabaseSession extends Session {
-    notionIntegration: NotionIntegration;
+    notionIntegration: NotionIntegration; // Top level integration record
+    notionConfig: AutomationNotionConfig; // Configuration for the Specific Notion Database
     // Collect actions here (report-only); DB writes happen after agent finishes
     runActions?: RunHistoryAction[];
 }
@@ -53,11 +54,8 @@ export class NotionDatabaseOutput extends Output<NotionDatabaseSession> {
         }
 
         return {
-            notionIntegration: {
-                ...integration,
-                database_id: databaseId,
-                database_name: databaseName,
-            },
+            notionIntegration: integration,
+            notionConfig: notionConfig,
             user: user,
             isUserInitiated: true,
             // Collect actions from tools; will be persisted after run
