@@ -95,6 +95,8 @@ export function IconForInputType({ type }: { type: Integration }) {
             return <GmailIcon />;
         case Integration.NOTION:
             return <NotionIcon />;
+        case Integration.NOTION_PAGE:
+            return <NotionIcon />;
     }
 }
 
