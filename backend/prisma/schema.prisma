@@ -369,8 +369,8 @@ model automation_notion_configs {
   automation_input_id  String? @unique // FK to automation_inputs (mutually exclusive with output_id)
   automation_output_id String? @unique // FK to automation_outputs (unique constraint)
 
-  database_id   String? // Database ID (required for outputs, optional for inputs)
-  database_name String? // Database display name (for UI, optional)
+  database_id   String // Database ID (required for outputs, optional for inputs)
+  database_name String // Database display name (for UI, optional)
 
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt

@@ -43,16 +43,6 @@ export class NotionDatabaseOutput extends Output<NotionDatabaseSession> {
             throw new Error(`Notion config for automation output ${automationOutputConfig.id} not found`);
         }
 
-        const databaseId = notionConfig.database_id
-        const databaseName = notionConfig.database_name
-
-        if (!databaseId) {
-            throw new Error(`Database ID for automation output ${automationOutputConfig.id} not found`);
-        }
-        if (!databaseName) {
-            throw new Error(`Database name for automation output ${automationOutputConfig.id} not found`);
-        }
-
         return {
             notionIntegration: integration,
             notionConfig: notionConfig,
@@ -121,10 +111,6 @@ Use the schema's format_example field to construct properties correctly. Pay spe
         console.log("Executing notion_query_database tool");
         if (!runContext?.context) {
             throw new Error("No context provided");
-        }
-
-        if (!runContext.context.notionConfig.database_id) {
-            throw new Error("Database ID not found: This should never happen");
         }
 
         const notion = new Client({
@@ -262,10 +248,6 @@ Use notion_query_database first to see existing property names and structure.`,
 
         if (!runContext?.context) {
             throw new Error("No context provided");
-        }
-
-        if (!runContext.context.notionConfig.database_id) {
-            throw new Error("Database ID not found: This should never happen");
         }
 
         const notion = new Client({
