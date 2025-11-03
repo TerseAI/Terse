@@ -205,6 +205,7 @@ export type AutomationOutput = {
   // Typed config based on integration type
   slackConfig?: SlackConfig;
   notionConfig?: NotionConfig;
+  notionPageConfig?: NotionPageConfig;
   linearConfig?: LinearConfig;
   jiraConfig?: JiraConfig;
   githubConfig?: GitHubConfig;

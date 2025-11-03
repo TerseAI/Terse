@@ -15,6 +15,7 @@ import {
 export const INTEGRATION_KEY_MAP: Record<Integration, keyof IntegrationsStatus['integrations']> = {
     [Integration.GMAIL]: 'gmail',
     [Integration.NOTION]: 'notion',
+    [Integration.NOTION_PAGE]: 'notion', // Poin the notion page stuff to the notion integration
     [Integration.LINEAR]: 'linear',
     [Integration.JIRA]: 'jira',
     [Integration.SLACK]: 'slack',
@@ -27,6 +28,7 @@ export const INTEGRATION_KEY_MAP: Record<Integration, keyof IntegrationsStatus['
 type IntegrationTypeMap = {
     [Integration.GMAIL]: GmailIntegration[];
     [Integration.NOTION]: NotionIntegration[];
+    [Integration.NOTION_PAGE]: NotionIntegration[];
     [Integration.LINEAR]: LinearIntegration[];
     [Integration.JIRA]: JiraIntegration[];
     [Integration.SLACK]: SlackIntegration[];
@@ -59,6 +61,14 @@ export const INTEGRATION_METADATA: Record<Integration, IntegrationMetadata> = {
         type: Integration.NOTION,
         name: 'Notion',
         description: 'Update living documents',
+        outputDescription: 'Update a living page',
+        isInput: false,
+        isOutput: true
+    },
+    [Integration.NOTION_PAGE]: {
+        type: Integration.NOTION_PAGE,
+        name: 'Notion Page',
+        description: 'Update a living page',
         outputDescription: 'Update a living page',
         isInput: false,
         isOutput: true

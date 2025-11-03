@@ -7,17 +7,17 @@ import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "./ui/command";
 import { cn } from "@/lib/utils";
 
-interface NotionDatabaseSelectorProps {
+interface NotionResourceSelectorProps {
     integrationId: string;
-    selectedDatabaseId?: string;
+    selectedResourceId?: string;
     onSelect: (resourceId: string, resourceName: string, resourceType: NotionResourceType) => void;
 }
 
-export function NotionDatabaseSelector({
+export function NotionResourceSelector({
     integrationId,
-    selectedDatabaseId,
+    selectedResourceId,
     onSelect
-}: NotionDatabaseSelectorProps) {
+}: NotionResourceSelectorProps) {
     const [resources, setResources] = useState<NotionResource[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isRefreshing, setIsRefreshing] = useState(false);
@@ -36,7 +36,7 @@ export function NotionDatabaseSelector({
             setResources(response.resources);
 
             // Only auto-select if no resource is currently selected
-            if (!selectedDatabaseId && response.resources.length > 0) {
+            if (!selectedResourceId && response.resources.length > 0) {
                 // Try to use the connection's default resource first
                 let resourceToSelect: NotionResource | undefined;
                 if (response.selectedResourceId) {
@@ -119,7 +119,7 @@ export function NotionDatabaseSelector({
                     Refresh
                 </Button>
             </div>
-            <NotionResourceCombobox resources={resources} selectedResourceId={selectedDatabaseId || ''} onSelect={onSelect} />
+            <NotionResourceCombobox resources={resources} selectedResourceId={selectedResourceId || ''} onSelect={onSelect} />
             {resources.length > 0 && (
                 <div className="text-xs text-muted-foreground">
                     {resources.length} page{resources.length !== 1 ? 's' : ''} or database{resources.length !== 1 ? 's' : ''} available
