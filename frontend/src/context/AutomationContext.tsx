@@ -37,7 +37,7 @@ export interface Prompt {
 
 type AutomationContextType = {
     automationId: string | null;
-    name: string;
+    name: string | null;
     inputs: Input[];
     output: Output | undefined;
     prompt: Prompt | undefined;
@@ -59,7 +59,7 @@ export function AutomationProvider({ children, automationId }: { children: React
     const [inputs, setInputs] = useState<Input[]>([]);
     const [output, setOutput] = useState<Output | undefined>(undefined);
     const [prompt, setPrompt] = useState<Prompt | undefined>(undefined);
-    const [name, setName] = useState<string>('Untitled Automation');
+    const [name, setName] = useState<string | null>(null);
     const [isActive, setIsActive] = useState<boolean>(true);
     const [isLoading, setIsLoading] = useState<boolean>(false);
 

@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
 import { BackendProvider } from "../services/backend";
 import { NotionDatabase, NotionDatabasesResponse } from "../shared/types";
-import { RotateCw } from "lucide-react";
+import { RefreshCw } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
+import { Button } from "./ui/button";
 
 interface NotionDatabaseSelectorProps {
     integrationId: string;
@@ -68,7 +70,7 @@ export function NotionDatabaseSelector({
 
     if (isLoading) {
         return (
-            <div className="text-sm text-[theme(text-secondary)]">
+            <div className="text-sm text-muted-foreground">
                 Loading databases...
             </div>
         );
@@ -77,20 +79,22 @@ export function NotionDatabaseSelector({
     if (error) {
         return (
             <div className="space-y-2">
-                <div className="text-sm text-red-600">{error}</div>
-                <button
+                <div className="text-sm text-destructive">{error}</div>
+                <Button
                     onClick={handleRefresh}
-                    className="text-xs text-[theme(--color-accent)] hover:underline"
+                    variant="link"
+                    size="sm"
+                    className="text-xs h-auto p-0"
                 >
                     Try again
-                </button>
+                </Button>
             </div>
         );
     }
 
     if (databases.length === 0) {
         return (
-            <div className="text-sm text-[theme(text-secondary)]">
+            <div className="text-sm text-muted-foreground">
                 No databases found. Make sure your Notion integration has access to databases.
             </div>
         );
@@ -99,40 +103,42 @@ export function NotionDatabaseSelector({
     return (
         <div className="space-y-2">
             <div className="flex items-center justify-between">
-                <label className="text-xs font-medium text-[theme(text-secondary)]">
+                <label className="text-xs font-medium text-muted-foreground">
                     Select Database
                 </label>
-                <button
+                <Button
                     onClick={handleRefresh}
                     disabled={isRefreshing}
-                    className="flex items-center gap-1 text-xs text-[theme(--color-accent)] hover:underline disabled:opacity-50"
+                    variant="ghost"
+                    size="sm"
                     title="Refresh database list"
                 >
-                    <RotateCw className={`w-3 h-3 ${isRefreshing ? 'animate-spin' : ''}`} />
+                    <RefreshCw className={`w-3 h-3 mr-1 ${isRefreshing ? 'animate-spin' : ''}`} />
                     Refresh
-                </button>
+                </Button>
             </div>
-            <select
+            <Select
                 value={selectedDatabaseId || ''}
-                onChange={(e) => {
-                    const selectedDb = databases.find(db => db.id === e.target.value);
+                onValueChange={(value) => {
+                    const selectedDb = databases.find(db => db.id === value);
                     if (selectedDb) {
                         onSelect(selectedDb.id, selectedDb.title);
                     }
                 }}
-                className="w-full px-3 py-2 text-sm border border-[theme(border)] rounded-lg bg-[theme(background)] text-[theme(text-primary)] focus:outline-none focus:ring-2 focus:ring-[theme(--color-accent)]"
             >
-                {!selectedDatabaseId && (
-                    <option value="">-- Select a database --</option>
-                )}
-                {databases.map((db) => (
-                    <option key={db.id} value={db.id}>
-                        {db.title}
-                    </option>
-                ))}
-            </select>
+                <SelectTrigger className="w-full">
+                    <SelectValue placeholder="-- Select a database --" />
+                </SelectTrigger>
+                <SelectContent>
+                    {databases.map((db) => (
+                        <SelectItem key={db.id} value={db.id}>
+                            {db.title}
+                        </SelectItem>
+                    ))}
+                </SelectContent>
+            </Select>
             {databases.length > 0 && (
-                <div className="text-xs text-[theme(text-secondary)]">
+                <div className="text-xs text-muted-foreground">
                     {databases.length} database{databases.length !== 1 ? 's' : ''} available
                 </div>
             )}

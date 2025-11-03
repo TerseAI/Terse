@@ -19,12 +19,13 @@ import {
 type AutomationsTableProps = {
     onEdit: (automation: Automation) => void;
     onDelete: (automation: Automation) => void;
+    onCreateNew?: () => void;
     refreshTrigger?: number;
     searchQuery?: string;
     statusFilter?: boolean;
 };
 
-export function AutomationsTable({ onEdit, onDelete, refreshTrigger, searchQuery, statusFilter }: AutomationsTableProps) {
+export function AutomationsTable({ onEdit, onDelete, onCreateNew, refreshTrigger, searchQuery, statusFilter }: AutomationsTableProps) {
     const [automations, setAutomations] = useState<Automation[]>([]);
     const [loading, setLoading] = useState(true);
     const [page, setPage] = useState(1);
@@ -142,7 +143,7 @@ export function AutomationsTable({ onEdit, onDelete, refreshTrigger, searchQuery
 
     if (!loading && automations.length === 0) {
         const hasFilters: boolean = searchQuery !== '' || statusFilter !== undefined;
-        return <EmptyState hasFilters={hasFilters} />;
+        return <EmptyState hasFilters={hasFilters} onCreateNew={onCreateNew} />;
     }
 
     return (
