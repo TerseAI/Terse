@@ -1,6 +1,6 @@
 import { RunHistoryAction } from "../../shared/RunHistoryTypes";
 import { RunContext, tool } from "@openai/agents";
-import { AutomationNotionConfig, AutomationNotionPageConfig, AutomationOutput, NotionIntegration, User } from "../../types/prisma";
+import { AutomationNotionPageConfig, AutomationOutput, NotionIntegration, User } from "../../types/prisma";
 import { Session } from "../../server";
 import { Client } from '@notionhq/client';
 import { z } from "zod";
@@ -27,7 +27,6 @@ export class NotionPageOutput extends Output<NotionPageSession> {
         automationOutputConfig: AutomationOutput,
         user: User
     ): Promise<NotionPageSession> {
-        // NotionOutput knows how to fetch its own integration
         const integration = await db().notion_integrations.findFirst({
             where: { id: integrationId }
         });
