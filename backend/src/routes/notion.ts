@@ -4,6 +4,7 @@ import { Request, Response } from "express";
 import jwt from "jsonwebtoken";
 import { db } from "../prismaClient";
 import { NotionDatabase, NotionDatabasesResponse } from "../shared/types";
+import { SearchResponse } from "@notionhq/client/build/src/api-endpoints";
 
 // OAuth Functions
 
@@ -102,7 +103,7 @@ export const notionOAuthCallback = async (req: Request, res: Response) => {
 
     // Fetch available databases
     const notionClient = new Client({ auth: access_token });
-    const databasesResponse = await notionClient.search({
+    const databasesResponse: SearchResponse = await notionClient.search({
       filter: { property: "object", value: "database" },
       page_size: 100,
     });
@@ -131,7 +132,7 @@ export const notionOAuthCallback = async (req: Request, res: Response) => {
     // Create ONE connection with the first database as default
     // Users can select different databases per automation via automation_notion_configs
     const defaultDatabase = databases[0];
-    
+
     // Check if a connection for this workspace already exists
     const existing = await db().notion_integrations.findFirst({
       where: {
@@ -236,9 +237,9 @@ export const getNotionDatabases = async (req: Request, res: Response) => {
     res.status(200).json(response);
   } catch (error: any) {
     console.error(chalk.red("Error fetching Notion databases:"), error);
-    res.status(500).json({ 
-      error: "Failed to fetch databases", 
-      details: error.message 
+    res.status(500).json({
+      error: "Failed to fetch databases",
+      details: error.message
     });
   }
 };

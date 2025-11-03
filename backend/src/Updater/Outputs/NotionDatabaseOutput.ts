@@ -1,10 +1,9 @@
-import { Output } from "./Output";
-import { OutputType } from "./Output";
-import { RunContext, Tool, tool } from "@openai/agents";
+import { Output, OutputType } from "./Output";
+import { RunContext, tool } from "@openai/agents";
 import { z } from "zod";
 import { Session } from "../../server";
 import { Client } from '@notionhq/client';
-import { NotionIntegration, AutomationOutput, User } from "../../types/prisma";
+import { NotionIntegration, AutomationOutput, User, AutomationNotionConfig } from "../../types/prisma";
 import { db } from "../../prismaClient";
 import chalk from "chalk";
 import { RunHistoryAction } from "../../shared/RunHistoryTypes";
@@ -35,18 +34,29 @@ export class NotionDatabaseOutput extends Output<NotionDatabaseSession> {
             throw new Error(`Notion integration ${integrationId} not found`);
         }
 
-        // Read config from automation output (if provided)
-        const notionConfig = (automationOutputConfig as any).notion_config;
-        
-        // Merge config with integration defaults (config overrides integration defaults)
-        const databaseId = notionConfig?.database_id || integration.database_id;
-        const databaseName = notionConfig?.database_name || integration.database_name;
+        const notionConfig: AutomationNotionConfig | null = await db().automation_notion_configs.findFirst({
+            where: { automation_output_id: automationOutputConfig.id }
+        });
+
+        if (!notionConfig) {
+            throw new Error(`Notion config for automation output ${automationOutputConfig.id} not found`);
+        }
+
+        const databaseId = notionConfig.database_id
+        const databaseName = notionConfig.database_name
+
+        if (!databaseId) {
+            throw new Error(`Database ID for automation output ${automationOutputConfig.id} not found`);
+        }
+        if (!databaseName) {
+            throw new Error(`Database name for automation output ${automationOutputConfig.id} not found`);
+        }
 
         return {
             notionIntegration: {
                 ...integration,
                 database_id: databaseId,
-                database_name: databaseName || undefined,
+                database_name: databaseName,
             },
             user: user,
             isUserInitiated: true,
