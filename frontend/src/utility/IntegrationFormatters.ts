@@ -7,6 +7,7 @@ import {
     JiraIntegration,
     GithubIntegration
 } from "../shared/types";
+import { INTEGRATION_METADATA } from "./IntegrationUtils";
 
 /**
  * Union type for all integration instances using shared types
@@ -26,7 +27,7 @@ function isGmailIntegration(integration: IntegrationInstance): integration is Gm
     return 'email' in integration;
 }
 
-function isNotionIntegration(integration: IntegrationInstance): integration is NotionIntegration {
+export function isNotionIntegration(integration: IntegrationInstance): integration is NotionIntegration {
     return 'workspaceId' in integration || 'workspaceName' in integration || 'databaseId' in integration;
 }
 
@@ -108,4 +109,11 @@ export function formatIntegrationDisplay(
         default:
             return integration.id;
     }
+}
+
+/**
+ * Get display name for an integration type
+ */
+export function getIntegrationTypeName(type: Integration): string {
+    return INTEGRATION_METADATA[type].name;
 }

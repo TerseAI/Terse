@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Check } from "lucide-react";
 import { Integration } from "../../../context/Integrations";
-import { formatIntegrationDisplay, IntegrationInstance } from "../../../utility/IntegrationFormatters";
+import { formatIntegrationDisplay, IntegrationInstance, isNotionIntegration } from "../../../utility/IntegrationFormatters";
 import { getIntegrationInstances } from "../../../utility/IntegrationUtils";
 import { BackendProvider } from "../../../services/backend";
 import { Badge } from "@/components/ui/badge";
@@ -57,6 +57,10 @@ export function IntegrationBadge({ integrationId, integrationType }: Integration
 }
 
 function NotionIntegrationBadge({ integration }: { integration: IntegrationInstance }) {
+    if (!isNotionIntegration(integration)) {
+        return null;
+    }
+
     const workspaceName = integration.workspaceName || integration.workspaceId || 'Unknown Workspace';
     const databaseName = integration.databaseName || 'Unknown Database';
 
