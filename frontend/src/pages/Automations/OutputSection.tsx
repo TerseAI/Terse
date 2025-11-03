@@ -28,7 +28,6 @@ export function OutputSection() {
 
     const handleSelectIntegration = (integrationId: string) => {
         if (output) {
-            console.log("Output:", JSON.stringify(output, null, 2));
             // Clear all configs when switching integration instances (will be re-selected when selector loads)
             const clearedConfigs = clearIntegrationConfigs(output);
             console.log("Cleared configs:", JSON.stringify(clearedConfigs, null, 2));
