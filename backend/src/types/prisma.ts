@@ -17,7 +17,8 @@ import {
   automation_outputs,
   notion_integrations,
   Prisma,
-  automation_notion_configs
+  automation_notion_configs,
+  automation_notion_page_configs
 } from '@prisma/client';
 
 
@@ -57,6 +58,8 @@ export type AutomationOutput = automation_outputs;
 export type NotionIntegration = notion_integrations;
 
 export type AutomationNotionConfig = automation_notion_configs;
+
+export type AutomationNotionPageConfig = automation_notion_page_configs;
 
 // Extended type for Automation with included relations (kept in sync with include used in queries)
 export type AutomationWithRelations = Prisma.automationsGetPayload<{
@@ -104,5 +107,6 @@ export {
   automation_inputs,
   automation_outputs,
   notion_integrations,
-  automation_notion_configs
+  automation_notion_configs,
+  automation_notion_page_configs
 }; 
