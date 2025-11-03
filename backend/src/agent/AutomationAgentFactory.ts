@@ -1,8 +1,8 @@
 import chalk from 'chalk';
 import { db } from '../prismaClient';
 import { AutomationAgent } from './AutomationAgent/AutomationAgent';
-import { NotionOutput, NotionSession } from '../Updater/Outputs/NotionOutput';
-import { AutomationWithRelations, User } from 'src/types/prisma';
+import { NotionDatabaseOutput, NotionDatabaseSession } from '../Updater/Outputs/NotionDatabaseOutput';
+import { AutomationNotionConfig, AutomationWithRelations, User } from 'src/types/prisma';
 
 /**
  * Factory for creating AutomationAgent instances from automation configurations.
@@ -12,7 +12,7 @@ export class AutomationAgentFactory {
   static async createFromAutomationId(
     automationId: string,
     isUserInitiated: boolean = true
-  ): Promise<AutomationAgent<NotionSession>> {
+  ): Promise<AutomationAgent<NotionDatabaseSession>> {
     try {
       // Load automation with all relationships
       const automation: AutomationWithRelations | null = await db().automations.findUnique({
@@ -73,17 +73,15 @@ export class AutomationAgentFactory {
         throw new Error(`Notion integration not found: ${outputIntegration.integration_id}`);
       }
 
-      // Reconstruct session
-      const session: NotionSession = {
-        notionIntegration,
-        user,
-        isUserInitiated,
-        runActions: [],
-      };
+      const notionOutput = new NotionDatabaseOutput();
+      const session = await notionOutput.createSessionFromConfig(
+        notionIntegration.id,
+        outputIntegration,
+        user
+      );
 
       // Create fresh AutomationAgent
-      const notionOutput = new NotionOutput();
-      const automationAgent = new AutomationAgent<NotionSession>(
+      const automationAgent = new AutomationAgent<NotionDatabaseSession>(
         session,
         notionOutput,
         automation.prompt!,

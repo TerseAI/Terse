@@ -1,21 +1,21 @@
-import { Output } from "./Output";
-import { OutputType } from "./Output";
-import { RunContext, Tool, tool } from "@openai/agents";
+import { Output, OutputType } from "./Output";
+import { RunContext, tool } from "@openai/agents";
 import { z } from "zod";
 import { Session } from "../../server";
 import { Client } from '@notionhq/client';
-import { NotionIntegration, AutomationOutput, User } from "../../types/prisma";
+import { NotionIntegration, AutomationOutput, User, AutomationNotionConfig } from "../../types/prisma";
 import { db } from "../../prismaClient";
 import chalk from "chalk";
 import { RunHistoryAction } from "../../shared/RunHistoryTypes";
 
-export interface NotionSession extends Session {
-    notionIntegration: NotionIntegration;
+export interface NotionDatabaseSession extends Session {
+    notionIntegration: NotionIntegration; // Top level integration record
+    notionConfig: AutomationNotionConfig; // Configuration for the Specific Notion Database
     // Collect actions here (report-only); DB writes happen after agent finishes
     runActions?: RunHistoryAction[];
 }
 
-export class NotionOutput extends Output<NotionSession> {
+export class NotionDatabaseOutput extends Output<NotionDatabaseSession> {
     constructor() {
         const toolbox = [notionQueryDatabaseTool, notionModifyPageTool];
         super(OutputType.Notion, toolbox);
@@ -25,7 +25,7 @@ export class NotionOutput extends Output<NotionSession> {
         integrationId: string,
         automationOutputConfig: AutomationOutput,
         user: User
-    ): Promise<NotionSession> {
+    ): Promise<NotionDatabaseSession> {
         // NotionOutput knows how to fetch its own integration
         const integration = await db().notion_integrations.findFirst({
             where: { id: integrationId }
@@ -35,19 +35,17 @@ export class NotionOutput extends Output<NotionSession> {
             throw new Error(`Notion integration ${integrationId} not found`);
         }
 
-        // Read config from automation output (if provided)
-        const notionConfig = (automationOutputConfig as any).notion_config;
-        
-        // Merge config with integration defaults (config overrides integration defaults)
-        const databaseId = notionConfig?.database_id || integration.database_id;
-        const databaseName = notionConfig?.database_name || integration.database_name;
+        const notionConfig: AutomationNotionConfig | null = await db().automation_notion_configs.findFirst({
+            where: { automation_output_id: automationOutputConfig.id }
+        });
+
+        if (!notionConfig) {
+            throw new Error(`Notion config for automation output ${automationOutputConfig.id} not found`);
+        }
 
         return {
-            notionIntegration: {
-                ...integration,
-                database_id: databaseId,
-                database_name: databaseName || undefined,
-            },
+            notionIntegration: integration,
+            notionConfig: notionConfig,
             user: user,
             isUserInitiated: true,
             // Collect actions from tools; will be persisted after run
@@ -109,7 +107,7 @@ Use the schema's format_example field to construct properties correctly. Pay spe
     parameters: z.object({
         // No parameters needed - returns all pages in the database
     }),
-    execute: async ({ }, runContext?: RunContext<NotionSession>) => {
+    execute: async ({ }, runContext?: RunContext<NotionDatabaseSession>) => {
         console.log("Executing notion_query_database tool");
         if (!runContext?.context) {
             throw new Error("No context provided");
@@ -121,7 +119,7 @@ Use the schema's format_example field to construct properties correctly. Pay spe
 
         // Fetch database schema
         const databaseInfo = await notion.databases.retrieve({
-            database_id: runContext.context.notionIntegration.database_id,
+            database_id: runContext.context.notionConfig.database_id,
         });
 
         // Extract schema information with format examples
@@ -174,7 +172,7 @@ Use the schema's format_example field to construct properties correctly. Pay spe
 
         // Fetch all pages
         const response = await notion.databases.query({
-            database_id: runContext.context.notionIntegration.database_id,
+            database_id: runContext.context.notionConfig.database_id,
         });
 
         // Convert to readable format
@@ -231,7 +229,7 @@ Use notion_query_database first to see existing property names and structure.`,
     needsApproval: async (_context, { page_id, properties_json }) => {
         return false; // DISABLE UNTIL HUMAN IN THE LOOP IS IMPLEMENTED
     },
-    execute: async ({ page_id, properties_json }, runContext?: RunContext<NotionSession>) => {
+    execute: async ({ page_id, properties_json }, runContext?: RunContext<NotionDatabaseSession>) => {
         console.log(chalk.bgMagenta.white.bold('🛠️ Executing notion_modify_page tool'));
         console.log(chalk.cyan('  Page ID: '), chalk.yellow(page_id ?? '(new page)'));
         console.log(chalk.cyan('  Properties JSON: '), chalk.greenBright(properties_json));
@@ -271,7 +269,7 @@ Use notion_query_database first to see existing property names and structure.`,
                 runContext.context.runActions.push({
                     action: 'update_page',
                     integration: 'notion',
-                    target: runContext.context.notionIntegration.database_name || runContext.context.notionIntegration.database_id,
+                    target: runContext.context.notionConfig.database_name || runContext.context.notionConfig.database_id,
                     details: 'Notion page updated',
                     url: 'url' in response ? (response as any).url : undefined,
                 });
@@ -286,7 +284,7 @@ Use notion_query_database first to see existing property names and structure.`,
                 const response = await notion.pages.create({
                     parent: {
                         type: 'database_id',
-                        database_id: runContext.context.notionIntegration.database_id,
+                        database_id: runContext.context.notionConfig.database_id,
                     },
                     properties: properties as Record<string, any>,
                 });
@@ -296,7 +294,7 @@ Use notion_query_database first to see existing property names and structure.`,
                 runContext.context.runActions.push({
                     action: 'create_page',
                     integration: 'notion',
-                    target: runContext.context.notionIntegration.database_name || runContext.context.notionIntegration.database_id,
+                    target: runContext.context.notionConfig.database_name || runContext.context.notionConfig.database_id,
                     details: 'Notion page created',
                     url: 'url' in response ? (response as any).url : undefined,
                 });
