@@ -112,19 +112,20 @@ export type NotionIntegration = {
   integrationToken: string;
   workspaceId?: string;
   workspaceName?: string;
-  databaseId: string;
-  databaseName?: string;
 };
 
-export type NotionDatabase = {
+export type NotionResourceType = 'database' | 'page';
+export type NotionResource = {
   id: string;
   title: string;
   url: string;
+  type: NotionResourceType;
 };
 
-export type NotionDatabasesResponse = {
-  databases: NotionDatabase[];
-  selectedDatabaseId: string | null;
+export type NotionResourcesResponse = {
+  resources: NotionResource[];
+  selectedResourceId: string | null;
+  selectedResourceType: NotionResourceType;
 };
 
 export type SlackChannel = {
@@ -159,6 +160,11 @@ export type SlackConfig = {
 export type NotionConfig = {
   databaseId?: string;
   databaseName?: string;
+};
+
+export type NotionPageConfig = {
+  pageId?: string;
+  pageName?: string;
 };
 
 export type LinearConfig = {
