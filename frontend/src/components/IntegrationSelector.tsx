@@ -1,4 +1,4 @@
-import { Check, Plus } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Integration } from '../context/Integrations';
 import { BackendProvider } from '../services/backend';
@@ -9,8 +9,6 @@ import { NotionDatabaseSelector } from './NotionDatabaseSelector';
 import { SlackChannelSelector } from './SlackChannelSelector';
 import DropdownSelect from './ui/DropdownSelect';
 import { Button } from './ui/button';
-import { Badge } from './ui/badge';
-import { IntegrationBadge } from '@/pages/Automations/components/IntegrationBadge';
 
 interface IntegrationInstance {
     id: string;
