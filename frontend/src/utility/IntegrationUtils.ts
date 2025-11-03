@@ -22,6 +22,8 @@ export interface IntegrationMetadata {
     description: string;
     inputDescription?: string;
     outputDescription?: string;
+    isInput?: boolean;
+    isOutput?: boolean;
 }
 
 export const INTEGRATION_METADATA: Record<Integration, IntegrationMetadata> = {
@@ -30,42 +32,51 @@ export const INTEGRATION_METADATA: Record<Integration, IntegrationMetadata> = {
         name: 'Gmail',
         description: 'Monitor incoming emails',
         inputDescription: 'Monitor incoming emails',
-        outputDescription: 'Send email summaries'
+        isInput: true,
+        isOutput: false
     },
     [Integration.NOTION]: {
         type: Integration.NOTION,
         name: 'Notion',
         description: 'Update living documents',
-        inputDescription: 'Watch page changes',
-        outputDescription: 'Update a living page'
+        outputDescription: 'Update a living page',
+        isInput: false,
+        isOutput: true
     },
     [Integration.LINEAR]: {
         type: Integration.LINEAR,
         name: 'Linear',
         description: 'Track ticket updates',
         inputDescription: 'Track ticket updates',
-        outputDescription: 'Update project docs'
+        outputDescription: 'Update project docs',
+        isInput: false,
+        isOutput: false
     },
     [Integration.JIRA]: {
         type: Integration.JIRA,
         name: 'Jira',
         description: 'Monitor issue changes',
         inputDescription: 'Monitor issue changes',
-        outputDescription: 'Update project docs'
+        outputDescription: 'Update project docs and tickets',
+        isInput: false,
+        isOutput: false
     },
     [Integration.SLACK]: {
         type: Integration.SLACK,
         name: 'Slack',
         description: 'Listen to messages',
         inputDescription: 'Monitor channel messages',
-        outputDescription: 'Post to a channel'
+        outputDescription: 'Post to a channel',
+        isInput: true,
+        isOutput: false
     },
     [Integration.GITHUB]: {
         type: Integration.GITHUB,
         name: 'GitHub',
         description: 'Watch commits and PRs',
         inputDescription: 'Listen to commits, PRs, and issues',
-        outputDescription: 'Update README or wiki'
+        isInput: true,
+        isOutput: false
     }
 };
 
@@ -105,7 +116,7 @@ export function getAllIntegrationMetadata(): IntegrationMetadata[] {
  * Get all integration metadata with input-specific descriptions
  */
 export function getAllInputIntegrationMetadata() {
-    return Object.values(INTEGRATION_METADATA).map(meta => ({
+    return Object.values(INTEGRATION_METADATA).filter(meta => meta.isInput === true).map(meta => ({
         type: meta.type,
         name: meta.name,
         description: meta.inputDescription || meta.description
@@ -116,7 +127,7 @@ export function getAllInputIntegrationMetadata() {
  * Get all integration metadata with output-specific descriptions
  */
 export function getAllOutputIntegrationMetadata() {
-    return Object.values(INTEGRATION_METADATA).map(meta => ({
+    return Object.values(INTEGRATION_METADATA).filter(meta => meta.isOutput === true).map(meta => ({
         type: meta.type,
         name: meta.name,
         description: meta.outputDescription || meta.description
