@@ -3,21 +3,24 @@ import { Input, useAutomationContext } from "../../context/AutomationContext";
 import { Integration } from "../../context/Integrations";
 import { SectionLayout } from "./components/SectionLayout";
 import { AddInputModal } from "./components/AddInputModal";
-import { Zap, X } from "lucide-react";
+import { Zap, Plus, Settings } from "lucide-react";
 import { IntegrationSelector } from "../../components/IntegrationSelector";
-import { getIntegrationTypeName } from "../../utility/IntegrationFormatters";
 import { clearIntegrationConfigs } from "../../utility/IntegrationUtils";
+import { Button } from "@/components/ui/button";
+import { Card, CardAction, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
+import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
+import { IntegrationTitle } from "./components/IntegrationTitle";
+import { Spinner } from "@/components/ui/spinner";
 
 export function InputsSection() {
-    const { inputs, setInputs } = useAutomationContext();
+    const { inputs, setInputs, isLoading } = useAutomationContext();
     const [showAddModal, setShowAddModal] = useState(false);
-
     const input = inputs[0]; // Only one input allowed
 
     const handleSelectPlatform = (integration: Integration) => {
         // Clear all configs when switching platform (new integration type)
         const clearedConfigs = input ? clearIntegrationConfigs(input) : {};
-        const newInput: Input = { 
+        const newInput: Input = {
             integration,
             ...clearedConfigs
         };
@@ -29,8 +32,8 @@ export function InputsSection() {
         if (input) {
             // Clear all configs when switching integration instances (will be re-selected when selector loads)
             const clearedConfigs = clearIntegrationConfigs(input);
-            setInputs([{ 
-                ...input, 
+            setInputs([{
+                ...input,
                 integrationId,
                 ...clearedConfigs
             }]);
@@ -41,55 +44,20 @@ export function InputsSection() {
         setInputs([]);
     };
 
+    if (isLoading) {
+        return <Spinner />;
+    }
+
     return (
         <SectionLayout
             title="Listen For Events"
             subtitle="Choose which integration triggers this automation"
-            icon={<Zap className="w-5 h-5 text-accent" />}
+            icon={<Zap className="w-5 h-5 text-primary" />}
         >
             {!input ? (
-                <div className="text-center py-4 px-4">
-                    <p className="text-xs text-muted-foreground mb-3">
-                        No event source yet. Add an integration to get started.
-                    </p>
-                    <button
-                        onClick={() => setShowAddModal(true)}
-                        className="px-4 py-2 bg-accent text-accent-foreground rounded-lg hover:brightness-110 transition-all text-sm font-medium"
-                    >
-                        + Add Event Source
-                    </button>
-                </div>
+                <EmptyInputSection onCreateNew={() => setShowAddModal(true)} />
             ) : (
-                <div className="p-4 rounded-lg border border-input bg-background">
-                    <div className="flex items-start justify-between mb-3">
-                        <div className="text-sm font-medium text-foreground">
-                            {getIntegrationTypeName(input.integration)}
-                        </div>
-                        <button
-                            onClick={handleRemove}
-                            className="text-muted-foreground hover:text-destructive transition-colors"
-                        >
-                            <X className="w-5 h-5" />
-                        </button>
-                    </div>
-                    <IntegrationSelector
-                        integrationType={input.integration}
-                        selectedIntegrationId={input.integrationId}
-                        onSelect={handleSelectIntegration}
-                        notionConfig={input.notionConfig}
-                        onNotionConfigChange={(config) => {
-                            if (input) {
-                                setInputs([{ ...input, notionConfig: config }]);
-                            }
-                        }}
-                        slackConfig={input.slackConfig}
-                        onSlackConfigChange={(config) => {
-                            if (input) {
-                                setInputs([{ ...input, slackConfig: config }]);
-                            }
-                        }}
-                    />
-                </div>
+                <InputCard input={input} handleSelectIntegration={handleSelectIntegration} setInputs={setInputs} handleRemove={handleRemove} />
             )}
 
             <AddInputModal
@@ -97,6 +65,77 @@ export function InputsSection() {
                 onClose={() => setShowAddModal(false)}
                 onSelectIntegration={handleSelectPlatform}
             />
+
         </SectionLayout>
+    );
+}
+
+function InputCard({
+    input,
+    handleSelectIntegration,
+    setInputs,
+    handleRemove
+}: { input: Input, handleSelectIntegration: (integrationId: string) => void, setInputs: (inputs: Input[]) => void, handleRemove: () => void }) {
+    return (
+        <Card>
+            <CardHeader>
+                <div className="flex justify-between">
+                    <IntegrationTitle integration={input.integration} iconSize="md" />
+                </div>
+            </CardHeader>
+
+            <CardContent>
+                <IntegrationSelector
+                    integrationType={input.integration}
+                    selectedIntegrationId={input.integrationId}
+                    onSelect={handleSelectIntegration}
+                    notionConfig={input.notionConfig}
+                    onNotionConfigChange={(config) => {
+                        if (input) {
+                            setInputs([{ ...input, notionConfig: config }]);
+                        }
+                    }}
+                    slackConfig={input.slackConfig}
+                    onSlackConfigChange={(config) => {
+                        if (input) {
+                            setInputs([{ ...input, slackConfig: config }]);
+                        }
+                    }}
+                />
+            </CardContent>
+
+            <CardFooter>
+                <CardAction>
+                    <Button variant="destructive" onClick={handleRemove}>
+                        Remove
+                    </Button>
+                </CardAction>
+            </CardFooter>
+        </Card>
+    );
+}
+
+function EmptyInputSection({ onCreateNew }: { onCreateNew: () => void }) {
+    return (
+        <Empty>
+            <EmptyHeader>
+                <EmptyMedia variant="icon">
+                    <Settings className="text-primary" />
+                </EmptyMedia>
+                <EmptyTitle>No event source yet</EmptyTitle>
+                <EmptyDescription>
+                    No event source yet. Add an integration to get started.
+                </EmptyDescription>
+            </EmptyHeader>
+            <EmptyContent>
+                <Button
+                    variant="outline"
+                    onClick={onCreateNew}
+                >
+                    <Plus className="h-4 w-4" />
+                    Add Event Source
+                </Button>
+            </EmptyContent>
+        </Empty>
     );
 }

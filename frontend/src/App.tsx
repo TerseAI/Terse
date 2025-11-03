@@ -14,10 +14,12 @@ import OAuthSuccess from "./pages/OAuthSuccess";
 import { AuthProvider, useAuth } from "./services/auth";
 import { SidebarProvider } from "./components/ui/sidebar";
 import { ThemeProvider } from "./components/theme-provider";
+import { Toaster } from "./components/ui/sonner";
 
 function App() {
   return (
     <ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme">
+      <Toaster position="top-center" richColors={true} />
       <AuthProvider>
         <Router>
           <Routes>
