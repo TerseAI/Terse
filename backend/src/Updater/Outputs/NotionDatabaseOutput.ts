@@ -9,13 +9,13 @@ import { db } from "../../prismaClient";
 import chalk from "chalk";
 import { RunHistoryAction } from "../../shared/RunHistoryTypes";
 
-export interface NotionSession extends Session {
+export interface NotionDatabaseSession extends Session {
     notionIntegration: NotionIntegration;
     // Collect actions here (report-only); DB writes happen after agent finishes
     runActions?: RunHistoryAction[];
 }
 
-export class NotionOutput extends Output<NotionSession> {
+export class NotionDatabaseOutput extends Output<NotionDatabaseSession> {
     constructor() {
         const toolbox = [notionQueryDatabaseTool, notionModifyPageTool];
         super(OutputType.Notion, toolbox);
@@ -25,7 +25,7 @@ export class NotionOutput extends Output<NotionSession> {
         integrationId: string,
         automationOutputConfig: AutomationOutput,
         user: User
-    ): Promise<NotionSession> {
+    ): Promise<NotionDatabaseSession> {
         // NotionOutput knows how to fetch its own integration
         const integration = await db().notion_integrations.findFirst({
             where: { id: integrationId }
@@ -109,7 +109,7 @@ Use the schema's format_example field to construct properties correctly. Pay spe
     parameters: z.object({
         // No parameters needed - returns all pages in the database
     }),
-    execute: async ({ }, runContext?: RunContext<NotionSession>) => {
+    execute: async ({ }, runContext?: RunContext<NotionDatabaseSession>) => {
         console.log("Executing notion_query_database tool");
         if (!runContext?.context) {
             throw new Error("No context provided");
@@ -231,7 +231,7 @@ Use notion_query_database first to see existing property names and structure.`,
     needsApproval: async (_context, { page_id, properties_json }) => {
         return false; // DISABLE UNTIL HUMAN IN THE LOOP IS IMPLEMENTED
     },
-    execute: async ({ page_id, properties_json }, runContext?: RunContext<NotionSession>) => {
+    execute: async ({ page_id, properties_json }, runContext?: RunContext<NotionDatabaseSession>) => {
         console.log(chalk.bgMagenta.white.bold('🛠️ Executing notion_modify_page tool'));
         console.log(chalk.cyan('  Page ID: '), chalk.yellow(page_id ?? '(new page)'));
         console.log(chalk.cyan('  Properties JSON: '), chalk.greenBright(properties_json));

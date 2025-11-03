@@ -1,7 +1,7 @@
 import chalk from 'chalk';
 import { db } from '../prismaClient';
 import { AutomationAgent } from './AutomationAgent/AutomationAgent';
-import { NotionOutput, NotionSession } from '../Updater/Outputs/NotionOutput';
+import { NotionDatabaseOutput, NotionDatabaseSession } from '../Updater/Outputs/NotionDatabaseOutput';
 import { AutomationWithRelations, User } from 'src/types/prisma';
 
 /**
@@ -12,7 +12,7 @@ export class AutomationAgentFactory {
   static async createFromAutomationId(
     automationId: string,
     isUserInitiated: boolean = true
-  ): Promise<AutomationAgent<NotionSession>> {
+  ): Promise<AutomationAgent<NotionDatabaseSession>> {
     try {
       // Load automation with all relationships
       const automation: AutomationWithRelations | null = await db().automations.findUnique({
@@ -74,7 +74,7 @@ export class AutomationAgentFactory {
       }
 
       // Reconstruct session
-      const session: NotionSession = {
+      const session: NotionDatabaseSession = {
         notionIntegration,
         user,
         isUserInitiated,
@@ -82,8 +82,8 @@ export class AutomationAgentFactory {
       };
 
       // Create fresh AutomationAgent
-      const notionOutput = new NotionOutput();
-      const automationAgent = new AutomationAgent<NotionSession>(
+      const notionOutput = new NotionDatabaseOutput();
+      const automationAgent = new AutomationAgent<NotionDatabaseSession>(
         session,
         notionOutput,
         automation.prompt!,
