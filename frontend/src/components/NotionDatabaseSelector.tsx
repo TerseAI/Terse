@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { BackendProvider } from "../services/backend";
-import { NotionDatabase, NotionDatabasesResponse } from "../shared/types";
+import { NotionResource, NotionResourcesResponse, NotionResourceType } from "../shared/types";
 import { RefreshCw } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import { Button } from "./ui/button";
@@ -8,7 +8,7 @@ import { Button } from "./ui/button";
 interface NotionDatabaseSelectorProps {
     integrationId: string;
     selectedDatabaseId?: string;
-    onSelect: (databaseId: string, databaseName?: string) => void;
+    onSelect: (resourceId: string, resourceName: string, resourceType: NotionResourceType) => void;
 }
 
 export function NotionDatabaseSelector({
@@ -16,12 +16,12 @@ export function NotionDatabaseSelector({
     selectedDatabaseId,
     onSelect
 }: NotionDatabaseSelectorProps) {
-    const [databases, setDatabases] = useState<NotionDatabase[]>([]);
+    const [resources, setResources] = useState<NotionResource[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isRefreshing, setIsRefreshing] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    const fetchDatabases = async (isRefresh = false) => {
+    const fetchResources = async (isRefresh = false) => {
         if (isRefresh) {
             setIsRefreshing(true);
         } else {
@@ -30,22 +30,22 @@ export function NotionDatabaseSelector({
         setError(null);
 
         try {
-            const response: NotionDatabasesResponse = await BackendProvider.getNotionDatabases(integrationId);
-            setDatabases(response.databases);
+            const response: NotionResourcesResponse = await BackendProvider.getNotionResources(integrationId);
+            setResources(response.resources);
 
-            // Only auto-select if no database is currently selected
-            if (!selectedDatabaseId && response.databases.length > 0) {
-                // Try to use the connection's default database first
-                let dbToSelect: NotionDatabase | undefined;
-                if (response.selectedDatabaseId) {
-                    dbToSelect = response.databases.find(db => db.id === response.selectedDatabaseId);
+            // Only auto-select if no resource is currently selected
+            if (!selectedDatabaseId && response.resources.length > 0) {
+                // Try to use the connection's default resource first
+                let resourceToSelect: NotionResource | undefined;
+                if (response.selectedResourceId) {
+                    resourceToSelect = response.resources.find(resource => resource.id === response.selectedResourceId);
                 }
                 // Fall back to first database if no default is available
-                if (!dbToSelect) {
-                    dbToSelect = response.databases[0];
+                if (!resourceToSelect) {
+                    resourceToSelect = response.resources[0];
                 }
-                if (dbToSelect) {
-                    onSelect(dbToSelect.id, dbToSelect.title);
+                if (resourceToSelect) {
+                    onSelect(resourceToSelect.id, resourceToSelect.title, resourceToSelect.type);
                 }
             }
         } catch (err: any) {
@@ -59,13 +59,13 @@ export function NotionDatabaseSelector({
 
     useEffect(() => {
         if (integrationId) {
-            fetchDatabases();
+            fetchResources();
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [integrationId]);
 
     const handleRefresh = () => {
-        fetchDatabases(true);
+        fetchResources(true);
     };
 
     if (isLoading) {
@@ -92,10 +92,10 @@ export function NotionDatabaseSelector({
         );
     }
 
-    if (databases.length === 0) {
+    if (resources.length === 0) {
         return (
             <div className="text-sm text-muted-foreground">
-                No databases found. Make sure your Notion integration has access to databases.
+                No Notion Pages or Databases found. Make sure your Notion integration has access to pages and databases.
             </div>
         );
     }
@@ -104,7 +104,7 @@ export function NotionDatabaseSelector({
         <div className="space-y-2">
             <div className="flex items-center justify-between">
                 <label className="text-xs font-medium text-muted-foreground">
-                    Select Database
+                    Select Page or Database
                 </label>
                 <Button
                     onClick={handleRefresh}
@@ -120,9 +120,9 @@ export function NotionDatabaseSelector({
             <Select
                 value={selectedDatabaseId || ''}
                 onValueChange={(value) => {
-                    const selectedDb = databases.find(db => db.id === value);
-                    if (selectedDb) {
-                        onSelect(selectedDb.id, selectedDb.title);
+                    const selectedResource = resources.find(resource => resource.id === value);
+                    if (selectedResource) {
+                        onSelect(selectedResource.id, selectedResource.title, selectedResource.type);
                     }
                 }}
             >
@@ -130,16 +130,16 @@ export function NotionDatabaseSelector({
                     <SelectValue placeholder="-- Select a database --" />
                 </SelectTrigger>
                 <SelectContent>
-                    {databases.map((db) => (
-                        <SelectItem key={db.id} value={db.id}>
-                            {db.title}
+                    {resources.map((resource) => (
+                        <SelectItem key={resource.id} value={resource.id}>
+                            {resource.type === 'database' ? 'Database' : 'Page'} - {resource.title}
                         </SelectItem>
                     ))}
                 </SelectContent>
             </Select>
-            {databases.length > 0 && (
+            {resources.length > 0 && (
                 <div className="text-xs text-muted-foreground">
-                    {databases.length} database{databases.length !== 1 ? 's' : ''} available
+                    {resources.length} page{resources.length !== 1 ? 's' : ''} or database{resources.length !== 1 ? 's' : ''} available
                 </div>
             )}
         </div>

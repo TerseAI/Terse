@@ -3,7 +3,7 @@ import chalk from "chalk";
 import { Request, Response } from "express";
 import jwt from "jsonwebtoken";
 import { db } from "../prismaClient";
-import { NotionDatabase, NotionDatabasesResponse } from "../shared/types";
+import { NotionResource, NotionResourcesResponse } from "../shared/types";
 import { SearchResponse } from "@notionhq/client/build/src/api-endpoints";
 
 // OAuth Functions
@@ -108,22 +108,39 @@ export const notionOAuthCallback = async (req: Request, res: Response) => {
       page_size: 100,
     });
 
-    const databases: NotionDatabase[] = databasesResponse.results.map(
+    const pagesResponse: SearchResponse = await notionClient.search({
+      filter: { property: "object", value: "page" },
+      page_size: 100,
+    });
+
+    const databases: NotionResource[] = databasesResponse.results.map(
       (db: any) => ({
         id: db.id,
         title: db.title?.[0]?.plain_text || "Untitled Database",
         url: db.url,
+        type: 'database',
       })
     );
 
+    const pages: NotionResource[] = pagesResponse.results.map(
+      (page: any) => ({
+        id: page.id,
+        title: page.title?.[0]?.plain_text || "Untitled Page",
+        url: page.url,
+        type: 'page',
+      })
+    );
+
+    const resources: NotionResource[] = [...databases, ...pages];
+
     console.log(
-      chalk.blue(`📊 Found ${databases.length} databases for user`),
+      chalk.blue(`📊 Found ${resources.length} pages and databases for user`),
       chalk.yellow(decoded.userId)
     );
 
     if (databases.length === 0) {
       console.error(
-        chalk.red("No databases found for user"),
+        chalk.red("No pages or databases found for user"),
         chalk.yellow(decoded.userId)
       );
       return res.redirect(`${process.env.FRONTEND_URL}/oauth/error`);
@@ -185,7 +202,7 @@ export const notionOAuthCallback = async (req: Request, res: Response) => {
 };
 
 // Fetch available databases for a Notion connection
-export const getNotionDatabases = async (req: Request, res: Response) => {
+export const getNotionResources = async (req: Request, res: Response) => {
   const user = req.session?.user;
   if (!user) {
     return res.status(401).json({ error: "Unauthorized" });
@@ -216,17 +233,34 @@ export const getNotionDatabases = async (req: Request, res: Response) => {
       page_size: 100,
     });
 
-    const databases: NotionDatabase[] = databasesResponse.results.map(
+    const pagesResponse: SearchResponse = await notionClient.search({
+      filter: { property: "object", value: "page" },
+      page_size: 100,
+    });
+
+    const databases: NotionResource[] = databasesResponse.results.map(
       (db: any) => ({
         id: db.id,
         title: db.title?.[0]?.plain_text || "Untitled Database",
         url: db.url,
+        type: 'database',
       })
     );
 
-    const response: NotionDatabasesResponse = {
-      databases,
-      selectedDatabaseId: databases[0].id, // Just choose the first?
+    const pages: NotionResource[] = pagesResponse.results.map(
+      (page: any) => ({
+        id: page.id,
+        title: page.title?.[0]?.plain_text || "Untitled Page",
+        url: page.url,
+        type: 'page',
+      })
+    );
+    const resources: NotionResource[] = [...databases, ...pages];
+
+    const response: NotionResourcesResponse = {
+      resources,
+      selectedResourceId: resources[0].id, // Just choose the first?
+      selectedResourceType: resources[0].type,
     };
 
     res.status(200).json(response);
