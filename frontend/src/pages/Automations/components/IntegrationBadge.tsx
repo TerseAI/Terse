@@ -62,17 +62,12 @@ function NotionIntegrationBadge({ integration }: { integration: IntegrationInsta
     }
 
     const workspaceName = integration.workspaceName || integration.workspaceId || 'Unknown Workspace';
-    const databaseName = integration.databaseName || 'Unknown Database';
 
     return (
         <div className="flex flex-col gap-1">
             <Badge variant="secondary">
                 <Check className="size-3 text-primary" />
                 {workspaceName}
-            </Badge>
-            <Badge variant="secondary">
-                <Check className="size-3 text-primary" />
-                {databaseName}
             </Badge>
         </div>
     );

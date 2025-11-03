@@ -56,7 +56,7 @@ import {
 import {
   getNotionOAuthUrl,
   notionOAuthCallback,
-  getNotionDatabases
+  getNotionResources
 } from "./routes/notion";
 import { getRunHistory } from "./routes/runHistory";
 import { User as TicketUser } from "./shared/TicketSystem";
@@ -251,8 +251,8 @@ app.get("/notion/oauth/callback", async (req, res) => {
   notionOAuthCallback(req, res);
 });
 
-app.get("/notion/databases", authMiddleware, async (req, res) => {
-  getNotionDatabases(req, res);
+app.get("/notion/resources", authMiddleware, async (req, res) => {
+  getNotionResources(req, res);
 });
 
 // MARK: LINEAR

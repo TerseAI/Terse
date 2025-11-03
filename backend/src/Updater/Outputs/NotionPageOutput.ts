@@ -18,7 +18,7 @@ export interface NotionPageSession extends Session {
 
 export class NotionPageOutput extends Output<NotionPageSession> {
     constructor() {
-        const toolbox = [notionQueryPageTool, notionModifyPageTool];
+        const toolbox = [notionQueryPageTool, notionModifyBlocksTool];
         super(OutputType.NotionPage, toolbox);
     }
 
@@ -352,26 +352,56 @@ This tool returns the current state of the page including all properties, metada
     }
 });
 
-// Tool 2: Modify (create or update) pages in the Notion page
-const notionModifyPageTool = tool({
-    name: 'notion_modify_page',
-    description: `Modify the current state of the page.`,
+// Tool 3: Modify blocks (add, update, delete) in the Notion page
+const notionModifyBlocksTool = tool({
+    name: 'notion_modify_blocks',
+    description: `Add, update, or delete blocks in the page content. Use this to modify the page content (paragraphs, headings, lists, etc.). 
+    
+Operations:
+- append: Add new blocks to the page (or to a parent block if parent_block_id is provided)
+- update: Update an existing block by block_id
+- delete: Delete (archive) a block by block_id
+
+Examples:
+- Append paragraph: {"operation": "append", "blocks": [{"object": "block", "type": "paragraph", "paragraph": {"rich_text": [{"type": "text", "text": {"content": "Hello world"}}]}}]}
+- Append heading: {"operation": "append", "blocks": [{"object": "block", "type": "heading_1", "heading_1": {"rich_text": [{"type": "text", "text": {"content": "Title"}}]}}]}
+- Update block: {"operation": "update", "block_id": "abc123", "block": {"paragraph": {"rich_text": [{"type": "text", "text": {"content": "Updated text"}}]}}}
+- Delete block: {"operation": "delete", "block_id": "abc123"}`,
     parameters: z.object({
-        properties_json: z.string().describe('JSON string with property names as keys and Notion-formatted values. Example: "{\\"Name\\": {\\"title\\": [{\\"text\\": {\\"content\\": \\"New Item\\"}}]}, \\"Status\\": {\\"select\\": {\\"name\\": \\"In Progress\\"}}}"'),
+        operations_json: z.string().describe(`JSON string with an array of operations. Each operation should have:
+- operation: "append" | "update" | "delete"
+- For append: blocks (array of block objects) and optional parent_block_id
+- For update: block_id and block (block object with the type-specific properties)
+- For delete: block_id
+
+Example: "[{\"operation\": \"append\", \"blocks\": [{\"object\": \"block\", \"type\": \"paragraph\", \"paragraph\": {\"rich_text\": [{\"type\": \"text\", \"text\": {\"content\": \"New content\"}}]}}]}]"`),
     }),
-    execute: async ({ properties_json }, runContext?: RunContext<NotionPageSession>) => {
-        console.log(chalk.bgMagenta.white.bold('🛠️ Executing notion_modify_page tool'));
-        console.log(chalk.cyan('  Properties JSON: '), chalk.greenBright(properties_json));
+    execute: async ({ operations_json }, runContext?: RunContext<NotionPageSession>) => {
+        console.log(chalk.bgMagenta.white.bold('🛠️ Executing notion_modify_blocks tool'));
+        console.log(chalk.cyan('  Operations JSON: '), chalk.greenBright(operations_json));
 
         // Parse the JSON string
-        let properties: Record<string, any>;
+        let operations: Array<{
+            operation: 'append' | 'update' | 'delete';
+            blocks?: any[];
+            parent_block_id?: string;
+            block_id?: string;
+            block?: any;
+        }>;
         try {
-            properties = JSON.parse(properties_json);
+            operations = JSON.parse(operations_json);
+            if (!Array.isArray(operations)) {
+                return {
+                    success: false,
+                    error: 'operations_json must be an array',
+                    hint: 'Ensure operations_json is a JSON array of operations'
+                };
+            }
         } catch (error) {
             return {
                 success: false,
-                error: 'Invalid JSON in properties_json parameter',
-                hint: 'Ensure properties_json is a valid JSON string'
+                error: 'Invalid JSON in operations_json parameter',
+                hint: 'Ensure operations_json is a valid JSON string array'
             };
         }
 
@@ -383,36 +413,140 @@ const notionModifyPageTool = tool({
             auth: runContext.context.notionIntegration.integration_token,
         });
 
-        // Use the page_id from the context for updates
         const pageId = runContext.context.notionPageConfig.page_id as string;
+        const results: any[] = [];
+        let hasErrors = false;
 
-        try {
-            // Update existing page
-            const response = await notion.pages.update({
-                page_id: pageId,
-                properties: properties as Record<string, any>,
-            });
-            // Report action (no DB writes here)
-            runContext.context.runActions = runContext.context.runActions || [];
-            runContext.context.runActions.push({
-                action: 'update_page',
-                integration: 'notion',
-                target: runContext.context.notionPageConfig.page_name || runContext.context.notionPageConfig.page_id,
-                details: 'Notion page updated',
-                url: 'url' in response ? (response as any).url : undefined,
-            });
-            return {
-                success: true,
-                action: 'updated',
-                page_id: response.id,
-                url: 'url' in response ? response.url : undefined
-            };
-        } catch (error: any) {
-            return {
-                success: false,
-                error: error.message,
-                hint: 'Check that property names match the page schema and values are in correct Notion API format'
-            };
+        for (const op of operations) {
+            try {
+                if (op.operation === 'append') {
+                    if (!op.blocks || !Array.isArray(op.blocks) || op.blocks.length === 0) {
+                        results.push({
+                            operation: 'append',
+                            success: false,
+                            error: 'blocks array is required and must not be empty'
+                        });
+                        hasErrors = true;
+                        continue;
+                    }
+
+                    const targetId = op.parent_block_id || pageId;
+                    const response = await notion.blocks.children.append({
+                        block_id: targetId,
+                        children: op.blocks,
+                    });
+
+                    results.push({
+                        operation: 'append',
+                        success: true,
+                        block_ids: response.results.map((b: any) => b.id),
+                        blocks_count: response.results.length,
+                    });
+
+                    // Report action
+                    runContext.context.runActions = runContext.context.runActions || [];
+                    runContext.context.runActions.push({
+                        action: 'append_blocks',
+                        integration: 'notion',
+                        target: runContext.context.notionPageConfig.page_id || runContext.context.notionPageConfig.page_name,
+                        details: `Added ${response.results.length} block(s)`,
+                    });
+                } else if (op.operation === 'update') {
+                    if (!op.block_id) {
+                        results.push({
+                            operation: 'update',
+                            success: false,
+                            error: 'block_id is required for update operation'
+                        });
+                        hasErrors = true;
+                        continue;
+                    }
+
+                    if (!op.block || typeof op.block !== 'object') {
+                        results.push({
+                            operation: 'update',
+                            success: false,
+                            error: 'block object is required for update operation'
+                        });
+                        hasErrors = true;
+                        continue;
+                    }
+
+                    const response = await notion.blocks.update({
+                        block_id: op.block_id,
+                        ...op.block,
+                    });
+
+                    results.push({
+                        operation: 'update',
+                        success: true,
+                        block_id: response.id,
+                    });
+
+                    // Report action
+                    runContext.context.runActions = runContext.context.runActions || [];
+                    runContext.context.runActions.push({
+                        action: 'update_block',
+                        integration: 'notion',
+                        target: runContext.context.notionPageConfig.page_id ||  runContext.context.notionPageConfig.page_name,
+                        details: 'Block updated',
+                    });
+                } else if (op.operation === 'delete') {
+                    if (!op.block_id) {
+                        results.push({
+                            operation: 'delete',
+                            success: false,
+                            error: 'block_id is required for delete operation'
+                        });
+                        hasErrors = true;
+                        continue;
+                    }
+
+                    // Delete by archiving
+                    const response = await notion.blocks.update({
+                        block_id: op.block_id,
+                        archived: true,
+                    });
+
+                    results.push({
+                        operation: 'delete',
+                        success: true,
+                        block_id: response.id,
+                    });
+
+                    // Report action
+                    runContext.context.runActions = runContext.context.runActions || [];
+                    runContext.context.runActions.push({
+                        action: 'delete_block',
+                        integration: 'notion',
+                        target: runContext.context.notionPageConfig.page_id || runContext.context.notionPageConfig.page_name,
+                        details: 'Block deleted',
+                    });
+                } else {
+                    results.push({
+                        operation: op.operation,
+                        success: false,
+                        error: `Unknown operation: ${op.operation}. Must be 'append', 'update', or 'delete'`
+                    });
+                    hasErrors = true;
+                }
+            } catch (error: any) {
+                results.push({
+                    operation: op.operation,
+                    success: false,
+                    error: error.message,
+                    hint: 'Check that block structure matches Notion API format and block_id is valid'
+                });
+                hasErrors = true;
+            }
         }
+
+        return {
+            success: !hasErrors,
+            results: results,
+            operations_count: operations.length,
+            successful_count: results.filter((r: any) => r.success).length,
+            failed_count: results.filter((r: any) => !r.success).length,
+        };
     }
 });

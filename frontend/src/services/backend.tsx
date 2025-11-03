@@ -1,6 +1,6 @@
 import axios from 'axios';
 import { ModelEvent, ModelRequest } from "../shared/ModelEvents";
-import { Automation, AutomationInput, AutomationOutput, AutomationPrompt, AutomationsResponse, AutomationUpdate, GithubIntegration, IntegrationsStatus, JiraCredentialsValidationResponse, JiraIntegration, LinearApiKeyValidationResponse, LinearIntegration, NotionDatabasesResponse, SlackChannelsResponse, SlackIntegration } from "../shared/types";
+import { Automation, AutomationInput, AutomationOutput, AutomationPrompt, AutomationsResponse, AutomationUpdate, GithubIntegration, IntegrationsStatus, JiraCredentialsValidationResponse, JiraIntegration, LinearApiKeyValidationResponse, LinearIntegration, NotionResourcesResponse, SlackChannelsResponse, SlackIntegration } from "../shared/types";
 import { User } from "../types/User";
 import { GetRunHistoryParams, GetRunHistoryResponse } from '../shared/RunHistoryTypes';
 
@@ -148,7 +148,7 @@ interface BackendService {
     /**
      * Gets available databases for a Notion integration
      */
-    getNotionDatabases(integrationId: string): Promise<NotionDatabasesResponse>;
+    getNotionResources(integrationId: string): Promise<NotionResourcesResponse>;
 
     /**
      * Gets available channels for a Slack integration
@@ -465,8 +465,8 @@ export const BackendProvider: BackendService = {
             });
     },
 
-    getNotionDatabases: (integrationId: string) => {
-        return axios.get<NotionDatabasesResponse>(`${backendBaseUrl}/notion/databases?integrationId=${encodeURIComponent(integrationId)}`, { withCredentials: true })
+    getNotionResources: (integrationId: string) => {
+        return axios.get<NotionResourcesResponse>(`${backendBaseUrl}/notion/resources?integrationId=${encodeURIComponent(integrationId)}`, { withCredentials: true })
             .then(response => response.data)
             .catch(error => {
                 console.error('Error fetching Notion databases:', error);

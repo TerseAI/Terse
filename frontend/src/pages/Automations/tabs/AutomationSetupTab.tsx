@@ -160,7 +160,8 @@ function SaveAutomationButton({ defaultName }: { defaultName: string | null }) {
                     integration: output.integration,
                     integrationId: output.integrationId,
                     ...(output.notionConfig && { notionConfig: output.notionConfig }),
-                    ...(output.slackConfig && { slackConfig: output.slackConfig })
+                    ...(output.slackConfig && { slackConfig: output.slackConfig }),
+                    ...(output.notionPageConfig && { notionPageConfig: output.notionPageConfig })
                 },
                 prompt,
                 isActive
