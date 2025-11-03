@@ -110,7 +110,7 @@ model slack_integrations {
   updated_at      DateTime @updatedAt
 
   user_slack_integrations user_slack_integrations[]
-  processed_slack_events processed_slack_events[]
+  processed_slack_events  processed_slack_events[]
 }
 
 model jira_api_keys {
@@ -170,10 +170,10 @@ model processed_gmail_messages {
 }
 
 model processed_slack_events {
-  id                  String   @id @default(cuid())
+  id                   String   @id @default(cuid())
   slack_integration_id String
-  event_id            String // Slack's event_id (e.g., "Ev09R4A73BJL")
-  processed_at        DateTime @default(now())
+  event_id             String // Slack's event_id (e.g., "Ev09R4A73BJL")
+  processed_at         DateTime @default(now())
 
   slack_integration slack_integrations @relation(fields: [slack_integration_id], references: [id], onDelete: Cascade)
 
@@ -187,8 +187,6 @@ model notion_integrations {
   user_id           String
   workspace_id      String?
   workspace_name    String?
-  database_id       String // Connection-level default database (required). Can be overridden per automation via automation_notion_configs.database_id
-  database_name     String? // Connection-level default database name. Can be overridden per automation via automation_notion_configs.database_name
   integration_token String
   created_at        DateTime @default(now())
   updated_at        DateTime @updatedAt
@@ -196,7 +194,7 @@ model notion_integrations {
   user users @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
   @@index([user_id])
-  @@index([workspace_id, database_id])
+  @@index([workspace_id])
 }
 
 // Activity Feed - Starting with GitHub Events
@@ -365,14 +363,14 @@ model automation_slack_configs {
   @@index([channel_id])
 }
 
-// Notion Configuration
+// Notion Configuration - This is really for Databases!!
 model automation_notion_configs {
   id                   String  @id @default(cuid())
   automation_input_id  String? @unique // FK to automation_inputs (mutually exclusive with output_id)
   automation_output_id String? @unique // FK to automation_outputs (unique constraint)
 
-  database_id   String? // Database ID (required for outputs, optional for inputs)
-  database_name String? // Database display name (for UI, optional)
+  database_id   String // Database ID (required for outputs, optional for inputs)
+  database_name String // Database display name (for UI, optional)
 
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
@@ -560,7 +558,6 @@ model pending_approvals {
   created_at            DateTime  @default(now())
   updated_at            DateTime  @updatedAt
   approved_at           DateTime?
-  expires_at            DateTime  @default(dbgenerated("now() + interval '24 hours'"))
 
   user               users               @relation(fields: [user_id], references: [id], onDelete: Cascade)
   run_history_record run_history_records @relation(fields: [run_history_record_id], references: [id], onDelete: Cascade)
