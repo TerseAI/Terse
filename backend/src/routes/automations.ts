@@ -15,6 +15,7 @@ const integrationTypeMap: Record<string, IntegrationType> = {
     'slack': IntegrationType.SLACK,
     'notion': IntegrationType.NOTION,
     'notion_page': IntegrationType.NOTION_PAGE,
+    'figma': IntegrationType.FIGMA,
 };
 
 // Helper function to create config record for an automation input
@@ -84,6 +85,24 @@ async function createInputConfig(
             await tx.automation_gmail_configs.create({
                 data: {
                     automation_input_id: inputId,
+                },
+            });
+            break;
+        case IntegrationType.FIGMA:
+            // Figma config is required for Figma integrations
+            if (!config.figmaConfig) {
+                throw new Error('figmaConfig is required for Figma integration');
+            }
+            console.log(chalk.blue("Figma config received:"), chalk.yellow(JSON.stringify(config.figmaConfig, null, 2)));
+            // Validate that fileKey is provided for Figma configs
+            if (!config.figmaConfig.fileKey || config.figmaConfig.fileKey.trim() === '') {
+                throw new Error('fileKey is required for Figma integration');
+            }
+            await tx.automation_figma_configs.create({
+                data: {
+                    automation_input_id: inputId,
+                    file_key: config.figmaConfig.fileKey,
+                    file_name: config.figmaConfig.fileName || null,
                 },
             });
             break;
@@ -171,6 +190,17 @@ async function createOutputConfig(
                 },
             });
             break;
+        case IntegrationType.FIGMA:
+            if (config.figmaConfig) {
+                await tx.automation_figma_configs.create({
+                    data: {
+                        automation_output_id: outputId,
+                        file_key: config.figmaConfig.fileKey || null,
+                        file_name: config.figmaConfig.fileName || null,
+                    },
+                });
+            }
+            break;
     }
 }
 
@@ -212,6 +242,12 @@ function transformInputConfig(input: any): AutomationInput {
     }
     if (input.gmail_config) {
         base.gmailConfig = {};
+    }
+    if (input.figma_config) {
+        base.figmaConfig = {
+            fileKey: input.figma_config.file_key || undefined,
+            fileName: input.figma_config.file_name || undefined,
+        };
     }
 
     return base;
@@ -261,6 +297,12 @@ function transformOutputConfig(output: any): AutomationOutput {
     }
     if (output.gmail_config) {
         base.gmailConfig = {};
+    }
+    if (output.figma_config) {
+        base.figmaConfig = {
+            fileKey: output.figma_config.file_key || undefined,
+            fileName: output.figma_config.file_name || undefined,
+        };
     }
 
     return base;
@@ -333,6 +375,15 @@ async function validateUserOwnsIntegration(userId: string, integrationType: Inte
                 }
             });
             return !!notionPageIntegration;
+
+        case IntegrationType.FIGMA:
+            const figmaIntegration = await prisma.figma_integrations.findFirst({
+                where: {
+                    id: integrationId,
+                    user_id: userId
+                }
+            });
+            return !!figmaIntegration;
 
         default:
             return false;
@@ -507,6 +558,7 @@ export async function createAutomation(req: Request, res: Response) {
     const userId = req.session.user.id;
     const { name, inputs, output, prompt, isActive = true } = req.body as SaveAutomationRequest;
     console.log(chalk.green("Output from frontend:"), chalk.yellow(JSON.stringify(output, null, 2)));
+    console.log(chalk.blue("Inputs from frontend:"), chalk.yellow(JSON.stringify(inputs, null, 2)));
 
     // Validate request
     if (!name || !inputs || inputs.length === 0 || !output || !prompt?.text) {

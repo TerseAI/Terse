@@ -2,6 +2,7 @@ import chalk from 'chalk';
 import { IntegrationType } from '@prisma/client';
 import { db } from '../prismaClient';
 import { SlackInputSetup } from './handlers/SlackInputSetup';
+import { FigmaInputSetup } from './handlers/FigmaInputSetup';
 
 /**
  * Interface for integration-specific setup handlers.
@@ -33,6 +34,7 @@ export class AutomationInputSetup {
     // Only register handlers that actually do something
     private static handlers = new Map<IntegrationType, InputSetupHandler>([
         [IntegrationType.SLACK, new SlackInputSetup()],
+        [IntegrationType.FIGMA, new FigmaInputSetup()],
     ]);
 
     /**
@@ -52,6 +54,7 @@ export class AutomationInputSetup {
                             gmail_config: true,
                             github_config: true,
                             notion_config: true,
+                            figma_config: true,
                         },
                     },
                 },
@@ -107,6 +110,7 @@ export class AutomationInputSetup {
                             gmail_config: true,
                             github_config: true,
                             notion_config: true,
+                            figma_config: true,
                         },
                     },
                 },

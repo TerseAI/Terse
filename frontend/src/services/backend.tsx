@@ -156,6 +156,11 @@ interface BackendService {
     getSlackChannels(integrationId: string): Promise<SlackChannelsResponse>;
 
     /**
+     * Requests a Figma OAuth URL
+     */
+    requestFigmaOAuthUrl(): Promise<{ url: string }>;
+
+    /**
      * Requests a session socket token
      */
     requestSessionSocketToken(): Promise<string>;
@@ -461,6 +466,15 @@ export const BackendProvider: BackendService = {
             .then(response => response.data)
             .catch(error => {
                 console.error('Error requesting Notion OAuth URL:', error);
+                throw error;
+            });
+    },
+
+    requestFigmaOAuthUrl: () => {
+        return axios.get(`${backendBaseUrl}/figma/get-oauth-url`, { withCredentials: true })
+            .then(response => response.data)
+            .catch(error => {
+                console.error('Error requesting Figma OAuth URL:', error);
                 throw error;
             });
     },

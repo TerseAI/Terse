@@ -29,6 +29,7 @@ model users {
   jira_api_keys            jira_api_keys[]
   gmail_integrations       gmail_integrations[]
   notion_integrations      notion_integrations[]
+  figma_integrations       figma_integrations[]
   activity_events          activity_events[]
   ticket_activity_events   ticket_activity_events[]
   project_activity_events  project_activity_events[]
@@ -197,6 +198,84 @@ model notion_integrations {
   @@index([workspace_id])
 }
 
+model figma_integrations {
+  id             String   @id @default(cuid())
+  user_id        String
+  figma_user_id  String
+  email          String? // User's email from Figma API
+  access_token   String
+  refresh_token  String?
+  token_expiry   DateTime
+  created_at     DateTime @default(now())
+  updated_at     DateTime @updatedAt
+
+  user                     users                      @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  processed_figma_comments  processed_figma_comments[]
+  figma_comment_context     figma_comment_context[]
+  figma_webhooks            figma_webhooks[]
+
+  @@index([user_id])
+  @@index([figma_user_id])
+}
+
+// Track processed Figma comments to prevent duplicate processing
+model processed_figma_comments {
+  id                   String   @id @default(cuid())
+  figma_integration_id String
+  comment_id           String // Figma's comment ID
+  file_key             String
+  processed_at         DateTime @default(now())
+
+  figma_integration figma_integrations @relation(fields: [figma_integration_id], references: [id], onDelete: Cascade)
+
+  @@unique([figma_integration_id, comment_id]) // Prevent processing the same comment twice
+  @@index([figma_integration_id])
+  @@index([file_key])
+  @@index([processed_at])
+}
+
+// Track Figma webhooks created for automations
+model figma_webhooks {
+  id                   String   @id @default(cuid())
+  figma_integration_id String
+  automation_input_id  String
+  webhook_id           String // Figma's webhook ID
+  file_key              String // File being monitored
+  team_id               String? // Team ID (if webhook is team-level)
+  endpoint_url          String // Our webhook endpoint URL
+  created_at            DateTime @default(now())
+  updated_at            DateTime @updatedAt
+
+  figma_integration figma_integrations @relation(fields: [figma_integration_id], references: [id], onDelete: Cascade)
+
+  @@unique([automation_input_id]) // One webhook per automation input
+  @@index([figma_integration_id])
+  @@index([file_key])
+  @@index([webhook_id])
+}
+
+// Store enriched comment context for AI/documentation
+model figma_comment_context {
+  id                   String   @id @default(cuid())
+  figma_integration_id String
+  comment_id           String
+  file_key             String
+  node_id              String? // Node ID the comment is attached to
+  comment_data         Json     // Full comment data from Figma API
+  node_context         Json?    // Enriched node data (from GET /v2/files/:key/nodes)
+  file_metadata         Json?    // File metadata (from GET /v2/files/:key/meta)
+  created_at           DateTime @default(now())
+  updated_at           DateTime @updatedAt
+
+  figma_integration figma_integrations @relation(fields: [figma_integration_id], references: [id], onDelete: Cascade)
+
+  @@unique([figma_integration_id, comment_id])
+  @@index([figma_integration_id])
+  @@index([file_key])
+  @@index([node_id])
+  @@index([created_at])
+}
+
 // Activity Feed - Starting with GitHub Events
 model activity_events {
   id                   String          @id @default(cuid())
@@ -318,6 +397,7 @@ model automation_inputs {
   jira_config        automation_jira_configs?
   github_config      automation_github_configs?
   gmail_config       automation_gmail_configs?
+  figma_config       automation_figma_configs?
 
   @@index([automation_id])
   @@index([integration_type, integration_id])
@@ -342,6 +422,7 @@ model automation_outputs {
   jira_config        automation_jira_configs?
   github_config      automation_github_configs?
   gmail_config       automation_gmail_configs?
+  figma_config       automation_figma_configs?
 
   @@index([integration_type, integration_id])
 }
@@ -472,6 +553,24 @@ model automation_gmail_configs {
   automation_output automation_outputs? @relation(fields: [automation_output_id], references: [id], onDelete: Cascade)
 }
 
+// Figma Configuration
+model automation_figma_configs {
+  id                   String  @id @default(cuid())
+  automation_input_id  String? @unique // FK to automation_inputs (mutually exclusive with output_id)
+  automation_output_id String? @unique // FK to automation_outputs (unique constraint)
+
+  file_key   String // Figma file key (required for inputs - specifies which file to monitor)
+  file_name String? // File display name (for UI, optional)
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  automation_input  automation_inputs?  @relation(fields: [automation_input_id], references: [id], onDelete: Cascade)
+  automation_output automation_outputs? @relation(fields: [automation_output_id], references: [id], onDelete: Cascade)
+
+  @@index([file_key])
+}
+
 enum TicketEventType {
   TICKET_CREATED
   TICKET_UPDATED
@@ -496,6 +595,7 @@ enum IntegrationType {
   SLACK
   NOTION
   NOTION_PAGE
+  FIGMA
 }
 
 // Run History enums to mirror backend/shared RunHistoryTypes

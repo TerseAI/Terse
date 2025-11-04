@@ -157,3 +157,88 @@ export class SlackEvent extends InputEvent {
         };
     }
 }
+
+// MARK: - FIGMA Comment Event
+
+export interface FigmaCommentEventData {
+    commentId: string;
+    fileKey: string;
+    fileUrl: string;
+    nodeId?: string; // Node ID the comment is attached to (if any)
+    message: string;
+    author: {
+        id: string;
+        handle: string;
+        img_url?: string;
+    };
+    createdAt: string;
+    resolved?: boolean;
+    // Enriched context (optional - added during processing)
+    nodeContext?: any;
+    fileMetadata?: any;
+}
+
+export class FigmaCommentEvent extends InputEvent {
+    readonly integrationType: IntegrationType = IntegrationType.FIGMA;
+    data: FigmaCommentEventData;
+    
+    constructor(data: FigmaCommentEventData) {
+        super();
+        this.data = data;
+    }
+
+    formatForAutomationAgent(): string {
+        const nodeInfo = this.data.nodeId 
+            ? `\nNode ID: ${this.data.nodeId}\nNode Context: ${JSON.stringify(this.data.nodeContext || {}, null, 2)}`
+            : '\nComment is on the file level (not attached to a specific node)';
+        
+        const fileInfo = this.data.fileMetadata 
+            ? `\nFile Metadata: ${JSON.stringify(this.data.fileMetadata, null, 2)}`
+            : '';
+
+        return `
+        Incoming Figma Comment Event.
+
+        Figma Comment:
+        File: ${this.data.fileKey}
+        File URL: ${this.data.fileUrl}
+        Comment ID: ${this.data.commentId}
+        Author: ${this.data.author.handle} (${this.data.author.id})
+        Message: ${this.data.message}
+        Created At: ${this.data.createdAt}
+        Resolved: ${this.data.resolved ? 'Yes' : 'No'}${nodeInfo}${fileInfo}
+        `;
+    }
+
+    debugLog(): string {
+        return `Figma Comment Event: File ${this.data.fileKey} - ${this.data.author.handle} - ${this.data.message.substring(0, 50)}`;
+    }
+
+    matchesAutomationInput(automationInput: AutomationInput): boolean {
+        // Check if integration type matches
+        if (automationInput.integration_type !== IntegrationType.FIGMA) {
+            return false;
+        }
+
+        // If automationInput has figma_config with file_key, filter by file
+        const figmaConfig = (automationInput as any).figma_config;
+        if (figmaConfig?.file_key) {
+            // If config specifies a file, event must match that file
+            return this.data.fileKey === figmaConfig.file_key;
+        }
+
+        // No file config means all Figma comment events match
+        return true;
+    }
+
+    createTriggerMetadata(): RunHistoryTrigger {
+        return {
+            event: 'comment_added',
+            integration: 'figma',
+            source: this.data.fileKey,
+            title: this.data.message.substring(0, 100), // First 100 chars of comment
+            subheader: `${this.data.author.handle} on ${this.data.fileKey}`,
+            url: this.data.fileUrl,
+        };
+    }
+}

@@ -6,7 +6,8 @@ import {
     SlackIntegration,
     LinearIntegration,
     JiraIntegration,
-    GithubIntegration
+    GithubIntegration,
+    FigmaIntegration
 } from "../shared/types";
 
 /**
@@ -20,6 +21,7 @@ export const INTEGRATION_KEY_MAP: Record<Integration, keyof IntegrationsStatus['
     [Integration.JIRA]: 'jira',
     [Integration.SLACK]: 'slack',
     [Integration.GITHUB]: 'github',
+    [Integration.FIGMA]: 'figma',
 };
 
 /**
@@ -33,6 +35,7 @@ type IntegrationTypeMap = {
     [Integration.JIRA]: JiraIntegration[];
     [Integration.SLACK]: SlackIntegration[];
     [Integration.GITHUB]: GithubIntegration[];
+    [Integration.FIGMA]: FigmaIntegration[];
 };
 
 /**
@@ -105,6 +108,14 @@ export const INTEGRATION_METADATA: Record<Integration, IntegrationMetadata> = {
         name: 'GitHub',
         description: 'Watch commits and PRs',
         inputDescription: 'Listen to commits, PRs, and issues',
+        isInput: true,
+        isOutput: false
+    },
+    [Integration.FIGMA]: {
+        type: Integration.FIGMA,
+        name: 'Figma',
+        description: 'Monitor comments on design files',
+        inputDescription: 'Monitor comments on Figma design files',
         isInput: true,
         isOutput: false
     }

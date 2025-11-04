@@ -1,13 +1,14 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { BackendProvider } from "../services/backend";
 import { Integration } from "./Integrations";
-import { NotionConfig, NotionPageConfig, SlackConfig } from "../shared/types";
+import { NotionConfig, NotionPageConfig, SlackConfig, FigmaConfig } from "../shared/types";
 
 export interface Input {
     integration: Integration;
     integrationId?: string; // ID of the specific integration instance
     notionConfig?: NotionConfig; // Configuration for Notion input (database selection)
     slackConfig?: SlackConfig; // Configuration for Slack input (channel selection)
+    figmaConfig?: FigmaConfig; // Configuration for Figma input (file selection)
 }
 
 export interface GithubInput {
@@ -75,7 +76,8 @@ export function AutomationProvider({ children, automationId }: { children: React
                     integration: input.integration as Integration,
                     integrationId: input.integrationId,
                     notionConfig: input.notionConfig,
-                    slackConfig: input.slackConfig
+                    slackConfig: input.slackConfig,
+                    figmaConfig: input.figmaConfig
                 })));
                 setOutput(automation.output ? {
                     integration: automation.output.integration as Integration,

@@ -11,6 +11,7 @@ import { MessageCircle } from "lucide-react";
 import { AutomationUpdate } from "@/shared/types";
 import { toast } from "sonner";
 import { getDefaultAutomationName } from "@/utility/AutomationUtils";
+import { Integration } from "@/types/Integration";
 
 function PromptSection() {
     const { prompt, setPrompt } = useAutomationContext();
@@ -135,9 +136,17 @@ function SaveAutomationButton({ defaultName }: { defaultName: string | null }) {
 
     // Validation: all required fields must be present
     // Note: Config (notionConfig, slackConfig) is optional - defaults are used if not provided
+    // Figma requires fileKey in figmaConfig
     const isComplete =
         inputs.length > 0 &&
-        inputs.every(i => !!i.integration && !!i.integrationId) &&
+        inputs.every(i => {
+            if (!i.integration || !i.integrationId) return false;
+            // For Figma, require fileKey
+            if (i.integration === Integration.FIGMA && !i.figmaConfig?.fileKey) {
+                return false;
+            }
+            return true;
+        }) &&
         !!output && !!output.integration && !!output.integrationId &&
         !!prompt?.text; // Ensure name is not empty
 
@@ -148,14 +157,39 @@ function SaveAutomationButton({ defaultName }: { defaultName: string | null }) {
 
         setIsSaving(true);
         try {
+            // Debug: Log inputs before mapping
+            console.log('Inputs before mapping:', inputs);
+            
             const automationData: AutomationUpdate = {
                 name: name || defaultName || '',
-                inputs: inputs.map(i => ({
-                    integration: i.integration,
-                    integrationId: i.integrationId,
-                    ...(i.notionConfig && { notionConfig: i.notionConfig }),
-                    ...(i.slackConfig && { slackConfig: i.slackConfig })
-                })),
+                inputs: inputs.map(i => {
+                    const inputData: any = {
+                        integration: i.integration,
+                        integrationId: i.integrationId,
+                    };
+                    
+                    // Only include configs if they exist and have required fields
+                    if (i.notionConfig) {
+                        inputData.notionConfig = i.notionConfig;
+                    }
+                    if (i.slackConfig) {
+                        inputData.slackConfig = i.slackConfig;
+                    }
+                    if (i.figmaConfig) {
+                        console.log('Figma config found:', i.figmaConfig);
+                        // Validate that figmaConfig has fileKey before including it
+                        if (i.figmaConfig.fileKey) {
+                            inputData.figmaConfig = i.figmaConfig;
+                            console.log('Including figmaConfig with fileKey:', i.figmaConfig.fileKey);
+                        } else {
+                            console.warn('Figma config missing fileKey, skipping:', i.figmaConfig);
+                        }
+                    } else {
+                        console.log('No figmaConfig for input:', i.integration);
+                    }
+                    
+                    return inputData;
+                }),
                 output: {
                     integration: output.integration,
                     integrationId: output.integrationId,

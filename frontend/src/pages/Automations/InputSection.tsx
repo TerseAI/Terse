@@ -101,6 +101,12 @@ function InputCard({
                             setInputs([{ ...input, slackConfig: config }]);
                         }
                     }}
+                    figmaConfig={input.figmaConfig}
+                    onFigmaConfigChange={(config) => {
+                        if (input) {
+                            setInputs([{ ...input, figmaConfig: config }]);
+                        }
+                    }}
                 />
             </CardContent>
 
