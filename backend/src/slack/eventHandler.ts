@@ -164,7 +164,7 @@ export async function handleSlackEvent(req: Request, res: Response) {
             break;
         case 'message':
             // Process message asynchronously (fire and forget - errors are logged but don't affect Slack)
-            handleSlackMessage(ev as unknown as SlackMessageEvent, team_id).catch((error) => {
+            handleSlackMessage(ev as unknown as SlackMessageEvent, team_id, body.authorizations as SlackAuthorizations[]).catch((error) => {
                 console.error(chalk.red('Error processing Slack message in background:'), error);
             });
             break;
@@ -446,7 +446,14 @@ interface SlackMessageEvent {
     channel_type?: string;
 }
 
-async function handleSlackMessage(event: SlackMessageEvent, teamId: string) {
+interface SlackAuthorizations {
+    enterprise_id: string | null;
+    team_id: string;
+    user_id: string;
+    is_bot: boolean;
+    is_enterprise_install: boolean;
+}
+async function handleSlackMessage(event: SlackMessageEvent, teamId: string, authorizations: SlackAuthorizations[]) {
     try {
         console.log(chalk.blue('Processing Slack message event'), JSON.stringify(event, null, 2));
         
@@ -466,12 +473,20 @@ async function handleSlackMessage(event: SlackMessageEvent, teamId: string) {
             console.log(chalk.yellow('Slack integration not found'));
             return;
         }
-        
-        // Get all users who have Slack integrations for this workspace
-        // This allows us to process messages from any workspace user, not just the bot installer
+
+        // Get all users who have Slack integrations for this workspace AND are
+        // authorized to receive messages from this event
+        const authorizationUserIds = authorizations.map(authorization => authorization.user_id);
+
+        console.log( "authorizationUserIds", authorizationUserIds)
+        console.log('Team Id:', teamId)
+
         const workspaceUserIntegrations = await db().user_slack_integrations.findMany({
             where: {
-                slack_team_id: teamId
+                slack_team_id: teamId,
+                authed_user_id: {
+                    in: authorizationUserIds
+                }
             },
             include: {
                 user: true
@@ -483,8 +498,14 @@ async function handleSlackMessage(event: SlackMessageEvent, teamId: string) {
             return;
         }
 
+        const authedUserAccessToken = workspaceUserIntegrations[0].authed_user_access_token;
+        if (!authedUserAccessToken) {
+            console.log(chalk.yellow('No authed user access token found for user'));
+            return;
+        }
+
         // Initialize Slack WebClient to fetch additional data
-        const client = new WebClient(slackIntegration.access_token, {
+        const client = new WebClient(authedUserAccessToken, {
             logLevel: LogLevel.INFO
         });
 

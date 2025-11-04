@@ -82,13 +82,14 @@ model linear_api_keys {
 }
 
 model user_slack_integrations {
-  id             String   @id @default(cuid())
-  user_id        String
-  slack_team_id  String
-  dm_channel_id  String?
-  authed_user_id String
-  created_at     DateTime @default(now())
-  updated_at     DateTime @updatedAt
+  id                        String   @id @default(cuid())
+  user_id                   String
+  slack_team_id             String
+  dm_channel_id             String?
+  authed_user_id            String
+  authed_user_access_token  String
+  created_at                DateTime @default(now())
+  updated_at                DateTime @updatedAt
 
   user              users              @relation(fields: [user_id], references: [id])
   slack_integration slack_integrations @relation(fields: [slack_team_id], references: [team_id])
@@ -100,6 +101,7 @@ model slack_integrations {
   id              String   @id @default(cuid())
   app_id          String
   scope           String   @default("")
+  user_scope      String   @default("")
   access_token    String
   bot_user_id     String
   team_id         String   @unique
@@ -355,6 +357,7 @@ model automation_slack_configs {
 
   channel_id   String? // Channel ID (required for outputs, optional for inputs)
   channel_name String? // Channel display name (for UI, optional)
+  listen_to_user_dms Boolean? // This integration should include listening to user DMs
 
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
