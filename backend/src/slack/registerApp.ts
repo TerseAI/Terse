@@ -5,14 +5,6 @@ import { db } from "../prismaClient"
 import { Jwt } from "../utility/jwt";
 import { LogLevel, WebClient } from "@slack/web-api";
 import chalk from "chalk";
-import { sendMessage } from "./sendMessage";
-
-
-const welcomeMessage = `
-Hello, I'm Terse AI, your AI assistant for managing your tickets.
-
-I work in the background, but I'll shoot you a message here whenever I make changes to your tickets!
-`;
 
 export async function getSlackOAuthUrl(req: Request, res: Response) {
     const client_id = process.env.SLACK_CLIENT_ID;
@@ -32,8 +24,8 @@ export async function getSlackOAuthUrl(req: Request, res: Response) {
 
     const user: User = req.session.user;
 
-    const scope = "chat:write,users:read,users:read.email,im:write,groups:write,app_mentions:read,channels:read,channels:history,groups:read,im:read,im:history,mpim:read,mpim:history,channels:join,channels:history, groups:history,im:history,mpim:history";
-    const user_scope = "";
+    const scope = "channels:history,groups:history,im:history,mpim:history";
+    const user_scope = "channels:history,channels:read,groups:history,groups:read,im:history,im:read,mpim:history,mpim:read,users:read"
 
     // create JWT and attach to url as state
     const jwt = new Jwt();
@@ -162,6 +154,21 @@ export async function slackOAuthCallback(req: Request, res: Response) {
         await db().$transaction(async (tx) => {
             if (slackIntegration) {
                 console.log("Slack integration already exists, continuing with adding user relation");
+                // Update existing integration with user_scope
+                await db().slack_integrations.update({
+                    where: {
+                        team_id: slackIntegration.team_id
+                    },
+                    data: {
+                        app_id: response.data.app_id,
+                        bot_user_id: response.data.bot_user_id,
+                        team_id: response.data.team.id,
+                        team_name: response.data.team.name,
+                        access_token: access_token,
+                        scope: scope,
+                        user_scope: authed_user.scope,
+                    }
+                });
             } else {
                 console.log(chalk.blue("Slack integration does not exist, creating it"));
                 slackIntegration = await db().slack_integrations.create({
@@ -172,6 +179,7 @@ export async function slackOAuthCallback(req: Request, res: Response) {
                         team_name: response.data.team.name,
                         access_token: access_token,
                         scope: scope,
+                        user_scope: authed_user.scope,
                     }
                 });
                 console.log(chalk.green("Slack integration created"));
@@ -184,8 +192,6 @@ export async function slackOAuthCallback(req: Request, res: Response) {
                 throw new Error('Failed to open chat');
             }
 
-            sendMessage(welcomeMessage, access_token, dmChannelId.id);
-
             await db().user_slack_integrations.upsert({
                 where: {
                     user_id_slack_team_id: {
@@ -196,12 +202,14 @@ export async function slackOAuthCallback(req: Request, res: Response) {
                 update: {
                     dm_channel_id: dmChannelId?.id,
                     authed_user_id: authed_user.id,
+                    authed_user_access_token: authed_user.access_token,
                 },
                 create: {
                     user_id: user.id,
                     slack_team_id: slackIntegration.team_id,
                     dm_channel_id: dmChannelId?.id,
                     authed_user_id: authed_user.id,
+                    authed_user_access_token: authed_user.access_token,
                 }
             });
         });

@@ -36,12 +36,12 @@ export const getSlackChannels = async (req: Request, res: Response) => {
     const slackIntegration = userSlackIntegration.slack_integration;
 
     // Fetch channels from Slack API
-    const client = new WebClient(slackIntegration.access_token, {
+    const client = new WebClient(userSlackIntegration.authed_user_access_token, {
       logLevel: LogLevel.ERROR,
     });
 
     // Fetch both public and private channels the bot has access to
-    const [publicChannels, privateChannels] = await Promise.all([
+    const [publicChannels, privateChannels, mpimChannels] = await Promise.all([
       client.conversations.list({
         types: "public_channel",
         exclude_archived: true,
@@ -50,11 +50,14 @@ export const getSlackChannels = async (req: Request, res: Response) => {
         types: "private_channel",
         exclude_archived: true,
       }),
+      client.conversations.list({
+        types: "mpim",
+        exclude_archived: true,
+      }),
     ]);
 
     const channels: SlackChannel[] = [];
 
-    // Process public channels
     if (publicChannels.ok && publicChannels.channels) {
       for (const channel of publicChannels.channels) {
         if (channel.id && channel.name) {
@@ -63,12 +66,12 @@ export const getSlackChannels = async (req: Request, res: Response) => {
             name: channel.name,
             isPrivate: false,
             isArchived: channel.is_archived || false,
+            isMPIM: false,
           });
         }
       }
     }
 
-    // Process private channels (DMs, group DMs, private channels)
     if (privateChannels.ok && privateChannels.channels) {
       for (const channel of privateChannels.channels) {
         if (channel.id && channel.name) {
@@ -77,6 +80,21 @@ export const getSlackChannels = async (req: Request, res: Response) => {
             name: channel.name,
             isPrivate: true,
             isArchived: channel.is_archived || false,
+            isMPIM: false,
+          });
+        }
+      }
+    }
+
+    if (mpimChannels.ok && mpimChannels.channels) {
+      for (const channel of mpimChannels.channels) {
+        if (channel.id && channel.name) {
+          channels.push({
+            id: channel.id,
+            name: channel.name,
+            isPrivate: true,
+            isArchived: channel.is_archived || false,
+            isMPIM: true,
           });
         }
       }
@@ -97,12 +115,12 @@ export const getSlackChannels = async (req: Request, res: Response) => {
     res.status(200).json(response);
   } catch (error: any) {
     console.error(chalk.red("Error fetching Slack channels:"), error);
-    
+
     // Check if this is an invalid_auth error from Slack
-    const isInvalidAuth = 
+    const isInvalidAuth =
       (error?.data?.error === 'invalid_auth') ||
       (error?.code === 'slack_webapi_platform_error' && error?.data?.error === 'invalid_auth');
-    
+
     if (isInvalidAuth) {
       return res.status(401).json({
         error: "Slack authentication failed",
@@ -110,7 +128,7 @@ export const getSlackChannels = async (req: Request, res: Response) => {
         code: "SLACK_INVALID_AUTH",
       });
     }
-    
+
     res.status(500).json({
       error: "Failed to fetch channels",
       details: error.message,

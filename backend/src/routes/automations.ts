@@ -3,7 +3,6 @@ import { db } from "../prismaClient";
 import { Automation, AutomationInput, AutomationOutput, AutomationPrompt } from "../shared/types";
 import { IntegrationType } from "@prisma/client";
 import { parsePageParams } from "../utility/pagination";
-import { AutomationInputSetup } from "../setup/AutomationInputSetup";
 import chalk from "chalk";
 
 // Map frontend integration string to backend IntegrationType enum
@@ -32,6 +31,7 @@ async function createInputConfig(
                         automation_input_id: inputId,
                         channel_id: config.slackConfig.channelId || null,
                         channel_name: config.slackConfig.channelName || null,
+                        listen_to_user_dms: config.slackConfig.listenToUserDms || false,
                     },
                 });
             }
@@ -185,6 +185,7 @@ function transformInputConfig(input: any): AutomationInput {
         base.slackConfig = {
             channelId: input.slack_config.channel_id || undefined,
             channelName: input.slack_config.channel_name || undefined,
+            listenToUserDms: input.slack_config.listen_to_user_dms || false,
         };
     }
     if (input.notion_config) {
@@ -602,9 +603,6 @@ export async function createAutomation(req: Request, res: Response) {
             return newAutomation;
         });
 
-        // Setup webhooks for all inputs after transaction commits
-        await AutomationInputSetup.setupAutomationInputs(automation.id);
-
         res.status(201).json({ success: true, id: automation.id });
     } catch (error) {
         console.error('Error creating automation:', error);
@@ -947,9 +945,6 @@ export async function updateAutomation(req: Request, res: Response) {
             }
         });
 
-        // Setup/update webhooks for all inputs after transaction commits
-        await AutomationInputSetup.setupAutomationInputs(automationId);
-
         res.status(200).json({ success: true, id: automationId });
     } catch (error) {
         console.error('Error updating automation:', error);
@@ -982,9 +977,6 @@ export async function deleteAutomation(req: Request, res: Response) {
             res.status(404).json({ error: 'Automation not found' });
             return;
         }
-
-        // Tear down webhooks for all inputs before deleting automation
-        await AutomationInputSetup.tearDownAutomationInputs(automationId);
 
         // Delete automation (cascade will delete related records)
         await prisma.automations.delete({
