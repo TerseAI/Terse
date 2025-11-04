@@ -137,7 +137,7 @@ export async function slackOAuthCallback(req: Request, res: Response) {
 
         console.log("Slack OAuth response:", response.data);
 
-        const { access_token, authed_user, scope, team } = response.data;
+        const { access_token, authed_user, team } = response.data;
 
         if (!response.data.ok || !team || !team.id) {
             console.error("Slack OAuth response not ok:", response.data);
@@ -165,8 +165,6 @@ export async function slackOAuthCallback(req: Request, res: Response) {
                         team_id: response.data.team.id,
                         team_name: response.data.team.name,
                         access_token: access_token,
-                        scope: scope,
-                        user_scope: authed_user.scope,
                     }
                 });
             } else {
@@ -178,8 +176,6 @@ export async function slackOAuthCallback(req: Request, res: Response) {
                         team_id: response.data.team.id,
                         team_name: response.data.team.name,
                         access_token: access_token,
-                        scope: scope,
-                        user_scope: authed_user.scope,
                     }
                 });
                 console.log(chalk.green("Slack integration created"));
@@ -200,14 +196,12 @@ export async function slackOAuthCallback(req: Request, res: Response) {
                     }
                 },
                 update: {
-                    dm_channel_id: dmChannelId?.id,
                     authed_user_id: authed_user.id,
                     authed_user_access_token: authed_user.access_token,
                 },
                 create: {
                     user_id: user.id,
                     slack_team_id: slackIntegration.team_id,
-                    dm_channel_id: dmChannelId?.id,
                     authed_user_id: authed_user.id,
                     authed_user_access_token: authed_user.access_token,
                 }
@@ -245,7 +239,6 @@ export interface SlackOAuthResponse {
     ok: boolean;
     access_token: string;
     token_type: string;
-    scope: string;
     bot_user_id: string;
     app_id: string;
     team: {
@@ -258,7 +251,6 @@ export interface SlackOAuthResponse {
     };
     authed_user: {
         id: string;
-        scope: string;
         access_token: string;
         token_type: string;
     };

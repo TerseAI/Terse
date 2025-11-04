@@ -20,8 +20,8 @@ INSERT INTO slack_integrations (id, app_id, scope, access_token, bot_user_id, te
 VALUES ('c419c126085824dd595108d4d', 'A01APPID', '', 'xoxb-token', 'U01BOTUSER', 'T01TEAMID', 'Vectra Team', '2025-08-04 22:51:07.339483', '2025-08-04 22:56:07.339483');
 
 -- user_slack_integrations
-INSERT INTO user_slack_integrations (id, user_id, slack_team_id, dm_channel_id, authed_user_id, created_at, updated_at)
-VALUES ('c243dd7255265473db4e73869', 'c2b33782008d04be39e4eec89', 'T01TEAMID', 'D01CHANNELID', 'U01AUTHEDUSER', '2025-08-04 22:51:07.339483', '2025-08-04 22:56:07.339483');
+INSERT INTO user_slack_integrations (id, user_id, slack_team_id, authed_user_id, created_at, updated_at)
+VALUES ('c243dd7255265473db4e73869', 'c2b33782008d04be39e4eec89', 'T01TEAMID', 'U01AUTHEDUSER', '2025-08-04 22:51:07.339483', '2025-08-04 22:56:07.339483');
 
 -- jira_api_keys
 INSERT INTO jira_api_keys (id, user_id, jira_user_email, base_url, webhook_id, api_token, created_at, updated_at)
