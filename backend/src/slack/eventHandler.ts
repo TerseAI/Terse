@@ -6,28 +6,6 @@ import { db } from '../prismaClient';
 import { SlackEvent, SlackEventData } from '../Updater/InputEvents';
 import { EventProcessor } from '../agent/AutomationAgent/EventProcessor';
 
-// export function isValidSlackSig(req: Request) {
-//     const ts = req.headers['x-slack-request-timestamp'];
-//     const sig = req.headers['x-slack-signature'];
-    
-//     // Convert the raw buffer to string
-//     const body = req.body.toString();
-    
-//     console.log('ts', ts);
-//     console.log('sig', sig);
-//     console.log('body', body); // This should show the raw JSON string
-    
-//     const hmac = crypto
-//         .createHmac('sha256', process.env.SLACK_CLIENT_SECRET || '')
-//         .update(`v0:${ts}:${body}`)
-//         .digest('hex');
-
-//     console.log('secret', process.env.SLACK_CLIENT_SECRET);
-//     console.log('hmac', hmac);
-//     console.log('sig === `v0=${hmac}`', sig === `v0=${hmac}`);
-//     return sig === `v0=${hmac}`;
-// }
-
 export function isValidSlackSig(req: Request) {
     const ts = req.headers['x-slack-request-timestamp'] as string;
     const sig = req.headers['x-slack-signature'] as string;
@@ -380,6 +358,13 @@ function extractUserName(
     return userName;
 }
 
+export enum SlackChannelType {
+    CHANNEL = 'channel',
+    GROUP = 'group',
+    MPIM = 'mpim',
+    IM = 'im'
+}
+
 interface SlackMessageEvent {
     type: 'message';
     channel: string;
@@ -443,7 +428,7 @@ interface SlackMessageEvent {
     latest_reply?: string;
     team?: string;
     event_ts?: string;
-    channel_type?: string;
+    channel_type?: SlackChannelType;
 }
 
 interface SlackAuthorizations {
@@ -477,9 +462,6 @@ async function handleSlackMessage(event: SlackMessageEvent, teamId: string, auth
         // Get all users who have Slack integrations for this workspace AND are
         // authorized to receive messages from this event
         const authorizationUserIds = authorizations.map(authorization => authorization.user_id);
-
-        console.log( "authorizationUserIds", authorizationUserIds)
-        console.log('Team Id:', teamId)
 
         const workspaceUserIntegrations = await db().user_slack_integrations.findMany({
             where: {
@@ -570,6 +552,7 @@ async function handleSlackMessage(event: SlackMessageEvent, teamId: string, auth
             threadTimestamp: event.thread_ts,
             teamId: teamId,
             permalink: permalink,
+            channelType: event.channel_type
         };
 
         // Create SlackEvent once
