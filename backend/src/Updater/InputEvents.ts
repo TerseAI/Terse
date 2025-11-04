@@ -3,6 +3,7 @@ import { IntegrationType } from "@prisma/client";
 import { GmailEventData } from "../routes/gmail";
 import { AutomationInput } from "../types/prisma";
 import { RunHistoryTrigger } from "../shared/RunHistoryTypes";
+import { SlackChannelType } from "../slack/eventHandler";
 
 
 export interface SlackEventData {
@@ -16,6 +17,7 @@ export interface SlackEventData {
     teamId: string;
     // Permalink for the message (if available)
     permalink?: string;
+    channelType?: SlackChannelType;
 }
 
 export abstract class InputEvent {
@@ -137,13 +139,21 @@ export class SlackEvent extends InputEvent {
         // If automationInput has slack_config with channel_id, filter by channel
         // Otherwise, all Slack events match (no channel filtering)
         const slackConfig = (automationInput as any).slack_config;
-        if (slackConfig?.channel_id) {
-            // If config specifies a channel, event must match that channel
-            return this.data.channelId === slackConfig.channel_id;
-        }
 
-        // No channel config means all Slack events match
-        return true;
+        const isChannelOrGroup = (
+            this.data.channelType === SlackChannelType.CHANNEL ||
+            this.data.channelType === SlackChannelType.GROUP
+        )
+        const isDM = (
+            this.data.channelType === SlackChannelType.IM ||
+            this.data.channelType === SlackChannelType.MPIM
+        )
+
+        const matchesChannelOrGroup = isChannelOrGroup && this.data.channelId === slackConfig.channel_id;
+        const matchesDM = isDM && slackConfig?.listen_to_user_dms
+        return (
+            matchesChannelOrGroup || matchesDM
+        )
     }
 
     createTriggerMetadata(): RunHistoryTrigger {
