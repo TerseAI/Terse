@@ -71,6 +71,11 @@ import { TicketManager } from "./ticketing/TicketIntegration";
 import { User } from "./types/prisma";
 import { JiraWebhookPayload } from "./utility/JiraWebhookPayload";
 import { LinearWebhookPayload } from "./utility/LinearWebhookPayload";
+import { 
+  figmaOAuthCallback, 
+  getFigmaOAuthUrl, 
+  handleFigmaWebhook,
+} from "./routes/figma";
 
 export type Session = {
   user: User;
@@ -253,6 +258,20 @@ app.get("/notion/oauth/callback", async (req, res) => {
 
 app.get("/notion/resources", authMiddleware, async (req, res) => {
   getNotionResources(req, res);
+});
+
+// MARK: FIGMA
+
+app.get("/figma/get-oauth-url", authMiddleware, async (req, res) => {
+  getFigmaOAuthUrl(req, res);
+});
+
+app.get("/figma/oauth/callback", async (req, res) => {
+  figmaOAuthCallback(req, res);
+});
+
+app.post("/webhooks/figma", async (req, res) => {
+  handleFigmaWebhook(req, res);
 });
 
 // MARK: LINEAR

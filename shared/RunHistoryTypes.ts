@@ -9,8 +9,8 @@ export type Integration =
     | "slack"
     | "github"
     | "notion"
-    | "gmail";
-
+    | "gmail"
+    | "figma";
 export type RunHistoryAction = {
     // What action was taken (free-text, e.g. "create database entry", "send notification")
     action: string;

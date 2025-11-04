@@ -140,6 +140,13 @@ export type SlackChannelsResponse = {
   selectedChannelId: string | null;
 };
 
+export type FigmaIntegration = {
+  id: string;
+  figmaUserId?: string;
+  email?: string;
+  tokenExpiry?: Date;
+};
+
 export type IntegrationsStatus = {
   integrations: {
     github?: GithubIntegration[];
@@ -148,6 +155,7 @@ export type IntegrationsStatus = {
     slack?: SlackIntegration[];
     gmail?: GmailIntegration[];
     notion?: NotionIntegration[];
+    figma?: FigmaIntegration[];
   };
 };
 
@@ -187,6 +195,11 @@ export type GmailConfig = {
   // Currently empty, but typed for future extensibility
 };
 
+export type FigmaConfig = {
+  fileKey: string;
+  fileName?: string; // Optional display name
+};
+
 export type AutomationInput = {
   integration: string;
   integrationId?: string;
@@ -197,6 +210,7 @@ export type AutomationInput = {
   jiraConfig?: JiraConfig;
   githubConfig?: GitHubConfig;
   gmailConfig?: GmailConfig;
+  figmaConfig?: FigmaConfig;
 };
 
 export type AutomationOutput = {
@@ -210,6 +224,7 @@ export type AutomationOutput = {
   jiraConfig?: JiraConfig;
   githubConfig?: GitHubConfig;
   gmailConfig?: GmailConfig;
+  figmaConfig?: FigmaConfig;
 };
 
 export type AutomationPrompt = {

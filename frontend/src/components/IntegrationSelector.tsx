@@ -4,9 +4,10 @@ import { Integration } from '../context/Integrations';
 import { BackendProvider } from '../services/backend';
 import { formatIntegrationDisplay, IntegrationInstance } from '../utility/IntegrationFormatters';
 import { getIntegrationInstances, getIntegrationName } from '../utility/IntegrationUtils';
-import { NotionConfig, NotionPageConfig, NotionResourceType, SlackConfig } from '../shared/types';
+import { NotionConfig, NotionPageConfig, NotionResourceType, SlackConfig, FigmaConfig } from '../shared/types';
 import { NotionResourceSelector } from './NotionResourceSelector';
 import { SlackChannelSelector } from './SlackChannelSelector';
+import { FigmaFileSelector } from './FigmaFileSelector';
 import { LinearConnectionForm } from './LinearConnectionForm';
 import { JiraConnectionForm } from './JiraConnectionForm';
 import DropdownSelect from './ui/DropdownSelect';
@@ -24,6 +25,8 @@ interface IntegrationSelectorProps {
     onNotionPageConfigChange?: (config: NotionPageConfig) => void;
     slackConfig?: SlackConfig;
     onSlackConfigChange?: (config: SlackConfig) => void;
+    figmaConfig?: FigmaConfig;
+    onFigmaConfigChange?: (config: FigmaConfig) => void;
 }
 
 export function IntegrationSelector({
@@ -36,7 +39,9 @@ export function IntegrationSelector({
     notionPageConfig,
     onNotionPageConfigChange,
     slackConfig,
-    onSlackConfigChange
+    onSlackConfigChange,
+    figmaConfig,
+    onFigmaConfigChange
 }: IntegrationSelectorProps) {
     const [integrations, setIntegrations] = useState<IntegrationInstance[]>([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -104,6 +109,10 @@ export function IntegrationSelector({
                 case Integration.GITHUB:
                     const githubResponse = await BackendProvider.requestGitHubAppInstallationUrl();
                     oauthUrl = githubResponse.installationUrl;
+                    break;
+                case Integration.FIGMA:
+                    const figmaResponse = await BackendProvider.requestFigmaOAuthUrl();
+                    oauthUrl = figmaResponse.url;
                     break;
                 default:
                     console.error('OAuth not supported for this integration type');
@@ -271,6 +280,23 @@ export function IntegrationSelector({
                             onSlackConfigChange({
                                 channelId,
                                 channelName
+                            });
+                        }}
+                    />
+                </div>
+            )}
+
+            {/* Figma-specific file selector */}
+            {integrationType === Integration.FIGMA && selectedIntegrationId && onFigmaConfigChange && (
+                <div className="mt-3 pt-3 border-t border-[theme(border)]">
+                    <FigmaFileSelector
+                        integrationId={selectedIntegrationId}
+                        selectedFileKey={figmaConfig?.fileKey}
+                        selectedFileName={figmaConfig?.fileName}
+                        onSelect={(fileKey, fileName) => {
+                            onFigmaConfigChange({
+                                fileKey,
+                                fileName
                             });
                         }}
                     />
