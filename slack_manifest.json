@@ -1,51 +1,54 @@
 {
     "display_information": {
-        "name": "Vectra",
-        "description": "Removes Engineering Over-head. Just code",
-        "background_color": "#081640",
-        "long_description": "A simple Slack app that pushes updates that are done by the Vectra AI.\r\n\r\nVectra AI acts as a virtual Product Manager that looks over GitHub activity and will update your Tickets on your behalf.\r\n\r\nWhen it makes an updaete, it will notify you on slack."
+        "name": "Terse",
+        "description": "Never update documents again",
+        "background_color": "#00bd93"
     },
     "features": {
         "bot_user": {
-            "display_name": "Vectra",
+            "display_name": "Terse",
             "always_online": false
         }
     },
     "oauth_config": {
         "redirect_urls": [
-            "https://cursor-for-tickets.onrender.com/slack/oauth-callback"
+            "http://localhost:3001/slack/oauth-callback"
         ],
         "scopes": {
-            "user": [],
-            "bot": [
-                "chat:write",
-                "groups:write",
-                "im:write",
-                "mpim:write",
-                "users:read",
-                "users:read.email",
-                "app_mentions:read",
-                "channels:read",
+            "user": [
                 "channels:history",
-                "channels:join",
-                "groups:read",
+                "channels:read",
                 "groups:history",
-                "im:read",
+                "groups:read",
                 "im:history",
+                "im:read",
+                "users:read",
                 "mpim:read",
+                "mpim:history"
+            ],
+            "bot": [
+                "channels:history",
+                "groups:history",
+                "im:history",
                 "mpim:history"
             ]
         }
     },
     "settings": {
         "event_subscriptions": {
-            "request_url": "https://destiny-gym-doctor-motorcycles.trycloudflare.com/slack/events",
+            "request_url": "https://towns-labor-jobs-briefs.trycloudflare.com/slack/events",
             "user_events": [
-                "app_uninstalled_team"
+                "message.channels",
+                "message.groups",
+                "message.im",
+                "message.mpim"
             ],
             "bot_events": [
                 "app_uninstalled",
-                "message"
+                "message.channels",
+                "message.groups",
+                "message.im",
+                "message.mpim"
             ]
         },
         "org_deploy_enabled": false,

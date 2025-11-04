@@ -6,28 +6,6 @@ import { db } from '../prismaClient';
 import { SlackEvent, SlackEventData } from '../Updater/InputEvents';
 import { EventProcessor } from '../agent/AutomationAgent/EventProcessor';
 
-// export function isValidSlackSig(req: Request) {
-//     const ts = req.headers['x-slack-request-timestamp'];
-//     const sig = req.headers['x-slack-signature'];
-    
-//     // Convert the raw buffer to string
-//     const body = req.body.toString();
-    
-//     console.log('ts', ts);
-//     console.log('sig', sig);
-//     console.log('body', body); // This should show the raw JSON string
-    
-//     const hmac = crypto
-//         .createHmac('sha256', process.env.SLACK_CLIENT_SECRET || '')
-//         .update(`v0:${ts}:${body}`)
-//         .digest('hex');
-
-//     console.log('secret', process.env.SLACK_CLIENT_SECRET);
-//     console.log('hmac', hmac);
-//     console.log('sig === `v0=${hmac}`', sig === `v0=${hmac}`);
-//     return sig === `v0=${hmac}`;
-// }
-
 export function isValidSlackSig(req: Request) {
     const ts = req.headers['x-slack-request-timestamp'] as string;
     const sig = req.headers['x-slack-signature'] as string;
@@ -164,7 +142,7 @@ export async function handleSlackEvent(req: Request, res: Response) {
             break;
         case 'message':
             // Process message asynchronously (fire and forget - errors are logged but don't affect Slack)
-            handleSlackMessage(ev as unknown as SlackMessageEvent, team_id).catch((error) => {
+            handleSlackMessage(ev as unknown as SlackMessageEvent, team_id, body.authorizations as SlackAuthorizations[]).catch((error) => {
                 console.error(chalk.red('Error processing Slack message in background:'), error);
             });
             break;
@@ -380,6 +358,13 @@ function extractUserName(
     return userName;
 }
 
+export enum SlackChannelType {
+    CHANNEL = 'channel',
+    GROUP = 'group',
+    MPIM = 'mpim',
+    IM = 'im'
+}
+
 interface SlackMessageEvent {
     type: 'message';
     channel: string;
@@ -443,10 +428,17 @@ interface SlackMessageEvent {
     latest_reply?: string;
     team?: string;
     event_ts?: string;
-    channel_type?: string;
+    channel_type?: SlackChannelType;
 }
 
-async function handleSlackMessage(event: SlackMessageEvent, teamId: string) {
+interface SlackAuthorizations {
+    enterprise_id: string | null;
+    team_id: string;
+    user_id: string;
+    is_bot: boolean;
+    is_enterprise_install: boolean;
+}
+async function handleSlackMessage(event: SlackMessageEvent, teamId: string, authorizations: SlackAuthorizations[]) {
     try {
         console.log(chalk.blue('Processing Slack message event'), JSON.stringify(event, null, 2));
         
@@ -466,25 +458,78 @@ async function handleSlackMessage(event: SlackMessageEvent, teamId: string) {
             console.log(chalk.yellow('Slack integration not found'));
             return;
         }
+
+        const hasBotAuthorization = authorizations.find(
+            authorization => authorization.is_bot && authorization.user_id === slackIntegration.bot_user_id
+        );
+
+        // Get authorization user IDs for explicit user authorization checks
+        const authorizationUserIds = authorizations.map(authorization => authorization.user_id);
+
+        // Determine which workspaceUserIntegrations are in play based on channel type and authorization
+        // Channel type is available directly on the event
+        const channelType = event.channel_type;
+        const isPublicChannel = channelType === SlackChannelType.CHANNEL;
+        const isPrivateChannel = channelType === SlackChannelType.GROUP;
+        const isDM = channelType === SlackChannelType.IM || channelType === SlackChannelType.MPIM;
+
+        let workspaceUserIntegrations;
         
-        // Get all users who have Slack integrations for this workspace
-        // This allows us to process messages from any workspace user, not just the bot installer
-        const workspaceUserIntegrations = await db().user_slack_integrations.findMany({
-            where: {
-                slack_team_id: teamId
-            },
-            include: {
-                user: true
-            }
-        });
+        if (isPublicChannel && hasBotAuthorization) {
+            // Public channel with bot authorization: all workspaceUserIntegrations in the space are in play
+            console.log(chalk.blue('Public channel with bot authorization - including all workspace users'));
+            workspaceUserIntegrations = await db().user_slack_integrations.findMany({
+                where: {
+                    slack_team_id: teamId
+                },
+                include: {
+                    user: true
+                }
+            });
+        } else if (isPrivateChannel || isDM) {
+            // Private channel or DM: only workspaceUserIntegrations with explicit user authorization
+            const channelTypeName = isPrivateChannel ? 'Private channel' : 'DM';
+            console.log(chalk.blue(`${channelTypeName} - including only explicitly authorized users`));
+            workspaceUserIntegrations = await db().user_slack_integrations.findMany({
+                where: {
+                    slack_team_id: teamId,
+                    authed_user_id: {
+                        in: authorizationUserIds
+                    }
+                },
+                include: {
+                    user: true
+                }
+            });
+        } else {
+            // Public channel without bot authorization or unknown type: use explicit authorization
+            console.log(chalk.blue(`${channelType || 'Unknown channel type'} - including only explicitly authorized users`));
+            workspaceUserIntegrations = await db().user_slack_integrations.findMany({
+                where: {
+                    slack_team_id: teamId,
+                    authed_user_id: {
+                        in: authorizationUserIds
+                    }
+                },
+                include: {
+                    user: true
+                }
+            });
+        }
         
         if (workspaceUserIntegrations.length === 0) {
             console.log(chalk.yellow('No users found with Slack integrations for this workspace'));
             return;
         }
 
+        const authedUserAccessToken = workspaceUserIntegrations[0].authed_user_access_token;
+        if (!authedUserAccessToken) {
+            console.log(chalk.yellow('No authed user access token found for user'));
+            return;
+        }
+
         // Initialize Slack WebClient to fetch additional data
-        const client = new WebClient(slackIntegration.access_token, {
+        const client = new WebClient(authedUserAccessToken, {
             logLevel: LogLevel.INFO
         });
 
@@ -549,6 +594,7 @@ async function handleSlackMessage(event: SlackMessageEvent, teamId: string) {
             threadTimestamp: event.thread_ts,
             teamId: teamId,
             permalink: permalink,
+            channelType: event.channel_type
         };
 
         // Create SlackEvent once
