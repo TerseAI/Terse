@@ -354,7 +354,7 @@ model automation_slack_configs {
 
   channel_id   String? // Channel ID (required for outputs, optional for inputs)
   channel_name String? // Channel display name (for UI, optional)
-  listen_to_user_dms Boolean? // This integration should include listening to user DMs
+  listen_to_user_dms Boolean @default(false) // This integration should include listening to user DMs
 
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
