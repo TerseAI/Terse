@@ -11,7 +11,7 @@ import { MessageCircle } from "lucide-react";
 import { AutomationUpdate } from "@/shared/types";
 import { toast } from "sonner";
 import { getDefaultAutomationName } from "@/utility/AutomationUtils";
-import { Integration } from "@/types/Integration";
+import { isInputComplete, isOutputComplete } from "@/utility/IntegrationUtils";
 
 function PromptSection() {
     const { prompt, setPrompt } = useAutomationContext();
@@ -135,20 +135,12 @@ function SaveAutomationButton({ defaultName }: { defaultName: string | null }) {
     const [saveSuccess, setSaveSuccess] = useState(false);
 
     // Validation: all required fields must be present
-    // Note: Config (notionConfig, slackConfig) is optional - defaults are used if not provided
-    // Figma requires fileKey in figmaConfig
+    // Each integration reports its own completeness
     const isComplete =
         inputs.length > 0 &&
-        inputs.every(i => {
-            if (!i.integration || !i.integrationId) return false;
-            // For Figma, require fileKey
-            if (i.integration === Integration.FIGMA && !i.figmaConfig?.fileKey) {
-                return false;
-            }
-            return true;
-        }) &&
-        !!output && !!output.integration && !!output.integrationId &&
-        !!prompt?.text; // Ensure name is not empty
+        inputs.every(i => isInputComplete(i)) &&
+        !!output && isOutputComplete(output) &&
+        !!prompt?.text; // Ensure prompt is not empty
 
     const isEditMode = !!automationId;
 
@@ -177,15 +169,13 @@ function SaveAutomationButton({ defaultName }: { defaultName: string | null }) {
                     }
                     if (i.figmaConfig) {
                         console.log('Figma config found:', i.figmaConfig);
-                        // Validate that figmaConfig has fileKey before including it
-                        if (i.figmaConfig.fileKey) {
+                        // Validate that figmaConfig has both fileKey and teamId before including it
+                        if (i.figmaConfig.fileKey && i.figmaConfig.teamId) {
                             inputData.figmaConfig = i.figmaConfig;
-                            console.log('Including figmaConfig with fileKey:', i.figmaConfig.fileKey);
+                            console.log('Including figmaConfig with fileKey and teamId:', i.figmaConfig);
                         } else {
-                            console.warn('Figma config missing fileKey, skipping:', i.figmaConfig);
+                            console.warn('Figma config missing fileKey or teamId, skipping:', i.figmaConfig);
                         }
-                    } else {
-                        console.log('No figmaConfig for input:', i.integration);
                     }
                     
                     return inputData;

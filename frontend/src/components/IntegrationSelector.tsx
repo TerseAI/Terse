@@ -307,10 +307,12 @@ export function IntegrationSelector({
                         integrationId={selectedIntegrationId}
                         selectedFileKey={figmaConfig?.fileKey}
                         selectedFileName={figmaConfig?.fileName}
-                        onSelect={(fileKey, fileName) => {
+                        selectedTeamId={figmaConfig?.teamId}
+                        onSelect={(fileKey, fileName, teamId) => {
                             onFigmaConfigChange({
                                 fileKey,
-                                fileName
+                                fileName,
+                                teamId
                             });
                         }}
                     />

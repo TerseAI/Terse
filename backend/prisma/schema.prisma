@@ -234,23 +234,27 @@ model processed_figma_comments {
 }
 
 // Track Figma webhooks created for automations
+// Team-level webhooks: one per team per event type per integration
+// Multiple automations can share the same team-level webhook
 model figma_webhooks {
   id                   String   @id @default(cuid())
   figma_integration_id String
-  automation_input_id  String
+  automation_input_id  String? // Optional: tracks which automation created it (nullable for shared webhooks)
   webhook_id           String // Figma's webhook ID
-  file_key              String // File being monitored
-  team_id               String? // Team ID (if webhook is team-level)
-  endpoint_url          String // Our webhook endpoint URL
-  created_at            DateTime @default(now())
-  updated_at            DateTime @updatedAt
+  team_id              String // Team ID (required for team-level webhooks)
+  endpoint_url         String // Our webhook endpoint URL
+  passcode             String // Secure passcode for webhook verification
+  event_type           String @default("FILE_UPDATE") // Event type: FILE_COMMENT or FILE_UPDATE
+  created_at           DateTime @default(now())
+  updated_at           DateTime @updatedAt
 
   figma_integration figma_integrations @relation(fields: [figma_integration_id], references: [id], onDelete: Cascade)
 
-  @@unique([automation_input_id]) // One webhook per automation input
+  @@unique([figma_integration_id, team_id, event_type]) // One webhook per team per event type per integration
   @@index([figma_integration_id])
-  @@index([file_key])
+  @@index([team_id])
   @@index([webhook_id])
+  @@index([event_type])
 }
 
 // Store enriched comment context for AI/documentation
