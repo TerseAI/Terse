@@ -133,6 +133,7 @@ export type SlackChannel = {
   name: string;
   isPrivate: boolean;
   isArchived: boolean;
+  isMPIM: boolean;
 };
 
 export type SlackChannelsResponse = {
@@ -155,6 +156,7 @@ export type IntegrationsStatus = {
 export type SlackConfig = {
   channelId?: string;
   channelName?: string;
+  listenToUserDms?: boolean;
 };
 
 export type NotionConfig = {

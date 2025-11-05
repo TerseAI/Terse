@@ -1,5 +1,6 @@
 # Terse - The best Tool For Keeping Notion Up to Date With External Data
 
+
 ## Database Migrations
 
 We use Prisma with migrations.
