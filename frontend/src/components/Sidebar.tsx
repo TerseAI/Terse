@@ -1,4 +1,4 @@
-import { ChevronDown, ChevronUp, Home, User2, Zap } from "lucide-react"
+import { ChevronDown, ChevronUp, Home, Plus, User2, Zap } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
 import {
     Sidebar,
@@ -193,6 +193,7 @@ function AutomationsList({ automations, loading }: AutomationsListProps) {
             {automations.map((automation) => (
                 <AutomationListItem key={automation.id} automation={automation} />
             ))}
+            <AddAutomationListItem />
         </>
     )
 }
@@ -211,6 +212,24 @@ function AutomationListItem({ automation }: AutomationListItemProps) {
                 <SidebarMenuSubButton asChild data-active={isActive}>
                     <Link to={`/app/automations/${automation.id}`}>
                         <span>{automation.name}</span>
+                    </Link>
+                </SidebarMenuSubButton>
+            </SidebarMenuSubItem>
+        </SidebarMenuSub>
+    )
+}
+
+function AddAutomationListItem() {
+    return (
+        <SidebarMenuSub>
+            <SidebarMenuSubItem>
+                <SidebarMenuSubButton 
+                    asChild
+                    className="border border-sidebar-border bg-sidebar-accent/50 hover:bg-sidebar-accent hover:border-sidebar-accent font-medium shadow-sm mt-2"
+                >
+                    <Link to={`/app/automations/new`}>
+                        <Plus className="h-5 w-5" />
+                        <span>New Automation</span>
                     </Link>
                 </SidebarMenuSubButton>
             </SidebarMenuSubItem>

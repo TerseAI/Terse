@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 
 export function PromptSection() {
-    const { isLoading } = useAutomationContext();
+    // const { isLoading } = useAutomationContext();
     return (
         <SectionLayout title="Prompt" subtitle="The AI will use this prompt to generate the output" icon={<MessageCircle className="w-5 h-5 text-sidebar-primary" />}>
             <PromptDialog />
