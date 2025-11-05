@@ -32,7 +32,7 @@ function PromptDialog() {
                     <DialogTitle>Edit Prompt</DialogTitle>
                 </DialogHeader>
                 <Textarea
-                    value={prompt?.text || ''}
+                    value={content}
                     onChange={(e) => setContent(e.target.value)}
                     placeholder='e.g., "Summarize all commits and update the changelog", "Create a weekly progress report", etc.'
                 />
