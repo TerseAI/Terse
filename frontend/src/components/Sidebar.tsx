@@ -50,11 +50,6 @@ const SettingsItems: NavItem[] = [
         url: "/app/integrations",
         icon: Plug,
     },
-    {
-        title: "Account",
-        url: "/app/account",
-        icon: User2,
-    },
 ]
 
 export function AppSidebar() {

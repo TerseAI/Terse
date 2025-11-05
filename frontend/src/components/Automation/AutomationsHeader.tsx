@@ -12,7 +12,7 @@ export function AutomationsHeader({ onCreateNew }: AutomationsHeaderProps) {
             <Button
                 variant="secondary"
                 onClick={onCreateNew}
-                className="col-span-4 inline-flex items-center justify-center"
+                className="col-span-4"
             >
                 <Plus className="h-5 w-5" />
                 New Automation
