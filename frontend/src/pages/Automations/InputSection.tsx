@@ -10,7 +10,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardAction, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { IntegrationTitle } from "./components/IntegrationTitle";
-import { Spinner } from "@/components/ui/spinner";
 
 export function InputsSection() {
     const { inputs, setInputs, isLoading } = useAutomationContext();
@@ -44,15 +43,12 @@ export function InputsSection() {
         setInputs([]);
     };
 
-    if (isLoading) {
-        return <Spinner />;
-    }
-
     return (
         <SectionLayout
             title="Listen For Events"
             subtitle="Choose which integration triggers this automation"
             icon={<Zap className="w-5 h-5 text-primary" />}
+            isLoading={isLoading}
         >
             {!input ? (
                 <EmptyInputSection onCreateNew={() => setShowAddModal(true)} />
