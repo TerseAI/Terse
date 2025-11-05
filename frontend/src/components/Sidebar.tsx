@@ -1,4 +1,4 @@
-import { ChevronDown, ChevronUp, Home, MoreHorizontal, User2, Zap } from "lucide-react"
+import { ChevronDown, ChevronUp, Home, MoreHorizontal, Plug, User2, Zap } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
 import {
     Sidebar,
@@ -31,7 +31,7 @@ interface NavItem {
     icon: LucideIcon;
 }
 
-const items: NavItem[] = [
+const ApplicationItems: NavItem[] = [
     {
         title: "Home",
         url: "/app",
@@ -41,6 +41,19 @@ const items: NavItem[] = [
         title: "Automations",
         url: "/app/automations",
         icon: Zap,
+    }
+]
+
+const SettingsItems: NavItem[] = [
+    {
+        title: "Integrations",
+        url: "/app/integrations",
+        icon: Plug,
+    },
+    {
+        title: "Account",
+        url: "/app/account",
+        icon: User2,
     },
 ]
 
@@ -71,7 +84,14 @@ export function AppSidebar() {
                 <SidebarGroup>
                     <SidebarGroupLabel>Application</SidebarGroupLabel>
                     <SidebarGroupContent>
-                        <SidebarNavigation automations={automations} loading={loading} />
+                        <ApplicationNavigation automations={automations} loading={loading} />
+                    </SidebarGroupContent>
+                </SidebarGroup>
+
+                <SidebarGroup>
+                    <SidebarGroupLabel>Settings</SidebarGroupLabel>
+                    <SidebarGroupContent>
+                        <SettingsNavigation />
                     </SidebarGroupContent>
                 </SidebarGroup>
             </SidebarContent>
@@ -80,17 +100,17 @@ export function AppSidebar() {
     )
 }
 
-interface SidebarNavigationProps {
+interface ApplicationNavigationProps {
     automations: Automation[];
     loading: boolean;
 }
 
-function SidebarNavigation({ automations, loading }: SidebarNavigationProps) {
+function ApplicationNavigation({ automations, loading }: ApplicationNavigationProps) {
     const location = useLocation();
 
     return (
         <SidebarMenu>
-            {items.map((item) => (
+            {ApplicationItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
                     <SidebarMenuButton asChild data-active={location.pathname === item.url}>
                         <Link to={item.url}>
@@ -104,6 +124,25 @@ function SidebarNavigation({ automations, loading }: SidebarNavigationProps) {
                     {item.title === "Automations" && (
                         <AutomationsList automations={automations} loading={loading} />
                     )}
+                </SidebarMenuItem>
+            ))}
+        </SidebarMenu>
+    )
+}
+
+function SettingsNavigation() {
+    const location = useLocation();
+
+    return (
+        <SidebarMenu>
+            {SettingsItems.map((item) => (
+                <SidebarMenuItem>
+                    <SidebarMenuButton asChild data-active={location.pathname === item.url}>
+                        <Link to={item.url}>
+                            <item.icon />
+                            <span>{item.title}</span>
+                        </Link>
+                    </SidebarMenuButton>
                 </SidebarMenuItem>
             ))}
         </SidebarMenu>

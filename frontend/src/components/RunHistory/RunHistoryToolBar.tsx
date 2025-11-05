@@ -57,12 +57,30 @@ export default function RunHistoryToolBar({
 
     return (
         <div className="mb-6 space-y-4 relative">
-            <div className="mb-4 text-muted-foreground">
-                Showing {filteredCount === 0 ? 0 : startIndex + 1}-{Math.min(startIndex + runsPerPage, filteredCount)} of {filteredCount} runs
+            <div className="mb-4 flex justify-between">
+                <div className="flex items-center gap-2 text-muted-foreground">
+                    Showing {filteredCount === 0 ? 0 : startIndex + 1}-{Math.min(startIndex + runsPerPage, filteredCount)} of {filteredCount} runs
+                </div>
+                <div className="flex items-center gap-2">
+                    <span className="text-muted-foreground text-sm">Runs per page:</span>
+                    <Select
+                        value={String(runsPerPageValue)}
+                        onValueChange={(value) => onRunsPerPageChange(Number(value))}
+                    >
+                        <SelectTrigger className="w-20">
+                            <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="10">10</SelectItem>
+                            <SelectItem value="25">25</SelectItem>
+                            <SelectItem value="100">100</SelectItem>
+                        </SelectContent>
+                    </Select>
+                </div>
             </div>
 
             <div className="flex items-center justify-between gap-4">
-               <SearchBar searchQuery={searchQuery} onSearchChange={onSearchChange} placeholder="Search runs..." />
+                <SearchBar searchQuery={searchQuery} onSearchChange={onSearchChange} placeholder="Search runs..." />
 
                 <div className="flex items-center gap-4">
                     <DateRangePicker
@@ -98,23 +116,6 @@ export default function RunHistoryToolBar({
                         totalPages={totalPages}
                         onPageChange={onPageChange}
                     />
-                </div>
-
-                <div className="flex items-center gap-2">
-                    <span className="text-muted-foreground text-sm">Runs per page:</span>
-                    <Select
-                        value={String(runsPerPageValue)}
-                        onValueChange={(value) => onRunsPerPageChange(Number(value))}
-                    >
-                        <SelectTrigger className="w-20">
-                            <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="10">10</SelectItem>
-                            <SelectItem value="25">25</SelectItem>
-                            <SelectItem value="100">100</SelectItem>
-                        </SelectContent>
-                    </Select>
                 </div>
             </div>
         </div>
