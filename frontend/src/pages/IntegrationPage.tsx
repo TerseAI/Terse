@@ -1,21 +1,36 @@
-import { useIntegrations, IntegrationProvider, IntegrationMetadata, Integration } from "@/context/Integrations";
-import IntegrationCard from "@/components/Integrations/IntegrationCard";
+import { useIntegrations, IntegrationMetadata, Integration } from "@/context/Integrations";
+import IntegrationCard, { IntegrationCardSkeleton } from "@/components/Integrations/IntegrationCard";
 
 function IntegrationPage() {
-    const { integrations } = useIntegrations();
-
+    const { integrations, isLoading } = useIntegrations();
     const filteredIntegrations = removeDuplicateNotionIntegrations(integrations);
+
     return (
-        <IntegrationProvider>
-            <div className="flex flex-col h-full p-4">
-                <h1 className="text-xl font-bold text-foreground mb-10">Active Integrations</h1>
-                <div className="flex flex-row flex-wrap">
-                    {filteredIntegrations.map((integration) => (
-                        <IntegrationCard key={integration.type} integration={integration.type} integrationId={integration.integrationId} />
-                    ))}
-                </div>
+        <div className="flex flex-col h-full p-4">
+            <h1 className="text-xl font-bold text-foreground mb-10">Active Integrations</h1>
+            <div className="flex flex-row flex-wrap gap-12">
+                <IntegrationContent integrations={filteredIntegrations} isLoading={isLoading} />
             </div>
-        </IntegrationProvider>
+        </div>
+    )
+}
+
+function IntegrationContent({ integrations, isLoading }: { integrations: IntegrationMetadata[], isLoading: boolean }) {
+    if (isLoading) {
+        return (
+            <>
+                {Array.from({ length: 3 }).map((_, index) => (
+                    <IntegrationCardSkeleton key={index} />
+                ))}
+            </>
+        )
+    }
+    return (
+        <>
+            {integrations.map((integration) => (
+                <IntegrationCard key={integration.type} integration={integration.type} integrationId={integration.integrationId} />
+            ))}
+        </>
     )
 }
 
