@@ -1,7 +1,6 @@
 import chalk from 'chalk';
 import { IntegrationType } from '@prisma/client';
 import { db } from '../prismaClient';
-import { SlackInputSetup } from './handlers/SlackInputSetup';
 import { FigmaInputSetup } from './handlers/FigmaInputSetup';
 
 /**
@@ -33,7 +32,6 @@ export interface InputSetupHandler {
 export class AutomationInputSetup {
     // Only register handlers that actually do something
     private static handlers = new Map<IntegrationType, InputSetupHandler>([
-        [IntegrationType.SLACK, new SlackInputSetup()],
         [IntegrationType.FIGMA, new FigmaInputSetup()],
     ]);
 
@@ -82,10 +80,8 @@ export class AutomationInputSetup {
                             ),
                             error
                         );
-                        // Continue with other inputs even if one fails
                     }
                 }
-                // If no handler, skip silently - most integrations don't need setup
             }
         } catch (error) {
             console.error(chalk.red('❌ Error in setupAutomationInputs:'), error);

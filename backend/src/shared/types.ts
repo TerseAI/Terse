@@ -189,6 +189,12 @@ export type GmailConfig = {
   // Currently empty, but typed for future extensibility
 };
 
+export type FigmaConfig = {
+  fileKey: string;
+  fileName?: string; // Optional display name
+  teamId?: string; // Figma team ID (required for webhook creation)
+};
+
 export type AutomationInput = {
   integration: string;
   integrationId?: string;
@@ -199,6 +205,7 @@ export type AutomationInput = {
   jiraConfig?: JiraConfig;
   githubConfig?: GitHubConfig;
   gmailConfig?: GmailConfig;
+  figmaConfig?: FigmaConfig;
 };
 
 export type AutomationOutput = {
@@ -212,6 +219,7 @@ export type AutomationOutput = {
   jiraConfig?: JiraConfig;
   githubConfig?: GitHubConfig;
   gmailConfig?: GmailConfig;
+  figmaConfig?: FigmaConfig;
 };
 
 export type AutomationPrompt = {

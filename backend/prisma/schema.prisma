@@ -561,6 +561,7 @@ model automation_figma_configs {
 
   file_key   String // Figma file key (required for inputs - specifies which file to monitor)
   file_name String? // File display name (for UI, optional)
+  team_id   String? // Figma team ID (required for webhook creation)
 
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
@@ -569,6 +570,7 @@ model automation_figma_configs {
   automation_output automation_outputs? @relation(fields: [automation_output_id], references: [id], onDelete: Cascade)
 
   @@index([file_key])
+  @@index([team_id])
 }
 
 enum TicketEventType {

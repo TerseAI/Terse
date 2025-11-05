@@ -4,6 +4,7 @@ import { Automation, AutomationInput, AutomationOutput, AutomationPrompt } from 
 import { IntegrationType } from "@prisma/client";
 import { parsePageParams } from "../utility/pagination";
 import chalk from "chalk";
+import { AutomationInputSetup } from "../setup/AutomationInputSetup";
 
 // Map frontend integration string to backend IntegrationType enum
 const integrationTypeMap: Record<string, IntegrationType> = {
@@ -103,6 +104,7 @@ async function createInputConfig(
                     automation_input_id: inputId,
                     file_key: config.figmaConfig.fileKey,
                     file_name: config.figmaConfig.fileName || null,
+                    team_id: config.figmaConfig.teamId || null,
                 },
             });
             break;
@@ -197,6 +199,7 @@ async function createOutputConfig(
                         automation_output_id: outputId,
                         file_key: config.figmaConfig.fileKey || null,
                         file_name: config.figmaConfig.fileName || null,
+                        team_id: config.figmaConfig.teamId || null,
                     },
                 });
             }
@@ -248,6 +251,7 @@ function transformInputConfig(input: any): AutomationInput {
         base.figmaConfig = {
             fileKey: input.figma_config.file_key || undefined,
             fileName: input.figma_config.file_name || undefined,
+            teamId: input.figma_config.team_id || undefined,
         };
     }
 
@@ -303,6 +307,7 @@ function transformOutputConfig(output: any): AutomationOutput {
         base.figmaConfig = {
             fileKey: output.figma_config.file_key || undefined,
             fileName: output.figma_config.file_name || undefined,
+            teamId: output.figma_config.team_id || undefined,
         };
     }
 
@@ -655,6 +660,9 @@ export async function createAutomation(req: Request, res: Response) {
             return newAutomation;
         });
 
+        // Set up automation inputs (e.g., create webhooks for Figma)
+        await AutomationInputSetup.setupAutomationInputs(automation.id);
+
         res.status(201).json({ success: true, id: automation.id });
     } catch (error) {
         console.error('Error creating automation:', error);
@@ -687,6 +695,9 @@ export async function saveAutomation(req: Request, res: Response) {
         });
 
         if (existingAutomation) {
+            // Tear down old inputs before updating
+            await AutomationInputSetup.tearDownAutomationInputs(existingAutomation.id);
+
             // Update existing automation
             await prisma.$transaction(async (tx) => {
                 // Delete old inputs and output
@@ -777,6 +788,9 @@ export async function saveAutomation(req: Request, res: Response) {
                 await createOutputConfig(tx, newOutput.id, outputIntegrationType, output);
             });
 
+            // Set up new automation inputs after update
+            await AutomationInputSetup.setupAutomationInputs(existingAutomation.id);
+
             res.status(200).json({ success: true, id: existingAutomation.id });
         } else {
             // Create new automation
@@ -857,6 +871,9 @@ export async function saveAutomation(req: Request, res: Response) {
 
                 return newAutomation;
             });
+
+            // Set up automation inputs (e.g., create webhooks for Figma)
+            await AutomationInputSetup.setupAutomationInputs(automation.id);
 
             res.status(201).json({ success: true, id: automation.id });
         }
@@ -997,6 +1014,9 @@ export async function updateAutomation(req: Request, res: Response) {
             }
         });
 
+        // Set up automation inputs (e.g., create webhooks for Figma)
+        await AutomationInputSetup.setupAutomationInputs(automationId);
+
         res.status(200).json({ success: true, id: automationId });
     } catch (error) {
         console.error('Error updating automation:', error);
@@ -1029,6 +1049,9 @@ export async function deleteAutomation(req: Request, res: Response) {
             res.status(404).json({ error: 'Automation not found' });
             return;
         }
+
+        // Tear down automation inputs (e.g., delete webhooks for Figma)
+        await AutomationInputSetup.tearDownAutomationInputs(automationId);
 
         // Delete automation (cascade will delete related records)
         await prisma.automations.delete({

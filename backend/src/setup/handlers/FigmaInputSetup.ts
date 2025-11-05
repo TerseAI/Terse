@@ -27,8 +27,6 @@ export class FigmaInputSetup implements InputSetupHandler {
             where: { id: integrationId },
         });
 
-        console.log({ figmaIntegration, fileKey });
-
         if (!figmaIntegration) {
             console.log(chalk.yellow(`⚠️  Figma integration not found: ${integrationId}`));
             return;
@@ -44,117 +42,18 @@ export class FigmaInputSetup implements InputSetupHandler {
             return;
         }
 
+        // Get team ID from config - required for webhook creation
+        const teamId = automationInput.figma_config.team_id;
+
+        if (!teamId) {
+            throw new Error(`team_id is required for creating Figma webhooks. Please provide a team ID in the Figma configuration for file ${fileKey}.`);
+        }
+
         // Build webhook endpoint URL
         const webhookEndpoint = `${process.env.BACKEND_URL || process.env.FRONTEND_URL?.replace(/\/$/, '') || 'http://localhost:3001'}/webhooks/figma`;
 
         try {
             const accessToken = figmaIntegration.access_token;
-
-            // Get team ID from config if available, otherwise fetch from file metadata
-            let teamId = automationInput.figma_config?.team_id;
-
-            // If team_id is not in config, fetch it from file metadata or project
-            if (!teamId) {
-                console.log(chalk.blue(`🔍 Fetching team_id for file ${fileKey} from Figma API...`));
-                const metadataResponse = await fetch(`https://api.figma.com/v1/files/${fileKey}`, {
-                    method: 'GET',
-                    headers: {
-                        'Authorization': `Bearer ${accessToken}`,
-                    },
-                });
-
-
-                if (metadataResponse.ok) {
-                    const metadata = await metadataResponse.json();
-                    console.log({ metadata });
-                    // File metadata structure can vary - try multiple possible locations
-                    teamId = metadata.project?.team_id || 
-                             metadata.team_id || 
-                             metadata.team?.id ||
-                             null;
-                    
-                    if (teamId) {
-                        console.log(chalk.blue(`✅ Found team_id: ${teamId} for file ${fileKey}`));
-                    } else {
-                        // If we still don't have team_id, try fetching user's teams and matching
-                        console.log(chalk.blue(`🔍 Attempting to find team by listing user's teams...`));
-                        try {
-                            const teamsResponse = await fetch('https://api.figma.com/v2/teams', {
-                                method: 'GET',
-                                headers: {
-                                    'Authorization': `Bearer ${accessToken}`,
-                                },
-                            });
-                            
-                            if (teamsResponse.ok) {
-                                const teamsData = await teamsResponse.json();
-                                const teams = teamsData.teams || [];
-                                
-                                // Try to find which team contains this file by checking projects
-                                for (const team of teams) {
-                                    try {
-                                        const projectsResponse = await fetch(`https://api.figma.com/v2/teams/${team.id}/projects`, {
-                                            method: 'GET',
-                                            headers: {
-                                                'Authorization': `Bearer ${accessToken}`,
-                                            },
-                                        });
-                                        
-                                        if (projectsResponse.ok) {
-                                            const projectsData = await projectsResponse.json();
-                                            const projects = projectsData.projects || [];
-                                            
-                                            // Check if any project contains our file
-                                            for (const project of projects) {
-                                                try {
-                                                    const projectFilesResponse = await fetch(`https://api.figma.com/v2/projects/${project.id}/files`, {
-                                                        method: 'GET',
-                                                        headers: {
-                                                            'Authorization': `Bearer ${accessToken}`,
-                                                        },
-                                                    });
-                                                    
-                                                    if (projectFilesResponse.ok) {
-                                                        const filesData = await projectFilesResponse.json();
-                                                        const files = filesData.files || [];
-                                                        if (files.some((f: any) => f.key === fileKey)) {
-                                                            teamId = team.id;
-                                                            console.log(chalk.blue(`✅ Found team_id: ${teamId} by matching file in team ${team.name}`));
-                                                            break;
-                                                        }
-                                                    }
-                                                } catch (error) {
-                                                    // Continue checking other projects
-                                                }
-                                                
-                                                if (teamId) break;
-                                            }
-                                        }
-                                    } catch (error) {
-                                        // Continue checking other teams
-                                    }
-                                    
-                                    if (teamId) break;
-                                }
-                            }
-                        } catch (error) {
-                            console.log(chalk.yellow(`⚠️  Could not fetch teams: ${error}`));
-                        }
-                        
-                        if (!teamId) {
-                            console.log(chalk.yellow(`⚠️  Could not find team_id for file ${fileKey}`));
-                        }
-                    }
-                } else {
-                    const errorText = await metadataResponse.text();
-                    console.error(chalk.yellow(`⚠️  Failed to fetch file metadata: ${errorText}`));
-                }
-            }
-
-            // team_id is required for Figma webhooks
-            if (!teamId) {
-                throw new Error(`team_id is required for creating Figma webhooks. Could not find team_id for file ${fileKey}.`);
-            }
 
             // Create webhook in Figma
             // Note: Figma webhooks can be created at team or file level
@@ -193,7 +92,7 @@ export class FigmaInputSetup implements InputSetupHandler {
                     automation_input_id: automationInput.id,
                     webhook_id: webhookId,
                     file_key: fileKey,
-                    team_id: teamId || null,
+                    team_id: teamId,
                     endpoint_url: webhookEndpoint,
                 },
             });
