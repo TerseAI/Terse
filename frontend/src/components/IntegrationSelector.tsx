@@ -276,10 +276,24 @@ export function IntegrationSelector({
                     <SlackChannelSelector
                         integrationId={selectedIntegrationId}
                         selectedChannelId={slackConfig?.channelId}
+                        listenToUserDms={slackConfig?.listenToUserDms}
                         onSelect={(channelId, channelName) => {
+                            const hasChannel = channelId && channelId.trim() !== '';
                             onSlackConfigChange({
-                                channelId,
-                                channelName
+                                ...slackConfig,
+                                channelId: hasChannel ? channelId : undefined,
+                                channelName: hasChannel ? channelName : undefined,
+                                // Clear listenToUserDms when a channel is selected
+                                listenToUserDms: hasChannel ? false : slackConfig?.listenToUserDms
+                            });
+                        }}
+                        onListenToUserDmsChange={(listenToUserDms) => {
+                            onSlackConfigChange({
+                                ...slackConfig,
+                                listenToUserDms,
+                                // Clear channelId when DMs are selected
+                                channelId: listenToUserDms ? undefined : slackConfig?.channelId,
+                                channelName: listenToUserDms ? undefined : slackConfig?.channelName
                             });
                         }}
                     />
