@@ -15,6 +15,7 @@ import { AuthProvider, useAuth } from "./services/auth";
 import { SidebarProvider } from "./components/ui/sidebar";
 import { ThemeProvider } from "./components/theme-provider";
 import { Toaster } from "./components/ui/sonner";
+import IntegrationPage from "./pages/IntegrationPage";
 
 function App() {
   return (
@@ -30,6 +31,7 @@ function App() {
               <Route path="automations" element={<AutomationsList />} />
               <Route path="automations/new" element={<Automations />} />
               <Route path="automations/:id" element={<Automations />} />
+              <Route path="integrations" element={<IntegrationPage />} /> 
             </Route>
             <Route path="/changelog" element={<LandingPageChangelog />} />
             <Route path="/oauth/success" element={<OAuthSuccess />} />
