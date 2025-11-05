@@ -7,7 +7,7 @@ interface AutomationsHeaderProps {
 
 export function AutomationsHeader({ onCreateNew }: AutomationsHeaderProps) {
     return (
-        <div className="grid grid-cols-20 sm:grid-flow-row sm:items-center sm:justify-between gap-4 pt-1">
+        <div className="grid grid-cols-20 sm:grid-flow-row sm:items-center sm:justify-between gap-4">
             <h1 className="text-xl font-bold text-foreground col-span-16">Automations</h1>
             <Button
                 variant="secondary"
