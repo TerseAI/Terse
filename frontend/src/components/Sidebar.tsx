@@ -1,4 +1,4 @@
-import { ChevronDown, ChevronUp, Home, Plus, User2, Zap } from "lucide-react"
+import { ChevronDown, ChevronUp, Home, MoreHorizontal, User2, Zap } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
 import {
     Sidebar,
@@ -9,6 +9,7 @@ import {
     SidebarGroupLabel,
     SidebarHeader,
     SidebarMenu,
+    SidebarMenuAction,
     SidebarMenuButton,
     SidebarMenuItem,
     SidebarMenuSkeleton,
@@ -79,6 +80,84 @@ export function AppSidebar() {
     )
 }
 
+interface SidebarNavigationProps {
+    automations: Automation[];
+    loading: boolean;
+}
+
+function SidebarNavigation({ automations, loading }: SidebarNavigationProps) {
+    const location = useLocation();
+
+    return (
+        <SidebarMenu>
+            {items.map((item) => (
+                <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton asChild data-active={location.pathname === item.url}>
+                        <Link to={item.url}>
+                            <item.icon />
+                            <span>{item.title}</span>
+                        </Link>
+                    </SidebarMenuButton>
+                    {item.title === "Automations" &&
+                        <AutomationDropdownMenu />
+                    }
+                    {item.title === "Automations" && (
+                        <AutomationsList automations={automations} loading={loading} />
+                    )}
+                </SidebarMenuItem>
+            ))}
+        </SidebarMenu>
+    )
+}
+
+interface AutomationsListProps {
+    automations: Automation[];
+    loading: boolean;
+}
+function AutomationsList({ automations, loading }: AutomationsListProps) {
+    if (loading) {
+        return (
+            <SidebarMenuSub>
+                <SidebarMenuSubItem>
+                    <SidebarMenuSkeleton />
+                </SidebarMenuSubItem>
+                <SidebarMenuSubItem>
+                    <SidebarMenuSkeleton />
+                </SidebarMenuSubItem>
+                <SidebarMenuSubItem>
+                    <SidebarMenuSkeleton />
+                </SidebarMenuSubItem>
+            </SidebarMenuSub>
+        )
+    }
+
+    return (
+        <>
+            {automations.map((automation) => (
+                <AutomationListItem key={automation.id} automation={automation} />
+            ))}
+        </>
+    )
+}
+
+function AutomationDropdownMenu() {
+    const navigate = useNavigate();
+    return (
+        <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+                <SidebarMenuAction>
+                    <MoreHorizontal />
+                </SidebarMenuAction>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent side="right" align="start">
+                <DropdownMenuItem>
+                    <span onClick={() => navigate('/app/automations/new')}>New Automation</span>
+                </DropdownMenuItem>
+            </DropdownMenuContent>
+        </DropdownMenu>
+    )
+}
+
 function AppSidebarHeader() {
     return (
         <SidebarHeader>
@@ -139,65 +218,6 @@ function AppSidebarFooter() {
     )
 }
 
-interface SidebarNavigationProps {
-    automations: Automation[];
-    loading: boolean;
-}
-
-function SidebarNavigation({ automations, loading }: SidebarNavigationProps) {
-    const location = useLocation();
-
-    return (
-        <SidebarMenu>
-            {items.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton asChild data-active={location.pathname === item.url}>
-                        <Link to={item.url}>
-                            <item.icon />
-                            <span>{item.title}</span>
-                        </Link>
-                    </SidebarMenuButton>
-                    {item.title === "Automations" && (
-                        <AutomationsList automations={automations} loading={loading} />
-                    )}
-                </SidebarMenuItem>
-            ))}
-        </SidebarMenu>
-    )
-}
-
-interface AutomationsListProps {
-    automations: Automation[];
-    loading: boolean;
-}
-
-function AutomationsList({ automations, loading }: AutomationsListProps) {
-    if (loading) {
-        return (
-            <SidebarMenuSub>
-                <SidebarMenuSubItem>
-                    <SidebarMenuSkeleton />
-                </SidebarMenuSubItem>
-                <SidebarMenuSubItem>
-                    <SidebarMenuSkeleton />
-                </SidebarMenuSubItem>
-                <SidebarMenuSubItem>
-                    <SidebarMenuSkeleton />
-                </SidebarMenuSubItem>
-            </SidebarMenuSub>
-        )
-    }
-
-    return (
-        <>
-            {automations.map((automation) => (
-                <AutomationListItem key={automation.id} automation={automation} />
-            ))}
-            <AddAutomationListItem />
-        </>
-    )
-}
-
 interface AutomationListItemProps {
     automation: Automation;
 }
@@ -212,24 +232,6 @@ function AutomationListItem({ automation }: AutomationListItemProps) {
                 <SidebarMenuSubButton asChild data-active={isActive}>
                     <Link to={`/app/automations/${automation.id}`}>
                         <span>{automation.name}</span>
-                    </Link>
-                </SidebarMenuSubButton>
-            </SidebarMenuSubItem>
-        </SidebarMenuSub>
-    )
-}
-
-function AddAutomationListItem() {
-    return (
-        <SidebarMenuSub>
-            <SidebarMenuSubItem>
-                <SidebarMenuSubButton 
-                    asChild
-                    className="border border-sidebar-border bg-sidebar-accent/50 hover:bg-sidebar-accent hover:border-sidebar-accent font-medium shadow-sm mt-2"
-                >
-                    <Link to={`/app/automations/new`}>
-                        <Plus className="h-5 w-5" />
-                        <span>New Automation</span>
                     </Link>
                 </SidebarMenuSubButton>
             </SidebarMenuSubItem>
