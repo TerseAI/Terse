@@ -200,6 +200,7 @@ export type GmailConfig = {
 export type FigmaConfig = {
   fileKey: string;
   fileName?: string; // Optional display name
+  teamId?: string; // Figma team ID (required for webhook creation)
 };
 
 export type AutomationInput = {

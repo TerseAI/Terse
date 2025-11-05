@@ -5,6 +5,7 @@ import { db } from "../prismaClient";
 import { FigmaCommentEvent, FigmaCommentEventData } from "../Updater/InputEvents";
 import { EventProcessor } from "../agent/AutomationAgent/EventProcessor";
 import { User } from "../types/prisma";
+import { IntegrationType } from "@prisma/client";
 
 // Helper function to get Figma access token for a user
 async function getFigmaAccessToken(userId: string): Promise<string> {
@@ -321,77 +322,370 @@ export const getFigmaOAuthUrl = async (req: Request, res: Response) => {
       chalk.magentaBright(JSON.stringify(req.body, null, 2))
     );
 
-    // Acknowledge immediately to prevent retries
-    res.status(200).json({ received: true });
-
     try {
       const webhookEvent = req.body;
+      const eventType = webhookEvent.event_type;
       
       // Figma webhook payload structure (based on Figma API docs)
-      // Event type: FILE_UPDATE with comment information
-      if (webhookEvent.event_type !== "FILE_UPDATE" || !webhookEvent.file_key) {
-        console.log(chalk.yellow("⚠️  Ignoring non-FILE_UPDATE event or missing file_key"));
+      // Supported event types: FILE_COMMENT (comments) and FILE_UPDATE (design changes)
+      if (!['FILE_COMMENT', 'FILE_UPDATE'].includes(eventType) || !webhookEvent.file_key) {
+        console.log(chalk.yellow(`⚠️  Ignoring unsupported event type ${eventType} or missing file_key`));
+        res.status(200).json({ received: true });
         return;
       }
 
       const fileKey = webhookEvent.file_key;
-      const teamId = webhookEvent.team_id;
+      const receivedPasscode = req.headers['x-figma-passcode'] || req.body.passcode;
 
-      // Find all integrations that have webhooks for this file
-      const webhooks = await db().figma_webhooks.findMany({
+      // Acknowledge immediately to prevent retries
+      res.status(200).json({ received: true });
+
+      // Find all active automations that match this file_key (regardless of team_id)
+      // Figma webhook events don't include team_id, so we match on file_key from automation_figma_configs
+      const matchingInputs = await db().automation_inputs.findMany({
         where: {
-          file_key: fileKey,
+          integration_type: IntegrationType.FIGMA,
+          automation: {
+            is_active: true,
+          },
+          figma_config: {
+            file_key: fileKey,
+          },
         },
         include: {
-          figma_integration: {
+          figma_config: true,
+          automation: {
             include: {
-              user: true,
+              prompt: true,
+              output: {
+                include: {
+                  figma_config: true,
+                },
+              },
+              user: {
+                include: {
+                  figma_integrations: true,
+                },
+              },
             },
           },
         },
       });
 
-      if (webhooks.length === 0) {
-        console.log(chalk.yellow(`⚠️  No webhooks found for file ${fileKey}`));
+      if (matchingInputs.length === 0) {
+        console.log(
+          chalk.yellow(
+            `⚠️  No active automations found for file ${fileKey}`
+          )
+        );
         return;
       }
 
-      // Fetch comments from Figma API to get the latest comment
-      // Note: We need to fetch the integration's access token
-      for (const webhook of webhooks) {
-        try {
-          const integration = webhook.figma_integration;
-          const accessToken = integration.access_token;
+      // Group automations by user/integration for processing
+      const automationsToProcess: Array<{
+        automationInputs: any[];
+        integration: any;
+      }> = [];
 
-          // Check if token is expired
-          if (integration.token_expiry && new Date() > integration.token_expiry) {
-            console.log(
-              chalk.red(`❌ Token expired for integration ${integration.id}, skipping`)
-            );
+      // Group by user and get their Figma integration
+      const userIntegrationMap = new Map<string, any>();
+      
+      for (const input of matchingInputs) {
+        const userId = input.automation.user_id;
+        
+        if (!userIntegrationMap.has(userId)) {
+          // Get the user's Figma integration
+          const integration = await db().figma_integrations.findFirst({
+            where: {
+              user_id: userId,
+            },
+            orderBy: {
+              created_at: 'desc',
+            },
+          });
+
+          if (!integration) {
+            console.log(chalk.yellow(`⚠️  No Figma integration found for user ${userId}`));
             continue;
           }
 
-          // Fetch comments for this file
-          const commentsResponse = await fetch(
-            `https://api.figma.com/v2/files/${fileKey}/comments`,
-            {
-              method: "GET",
-              headers: {
-                "Authorization": `Bearer ${accessToken}`,
-              },
-            }
+          userIntegrationMap.set(userId, integration);
+        }
+
+        const integration = userIntegrationMap.get(userId);
+        
+        // Find existing entry for this integration or create new one
+        let existingEntry = automationsToProcess.find(
+          entry => entry.integration.id === integration.id
+        );
+
+        if (!existingEntry) {
+          existingEntry = {
+            automationInputs: [],
+            integration: {
+              ...integration,
+              user: input.automation.user,
+            },
+          };
+          automationsToProcess.push(existingEntry);
+        }
+
+        existingEntry.automationInputs.push(input);
+      }
+
+      if (automationsToProcess.length === 0) {
+        console.log(
+          chalk.yellow(
+            `⚠️  No active automations with valid integrations found for file ${fileKey}`
+          )
+        );
+        return;
+      }
+
+      // Verify passcode if provided (check against any webhook for the integrations)
+      if (receivedPasscode) {
+        const integrationIds = automationsToProcess.map(a => a.integration.id);
+        const matchingWebhook = await db().figma_webhooks.findFirst({
+          where: {
+            figma_integration_id: { in: integrationIds },
+            passcode: receivedPasscode,
+            event_type: eventType,
+          },
+        });
+
+        if (!matchingWebhook) {
+          console.log(chalk.red(`❌ Invalid passcode for webhook`));
+          return; // Already acknowledged, just return
+        }
+        console.log(chalk.green(`✅ Passcode verified for webhook ${matchingWebhook.id}`));
+      } else {
+        console.log(chalk.yellow(`⚠️  No passcode provided in webhook request`));
+      }
+
+      // Process webhook based on event type
+      if (eventType === 'FILE_COMMENT') {
+        // FILE_COMMENT events contain comment data in the payload
+        await handleFigmaCommentEvent(automationsToProcess, webhookEvent, fileKey);
+      } else if (eventType === 'FILE_UPDATE') {
+        // FILE_UPDATE events indicate design changes - fetch comments and track changes
+        await handleFigmaFileUpdateEvent(automationsToProcess, webhookEvent, fileKey);
+      }
+    } catch (error) {
+      console.error(chalk.red("Error in handleFigmaWebhook:"), error);
+    }
+  }
+    } catch (error) {
+      console.error(chalk.red("Error in handleFigmaWebhook:"), error);
+    }
+  }
+
+  /**
+   * Internal helper to process a Figma comment and trigger automations
+   */
+  async function processFigmaCommentInternal(
+    integration: any,
+    comment: any,
+    fileKey: string,
+    accessToken: string,
+    automationInput: any
+  ) {
+    const commentId = comment.id;
+    console.log(
+      chalk.cyan(`New Figma comment received: ${commentId} on file ${fileKey}`)
+    );
+
+    // Fetch smart context (node + file metadata)
+    const nodeId = comment.client_meta?.node_id;
+    const context = await fetchCommentContext(accessToken, fileKey, nodeId);
+
+    // Store enriched context for AI/documentation
+    await db().figma_comment_context.create({
+      data: {
+        figma_integration_id: integration.id,
+        comment_id: commentId,
+        file_key: fileKey,
+        node_id: nodeId || null,
+        comment_data: comment,
+        node_context: context.nodeContext || null,
+        file_metadata: context.fileMetadata || null,
+      },
+    });
+
+    // Create event data
+    const eventData: FigmaCommentEventData = {
+      commentId: comment.id,
+      fileKey: fileKey,
+      fileUrl: `https://www.figma.com/file/${fileKey}`,
+      nodeId: nodeId,
+      message: comment.message,
+      author: {
+        id: comment.user.id,
+        handle: comment.user.handle || comment.user.email || "Unknown",
+        img_url: comment.user.img_url,
+      },
+      createdAt: comment.created_at,
+      resolved: comment.resolved_at !== null,
+      nodeContext: context.nodeContext,
+      fileMetadata: context.fileMetadata,
+    };
+
+    // Process the event through the automation system
+    const figmaEvent = new FigmaCommentEvent(eventData);
+    const eventProcessor = new EventProcessor(figmaEvent, integration.user as User);
+    const results = await eventProcessor.process();
+
+    // Log results
+    let hasSuccess = false;
+    for (const result of results) {
+      if (result.success) {
+        hasSuccess = true;
+        console.log(
+          chalk.green(
+            `✅ Automation "${result.automation?.name}" triggered for comment ${commentId}`
+          )
+        );
+      }
+    }
+
+    if (!hasSuccess) {
+      console.log(
+        chalk.yellow(
+          `No automations matched comment ${commentId} on file ${fileKey}`
+        )
+      );
+    }
+  }
+
+  /**
+   * Handle FILE_COMMENT webhook events
+   * Comment data is included in the webhook payload
+   */
+  async function handleFigmaCommentEvent(
+    automationsToProcess: Array<{
+      automationInputs: any[];
+      integration: any;
+    }>,
+    webhookEvent: any,
+    fileKey: string
+  ) {
+    const comment = webhookEvent.comment;
+    
+    if (!comment) {
+      console.log(chalk.yellow(`⚠️  FILE_COMMENT event missing comment data`));
+      return;
+    }
+
+    console.log(
+      chalk.blue(`📝 Processing FILE_COMMENT event for file ${fileKey}, comment ${comment.id}`)
+    );
+
+    for (const { integration, automationInputs } of automationsToProcess) {
+      try {
+        const accessToken = integration.access_token;
+
+        // Check if token is expired
+        if (integration.token_expiry && new Date() > integration.token_expiry) {
+          console.log(
+            chalk.red(`❌ Token expired for integration ${integration.id}, skipping`)
           );
+          continue;
+        }
 
-          if (!commentsResponse.ok) {
-            console.error(
-              chalk.red(`Failed to fetch comments for file ${fileKey}:`),
-              await commentsResponse.text()
-            );
+        const commentId = comment.id;
+        
+        // Check if we've already processed this comment
+        const existing = await db().processed_figma_comments.findFirst({
+          where: {
+            figma_integration_id: integration.id,
+            comment_id: commentId,
+          },
+        });
+
+        if (existing) {
+          console.log(chalk.blue(`ℹ️  Comment ${commentId} already processed`));
+          continue;
+        }
+
+        // Mark as processed
+        try {
+          await db().processed_figma_comments.create({
+            data: {
+              figma_integration_id: integration.id,
+              comment_id: commentId,
+              file_key: fileKey,
+            },
+          });
+        } catch (error: any) {
+          // Race condition - comment already being processed
+          if (error.code === 'P2002') {
+            console.log(chalk.blue(`ℹ️  Comment ${commentId} already being processed`));
             continue;
           }
+          throw error;
+        }
 
-          const commentsData = await commentsResponse.json();
-          const comments = commentsData.comments || [];
+        // Process the comment for each matching automation input
+        for (const automationInput of automationInputs) {
+          await processFigmaCommentInternal(integration, comment, fileKey, accessToken, automationInput);
+        }
+      } catch (error) {
+        console.error(
+          chalk.red(`❌ Error processing FILE_COMMENT for integration ${integration.id}:`),
+          error
+        );
+      }
+    }
+  }
+
+  /**
+   * Handle FILE_UPDATE webhook events
+   * These indicate design changes - we fetch comments to check for new ones
+   */
+  async function handleFigmaFileUpdateEvent(
+    automationsToProcess: Array<{
+      automationInputs: any[];
+      integration: any;
+    }>,
+    webhookEvent: any,
+    fileKey: string
+  ) {
+    console.log(
+      chalk.blue(`🎨 Processing FILE_UPDATE event for file ${fileKey} (design change)`)
+    );
+
+    for (const { integration, automationInputs } of automationsToProcess) {
+      try {
+        const accessToken = integration.access_token;
+
+        // Check if token is expired
+        if (integration.token_expiry && new Date() > integration.token_expiry) {
+          console.log(
+            chalk.red(`❌ Token expired for integration ${integration.id}, skipping`)
+          );
+          continue;
+        }
+
+        // Fetch comments for this file to check for new ones
+        const commentsResponse = await fetch(
+          `https://api.figma.com/v2/files/${fileKey}/comments`,
+          {
+            method: "GET",
+            headers: {
+              "Authorization": `Bearer ${accessToken}`,
+            },
+          }
+        );
+
+        if (!commentsResponse.ok) {
+          console.error(
+            chalk.red(`Failed to fetch comments for file ${fileKey}:`),
+            await commentsResponse.text()
+          );
+          continue;
+        }
+
+        const commentsData = await commentsResponse.json();
+        const comments = commentsData.comments || [];
 
           // Get the most recent processed comment timestamp to only process new ones
           const lastProcessed = await db().processed_figma_comments.findFirst({
@@ -449,81 +743,17 @@ export const getFigmaOAuthUrl = async (req: Request, res: Response) => {
               throw error;
             }
 
-            console.log(
-              chalk.cyan(`New Figma comment received: ${commentId} on file ${fileKey}`)
-            );
-
-            // Fetch smart context (node + file metadata)
-            const nodeId = comment.client_meta?.node_id;
-            const context = await fetchCommentContext(accessToken, fileKey, nodeId);
-
-            // Store enriched context for AI/documentation
-            await db().figma_comment_context.create({
-              data: {
-                figma_integration_id: integration.id,
-                comment_id: commentId,
-                file_key: fileKey,
-                node_id: nodeId || null,
-                comment_data: comment,
-                node_context: context.nodeContext || null,
-                file_metadata: context.fileMetadata || null,
-              },
-            });
-
-            // Create event data
-            const eventData: FigmaCommentEventData = {
-              commentId: comment.id,
-              fileKey: fileKey,
-              fileUrl: `https://www.figma.com/file/${fileKey}`,
-              nodeId: nodeId,
-              message: comment.message,
-              author: {
-                id: comment.user.id,
-                handle: comment.user.handle || comment.user.email || "Unknown",
-                img_url: comment.user.img_url,
-              },
-              createdAt: comment.created_at,
-              resolved: comment.resolved_at !== null,
-              nodeContext: context.nodeContext,
-              fileMetadata: context.fileMetadata,
-            };
-
-            // Process the event through the automation system
-            const figmaEvent = new FigmaCommentEvent(eventData);
-            const eventProcessor = new EventProcessor(figmaEvent, integration.user as User);
-            const results = await eventProcessor.process();
-
-            // Log results
-            let hasSuccess = false;
-            for (const result of results) {
-              if (result.success) {
-                hasSuccess = true;
-                console.log(
-                  chalk.green(
-                    `✅ Automation "${result.automation?.name}" triggered for comment ${commentId}`
-                  )
-                );
-              }
-            }
-
-            if (!hasSuccess) {
-              console.log(
-                chalk.yellow(
-                  `No automations matched comment ${commentId} on file ${fileKey}`
-                )
-              );
+            // Process the comment for each matching automation input
+            for (const automationInput of automationInputs) {
+              await processFigmaCommentInternal(integration, comment, fileKey, accessToken, automationInput);
             }
           }
-        } catch (error) {
-          console.error(
-            chalk.red(`Error processing webhook for integration ${webhook.id}:`),
-            error
-          );
-          // Continue with other integrations even if one fails
-        }
+      } catch (error) {
+        console.error(
+          chalk.red(`Error processing webhook for integration ${integration.id}:`),
+          error
+        );
+        // Continue with other integrations even if one fails
       }
-    } catch (error) {
-      console.error(chalk.red("Error in handleFigmaWebhook:"), error);
-      // Don't throw - webhook already acknowledged
     }
-  };
+  }

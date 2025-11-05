@@ -101,7 +101,9 @@ async function createInputConfig(
             }
             await tx.automation_figma_configs.create({
                 data: {
-                    automation_input_id: inputId,
+                    automation_input: {
+                        connect: { id: inputId }
+                    },
                     file_key: config.figmaConfig.fileKey,
                     file_name: config.figmaConfig.fileName || null,
                     team_id: config.figmaConfig.teamId || null,
@@ -196,7 +198,9 @@ async function createOutputConfig(
             if (config.figmaConfig) {
                 await tx.automation_figma_configs.create({
                     data: {
-                        automation_output_id: outputId,
+                        automation_output: {
+                            connect: { id: outputId }
+                        },
                         file_key: config.figmaConfig.fileKey || null,
                         file_name: config.figmaConfig.fileName || null,
                         team_id: config.figmaConfig.teamId || null,
