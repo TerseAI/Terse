@@ -63,40 +63,6 @@ class Owner {
         return finalSummary;
     }
 
-    async sendSlackMessage(message: string, eventId: string) {
-        // get user slack integration
-        const userSlackIntegration = await db().user_slack_integrations.findFirst({
-            where: {
-                user_id: this.session.user.id
-            }
-        });
-
-        if (!userSlackIntegration) {
-            console.error("User slack integration not found");
-            return;
-        }
-
-        const slackIntegration = await db().slack_integrations.findFirst({
-            where: {
-                team_id: userSlackIntegration.slack_team_id
-            }
-        });
-
-        if (!slackIntegration) {
-            console.error("Slack integration not found");
-            return;
-        }
-
-        if (!userSlackIntegration.dm_channel_id) {
-            console.error("User slack integration dm channel id not found");
-            return;
-        }
-
-        sendMessage(message, slackIntegration.access_token, userSlackIntegration.dm_channel_id);
-
-        console.log(chalk.green(`[${eventId}] Message sent to slack`));
-    }
-
     // Generates a string representation of a commit for LLM ingestion.
     // Includes patch diffs only if their total length is less than 1000 characters.
     generateCommitString(commit: Commit): string {
