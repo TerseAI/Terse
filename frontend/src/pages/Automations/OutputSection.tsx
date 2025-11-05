@@ -12,7 +12,7 @@ import { IntegrationTitle } from "./components/IntegrationTitle";
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 
 export function OutputSection() {
-    const { output, setOutput } = useAutomationContext();
+    const { output, setOutput, isLoading } = useAutomationContext();
     const [showAddModal, setShowAddModal] = useState(false);
 
     const handleSelectPlatform = (integration: Integration) => {
@@ -48,6 +48,7 @@ export function OutputSection() {
             title="Update Living Document"
             subtitle="The AI will continuously update this document as events come in"
             icon={<FileText className="w-5 h-5 text-destructive" />}
+            isLoading={isLoading}
         >
             {!output ? (
                 <EmptyOutputSection onCreateNew={() => setShowAddModal(true)} />
