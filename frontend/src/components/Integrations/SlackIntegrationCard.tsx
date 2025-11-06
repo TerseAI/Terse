@@ -7,10 +7,10 @@ import { Integration } from "@/context/Integrations";
 import { formatIntegrationDisplay } from "@/utility/IntegrationFormatters";
 import { getIntegrationInstances } from "@/utility/IntegrationUtils";
 import { IntegrationsStatus } from "@/shared/types";
-import { IntegrationCardHeader } from "./IntegrationCardHeader";
-import { IntegrationCardFooter } from "./IntegrationCardFooter";
-import { useOAuthUrl } from "./useOAuthUrl";
-import { CountDisplay } from "./CountDisplay";
+import { IntegrationCardHeader } from "./helpers/IntegrationCardHeader";
+import { IntegrationCardFooter } from "./helpers/IntegrationCardFooter";
+import { useOAuthUrl } from "./helpers/useOAuthUrl";
+import { CountDisplay } from "./helpers/CountDisplay";
 
 function SlackIntegrationCard({ integrationStatus, integrationId }: { integrationStatus: IntegrationsStatus, integrationId: string }) {
     const [channelsResponse, setChannelsResponse] = useState<SlackChannelsResponse | null>(null);

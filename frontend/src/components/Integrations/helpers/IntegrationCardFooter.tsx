@@ -1,5 +1,5 @@
-import { CardFooter } from "../ui/card";
-import { Button } from "../ui/button";
+import { CardFooter } from "../../ui/card";
+import { Button } from "../../ui/button";
 
 interface IntegrationCardFooterProps {
     oauthUrl: string | null;

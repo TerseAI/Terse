@@ -1,6 +1,6 @@
 import { IntegrationTitle } from "@/pages/Automations/components/IntegrationTitle";
-import { CardHeader, CardTitle } from "../ui/card";
-import { Badge } from "../ui/badge";
+import { CardHeader, CardTitle } from "../../ui/card";
+import { Badge } from "../../ui/badge";
 import { BadgeCheckIcon } from "lucide-react";
 import { Integration } from "@/context/Integrations";
 

@@ -1,4 +1,4 @@
-import { Skeleton } from "../ui/skeleton";
+import { Skeleton } from "../../ui/skeleton";
 
 interface CountDisplayProps {
     count: number;
