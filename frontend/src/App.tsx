@@ -16,6 +16,7 @@ import { SidebarProvider } from "./components/ui/sidebar";
 import { ThemeProvider } from "./components/theme-provider";
 import { Toaster } from "./components/ui/sonner";
 import IntegrationPage from "./pages/IntegrationPage";
+import BreadCrumb from "./components/BreadCrumb";
 
 function App() {
   return (
@@ -80,6 +81,7 @@ function AppLayout() {
     <SidebarProvider>
       <AppSidebar />
       <main className="w-full">
+        <BreadCrumb />
         <Outlet />
       </main>
     </SidebarProvider>
