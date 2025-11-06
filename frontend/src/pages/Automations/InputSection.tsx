@@ -45,7 +45,6 @@ export function InputsSection() {
 
     return (
         <SectionLayout
-            title="Listen For Events"
             subtitle="Choose which integration triggers this automation"
             icon={<Zap className="w-5 h-5 text-primary" />}
             isLoading={isLoading}

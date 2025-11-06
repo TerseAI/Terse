@@ -2,14 +2,13 @@ import { ReactNode } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 
 interface SectionLayoutProps {
-    title: string;
     subtitle?: string;
     children: ReactNode;
     icon?: ReactNode;
     isLoading?: boolean;
 }
 
-export function SectionLayout({ title = "", subtitle = "", children, icon, isLoading = false }: SectionLayoutProps) {
+export function SectionLayout({ subtitle = "", children, icon, isLoading = false }: SectionLayoutProps) {
     if (isLoading) {
         return <SectionLayoutSkeleton showIcon={!!icon} showSubtitle={!!subtitle} />;
     }
