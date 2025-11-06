@@ -107,6 +107,13 @@ export type GmailIntegration = {
   watchExpiration: Date; // When the watch needs to be renewed (max 7 days)
 };
 
+export type FigmaIntegration = {
+  id: string;
+  figma_user_id?: string;
+  email?: string;
+  token_expiry?: Date;
+};
+
 export type NotionIntegration = {
   id: string;
   integrationToken: string;
@@ -149,6 +156,7 @@ export type IntegrationsStatus = {
     slack?: SlackIntegration[];
     gmail?: GmailIntegration[];
     notion?: NotionIntegration[];
+    figma?: FigmaIntegration[];
   };
 };
 

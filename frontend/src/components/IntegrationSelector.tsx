@@ -304,7 +304,6 @@ export function IntegrationSelector({
             {integrationType === Integration.FIGMA && selectedIntegrationId && onFigmaConfigChange && (
                 <div className="mt-3 pt-3 border-t border-[theme(border)]">
                     <FigmaFileSelector
-                        integrationId={selectedIntegrationId}
                         selectedFileKey={figmaConfig?.fileKey}
                         selectedFileName={figmaConfig?.fileName}
                         selectedTeamId={figmaConfig?.teamId}

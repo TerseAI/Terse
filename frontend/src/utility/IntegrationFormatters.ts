@@ -51,7 +51,7 @@ function isGithubIntegration(integration: IntegrationInstance): integration is G
 }
 
 function isFigmaIntegration(integration: IntegrationInstance): integration is FigmaIntegration {
-    return 'figmaUserId' in integration || 'tokenExpiry' in integration;
+    return 'figma_user_id' in integration || 'token_expiry' in integration;
 }
 
 /**
@@ -114,7 +114,7 @@ export function formatIntegrationDisplay(
 
         case Integration.FIGMA:
             if (isFigmaIntegration(integration)) {
-                return integration.email || integration.figmaUserId || 'Figma Account';
+                return integration.email || integration.figma_user_id || 'Figma Account';
             }
             return 'Figma Account';
 
