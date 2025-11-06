@@ -1,7 +1,7 @@
 import { AnimatePresence } from "framer-motion";
 import { Navigate, Outlet, Route, BrowserRouter as Router, Routes } from 'react-router-dom';
 import Spin from "./components/loading/Spin";
-import { AppSidebar } from "./components/Sidebar";
+import { AppSidebar } from "./components/Sidebar/Sidebar";
 import { IntegrationProvider } from "./context/Integrations";
 import ActivityFeed from "./pages/ActivityFeed";
 import Automations from "./pages/Automations/Automations";
