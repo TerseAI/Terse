@@ -24,7 +24,7 @@ export async function getSlackOAuthUrl(req: Request, res: Response) {
 
     const user: User = req.session.user;
 
-    const scope = "channels:history,groups:history,im:history,mpim:history";
+    const scope = "channels:history,channels:manage,groups:history,groups:write,im:history,im:write,mpim:history,mpim:write";
     const user_scope = "channels:history,channels:read,groups:history,groups:read,im:history,im:read,mpim:history,mpim:read,users:read"
 
     // create JWT and attach to url as state
