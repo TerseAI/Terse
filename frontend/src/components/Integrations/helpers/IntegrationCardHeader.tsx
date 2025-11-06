@@ -14,7 +14,7 @@ export function IntegrationCardHeader({ integration }: IntegrationCardHeaderProp
             <CardTitle>
                 <div className="flex justify-between">
                     <IntegrationTitle integration={integration} iconSize="lg" />
-                    <Badge variant="secondary" className="text-primary-foreground">
+                    <Badge variant="secondary" className="text-foreground">
                         <BadgeCheckIcon className="size-3 text-primary" />
                         Connected
                     </Badge>

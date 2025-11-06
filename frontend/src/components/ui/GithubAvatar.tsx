@@ -1,11 +1,9 @@
-import React from 'react';
-
 type GitHubAvatarProps = {
   username: string;
   size?: number; // Optional size in pixels
 };
 
-const GitHubAvatar: React.FC<GitHubAvatarProps> = ({ username, size = 100 }) => {
+function GitHubAvatar({ username, size = 100 }: GitHubAvatarProps) {
   const imageUrl = `https://github.com/${username}.png?size=${size}`;
 
   return (

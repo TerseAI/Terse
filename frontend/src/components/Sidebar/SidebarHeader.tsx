@@ -1,6 +1,6 @@
-import { DropdownMenu } from "../ui/dropdown-menu";
 import { SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from "../ui/sidebar";
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
+import { DropdownMenu } from "../ui/dropdown-menu";
 
 export function AppSidebarHeader() {
     return (
