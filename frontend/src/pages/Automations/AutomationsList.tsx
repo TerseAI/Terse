@@ -47,9 +47,9 @@ export default function AutomationsList() {
     };
 
     return (
-        <div className="grid grid-flow-row pt-4 pl-8">
+        <div className="flex flex-col h-full p-4">
             <div className="flex-1 overflow-y-auto">
-                <div className="max-w-7xl mx-auto space-y-6">
+                <div className="mx-auto space-y-6">
                     <AutomationsHeader onCreateNew={handleCreateNew} />
 
                     <div className="grid grid-cols-20 sm:grid-flow-row gap-3">

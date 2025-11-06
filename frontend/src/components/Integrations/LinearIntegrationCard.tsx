@@ -1,0 +1,37 @@
+import { Card, CardContent } from "../ui/card";
+import { Integration } from "@/context/Integrations";
+import { formatIntegrationDisplay } from "@/utility/IntegrationFormatters";
+import { getIntegrationInstances } from "@/utility/IntegrationUtils";
+import { IntegrationsStatus } from "@/shared/types";
+import { IntegrationCardHeader } from "./helpers/IntegrationCardHeader";
+import { IntegrationCardFooter } from "./helpers/IntegrationCardFooter";
+
+function LinearIntegrationCard({ integrationStatus, integrationId }: { integrationStatus: IntegrationsStatus, integrationId: string }) {
+    const linearInstances = getIntegrationInstances(integrationStatus.integrations, Integration.LINEAR);
+    const currentInstance = linearInstances.find(instance => instance.id === integrationId) || linearInstances[0];
+    const workspaceInfo = formatIntegrationDisplay(currentInstance, Integration.LINEAR);
+
+    // Linear uses API key, not OAuth, so no OAuth URL available
+    const oauthUrl = null;
+
+    return (
+        <Card>
+            <IntegrationCardHeader integration={Integration.LINEAR} />
+            <CardContent>
+                <LinearCardContent workspaceInfo={workspaceInfo} />
+            </CardContent>
+            <IntegrationCardFooter oauthUrl={oauthUrl} />
+        </Card>
+    )
+}
+
+function LinearCardContent({ workspaceInfo }: { workspaceInfo: string | null }) {
+    return (
+        <div className="flex items-center gap-4 text-sm text-muted-foreground min-w-50">
+            <span>{workspaceInfo || 'Unknown Workspace'}</span>
+        </div>
+    )
+}
+
+export default LinearIntegrationCard;
+

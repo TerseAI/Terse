@@ -55,7 +55,7 @@ function EditableText({ value, onSave, onChange, className = "", placeholder = "
                     onChange={(e) => { const v = e.target.value; setText(v); onChange?.(v); }}
                     onBlur={handleBlur}
                     onKeyDown={handleKeyDown}
-                    className="min-w-96 box-border p-2 text-foreground border border-accent rounded focus:outline-none focus:ring-2 focus:ring-accent"
+                    className="min-w-96 box-border p-2 text-foreground border border-border rounded focus:outline-none focus:ring-2 focus:ring-accent"
                     placeholder={placeholder}
                 />
             ) : (
@@ -66,7 +66,7 @@ function EditableText({ value, onSave, onChange, className = "", placeholder = "
                     <span className="leading-tight">
                         {value || <span className="text-muted-foreground">{placeholder}</span>}
                     </span>
-                    <Pencil className="w-7 h-7 text-muted-foreground flex-shrink-0 self-center" />
+                    <Pencil className="w-5 h-5 text-muted-foreground flex-shrink-0 self-center" />
                 </div>
             )}
             {isEditing && (
