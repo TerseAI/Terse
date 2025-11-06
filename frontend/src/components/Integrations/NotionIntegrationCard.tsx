@@ -4,10 +4,10 @@ import { NotionResource, NotionResourcesResponse } from "@/shared/types";
 import { useEffect, useState } from "react";
 import { Card, CardContent } from "../ui/card";
 import { Integration } from "@/context/Integrations";
-import { IntegrationCardHeader } from "./IntegrationCardHeader";
-import { IntegrationCardFooter } from "./IntegrationCardFooter";
-import { useOAuthUrl } from "./useOAuthUrl";
-import { CountDisplay } from "./CountDisplay";
+import { IntegrationCardHeader } from "./helpers/IntegrationCardHeader";
+import { IntegrationCardFooter } from "./helpers/IntegrationCardFooter";
+import { useOAuthUrl } from "./helpers/useOAuthUrl";
+import { CountDisplay } from "./helpers/CountDisplay";
 
 function NotionIntegrationCard({ integrationId }: { integrationId: string }) {
     const [resources, setResources] = useState<NotionResource[]>([]);

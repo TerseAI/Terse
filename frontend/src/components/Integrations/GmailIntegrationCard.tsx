@@ -3,9 +3,9 @@ import { Integration } from "@/context/Integrations";
 import { formatIntegrationDisplay } from "@/utility/IntegrationFormatters";
 import { getIntegrationInstances } from "@/utility/IntegrationUtils";
 import { IntegrationsStatus } from "@/shared/types";
-import { IntegrationCardHeader } from "./IntegrationCardHeader";
-import { IntegrationCardFooter } from "./IntegrationCardFooter";
-import { useOAuthUrl } from "./useOAuthUrl";
+import { IntegrationCardHeader } from "./helpers/IntegrationCardHeader";
+import { IntegrationCardFooter } from "./helpers/IntegrationCardFooter";
+import { useOAuthUrl } from "./helpers/useOAuthUrl";
 
 function GmailIntegrationCard({ integrationStatus }: { integrationStatus: IntegrationsStatus }) {
     const oauthUrl = useOAuthUrl(Integration.GMAIL);
