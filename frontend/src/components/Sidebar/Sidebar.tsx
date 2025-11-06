@@ -1,4 +1,4 @@
-import { ChevronDown, ChevronUp, Home, MoreHorizontal, Plug, User2, Zap } from "lucide-react"
+import { ChevronUp, Home, MoreHorizontal, Plug, User2, Zap } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
 import {
     Sidebar,
@@ -7,7 +7,6 @@ import {
     SidebarGroup,
     SidebarGroupContent,
     SidebarGroupLabel,
-    SidebarHeader,
     SidebarMenu,
     SidebarMenuAction,
     SidebarMenuButton,
@@ -18,12 +17,13 @@ import {
     SidebarMenuSubItem,
 } from "@/components/ui/sidebar"
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "./ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "../ui/dropdown-menu";
 import { useAuth } from "@/services/auth";
 import { useEffect, useState } from "react";
 import { BackendProvider } from "@/services/backend";
 import { Automation } from "@/shared/types";
-import { useTheme } from "./theme-provider";
+import { useTheme } from "../theme-provider";
+import { AppSidebarHeader } from "./SidebarHeader";
 
 interface NavItem {
     title: string;
@@ -189,25 +189,6 @@ function AutomationDropdownMenu() {
                 </DropdownMenuItem>
             </DropdownMenuContent>
         </DropdownMenu>
-    )
-}
-
-function AppSidebarHeader() {
-    return (
-        <SidebarHeader>
-            <SidebarMenu>
-                <SidebarMenuItem>
-                    <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                            <SidebarMenuButton>
-                                Terse AI
-                                <ChevronDown className="ml-auto" />
-                            </SidebarMenuButton>
-                        </DropdownMenuTrigger>
-                    </DropdownMenu>
-                </SidebarMenuItem>
-            </SidebarMenu>
-        </SidebarHeader>
     )
 }
 
