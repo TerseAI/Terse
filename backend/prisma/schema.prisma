@@ -201,9 +201,9 @@ model figma_integrations {
   id            String   @id @default(cuid())
   user_id       String
   figma_user_id String
-  email         String? // User's email from Figma API
+  email         String
   access_token  String
-  refresh_token String?
+  refresh_token String
   token_expiry  DateTime
   created_at    DateTime @default(now())
   updated_at    DateTime @updatedAt
@@ -239,7 +239,7 @@ model processed_figma_comments {
 model figma_webhooks {
   id                   String   @id @default(cuid())
   figma_integration_id String
-  automation_input_id  String? // Optional: tracks which automation created it (nullable for shared webhooks)
+  automation_input_id  String // Tracks which automation created it (nullable for shared webhooks)
   webhook_id           String // Figma's webhook ID
   team_id              String // Team ID (required for team-level webhooks)
   endpoint_url         String // Our webhook endpoint URL

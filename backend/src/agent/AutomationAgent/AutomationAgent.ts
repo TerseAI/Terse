@@ -60,69 +60,30 @@ export class AutomationAgent<T extends Session> {
         if (!this.agent) {
             throw new Error("Agent not initialized. Call initializeAgent() before run()");
         }
-
-        console.log("Input Event:", this.inputEvent);
-
-        // Add the input event as the initial message to the history
+        
         if (this.inputEvent) {
-            // For Figma comments with images, format using OpenAI's image_url format
-            if (this.inputEvent.integrationType === 'FIGMA' && 'data' in this.inputEvent) {
-                const figmaEvent = this.inputEvent as any;
-                const imageUrls = figmaEvent.data?.imageUrls;
-                
-                if (imageUrls && (imageUrls.nodeImage || imageUrls.contextImage || imageUrls.fullFrame)) {
-                    // Build content array with text and images using Agents SDK format
-                    const content: any[] = [
-                        {
-                            type: 'input_text',
-                            text: this.inputEvent.formatForAutomationAgent()
-                        }
-                    ];
-                    
-                    // Add images if available (Figma provides URLs that are valid for OpenAI)
-                    // image can be a string URL or { id: string }
-                    if (imageUrls.nodeImage) {
-                        content.push({
-                            type: 'input_image',
-                            image: imageUrls.nodeImage
-                        });
-                    }
-                    if (imageUrls.contextImage) {
-                        content.push({
-                            type: 'input_image',
-                            image: imageUrls.contextImage
-                        });
-                    }
-                    if (imageUrls.fullFrame) {
-                        content.push({
-                            type: 'input_image',
-                            image: imageUrls.fullFrame
-                        });
-                    }
-                    
-                    this.history.push({
-                        role: 'user',
-                        content: content
-                    });
-                } else {
-                    // No images, use text-only format
-                    this.history.push({
-                        role: 'user',
-                        content: this.inputEvent.formatForAutomationAgent()
+            const content: any[] = [
+                {
+                    type: 'input_text',
+                    text: this.inputEvent.formatForAutomationAgent()
+                }
+            ];
+            const imageUrls = this.inputEvent.getImageUrls();
+            if (imageUrls.length > 0) {
+                for (const imageUrl of imageUrls) {
+                    content.push({
+                        type: 'input_image',
+                        image: imageUrl
                     });
                 }
-            } else {
-                // Non-Figma event or event without images
-                this.history.push({
-                    role: 'user',
-                    content: this.inputEvent.formatForAutomationAgent()
-                });
             }
+            this.history.push({
+                role: 'user',
+                content: content
+            });
         } else {
             throw new Error("No input event set. Call setInputEvent() before run()");
         }
-
-        console.log("History:", this.history);
 
         const result = await run(this.agent, this.history, {
             context: this.session as T,
