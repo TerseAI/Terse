@@ -4,6 +4,8 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "../ui/card
 import { Skeleton } from "../ui/skeleton";
 import GmailIntegrationCard from "./GmailIntegrationCard";
 import SlackIntegrationCard from "./SlackIntegrationCard";
+import LinearIntegrationCard from "./LinearIntegrationCard";
+import GithubIntegrationCard from "./GithubIntegrationCard";
 import { IntegrationsStatus } from "@/shared/types";
 
 function IntegrationCard({ integration, integrationId, integrationStatus }: { integration: Integration, integrationId: string, integrationStatus: IntegrationsStatus }) {
@@ -17,7 +19,7 @@ function IntegrationCard({ integration, integrationId, integrationStatus }: { in
         )
     } else if (integration === Integration.LINEAR) {
         return (
-            <div></div>
+            <LinearIntegrationCard integrationStatus={integrationStatus} integrationId={integrationId} />
         )
     } else if (integration === Integration.JIRA) {
         return (
@@ -25,7 +27,7 @@ function IntegrationCard({ integration, integrationId, integrationStatus }: { in
         )
     } else if (integration === Integration.GITHUB) {
         return (
-            <div></div>
+            <GithubIntegrationCard integrationStatus={integrationStatus} integrationId={integrationId} />
         )
     } else if (integration === Integration.GMAIL) {
         return (

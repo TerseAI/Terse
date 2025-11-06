@@ -10,6 +10,7 @@ export function IntegrationCardFooter({ oauthUrl }: IntegrationCardFooterProps) 
         <CardFooter>
             <Button 
                 variant="outline" 
+                disabled={!oauthUrl}
                 onClick={() => {
                     if (oauthUrl) {
                         window.open(oauthUrl, 'oauth-popup', 'width=600,height=700');
