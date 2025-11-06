@@ -47,6 +47,13 @@ export abstract class InputEvent {
      * @returns RunHistoryTrigger with event-specific fields
      */
     abstract createTriggerMetadata(): RunHistoryTrigger;
+
+    /**
+     * Get image URLs associated with this event.
+     * Events that include images (e.g., Figma comments with visual context) should return their URLs here.
+     * @returns Array of image URL strings. Empty array if no images are available.
+     */
+    abstract getImageUrls(): string[];
 }
 
 export class GmailEvent extends InputEvent {
@@ -98,6 +105,11 @@ export class GmailEvent extends InputEvent {
             subheader: this.data.from,
             url: undefined, // Gmail doesn't provide direct message URLs in webhook
         };
+    }
+
+    getImageUrls(): string[] {
+        // Gmail events don't include images
+        return [];
     }
 }
 
@@ -165,6 +177,12 @@ export class SlackEvent extends InputEvent {
             subheader: this.data.userName || this.data.userId,
             url: this.data.permalink,
         };
+    }
+
+    getImageUrls(): string[] {
+        // Slack events don't currently include images
+        // Future: could extract image URLs from message attachments if needed
+        return [];
     }
 }
 
@@ -270,13 +288,34 @@ export class FigmaCommentEvent extends InputEvent {
     }
 
     createTriggerMetadata(): RunHistoryTrigger {
+        // Get file name from metadata, fall back to file key if not available
+        const fileName = this.data.fileMetadata?.name || this.data.fileKey;
+        const subheader = `${this.data.author.handle} on ${fileName}`;
+        
         return {
             event: 'comment_added',
             integration: 'figma',
             source: this.data.fileKey,
             title: this.data.message.substring(0, 100), // First 100 chars of comment
-            subheader: `${this.data.author.handle} on ${this.data.fileKey}`,
+            subheader: subheader,
             url: this.data.fileUrl,
         };
+    }
+
+    getImageUrls(): string[] {
+        // Return all available image URLs from the Figma comment event
+        const urls: string[] = [];
+        if (this.data.imageUrls) {
+            if (this.data.imageUrls.nodeImage) {
+                urls.push(this.data.imageUrls.nodeImage);
+            }
+            if (this.data.imageUrls.contextImage) {
+                urls.push(this.data.imageUrls.contextImage);
+            }
+            if (this.data.imageUrls.fullFrame) {
+                urls.push(this.data.imageUrls.fullFrame);
+            }
+        }
+        return urls;
     }
 }
