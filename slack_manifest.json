@@ -28,9 +28,13 @@
             ],
             "bot": [
                 "channels:history",
+                "channels:manage",
                 "groups:history",
+                "groups:write",
                 "im:history",
-                "mpim:history"
+                "im:write",
+                "mpim:history",
+                "mpim:write"
             ]
         }
     },
