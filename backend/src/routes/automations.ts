@@ -443,6 +443,7 @@ export async function getUserAutomations(req: Request, res: Response) {
                         jira_config: true,
                         github_config: true,
                         gmail_config: true,
+                        figma_config: true,
                     }
                 },
                 output: {
@@ -453,6 +454,7 @@ export async function getUserAutomations(req: Request, res: Response) {
                         jira_config: true,
                         github_config: true,
                         gmail_config: true,
+                        figma_config: true,
                     }
                 }
             },
@@ -512,6 +514,7 @@ export async function getUserAutomation(req: Request, res: Response) {
                         jira_config: true,
                         github_config: true,
                         gmail_config: true,
+                        figma_config: true,
                     }
                 },
                 output: {
@@ -523,6 +526,7 @@ export async function getUserAutomation(req: Request, res: Response) {
                         jira_config: true,
                         github_config: true,
                         gmail_config: true,
+                        figma_config: true,
                     }
                 }
             }

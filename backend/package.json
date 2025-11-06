@@ -6,6 +6,7 @@
   "type": "module",
   "scripts": {
     "dev": "tsx watch src/server.ts",
+    "dev:tunnel": "./scripts/dev-with-tunnel.sh",
     "prebuild": "node ../scripts/copy-shared.js",
     "build": "tsc && npm run postbuild",
     "postbuild": "tsc-esm-fix dist",

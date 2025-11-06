@@ -60,6 +60,7 @@ export class EventProcessor {
                         jira_config: true,
                         github_config: true,
                         gmail_config: true,
+                        figma_config: true,
                     }
                 },
                 output: {

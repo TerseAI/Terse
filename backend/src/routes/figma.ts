@@ -264,19 +264,15 @@ export const getFigmaOAuthUrl = async (req: Request, res: Response) => {
   };
 
   /**
-   * Smart context fetching: Gets node context and file metadata for a comment
-   * This is optimized to only fetch what's needed (not the entire file)
+   * Fetch file metadata for a file
    */
-  async function fetchCommentContext(
+  async function fetchFileMetadata(
     accessToken: string,
-    fileKey: string,
-    nodeId?: string
-  ): Promise<{ nodeContext?: any; fileMetadata?: any }> {
-    const result: { nodeContext?: any; fileMetadata?: any } = {};
-
+    fileKey: string
+  ): Promise<any> {
     try {
-      // Always fetch file metadata (lightweight)
-      const metadataResponse = await fetch(`https://api.figma.com/v2/files/${fileKey}/meta`, {
+      // Using /v1/files/:key/meta endpoint which returns { file: { ... } }
+      const metadataResponse = await fetch(`https://api.figma.com/v1/files/${fileKey}/meta`, {
         method: "GET",
         headers: {
           "Authorization": `Bearer ${accessToken}`,
@@ -284,32 +280,99 @@ export const getFigmaOAuthUrl = async (req: Request, res: Response) => {
       });
 
       if (metadataResponse.ok) {
-        result.fileMetadata = await metadataResponse.json();
-      }
-
-      // If nodeId is provided, fetch that specific node (not the entire file)
-      if (nodeId) {
-        const nodeResponse = await fetch(
-          `https://api.figma.com/v2/files/${fileKey}/nodes?ids=${encodeURIComponent(nodeId)}`,
-          {
-            method: "GET",
-            headers: {
-              "Authorization": `Bearer ${accessToken}`,
-            },
-          }
+        const metadataData = await metadataResponse.json();
+        // Extract the file property from the response
+        const fileMetadata = metadataData.file || metadataData;
+        console.log(
+          chalk.green(`✅ Fetched file metadata for ${fileKey}:`),
+          fileMetadata?.name || 'unknown file'
         );
-
-        if (nodeResponse.ok) {
-          const nodeData = await nodeResponse.json();
-          result.nodeContext = nodeData.nodes?.[nodeId] || null;
-        }
+        return fileMetadata;
+      } else {
+        const errorText = await metadataResponse.text();
+        console.error(
+          chalk.yellow(`Failed to fetch file metadata for ${fileKey}:`),
+          errorText
+        );
+        return null;
       }
     } catch (error) {
-      console.error(chalk.red("Error fetching comment context:"), error);
-      // Don't throw - context fetching is optional, continue without it
+      console.error(chalk.red("Error fetching file metadata:"), error);
+      return null;
+    }
+  }
+
+  /**
+   * Parse client_meta positioning data from Figma comment
+   * Returns the positioning type and normalized data structure
+   */
+  function parsePositioningData(clientMeta: any): {
+    type: 'Vector' | 'FrameOffset' | 'Region' | 'FrameOffsetRegion';
+    data: any;
+  } | null {
+    if (!clientMeta || typeof clientMeta !== 'object') {
+      return null;
     }
 
-    return result;
+    // Check for Vector: { x: number, y: number }
+    if (typeof clientMeta.x === 'number' && typeof clientMeta.y === 'number' && !clientMeta.width && !clientMeta.height && !clientMeta.node_id) {
+      return {
+        type: 'Vector',
+        data: { x: clientMeta.x, y: clientMeta.y }
+      };
+    }
+
+    // Check for FrameOffset: { node_id: string, node_offset: { x: number, y: number } }
+    if (clientMeta.node_id && clientMeta.node_offset && typeof clientMeta.node_offset.x === 'number' && typeof clientMeta.node_offset.y === 'number') {
+      return {
+        type: 'FrameOffset',
+        data: {
+          node_id: clientMeta.node_id,
+          node_offset: { x: clientMeta.node_offset.x, y: clientMeta.node_offset.y }
+        }
+      };
+    }
+
+    // Check for Region: { x: number, y: number, width: number, height: number }
+    if (typeof clientMeta.x === 'number' && typeof clientMeta.y === 'number' && typeof clientMeta.width === 'number' && typeof clientMeta.height === 'number' && !clientMeta.node_id) {
+      return {
+        type: 'Region',
+        data: {
+          x: clientMeta.x,
+          y: clientMeta.y,
+          width: clientMeta.width,
+          height: clientMeta.height
+        }
+      };
+    }
+
+    // Check for FrameOffsetRegion: Combination of FrameOffset and Region
+    if (clientMeta.node_id && clientMeta.node_offset && typeof clientMeta.x === 'number' && typeof clientMeta.y === 'number' && typeof clientMeta.width === 'number' && typeof clientMeta.height === 'number') {
+      return {
+        type: 'FrameOffsetRegion',
+        data: {
+          node_id: clientMeta.node_id,
+          node_offset: clientMeta.node_offset,
+          x: clientMeta.x,
+          y: clientMeta.y,
+          width: clientMeta.width,
+          height: clientMeta.height
+        }
+      };
+    }
+
+    // Also check for node_id-only positioning (common case)
+    if (clientMeta.node_id) {
+      return {
+        type: 'FrameOffset',
+        data: {
+          node_id: clientMeta.node_id,
+          node_offset: clientMeta.node_offset || { x: 0, y: 0 }
+        }
+      };
+    }
+
+    return null;
   }
 
   /**
@@ -474,9 +537,382 @@ export const getFigmaOAuthUrl = async (req: Request, res: Response) => {
       console.error(chalk.red("Error in handleFigmaWebhook:"), error);
     }
   }
+
+  /**
+   * Map comment position to design elements in the file
+   * Returns array of node IDs that match the comment position
+   */
+  async function mapCommentToDesignElements(
+    accessToken: string,
+    fileKey: string,
+    positioningData: { type: string; data: any } | null,
+    existingNodeId?: string
+  ): Promise<string[]> {
+    const matchedNodeIds: string[] = [];
+
+    try {
+      // If we already have a node_id from client_meta, use it
+      if (existingNodeId) {
+        matchedNodeIds.push(existingNodeId);
+      }
+
+      // If no positioning data, try to get root page/document nodes for file-level comments
+      if (!positioningData) {
+        // For file-level comments, try to get the document root or first page
+        try {
+          const fileResponse = await fetch(`https://api.figma.com/v1/files/${fileKey}?geometry=paths`, {
+            method: "GET",
+            headers: {
+              "Authorization": `Bearer ${accessToken}`,
+            },
+          });
+
+          if (fileResponse.ok) {
+            const fileData = await fileResponse.json();
+            const document = fileData.document;
+
+            if (document) {
+              // Get root page nodes (CANVAS type) or the document itself
+              const findRootPages = (node: any, pages: string[] = []): void => {
+                // CANVAS nodes are typically pages in Figma
+                if (node.type === 'CANVAS' || node.type === 'FRAME') {
+                  pages.push(node.id);
+                }
+                // Limit to first 3 pages to avoid too many
+                if (node.children && pages.length < 3) {
+                  for (const child of node.children) {
+                    findRootPages(child, pages);
+                  }
+                }
+              };
+
+              const rootPages: string[] = [];
+              findRootPages(document, rootPages);
+              
+              // Add root pages to matched nodes for file-level comments
+              for (const pageId of rootPages) {
+                if (!matchedNodeIds.includes(pageId)) {
+                  matchedNodeIds.push(pageId);
+                }
+              }
+
+              // If no pages found, use the document root itself
+              if (matchedNodeIds.length === 0 && document.id) {
+                matchedNodeIds.push(document.id);
+              }
+            }
+          }
+        } catch (error) {
+          console.error(chalk.yellow(`Error fetching file for file-level comment context:`), error);
+        }
+        
+        return matchedNodeIds;
+      }
+
+      // Fetch full file JSON to get all nodes and their positions
+      const fileResponse = await fetch(`https://api.figma.com/v1/files/${fileKey}?geometry=paths`, {
+        method: "GET",
+        headers: {
+          "Authorization": `Bearer ${accessToken}`,
+        },
+      });
+
+      if (!fileResponse.ok) {
+        console.error(chalk.yellow(`Failed to fetch file JSON for ${fileKey}:`), await fileResponse.text());
+        return matchedNodeIds; // Return existing node_id if we have it
+      }
+
+      const fileData = await fileResponse.json();
+      const document = fileData.document;
+
+      if (!document) {
+        return matchedNodeIds;
+      }
+
+      // Helper function to recursively find all nodes with their bounds
+      const findNodesWithBounds = (node: any, nodes: Array<{ id: string; bounds: any; name: string }> = []): void => {
+        if (node.absoluteBoundingBox || node.relativeTransform) {
+          const bounds = node.absoluteBoundingBox || {
+            x: node.relativeTransform?.[0]?.[2] || 0,
+            y: node.relativeTransform?.[1]?.[2] || 0,
+            width: node.absoluteBoundingBox?.width || 0,
+            height: node.absoluteBoundingBox?.height || 0,
+          };
+
+          nodes.push({
+            id: node.id,
+            bounds: bounds,
+            name: node.name || 'Unnamed',
+          });
+        }
+
+        if (node.children) {
+          for (const child of node.children) {
+            findNodesWithBounds(child, nodes);
+          }
+        }
+      };
+
+      const allNodes: Array<{ id: string; bounds: any; name: string }> = [];
+      findNodesWithBounds(document, allNodes);
+
+      // Match based on positioning type
+      if (positioningData.type === 'Vector') {
+        // For Vector, find nodes that contain the point
+        const { x, y } = positioningData.data;
+        for (const node of allNodes) {
+          const bounds = node.bounds;
+          if (bounds && 
+              x >= bounds.x && 
+              x <= bounds.x + bounds.width &&
+              y >= bounds.y && 
+              y <= bounds.y + bounds.height) {
+            if (!matchedNodeIds.includes(node.id)) {
+              matchedNodeIds.push(node.id);
+            }
+          }
+        }
+      } else if (positioningData.type === 'Region') {
+        // For Region, find nodes that overlap with the region
+        const { x, y, width, height } = positioningData.data;
+        const regionBounds = { x, y, width, height };
+        
+        for (const node of allNodes) {
+          const bounds = node.bounds;
+          if (bounds && 
+              !(regionBounds.x + regionBounds.width < bounds.x ||
+                regionBounds.x > bounds.x + bounds.width ||
+                regionBounds.y + regionBounds.height < bounds.y ||
+                regionBounds.y > bounds.y + bounds.height)) {
+            // Overlaps
+            if (!matchedNodeIds.includes(node.id)) {
+              matchedNodeIds.push(node.id);
+            }
+          }
+        }
+      } else if (positioningData.type === 'FrameOffset' || positioningData.type === 'FrameOffsetRegion') {
+        // For FrameOffset, the node_id is already in the data
+        const nodeId = positioningData.data.node_id;
+        if (nodeId && !matchedNodeIds.includes(nodeId)) {
+          matchedNodeIds.push(nodeId);
+        }
+
+        // For FrameOffsetRegion, also check region overlap
+        if (positioningData.type === 'FrameOffsetRegion' && positioningData.data.x !== undefined) {
+          const { x, y, width, height } = positioningData.data;
+          const regionBounds = { x, y, width, height };
+          
+          for (const node of allNodes) {
+            const bounds = node.bounds;
+            if (bounds && 
+                !(regionBounds.x + regionBounds.width < bounds.x ||
+                  regionBounds.x > bounds.x + bounds.width ||
+                  regionBounds.y + regionBounds.height < bounds.y ||
+                  regionBounds.y > bounds.y + bounds.height)) {
+              if (!matchedNodeIds.includes(node.id)) {
+                matchedNodeIds.push(node.id);
+              }
+            }
+          }
+        }
+      }
+
+      // Sort by specificity (smaller nodes first, as they're more specific)
+      matchedNodeIds.sort((id1, id2) => {
+        const node1 = allNodes.find(n => n.id === id1);
+        const node2 = allNodes.find(n => n.id === id2);
+        if (!node1 || !node2) return 0;
+        const area1 = (node1.bounds?.width || 0) * (node1.bounds?.height || 0);
+        const area2 = (node2.bounds?.width || 0) * (node2.bounds?.height || 0);
+        return area1 - area2;
+      });
+
     } catch (error) {
-      console.error(chalk.red("Error in handleFigmaWebhook:"), error);
+      console.error(chalk.red("Error mapping comment to design elements:"), error);
+      // Return existing node_id if we have it, even if mapping failed
     }
+
+    return matchedNodeIds;
+  }
+
+  /**
+   * Extract images for comment context from Figma API
+   * Returns object with image URLs for different context levels
+   */
+  async function extractCommentImages(
+    accessToken: string,
+    fileKey: string,
+    nodeIds: string[],
+    positioningData: { type: string; data: any } | null
+  ): Promise<{
+    nodeImage?: string;
+    contextImage?: string;
+    fullFrame?: string;
+  }> {
+    const imageUrls: {
+      nodeImage?: string;
+      contextImage?: string;
+      fullFrame?: string;
+    } = {};
+
+    try {
+      if (nodeIds.length === 0) {
+        // No nodes to extract - might be file-level comment
+        // For file-level comments, try to extract the first page/document
+        if (!positioningData) {
+          // Try to get document root or first page
+          try {
+            const fileResponse = await fetch(`https://api.figma.com/v1/files/${fileKey}`, {
+              method: "GET",
+              headers: {
+                "Authorization": `Bearer ${accessToken}`,
+              },
+            });
+
+            if (fileResponse.ok) {
+              const fileData = await fileResponse.json();
+              const document = fileData.document;
+
+              if (document) {
+                // Find first CANVAS (page) or use document root
+                let pageNodeId: string | null = null;
+                
+                const findFirstPage = (node: any): void => {
+                  if (node.type === 'CANVAS' || (node.type === 'FRAME' && !pageNodeId)) {
+                    pageNodeId = node.id;
+                  }
+                  if (!pageNodeId && node.children) {
+                    for (const child of node.children) {
+                      findFirstPage(child);
+                      if (pageNodeId) break;
+                    }
+                  }
+                };
+
+                findFirstPage(document);
+                
+                const targetNodeId = pageNodeId || document.id;
+                
+                if (targetNodeId) {
+                  const imageResponse = await fetch(
+                    `https://api.figma.com/v1/images/${fileKey}?ids=${encodeURIComponent(targetNodeId)}&format=png&scale=1`,
+                    {
+                      method: "GET",
+                      headers: {
+                        "Authorization": `Bearer ${accessToken}`,
+                      },
+                    }
+                  );
+
+                  if (imageResponse.ok) {
+                    const imageData = await imageResponse.json();
+                    if (imageData.images && imageData.images[targetNodeId]) {
+                      imageUrls.fullFrame = imageData.images[targetNodeId];
+                      console.log(chalk.blue(`📄 Extracted full page image for file-level comment`));
+                    }
+                  }
+                }
+              }
+            }
+          } catch (error) {
+            console.error(chalk.yellow(`Error extracting file-level comment image:`), error);
+          }
+        }
+        return imageUrls;
+      }
+
+      // Primary node image - the specific node the comment is on
+      const primaryNodeId = nodeIds[0];
+      if (primaryNodeId) {
+        const imageResponse = await fetch(
+          `https://api.figma.com/v1/images/${fileKey}?ids=${encodeURIComponent(primaryNodeId)}&format=png&scale=2`,
+          {
+            method: "GET",
+            headers: {
+              "Authorization": `Bearer ${accessToken}`,
+            },
+          }
+        );
+
+        if (imageResponse.ok) {
+          const imageData = await imageResponse.json();
+          if (imageData.images && imageData.images[primaryNodeId]) {
+            imageUrls.nodeImage = imageData.images[primaryNodeId];
+          }
+        } else {
+          console.error(chalk.yellow(`Failed to extract node image for ${primaryNodeId}:`), await imageResponse.text());
+        }
+      }
+
+      // For context image, try to get parent frame or surrounding area
+      // If we have a region, we can extract a larger area
+      if (positioningData?.type === 'Region' || positioningData?.type === 'FrameOffsetRegion') {
+        // For region-based comments, extract the region area
+        // We'll need to find the parent frame that contains the region
+        // For now, use the primary node's parent if available
+        // This could be enhanced to calculate the actual region bounds
+        if (nodeIds.length > 0) {
+          // Try to extract a context image using the primary node
+          // In a more sophisticated implementation, we could calculate the region bounds
+          // and extract a custom area, but Figma API requires node IDs
+          const contextResponse = await fetch(
+            `https://api.figma.com/v1/images/${fileKey}?ids=${encodeURIComponent(nodeIds.slice(0, 3).join(','))}&format=png&scale=1`,
+            {
+              method: "GET",
+              headers: {
+                "Authorization": `Bearer ${accessToken}`,
+              },
+            }
+          );
+
+          if (contextResponse.ok) {
+            const contextData = await contextResponse.json();
+            if (contextData.images) {
+              // Use the first available image as context
+              const firstImageUrl = Object.values(contextData.images)[0];
+              if (firstImageUrl && typeof firstImageUrl === 'string') {
+                imageUrls.contextImage = firstImageUrl;
+              }
+            }
+          }
+        }
+      } else if (nodeIds.length > 1) {
+        // Multiple nodes matched - extract context with multiple nodes
+        const contextNodeIds = nodeIds.slice(0, 5).join(','); // Limit to 5 nodes
+        const contextResponse = await fetch(
+          `https://api.figma.com/v1/images/${fileKey}?ids=${encodeURIComponent(contextNodeIds)}&format=png&scale=1`,
+          {
+            method: "GET",
+            headers: {
+              "Authorization": `Bearer ${accessToken}`,
+            },
+          }
+        );
+
+        if (contextResponse.ok) {
+          const contextData = await contextResponse.json();
+          if (contextData.images) {
+            const firstImageUrl = Object.values(contextData.images)[0];
+            if (firstImageUrl && typeof firstImageUrl === 'string') {
+              imageUrls.contextImage = firstImageUrl;
+            }
+          }
+        }
+      }
+
+      // Full frame image - try to get the page/frame containing the comment
+      // This is optional and can be expensive, so we'll skip it for now
+      // Can be added later if needed
+
+      // Set expiry time (24 hours from now, Figma images typically expire in 24-48 hours)
+      // This will be stored in the database
+
+    } catch (error) {
+      console.error(chalk.red("Error extracting comment images:"), error);
+      // Don't throw - image extraction is optional, continue without images
+    }
+
+    return imageUrls;
   }
 
   /**
@@ -487,36 +923,115 @@ export const getFigmaOAuthUrl = async (req: Request, res: Response) => {
     comment: any,
     fileKey: string,
     accessToken: string,
-    automationInput: any
   ) {
     const commentId = comment.id;
     console.log(
       chalk.cyan(`New Figma comment received: ${commentId} on file ${fileKey}`)
     );
 
-    // Fetch smart context (node + file metadata)
-    const nodeId = comment.client_meta?.node_id;
-    const context = await fetchCommentContext(accessToken, fileKey, nodeId);
+    // Fetch file metadata
+    const fileMetadata = await fetchFileMetadata(accessToken, fileKey);
+
+    // Extract and parse positioning data
+    const positioningData = parsePositioningData(comment.client_meta);
+    console.log(
+      chalk.blue(`📍 Positioning data for comment ${commentId}:`),
+      positioningData ? JSON.stringify(positioningData, null, 2) : 'null (empty client_meta)'
+    );
+
+    // Map comment to design elements using positioning data
+    let matchedNodeIds: string[] = [];
+    try {
+      const nodeId = comment.client_meta?.node_id;
+      matchedNodeIds = await mapCommentToDesignElements(
+        accessToken,
+        fileKey,
+        positioningData,
+        nodeId
+      );
+      console.log(
+        chalk.blue(`🎯 Matched ${matchedNodeIds.length} node(s) for comment ${commentId}:`),
+        matchedNodeIds.length > 0 ? matchedNodeIds.join(', ') : 'none'
+      );
+    } catch (error) {
+      console.error(
+        chalk.red(`Error mapping comment ${commentId} to design elements:`),
+        error
+      );
+      // Continue with empty array if mapping fails
+    }
+
+    // Extract images for visual context
+    let imageUrls: {
+      nodeImage?: string;
+      contextImage?: string;
+      fullFrame?: string;
+    } = {};
+    try {
+      imageUrls = await extractCommentImages(
+        accessToken,
+        fileKey,
+        matchedNodeIds,
+        positioningData
+      );
+      console.log(
+        chalk.blue(`🖼️  Extracted images for comment ${commentId}:`),
+        Object.keys(imageUrls).length > 0 
+          ? `${Object.keys(imageUrls).length} image(s) extracted` 
+          : 'no images extracted'
+      );
+    } catch (error) {
+      console.error(
+        chalk.red(`Error extracting images for comment ${commentId}:`),
+        error
+      );
+      // Continue with empty object if image extraction fails
+    }
+
+    // Calculate image expiry (24 hours from now)
+    const imageExpiry = imageUrls.nodeImage || imageUrls.contextImage || imageUrls.fullFrame
+      ? new Date(Date.now() + 24 * 60 * 60 * 1000) // 24 hours
+      : null;
+
+    // Get the closest node ID for storage
+    const closestNodeId = matchedNodeIds.length > 0 
+      ? matchedNodeIds[0] 
+      : (comment.client_meta?.node_id || null);
 
     // Store enriched context for AI/documentation
-    await db().figma_comment_context.create({
-      data: {
-        figma_integration_id: integration.id,
-        comment_id: commentId,
-        file_key: fileKey,
-        node_id: nodeId || null,
-        comment_data: comment,
-        node_context: context.nodeContext || null,
-        file_metadata: context.fileMetadata || null,
-      },
-    });
+    try {
+      await db().figma_comment_context.create({
+        data: {
+          figma_integration_id: integration.id,
+          comment_id: commentId,
+          file_key: fileKey,
+          node_id: closestNodeId,
+          comment_data: comment,
+          file_metadata: fileMetadata ? JSON.parse(JSON.stringify(fileMetadata)) : null,
+          positioning_data: positioningData ? JSON.parse(JSON.stringify(positioningData)) : null,
+          matched_node_ids: matchedNodeIds,
+          image_urls: Object.keys(imageUrls).length > 0 ? JSON.parse(JSON.stringify(imageUrls)) : null,
+          image_expiry: imageExpiry,
+        },
+      });
+      console.log(
+        chalk.green(`✅ Stored enriched context for comment ${commentId}`),
+        chalk.gray(`- Positioning: ${positioningData ? positioningData.type : 'none'}, Nodes: ${matchedNodeIds.length}, Images: ${Object.keys(imageUrls).length}`)
+      );
+    } catch (error) {
+      console.error(
+        chalk.red(`❌ Error storing enriched context for comment ${commentId}:`),
+        error
+      );
+      // Don't throw - continue processing even if storage fails
+    }
 
-    // Create event data
+    // Create event data with enriched context
     const eventData: FigmaCommentEventData = {
       commentId: comment.id,
       fileKey: fileKey,
       fileUrl: `https://www.figma.com/file/${fileKey}`,
-      nodeId: nodeId,
+      nodeId: closestNodeId || undefined,
       message: comment.message,
       author: {
         id: comment.user.id,
@@ -525,8 +1040,13 @@ export const getFigmaOAuthUrl = async (req: Request, res: Response) => {
       },
       createdAt: comment.created_at,
       resolved: comment.resolved_at !== null,
-      nodeContext: context.nodeContext,
-      fileMetadata: context.fileMetadata,
+      fileMetadata: fileMetadata,
+      positioningData: positioningData ? {
+        type: positioningData.type as 'Vector' | 'FrameOffset' | 'Region' | 'FrameOffsetRegion',
+        data: positioningData.data
+      } : undefined,
+      matchedNodeIds: matchedNodeIds.length > 0 ? matchedNodeIds : undefined,
+      imageUrls: Object.keys(imageUrls).length > 0 ? imageUrls : undefined,
     };
 
     // Process the event through the automation system
@@ -559,6 +1079,7 @@ export const getFigmaOAuthUrl = async (req: Request, res: Response) => {
   /**
    * Handle FILE_COMMENT webhook events
    * Comment data is included in the webhook payload
+   * Note: client_meta is not included in webhook payload, so we fetch it from the comment API
    */
   async function handleFigmaCommentEvent(
     automationsToProcess: Array<{
@@ -568,16 +1089,105 @@ export const getFigmaOAuthUrl = async (req: Request, res: Response) => {
     webhookEvent: any,
     fileKey: string
   ) {
-    const comment = webhookEvent.comment;
+    // Extract comment_id from top level (Figma webhook structure)
+    const commentId = webhookEvent.comment_id;
     
-    if (!comment) {
-      console.log(chalk.yellow(`⚠️  FILE_COMMENT event missing comment data`));
+    if (!commentId) {
+      console.log(chalk.yellow(`⚠️  FILE_COMMENT event missing comment_id`));
+      console.log(chalk.yellow(`Webhook event: ${JSON.stringify(webhookEvent, null, 2)}`));
       return;
     }
 
     console.log(
-      chalk.blue(`📝 Processing FILE_COMMENT event for file ${fileKey}, comment ${comment.id}`)
+      chalk.blue(`📝 Processing FILE_COMMENT event for file ${fileKey}, comment ${commentId}`)
     );
+
+    // Fetch comment details from Figma API once to get client_meta
+    // client_meta is not included in the webhook payload
+    // Use the first valid integration's token to fetch the comment
+    let commentFromApi: any = null;
+    for (const { integration } of automationsToProcess) {
+      // Check if token is expired
+      if (integration.token_expiry && new Date() > integration.token_expiry) {
+        continue; // Try next integration
+      }
+
+      try {
+        const commentsResponse = await fetch(
+          `https://api.figma.com/v1/files/${fileKey}/comments`,
+          {
+            method: "GET",
+            headers: {
+              "Authorization": `Bearer ${integration.access_token}`,
+            },
+          }
+        );
+
+        if (!commentsResponse.ok) {
+          console.error(
+            chalk.yellow(`Failed to fetch comments for file ${fileKey} with integration ${integration.id}:`),
+            await commentsResponse.text()
+          );
+          continue; // Try next integration
+        }
+
+        const commentsData = await commentsResponse.json();
+        const comments = commentsData.comments || [];
+        
+        // Find the comment with matching ID
+        commentFromApi = comments.find((c: any) => c.id === commentId);
+        
+        if (commentFromApi) {
+          console.log(
+            chalk.green(`✅ Fetched comment ${commentId} from API with client_meta`)
+          );
+          break; // Successfully fetched, no need to try other integrations
+        } else {
+          console.log(
+            chalk.yellow(`⚠️  Comment ${commentId} not found in API response`)
+          );
+        }
+      } catch (error) {
+        console.error(
+          chalk.yellow(`⚠️  Error fetching comment from API with integration ${integration.id}:`),
+          error
+        );
+        // Continue to try next integration
+      }
+    }
+
+    if (!commentFromApi) {
+      console.log(
+        chalk.yellow(`⚠️  Could not fetch comment ${commentId} from API, using webhook data only`)
+      );
+    }
+
+    // Build normalized comment object, preferring API data over webhook data
+    // Use API data if available (has client_meta), otherwise fall back to webhook data
+    const commentText = commentFromApi?.message 
+      || (webhookEvent.comment && Array.isArray(webhookEvent.comment) && webhookEvent.comment.length > 0
+        ? webhookEvent.comment[0].text
+        : '');
+    
+    // Handle resolved_at - Figma sends empty string for unresolved comments
+    const resolvedAt = commentFromApi?.resolved_at 
+      || (webhookEvent.resolved_at && webhookEvent.resolved_at.trim() !== ''
+        ? webhookEvent.resolved_at
+        : null);
+    
+    const normalizedComment = {
+      id: commentId,
+      message: commentText,
+      created_at: commentFromApi?.created_at || webhookEvent.created_at,
+      resolved_at: resolvedAt,
+      user: commentFromApi?.user || webhookEvent.triggered_by || {
+        id: '',
+        handle: '',
+        email: '',
+        img_url: ''
+      },
+      client_meta: commentFromApi?.client_meta || webhookEvent.client_meta || {}
+    };
 
     for (const { integration, automationInputs } of automationsToProcess) {
       try {
@@ -590,8 +1200,6 @@ export const getFigmaOAuthUrl = async (req: Request, res: Response) => {
           );
           continue;
         }
-
-        const commentId = comment.id;
         
         // Check if we've already processed this comment
         const existing = await db().processed_figma_comments.findFirst({
@@ -623,10 +1231,11 @@ export const getFigmaOAuthUrl = async (req: Request, res: Response) => {
           }
           throw error;
         }
+        
 
         // Process the comment for each matching automation input
         for (const automationInput of automationInputs) {
-          await processFigmaCommentInternal(integration, comment, fileKey, accessToken, automationInput);
+          await processFigmaCommentInternal(integration, normalizedComment, fileKey, accessToken);
         }
       } catch (error) {
         console.error(
@@ -745,7 +1354,7 @@ export const getFigmaOAuthUrl = async (req: Request, res: Response) => {
 
             // Process the comment for each matching automation input
             for (const automationInput of automationInputs) {
-              await processFigmaCommentInternal(integration, comment, fileKey, accessToken, automationInput);
+              await processFigmaCommentInternal(integration, comment, fileKey, accessToken);
             }
           }
       } catch (error) {
