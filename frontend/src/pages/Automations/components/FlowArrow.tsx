@@ -1,135 +1,10 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { SectionLayout } from "./SectionLayout";
-
-export function FlowArrow() {
-    return (
-        <SectionLayout>
-            <div className="flex justify-center items-center relative -mr-6">
-                <svg width="64" height="40" viewBox="0 0 64 40" className="overflow-visible">
-                    {/* Main arrow path */}
-                    <defs>
-                        <linearGradient id="arrowGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                            <stop offset="0%" stopColor="var(--color-destructive)" stopOpacity="0.2" />
-                            <stop offset="100%" stopColor="var(--color-destructive)" stopOpacity="0.8" />
-                        </linearGradient>
-                    </defs>
-
-                    {/* Arrow line */}
-                    <line
-                        x1="4"
-                        y1="20"
-                        x2="56"
-                        y2="20"
-                        stroke="url(#arrowGradient)"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                    />
-
-                    {/* Arrow head */}
-                    <path
-                        d="M 56 20 L 52 16 M 56 20 L 52 24"
-                        stroke="var(--color-destructive)"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        opacity="0.8"
-                    />
-
-                    {/* Animated particles */}
-                    <circle r="1.5" fill="var(--color-destructive)" opacity="0.8">
-                        <animateMotion
-                            dur="2s"
-                            repeatCount="indefinite"
-                            path="M 4 20 L 56 20"
-                        />
-                        <animate
-                            attributeName="opacity"
-                            values="0;0.8;0.8;0"
-                            dur="2s"
-                            repeatCount="indefinite"
-                        />
-                    </circle>
-
-                    <circle r="1.5" fill="var(--color-destructive)" opacity="0">
-                        <animateMotion
-                            dur="2s"
-                            repeatCount="indefinite"
-                            path="M 4 20 L 56 20"
-                            begin="0.5s"
-                        />
-                        <animate
-                            attributeName="opacity"
-                            values="0;0.8;0.8;0"
-                            dur="2s"
-                            repeatCount="indefinite"
-                            begin="0.5s"
-                        />
-                    </circle>
-
-                    <circle r="1.5" fill="var(--color-destructive)" opacity="0">
-                        <animateMotion
-                            dur="2s"
-                            repeatCount="indefinite"
-                            path="M 4 20 L 56 20"
-                            begin="1s"
-                        />
-                        <animate
-                            attributeName="opacity"
-                            values="0;0.8;0.8;0"
-                            dur="2s"
-                            repeatCount="indefinite"
-                            begin="1s"
-                        />
-                    </circle>
-
-                    <circle r="1.5" fill="var(--color-destructive)" opacity="0">
-                        <animateMotion
-                            dur="2s"
-                            repeatCount="indefinite"
-                            path="M 4 20 L 56 20"
-                            begin="1.5s"
-                        />
-                        <animate
-                            attributeName="opacity"
-                            values="0;0.8;0.8;0"
-                            dur="2s"
-                            repeatCount="indefinite"
-                            begin="1.5s"
-                        />
-                    </circle>
-                </svg>
-            </div>
-        </SectionLayout>
-    )
-}
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 export type Conn = { id: string; from: React.RefObject<HTMLDivElement | null>; to: React.RefObject<HTMLDivElement | null> };
 
 type SVGFlowArrowsProps = {
     containerRef: React.RefObject<HTMLDivElement | null>;
     connections: Conn[];
-}
-
-function getEdgePoint(
-    el: HTMLElement,
-    container: HTMLElement,
-    side: 'left' | 'right' | 'top' | 'bottom' | 'center' = 'center'
-) {
-    const r = el.getBoundingClientRect();
-    const c = container.getBoundingClientRect();
-
-    switch (side) {
-        case 'left':
-            return { x: r.left - c.left, y: r.top - c.top + r.height / 2 };
-        case 'right':
-            return { x: r.right - c.left, y: r.top - c.top + r.height / 2 };
-        case 'top':
-            return { x: r.left - c.left + r.width / 2, y: r.top - c.top };
-        case 'bottom':
-            return { x: r.left - c.left + r.width / 2, y: r.bottom - c.top };
-        default:
-            return { x: r.left - c.left + r.width / 2, y: r.top - c.top + r.height / 2 };
-    }
 }
 
 export function SVGFlowArrows({
@@ -145,38 +20,25 @@ export function SVGFlowArrows({
 
     const recompute = useCallback(() => setTick(t => t + 1), []);
 
-      useEffect(() => {
+    useEffect(() => {
         const container = containerRef.current;
         if (!container) return;
-    
-        const observer = new ResizeObserver((entries) => {
-          for (const entry of entries) {
-            const { width, height } = entry.contentRect;
+
+        const observer = new ResizeObserver(() => {
             recompute();
-            console.log("Size changed:", width, height);
-          }
         });
 
-        const els = connections.flatMap(c => [c.from.current, c.to.current]).filter(Boolean) as HTMLElement[];
-
-        const observer2 = new ResizeObserver((entries) => {
-            for (const entry of entries) {
-              const { width, height } = entry.contentRect;
-              recompute();
-              console.log("Size changed:", width, height);
-            }
-          });
-
-        els.forEach(el => observer2.observe(el));
-    
+        // Observe the container and all connected elements
         observer.observe(container);
-        observer2.observe(container);
-    
+        connections.forEach(({ from, to }) => {
+            if (from.current) observer.observe(from.current);
+            if (to.current) observer.observe(to.current);
+        });
+
         return () => {
             observer.disconnect();
-            observer2.disconnect();
         };
-      }, []);
+    }, [connections, recompute]);
 
     const paths = useMemo(() => {
         const container = containerRef.current;
@@ -212,4 +74,26 @@ export function SVGFlowArrows({
             )}
         </svg>
     );
+}
+
+function getEdgePoint(
+    el: HTMLElement,
+    container: HTMLElement,
+    side: 'left' | 'right' | 'top' | 'bottom' | 'center' = 'center'
+) {
+    const r = el.getBoundingClientRect();
+    const c = container.getBoundingClientRect();
+
+    switch (side) {
+        case 'left':
+            return { x: r.left - c.left, y: r.top - c.top + r.height / 2 };
+        case 'right':
+            return { x: r.right - c.left, y: r.top - c.top + r.height / 2 };
+        case 'top':
+            return { x: r.left - c.left + r.width / 2, y: r.top - c.top };
+        case 'bottom':
+            return { x: r.left - c.left + r.width / 2, y: r.bottom - c.top };
+        default:
+            return { x: r.left - c.left + r.width / 2, y: r.top - c.top + r.height / 2 };
+    }
 }
