@@ -8,7 +8,7 @@ import { OutputSection } from "../OutputSection";
 import { AutomationUpdate } from "@/shared/types";
 import { toast } from "sonner";
 import { getDefaultAutomationName } from "@/utility/AutomationUtils";
-import { SVGFlowArrows } from "../components/FlowArrow";
+import { Conn, SVGFlowArrows } from "../components/FlowArrow";
 import { PromptSection } from "../PromptSection";
 
 function SaveAutomationButton({ defaultName }: { defaultName: string | null }) {
@@ -105,15 +105,24 @@ export default function AutomationSetupTab() {
         getDefaultName();
     }, [inputs, output]);
 
-    console.log('containerRef', containerRef.current);
-    console.log('InputsSectionRef', InputsSectionRef.current);
-    console.log('PromptSectionRef', PromptSectionRef.current);
-    console.log('OutputSectionRef', OutputSectionRef.current);
+    const connections: Conn[] = []
+    
+    if (inputs.length > 0 && InputsSectionRef.current != null) {
+        for (const input of inputs) {
+            if (input.integration != null && input.integrationId != null) {
+                connections.push({ id: `input-to-prompt-${input.integration}-${input.integrationId}`, from: InputsSectionRef, to: PromptSectionRef });
+            }
+        }
+        connections.push({ id: 'input-to-prompt', from: InputsSectionRef, to: PromptSectionRef });
+    }
+    if (prompt != null && PromptSectionRef.current != null && OutputSectionRef.current != null && output != null) {
+        connections.push({ id: 'prompt-to-output', from: PromptSectionRef, to: OutputSectionRef });
+    }
 
     return (
         <div className="flex flex-col h-full p-4 overflow-y-auto gap-6">
 
-            <div className="flex justify-between items-center">
+            <div className="flex justify-between items-center mb-10">
                 <div className="flex items-center gap-2">
                     <EditableTextField value={name || defaultName || ''} onSave={(value) => setName(value)} />
                 </div>
@@ -128,11 +137,8 @@ export default function AutomationSetupTab() {
                 <OutputSection ref={OutputSectionRef} />
 
                 {
-                    containerRef.current && InputsSectionRef.current && PromptSectionRef.current && OutputSectionRef.current && (
-                        <SVGFlowArrows containerRef={containerRef} connections={[
-                            { id: 'input-to-prompt', from: InputsSectionRef, to: PromptSectionRef },
-                            { id: 'prompt-to-output', from: PromptSectionRef, to: OutputSectionRef },
-                        ]} />
+                    connections.length > 0 && (
+                        <SVGFlowArrows containerRef={containerRef} connections={connections} />
                     )
                 }
             </div>
