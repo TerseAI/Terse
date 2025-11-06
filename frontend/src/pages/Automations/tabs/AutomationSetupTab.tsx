@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import EditableTextField from '../../../components/ui/EditableTextField';
 import { useAutomationContext } from "../../../context/AutomationContext";
 import { BackendProvider } from "../../../services/backend";
@@ -8,7 +8,7 @@ import { OutputSection } from "../OutputSection";
 import { AutomationUpdate } from "@/shared/types";
 import { toast } from "sonner";
 import { getDefaultAutomationName } from "@/utility/AutomationUtils";
-import { FlowArrow } from "../components/FlowArrow";
+import { Conn, SVGFlowArrows } from "../components/FlowArrow";
 import { PromptSection } from "../PromptSection";
 
 function SaveAutomationButton({ defaultName }: { defaultName: string | null }) {
@@ -92,6 +92,11 @@ export default function AutomationSetupTab() {
     const { name, setName, inputs, output } = useAutomationContext();
     const [defaultName, setDefaultName] = useState<string | null>(null);
 
+    const containerRef = useRef<HTMLDivElement>(null);
+    const InputsSectionRef = useRef<HTMLDivElement>(null);
+    const PromptSectionRef = useRef<HTMLDivElement>(null);
+    const OutputSectionRef = useRef<HTMLDivElement>(null);
+
     useEffect(() => {
         async function getDefaultName() {
             const name = await getDefaultAutomationName(inputs, output);
@@ -100,28 +105,41 @@ export default function AutomationSetupTab() {
         getDefaultName();
     }, [inputs, output]);
 
+    const connections: Conn[] = []
+    
+    if (inputs.length > 0 && InputsSectionRef.current != null) {
+        for (const input of inputs) {
+            if (input.integration != null && input.integrationId != null) {
+                connections.push({ id: `input-to-prompt-${input.integration}-${input.integrationId}`, from: InputsSectionRef, to: PromptSectionRef });
+            }
+        }
+    }
+    if (prompt != null && PromptSectionRef.current != null && OutputSectionRef.current != null && output != null) {
+        connections.push({ id: 'prompt-to-output', from: PromptSectionRef, to: OutputSectionRef });
+    }
+
     return (
-        <div className="flex flex-col h-full p-4">
-            <div className="flex-1 overflow-y-auto">
+        <div className="flex flex-col h-full p-4 overflow-y-auto gap-6">
 
-                <div className="flex justify-between items-center">
-                    <div className="flex items-center gap-2">
-                        <EditableTextField value={name || defaultName || ''} onSave={(value) => setName(value)} />
-                    </div>
-                    <SaveAutomationButton defaultName={defaultName}/>
+            <div className="flex justify-between items-center mb-10">
+                <div className="flex items-center gap-2">
+                    <EditableTextField value={name || defaultName || ''} onSave={(value) => setName(value)} />
                 </div>
+                <SaveAutomationButton defaultName={defaultName} />
+            </div>
 
-                <div className="flex flex-col gap-3">
-                    <InputsSection />
+            <div ref={containerRef} className="grid grid-flow-col place-items-start gap-3 relative">
+                <InputsSection ref={InputsSectionRef} />
 
-                    <FlowArrow />
+                <PromptSection ref={PromptSectionRef} />
 
-                    <PromptSection />
+                <OutputSection ref={OutputSectionRef} />
 
-                    <FlowArrow />
-
-                    <OutputSection />
-                </div>
+                {
+                    connections.length > 0 && (
+                        <SVGFlowArrows containerRef={containerRef} connections={connections} />
+                    )
+                }
             </div>
         </div>
     )

@@ -1,22 +1,21 @@
-import { ReactNode } from "react";
+import { forwardRef, ReactNode } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 
 interface SectionLayoutProps {
-    title: string;
     subtitle?: string;
     children: ReactNode;
     icon?: ReactNode;
     isLoading?: boolean;
 }
 
-export function SectionLayout({ title = "", subtitle = "", children, icon, isLoading = false }: SectionLayoutProps) {
+export const SectionLayout = forwardRef<HTMLDivElement, SectionLayoutProps>(({ subtitle = "", children, icon, isLoading = false }, ref) => {
     if (isLoading) {
         return <SectionLayoutSkeleton showIcon={!!icon} showSubtitle={!!subtitle} />;
     }
 
     return (
-        <div className="grid grid-cols-20">
-            <div className="flex items-center gap-2.5 col-span-4">
+        <div ref={ref} className="grid grid-flow-row">
+            {/* <div className="flex items-center gap-2.5">
                 {icon && (
                     <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-[theme(background)]">
                         {icon}
@@ -28,13 +27,13 @@ export function SectionLayout({ title = "", subtitle = "", children, icon, isLoa
                         <p className="text-xs text-[theme(text-secondary)] mt-0.5">{subtitle}</p>
                     )}
                 </div>
-            </div>
-            <div className="p-4 col-span-12 flex flex-col items-center">
+            </div> */}
+            <div className="p-4 h-full flex flex-col items-center justify-center">
                 {children}
             </div>
         </div>
     );
-}
+})
 
 interface SectionLayoutSkeletonProps {
     showIcon?: boolean;
