@@ -3,11 +3,11 @@ import { SectionLayout } from "./SectionLayout";
 export function FlowArrow() {
     return (
         <SectionLayout title={""}>
-            <div className="flex justify-center relative -mb-6">
-                <svg width="40" height="64" viewBox="0 0 40 64" className="overflow-visible">
+            <div className="flex justify-center items-center relative -mr-6">
+                <svg width="64" height="40" viewBox="0 0 64 40" className="overflow-visible">
                     {/* Main arrow path */}
                     <defs>
-                        <linearGradient id="arrowGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                        <linearGradient id="arrowGradient" x1="0%" y1="0%" x2="100%" y2="0%">
                             <stop offset="0%" stopColor="var(--color-destructive)" stopOpacity="0.2" />
                             <stop offset="100%" stopColor="var(--color-destructive)" stopOpacity="0.8" />
                         </linearGradient>
@@ -15,10 +15,10 @@ export function FlowArrow() {
 
                     {/* Arrow line */}
                     <line
-                        x1="20"
-                        y1="4"
-                        x2="20"
-                        y2="56"
+                        x1="4"
+                        y1="20"
+                        x2="56"
+                        y2="20"
                         stroke="url(#arrowGradient)"
                         strokeWidth="2"
                         strokeLinecap="round"
@@ -26,7 +26,7 @@ export function FlowArrow() {
 
                     {/* Arrow head */}
                     <path
-                        d="M 20 56 L 16 52 M 20 56 L 24 52"
+                        d="M 56 20 L 52 16 M 56 20 L 52 24"
                         stroke="var(--color-destructive)"
                         strokeWidth="2"
                         strokeLinecap="round"
@@ -39,7 +39,7 @@ export function FlowArrow() {
                         <animateMotion
                             dur="2s"
                             repeatCount="indefinite"
-                            path="M 20 4 L 20 56"
+                            path="M 4 20 L 56 20"
                         />
                         <animate
                             attributeName="opacity"
@@ -53,7 +53,7 @@ export function FlowArrow() {
                         <animateMotion
                             dur="2s"
                             repeatCount="indefinite"
-                            path="M 20 4 L 20 56"
+                            path="M 4 20 L 56 20"
                             begin="0.5s"
                         />
                         <animate
@@ -69,7 +69,7 @@ export function FlowArrow() {
                         <animateMotion
                             dur="2s"
                             repeatCount="indefinite"
-                            path="M 20 4 L 20 56"
+                            path="M 4 20 L 56 20"
                             begin="1s"
                         />
                         <animate
@@ -85,7 +85,7 @@ export function FlowArrow() {
                         <animateMotion
                             dur="2s"
                             repeatCount="indefinite"
-                            path="M 20 4 L 20 56"
+                            path="M 4 20 L 56 20"
                             begin="1.5s"
                         />
                         <animate

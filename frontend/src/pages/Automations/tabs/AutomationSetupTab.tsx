@@ -111,7 +111,7 @@ export default function AutomationSetupTab() {
                     <SaveAutomationButton defaultName={defaultName}/>
                 </div>
 
-                <div className="grid grid-flow-col gap-3">
+                <div className="grid grid-flow-col place-items-start gap-3 relative">
                     <InputsSection />
 
                     <FlowArrow />
