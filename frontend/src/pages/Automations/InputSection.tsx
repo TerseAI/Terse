@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { forwardRef, useState } from "react";
 import { Input, useAutomationContext } from "../../context/AutomationContext";
 import { Integration } from "../../context/Integrations";
 import { SectionLayout } from "./components/SectionLayout";
@@ -11,7 +11,7 @@ import { Card, CardAction, CardContent, CardFooter, CardHeader } from "@/compone
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { IntegrationTitle } from "./components/IntegrationTitle";
 
-export function InputsSection() {
+export const InputsSection = forwardRef<HTMLDivElement, { ref: React.RefObject<HTMLDivElement> }>((props, ref) => {
     const { inputs, setInputs, isLoading } = useAutomationContext();
     const [showAddModal, setShowAddModal] = useState(false);
     const input = inputs[0]; // Only one input allowed
@@ -44,7 +44,7 @@ export function InputsSection() {
     };
 
     return (
-        <SectionLayout
+        <SectionLayout ref={ref}
             subtitle="Choose which integration triggers this automation"
             icon={<Zap className="w-5 h-5 text-primary" />}
             isLoading={isLoading}
@@ -63,7 +63,7 @@ export function InputsSection() {
 
         </SectionLayout>
     );
-}
+})
 
 function InputCard({
     input,
