@@ -32,9 +32,6 @@ function NotionIntegrationCard({ integrationId }: { integrationId: string }) {
         fetchOAuthUrl();
     }, []);
 
-    const numberOfPages = resources.filter(resource => resource.type === 'page').length;
-    const numberOfDatabases = resources.filter(resource => resource.type === 'database').length;
-
     return (
         <Card>
             <CardHeader>
