@@ -113,7 +113,6 @@ export default function AutomationSetupTab() {
                 connections.push({ id: `input-to-prompt-${input.integration}-${input.integrationId}`, from: InputsSectionRef, to: PromptSectionRef });
             }
         }
-        connections.push({ id: 'input-to-prompt', from: InputsSectionRef, to: PromptSectionRef });
     }
     if (prompt != null && PromptSectionRef.current != null && OutputSectionRef.current != null && output != null) {
         connections.push({ id: 'prompt-to-output', from: PromptSectionRef, to: OutputSectionRef });

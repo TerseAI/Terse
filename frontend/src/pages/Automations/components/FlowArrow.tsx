@@ -145,18 +145,6 @@ export function SVGFlowArrows({
 
     const recompute = useCallback(() => setTick(t => t + 1), []);
 
-    useLayoutEffect(() => {
-        const c = containerRef.current;
-        if (!c) return;
-        const onScroll = () => recompute();
-        window.addEventListener("resize", recompute);
-        c.addEventListener("scroll", onScroll, { passive: true });
-        return () => {
-          window.removeEventListener("resize", recompute);
-          c.removeEventListener("scroll", onScroll);
-        };
-      }, [containerRef]);
-
       useEffect(() => {
         const container = containerRef.current;
         if (!container) return;
@@ -184,18 +172,11 @@ export function SVGFlowArrows({
         observer.observe(container);
         observer2.observe(container);
     
-        return () => observer.disconnect();
+        return () => {
+            observer.disconnect();
+            observer2.disconnect();
+        };
       }, []);
-
-    // Recompute when any endpoint resizes
-    useLayoutEffect(() => {
-        const obs = new ResizeObserver(recompute);
-        const els = connections.flatMap(c => [c.from.current, c.to.current]).filter(Boolean) as HTMLElement[];
-        els.forEach(el => obs.observe(el));
-        const container = containerRef.current;
-        if (container) obs.observe(container);
-        return () => obs.disconnect();
-    }, [connections, containerRef]);
 
     const paths = useMemo(() => {
         const container = containerRef.current;
