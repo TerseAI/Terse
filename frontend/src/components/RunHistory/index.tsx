@@ -124,7 +124,7 @@ export default function RunHistory() {
     };
 
     return (
-        <div className="max-w-5xl mx-auto px-6 py-4 h-full">
+        <div className="w-full px-3 py-4 h-full">
             <RunHistoryToolBar
                 filteredCount={total}
                 startIndex={startIndex}
