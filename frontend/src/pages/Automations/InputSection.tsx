@@ -11,7 +11,7 @@ import { Card, CardAction, CardContent, CardFooter, CardHeader } from "@/compone
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { IntegrationTitle } from "./components/IntegrationTitle";
 
-export const InputsSection = forwardRef<HTMLDivElement, { ref: React.RefObject<HTMLDivElement> }>((props, ref) => {
+export const InputsSection = forwardRef<HTMLDivElement, { ref: React.RefObject<HTMLDivElement> }>((_, ref) => {
     const { inputs, setInputs, isLoading } = useAutomationContext();
     const [showAddModal, setShowAddModal] = useState(false);
     const input = inputs[0]; // Only one input allowed

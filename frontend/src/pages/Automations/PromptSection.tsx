@@ -9,7 +9,7 @@ type PromptSectionProps = {
     icon?: ReactNode;
     isLoading?: boolean;
 }
-export const PromptSection = forwardRef<HTMLDivElement, PromptSectionProps>((props, ref) => {
+export const PromptSection = forwardRef<HTMLDivElement, PromptSectionProps>((_, ref) => {
     return (
         <SectionLayout ref={ref} subtitle="The AI will use this prompt to generate the output" icon={<MessageCircle className="w-5 h-5 text-sidebar-primary" />}>
             <BackgroundAgentCard />
