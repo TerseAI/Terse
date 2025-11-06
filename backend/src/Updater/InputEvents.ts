@@ -184,8 +184,18 @@ export interface FigmaCommentEventData {
     createdAt: string;
     resolved?: boolean;
     // Enriched context (optional - added during processing)
-    nodeContext?: any;
     fileMetadata?: any;
+    // Positioning and visual context (optional - added during enrichment)
+    positioningData?: {
+        type: 'Vector' | 'FrameOffset' | 'Region' | 'FrameOffsetRegion';
+        data: any;
+    };
+    matchedNodeIds?: string[];
+    imageUrls?: {
+        nodeImage?: string;
+        contextImage?: string;
+        fullFrame?: string;
+    };
 }
 
 export class FigmaCommentEvent extends InputEvent {
@@ -199,11 +209,29 @@ export class FigmaCommentEvent extends InputEvent {
 
     formatForAutomationAgent(): string {
         const nodeInfo = this.data.nodeId 
-            ? `\nNode ID: ${this.data.nodeId}\nNode Context: ${JSON.stringify(this.data.nodeContext || {}, null, 2)}`
+            ? `\nNode ID: ${this.data.nodeId}`
             : '\nComment is on the file level (not attached to a specific node)';
         
         const fileInfo = this.data.fileMetadata 
             ? `\nFile Metadata: ${JSON.stringify(this.data.fileMetadata, null, 2)}`
+            : '';
+
+        const positioningInfo = this.data.positioningData
+            ? `\nPositioning Data:
+        Type: ${this.data.positioningData.type}
+        Data: ${JSON.stringify(this.data.positioningData.data, null, 2)}`
+            : '';
+
+        const matchedNodesInfo = this.data.matchedNodeIds && this.data.matchedNodeIds.length > 0
+            ? `\nMatched Design Elements: ${this.data.matchedNodeIds.join(', ')}`
+            : '';
+
+        const imageInfo = this.data.imageUrls
+            ? `\nVisual Context Available:
+        ${this.data.imageUrls.nodeImage ? `- Primary Node Image: ${this.data.imageUrls.nodeImage}` : ''}
+        ${this.data.imageUrls.contextImage ? `- Context Image (surrounding area): ${this.data.imageUrls.contextImage}` : ''}
+        ${this.data.imageUrls.fullFrame ? `- Full Frame Image: ${this.data.imageUrls.fullFrame}` : ''}
+        Note: These images provide visual context for the comment. Use them to understand what design element the comment refers to.`
             : '';
 
         return `
@@ -216,7 +244,7 @@ export class FigmaCommentEvent extends InputEvent {
         Author: ${this.data.author.handle} (${this.data.author.id})
         Message: ${this.data.message}
         Created At: ${this.data.createdAt}
-        Resolved: ${this.data.resolved ? 'Yes' : 'No'}${nodeInfo}${fileInfo}
+        Resolved: ${this.data.resolved ? 'Yes' : 'No'}${nodeInfo}${fileInfo}${positioningInfo}${matchedNodesInfo}${imageInfo}
         `;
     }
 
@@ -230,15 +258,15 @@ export class FigmaCommentEvent extends InputEvent {
             return false;
         }
 
-        // If automationInput has figma_config with file_key, filter by file
+        // Require file_key to be configured and match the event's file_key
         const figmaConfig = (automationInput as any).figma_config;
-        if (figmaConfig?.file_key) {
-            // If config specifies a file, event must match that file
-            return this.data.fileKey === figmaConfig.file_key;
+        if (!figmaConfig?.file_key) {
+            // No file_key configured means this automation should not match any events
+            return false;
         }
 
-        // No file config means all Figma comment events match
-        return true;
+        // Event's file_key must match the automation input's file_key
+        return this.data.fileKey === figmaConfig.file_key;
     }
 
     createTriggerMetadata(): RunHistoryTrigger {

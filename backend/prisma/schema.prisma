@@ -83,13 +83,13 @@ model linear_api_keys {
 }
 
 model user_slack_integrations {
-  id                        String   @id @default(cuid())
-  user_id                   String
-  slack_team_id             String
-  authed_user_id            String
-  authed_user_access_token  String
-  created_at                DateTime @default(now())
-  updated_at                DateTime @updatedAt
+  id                       String   @id @default(cuid())
+  user_id                  String
+  slack_team_id            String
+  authed_user_id           String
+  authed_user_access_token String
+  created_at               DateTime @default(now())
+  updated_at               DateTime @updatedAt
 
   user              users              @relation(fields: [user_id], references: [id], onDelete: Cascade)
   slack_integration slack_integrations @relation(fields: [slack_team_id], references: [team_id], onDelete: Cascade)
@@ -198,20 +198,20 @@ model notion_integrations {
 }
 
 model figma_integrations {
-  id             String   @id @default(cuid())
-  user_id        String
-  figma_user_id  String
-  email          String? // User's email from Figma API
-  access_token   String
-  refresh_token  String?
-  token_expiry   DateTime
-  created_at     DateTime @default(now())
-  updated_at     DateTime @updatedAt
+  id            String   @id @default(cuid())
+  user_id       String
+  figma_user_id String
+  email         String? // User's email from Figma API
+  access_token  String
+  refresh_token String?
+  token_expiry  DateTime
+  created_at    DateTime @default(now())
+  updated_at    DateTime @updatedAt
 
   user                     users                      @relation(fields: [user_id], references: [id], onDelete: Cascade)
-  processed_figma_comments  processed_figma_comments[]
-  figma_comment_context     figma_comment_context[]
-  figma_webhooks            figma_webhooks[]
+  processed_figma_comments processed_figma_comments[]
+  figma_comment_context    figma_comment_context[]
+  figma_webhooks           figma_webhooks[]
 
   @@index([user_id])
   @@index([figma_user_id])
@@ -244,7 +244,7 @@ model figma_webhooks {
   team_id              String // Team ID (required for team-level webhooks)
   endpoint_url         String // Our webhook endpoint URL
   passcode             String // Secure passcode for webhook verification
-  event_type           String @default("FILE_UPDATE") // Event type: FILE_COMMENT or FILE_UPDATE
+  event_type           String   @default("FILE_UPDATE") // Event type: FILE_COMMENT or FILE_UPDATE
   created_at           DateTime @default(now())
   updated_at           DateTime @updatedAt
 
@@ -259,16 +259,19 @@ model figma_webhooks {
 
 // Store enriched comment context for AI/documentation
 model figma_comment_context {
-  id                   String   @id @default(cuid())
+  id                   String    @id @default(cuid())
   figma_integration_id String
   comment_id           String
   file_key             String
   node_id              String? // Node ID the comment is attached to
-  comment_data         Json     // Full comment data from Figma API
-  node_context         Json?    // Enriched node data (from GET /v2/files/:key/nodes)
-  file_metadata         Json?    // File metadata (from GET /v2/files/:key/meta)
-  created_at           DateTime @default(now())
-  updated_at           DateTime @updatedAt
+  comment_data         Json // Full comment data from Figma API
+  file_metadata        Json? // File metadata (from GET /v1/files/:key/meta)
+  positioning_data     Json? // Parsed client_meta positioning data (Vector/FrameOffset/Region/etc.)
+  matched_node_ids     String[] // Array of node IDs that match the comment position
+  image_urls           Json? // Object with image URLs (e.g., { nodeImage: "...", contextImage: "...", fullFrame: "..." })
+  image_expiry         DateTime? // Images expire after 24-48 hours per Figma API
+  created_at           DateTime  @default(now())
+  updated_at           DateTime  @updatedAt
 
   figma_integration figma_integrations @relation(fields: [figma_integration_id], references: [id], onDelete: Cascade)
 
@@ -437,8 +440,8 @@ model automation_slack_configs {
   automation_input_id  String? @unique // FK to automation_inputs (mutually exclusive with output_id)
   automation_output_id String? @unique // FK to automation_outputs (unique constraint)
 
-  channel_id   String? // Channel ID (required for outputs, optional for inputs)
-  channel_name String? // Channel display name (for UI, optional)
+  channel_id         String? // Channel ID (required for outputs, optional for inputs)
+  channel_name       String? // Channel display name (for UI, optional)
   listen_to_user_dms Boolean @default(false) // This integration should include listening to user DMs
 
   created_at DateTime @default(now())
@@ -563,7 +566,7 @@ model automation_figma_configs {
   automation_input_id  String? @unique // FK to automation_inputs (mutually exclusive with output_id)
   automation_output_id String? @unique // FK to automation_outputs (unique constraint)
 
-  file_key   String // Figma file key (required for inputs - specifies which file to monitor)
+  file_key  String // Figma file key (required for inputs - specifies which file to monitor)
   file_name String? // File display name (for UI, optional)
   team_id   String? // Figma team ID (required for webhook creation)
 
@@ -626,6 +629,7 @@ enum RunHistoryIntegration {
   github
   notion
   gmail
+  figma
 }
 
 // Run History tables

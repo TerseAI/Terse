@@ -141,13 +141,6 @@ export type SlackChannelsResponse = {
   selectedChannelId: string | null;
 };
 
-export type FigmaIntegration = {
-  id: string;
-  figmaUserId?: string;
-  email?: string;
-  tokenExpiry?: Date;
-};
-
 export type IntegrationsStatus = {
   integrations: {
     github?: GithubIntegration[];
@@ -156,7 +149,6 @@ export type IntegrationsStatus = {
     slack?: SlackIntegration[];
     gmail?: GmailIntegration[];
     notion?: NotionIntegration[];
-    figma?: FigmaIntegration[];
   };
 };
 

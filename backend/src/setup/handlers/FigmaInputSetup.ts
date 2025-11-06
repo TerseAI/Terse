@@ -48,6 +48,7 @@ export class FigmaInputSetup implements InputSetupHandler {
 
         try {
             const accessToken = figmaIntegration.access_token;
+            const isDevelopment = process.env.NODE_ENV !== 'production';
 
             // Create or reuse team-level webhooks for both event types
             for (const eventType of eventTypes) {
@@ -60,7 +61,37 @@ export class FigmaInputSetup implements InputSetupHandler {
                     },
                 });
 
-                if (existingWebhook) {
+                // In development, always delete and recreate webhooks
+                if (isDevelopment && existingWebhook) {
+                    console.log(
+                        chalk.yellow(`🔄 Development mode: Deleting existing webhook ${existingWebhook.webhook_id} for team ${teamId}, event ${eventType}`)
+                    );
+                    
+                    // Delete webhook from Figma API
+                    try {
+                        const deleteResponse = await fetch(`https://api.figma.com/v2/webhooks/${existingWebhook.webhook_id}`, {
+                            method: 'DELETE',
+                            headers: {
+                                'Authorization': `Bearer ${accessToken}`,
+                            },
+                        });
+
+                        if (!deleteResponse.ok && deleteResponse.status !== 404) {
+                            const errorText = await deleteResponse.text();
+                            console.error(chalk.red(`Failed to delete existing Figma webhook ${existingWebhook.webhook_id}: ${errorText}`));
+                        } else {
+                            console.log(chalk.green(`✅ Deleted existing webhook ${existingWebhook.webhook_id}`));
+                        }
+                    } catch (error) {
+                        console.error(chalk.red(`❌ Error deleting existing webhook ${existingWebhook.webhook_id}:`), error);
+                    }
+
+                    // Delete webhook record from database
+                    await db().figma_webhooks.delete({
+                        where: { id: existingWebhook.id },
+                    });
+                } else if (existingWebhook) {
+                    // In production, reuse existing webhook
                     console.log(
                         chalk.blue(`ℹ️  Team-level webhook already exists for team ${teamId}, event ${eventType}. Reusing existing webhook ${existingWebhook.webhook_id}`)
                     );

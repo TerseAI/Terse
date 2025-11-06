@@ -39,16 +39,30 @@ export function FigmaConfigDialog({
     const [fileError, setFileError] = useState<string | null>(null);
     const [teamError, setTeamError] = useState<string | null>(null);
 
-    // Initialize URLs from current values
+    // Initialize URLs from current values when dialog opens
     useEffect(() => {
         if (open) {
-            if (currentFileKey && !fileUrl) {
+            // Reset and reload values when dialog opens
+            if (currentFileKey) {
                 setFileUrl(buildFigmaFileUrl(currentFileKey));
                 setExtractedFileKey(currentFileKey);
+            } else {
+                setFileUrl("");
+                setExtractedFileKey(null);
             }
-            if (currentTeamId && !teamUrl) {
+            
+            if (currentTeamId) {
+                // Set teamUrl to the team ID (it can be just the ID or a URL)
+                setTeamUrl(currentTeamId);
                 setExtractedTeamId(currentTeamId);
+            } else {
+                setTeamUrl("");
+                setExtractedTeamId(null);
             }
+            
+            // Clear errors when dialog opens
+            setFileError(null);
+            setTeamError(null);
         } else {
             // Reset when dialog closes
             setFileUrl("");
@@ -58,7 +72,7 @@ export function FigmaConfigDialog({
             setFileError(null);
             setTeamError(null);
         }
-    }, [open, currentFileKey, currentTeamId, fileUrl, teamUrl]);
+    }, [open, currentFileKey, currentTeamId]);
 
     const handleFileUrlChange = (value: string) => {
         setFileUrl(value);
