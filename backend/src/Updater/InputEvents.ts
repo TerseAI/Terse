@@ -211,7 +211,6 @@ export interface FigmaCommentEventData {
     matchedNodeIds?: string[];
     imageUrls?: {
         nodeImage?: string;
-        contextImage?: string;
         fullFrame?: string;
     };
 }
@@ -247,7 +246,6 @@ export class FigmaCommentEvent extends InputEvent {
         const imageInfo = this.data.imageUrls
             ? `\nVisual Context Available:
         ${this.data.imageUrls.nodeImage ? `- Primary Node Image: ${this.data.imageUrls.nodeImage}` : ''}
-        ${this.data.imageUrls.contextImage ? `- Context Image (surrounding area): ${this.data.imageUrls.contextImage}` : ''}
         ${this.data.imageUrls.fullFrame ? `- Full Frame Image: ${this.data.imageUrls.fullFrame}` : ''}
         Note: These images provide visual context for the comment. Use them to understand what design element the comment refers to.`
             : '';
@@ -308,9 +306,6 @@ export class FigmaCommentEvent extends InputEvent {
         if (this.data.imageUrls) {
             if (this.data.imageUrls.nodeImage) {
                 urls.push(this.data.imageUrls.nodeImage);
-            }
-            if (this.data.imageUrls.contextImage) {
-                urls.push(this.data.imageUrls.contextImage);
             }
             if (this.data.imageUrls.fullFrame) {
                 urls.push(this.data.imageUrls.fullFrame);
