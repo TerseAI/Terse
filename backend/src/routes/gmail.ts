@@ -496,121 +496,110 @@ export async function handleGmailWebhook(req: Request, res: Response) {
 /**
  * Process a Gmail webhook notification
  * This is called asynchronously after the webhook is acknowledged
- * All database operations are wrapped in a single transaction to prevent race conditions
+ * Only the critical history ID claim is in a transaction; rest is fast and non-blocking
  */
 async function processGmailWebhook(emailAddress: string, historyId: number): Promise<void> {
   console.log(`Gmail notification for ${emailAddress}, historyId: ${historyId}`);
 
   try {
-    // Wrap all database operations in a single transaction
-    await db().$transaction(async (tx) => {
-      // Step 1: Atomically claim this history ID update
-      const claim = await claimHistoryIdUpdateInTransaction(tx, emailAddress, historyId);
+    // Step 1: Atomically claim this history ID update (CRITICAL SECTION - in transaction)
+    const claim = await db().$transaction(async (tx) => {
+      return await claimHistoryIdUpdateInTransaction(tx, emailAddress, historyId);
+    });
 
-      if (!claim.shouldProcess) {
-        console.log(`Skipping webhook processing for ${emailAddress}`);
-        return;
-      }
+    if (!claim.shouldProcess) {
+      console.log(`Skipping webhook processing for ${emailAddress}`);
+      return;
+    }
 
-      const { integration, user, oldHistoryId } = claim;
+    const { integration, user, oldHistoryId } = claim;
 
-      // Step 2: Fetch message IDs from Gmail (external API call, but we do it inside transaction context)
-      // This ensures we have the messages before we commit the history ID update
-      const messageIds = await fetchNewMessageIds(integration, oldHistoryId);
+    // Step 2: Fetch message IDs from Gmail (fast, non-blocking)
+    const messageIds = await fetchNewMessageIds(integration, oldHistoryId);
 
-      if (messageIds.length === 0) {
-        // No messages to process, transaction will commit the history ID update
-        return;
-      }
+    if (messageIds.length === 0) {
+      console.log(`No new messages to process for ${emailAddress}`);
+      return;
+    }
 
-      // Step 3: Set up Gmail client (external API, but needed for fetching emails)
-      const accessToken = await refreshAccessTokenIfNeeded(integration);
-      const oauth2Client = getOAuth2Client();
-      oauth2Client.setCredentials({
-        access_token: accessToken,
-        refresh_token: integration.refresh_token,
-      });
-      const gmail = google.gmail({ version: 'v1', auth: oauth2Client });
+    // Step 3: Set up Gmail client (fast, non-blocking)
+    const accessToken = await refreshAccessTokenIfNeeded(integration);
+    const oauth2Client = getOAuth2Client();
+    oauth2Client.setCredentials({
+      access_token: accessToken,
+      refresh_token: integration.refresh_token,
+    });
+    const gmail = google.gmail({ version: 'v1', auth: oauth2Client });
 
-      const lastProcessedDate: Date | null = integration.last_processed_message_date;
-      let mostRecentEmailDate: Date | null = lastProcessedDate;
+    const lastProcessedDate: Date | null = integration.last_processed_message_date;
+    let mostRecentEmailDate: Date | null = lastProcessedDate;
 
-      // Step 4: Process each message within the transaction
-      for (const messageId of messageIds) {
-        const parsedEmail: GmailEventData | null = await fetchAndParseEmail(gmail, messageId);
+    // Step 4: Process each message (fast, non-blocking)
+    for (const messageId of messageIds) {
+      const parsedEmail: GmailEventData | null = await fetchAndParseEmail(gmail, messageId);
 
-        if (parsedEmail) {
-          const emailTimestamp = parseInt(parsedEmail.internalDate, 10);
-          const emailDate = new Date(emailTimestamp);
+      if (parsedEmail) {
+        const emailTimestamp = parseInt(parsedEmail.internalDate, 10);
+        const emailDate = new Date(emailTimestamp);
 
-          // Skip messages older than the last processed message date
-          if (lastProcessedDate && emailDate <= lastProcessedDate) {
-            console.log(chalk.gray(`Skipping old message ${parsedEmail.id} from ${emailDate.toISOString()}`));
-            console.log(chalk.gray(`  Subject: ${parsedEmail.subject}`));
+        // Skip messages older than the last processed message date
+        if (lastProcessedDate && emailDate <= lastProcessedDate) {
+          console.log(chalk.gray(`Skipping old message ${parsedEmail.id} from ${emailDate.toISOString()}`));
+          console.log(chalk.gray(`  Subject: ${parsedEmail.subject}`));
 
-            // Mark as processed within transaction
-            await markMessageAsProcessedInTransaction(
-              tx,
-              integration.id,
-              parsedEmail.id,
-              parsedEmail.internalDate
-            );
-            continue;
-          }
+          // Mark as processed (non-blocking)
+          await markMessageAsProcessed(integration.id, parsedEmail.id, parsedEmail.internalDate);
+          continue;
+        }
 
-          // Try to mark this message as processed atomically within transaction
-          const wasNewlyProcessed = await markMessageAsProcessedInTransaction(
-            tx,
-            integration.id,
-            parsedEmail.id,
-            parsedEmail.internalDate
-          );
+        // Try to mark this message as processed (non-blocking, unique constraint prevents duplicates)
+        const wasNewlyProcessed = await markMessageAsProcessed(
+          integration.id,
+          parsedEmail.id,
+          parsedEmail.internalDate
+        );
 
-          if (!wasNewlyProcessed) {
-            console.log(chalk.yellow(`Skipping already processed message ${parsedEmail.id}`));
-            console.log(chalk.yellow(`  Subject: ${parsedEmail.subject}`));
-            continue;
-          }
+        if (!wasNewlyProcessed) {
+          console.log(chalk.yellow(`Skipping already processed message ${parsedEmail.id}`));
+          console.log(chalk.yellow(`  Subject: ${parsedEmail.subject}`));
+          continue;
+        }
 
-          // Process email through automations (this may do DB writes via EventProcessor)
-          // Note: EventProcessor uses db() directly, so its writes will be outside this transaction
-          // But the critical state (message marked as processed) is already committed in this transaction
-          console.log(chalk.cyan('New email received:'));
-          console.log(chalk.cyan(`  Subject: ${parsedEmail.subject}`));
-          console.log(chalk.cyan(`  From: ${parsedEmail.from}`));
-          console.log(chalk.cyan(`  Date: ${emailDate.toISOString()}`));
-          console.log(chalk.cyan(`  Snippet: ${parsedEmail.snippet}`));
+        // Process email through automations (non-blocking)
+        console.log(chalk.cyan('New email received:'));
+        console.log(chalk.cyan(`  Subject: ${parsedEmail.subject}`));
+        console.log(chalk.cyan(`  From: ${parsedEmail.from}`));
+        console.log(chalk.cyan(`  Date: ${emailDate.toISOString()}`));
 
-          const eventProcessor = new EventProcessor(new GmailEvent(parsedEmail), user);
-          const results = await eventProcessor.process();
+        const eventProcessor = new EventProcessor(new GmailEvent(parsedEmail), user);
+        const results = await eventProcessor.process();
 
-          // Process results from all automations
-          let hasSuccess = false;
-          for (const result of results) {
-            if (result.success) {
-              console.log(chalk.green(`Email processed successfully by automation: ${result.automation?.name}`));
-              hasSuccess = true;
-            } else {
-              console.log(chalk.gray(`Automation "${result.automation?.name || 'unknown'}" skipped: ${result.message}`));
-            }
-          }
-
-          // Track the most recent email date if processing succeeded
-          if (hasSuccess && (!mostRecentEmailDate || emailDate > mostRecentEmailDate)) {
-            mostRecentEmailDate = emailDate;
+        // Process results from all automations
+        let hasSuccess = false;
+        for (const result of results) {
+          if (result.success) {
+            console.log(chalk.green(`Email processed successfully by automation: ${result.automation?.name}`));
+            hasSuccess = true;
+          } else {
+            console.log(chalk.gray(`Automation "${result.automation?.name || 'unknown'}" skipped: ${result.message}`));
           }
         }
-      }
 
-      // Step 5: Update the last processed message date within the transaction
-      if (mostRecentEmailDate && mostRecentEmailDate !== lastProcessedDate) {
-        await tx.gmail_integrations.update({
-          where: { id: integration.id },
-          data: { last_processed_message_date: mostRecentEmailDate },
-        });
-        console.log(chalk.green(`Updated last processed message date to ${mostRecentEmailDate.toISOString()}`));
+        // Track the most recent email date if processing succeeded
+        if (hasSuccess && (!mostRecentEmailDate || emailDate > mostRecentEmailDate)) {
+          mostRecentEmailDate = emailDate;
+        }
       }
-    });
+    }
+
+    // Step 5: Update the last processed message date (non-blocking)
+    if (mostRecentEmailDate && mostRecentEmailDate !== lastProcessedDate) {
+      await db().gmail_integrations.update({
+        where: { id: integration.id },
+        data: { last_processed_message_date: mostRecentEmailDate },
+      });
+      console.log(chalk.green(`Updated last processed message date to ${mostRecentEmailDate.toISOString()}`));
+    }
 
     console.log(`Successfully processed webhook for ${emailAddress}, historyId: ${historyId}`);
   } catch (error) {
@@ -712,17 +701,17 @@ function extractWebhookData(req: Request): { emailAddress: string; historyId: nu
 }
 
 /**
- * Mark a message as processed in the database within a transaction
+ * Mark a message as processed in the database
  * Returns true if the message was newly marked, false if it was already processed
+ * Uses unique constraint to prevent duplicates (fast, non-blocking)
  */
-async function markMessageAsProcessedInTransaction(
-  tx: any,
+async function markMessageAsProcessed(
   integrationId: string,
   messageId: string,
   internalDate: string
 ): Promise<boolean> {
   try {
-    await tx.processed_gmail_messages.create({
+    await db().processed_gmail_messages.create({
       data: {
         gmail_integration_id: integrationId,
         gmail_message_id: messageId,
