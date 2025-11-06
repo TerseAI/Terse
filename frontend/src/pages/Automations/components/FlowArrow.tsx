@@ -103,7 +103,7 @@ export function FlowArrow() {
     )
 }
 
-type Conn = { id: string; from: React.RefObject<HTMLDivElement | null>; to: React.RefObject<HTMLDivElement | null> };
+export type Conn = { id: string; from: React.RefObject<HTMLDivElement | null>; to: React.RefObject<HTMLDivElement | null> };
 
 type SVGFlowArrowsProps = {
     containerRef: React.RefObject<HTMLDivElement | null>;
