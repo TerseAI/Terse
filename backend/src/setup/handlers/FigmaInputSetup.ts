@@ -43,8 +43,8 @@ export class FigmaInputSetup implements InputSetupHandler {
         // Build webhook endpoint URL
         const webhookEndpoint = `${process.env.BACKEND_URL || 'http://localhost:3001'}/webhooks/figma`;
 
-        // Event types to monitor: comments and file design changes
-        const eventTypes = ['FILE_COMMENT', 'FILE_UPDATE'];
+        // Event types to monitor: comments
+        const eventTypes = ['FILE_COMMENT'];
 
         try {
             const accessToken = figmaIntegration.access_token;
