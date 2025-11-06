@@ -1,4 +1,4 @@
-import { ReactNode } from "react";
+import { forwardRef, ReactNode } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 
 interface SectionLayoutProps {
@@ -8,13 +8,13 @@ interface SectionLayoutProps {
     isLoading?: boolean;
 }
 
-export function SectionLayout({ subtitle = "", children, icon, isLoading = false }: SectionLayoutProps) {
+export const SectionLayout = forwardRef<HTMLDivElement, SectionLayoutProps>(({ subtitle = "", children, icon, isLoading = false }, ref) => {
     if (isLoading) {
         return <SectionLayoutSkeleton showIcon={!!icon} showSubtitle={!!subtitle} />;
     }
 
     return (
-        <div className="grid grid-flow-row">
+        <div ref={ref} className="grid grid-flow-row">
             {/* <div className="flex items-center gap-2.5">
                 {icon && (
                     <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-[theme(background)]">
@@ -33,7 +33,7 @@ export function SectionLayout({ subtitle = "", children, icon, isLoading = false
             </div>
         </div>
     );
-}
+})
 
 interface SectionLayoutSkeletonProps {
     showIcon?: boolean;

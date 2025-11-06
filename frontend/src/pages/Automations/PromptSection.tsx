@@ -1,11 +1,18 @@
 import { MessageCircle } from "lucide-react";
 import { SectionLayout } from "./components/SectionLayout";
 import { BackgroundAgentCard } from "./components/BackgroundAgentCard";
+import { forwardRef, ReactNode } from "react";
 
-export function PromptSection() {
+type PromptSectionProps = {
+    subtitle?: string;
+    children?: ReactNode;
+    icon?: ReactNode;
+    isLoading?: boolean;
+}
+export const PromptSection = forwardRef<HTMLDivElement, PromptSectionProps>((props, ref) => {
     return (
-        <SectionLayout subtitle="The AI will use this prompt to generate the output" icon={<MessageCircle className="w-5 h-5 text-sidebar-primary" />}>
+        <SectionLayout ref={ref} subtitle="The AI will use this prompt to generate the output" icon={<MessageCircle className="w-5 h-5 text-sidebar-primary" />}>
             <BackgroundAgentCard />
         </SectionLayout>
     )
-}
+})

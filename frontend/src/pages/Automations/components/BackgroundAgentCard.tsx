@@ -138,7 +138,7 @@ function PromptDialogTip() {
                         You should use this space to describe what you want the Background agent to do. Pretend you are asking a colleague to do the task.
                     </p>
                     <p className="text-muted-foreground">
-                        Ex: Every time a new decision in made in Figma comments that conflicts with what we have in our PRD, leave a comment in the PRD pointing to the Figma discussion.
+                        Ex: "Every time a new decision in made in Figma comments that conflicts with what we have in our PRD, leave a comment in the PRD pointing to the Figma discussion."
                     </p>
                 </AccordionContent>
             </AccordionItem>

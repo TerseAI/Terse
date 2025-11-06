@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import EditableTextField from '../../../components/ui/EditableTextField';
 import { useAutomationContext } from "../../../context/AutomationContext";
 import { BackendProvider } from "../../../services/backend";
@@ -8,7 +8,7 @@ import { OutputSection } from "../OutputSection";
 import { AutomationUpdate } from "@/shared/types";
 import { toast } from "sonner";
 import { getDefaultAutomationName } from "@/utility/AutomationUtils";
-import { FlowArrow } from "../components/FlowArrow";
+import { SVGFlowArrows } from "../components/FlowArrow";
 import { PromptSection } from "../PromptSection";
 
 function SaveAutomationButton({ defaultName }: { defaultName: string | null }) {
@@ -92,6 +92,11 @@ export default function AutomationSetupTab() {
     const { name, setName, inputs, output } = useAutomationContext();
     const [defaultName, setDefaultName] = useState<string | null>(null);
 
+    const containerRef = useRef<HTMLDivElement>(null);
+    const InputsSectionRef = useRef<HTMLDivElement>(null);
+    const PromptSectionRef = useRef<HTMLDivElement>(null);
+    const OutputSectionRef = useRef<HTMLDivElement>(null);
+
     useEffect(() => {
         async function getDefaultName() {
             const name = await getDefaultAutomationName(inputs, output);
@@ -100,29 +105,37 @@ export default function AutomationSetupTab() {
         getDefaultName();
     }, [inputs, output]);
 
+    console.log('containerRef', containerRef.current);
+    console.log('InputsSectionRef', InputsSectionRef.current);
+    console.log('PromptSectionRef', PromptSectionRef.current);
+    console.log('OutputSectionRef', OutputSectionRef.current);
+
     return (
         <div className="flex flex-col h-full p-4 overflow-y-auto gap-6">
-            {/* <div className="overflow-y-auto"> */}
 
-                <div className="flex justify-between items-center">
-                    <div className="flex items-center gap-2">
-                        <EditableTextField value={name || defaultName || ''} onSave={(value) => setName(value)} />
-                    </div>
-                    <SaveAutomationButton defaultName={defaultName}/>
+            <div className="flex justify-between items-center">
+                <div className="flex items-center gap-2">
+                    <EditableTextField value={name || defaultName || ''} onSave={(value) => setName(value)} />
                 </div>
+                <SaveAutomationButton defaultName={defaultName} />
+            </div>
 
-                <div className="grid grid-flow-col place-items-start gap-3 relative">
-                    <InputsSection />
+            <div ref={containerRef} className="grid grid-flow-col place-items-start gap-3 relative">
+                <InputsSection ref={InputsSectionRef} />
 
-                    <FlowArrow />
+                <PromptSection ref={PromptSectionRef} />
 
-                    <PromptSection />
+                <OutputSection ref={OutputSectionRef} />
 
-                    <FlowArrow />
-
-                    <OutputSection />
-                </div>
-            {/* </div> */}
+                {
+                    containerRef.current && InputsSectionRef.current && PromptSectionRef.current && OutputSectionRef.current && (
+                        <SVGFlowArrows containerRef={containerRef} connections={[
+                            { id: 'input-to-prompt', from: InputsSectionRef, to: PromptSectionRef },
+                            { id: 'prompt-to-output', from: PromptSectionRef, to: OutputSectionRef },
+                        ]} />
+                    )
+                }
+            </div>
         </div>
     )
 }
