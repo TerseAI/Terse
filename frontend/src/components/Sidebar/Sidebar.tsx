@@ -1,13 +1,11 @@
-import { ChevronDown, ChevronUp, Home, MoreHorizontal, Plug, User2, Zap } from "lucide-react"
+import { Home, MoreHorizontal, Plug, Zap } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
 import {
     Sidebar,
     SidebarContent,
-    SidebarFooter,
     SidebarGroup,
     SidebarGroupContent,
     SidebarGroupLabel,
-    SidebarHeader,
     SidebarMenu,
     SidebarMenuAction,
     SidebarMenuButton,
@@ -18,12 +16,12 @@ import {
     SidebarMenuSubItem,
 } from "@/components/ui/sidebar"
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "./ui/dropdown-menu";
-import { useAuth } from "@/services/auth";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "../ui/dropdown-menu";
 import { useEffect, useState } from "react";
 import { BackendProvider } from "@/services/backend";
 import { Automation } from "@/shared/types";
-import { useTheme } from "./theme-provider";
+import { AppSidebarHeader } from "./SidebarHeader";
+import { AppSidebarFooter } from "./SidebarFooter";
 
 interface NavItem {
     title: string;
@@ -189,66 +187,6 @@ function AutomationDropdownMenu() {
                 </DropdownMenuItem>
             </DropdownMenuContent>
         </DropdownMenu>
-    )
-}
-
-function AppSidebarHeader() {
-    return (
-        <SidebarHeader>
-            <SidebarMenu>
-                <SidebarMenuItem>
-                    <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                            <SidebarMenuButton>
-                                Terse AI
-                                <ChevronDown className="ml-auto" />
-                            </SidebarMenuButton>
-                        </DropdownMenuTrigger>
-                    </DropdownMenu>
-                </SidebarMenuItem>
-            </SidebarMenu>
-        </SidebarHeader>
-    )
-}
-
-function AppSidebarFooter() {
-    const { user, logout } = useAuth();
-    const navigate = useNavigate();
-    const { setTheme, theme } = useTheme()
-
-    const handleLogout = async () => {
-        await logout();
-        navigate('/app');
-    }
-
-    const userName = user?.display_name || user?.email || 'User';
-    return (
-        <SidebarFooter>
-            <SidebarMenu>
-                <SidebarMenuItem>
-                    <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                            <SidebarMenuButton>
-                                <User2 /> {userName}
-                                <ChevronUp className="ml-auto" />
-                            </SidebarMenuButton>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent
-                            side="top"
-                            className="min-w-56"
-                            align="start"
-                        >
-                            <DropdownMenuItem onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}>
-                                <span>{theme === 'light' ? 'Switch to Dark Mode' : 'Switch to Light Mode'}</span>
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={handleLogout}>
-                                <span>Logout</span>
-                            </DropdownMenuItem>
-                        </DropdownMenuContent>
-                    </DropdownMenu>
-                </SidebarMenuItem>
-            </SidebarMenu>
-        </SidebarFooter>
     )
 }
 
