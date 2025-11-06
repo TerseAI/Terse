@@ -1,5 +1,6 @@
 import { forwardRef, ReactNode } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 
 interface SectionLayoutProps {
     subtitle?: string;
@@ -40,22 +41,27 @@ interface SectionLayoutSkeletonProps {
     showSubtitle?: boolean;
 }
 
-export function SectionLayoutSkeleton({ showIcon = false, showSubtitle = false }: SectionLayoutSkeletonProps) {
+export function SectionLayoutSkeleton({ showIcon: _showIcon = false, showSubtitle: _showSubtitle = false }: SectionLayoutSkeletonProps) {
     return (
-        <div className="grid grid-cols-20">
-            <div className="flex items-center gap-2.5 col-span-4">
-                {showIcon && (
-                    <Skeleton className="w-8 h-8 rounded-lg" />
-                )}
-                <div className="flex flex-col gap-1">
-                    <Skeleton className="h-4 w-[200px]" />
-                    {showSubtitle && (
-                        <Skeleton className="h-3 w-[150px] mt-0.5" />
-                    )}
-                </div>
-            </div>
-            <div className="p-4 col-span-12 flex flex-col items-center">
-                <Skeleton className="h-70 w-xs" />
+        <div className="grid grid-flow-row">
+            <div className="p-4 h-full flex flex-col items-center justify-center">
+                <Card className="w-full">
+                    <CardHeader>
+                        <div className="flex items-center gap-3">
+                            <Skeleton className="h-8 w-8 rounded-lg" />
+                            <Skeleton className="h-5 w-[180px]" />
+                        </div>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="space-y-3">
+                            <Skeleton className="h-10 w-full min-w-60" />
+                            <Skeleton className="h-10 w-full" />
+                        </div>
+                    </CardContent>
+                    <CardFooter>
+                        <Skeleton className="h-9 w-[100px]" />
+                    </CardFooter>
+                </Card>
             </div>
         </div>
     );
