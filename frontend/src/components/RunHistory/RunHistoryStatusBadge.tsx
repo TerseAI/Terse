@@ -1,4 +1,4 @@
-import { CheckCircle2, XCircle, Loader2, Filter } from "lucide-react";
+import { CheckCircle2, XCircle, Filter } from "lucide-react";
 import type { RunHistoryStatus } from "../../shared/RunHistoryTypes";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
