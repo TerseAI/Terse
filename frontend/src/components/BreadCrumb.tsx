@@ -3,6 +3,9 @@ import { SidebarTrigger } from "./ui/sidebar";
 import { useLocation, useParams, Link } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { BackendProvider } from "@/services/backend";
+import { ChevronDownIcon } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "./ui/dropdown-menu";
+import { Automation } from "@/shared/types";
 
 // Route path to display name mapping
 const routeLabels: Record<string, string> = {
@@ -59,18 +62,18 @@ function BreadCrumb() {
 
         // Filter out 'app' segment and get app-level segments
         const appSegments = pathSegments.filter(seg => seg !== 'app');
-        
+
         for (let i = 0; i < appSegments.length; i++) {
             const segment = appSegments[i];
             const isLast = i === appSegments.length - 1;
-            
+
             items.push(<BreadcrumbSeparator key={`sep-${i}`} />);
 
             // Special handling for automation routes
             if (segment === 'automations') {
                 // Check if next segment is an ID or 'new'
                 const nextSegment = appSegments[i + 1];
-                
+
                 if (nextSegment === 'new') {
                     // New automation page
                     items.push(
@@ -91,9 +94,7 @@ function BreadCrumb() {
                     // Automation detail page
                     items.push(
                         <BreadcrumbItem key="automations">
-                            <BreadcrumbLink asChild>
-                                <Link to="/app/automations">Automations</Link>
-                            </BreadcrumbLink>
+                            <AutomationDropdownMenu />
                         </BreadcrumbItem>
                     );
                     items.push(<BreadcrumbSeparator key="sep-automation" />);
@@ -118,7 +119,7 @@ function BreadCrumb() {
                 // Regular segment
                 const label = routeLabels[segment] || segment;
                 const pathToSegment = '/app/' + appSegments.slice(0, i + 1).join('/');
-                
+
                 if (isLast) {
                     items.push(
                         <BreadcrumbItem key={segment}>
@@ -164,6 +165,48 @@ function BreadCrumb() {
             </Breadcrumb>
         </div>
     );
+}
+
+function AutomationDropdownMenu() {
+    const [automations, setAutomations] = useState<Automation[]>([]);
+    const [isLoading, setIsLoading] = useState(false);
+
+    useEffect(() => {
+        setIsLoading(true);
+        const loadAutomations = async () => {
+            try {
+                const response = await BackendProvider.getUserAutomations();
+                setAutomations(response.automations);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+        loadAutomations();
+    }, []);
+
+    if (isLoading || !automations.length) {
+        return (
+            <BreadcrumbLink asChild>
+                <Link to="/app/automations">Automations</Link>
+            </BreadcrumbLink>
+        )
+    }
+
+    return (
+        <DropdownMenu>
+            <DropdownMenuTrigger className="flex items-center gap-1 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-3.5">
+                Automations
+                <ChevronDownIcon />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start">
+                {automations.map(automation => (
+                    <DropdownMenuItem key={automation.id}>
+                        <Link to={`/app/automations/${automation.id}`}>{automation.name}</Link>
+                    </DropdownMenuItem>
+                ))}
+            </DropdownMenuContent>
+        </DropdownMenu>
+    )
 }
 
 export default BreadCrumb;
