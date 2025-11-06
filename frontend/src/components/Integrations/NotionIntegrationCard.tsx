@@ -1,18 +1,18 @@
 import { BackendProvider } from "@/services/backend";
-import { BadgeCheckIcon, FileText, Database } from "lucide-react";
+import { FileText, Database } from "lucide-react";
 import { NotionResource, NotionResourcesResponse } from "@/shared/types";
 import { useEffect, useState } from "react";
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "../ui/card";
-import { IntegrationTitle } from "../../pages/Automations/components/IntegrationTitle";
+import { Card, CardContent } from "../ui/card";
 import { Integration } from "@/context/Integrations";
-import { Badge } from "../ui/badge";
-import { Button } from "../ui/button";
-import { Skeleton } from "../ui/skeleton";
+import { IntegrationCardHeader } from "./IntegrationCardHeader";
+import { IntegrationCardFooter } from "./IntegrationCardFooter";
+import { useOAuthUrl } from "./useOAuthUrl";
+import { CountDisplay } from "./CountDisplay";
 
 function NotionIntegrationCard({ integrationId }: { integrationId: string }) {
     const [resources, setResources] = useState<NotionResource[]>([]);
-    const [oauthUrl, setOauthUrl] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(true);
+    const oauthUrl = useOAuthUrl(Integration.NOTION);
 
     useEffect(() => {
         setIsLoading(true);
@@ -24,39 +24,13 @@ function NotionIntegrationCard({ integrationId }: { integrationId: string }) {
         fetchResources();
     }, [integrationId]);
 
-    useEffect(() => {
-        const fetchOAuthUrl = async () => {
-            const notionResponse = await BackendProvider.requestNotionOAuthUrl();
-            setOauthUrl(notionResponse.url);
-        };
-        fetchOAuthUrl();
-    }, []);
-
     return (
         <Card>
-            <CardHeader>
-                <CardTitle>
-                    <div className="flex justify-between">
-                        <IntegrationTitle integration={Integration.NOTION} iconSize = "lg"/>
-                        <Badge variant="secondary" className="text-primary-foreground">
-                            <BadgeCheckIcon className="size-3 text-primary" />
-                            Connected
-                        </Badge>
-                    </div>
-                </CardTitle>
-            </CardHeader>
+            <IntegrationCardHeader integration={Integration.NOTION} />
             <CardContent>
                 <NotionCardContent resources={resources} isLoading={isLoading} />
             </CardContent>
-            <CardFooter>
-                <Button variant="outline" onClick={() => { 
-                    if (oauthUrl) {
-                        window.open(oauthUrl, 'oauth-popup', 'width=600,height=700');
-                    }
-                }}>
-                    Manage Connection
-                </Button>
-            </CardFooter>
+            <IntegrationCardFooter oauthUrl={oauthUrl} />
         </Card>
     )
 }
@@ -80,24 +54,22 @@ function NotionCardContent({ resources, isLoading }: { resources: NotionResource
 }
 
 function DatabaseCount({ numberOfDatabases, isLoading }: { numberOfDatabases: number, isLoading: boolean }) {
-    if (isLoading) {
-        return <Skeleton className="w-[70px] h-4" />
-    }
     return (
-        <span>
-            <span className="font-semibold text-foreground">{numberOfDatabases}</span> database{numberOfDatabases !== 1 ? 's' : ''}
-        </span>
+        <CountDisplay 
+            count={numberOfDatabases} 
+            singular="database" 
+            isLoading={isLoading} 
+        />
     )
 }
 
 function PagesCount({ numberOfPages, isLoading }: { numberOfPages: number, isLoading: boolean }) {
-    if (isLoading) {
-        return <Skeleton className="w-[70px] h-4" />
-    }
     return (
-        <span>
-            <span className="font-semibold text-foreground">{numberOfPages}</span> page{numberOfPages !== 1 ? 's' : ''}
-        </span>
+        <CountDisplay 
+            count={numberOfPages} 
+            singular="page" 
+            isLoading={isLoading} 
+        />
     )
 }
 

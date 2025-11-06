@@ -3,6 +3,7 @@ import NotionIntegrationCard from "./NotionIntegrationCard";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "../ui/card";
 import { Skeleton } from "../ui/skeleton";
 import GmailIntegrationCard from "./GmailIntegrationCard";
+import SlackIntegrationCard from "./SlackIntegrationCard";
 import { IntegrationsStatus } from "@/shared/types";
 
 function IntegrationCard({ integration, integrationId, integrationStatus }: { integration: Integration, integrationId: string, integrationStatus: IntegrationsStatus }) {
@@ -12,7 +13,7 @@ function IntegrationCard({ integration, integrationId, integrationStatus }: { in
         )
     } else if (integration === Integration.SLACK) {
         return (
-            <div></div>
+            <SlackIntegrationCard integrationStatus={integrationStatus} integrationId={integrationId} />
         )
     } else if (integration === Integration.LINEAR) {
         return (

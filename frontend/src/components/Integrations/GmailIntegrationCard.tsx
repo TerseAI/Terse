@@ -1,54 +1,24 @@
-import { IntegrationTitle } from "@/pages/Automations/components/IntegrationTitle";
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "../ui/card";
-import { Badge } from "../ui/badge";
+import { Card, CardContent } from "../ui/card";
 import { Integration } from "@/context/Integrations";
-import { BadgeCheckIcon } from "lucide-react";
-import { Button } from "../ui/button";
-import { BackendProvider } from "@/services/backend";
-import { useEffect, useState } from "react";
 import { formatIntegrationDisplay } from "@/utility/IntegrationFormatters";
 import { getIntegrationInstances } from "@/utility/IntegrationUtils";
 import { IntegrationsStatus } from "@/shared/types";
+import { IntegrationCardHeader } from "./IntegrationCardHeader";
+import { IntegrationCardFooter } from "./IntegrationCardFooter";
+import { useOAuthUrl } from "./useOAuthUrl";
 
 function GmailIntegrationCard({ integrationStatus }: { integrationStatus: IntegrationsStatus }) {
-    const [oauthUrl, setOauthUrl] = useState<string | null>(null);
-
+    const oauthUrl = useOAuthUrl(Integration.GMAIL);
     const gmailInstances = getIntegrationInstances(integrationStatus.integrations, Integration.GMAIL);
     const email = formatIntegrationDisplay(gmailInstances[0], Integration.GMAIL);
 
-    useEffect(() => {
-        const fetchOAuthUrl = async () => {
-            const gmailResponse = await BackendProvider.requestGmailOAuthUrl();
-            setOauthUrl(gmailResponse.url);
-        };
-        fetchOAuthUrl();
-    }, []);
-
     return (
         <Card>
-            <CardHeader>
-                <CardTitle>
-                    <div className="flex justify-between">
-                        <IntegrationTitle integration={Integration.GMAIL} iconSize="lg" />
-                        <Badge variant="secondary" className="text-primary-foreground">
-                            <BadgeCheckIcon className="size-3 text-primary" />
-                            Connected
-                        </Badge>
-                    </div>
-                </CardTitle>
-            </CardHeader>
+            <IntegrationCardHeader integration={Integration.GMAIL} />
             <CardContent>
                 <GmailCardContent email={email} />
             </CardContent>
-            <CardFooter>
-                <Button variant="outline" onClick={() => {
-                    if (oauthUrl) {
-                        window.open(oauthUrl, 'oauth-popup', 'width=600,height=700');
-                    }
-                }}>
-                    Manage Connection
-                </Button>
-            </CardFooter>
+            <IntegrationCardFooter oauthUrl={oauthUrl} />
         </Card>
     )
 
