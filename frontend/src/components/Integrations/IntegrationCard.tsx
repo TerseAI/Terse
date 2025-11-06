@@ -2,8 +2,10 @@ import { Integration } from "@/context/Integrations";
 import NotionIntegrationCard from "./NotionIntegrationCard";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "../ui/card";
 import { Skeleton } from "../ui/skeleton";
+import GmailIntegrationCard from "./GmailIntegrationCard";
+import { IntegrationsStatus } from "@/shared/types";
 
-function IntegrationCard({ integration, integrationId }: { integration: Integration, integrationId: string }) {
+function IntegrationCard({ integration, integrationId, integrationStatus }: { integration: Integration, integrationId: string, integrationStatus: IntegrationsStatus }) {
     if (integration === Integration.NOTION_PAGE || integration === Integration.NOTION) {
         return (
             <NotionIntegrationCard integrationId={integrationId} />
@@ -26,7 +28,7 @@ function IntegrationCard({ integration, integrationId }: { integration: Integrat
         )
     } else if (integration === Integration.GMAIL) {
         return (
-            <div></div>
+            <GmailIntegrationCard integrationStatus={integrationStatus} />
         )
     }
     console.error(`Unknown integration: ${integration}`);
