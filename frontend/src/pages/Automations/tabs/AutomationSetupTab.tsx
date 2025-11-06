@@ -101,8 +101,8 @@ export default function AutomationSetupTab() {
     }, [inputs, output]);
 
     return (
-        <div className="flex flex-col h-full p-4">
-            <div className="flex-1 overflow-y-auto">
+        <div className="flex flex-col h-full p-4 overflow-y-auto gap-6">
+            {/* <div className="overflow-y-auto"> */}
 
                 <div className="flex justify-between items-center">
                     <div className="flex items-center gap-2">
@@ -111,7 +111,7 @@ export default function AutomationSetupTab() {
                     <SaveAutomationButton defaultName={defaultName}/>
                 </div>
 
-                <div className="flex flex-col gap-3">
+                <div className="grid grid-flow-col gap-3">
                     <InputsSection />
 
                     <FlowArrow />
@@ -122,7 +122,7 @@ export default function AutomationSetupTab() {
 
                     <OutputSection />
                 </div>
-            </div>
+            {/* </div> */}
         </div>
     )
 }

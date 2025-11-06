@@ -1,11 +1,8 @@
-import { Check, ChevronsUpDown } from "lucide-react";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "../ui/dropdown-menu";
+import { DropdownMenu } from "../ui/dropdown-menu";
 import { SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from "../ui/sidebar";
-import { useState } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 
 export function AppSidebarHeader() {
-    const [selectedVersion, setSelectedVersion] = useState(6)
     return (
         <SidebarHeader>
             <SidebarMenu>

@@ -15,8 +15,8 @@ export function SectionLayout({ title = "", subtitle = "", children, icon, isLoa
     }
 
     return (
-        <div className="grid grid-cols-20">
-            <div className="flex items-center gap-2.5 col-span-4">
+        <div className="grid grid-flow-row">
+            {/* <div className="flex items-center gap-2.5">
                 {icon && (
                     <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-[theme(background)]">
                         {icon}
@@ -28,8 +28,8 @@ export function SectionLayout({ title = "", subtitle = "", children, icon, isLoa
                         <p className="text-xs text-[theme(text-secondary)] mt-0.5">{subtitle}</p>
                     )}
                 </div>
-            </div>
-            <div className="p-4 col-span-12 flex flex-col items-center">
+            </div> */}
+            <div className="p-4 h-full flex flex-col items-center justify-center">
                 {children}
             </div>
         </div>
