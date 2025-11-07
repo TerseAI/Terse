@@ -4,9 +4,10 @@ import { Integration } from '../context/Integrations';
 import { BackendProvider } from '../services/backend';
 import { formatIntegrationDisplay, IntegrationInstance } from '../utility/IntegrationFormatters';
 import { getIntegrationInstances, getIntegrationName } from '../utility/IntegrationUtils';
-import { NotionConfig, NotionPageConfig, NotionResourceType, SlackConfig } from '../shared/types';
+import { NotionConfig, NotionPageConfig, NotionResourceType, SlackConfig, FigmaConfig } from '../shared/types';
 import { NotionResourceSelector } from './NotionResourceSelector';
 import { SlackChannelSelector } from './SlackChannelSelector';
+import { FigmaFileSelector } from './FigmaFileSelector';
 import { LinearConnectionForm } from './LinearConnectionForm';
 import { JiraConnectionForm } from './JiraConnectionForm';
 import DropdownSelect from './ui/DropdownSelect';
@@ -24,6 +25,8 @@ interface IntegrationSelectorProps {
     onNotionPageConfigChange?: (config: NotionPageConfig) => void;
     slackConfig?: SlackConfig;
     onSlackConfigChange?: (config: SlackConfig) => void;
+    figmaConfig?: FigmaConfig;
+    onFigmaConfigChange?: (config: FigmaConfig) => void;
 }
 
 export function IntegrationSelector({
@@ -36,7 +39,9 @@ export function IntegrationSelector({
     notionPageConfig,
     onNotionPageConfigChange,
     slackConfig,
-    onSlackConfigChange
+    onSlackConfigChange,
+    figmaConfig,
+    onFigmaConfigChange
 }: IntegrationSelectorProps) {
     const [integrations, setIntegrations] = useState<IntegrationInstance[]>([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -105,6 +110,10 @@ export function IntegrationSelector({
                     const githubResponse = await BackendProvider.requestGitHubAppInstallationUrl();
                     oauthUrl = githubResponse.installationUrl;
                     break;
+                case Integration.FIGMA:
+                    const figmaResponse = await BackendProvider.requestFigmaOAuthUrl();
+                    oauthUrl = figmaResponse.url;
+                    break;
                 default:
                     console.error('OAuth not supported for this integration type');
                     return;
@@ -131,7 +140,7 @@ export function IntegrationSelector({
 
     if (isLoading) {
         return (
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <div className="max-w-xs flex items-center gap-2 text-sm text-muted-foreground">
                 <div className="animate-spin rounded-full h-4 w-4 border-2 border-accent border-t-transparent"></div>
                 Loading connections...
             </div>
@@ -142,7 +151,7 @@ export function IntegrationSelector({
     if ((integrations.length === 0 || showForm) && (integrationType === Integration.JIRA || integrationType === Integration.LINEAR)) {
         if (integrationType === Integration.LINEAR) {
             return (
-                <div>
+                <div className="max-w-xs">
                     {!showForm && integrations.length === 0 && (
                         <div className="flex flex-col gap-3 p-4 rounded-lg border border-dashed border-input bg-card">
                             <div className="text-sm text-muted-foreground">
@@ -167,7 +176,7 @@ export function IntegrationSelector({
 
         if (integrationType === Integration.JIRA) {
             return (
-                <div>
+                <div className="max-w-xs">
                     {!showForm && integrations.length === 0 && (
                         <div className="flex flex-col gap-3 p-4 rounded-lg border border-dashed border-input bg-card">
                             <div className="text-sm text-muted-foreground">
@@ -193,7 +202,7 @@ export function IntegrationSelector({
 
     if (integrations.length === 0) {
         return (
-            <div className="flex flex-col gap-3 p-4 rounded-lg border border-dashed border-input bg-card">
+            <div className="max-w-xs flex flex-col gap-3 p-4 rounded-lg border border-dashed border-input bg-card">
                 <div className="text-sm text-muted-foreground">
                     No {getIntegrationName(integrationType)} accounts connected
                 </div>
@@ -217,7 +226,7 @@ export function IntegrationSelector({
     const setSelected = (selectedOption: string) => onSelect(selectedOption);
 
     return (
-        <div className="flex flex-col gap-3">
+        <div className="max-w-xs flex flex-col gap-3">
             <div className="flex flex-col gap-1.5">
                 <label className="font-medium">
                     {label}
@@ -286,6 +295,27 @@ export function IntegrationSelector({
                                 channelId: listenToUserDms ? undefined : slackConfig?.channelId,
                                 channelName: listenToUserDms ? undefined : slackConfig?.channelName
                             });
+                        }}
+                    />
+                </div>
+            )}
+
+            {/* Figma-specific file selector */}
+            {integrationType === Integration.FIGMA && selectedIntegrationId && onFigmaConfigChange && (
+                <div className="mt-3 pt-3 border-t border-[theme(border)]">
+                    <FigmaFileSelector
+                        selectedFileKey={figmaConfig?.fileKey}
+                        selectedFileName={figmaConfig?.fileName}
+                        selectedTeamId={figmaConfig?.teamId}
+                        onSelect={(fileKey, fileName, teamId) => {
+                            // Only update config if we have all required values
+                            if (fileKey && teamId) {
+                                onFigmaConfigChange({
+                                    fileKey,
+                                    fileName: fileName || fileKey, // Use fileKey as fallback if fileName is not provided
+                                    teamId
+                                });
+                            }
                         }}
                     />
                 </div>

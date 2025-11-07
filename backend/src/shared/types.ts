@@ -107,6 +107,13 @@ export type GmailIntegration = {
   watchExpiration: Date; // When the watch needs to be renewed (max 7 days)
 };
 
+export type FigmaIntegration = {
+  id: string;
+  figma_user_id: string;
+  email: string;
+  token_expiry: Date;
+};
+
 export type NotionIntegration = {
   id: string;
   integrationToken: string;
@@ -141,6 +148,34 @@ export type SlackChannelsResponse = {
   selectedChannelId: string | null;
 };
 
+/**
+ * Slack channel type enum
+ */
+export enum SlackChannelType {
+  CHANNEL = 'channel',
+  GROUP = 'group',
+  MPIM = 'mpim',
+  IM = 'im'
+}
+
+/**
+ * Slack event data
+ * Processed Slack message event data used for automation events
+ */
+export interface SlackEventData {
+  channelId: string;
+  channelName?: string;
+  userId: string;
+  userName?: string;
+  text: string;
+  timestamp: string;
+  threadTimestamp?: string;
+  teamId: string;
+  // Permalink for the message (if available)
+  permalink?: string;
+  channelType?: SlackChannelType;
+}
+
 export type IntegrationsStatus = {
   integrations: {
     github?: GithubIntegration[];
@@ -149,6 +184,7 @@ export type IntegrationsStatus = {
     slack?: SlackIntegration[];
     gmail?: GmailIntegration[];
     notion?: NotionIntegration[];
+    figma?: FigmaIntegration[];
   };
 };
 
@@ -189,6 +225,182 @@ export type GmailConfig = {
   // Currently empty, but typed for future extensibility
 };
 
+export type FigmaConfig = {
+  fileKey: string;
+  fileName: string; // Optional display name
+  teamId: string; // Figma team ID (required for webhook creation)
+};
+
+// Figma webhook and API types
+export enum FigmaEventTypes {
+  FILE_COMMENT = 'FILE_COMMENT',
+}
+
+/**
+ * Figma webhook event user object
+ */
+export interface FigmaWebhookUser {
+  id: string;
+  handle: string;
+  email: string;
+  img_url: string;
+}
+
+/**
+ * Figma webhook comment object (from webhook payload)
+ */
+export interface FigmaWebhookComment {
+  id: string;
+  message: string;
+  client_meta: FigmaClientMeta;
+  user: FigmaWebhookUser;
+  created_at: string;
+  resolved_at: string | null;
+}
+
+/**
+ * Figma comment image URLs
+ * Extracted images for visual context of comments
+ */
+export interface FigmaCommentImageUrls {
+  nodeImage?: string;      // Image of the specific node the comment is on
+  fullFrame?: string;      // Full frame/page image
+}
+
+/**
+ * Figma positioning data structures
+ * Represents the position and type of a comment in a Figma file
+ */
+export type FigmaVectorData = {
+  x: number;
+  y: number;
+};
+
+export type FigmaFrameOffsetData = {
+  node_id: string;
+  node_offset: { x: number; y: number };
+};
+
+export type FigmaRegionData = {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+};
+
+export type FigmaFrameOffsetRegionData = {
+  node_id: string;
+  node_offset: { x: number; y: number };
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+};
+
+export type FigmaPositioningData =
+  | { type: 'Vector'; data: FigmaVectorData }
+  | { type: 'FrameOffset'; data: FigmaFrameOffsetData }
+  | { type: 'Region'; data: FigmaRegionData }
+  | { type: 'FrameOffsetRegion'; data: FigmaFrameOffsetRegionData };
+
+/**
+ * Figma client_meta structure
+ * Represents the raw positioning metadata from Figma comment client_meta
+ * Can be one of several positioning formats
+ */
+export type FigmaClientMeta = {
+  // Vector: point coordinates
+  x: number;
+  y: number;
+  // Region: rectangular area
+  width: number;
+  height: number;
+  // FrameOffset: node with offset
+  node_id: string;
+  node_offset: { x: number; y: number };
+};
+
+/**
+ * Figma webhook comment text object (from webhook payload)
+ */
+export interface FigmaWebhookCommentText {
+  text: string;
+}
+
+/**
+ * Raw Figma webhook event payload
+ * Generated from actual Figma webhook payload structure
+ */
+export interface FigmaWebhookEvent {
+  event_type: string;
+  file_key: string;
+  file_name: string;
+  passcode: string;
+  protocol_version: string;
+  webhook_id: string;
+  timestamp: string;
+  retries: number;
+  // FILE_COMMENT specific fields
+  comment_id: string;
+  comment: FigmaWebhookCommentText[];
+  created_at: string;
+  resolved_at: string; // Empty string if not resolved
+  parent_id: string; // Empty string if no parent
+  order_id: string;
+  mentions: unknown[]; // Array of mention objects (structure unknown)
+  triggered_by: FigmaWebhookUser;
+}
+
+/**
+ * Figma API comment response structure
+ */
+export interface FigmaApiComment {
+  id: string;
+  message: string;
+  client_meta: FigmaClientMeta | null;
+  user: FigmaWebhookUser;
+  created_at: string;
+  resolved_at: string | null;
+  parent_id?: string | null;
+  order_id?: string;
+  mentions?: unknown[];
+  reactions?: unknown[];
+}
+
+export interface FigmaCommentThreadEntry {
+  id: string;
+  message: string;
+  author: FigmaWebhookUser;
+  createdAt: string;
+  resolvedAt: string | null;
+  parentId: string | null;
+  orderId?: string;
+  isRoot?: boolean;
+}
+
+/**
+ * Figma comment event data
+ * Processed/enriched comment data used for automation events
+ * This combines data from webhook, API, and enriched context
+ */
+export interface FigmaCommentEventData {
+  commentId: string;
+  fileKey: string;
+  fileUrl: string;
+  nodeId?: string; // Node ID the comment is attached to (if any)
+  message: string;
+  author: FigmaWebhookUser;
+  createdAt: string;
+  resolved?: boolean;
+  thread?: FigmaCommentThreadEntry[];
+  // Enriched context (optional - added during processing)
+  fileMetadata?: any;
+  // Positioning and visual context (optional - added during enrichment)
+  positioningData?: FigmaPositioningData;
+  matchedNodeIds?: string[];
+  imageUrls?: FigmaCommentImageUrls;
+}
+
 export type AutomationInput = {
   integration: string;
   integrationId?: string;
@@ -199,6 +411,7 @@ export type AutomationInput = {
   jiraConfig?: JiraConfig;
   githubConfig?: GitHubConfig;
   gmailConfig?: GmailConfig;
+  figmaConfig?: FigmaConfig;
 };
 
 export type AutomationOutput = {
@@ -212,6 +425,7 @@ export type AutomationOutput = {
   jiraConfig?: JiraConfig;
   githubConfig?: GitHubConfig;
   gmailConfig?: GmailConfig;
+  figmaConfig?: FigmaConfig;
 };
 
 export type AutomationPrompt = {

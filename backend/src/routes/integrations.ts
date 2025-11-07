@@ -114,6 +114,21 @@ export async function fetchUserIntegrations(req: Request, res: Response) {
             integrationToken: ni.integration_token
         }));
 
+        // Check Figma integrations
+        const figmaIntegrations = await db().figma_integrations.findMany({
+            where: { user_id: user.id },
+            select: {
+                id: true,
+                figma_user_id: true,
+                token_expiry: true
+            }
+        });
+        result.integrations.figma = figmaIntegrations.map(fi => ({
+            id: fi.id,
+            figmaUserId: fi.figma_user_id,
+            tokenExpiry: fi.token_expiry
+        }));
+
         res.status(200).json(result);
     } catch (error) {
         console.error('Error fetching integrations status:', error);

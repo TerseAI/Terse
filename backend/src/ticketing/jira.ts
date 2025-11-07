@@ -3,7 +3,7 @@ import { SearchItem } from '../search/SearchItem';
 import { CreateTicketInput, Ticket, TicketSystemType, UpdateTicketInput, User, UserContext, Team, Project, CommitAssociation, Organization } from '../shared/TicketSystem';
 import { StructuredSearchOptions, TicketManager } from './TicketIntegration';
 import chalk from 'chalk';
-import crypto from 'crypto';
+import { generateWebhookSecret } from '../utility/webhookSecrets';
 
 // Atlassian Document Format (ADF) interfaces
 interface ADFText {
@@ -290,7 +290,8 @@ export class JiraAdapter implements TicketManager {
 
     generateWebhookSecret() {
         // Generate 32 random bytes and convert to hex
-        return crypto.randomBytes(32).toString('hex');
+        // Using utility function for consistency
+        return generateWebhookSecret(32);
     }
 
     async getIssueTypes(projectKey?: string): Promise<Array<{ id: string; name: string; description?: string }>> {

@@ -60,12 +60,26 @@ export class AutomationAgent<T extends Session> {
         if (!this.agent) {
             throw new Error("Agent not initialized. Call initializeAgent() before run()");
         }
-
-        // Add the input event as the initial message to the history
+        
         if (this.inputEvent) {
+            const content: any[] = [
+                {
+                    type: 'input_text',
+                    text: this.inputEvent.formatForAutomationAgent()
+                }
+            ];
+            const imageUrls = this.inputEvent.getImageUrls();
+            if (imageUrls.length > 0) {
+                for (const imageUrl of imageUrls) {
+                    content.push({
+                        type: 'input_image',
+                        image: imageUrl
+                    });
+                }
+            }
             this.history.push({
                 role: 'user',
-                content: JSON.stringify(this.inputEvent, null, 2)
+                content: content
             });
         } else {
             throw new Error("No input event set. Call setInputEvent() before run()");

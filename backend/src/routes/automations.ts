@@ -4,6 +4,7 @@ import { Automation, AutomationInput, AutomationOutput, AutomationPrompt } from 
 import { IntegrationType } from "@prisma/client";
 import { parsePageParams } from "../utility/pagination";
 import chalk from "chalk";
+import { AutomationInputSetup } from "../setup/AutomationInputSetup";
 
 // Map frontend integration string to backend IntegrationType enum
 const integrationTypeMap: Record<string, IntegrationType> = {
@@ -14,6 +15,7 @@ const integrationTypeMap: Record<string, IntegrationType> = {
     'slack': IntegrationType.SLACK,
     'notion': IntegrationType.NOTION,
     'notion_page': IntegrationType.NOTION_PAGE,
+    'figma': IntegrationType.FIGMA,
 };
 
 // Helper function to create config record for an automation input
@@ -84,6 +86,27 @@ async function createInputConfig(
             await tx.automation_gmail_configs.create({
                 data: {
                     automation_input_id: inputId,
+                },
+            });
+            break;
+        case IntegrationType.FIGMA:
+            // Figma config is required for Figma integrations
+            if (!config.figmaConfig) {
+                throw new Error('figmaConfig is required for Figma integration');
+            }
+            console.log(chalk.blue("Figma config received:"), chalk.yellow(JSON.stringify(config.figmaConfig, null, 2)));
+            // Validate that fileKey is provided for Figma configs
+            if (!config.figmaConfig.fileKey || config.figmaConfig.fileKey.trim() === '') {
+                throw new Error('fileKey is required for Figma integration');
+            }
+            await tx.automation_figma_configs.create({
+                data: {
+                    automation_input: {
+                        connect: { id: inputId }
+                    },
+                    file_key: config.figmaConfig.fileKey,
+                    file_name: config.figmaConfig.fileName || null,
+                    team_id: config.figmaConfig.teamId || null,
                 },
             });
             break;
@@ -171,6 +194,20 @@ async function createOutputConfig(
                 },
             });
             break;
+        case IntegrationType.FIGMA:
+            if (config.figmaConfig) {
+                await tx.automation_figma_configs.create({
+                    data: {
+                        automation_output: {
+                            connect: { id: outputId }
+                        },
+                        file_key: config.figmaConfig.fileKey || null,
+                        file_name: config.figmaConfig.fileName || null,
+                        team_id: config.figmaConfig.teamId || null,
+                    },
+                });
+            }
+            break;
     }
 }
 
@@ -213,6 +250,13 @@ function transformInputConfig(input: any): AutomationInput {
     }
     if (input.gmail_config) {
         base.gmailConfig = {};
+    }
+    if (input.figma_config) {
+        base.figmaConfig = {
+            fileKey: input.figma_config.file_key || undefined,
+            fileName: input.figma_config.file_name || undefined,
+            teamId: input.figma_config.team_id || undefined,
+        };
     }
 
     return base;
@@ -262,6 +306,13 @@ function transformOutputConfig(output: any): AutomationOutput {
     }
     if (output.gmail_config) {
         base.gmailConfig = {};
+    }
+    if (output.figma_config) {
+        base.figmaConfig = {
+            fileKey: output.figma_config.file_key || undefined,
+            fileName: output.figma_config.file_name || undefined,
+            teamId: output.figma_config.team_id || undefined,
+        };
     }
 
     return base;
@@ -335,6 +386,15 @@ async function validateUserOwnsIntegration(userId: string, integrationType: Inte
             });
             return !!notionPageIntegration;
 
+        case IntegrationType.FIGMA:
+            const figmaIntegration = await prisma.figma_integrations.findFirst({
+                where: {
+                    id: integrationId,
+                    user_id: userId
+                }
+            });
+            return !!figmaIntegration;
+
         default:
             return false;
     }
@@ -383,6 +443,7 @@ export async function getUserAutomations(req: Request, res: Response) {
                         jira_config: true,
                         github_config: true,
                         gmail_config: true,
+                        figma_config: true,
                     }
                 },
                 output: {
@@ -393,6 +454,7 @@ export async function getUserAutomations(req: Request, res: Response) {
                         jira_config: true,
                         github_config: true,
                         gmail_config: true,
+                        figma_config: true,
                     }
                 }
             },
@@ -452,6 +514,7 @@ export async function getUserAutomation(req: Request, res: Response) {
                         jira_config: true,
                         github_config: true,
                         gmail_config: true,
+                        figma_config: true,
                     }
                 },
                 output: {
@@ -463,6 +526,7 @@ export async function getUserAutomation(req: Request, res: Response) {
                         jira_config: true,
                         github_config: true,
                         gmail_config: true,
+                        figma_config: true,
                     }
                 }
             }
@@ -508,6 +572,7 @@ export async function createAutomation(req: Request, res: Response) {
     const userId = req.session.user.id;
     const { name, inputs, output, prompt, isActive = true } = req.body as SaveAutomationRequest;
     console.log(chalk.green("Output from frontend:"), chalk.yellow(JSON.stringify(output, null, 2)));
+    console.log(chalk.blue("Inputs from frontend:"), chalk.yellow(JSON.stringify(inputs, null, 2)));
 
     // Validate request
     if (!name || !inputs || inputs.length === 0 || !output || !prompt?.text) {
@@ -603,6 +668,9 @@ export async function createAutomation(req: Request, res: Response) {
             return newAutomation;
         });
 
+        // Set up automation inputs (e.g., create webhooks for Figma)
+        await AutomationInputSetup.setupAutomationInputs(automation.id);
+
         res.status(201).json({ success: true, id: automation.id });
     } catch (error) {
         console.error('Error creating automation:', error);
@@ -635,6 +703,9 @@ export async function saveAutomation(req: Request, res: Response) {
         });
 
         if (existingAutomation) {
+            // Tear down old inputs before updating
+            await AutomationInputSetup.tearDownAutomationInputs(existingAutomation.id);
+
             // Update existing automation
             await prisma.$transaction(async (tx) => {
                 // Delete old inputs and output
@@ -725,6 +796,9 @@ export async function saveAutomation(req: Request, res: Response) {
                 await createOutputConfig(tx, newOutput.id, outputIntegrationType, output);
             });
 
+            // Set up new automation inputs after update
+            await AutomationInputSetup.setupAutomationInputs(existingAutomation.id);
+
             res.status(200).json({ success: true, id: existingAutomation.id });
         } else {
             // Create new automation
@@ -805,6 +879,9 @@ export async function saveAutomation(req: Request, res: Response) {
 
                 return newAutomation;
             });
+
+            // Set up automation inputs (e.g., create webhooks for Figma)
+            await AutomationInputSetup.setupAutomationInputs(automation.id);
 
             res.status(201).json({ success: true, id: automation.id });
         }
@@ -945,6 +1022,9 @@ export async function updateAutomation(req: Request, res: Response) {
             }
         });
 
+        // Set up automation inputs (e.g., create webhooks for Figma)
+        await AutomationInputSetup.setupAutomationInputs(automationId);
+
         res.status(200).json({ success: true, id: automationId });
     } catch (error) {
         console.error('Error updating automation:', error);
@@ -977,6 +1057,9 @@ export async function deleteAutomation(req: Request, res: Response) {
             res.status(404).json({ error: 'Automation not found' });
             return;
         }
+
+        // Tear down automation inputs (e.g., delete webhooks for Figma)
+        await AutomationInputSetup.tearDownAutomationInputs(automationId);
 
         // Delete automation (cascade will delete related records)
         await prisma.automations.delete({
