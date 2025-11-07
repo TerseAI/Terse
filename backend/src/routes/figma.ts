@@ -9,10 +9,10 @@ import { User } from "../types/prisma";
 import { figma_integrations } from "@prisma/client";
 import {
   fetchFileMetadata,
-  parsePositioningData,
   mapCommentToDesignElements,
   extractCommentImages,
   fetchFigmaCommentThreadFromApi,
+  resolvePositioningContext,
 } from "../utility/figmaUtils";
 import {
   FigmaEventTypes,
@@ -323,7 +323,21 @@ async function handleFigmaCommentEvent(
 
   const { comment: commentFromApi, thread } = commentThreadData;
 
-  const positioningData = parsePositioningData(commentFromApi.client_meta);
+  const { rootComment, positioningComment, positioningData } = resolvePositioningContext(
+    commentFromApi,
+    thread
+  );
+
+  console.log(
+    chalk.blue(`Client Meta (event comment): ${JSON.stringify(commentFromApi.client_meta, null, 2)}`)
+  );
+  if (positioningComment && positioningComment.id !== commentFromApi.id) {
+    console.log(
+      chalk.blue(
+        `Using comment ${positioningComment.id} client_meta for positioning: ${JSON.stringify(positioningComment.client_meta, null, 2)}`
+      )
+    );
+  }
   console.log(
     chalk.blue(`📍 Positioning data for comment ${commentId}:`),
     positioningData ? JSON.stringify(positioningData, null, 2) : 'null (empty client_meta)'
@@ -332,7 +346,7 @@ async function handleFigmaCommentEvent(
   // Map comment to design elements using positioning data
   let matchedNodeIds: string[] = [];
   try {
-    const nodeId = commentFromApi.client_meta?.node_id;
+    const nodeId = positioningComment?.client_meta?.node_id ?? commentFromApi.client_meta?.node_id;
     matchedNodeIds = await mapCommentToDesignElements(
       integration.access_token,
       fileKey,
@@ -385,7 +399,7 @@ async function handleFigmaCommentEvent(
   // Get the closest node ID for storage
   const closestNodeId = matchedNodeIds.length > 0
     ? matchedNodeIds[0]
-    : (commentFromApi.client_meta?.node_id || null);
+    : (positioningComment?.client_meta?.node_id ?? commentFromApi.client_meta?.node_id ?? null);
 
   const fileMetadata = await fetchFileMetadata(integration.access_token, fileKey);
   if (!fileMetadata) {
@@ -424,8 +438,7 @@ async function handleFigmaCommentEvent(
     // Don't throw - continue processing even if storage fails
   }
 
-  const rootThreadComment = thread.find((comment) => !comment.parent_id) ?? thread[0];
-  const rootCommentId = rootThreadComment?.id ?? commentFromApi.id;
+  const rootCommentId = rootComment?.id ?? commentFromApi.id;
 
   const threadEntries: FigmaCommentThreadEntry[] = thread.map((threadComment) => ({
     id: threadComment.id,

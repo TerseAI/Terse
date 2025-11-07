@@ -642,3 +642,42 @@ export async function fetchFigmaCommentThreadFromApi(
     return null;
   }
 }
+
+export function findRootThreadComment(
+  thread: FigmaApiComment[],
+  fallback: FigmaApiComment
+): FigmaApiComment {
+  if (thread.length === 0) {
+    return fallback;
+  }
+
+  const explicitRoot = thread.find((comment) => !comment.parent_id);
+  if (explicitRoot) {
+    return explicitRoot;
+  }
+
+  return thread[0] ?? fallback;
+}
+
+export function resolvePositioningContext(
+  targetComment: FigmaApiComment,
+  thread: FigmaApiComment[]
+): {
+  rootComment: FigmaApiComment;
+  positioningComment: FigmaApiComment;
+  positioningData: FigmaPositioningData | null;
+} {
+  const rootComment = findRootThreadComment(thread, targetComment);
+
+  const orderedCandidates = [targetComment, ...thread.filter((comment) => comment.id !== targetComment.id)];
+  const candidateWithMeta = orderedCandidates.find((comment) => comment.client_meta);
+  const positioningComment = candidateWithMeta ?? (rootComment.client_meta ? rootComment : targetComment);
+
+  const positioningData = parsePositioningData(positioningComment?.client_meta ?? null);
+
+  return {
+    rootComment,
+    positioningComment,
+    positioningData,
+  };
+}
