@@ -1,106 +1,16 @@
 import chalk from "chalk";
 import { db } from "../prismaClient";
-
-
-export enum FigmaEventTypes {
-  FILE_COMMENT = 'FILE_COMMENT',
-}
-
-/**
- * Figma webhook event user object
- */
-export interface FigmaWebhookUser {
-  id: string;
-  handle?: string;
-  email?: string;
-  img_url?: string;
-}
-
-/**
- * Figma webhook comment object (from webhook payload)
- */
-export interface FigmaWebhookComment {
-  id: string;
-  message?: string;
-  client_meta?: FigmaClientMeta;
-  user?: FigmaWebhookUser;
-  created_at?: string;
-  resolved_at?: string | null;
-}
-
-/**
- * Figma image URL type
- * Represents a URL to a Figma image resource
- */
-export type FigmaImageUrl = string;
-
-/**
- * Figma comment image URLs
- * Extracted images for visual context of comments
- */
-export interface FigmaCommentImageUrls {
-  nodeImage?: FigmaImageUrl;      // Image of the specific node the comment is on
-  fullFrame?: FigmaImageUrl;      // Full frame/page image
-}
-
-/**
- * Figma positioning data structure
- * Represents the position and type of a comment in a Figma file
- */
-export type FigmaPositioningData = {
-  type: 'Vector' | 'FrameOffset' | 'Region' | 'FrameOffsetRegion';
-  data: any;
-};
-
-/**
- * Figma client_meta structure
- * Represents the raw positioning metadata from Figma comment client_meta
- * Can be one of several positioning formats
- */
-export type FigmaClientMeta = {
-  // Vector: point coordinates
-  x?: number;
-  y?: number;
-  // Region: rectangular area
-  width?: number;
-  height?: number;
-  // FrameOffset: node with offset
-  node_id?: string;
-  node_offset?: { x: number; y: number };
-  // Allow additional properties from Figma API
-  [key: string]: any;
-};
-
-/**
- * Figma webhook comment text object (from webhook payload)
- */
-export interface FigmaWebhookCommentText {
-  text: string;
-}
-
-/**
- * Raw Figma webhook event payload
- * Generated from actual Figma webhook payload structure
- */
-export interface FigmaWebhookEvent {
-  event_type: string;
-  file_key: string;
-  file_name?: string;
-  passcode: string;
-  protocol_version: string;
-  webhook_id: string;
-  timestamp: string;
-  retries: number;
-  // FILE_COMMENT specific fields
-  comment_id: string;
-  comment: FigmaWebhookCommentText[];
-  created_at: string;
-  resolved_at: string; // Empty string if not resolved
-  parent_id: string; // Empty string if no parent
-  order_id: string;
-  mentions: unknown[]; // Array of mention objects (structure unknown)
-  triggered_by: FigmaWebhookUser;
-}
+import {
+  FigmaEventTypes,
+  FigmaWebhookUser,
+  FigmaWebhookComment,
+  FigmaCommentImageUrls,
+  FigmaPositioningData,
+  FigmaClientMeta,
+  FigmaWebhookCommentText,
+  FigmaWebhookEvent,
+  FigmaApiComment,
+} from "../shared/types";
 
 
 /**
@@ -614,22 +524,6 @@ export async function extractCommentImages(
   return imageUrls;
 }
 
-/**
- * Figma API comment response structure
- */
-export interface FigmaApiComment {
-  id: string;
-  message: string;
-  client_meta?: FigmaClientMeta;
-  user: {
-    id: string;
-    handle: string;
-    email: string;
-    img_url: string;
-  };
-  created_at: string;
-  resolved_at: string;
-}
 
 /**
  * Fetch comment from Figma API using a single integration

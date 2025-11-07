@@ -11,11 +11,13 @@ import {
   parsePositioningData,
   mapCommentToDesignElements,
   extractCommentImages,
+  fetchFigmaCommentFromApi,
+} from "../utility/figmaUtils";
+import {
   FigmaEventTypes,
   FigmaWebhookEvent,
-  fetchFigmaCommentFromApi,
   FigmaCommentImageUrls,
-} from "../utility/figmaUtils";
+} from "../shared/types";
 
 export const getFigmaOAuthUrl = async (req: Request, res: Response) => {
   const user = req.session?.user;
