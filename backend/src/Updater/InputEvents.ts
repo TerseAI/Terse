@@ -3,22 +3,8 @@ import { IntegrationType } from "@prisma/client";
 import { GmailEventData } from "../routes/gmail";
 import { AutomationInput } from "../types/prisma";
 import { RunHistoryTrigger } from "../shared/RunHistoryTypes";
-import { SlackChannelType } from "../slack/eventHandler";
-
-
-export interface SlackEventData {
-    channelId: string;
-    channelName?: string;
-    userId: string;
-    userName?: string;
-    text: string;
-    timestamp: string;
-    threadTimestamp?: string;
-    teamId: string;
-    // Permalink for the message (if available)
-    permalink?: string;
-    channelType?: SlackChannelType;
-}
+import { SlackEventData, SlackChannelType } from "../shared/types";
+import { FigmaCommentEventData } from "../shared/types";
 
 export abstract class InputEvent {
     abstract readonly integrationType: IntegrationType;
@@ -187,33 +173,6 @@ export class SlackEvent extends InputEvent {
 }
 
 // MARK: - FIGMA Comment Event
-
-export interface FigmaCommentEventData {
-    commentId: string;
-    fileKey: string;
-    fileUrl: string;
-    nodeId?: string; // Node ID the comment is attached to (if any)
-    message: string;
-    author: {
-        id: string;
-        handle: string;
-        img_url?: string;
-    };
-    createdAt: string;
-    resolved?: boolean;
-    // Enriched context (optional - added during processing)
-    fileMetadata?: any;
-    // Positioning and visual context (optional - added during enrichment)
-    positioningData?: {
-        type: 'Vector' | 'FrameOffset' | 'Region' | 'FrameOffsetRegion';
-        data: any;
-    };
-    matchedNodeIds?: string[];
-    imageUrls?: {
-        nodeImage?: string;
-        fullFrame?: string;
-    };
-}
 
 export class FigmaCommentEvent extends InputEvent {
     readonly integrationType: IntegrationType = IntegrationType.FIGMA;
