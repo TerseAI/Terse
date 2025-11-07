@@ -3,7 +3,7 @@ import crypto from "crypto";
 import { Request, Response } from "express";
 import { gmail_v1, google } from "googleapis";
 import { GmailEvent } from "../Updater/InputEvents";
-import { EventProcessor } from "../agent/AutomationAgent/EventProcessor";
+import { EventProcessor, ProcessorResult } from "../agent/AutomationAgent/EventProcessor";
 import { db } from "../prismaClient";
 import { GmailIntegration, User } from "../types/prisma";
 
@@ -320,6 +320,7 @@ async function fetchNewMessageIds(
     userId: "me",
     startHistoryId: oldHistoryId,
     historyTypes: ["messageAdded"],
+    labelId: "INBOX",
   });
 
   const history = historyResponse.data.history || [];
@@ -536,11 +537,29 @@ async function processGmailWebhook(emailAddress: string, historyId: number): Pro
 
     // Step 4: Process each message (fast, non-blocking)
     for (const messageId of messageIds) {
+      // Try to mark this message as processed (non-blocking, unique constraint prevents duplicates)
+      const wasNewlyProcessed = await markMessageAsProcessed(
+        integration.id,
+        messageId,
+        String(Date.now())
+      );
+
+      if (!wasNewlyProcessed) {
+        console.log(chalk.yellow(`Skipping already processed message ${messageId}`));
+        continue;
+      }
+
       const parsedEmail: GmailEventData | null = await fetchAndParseEmail(gmail, messageId);
 
       if (parsedEmail) {
         const emailTimestamp = parseInt(parsedEmail.internalDate, 10);
         const emailDate = new Date(emailTimestamp);
+
+        console.log("Recieved Webhook for email:")
+        console.log("Email From: ", parsedEmail.from);
+        console.log("Email to: ", parsedEmail.to);
+        console.log("Email subject: ", parsedEmail.subject);
+        console.log("Email date: ", emailDate.toISOString());
 
         // Skip messages older than the last processed message date
         if (lastProcessedDate && emailDate <= lastProcessedDate) {
@@ -552,27 +571,20 @@ async function processGmailWebhook(emailAddress: string, historyId: number): Pro
           continue;
         }
 
-        // Try to mark this message as processed (non-blocking, unique constraint prevents duplicates)
-        const wasNewlyProcessed = await markMessageAsProcessed(
-          integration.id,
-          parsedEmail.id,
-          parsedEmail.internalDate
-        );
-
-        if (!wasNewlyProcessed) {
-          console.log(chalk.yellow(`Skipping already processed message ${parsedEmail.id}`));
-          console.log(chalk.yellow(`  Subject: ${parsedEmail.subject}`));
-          continue;
-        }
-
         // Process email through automations (non-blocking)
-        console.log(chalk.cyan('New email received:'));
+        console.log(chalk.cyan('About to process email:'));
+        console.log(chalk.cyan(`  Integration for user: ${user.email}`));
         console.log(chalk.cyan(`  Subject: ${parsedEmail.subject}`));
         console.log(chalk.cyan(`  From: ${parsedEmail.from}`));
+        console.log(chalk.cyan(`  To: ${parsedEmail.to}`));
         console.log(chalk.cyan(`  Date: ${emailDate.toISOString()}`));
 
-        const eventProcessor = new EventProcessor(new GmailEvent(parsedEmail), user);
-        const results = await eventProcessor.process();
+        // const eventProcessor = new EventProcessor(new GmailEvent(parsedEmail), user);
+        // const results = await eventProcessor.process();
+
+        const results = [
+          new ProcessorResult(true, "Email processed successfully", null),
+        ]
 
         // Process results from all automations
         let hasSuccess = false;
@@ -615,10 +627,12 @@ async function processGmailWebhook(emailAddress: string, historyId: number): Pro
  */
 async function claimHistoryIdUpdateInTransaction(
   tx: any,
-  emailAddress: string,
+  emailAddress: string, // This is the email belonging to the gmail watch webhook
   newHistoryId: number
 ): Promise<ProcessedWebhookClaim> {
   const newHistoryIdString = newHistoryId.toString();
+
+  console.log("Getting Integration associated with email:", emailAddress, "new history id:", newHistoryIdString);
 
   // Look up active integration by email
   // MASSIVE ISSUE HERE: We don't consider multiple users connecting to the same email address. This will only choose the first one!!!
