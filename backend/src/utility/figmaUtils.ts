@@ -1,14 +1,8 @@
 import chalk from "chalk";
 import { db } from "../prismaClient";
 import {
-  FigmaEventTypes,
-  FigmaWebhookUser,
-  FigmaWebhookComment,
   FigmaCommentImageUrls,
   FigmaPositioningData,
-  FigmaClientMeta,
-  FigmaWebhookCommentText,
-  FigmaWebhookEvent,
   FigmaApiComment,
 } from "../shared/types";
 
