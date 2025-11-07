@@ -140,7 +140,7 @@ export function IntegrationSelector({
 
     if (isLoading) {
         return (
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <div className="max-w-xs flex items-center gap-2 text-sm text-muted-foreground">
                 <div className="animate-spin rounded-full h-4 w-4 border-2 border-accent border-t-transparent"></div>
                 Loading connections...
             </div>
@@ -151,7 +151,7 @@ export function IntegrationSelector({
     if ((integrations.length === 0 || showForm) && (integrationType === Integration.JIRA || integrationType === Integration.LINEAR)) {
         if (integrationType === Integration.LINEAR) {
             return (
-                <div>
+                <div className="max-w-xs">
                     {!showForm && integrations.length === 0 && (
                         <div className="flex flex-col gap-3 p-4 rounded-lg border border-dashed border-input bg-card">
                             <div className="text-sm text-muted-foreground">
@@ -176,7 +176,7 @@ export function IntegrationSelector({
 
         if (integrationType === Integration.JIRA) {
             return (
-                <div>
+                <div className="max-w-xs">
                     {!showForm && integrations.length === 0 && (
                         <div className="flex flex-col gap-3 p-4 rounded-lg border border-dashed border-input bg-card">
                             <div className="text-sm text-muted-foreground">
@@ -202,7 +202,7 @@ export function IntegrationSelector({
 
     if (integrations.length === 0) {
         return (
-            <div className="flex flex-col gap-3 p-4 rounded-lg border border-dashed border-input bg-card">
+            <div className="max-w-xs flex flex-col gap-3 p-4 rounded-lg border border-dashed border-input bg-card">
                 <div className="text-sm text-muted-foreground">
                     No {getIntegrationName(integrationType)} accounts connected
                 </div>
@@ -226,7 +226,7 @@ export function IntegrationSelector({
     const setSelected = (selectedOption: string) => onSelect(selectedOption);
 
     return (
-        <div className="flex flex-col gap-3">
+        <div className="max-w-xs flex flex-col gap-3">
             <div className="flex flex-col gap-1.5">
                 <label className="font-medium">
                     {label}
