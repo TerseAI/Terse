@@ -134,7 +134,6 @@ export class FigmaInputSetup implements InputSetupHandler {
                 await db().figma_webhooks.create({
                     data: {
                         figma_integration_id: figmaIntegration.id,
-                        automation_input_id: automationInput.id, // Track which automation created it (but webhook is shared)
                         webhook_id: webhookId,
                         team_id: teamId,
                         endpoint_url: webhookEndpoint,
