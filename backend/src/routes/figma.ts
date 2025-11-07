@@ -425,11 +425,7 @@ async function handleFigmaCommentEvent(
     fileUrl: `https://www.figma.com/file/${fileKey}`,
     nodeId: closestNodeId || undefined,
     message: commentFromApi.message,
-    author: {
-      id: commentFromApi.user.id,
-      handle: commentFromApi.user.handle,
-      img_url: commentFromApi.user.img_url,
-    },
+    author: commentFromApi.user,
     createdAt: commentFromApi.created_at,
     resolved: commentFromApi.resolved_at !== '', // Empty string if not resolved
     fileMetadata: fileMetadata,
