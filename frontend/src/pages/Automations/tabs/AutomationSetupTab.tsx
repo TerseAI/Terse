@@ -8,6 +8,7 @@ import { OutputSection } from "../OutputSection";
 import { AutomationUpdate } from "@/shared/types";
 import { toast } from "sonner";
 import { getDefaultAutomationName } from "@/utility/AutomationUtils";
+import { isInputComplete, isOutputComplete } from "@/utility/IntegrationUtils";
 import { Conn, SVGFlowArrows } from "../components/FlowArrow";
 import { PromptSection } from "../PromptSection";
 
@@ -112,7 +113,7 @@ function SaveAutomationButton({ defaultName }: { defaultName: string | null }) {
 
 
 export default function AutomationSetupTab() {
-    const { name, setName, inputs, output } = useAutomationContext();
+    const { name, setName, inputs, output, prompt } = useAutomationContext();
     const [defaultName, setDefaultName] = useState<string | null>(null);
 
     const containerRef = useRef<HTMLDivElement>(null);
