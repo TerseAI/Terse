@@ -5,7 +5,6 @@ import {
     useReactTable,
 } from '@tanstack/react-table';
 import { Automation } from '../shared/types';
-import { BackendProvider } from '../services/backend';
 import {
     LoadingState,
     EmptyState,
@@ -15,46 +14,34 @@ import {
     PaginationControls,
     TableContent,
 } from './Automation';
+import { useAutomations, useAutomationMutations } from '@/hooks/api/useAutomations';
 
 type AutomationsTableProps = {
     onEdit: (automation: Automation) => void;
     onDelete: (automation: Automation) => void;
     onCreateNew?: () => void;
-    refreshTrigger?: number;
     searchQuery?: string;
     statusFilter?: boolean;
 };
 
-export function AutomationsTable({ onEdit, onDelete, onCreateNew, refreshTrigger, searchQuery, statusFilter }: AutomationsTableProps) {
-    const [automations, setAutomations] = useState<Automation[]>([]);
-    const [loading, setLoading] = useState(true);
+export function AutomationsTable({ onEdit, onDelete, onCreateNew, searchQuery, statusFilter }: AutomationsTableProps) {
     const [page, setPage] = useState(1);
-    const [totalPages, setTotalPages] = useState(1);
-    const [total, setTotal] = useState(0);
     const [limit, setLimit] = useState(25);
+    const { automations, pagination, isLoading, mutate } = useAutomations({
+        page,
+        limit,
+        isActive: statusFilter,
+        search: searchQuery,
+    });
+    const { toggleAutomationActive } = useAutomationMutations();
+
+    const totalPages = pagination?.totalPages ?? 1;
+    const total = pagination?.total ?? automations.length;
 
     // Reset to first page when search query or status filter changes
     useEffect(() => {
         setPage(1);
     }, [searchQuery, statusFilter]);
-
-    useEffect(() => {
-        const loadAutomations = async () => {
-            try {
-                setLoading(true);
-                const response = await BackendProvider.getUserAutomations(page, limit, statusFilter, searchQuery);
-                setAutomations(response.automations);
-                setTotalPages(response.pagination.totalPages);
-                setTotal(response.pagination.total);
-            } catch (error) {
-                console.error('Failed to load automations:', error);
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        loadAutomations();
-    }, [page, limit, refreshTrigger, searchQuery, statusFilter]);
 
     const handleLimitChange = (newLimit: number) => {
         setLimit(newLimit);
@@ -62,32 +49,18 @@ export function AutomationsTable({ onEdit, onDelete, onCreateNew, refreshTrigger
     };
 
     const handleToggleStatus = async (automation: Automation) => {
-        const newStatus = !automation.isActive;
-
-        // Update the automation status locally for immediate feedback
-        setAutomations(prev =>
-            prev.map(a =>
-                a.id === automation.id
-                    ? { ...a, isActive: newStatus }
-                    : a
-            )
-        );
-
         try {
-            // Update the automation status on the backend
-            await BackendProvider.updateAutomation(automation.id, {
-                isActive: newStatus
+            await toggleAutomationActive(automation, {
+                mutateList: mutate,
+                params: {
+                    page,
+                    limit,
+                    isActive: statusFilter,
+                    search: searchQuery,
+                },
             });
         } catch (error) {
             console.error('Failed to toggle automation status:', error);
-            // Revert on error
-            setAutomations(prev =>
-                prev.map(a =>
-                    a.id === automation.id
-                        ? { ...a, isActive: automation.isActive }
-                        : a
-                )
-            );
         }
     };
 
@@ -137,11 +110,11 @@ export function AutomationsTable({ onEdit, onDelete, onCreateNew, refreshTrigger
         pageCount: totalPages,
     });
 
-    if (loading && automations.length === 0) {
+    if (isLoading && automations.length === 0) {
         return <LoadingState />;
     }
 
-    if (!loading && automations.length === 0) {
+    if (!isLoading && automations.length === 0) {
         const hasFilters: boolean = searchQuery !== '' || statusFilter !== undefined;
         return <EmptyState hasFilters={hasFilters} onCreateNew={onCreateNew} />;
     }

@@ -17,11 +17,10 @@ import {
 } from "@/components/ui/sidebar"
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "../ui/dropdown-menu";
-import { useEffect, useState } from "react";
-import { BackendProvider } from "@/services/backend";
 import { Automation } from "@/shared/types";
 import { AppSidebarHeader } from "./SidebarHeader";
 import { AppSidebarFooter } from "./SidebarFooter";
+import { useAutomations } from "@/hooks/api/useAutomations";
 
 interface NavItem {
     title: string;
@@ -51,24 +50,7 @@ const SettingsItems: NavItem[] = [
 ]
 
 export function AppSidebar() {
-    const [automations, setAutomations] = useState<Automation[]>([]);
-    const [loading, setLoading] = useState(true);
-
-    useEffect(() => {
-        const loadAutomations = async () => {
-            try {
-                setLoading(true);
-                const response = await BackendProvider.getUserAutomations();
-                setAutomations(response.automations);
-            } catch (error) {
-                console.error('Failed to load automations:', error);
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        loadAutomations();
-    }, []);
+    const { automations, isLoading } = useAutomations({ limit: 100 });
 
     return (
         <Sidebar>
@@ -77,7 +59,7 @@ export function AppSidebar() {
                 <SidebarGroup>
                     <SidebarGroupLabel>Application</SidebarGroupLabel>
                     <SidebarGroupContent>
-                        <ApplicationNavigation automations={automations} loading={loading} />
+                        <ApplicationNavigation automations={automations} loading={isLoading} />
                     </SidebarGroupContent>
                 </SidebarGroup>
 
