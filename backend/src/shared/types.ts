@@ -109,9 +109,9 @@ export type GmailIntegration = {
 
 export type FigmaIntegration = {
   id: string;
-  figma_user_id?: string;
-  email?: string;
-  token_expiry?: Date;
+  figma_user_id: string;
+  email: string;
+  token_expiry: Date;
 };
 
 export type NotionIntegration = {
@@ -227,8 +227,8 @@ export type GmailConfig = {
 
 export type FigmaConfig = {
   fileKey: string;
-  fileName?: string; // Optional display name
-  teamId?: string; // Figma team ID (required for webhook creation)
+  fileName: string; // Optional display name
+  teamId: string; // Figma team ID (required for webhook creation)
 };
 
 // Figma webhook and API types
@@ -241,9 +241,9 @@ export enum FigmaEventTypes {
  */
 export interface FigmaWebhookUser {
   id: string;
-  handle?: string;
-  email?: string;
-  img_url?: string;
+  handle: string;
+  email: string;
+  img_url: string;
 }
 
 /**
@@ -251,11 +251,11 @@ export interface FigmaWebhookUser {
  */
 export interface FigmaWebhookComment {
   id: string;
-  message?: string;
-  client_meta?: FigmaClientMeta;
-  user?: FigmaWebhookUser;
-  created_at?: string;
-  resolved_at?: string | null;
+  message: string;
+  client_meta: FigmaClientMeta;
+  user: FigmaWebhookUser;
+  created_at: string;
+  resolved_at: string | null;
 }
 
 /**
@@ -307,7 +307,7 @@ export interface FigmaWebhookCommentText {
 export interface FigmaWebhookEvent {
   event_type: string;
   file_key: string;
-  file_name?: string;
+  file_name: string;
   passcode: string;
   protocol_version: string;
   webhook_id: string;
@@ -330,7 +330,7 @@ export interface FigmaWebhookEvent {
 export interface FigmaApiComment {
   id: string;
   message: string;
-  client_meta?: FigmaClientMeta;
+  client_meta: FigmaClientMeta;
   user: {
     id: string;
     handle: string;
@@ -352,11 +352,7 @@ export interface FigmaCommentEventData {
   fileUrl: string;
   nodeId?: string; // Node ID the comment is attached to (if any)
   message: string;
-  author: {
-    id: string;
-    handle: string;
-    img_url?: string;
-  };
+  author: FigmaWebhookUser;
   createdAt: string;
   resolved?: boolean;
   // Enriched context (optional - added during processing)
