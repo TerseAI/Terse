@@ -16,4 +16,7 @@ export enum Integration {
 
     // Mail
     GMAIL = 'gmail',
+
+    // Design tools
+    FIGMA = 'figma',
 }

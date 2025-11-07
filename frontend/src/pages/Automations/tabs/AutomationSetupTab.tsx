@@ -8,6 +8,7 @@ import { OutputSection } from "../OutputSection";
 import { AutomationUpdate } from "@/shared/types";
 import { toast } from "sonner";
 import { getDefaultAutomationName } from "@/utility/AutomationUtils";
+import { isInputComplete, isOutputComplete } from "@/utility/IntegrationUtils";
 import { Conn, SVGFlowArrows } from "../components/FlowArrow";
 import { PromptSection } from "../PromptSection";
 
@@ -17,12 +18,12 @@ function SaveAutomationButton({ defaultName }: { defaultName: string | null }) {
     const [saveSuccess, setSaveSuccess] = useState(false);
 
     // Validation: all required fields must be present
-    // Note: Config (notionConfig, slackConfig) is optional - defaults are used if not provided
+    // Each integration reports its own completeness
     const isComplete =
         inputs.length > 0 &&
-        inputs.every(i => !!i.integration && !!i.integrationId) &&
-        !!output && !!output.integration && !!output.integrationId &&
-        !!prompt?.text; // Ensure name is not empty
+        inputs.every(i => isInputComplete(i)) &&
+        !!output && isOutputComplete(output) &&
+        !!prompt?.text; // Ensure prompt is not empty
 
     const isEditMode = !!automationId;
 
@@ -31,14 +32,37 @@ function SaveAutomationButton({ defaultName }: { defaultName: string | null }) {
 
         setIsSaving(true);
         try {
+            // Debug: Log inputs before mapping
+            console.log('Inputs before mapping:', inputs);
+            
             const automationData: AutomationUpdate = {
                 name: name || defaultName || '',
-                inputs: inputs.map(i => ({
-                    integration: i.integration,
-                    integrationId: i.integrationId,
-                    ...(i.notionConfig && { notionConfig: i.notionConfig }),
-                    ...(i.slackConfig && { slackConfig: i.slackConfig })
-                })),
+                inputs: inputs.map(i => {
+                    const inputData: any = {
+                        integration: i.integration,
+                        integrationId: i.integrationId,
+                    };
+                    
+                    // Only include configs if they exist and have required fields
+                    if (i.notionConfig) {
+                        inputData.notionConfig = i.notionConfig;
+                    }
+                    if (i.slackConfig) {
+                        inputData.slackConfig = i.slackConfig;
+                    }
+                    if (i.figmaConfig) {
+                        console.log('Figma config found:', i.figmaConfig);
+                        // Validate that figmaConfig has both fileKey and teamId before including it
+                        if (i.figmaConfig.fileKey && i.figmaConfig.teamId) {
+                            inputData.figmaConfig = i.figmaConfig;
+                            console.log('Including figmaConfig with fileKey and teamId:', i.figmaConfig);
+                        } else {
+                            console.warn('Figma config missing fileKey or teamId, skipping:', i.figmaConfig);
+                        }
+                    }
+                    
+                    return inputData;
+                }),
                 output: {
                     integration: output.integration,
                     integrationId: output.integrationId,
@@ -89,7 +113,7 @@ function SaveAutomationButton({ defaultName }: { defaultName: string | null }) {
 
 
 export default function AutomationSetupTab() {
-    const { name, setName, inputs, output } = useAutomationContext();
+    const { name, setName, inputs, output, prompt } = useAutomationContext();
     const [defaultName, setDefaultName] = useState<string | null>(null);
 
     const containerRef = useRef<HTMLDivElement>(null);

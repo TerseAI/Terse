@@ -6,7 +6,8 @@ import {
     SlackIntegration,
     LinearIntegration,
     JiraIntegration,
-    GithubIntegration
+    GithubIntegration,
+    FigmaIntegration
 } from "../shared/types";
 
 /**
@@ -20,6 +21,7 @@ export const INTEGRATION_KEY_MAP: Record<Integration, keyof IntegrationsStatus['
     [Integration.JIRA]: 'jira',
     [Integration.SLACK]: 'slack',
     [Integration.GITHUB]: 'github',
+    [Integration.FIGMA]: 'figma',
 };
 
 /**
@@ -33,6 +35,7 @@ type IntegrationTypeMap = {
     [Integration.JIRA]: JiraIntegration[];
     [Integration.SLACK]: SlackIntegration[];
     [Integration.GITHUB]: GithubIntegration[];
+    [Integration.FIGMA]: FigmaIntegration[];
 };
 
 /**
@@ -105,6 +108,14 @@ export const INTEGRATION_METADATA: Record<Integration, IntegrationMetadata> = {
         name: 'GitHub',
         description: 'Watch commits and PRs',
         inputDescription: 'Listen to commits, PRs, and issues',
+        isInput: true,
+        isOutput: false
+    },
+    [Integration.FIGMA]: {
+        type: Integration.FIGMA,
+        name: 'Figma',
+        description: 'Monitor comments on design files',
+        inputDescription: 'Monitor comments on Figma design files',
         isInput: true,
         isOutput: false
     }
@@ -200,4 +211,82 @@ export function clearIntegrationConfigs<T extends Record<string, any>>(
     }
     
     return cleared;
+}
+
+/**
+ * Checks if an input integration configuration is complete
+ * Each integration type defines its own completeness requirements
+ */
+export function isInputComplete(input: { integration: Integration; integrationId?: string; [key: string]: any }): boolean {
+    // Base requirement: integration type and ID must be set
+    if (!input.integration || !input.integrationId) {
+        return false;
+    }
+
+    // Integration-specific completeness checks
+    switch (input.integration) {
+        case Integration.FIGMA:
+            // Figma requires both fileKey and teamId
+            const figmaConfig = input.figmaConfig;
+            return !!(figmaConfig?.fileKey && figmaConfig?.teamId);
+        
+        case Integration.SLACK:
+            // Slack is complete if either channelId is set OR listenToUserDms is true
+            const slackConfig = input.slackConfig;
+            return !!(slackConfig?.channelId || slackConfig?.listenToUserDms);
+        
+        case Integration.NOTION:
+        case Integration.NOTION_PAGE:
+            // Notion requires databaseId or pageId
+            const notionConfig = input.notionConfig;
+            const notionPageConfig = input.notionPageConfig;
+            return !!(notionConfig?.databaseId || notionPageConfig?.pageId);
+        
+        case Integration.GMAIL:
+        case Integration.GITHUB:
+        case Integration.LINEAR:
+        case Integration.JIRA:
+            // These integrations don't require additional config beyond integrationId
+            return true;
+        
+        default:
+            return true;
+    }
+}
+
+/**
+ * Checks if an output integration configuration is complete
+ * Each integration type defines its own completeness requirements
+ */
+export function isOutputComplete(output: { integration: Integration; integrationId?: string; [key: string]: any }): boolean {
+    // Base requirement: integration type and ID must be set
+    if (!output.integration || !output.integrationId) {
+        return false;
+    }
+
+    // Integration-specific completeness checks
+    switch (output.integration) {
+        case Integration.NOTION:
+            // Notion output requires databaseId
+            return !!(output.notionConfig?.databaseId);
+        
+        case Integration.NOTION_PAGE:
+            // Notion Page output requires pageId
+            return !!(output.notionPageConfig?.pageId);
+        
+        case Integration.SLACK:
+            // Slack output requires channelId
+            return !!(output.slackConfig?.channelId);
+        
+        case Integration.GMAIL:
+        case Integration.GITHUB:
+        case Integration.LINEAR:
+        case Integration.JIRA:
+        case Integration.FIGMA:
+            // These integrations don't require additional config beyond integrationId
+            return true;
+        
+        default:
+            return true;
+    }
 }

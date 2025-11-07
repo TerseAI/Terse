@@ -5,7 +5,7 @@ import chalk from "chalk";
 import { StructuredSearchOptions, TicketManager } from "./TicketIntegration";
 import { Team, User, UserContext, Organization } from "../shared/TicketSystem";
 import { IssueFilter, IssuesQueryVariables } from "@linear/sdk/dist/_generated_documents";
-import crypto from 'crypto';
+import { generateWebhookSecret } from '../utility/webhookSecrets';
 
 export class LinearAdapter implements TicketManager {
     type: TicketSystemType = TicketSystemType.Linear;
@@ -101,7 +101,8 @@ export class LinearAdapter implements TicketManager {
 
     generateWebhookSecret() {
         // Generate 32 random bytes and convert to hex
-        return crypto.randomBytes(32).toString('hex');
+        // Using utility function for consistency
+        return generateWebhookSecret(32);
     }
 
     async getAllTickets(): Promise<Ticket[]> {

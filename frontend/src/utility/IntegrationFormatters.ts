@@ -5,7 +5,8 @@ import {
     SlackIntegration,
     LinearIntegration,
     JiraIntegration,
-    GithubIntegration
+    GithubIntegration,
+    FigmaIntegration
 } from "../shared/types";
 import { INTEGRATION_METADATA } from "./IntegrationUtils";
 
@@ -18,7 +19,8 @@ export type IntegrationInstance =
     | SlackIntegration
     | LinearIntegration
     | JiraIntegration
-    | GithubIntegration;
+    | GithubIntegration
+    | FigmaIntegration;
 
 /**
  * Type guard functions for narrowing IntegrationInstance union
@@ -46,6 +48,10 @@ function isSlackIntegration(integration: IntegrationInstance): integration is Sl
 function isGithubIntegration(integration: IntegrationInstance): integration is GithubIntegration {
     // repositoryName is unique to GithubIntegration and required
     return 'repositoryName' in integration && !('email' in integration) && !('slackTeamId' in integration) && !('apiKey' in integration);
+}
+
+function isFigmaIntegration(integration: IntegrationInstance): integration is FigmaIntegration {
+    return 'figma_user_id' in integration || 'token_expiry' in integration;
 }
 
 /**
@@ -105,6 +111,12 @@ export function formatIntegrationDisplay(
                 return integration.repositoryName || 'Unknown Repository';
             }
             return 'Unknown Repository';
+
+        case Integration.FIGMA:
+            if (isFigmaIntegration(integration)) {
+                return integration.email || integration.figma_user_id || 'Figma Account';
+            }
+            return 'Figma Account';
 
         default:
             return integration.id;

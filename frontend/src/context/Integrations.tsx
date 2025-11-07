@@ -88,7 +88,8 @@ export function IntegrationProvider({ children }: { children: ReactNode }) {
                     jira: integrations.some(integration => integration.type === Integration.JIRA),
                     slack: integrations.some(integration => integration.type === Integration.SLACK),
                     gmail: integrations.some(integration => integration.type === Integration.GMAIL),
-                    notion: integrations.some(integration => integration.type === Integration.NOTION)
+                    notion: integrations.some(integration => integration.type === Integration.NOTION),
+                    figma: integrations.some(integration => integration.type === Integration.FIGMA)
                 };
                 lastIntegrationStateRef.current = JSON.stringify(currentIntegrations);
             }
