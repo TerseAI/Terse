@@ -105,10 +105,13 @@ export function AutomationProvider({ children, automationId }: { children: React
         setIsActive(true);
     };
 
-    // Load automation on mount if ID is provided
+    // Load automation or reset when automationId changes
     useEffect(() => {
         if (automationId) {
             loadAutomation(automationId);
+        } else {
+            // Reset to blank state when navigating to "new" or no ID
+            reset();
         }
     }, [automationId]);
 

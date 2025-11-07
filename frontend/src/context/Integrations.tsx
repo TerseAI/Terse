@@ -6,8 +6,13 @@ import { INTEGRATION_KEY_MAP } from '../utility/IntegrationUtils';
 // Re-export Integration for backwards compatibility
 export { Integration };
 
+export type IntegrationMetadata = {
+    type: Integration;
+    integrationId: string;
+}
+
 type IntegrationContextType = {
-    integrations: Integration[];
+    integrations: IntegrationMetadata[];
     isLoading: boolean;
     refreshIntegrations: () => Promise<void>;
     hasGithub: boolean;
@@ -25,7 +30,7 @@ type IntegrationContextType = {
 const IntegrationContext = createContext<IntegrationContextType | undefined>(undefined);
 
 export function IntegrationProvider({ children }: { children: ReactNode }) {
-    const [integrations, setIntegrations] = useState<Integration[]>([]);
+    const [integrations, setIntegrationMetadata] = useState<IntegrationMetadata[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isPolling, setIsPolling] = useState(false);
     const pollingIntervalRef = useRef<number | null>(null);
@@ -36,20 +41,25 @@ export function IntegrationProvider({ children }: { children: ReactNode }) {
     const refreshIntegrations = async () => {
         try {
             const { integrations: integrationData } = await BackendProvider.getIntegrationsStatus();
-            const activeIntegrations: Integration[] = [];
+            const activeIntegrations: IntegrationMetadata[] = [];
 
             // Iterate through all integration types and check if they have data
+            // Note: If multiple instances exist for a type, we store the first one.
+            // Components that need to select a specific instance should fetch instances directly.
             for (const [integrationType, key] of Object.entries(INTEGRATION_KEY_MAP)) {
                 const instances = integrationData[key];
-                if (instances && instances.length > 0) {
-                    activeIntegrations.push(integrationType as Integration);
+                if (instances && instances.length === 1) {
+                    activeIntegrations.push({
+                        type: integrationType as Integration,
+                        integrationId: instances[0].id
+                    });
                 }
             }
 
-            setIntegrations(activeIntegrations);
+            setIntegrationMetadata(activeIntegrations);
         } catch (error) {
             console.error('Error fetching integrations:', error);
-            setIntegrations([]);
+            setIntegrationMetadata([]);
         } finally {
             setIsLoading(false);
         }
@@ -73,13 +83,13 @@ export function IntegrationProvider({ children }: { children: ReactNode }) {
                 console.error('Error getting baseline state:', error);
                 // Fallback to current local state
                 const currentIntegrations = {
-                    github: integrations.includes(Integration.GITHUB),
-                    linear: integrations.includes(Integration.LINEAR),
-                    jira: integrations.includes(Integration.JIRA),
-                    slack: integrations.includes(Integration.SLACK),
-                    gmail: integrations.includes(Integration.GMAIL),
-                    notion: integrations.includes(Integration.NOTION),
-                    figma: integrations.includes(Integration.FIGMA)
+                    github: integrations.some(integration => integration.type === Integration.GITHUB),
+                    linear: integrations.some(integration => integration.type === Integration.LINEAR),
+                    jira: integrations.some(integration => integration.type === Integration.JIRA),
+                    slack: integrations.some(integration => integration.type === Integration.SLACK),
+                    gmail: integrations.some(integration => integration.type === Integration.GMAIL),
+                    notion: integrations.some(integration => integration.type === Integration.NOTION),
+                    figma: integrations.some(integration => integration.type === Integration.FIGMA)
                 };
                 lastIntegrationStateRef.current = JSON.stringify(currentIntegrations);
             }
@@ -114,15 +124,20 @@ export function IntegrationProvider({ children }: { children: ReactNode }) {
                     lastIntegrationStateRef.current = currentState;
                     
                     // Update local state
-                    const activeIntegrations: Integration[] = [];
+                    // Note: If multiple instances exist for a type, we store the first one.
+                    // Components that need to select a specific instance should fetch instances directly.
+                    const activeIntegrations: IntegrationMetadata[] = [];
                     for (const [integrationType, key] of Object.entries(INTEGRATION_KEY_MAP)) {
                         const instances = integrationData[key];
                         if (instances && instances.length > 0) {
-                            activeIntegrations.push(integrationType as Integration);
+                            activeIntegrations.push({
+                                type: integrationType as Integration,
+                                integrationId: instances[0].id
+                            });
                         }
                     }
 
-                    setIntegrations(activeIntegrations);
+                    setIntegrationMetadata(activeIntegrations);
                     stopPolling();
                 }
             } catch (error) {
@@ -154,12 +169,12 @@ export function IntegrationProvider({ children }: { children: ReactNode }) {
     }, []);
 
     // Compute integration status
-    const hasGithub = integrations.includes(Integration.GITHUB);
-    const hasLinear = integrations.includes(Integration.LINEAR);
-    const hasJira = integrations.includes(Integration.JIRA);
-    const hasSlack = integrations.includes(Integration.SLACK);
-    const hasGmail = integrations.includes(Integration.GMAIL)
-    const hasNotion = integrations.includes(Integration.NOTION);
+    const hasGithub = integrations.some(integration => integration.type === Integration.GITHUB);
+    const hasLinear = integrations.some(integration => integration.type === Integration.LINEAR);
+    const hasJira = integrations.some(integration => integration.type === Integration.JIRA);
+    const hasSlack = integrations.some(integration => integration.type === Integration.SLACK);
+    const hasGmail = integrations.some(integration => integration.type === Integration.GMAIL)
+    const hasNotion = integrations.some(integration => integration.type === Integration.NOTION);
     const isSetupComplete = hasGithub && (hasLinear || hasJira || hasNotion);
 
     return (

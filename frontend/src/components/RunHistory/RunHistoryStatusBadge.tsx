@@ -1,7 +1,8 @@
-import { CheckCircle2, XCircle, Loader2, Filter } from "lucide-react";
+import { CheckCircle2, XCircle, Filter } from "lucide-react";
 import type { RunHistoryStatus } from "../../shared/RunHistoryTypes";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { Spinner } from "../ui/spinner";
 
 type Props = {
     status: RunHistoryStatus;
@@ -34,7 +35,7 @@ export default function RunHistoryStatusBadge({ status, filtered: _filtered, cla
     if (status === "in_progress")
         return (
             <Badge variant="outline" className={cn("gap-1.5", className)}>
-                <Loader2 className="text-accent" />
+                <Spinner className="text-accent" />
                 In Progress
             </Badge>
         );

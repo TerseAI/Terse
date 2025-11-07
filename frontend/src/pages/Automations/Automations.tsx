@@ -30,7 +30,7 @@ function Automations() {
         <AutomationProvider automationId={automationId}>
             <div className="grid grid-cols-20 h-full pt-1">
                 <div className="h-full min-h-0 col-span-20">
-                    <div className="mx-auto px-6 h-full min-h-0 flex flex-col">
+                    <div className="mx-auto px-4 h-full min-h-0 flex flex-col">
                         <TabGroup selectedIndex={selectedIndex} onChange={(index) => {
                             setSelectedIndex(index);
                             const next = tabs[index];

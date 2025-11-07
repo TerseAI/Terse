@@ -35,7 +35,7 @@ export default function RunHistoryActionItem({ runId, index, action, runStatus, 
         >
             <div className="rounded-lg border border-border">
                 <AccordionItem value={actionKey} className="border-b-0">
-                    <AccordionTrigger className="py-2 px-2 hover:no-underline hover:bg-accent/50">
+                    <AccordionTrigger className="py-2 px-2 hover:no-underline">
                         <div className="flex items-center gap-2 w-full mr-2">
                             <div className="w-4 h-4 flex-shrink-0">
                                 <IconForInputType type={action.integration as Integration} />
