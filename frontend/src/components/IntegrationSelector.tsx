@@ -153,14 +153,14 @@ export function IntegrationSelector({
             return (
                 <div>
                     {!showForm && integrations.length === 0 && (
-                        <div className="flex flex-col gap-3 p-4 rounded-lg border border-dashed border-[theme(border)] bg-[theme(background-light)]">
-                            <div className="text-sm text-[theme(text-secondary)]">
+                        <div className="flex flex-col gap-3 p-4 rounded-lg border border-dashed border-input bg-card">
+                            <div className="text-sm text-muted-foreground">
                                 No {getIntegrationName(integrationType)} accounts connected
                             </div>
                             <button
                                 onClick={handleConnectNew}
                                 disabled={isConnecting}
-                                className="flex items-center justify-center gap-2 px-4 py-2 bg-[theme(--color-accent)] text-white rounded-lg hover:brightness-110 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="flex items-center justify-center gap-2 px-4 py-2 bg-accent text-accent-foreground rounded-lg hover:brightness-110 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                                 <PlusIcon className="w-4 h-4" />
                                 {isConnecting ? 'Connecting...' : `Connect ${getIntegrationName(integrationType)}`}
@@ -178,14 +178,14 @@ export function IntegrationSelector({
             return (
                 <div>
                     {!showForm && integrations.length === 0 && (
-                        <div className="flex flex-col gap-3 p-4 rounded-lg border border-dashed border-[theme(border)] bg-[theme(background-light)]">
-                            <div className="text-sm text-[theme(text-secondary)]">
+                        <div className="flex flex-col gap-3 p-4 rounded-lg border border-dashed border-input bg-card">
+                            <div className="text-sm text-muted-foreground">
                                 No {getIntegrationName(integrationType)} accounts connected
                             </div>
                             <button
                                 onClick={handleConnectNew}
                                 disabled={isConnecting}
-                                className="flex items-center justify-center gap-2 px-4 py-2 bg-[theme(--color-accent)] text-white rounded-lg hover:brightness-110 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="flex items-center justify-center gap-2 px-4 py-2 bg-accent text-accent-foreground rounded-lg hover:brightness-110 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                                 <PlusIcon className="w-4 h-4" />
                                 {isConnecting ? 'Connecting...' : `Connect ${getIntegrationName(integrationType)}`}
@@ -249,7 +249,7 @@ export function IntegrationSelector({
 
             {/* Notion-specific database selector */}
             {(integrationType === Integration.NOTION || integrationType === Integration.NOTION_PAGE) && selectedIntegrationId && onNotionConfigChange && (
-                <div className="mt-3 pt-3 border-t border-[theme(border)]">
+                <div className="mt-3 pt-3 border-t border-border">
                     <NotionResourceSelector
                         integrationId={selectedIntegrationId}
                         selectedResourceId={notionPageConfig?.pageId || notionConfig?.databaseId}
@@ -272,7 +272,7 @@ export function IntegrationSelector({
 
             {/* Slack-specific channel selector */}
             {integrationType === Integration.SLACK && selectedIntegrationId && onSlackConfigChange && (
-                <div className="mt-3 pt-3 border-t border-[theme(border)]">
+                <div className="mt-3 pt-3 border-t border-border">
                     <SlackChannelSelector
                         integrationId={selectedIntegrationId}
                         selectedChannelId={slackConfig?.channelId}

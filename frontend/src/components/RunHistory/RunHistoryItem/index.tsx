@@ -61,18 +61,16 @@ export default function RunHistoryItem({
     const allActionsExpanded = !!run.actions && areAllActionsExpanded(run.id, run.actions.length);
 
     return (
-        <div className="overflow-hidden bg-[theme(background-light)] border border-[theme(border)] rounded-lg md:mb-3 min-w-[640px] md:min-w-0 shrink-0 md:shrink">
+        <div className="overflow-hidden bg-card border border-border rounded-lg md:mb-3 min-w-[640px] md:min-w-0 shrink-0 md:shrink">
             <Accordion
                 type="single"
                 collapsible
-
-                value={isExpanded ? run.id : ""}
                 onValueChange={() => {
                     onToggleRun(run.id);
                 }}
             >
-                <AccordionItem value={run.id} className="border-0">
-                    <AccordionTrigger className="hover:no-underline p-0 w-full [&>svg]:hidden"> 
+                <AccordionItem value={run.id}>
+                    <AccordionTrigger className="hover:no-underline px-4"> 
                         <RunHistoryItemHeader
                             run={run}
                             isExpanded={isExpanded}
@@ -80,8 +78,8 @@ export default function RunHistoryItem({
                             onCopy={copyToClipboard}
                         />
                     </AccordionTrigger>
-                    <AccordionContent className="px-4 pb-4 pt-0">
-                        <div className="text-[theme(text-primary)] pl-8">
+                    <AccordionContent>
+                        <div className="text-foreground pl-8">
                             Agent Decision:
                         </div>
                         <div className="mt-3 pl-8">
@@ -101,7 +99,7 @@ export default function RunHistoryItem({
                                     </div>
                                     {run.actions.length > 1 && (
                                         <button
-                                            className="h-7 px-2 rounded-md text-sm text-[theme(text-secondary)] hover:text-[theme(text-primary)] hover:bg-[theme(background-hover)] border border-transparent hover:border-[theme(border)]"
+                                            className="h-7 px-2 rounded-md text-sm text-muted-foreground hover:text-foreground hover:bg-accent/50 border border-transparent hover:border-border"
                                             onClick={() => onToggleAllActionsForRun(run.id, run.actions!.length)}
                                             type="button"
                                         >
