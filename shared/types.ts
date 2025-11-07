@@ -330,15 +330,25 @@ export interface FigmaWebhookEvent {
 export interface FigmaApiComment {
   id: string;
   message: string;
-  client_meta: FigmaClientMeta;
-  user: {
-    id: string;
-    handle: string;
-    email: string;
-    img_url: string;
-  };
+  client_meta: FigmaClientMeta | null;
+  user: FigmaWebhookUser;
   created_at: string;
-  resolved_at: string;
+  resolved_at: string | null;
+  parent_id?: string | null;
+  order_id?: string;
+  mentions?: unknown[];
+  reactions?: unknown[];
+}
+
+export interface FigmaCommentThreadEntry {
+  id: string;
+  message: string;
+  author: FigmaWebhookUser;
+  createdAt: string;
+  resolvedAt: string | null;
+  parentId: string | null;
+  orderId?: string;
+  isRoot?: boolean;
 }
 
 /**
@@ -355,6 +365,7 @@ export interface FigmaCommentEventData {
   author: FigmaWebhookUser;
   createdAt: string;
   resolved?: boolean;
+  thread?: FigmaCommentThreadEntry[];
   // Enriched context (optional - added during processing)
   fileMetadata?: any;
   // Positioning and visual context (optional - added during enrichment)

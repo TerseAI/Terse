@@ -209,6 +209,15 @@ export class FigmaCommentEvent extends InputEvent {
         Note: These images provide visual context for the comment. Use them to understand what design element the comment refers to.`
             : '';
 
+        const threadEntries = this.data.thread ?? [];
+        const threadInfo = threadEntries.length > 0
+            ? `\nConversation Thread:\n${threadEntries.map((entry) => {
+                const role = entry.isRoot ? 'root comment' : 'reply';
+                const isCurrent = entry.id === this.data.commentId ? ' (event comment)' : '';
+                return `        - ${entry.author.handle} on ${entry.createdAt} [${role}]${isCurrent}:\n          ${entry.message}`;
+            }).join('\n')}`
+            : '';
+
         return `
         Incoming Figma Comment Event.
 
@@ -219,7 +228,7 @@ export class FigmaCommentEvent extends InputEvent {
         Author: ${this.data.author.handle} (${this.data.author.id})
         Message: ${this.data.message}
         Created At: ${this.data.createdAt}
-        Resolved: ${this.data.resolved ? 'Yes' : 'No'}${nodeInfo}${fileInfo}${positioningInfo}${matchedNodesInfo}${imageInfo}
+        Resolved: ${this.data.resolved ? 'Yes' : 'No'}${nodeInfo}${fileInfo}${positioningInfo}${matchedNodesInfo}${imageInfo}${threadInfo}
         `;
     }
 

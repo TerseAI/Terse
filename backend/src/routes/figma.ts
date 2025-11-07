@@ -3,7 +3,7 @@ import { Request, Response } from "express";
 import chalk from "chalk";
 import { db } from "../prismaClient";
 import { FigmaCommentEvent } from "../Updater/InputEvents";
-import { FigmaCommentEventData } from "../shared/types";
+import { FigmaCommentEventData, FigmaCommentThreadEntry } from "../shared/types";
 import { EventProcessor } from "../agent/AutomationAgent/EventProcessor";
 import { User } from "../types/prisma";
 import { figma_integrations } from "@prisma/client";
@@ -12,7 +12,7 @@ import {
   parsePositioningData,
   mapCommentToDesignElements,
   extractCommentImages,
-  fetchFigmaCommentFromApi,
+  fetchFigmaCommentThreadFromApi,
 } from "../utility/figmaUtils";
 import {
   FigmaEventTypes,
@@ -169,7 +169,7 @@ export const figmaOAuthCallback = async (req: Request, res: Response) => {
         data: {
           user_id: decoded.userId,
           figma_user_id: user_id_string,
-          email: userEmail,
+          email: userEmail ?? "",
           access_token: access_token,
           refresh_token: refresh_token || null,
           token_expiry: tokenExpiry,
@@ -184,7 +184,7 @@ export const figmaOAuthCallback = async (req: Request, res: Response) => {
       await db().figma_integrations.update({
         where: { id: existing.id },
         data: {
-          email: userEmail || existing.email, // Update email if we got it, otherwise keep existing
+          email: userEmail ?? existing.email, // Update email if we got it, otherwise keep existing
           access_token: access_token,
           refresh_token: refresh_token || null,
           token_expiry: tokenExpiry,
@@ -311,15 +311,17 @@ async function handleFigmaCommentEvent(
 
   // Fetch comment details from Figma API to get client_meta
   // client_meta is not included in the webhook payload
-  const commentFromApi = await fetchFigmaCommentFromApi(
+  const commentThreadData = await fetchFigmaCommentThreadFromApi(
     integration.access_token,
     fileKey,
     commentId
   );
-  if (!commentFromApi) {
+  if (!commentThreadData) {
     console.log(chalk.yellow(`⚠️  Could not fetch comment ${commentId} from API`));
     return;
   }
+
+  const { comment: commentFromApi, thread } = commentThreadData;
 
   const positioningData = parsePositioningData(commentFromApi.client_meta);
   console.log(
@@ -399,7 +401,10 @@ async function handleFigmaCommentEvent(
         comment_id: commentId,
         file_key: fileKey,
         node_id: closestNodeId,
-        comment_data: commentFromApi as any,
+        comment_data: JSON.parse(JSON.stringify({
+          ...commentFromApi,
+          thread_comments: thread,
+        })),
         file_metadata: fileMetadata ? JSON.parse(JSON.stringify(fileMetadata)) : null,
         positioning_data: positioningData ? JSON.parse(JSON.stringify(positioningData)) : null,
         matched_node_ids: matchedNodeIds,
@@ -419,6 +424,20 @@ async function handleFigmaCommentEvent(
     // Don't throw - continue processing even if storage fails
   }
 
+  const rootThreadComment = thread.find((comment) => !comment.parent_id) ?? thread[0];
+  const rootCommentId = rootThreadComment?.id ?? commentFromApi.id;
+
+  const threadEntries: FigmaCommentThreadEntry[] = thread.map((threadComment) => ({
+    id: threadComment.id,
+    message: threadComment.message,
+    author: threadComment.user,
+    createdAt: threadComment.created_at,
+    resolvedAt: threadComment.resolved_at ?? null,
+    parentId: threadComment.parent_id ?? null,
+    orderId: threadComment.order_id,
+    isRoot: threadComment.id === rootCommentId,
+  }));
+
   const eventData: FigmaCommentEventData = {
     commentId: commentFromApi.id,
     fileKey: fileKey,
@@ -427,7 +446,8 @@ async function handleFigmaCommentEvent(
     message: commentFromApi.message,
     author: commentFromApi.user,
     createdAt: commentFromApi.created_at,
-    resolved: commentFromApi.resolved_at !== '', // Empty string if not resolved
+    resolved: Boolean(commentFromApi.resolved_at && commentFromApi.resolved_at !== ''),
+    thread: threadEntries,
     fileMetadata: fileMetadata,
     positioningData: positioningData ?? undefined,
     matchedNodeIds: matchedNodeIds.length > 0 ? matchedNodeIds : undefined,

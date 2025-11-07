@@ -528,11 +528,11 @@ export async function extractCommentImages(
 /**
  * Fetch comment from Figma API using a single integration
  */
-export async function fetchFigmaCommentFromApi(
+export async function fetchFigmaCommentThreadFromApi(
   accessToken: string,
   fileKey: string,
   commentId: string
-): Promise<FigmaApiComment | null> {
+): Promise<{ comment: FigmaApiComment; thread: FigmaApiComment[] } | null> {
   try {
     const commentsResponse = await fetch(
       `https://api.figma.com/v1/files/${fileKey}/comments`,
@@ -553,16 +553,87 @@ export async function fetchFigmaCommentFromApi(
     }
 
     const commentsData = await commentsResponse.json();
-    const comments = commentsData.comments || [];
-    
-    // Find the comment with matching ID
-    const commentFromApi = comments.find((c: any) => c.id === commentId) as FigmaApiComment | undefined;
-    
-    if (commentFromApi) {
-      return commentFromApi;
-    } else {
+    const comments = (commentsData.comments || []) as FigmaApiComment[];
+
+    if (!Array.isArray(comments) || comments.length === 0) {
       return null;
     }
+
+    const commentMap = new Map<string, FigmaApiComment>();
+    for (const rawComment of comments) {
+      commentMap.set(rawComment.id, rawComment);
+    }
+
+    const targetComment = commentMap.get(commentId);
+
+    if (!targetComment) {
+      return null;
+    }
+
+    const findRootComment = (comment: FigmaApiComment): FigmaApiComment => {
+      let current: FigmaApiComment = comment;
+      const visited = new Set<string>();
+
+      while (current.parent_id) {
+        if (visited.has(current.parent_id)) {
+          break;
+        }
+
+        visited.add(current.parent_id);
+        const parent = commentMap.get(current.parent_id);
+        if (!parent) {
+          break;
+        }
+        current = parent;
+      }
+
+      return current;
+    };
+
+    const rootComment = findRootComment(targetComment);
+    const rootOrderId = rootComment.order_id || rootComment.id;
+
+    const threadComments = comments
+      .filter((comment) => {
+        if (comment.id === rootComment.id) {
+          return true;
+        }
+
+        // Prefer order_id when available (covers replies and nested replies)
+        if (rootOrderId && comment.order_id) {
+          return comment.order_id === rootOrderId;
+        }
+
+        // Fallback: walk up the parent chain to see if it reaches the root comment
+        let current: FigmaApiComment | undefined = comment;
+        const visited = new Set<string>();
+        while (current?.parent_id) {
+          if (visited.has(current.parent_id)) {
+            break;
+          }
+          visited.add(current.parent_id);
+
+          if (current.parent_id === rootComment.id) {
+            return true;
+          }
+
+          current = commentMap.get(current.parent_id);
+        }
+
+        return false;
+      })
+      .sort((a, b) => {
+        const aTime = new Date(a.created_at).getTime();
+        const bTime = new Date(b.created_at).getTime();
+        return aTime - bTime;
+      });
+
+    const threadList = threadComments.length > 0 ? threadComments : [targetComment];
+
+    return {
+      comment: targetComment,
+      thread: threadList,
+    };
   } catch (error) {
     console.error(
       chalk.yellow(`⚠️  Error fetching comment from API with file key ${fileKey}`),
