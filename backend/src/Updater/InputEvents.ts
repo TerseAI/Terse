@@ -184,38 +184,53 @@ export class FigmaCommentEvent extends InputEvent {
     }
 
     formatForAutomationAgent(): string {
-        const nodeInfo = this.data.nodeId 
-            ? `\nNode ID: ${this.data.nodeId}`
-            : '\nComment is on the file level (not attached to a specific node)';
-        
-        const fileInfo = this.data.fileMetadata 
-            ? `\nFile Metadata: ${JSON.stringify(this.data.fileMetadata, null, 2)}`
+        const indentMultiline = (text: string): string =>
+            text
+                .split('\n')
+                .map((line) => `        ${line}`)
+                .join('\n');
+
+        const nodeInfo = this.data.nodeId
+            ? `\nNode Context:\n${indentMultiline(`Node ID: ${this.data.nodeId}`)}`
+            : `\nNode Context:\n${indentMultiline('Comment is on the file level (not attached to a specific node)')}`;
+
+        const fileInfo = this.data.fileMetadata
+            ? `\nFile Metadata:\n${indentMultiline(JSON.stringify(this.data.fileMetadata, null, 2))}`
             : '';
 
         const positioningInfo = this.data.positioningData
-            ? `\nPositioning Data:
-        Type: ${this.data.positioningData.type}
-        Data: ${JSON.stringify(this.data.positioningData.data, null, 2)}`
+            ? `\nPositioning Details:\n${indentMultiline(`Type: ${this.data.positioningData.type}`)}\n${indentMultiline('Data:')}` +
+              `\n${indentMultiline(JSON.stringify(this.data.positioningData.data, null, 2))}`
             : '';
 
         const matchedNodesInfo = this.data.matchedNodeIds && this.data.matchedNodeIds.length > 0
-            ? `\nMatched Design Elements: ${this.data.matchedNodeIds.join(', ')}`
+            ? `\nMatched Design Elements:\n${indentMultiline(this.data.matchedNodeIds.map((id) => `- ${id}`).join('\n'))}`
             : '';
 
-        const imageInfo = this.data.imageUrls
-            ? `\nVisual Context Available:
-        ${this.data.imageUrls.nodeImage ? `- Primary Node Image: ${this.data.imageUrls.nodeImage}` : ''}
-        ${this.data.imageUrls.fullFrame ? `- Full Frame Image: ${this.data.imageUrls.fullFrame}` : ''}
-        Note: These images provide visual context for the comment. Use them to understand what design element the comment refers to.`
-            : '';
+        let imageInfo = '';
+        if (this.data.imageUrls) {
+            const imageLines: string[] = [];
+            if (this.data.imageUrls.nodeImage) {
+                imageLines.push(`- Primary Node Image: ${this.data.imageUrls.nodeImage}`);
+            }
+            if (this.data.imageUrls.fullFrame) {
+                imageLines.push(`- Full Frame Image: ${this.data.imageUrls.fullFrame}`);
+            }
+            if (imageLines.length > 0) {
+                imageLines.push('- Note: Use these images to understand what element the comment refers to.');
+                imageInfo = `\nVisual Context:\n${indentMultiline(imageLines.join('\n'))}`;
+            }
+        }
 
         const threadEntries = this.data.thread ?? [];
         const threadInfo = threadEntries.length > 0
-            ? `\nConversation Thread:\n${threadEntries.map((entry) => {
+            ? `\nConversation Thread:\n${indentMultiline(threadEntries.map((entry) => {
                 const role = entry.isRoot ? 'root comment' : 'reply';
                 const isCurrent = entry.id === this.data.commentId ? ' (event comment)' : '';
-                return `        - ${entry.author.handle} on ${entry.createdAt} [${role}]${isCurrent}:\n          ${entry.message}`;
-            }).join('\n')}`
+                const header = `- ${entry.author.handle} on ${entry.createdAt} [${role}]${isCurrent}`;
+                const message = entry.message ? `  ${entry.message.replace(/\n/g, '\n  ')}` : '  (no message)';
+                return `${header}\n${message}`;
+            }).join('\n'))}`
             : '';
 
         return `
