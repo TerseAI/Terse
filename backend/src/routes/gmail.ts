@@ -573,6 +573,7 @@ async function processGmailWebhook(emailAddress: string, historyId: number): Pro
 
         // Process email through automations (non-blocking)
         console.log(chalk.cyan('About to process email:'));
+        console.log(chalk.cyan(`  Integration for user: ${user.email}`));
         console.log(chalk.cyan(`  Subject: ${parsedEmail.subject}`));
         console.log(chalk.cyan(`  From: ${parsedEmail.from}`));
         console.log(chalk.cyan(`  To: ${parsedEmail.to}`));
@@ -626,7 +627,7 @@ async function processGmailWebhook(emailAddress: string, historyId: number): Pro
  */
 async function claimHistoryIdUpdateInTransaction(
   tx: any,
-  emailAddress: string,
+  emailAddress: string, // This is the email belonging to the gmail watch webhook
   newHistoryId: number
 ): Promise<ProcessedWebhookClaim> {
   const newHistoryIdString = newHistoryId.toString();
