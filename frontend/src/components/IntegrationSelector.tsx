@@ -308,11 +308,14 @@ export function IntegrationSelector({
                         selectedFileName={figmaConfig?.fileName}
                         selectedTeamId={figmaConfig?.teamId}
                         onSelect={(fileKey, fileName, teamId) => {
-                            onFigmaConfigChange({
-                                fileKey,
-                                fileName,
-                                teamId
-                            });
+                            // Only update config if we have all required values
+                            if (fileKey && teamId) {
+                                onFigmaConfigChange({
+                                    fileKey,
+                                    fileName: fileName || fileKey, // Use fileKey as fallback if fileName is not provided
+                                    teamId
+                                });
+                            }
                         }}
                     />
                 </div>
