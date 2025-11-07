@@ -320,6 +320,7 @@ async function fetchNewMessageIds(
     userId: "me",
     startHistoryId: oldHistoryId,
     historyTypes: ["messageAdded"],
+    labelId: "INBOX",
   });
 
   const history = historyResponse.data.history || [];
@@ -536,11 +537,29 @@ async function processGmailWebhook(emailAddress: string, historyId: number): Pro
 
     // Step 4: Process each message (fast, non-blocking)
     for (const messageId of messageIds) {
+      // Try to mark this message as processed (non-blocking, unique constraint prevents duplicates)
+      const wasNewlyProcessed = await markMessageAsProcessed(
+        integration.id,
+        messageId,
+        String(Date.now())
+      );
+
+      if (!wasNewlyProcessed) {
+        console.log(chalk.yellow(`Skipping already processed message ${messageId}`));
+        continue;
+      }
+
       const parsedEmail: GmailEventData | null = await fetchAndParseEmail(gmail, messageId);
 
       if (parsedEmail) {
         const emailTimestamp = parseInt(parsedEmail.internalDate, 10);
         const emailDate = new Date(emailTimestamp);
+
+        console.log("Recieved Webhook for email:")
+        console.log("Email From: ", parsedEmail.from);
+        console.log("Email to: ", parsedEmail.to);
+        console.log("Email subject: ", parsedEmail.subject);
+        console.log("Email date: ", emailDate.toISOString());
 
         // Skip messages older than the last processed message date
         if (lastProcessedDate && emailDate <= lastProcessedDate) {
@@ -549,19 +568,6 @@ async function processGmailWebhook(emailAddress: string, historyId: number): Pro
 
           // Mark as processed (non-blocking)
           await markMessageAsProcessed(integration.id, parsedEmail.id, parsedEmail.internalDate);
-          continue;
-        }
-
-        // Try to mark this message as processed (non-blocking, unique constraint prevents duplicates)
-        const wasNewlyProcessed = await markMessageAsProcessed(
-          integration.id,
-          parsedEmail.id,
-          parsedEmail.internalDate
-        );
-
-        if (!wasNewlyProcessed) {
-          console.log(chalk.yellow(`Skipping already processed message ${parsedEmail.id}`));
-          console.log(chalk.yellow(`  Subject: ${parsedEmail.subject}`));
           continue;
         }
 
@@ -619,6 +625,8 @@ async function claimHistoryIdUpdateInTransaction(
   newHistoryId: number
 ): Promise<ProcessedWebhookClaim> {
   const newHistoryIdString = newHistoryId.toString();
+
+  console.log("Getting Integration associated with email:", emailAddress, "new history id:", newHistoryIdString);
 
   // Look up active integration by email
   // MASSIVE ISSUE HERE: We don't consider multiple users connecting to the same email address. This will only choose the first one!!!
