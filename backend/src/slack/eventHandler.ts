@@ -3,7 +3,8 @@ import crypto from 'crypto';
 import { Request, Response } from 'express';
 import { WebClient, LogLevel } from '@slack/web-api';
 import { db } from '../prismaClient';
-import { SlackEvent, SlackEventData } from '../Updater/InputEvents';
+import { SlackEvent } from '../Updater/InputEvents';
+import { SlackEventData, SlackChannelType } from '../shared/types';
 import { EventProcessor } from '../agent/AutomationAgent/EventProcessor';
 
 export function isValidSlackSig(req: Request) {
@@ -356,13 +357,6 @@ function extractUserName(
     const userName = user.real_name || user.profile?.display_name || user.profile?.real_name || user.name || user.id;
     console.log(chalk.green(`✓ Fetched user name: ${userName}`));
     return userName;
-}
-
-export enum SlackChannelType {
-    CHANNEL = 'channel',
-    GROUP = 'group',
-    MPIM = 'mpim',
-    IM = 'im'
 }
 
 interface SlackMessageEvent {

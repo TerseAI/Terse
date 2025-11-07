@@ -148,6 +148,34 @@ export type SlackChannelsResponse = {
   selectedChannelId: string | null;
 };
 
+/**
+ * Slack channel type enum
+ */
+export enum SlackChannelType {
+  CHANNEL = 'channel',
+  GROUP = 'group',
+  MPIM = 'mpim',
+  IM = 'im'
+}
+
+/**
+ * Slack event data
+ * Processed Slack message event data used for automation events
+ */
+export interface SlackEventData {
+  channelId: string;
+  channelName?: string;
+  userId: string;
+  userName?: string;
+  text: string;
+  timestamp: string;
+  threadTimestamp?: string;
+  teamId: string;
+  // Permalink for the message (if available)
+  permalink?: string;
+  channelType?: SlackChannelType;
+}
+
 export type IntegrationsStatus = {
   integrations: {
     github?: GithubIntegration[];
@@ -311,6 +339,32 @@ export interface FigmaApiComment {
   };
   created_at: string;
   resolved_at: string;
+}
+
+/**
+ * Figma comment event data
+ * Processed/enriched comment data used for automation events
+ * This combines data from webhook, API, and enriched context
+ */
+export interface FigmaCommentEventData {
+  commentId: string;
+  fileKey: string;
+  fileUrl: string;
+  nodeId?: string; // Node ID the comment is attached to (if any)
+  message: string;
+  author: {
+    id: string;
+    handle: string;
+    img_url?: string;
+  };
+  createdAt: string;
+  resolved?: boolean;
+  // Enriched context (optional - added during processing)
+  fileMetadata?: any;
+  // Positioning and visual context (optional - added during enrichment)
+  positioningData?: FigmaPositioningData;
+  matchedNodeIds?: string[];
+  imageUrls?: FigmaCommentImageUrls;
 }
 
 export type AutomationInput = {
