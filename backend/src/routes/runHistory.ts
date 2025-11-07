@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import { Prisma } from "@prisma/client";
 import { db, PrismaClient } from "../prismaClient";
-import type { GetRunHistoryParams, GetRunHistoryResponse, RunHistoryRecord, RunHistoryStatus } from "../shared/RunHistoryTypes";
+import type { GetRunHistoryParams, GetRunHistoryResponse, Integration, RunHistoryRecord, RunHistoryStatus } from "../shared/RunHistoryTypes";
 import { parsePageParams } from "../utility/pagination";
 
 // Valid status values for validation
@@ -63,9 +63,6 @@ export async function getRunHistory(req: Request, res: Response) {
       }),
     ]);
 
-    console.log("total", total);
-    console.log("rows", rows);
-
     // Transform Prisma rows (snake_case) to API format (camelCase)
     const items: RunHistoryRecord[] = rows.map((runRecord: RunHistoryRecordWithActions) => ({
       id: runRecord.id,
@@ -73,7 +70,7 @@ export async function getRunHistory(req: Request, res: Response) {
       timestamp: runRecord.timestamp.toISOString(),
       trigger: {
         event: runRecord.event,
-        integration: runRecord.trigger_integration,
+        integration: runRecord.trigger_integration as Integration,
         source: runRecord.trigger_source,
         title: runRecord.trigger_title ?? undefined,
         subheader: runRecord.trigger_subheader ?? undefined,
@@ -86,7 +83,7 @@ export async function getRunHistory(req: Request, res: Response) {
       },
       actions: runRecord.actions.map((action) => ({
         action: action.action,
-        integration: action.integration,
+        integration: action.integration as Integration,
         target: action.target,
         details: action.details,
         url: action.url ?? undefined,
