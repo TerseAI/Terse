@@ -169,7 +169,6 @@ export const figmaOAuthCallback = async (req: Request, res: Response) => {
         data: {
           user_id: decoded.userId,
           figma_user_id: user_id_string,
-          email: userEmail ?? "",
           access_token: access_token,
           refresh_token: refresh_token || null,
           token_expiry: tokenExpiry,
@@ -184,7 +183,6 @@ export const figmaOAuthCallback = async (req: Request, res: Response) => {
       await db().figma_integrations.update({
         where: { id: existing.id },
         data: {
-          email: userEmail ?? existing.email, // Update email if we got it, otherwise keep existing
           access_token: access_token,
           refresh_token: refresh_token || null,
           token_expiry: tokenExpiry,
