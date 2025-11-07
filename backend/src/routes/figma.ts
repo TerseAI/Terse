@@ -20,6 +20,21 @@ import {
   FigmaCommentImageUrls,
 } from "../shared/types";
 
+// Validate and assign Figma environment variables at module load time
+const clientId = process.env.FIGMA_CLIENT_ID;
+const redirectUrl = process.env.FIGMA_REDIRECT_URL;
+const clientSecret = process.env.FIGMA_CLIENT_SECRET;
+
+if (!clientId || !redirectUrl || !clientSecret) {
+  throw new Error(
+    `Missing required Figma environment variables: ${[
+      !clientId && 'FIGMA_CLIENT_ID',
+      !redirectUrl && 'FIGMA_REDIRECT_URL',
+      !clientSecret && 'FIGMA_CLIENT_SECRET',
+    ].filter(Boolean).join(', ')}`
+  );
+}
+
 export const getFigmaOAuthUrl = async (req: Request, res: Response) => {
   const user = req.session?.user;
   if (!user) {
@@ -34,13 +49,7 @@ export const getFigmaOAuthUrl = async (req: Request, res: Response) => {
       { expiresIn: "10m" }
     );
 
-    const clientId = process.env.FIGMA_CLIENT_ID;
-    const redirectUrl = process.env.FIGMA_REDIRECT_URL;
     const scope = "current_user:read,file_comments:read,file_content:read,file_metadata:read,file_versions:read,library_assets:read,library_content:read,team_library_content:read,file_dev_resources:read,projects:read,webhooks:read,webhooks:write";
-
-    if (!clientId || !redirectUrl) {
-      throw new Error("Figma OAuth credentials not configured");
-    }
 
     // Build OAuth URL with proper encoding
     const authUrl = new URL("https://www.figma.com/oauth");
@@ -79,18 +88,11 @@ export const figmaOAuthCallback = async (req: Request, res: Response) => {
       timestamp: number;
     };
 
-    const clientId = process.env.FIGMA_CLIENT_ID;
-    const clientSecret = process.env.FIGMA_CLIENT_SECRET;
-    const redirectUri = process.env.FIGMA_REDIRECT_URL;
-
-    if (!clientId || !clientSecret || !redirectUri) {
-      throw new Error("Figma OAuth credentials not configured");
-    }
 
     // Exchange authorization code for access token
     // Figma requires application/x-www-form-urlencoded format
     const params = new URLSearchParams({
-      redirect_uri: redirectUri,
+      redirect_uri: redirectUrl,
       code: code as string,
       grant_type: "authorization_code",
     });
