@@ -215,6 +215,13 @@ export type JiraConfig = {
   projectId?: string;
 };
 
+export type ConfluenceConfig = {
+  spaceKey?: string;
+  spaceId?: string;
+  pageId: string; // Page ID (required for outputs - specific page to write to)
+  pageName?: string; // Page display name (for UI, optional)
+};
+
 export type GitHubConfig = {
   repositoryId?: string;
   // Note: owner and name not needed - they're part of repository identity

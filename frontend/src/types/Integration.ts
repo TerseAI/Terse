@@ -19,4 +19,7 @@ export enum Integration {
 
     // Design tools
     FIGMA = 'figma',
+
+    // Documentation
+    CONFLUENCE = 'confluence',
 }

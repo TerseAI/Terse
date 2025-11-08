@@ -99,6 +99,8 @@ export function IconForInputType({ type }: { type: Integration }) {
             return <NotionIcon />;
         case Integration.FIGMA:
             return <FigmaIcon />;
+        case Integration.CONFLUENCE:
+            return <ConfluenceIcon />;
     }
 }
 
@@ -147,4 +149,8 @@ function FigmaIcon() {
             <path d="M20 12C20 14.2091 18.2091 16 16 16C13.7909 16 12 14.2091 12 12C12 9.79086 13.7909 8 16 8C18.2091 8 20 9.79086 20 12Z" fill="#1ABCFE"/>
         </svg>
     );
+}
+
+function ConfluenceIcon() {
+    return <img src="/confluence.svg" alt="Confluence" className="w-full h-full object-contain" />;
 }
