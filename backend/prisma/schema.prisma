@@ -35,6 +35,7 @@ model users {
   project_activity_events  project_activity_events[]
   automations              automations[]
   pending_approvals        pending_approvals[]
+  atlassian_integrations   atlassian_integrations[]
 }
 
 model github_repositories {
@@ -576,6 +577,17 @@ model automation_figma_configs {
 
   @@index([file_key])
   @@index([team_id])
+}
+
+model atlassian_integrations {
+  id String @id @default(cuid())
+  user_id String
+  api_key String
+  base_url String
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  user users @relation(fields: [user_id], references: [id], onDelete: Cascade)
 }
 
 enum TicketEventType {
