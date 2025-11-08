@@ -9,7 +9,8 @@ import { AutomationOutput, User } from "../../types/prisma";
 export enum OutputType {
     Notion = "notion",
     NotionPage = "notion_page",
-}
+    Confluence = "confluence",
+}   
 
 export abstract class Output<T extends Session> {
     integration: OutputType;
