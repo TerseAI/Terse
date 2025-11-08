@@ -57,7 +57,7 @@ function isFigmaIntegration(integration: IntegrationInstance): integration is Fi
 }
 
 function isConfluenceIntegration(integration: IntegrationInstance): integration is ConfluenceIntegration {
-    return 'email' in integration || 'confluence_user_email' in integration;
+    return 'base_url' in integration || 'email' in integration;
 }
 
 /**
@@ -68,6 +68,7 @@ export function formatIntegrationDisplay(
     integration: IntegrationInstance,
     type: Integration
 ): string {
+    console.log('integration', integration, type)
     switch (type) {
         case Integration.GMAIL:
             if (isGmailIntegration(integration)) {
@@ -129,7 +130,7 @@ export function formatIntegrationDisplay(
 
         case Integration.CONFLUENCE:
             if (isConfluenceIntegration(integration)) {
-                return integration.base_url || 'Confluence Account';
+                return integration.base_url || integration.confluence_user_email || 'Confluence Account';
             }
             return 'Confluence Account';
     }

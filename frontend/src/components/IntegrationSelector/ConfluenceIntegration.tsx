@@ -75,6 +75,8 @@ export function ConfluenceIntegration({
         }
     }
 
+    console.log('integrations', integrations)
+
     // Show selector when integrations exist
     const connectionSelections = integrations.map((integration: IntegrationInstance) => ({
         label: formatIntegrationDisplay(integration, integrationType),
