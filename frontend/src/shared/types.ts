@@ -267,14 +267,37 @@ export interface FigmaCommentImageUrls {
   fullFrame?: string;      // Full frame/page image
 }
 
-/**
- * Figma positioning data structure
- * Represents the position and type of a comment in a Figma file
- */
-export type FigmaPositioningData = {
-  type: 'Vector' | 'FrameOffset' | 'Region' | 'FrameOffsetRegion';
-  data: any;
+export type FigmaVectorData = {
+  x: number;
+  y: number;
 };
+
+export type FigmaFrameOffsetData = {
+  node_id: string;
+  node_offset: { x: number; y: number };
+};
+
+export type FigmaRegionData = {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+};
+
+export type FigmaFrameOffsetRegionData = {
+  node_id: string;
+  node_offset: { x: number; y: number };
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+};
+
+export type FigmaPositioningData =
+  | { type: 'Vector'; data: FigmaVectorData }
+  | { type: 'FrameOffset'; data: FigmaFrameOffsetData }
+  | { type: 'Region'; data: FigmaRegionData }
+  | { type: 'FrameOffsetRegion'; data: FigmaFrameOffsetRegionData };
 
 /**
  * Figma client_meta structure
