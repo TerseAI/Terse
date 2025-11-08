@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { BackendProvider } from "../services/backend";
 import { Integration } from "./Integrations";
-import { NotionConfig, NotionPageConfig, SlackConfig, FigmaConfig } from "../shared/types";
+import { NotionConfig, NotionPageConfig, SlackConfig, FigmaConfig, ConfluenceConfig } from "../shared/types";
 
 export interface Input {
     integration: Integration;
@@ -31,6 +31,7 @@ export interface Output {
     notionConfig?: NotionConfig; // Configuration for Notion output (database selection)
     notionPageConfig?: NotionPageConfig; // Configuration for Notion output (page selection)
     slackConfig?: SlackConfig; // Configuration for Slack output (channel selection)
+    confluenceConfig?: ConfluenceConfig; // Configuration for Confluence output (space selection)
 }
 
 export interface Prompt {

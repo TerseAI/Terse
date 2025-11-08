@@ -76,7 +76,7 @@ import {
   getFigmaOAuthUrl, 
   handleFigmaWebhook,
 } from "./routes/figma";
-import { setConfluenceCredentials, validateConfluenceCredentials } from "./routes/confluence";
+import { getConfluenceResources, setConfluenceCredentials, validateConfluenceCredentials } from "./routes/confluence";
 
 export type Session = {
   user: User;
@@ -237,6 +237,10 @@ app.post("/confluence/set-api-key", authMiddleware, async (req, res) => {
 
 app.post("/confluence/validate-credentials", authMiddleware, async (req, res) => {
   validateConfluenceCredentials(req, res);
+});
+
+app.get("/confluence/resources", authMiddleware, async (req, res) => {
+  getConfluenceResources(req, res);
 });
 
 // MARK: GMAIL

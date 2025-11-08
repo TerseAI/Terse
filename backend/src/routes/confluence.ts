@@ -89,3 +89,46 @@ async function validateConfluenceCredentialsPrivate(email: string, baseUrl: stri
     console.log("Confluence user:", user);
     return user !== null;
 }
+
+export async function getConfluenceResources(req: Request, res: Response) {
+    const user = req.session?.user;
+    if (!user) {
+        return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
+
+    const integrationId = req.query.integrationId as string;
+    if (!integrationId) {
+        return res.status(400).json({ success: false, error: 'integrationId is required' });
+    }
+
+    const integration = await db().jira_api_keys.findFirst({
+        where: {
+            id: integrationId,
+            user_id: user.id,
+        },
+    });
+    if (!integration) {
+        return res.status(404).json({ success: false, error: 'Integration not found' });
+    }
+
+    const client = new ConfluenceClient({
+        host: integration.base_url,
+        authentication: {
+            basic: {
+                email: integration.jira_user_email,
+                apiToken: integration.api_token,
+            }
+        },
+    });
+
+    // mock resources
+    const resources = [
+        {
+            id: '1',
+            title: 'Resource 1',
+            url: 'https://example.com/resource1',
+        },
+    ];
+    
+    return res.status(200).json({ success: true, resources: resources });
+}
