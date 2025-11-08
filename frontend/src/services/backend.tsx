@@ -1,6 +1,6 @@
 import axios from 'axios';
 import { ModelEvent, ModelRequest } from "../shared/ModelEvents";
-import { Automation, AutomationInput, AutomationOutput, AutomationPrompt, AutomationsResponse, AutomationUpdate, GithubIntegration, IntegrationsStatus, JiraCredentialsValidationResponse, JiraIntegration, LinearApiKeyValidationResponse, LinearIntegration, NotionResourcesResponse, SlackChannelsResponse, SlackIntegration } from "../shared/types";
+import { Automation, AutomationInput, AutomationOutput, AutomationPrompt, AutomationsResponse, AutomationUpdate, ConfluenceConnection, GithubIntegration, IntegrationsStatus, JiraConnection, JiraCredentialsValidationResponse, JiraIntegration, LinearApiKeyValidationResponse, LinearIntegration, NotionResourcesResponse, SlackChannelsResponse, SlackIntegration } from "../shared/types";
 import { User } from "../types/User";
 import { GetRunHistoryParams, GetRunHistoryResponse } from '../shared/RunHistoryTypes';
 
@@ -114,7 +114,7 @@ interface BackendService {
     /**
      * Sets the Jira API key
      */
-    setJiraApiKey(email: string, baseUrl: string, apiKey: string, projectKey?: string): Promise<{ success: boolean; connection?: any; error?: string }>;
+    setJiraApiKey(email: string, baseUrl: string, apiKey: string, projectKey?: string): Promise<{ success: boolean; connection?: JiraConnection; error?: string }>;
 
     /**
      * Validates Jira credentials and fetches available projects
@@ -125,6 +125,11 @@ interface BackendService {
      * Deletes the Jira API key
      */
     deleteJiraApiKey(): Promise<void>;
+
+    /**
+     * Sets the Confluence API key
+     */
+    setConfluenceApiKey(email: string, baseUrl: string, apiKey: string, projectKey?: string): Promise<{ success: boolean; connection?: ConfluenceConnection; error?: string }>;
 
     /**
      * Requests a Gmail OAuth URL
@@ -431,6 +436,16 @@ export const BackendProvider: BackendService = {
             .catch(error => {
                 console.error('Error deleting Jira API key:', error);
                 throw error;
+            });
+    },
+
+    setConfluenceApiKey: (email: string, baseUrl: string, apiKey: string) => {
+        return axios.post(`${backendBaseUrl}/confluence/set-api-key`, { email, baseUrl, apiKey }, { withCredentials: true })
+            .then(response => response.data)
+            .catch(error => {
+                console.error('Error setting Confluence API key:', error);
+                const errorMessage = error.response?.data?.error || 'Failed to create Confluence connection';
+                throw { success: false, error: errorMessage };
             });
     },
 

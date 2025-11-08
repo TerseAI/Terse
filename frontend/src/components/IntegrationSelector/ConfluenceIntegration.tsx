@@ -1,7 +1,7 @@
 import { Plus, PlusIcon } from 'lucide-react';
 import { Button } from '../ui/button';
 import DropdownSelect from '../ui/DropdownSelect';
-import { JiraConnectionForm } from '../JiraConnectionForm';
+import { AtlassianConnectionForm } from '../AtlassianConnectionForm';
 import { formatIntegrationDisplay, IntegrationInstance } from '../../utility/IntegrationFormatters';
 import { getIntegrationName } from '../../utility/IntegrationUtils';
 import { Integration } from '../../context/Integrations';
@@ -65,13 +65,13 @@ export function ConfluenceIntegration({
                         </div>
                     )}
                     {showForm && (
-                        <JiraConnectionForm onSuccess={onFormSuccess} onCancel={onFormCancel} />
+                        <AtlassianConnectionForm onSuccess={onFormSuccess} onCancel={onFormCancel} integrationType={integrationType} />
                     )}
                 </div>
             );
         } else {
             // Show form for adding another connection
-            return <JiraConnectionForm onSuccess={onFormSuccess} onCancel={onFormCancel} />;
+            return <AtlassianConnectionForm onSuccess={onFormSuccess} onCancel={onFormCancel} integrationType={integrationType} />;
         }
     }
 
