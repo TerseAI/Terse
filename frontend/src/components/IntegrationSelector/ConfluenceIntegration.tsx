@@ -7,6 +7,7 @@ import { getIntegrationName } from '../../utility/IntegrationUtils';
 import { Integration } from '../../context/Integrations';
 import { ConfluenceConfig } from '../../shared/types';
 import { BaseIntegrationProps } from './types';
+import { ConfluenceResourceSelector } from '../ConfluenceResourceSelector';
 
 interface ConfluenceIntegrationProps extends BaseIntegrationProps {
     integrationType: Integration;
@@ -29,7 +30,7 @@ export function ConfluenceIntegration({
     showForm,
     onFormSuccess,
     onFormCancel,
-    confluenceConfig: _confluenceConfig,
+    confluenceConfig,
     onConfluenceConfigChange
 }: ConfluenceIntegrationProps) {
     if (isLoading) {
@@ -75,8 +76,6 @@ export function ConfluenceIntegration({
         }
     }
 
-    console.log('integrations', integrations)
-
     // Show selector when integrations exist
     const connectionSelections = integrations.map((integration: IntegrationInstance) => ({
         label: formatIntegrationDisplay(integration, integrationType),
@@ -106,12 +105,20 @@ export function ConfluenceIntegration({
                 {isConnecting ? 'Connecting...' : `Connect Another ${getIntegrationName(integrationType)}`}
             </Button>
 
-            {/* Confluence-specific space selector - TODO: Implement when backend API is ready */}
+            {/* Confluence-specific resource selector */}
             {selectedIntegrationId && onConfluenceConfigChange && (
                 <div className="mt-3 pt-3 border-t border-border">
-                    <div className="text-sm text-muted-foreground">
-                        Space configuration will be available here once the backend API is implemented.
-                    </div>
+                    <ConfluenceResourceSelector
+                        integrationId={selectedIntegrationId}
+                        selectedResourceId={confluenceConfig?.pageId}
+                        onSelect={(resourceId, resourceTitle) => {
+                            onConfluenceConfigChange({
+                                ...confluenceConfig,
+                                pageId: resourceId,
+                                pageName: resourceTitle,
+                            });
+                        }}
+                    />
                 </div>
             )}
         </div>

@@ -250,6 +250,12 @@ export type ConfluencePagesResponse = {
   total: number;
 };
 
+export type ConfluenceResourcesResponse = {
+  resources: ConfluencePage[];
+  spaceId: string;
+  total: number;
+};
+
 export type GitHubConfig = {
   repositoryId?: string;
   // Note: owner and name not needed - they're part of repository identity

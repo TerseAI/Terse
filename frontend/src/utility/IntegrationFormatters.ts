@@ -68,7 +68,6 @@ export function formatIntegrationDisplay(
     integration: IntegrationInstance,
     type: Integration
 ): string {
-    console.log('integration', integration, type)
     switch (type) {
         case Integration.GMAIL:
             if (isGmailIntegration(integration)) {
@@ -104,7 +103,6 @@ export function formatIntegrationDisplay(
             return 'Unknown Site';
 
         case Integration.SLACK:
-            console.log('integration', integration)
             if (isSlackIntegration(integration)) {
                 return integration.teamName || 'Unknown Workspace';
             }

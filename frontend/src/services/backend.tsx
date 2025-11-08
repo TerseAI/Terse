@@ -1,6 +1,24 @@
 import axios from 'axios';
 import { ModelEvent, ModelRequest } from "../shared/ModelEvents";
-import { Automation, AutomationInput, AutomationOutput, AutomationPrompt, AutomationsResponse, AutomationUpdate, ConfluenceIntegration, GithubIntegration, IntegrationsStatus, JiraCredentialsValidationResponse, JiraIntegration, LinearApiKeyValidationResponse, LinearIntegration, NotionResourcesResponse, SlackChannelsResponse, SlackIntegration } from "../shared/types";
+import {
+    Automation,
+    AutomationInput, 
+    AutomationOutput,
+    AutomationPrompt, 
+    AutomationsResponse, 
+    AutomationUpdate, 
+    ConfluenceIntegration, 
+    ConfluenceResourcesResponse, 
+    GithubIntegration, 
+    IntegrationsStatus, 
+    JiraCredentialsValidationResponse, 
+    JiraIntegration, 
+    LinearApiKeyValidationResponse, 
+    LinearIntegration, 
+    NotionResourcesResponse, 
+    SlackChannelsResponse, 
+    SlackIntegration
+} from "../shared/types";
 import { User } from "../types/User";
 import { GetRunHistoryParams, GetRunHistoryResponse } from '../shared/RunHistoryTypes';
 
@@ -135,6 +153,11 @@ interface BackendService {
      * Validates Confluence credentials
      */
     validateConfluenceCredentials(baseUrl: string, email: string, apiKey: string): Promise<{ valid: boolean; error?: string }>;
+
+    /**
+     * Gets the Confluence resources
+     */
+    getConfluenceResources(integrationId: string): Promise<ConfluenceResourcesResponse>;
 
     /**
      * Requests a Gmail OAuth URL
@@ -459,6 +482,15 @@ export const BackendProvider: BackendService = {
             .then(response => response.data)
             .catch(error => {
                 console.error('Error validating Confluence credentials:', error);
+                throw error;
+            });
+    },
+
+    getConfluenceResources: (integrationId: string) => {
+        return axios.get<ConfluenceResourcesResponse>(`${backendBaseUrl}/confluence/resources?integrationId=${encodeURIComponent(integrationId)}`, { withCredentials: true })
+            .then(response => response.data)
+            .catch(error => {
+                console.error('Error fetching Confluence resources:', error);
                 throw error;
             });
     },

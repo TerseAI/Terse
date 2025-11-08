@@ -115,6 +115,13 @@ function OutputCard({
                             setOutput({ ...output, slackConfig: config });
                         }
                     }}
+                    confluenceConfig={output.confluenceConfig}
+                    onConfluenceConfigChange={(config) => {
+                        console.log("Changing confluence config:", config);
+                        if (output) {
+                            setOutput({ ...output, confluenceConfig: config });
+                        }
+                    }}
                 />
             </CardContent>
             <CardFooter>
