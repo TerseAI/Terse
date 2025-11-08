@@ -7,7 +7,8 @@ import {
     LinearIntegration,
     JiraIntegration,
     GithubIntegration,
-    FigmaIntegration
+    FigmaIntegration,
+    ConfluenceIntegration
 } from "../shared/types";
 
 /**
@@ -19,7 +20,7 @@ export const INTEGRATION_KEY_MAP: Record<Integration, keyof IntegrationsStatus['
     [Integration.NOTION_PAGE]: 'notion', // Poin the notion page stuff to the notion integration
     [Integration.LINEAR]: 'linear',
     [Integration.JIRA]: 'jira',
-    [Integration.CONFLUENCE]: 'jira', // Confluence shares credentials with Jira
+    [Integration.CONFLUENCE]: 'confluence', // Confluence shares credentials with Jira
     [Integration.SLACK]: 'slack',
     [Integration.GITHUB]: 'github',
     [Integration.FIGMA]: 'figma',
@@ -34,7 +35,7 @@ type IntegrationTypeMap = {
     [Integration.NOTION_PAGE]: NotionIntegration[];
     [Integration.LINEAR]: LinearIntegration[];
     [Integration.JIRA]: JiraIntegration[];
-    [Integration.CONFLUENCE]: JiraIntegration[]; // Confluence shares credentials with Jira
+    [Integration.CONFLUENCE]: ConfluenceIntegration[]; // Confluence shares credentials with Jira
     [Integration.SLACK]: SlackIntegration[];
     [Integration.GITHUB]: GithubIntegration[];
     [Integration.FIGMA]: FigmaIntegration[];
