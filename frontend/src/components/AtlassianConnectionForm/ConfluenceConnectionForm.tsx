@@ -28,29 +28,29 @@ export function ConfluenceConnectionForm({ onSuccess, onCancel }: AtlassianConne
         setValidationError(null);
     };
 
-    const handleValidate = async (values: BaseFormValues) => {
-        setIsValidating(true);
-        setValidationError(null);
-        setError(null);
+    // const handleValidate = async (values: BaseFormValues) => {
+    //     setIsValidating(true);
+    //     setValidationError(null);
+    //     setError(null);
 
-        try {
-            // For Confluence, we can use the same validation as Jira since they share credentials
-            const result = await BackendProvider.validateJiraCredentials(
-                values.baseUrl.trim(),
-                values.email.trim(),
-                values.apiKey
-            );
-            if (result.valid) {
-                // Validation successful, ready to connect
-            } else {
-                setValidationError(result.error || "Invalid credentials");
-            }
-        } catch (err: any) {
-            setValidationError(err.message || "Failed to validate credentials");
-        } finally {
-            setIsValidating(false);
-        }
-    };
+    //     try {
+    //         // For Confluence, we can use the same validation as Jira since they share credentials
+    //         const result = await BackendProvider.validateJiraCredentials(
+    //             values.baseUrl.trim(),
+    //             values.email.trim(),
+    //             values.apiKey
+    //         );
+    //         if (result.valid) {
+    //             // Validation successful, ready to connect
+    //         } else {
+    //             setValidationError(result.error || "Invalid credentials");
+    //         }
+    //     } catch (err: any) {
+    //         setValidationError(err.message || "Failed to validate credentials");
+    //     } finally {
+    //         setIsValidating(false);
+    //     }
+    // };
 
     const handleConnect = async (values: BaseFormValues) => {
         setIsConnecting(true);
