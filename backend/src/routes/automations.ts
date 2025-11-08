@@ -191,6 +191,8 @@ async function createOutputConfig(
             }
             break;
         case IntegrationType.CONFLUENCE:
+            console.log(chalk.blue("Confluence config received:"), chalk.yellow(JSON.stringify(config.confluenceConfig, null, 2)));
+
             if (config.confluenceConfig) {
                 await tx.automation_confluence_configs.create({
                     data: {
@@ -298,6 +300,7 @@ function transformInputConfig(input: any): AutomationInput {
 }
 
 // Helper function to transform output config from database to API format
+// TODO: I feel like this shouldn't exist?
 function transformOutputConfig(output: any): AutomationOutput {
     const base: AutomationOutput = {
         integration: output.integration_type.toLowerCase(),
@@ -332,6 +335,12 @@ function transformOutputConfig(output: any): AutomationOutput {
         base.jiraConfig = {
             projectKey: output.jira_config.project_key || undefined,
             projectId: output.jira_config.project_id || undefined,
+        };
+    }
+    if (output.notion_page_config) {
+        base.notionPageConfig = {
+            pageId: output.notion_page_config.page_id || undefined,
+            pageName: output.notion_page_config.page_name || undefined,
         };
     }
     if (output.confluence_config) {
