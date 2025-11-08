@@ -1,5 +1,5 @@
 import { Integration } from '../../context/Integrations';
-import { NotionConfig, NotionPageConfig, SlackConfig, FigmaConfig } from '../../shared/types';
+import { NotionConfig, NotionPageConfig, SlackConfig, FigmaConfig, ConfluenceConfig } from '../../shared/types';
 
 export interface IntegrationSelectorProps {
     integrationType: Integration;
@@ -15,6 +15,8 @@ export interface IntegrationSelectorProps {
     onSlackConfigChange?: (config: SlackConfig) => void;
     figmaConfig?: FigmaConfig;
     onFigmaConfigChange?: (config: FigmaConfig) => void;
+    confluenceConfig?: ConfluenceConfig;
+    onConfluenceConfigChange?: (config: ConfluenceConfig) => void;
 }
 
 export interface BaseIntegrationProps {

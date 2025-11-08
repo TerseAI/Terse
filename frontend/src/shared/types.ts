@@ -215,6 +215,13 @@ export type JiraConfig = {
   projectId?: string;
 };
 
+export type ConfluenceConfig = {
+  spaceId?: string;
+  spaceKey?: string;
+  pageId: string; // Page ID (required for outputs - specific page to write to)
+  pageName?: string; // Page display name (for UI, optional)
+};
+
 export type GitHubConfig = {
   repositoryId?: string;
   // Note: owner and name not needed - they're part of repository identity
@@ -405,6 +412,7 @@ export type AutomationInput = {
   notionConfig?: NotionConfig;
   linearConfig?: LinearConfig;
   jiraConfig?: JiraConfig;
+  confluenceConfig?: ConfluenceConfig;
   githubConfig?: GitHubConfig;
   gmailConfig?: GmailConfig;
   figmaConfig?: FigmaConfig;
@@ -419,6 +427,7 @@ export type AutomationOutput = {
   notionPageConfig?: NotionPageConfig;
   linearConfig?: LinearConfig;
   jiraConfig?: JiraConfig;
+  confluenceConfig?: ConfluenceConfig;
   githubConfig?: GitHubConfig;
   gmailConfig?: GmailConfig;
   figmaConfig?: FigmaConfig;

@@ -10,6 +10,7 @@ import { GitHubIntegration } from './GitHubIntegration';
 import { FigmaIntegration } from './FigmaIntegration';
 import { JiraIntegration } from './JiraIntegration';
 import { LinearIntegration } from './LinearIntegration';
+import { ConfluenceIntegration } from './ConfluenceIntegration';
 import { useOAuthConnection } from './useOAuthConnection';
 
 export function IntegrationSelector(props: IntegrationSelectorProps) {
@@ -56,8 +57,8 @@ export function IntegrationSelector(props: IntegrationSelectorProps) {
     };
 
     const handleConnectNew = async () => {
-        // For Jira and Linear, show form instead of OAuth
-        if (integrationType === Integration.JIRA || integrationType === Integration.LINEAR) {
+        // For Jira, Linear, and Confluence, show form instead of OAuth
+        if (integrationType === Integration.JIRA || integrationType === Integration.LINEAR || integrationType === Integration.CONFLUENCE) {
             setShowForm(true);
             return;
         }
@@ -146,6 +147,19 @@ export function IntegrationSelector(props: IntegrationSelectorProps) {
                     showForm={showForm}
                     onFormSuccess={handleFormSuccess}
                     onFormCancel={handleFormCancel}
+                />
+            );
+        
+        case Integration.CONFLUENCE:
+            return (
+                <ConfluenceIntegration
+                    {...baseProps}
+                    integrationType={integrationType}
+                    showForm={showForm}
+                    onFormSuccess={handleFormSuccess}
+                    onFormCancel={handleFormCancel}
+                    confluenceConfig={props.confluenceConfig}
+                    onConfluenceConfigChange={props.onConfluenceConfigChange}
                 />
             );
         

@@ -12,6 +12,7 @@ const integrationTypeMap: Record<string, IntegrationType> = {
     'gmail': IntegrationType.GMAIL,
     'linear': IntegrationType.LINEAR,
     'jira': IntegrationType.JIRA,
+    'confluence': IntegrationType.CONFLUENCE,
     'slack': IntegrationType.SLACK,
     'notion': IntegrationType.NOTION,
     'notion_page': IntegrationType.NOTION_PAGE,
@@ -67,6 +68,19 @@ async function createInputConfig(
                         automation_input_id: inputId,
                         project_key: config.jiraConfig.projectKey || null,
                         project_id: config.jiraConfig.projectId || null,
+                    },
+                });
+            }
+            break;
+        case IntegrationType.CONFLUENCE:
+            if (config.confluenceConfig) {
+                await tx.automation_confluence_configs.create({
+                    data: {
+                        automation_input_id: inputId,
+                        space_id: config.confluenceConfig.spaceId || null,
+                        space_key: config.confluenceConfig.spaceKey || null,
+                        page_id: config.confluenceConfig.pageId,
+                        page_name: config.confluenceConfig.pageName || null,
                     },
                 });
             }
@@ -176,6 +190,19 @@ async function createOutputConfig(
                 });
             }
             break;
+        case IntegrationType.CONFLUENCE:
+            if (config.confluenceConfig) {
+                await tx.automation_confluence_configs.create({
+                    data: {
+                        automation_output_id: outputId,
+                        space_id: config.confluenceConfig.spaceId || null,
+                        space_key: config.confluenceConfig.spaceKey || null,
+                        page_id: config.confluenceConfig.pageId,
+                        page_name: config.confluenceConfig.pageName || null,
+                    },
+                });
+            }
+            break;
         case IntegrationType.GITHUB:
             if (config.githubConfig) {
                 await tx.automation_github_configs.create({
@@ -243,6 +270,14 @@ function transformInputConfig(input: any): AutomationInput {
             projectId: input.jira_config.project_id || undefined,
         };
     }
+    if (input.confluence_config) {
+        base.confluenceConfig = {
+            spaceId: input.confluence_config.space_id || undefined,
+            spaceKey: input.confluence_config.space_key || undefined,
+            pageId: input.confluence_config.page_id,
+            pageName: input.confluence_config.page_name || undefined,
+        };
+    }
     if (input.github_config) {
         base.githubConfig = {
             repositoryId: input.github_config.repository_id || undefined,
@@ -299,6 +334,14 @@ function transformOutputConfig(output: any): AutomationOutput {
             projectId: output.jira_config.project_id || undefined,
         };
     }
+    if (output.confluence_config) {
+        base.confluenceConfig = {
+            spaceId: output.confluence_config.space_id || undefined,
+            spaceKey: output.confluence_config.space_key || undefined,
+            pageId: output.confluence_config.page_id,
+            pageName: output.confluence_config.page_name || undefined,
+        };
+    }
     if (output.github_config) {
         base.githubConfig = {
             repositoryId: output.github_config.repository_id || undefined,
@@ -349,6 +392,16 @@ async function validateUserOwnsIntegration(userId: string, integrationType: Inte
                 }
             });
             return !!jiraKey;
+
+        case IntegrationType.CONFLUENCE:
+            // Confluence uses the same credentials as Jira
+            const confluenceJiraKey = await prisma.jira_api_keys.findFirst({
+                where: {
+                    id: integrationId,
+                    user_id: userId
+                }
+            });
+            return !!confluenceJiraKey;
 
         case IntegrationType.SLACK:
             const userSlackIntegration = await prisma.user_slack_integrations.findFirst({
@@ -441,6 +494,7 @@ export async function getUserAutomations(req: Request, res: Response) {
                         notion_config: true,
                         linear_config: true,
                         jira_config: true,
+                        confluence_config: true,
                         github_config: true,
                         gmail_config: true,
                         figma_config: true,
@@ -452,6 +506,7 @@ export async function getUserAutomations(req: Request, res: Response) {
                         notion_config: true,
                         linear_config: true,
                         jira_config: true,
+                        confluence_config: true,
                         github_config: true,
                         gmail_config: true,
                         figma_config: true,
@@ -524,6 +579,7 @@ export async function getUserAutomation(req: Request, res: Response) {
                         notion_page_config: true,
                         linear_config: true,
                         jira_config: true,
+                        confluence_config: true,
                         github_config: true,
                         gmail_config: true,
                         figma_config: true,
