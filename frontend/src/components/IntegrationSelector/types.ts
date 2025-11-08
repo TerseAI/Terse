@@ -1,3 +1,4 @@
+import { IntegrationInstance } from '@/utility/IntegrationFormatters';
 import { Integration } from '../../context/Integrations';
 import { NotionConfig, NotionPageConfig, SlackConfig, FigmaConfig, ConfluenceConfig } from '../../shared/types';
 
@@ -22,7 +23,7 @@ export interface IntegrationSelectorProps {
 export interface BaseIntegrationProps {
     selectedIntegrationId?: string;
     onSelect: (integrationId: string) => void;
-    integrations: any[];
+    integrations: IntegrationInstance[];
     isLoading: boolean;
     isConnecting: boolean;
     onConnect: () => void;

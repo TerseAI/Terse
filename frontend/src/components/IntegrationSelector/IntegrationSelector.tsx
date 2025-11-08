@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Integration } from '../../context/Integrations';
 import { BackendProvider } from '../../services/backend';
 import { getIntegrationInstances } from '../../utility/IntegrationUtils';
-import { IntegrationSelectorProps } from './types';
+import { BaseIntegrationProps, IntegrationSelectorProps } from './types';
 import { GmailIntegration } from './GmailIntegration';
 import { NotionIntegration } from './NotionIntegration';
 import { SlackIntegration } from './SlackIntegration';
@@ -12,10 +12,11 @@ import { JiraIntegration } from './JiraIntegration';
 import { LinearIntegration } from './LinearIntegration';
 import { ConfluenceIntegration } from './ConfluenceIntegration';
 import { useOAuthConnection } from './useOAuthConnection';
+import { IntegrationInstance } from '@/utility/IntegrationFormatters';
 
 export function IntegrationSelector(props: IntegrationSelectorProps) {
     const { integrationType, selectedIntegrationId, onSelect } = props;
-    const [integrations, setIntegrations] = useState<any[]>([]);
+    const [integrations, setIntegrations] = useState<IntegrationInstance[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [showForm, setShowForm] = useState(false);
     
@@ -77,7 +78,7 @@ export function IntegrationSelector(props: IntegrationSelectorProps) {
         setShowForm(false);
     };
 
-    const baseProps = {
+    const baseProps: BaseIntegrationProps = {
         selectedIntegrationId,
         onSelect,
         integrations,

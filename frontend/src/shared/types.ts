@@ -82,22 +82,6 @@ export type JiraIntegration = {
   projectName?: string;
 };
 
-export type JiraConnection = {
-  id: string;
-  baseUrl: string;
-  siteName: string;
-  email: string;
-  projectKey: string | null;
-  projectName: string | null;
-};
-
-export type ConfluenceConnection = {
-  id: string;
-  baseUrl: string;
-  siteName: string | null;
-  email: string;
-};
-
 export type JiraProject = {
   id: string;
   key: string;
@@ -126,8 +110,14 @@ export type GmailIntegration = {
 export type FigmaIntegration = {
   id: string;
   figma_user_id: string;
-  email: string;
   token_expiry: Date;
+};
+
+export type ConfluenceIntegration = {
+  id: string;
+  confluence_user_email: string;
+  base_url: string;
+  api_key: string;
 };
 
 export type NotionIntegration = {
@@ -201,6 +191,7 @@ export type IntegrationsStatus = {
     gmail?: GmailIntegration[];
     notion?: NotionIntegration[];
     figma?: FigmaIntegration[];
+    confluence?: ConfluenceIntegration[];
   };
 };
 
