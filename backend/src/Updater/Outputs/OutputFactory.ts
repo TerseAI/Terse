@@ -3,6 +3,7 @@ import { Output } from "./Output";
 import { NotionDatabaseOutput } from "./NotionDatabaseOutput";
 import { NotionPageOutput } from "./NotionPageOutput";
 import { Session } from "../../server";
+import { ConfluenceOutput } from "./ConfluenceOutput";
 
 /**
  * Factory for creating Output instances based on IntegrationType.
@@ -13,6 +14,7 @@ export class OutputFactory {
     private static readonly outputRegistry: Map<IntegrationType, () => Output<Session>> = new Map([
         [IntegrationType.NOTION, () => new NotionDatabaseOutput() as Output<Session>],
         [IntegrationType.NOTION_PAGE, () => new NotionPageOutput() as Output<Session>],
+        [IntegrationType.CONFLUENCE, () => new ConfluenceOutput() as Output<Session>],
         // Future outputs can be added here:
         // [IntegrationType.SLACK, () => new SlackOutput() as Output<Session>],
         // [IntegrationType.GMAIL, () => new GmailOutput() as Output<Session>],

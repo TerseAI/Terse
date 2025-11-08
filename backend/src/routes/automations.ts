@@ -191,8 +191,6 @@ async function createOutputConfig(
             }
             break;
         case IntegrationType.CONFLUENCE:
-            console.log(chalk.blue("Confluence config received:"), chalk.yellow(JSON.stringify(config.confluenceConfig, null, 2)));
-
             if (config.confluenceConfig) {
                 await tx.automation_confluence_configs.create({
                     data: {
