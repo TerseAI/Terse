@@ -1,6 +1,6 @@
 import axios from 'axios';
 import { ModelEvent, ModelRequest } from "../shared/ModelEvents";
-import { Automation, AutomationInput, AutomationOutput, AutomationPrompt, AutomationsResponse, AutomationUpdate, ConfluenceConnection, GithubIntegration, IntegrationsStatus, JiraConnection, JiraCredentialsValidationResponse, JiraIntegration, LinearApiKeyValidationResponse, LinearIntegration, NotionResourcesResponse, SlackChannelsResponse, SlackIntegration } from "../shared/types";
+import { Automation, AutomationInput, AutomationOutput, AutomationPrompt, AutomationsResponse, AutomationUpdate, ConfluenceIntegration, GithubIntegration, IntegrationsStatus, JiraCredentialsValidationResponse, JiraIntegration, LinearApiKeyValidationResponse, LinearIntegration, NotionResourcesResponse, SlackChannelsResponse, SlackIntegration } from "../shared/types";
 import { User } from "../types/User";
 import { GetRunHistoryParams, GetRunHistoryResponse } from '../shared/RunHistoryTypes';
 
@@ -114,7 +114,7 @@ interface BackendService {
     /**
      * Sets the Jira API key
      */
-    setJiraApiKey(email: string, baseUrl: string, apiKey: string, projectKey?: string): Promise<{ success: boolean; connection?: JiraConnection; error?: string }>;
+    setJiraApiKey(email: string, baseUrl: string, apiKey: string, projectKey?: string): Promise<{ success: boolean; connection?: JiraIntegration; error?: string }>;
 
     /**
      * Validates Jira credentials and fetches available projects
@@ -129,7 +129,7 @@ interface BackendService {
     /**
      * Sets the Confluence API key
      */
-    setConfluenceApiKey(email: string, baseUrl: string, apiKey: string, projectKey?: string): Promise<{ success: boolean; connection?: ConfluenceConnection; error?: string }>;
+    setConfluenceApiKey(email: string, baseUrl: string, apiKey: string, projectKey?: string): Promise<{ success: boolean; connection?: ConfluenceIntegration; error?: string }>;
 
     /**
      * Requests a Gmail OAuth URL

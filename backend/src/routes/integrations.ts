@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import { db } from "../prismaClient";
+import { IntegrationsStatus } from "src/shared/types";
 
 export async function fetchUserIntegrations(req: Request, res: Response) {
     if (!req.session?.user) {
@@ -8,7 +9,7 @@ export async function fetchUserIntegrations(req: Request, res: Response) {
     }
 
     const user = req.session.user;
-    const result: any = { integrations: {} };
+    const result: IntegrationsStatus = { integrations: {} };
 
     try {
         // Check GitHub integration
@@ -37,7 +38,7 @@ export async function fetchUserIntegrations(req: Request, res: Response) {
         result.integrations.linear = linearKeys.map(lk => ({
             id: lk.id,
             workspaceId: lk.workspace_id,
-            workspaceName: lk.workspace_name,
+            workspaceName: lk.workspace_name || undefined,
             teamId: lk.team_id,
             teamName: lk.team_name,
             apiKey: lk.api_key
@@ -59,13 +60,20 @@ export async function fetchUserIntegrations(req: Request, res: Response) {
         result.integrations.jira = jiraKeys.map(jk => ({
             id: jk.id,
             baseUrl: jk.base_url,
-            siteName: jk.site_name,
-            projectKey: jk.project_key,
-            projectName: jk.project_name,
+            siteName: jk.site_name || undefined,
+            projectKey: jk.project_key || undefined,
+            projectName: jk.project_name || undefined,
             email: jk.jira_user_email,
             apiKey: jk.api_token
         }));
 
+        result.integrations.confluence = jiraKeys.map(jk => ({
+            id: jk.id,
+            confluence_user_email: jk.jira_user_email,
+            base_url: jk.base_url,
+            api_key: jk.api_token
+        }));
+        
         // Check Slack integration
         const userSlackIntegrations = await db().user_slack_integrations.findMany({
             where: { user_id: user.id },
@@ -109,8 +117,8 @@ export async function fetchUserIntegrations(req: Request, res: Response) {
         });
         result.integrations.notion = notionIntegrations.map(ni => ({
             id: ni.id,
-            workspaceId: ni.workspace_id,
-            workspaceName: ni.workspace_name,
+            workspaceId: ni.workspace_id || undefined,
+            workspaceName: ni.workspace_name || undefined,
             integrationToken: ni.integration_token
         }));
 
@@ -125,8 +133,8 @@ export async function fetchUserIntegrations(req: Request, res: Response) {
         });
         result.integrations.figma = figmaIntegrations.map(fi => ({
             id: fi.id,
-            figmaUserId: fi.figma_user_id,
-            tokenExpiry: fi.token_expiry
+            figma_user_id: fi.figma_user_id,
+            token_expiry: fi.token_expiry
         }));
 
         res.status(200).json(result);
