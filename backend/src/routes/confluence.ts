@@ -1,7 +1,12 @@
 import { db } from "../prismaClient";
 import { Request, Response } from "express";
 import { ConfluenceClient } from 'confluence.js';
+import type { ConfluencePage } from "../shared/types";
 import chalk from "chalk";
+
+// Import types from confluence.js using type-only imports
+type Content = import('confluence.js').Models.Content;
+type ContentArray = import('confluence.js').Models.ContentArray;
 
 export async function setConfluenceCredentials(req: Request, res: Response) {
     const user = req.session?.user;
@@ -121,14 +126,54 @@ export async function getConfluenceResources(req: Request, res: Response) {
         },
     });
 
-    // mock resources
-    const resources = [
-        {
-            id: '1',
-            title: 'Resource 1',
-            url: 'https://example.com/resource1',
-        },
-    ];
-    
-    return res.status(200).json({ success: true, resources: resources });
+    try {
+        // Fetch all pages using the content API
+        // Using type=page to get only pages, and limit to get a reasonable number
+        const allResources: ConfluencePage[] = [];
+        let start = 0;
+        const limit = 100; // Fetch 100 pages per request
+        let hasMore = true;
+
+        while (hasMore) {
+            const contentResponse = await client.content.getContent({
+                type: 'page',
+                limit: limit,
+                start: start,
+                expand: ['space', 'version'],
+            }) as ContentArray;
+
+            // Map the response to match ConfluencePage type
+            const resources = contentResponse.results.map((page: Content) => ({
+                id: page.id,
+                title: page.title || 'Untitled',
+                spaceId: page.space?.key || (page.space?.id ? String(page.space.id) : ''),
+                url: page._links?.webui || (page._links?.base && page._links?.webui ? page._links.base + page._links.webui : undefined),
+                status: page.status || 'current',
+                version: page.version?.number || 1,
+            }));
+
+            allResources.push(...resources);
+
+            // Check if there are more pages to fetch
+            const total = contentResponse.size || 0;
+            start += limit;
+            hasMore = start < total && contentResponse.results.length === limit;
+        }
+
+        // Get the first space ID if available (for backward compatibility)
+        const firstSpaceId = allResources.length > 0 ? allResources[0].spaceId : '';
+
+        return res.status(200).json({
+            success: true,
+            resources: allResources,
+            spaceId: firstSpaceId,
+            total: allResources.length,
+        });
+    } catch (error: any) {
+        console.error(chalk.red('Error fetching Confluence resources:'), error);
+        return res.status(500).json({
+            success: false,
+            error: error.message || 'Failed to fetch Confluence resources',
+        });
+    }
 }
