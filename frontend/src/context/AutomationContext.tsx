@@ -85,7 +85,8 @@ export function AutomationProvider({ children, automationId }: { children: React
                     integrationId: automation.output.integrationId,
                     notionConfig: automation.output.notionConfig,
                     notionPageConfig: automation.output.notionPageConfig,
-                    slackConfig: automation.output.slackConfig
+                    slackConfig: automation.output.slackConfig,
+                    confluenceConfig: automation.output.confluenceConfig
                 } : undefined);
                 setPrompt(automation.prompt);
                 setIsActive(automation.isActive);

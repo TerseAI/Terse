@@ -462,7 +462,7 @@ export type AutomationOutput = {
   linearConfig?: LinearConfig;
   jiraConfig?: JiraConfig;
   confluenceConfig?: ConfluenceConfig;
-  githubConfig?: GitHubConfig;
+  githubConfig?: GitHubConfig;    
   gmailConfig?: GmailConfig;
   figmaConfig?: FigmaConfig;
 };
