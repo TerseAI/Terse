@@ -15,7 +15,7 @@ export async function setConfluenceCredentials(req: Request, res: Response) {
     }
 
     try {
-        const valid = await validateConfluenceCredentials(email, baseUrl, apiKey);
+        const valid = await validateConfluenceCredentialsPrivate(email, baseUrl, apiKey);
         if (!valid) {
             return res.status(400).json({ success: false, error: 'Invalid credentials' });
         }
@@ -54,7 +54,28 @@ export async function setConfluenceCredentials(req: Request, res: Response) {
     }
 }
 
-async function validateConfluenceCredentials(email: string, baseUrl: string, apiKey: string): Promise<boolean> {
+
+export async function validateConfluenceCredentials(req: Request, res: Response) {
+    const user = req.session?.user;
+    if (!user) {
+        return res.status(401).json({ success: false, error: 'Unauthorized' });
+    }
+
+    const { baseUrl, email, apiKey } = req.body;
+    if (!baseUrl || !email || !apiKey) {
+        return res.status(400).json({ success: false, error: 'baseUrl, email, and apiKey are required' });
+    }
+
+    const valid = await validateConfluenceCredentialsPrivate(email, baseUrl, apiKey);
+    if (!valid) {
+        return res.status(400).json({ success: false, error: 'Invalid credentials' });
+    }
+
+    return res.status(200).json({ success: true });
+}
+
+
+async function validateConfluenceCredentialsPrivate(email: string, baseUrl: string, apiKey: string): Promise<boolean> {
     const client = new ConfluenceClient({
         host: baseUrl,
         authentication: {

@@ -10,7 +10,7 @@ import { BaseFields } from "./BaseFields";
 import { baseFormSchema, BaseFormValues, AtlassianConnectionFormProps } from "./types";
 
 export function ConfluenceConnectionForm({ onSuccess, onCancel }: AtlassianConnectionFormProps) {
-    const [isValidating, setIsValidating] = useState(false);
+    const [isValidating, _] = useState(false);
     const [isConnecting, setIsConnecting] = useState(false);
     const [validationError, setValidationError] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
@@ -35,7 +35,7 @@ export function ConfluenceConnectionForm({ onSuccess, onCancel }: AtlassianConne
 
     //     try {
     //         // For Confluence, we can use the same validation as Jira since they share credentials
-    //         const result = await BackendProvider.validateJiraCredentials(
+    //         const result = await BackendProvider.validateConfluenceCredentials(
     //             values.baseUrl.trim(),
     //             values.email.trim(),
     //             values.apiKey

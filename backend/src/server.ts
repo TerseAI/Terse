@@ -76,7 +76,7 @@ import {
   getFigmaOAuthUrl, 
   handleFigmaWebhook,
 } from "./routes/figma";
-import { setConfluenceCredentials } from "./routes/confluence";
+import { setConfluenceCredentials, validateConfluenceCredentials } from "./routes/confluence";
 
 export type Session = {
   user: User;
@@ -233,6 +233,10 @@ app.delete("/jira/delete-credentials", authMiddleware, async (req, res) => {
 
 app.post("/confluence/set-api-key", authMiddleware, async (req, res) => {
   setConfluenceCredentials(req, res);
+});
+
+app.post("/confluence/validate-credentials", authMiddleware, async (req, res) => {
+  validateConfluenceCredentials(req, res);
 });
 
 // MARK: GMAIL

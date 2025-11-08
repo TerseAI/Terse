@@ -132,6 +132,11 @@ interface BackendService {
     setConfluenceApiKey(email: string, baseUrl: string, apiKey: string, projectKey?: string): Promise<{ success: boolean; connection?: ConfluenceIntegration; error?: string }>;
 
     /**
+     * Validates Confluence credentials
+     */
+    validateConfluenceCredentials(baseUrl: string, email: string, apiKey: string): Promise<{ valid: boolean; error?: string }>;
+
+    /**
      * Requests a Gmail OAuth URL
      */
     requestGmailOAuthUrl(): Promise<{ url: string }>;
@@ -446,6 +451,15 @@ export const BackendProvider: BackendService = {
                 console.error('Error setting Confluence API key:', error);
                 const errorMessage = error.response?.data?.error || 'Failed to create Confluence connection';
                 throw { success: false, error: errorMessage };
+            });
+    },
+
+    validateConfluenceCredentials: (baseUrl: string, email: string, apiKey: string) => {
+        return axios.post(`${backendBaseUrl}/confluence/validate-credentials`, { baseUrl, email, apiKey }, { withCredentials: true })
+            .then(response => response.data)
+            .catch(error => {
+                console.error('Error validating Confluence credentials:', error);
+                throw error;
             });
     },
 
