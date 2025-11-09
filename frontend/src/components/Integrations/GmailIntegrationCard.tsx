@@ -6,14 +6,15 @@ import { IntegrationsStatus } from "@/shared/types";
 import { IntegrationCardHeader } from "./helpers/IntegrationCardHeader";
 import { IntegrationCardFooter } from "./helpers/IntegrationCardFooter";
 import { useOAuthUrl } from "./helpers/useOAuthUrl";
+import { cn } from "@/lib/utils";
 
-function GmailIntegrationCard({ integrationStatus }: { integrationStatus: IntegrationsStatus }) {
+function GmailIntegrationCard({ integrationStatus, className }: { integrationStatus: IntegrationsStatus, className?: string }) {
     const oauthUrl = useOAuthUrl(Integration.GMAIL);
     const gmailInstances = getIntegrationInstances(integrationStatus.integrations, Integration.GMAIL);
     const email = formatIntegrationDisplay(gmailInstances[0], Integration.GMAIL);
 
     return (
-        <Card>
+        <Card className={cn(className)}>
             <IntegrationCardHeader integration={Integration.GMAIL} />
             <CardContent>
                 <GmailCardContent email={email} />
