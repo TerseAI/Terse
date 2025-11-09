@@ -26,7 +26,7 @@ function IntegrationPage() {
         return (
             <div className="flex flex-col h-full p-4">
                 <h1 className="text-xl font-bold text-foreground mb-10">Active Integrations</h1>
-                <div className="flex flex-row flex-wrap gap-12 -ml-12">
+                <div className="flex flex-row flex-wrap gap-12">
                     <NoIntegrations />
                 </div>
             </div>
@@ -36,7 +36,7 @@ function IntegrationPage() {
     return (
         <div className="flex flex-col h-full p-4">
             <h1 className="text-xl font-bold text-foreground mb-10">Active Integrations</h1>
-            <div className="flex flex-row flex-wrap gap-12 -ml-12">
+            <div className="flex flex-row flex-wrap gap-12">
                 <IntegrationContent integrations={filteredIntegrations} integrationStatus={integrationStatus} isLoading={isLoading} />
             </div>
         </div>
