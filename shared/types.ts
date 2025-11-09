@@ -234,7 +234,7 @@ export type ConfluencePage = {
   title: string;
   spaceId: string;
   spaceName: string;
-  url?: string;
+  url: string;
   status: string;
   version: number;
 };
