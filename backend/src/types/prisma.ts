@@ -18,7 +18,8 @@ import {
   notion_integrations,
   Prisma,
   automation_notion_configs,
-  automation_notion_page_configs
+  automation_notion_page_configs,
+  automation_confluence_configs
 } from '@prisma/client';
 
 
@@ -61,6 +62,8 @@ export type AutomationNotionConfig = automation_notion_configs;
 
 export type AutomationNotionPageConfig = automation_notion_page_configs;
 
+export type AutomationConfluenceConfig = automation_confluence_configs;
+
 // Extended type for Automation with included relations (kept in sync with include used in queries)
 export type AutomationWithRelations = Prisma.automationsGetPayload<{
   include: { 
@@ -83,6 +86,7 @@ export type AutomationWithRelations = Prisma.automationsGetPayload<{
         jira_config: true;
         github_config: true;
         gmail_config: true;
+        confluence_config: true;
       }
     };
   };
@@ -108,5 +112,6 @@ export {
   automation_outputs,
   notion_integrations,
   automation_notion_configs,
-  automation_notion_page_configs
+  automation_notion_page_configs,
+  automation_confluence_configs
 }; 

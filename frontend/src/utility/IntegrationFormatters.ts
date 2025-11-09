@@ -6,7 +6,8 @@ import {
     LinearIntegration,
     JiraIntegration,
     GithubIntegration,
-    FigmaIntegration
+    FigmaIntegration,
+    ConfluenceIntegration
 } from "../shared/types";
 import { INTEGRATION_METADATA } from "./IntegrationUtils";
 
@@ -20,7 +21,8 @@ export type IntegrationInstance =
     | LinearIntegration
     | JiraIntegration
     | GithubIntegration
-    | FigmaIntegration;
+    | FigmaIntegration
+    | ConfluenceIntegration;
 
 /**
  * Type guard functions for narrowing IntegrationInstance union
@@ -52,6 +54,10 @@ function isGithubIntegration(integration: IntegrationInstance): integration is G
 
 function isFigmaIntegration(integration: IntegrationInstance): integration is FigmaIntegration {
     return 'figma_user_id' in integration || 'token_expiry' in integration;
+}
+
+function isConfluenceIntegration(integration: IntegrationInstance): integration is ConfluenceIntegration {
+    return 'base_url' in integration || 'email' in integration;
 }
 
 /**
@@ -97,7 +103,6 @@ export function formatIntegrationDisplay(
             return 'Unknown Site';
 
         case Integration.SLACK:
-            console.log('integration', integration)
             if (isSlackIntegration(integration)) {
                 return integration.teamName || 'Unknown Workspace';
             }
@@ -114,12 +119,18 @@ export function formatIntegrationDisplay(
 
         case Integration.FIGMA:
             if (isFigmaIntegration(integration)) {
-                return integration.email || integration.figma_user_id || 'Figma Account';
+                return integration.figma_user_id || 'Figma Account';
             }
             return 'Figma Account';
 
         default:
             return integration.id;
+
+        case Integration.CONFLUENCE:
+            if (isConfluenceIntegration(integration)) {
+                return integration.base_url || integration.confluence_user_email || 'Confluence Account';
+            }
+            return 'Confluence Account';
     }
 }
 

@@ -71,7 +71,8 @@ function SaveAutomationButton({ defaultName }: { defaultName: string | null }) {
                     integrationId: output.integrationId,
                     ...(output.notionConfig && { notionConfig: output.notionConfig }),
                     ...(output.slackConfig && { slackConfig: output.slackConfig }),
-                    ...(output.notionPageConfig && { notionPageConfig: output.notionPageConfig })
+                    ...(output.notionPageConfig && { notionPageConfig: output.notionPageConfig }),
+                    ...(output.confluenceConfig && { confluenceConfig: output.confluenceConfig })
                 },
                 prompt,
                 isActive

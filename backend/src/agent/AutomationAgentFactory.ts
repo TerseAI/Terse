@@ -37,6 +37,7 @@ export class AutomationAgentFactory {
               jira_config: true,
               github_config: true,
               gmail_config: true,
+              confluence_config: true,
             },
           },
         },
