@@ -1,8 +1,8 @@
 import { Button } from "@/components/ui/button";
 import { useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import EditableTextField from '../../../components/ui/EditableTextField';
 import { useAutomationContext } from "../../../context/AutomationContext";
-import { BackendProvider } from "../../../services/backend";
 import { InputsSection } from "../InputSection";
 import { OutputSection } from "../OutputSection";
 import { AutomationUpdate } from "@/shared/types";
@@ -11,11 +11,14 @@ import { getDefaultAutomationName } from "@/utility/AutomationUtils";
 import { isInputComplete, isOutputComplete } from "@/utility/IntegrationUtils";
 import { Conn, SVGFlowArrows } from "../components/FlowArrow";
 import { PromptSection } from "../PromptSection";
+import { useAutomationMutations } from "@/hooks/api/useAutomations";
 
 function SaveAutomationButton({ defaultName }: { defaultName: string | null }) {
-    const { automationId, name, inputs, output, prompt, isActive } = useAutomationContext();
+    const navigate = useNavigate();
+    const { automationId, name, inputs, output, prompt, isActive, loadAutomation } = useAutomationContext();
     const [isSaving, setIsSaving] = useState(false);
     const [saveSuccess, setSaveSuccess] = useState(false);
+    const { createAutomation, updateAutomation } = useAutomationMutations();
 
     // Validation: all required fields must be present
     // Each integration reports its own completeness
@@ -74,20 +77,29 @@ function SaveAutomationButton({ defaultName }: { defaultName: string | null }) {
                 isActive
             };
 
-            toast.success('Automation saved successfully');
             if (isEditMode) {
                 // Update existing automation
-                await BackendProvider.updateAutomation(automationId, automationData);
+                await updateAutomation({
+                    id: automationId!,
+                    data: automationData,
+                });
             } else {
                 // Create new automation
-                await BackendProvider.createAutomation(
-                    automationData.name || '',
-                    automationData.inputs || [],
-                    automationData.output || { integration: '', integrationId: undefined },
-                    automationData.prompt || { text: '' },
-                    automationData.isActive
-                );
+                const creation = await createAutomation({
+                    name: automationData.name || '',
+                    inputs: automationData.inputs || [],
+                    output: automationData.output || { integration: '', integrationId: undefined },
+                    prompt: automationData.prompt || { text: '' },
+                    isActive: automationData.isActive,
+                });
+
+                if (creation?.id) {
+                    await loadAutomation(creation.id);
+                    navigate(`/app/automations/${creation.id}`, { replace: true });
+                }
             }
+
+            toast.success('Automation saved successfully');
 
             setSaveSuccess(true);
             setTimeout(() => {
