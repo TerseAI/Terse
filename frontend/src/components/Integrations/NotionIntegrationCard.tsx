@@ -7,6 +7,7 @@ import { IntegrationCardFooter } from "./helpers/IntegrationCardFooter";
 import { useOAuthUrl } from "./helpers/useOAuthUrl";
 import { CountDisplay } from "./helpers/CountDisplay";
 import { useNotionResources } from "@/hooks/api/useNotionResources";
+import { cn } from "@/lib/utils";
 
 function NotionIntegrationCard({ integrationId, className }: { integrationId: string, className?: string }) {
     const oauthUrl = useOAuthUrl(Integration.NOTION);
