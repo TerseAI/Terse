@@ -3,10 +3,6 @@ import { db } from "../prismaClient";
 import { SlackChannelsResponse, SlackChannel } from "../shared/types";
 import { WebClient, LogLevel } from "@slack/web-api";
 import chalk from "chalk";
-import { cacheService } from "../services/cacheService";
-import { resolveTtlMs } from "../services/cacheConfig";
-
-const DEFAULT_SLACK_CHANNELS_TTL_MS = 5 * 60 * 1000;
 
 // Fetch available channels for a Slack integration
 export const getSlackChannels = async (req: Request, res: Response) => {
@@ -37,95 +33,86 @@ export const getSlackChannels = async (req: Request, res: Response) => {
       return res.status(404).json({ error: "Slack integration not found" });
     }
 
-    const forceRefresh = req.query.forceRefresh === "true";
-    const skipCache = req.query.skipCache === "true";
-    const cacheKey = `slack:channels:${integrationId}`;
-    const ttlMs = resolveTtlMs(process.env.CACHE_SLACK_CHANNELS_TTL_MS, DEFAULT_SLACK_CHANNELS_TTL_MS);
+    const slackIntegration = userSlackIntegration.slack_integration;
 
-    const cacheResult = await cacheService.getOrFetch<SlackChannelsResponse>({
-      key: cacheKey,
-      source: "slack",
-      ttlMs,
-      metadata: {
-        integrationId,
-        userId: user.id,
-        teamId: userSlackIntegration.slack_integration?.team_id ?? null,
-      },
-      forceRefresh,
-      skipCache,
-      allowStaleOnError: true,
-      fetcher: async () => {
-        const client = new WebClient(userSlackIntegration.authed_user_access_token, {
-          logLevel: LogLevel.ERROR,
-        });
-
-        // Fetch both public and private channels the bot has access to
-        const [publicChannels, privateChannels, mpimChannels] = await Promise.all([
-          client.conversations.list({
-            types: "public_channel",
-            exclude_archived: true,
-          }),
-          client.conversations.list({
-            types: "private_channel",
-            exclude_archived: true,
-          }),
-          client.conversations.list({
-            types: "mpim",
-            exclude_archived: true,
-          }),
-        ]);
-
-        const channels: SlackChannel[] = [];
-
-        const appendChannels = (
-          slackChannels: typeof publicChannels,
-          options: { isPrivate: boolean; isMPIM: boolean },
-        ) => {
-          if (!slackChannels.ok || !slackChannels.channels) {
-            return;
-          }
-
-          for (const channel of slackChannels.channels) {
-            if (channel?.id && channel?.name) {
-              channels.push({
-                id: channel.id,
-                name: channel.name,
-                isPrivate: options.isPrivate,
-                isArchived: channel.is_archived || false,
-                isMPIM: options.isMPIM,
-              });
-            }
-          }
-        };
-
-        appendChannels(publicChannels, { isPrivate: false, isMPIM: false });
-        appendChannels(privateChannels, { isPrivate: true, isMPIM: false });
-        appendChannels(mpimChannels, { isPrivate: true, isMPIM: true });
-
-        channels.sort((a, b) => a.name.localeCompare(b.name));
-
-        const response: SlackChannelsResponse = {
-          channels,
-          selectedChannelId: null,
-        };
-
-        console.log(
-          chalk.blue(`📋 Refreshed ${channels.length} Slack channels for integration ${integrationId}`),
-        );
-
-        return response;
-      },
+    // Fetch channels from Slack API
+    const client = new WebClient(userSlackIntegration.authed_user_access_token, {
+      logLevel: LogLevel.ERROR,
     });
 
-    if (cacheResult.cacheHit) {
-      console.log(
-        chalk.blue(
-          `♻️ Served Slack channels for integration ${integrationId} from cache (count=${cacheResult.data.channels.length})`,
-        ),
-      );
+    // Fetch both public and private channels the bot has access to
+    const [publicChannels, privateChannels, mpimChannels] = await Promise.all([
+      client.conversations.list({
+        types: "public_channel",
+        exclude_archived: true,
+      }),
+      client.conversations.list({
+        types: "private_channel",
+        exclude_archived: true,
+      }),
+      client.conversations.list({
+        types: "mpim",
+        exclude_archived: true,
+      }),
+    ]);
+
+    const channels: SlackChannel[] = [];
+
+    if (publicChannels.ok && publicChannels.channels) {
+      for (const channel of publicChannels.channels) {
+        if (channel.id && channel.name) {
+          channels.push({
+            id: channel.id,
+            name: channel.name,
+            isPrivate: false,
+            isArchived: channel.is_archived || false,
+            isMPIM: false,
+          });
+        }
+      }
     }
 
-    res.status(200).json(cacheResult.data);
+    if (privateChannels.ok && privateChannels.channels) {
+      for (const channel of privateChannels.channels) {
+        if (channel.id && channel.name) {
+          channels.push({
+            id: channel.id,
+            name: channel.name,
+            isPrivate: true,
+            isArchived: channel.is_archived || false,
+            isMPIM: false,
+          });
+        }
+      }
+    }
+
+    if (mpimChannels.ok && mpimChannels.channels) {
+      for (const channel of mpimChannels.channels) {
+        if (channel.id && channel.name) {
+          channels.push({
+            id: channel.id,
+            name: channel.name,
+            isPrivate: true,
+            isArchived: channel.is_archived || false,
+            isMPIM: true,
+          });
+        }
+      }
+    }
+
+    // Sort channels alphabetically by name
+    channels.sort((a, b) => a.name.localeCompare(b.name));
+
+    const response: SlackChannelsResponse = {
+      channels,
+      selectedChannelId: null, // We don't store a default channel at the connection level
+    };
+
+    console.log(
+      chalk.blue(`📋 Found ${channels.length} Slack channels for integration ${integrationId}`)
+    );
+
+    res.status(200).json(response);
   } catch (error: any) {
     console.error(chalk.red("Error fetching Slack channels:"), error);
 
