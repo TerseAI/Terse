@@ -223,10 +223,10 @@ export type JiraConfig = {
 };
 
 export type ConfluenceConfig = {
-  spaceName?: string;
-  spaceId?: string;
+  spaceName: string;
+  spaceId: string;
   pageId: string; // Page ID (required for outputs - specific page to write to)
-  pageName?: string; // Page display name (for UI, optional)
+  pageName: string; // Page display name (for UI, optional)
 };
 
 export type ConfluencePage = {

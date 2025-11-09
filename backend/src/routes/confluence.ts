@@ -142,16 +142,7 @@ export async function getConfluenceResources(req: Request, res: Response) {
                 expand: ['space', 'version'],
             }) as ContentArray;
 
-            // Map the response to match ConfluencePage type
-            const resources = contentResponse.results.map((page: Content) => ({
-                id: page.id,
-                title: page.title || 'Untitled',
-                spaceId: page.space?.key || (page.space?.id ? String(page.space.id) : ''),
-                spaceName: page.space?.name || '',
-                url: page._links?.webui || (page._links?.base && page._links?.webui ? page._links.base + page._links.webui : undefined),
-                status: page.status || 'current',
-                version: page.version?.number || 1,
-            }));
+            const resources = mapContentToConfluencePages(contentResponse.results);
 
             allResources.push(...resources);
 
@@ -177,4 +168,67 @@ export async function getConfluenceResources(req: Request, res: Response) {
             error: error.message || 'Failed to fetch Confluence resources',
         });
     }
+}
+
+// MARK: - Helpers
+
+/**
+ * Maps Confluence Content pages to ConfluencePage objects, validating required fields.
+ * Pages missing required fields are filtered out with warnings logged.
+ */
+function mapContentToConfluencePages(pages: Content[]): ConfluencePage[] {
+    return pages
+        .map((page: Content) => {
+            // Check for required fields and log warnings if missing
+            const missingFields: string[] = [];
+            
+            if (!page.id) {
+                missingFields.push('page id');
+            }
+            if (!page.title) {
+                missingFields.push('page name');
+            }
+            if (!page.space?.key && !page.space?.id) {
+                missingFields.push('space id');
+            }
+            if (!page.space?.name) {
+                missingFields.push('space name');
+            }
+            if (!page.status) {
+                missingFields.push('status');
+            }
+            if (page.version?.number === undefined) {
+                missingFields.push('version');
+            }
+            
+            if (missingFields.length > 0) {
+                console.log(chalk.yellow(`⚠️  Warning: Missing fields for page "${page.title || page.id || 'unknown'}": ${missingFields.join(', ')}`));
+            }
+            
+            // Only include pages that have all required fields
+            if (!page.id || !page.title || (!page.space?.key && !page.space?.id) || !page.space?.name || !page.status || page.version?.number === undefined) {
+                return null;
+            }
+            
+            let url: string | undefined;
+            if (page._links?.webui) {
+                url = page._links.webui;
+            } else if (page._links?.base && page._links?.webui) {
+                url = page._links.base + page._links.webui;
+            }
+            
+            // We've already validated that space exists and has either key or id
+            const spaceId = page.space.key ? page.space.key : String(page.space.id);
+            
+            return {
+                id: page.id,
+                title: page.title,
+                spaceId: spaceId,
+                spaceName: page.space.name,
+                url: url,
+                status: page.status,
+                version: page.version.number,
+            } as ConfluencePage;
+        })
+        .filter((page): page is ConfluencePage => page !== null);
 }
