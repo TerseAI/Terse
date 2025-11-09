@@ -1,7 +1,7 @@
-import { useEffect, useState } from "react";
-import { BackendProvider } from "../services/backend";
-import { SlackChannel, SlackChannelsResponse } from "../shared/types";
-import { RotateCw } from "lucide-react";
+import { useEffect, useMemo} from "react";
+import { SlackChannel} from "../shared/types";
+import { RefreshButton } from "./RefreshButton";
+import { useSlackChannels } from "@/hooks/api/useSlackChannels";
 
 interface SlackChannelSelectorProps {
     integrationId: string;
@@ -18,10 +18,29 @@ export function SlackChannelSelector({
     onSelect,
     onListenToUserDmsChange
 }: SlackChannelSelectorProps) {
-    const [channels, setChannels] = useState<SlackChannel[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
-    const [isRefreshing, setIsRefreshing] = useState(false);
-    const [error, setError] = useState<string | null>(null);
+    const {
+        channels,
+        selectedChannelId: defaultChannelId,
+        isLoading,
+        isError,
+        error,
+        isValidating,
+        mutate,
+    } = useSlackChannels(integrationId);
+
+    const isRefreshing = isValidating && !isLoading;
+    const errorMessage = useMemo(() => {
+        if (!isError) {
+            return null;
+        }
+        if (error instanceof Error) {
+            return error.message;
+        }
+        if (typeof error === 'string') {
+            return error;
+        }
+        return 'Failed to load channels';
+    }, [error, isError]);
 
     // Format MPIM channel names from "mpdm-olivier--thomas--zapier-1" to "Olivier, Thomas, Zapier..."
     const formatMPIMChannelName = (name: string): string => {
@@ -60,55 +79,40 @@ export function SlackChannelSelector({
         return formattedNames.join(', ') + suffix;
     };
 
-    const fetchChannels = async (isRefresh = false) => {
-        if (isRefresh) {
-            setIsRefreshing(true);
-        } else {
-            setIsLoading(true);
-        }
-        setError(null);
-
-        try {
-            const response: SlackChannelsResponse = await BackendProvider.getSlackChannels(integrationId);
-            setChannels(response.channels);
-
-            // Only auto-select if no channel is currently selected, listenToUserDms is false, and we have channels
-            if (!selectedChannelId && !listenToUserDms && response.channels.length > 0) {
-                // Prefer non-private, non-archived channels
-                let channelToSelect = response.channels.find(
-                    ch => !ch.isPrivate && !ch.isArchived
-                );
-                // Fall back to first available channel
-                if (!channelToSelect) {
-                    channelToSelect = response.channels.find(ch => !ch.isArchived);
-                }
-                // Last resort: any channel
-                if (!channelToSelect && response.channels.length > 0) {
-                    channelToSelect = response.channels[0];
-                }
-
-                if (channelToSelect) {
-                    onSelect(channelToSelect.id, channelToSelect.name);
-                }
-            }
-        } catch (err: any) {
-            console.error('Error fetching Slack channels:', err);
-            setError(err.message || 'Failed to load channels');
-        } finally {
-            setIsLoading(false);
-            setIsRefreshing(false);
-        }
-    };
-
     useEffect(() => {
-        if (integrationId) {
-            fetchChannels();
+        if (!integrationId || isLoading || channels.length === 0 || listenToUserDms) {
+            return;
         }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [integrationId]);
+
+        if (selectedChannelId) {
+            return;
+        }
+
+        let channelToSelect: SlackChannel | undefined;
+
+        if (defaultChannelId) {
+            channelToSelect = channels.find((ch) => ch.id === defaultChannelId);
+        }
+
+        if (!channelToSelect) {
+            channelToSelect = channels.find((ch) => !ch.isPrivate && !ch.isArchived);
+        }
+
+        if (!channelToSelect) {
+            channelToSelect = channels.find((ch) => !ch.isArchived);
+        }
+
+        if (!channelToSelect) {
+            channelToSelect = channels[0];
+        }
+
+        if (channelToSelect) {
+            onSelect(channelToSelect.id, channelToSelect.name);
+        }
+    }, [channels, defaultChannelId, integrationId, isLoading, listenToUserDms, onSelect, selectedChannelId]);
 
     const handleRefresh = () => {
-        fetchChannels(true);
+        void mutate();
     };
 
     const handleListenToUserDmsChange = (checked: boolean) => {
@@ -144,16 +148,18 @@ export function SlackChannelSelector({
         );
     }
 
-    if (error) {
+    if (errorMessage) {
         return (
             <div className="space-y-2">
-                <div className="text-sm text-red-600">{error}</div>
-                <button
+                <div className="text-sm text-red-600">{errorMessage}</div>
+                <RefreshButton
                     onClick={handleRefresh}
-                    className="text-xs text-[theme(--color-accent)] hover:underline"
-                >
-                    Try again
-                </button>
+                    isRefreshing={false}
+                    label="Try again"
+                    variant="link"
+                    size="sm"
+                    className="h-auto px-0 text-xs text-[theme(--color-accent)]"
+                />
             </div>
         );
     }
@@ -177,15 +183,11 @@ export function SlackChannelSelector({
                 <label className="text-xs font-medium text-[theme(text-secondary)]">
                     Select Channel
                 </label>
-                <button
+                <RefreshButton
                     onClick={handleRefresh}
-                    disabled={isRefreshing}
-                    className="flex items-center gap-1 text-xs text-[theme(--color-accent)] hover:underline disabled:opacity-50"
+                    isRefreshing={isRefreshing}
                     title="Refresh channel list"
-                >
-                    <RotateCw className={`w-3 h-3 ${isRefreshing ? 'animate-spin' : ''}`} />
-                    Refresh
-                </button>
+                />
             </div>
             
             <select
