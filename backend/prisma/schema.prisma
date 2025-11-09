@@ -399,6 +399,7 @@ model automation_inputs {
   notion_page_config automation_notion_page_configs?
   linear_config      automation_linear_configs?
   jira_config        automation_jira_configs?
+  confluence_config  automation_confluence_configs?
   github_config      automation_github_configs?
   gmail_config       automation_gmail_configs?
   figma_config       automation_figma_configs?
@@ -424,6 +425,7 @@ model automation_outputs {
   notion_page_config automation_notion_page_configs?
   linear_config      automation_linear_configs?
   jira_config        automation_jira_configs?
+  confluence_config  automation_confluence_configs?
   github_config      automation_github_configs?
   gmail_config       automation_gmail_configs?
   figma_config       automation_figma_configs?
@@ -524,6 +526,28 @@ model automation_jira_configs {
   @@index([project_id])
 }
 
+// Confluence Configuration
+model automation_confluence_configs {
+  id                   String  @id @default(cuid())
+  automation_input_id  String? @unique // FK to automation_inputs (mutually exclusive with output_id)
+  automation_output_id String? @unique // FK to automation_outputs (unique constraint)
+
+  space_id   String // Space ID (optional - can be used to target specific space)
+  space_name String // Space name (optional - can be used instead of space_id)
+  page_id    String // Page ID (required for outputs - specific page to write to)
+  page_name  String // Page display name (for UI, optional)
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  automation_input  automation_inputs?  @relation(fields: [automation_input_id], references: [id], onDelete: Cascade)
+  automation_output automation_outputs? @relation(fields: [automation_output_id], references: [id], onDelete: Cascade)
+
+  @@index([space_name])
+  @@index([space_id])
+  @@index([page_id])
+}
+
 // GitHub Configuration
 model automation_github_configs {
   id                   String  @id @default(cuid())
@@ -599,6 +623,7 @@ enum IntegrationType {
   GMAIL
   LINEAR
   JIRA
+  CONFLUENCE
   SLACK
   NOTION
   NOTION_PAGE
@@ -628,6 +653,7 @@ enum RunHistoryIntegration {
   notion
   gmail
   figma
+  confluence
 }
 
 // Run History tables

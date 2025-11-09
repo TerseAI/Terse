@@ -12,6 +12,7 @@ const integrationTypeMap: Record<string, IntegrationType> = {
     'gmail': IntegrationType.GMAIL,
     'linear': IntegrationType.LINEAR,
     'jira': IntegrationType.JIRA,
+    'confluence': IntegrationType.CONFLUENCE,
     'slack': IntegrationType.SLACK,
     'notion': IntegrationType.NOTION,
     'notion_page': IntegrationType.NOTION_PAGE,
@@ -176,6 +177,19 @@ async function createOutputConfig(
                 });
             }
             break;
+        case IntegrationType.CONFLUENCE:
+            if (config.confluenceConfig) {
+                await tx.automation_confluence_configs.create({
+                    data: {
+                        automation_output_id: outputId,
+                        space_id: config.confluenceConfig.spaceId || null,
+                        space_name: config.confluenceConfig.spaceName || null,
+                        page_id: config.confluenceConfig.pageId,
+                        page_name: config.confluenceConfig.pageName || null,
+                    },
+                });
+            }
+            break;
         case IntegrationType.GITHUB:
             if (config.githubConfig) {
                 await tx.automation_github_configs.create({
@@ -263,6 +277,7 @@ function transformInputConfig(input: any): AutomationInput {
 }
 
 // Helper function to transform output config from database to API format
+// TODO: I feel like this shouldn't exist?
 function transformOutputConfig(output: any): AutomationOutput {
     const base: AutomationOutput = {
         integration: output.integration_type.toLowerCase(),
@@ -297,6 +312,20 @@ function transformOutputConfig(output: any): AutomationOutput {
         base.jiraConfig = {
             projectKey: output.jira_config.project_key || undefined,
             projectId: output.jira_config.project_id || undefined,
+        };
+    }
+    if (output.notion_page_config) {
+        base.notionPageConfig = {
+            pageId: output.notion_page_config.page_id || undefined,
+            pageName: output.notion_page_config.page_name || undefined,
+        };
+    }
+    if (output.confluence_config) {
+        base.confluenceConfig = {
+            spaceId: output.confluence_config.space_id || undefined,
+            spaceName: output.confluence_config.space_name || undefined,
+            pageId: output.confluence_config.page_id,
+            pageName: output.confluence_config.page_name || undefined,
         };
     }
     if (output.github_config) {
@@ -349,6 +378,16 @@ async function validateUserOwnsIntegration(userId: string, integrationType: Inte
                 }
             });
             return !!jiraKey;
+
+        case IntegrationType.CONFLUENCE:
+            // Confluence uses the same credentials as Jira
+            const confluenceJiraKey = await prisma.jira_api_keys.findFirst({
+                where: {
+                    id: integrationId,
+                    user_id: userId
+                }
+            });
+            return !!confluenceJiraKey;
 
         case IntegrationType.SLACK:
             const userSlackIntegration = await prisma.user_slack_integrations.findFirst({
@@ -441,6 +480,7 @@ export async function getUserAutomations(req: Request, res: Response) {
                         notion_config: true,
                         linear_config: true,
                         jira_config: true,
+                        confluence_config: true,
                         github_config: true,
                         gmail_config: true,
                         figma_config: true,
@@ -452,6 +492,7 @@ export async function getUserAutomations(req: Request, res: Response) {
                         notion_config: true,
                         linear_config: true,
                         jira_config: true,
+                        confluence_config: true,
                         github_config: true,
                         gmail_config: true,
                         figma_config: true,
@@ -524,6 +565,7 @@ export async function getUserAutomation(req: Request, res: Response) {
                         notion_page_config: true,
                         linear_config: true,
                         jira_config: true,
+                        confluence_config: true,
                         github_config: true,
                         gmail_config: true,
                         figma_config: true,

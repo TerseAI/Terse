@@ -1,6 +1,24 @@
 import axios from 'axios';
 import { ModelEvent, ModelRequest } from "../shared/ModelEvents";
-import { Automation, AutomationInput, AutomationOutput, AutomationPrompt, AutomationsResponse, AutomationUpdate, GithubIntegration, IntegrationsStatus, JiraCredentialsValidationResponse, JiraIntegration, LinearApiKeyValidationResponse, LinearIntegration, NotionResourcesResponse, SlackChannelsResponse, SlackIntegration } from "../shared/types";
+import {
+    Automation,
+    AutomationInput, 
+    AutomationOutput,
+    AutomationPrompt, 
+    AutomationsResponse, 
+    AutomationUpdate, 
+    ConfluenceIntegration, 
+    ConfluenceResourcesResponse, 
+    GithubIntegration, 
+    IntegrationsStatus, 
+    JiraCredentialsValidationResponse, 
+    JiraIntegration, 
+    LinearApiKeyValidationResponse, 
+    LinearIntegration, 
+    NotionResourcesResponse, 
+    SlackChannelsResponse, 
+    SlackIntegration
+} from "../shared/types";
 import { User } from "../types/User";
 import { GetRunHistoryParams, GetRunHistoryResponse } from '../shared/RunHistoryTypes';
 
@@ -114,7 +132,7 @@ interface BackendService {
     /**
      * Sets the Jira API key
      */
-    setJiraApiKey(email: string, baseUrl: string, apiKey: string, projectKey?: string): Promise<{ success: boolean; connection?: any; error?: string }>;
+    setJiraApiKey(email: string, baseUrl: string, apiKey: string, projectKey?: string): Promise<{ success: boolean; connection?: JiraIntegration; error?: string }>;
 
     /**
      * Validates Jira credentials and fetches available projects
@@ -125,6 +143,21 @@ interface BackendService {
      * Deletes the Jira API key
      */
     deleteJiraApiKey(): Promise<void>;
+
+    /**
+     * Sets the Confluence API key
+     */
+    setConfluenceApiKey(email: string, baseUrl: string, apiKey: string, projectKey?: string): Promise<{ success: boolean; connection?: ConfluenceIntegration; error?: string }>;
+
+    /**
+     * Validates Confluence credentials
+     */
+    validateConfluenceCredentials(baseUrl: string, email: string, apiKey: string): Promise<{ valid: boolean; error?: string }>;
+
+    /**
+     * Gets the Confluence resources
+     */
+    getConfluenceResources(integrationId: string): Promise<ConfluenceResourcesResponse>;
 
     /**
      * Requests a Gmail OAuth URL
@@ -430,6 +463,34 @@ export const BackendProvider: BackendService = {
             .then(response => response.data)
             .catch(error => {
                 console.error('Error deleting Jira API key:', error);
+                throw error;
+            });
+    },
+
+    setConfluenceApiKey: (email: string, baseUrl: string, apiKey: string) => {
+        return axios.post(`${backendBaseUrl}/confluence/set-api-key`, { email, baseUrl, apiKey }, { withCredentials: true })
+            .then(response => response.data)
+            .catch(error => {
+                console.error('Error setting Confluence API key:', error);
+                const errorMessage = error.response?.data?.error || 'Failed to create Confluence connection';
+                throw { success: false, error: errorMessage };
+            });
+    },
+
+    validateConfluenceCredentials: (baseUrl: string, email: string, apiKey: string) => {
+        return axios.post(`${backendBaseUrl}/confluence/validate-credentials`, { baseUrl, email, apiKey }, { withCredentials: true })
+            .then(response => response.data)
+            .catch(error => {
+                console.error('Error validating Confluence credentials:', error);
+                throw error;
+            });
+    },
+
+    getConfluenceResources: (integrationId: string) => {
+        return axios.get<ConfluenceResourcesResponse>(`${backendBaseUrl}/confluence/resources?integrationId=${encodeURIComponent(integrationId)}`, { withCredentials: true })
+            .then(response => response.data)
+            .catch(error => {
+                console.error('Error fetching Confluence resources:', error);
                 throw error;
             });
     },

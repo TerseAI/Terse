@@ -110,8 +110,14 @@ export type GmailIntegration = {
 export type FigmaIntegration = {
   id: string;
   figma_user_id: string;
-  email: string;
   token_expiry: Date;
+};
+
+export type ConfluenceIntegration = {
+  id: string;
+  confluence_user_email: string;
+  base_url: string;
+  api_key: string;
 };
 
 export type NotionIntegration = {
@@ -185,6 +191,7 @@ export type IntegrationsStatus = {
     gmail?: GmailIntegration[];
     notion?: NotionIntegration[];
     figma?: FigmaIntegration[];
+    confluence?: ConfluenceIntegration[];
   };
 };
 
@@ -213,6 +220,41 @@ export type LinearConfig = {
 export type JiraConfig = {
   projectKey?: string;
   projectId?: string;
+};
+
+export type ConfluenceConfig = {
+  spaceName: string;
+  spaceId: string;
+  pageId: string; // Page ID (required for outputs - specific page to write to)
+  pageName: string; // Page display name (for UI, optional)
+};
+
+export type ConfluencePage = {
+  id: string;
+  title: string;
+  spaceId: string;
+  spaceName: string;
+  url: string;
+  status: string;
+  version: number;
+};
+
+export type ConfluencePagesQuery = {
+  integrationId: string; // Jira integration ID (required)
+  spaceId?: string; // Space ID (optional, but either spaceId or spaceKey is required)
+  spaceKey?: string; // Space key (optional, but either spaceId or spaceKey is required)
+};
+
+export type ConfluencePagesResponse = {
+  pages: ConfluencePage[];
+  spaceId: string;
+  total: number;
+};
+
+export type ConfluenceResourcesResponse = {
+  resources: ConfluencePage[];
+  spaceId: string;
+  total: number;
 };
 
 export type GitHubConfig = {
@@ -405,6 +447,7 @@ export type AutomationInput = {
   notionConfig?: NotionConfig;
   linearConfig?: LinearConfig;
   jiraConfig?: JiraConfig;
+  confluenceConfig?: ConfluenceConfig;
   githubConfig?: GitHubConfig;
   gmailConfig?: GmailConfig;
   figmaConfig?: FigmaConfig;
@@ -419,6 +462,7 @@ export type AutomationOutput = {
   notionPageConfig?: NotionPageConfig;
   linearConfig?: LinearConfig;
   jiraConfig?: JiraConfig;
+  confluenceConfig?: ConfluenceConfig;
   githubConfig?: GitHubConfig;
   gmailConfig?: GmailConfig;
   figmaConfig?: FigmaConfig;

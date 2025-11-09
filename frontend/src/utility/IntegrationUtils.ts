@@ -7,7 +7,8 @@ import {
     LinearIntegration,
     JiraIntegration,
     GithubIntegration,
-    FigmaIntegration
+    FigmaIntegration,
+    ConfluenceIntegration
 } from "../shared/types";
 
 /**
@@ -19,6 +20,7 @@ export const INTEGRATION_KEY_MAP: Record<Integration, keyof IntegrationsStatus['
     [Integration.NOTION_PAGE]: 'notion', // Poin the notion page stuff to the notion integration
     [Integration.LINEAR]: 'linear',
     [Integration.JIRA]: 'jira',
+    [Integration.CONFLUENCE]: 'confluence', // Confluence shares credentials with Jira
     [Integration.SLACK]: 'slack',
     [Integration.GITHUB]: 'github',
     [Integration.FIGMA]: 'figma',
@@ -33,6 +35,7 @@ type IntegrationTypeMap = {
     [Integration.NOTION_PAGE]: NotionIntegration[];
     [Integration.LINEAR]: LinearIntegration[];
     [Integration.JIRA]: JiraIntegration[];
+    [Integration.CONFLUENCE]: ConfluenceIntegration[]; // Confluence shares credentials with Jira
     [Integration.SLACK]: SlackIntegration[];
     [Integration.GITHUB]: GithubIntegration[];
     [Integration.FIGMA]: FigmaIntegration[];
@@ -93,6 +96,15 @@ export const INTEGRATION_METADATA: Record<Integration, IntegrationMetadata> = {
         outputDescription: 'Update project docs and tickets',
         isInput: false,
         isOutput: false
+    },
+    [Integration.CONFLUENCE]: {
+        type: Integration.CONFLUENCE,
+        name: 'Confluence',
+        description: 'Update documentation',
+        inputDescription: 'Monitor page changes',
+        outputDescription: 'Update documentation pages',
+        isInput: false,
+        isOutput: true
     },
     [Integration.SLACK]: {
         type: Integration.SLACK,
@@ -246,6 +258,7 @@ export function isInputComplete(input: { integration: Integration; integrationId
         case Integration.GITHUB:
         case Integration.LINEAR:
         case Integration.JIRA:
+        case Integration.CONFLUENCE:
             // These integrations don't require additional config beyond integrationId
             return true;
         
@@ -282,6 +295,7 @@ export function isOutputComplete(output: { integration: Integration; integration
         case Integration.GITHUB:
         case Integration.LINEAR:
         case Integration.JIRA:
+        case Integration.CONFLUENCE:
         case Integration.FIGMA:
             // These integrations don't require additional config beyond integrationId
             return true;
