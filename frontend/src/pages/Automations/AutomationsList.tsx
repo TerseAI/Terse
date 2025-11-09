@@ -2,8 +2,8 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AutomationsTable } from '../../components/AutomationsTable';
 import { AutomationsHeader, SearchBar, StatusFilter, DeletingModal } from '../../components/Automation';
-import { BackendProvider } from '../../services/backend';
 import { Automation } from '../../shared/types';
+import { useAutomationMutations } from '@/hooks/api/useAutomations';
 
 const statusOptions = [
     { value: undefined, label: 'All' },
@@ -13,10 +13,10 @@ const statusOptions = [
 
 export default function AutomationsList() {
     const navigate = useNavigate();
-    const [refreshTrigger, setRefreshTrigger] = useState(0);
     const [deletingId, setDeletingId] = useState<string | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
     const [statusFilter, setStatusFilter] = useState<boolean | undefined>(undefined);
+    const { deleteAutomation } = useAutomationMutations();
     const selectedOption = statusOptions.find(opt => opt.value === statusFilter) || statusOptions[0];
 
     const handleEdit = (automation: Automation) => {
@@ -31,9 +31,7 @@ export default function AutomationsList() {
 
         try {
             setDeletingId(automation.id);
-            await BackendProvider.deleteAutomation(automation.id);
-            // Trigger refresh of the table
-            setRefreshTrigger(prev => prev + 1);
+            await deleteAutomation(automation.id);
         } catch (error) {
             console.error('Failed to delete automation:', error);
             alert('Failed to delete automation. Please try again.');
@@ -66,7 +64,6 @@ export default function AutomationsList() {
                         onEdit={handleEdit}
                         onDelete={handleDelete}
                         onCreateNew={handleCreateNew}
-                        refreshTrigger={refreshTrigger}
                         searchQuery={searchQuery}
                         statusFilter={statusFilter}
                     />
