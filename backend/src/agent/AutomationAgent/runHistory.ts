@@ -63,12 +63,11 @@ export async function appendRunAction(
     runId: string,
     action: SharedRunHistoryAction,
 ): Promise<void> {
-    const prisma = db() as any;
-    await prisma.run_history_actions.create({
+    await db().run_history_actions.create({
         data: {
             run_history_record_id: runId,
             action: action.action,
-            integration: mapIntegration(action.integration) as any,
+            integration: mapIntegration(action.integration),
             target: action.target,
             details: action.details,
             url: action.url ?? null,
