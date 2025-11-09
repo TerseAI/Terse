@@ -117,7 +117,6 @@ function OutputCard({
                     }}
                     confluenceConfig={output.confluenceConfig}
                     onConfluenceConfigChange={(config) => {
-                        console.log("Changing confluence config:", config);
                         if (output) {
                             setOutput({ ...output, confluenceConfig: config });
                         }

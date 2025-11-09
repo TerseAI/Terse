@@ -147,6 +147,7 @@ export async function getConfluenceResources(req: Request, res: Response) {
                 id: page.id,
                 title: page.title || 'Untitled',
                 spaceId: page.space?.key || (page.space?.id ? String(page.space.id) : ''),
+                spaceName: page.space?.name || '',
                 url: page._links?.webui || (page._links?.base && page._links?.webui ? page._links.base + page._links.webui : undefined),
                 status: page.status || 'current',
                 version: page.version?.number || 1,

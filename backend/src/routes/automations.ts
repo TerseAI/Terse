@@ -72,19 +72,6 @@ async function createInputConfig(
                 });
             }
             break;
-        case IntegrationType.CONFLUENCE:
-            if (config.confluenceConfig) {
-                await tx.automation_confluence_configs.create({
-                    data: {
-                        automation_input_id: inputId,
-                        space_id: config.confluenceConfig.spaceId || null,
-                        space_key: config.confluenceConfig.spaceKey || null,
-                        page_id: config.confluenceConfig.pageId,
-                        page_name: config.confluenceConfig.pageName || null,
-                    },
-                });
-            }
-            break;
         case IntegrationType.GITHUB:
             if (config.githubConfig) {
                 await tx.automation_github_configs.create({
@@ -196,7 +183,7 @@ async function createOutputConfig(
                     data: {
                         automation_output_id: outputId,
                         space_id: config.confluenceConfig.spaceId || null,
-                        space_key: config.confluenceConfig.spaceKey || null,
+                        space_name: config.confluenceConfig.spaceName || null,
                         page_id: config.confluenceConfig.pageId,
                         page_name: config.confluenceConfig.pageName || null,
                     },
@@ -270,14 +257,6 @@ function transformInputConfig(input: any): AutomationInput {
             projectId: input.jira_config.project_id || undefined,
         };
     }
-    if (input.confluence_config) {
-        base.confluenceConfig = {
-            spaceId: input.confluence_config.space_id || undefined,
-            spaceKey: input.confluence_config.space_key || undefined,
-            pageId: input.confluence_config.page_id,
-            pageName: input.confluence_config.page_name || undefined,
-        };
-    }
     if (input.github_config) {
         base.githubConfig = {
             repositoryId: input.github_config.repository_id || undefined,
@@ -344,7 +323,7 @@ function transformOutputConfig(output: any): AutomationOutput {
     if (output.confluence_config) {
         base.confluenceConfig = {
             spaceId: output.confluence_config.space_id || undefined,
-            spaceKey: output.confluence_config.space_key || undefined,
+            spaceName: output.confluence_config.space_name || undefined,
             pageId: output.confluence_config.page_id,
             pageName: output.confluence_config.page_name || undefined,
         };
