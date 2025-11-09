@@ -25,10 +25,6 @@ function IntegrationCard({ integration, integrationId, integrationStatus }: { in
         return (
             <LinearIntegrationCard integrationStatus={integrationStatus} integrationId={integrationId} className={cardClassName} />
         )
-    } else if (integration === Integration.JIRA) {
-        return (
-            <div></div>
-        )
     } else if (integration === Integration.GITHUB) {
         return (
             <GithubIntegrationCard integrationStatus={integrationStatus} integrationId={integrationId} className={cardClassName} />
