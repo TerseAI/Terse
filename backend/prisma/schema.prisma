@@ -532,10 +532,10 @@ model automation_confluence_configs {
   automation_input_id  String? @unique // FK to automation_inputs (mutually exclusive with output_id)
   automation_output_id String? @unique // FK to automation_outputs (unique constraint)
 
-  space_id  String? // Space ID (optional - can be used to target specific space)
+  space_id   String? // Space ID (optional - can be used to target specific space)
   space_name String? // Space name (optional - can be used instead of space_id)
-  page_id   String // Page ID (required for outputs - specific page to write to)
-  page_name String? // Page display name (for UI, optional)
+  page_id    String // Page ID (required for outputs - specific page to write to)
+  page_name  String? // Page display name (for UI, optional)
 
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
