@@ -6,6 +6,10 @@ import { db } from "../prismaClient";
 import { NotionResource, NotionResourcesResponse } from "../shared/types";
 import { PageObjectResponse, PartialPageObjectResponse, SearchResponse } from "@notionhq/client/build/src/api-endpoints";
 import { extractPageTitle } from "../utility/notion";
+import { cacheService } from "../services/cacheService";
+import { resolveTtlMs } from "../services/cacheConfig";
+
+const DEFAULT_NOTION_RESOURCES_TTL_MS = 10 * 60 * 1000;
 
 // OAuth Functions
 
@@ -227,44 +231,80 @@ export const getNotionResources = async (req: Request, res: Response) => {
       return res.status(404).json({ error: "Notion integration not found" });
     }
 
-    // Fetch databases from Notion API
-    const notionClient = new Client({ auth: integration.integration_token });
-    const databasesResponse = await notionClient.search({
-      filter: { property: "object", value: "database" },
-      page_size: 100,
+    const forceRefresh = req.query.forceRefresh === "true";
+    const skipCache = req.query.skipCache === "true";
+    const cacheKey = `notion:resources:${integrationId}`;
+    const ttlMs = resolveTtlMs(process.env.CACHE_NOTION_RESOURCES_TTL_MS, DEFAULT_NOTION_RESOURCES_TTL_MS);
+
+    const cacheResult = await cacheService.getOrFetch<NotionResourcesResponse>({
+      key: cacheKey,
+      source: "notion",
+      ttlMs,
+      metadata: {
+        integrationId,
+        userId: user.id,
+        workspaceId: integration.workspace_id ?? null,
+      },
+      forceRefresh,
+      skipCache,
+      allowStaleOnError: true,
+      fetcher: async () => {
+        const notionClient = new Client({ auth: integration.integration_token });
+        const databasesResponse = await notionClient.search({
+          filter: { property: "object", value: "database" },
+          page_size: 100,
+        });
+
+        const pagesResponse: SearchResponse = await notionClient.search({
+          filter: { property: "object", value: "page" },
+          page_size: 100,
+        });
+
+        const databases: NotionResource[] = databasesResponse.results.map(
+          (db: any) => ({
+            id: db.id,
+            title: db.title?.[0]?.plain_text || "Untitled Database",
+            url: db.url,
+            type: 'database',
+          })
+        );
+
+        const pages: NotionResource[] = pagesResponse.results
+          .filter((page): page is PageObjectResponse | PartialPageObjectResponse => page.object === 'page')
+          .map((page: PageObjectResponse | PartialPageObjectResponse) => ({
+            id: page.id,
+            title: extractPageTitle(page),
+            url: 'url' in page ? page.url : '',
+            type: 'page' as const,
+          }));
+        const resources: NotionResource[] = [...databases, ...pages];
+
+        const firstResource = resources[0] ?? null;
+        const response: NotionResourcesResponse = {
+          resources,
+          selectedResourceId: firstResource ? firstResource.id : null,
+          selectedResourceType: firstResource ? firstResource.type : 'database',
+        };
+
+        console.log(
+          chalk.blue(
+            `📚 Refreshed ${resources.length} Notion resources for integration ${integrationId}`,
+          ),
+        );
+
+        return response;
+      },
     });
 
-    const pagesResponse: SearchResponse = await notionClient.search({
-      filter: { property: "object", value: "page" },
-      page_size: 100,
-    });
+    if (cacheResult.cacheHit) {
+      console.log(
+        chalk.blue(
+          `♻️ Served Notion resources for integration ${integrationId} from cache (count=${cacheResult.data.resources.length})`,
+        ),
+      );
+    }
 
-    const databases: NotionResource[] = databasesResponse.results.map(
-      (db: any) => ({
-        id: db.id,
-        title: db.title?.[0]?.plain_text || "Untitled Database",
-        url: db.url,
-        type: 'database',
-      })
-    );
-
-    const pages: NotionResource[] = pagesResponse.results
-      .filter((page): page is PageObjectResponse | PartialPageObjectResponse => page.object === 'page')
-      .map((page: PageObjectResponse | PartialPageObjectResponse) => ({
-        id: page.id,
-        title: extractPageTitle(page),
-        url: 'url' in page ? page.url : '',
-        type: 'page' as const,
-      }));
-    const resources: NotionResource[] = [...databases, ...pages];
-
-    const response: NotionResourcesResponse = {
-      resources,
-      selectedResourceId: resources[0].id, // Just choose the first?
-      selectedResourceType: resources[0].type,
-    };
-
-    res.status(200).json(response);
+    res.status(200).json(cacheResult.data);
   } catch (error: any) {
     console.error(chalk.red("Error fetching Notion databases:"), error);
     res.status(500).json({

@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { BackendProvider } from "../services/backend";
 import { SlackChannel, SlackChannelsResponse } from "../shared/types";
-import { RotateCw } from "lucide-react";
+import { RefreshCw } from "lucide-react";
+import { Button } from "./ui/button";
 
 interface SlackChannelSelectorProps {
     integrationId: string;
@@ -69,7 +70,10 @@ export function SlackChannelSelector({
         setError(null);
 
         try {
-            const response: SlackChannelsResponse = await BackendProvider.getSlackChannels(integrationId);
+            const response: SlackChannelsResponse = await BackendProvider.getSlackChannels(
+                integrationId,
+                isRefresh ? { forceRefresh: true } : undefined
+            );
             setChannels(response.channels);
 
             // Only auto-select if no channel is currently selected, listenToUserDms is false, and we have channels
@@ -177,15 +181,16 @@ export function SlackChannelSelector({
                 <label className="text-xs font-medium text-[theme(text-secondary)]">
                     Select Channel
                 </label>
-                <button
+                <Button
                     onClick={handleRefresh}
                     disabled={isRefreshing}
-                    className="flex items-center gap-1 text-xs text-[theme(--color-accent)] hover:underline disabled:opacity-50"
+                    variant="ghost"
+                    size="sm"
                     title="Refresh channel list"
                 >
-                    <RotateCw className={`w-3 h-3 ${isRefreshing ? 'animate-spin' : ''}`} />
+                    <RefreshCw className={`w-3 h-3 mr-1 ${isRefreshing ? 'animate-spin' : ''}`} />
                     Refresh
-                </button>
+                </Button>
             </div>
             
             <select

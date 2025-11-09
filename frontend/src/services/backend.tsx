@@ -6,6 +6,11 @@ import { GetRunHistoryParams, GetRunHistoryResponse } from '../shared/RunHistory
 
 const backendBaseUrl = '/api';
 
+type CacheControlOptions = {
+    forceRefresh?: boolean;
+    skipCache?: boolean;
+};
+
 interface BackendService {
     /**
      * Retrieves the currently authenticated user
@@ -148,12 +153,12 @@ interface BackendService {
     /**
      * Gets available databases for a Notion integration
      */
-    getNotionResources(integrationId: string): Promise<NotionResourcesResponse>;
+    getNotionResources(integrationId: string, options?: CacheControlOptions): Promise<NotionResourcesResponse>;
 
     /**
      * Gets available channels for a Slack integration
      */
-    getSlackChannels(integrationId: string): Promise<SlackChannelsResponse>;
+    getSlackChannels(integrationId: string, options?: CacheControlOptions): Promise<SlackChannelsResponse>;
 
     /**
      * Requests a Figma OAuth URL
@@ -479,8 +484,15 @@ export const BackendProvider: BackendService = {
             });
     },
 
-    getNotionResources: (integrationId: string) => {
-        return axios.get<NotionResourcesResponse>(`${backendBaseUrl}/notion/resources?integrationId=${encodeURIComponent(integrationId)}`, { withCredentials: true })
+    getNotionResources: (integrationId: string, options?: CacheControlOptions) => {
+        const params = new URLSearchParams({ integrationId });
+        if (options?.forceRefresh) {
+            params.append('forceRefresh', 'true');
+        }
+        if (options?.skipCache) {
+            params.append('skipCache', 'true');
+        }
+        return axios.get<NotionResourcesResponse>(`${backendBaseUrl}/notion/resources?${params.toString()}`, { withCredentials: true })
             .then(response => response.data)
             .catch(error => {
                 console.error('Error fetching Notion databases:', error);
@@ -488,8 +500,15 @@ export const BackendProvider: BackendService = {
             });
     },
 
-    getSlackChannels: (integrationId: string) => {
-        return axios.get<SlackChannelsResponse>(`${backendBaseUrl}/slack/channels?integrationId=${encodeURIComponent(integrationId)}`, { withCredentials: true })
+    getSlackChannels: (integrationId: string, options?: CacheControlOptions) => {
+        const params = new URLSearchParams({ integrationId });
+        if (options?.forceRefresh) {
+            params.append('forceRefresh', 'true');
+        }
+        if (options?.skipCache) {
+            params.append('skipCache', 'true');
+        }
+        return axios.get<SlackChannelsResponse>(`${backendBaseUrl}/slack/channels?${params.toString()}`, { withCredentials: true })
             .then(response => response.data)
             .catch(error => {
                 console.error('Error fetching Slack channels:', error);

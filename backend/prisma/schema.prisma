@@ -182,6 +182,20 @@ model processed_slack_events {
   @@index([processed_at])
 }
 
+model cached_resources {
+  id          String   @id @default(cuid())
+  cache_key   String   @unique
+  source      String
+  payload     Json
+  metadata    Json?
+  expires_at  DateTime?
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  @@index([expires_at])
+  @@index([source])
+}
+
 model notion_integrations {
   id                String   @id @default(cuid())
   user_id           String
