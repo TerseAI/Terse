@@ -10,7 +10,7 @@ import { cn } from "@/lib/utils";
 interface ConfluenceResourceSelectorProps {
     integrationId: string;
     selectedResourceId?: string;
-    onSelect: (resourceId: string, resourceTitle: string) => void;
+    onSelect: (resourceId: string, resourceTitle: string, spaceId: string, spaceName: string) => void;
 }
 
 export function ConfluenceResourceSelector({
@@ -39,7 +39,7 @@ export function ConfluenceResourceSelector({
             if (!selectedResourceId && response.resources.length > 0) {
                 const resourceToSelect = response.resources[0];
                 if (resourceToSelect) {
-                    onSelect(resourceToSelect.id, resourceToSelect.title);
+                    onSelect(resourceToSelect.id, resourceToSelect.title, resourceToSelect.spaceId, resourceToSelect.spaceName);
                 }
             }
         } catch (err: any) {
@@ -125,7 +125,7 @@ export function ConfluenceResourceSelector({
 interface ConfluenceResourceComboboxProps {
     resources: ConfluencePage[];
     selectedResourceId: string;
-    onSelect: (resourceId: string, resourceTitle: string) => void;
+    onSelect: (resourceId: string, resourceTitle: string, spaceId: string, spaceKey: string, spaceName: string) => void;
 }
 function ConfluenceResourceCombobox({
     resources,
@@ -164,7 +164,7 @@ function ConfluenceResourceCombobox({
                                         key={resource.id}
                                         value={`${resource.id}-${resource.title}`}
                                         onSelect={() => {
-                                            onSelect(resource.id, resource.title);
+                                            onSelect(resource.id, resource.title, resource.spaceId, resource.spaceId, resource.spaceName);
                                             setOpen(false);
                                         }}
                                     >

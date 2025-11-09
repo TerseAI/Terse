@@ -111,11 +111,13 @@ export function ConfluenceIntegration({
                     <ConfluenceResourceSelector
                         integrationId={selectedIntegrationId}
                         selectedResourceId={confluenceConfig?.pageId}
-                        onSelect={(resourceId, resourceTitle) => {
+                        onSelect={(resourceId, resourceTitle, spaceId, spaceName) => {
                             onConfluenceConfigChange({
                                 ...confluenceConfig,
                                 pageId: resourceId,
                                 pageName: resourceTitle,
+                                spaceId: spaceId,
+                                spaceName: spaceName,
                             });
                         }}
                     />
