@@ -22,7 +22,7 @@ export default function RunHistory() {
     const [isLoading, setIsLoading] = useState(false);
 
     const [selectedStatuses, setSelectedStatuses] = useState<Set<RunHistoryStatus>>(
-        new Set(["success", "failed", "skipped", "in_progress"])
+        new Set(["success", "failed", "in_progress"])
     );
     const [searchQuery, setSearchQuery] = useState("");
     const [dateRange, setDateRange] = useState<{ from: Date | undefined; to: Date | undefined }>({
