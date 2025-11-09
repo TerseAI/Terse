@@ -32,7 +32,10 @@ export function NotionResourceSelector({
         setError(null);
 
         try {
-            const response: NotionResourcesResponse = await BackendProvider.getNotionResources(integrationId);
+            const response: NotionResourcesResponse = await BackendProvider.getNotionResources(
+                integrationId,
+                isRefresh ? { forceRefresh: true } : undefined
+            );
             setResources(response.resources);
 
             // Only auto-select if no resource is currently selected
