@@ -1,11 +1,12 @@
-import { useEffect, useState } from "react";
-import { BackendProvider } from "../services/backend";
-import { NotionResource, NotionResourcesResponse, NotionResourceType } from "../shared/types";
-import { Check, ChevronsUpDown, RefreshCw } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { NotionResource, NotionResourceType } from "../shared/types";
+import { Check, ChevronsUpDown } from "lucide-react";
 import { Button } from "./ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "./ui/command";
 import { cn } from "@/lib/utils";
+import { useNotionResources } from "@/hooks/api/useNotionResources";
+import { RefreshButton } from "./RefreshButton";
 
 interface NotionResourceSelectorProps {
     integrationId: string;
@@ -18,59 +19,57 @@ export function NotionResourceSelector({
     selectedResourceId,
     onSelect
 }: NotionResourceSelectorProps) {
-    const [resources, setResources] = useState<NotionResource[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
-    const [isRefreshing, setIsRefreshing] = useState(false);
-    const [error, setError] = useState<string | null>(null);
+    const {
+        resources,
+        selectedResourceId: defaultResourceId,
+        isLoading,
+        isError,
+        error,
+        isValidating,
+        mutate,
+    } = useNotionResources(integrationId);
 
-    const fetchResources = async (isRefresh = false) => {
-        if (isRefresh) {
-            setIsRefreshing(true);
-        } else {
-            setIsLoading(true);
+    const isRefreshing = isValidating && !isLoading;
+
+    const errorMessage = useMemo(() => {
+        if (!isError) {
+            return null;
         }
-        setError(null);
-
-        try {
-            const response: NotionResourcesResponse = await BackendProvider.getNotionResources(
-                integrationId,
-                isRefresh ? { forceRefresh: true } : undefined
-            );
-            setResources(response.resources);
-
-            // Only auto-select if no resource is currently selected
-            if (!selectedResourceId && response.resources.length > 0) {
-                // Try to use the connection's default resource first
-                let resourceToSelect: NotionResource | undefined;
-                if (response.selectedResourceId) {
-                    resourceToSelect = response.resources.find(resource => resource.id === response.selectedResourceId);
-                }
-                // Fall back to first database if no default is available
-                if (!resourceToSelect) {
-                    resourceToSelect = response.resources[0];
-                }
-                if (resourceToSelect) {
-                    onSelect(resourceToSelect.id, resourceToSelect.title, resourceToSelect.type);
-                }
-            }
-        } catch (err: any) {
-            console.error('Error fetching Notion databases:', err);
-            setError(err.message || 'Failed to load databases');
-        } finally {
-            setIsLoading(false);
-            setIsRefreshing(false);
+        if (error instanceof Error) {
+            return error.message;
         }
-    };
+        if (typeof error === 'string') {
+            return error;
+        }
+        return 'Failed to load databases';
+    }, [error, isError]);
 
     useEffect(() => {
-        if (integrationId) {
-            fetchResources();
+        if (!integrationId || isLoading || resources.length === 0) {
+            return;
         }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [integrationId]);
+
+        if (selectedResourceId) {
+            return;
+        }
+
+        let resourceToSelect: NotionResource | undefined;
+
+        if (defaultResourceId) {
+            resourceToSelect = resources.find((resource) => resource.id === defaultResourceId);
+        }
+
+        if (!resourceToSelect) {
+            resourceToSelect = resources[0];
+        }
+
+        if (resourceToSelect) {
+            onSelect(resourceToSelect.id, resourceToSelect.title, resourceToSelect.type);
+        }
+    }, [defaultResourceId, integrationId, isLoading, onSelect, resources, selectedResourceId]);
 
     const handleRefresh = () => {
-        fetchResources(true);
+        void mutate();
     };
 
     if (isLoading) {
@@ -81,10 +80,10 @@ export function NotionResourceSelector({
         );
     }
 
-    if (error) {
+    if (errorMessage) {
         return (
             <div className="space-y-2">
-                <div className="text-sm text-destructive">{error}</div>
+                <div className="text-sm text-destructive">{errorMessage}</div>
                 <Button
                     onClick={handleRefresh}
                     variant="link"
@@ -111,16 +110,11 @@ export function NotionResourceSelector({
                 <label className="text-xs font-medium text-muted-foreground">
                     Select Page or Database
                 </label>
-                <Button
+                <RefreshButton
                     onClick={handleRefresh}
-                    disabled={isRefreshing}
-                    variant="ghost"
-                    size="sm"
+                    isRefreshing={isRefreshing}
                     title="Refresh database list"
-                >
-                    <RefreshCw className={`w-3 h-3 mr-1 ${isRefreshing ? 'animate-spin' : ''}`} />
-                    Refresh
-                </Button>
+                />
             </div>
             <NotionResourceCombobox resources={resources} selectedResourceId={selectedResourceId || ''} onSelect={onSelect} />
             {resources.length > 0 && (
