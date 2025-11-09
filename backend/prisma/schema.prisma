@@ -665,6 +665,7 @@ enum RunHistoryIntegration {
   notion
   gmail
   figma
+  confluence
 }
 
 // Run History tables

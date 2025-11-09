@@ -10,7 +10,8 @@ export type Integration =
     | "github"
     | "notion"
     | "gmail"
-    | "figma";
+    | "figma"
+    | "confluence";
 export type RunHistoryAction = {
     // What action was taken (free-text, e.g. "create database entry", "send notification")
     action: string;
