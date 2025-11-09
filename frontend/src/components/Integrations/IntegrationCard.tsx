@@ -7,6 +7,7 @@ import SlackIntegrationCard from "./SlackIntegrationCard";
 import LinearIntegrationCard from "./LinearIntegrationCard";
 import GithubIntegrationCard from "./GithubIntegrationCard";
 import ConfluenceIntegrationCard from "./ConfluenceIntegrationCard";
+import FigmaIntegrationCard from "./FigmaIntegrationCard";
 import { IntegrationsStatus } from "@/shared/types";
 
 function IntegrationCard({ integration, integrationId, integrationStatus }: { integration: Integration, integrationId: string, integrationStatus: IntegrationsStatus }) {
@@ -39,6 +40,10 @@ function IntegrationCard({ integration, integrationId, integrationStatus }: { in
     } else if (integration === Integration.CONFLUENCE) {
         return (
             <ConfluenceIntegrationCard integrationStatus={integrationStatus} integrationId={integrationId} className={cardClassName} />
+        )
+    } else if (integration === Integration.FIGMA) {
+        return (
+            <FigmaIntegrationCard integrationStatus={integrationStatus} integrationId={integrationId} className={cardClassName} />
         )
     }
     console.error(`Unknown integration: ${integration}`);
