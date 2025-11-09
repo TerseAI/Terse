@@ -11,8 +11,9 @@ import { IntegrationCardHeader } from "./helpers/IntegrationCardHeader";
 import { IntegrationCardFooter } from "./helpers/IntegrationCardFooter";
 import { useOAuthUrl } from "./helpers/useOAuthUrl";
 import { CountDisplay } from "./helpers/CountDisplay";
+import { cn } from "@/lib/utils";
 
-function SlackIntegrationCard({ integrationStatus, integrationId }: { integrationStatus: IntegrationsStatus, integrationId: string }) {
+function SlackIntegrationCard({ integrationStatus, integrationId, className }: { integrationStatus: IntegrationsStatus, integrationId: string, className?: string }) {
     const [channelsResponse, setChannelsResponse] = useState<SlackChannelsResponse | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const oauthUrl = useOAuthUrl(Integration.SLACK);
@@ -38,7 +39,7 @@ function SlackIntegrationCard({ integrationStatus, integrationId }: { integratio
     }, [integrationId]);
 
     return (
-        <Card>
+        <Card className={cn(className)}>
             <IntegrationCardHeader integration={Integration.SLACK} />
             <CardContent>
                 <SlackCardContent 

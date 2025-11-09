@@ -8,8 +8,9 @@ import { IntegrationCardHeader } from "./helpers/IntegrationCardHeader";
 import { IntegrationCardFooter } from "./helpers/IntegrationCardFooter";
 import { useOAuthUrl } from "./helpers/useOAuthUrl";
 import { CountDisplay } from "./helpers/CountDisplay";
+import { cn } from "@/lib/utils";
 
-function NotionIntegrationCard({ integrationId }: { integrationId: string }) {
+function NotionIntegrationCard({ integrationId, className }: { integrationId: string, className?: string }) {
     const [resources, setResources] = useState<NotionResource[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const oauthUrl = useOAuthUrl(Integration.NOTION);
@@ -25,7 +26,7 @@ function NotionIntegrationCard({ integrationId }: { integrationId: string }) {
     }, [integrationId]);
 
     return (
-        <Card>
+        <Card className={cn(className)}>
             <IntegrationCardHeader integration={Integration.NOTION} />
             <CardContent>
                 <NotionCardContent resources={resources} isLoading={isLoading} />
