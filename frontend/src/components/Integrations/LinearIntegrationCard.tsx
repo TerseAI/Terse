@@ -5,8 +5,9 @@ import { getIntegrationInstances } from "@/utility/IntegrationUtils";
 import { IntegrationsStatus } from "@/shared/types";
 import { IntegrationCardHeader } from "./helpers/IntegrationCardHeader";
 import { IntegrationCardFooter } from "./helpers/IntegrationCardFooter";
+import { cn } from "@/lib/utils";
 
-function LinearIntegrationCard({ integrationStatus, integrationId }: { integrationStatus: IntegrationsStatus, integrationId: string }) {
+function LinearIntegrationCard({ integrationStatus, integrationId, className }: { integrationStatus: IntegrationsStatus, integrationId: string, className?: string }) {
     const linearInstances = getIntegrationInstances(integrationStatus.integrations, Integration.LINEAR);
     const currentInstance = linearInstances.find(instance => instance.id === integrationId) || linearInstances[0];
     const workspaceInfo = formatIntegrationDisplay(currentInstance, Integration.LINEAR);
@@ -15,7 +16,7 @@ function LinearIntegrationCard({ integrationStatus, integrationId }: { integrati
     const oauthUrl = null;
 
     return (
-        <Card>
+        <Card className={cn(className)}>
             <IntegrationCardHeader integration={Integration.LINEAR} />
             <CardContent>
                 <LinearCardContent workspaceInfo={workspaceInfo} />

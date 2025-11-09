@@ -19,14 +19,14 @@ function IntegrationPage() {
         fetchIntegrations();
     }, []);
 
-    const filteredIntegrations = removeDuplicateNotionIntegrations(integrations);
+    const filteredIntegrations = removeDuplicateIntegrations(integrations);
 
 
     if (!isLoading && filteredIntegrations.length === 0) {
         return (
             <div className="flex flex-col h-full p-4">
                 <h1 className="text-xl font-bold text-foreground mb-10">Active Integrations</h1>
-                <div className="flex flex-row flex-wrap gap-12">
+                <div className="flex flex-row flex-wrap gap-12 -ml-12">
                     <NoIntegrations />
                 </div>
             </div>
@@ -36,7 +36,7 @@ function IntegrationPage() {
     return (
         <div className="flex flex-col h-full p-4">
             <h1 className="text-xl font-bold text-foreground mb-10">Active Integrations</h1>
-            <div className="flex flex-row flex-wrap gap-12">
+            <div className="flex flex-row flex-wrap gap-12 -ml-12">
                 <IntegrationContent integrations={filteredIntegrations} integrationStatus={integrationStatus} isLoading={isLoading} />
             </div>
         </div>
@@ -80,7 +80,7 @@ function NoIntegrations() {
 
 
 // Function that checks if there is both Notion + Notion Page integrations. and Removes one of them
-function removeDuplicateNotionIntegrations(integrations: IntegrationMetadata[]) {
+function removeDuplicateIntegrations(integrations: IntegrationMetadata[]) {
     const notionIntegrations = integrations.filter(integration => integration.type === Integration.NOTION);
     const notionPageIntegrations = integrations.filter(integration => integration.type === Integration.NOTION_PAGE);
     if (notionIntegrations.length > 0 && notionPageIntegrations.length > 0) {
