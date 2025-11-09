@@ -9,8 +9,9 @@ import { IntegrationCardFooter } from "./helpers/IntegrationCardFooter";
 import { useOAuthUrl } from "./helpers/useOAuthUrl";
 import { CountDisplay } from "./helpers/CountDisplay";
 import { useSlackChannels } from "@/hooks/api/useSlackChannels";
+import { cn } from "@/lib/utils";
 
-function SlackIntegrationCard({ integrationStatus, integrationId }: { integrationStatus: IntegrationsStatus, integrationId: string }) {
+function SlackIntegrationCard({ integrationStatus, integrationId, className }: { integrationStatus: IntegrationsStatus, integrationId: string, className?: string }) {
     const oauthUrl = useOAuthUrl(Integration.SLACK);
     const { channels, isLoading } = useSlackChannels(integrationId);
 
@@ -19,7 +20,7 @@ function SlackIntegrationCard({ integrationStatus, integrationId }: { integratio
     const teamName = formatIntegrationDisplay(currentInstance, Integration.SLACK);
 
     return (
-        <Card>
+        <Card className={cn(className)}>
             <IntegrationCardHeader integration={Integration.SLACK} />
             <CardContent>
                 <SlackCardContent 

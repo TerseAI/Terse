@@ -7,13 +7,14 @@ import { IntegrationCardFooter } from "./helpers/IntegrationCardFooter";
 import { useOAuthUrl } from "./helpers/useOAuthUrl";
 import { CountDisplay } from "./helpers/CountDisplay";
 import { useNotionResources } from "@/hooks/api/useNotionResources";
+import { cn } from "@/lib/utils";
 
-function NotionIntegrationCard({ integrationId }: { integrationId: string }) {
+function NotionIntegrationCard({ integrationId, className }: { integrationId: string, className?: string }) {
     const oauthUrl = useOAuthUrl(Integration.NOTION);
     const { resources, isLoading } = useNotionResources(integrationId);
 
     return (
-        <Card>
+        <Card className={cn(className)}>
             <IntegrationCardHeader integration={Integration.NOTION} />
             <CardContent>
                 <NotionCardContent resources={resources} isLoading={isLoading} />

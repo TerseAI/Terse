@@ -8,29 +8,30 @@ import { IntegrationCardFooter } from "./helpers/IntegrationCardFooter";
 import { useOAuthUrl } from "./helpers/useOAuthUrl";
 import { cn } from "@/lib/utils";
 
-function GmailIntegrationCard({ integrationStatus, className }: { integrationStatus: IntegrationsStatus, className?: string }) {
-    const oauthUrl = useOAuthUrl(Integration.GMAIL);
-    const gmailInstances = getIntegrationInstances(integrationStatus.integrations, Integration.GMAIL);
-    const email = formatIntegrationDisplay(gmailInstances[0], Integration.GMAIL);
+function FigmaIntegrationCard({ integrationStatus, integrationId, className }: { integrationStatus: IntegrationsStatus, integrationId: string, className?: string }) {
+    const figmaInstances = getIntegrationInstances(integrationStatus.integrations, Integration.FIGMA);
+    const currentInstance = figmaInstances.find(instance => instance.id === integrationId) || figmaInstances[0];
+    const accountInfo = formatIntegrationDisplay(currentInstance, Integration.FIGMA);
+    const oauthUrl = useOAuthUrl(Integration.FIGMA);
 
     return (
         <Card className={cn(className)}>
-            <IntegrationCardHeader integration={Integration.GMAIL} />
+            <IntegrationCardHeader integration={Integration.FIGMA} />
             <CardContent>
-                <GmailCardContent email={email} />
+                <FigmaCardContent accountInfo={accountInfo} />
             </CardContent>
             <IntegrationCardFooter oauthUrl={oauthUrl} />
         </Card>
     )
-
 }
 
-function GmailCardContent({ email }: { email: string | null }) {
+function FigmaCardContent({ accountInfo }: { accountInfo: string | null }) {
     return (
         <div className="flex items-center gap-4 text-sm text-muted-foreground min-w-50">
-            <span>{email || 'No email found'}</span>
+            <span>User ID: {accountInfo || 'Unknown Account'}</span>
         </div>
     )
 }
 
-export default GmailIntegrationCard;
+export default FigmaIntegrationCard;
+
