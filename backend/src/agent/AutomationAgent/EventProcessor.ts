@@ -127,6 +127,7 @@ export class EventProcessor {
                 automationId: automation.id,
                 trigger,
             });
+            emitCacheInvalidationWithWildcard(this.user.id, 'runHistory', automation.id);
         } catch (e) {
             console.error(chalk.yellow('Failed to create run history record'), e);
         }
