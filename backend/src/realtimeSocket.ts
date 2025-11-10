@@ -5,11 +5,16 @@ import { createAdapter } from "@socket.io/redis-adapter";
 import { Jwt } from "./utility/jwt";
 import chalk from "chalk";
 
+// Extended Socket type with userId property
+interface AuthenticatedSocket extends Socket {
+    userId: string;
+}
+
 let io: Server | null = null;
 let pub: ReturnType<typeof createClient> | null = null;
 let sub: ReturnType<typeof createClient> | null = null;
 
-export function initializeRealtimeSocket(server: HttpServer): Server {
+export async function initializeRealtimeSocket(server: HttpServer): Promise<Server> {
     console.log(chalk.blue.bold("Initializing realtime socket"));
     // Set up Socket.IO server
     io = new Server(server, {
@@ -46,19 +51,11 @@ export function initializeRealtimeSocket(server: HttpServer): Server {
             pub = createClient({ url: redisUrl });
             sub = pub.duplicate();
 
-            (async () => {
-                try {
-                    await pub.connect();
-                    await sub.connect();
-                    io.adapter(createAdapter(pub, sub));
-                    console.log("✅ Redis adapter connected for Socket.IO");
-                } catch (error) {
-                    console.error("❌ Failed to connect Redis adapter:", error);
-                    // Continue without Redis adapter - Socket.IO will work in single-server mode
-                    pub = null;
-                    sub = null;
-                }
-            })();
+            await pub.connect();
+            await sub.connect();
+            io.adapter(createAdapter(pub, sub));
+            console.log("✅ Redis adapter connected for Socket.IO");
+
         } catch (error) {
             console.warn(
                 "⚠️  Invalid REDIS_URL format - Socket.IO running in single-server mode (no Redis adapter)"
@@ -84,8 +81,8 @@ export function initializeRealtimeSocket(server: HttpServer): Server {
             if (!user) {
                 return next(new Error("Invalid token"));
             }
-            console.log(chalk.blue.bold("User in socket authenticated"), user.id);    
-            (socket as any).userId = user.id;
+            console.log(chalk.blue.bold("User in socket authenticated"), user.id);
+            (socket as AuthenticatedSocket).userId = user.id;
             next();
         } catch (error) {
             next(new Error("Authentication failed"));
@@ -95,7 +92,8 @@ export function initializeRealtimeSocket(server: HttpServer): Server {
     // Connection handler
     io.on("connection", (socket: Socket) => {
         console.log("Socket.IO connection established");
-        const userId = (socket as any).userId as string;
+        const authenticatedSocket = socket as AuthenticatedSocket;
+        const userId = authenticatedSocket.userId;
         const room = `user:${userId}`;
 
         socket.join(room);
@@ -132,7 +130,7 @@ export function emitCacheInvalidationWithKey(
         console.warn("Socket.IO server not initialized");
         return;
     }
-    io.to(`user:${userId}`).emit("invalidate",key);
+    io.to(`user:${userId}`).emit("invalidate", key);
 }
 
 export function emitCacheInvalidationWithKeyId(
