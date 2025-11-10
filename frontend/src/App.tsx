@@ -1,5 +1,6 @@
 import { AnimatePresence } from "framer-motion";
 import { Navigate, Outlet, Route, BrowserRouter as Router, Routes } from 'react-router-dom';
+import { useEffect } from "react";
 import Spin from "./components/loading/Spin";
 import { AppSidebar } from "./components/Sidebar/Sidebar";
 import { IntegrationProvider } from "./context/Integrations";
@@ -17,6 +18,7 @@ import { ThemeProvider } from "./components/theme-provider";
 import { Toaster } from "./components/ui/sonner";
 import IntegrationPage from "./pages/IntegrationPage";
 import BreadCrumb from "./components/BreadCrumb";
+import { initializeSocket, disconnectSocket } from "./socket";
 
 function App() {
   return (
@@ -32,7 +34,7 @@ function App() {
               <Route path="automations" element={<AutomationsList />} />
               <Route path="automations/new" element={<Automations />} />
               <Route path="automations/:id" element={<Automations />} />
-              <Route path="integrations" element={<IntegrationPage />} /> 
+              <Route path="integrations" element={<IntegrationPage />} />
             </Route>
             <Route path="/changelog" element={<LandingPageChangelog />} />
             <Route path="/oauth/success" element={<OAuthSuccess />} />
@@ -47,6 +49,20 @@ function App() {
 
 function Content() {
   const { user, isLoading } = useAuth()
+
+  // Initialize socket when user is authenticated
+  useEffect(() => {
+    if (user && !isLoading) {
+      initializeSocket();
+    } else {
+      disconnectSocket();
+    }
+
+    // Cleanup on unmount
+    return () => {
+      disconnectSocket();
+    };
+  }, [user, isLoading]);
 
   if (isLoading) {
     return <Spin />;
