@@ -4,7 +4,7 @@ import { GmailEventData } from "../routes/gmail";
 import { AutomationInput } from "../types/prisma";
 import { RunHistoryTrigger } from "../shared/RunHistoryTypes";
 import { SlackEventData, SlackChannelType } from "../shared/types";
-import { FigmaCommentEventData } from "../shared/types";
+import { FigmaCommentEventData, FigmaCommentThreadEntry } from "../shared/types";
 
 export abstract class InputEvent {
     abstract readonly integrationType: IntegrationType;
@@ -190,23 +190,6 @@ export class FigmaCommentEvent extends InputEvent {
                 .map((line) => `        ${line}`)
                 .join('\n');
 
-        const nodeInfo = this.data.nodeId
-            ? `\nNode Context:\n${indentMultiline(`Node ID: ${this.data.nodeId}`)}`
-            : `\nNode Context:\n${indentMultiline('Comment is on the file level (not attached to a specific node)')}`;
-
-        const fileInfo = this.data.fileMetadata
-            ? `\nFile Metadata:\n${indentMultiline(JSON.stringify(this.data.fileMetadata, null, 2))}`
-            : '';
-
-        const positioningInfo = this.data.positioningData
-            ? `\nPositioning Details:\n${indentMultiline(`Type: ${this.data.positioningData.type}`)}\n${indentMultiline('Data:')}` +
-              `\n${indentMultiline(JSON.stringify(this.data.positioningData.data, null, 2))}`
-            : '';
-
-        const matchedNodesInfo = this.data.matchedNodeIds && this.data.matchedNodeIds.length > 0
-            ? `\nMatched Design Elements:\n${indentMultiline(this.data.matchedNodeIds.map((id) => `- ${id}`).join('\n'))}`
-            : '';
-
         let imageInfo = '';
         if (this.data.imageUrls) {
             const imageLines: string[] = [];
@@ -218,33 +201,113 @@ export class FigmaCommentEvent extends InputEvent {
             }
             if (imageLines.length > 0) {
                 imageLines.push('- Note: Use these images to understand what element the comment refers to.');
-                imageInfo = `\nVisual Context:\n${indentMultiline(imageLines.join('\n'))}`;
+                imageInfo = `Visual Context:\n${indentMultiline(imageLines.join('\n'))}`;
             }
         }
 
-        const threadEntries = this.data.thread ?? [];
-        const threadInfo = threadEntries.length > 0
-            ? `\nConversation Thread:\n${indentMultiline(threadEntries.map((entry) => {
-                const role = entry.isRoot ? 'root comment' : 'reply';
-                const isCurrent = entry.id === this.data.commentId ? ' (event comment)' : '';
-                const header = `- ${entry.author.handle} on ${entry.createdAt} [${role}]${isCurrent}`;
-                const message = entry.message ? `  ${entry.message.replace(/\n/g, '\n  ')}` : '  (no message)';
-                return `${header}\n${message}`;
-            }).join('\n'))}`
+        const threadEntries = this.data.thread ? [...this.data.thread] : [];
+        const currentThreadEntry = threadEntries.find((entry) => entry.id === this.data.commentId);
+        const parentThreadEntry = currentThreadEntry?.parentId
+            ? threadEntries.find((entry) => entry.id === currentThreadEntry.parentId)
+            : undefined;
+        const rootThreadEntry = threadEntries.find((entry) => entry.isRoot) ?? threadEntries[0];
+
+        const formatThreadMessage = (entry: FigmaCommentThreadEntry): string => {
+            const flags: string[] = [];
+            if (entry.isRoot) {
+                flags.push('root comment');
+            }
+            if (entry.id === this.data.commentId) {
+                flags.push('current event');
+            }
+            if (entry.parentId && entry.parentId !== entry.id) {
+                flags.push('reply');
+            }
+            if (entry.resolvedAt) {
+                flags.push(`resolved on ${entry.resolvedAt}`);
+            }
+
+            const metadata = flags.length > 0 ? ` [${flags.join(' | ')}]` : '';
+            const header = `${entry.author.handle} on ${entry.createdAt}${metadata}`;
+            const messageBody = entry.message && entry.message.trim().length > 0
+                ? entry.message.split('\n').map((line) => `  ${line}`).join('\n')
+                : '  (no message)';
+
+            return `${header}\n${messageBody}`;
+        };
+
+        const formatContextEntry = (entry: FigmaCommentThreadEntry): string => {
+            const header = `${entry.author.handle} on ${entry.createdAt}`;
+            const messageBody = entry.message && entry.message.trim().length > 0
+                ? entry.message.split('\n').map((line) => `  ${line}`).join('\n')
+                : '  (no message)';
+
+            return `${header}\n${messageBody}`;
+        };
+
+        const messageBlock = this.data.message && this.data.message.trim().length > 0
+            ? `Comment Message:\n${indentMultiline(this.data.message)}`
             : '';
 
-        return `
-        Incoming Figma Comment Event.
+        const directParentBlock = parentThreadEntry && parentThreadEntry.id !== this.data.commentId
+            ? `Direct Parent Comment:\n${indentMultiline(formatContextEntry(parentThreadEntry))}`
+            : '';
 
-        Figma Comment:
-        File: ${this.data.fileKey}
-        File URL: ${this.data.fileUrl}
-        Comment ID: ${this.data.commentId}
-        Author: ${this.data.author.handle} (${this.data.author.id})
-        Message: ${this.data.message}
-        Created At: ${this.data.createdAt}
-        Resolved: ${this.data.resolved ? 'Yes' : 'No'}${nodeInfo}${fileInfo}${positioningInfo}${matchedNodesInfo}${imageInfo}${threadInfo}
-        `;
+        const rootThreadBlock = rootThreadEntry
+            && rootThreadEntry.id !== this.data.commentId
+            && rootThreadEntry.id !== parentThreadEntry?.id
+            ? `Thread Starting Comment:\n${indentMultiline(formatContextEntry(rootThreadEntry))}`
+            : '';
+
+        const threadInfo = threadEntries.length > 0
+            ? `Full Comment Thread (oldest → newest):\n${indentMultiline(threadEntries.map((entry, index) => {
+                const prefix = `${index + 1}. `;
+                const formatted = formatThreadMessage(entry).split('\n');
+                const withIndex = [formatted[0] ? `${prefix}${formatted[0]}` : prefix, ...formatted.slice(1)];
+                return withIndex.join('\n');
+            }).join('\n\n'))}`
+            : '';
+
+        const conversationContextSections = [
+            messageBlock,
+            directParentBlock,
+            rootThreadBlock,
+            threadInfo,
+        ].filter((section) => section && section.trim().length > 0);
+
+        const conversationContext = conversationContextSections.join('\n\n');
+
+        const fileName = typeof this.data.fileMetadata?.name === 'string'
+            ? this.data.fileMetadata.name
+            : null;
+        const folderName = typeof this.data.fileMetadata?.folder_name === 'string'
+            ? this.data.fileMetadata.folder_name
+            : null;
+
+        const designContextLines: string[] = [];
+        designContextLines.push(`Design File: ${fileName || 'Untitled Figma file'}`);
+        if (folderName) {
+            designContextLines.push(`Location: ${folderName}`);
+        }
+        designContextLines.push(`Open in Figma: ${this.data.fileUrl}`);
+
+        const designContext = `Context:\n${indentMultiline(designContextLines.join('\n'))}`;
+
+        const summarySection = [
+            'Incoming Figma Comment Event',
+            `Author: ${this.data.author.handle}`,
+            `Created: ${this.data.createdAt}`,
+            `Status: ${this.data.resolved ? 'Resolved' : 'Open'}`,
+        ].join('\n');
+
+        const sections = [
+            summarySection,
+            designContext,
+            conversationContext,
+            imageInfo,
+        ].filter((section) => section && section.trim().length > 0);
+
+        return `${sections.join('\n\n')}\n`;
     }
 
     debugLog(): string {
