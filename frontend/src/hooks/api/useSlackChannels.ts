@@ -1,14 +1,7 @@
 import useSWR, { type KeyedMutator } from 'swr';
 import { BackendProvider } from '@/services/backend';
 import type { SlackChannel, SlackChannelsResponse } from '@/shared/types';
-
-const slackChannelsKey = (integrationId: string | null | undefined): readonly [string, string] | null => {
-    if (!integrationId) {
-        return null;
-    }
-
-    return ['slackChannels', integrationId] as const;
-};
+import { slackChannelsKey } from '@/shared/InvalidationKeys';
 
 type UseSlackChannelsReturn = {
     channels: SlackChannel[];

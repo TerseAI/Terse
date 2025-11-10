@@ -1,14 +1,7 @@
 import useSWR, { type KeyedMutator } from 'swr';
 import { BackendProvider } from '@/services/backend';
-import type { NotionResource, NotionResourcesResponse } from '@/shared/types';
-
-const notionResourcesKey = (integrationId: string | null | undefined): readonly [string, string] | null => {
-    if (!integrationId) {
-        return null;
-    }
-
-    return ['notionResources', integrationId] as const;
-};
+import type { NotionResource, NotionResourcesResponse} from '@/shared/types';
+import { notionResourcesKey } from "@/shared/InvalidationKeys";
 
 type UseNotionResourcesReturn = {
     resources: NotionResource[];
