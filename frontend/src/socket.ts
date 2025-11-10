@@ -44,12 +44,39 @@ export async function initializeSocket() {
     });
 
     // Listen for cache invalidation events
-    socket.on('invalidate', (payload: { keys?: string[]; tag?: string }) => {
-        const { keys = [], tag } = payload || {};
+    // SWR keys are tuples like ['runHistory', automationId, params] or ['automations', params]
+    // keys: array of serialized SWR keys (JSON strings that can be parsed back to tuples)
+    // tag: prefix to match against the first element of tuple keys (e.g., 'runHistory' matches ['runHistory', ...])
+    // id: optional second element to match (e.g., automationId for runHistory queries)
+    socket.on('invalidate', (payload: { keys?: string[]; tag?: string; id?: string }) => {
+        console.log('Invalidation received:', payload);
+        const { keys = [], tag, id } = payload || {};
         if (keys.length) {
-            keys.forEach((k) => mutate(k));
+            // Parse serialized keys back to tuples and invalidate
+            keys.forEach((serializedKey) => {
+                try {
+                    const key = JSON.parse(serializedKey);
+                    mutate(key);
+                } catch (e) {
+                    // If parsing fails, try as-is (might be a string key)
+                    mutate(serializedKey);
+                }
+            });
         } else if (tag) {
-            mutate((k: any) => typeof k === 'string' && k.includes(tag));
+            // Match against first element of tuple keys
+            // If id is provided, also match on the second element (e.g., automationId)
+            mutate((key: any) => {
+                if (Array.isArray(key) && key.length > 0) {
+                    const tagMatches = key[0] === tag;
+                    if (id !== undefined) {
+                        // Match on both tag and id (second element)
+                        return tagMatches && key.length > 1 && key[1] === id;
+                    }
+                    return tagMatches;
+                }
+                // Fallback for string keys
+                return typeof key === 'string' && key.includes(tag);
+            });
         }
     });
 }

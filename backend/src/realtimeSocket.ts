@@ -124,14 +124,40 @@ export function getRealtimeSocket(): Server | null {
     return io;
 }
 
-export function emitCacheInvalidation(
+export function emitCacheInvalidationWithKey(
     userId: string,
-    payload: { keys?: string[]; tag?: string }
+    key: string
 ) {
     if (!io) {
         console.warn("Socket.IO server not initialized");
         return;
     }
-    io.to(`user:${userId}`).emit("invalidate", payload);
+    io.to(`user:${userId}`).emit("invalidate",key);
 }
 
+export function emitCacheInvalidationWithKeyId(
+    userId: string,
+    key: string,
+    id: string
+) {
+    if (!io) {
+        console.warn("Socket.IO server not initialized");
+        return;
+    }
+    io.to(`user:${userId}`).emit("invalidate", [key, id]);
+}
+
+export function emitCacheInvalidationWithWildcard(
+    userId: string,
+    tag: string,
+    id?: string
+) {
+    if (!io) {
+        console.warn("Socket.IO server not initialized");
+        return;
+    }
+    // Send tag-based invalidation payload
+    // If id is provided, frontend will match on both tag and id
+    // If id is not provided, frontend will match on tag only
+    io.to(`user:${userId}`).emit("invalidate", { tag, id });
+}

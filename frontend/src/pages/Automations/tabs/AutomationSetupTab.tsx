@@ -54,7 +54,6 @@ function SaveAutomationButton({ defaultName }: { defaultName: string | null }) {
                         inputData.slackConfig = i.slackConfig;
                     }
                     if (i.figmaConfig) {
-                        console.log('Figma config found:', i.figmaConfig);
                         // Validate that figmaConfig has both fileKey and teamId before including it
                         if (i.figmaConfig.fileKey && i.figmaConfig.teamId) {
                             inputData.figmaConfig = i.figmaConfig;
