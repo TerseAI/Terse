@@ -91,7 +91,7 @@ const app = express();
 const server = createServer(app);
 
 // Initialize Socket.IO for realtime updates
-initializeRealtimeSocket(server);
+await initializeRealtimeSocket(server);
 
 
 // WebSocket handler, keep in memory as long as the server is running!!
