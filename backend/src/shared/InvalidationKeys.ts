@@ -1,5 +1,3 @@
-import { GetRunHistoryParams } from "./RunHistoryTypes";
-
 export const slackChannelsKey = (integrationId: string | null | undefined): readonly [string, string] | null => {
     if (!integrationId) {
         return null;
@@ -16,6 +14,6 @@ export const notionResourcesKey = (integrationId: string | null | undefined): re
     return ['notionResources', integrationId] as const;
 };
 
-export const runHistoryKey = (automationId: string, params: GetRunHistoryParams): [string, string, GetRunHistoryParams] => {
-    return ['runHistory', automationId, params] as const;
+export const runHistoryKey = (automationId: string): readonly [string, string] => {
+    return ['runHistory', automationId] as const;
 };
