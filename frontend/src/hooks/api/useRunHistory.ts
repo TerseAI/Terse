@@ -43,8 +43,21 @@ export function useRunHistory({
         end: toLocalEndISOString(dateRange.to ?? dateRange.from),
         status: statusArray.length < 4 ? statusArray as any : undefined,
     };
-
-    const key = runHistoryKey(automationId, params);
+    
+    if (!automationId) {
+        return {
+            runs: [],
+            total: 0,
+            page: page,
+            pageSize: pageSize,
+            isLoading: false,
+            isError: null,
+            isValidating: false,
+            mutate: () => {},
+        };
+    }
+    
+    const key = runHistoryKey(automationId);
 
     const { data, error, isValidating, mutate } = useSWR<GetRunHistoryResponse>(
         key,
