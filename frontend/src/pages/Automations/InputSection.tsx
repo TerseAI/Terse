@@ -1,4 +1,4 @@
-import { forwardRef, useState } from "react";
+import { forwardRef, useState, useImperativeHandle, useRef } from "react";
 import { Input, useAutomationContext } from "../../context/AutomationContext";
 import { Integration } from "../../context/Integrations";
 import { SectionLayout } from "./components/SectionLayout";
@@ -13,9 +13,15 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { FigmaConfig, GmailConfig, NotionConfig, SlackConfig } from "@/shared/types";
 import { v4 as uuidv4 } from 'uuid';
 
-export const InputsSection = forwardRef<HTMLDivElement, { ref: React.RefObject<HTMLDivElement> }>((_, ref) => {
+export const InputsSection = forwardRef<Map<string, HTMLDivElement>, { ref: React.RefObject<Map<string, HTMLDivElement>> }>((_, ref) => {
     const { inputs, setInputs, isLoading } = useAutomationContext();
     const [showAddModal, setShowAddModal] = useState(false);
+    const inputRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+
+    // Expose map of refs keyed by input ID through forwardRef
+    useImperativeHandle(ref, () => {
+        return inputRefs.current;
+    }, [inputs.length]); // Re-run when inputs array length changes
 
     console.log('Inputs:', inputs);
 
@@ -41,7 +47,7 @@ export const InputsSection = forwardRef<HTMLDivElement, { ref: React.RefObject<H
     };
 
     return (
-        <SectionLayout ref={ref}
+        <SectionLayout
             subtitle="Choose which integration triggers this automation"
             icon={<Zap className="w-5 h-5 text-primary" />}
             isLoading={isLoading}
@@ -49,7 +55,14 @@ export const InputsSection = forwardRef<HTMLDivElement, { ref: React.RefObject<H
             {!inputs.length ? (
                 <EmptyInputSection onCreateNew={() => setShowAddModal(true)} />
             ) : (
-                <InputCardsLayout inputs={inputs} handleSelectIntegration={handleSelectIntegration} setInputs={setInputs} handleRemove={handleRemove} setShowAddModal={setShowAddModal} />
+                <InputCardsLayout 
+                    inputs={inputs} 
+                    handleSelectIntegration={handleSelectIntegration} 
+                    setInputs={setInputs} 
+                    handleRemove={handleRemove} 
+                    setShowAddModal={setShowAddModal}
+                    inputRefs={inputRefs}
+                />
             )}
 
             <AddInputModal
@@ -67,19 +80,37 @@ function InputCardsLayout({
     handleSelectIntegration, 
     setInputs, 
     handleRemove, 
-    setShowAddModal
+    setShowAddModal,
+    inputRefs
 }: {
     inputs: Input[], 
     handleSelectIntegration: (integrationId: string, input: Input) => void, 
     setInputs: (inputs: Input[]) => void, 
     handleRemove: (id: string) => void, 
-    setShowAddModal: (show: boolean) => void}
-) {
+    setShowAddModal: (show: boolean) => void,
+    inputRefs: React.MutableRefObject<Map<string, HTMLDivElement>>
+}) {
     return (
         <div className="flex flex-col gap-4">
-            {inputs.map((input) => (
-                <InputCard key={input.integrationId} input={input} handleSelectIntegration={handleSelectIntegration} setInputs={setInputs} handleRemove={handleRemove} />
-            ))}
+            {inputs.map((input) => {
+                const inputId = input.id || input.integrationId || '';
+                return (
+                    <InputCard 
+                        key={inputId} 
+                        input={input} 
+                        handleSelectIntegration={handleSelectIntegration} 
+                        setInputs={setInputs} 
+                        handleRemove={handleRemove}
+                        ref={(el) => {
+                            if (el) {
+                                inputRefs.current.set(inputId, el);
+                            } else {
+                                inputRefs.current.delete(inputId);
+                            }
+                        }}
+                    />
+                );
+            })}
             <Button variant="outline" onClick={() => setShowAddModal(true)}>
                 Add Event Source
             </Button>
@@ -87,12 +118,17 @@ function InputCardsLayout({
     );
 }
 
-function InputCard({
+const InputCard = forwardRef<HTMLDivElement, {
+    input: Input, 
+    handleSelectIntegration: (integrationId: string, input: Input) => void, 
+    setInputs: (inputs: Input[]) => void, 
+    handleRemove: (id: string) => void
+}>(({
     input,
     handleSelectIntegration,
     setInputs,
     handleRemove
-}: { input: Input, handleSelectIntegration: (integrationId: string, input: Input) => void, setInputs: (inputs: Input[]) => void, handleRemove: (id: string) => void }) {
+}, ref) => {
     const [showDetailsDialog, setShowDetailsDialog] = useState(false);
     
     const selectorProps = {
@@ -130,7 +166,7 @@ function InputCard({
 
     return (
         <>
-            <Card>
+            <Card ref={ref}>
                 <CardHeader>
                     <div className="flex justify-between">
                         <IntegrationTitle integration={input.integration} iconSize="md" />
@@ -161,7 +197,7 @@ function InputCard({
             </Dialog>
         </>
     );
-}
+});
 
 function EmptyInputSection({ onCreateNew }: { onCreateNew: () => void }) {
     return (
