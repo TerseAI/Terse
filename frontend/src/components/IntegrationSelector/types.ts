@@ -28,5 +28,6 @@ export interface BaseIntegrationProps {
     isConnecting: boolean;
     onConnect: () => void;
     label?: string;
+    variant?: 'card' | 'dialog';
 }
 

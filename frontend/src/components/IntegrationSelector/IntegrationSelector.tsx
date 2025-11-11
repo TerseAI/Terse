@@ -14,7 +14,7 @@ import { ConfluenceIntegration } from './ConfluenceIntegration';
 import { useOAuthConnection } from './useOAuthConnection';
 import { IntegrationInstance } from '@/utility/IntegrationFormatters';
 
-export function IntegrationSelector(props: IntegrationSelectorProps) {
+export function useIntegrationSelector(props: IntegrationSelectorProps): { CardContent: () => React.ReactNode, DialogContent: () => React.ReactNode } {
     const { integrationType, selectedIntegrationId, onSelect } = props;
     const [integrations, setIntegrations] = useState<IntegrationInstance[]>([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -88,84 +88,93 @@ export function IntegrationSelector(props: IntegrationSelectorProps) {
         label: props.label
     };
 
-    // Render integration-specific components
-    switch (integrationType) {
-        case Integration.GMAIL:
-            return <GmailIntegration {...baseProps} integrationType={integrationType} />;
+    // Create CardContent and DialogContent components
+    const renderIntegration = (variant: 'card' | 'dialog') => {
+        const variantProps = { ...baseProps, variant };
         
-        case Integration.NOTION:
-        case Integration.NOTION_PAGE:
-            return (
-                <NotionIntegration
-                    {...baseProps}
-                    integrationType={integrationType}
-                    notionConfig={props.notionConfig}
-                    notionPageConfig={props.notionPageConfig}
-                    onNotionConfigChange={props.onNotionConfigChange}
-                    onNotionPageConfigChange={props.onNotionPageConfigChange}
-                />
-            );
-        
-        case Integration.SLACK:
-            return (
-                <SlackIntegration
-                    {...baseProps}
-                    integrationType={integrationType}
-                    slackConfig={props.slackConfig}
-                    onSlackConfigChange={props.onSlackConfigChange}
-                />
-            );
-        
-        case Integration.GITHUB:
-            return <GitHubIntegration {...baseProps} integrationType={integrationType} />;
-        
-        case Integration.FIGMA:
-            return (
-                <FigmaIntegration
-                    {...baseProps}
-                    integrationType={integrationType}
-                    figmaConfig={props.figmaConfig}
-                    onFigmaConfigChange={props.onFigmaConfigChange}
-                />
-            );
-        
-        case Integration.JIRA:
-            return (
-                <JiraIntegration
-                    {...baseProps}
-                    integrationType={integrationType}
-                    showForm={showForm}
-                    onFormSuccess={handleFormSuccess}
-                    onFormCancel={handleFormCancel}
-                />
-            );
-        
-        case Integration.LINEAR:
-            return (
-                <LinearIntegration
-                    {...baseProps}
-                    integrationType={integrationType}
-                    showForm={showForm}
-                    onFormSuccess={handleFormSuccess}
-                    onFormCancel={handleFormCancel}
-                />
-            );
-        
-        case Integration.CONFLUENCE:
-            return (
-                <ConfluenceIntegration
-                    {...baseProps}
-                    integrationType={integrationType}
-                    showForm={showForm}
-                    onFormSuccess={handleFormSuccess}
-                    onFormCancel={handleFormCancel}
-                    confluenceConfig={props.confluenceConfig}
-                    onConfluenceConfigChange={props.onConfluenceConfigChange}
-                />
-            );
-        
-        default:
-            return null;
-    }
+        switch (integrationType) {
+            case Integration.GMAIL:
+                return <GmailIntegration {...variantProps} integrationType={integrationType} />;
+            
+            case Integration.NOTION:
+            case Integration.NOTION_PAGE:
+                return (
+                    <NotionIntegration
+                        {...variantProps}
+                        integrationType={integrationType}
+                        notionConfig={props.notionConfig}
+                        notionPageConfig={props.notionPageConfig}
+                        onNotionConfigChange={props.onNotionConfigChange}
+                        onNotionPageConfigChange={props.onNotionPageConfigChange}
+                    />
+                );
+            
+            case Integration.SLACK:
+                return (
+                    <SlackIntegration
+                        {...variantProps}
+                        integrationType={integrationType}
+                        slackConfig={props.slackConfig}
+                        onSlackConfigChange={props.onSlackConfigChange}
+                    />
+                );
+            
+            case Integration.GITHUB:
+                return <GitHubIntegration {...variantProps} integrationType={integrationType} />;
+            
+            case Integration.FIGMA:
+                return (
+                    <FigmaIntegration
+                        {...variantProps}
+                        integrationType={integrationType}
+                        figmaConfig={props.figmaConfig}
+                        onFigmaConfigChange={props.onFigmaConfigChange}
+                    />
+                );
+            
+            case Integration.JIRA:
+                return (
+                    <JiraIntegration
+                        {...variantProps}
+                        integrationType={integrationType}
+                        showForm={showForm}
+                        onFormSuccess={handleFormSuccess}
+                        onFormCancel={handleFormCancel}
+                    />
+                );
+            
+            case Integration.LINEAR:
+                return (
+                    <LinearIntegration
+                        {...variantProps}
+                        integrationType={integrationType}
+                        showForm={showForm}
+                        onFormSuccess={handleFormSuccess}
+                        onFormCancel={handleFormCancel}
+                    />
+                );
+            
+            case Integration.CONFLUENCE:
+                return (
+                    <ConfluenceIntegration
+                        {...variantProps}
+                        integrationType={integrationType}
+                        showForm={showForm}
+                        onFormSuccess={handleFormSuccess}
+                        onFormCancel={handleFormCancel}
+                        confluenceConfig={props.confluenceConfig}
+                        onConfluenceConfigChange={props.onConfluenceConfigChange}
+                    />
+                );
+            
+            default:
+                return null;
+        }
+    };
+
+    const CardContent = () => renderIntegration('card');
+    const DialogContent = () => renderIntegration('dialog');
+
+    return { CardContent, DialogContent };
 }
 
