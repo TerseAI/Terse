@@ -11,6 +11,7 @@ export function SVGFlowArrows({
     containerRef,
     connections,
 }: SVGFlowArrowsProps) {
+    console.log('SVGFlowArrows connection count:', connections.length);
     if (!containerRef || !connections.length) {
         return null;
     }

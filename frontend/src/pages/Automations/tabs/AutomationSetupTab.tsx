@@ -143,6 +143,7 @@ export default function AutomationSetupTab() {
     const connections: Conn[] = []
     
     if (inputs.length > 0 && InputsSectionRef.current != null) {
+        console.log('InputsSectionRef:', inputs.length);
         for (const input of inputs) {
             if (input.integration != null && input.integrationId != null) {
                 connections.push({ id: `input-to-prompt-${input.integration}-${input.integrationId}`, from: InputsSectionRef, to: PromptSectionRef });
