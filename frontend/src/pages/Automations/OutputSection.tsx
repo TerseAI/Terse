@@ -4,7 +4,7 @@ import { Integration } from "../../context/Integrations";
 import { SectionLayout } from "./components/SectionLayout";
 import { AddOutputModal } from "./components/AddOutputModal";
 import { FileText, Plus } from "lucide-react";
-import { IntegrationSelector } from "../../components/IntegrationSelector";
+import { useIntegrationSelector } from "../../components/IntegrationSelector";
 import { clearIntegrationConfigs } from "../../utility/IntegrationUtils";
 import { Button } from "@/components/ui/button";
 import { Card, CardAction, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -77,6 +77,44 @@ function OutputCard({
     handleSelectIntegration,
     setOutput
 }: { output: Output, handleRemove: () => void, handleSelectIntegration: (integrationId: string) => void, setOutput: (output: Output) => void }) {
+    const { DialogContent } = useIntegrationSelector({
+        integrationType: output.integration,
+        selectedIntegrationId: output.integrationId,
+        onSelect: handleSelectIntegration,
+        notionConfig: output.notionConfig,
+        onNotionConfigChange: (config) => {
+            if (output) {
+                setOutput({
+                    integration: Integration.NOTION,
+                    integrationId: output.integrationId,
+                    notionConfig: config
+                });
+            }
+        },
+        notionPageConfig: output.notionPageConfig,
+        onNotionPageConfigChange: (config) => {
+            if (output) {
+                setOutput({
+                    integration: Integration.NOTION_PAGE,
+                    integrationId: output.integrationId,
+                    notionPageConfig: config
+                });
+            }
+        },
+        slackConfig: output.slackConfig,
+        onSlackConfigChange: (config) => {
+            if (output) {
+                setOutput({ ...output, slackConfig: config });
+            }
+        },
+        confluenceConfig: output.confluenceConfig,
+        onConfluenceConfigChange: (config) => {
+            if (output) {
+                setOutput({ ...output, confluenceConfig: config });
+            }
+        }
+    });
+
     return (
         <Card>
             <CardHeader>
@@ -85,43 +123,7 @@ function OutputCard({
                 </CardTitle>
             </CardHeader>
             <CardContent>
-            <IntegrationSelector
-                    integrationType={output.integration}
-                    selectedIntegrationId={output.integrationId}
-                    onSelect={handleSelectIntegration}
-                    notionConfig={output.notionConfig}
-                    onNotionConfigChange={(config) => {
-                        if (output) {
-                            setOutput({
-                                integration: Integration.NOTION,
-                                integrationId: output.integrationId,
-                                notionConfig: config
-                            });
-                        }
-                    }}
-                    notionPageConfig={output.notionPageConfig}
-                    onNotionPageConfigChange={(config) => {
-                        if (output) {
-                            setOutput({
-                                integration: Integration.NOTION_PAGE,
-                                integrationId: output.integrationId,
-                                notionPageConfig: config
-                            });
-                        }
-                    }}
-                    slackConfig={output.slackConfig}
-                    onSlackConfigChange={(config) => {
-                        if (output) {
-                            setOutput({ ...output, slackConfig: config });
-                        }
-                    }}
-                    confluenceConfig={output.confluenceConfig}
-                    onConfluenceConfigChange={(config) => {
-                        if (output) {
-                            setOutput({ ...output, confluenceConfig: config });
-                        }
-                    }}
-                />
+                <DialogContent />
             </CardContent>
             <CardFooter>
                 <CardAction>

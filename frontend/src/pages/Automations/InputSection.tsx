@@ -4,12 +4,13 @@ import { Integration } from "../../context/Integrations";
 import { SectionLayout } from "./components/SectionLayout";
 import { AddInputModal } from "./components/AddInputModal";
 import { Zap, Plus, Settings } from "lucide-react";
-import { IntegrationSelector } from "../../components/IntegrationSelector";
+import { useIntegrationSelector } from "../../components/IntegrationSelector";
 import { clearIntegrationConfigs } from "../../utility/IntegrationUtils";
 import { Button } from "@/components/ui/button";
-import { Card, CardAction, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
+import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { IntegrationTitle } from "./components/IntegrationTitle";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 export const InputsSection = forwardRef<HTMLDivElement, { ref: React.RefObject<HTMLDivElement> }>((_, ref) => {
     const { inputs, setInputs, isLoading } = useAutomationContext();
@@ -71,48 +72,66 @@ function InputCard({
     setInputs,
     handleRemove
 }: { input: Input, handleSelectIntegration: (integrationId: string) => void, setInputs: (inputs: Input[]) => void, handleRemove: () => void }) {
+    const [showDetailsDialog, setShowDetailsDialog] = useState(false);
+    
+    const selectorProps = {
+        integrationType: input.integration,
+        selectedIntegrationId: input.integrationId,
+        onSelect: handleSelectIntegration,
+        notionConfig: input.notionConfig,
+        onNotionConfigChange: (config: any) => {
+            if (input) {
+                setInputs([{ ...input, notionConfig: config }]);
+            }
+        },
+        slackConfig: input.slackConfig,
+        onSlackConfigChange: (config: any) => {
+            if (input) {
+                setInputs([{ ...input, slackConfig: config }]);
+            }
+        },
+        figmaConfig: input.figmaConfig,
+        onFigmaConfigChange: (config: any) => {
+            if (input) {
+                setInputs([{ ...input, figmaConfig: config }]);
+            }
+        }
+    };
+
+    const { CardContent: IntegrationCardContent, DialogContent: IntegrationDialogContent } = useIntegrationSelector(selectorProps);
+
     return (
-        <Card>
-            <CardHeader>
-                <div className="flex justify-between">
-                    <IntegrationTitle integration={input.integration} iconSize="md" />
-                </div>
-            </CardHeader>
+        <>
+            <Card>
+                <CardHeader>
+                    <div className="flex justify-between">
+                        <IntegrationTitle integration={input.integration} iconSize="md" />
+                    </div>
+                </CardHeader>
 
-            <CardContent>
-                <IntegrationSelector
-                    integrationType={input.integration}
-                    selectedIntegrationId={input.integrationId}
-                    onSelect={handleSelectIntegration}
-                    notionConfig={input.notionConfig}
-                    onNotionConfigChange={(config) => {
-                        if (input) {
-                            setInputs([{ ...input, notionConfig: config }]);
-                        }
-                    }}
-                    slackConfig={input.slackConfig}
-                    onSlackConfigChange={(config) => {
-                        if (input) {
-                            setInputs([{ ...input, slackConfig: config }]);
-                        }
-                    }}
-                    figmaConfig={input.figmaConfig}
-                    onFigmaConfigChange={(config) => {
-                        if (input) {
-                            setInputs([{ ...input, figmaConfig: config }]);
-                        }
-                    }}
-                />
-            </CardContent>
+                <CardContent className="min-w-xs">
+                    <IntegrationCardContent />
+                </CardContent>
 
-            <CardFooter>
-                <CardAction>
+                <CardFooter className="justify-between">
+                    <Button variant="outline" onClick={() => setShowDetailsDialog(true)}>
+                        More Details
+                    </Button>
                     <Button variant="destructive" onClick={handleRemove}>
                         Remove
                     </Button>
-                </CardAction>
-            </CardFooter>
-        </Card>
+                </CardFooter>
+            </Card>
+
+            <Dialog open={showDetailsDialog} onOpenChange={setShowDetailsDialog}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Integration Details</DialogTitle>
+                    </DialogHeader>
+                    <IntegrationDialogContent />
+                </DialogContent>
+            </Dialog>
+        </>
     );
 }
 
