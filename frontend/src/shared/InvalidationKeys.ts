@@ -1,4 +1,4 @@
-import type { GetRunHistoryParams } from './RunHistoryTypes';
+import { GetRunHistoryParams } from "./RunHistoryTypes";
 
 export const slackChannelsKey = (integrationId: string | null | undefined): readonly [string, string] | null => {
     if (!integrationId) {
