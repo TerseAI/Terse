@@ -15,7 +15,7 @@ export async function initializeSocket() {
     const token = await BackendProvider.requestSessionSocketToken();
     
     // Socket.IO connection setup
-    const wsBase = import.meta.env.VITE_WS_BASE || '/api';
+    const wsBase = import.meta.env.VITE_WS_BASE || '';
     
     // Socket.IO needs the full origin URL, and we specify the path via the 'path' option
     // The path will be: /api/socket.io (which the Vite proxy will forward to /socket.io on backend)
