@@ -3,7 +3,7 @@ import { db } from '../prismaClient';
 import { users } from '@prisma/client';
 
 export class Jwt {
-  private readonly TOKEN_EXPIRY = '7d'; // 7 days
+  private readonly TOKEN_EXPIRY = '7d'; // 7 days - in future may need to handle token expiration
 
   async sign(userId: string) {
     const user = await db().users.findUnique({ where: { id: userId } });
