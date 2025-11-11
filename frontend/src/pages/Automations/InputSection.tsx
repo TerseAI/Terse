@@ -11,24 +11,21 @@ import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card"
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { IntegrationTitle } from "./components/IntegrationTitle";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { FigmaConfig, GmailConfig, NotionConfig, SlackConfig } from "@/shared/types";
 
 export const InputsSection = forwardRef<HTMLDivElement, { ref: React.RefObject<HTMLDivElement> }>((_, ref) => {
     const { inputs, setInputs, isLoading } = useAutomationContext();
     const [showAddModal, setShowAddModal] = useState(false);
-    const input = inputs[0]; // Only one input allowed
 
     const handleSelectPlatform = (integration: Integration) => {
         // Clear all configs when switching platform (new integration type)
-        const clearedConfigs = input ? clearIntegrationConfigs(input) : {};
-        const newInput: Input = {
-            integration,
-            ...clearedConfigs
-        };
-        setInputs([newInput]);
+        const newInputs: Input[] = [...inputs, { integration }];
+        setInputs(newInputs);
+        console.log('Inputs:', newInputs);
         setShowAddModal(false);
     };
 
-    const handleSelectIntegration = (integrationId: string) => {
+    const handleSelectIntegration = (integrationId: string, input: Input) => {
         if (input) {
             // Clear all configs when switching integration instances (will be re-selected when selector loads)
             const clearedConfigs = clearIntegrationConfigs(input);
@@ -50,10 +47,10 @@ export const InputsSection = forwardRef<HTMLDivElement, { ref: React.RefObject<H
             icon={<Zap className="w-5 h-5 text-primary" />}
             isLoading={isLoading}
         >
-            {!input ? (
+            {!inputs.length ? (
                 <EmptyInputSection onCreateNew={() => setShowAddModal(true)} />
             ) : (
-                <InputCard input={input} handleSelectIntegration={handleSelectIntegration} setInputs={setInputs} handleRemove={handleRemove} />
+                <InputCardsLayout inputs={inputs} handleSelectIntegration={handleSelectIntegration} setInputs={setInputs} handleRemove={handleRemove} setShowAddModal={setShowAddModal} />
             )}
 
             <AddInputModal
@@ -66,12 +63,37 @@ export const InputsSection = forwardRef<HTMLDivElement, { ref: React.RefObject<H
     );
 })
 
+function InputCardsLayout({
+    inputs, 
+    handleSelectIntegration, 
+    setInputs, 
+    handleRemove, 
+    setShowAddModal
+}: {
+    inputs: Input[], 
+    handleSelectIntegration: (integrationId: string, input: Input) => void, 
+    setInputs: (inputs: Input[]) => void, 
+    handleRemove: () => void, 
+    setShowAddModal: (show: boolean) => void}
+) {
+    return (
+        <div className="flex flex-col gap-4">
+            {inputs.map((input) => (
+                <InputCard key={input.integrationId} input={input} handleSelectIntegration={handleSelectIntegration} setInputs={setInputs} handleRemove={handleRemove} />
+            ))}
+            <Button variant="outline" onClick={() => setShowAddModal(true)}>
+                Add Event Source
+            </Button>
+        </div>
+    );
+}
+
 function InputCard({
     input,
     handleSelectIntegration,
     setInputs,
     handleRemove
-}: { input: Input, handleSelectIntegration: (integrationId: string) => void, setInputs: (inputs: Input[]) => void, handleRemove: () => void }) {
+}: { input: Input, handleSelectIntegration: (integrationId: string, input: Input) => void, setInputs: (inputs: Input[]) => void, handleRemove: () => void }) {
     const [showDetailsDialog, setShowDetailsDialog] = useState(false);
     
     const selectorProps = {
@@ -79,21 +101,27 @@ function InputCard({
         selectedIntegrationId: input.integrationId,
         onSelect: handleSelectIntegration,
         notionConfig: input.notionConfig,
-        onNotionConfigChange: (config: any) => {
+        onNotionConfigChange: (config: NotionConfig) => {
             if (input) {
                 setInputs([{ ...input, notionConfig: config }]);
             }
         },
         slackConfig: input.slackConfig,
-        onSlackConfigChange: (config: any) => {
+        onSlackConfigChange: (config: SlackConfig) => {
             if (input) {
                 setInputs([{ ...input, slackConfig: config }]);
             }
         },
         figmaConfig: input.figmaConfig,
-        onFigmaConfigChange: (config: any) => {
+        onFigmaConfigChange: (config: FigmaConfig) => {
             if (input) {
                 setInputs([{ ...input, figmaConfig: config }]);
+            }
+        },
+        gmailConfig: input.gmailConfig,
+        onGmailConfigChange: (config: GmailConfig) => {
+            if (input) {
+                setInputs([{ ...input, gmailConfig: config }]);
             }
         }
     };

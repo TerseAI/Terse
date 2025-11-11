@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { BackendProvider } from "../services/backend";
 import { Integration } from "./Integrations";
-import { NotionConfig, NotionPageConfig, SlackConfig, FigmaConfig, ConfluenceConfig } from "../shared/types";
+import { NotionConfig, NotionPageConfig, SlackConfig, FigmaConfig, ConfluenceConfig, GmailConfig } from "../shared/types";
 
 export interface Input {
     integration: Integration;
@@ -9,6 +9,7 @@ export interface Input {
     notionConfig?: NotionConfig; // Configuration for Notion input (database selection)
     slackConfig?: SlackConfig; // Configuration for Slack input (channel selection)
     figmaConfig?: FigmaConfig; // Configuration for Figma input (file selection)
+    gmailConfig?: GmailConfig; // Configuration for Gmail input (email selection)
 }
 
 export interface GithubInput {

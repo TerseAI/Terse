@@ -95,7 +95,7 @@ export function ConfluenceIntegration({
 
     // Dialog variant: full view
     return (
-        <div className="max-w-xs flex flex-col gap-3">
+        <div className="flex flex-col gap-3">
             <div className="flex flex-col gap-1.5">
                 <label className="font-medium">
                     {label}
