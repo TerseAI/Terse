@@ -49,7 +49,7 @@ export function SVGFlowArrows({
             const toPoint = to.current && getEdgePoint(to.current, container, 'left');
             if (!fromPoint || !toPoint) return { id, d: null as string | null };
             // Smooth cubic Bézier: control points biased horizontally
-            const dx = Math.max(40, Math.abs(toPoint.x - fromPoint.x) * 0.5);
+            const dx = Math.max(4, Math.abs(toPoint.x - fromPoint.x) * 0.5);
             const c1 = { x: fromPoint.x + dx, y: fromPoint.y };
             const c2 = { x: toPoint.x - dx, y: toPoint.y };
             const d = `M ${fromPoint.x},${fromPoint.y} C ${c1.x},${c1.y} ${c2.x},${c2.y} ${toPoint.x},${toPoint.y}`;

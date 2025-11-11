@@ -128,7 +128,7 @@ export default function AutomationSetupTab() {
     const [defaultName, setDefaultName] = useState<string | null>(null);
 
     const containerRef = useRef<HTMLDivElement>(null);
-    const InputsSectionRef = useRef<HTMLDivElement>(null);
+    const inputsSectionRef = useRef<Map<string, HTMLDivElement>>(new Map());
     const PromptSectionRef = useRef<HTMLDivElement>(null);
     const OutputSectionRef = useRef<HTMLDivElement>(null);
 
@@ -140,15 +140,28 @@ export default function AutomationSetupTab() {
         getDefaultName();
     }, [inputs, output]);
 
+    const createMapElementRef = (mapRef: React.RefObject<Map<string, HTMLDivElement>>, inputId: string): React.RefObject<HTMLDivElement | null> => {
+        return {
+            get current() {
+                return mapRef.current?.get(inputId) || null;
+            }
+        } as React.RefObject<HTMLDivElement | null>;
+    };
+
     const connections: Conn[] = []
     
-    if (inputs.length > 0 && InputsSectionRef.current != null) {
-        console.log('InputsSectionRef:', inputs.length);
-        for (const input of inputs) {
+    if (inputs.length > 0 && inputsSectionRef.current != null && inputsSectionRef.current.size > 0) {
+        inputs.forEach((input) => {
             if (input.integration != null && input.integrationId != null) {
-                connections.push({ id: `input-to-prompt-${input.integration}-${input.integrationId}`, from: InputsSectionRef, to: PromptSectionRef });
+                const inputId = input.id || input.integrationId || '';
+                const inputCardRef = createMapElementRef(inputsSectionRef, inputId);
+                connections.push({ 
+                    id: `input-to-prompt-${input.integration}-${input.integrationId}`, 
+                    from: inputCardRef, 
+                    to: PromptSectionRef 
+                });
             }
-        }
+        });
     }
     if (prompt != null && PromptSectionRef.current != null && OutputSectionRef.current != null && output != null) {
         connections.push({ id: 'prompt-to-output', from: PromptSectionRef, to: OutputSectionRef });
@@ -164,8 +177,8 @@ export default function AutomationSetupTab() {
                 <SaveAutomationButton defaultName={defaultName} />
             </div>
 
-            <div ref={containerRef} className="grid grid-flow-col place-items-start gap-3 relative">
-                <InputsSection ref={InputsSectionRef} />
+            <div ref={containerRef} className="grid grid-flow-col place-items-center gap-3 relative">
+                <InputsSection ref={inputsSectionRef} />
 
                 <PromptSection ref={PromptSectionRef} />
 
