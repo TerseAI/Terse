@@ -71,12 +71,13 @@ import { TicketManager } from "./ticketing/TicketIntegration";
 import { User } from "./types/prisma";
 import { JiraWebhookPayload } from "./utility/JiraWebhookPayload";
 import { LinearWebhookPayload } from "./utility/LinearWebhookPayload";
-import { 
-  figmaOAuthCallback, 
-  getFigmaOAuthUrl, 
+import {
+  figmaOAuthCallback,
+  getFigmaOAuthUrl,
   handleFigmaWebhook,
 } from "./routes/figma";
 import { getConfluenceResources, setConfluenceCredentials, validateConfluenceCredentials } from "./routes/confluence";
+import { initializeRealtimeSocket } from "./realtimeSocket";
 
 export type Session = {
   user: User;
@@ -89,8 +90,12 @@ export type Session = {
 const app = express();
 const server = createServer(app);
 
+// Initialize Socket.IO for realtime updates
+await initializeRealtimeSocket(server);
+
+
 // WebSocket handler, keep in memory as long as the server is running!!
-const agentSocketServer = new AgentSocketServer(server, "/session");
+// const agentSocketServer = new AgentSocketServer(server, "/session");
 
 app.use(
   cors({

@@ -13,7 +13,7 @@ export async function createRunRecord(params: {
     trigger: RunTrigger;
 }): Promise<string> {
     const { automationId, trigger } = params;
-    const prisma = db() as any;
+    const prisma = db();
     const record = await prisma.run_history_records.create({
         data: {
             automation_id: automationId,
@@ -35,7 +35,7 @@ export async function createRunRecord(params: {
 }
 
 export async function markRunSkipped(runId: string, reason: string): Promise<void> {
-    const prisma = db() as any;
+    const prisma = db();
     await prisma.run_history_records.update({
         where: { id: runId },
         data: {
@@ -48,7 +48,7 @@ export async function markRunSkipped(runId: string, reason: string): Promise<voi
 }
 
 export async function markRunProcessed(runId: string, reason?: string): Promise<void> {
-    const prisma = db() as any;
+    const prisma = db();
     await prisma.run_history_records.update({
         where: { id: runId },
         data: {
@@ -76,7 +76,7 @@ export async function appendRunAction(
 }
 
 export async function finalizeRunStatus(runId: string, status: Extract<RunHistoryStatus, "success" | "failed">): Promise<void> {
-    const prisma = db() as any;
+    const prisma = db();
     await prisma.run_history_records.update({
         where: { id: runId },
         data: { status },

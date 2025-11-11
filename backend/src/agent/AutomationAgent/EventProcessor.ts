@@ -9,6 +9,7 @@ import { appendRunAction, createRunRecord, finalizeRunStatus, markRunProcessed, 
 import { ApprovalResult } from './AutomationAgent';
 import { Agent, AgentOutputType, RunResult } from '@openai/agents';
 import { Session } from '../../server';
+import { emitCacheInvalidationWithWildcard } from '../../realtimeSocket';
 
 // The job of this class is to take an Input Event, and check if it's a match for an Automation.
 // It will then create a Session, and summon the Automation Agent with the create user data.
@@ -126,6 +127,7 @@ export class EventProcessor {
                 automationId: automation.id,
                 trigger,
             });
+            emitCacheInvalidationWithWildcard(this.user.id, 'runHistory', automation.id);
         } catch (e) {
             console.error(chalk.yellow('Failed to create run history record'), e);
         }
@@ -215,6 +217,9 @@ async function persistRunResult<T extends Session>(
         for (const action of (session as any).runActions) {
             try {
                 await appendRunAction(runId, action);
+                // Invalidate all run history queries for this automation, regardless of params
+                // The frontend will match on tag='runHistory' and id=automationId
+                emitCacheInvalidationWithWildcard(session.user.id, 'runHistory', automation.id);
             } catch (e) {
                 console.error(chalk.yellow('Failed to append run action'), e);
             }
@@ -225,6 +230,8 @@ async function persistRunResult<T extends Session>(
     if (runId) {
         try {
             await finalizeRunStatus(runId, result.finalOutput ? 'success' : 'failed');
+            // Invalidate all run history queries for this automation when status changes
+            emitCacheInvalidationWithWildcard(session.user.id, 'runHistory', automation.id);
         } catch (e) {
             console.error(chalk.yellow('Failed to finalize run status'), e);
         }
