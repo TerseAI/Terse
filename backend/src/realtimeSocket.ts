@@ -133,18 +133,6 @@ export function emitCacheInvalidationWithKey(
     io.to(`user:${userId}`).emit("invalidate", key);
 }
 
-export function emitCacheInvalidationWithKeyId(
-    userId: string,
-    key: string,
-    id: string
-) {
-    if (!io) {
-        console.warn("Socket.IO server not initialized");
-        return;
-    }
-    io.to(`user:${userId}`).emit("invalidate", [key, id]);
-}
-
 export function emitCacheInvalidationWithWildcard(
     userId: string,
     tag: string,
