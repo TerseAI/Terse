@@ -33,6 +33,7 @@
     "@openai/agents": "^0.0.10",
     "@prisma/client": "^6.14.0",
     "@slack/web-api": "^7.9.3",
+    "@socket.io/redis-adapter": "^8.3.0",
     "axios": "^1.10.0",
     "chalk": "^5.4.1",
     "confluence.js": "^2.1.0",
@@ -45,6 +46,8 @@
     "jsonwebtoken": "^9.0.2",
     "pg": "^8.16.3",
     "pgvector": "^0.2.1",
+    "redis": "^5.9.0",
+    "socket.io": "^4.8.1",
     "tsc-esm-fix": "^3.1.2",
     "tsx": "^4.20.3",
     "zod": "^3.25.76"

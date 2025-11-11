@@ -1,11 +1,11 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import RunHistoryEmptyState from "./RunHistoryEmptyState"
 import RunHistoryToolBar from "./RunHistoryToolBar";
 import RunHistoryItem from "./RunHistoryItem";
 import RunHistoryLoadingState from "./RunHistoryLoadingState";
-import { GetRunHistoryParams, GetRunHistoryResponse, RunHistoryRecord, RunHistoryStatus } from "../../shared/RunHistoryTypes";
+import { RunHistoryStatus } from "../../shared/RunHistoryTypes";
 import { useAutomationContext } from "../../context/AutomationContext";
-import { BackendProvider } from "../../services/backend";
+import { useRunHistory } from "../../hooks/api/useRunHistory";
 
 // Remote data source only; no local mock
 
@@ -17,9 +17,6 @@ export default function RunHistory() {
 
     const [currentPage, setCurrentPage] = useState(1);
     const [runsPerPage, setRunsPerPage] = useState(10);
-    const [total, setTotal] = useState(0);
-    const [remoteRuns, setRemoteRuns] = useState<RunHistoryRecord[]>([]);
-    const [isLoading, setIsLoading] = useState(false);
 
     const [selectedStatuses, setSelectedStatuses] = useState<Set<RunHistoryStatus>>(
         new Set(["success", "failed", "in_progress"])
@@ -30,48 +27,14 @@ export default function RunHistory() {
         to: undefined
     });
 
-    useEffect(() => {
-        const controller = new AbortController();
-        const toLocalStartISOString = (d?: Date) => {
-            if (!d) return undefined;
-            const local = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0, 0);
-            return new Date(local.getTime() - local.getTimezoneOffset() * 60000).toISOString();
-        };
-        const toLocalEndISOString = (d?: Date) => {
-            if (!d) return undefined;
-            const local = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999);
-            return new Date(local.getTime() - local.getTimezoneOffset() * 60000).toISOString();
-        };
-        const run = async () => {
-            if (!automationId) return;
-            setIsLoading(true);
-            const params: GetRunHistoryParams = {
-                page: currentPage,
-                pageSize: runsPerPage,
-                q: searchQuery.trim() || undefined,
-                start: toLocalStartISOString(dateRange.from),
-                end: toLocalEndISOString(dateRange.to ?? dateRange.from),
-                status: Array.from(selectedStatuses).length < 4 ? Array.from(selectedStatuses) : undefined,
-            };
-            try {
-                const data: GetRunHistoryResponse = await BackendProvider.getRunHistory(automationId, params);
-                if (!controller.signal.aborted) {
-                    setRemoteRuns(data.items);
-                    setTotal(data.total);
-                }
-            } catch (e) {
-                if (!controller.signal.aborted) {
-                    console.error('Failed to fetch run history', e);
-                }
-            } finally {
-                if (!controller.signal.aborted) {
-                    setIsLoading(false);
-                }
-            }
-        };
-        run();
-        return () => controller.abort();
-    }, [automationId, currentPage, runsPerPage, searchQuery, dateRange.from, dateRange.to, selectedStatuses]);
+    const { runs: remoteRuns, total, isLoading } = useRunHistory({
+        automationId,
+        page: currentPage,
+        pageSize: runsPerPage,
+        searchQuery,
+        dateRange,
+        selectedStatuses,
+    });
 
     const filteredRuns = useMemo(() => remoteRuns, [remoteRuns]);
 
