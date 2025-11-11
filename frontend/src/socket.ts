@@ -19,7 +19,7 @@ export async function initializeSocket() {
     
     // Socket.IO needs the full origin URL, and we specify the path via the 'path' option
     // The path will be: /api/socket.io (which the Vite proxy will forward to /socket.io on backend)
-    const socketUrl = window.location.origin;
+    const socketUrl = import.meta.env.VITE_SOCKET_URL ?? window.location.origin;
     const socketPath = `${wsBase}/socket.io`;
     
     console.log('Connecting to Socket.IO at:', socketUrl, 'with path:', socketPath);
