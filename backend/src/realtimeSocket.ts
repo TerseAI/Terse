@@ -135,8 +135,8 @@ export function emitCacheInvalidationWithKey(
 
 export function emitCacheInvalidationWithWildcard(
     userId: string,
-    tag: string,
-    id?: string
+    key: string,
+    id: string
 ) {
     if (!io) {
         console.warn("Socket.IO server not initialized");
@@ -145,5 +145,5 @@ export function emitCacheInvalidationWithWildcard(
     // Send tag-based invalidation payload
     // If id is provided, frontend will match on both tag and id
     // If id is not provided, frontend will match on tag only
-    io.to(`user:${userId}`).emit("invalidate", { tag, id });
+    io.to(`user:${userId}`).emit("invalidate", { key, id });
 }

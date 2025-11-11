@@ -48,35 +48,19 @@ export async function initializeSocket() {
     // keys: array of serialized SWR keys (JSON strings that can be parsed back to tuples)
     // tag: prefix to match against the first element of tuple keys (e.g., 'runHistory' matches ['runHistory', ...])
     // id: optional second element to match (e.g., automationId for runHistory queries)
-    socket.on('invalidate', (payload: { keys?: string[]; tag?: string; id?: string }) => {
+    socket.on('invalidate', (payload: { key?: string; id?: string }) => {
         console.log('Invalidation received:', payload);
-        const { keys = [], tag, id } = payload || {};
-        if (keys.length) {
-            // Parse serialized keys back to tuples and invalidate
-            keys.forEach((serializedKey) => {
-                try {
-                    const key = JSON.parse(serializedKey);
-                    mutate(key);
-                } catch (e) {
-                    // If parsing fails, try as-is (might be a string key)
-                    mutate(serializedKey);
-                }
-            });
-        } else if (tag) {
-            // Match against first element of tuple keys
-            // If id is provided, also match on the second element (e.g., automationId)
-            mutate((key: any) => {
-                if (Array.isArray(key) && key.length > 0) {
-                    const tagMatches = key[0] === tag;
-                    if (id !== undefined) {
-                        // Match on both tag and id (second element)
-                        return tagMatches && key.length > 1 && key[1] === id;
-                    }
-                    return tagMatches;
-                }
-                // Fallback for string keys
-                return typeof key === 'string' && key.includes(tag);
-            });
+        const { key, id } = payload || {};
+        console.log('Invalidating key:', key, 'and id:', id);
+        if (key && id) {
+            console.log('Invalidating key and id:', [key, id]);
+            // Use matcher function to invalidate all keys that start with [key, id]
+            // This matches both ['runHistory', automationId] and ['runHistory', automationId, params]
+            mutate((k) => Array.isArray(k) && k[0] === key && k[1] === id);
+        } else if (key) {
+            console.log('Invalidating key:', key);
+            // Use matcher function to invalidate all keys that start with [key]
+            mutate((k) => Array.isArray(k) && k[0] === key);
         }
     });
 }

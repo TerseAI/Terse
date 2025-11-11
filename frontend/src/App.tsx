@@ -52,7 +52,7 @@ function Content() {
 
   // Initialize socket when user is authenticated
   useEffect(() => {
-    if (user && !isLoading) {
+    if (user) {
       initializeSocket();
     } else {
       disconnectSocket();
@@ -62,7 +62,7 @@ function Content() {
     return () => {
       disconnectSocket();
     };
-  }, [user, isLoading]);
+  }, [user]);
 
   if (isLoading) {
     return <Spin />;
