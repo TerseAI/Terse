@@ -2,7 +2,7 @@ import { RunHistoryAction } from "../../shared/RunHistoryTypes";
 import { ConfluenceIntegration } from "../../shared/types";
 import { AutomationOutput, User, AutomationConfluenceConfig } from "../../types/prisma";
 import { Session } from "../../server";
-import { Output, OutputType } from "./Output";
+import { Output, OutputType, ToolboxEntry } from "./Output";
 import { db } from "../../prismaClient";
 import { RunContext, tool } from "@openai/agents";
 import { ConfluenceClient } from 'confluence.js';
@@ -20,7 +20,10 @@ export interface ConfluenceSession extends Session {
 
 export class ConfluenceOutput extends Output<ConfluenceSession> {
     constructor() {
-        const toolbox = [confluenceQueryPageTool, confluenceAddCommentTool];
+        const toolbox: ToolboxEntry<ConfluenceSession>[] = [
+            { tool: confluenceQueryPageTool, isReadOnly: true },
+            { tool: confluenceAddCommentTool, isReadOnly: false },
+        ];
         super(OutputType.Confluence, toolbox);
     }
 
