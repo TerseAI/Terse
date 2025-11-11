@@ -57,7 +57,7 @@ export function useRunHistory({
         };
     }
     
-    const key = runHistoryKey(automationId);
+    const key = runHistoryKey(automationId, params);
 
     const { data, error, isValidating, mutate } = useSWR<GetRunHistoryResponse>(
         key,
