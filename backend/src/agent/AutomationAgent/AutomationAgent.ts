@@ -34,7 +34,7 @@ export class AutomationAgent<T extends Session> {
         this.automationPrompt = automationPrompt;
         this.automationInputs = automationInputs;
         this.automationOutput = automationOutput;
-        this.tools = output.toolbox;
+        this.tools = output.toolbox.map(entry => entry.tool);
     }
 
     async initializeAgent(): Promise<void> {

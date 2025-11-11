@@ -4,7 +4,7 @@ import { AutomationNotionPageConfig, AutomationOutput, NotionIntegration, User }
 import { Session } from "../../server";
 import { Client } from '@notionhq/client';
 import { z } from "zod";
-import { Output, OutputType } from "./Output";
+import { Output, OutputType, ToolboxEntry } from "./Output";
 import { db } from "../../prismaClient";
 import chalk from "chalk";
 import { GetPageResponse, PageObjectResponse, PartialPageObjectResponse } from "@notionhq/client/build/src/api-endpoints";
@@ -18,7 +18,10 @@ export interface NotionPageSession extends Session {
 
 export class NotionPageOutput extends Output<NotionPageSession> {
     constructor() {
-        const toolbox = [notionQueryPageTool, notionModifyBlocksTool];
+        const toolbox: ToolboxEntry<NotionPageSession>[] = [
+            { tool: notionQueryPageTool, isReadOnly: true },
+            { tool: notionModifyBlocksTool, isReadOnly: false },
+        ];
         super(OutputType.NotionPage, toolbox);
     }
 

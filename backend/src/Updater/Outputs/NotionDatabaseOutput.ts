@@ -1,4 +1,4 @@
-import { Output, OutputType } from "./Output";
+import { Output, OutputType, ToolboxEntry } from "./Output";
 import { RunContext, tool } from "@openai/agents";
 import { z } from "zod";
 import { Session } from "../../server";
@@ -17,7 +17,10 @@ export interface NotionDatabaseSession extends Session {
 
 export class NotionDatabaseOutput extends Output<NotionDatabaseSession> {
     constructor() {
-        const toolbox = [notionQueryDatabaseTool, notionModifyPageTool];
+        const toolbox: ToolboxEntry<NotionDatabaseSession>[] = [
+            { tool: notionQueryDatabaseTool, isReadOnly: true },
+            { tool: notionModifyPageTool, isReadOnly: false },
+        ];
         super(OutputType.Notion, toolbox);
     }
 
