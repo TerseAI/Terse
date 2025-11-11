@@ -5,40 +5,39 @@ import { SectionLayout } from "./components/SectionLayout";
 import { AddInputModal } from "./components/AddInputModal";
 import { Zap, Plus, Settings } from "lucide-react";
 import { useIntegrationSelector } from "../../components/IntegrationSelector";
-import { clearIntegrationConfigs } from "../../utility/IntegrationUtils";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { IntegrationTitle } from "./components/IntegrationTitle";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { FigmaConfig, GmailConfig, NotionConfig, SlackConfig } from "@/shared/types";
+import { v4 as uuidv4 } from 'uuid';
 
 export const InputsSection = forwardRef<HTMLDivElement, { ref: React.RefObject<HTMLDivElement> }>((_, ref) => {
     const { inputs, setInputs, isLoading } = useAutomationContext();
     const [showAddModal, setShowAddModal] = useState(false);
 
+    console.log('Inputs:', inputs);
+
     const handleSelectPlatform = (integration: Integration) => {
-        // Clear all configs when switching platform (new integration type)
-        const newInputs: Input[] = [...inputs, { integration }];
+        const newInputId = uuidv4(); // We need to mint a placeholder ID for the new input so that we can identify it later.
+        const newInput: Input = { id: newInputId, integration };
+        const newInputs: Input[] = [...inputs, newInput];
         setInputs(newInputs);
-        console.log('Inputs:', newInputs);
         setShowAddModal(false);
     };
 
     const handleSelectIntegration = (integrationId: string, input: Input) => {
-        if (input) {
-            // Clear all configs when switching integration instances (will be re-selected when selector loads)
-            const clearedConfigs = clearIntegrationConfigs(input);
-            setInputs([{
-                ...input,
-                integrationId,
-                ...clearedConfigs
-            }]);
+        // Check if we have a matching input already in inputs
+        const matchingInput = inputs.find(i => i.id === input.id);
+        if (matchingInput) {
+            // Update the matching input with the new integrationId. Keep other existing inputs unchanged.
+            setInputs(inputs.map(i => i.id === matchingInput.id ? { ...i, integrationId } : i));
         }
     };
 
-    const handleRemove = () => {
-        setInputs([]);
+    const handleRemove = (id: string) => {
+        setInputs(inputs.filter(input => input.id !== id));
     };
 
     return (
@@ -73,7 +72,7 @@ function InputCardsLayout({
     inputs: Input[], 
     handleSelectIntegration: (integrationId: string, input: Input) => void, 
     setInputs: (inputs: Input[]) => void, 
-    handleRemove: () => void, 
+    handleRemove: (id: string) => void, 
     setShowAddModal: (show: boolean) => void}
 ) {
     return (
@@ -93,7 +92,7 @@ function InputCard({
     handleSelectIntegration,
     setInputs,
     handleRemove
-}: { input: Input, handleSelectIntegration: (integrationId: string, input: Input) => void, setInputs: (inputs: Input[]) => void, handleRemove: () => void }) {
+}: { input: Input, handleSelectIntegration: (integrationId: string, input: Input) => void, setInputs: (inputs: Input[]) => void, handleRemove: (id: string) => void }) {
     const [showDetailsDialog, setShowDetailsDialog] = useState(false);
     
     const selectorProps = {
@@ -121,6 +120,7 @@ function InputCard({
         gmailConfig: input.gmailConfig,
         onGmailConfigChange: (config: GmailConfig) => {
             if (input) {
+                console.log('Gmail config changed:', config);
                 setInputs([{ ...input, gmailConfig: config }]);
             }
         }
@@ -145,7 +145,7 @@ function InputCard({
                     <Button variant="outline" onClick={() => setShowDetailsDialog(true)}>
                         More Details
                     </Button>
-                    <Button variant="destructive" onClick={handleRemove}>
+                    <Button variant="destructive" onClick={() => handleRemove(input.id)}>
                         Remove
                     </Button>
                 </CardFooter>

@@ -5,6 +5,7 @@ import { IntegrationType } from "@prisma/client";
 import { parsePageParams } from "../utility/pagination";
 import chalk from "chalk";
 import { AutomationInputSetup } from "../setup/AutomationInputSetup";
+import { AutomationWithRelations } from "src/types/prisma";
 
 // Map frontend integration string to backend IntegrationType enum
 const integrationTypeMap: Record<string, IntegrationType> = {
@@ -226,8 +227,9 @@ async function createOutputConfig(
 }
 
 // Helper function to transform config from database to API format
-function transformInputConfig(input: any): AutomationInput {
+function transformInputConfig(input: any, id: string): AutomationInput {
     const base: AutomationInput = {
+        id: id,
         integration: input.integration_type.toLowerCase(),
         integrationId: input.integration_id,
     };
@@ -470,7 +472,7 @@ export async function getUserAutomations(req: Request, res: Response) {
         const total = await prisma.automations.count({ where });
 
         // Get paginated results
-        const automations = await prisma.automations.findMany({
+        const automations: AutomationWithRelations[] = await prisma.automations.findMany({
             where,
             include: {
                 prompt: true,
@@ -511,7 +513,7 @@ export async function getUserAutomations(req: Request, res: Response) {
                 name: automation.name,
                 isActive: automation.is_active,
                 prompt: automation.prompt ? { text: automation.prompt.content } : undefined,
-                inputs: automation.inputs.map(input => transformInputConfig(input)),
+                inputs: automation.inputs.map(input => transformInputConfig(input, input.id)),
                 output: automation.output ? transformOutputConfig(automation.output) : undefined
             })),
             pagination: {
@@ -585,7 +587,7 @@ export async function getUserAutomation(req: Request, res: Response) {
             name: automation.name,
             isActive: automation.is_active,
             prompt: automation.prompt ? { text: automation.prompt.content } : undefined,
-            inputs: automation.inputs.map(input => transformInputConfig(input)),
+            inputs: automation.inputs.map(input => transformInputConfig(input, input.id)),
             output: automation.output ? transformOutputConfig(automation.output) : undefined
         };
 
