@@ -99,7 +99,7 @@ function InputCard({
     const selectorProps = {
         integrationType: input.integration,
         selectedIntegrationId: input.integrationId,
-        onSelect: handleSelectIntegration,
+        onSelect: (integrationId: string) => handleSelectIntegration(integrationId, input),
         notionConfig: input.notionConfig,
         onNotionConfigChange: (config: NotionConfig) => {
             if (input) {
