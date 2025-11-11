@@ -37,11 +37,19 @@ export class AutomationAgent<T extends Session> {
         this.tools = output.toolbox;
     }
 
+    chooseAutoamationAgentModel(): string {
+        // if we are local dev, use cheaper model
+        if (process.env.NODE_ENV === 'development') {
+            return 'gpt-4o-mini';
+        }
+        return 'gpt-5';
+    }
+
     async initializeAgent(): Promise<void> {
         const agent = new Agent<T, AgentOutputType>({
             name: 'Living Document Automator',
             instructions: await systemPrompt(this.session, this.automationPrompt, this.automationInputs, this.automationOutput),
-            model: 'gpt-5',
+            model: this.chooseAutoamationAgentModel(),
             tools: this.tools
         });
 
