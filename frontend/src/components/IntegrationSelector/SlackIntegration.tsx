@@ -24,7 +24,8 @@ export function SlackIntegration({
     label = 'Connection',
     integrationType,
     slackConfig,
-    onSlackConfigChange
+    onSlackConfigChange,
+    variant
 }: SlackIntegrationProps) {
     if (isLoading) {
         return (
@@ -37,7 +38,7 @@ export function SlackIntegration({
 
     if (integrations.length === 0) {
         return (
-            <div className="max-w-xs flex flex-col gap-3 p-4 rounded-lg border border-dashed border-input bg-card">
+            <div className="flex flex-col gap-3 p-4 rounded-lg border border-dashed border-input bg-card">
                 <div className="text-sm text-muted-foreground">
                     No {getIntegrationName(integrationType)} accounts connected
                 </div>
@@ -58,8 +59,18 @@ export function SlackIntegration({
     }));
     const selectedOption = connectionSelections.find(option => option.value === selectedIntegrationId) || connectionSelections[0];
 
+    // Card variant: compact view
+    if (variant === 'card') {
+        return (
+            <div className="text-sm">
+                {selectedOption ? selectedOption.label : 'No connection selected'}
+            </div>
+        );
+    }
+
+    // Dialog variant: full view
     return (
-        <div className="max-w-xs flex flex-col gap-3">
+        <div className="flex flex-col gap-3">
             <div className="flex flex-col gap-1.5">
                 <label className="font-medium">
                     {label}

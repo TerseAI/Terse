@@ -1,14 +1,16 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { BackendProvider } from "../services/backend";
 import { Integration } from "./Integrations";
-import { NotionConfig, NotionPageConfig, SlackConfig, FigmaConfig, ConfluenceConfig } from "../shared/types";
+import { NotionConfig, NotionPageConfig, SlackConfig, FigmaConfig, ConfluenceConfig, GmailConfig } from "../shared/types";
 
 export interface Input {
+    id: string;
     integration: Integration;
     integrationId?: string; // ID of the specific integration instance
     notionConfig?: NotionConfig; // Configuration for Notion input (database selection)
     slackConfig?: SlackConfig; // Configuration for Slack input (channel selection)
     figmaConfig?: FigmaConfig; // Configuration for Figma input (file selection)
+    gmailConfig?: GmailConfig; // Configuration for Gmail input (email selection)
 }
 
 export interface GithubInput {
@@ -74,11 +76,13 @@ export function AutomationProvider({ children, automationId }: { children: React
                 setId(automation.id);
                 setName(automation.name);
                 setInputs(automation.inputs.map(input => ({
+                    id: input.id,
                     integration: input.integration as Integration,
                     integrationId: input.integrationId,
                     notionConfig: input.notionConfig,
                     slackConfig: input.slackConfig,
-                    figmaConfig: input.figmaConfig
+                    figmaConfig: input.figmaConfig,
+                    gmailConfig: input.gmailConfig
                 })));
                 setOutput(automation.output ? {
                     integration: automation.output.integration as Integration,
