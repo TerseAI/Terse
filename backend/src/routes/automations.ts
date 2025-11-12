@@ -5,7 +5,7 @@ import { IntegrationType } from "@prisma/client";
 import { parsePageParams } from "../utility/pagination";
 import chalk from "chalk";
 import { AutomationInputSetup } from "../setup/AutomationInputSetup";
-import { AutomationWithRelations } from "src/types/prisma";
+import { AutomationWithRelations } from "../types/prisma";
 
 // Map frontend integration string to backend IntegrationType enum
 const integrationTypeMap: Record<string, IntegrationType> = {
