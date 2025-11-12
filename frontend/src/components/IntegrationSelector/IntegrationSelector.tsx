@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Integration } from '../../context/Integrations';
 import { BackendProvider } from '../../services/backend';
-import { getIntegrationInstances } from '../../utility/IntegrationUtils';
+import { getIntegrationInstances, isInputComplete } from '../../utility/IntegrationUtils';
 import { BaseIntegrationProps, IntegrationSelectorProps } from './types';
 import { GmailIntegration } from './GmailIntegration';
 import { NotionIntegration } from './NotionIntegration';
@@ -14,7 +14,11 @@ import { ConfluenceIntegration } from './ConfluenceIntegration';
 import { useOAuthConnection } from './useOAuthConnection';
 import { IntegrationInstance } from '@/utility/IntegrationFormatters';
 
-export function useIntegrationSelector(props: IntegrationSelectorProps): { CardContent: () => React.ReactNode, DialogContent: () => React.ReactNode } {
+export function useIntegrationSelector(props: IntegrationSelectorProps): { 
+    CardContent: () => React.ReactNode, 
+    DialogContent: () => React.ReactNode,
+    isConfigurationIncomplete: () => boolean
+} {
     const { integrationType, selectedIntegrationId, onSelect } = props;
     const [integrations, setIntegrations] = useState<IntegrationInstance[]>([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -175,6 +179,21 @@ export function useIntegrationSelector(props: IntegrationSelectorProps): { CardC
     const CardContent = () => renderIntegration('card');
     const DialogContent = () => renderIntegration('dialog');
 
-    return { CardContent, DialogContent };
+    // Check if configuration is incomplete
+    const isConfigurationIncomplete = () => {
+        const input = {
+            integration: props.integrationType,
+            integrationId: props.selectedIntegrationId,
+            notionConfig: props.notionConfig,
+            notionPageConfig: props.notionPageConfig,
+            slackConfig: props.slackConfig,
+            figmaConfig: props.figmaConfig,
+            gmailConfig: props.gmailConfig,
+            confluenceConfig: props.confluenceConfig,
+        };
+        return !isInputComplete(input);
+    };
+
+    return { CardContent, DialogContent, isConfigurationIncomplete };
 }
 
