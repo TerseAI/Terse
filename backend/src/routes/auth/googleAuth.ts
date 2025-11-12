@@ -4,25 +4,7 @@ import crypto from "crypto";
 import chalk from "chalk";
 import { findUserByEmail, createUser } from "../../types/user";
 import { google } from "googleapis";
-
-// Validate Google Auth environment variables (reusing Gmail OAuth client)
-if (!process.env.GMAIL_CLIENT_ID) {
-    throw new Error('GMAIL_CLIENT_ID is not set in environment variables (required for Google login)');
-}
-if (!process.env.GMAIL_CLIENT_SECRET) {
-    throw new Error('GMAIL_CLIENT_SECRET is not set in environment variables (required for Google login)');
-}
-if (!process.env.GOOGLE_AUTH_CALLBACK_URL) {
-    throw new Error('GOOGLE_AUTH_CALLBACK_URL is not set in environment variables');
-}
-if (!process.env.GOOGLE_LOGIN_REDIRECT) {
-    throw new Error('GOOGLE_LOGIN_REDIRECT is not set in environment variables');
-}
-
-const GOOGLE_AUTH_CLIENT_ID = process.env.GMAIL_CLIENT_ID;
-const GOOGLE_AUTH_CLIENT_SECRET = process.env.GMAIL_CLIENT_SECRET;
-const GOOGLE_AUTH_CALLBACK_URL = process.env.GOOGLE_AUTH_CALLBACK_URL;
-const GOOGLE_LOGIN_REDIRECT = process.env.GOOGLE_LOGIN_REDIRECT;
+import { gmail, googleAuth } from "../../config/settings";
 
 // Google OAuth scopes for login (different from Gmail integration)
 const GOOGLE_LOGIN_SCOPES = [
@@ -34,9 +16,9 @@ const GOOGLE_LOGIN_SCOPES = [
 // Create OAuth2 client for Google login
 function getGoogleAuthClient() {
     return new google.auth.OAuth2(
-        GOOGLE_AUTH_CLIENT_ID,
-        GOOGLE_AUTH_CLIENT_SECRET,
-        GOOGLE_AUTH_CALLBACK_URL
+        gmail.clientId,
+        gmail.clientSecret,
+        googleAuth.callbackUrl
     );
 }
 
@@ -120,7 +102,7 @@ export async function googleCallback(req: Request, res: Response) {
                 window.opener.postMessage({
                   type: 'GOOGLE_AUTH_SUCCESS',
                   token: '${token}'
-                }, '${GOOGLE_LOGIN_REDIRECT}');
+                }, '${googleAuth.loginRedirect}');
                 window.close();
               }
             </script>

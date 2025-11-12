@@ -6,6 +6,7 @@ import { StructuredSearchOptions, TicketManager } from "./TicketIntegration";
 import { Team, User, UserContext, Organization } from "../shared/TicketSystem";
 import { IssueFilter, IssuesQueryVariables } from "@linear/sdk/dist/_generated_documents";
 import { generateWebhookSecret } from '../utility/webhookSecrets';
+import { urls } from "../config/settings";
 
 export class LinearAdapter implements TicketManager {
     type: TicketSystemType = TicketSystemType.Linear;
@@ -75,7 +76,7 @@ export class LinearAdapter implements TicketManager {
         }
 
         const webhookSecret = this.generateWebhookSecret();
-        const backendUrl = process.env.BACKEND_URL;
+        const backendUrl = urls.backend;
 
         const webhook = await this.client.createWebhook({
             url: `${backendUrl}/webhooks/linear/${user.id}`,

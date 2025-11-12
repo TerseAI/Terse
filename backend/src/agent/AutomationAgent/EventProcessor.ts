@@ -132,30 +132,6 @@ export class EventProcessor {
             console.error(chalk.yellow('Failed to create run history record'), e);
         }
 
-        // Filter the event using AI to see if it's relevant to this automation
-        const filterResult = await filterEvent(this.inputEvent, automation.prompt);
-        if (!filterResult.isRelevant) {
-            console.log(chalk.gray(`Event is not relevant to automation "${automation.name}": ${filterResult.reason}`));
-            if (runId) {
-                try {
-                    await markRunSkipped(runId, filterResult.reason);
-                } catch (e) {
-                    console.error(chalk.yellow('Failed to mark run skipped'), e);
-                }
-            }
-            return new ProcessorResult(false, `Not relevant: ${filterResult.reason}`, automation);
-        }
-
-        if (runId) {
-            try {
-                await markRunProcessed(runId, filterResult.reason);
-            } catch (e) {
-                console.error(chalk.yellow('Failed to mark run processed'), e);
-            }
-        }
-
-        console.log(chalk.green(`Event is relevant to automation "${automation.name}"`));
-
         // Get the output from automation relations (already fetched with config)
         const outputIntegration = automation.output;
 
@@ -186,6 +162,35 @@ export class EventProcessor {
             );
         }
 
+        // Filter the event using AI to see if it's relevant to this automation
+        const filterResult = await filterEvent<Session>(
+            this.inputEvent,
+            automation.prompt,
+            output,
+            session
+        );
+        if (!filterResult.isRelevant) {
+            console.log(chalk.gray(`Event is not relevant to automation "${automation.name}": ${filterResult.reason}`));
+            if (runId) {
+                try {
+                    await markRunSkipped(runId, filterResult.reason);
+                } catch (e) {
+                    console.error(chalk.yellow('Failed to mark run skipped'), e);
+                }
+            }
+            return new ProcessorResult(false, `Not relevant: ${filterResult.reason}`, automation);
+        }
+
+        if (runId) {
+            try {
+                await markRunProcessed(runId, filterResult.reason);
+            } catch (e) {
+                console.error(chalk.yellow('Failed to mark run processed'), e);
+            }
+        }
+
+        console.log(chalk.green(`Event is relevant to automation "${automation.name}"`));
+
         // Create automation agent with the session and output
         const automationAgent = new AutomationAgent(session, output, automation.prompt, automation.inputs, outputIntegration);
         await automationAgent.initializeAgent();
@@ -194,7 +199,7 @@ export class EventProcessor {
         // Run the automation agent
         // Type assertion needed because TypeScript can't narrow the generic type at runtime
         const result = await automationAgent.run() as ApprovalResult<Session, Agent<Session, AgentOutputType>>;
-        
+
         if (result.status === 'completed') {
             console.log(chalk.green(`Automation "${automation.name}" completed:`), result.result.finalOutput);
             return persistRunResult(runId, result.result, session, automation, result);
@@ -206,10 +211,10 @@ export class EventProcessor {
 }
 
 async function persistRunResult<T extends Session>(
-    runId: string | null, 
-    result: RunResult<T, Agent<T, AgentOutputType>>, 
-    session: T, 
-    automation: Automation, 
+    runId: string | null,
+    result: RunResult<T, Agent<T, AgentOutputType>>,
+    session: T,
+    automation: Automation,
     approvalResult?: ApprovalResult<T, Agent<T, AgentOutputType>> | null
 ): Promise<ProcessorResult<T>> {
     // Check if session has runActions (NotionSession and future session types may have this)

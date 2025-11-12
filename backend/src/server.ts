@@ -4,6 +4,8 @@ import cors from "cors";
 import "dotenv/config";
 import express from "express";
 import { createServer } from "http";
+// Import settings early to validate environment variables at startup
+import "./config/settings";
 import { AgentSocketServer, requestSessionSocketToken } from "./agent/socket";
 import { getActivityFeed, getDailyActivitySummary } from "./routes/activity";
 import { authMiddleware, login, logout, setSession } from "./routes/auth";
@@ -77,7 +79,6 @@ import {
   handleFigmaWebhook,
 } from "./routes/figma";
 import { getConfluenceResources, setConfluenceCredentials, validateConfluenceCredentials } from "./routes/confluence";
-import { initializeRealtimeSocket } from "./realtimeSocket";
 
 export type Session = {
   user: User;
@@ -90,12 +91,8 @@ export type Session = {
 const app = express();
 const server = createServer(app);
 
-// Initialize Socket.IO for realtime updates
-await initializeRealtimeSocket(server);
-
-
 // WebSocket handler, keep in memory as long as the server is running!!
-// const agentSocketServer = new AgentSocketServer(server, "/session");
+const agentSocketServer = new AgentSocketServer(server, "/session");
 
 app.use(
   cors({
