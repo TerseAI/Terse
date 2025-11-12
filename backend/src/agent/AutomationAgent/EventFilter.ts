@@ -1,14 +1,9 @@
+import { Agent, AgentInputItem, run } from '@openai/agents';
 import { InputEvent } from "../../Updater/InputEvents";
 import { AutomationPrompt } from "../../types/prisma";
-import OpenAI from 'openai';
-
-const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
-
-if (!OPENAI_API_KEY) {
-    throw new Error('OPENAI_API_KEY is not set in environment variables');
-}
-
-const openai = new OpenAI({ apiKey: OPENAI_API_KEY });
+import { Output, ToolboxEntry } from "../../Updater/Outputs/Output";
+import { Session } from "../../server";
+import { z } from "zod";
 
 export interface EventFilterResult {
     isRelevant: boolean;
@@ -16,81 +11,73 @@ export interface EventFilterResult {
     confidence: number; // 0-1 scale
 }
 
+const filterOutputSchema = z.object({
+    isRelevant: z.boolean(),
+    reason: z.string(),
+    confidence: z.number(),
+});
+
 /**
  * Filters a single event to determine if it's relevant to the automation based on user instructions
  */
-export async function filterEvent(event: InputEvent, automationPrompt: AutomationPrompt): Promise<EventFilterResult> {
+export async function filterEvent<T extends Session>(
+    event: InputEvent,
+    automationPrompt: AutomationPrompt,
+    output: Output<T>,
+    session: T
+): Promise<EventFilterResult> {
     try {
-        const eventContent = event.formatForAutomationAgent();
-        const userInstructions = automationPrompt.content || 'No specific instructions provided';
+        const readOnlyEntries = output.toolbox.filter(entry => entry.isReadOnly);
+        const readOnlyTools = readOnlyEntries.map(entry => entry.tool);
 
-        const systemPrompt = `You are an event relevance analyzer. Your job is to determine if an incoming event is relevant to a user's automation instructions.
-
-        You are responsible for protecting the main Updater agent from spam and noise. Since Emails are a common source of Inputs, we need to make sure only relevant ones make it to the main agent.
-
-        The way the main system works, is we listen for events from a set of inputs, then send them to a model where a custom user prompt is. Then we have an output that we update based on the event.
-
-You will be given:
-1. An event (email, GitHub commit, Slack message, etc.)
-2. User instructions describing what they want to automate
-
-Your task is to decide if this event should trigger the automation based on whether it matches the user's intent.
-
-Respond ONLY with valid JSON in this exact format:
-{
-  "isRelevant": true or false,
-  "reason": "brief explanation of why this event is or isn't relevant",
-  "confidence": 0.0 to 1.0 (how confident you are in this decision)
-}
-
-Guidelines:
-- Be strict but not overly restrictive - only mark as relevant if the event clearly relates to the user's instructions
-- Consider the context and intent of both the event and the instructions
-- If the event is completely unrelated or spam-like, mark it as not relevant with high confidence
-- If unsure, err on the side of caution with lower confidence`;
-
-        const userPrompt = `User's Automation Instructions:
-${userInstructions}
-
----
-
-Incoming Event:
-${eventContent}
-
----
-
-Is this event relevant to the user's automation? Respond with JSON only.`;
-
-        const completion = await openai.chat.completions.create({
+        const agent = new Agent<T, typeof filterOutputSchema>({
+            name: 'Automation Event Filter',
+            instructions: buildFilterSystemPrompt(readOnlyEntries),
             model: 'gpt-4o-mini',
-            messages: [
-                { role: 'system', content: systemPrompt },
-                { role: 'user', content: userPrompt }
-            ],
-            response_format: { type: "json_object" },
-            temperature: 0.3,
-            max_tokens: 200
+            tools: readOnlyTools,
+            outputType: filterOutputSchema,
         });
 
-        const responseContent = completion.choices?.[0]?.message?.content?.trim();
-        if (!responseContent) {
-            throw new Error('No response from OpenAI');
+        const history: AgentInputItem[] = [
+            {
+                role: 'user',
+                content: [
+                    {
+                        type: 'input_text',
+                        text: buildFilterUserPrompt(
+                            automationPrompt.content || 'No specific instructions provided',
+                            event.formatForAutomationAgent()
+                        )
+                    }
+                ]
+            }
+        ];
+
+        const result = await run(agent, history, {
+            context: session,
+        });
+
+        if (result.interruptions && result.interruptions.length > 0) {
+            throw new Error('Filter agent requested tool approval, which is not supported for event filtering.');
         }
 
-        const result = JSON.parse(responseContent) as EventFilterResult;
+        const parsed = result.finalOutput ?? null;
+        if (!parsed) {
+            throw new Error('No final output from filter agent');
+        }
 
         // Validate the response structure
-        if (typeof result.isRelevant !== 'boolean' ||
-            typeof result.reason !== 'string' ||
-            typeof result.confidence !== 'number') {
+        if (typeof parsed.isRelevant !== 'boolean' ||
+            typeof parsed.reason !== 'string' ||
+            typeof parsed.confidence !== 'number') {
             throw new Error('Invalid response structure from OpenAI');
         }
 
         // Ensure confidence is between 0 and 1
-        result.confidence = Math.max(0, Math.min(1, result.confidence));
+        parsed.confidence = Math.max(0, Math.min(1, parsed.confidence));
 
-        console.log(`Event filter result for ${event.integrationType}:`, result);
-        return result;
+        console.log(`Event filter result for ${event.integrationType}:`, parsed);
+        return parsed;
 
     } catch (error) {
         console.error('Error filtering event:', error);
@@ -101,4 +88,37 @@ Is this event relevant to the user's automation? Respond with JSON only.`;
             confidence: 0.1
         };
     }
+}
+
+function buildFilterSystemPrompt(tools: ToolboxEntry[]): string {
+    const toolNames = tools
+        .map(entry => entry.tool.name || 'unnamed_tool')
+        .join(', ') || 'None';
+
+    return `You are an event relevance analyzer. Your job is to determine if an incoming event is relevant to a user's automation instructions.
+
+You are responsible for protecting the main Updater agent from spam and noise. Only pass through events that clearly match the user's intent.
+
+You have access to the following tools: ${toolNames}.
+- Use tools only when you need additional context (e.g., to inspect the current state of the target document).
+- Never modify data; tools are for read-only context gathering during filtering.
+
+Guidelines:
+- Be strict but not overly restrictive.
+- Consider both the event content and the user's automation instructions.
+- If unsure, choose the lower-confidence option.`;
+}
+
+function buildFilterUserPrompt(userInstructions: string, eventContent: string): string {
+    return `User's Automation Instructions:
+${userInstructions}
+
+---
+
+Incoming Event:
+${eventContent}
+
+---
+
+Determine relevance. Use tools if you need additional context. Output should match the required schema (isRelevant, reason, confidence).`;
 }

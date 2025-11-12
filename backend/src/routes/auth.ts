@@ -1,7 +1,8 @@
 import { NextFunction, Request, Response } from "express";
 import { Jwt } from "../utility/jwt";
-import { login as loginUser, findUserByEmail, createUser, updateUserGitHubUsername, findUserByGitHubUsername } from "../types/user";
+import { login as loginUser } from "../types/user";
 import { Session } from "../server";
+import { nodeEnv, optional } from "../config/settings";
 
 export const COOKIE_NAME = 'AUTH_JWT';
 
@@ -26,8 +27,8 @@ export const authMiddleware = async (req: Request, res: Response, next: NextFunc
         const newToken = await new Jwt().sign(user.id);
         res.cookie(COOKIE_NAME, newToken, {
             httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+            secure: nodeEnv === 'production',
+            sameSite: nodeEnv === 'production' ? 'none' : 'lax',
             path: '/',
             maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
         });
@@ -68,11 +69,11 @@ export async function setSession(req: Request, res: Response) {
 
     res.cookie(COOKIE_NAME, token, {
         httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+        secure: nodeEnv === 'production',
+        sameSite: nodeEnv === 'production' ? 'none' : 'lax',
         path: '/',
         maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-        domain: process.env.COOKIE_DOMAIN || undefined // Allow setting custom domain
+        domain: optional.cookieDomain || undefined // Allow setting custom domain
     });
 
     res.json({
@@ -107,11 +108,11 @@ export async function login(req: Request, res: Response) {
 
         res.cookie(COOKIE_NAME, token, {
             httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+            secure: nodeEnv === 'production',
+            sameSite: nodeEnv === 'production' ? 'none' : 'lax',
             path: '/',
             maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-            domain: process.env.COOKIE_DOMAIN || undefined // Allow setting custom domain
+            domain: optional.cookieDomain || undefined // Allow setting custom domain
         });
 
         console.log('Login successful for user:', user.email)

@@ -4,6 +4,7 @@ import { createClient } from "redis";
 import { createAdapter } from "@socket.io/redis-adapter";
 import { Jwt } from "./utility/jwt";
 import chalk from "chalk";
+import { urls, nodeEnv, optional } from "./config/settings";
 
 // Extended Socket type with userId property
 interface AuthenticatedSocket extends Socket {
@@ -19,9 +20,9 @@ export async function initializeRealtimeSocket(server: HttpServer): Promise<Serv
     // Set up Socket.IO server
     io = new Server(server, {
         cors: {
-            origin: process.env.FRONTEND_URL
-                ? [process.env.FRONTEND_URL]
-                : process.env.NODE_ENV === "production"
+            origin: urls.frontend
+                ? [urls.frontend]
+                : nodeEnv === "production"
                     ? false // Deny all in production if FRONTEND_URL not set (security)
                     : true, // Allow all in development (matches Express CORS config)
             credentials: true,
@@ -42,7 +43,7 @@ export async function initializeRealtimeSocket(server: HttpServer): Promise<Serv
     // - Cloud (Redis Cloud, Upstash, AWS ElastiCache, etc.): Use the public endpoint URL they provide
     //   Format: redis://username:password@host:port or rediss://username:password@host:port (SSL)
     //
-    const redisUrl = process.env.REDIS_URL?.trim();
+    const redisUrl = optional.redisUrl?.trim();
     if (redisUrl && redisUrl.length > 0) {
         try {
             // Validate URL format before creating client

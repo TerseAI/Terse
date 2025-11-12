@@ -4,6 +4,7 @@ import { CreateTicketInput, Ticket, TicketSystemType, UpdateTicketInput, User, U
 import { StructuredSearchOptions, TicketManager } from './TicketIntegration';
 import chalk from 'chalk';
 import { generateWebhookSecret } from '../utility/webhookSecrets';
+import { urls } from '../config/settings';
 
 // Atlassian Document Format (ADF) interfaces
 interface ADFText {
@@ -271,7 +272,7 @@ export class JiraAdapter implements TicketManager {
         }
 
         const webhookSecret = this.generateWebhookSecret();
-        const backendUrl = process.env.BACKEND_URL;
+        const backendUrl = urls.backend;
 
         const webhook = await this.client.registerWebhook({
             name: 'Vectra AI',

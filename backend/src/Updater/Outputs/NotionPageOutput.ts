@@ -1,13 +1,13 @@
 import { RunHistoryAction } from "../../shared/RunHistoryTypes";
-import { RunContext, tool } from "@openai/agents";
+import { RunContext, Tool, tool } from "@openai/agents";
 import { AutomationNotionPageConfig, AutomationOutput, NotionIntegration, User } from "../../types/prisma";
 import { Session } from "../../server";
 import { Client } from '@notionhq/client';
 import { z } from "zod";
-import { Output, OutputType } from "./Output";
+import { Output, OutputType, ToolboxEntry } from "./Output";
 import { db } from "../../prismaClient";
 import chalk from "chalk";
-import { GetPageResponse, PageObjectResponse, PartialPageObjectResponse } from "@notionhq/client/build/src/api-endpoints";
+import { GetPageResponse, PageObjectResponse } from "@notionhq/client/build/src/api-endpoints";
 
 export interface NotionPageSession extends Session {
     notionIntegration: NotionIntegration; // Top level integration record
@@ -18,7 +18,10 @@ export interface NotionPageSession extends Session {
 
 export class NotionPageOutput extends Output<NotionPageSession> {
     constructor() {
-        const toolbox = [notionQueryPageTool, notionModifyBlocksTool];
+        const toolbox: ToolboxEntry[] = [
+            { tool: notionQueryPageTool as Tool, isReadOnly: true },
+            { tool: notionModifyBlocksTool as Tool, isReadOnly: false },
+        ];
         super(OutputType.NotionPage, toolbox);
     }
 
