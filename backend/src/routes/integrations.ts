@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import { db } from "../prismaClient";
-import { IntegrationsStatus } from "src/shared/types";
+import { IntegrationsStatus } from "../shared/types";
 
 export async function fetchUserIntegrations(req: Request, res: Response) {
     if (!req.session?.user) {

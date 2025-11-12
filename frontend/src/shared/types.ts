@@ -440,6 +440,7 @@ export interface FigmaCommentEventData {
 }
 
 export type AutomationInput = {
+  id: string;
   integration: string;
   integrationId?: string;
   // Typed config based on integration type

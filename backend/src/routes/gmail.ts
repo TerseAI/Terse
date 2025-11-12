@@ -556,10 +556,7 @@ async function processGmailWebhook(emailAddress: string, historyId: number): Pro
 
         // const eventProcessor = new EventProcessor(new GmailEvent(parsedEmail), user);
         // const results = await eventProcessor.process();
-
-        const results = [
-          new ProcessorResult(true, "Email processed successfully", null),
-        ]
+        const results: ProcessorResult[] = [new ProcessorResult(true, "Email processed successfully", null)];
 
         // Process results from all automations
         let hasSuccess = false;

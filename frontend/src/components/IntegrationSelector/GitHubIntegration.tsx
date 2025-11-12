@@ -18,7 +18,8 @@ export function GitHubIntegration({
     isConnecting,
     onConnect,
     label = 'Connection',
-    integrationType
+    integrationType,
+    variant
 }: GitHubIntegrationProps) {
     if (isLoading) {
         return (
@@ -52,8 +53,18 @@ export function GitHubIntegration({
     }));
     const selectedOption = connectionSelections.find(option => option.value === selectedIntegrationId) || connectionSelections[0];
 
+    // Card variant: compact view
+    if (variant === 'card') {
+        return (
+            <div className="text-sm">
+                {selectedOption ? selectedOption.label : 'No connection selected'}
+            </div>
+        );
+    }
+
+    // Dialog variant: full view
     return (
-        <div className="max-w-xs flex flex-col gap-3">
+        <div className="flex flex-col gap-3">
             <div className="flex flex-col gap-1.5">
                 <label className="font-medium">
                     {label}
