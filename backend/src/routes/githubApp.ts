@@ -8,8 +8,7 @@ import { search } from "../searchClient";
 import { Session } from "../server";
 import { ActivityOverview } from "../agent/agents/Analyzer";
 import { TicketEventType } from "@prisma/client";
-
-const GITHUB_APP_CLIENT_ID = process.env.GITHUB_CLIENT_ID
+import { githubApp } from "../config/settings";
 
 export async function getCurrentGithubIntegration(req: Request, res: Response) {
     if(!req.session?.user) {
@@ -40,7 +39,7 @@ export async function getCurrentGithubIntegration(req: Request, res: Response) {
 export async function getInstallationUrl(req: Request, res: Response) {
     try {
         // Generate GitHub App installation URL with callback
-        const installationUrl: string = `https://github.com/apps/vectra-github/installations/new?client_id=${GITHUB_APP_CLIENT_ID}&state=vectra&target_type=repositories`;
+        const installationUrl: string = `https://github.com/apps/vectra-github/installations/new?client_id=${githubApp.clientId}&state=vectra&target_type=repositories`;
 
         res.json({
             installationUrl

@@ -2,35 +2,10 @@ import chalk from "chalk";
 import crypto from "crypto";
 import { Request, Response } from "express";
 import { gmail_v1, google } from "googleapis";
-import { GmailEvent } from "../Updater/InputEvents";
-import { EventProcessor, ProcessorResult } from "../agent/AutomationAgent/EventProcessor";
+import { ProcessorResult } from "../agent/AutomationAgent/EventProcessor";
 import { db } from "../prismaClient";
 import { GmailIntegration, User } from "../types/prisma";
-
-// Validate required environment variables
-const GMAIL_CLIENT_ID = process.env.GMAIL_CLIENT_ID;
-const GMAIL_CLIENT_SECRET = process.env.GMAIL_CLIENT_SECRET;
-const GMAIL_REDIRECT_URI = process.env.GMAIL_REDIRECT_URI;
-const GMAIL_PUBSUB_TOPIC = process.env.GMAIL_PUBSUB_TOPIC;
-const GMAIL_FRONTEND_REDIRECT = process.env.GMAIL_FRONTEND_REDIRECT;
-
-if (!GMAIL_CLIENT_ID) {
-  throw new Error("GMAIL_CLIENT_ID is not set in environment variables");
-}
-if (!GMAIL_CLIENT_SECRET) {
-  throw new Error("GMAIL_CLIENT_SECRET is not set in environment variables");
-}
-if (!GMAIL_REDIRECT_URI) {
-  throw new Error("GMAIL_REDIRECT_URI is not set in environment variables");
-}
-if (!GMAIL_PUBSUB_TOPIC) {
-  throw new Error("GMAIL_PUBSUB_TOPIC is not set in environment variables");
-}
-if (!GMAIL_FRONTEND_REDIRECT) {
-  throw new Error(
-    "GMAIL_FRONTEND_REDIRECT is not set in environment variables"
-  );
-}
+import { gmail as gmailConfig, urls} from "../config/settings";
 
 // OAuth2 scopes for Gmail
 const SCOPES = ["https://www.googleapis.com/auth/gmail.readonly"];
@@ -38,9 +13,9 @@ const SCOPES = ["https://www.googleapis.com/auth/gmail.readonly"];
 // Create OAuth2 client
 function getOAuth2Client() {
   return new google.auth.OAuth2(
-    GMAIL_CLIENT_ID,
-    GMAIL_CLIENT_SECRET,
-    GMAIL_REDIRECT_URI
+    gmailConfig.clientId,
+    gmailConfig.clientSecret,
+    gmailConfig.redirectUri
   );
 }
 
@@ -88,7 +63,7 @@ export async function gmailCallback(req: Request, res: Response) {
   console.log("Gmail OAuth callback received");
 
   if (!code || !state) {
-    return res.redirect(`${process.env.FRONTEND_URL}/oauth/error`);
+    return res.redirect(`${urls.frontend}/oauth/error`);
   }
 
   try {
@@ -97,7 +72,7 @@ export async function gmailCallback(req: Request, res: Response) {
     const userId = stateData.userId;
 
     if (!userId) {
-      return res.redirect(`${process.env.FRONTEND_URL}/oauth/error`);
+      return res.redirect(`${urls.frontend}/oauth/error`);
     }
 
     const oauth2Client = getOAuth2Client();
@@ -107,7 +82,7 @@ export async function gmailCallback(req: Request, res: Response) {
     oauth2Client.setCredentials(tokens);
 
     if (!tokens.access_token || !tokens.refresh_token) {
-      return res.redirect(`${process.env.FRONTEND_URL}/oauth/error`);
+      return res.redirect(`${urls.frontend}/oauth/error`);
     }
 
     // Get user's email address
@@ -116,14 +91,14 @@ export async function gmailCallback(req: Request, res: Response) {
     const emailAddress = profile.data.emailAddress;
 
     if (!emailAddress) {
-      return res.redirect(`${process.env.FRONTEND_URL}/oauth/error`);
+      return res.redirect(`${urls.frontend}/oauth/error`);
     }
 
     // Set up Gmail watch
     const watchResponse = await gmail.users.watch({
       userId: "me",
       requestBody: {
-        topicName: GMAIL_PUBSUB_TOPIC,
+        topicName: gmailConfig.pubsubTopic,
         labelIds: ["INBOX"],
       },
     });
@@ -132,7 +107,7 @@ export async function gmailCallback(req: Request, res: Response) {
     const expiration = watchResponse.data.expiration;
 
     if (!historyId || !expiration) {
-      return res.redirect(`${process.env.FRONTEND_URL}/oauth/error`);
+      return res.redirect(`${urls.frontend}/oauth/error`);
     }
 
     // Calculate token expiry
@@ -173,10 +148,10 @@ export async function gmailCallback(req: Request, res: Response) {
     console.log(`Gmail integration activated for ${emailAddress}`);
 
     // Redirect to success page which will auto-close the popup
-    res.redirect(`${process.env.FRONTEND_URL}/oauth/success`);
+    res.redirect(`${urls.frontend}/oauth/success`);
   } catch (error) {
     console.error("Gmail OAuth error:", error);
-    res.redirect(`${process.env.FRONTEND_URL}/oauth/error`);
+    res.redirect(`${urls.frontend}/oauth/error`);
   }
 }
 

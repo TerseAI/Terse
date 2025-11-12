@@ -90,7 +90,7 @@ export async function filterEvent<T extends Session>(
     }
 }
 
-function buildFilterSystemPrompt<T extends Session>(tools: ToolboxEntry<T>[]): string {
+function buildFilterSystemPrompt(tools: ToolboxEntry[]): string {
     const toolNames = tools
         .map(entry => entry.tool.name || 'unnamed_tool')
         .join(', ') || 'None';

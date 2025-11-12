@@ -6,6 +6,7 @@ import { db } from '../prismaClient';
 import { SlackEvent } from '../Updater/InputEvents';
 import { SlackEventData, SlackChannelType } from '../shared/types';
 import { EventProcessor } from '../agent/AutomationAgent/EventProcessor';
+import { slack as slackConfig } from '../config/settings';
 
 export function isValidSlackSig(req: Request) {
     const ts = req.headers['x-slack-request-timestamp'] as string;
@@ -15,8 +16,8 @@ export function isValidSlackSig(req: Request) {
     console.log('Timestamp:', ts);
     console.log('Signature:', sig);
     console.log('Body type:', Buffer.isBuffer(req.body) ? 'Buffer' : typeof req.body);
-    console.log('Has SLACK_SIGNING_SECRET:', !!process.env.SLACK_SIGNING_SECRET);
-    console.log('Has SLACK_CLIENT_SECRET:', !!process.env.SLACK_CLIENT_SECRET);
+    console.log('Has SLACK_SIGNING_SECRET:', !!slackConfig.signingSecret);
+    console.log('Has SLACK_CLIENT_SECRET:', !!slackConfig.clientSecret);
     
     if (!ts || !sig) {
         console.log('Missing timestamp or signature headers');
@@ -24,7 +25,7 @@ export function isValidSlackSig(req: Request) {
     }
     
     // Use SLACK_SIGNING_SECRET for signature verification (fallback to CLIENT_SECRET for backwards compatibility)
-    const signingSecret = process.env.SLACK_SIGNING_SECRET || process.env.SLACK_CLIENT_SECRET;
+    const signingSecret = slackConfig.signingSecret || slackConfig.clientSecret;
     if (!signingSecret) {
         console.log('No signing secret found - need SLACK_SIGNING_SECRET environment variable');
         return false;
