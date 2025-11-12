@@ -6,6 +6,7 @@ import { db } from "../prismaClient";
 import { NotionResource, NotionResourcesResponse } from "../shared/types";
 import { PageObjectResponse, PartialPageObjectResponse, SearchResponse } from "@notionhq/client/build/src/api-endpoints";
 import { extractPageTitle } from "../utility/notion";
+import { notion, jwt as jwtSettings, urls } from "../config/settings";
 
 // OAuth Functions
 
@@ -19,16 +20,12 @@ export const getNotionOAuthUrl = async (req: Request, res: Response) => {
     // Generate state token for security (prevents CSRF)
     const state = jwt.sign(
       { userId: user.id, timestamp: Date.now() },
-      process.env.JWT_SECRET!,
+      jwtSettings.secret,
       { expiresIn: "10m" }
     );
 
-    const clientId = process.env.NOTION_OAUTH_CLIENT_ID;
-    const redirectUri = process.env.NOTION_OAUTH_REDIRECT_URI;
-
-    if (!clientId || !redirectUri) {
-      throw new Error("Notion OAuth credentials not configured");
-    }
+    const clientId = notion.clientId;
+    const redirectUri = notion.redirectUri;
 
     // Build OAuth URL with proper encoding
     const authUrl = new URL("https://api.notion.com/v1/oauth/authorize");
@@ -54,7 +51,7 @@ export const notionOAuthCallback = async (req: Request, res: Response) => {
 
   if (error) {
     console.error(chalk.red("Notion OAuth error:"), error);
-    return res.redirect(`${process.env.FRONTEND_URL}/oauth/error`);
+    return res.redirect(`${urls.frontend}/oauth/error`);
   }
 
   if (!code || !state) {
@@ -63,7 +60,7 @@ export const notionOAuthCallback = async (req: Request, res: Response) => {
 
   try {
     // Verify state token to prevent CSRF attacks
-    const decoded = jwt.verify(state as string, process.env.JWT_SECRET!) as {
+    const decoded = jwt.verify(state as string, jwtSettings.secret) as {
       userId: string;
       timestamp: number;
     };
@@ -73,14 +70,14 @@ export const notionOAuthCallback = async (req: Request, res: Response) => {
       method: "POST",
       headers: {
         Authorization: `Basic ${Buffer.from(
-          `${process.env.NOTION_OAUTH_CLIENT_ID}:${process.env.NOTION_OAUTH_CLIENT_SECRET}`
+          `${notion.clientId}:${notion.clientSecret}`
         ).toString("base64")}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
         grant_type: "authorization_code",
         code: code,
-        redirect_uri: process.env.NOTION_OAUTH_REDIRECT_URI,
+        redirect_uri: notion.redirectUri,
       }),
     });
 
@@ -144,7 +141,7 @@ export const notionOAuthCallback = async (req: Request, res: Response) => {
         chalk.red("No pages or databases found for user"),
         chalk.yellow(decoded.userId)
       );
-      return res.redirect(`${process.env.FRONTEND_URL}/oauth/error`);
+      return res.redirect(`${urls.frontend}/oauth/error`);
     }
 
     // Create ONE connection with the first database as default
@@ -195,10 +192,10 @@ export const notionOAuthCallback = async (req: Request, res: Response) => {
     );
 
     // Redirect to success page which will auto-close the popup
-    res.redirect(`${process.env.FRONTEND_URL}/oauth/success`);
+    res.redirect(`${urls.frontend}/oauth/success`);
   } catch (error) {
     console.error(chalk.red("Error in Notion OAuth callback:"), error);
-    res.redirect(`${process.env.FRONTEND_URL}/oauth/error`);
+    res.redirect(`${urls.frontend}/oauth/error`);
   }
 };
 

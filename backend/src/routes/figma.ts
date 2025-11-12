@@ -19,21 +19,7 @@ import {
   FigmaWebhookEvent,
   FigmaCommentImageUrls,
 } from "../shared/types";
-
-// Validate and assign Figma environment variables at module load time
-const clientId = process.env.FIGMA_CLIENT_ID;
-const redirectUrl = process.env.FIGMA_REDIRECT_URL;
-const clientSecret = process.env.FIGMA_CLIENT_SECRET;
-
-if (!clientId || !redirectUrl || !clientSecret) {
-  throw new Error(
-    `Missing required Figma environment variables: ${[
-      !clientId && 'FIGMA_CLIENT_ID',
-      !redirectUrl && 'FIGMA_REDIRECT_URL',
-      !clientSecret && 'FIGMA_CLIENT_SECRET',
-    ].filter(Boolean).join(', ')}`
-  );
-}
+import { figma as figmaConfig, jwt as jwtConfig, urls } from "../config/settings";
 
 export const getFigmaOAuthUrl = async (req: Request, res: Response) => {
   const user = req.session?.user;
@@ -45,7 +31,7 @@ export const getFigmaOAuthUrl = async (req: Request, res: Response) => {
     // Generate state token for security (prevents CSRF)
     const state = jwt.sign(
       { userId: user.id, timestamp: Date.now() },
-      process.env.JWT_SECRET!,
+      jwtConfig.secret,
       { expiresIn: "10m" }
     );
 
@@ -53,8 +39,8 @@ export const getFigmaOAuthUrl = async (req: Request, res: Response) => {
 
     // Build OAuth URL with proper encoding
     const authUrl = new URL("https://www.figma.com/oauth");
-    authUrl.searchParams.append("client_id", clientId);
-    authUrl.searchParams.append("redirect_uri", redirectUrl);
+    authUrl.searchParams.append("client_id", figmaConfig.clientId);
+    authUrl.searchParams.append("redirect_uri", figmaConfig.redirectUrl);
     authUrl.searchParams.append("scope", scope);
     authUrl.searchParams.append("state", state);
     authUrl.searchParams.append("response_type", "code");
@@ -75,7 +61,7 @@ export const figmaOAuthCallback = async (req: Request, res: Response) => {
 
   if (error) {
     console.error(chalk.red("Figma OAuth error:"), error);
-    return res.redirect(`${process.env.FRONTEND_URL}/oauth/error`);
+    return res.redirect(`${urls.frontend}/oauth/error`);
   }
 
   if (!code || !state) {
@@ -83,7 +69,7 @@ export const figmaOAuthCallback = async (req: Request, res: Response) => {
   }
   try {
     // Verify state token to prevent CSRF attacks
-    const decoded = jwt.verify(state as string, process.env.JWT_SECRET!) as {
+    const decoded = jwt.verify(state as string, jwtConfig.secret) as {
       userId: string;
       timestamp: number;
     };
@@ -92,7 +78,7 @@ export const figmaOAuthCallback = async (req: Request, res: Response) => {
     // Exchange authorization code for access token
     // Figma requires application/x-www-form-urlencoded format
     const params = new URLSearchParams({
-      redirect_uri: redirectUrl,
+      redirect_uri: figmaConfig.redirectUrl,
       code: code as string,
       grant_type: "authorization_code",
     });
@@ -101,7 +87,7 @@ export const figmaOAuthCallback = async (req: Request, res: Response) => {
       method: "POST",
       headers: {
         Authorization: `Basic ${Buffer.from(
-          `${clientId}:${clientSecret}`
+          `${figmaConfig.clientId}:${figmaConfig.clientSecret}`
         ).toString("base64")}`,
         "Content-Type": "application/x-www-form-urlencoded",
       },
@@ -200,10 +186,10 @@ export const figmaOAuthCallback = async (req: Request, res: Response) => {
     );
 
     // Redirect to success page which will auto-close the popup
-    res.redirect(`${process.env.FRONTEND_URL}/oauth/success`);
+    res.redirect(`${urls.frontend}/oauth/success`);
   } catch (error) {
     console.error(chalk.red("Error in Figma OAuth callback:"), error);
-    res.redirect(`${process.env.FRONTEND_URL}/oauth/error`);
+    res.redirect(`${urls.frontend}/oauth/error`);
   }
 };
 

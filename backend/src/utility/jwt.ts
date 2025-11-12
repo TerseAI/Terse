@@ -1,6 +1,7 @@
 import jwt from 'jsonwebtoken';
 import { db } from '../prismaClient';
 import { users } from '@prisma/client';
+import { jwt as jwtConfig } from '../config/settings';
 
 export class Jwt {
   private readonly TOKEN_EXPIRY = '7d'; // 7 days - in future may need to handle token expiration
@@ -15,14 +16,14 @@ export class Jwt {
       userId: user.id
     };
 
-    return jwt.sign(payload, process.env.JWT_SECRET!, {
+    return jwt.sign(payload, jwtConfig.secret, {
       expiresIn: this.TOKEN_EXPIRY
     });
   }
 
   async verify(token: string): Promise<users | null> {
     try {
-      let decoded = jwt.verify(token, process.env.JWT_SECRET!) as { userId: string };
+      let decoded = jwt.verify(token, jwtConfig.secret) as { userId: string };
       const user = await db().users.findUnique({ where: { id: decoded.userId } });
       return user || null;
     } catch (error) {
@@ -32,7 +33,7 @@ export class Jwt {
 
   async verifyGitHubApp(token: string): Promise<boolean> {
     try {
-      let decoded = jwt.verify(token, process.env.JWT_SECRET!);
+      let decoded = jwt.verify(token, jwtConfig.secret);
       return true;
     } catch (error) {
       return false;

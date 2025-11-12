@@ -14,10 +14,7 @@ export class OutputFactory {
     private static readonly outputRegistry: Map<IntegrationType, () => Output<Session>> = new Map<IntegrationType, () => Output<Session>>([
         [IntegrationType.NOTION, () => new NotionDatabaseOutput()],
         [IntegrationType.NOTION_PAGE, () => new NotionPageOutput()],
-        [IntegrationType.CONFLUENCE, () => new ConfluenceOutput()],
-        // Future outputs can be added here:
-        // [IntegrationType.SLACK, () => new SlackOutput()],
-        // [IntegrationType.GMAIL, () => new GmailOutput()],
+        [IntegrationType.CONFLUENCE, () => new ConfluenceOutput()]
     ]);
 
     /**

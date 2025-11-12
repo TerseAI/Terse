@@ -5,25 +5,7 @@ import crypto from "crypto";
 import chalk from "chalk";
 import axios from "axios";
 import { findUserByEmail, findUserByGitHubUsername, createUser, updateUserGitHubUsername } from "../../types/user";
-
-// Validate GitHub Auth environment variables
-if (!process.env.GITHUB_AUTH_CLIENT_ID) {
-    throw new Error('GITHUB_AUTH_CLIENT_ID is not set in environment variables');
-}
-if (!process.env.GITHUB_AUTH_CLIENT_SECRET) {
-    throw new Error('GITHUB_AUTH_CLIENT_SECRET is not set in environment variables');
-}
-if (!process.env.GITHUB_CALLBACK_URL) {
-    throw new Error('GITHUB_CALLBACK_URL is not set in environment variables');
-}
-if (!process.env.GITHUB_LOGIN_REDIRECT) {
-    throw new Error('GITHUB_LOGIN_REDIRECT is not set in environment variables');
-}
-
-const GITHUB_AUTH_CLIENT_ID = process.env.GITHUB_AUTH_CLIENT_ID;
-const GITHUB_AUTH_CLIENT_SECRET = process.env.GITHUB_AUTH_CLIENT_SECRET;
-const GITHUB_CALLBACK_URL = process.env.GITHUB_CALLBACK_URL;
-const GITHUB_LOGIN_REDIRECT = process.env.GITHUB_LOGIN_REDIRECT;
+import { githubAuth } from "../../config/settings";
 
 export const githubAppAuthMiddleware = async (req: Request, res: Response, next: NextFunction) => {
     console.log('githubAppAuthMiddleware route has been hit')
@@ -58,14 +40,14 @@ export const githubAppAuthMiddleware = async (req: Request, res: Response, next:
 
 export function githubLoginURL(req: Request, res: Response) {
     const state = crypto.randomBytes(8).toString('hex');
-    const redirectUrl = `https://github.com/login/oauth/authorize?client_id=${GITHUB_AUTH_CLIENT_ID}&redirect_uri=${encodeURIComponent(GITHUB_CALLBACK_URL)}&scope=read:user%20user:email&state=${state}`;
+    const redirectUrl = `https://github.com/login/oauth/authorize?client_id=${githubAuth.clientId}&redirect_uri=${encodeURIComponent(githubAuth.callbackUrl)}&scope=read:user%20user:email&state=${state}`;
     res.json({ url: redirectUrl });
 }
 
 export async function githubLogin(req: Request, res: Response) {
     console.log('githubLogin route has been hit')
     const state = crypto.randomBytes(8).toString('hex');
-    const redirectUrl = `https://github.com/login/oauth/authorize?client_id=${GITHUB_AUTH_CLIENT_ID}&redirect_uri=${encodeURIComponent(GITHUB_CALLBACK_URL)}&scope=read:user%20user:email&state=${state}`;
+    const redirectUrl = `https://github.com/login/oauth/authorize?client_id=${githubAuth.clientId}&redirect_uri=${encodeURIComponent(githubAuth.callbackUrl)}&scope=read:user%20user:email&state=${state}`;
 
     console.log('redirectUrl', redirectUrl)
     res.redirect(redirectUrl);
@@ -82,10 +64,10 @@ export async function githubCallback(req: Request, res: Response) {
 
     try {
         const tokenResp = await axios.post('https://github.com/login/oauth/access_token', {
-            client_id: GITHUB_AUTH_CLIENT_ID,
-            client_secret: GITHUB_AUTH_CLIENT_SECRET,
+            client_id: githubAuth.clientId,
+            client_secret: githubAuth.clientSecret,
             code,
-            redirect_uri: GITHUB_CALLBACK_URL,
+            redirect_uri: githubAuth.callbackUrl,
         }, {
             headers: { Accept: 'application/json' }
         });
@@ -139,7 +121,7 @@ export async function githubCallback(req: Request, res: Response) {
                 window.opener.postMessage({
                   type: 'GITHUB_AUTH_SUCCESS',
                   token: '${token}'
-                }, '${GITHUB_LOGIN_REDIRECT}');
+                }, '${githubAuth.loginRedirect}');
                 window.close();
               }
             </script>

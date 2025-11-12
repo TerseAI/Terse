@@ -1,12 +1,7 @@
-import { OpenAI } from 'openai';
+import OpenAI from 'openai';
+import { openai as openaiConfig } from '../config/settings';
 
-const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
-
-if (!OPENAI_API_KEY) {
-  throw new Error('OPENAI_API_KEY is not set in environment variables');
-}
-
-const openai = new OpenAI({ apiKey: OPENAI_API_KEY });
+const openai = new OpenAI({ apiKey: openaiConfig.apiKey });
 
 export async function callOpenAISummary(prompt: string): Promise<string> {
   try {

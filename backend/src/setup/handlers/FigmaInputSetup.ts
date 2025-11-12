@@ -3,6 +3,7 @@ import { db } from '../../prismaClient';
 import { IntegrationType } from '@prisma/client';
 import chalk from 'chalk';
 import { generateWebhookPasscode } from '../../utility/webhookSecrets';
+import { urls, nodeEnv } from '../../config/settings';
 
 /**
  * Figma input setup handler.
@@ -41,14 +42,14 @@ export class FigmaInputSetup implements InputSetupHandler {
         }
 
         // Build webhook endpoint URL
-        const webhookEndpoint = `${process.env.BACKEND_URL || 'http://localhost:3001'}/webhooks/figma`;
+        const webhookEndpoint = `${urls.backend}/webhooks/figma`;
 
         // Event types to monitor: comments
         const eventTypes = ['FILE_COMMENT'];
 
         try {
             const accessToken = figmaIntegration.access_token;
-            const isDevelopment = process.env.NODE_ENV !== 'production';
+            const isDevelopment = nodeEnv !== 'production';
 
             // Create or reuse team-level webhooks for both event types
             for (const eventType of eventTypes) {

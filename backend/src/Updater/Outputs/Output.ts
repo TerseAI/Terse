@@ -6,8 +6,8 @@ import { AutomationOutput, User } from "../../types/prisma";
 // You can only have one output at a time. Basically, it's just a specific integration + a toolbox to modify the content.
 // For Notion, we should support multiple integrations with the same account. 
 
-export interface ToolboxEntry<T extends Session> {
-    tool: Tool<T>;
+export interface ToolboxEntry {
+    tool: Tool;
     isReadOnly: boolean;
 }
 
@@ -19,9 +19,9 @@ export enum OutputType {
 
 export abstract class Output<T extends Session> {
     integration: OutputType;
-    readonly toolbox: readonly ToolboxEntry<Session>[];
+    readonly toolbox: readonly ToolboxEntry[];
 
-    constructor(integration: OutputType, toolbox: readonly ToolboxEntry<Session>[]) {
+    constructor(integration: OutputType, toolbox: readonly ToolboxEntry[]) {
         this.integration = integration;
         this.toolbox = toolbox;
     }
@@ -38,5 +38,5 @@ export abstract class Output<T extends Session> {
         integrationId: string, // Integration ID to fetch from database
         automationOutputConfig: AutomationOutput, // AutomationOutput with loaded config relations
         user: User
-    ): Promise<Session>;
+    ): Promise<T>;
 }

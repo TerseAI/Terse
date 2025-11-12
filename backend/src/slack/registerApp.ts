@@ -5,20 +5,16 @@ import { db } from "../prismaClient"
 import { Jwt } from "../utility/jwt";
 import { LogLevel, WebClient } from "@slack/web-api";
 import chalk from "chalk";
+import { slack as slackConfig, urls } from "../config/settings";
 
 export async function getSlackOAuthUrl(req: Request, res: Response) {
-    const client_id = process.env.SLACK_CLIENT_ID;
-    const redirect_uri = process.env.SLACK_OAUTH_CALLBACK_URL
+    const client_id = slackConfig.clientId;
+    const redirect_uri = slackConfig.oauthCallbackUrl;
 
     console.log('redirect_uri', redirect_uri)
 
     if (!req.session?.user) {
         res.status(500).json({ message: 'User not found' });
-        return;
-    }
-
-    if (!client_id || !redirect_uri) {
-        res.status(500).json({ message: 'Slack OAuth configuration missing' });
         return;
     }
 
@@ -84,10 +80,7 @@ export async function getCurrentSlackIntegration(req: Request, res: Response) {
 }
 
 export async function slackOAuthCallback(req: Request, res: Response) {
-    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
-    if (!process.env.FRONTEND_URL) {
-        console.error('FRONTEND_URL environment variable is not set, using default');
-    }
+    const frontendUrl = urls.frontend;
 
     // Check if Slack returned an error (user denied access, etc.)
     if (req.query.error) {
@@ -112,14 +105,9 @@ export async function slackOAuthCallback(req: Request, res: Response) {
         return res.redirect(`${frontendUrl}/oauth/error`);
     }
 
-    const client_id = process.env.SLACK_CLIENT_ID;
-    const client_secret = process.env.SLACK_CLIENT_SECRET;
-    const redirect_uri = process.env.SLACK_OAUTH_CALLBACK_URL;
-
-    if (!client_id || !client_secret || !redirect_uri) {
-        console.error('Slack OAuth configuration missing');
-        return res.redirect(`${frontendUrl}/oauth/error`);
-    }
+    const client_id = slackConfig.clientId;
+    const client_secret = slackConfig.clientSecret;
+    const redirect_uri = slackConfig.oauthCallbackUrl;
 
     try {
         const response = await axios.post<SlackOAuthResponse>('https://slack.com/api/oauth.v2.access',
