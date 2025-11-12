@@ -91,6 +91,42 @@ function InputCardsLayout({
     setShowAddModal: (show: boolean) => void,
     inputRefs: React.MutableRefObject<Map<string, HTMLDivElement>>
 }) {
+    const isSingleInput = inputs.length === 1;
+    
+    if (isSingleInput) {
+        return (
+            <div className="relative w-full">
+                <div className="flex justify-center">
+                    {inputs.map((input) => {
+                        const inputId = input.id || input.integrationId || '';
+                        return (
+                            <InputCard 
+                                key={inputId} 
+                                input={input} 
+                                inputs={inputs}
+                                handleSelectIntegration={handleSelectIntegration} 
+                                setInputs={setInputs} 
+                                handleRemove={handleRemove}
+                                ref={(el) => {
+                                    if (el && isInputComplete(input)) {
+                                        inputRefs.current.set(inputId, el);
+                                    } else {
+                                        inputRefs.current.delete(inputId);
+                                    }
+                                }}
+                            />
+                        );
+                    })}
+                </div>
+                <div className="absolute -bottom-12 left-1/2 -translate-x-1/2">
+                    <Button variant="outline" onClick={() => setShowAddModal(true)} className="min-w-xs">
+                        Add Event Source
+                    </Button>
+                </div>
+            </div>
+        );
+    }
+    
     return (
         <div className="flex flex-col gap-4">
             {inputs.map((input) => {
@@ -113,7 +149,7 @@ function InputCardsLayout({
                     />
                 );
             })}
-            <Button variant="outline" onClick={() => setShowAddModal(true)}>
+            <Button variant="outline" onClick={() => setShowAddModal(true)} className="min-w-xs">
                 Add Event Source
             </Button>
         </div>

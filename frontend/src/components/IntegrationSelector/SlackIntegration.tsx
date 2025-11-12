@@ -38,7 +38,7 @@ export function SlackIntegration({
 
     if (integrations.length === 0) {
         return (
-            <div className="max-w-xs flex flex-col gap-3 p-4 rounded-lg border border-dashed border-input bg-card">
+            <div className="flex flex-col gap-3 p-4 rounded-lg border border-dashed border-input bg-card">
                 <div className="text-sm text-muted-foreground">
                     No {getIntegrationName(integrationType)} accounts connected
                 </div>

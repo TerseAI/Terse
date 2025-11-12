@@ -184,11 +184,9 @@ export default function AutomationSetupTab() {
 
                 <OutputSection ref={OutputSectionRef} />
 
-                {
-                    connections.length > 0 && (
-                        <SVGFlowArrows containerRef={containerRef} connections={connections} />
-                    )
-                }
+                {connections.length > 0 && (
+                    <SVGFlowArrows containerRef={containerRef} connections={connections} />
+                )}
             </div>
         </div>
     )
