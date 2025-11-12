@@ -3,14 +3,16 @@ import { Input, useAutomationContext } from "../../context/AutomationContext";
 import { Integration } from "../../context/Integrations";
 import { SectionLayout } from "./components/SectionLayout";
 import { AddInputModal } from "./components/AddInputModal";
-import { Zap, Plus, Settings } from "lucide-react";
+import { Zap, Plus, Settings, AlertTriangle } from "lucide-react";
 import { useIntegrationSelector } from "../../components/IntegrationSelector";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { IntegrationTitle } from "./components/IntegrationTitle";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Badge } from "@/components/ui/badge";
 import { FigmaConfig, GmailConfig, NotionConfig, SlackConfig } from "@/shared/types";
+import { isInputComplete } from "../../utility/IntegrationUtils";
 import { v4 as uuidv4 } from 'uuid';
 
 export const InputsSection = forwardRef<Map<string, HTMLDivElement>, { ref: React.RefObject<Map<string, HTMLDivElement>> }>((_, ref) => {
@@ -18,10 +20,9 @@ export const InputsSection = forwardRef<Map<string, HTMLDivElement>, { ref: Reac
     const [showAddModal, setShowAddModal] = useState(false);
     const inputRefs = useRef<Map<string, HTMLDivElement>>(new Map());
 
-    // Expose map of refs keyed by input ID through forwardRef
     useImperativeHandle(ref, () => {
         return inputRefs.current;
-    }, [inputs.length]); // Re-run when inputs array length changes
+    }, [inputs]);
 
     console.log('Inputs:', inputs);
 
@@ -98,11 +99,12 @@ function InputCardsLayout({
                     <InputCard 
                         key={inputId} 
                         input={input} 
+                        inputs={inputs}
                         handleSelectIntegration={handleSelectIntegration} 
                         setInputs={setInputs} 
                         handleRemove={handleRemove}
                         ref={(el) => {
-                            if (el) {
+                            if (el && isInputComplete(input)) {
                                 inputRefs.current.set(inputId, el);
                             } else {
                                 inputRefs.current.delete(inputId);
@@ -119,12 +121,14 @@ function InputCardsLayout({
 }
 
 const InputCard = forwardRef<HTMLDivElement, {
-    input: Input, 
+    input: Input,
+    inputs: Input[],
     handleSelectIntegration: (integrationId: string, input: Input) => void, 
     setInputs: (inputs: Input[]) => void, 
     handleRemove: (id: string) => void
 }>(({
     input,
+    inputs,
     handleSelectIntegration,
     setInputs,
     handleRemove
@@ -137,39 +141,39 @@ const InputCard = forwardRef<HTMLDivElement, {
         onSelect: (integrationId: string) => handleSelectIntegration(integrationId, input),
         notionConfig: input.notionConfig,
         onNotionConfigChange: (config: NotionConfig) => {
-            if (input) {
-                setInputs([{ ...input, notionConfig: config }]);
-            }
+            setInputs(inputs.map(i => i.id === input.id ? { ...i, notionConfig: config } : i));
         },
         slackConfig: input.slackConfig,
         onSlackConfigChange: (config: SlackConfig) => {
-            if (input) {
-                setInputs([{ ...input, slackConfig: config }]);
-            }
+            setInputs(inputs.map(i => i.id === input.id ? { ...i, slackConfig: config } : i));
         },
         figmaConfig: input.figmaConfig,
         onFigmaConfigChange: (config: FigmaConfig) => {
-            if (input) {
-                setInputs([{ ...input, figmaConfig: config }]);
-            }
+            setInputs(inputs.map(i => i.id === input.id ? { ...i, figmaConfig: config } : i));
         },
         gmailConfig: input.gmailConfig,
         onGmailConfigChange: (config: GmailConfig) => {
-            if (input) {
-                console.log('Gmail config changed:', config);
-                setInputs([{ ...input, gmailConfig: config }]);
-            }
+            console.log('Gmail config changed:', config);
+            setInputs(inputs.map(i => i.id === input.id ? { ...i, gmailConfig: config } : i));
         }
     };
 
-    const { CardContent: IntegrationCardContent, DialogContent: IntegrationDialogContent } = useIntegrationSelector(selectorProps);
+    const { CardContent: IntegrationCardContent, DialogContent: IntegrationDialogContent, isConfigurationIncomplete } = useIntegrationSelector(selectorProps);
+    
+    const needsConfiguration = isConfigurationIncomplete();
 
     return (
         <>
             <Card ref={ref}>
                 <CardHeader>
-                    <div className="flex justify-between">
+                    <div className="flex justify-between items-center">
                         <IntegrationTitle integration={input.integration} iconSize="md" />
+                        {needsConfiguration && (
+                            <Badge variant="outline" className="border-yellow-500 text-yellow-600 dark:text-yellow-500">
+                                <AlertTriangle className="w-3 h-3" />
+                                Needs Configuration
+                            </Badge>
+                        )}
                     </div>
                 </CardHeader>
 
@@ -178,8 +182,12 @@ const InputCard = forwardRef<HTMLDivElement, {
                 </CardContent>
 
                 <CardFooter className="justify-between">
-                    <Button variant="outline" onClick={() => setShowDetailsDialog(true)}>
-                        More Details
+                    <Button 
+                        variant="outline"
+                        className={needsConfiguration ? "border-yellow-500 text-yellow-600 hover:bg-yellow-50 hover:text-yellow-700 dark:text-yellow-500 dark:hover:bg-yellow-950/20 dark:hover:text-yellow-400" : ""}
+                        onClick={() => setShowDetailsDialog(true)}
+                    >
+                        {needsConfiguration ? "Configure" : "More Details"}
                     </Button>
                     <Button variant="destructive" onClick={() => handleRemove(input.id)}>
                         Remove
@@ -190,7 +198,7 @@ const InputCard = forwardRef<HTMLDivElement, {
             <Dialog open={showDetailsDialog} onOpenChange={setShowDetailsDialog}>
                 <DialogContent>
                     <DialogHeader>
-                        <DialogTitle>Integration Details</DialogTitle>
+                        <DialogTitle>{needsConfiguration ? "Configure Integration" : "Integration Details"}</DialogTitle>
                     </DialogHeader>
                     <IntegrationDialogContent />
                 </DialogContent>
