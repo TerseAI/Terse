@@ -19,9 +19,9 @@ export enum OutputType {
 
 export abstract class Output<T extends Session> {
     integration: OutputType;
-    toolbox: ToolboxEntry<T>[];
+    readonly toolbox: readonly ToolboxEntry<Session>[];
 
-    constructor(integration: OutputType, toolbox: ToolboxEntry<T>[]) {
+    constructor(integration: OutputType, toolbox: readonly ToolboxEntry<Session>[]) {
         this.integration = integration;
         this.toolbox = toolbox;
     }
@@ -38,5 +38,5 @@ export abstract class Output<T extends Session> {
         integrationId: string, // Integration ID to fetch from database
         automationOutputConfig: AutomationOutput, // AutomationOutput with loaded config relations
         user: User
-    ): Promise<T>;
+    ): Promise<Session>;
 }

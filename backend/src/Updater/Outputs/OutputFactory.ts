@@ -11,15 +11,14 @@ import { ConfluenceOutput } from "./ConfluenceOutput";
  * No switch statements - each output type is registered independently.
  */
 export class OutputFactory {
-    private static readonly outputRegistryEntries: Array<[IntegrationType, () => Output<any>]> = [
+    private static readonly outputRegistry: Map<IntegrationType, () => Output<Session>> = new Map<IntegrationType, () => Output<Session>>([
         [IntegrationType.NOTION, () => new NotionDatabaseOutput()],
         [IntegrationType.NOTION_PAGE, () => new NotionPageOutput()],
         [IntegrationType.CONFLUENCE, () => new ConfluenceOutput()],
-    ];
-
-    private static readonly outputRegistry: Map<IntegrationType, () => Output<any>> = new Map(
-        OutputFactory.outputRegistryEntries
-    );
+        // Future outputs can be added here:
+        // [IntegrationType.SLACK, () => new SlackOutput()],
+        // [IntegrationType.GMAIL, () => new GmailOutput()],
+    ]);
 
     /**
      * Create an Output instance for the given integration type.
@@ -31,7 +30,7 @@ export class OutputFactory {
         if (!factory) {
             return null;
         }
-        return factory() as Output<Session>;
+        return factory();
     }
 
     /**
