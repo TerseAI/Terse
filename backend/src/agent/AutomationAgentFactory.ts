@@ -2,7 +2,7 @@ import chalk from 'chalk';
 import { db } from '../prismaClient';
 import { AutomationAgent } from './AutomationAgent/AutomationAgent';
 import { NotionDatabaseOutput, NotionDatabaseSession } from '../Updater/Outputs/NotionDatabaseOutput';
-import { AutomationNotionConfig, AutomationWithRelations, User } from 'src/types/prisma';
+import { AutomationNotionConfig, AutomationWithRelations, User } from '../types/prisma';
 
 /**
  * Factory for creating AutomationAgent instances from automation configurations.
