@@ -55,7 +55,8 @@ CLOSE DATE: December 15, 2025
 Best,
 Sarah Johnson
 VP of Engineering, Acme Corp`,
-    snippet: 'Deal update: Acme Corp moving forward with $85K Enterprise plan. Close date Dec 15. Technical evaluation scheduled...'
+    snippet: 'Deal update: Acme Corp moving forward with $85K Enterprise plan. Close date Dec 15. Technical evaluation scheduled...',
+    labelIds: ['INBOX']
 };
 
 async function runQuickTest() {
@@ -87,7 +88,7 @@ async function runQuickTest() {
         console.log();
 
         // Process the event
-        const gmailEvent = new GmailEvent(mockEmail);
+        const gmailEvent = new GmailEvent(mockEmail, 'gmail_integration_1');
         const processor = new EventProcessor(gmailEvent, user);
 
         console.log(chalk.yellow('🔄 Processing event...\n'));
