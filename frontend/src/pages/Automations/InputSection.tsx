@@ -95,7 +95,7 @@ function InputCardsLayout({
     
     if (isSingleInput) {
         return (
-            <div className="relative w-full">
+            <div className="relative w-full h-full">
                 <div className="flex justify-center">
                     {inputs.map((input) => {
                         const inputId = input.id || input.integrationId || '';
