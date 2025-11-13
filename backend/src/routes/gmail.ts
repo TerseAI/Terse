@@ -100,6 +100,7 @@ export async function gmailCallback(req: Request, res: Response) {
       requestBody: {
         topicName: gmailConfig.pubsubTopic,
         labelIds: ["INBOX"],
+        labelFilterAction: "include"
       },
     });
 
