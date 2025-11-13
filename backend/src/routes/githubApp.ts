@@ -38,8 +38,10 @@ export async function getCurrentGithubIntegration(req: Request, res: Response) {
 // Get GitHub App installation URL
 export async function getInstallationUrl(req: Request, res: Response) {
     try {
+        const appName = githubApp.appName;
+        const clientId = githubApp.clientId;
         // Generate GitHub App installation URL with callback
-        const installationUrl: string = `https://github.com/apps/vectra-github/installations/new?client_id=${githubApp.clientId}&state=vectra&target_type=repositories`;
+        const installationUrl: string = `https://github.com/apps/${appName}/installations/new?client_id=${clientId}&target_type=repositories`;
 
         res.json({
             installationUrl

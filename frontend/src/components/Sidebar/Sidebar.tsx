@@ -111,7 +111,7 @@ function SettingsNavigation() {
     return (
         <SidebarMenu>
             {SettingsItems.map((item) => (
-                <SidebarMenuItem>
+                <SidebarMenuItem key={item.title}>
                     <SidebarMenuButton asChild data-active={location.pathname === item.url}>
                         <Link to={item.url}>
                             <item.icon />

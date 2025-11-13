@@ -72,6 +72,8 @@ export const settings = {
   // GitHub App (for repository integration)
   githubApp: {
     clientId: requireEnv('GITHUB_CLIENT_ID'),
+    clientSecret: requireEnv('GITHUB_CLIENT_SECRET'),
+    appName: requireEnv('GITHUB_APP_NAME'),
   },
 
   // Google Auth (reuses Gmail client credentials)

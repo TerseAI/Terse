@@ -212,6 +212,7 @@ export default (app: Probot) => {
       owner: repo.full_name,
       id: repo.id
     }));
+
     console.log('🔧 installation.created', name, email, login, installationId, repositories);
 
     try {

@@ -17,6 +17,7 @@ export async function fetchUserIntegrations(req: Request, res: Response) {
             where: { user_id: user.id },
             include: { github_repository: true }
         });
+        console.log('🔧 userGithubRepos', userGithubRepos);
         result.integrations.github = userGithubRepos.map(ugr => ({
             id: ugr.github_repository.id,
             repositoryName: ugr.github_repository.name,
