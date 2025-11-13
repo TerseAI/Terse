@@ -14,6 +14,7 @@ function IntegrationPage() {
     useEffect(() => {
         const fetchIntegrations = async () => {
             const response = await BackendProvider.getIntegrationsStatus();
+            console.log('🔧 response', response);
             setIntegrationStatus(response);
         };
         fetchIntegrations();
