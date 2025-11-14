@@ -95,13 +95,19 @@ export class GmailEvent extends InputEvent {
     }
 
     createTriggerMetadata(): RunHistoryTrigger {
+        // Construct Gmail message URL using the thread ID
+        // Format: https://mail.google.com/mail/u/0/#inbox/{threadId}
+        const gmailUrl = this.data.threadId 
+            ? `https://mail.google.com/mail/u/0/#inbox/${this.data.threadId}`
+            : undefined;
+        
         return {
             event: 'email_received',
             integration: 'gmail',
             source: this.data.to || 'Gmail',
             title: this.data.subject,
             subheader: this.data.from,
-            url: undefined, // Gmail doesn't provide direct message URLs in webhook
+            url: gmailUrl,
         };
     }
 
