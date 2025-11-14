@@ -4,6 +4,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "..
 import { cn } from "@/lib/utils";
 import { IconForInputType } from "../../pages/Automations/components/Integration";
 import { Integration } from "../../types/Integration";
+import { capitalize } from "../../lib/utils";
 
 type Props = {
     runId: string;
@@ -23,8 +24,6 @@ export default function RunHistoryActionItem({ runId, index, action, runStatus, 
             .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
             .join(' ');
     };
-
-    const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
     return (
         <Accordion
