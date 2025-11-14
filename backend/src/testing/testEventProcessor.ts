@@ -56,7 +56,8 @@ function createCustomEmail(
         internalDate: new Date().getTime().toString(),
         messageId: `<${Date.now()}@custom.com>`,
         body,
-        snippet: body.substring(0, 100)
+        snippet: body.substring(0, 100),
+        labelIds: ['INBOX']
     };
 }
 
@@ -221,7 +222,8 @@ async function main() {
                     console.log(chalk.gray('Snippet:'), emailData.snippet);
 
                     // Create GmailEvent and process it
-                    const gmailEvent = new GmailEvent(emailData);
+                    // Use a test integration ID for testing purposes
+                    const gmailEvent = new GmailEvent(emailData, 'test_integration_id');
                     const processor = new EventProcessor(gmailEvent, user);
 
                     console.log(chalk.yellow('\n🔄 Processing event...'));

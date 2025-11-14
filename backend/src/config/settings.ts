@@ -102,6 +102,11 @@ export const settings = {
     signingSecret: optionalEnv('SLACK_SIGNING_SECRET'),
   },
 
+  // Cloud Scheduler (for cron jobs)
+  cloudScheduler: {
+    secret: requireEnv('CLOUD_SCHEDULER_SECRET'),
+  },
+
   // Optional configuration
   optional: {
     redisUrl: optionalEnv('REDIS_URL'),
@@ -123,6 +128,7 @@ export const {
   notion,
   figma,
   slack,
+  cloudScheduler,
   optional,
 } = settings;
 
