@@ -39,6 +39,7 @@ import {
   getGmailOAuthUrl,
   gmailCallback,
   handleGmailWebhook,
+  refreshAllGmailWatches,
 } from "./routes/gmail";
 import { fetchUserIntegrations } from "./routes/integrations";
 import {
@@ -260,6 +261,10 @@ app.delete("/gmail/delete-integration", authMiddleware, async (req, res) => {
 
 app.post("/webhooks/gmail", async (req, res) => {
   handleGmailWebhook(req, res);
+});
+
+app.post("/gmail/refresh-watches", async (req, res) => {
+  refreshAllGmailWatches(req, res);
 });
 
 // MARK: NOTION
