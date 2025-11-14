@@ -20,7 +20,12 @@ export default function RunHistoryItemHeader({ run, formattedTimestamp, onCopy }
                         <div className="text-muted-foreground size-4 flex-shrink-0">
                             <IconForInputType type={run.trigger.integration as Integration} />
                         </div>
-                        <span className="text-foreground truncate no-underline hover:no-underline">{run.trigger.title}</span>
+                        <span 
+                            className="text-foreground truncate no-underline hover:no-underline max-w-[780px]" 
+                            title={run.trigger.title}
+                        >
+                            {run.trigger.title}
+                        </span>
                         {run.trigger.url && (
                             <a
                                 href={run.trigger.url}
@@ -44,7 +49,12 @@ export default function RunHistoryItemHeader({ run, formattedTimestamp, onCopy }
                         </button>
                     </div>
                     <div className="flex items-center gap-2 text-muted-foreground no-underline hover:no-underline">
-                        <span className="truncate no-underline hover:no-underline">{run.trigger.subheader}</span>
+                        <span 
+                            className="truncate no-underline hover:no-underline" 
+                            title={run.trigger.subheader}
+                        >
+                            {run.trigger.subheader}
+                        </span>
                         <span className="no-underline hover:no-underline">•</span>
                         <span className="flex-shrink-0 no-underline hover:no-underline">{formattedTimestamp}</span>
                     </div>
