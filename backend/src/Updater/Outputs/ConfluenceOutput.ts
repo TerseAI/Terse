@@ -14,8 +14,6 @@ import chalk from "chalk";
 export interface ConfluenceSession extends Session {
     confluenceIntegration: ConfluenceIntegration; // Top level integration record
     confluenceConfig: AutomationConfluenceConfig; // Configuration for the Specific Confluence Database
-    // Collect actions here (report-only); DB writes happen after agent finishes
-    runActions?: RunHistoryAction[];
 }
 
 export class ConfluenceOutput extends Output<ConfluenceSession> {
