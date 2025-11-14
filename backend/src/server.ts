@@ -417,8 +417,6 @@ app.delete("/automations/:id", authMiddleware, async (req, res) => {
   deleteAutomation(req, res);
 });
 
-// Initialize Socket.IO server before starting HTTP server
-
 server.listen(3001, () => {
   console.log("🚀 Express backend running on http://localhost:3001");
   console.log("📝 Logging is enabled - all console.log statements should appear");
