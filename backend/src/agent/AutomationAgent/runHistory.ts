@@ -83,4 +83,15 @@ export async function finalizeRunStatus(runId: string, status: Extract<RunHistor
     });
 }
 
+export async function markRunFailed(runId: string, errorMessage: string): Promise<void> {
+    const prisma = db();
+    await prisma.run_history_records.update({
+        where: { id: runId },
+        data: {
+            status: "failed",
+            decision_action: "processed",
+            decision_reason: errorMessage,
+        },
+    });
+}
 
