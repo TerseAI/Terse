@@ -29,7 +29,10 @@ export function NotionResourceSelector({
         mutate,
     } = useNotionResources(integrationId);
 
-    const isRefreshing = isValidating && !isLoading;
+    const [isExplicitlyRefreshing, setIsExplicitlyRefreshing] = useState(false);
+    
+    // Only show spinner when explicitly refreshing (user clicked button) AND currently validating
+    const isRefreshing = isExplicitlyRefreshing && isValidating;
 
     const errorMessage = useMemo(() => {
         if (!isError) {
@@ -69,7 +72,10 @@ export function NotionResourceSelector({
     }, [defaultResourceId, integrationId, isLoading, onSelect, resources, selectedResourceId]);
 
     const handleRefresh = () => {
-        void mutate();
+        setIsExplicitlyRefreshing(true);
+        void mutate().finally(() => {
+            setIsExplicitlyRefreshing(false);
+        });
     };
 
     if (isLoading) {
