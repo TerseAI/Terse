@@ -30,10 +30,13 @@ import {
 import {
   getCurrentGithubIntegration,
   getInstallationUrl,
-  githubAppInstallationCallback,
-  githubAppInstallationDeleted,
   githubAppUnifiedEvent,
-} from "./routes/githubApp";
+} from "./routes/Github/githubApp";
+import {
+  githubAppInstallationDeleted,
+  processSetUpURLGithubInstallation,
+  processsGithubAppInstallationWebhook,
+} from "./routes/Github/githubAppInstallationMatching";
 import {
   deleteGmailIntegration,
   getGmailOAuthUrl,
@@ -193,13 +196,19 @@ app.get("/github/installation-url", authMiddleware, async (req, res) => {
   getInstallationUrl(req, res);
 });
 
+// THIS IS FOR THE PROBOT APP!
 app.post(
   "/github/installation-callback",
   githubAppAuthMiddleware,
   async (req, res) => {
-    githubAppInstallationCallback(req, res);
+    processsGithubAppInstallationWebhook(req, res);
   }
 );
+
+// GITHUB Will call this directly to the backend, not through the Probot app.
+app.get("/github/frontend-installation-callback", async (req, res) => {
+  processSetUpURLGithubInstallation(req, res);
+});
 
 app.post(
   "/github/installation-deleted",

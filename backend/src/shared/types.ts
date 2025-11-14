@@ -499,3 +499,17 @@ export type AutomationsResponse = {
         totalPages: number;
     };
 };
+
+export type GithubAppInstallationCallbackRequest = {
+  name: string;
+  email: string;
+  username: string;
+  installationId: number;
+  repositories: Repository[];
+}
+
+export type Repository = {
+  name: string;
+  owner: string;
+  id: number;
+}
