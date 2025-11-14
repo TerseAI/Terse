@@ -83,14 +83,22 @@ export async function finalizeRunStatus(runId: string, status: Extract<RunHistor
     });
 }
 
-export async function markRunFailed(runId: string, errorMessage: string): Promise<void> {
+export type FailureStage = 'filter' | 'agent';
+
+export async function markRunFailed(runId: string, errorMessage: string, stage?: FailureStage): Promise<void> {
     const prisma = db();
+    
+    // Prefix error message with failure stage for easy identification
+    const prefixedMessage = stage 
+        ? `[${stage.toUpperCase()}_ERROR] ${errorMessage}`
+        : errorMessage;
+    
     await prisma.run_history_records.update({
         where: { id: runId },
         data: {
             status: "failed",
             decision_action: "processed",
-            decision_reason: errorMessage,
+            decision_reason: prefixedMessage,
         },
     });
 }

@@ -96,7 +96,7 @@ function extractPropertyValue(property: any): any {
 // Tool 1: Query the Notion database to see current state AND schema
 const notionQueryDatabaseTool = tool({
     name: 'notion_query_database',
-    description: `ALWAYS CALL THIS FIRST. DO NOT MODIFY ANYTHING WITHOUT CALLING THIS FIRST.
+    description: `Call this tool ONCE at the beginning of your run to get the database state. After calling it once, remember and reuse the results - DO NOT call it multiple times in the same run.
 
 This tool returns TWO critical pieces of information:
 1. DATABASE SCHEMA: The structure of the database including:

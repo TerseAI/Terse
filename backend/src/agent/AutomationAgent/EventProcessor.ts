@@ -5,7 +5,7 @@ import { InputEvent } from '../../Updater/InputEvents';
 import { OutputFactory } from '../../Updater/Outputs/OutputFactory';
 import { AutomationAgent } from './AutomationAgent';
 import { filterEvent } from './EventFilter';
-import { appendRunAction, createRunRecord, finalizeRunStatus, markRunFailed, markRunProcessed, markRunSkipped } from './runHistory';
+import { appendRunAction, createRunRecord, finalizeRunStatus, markRunFailed, markRunProcessed, markRunSkipped, FailureStage } from './runHistory';
 import { ApprovalResult } from './AutomationAgent';
 import { Agent, AgentOutputType, RunResult } from '@openai/agents';
 import { Session } from '../../server';
@@ -178,7 +178,7 @@ export class EventProcessor {
             
             if (runId) {
                 try {
-                    await markRunFailed(runId, `Filtering failed: ${errorMessage}`);
+                    await markRunFailed(runId, errorMessage, 'filter');
                     emitCacheInvalidationWithWildcard(this.user.id, 'runHistory', automation.id);
                 } catch (e) {
                     console.error(chalk.yellow('Failed to mark run as failed'), e);
@@ -230,7 +230,7 @@ export class EventProcessor {
             
             if (runId) {
                 try {
-                    await markRunFailed(runId, errorMessage);
+                    await markRunFailed(runId, errorMessage, 'agent');
                     emitCacheInvalidationWithWildcard(this.user.id, 'runHistory', automation.id);
                 } catch (e) {
                     console.error(chalk.yellow('Failed to mark run as failed'), e);
