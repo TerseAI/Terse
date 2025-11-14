@@ -52,7 +52,7 @@ function Content() {
 
   // Initialize socket when user is authenticated
   useEffect(() => {
-    if (user) {
+    if (user && user != null) {
       initializeSocket();
     } else {
       disconnectSocket();
