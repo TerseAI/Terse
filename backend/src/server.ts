@@ -103,9 +103,6 @@ try {
   process.exit(1);
 }
 
-// WebSocket handler, keep in memory as long as the server is running!!
-const agentSocketServer = new AgentSocketServer(server, "/session");
-
 app.use(
   cors({
     origin: true,
