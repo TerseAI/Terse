@@ -1,4 +1,4 @@
-import { Integration } from "../../../context/Integrations";
+import { Integration } from "@/types/Integration";
 import { IconForInputType } from "./Integration";
 import { getIntegrationTypeName } from "../../../utility/IntegrationFormatters";
 

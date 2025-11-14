@@ -3,9 +3,8 @@ import { Navigate, Outlet, Route, BrowserRouter as Router, Routes } from 'react-
 import { useEffect } from "react";
 import Spin from "./components/loading/Spin";
 import { AppSidebar } from "./components/Sidebar/Sidebar";
-import { IntegrationProvider } from "./context/Integrations";
 import ActivityFeed from "./pages/ActivityFeed";
-import Automations from "./pages/Automations/Automations";
+import AutomationDetail from "./pages/Automations/AutomationDetail";
 import AutomationsList from "./pages/Automations/AutomationsList";
 import Home from "./pages/Home";
 import LandingPageChangelog from "./pages/LandingPage_changelog";
@@ -32,8 +31,8 @@ function App() {
               <Route index element={<Home />} />
               <Route path="activity" element={<ActivityFeed />} />
               <Route path="automations" element={<AutomationsList />} />
-              <Route path="automations/new" element={<Automations />} />
-              <Route path="automations/:id" element={<Automations />} />
+              <Route path="automations/new" element={<AutomationDetail />} />
+              <Route path="automations/:id" element={<AutomationDetail />} />
               <Route path="integrations" element={<IntegrationPage />} />
             </Route>
             <Route path="/changelog" element={<LandingPageChangelog />} />
@@ -75,19 +74,17 @@ function Content() {
 
   return (
     <>
-      <IntegrationProvider>
-        <AnimatePresence mode="wait">
-          {user != null ? (
-            <div key="main" className="h-full">
-              <AppLayout />
-            </div>
-          ) : (
-            <div key="login">
-              <Login />
-            </div>
-          )}
-        </AnimatePresence>
-      </IntegrationProvider>
+      <AnimatePresence mode="wait">
+        {user != null ? (
+          <div key="main" className="h-full">
+            <AppLayout />
+          </div>
+        ) : (
+          <div key="login">
+            <Login />
+          </div>
+        )}
+      </AnimatePresence>
     </>
   );
 }

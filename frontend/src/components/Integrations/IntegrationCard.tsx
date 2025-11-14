@@ -1,4 +1,4 @@
-import { Integration } from "@/context/Integrations";
+import { Integration } from "@/types/Integration";
 import NotionIntegrationCard from "./NotionIntegrationCard";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "../ui/card";
 import { Skeleton } from "../ui/skeleton";

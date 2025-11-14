@@ -48,7 +48,6 @@ export type GithubIntegration = {
 
 export type LinearIntegration = {
   id: string;
-  apiKey: string;
   workspaceName?: string;
   linearTeamId?: string;
   linearTeamName?: string;
@@ -74,7 +73,6 @@ export type LinearApiKeyValidationResponse = {
 
 export type JiraIntegration = {
   id: string;
-  apiKey: string;
   baseUrl: string;
   email: string;
   siteName?: string;
@@ -117,12 +115,10 @@ export type ConfluenceIntegration = {
   id: string;
   confluence_user_email: string;
   base_url: string;
-  api_key: string;
 };
 
 export type NotionIntegration = {
   id: string;
-  integrationToken: string;
   workspaceId?: string;
   workspaceName?: string;
 };
@@ -255,6 +251,16 @@ export type ConfluenceResourcesResponse = {
   resources: ConfluencePage[];
   spaceId: string;
   total: number;
+};
+
+export type UseConfluenceResourcesReturn<MutateType = any> = {
+  resources: ConfluencePage[];
+  response: ConfluenceResourcesResponse | undefined;
+  isLoading: boolean;
+  isError: boolean;
+  error: unknown;
+  isValidating: boolean;
+  mutate: MutateType;
 };
 
 export type GitHubConfig = {

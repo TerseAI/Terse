@@ -1,4 +1,3 @@
-import { BackendProvider } from "../services/backend";
 import { Integration } from "../types/Integration";
 import { getIntegrationName } from "./IntegrationUtils";
 
@@ -22,11 +21,16 @@ interface AutomationOutputLike {
  * - If both inputs and output are present: generates a name like "Gmail -> Notion sync" 
  *   or "Gmail + Slack -> Notion sync" for multiple inputs
  * - If inputs or output are empty: generates "Automation #x" where x is the total count + 1
+ * 
+ * @param inputs - Array of automation inputs
+ * @param output - Automation output (optional)
+ * @param totalCount - Total count of existing automations (used for generating numbered names)
  */
-export async function getDefaultAutomationName(
+export function getDefaultAutomationName(
     inputs: AutomationInputLike[],
-    output: AutomationOutputLike | undefined
-): Promise<string> {
+    output: AutomationOutputLike | undefined,
+    totalCount: number = 0
+): string {
     // If both inputs and output are present, generate a descriptive name
     if (inputs.length > 0 && output !== undefined) {
         // Get all input integration names and join them with " + "
@@ -36,13 +40,5 @@ export async function getDefaultAutomationName(
     }
 
     // If inputs or output are empty, generate "Automation #x"
-    try {
-        const response = await BackendProvider.getUserAutomations(1, 1);
-        const totalCount = response.pagination.total;
-        return `Automation #${totalCount + 1}`;
-    } catch (error) {
-        console.error('Error getting automation count:', error);
-        // Fallback to a default name if the fetch fails
-        return 'Automation #1';
-    }
+    return `Automation #${totalCount + 1}`;
 }

@@ -1,11 +1,11 @@
 import { useEffect, useState } from "react";
-import { BackendProvider } from "../services/backend";
-import { ConfluencePage, ConfluenceResourcesResponse } from "../shared/types";
+import { ConfluencePage } from "../shared/types";
 import { Check, ChevronsUpDown, RefreshCw } from "lucide-react";
 import { Button } from "./ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "./ui/command";
 import { cn } from "@/lib/utils";
+import { useConfluenceResources } from "../hooks/api/useConfluenceResources";
 
 interface ConfluenceResourceSelectorProps {
     integrationId: string;
@@ -18,49 +18,29 @@ export function ConfluenceResourceSelector({
     selectedResourceId,
     onSelect
 }: ConfluenceResourceSelectorProps) {
-    const [resources, setResources] = useState<ConfluencePage[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
+    const { resources, isLoading, isError, error, isValidating, mutate } = useConfluenceResources(integrationId);
     const [isRefreshing, setIsRefreshing] = useState(false);
-    const [error, setError] = useState<string | null>(null);
 
-    const fetchResources = async (isRefresh = false) => {
-        if (isRefresh) {
-            setIsRefreshing(true);
-        } else {
-            setIsLoading(true);
-        }
-        setError(null);
-
-        try {
-            const response: ConfluenceResourcesResponse = await BackendProvider.getConfluenceResources(integrationId);
-            setResources(response.resources);
-
-            // Only auto-select if no resource is currently selected
-            if (!selectedResourceId && response.resources.length > 0) {
-                const resourceToSelect = response.resources[0];
-                if (resourceToSelect) {
-                    onSelect(resourceToSelect.id, resourceToSelect.title, resourceToSelect.spaceId, resourceToSelect.spaceName);
-                }
+    // Only auto-select if no resource is currently selected
+    useEffect(() => {
+        if (!selectedResourceId && resources.length > 0) {
+            const resourceToSelect = resources[0];
+            if (resourceToSelect) {
+                onSelect(resourceToSelect.id, resourceToSelect.title, resourceToSelect.spaceId, resourceToSelect.spaceName);
             }
-        } catch (err: any) {
-            console.error('Error fetching Confluence resources:', err);
-            setError(err.message || 'Failed to load resources');
+        }
+    }, [resources, selectedResourceId, onSelect]);
+
+    const handleRefresh = async () => {
+        setIsRefreshing(true);
+        try {
+            await mutate();
         } finally {
-            setIsLoading(false);
             setIsRefreshing(false);
         }
     };
 
-    useEffect(() => {
-        if (integrationId) {
-            fetchResources();
-        }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [integrationId]);
-
-    const handleRefresh = () => {
-        fetchResources(true);
-    };
+    const errorMessage = error instanceof Error ? error.message : (typeof error === 'string' ? error : 'Failed to load resources');
 
     if (isLoading) {
         return (
@@ -70,10 +50,10 @@ export function ConfluenceResourceSelector({
         );
     }
 
-    if (error) {
+    if (isError) {
         return (
             <div className="space-y-2">
-                <div className="text-sm text-destructive">{error}</div>
+                <div className="text-sm text-destructive">{errorMessage}</div>
                 <Button
                     onClick={handleRefresh}
                     variant="link"
@@ -102,12 +82,12 @@ export function ConfluenceResourceSelector({
                 </label>
                 <Button
                     onClick={handleRefresh}
-                    disabled={isRefreshing}
+                    disabled={isRefreshing || isValidating}
                     variant="ghost"
                     size="sm"
                     title="Refresh resource list"
                 >
-                    <RefreshCw className={`w-3 h-3 mr-1 ${isRefreshing ? 'animate-spin' : ''}`} />
+                    <RefreshCw className={`w-3 h-3 mr-1 ${(isRefreshing || isValidating) ? 'animate-spin' : ''}`} />
                     Refresh
                 </Button>
             </div>

@@ -1,7 +1,7 @@
 import { Brain } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useAutomationContext } from "@/context/AutomationContext";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { AutomationPrompt } from "@/shared/types";
 import { Dialog } from "@/components/ui/dialog";
 import { DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -10,7 +10,12 @@ import { toast } from "sonner";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { HelpCircle } from "lucide-react";
 
-export function BackgroundAgentCard() {
+type BackgroundAgentCardProps = {
+    prompt: AutomationPrompt | undefined;
+    setPrompt: (prompt: AutomationPrompt | undefined) => void;
+};
+
+export function BackgroundAgentCard({ prompt, setPrompt }: BackgroundAgentCardProps) {
     return (
         <>
             <style>{`
@@ -77,7 +82,7 @@ export function BackgroundAgentCard() {
                         </CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <PromptDialog />
+                        <PromptDialog prompt={prompt} setPrompt={setPrompt} />
                     </CardContent>
                 </Card>
             </div>
@@ -85,12 +90,25 @@ export function BackgroundAgentCard() {
     )
 }
 
-function PromptDialog() {
-    const { prompt, setPrompt } = useAutomationContext();
+function PromptDialog({ prompt, setPrompt }: BackgroundAgentCardProps) {
     const [content, setContent] = useState(prompt?.text || '');
     const [open, setOpen] = useState(false);
+    
+    // Sync content when prompt changes from parent
+    useEffect(() => {
+        setContent(prompt?.text || '');
+    }, [prompt]);
+    
+    // Update content when prompt changes externally
+    const handleOpenChange = (newOpen: boolean) => {
+        setOpen(newOpen);
+        if (!newOpen) {
+            // Reset content to current prompt when dialog closes without saving
+            setContent(prompt?.text || '');
+        }
+    };
     return (
-        <Dialog open={open} onOpenChange={setOpen}>
+        <Dialog open={open} onOpenChange={handleOpenChange}>
             <DialogTrigger asChild>
                 <Button variant="outline">
                     Modify Instructions

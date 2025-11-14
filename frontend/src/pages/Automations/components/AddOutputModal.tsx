@@ -1,5 +1,5 @@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Integration } from "../../../context/Integrations";
+import { Integration } from "@/types/Integration";
 import { getAllOutputIntegrationMetadata } from "../../../utility/IntegrationUtils";
 import { IconForInputType } from "./Integration";
 import { Button } from "@/components/ui/button";
