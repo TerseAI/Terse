@@ -5,6 +5,8 @@ import { AutomationInput } from "../types/prisma";
 import { RunHistoryTrigger } from "../shared/RunHistoryTypes";
 import { SlackEventData, SlackChannelType } from "../shared/types";
 import { FigmaCommentEventData, FigmaCommentThreadEntry } from "../shared/types";
+import { GithubAppUnifiedEventRequest } from "../routes/Github/githubApp";
+
 
 export abstract class InputEvent {
     abstract readonly integrationType: IntegrationType;
@@ -376,5 +378,51 @@ export class FigmaCommentEvent extends InputEvent {
             }
         }
         return urls;
+    }
+}
+
+// MARK: - GITHUB Event
+
+export class GithubEvent extends InputEvent {
+    readonly integrationType: IntegrationType = IntegrationType.GITHUB;
+    data: GithubAppUnifiedEventRequest;
+    
+    constructor(data: GithubAppUnifiedEventRequest) {
+        super();
+        this.data = data;
+    }
+
+    formatForAutomationAgent(): string {
+        return `
+        Incoming GitHub Event.
+
+        GitHub Event:
+        Event Type: ${this.data.eventType}
+        Repository: ${this.data.repositoryName}
+        Username: ${this.data.username}
+        `;
+    }
+
+    debugLog(): string {
+        return `GitHub Event: ${this.data.eventType} - ${this.data.repositoryName} - ${this.data.username}`;
+    }
+
+    matchesAutomationInput(automationInput: AutomationInput): boolean {
+        return false;
+    }
+    
+    createTriggerMetadata(): RunHistoryTrigger {
+        return {
+            event: 'github_event',
+            integration: 'github',
+            source: this.data.repositoryName,
+            title: this.data.eventType,
+            subheader: this.data.username,
+            url: `https://github.com/${this.data.repositoryName}/commit/${this.data.commits[0].sha}`,
+        };
+    }
+
+    getImageUrls(): string[] {
+        return [];
     }
 }

@@ -107,7 +107,7 @@ export async function githubAppInstallationDeleted(req: Request, res: Response) 
 }
 
 
-function resolveUserForGithubInstallation(installationId: number, github_username: string): Promise<User | null> {
+export async function resolveUserForGithubInstallation(installationId: number, github_username: string): Promise<User | null> {
     return db().$transaction(async (tx) => {
         // check if installation is already associated with a user - This should be most common case.
         let installation = await tx.user_github_installation.findFirst({ where: { installation_id: installationId } });
