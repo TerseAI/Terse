@@ -11,11 +11,9 @@ export async function systemPrompt(session: Session, automationPrompt: Automatio
     - Linear Tickets
     - documentation
 
-    ALWAYS CALL THE NOTION_QUERY_DATABASE TOOL FIRST. DO NOT MODIFY ANYTHING WITHOUT CALLING THIS FIRST. THERE IS NO WAY TO KNOW THE STATE OF THE DOCUMENT WITHOUT CALLING THIS FIRST.
+    IMPORTANT:     Make sure to understand the current state of the living document before you update anything. Each output will provide a tool to do this. Call the query tool ONCE at the start, then use the results throughout your run.
 
     The idea is, we will register webhooks and every time one fires, we will send you the event. Then you will go and update the living document.
-
-    Make sure to understand the current state of the living document before you update anything. Each output will provide a tool to do this. THIS IS VERY IMPORTANT.
 
     The user will provide specific instructions for you to follow. They will also provide you with the webhook inputs and the output destinaiton where the living document is stored.
 

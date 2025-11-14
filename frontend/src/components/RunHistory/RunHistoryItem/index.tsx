@@ -2,6 +2,7 @@ import { RunHistoryRecord } from "../../../shared/RunHistoryTypes";
 import RunHistoryActionItem from "../RunHistoryActionItem";
 import RunHistoryItemHeader from "./RunHistoryItemHeader";
 import RunHistoryItemDecision from "./RunHistoryItemDecision";
+import { XCircle } from "lucide-react";
 import {
     Accordion,
     AccordionContent,
@@ -60,6 +61,13 @@ export default function RunHistoryItem({
 
     const allActionsExpanded = !!run.actions && areAllActionsExpanded(run.id, run.actions.length);
 
+    // Check if this is a failed run
+    const isError = run.status === "failed";
+    // Extract error message, removing [FILTER_ERROR] or [AGENT_ERROR] prefix if present
+    const errorMessage = isError 
+        ? run.decision.reasoning.replace(/^\[(FILTER|AGENT)_ERROR\]\s*/, '')
+        : null;
+
     return (
         <div className="overflow-hidden bg-card border border-border rounded-lg md:mb-3 min-w-[640px] md:min-w-0 shrink-0 md:shrink">
             <Accordion
@@ -79,17 +87,57 @@ export default function RunHistoryItem({
                         />
                     </AccordionTrigger>
                     <AccordionContent>
-                        <div className="text-foreground pl-8">
-                            Agent Decision:
-                        </div>
-                        <div className="mt-3 pl-8">
-                            <RunHistoryItemDecision
-                                filtered={run.filtered}
-                                reasoning={run.decision.reasoning}
-                                isExpanded={isDecisionExpanded}
-                                onToggle={() => onToggleDecision(run.id)}
-                            />
-                        </div>
+                        {isError ? (
+                            <div className="pl-8">
+                                <div className="text-foreground mb-3">
+                                    Execution Error:
+                                </div>
+                                <div className="mt-3">
+                                    <Accordion
+                                        type="single"
+                                        collapsible
+                                        value={isDecisionExpanded ? "error" : ""}
+                                        onValueChange={() => onToggleDecision(run.id)}
+                                    >
+                                        <div className="rounded-lg border border-border">
+                                            <AccordionItem value="error" className="border-b-0">
+                                                <AccordionTrigger className="py-2 px-2 hover:no-underline hover:bg-accent/50">
+                                                    <div className="flex items-center gap-2 w-full mr-2">
+                                                        <div>
+                                                            <XCircle className="w-4 h-4 text-destructive" />
+                                                        </div>
+                                                        <div className="flex-1">
+                                                            <span className="text-foreground">
+                                                                Error
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                </AccordionTrigger>
+                                                <AccordionContent>
+                                                    <div className="pt-2 pl-4 text-muted-foreground">
+                                                        {errorMessage}
+                                                    </div>
+                                                </AccordionContent>
+                                            </AccordionItem>
+                                        </div>
+                                    </Accordion>
+                                </div>
+                            </div>
+                        ) : (
+                            <>
+                                <div className="text-foreground pl-8">
+                                    Agent Decision:
+                                </div>
+                                <div className="mt-3 pl-8">
+                                    <RunHistoryItemDecision
+                                        filtered={run.filtered}
+                                        reasoning={run.decision.reasoning}
+                                        isExpanded={isDecisionExpanded}
+                                        onToggle={() => onToggleDecision(run.id)}
+                                    />
+                                </div>
+                            </>
+                        )}
 
                         {run.actions && run.actions.length > 0 && (
                             <div className="mt-3 pl-8">
