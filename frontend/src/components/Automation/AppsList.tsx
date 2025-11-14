@@ -9,19 +9,29 @@ interface AppsListProps {
 }
 
 export function AppsList({ automation }: AppsListProps) {
-    const deduplicatedInputIntegrations = [...new Set(automation.inputs.map(input => input.integration))];
+    // Count integrations using a hashmap
+    const integrationCounts = new Map<string, number>();
+    automation.inputs.forEach(input => {
+        const count = integrationCounts.get(input.integration) || 0;
+        integrationCounts.set(input.integration, count + 1);
+    });
 
     const outputIntegration = automation.output?.integration;
 
     return (
         <div className="flex items-center gap-1.5">
-            {deduplicatedInputIntegrations.map((integration, idx) => (
+            {Array.from(integrationCounts.entries()).map(([integration, count], idx) => (
                 <div key={idx} className="flex items-center">
                     <div
-                        className="w-7 h-7 flex items-center justify-center rounded bg-card p-1"
+                        className="relative w-7 h-7 flex items-center justify-center rounded bg-card p-1"
                         title={capitalize(integration)}
                     >
                         <IconForInputType type={integration as Integration} />
+                        {count > 1 && (
+                            <sup className="absolute -top-1.5 -right-1.5 text-[9px] font-mono tabular-nums leading-none z-10 text-primary-foreground rounded-full w-4 h-4 flex items-center justify-center shadow-md backdrop-blur-sm">
+                                {count}
+                            </sup>
+                        )}
                     </div>
                 </div>
             ))}
