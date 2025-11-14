@@ -163,12 +163,35 @@ export class EventProcessor {
         }
 
         // Filter the event using AI to see if it's relevant to this automation
-        const filterResult = await filterEvent<Session>(
-            this.inputEvent,
-            automation.prompt,
-            output,
-            session
-        );
+        let filterResult;
+        try {
+            filterResult = await filterEvent<Session>(
+                this.inputEvent,
+                automation.prompt,
+                output,
+                session
+            );
+        } catch (error) {
+            // Log the error and update run history if it exists
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+            console.error(chalk.red(`Error filtering event for automation "${automation.name}":`), error);
+            
+            if (runId) {
+                try {
+                    await markRunFailed(runId, `Filtering failed: ${errorMessage}`);
+                    emitCacheInvalidationWithWildcard(this.user.id, 'runHistory', automation.id);
+                } catch (e) {
+                    console.error(chalk.yellow('Failed to mark run as failed'), e);
+                }
+            }
+            
+            return new ProcessorResult(
+                false,
+                `Error during filtering: ${errorMessage}`,
+                automation
+            );
+        }
+
         if (!filterResult.isRelevant) {
             console.log(chalk.gray(`Event is not relevant to automation "${automation.name}": ${filterResult.reason}`));
             if (runId) {

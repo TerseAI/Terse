@@ -80,13 +80,9 @@ export async function filterEvent<T extends Session>(
         return parsed;
 
     } catch (error) {
-        console.error('Error filtering event:', error);
-        // In case of error, default to allowing the event through with low confidence
-        return {
-            isRelevant: true,
-            reason: `Error during filtering: ${error instanceof Error ? error.message : 'Unknown error'}. Defaulting to relevant.`,
-            confidence: 0.1
-        };
+        // Re-throw error to be handled by the caller (EventProcessor)
+        // This allows proper error tracking in run history
+        throw error;
     }
 }
 
