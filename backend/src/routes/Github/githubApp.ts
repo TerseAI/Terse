@@ -10,6 +10,7 @@ import { ActivityOverview } from "../../agent/agents/Analyzer";
 import { TicketEventType } from "@prisma/client";
 import { githubApp } from "../../config/settings";
 import { Repository } from "../../shared/types";
+import { processGithubEvent } from "./githubEventProcessor";
 
 export async function getCurrentGithubIntegration(req: Request, res: Response) {
     if(!req.session?.user) {
@@ -236,9 +237,8 @@ export async function githubAppUnifiedEvent(req: Request, res: Response) {
     const { username, repositoryName, installationId } = body;
     console.log(chalk.blue('githubAppUnifiedEvent'), body.eventType, body.repositoryName, body.username);
 
-    // Go run this on the new code... anything below here is legacy code for Merkle use case.
-
-
+    /// Go run this on the new code... anything below here is legacy code for Merkle use case.
+    const results = await processGithubEvent(body);
 
     try {
         // get the user with transaction safety

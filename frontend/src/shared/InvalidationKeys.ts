@@ -24,6 +24,10 @@ export const confluenceResourcesKey = (integrationId: string | null | undefined)
     return ['confluenceResources', integrationId] as const;
 };
 
+export const githubRepositoriesKey = (): readonly [string] => {
+    return ['githubRepositories'] as const;
+};
+
 export const runHistoryKey = (
     automationId: string,
     params?: GetRunHistoryParams

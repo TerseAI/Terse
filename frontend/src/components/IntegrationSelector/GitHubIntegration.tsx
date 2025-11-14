@@ -5,6 +5,7 @@ import { formatIntegrationDisplay, IntegrationInstance } from '../../utility/Int
 import { getIntegrationName } from '../../utility/IntegrationUtils';
 import { Integration } from "@/types/Integration";
 import { BaseIntegrationProps } from './types';
+import { GithubResourceSelector } from '../GithubResourceSelector';
 
 interface GitHubIntegrationProps extends BaseIntegrationProps {
     integrationType: Integration;
@@ -84,6 +85,17 @@ export function GitHubIntegration({
                 <Plus className="w-4 h-4" />
                 {isConnecting ? 'Connecting...' : `Connect Another ${getIntegrationName(integrationType)}`}
             </Button>
+
+            {selectedIntegrationId && (
+                <div className="mt-3 pt-3 border-t border-border">
+                    <GithubResourceSelector
+                        selectedRepositoryIds={[]}
+                        onSelect={(repositoryIds) => {
+                            console.log(repositoryIds);
+                        }}
+                    />
+                </div>
+            )}
         </div>
     );
 }

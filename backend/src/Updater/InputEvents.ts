@@ -408,7 +408,12 @@ export class GithubEvent extends InputEvent {
     }
 
     matchesAutomationInput(automationInput: AutomationInput): boolean {
-        return false;
+        if (automationInput.integration_type !== IntegrationType.GITHUB) {
+            return false;
+        }
+        const githubConfig = (automationInput as any).github_config;
+
+        return true
     }
     
     createTriggerMetadata(): RunHistoryTrigger {
