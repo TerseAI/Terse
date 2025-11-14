@@ -6,7 +6,7 @@ import { EventProcessor, ProcessorResult } from "../agent/AutomationAgent/EventP
 import { db } from "../prismaClient";
 import { GmailIntegration, User } from "../types/prisma";
 import { gmail as gmailConfig, urls, cloudScheduler } from "../config/settings";
-import { GmailEvent } from "src/Updater/InputEvents";
+import { GmailEvent } from "../Updater/InputEvents";
 
 // OAuth2 scopes for Gmail
 const SCOPES = ["https://www.googleapis.com/auth/gmail.readonly"];
