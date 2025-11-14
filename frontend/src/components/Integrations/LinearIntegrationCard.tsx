@@ -1,5 +1,5 @@
 import { Card, CardContent } from "../ui/card";
-import { Integration } from "@/context/Integrations";
+import { Integration } from "@/types/Integration";
 import { formatIntegrationDisplay } from "@/utility/IntegrationFormatters";
 import { getIntegrationInstances } from "@/utility/IntegrationUtils";
 import { IntegrationsStatus } from "@/shared/types";

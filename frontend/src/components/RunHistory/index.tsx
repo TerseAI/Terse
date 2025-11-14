@@ -4,13 +4,15 @@ import RunHistoryToolBar from "./RunHistoryToolBar";
 import RunHistoryItem from "./RunHistoryItem";
 import RunHistoryLoadingState from "./RunHistoryLoadingState";
 import { RunHistoryStatus } from "../../shared/RunHistoryTypes";
-import { useAutomationContext } from "../../context/AutomationContext";
 import { useRunHistory } from "../../hooks/api/useRunHistory";
 
 // Remote data source only; no local mock
 
-export default function RunHistory() {
-    const { automationId } = useAutomationContext();
+type RunHistoryProps = {
+    automationId: string | null;
+};
+
+export default function RunHistory({ automationId }: RunHistoryProps) {
     const [expandedRuns, setExpandedRuns] = useState<Set<string>>(new Set());
     const [expandedDecisions, setExpandedDecisions] = useState<Set<string>>(new Set());
     const [expandedIndividualActions, setExpandedIndividualActions] = useState<Set<string>>(new Set());

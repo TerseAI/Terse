@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Integration } from '../../context/Integrations';
+import { Integration } from "@/types/Integration";
 import { BackendProvider } from '../../services/backend';
 import { getIntegrationInstances, isInputComplete } from '../../utility/IntegrationUtils';
 import { BaseIntegrationProps, IntegrationSelectorProps } from './types';
