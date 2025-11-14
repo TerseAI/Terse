@@ -7,21 +7,7 @@ import { Empty } from "@/components/ui/empty";
 import { IntegrationsStatus } from "@/shared/types";
 
 function IntegrationPage() {
-<<<<<<< HEAD
-    const { integrations, isLoading } = useIntegrations();
-    const [integrationStatus, setIntegrationStatus] = useState<IntegrationsStatus | null>(null);
-
-    useEffect(() => {
-        const fetchIntegrations = async () => {
-            const response = await BackendProvider.getIntegrationsStatus();
-            console.log('🔧 response', response);
-            setIntegrationStatus(response);
-        };
-        fetchIntegrations();
-    }, []);
-=======
     const { integrations, integrationStatus, isLoading } = useIntegrations();
->>>>>>> cd7f4069e80e35e8c2630135c70f4ad1864dd0d1
 
     const filteredIntegrations = removeDuplicateIntegrations(integrations);
 
