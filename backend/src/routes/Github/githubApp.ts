@@ -191,7 +191,7 @@ async function resolveUserGithubRelation(user: User, username: string, repositor
     });
 }
 
-type GithubAppUnifiedEventRequest = {
+export type GithubAppUnifiedEventRequest = {
     username: string;
     installationId: number;
     repositoryName: string;
@@ -235,6 +235,10 @@ export async function githubAppUnifiedEvent(req: Request, res: Response) {
 
     const { username, repositoryName, installationId } = body;
     console.log(chalk.blue('githubAppUnifiedEvent'), body.eventType, body.repositoryName, body.username);
+
+    // Go run this on the new code... anything below here is legacy code for Merkle use case.
+
+
 
     try {
         // get the user with transaction safety
