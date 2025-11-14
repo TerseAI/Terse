@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { BackendProvider } from '../../services/backend';
+import { BackendProvider } from '../services/backend';
 import { Integration } from "@/types/Integration";
 
 export function useOAuthConnection(integrationType: Integration) {
