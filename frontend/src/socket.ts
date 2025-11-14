@@ -5,7 +5,6 @@ import { BackendProvider } from './services/backend';
 let socket: Socket | null = null;
 
 export async function initializeSocket() {
-    console.log("Initializing socket");
     // Don't initialize if already connected
     if (socket?.connected) {
         return;
@@ -21,8 +20,8 @@ export async function initializeSocket() {
     console.log('Connecting to Socket.IO at:', socketUrl);
     
     socket = io(socketUrl, {
-        auth: { token }, // JWT token for authentication
-        withCredentials: true, // Include cookies
+        auth: { token },
+        withCredentials: true,
     });
 
     socket.on('connect', () => {
