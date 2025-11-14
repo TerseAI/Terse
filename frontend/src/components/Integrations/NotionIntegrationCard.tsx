@@ -1,7 +1,7 @@
 import { FileText, Database } from "lucide-react";
 import { NotionResource } from "@/shared/types";
 import { Card, CardContent } from "../ui/card";
-import { Integration } from "@/context/Integrations";
+import { Integration } from "@/types/Integration";
 import { IntegrationCardHeader } from "./helpers/IntegrationCardHeader";
 import { IntegrationCardFooter } from "./helpers/IntegrationCardFooter";
 import { useOAuthUrl } from "./helpers/useOAuthUrl";

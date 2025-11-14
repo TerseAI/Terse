@@ -1,5 +1,5 @@
 import { IntegrationInstance } from '@/utility/IntegrationFormatters';
-import { Integration } from '../../context/Integrations';
+import { Integration } from "@/types/Integration";
 import { NotionConfig, NotionPageConfig, SlackConfig, FigmaConfig, ConfluenceConfig, GmailConfig } from '../../shared/types';
 
 export interface IntegrationSelectorProps {
