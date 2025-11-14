@@ -5,7 +5,6 @@ import { BackendProvider } from './services/backend';
 let socket: Socket | null = null;
 
 export async function initializeSocket() {
-    console.log("Initializing socket");
     // Don't initialize if already connected
     if (socket?.connected) {
         return;
@@ -14,21 +13,15 @@ export async function initializeSocket() {
     // Get the session token for authentication
     const token = await BackendProvider.requestSessionSocketToken();
     
-    // Socket.IO connection setup
-    const wsBase = import.meta.env.VITE_WS_BASE || '';
-    
     // Socket.IO needs the full origin URL, and we specify the path via the 'path' option
     // The path will be: /api/socket.io (which the Vite proxy will forward to /socket.io on backend)
     const socketUrl = import.meta.env.VITE_SOCKET_URL ?? window.location.origin;
-    const socketPath = `${wsBase}/socket.io`;
-    
-    console.log('Connecting to Socket.IO at:', socketUrl, 'with path:', socketPath);
+
+    console.log('Connecting to Socket.IO at:', socketUrl);
     
     socket = io(socketUrl, {
-        path: socketPath,
-        transports: ['websocket'],
-        auth: { token }, // JWT token for authentication
-        withCredentials: true, // Include cookies
+        auth: { token },
+        withCredentials: true,
     });
 
     socket.on('connect', () => {
@@ -41,6 +34,11 @@ export async function initializeSocket() {
 
     socket.on('connect_error', (error) => {
         console.error('Socket.IO connection error:', error);
+        console.error('Error details:', {
+            message: error.message,
+            name: error.name,
+            stack: error.stack,
+        });
     });
 
     // Listen for cache invalidation events

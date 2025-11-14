@@ -45,6 +45,7 @@ export const settings = {
 
   // Application URLs
   urls: {
+    socketFrontend: optionalEnv('SOCKET_FRONTEND_URL'),
     frontend: requireEnv('FRONTEND_URL'),
     backend: optionalEnv('BACKEND_URL', 'http://localhost:3001'),
   },
