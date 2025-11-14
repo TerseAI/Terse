@@ -56,7 +56,7 @@ function AutomationDetail() {
     }, [searchParams]);
 
     // Prepare props for child components
-    const automationProps = useMemo(() => ({
+    const automationProps = {
         automationId,
         name,
         setName,
@@ -70,7 +70,7 @@ function AutomationDetail() {
         setIsActive,
         isLoading: isFetching,
         mutate,
-    }), [automationId, name, inputs, output, prompt, isActive, isFetching, mutate]);
+    }
 
     return (
         <div className="grid grid-cols-20 h-full pt-1">
