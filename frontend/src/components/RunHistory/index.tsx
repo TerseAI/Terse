@@ -119,7 +119,7 @@ export default function RunHistory() {
                 />
             ) : (
                 <div className="mb-6">
-                    <div className="flex flex-col gap-3 overflow-x-auto md:overflow-visible pb-3 md:pb-0">
+                    <div className="flex flex-col gap-3 overflow-x-auto md:overflow-visible pb-3 md:pb-0 max-w-full md:max-w-4xl lg:max-w-5xl xl:max-w-6xl mx-auto">
                         {paginatedRuns.map((run) => (
                             <RunHistoryItem
                                 key={run.id}
