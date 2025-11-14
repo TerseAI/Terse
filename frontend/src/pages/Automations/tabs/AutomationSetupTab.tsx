@@ -7,6 +7,7 @@ import { OutputSection } from "../OutputSection";
 import { AutomationUpdate } from "@/shared/types";
 import { toast } from "sonner";
 import { getDefaultAutomationName } from "@/utility/AutomationUtils";
+import { useAutomationCount } from "@/hooks/api/useAutomationCount";
 import { isInputComplete, isOutputComplete } from "@/utility/IntegrationUtils";
 import { Integration } from "@/types/Integration";
 import { Conn, SVGFlowArrows } from "../components/FlowArrow";
@@ -41,7 +42,7 @@ function SaveAutomationButton({
     isActive,
     mutate 
 }: { 
-    defaultName: string | null;
+    defaultName: string;
     automationId: string | null;
     name: string | null;
     inputs: AutomationInput[];
@@ -172,23 +173,17 @@ export default function AutomationSetupTab({
     isLoading,
     mutate,
 }: AutomationSetupTabProps) {
-    const [defaultName, setDefaultName] = useState<string | null>(null);
+    const { totalCount } = useAutomationCount();
+    const defaultName = getDefaultAutomationName(
+        inputs.map(i => ({ integration: i.integration as Integration })),
+        output ? { integration: output.integration as Integration } : undefined,
+        totalCount
+    );
 
     const containerRef = useRef<HTMLDivElement>(null);
     const inputsSectionRef = useRef<Map<string, HTMLDivElement>>(new Map());
     const PromptSectionRef = useRef<HTMLDivElement>(null);
     const OutputSectionRef = useRef<HTMLDivElement>(null);
-
-    useEffect(() => {
-        async function getDefaultName() {
-            const name = await getDefaultAutomationName(
-                inputs.map(i => ({ integration: i.integration as Integration })),
-                output ? { integration: output.integration as Integration } : undefined
-            );
-            setDefaultName(name);
-        }
-        getDefaultName();
-    }, [inputs, output]);
 
     const createMapElementRef = (mapRef: React.RefObject<Map<string, HTMLDivElement>>, inputId: string): React.RefObject<HTMLDivElement | null> => {
         return {
