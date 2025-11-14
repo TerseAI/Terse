@@ -52,7 +52,7 @@ model github_repositories {
 
 model user_github_installation {
   id              String   @id @default(cuid())
-  user_id         String?  // Set by SetUpURL step. Webhook could come first though, so this needs to be nullable.
+  user_id         String? // Set by SetUpURL step. Webhook could come first though, so this needs to be nullable.
   installation_id Int      @unique
   created_at      DateTime @default(now())
   updated_at      DateTime @updatedAt
