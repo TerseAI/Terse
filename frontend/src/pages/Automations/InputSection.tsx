@@ -216,7 +216,7 @@ const InputCard = forwardRef<HTMLDivElement, {
                     </div>
                 </CardHeader>
 
-                <CardContent className="min-w-xs">
+                <CardContent className="min-w-xs max-w-xs">
                     <IntegrationSelector {...selectorProps} variant="card" />
                 </CardContent>
 
