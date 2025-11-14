@@ -3,7 +3,7 @@ import { Settings, Clock } from "lucide-react";
 import { useParams, useSearchParams } from "react-router-dom";
 import AutomationSetupTab from "./tabs/AutomationSetupTab";
 import AutomationRunHistoryTab from "./tabs/AutomationRunHistoryTab";
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState} from "react";
 import { useAutomation } from "../../hooks/api/useAutomations";
 import { AutomationInput, AutomationOutput, AutomationPrompt } from "../../shared/types";
 
