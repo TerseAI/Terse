@@ -519,3 +519,10 @@ export type Repository = {
   owner: string;
   id: number;
 }
+
+export type GetGithubRepositoriesForIntegrationRequest = {
+}
+
+export type GetGithubRepositoriesForIntegrationResponse = {
+  repositories: Repository[];
+}

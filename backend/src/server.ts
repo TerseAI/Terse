@@ -85,6 +85,7 @@ import {
 import { getConfluenceResources, setConfluenceCredentials, validateConfluenceCredentials } from "./routes/confluence";
 import { initializeRealtimeSocket } from "./realtimeSocket";
 import { RunHistoryAction } from "./shared/RunHistoryTypes";
+import { getGithubRepositoriesForIntegration } from "./routes/Github/githubEventProcessor";
 
 export type Session = {
   user: User;
@@ -203,6 +204,10 @@ app.get("/github/get-current-integration", authMiddleware, async (req, res) => {
 
 app.get("/github/installation-url", authMiddleware, async (req, res) => {
   getInstallationUrl(req, res);
+});
+
+app.get("/github/get-repositories-for-integration", authMiddleware, async (req, res) => {
+  getGithubRepositoriesForIntegration(req, res);
 });
 
 // THIS IS FOR THE PROBOT APP!
