@@ -80,6 +80,7 @@ import {
   handleFigmaWebhook,
 } from "./routes/figma";
 import { getConfluenceResources, setConfluenceCredentials, validateConfluenceCredentials } from "./routes/confluence";
+import { initializeRealtimeSocket } from "./realtimeSocket";
 
 export type Session = {
   user: User;
@@ -409,11 +410,22 @@ app.delete("/automations/:id", authMiddleware, async (req, res) => {
   deleteAutomation(req, res);
 });
 
-server.listen(3001, () => {
-  console.log("🚀 Express backend running on http://localhost:3001");
-  console.log("📝 Logging is enabled - all console.log statements should appear");
-  console.log("📝 Testing log output...");
-});
+// Initialize Socket.IO server before starting HTTP server
+(async () => {
+  try {
+    await initializeRealtimeSocket(server);
+    console.log("✅ Socket.IO server initialized");
+  } catch (error) {
+    console.error("❌ Failed to initialize Socket.IO server:", error);
+    process.exit(1);
+  }
+
+  server.listen(3001, () => {
+    console.log("🚀 Express backend running on http://localhost:3001");
+    console.log("📝 Logging is enabled - all console.log statements should appear");
+    console.log("📝 Testing log output...");
+  });
+})();
 
 // Graceful shutdown
 process.on("SIGTERM", () => {
