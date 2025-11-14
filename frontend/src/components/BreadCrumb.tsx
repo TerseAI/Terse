@@ -1,11 +1,10 @@
 import { Breadcrumb, BreadcrumbList, BreadcrumbItem, BreadcrumbLink, BreadcrumbPage, BreadcrumbSeparator } from "./ui/breadcrumb";
 import { SidebarTrigger } from "./ui/sidebar";
 import { useLocation, useParams, Link } from "react-router-dom";
-import { useEffect, useState } from "react";
-import { BackendProvider } from "@/services/backend";
 import { ChevronDownIcon } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "./ui/dropdown-menu";
-import { Automation } from "@/shared/types";
+import { useAutomation } from "@/hooks/api/useAutomations";
+import { useAutomations } from "@/hooks/api/useAutomations";
 
 // Route path to display name mapping
 const routeLabels: Record<string, string> = {
@@ -20,32 +19,15 @@ const routeLabels: Record<string, string> = {
 function BreadCrumb() {
     const location = useLocation();
     const params = useParams();
-    const [automationName, setAutomationName] = useState<string | null>(null);
-    const [isLoading, setIsLoading] = useState(false);
 
     // Parse path segments
     const pathSegments = location.pathname.split('/').filter(Boolean);
 
-    // Fetch automation name if we're on an automation detail page
-    useEffect(() => {
-        const automationId = params.id;
-        if (automationId && location.pathname.includes('/automations/') && automationId !== 'new') {
-            setIsLoading(true);
-            BackendProvider.getAutomationById(automationId)
-                .then(automation => {
-                    setAutomationName(automation.name);
-                })
-                .catch(error => {
-                    console.error('Error fetching automation name:', error);
-                    setAutomationName(null);
-                })
-                .finally(() => {
-                    setIsLoading(false);
-                });
-        } else {
-            setAutomationName(null);
-        }
-    }, [params.id, location.pathname]);
+    // Get automation if we're on an automation detail page
+    const automationId = params.id && location.pathname.includes('/automations/') && params.id !== 'new' 
+        ? params.id 
+        : null;
+    const { automation, isLoading } = useAutomation(automationId);
 
     // Build breadcrumb items
     const buildBreadcrumbItems = () => {
@@ -101,7 +83,7 @@ function BreadCrumb() {
                     items.push(
                         <BreadcrumbItem key="automation-detail">
                             <BreadcrumbPage>
-                                {isLoading ? "Loading..." : (automationName || params.id)}
+                                {isLoading ? "Loading..." : (automation?.name || params.id)}
                             </BreadcrumbPage>
                         </BreadcrumbItem>
                     );
@@ -168,21 +150,7 @@ function BreadCrumb() {
 }
 
 function AutomationDropdownMenu() {
-    const [automations, setAutomations] = useState<Automation[]>([]);
-    const [isLoading, setIsLoading] = useState(false);
-
-    useEffect(() => {
-        setIsLoading(true);
-        const loadAutomations = async () => {
-            try {
-                const response = await BackendProvider.getUserAutomations();
-                setAutomations(response.automations);
-            } finally {
-                setIsLoading(false);
-            }
-        };
-        loadAutomations();
-    }, []);
+    const { automations, isLoading } = useAutomations();
 
     if (isLoading || !automations.length) {
         return (

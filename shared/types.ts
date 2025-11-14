@@ -257,6 +257,16 @@ export type ConfluenceResourcesResponse = {
   total: number;
 };
 
+export type UseConfluenceResourcesReturn<MutateType = any> = {
+  resources: ConfluencePage[];
+  response: ConfluenceResourcesResponse | undefined;
+  isLoading: boolean;
+  isError: boolean;
+  error: unknown;
+  isValidating: boolean;
+  mutate: MutateType;
+};
+
 export type GitHubConfig = {
   repositoryId?: string;
   // Note: owner and name not needed - they're part of repository identity
