@@ -32,7 +32,6 @@ export async function fetchUserIntegrations(req: Request, res: Response) {
                 workspace_name: true,
                 team_id: true,
                 team_name: true,
-                api_key: true
             }
         });
         result.integrations.linear = linearKeys.map(lk => ({
@@ -41,7 +40,6 @@ export async function fetchUserIntegrations(req: Request, res: Response) {
             workspaceName: lk.workspace_name || undefined,
             teamId: lk.team_id,
             teamName: lk.team_name,
-            apiKey: lk.api_key
         }));
 
         // Check Jira integrations (now multiple)
@@ -54,7 +52,6 @@ export async function fetchUserIntegrations(req: Request, res: Response) {
                 project_key: true,
                 project_name: true,
                 jira_user_email: true,
-                api_token: true
             }
         });
         result.integrations.jira = jiraKeys.map(jk => ({
@@ -64,14 +61,12 @@ export async function fetchUserIntegrations(req: Request, res: Response) {
             projectKey: jk.project_key || undefined,
             projectName: jk.project_name || undefined,
             email: jk.jira_user_email,
-            apiKey: jk.api_token
         }));
 
         result.integrations.confluence = jiraKeys.map(jk => ({
             id: jk.id,
             confluence_user_email: jk.jira_user_email,
             base_url: jk.base_url,
-            api_key: jk.api_token
         }));
         
         // Check Slack integration
@@ -112,14 +107,12 @@ export async function fetchUserIntegrations(req: Request, res: Response) {
                 id: true,
                 workspace_id: true,
                 workspace_name: true,
-                integration_token: true
             }
         });
         result.integrations.notion = notionIntegrations.map(ni => ({
             id: ni.id,
             workspaceId: ni.workspace_id || undefined,
             workspaceName: ni.workspace_name || undefined,
-            integrationToken: ni.integration_token
         }));
 
         // Check Figma integrations

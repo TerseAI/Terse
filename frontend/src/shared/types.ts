@@ -48,7 +48,7 @@ export type GithubIntegration = {
 
 export type LinearIntegration = {
   id: string;
-  apiKey: string;
+  apiKey?: string; // Optional - not included in status responses for security
   workspaceName?: string;
   linearTeamId?: string;
   linearTeamName?: string;
@@ -74,7 +74,7 @@ export type LinearApiKeyValidationResponse = {
 
 export type JiraIntegration = {
   id: string;
-  apiKey: string;
+  apiKey?: string; // Optional - not included in status responses for security
   baseUrl: string;
   email: string;
   siteName?: string;
@@ -117,12 +117,12 @@ export type ConfluenceIntegration = {
   id: string;
   confluence_user_email: string;
   base_url: string;
-  api_key: string;
+  api_key?: string; // Optional - not included in status responses for security
 };
 
 export type NotionIntegration = {
   id: string;
-  integrationToken: string;
+  integrationToken?: string; // Optional - not included in status responses for security
   workspaceId?: string;
   workspaceName?: string;
 };
