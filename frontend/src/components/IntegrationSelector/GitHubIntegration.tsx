@@ -56,7 +56,7 @@ export function GitHubIntegration({
     // Card variant: compact view
     if (variant === 'card') {
         return (
-            <div className="text-sm">
+            <div className="text-sm truncate">
                 {selectedOption ? selectedOption.label : 'No connection selected'}
             </div>
         );
