@@ -2,6 +2,7 @@ import { useEffect, useMemo} from "react";
 import { SlackChannel} from "../shared/types";
 import { RefreshButton } from "./RefreshButton";
 import { useSlackChannels } from "@/hooks/api/useSlackChannels";
+import { capitalize } from "../lib/utils";
 
 interface SlackChannelSelectorProps {
     integrationId: string;
@@ -69,9 +70,7 @@ export function SlackChannelSelector({
         const names = parts.slice(0, 3);
         
         // Capitalize first letter of each name and join with commas
-        const formattedNames = names.map(namePart => 
-            namePart.charAt(0).toUpperCase() + namePart.slice(1).toLowerCase()
-        );
+        const formattedNames = names.map(capitalize);
         
         // Add "..." if there are more than 3 names
         const suffix = totalNames > 3 ? '...' : '';
