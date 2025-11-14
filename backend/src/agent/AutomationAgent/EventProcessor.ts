@@ -5,7 +5,7 @@ import { InputEvent } from '../../Updater/InputEvents';
 import { OutputFactory } from '../../Updater/Outputs/OutputFactory';
 import { AutomationAgent } from './AutomationAgent';
 import { filterEvent } from './EventFilter';
-import { appendRunAction, createRunRecord, finalizeRunStatus, markRunProcessed, markRunSkipped } from './runHistory';
+import { appendRunAction, createRunRecord, finalizeRunStatus, markRunFailed, markRunProcessed, markRunSkipped } from './runHistory';
 import { ApprovalResult } from './AutomationAgent';
 import { Agent, AgentOutputType, RunResult } from '@openai/agents';
 import { Session } from '../../server';
@@ -197,8 +197,26 @@ export class EventProcessor {
         automationAgent.setInputEvent(this.inputEvent);
 
         // Run the automation agent
-        // Type assertion needed because TypeScript can't narrow the generic type at runtime
-        const result = await automationAgent.run() as ApprovalResult<Session, Agent<Session, AgentOutputType>>;
+        let result: ApprovalResult<Session, Agent<Session, AgentOutputType>>;
+        try {
+            result = await automationAgent.run() as ApprovalResult<Session, Agent<Session, AgentOutputType>>;
+        } catch (error) {
+            // Log the error and update run history if it exists
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+            console.error(chalk.red(`Error running automation agent for "${automation.name}":`), error);
+            
+            if (runId) {
+                try {
+                    await markRunFailed(runId, errorMessage);
+                    emitCacheInvalidationWithWildcard(this.user.id, 'runHistory', automation.id);
+                } catch (e) {
+                    console.error(chalk.yellow('Failed to mark run as failed'), e);
+                }
+            }
+            
+            // Re-throw to be caught by outer try-catch
+            throw error;
+        }
 
         if (result.status === 'completed') {
             console.log(chalk.green(`Automation "${automation.name}" completed:`), result.result.finalOutput);
