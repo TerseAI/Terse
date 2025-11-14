@@ -24,8 +24,6 @@ export const InputsSection = forwardRef<Map<string, HTMLDivElement>, { ref: Reac
         return inputRefs.current;
     }, [inputs]);
 
-    console.log('Inputs:', inputs);
-
     const handleSelectPlatform = (integration: Integration) => {
         const newInputId = uuidv4(); // We need to mint a placeholder ID for the new input so that we can identify it later.
         const newInput: Input = { id: newInputId, integration };

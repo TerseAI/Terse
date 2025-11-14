@@ -20,11 +20,7 @@ export async function initializeRealtimeSocket(server: HttpServer): Promise<Serv
     // Set up Socket.IO server
     io = new Server(server, {
         cors: {
-            origin: urls.frontend
-                ? [urls.frontend]
-                : nodeEnv === "production"
-                    ? false // Deny all in production if FRONTEND_URL not set (security)
-                    : true, // Allow all in development (matches Express CORS config)
+            origin: getSocketCorsOrigin(),
             credentials: true,
         },
     });
@@ -155,4 +151,25 @@ export function emitCacheInvalidationWithWildcard(
     // If id is provided, frontend will match on both tag and id
     // If id is not provided, frontend will match on tag only
     io.to(`user:${userId}`).emit("invalidate", { key, id });
+}
+
+function getSocketCorsOrigin(): boolean | string | string[] {
+    const isProd = nodeEnv === "production";
+
+    let socketCorsOrigin: boolean | string | string[];
+
+    if (urls.socketFrontend) {
+        socketCorsOrigin = [urls.socketFrontend];
+    } else if (isProd) {
+        console.error(
+            "[Socket.IO] SOCKET_FRONTEND_URL (urls.socketFrontend) is not set in production. " +
+            "Blocking all cross-origin Socket.IO connections for safety."
+        );
+        socketCorsOrigin = false; // or throw if you prefer hard failure
+    } else {
+        // In dev, be permissive and echo back any origin
+        socketCorsOrigin = true;
+    }
+
+    return socketCorsOrigin;
 }
