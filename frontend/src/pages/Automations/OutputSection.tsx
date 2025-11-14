@@ -1,6 +1,6 @@
 import { forwardRef, ReactNode, useState } from "react";
-import { Output, useAutomationContext } from "../../context/AutomationContext";
-import { Integration } from "../../context/Integrations";
+import { Integration } from "@/types/Integration";
+import { AutomationOutput } from "../../shared/types";
 import { SectionLayout } from "./components/SectionLayout";
 import { AddOutputModal } from "./components/AddOutputModal";
 import { FileText, Plus } from "lucide-react";
@@ -15,17 +15,18 @@ type OutputSectionProps = {
     subtitle?: string;
     children?: ReactNode;
     icon?: ReactNode;
-    isLoading?: boolean;
+    output: AutomationOutput | undefined;
+    setOutput: (output: AutomationOutput | undefined) => void;
+    isLoading: boolean;
 }
-export const OutputSection = forwardRef<HTMLDivElement, OutputSectionProps>((_, ref) => {
-    const { output, setOutput, isLoading } = useAutomationContext();
+export const OutputSection = forwardRef<HTMLDivElement, OutputSectionProps>(({ output, setOutput, isLoading }, ref) => {
     const [showAddModal, setShowAddModal] = useState(false);
 
     const handleSelectPlatform = (integration: Integration) => {
         // Clear all configs when switching platform (new integration type)
         const clearedConfigs = output ? clearIntegrationConfigs(output) : {};
-        const newOutput: Output = {
-            integration,
+        const newOutput: AutomationOutput = {
+            integration: integration as string,
             ...clearedConfigs
         };
         setOutput(newOutput);
@@ -76,16 +77,16 @@ function OutputCard({
     handleRemove,
     handleSelectIntegration,
     setOutput
-}: { output: Output, handleRemove: () => void, handleSelectIntegration: (integrationId: string) => void, setOutput: (output: Output) => void }) {
+}: { output: AutomationOutput, handleRemove: () => void, handleSelectIntegration: (integrationId: string) => void, setOutput: (output: AutomationOutput) => void }) {
     const { DialogContent } = useIntegrationSelector({
-        integrationType: output.integration,
+        integrationType: output.integration as Integration,
         selectedIntegrationId: output.integrationId,
         onSelect: handleSelectIntegration,
         notionConfig: output.notionConfig,
         onNotionConfigChange: (config) => {
             if (output) {
                 setOutput({
-                    integration: Integration.NOTION,
+                    integration: Integration.NOTION as string,
                     integrationId: output.integrationId,
                     notionConfig: config
                 });
@@ -95,7 +96,7 @@ function OutputCard({
         onNotionPageConfigChange: (config) => {
             if (output) {
                 setOutput({
-                    integration: Integration.NOTION_PAGE,
+                    integration: Integration.NOTION_PAGE as string,
                     integrationId: output.integrationId,
                     notionPageConfig: config
                 });
@@ -119,7 +120,7 @@ function OutputCard({
         <Card>
             <CardHeader>
                 <CardTitle className="flex justify-between">
-                    <IntegrationTitle integration={output.integration} iconSize="lg" />
+                    <IntegrationTitle integration={output.integration as Integration} iconSize="lg" />
                 </CardTitle>
             </CardHeader>
             <CardContent>

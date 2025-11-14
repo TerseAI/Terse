@@ -2,20 +2,55 @@ import { Button } from "@/components/ui/button";
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import EditableTextField from '../../../components/ui/EditableTextField';
-import { useAutomationContext } from "../../../context/AutomationContext";
 import { InputsSection } from "../InputSection";
 import { OutputSection } from "../OutputSection";
 import { AutomationUpdate } from "@/shared/types";
 import { toast } from "sonner";
 import { getDefaultAutomationName } from "@/utility/AutomationUtils";
 import { isInputComplete, isOutputComplete } from "@/utility/IntegrationUtils";
+import { Integration } from "@/types/Integration";
 import { Conn, SVGFlowArrows } from "../components/FlowArrow";
 import { PromptSection } from "../PromptSection";
 import { useAutomationMutations } from "@/hooks/api/useAutomations";
+import { type KeyedMutator } from 'swr';
+import { Automation, AutomationInput, AutomationOutput, AutomationPrompt } from "@/shared/types";
 
-function SaveAutomationButton({ defaultName }: { defaultName: string | null }) {
+type AutomationSetupTabProps = {
+    automationId: string | null;
+    name: string | null;
+    setName: (name: string) => void;
+    inputs: AutomationInput[];
+    setInputs: (inputs: AutomationInput[]) => void;
+    output: AutomationOutput | undefined;
+    setOutput: (output: AutomationOutput | undefined) => void;
+    prompt: AutomationPrompt | undefined;
+    setPrompt: (prompt: AutomationPrompt | undefined) => void;
+    isActive: boolean;
+    setIsActive: (isActive: boolean) => void;
+    isLoading: boolean;
+    mutate: KeyedMutator<Automation>;
+};
+
+function SaveAutomationButton({ 
+    defaultName, 
+    automationId, 
+    name, 
+    inputs, 
+    output, 
+    prompt, 
+    isActive,
+    mutate 
+}: { 
+    defaultName: string | null;
+    automationId: string | null;
+    name: string | null;
+    inputs: AutomationInput[];
+    output: AutomationOutput | undefined;
+    prompt: AutomationPrompt | undefined;
+    isActive: boolean;
+    mutate: KeyedMutator<Automation>;
+}) {
     const navigate = useNavigate();
-    const { automationId, name, inputs, output, prompt, isActive, loadAutomation } = useAutomationContext();
     const [isSaving, setIsSaving] = useState(false);
     const [saveSuccess, setSaveSuccess] = useState(false);
     const { createAutomation, updateAutomation } = useAutomationMutations();
@@ -24,8 +59,8 @@ function SaveAutomationButton({ defaultName }: { defaultName: string | null }) {
     // Each integration reports its own completeness
     const isComplete =
         inputs.length > 0 &&
-        inputs.every(i => isInputComplete(i)) &&
-        !!output && isOutputComplete(output) &&
+        inputs.every(i => isInputComplete({ ...i, integration: i.integration as Integration })) &&
+        !!output && isOutputComplete({ ...output, integration: output.integration as Integration }) &&
         !!prompt?.text; // Ensure prompt is not empty
 
     const isEditMode = !!automationId;
@@ -81,6 +116,7 @@ function SaveAutomationButton({ defaultName }: { defaultName: string | null }) {
                 await updateAutomation({
                     id: automationId!,
                     data: automationData,
+                    mutateAutomation: mutate,
                 });
             } else {
                 // Create new automation
@@ -93,7 +129,6 @@ function SaveAutomationButton({ defaultName }: { defaultName: string | null }) {
                 });
 
                 if (creation?.id) {
-                    await loadAutomation(creation.id);
                     navigate(`/app/automations/${creation.id}`, { replace: true });
                 }
             }
@@ -123,8 +158,20 @@ function SaveAutomationButton({ defaultName }: { defaultName: string | null }) {
 }
 
 
-export default function AutomationSetupTab() {
-    const { name, setName, inputs, output, prompt } = useAutomationContext();
+export default function AutomationSetupTab({
+    automationId,
+    name,
+    setName,
+    inputs,
+    output,
+    prompt,
+    setInputs,
+    setOutput,
+    setPrompt,
+    isActive,
+    isLoading,
+    mutate,
+}: AutomationSetupTabProps) {
     const [defaultName, setDefaultName] = useState<string | null>(null);
 
     const containerRef = useRef<HTMLDivElement>(null);
@@ -134,7 +181,10 @@ export default function AutomationSetupTab() {
 
     useEffect(() => {
         async function getDefaultName() {
-            const name = await getDefaultAutomationName(inputs, output);
+            const name = await getDefaultAutomationName(
+                inputs.map(i => ({ integration: i.integration as Integration })),
+                output ? { integration: output.integration as Integration } : undefined
+            );
             setDefaultName(name);
         }
         getDefaultName();
@@ -170,19 +220,28 @@ export default function AutomationSetupTab() {
     return (
         <div className="flex flex-col h-full p-4 overflow-y-auto gap-6">
 
-            <div className="flex justify-between items-center mb-10">
-                <div className="flex items-center gap-2">
-                    <EditableTextField value={name || defaultName || ''} onSave={(value) => setName(value)} />
+                <div className="flex justify-between items-center mb-10">
+                    <div className="flex items-center gap-2">
+                        <EditableTextField value={name || defaultName || ''} onSave={(value) => setName(value)} />
+                    </div>
+                    <SaveAutomationButton 
+                        defaultName={defaultName}
+                        automationId={automationId}
+                        name={name}
+                        inputs={inputs}
+                        output={output}
+                        prompt={prompt}
+                        isActive={isActive}
+                        mutate={mutate}
+                    />
                 </div>
-                <SaveAutomationButton defaultName={defaultName} />
-            </div>
 
-            <div ref={containerRef} className="grid grid-flow-col place-items-center gap-3 relative">
-                <InputsSection ref={inputsSectionRef} />
+                <div ref={containerRef} className="grid grid-flow-col place-items-center gap-3 relative">
+                    <InputsSection ref={inputsSectionRef} inputs={inputs} setInputs={setInputs} isLoading={isLoading} />
 
-                <PromptSection ref={PromptSectionRef} />
+                    <PromptSection ref={PromptSectionRef} prompt={prompt} setPrompt={setPrompt} />
 
-                <OutputSection ref={OutputSectionRef} />
+                    <OutputSection ref={OutputSectionRef} output={output} setOutput={setOutput} isLoading={isLoading} />
 
                 {connections.length > 0 && (
                     <SVGFlowArrows containerRef={containerRef} connections={connections} />

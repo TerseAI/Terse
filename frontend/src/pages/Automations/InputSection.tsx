@@ -1,6 +1,6 @@
 import { forwardRef, useState, useImperativeHandle, useRef } from "react";
-import { Input, useAutomationContext } from "../../context/AutomationContext";
-import { Integration } from "../../context/Integrations";
+import { Integration } from "@/types/Integration";
+import { AutomationInput } from "../../shared/types";
 import { SectionLayout } from "./components/SectionLayout";
 import { AddInputModal } from "./components/AddInputModal";
 import { Zap, Plus, Settings, AlertTriangle } from "lucide-react";
@@ -15,8 +15,13 @@ import { FigmaConfig, GmailConfig, NotionConfig, SlackConfig } from "@/shared/ty
 import { isInputComplete } from "../../utility/IntegrationUtils";
 import { v4 as uuidv4 } from 'uuid';
 
-export const InputsSection = forwardRef<Map<string, HTMLDivElement>, { ref: React.RefObject<Map<string, HTMLDivElement>> }>((_, ref) => {
-    const { inputs, setInputs, isLoading } = useAutomationContext();
+type InputsSectionProps = {
+    inputs: AutomationInput[];
+    setInputs: (inputs: AutomationInput[]) => void;
+    isLoading: boolean;
+};
+
+export const InputsSection = forwardRef<Map<string, HTMLDivElement>, InputsSectionProps>(({ inputs, setInputs, isLoading }, ref) => {
     const [showAddModal, setShowAddModal] = useState(false);
     const inputRefs = useRef<Map<string, HTMLDivElement>>(new Map());
 
@@ -24,17 +29,15 @@ export const InputsSection = forwardRef<Map<string, HTMLDivElement>, { ref: Reac
         return inputRefs.current;
     }, [inputs]);
 
-    console.log('Inputs:', inputs);
-
     const handleSelectPlatform = (integration: Integration) => {
         const newInputId = uuidv4(); // We need to mint a placeholder ID for the new input so that we can identify it later.
-        const newInput: Input = { id: newInputId, integration };
-        const newInputs: Input[] = [...inputs, newInput];
+        const newInput: AutomationInput = { id: newInputId, integration: integration as string };
+        const newInputs: AutomationInput[] = [...inputs, newInput];
         setInputs(newInputs);
         setShowAddModal(false);
     };
 
-    const handleSelectIntegration = (integrationId: string, input: Input) => {
+    const handleSelectIntegration = (integrationId: string, input: AutomationInput) => {
         // Check if we have a matching input already in inputs
         const matchingInput = inputs.find(i => i.id === input.id);
         if (matchingInput) {
@@ -84,9 +87,9 @@ function InputCardsLayout({
     setShowAddModal,
     inputRefs
 }: {
-    inputs: Input[], 
-    handleSelectIntegration: (integrationId: string, input: Input) => void, 
-    setInputs: (inputs: Input[]) => void, 
+    inputs: AutomationInput[], 
+    handleSelectIntegration: (integrationId: string, input: AutomationInput) => void, 
+    setInputs: (inputs: AutomationInput[]) => void, 
     handleRemove: (id: string) => void, 
     setShowAddModal: (show: boolean) => void,
     inputRefs: React.MutableRefObject<Map<string, HTMLDivElement>>
@@ -108,7 +111,7 @@ function InputCardsLayout({
                                 setInputs={setInputs} 
                                 handleRemove={handleRemove}
                                 ref={(el) => {
-                                    if (el && isInputComplete(input)) {
+                                    if (el && isInputComplete({ ...input, integration: input.integration as Integration })) {
                                         inputRefs.current.set(inputId, el);
                                     } else {
                                         inputRefs.current.delete(inputId);
@@ -140,7 +143,7 @@ function InputCardsLayout({
                         setInputs={setInputs} 
                         handleRemove={handleRemove}
                         ref={(el) => {
-                            if (el && isInputComplete(input)) {
+                            if (el && isInputComplete({ ...input, integration: input.integration as Integration })) {
                                 inputRefs.current.set(inputId, el);
                             } else {
                                 inputRefs.current.delete(inputId);
@@ -157,10 +160,10 @@ function InputCardsLayout({
 }
 
 const InputCard = forwardRef<HTMLDivElement, {
-    input: Input,
-    inputs: Input[],
-    handleSelectIntegration: (integrationId: string, input: Input) => void, 
-    setInputs: (inputs: Input[]) => void, 
+    input: AutomationInput,
+    inputs: AutomationInput[],
+    handleSelectIntegration: (integrationId: string, input: AutomationInput) => void, 
+    setInputs: (inputs: AutomationInput[]) => void, 
     handleRemove: (id: string) => void
 }>(({
     input,
@@ -172,7 +175,7 @@ const InputCard = forwardRef<HTMLDivElement, {
     const [showDetailsDialog, setShowDetailsDialog] = useState(false);
     
     const selectorProps = {
-        integrationType: input.integration,
+        integrationType: input.integration as Integration,
         selectedIntegrationId: input.integrationId,
         onSelect: (integrationId: string) => handleSelectIntegration(integrationId, input),
         notionConfig: input.notionConfig,
@@ -203,7 +206,7 @@ const InputCard = forwardRef<HTMLDivElement, {
             <Card ref={ref}>
                 <CardHeader>
                     <div className="flex justify-between items-center">
-                        <IntegrationTitle integration={input.integration} iconSize="md" />
+                        <IntegrationTitle integration={input.integration as Integration} iconSize="md" />
                         {needsConfiguration && (
                             <Badge variant="outline" className="border-yellow-500 text-yellow-600 dark:text-yellow-500">
                                 <AlertTriangle className="w-3 h-3" />

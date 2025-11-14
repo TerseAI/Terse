@@ -1,23 +1,13 @@
-import { useIntegrations, IntegrationMetadata, Integration } from "@/context/Integrations";
+import { Integration } from "@/types/Integration";
+import { useIntegrations, type IntegrationMetadata } from "@/hooks/api/useIntegrations";
 import IntegrationCard, { IntegrationCardSkeleton } from "@/components/Integrations/IntegrationCard";
 import { EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { FileText } from "lucide-react";
 import { Empty } from "@/components/ui/empty";
-import { BackendProvider } from "@/services/backend";
-import { useEffect, useState } from "react";
 import { IntegrationsStatus } from "@/shared/types";
 
 function IntegrationPage() {
-    const { integrations, isLoading } = useIntegrations();
-    const [integrationStatus, setIntegrationStatus] = useState<IntegrationsStatus | null>(null);
-
-    useEffect(() => {
-        const fetchIntegrations = async () => {
-            const response = await BackendProvider.getIntegrationsStatus();
-            setIntegrationStatus(response);
-        };
-        fetchIntegrations();
-    }, []);
+    const { integrations, integrationStatus, isLoading } = useIntegrations();
 
     const filteredIntegrations = removeDuplicateIntegrations(integrations);
 
@@ -43,7 +33,7 @@ function IntegrationPage() {
     )
 }
 
-function IntegrationContent({ integrations, integrationStatus, isLoading }: { integrations: IntegrationMetadata[], integrationStatus: IntegrationsStatus | null, isLoading: boolean }) {
+function IntegrationContent({ integrations, integrationStatus, isLoading }: { integrations: IntegrationMetadata[], integrationStatus: IntegrationsStatus | undefined, isLoading: boolean }) {
     if (isLoading || !integrationStatus) {
         return (
             <>

@@ -1,8 +1,8 @@
 import { useState } from "react";
-import { Input } from "../../../context/AutomationContext";
-import { Integration } from "../../../context/Integrations";
+import { AutomationInput } from '../../../shared/types';
+import { Integration } from "@/types/Integration";
 
-export function IntegrationInput({ input, onRemove, isOutput }: { input: Input, onRemove?: () => void, isOutput?: boolean }) {
+export function IntegrationInput({ input, onRemove, isOutput }: { input: AutomationInput, onRemove?: () => void, isOutput?: boolean }) {
     const [isHovered, setIsHovered] = useState(false);
 
     const handleRemove = () => {
@@ -17,7 +17,7 @@ export function IntegrationInput({ input, onRemove, isOutput }: { input: Input, 
         >
             <div className="relative flex flex-col items-center justify-center">
                 <IntegrationBox isOutput={isOutput}>
-                    <IconForInputType type={input.integration} />
+                    <IconForInputType type={input.integration as Integration} />
                 </IntegrationBox>
                 {isOutput ? <LiveDocumentIndicator /> : <IntegrationStatus />}
             </div>

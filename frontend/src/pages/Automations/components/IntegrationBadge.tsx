@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Check } from "lucide-react";
-import { Integration } from "../../../context/Integrations";
+import { Integration } from "@/types/Integration";
 import { formatIntegrationDisplay, IntegrationInstance, isNotionIntegration } from "../../../utility/IntegrationFormatters";
 import { getIntegrationInstances } from "../../../utility/IntegrationUtils";
 import { BackendProvider } from "../../../services/backend";
