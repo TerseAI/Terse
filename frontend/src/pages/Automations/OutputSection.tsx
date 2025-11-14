@@ -4,7 +4,7 @@ import { AutomationOutput } from "../../shared/types";
 import { SectionLayout } from "./components/SectionLayout";
 import { AddOutputModal } from "./components/AddOutputModal";
 import { FileText, Plus } from "lucide-react";
-import { useIntegrationSelector } from "../../components/IntegrationSelector";
+import { IntegrationSelector } from "../../components/IntegrationSelector";
 import { clearIntegrationConfigs } from "../../utility/IntegrationUtils";
 import { Button } from "@/components/ui/button";
 import { Card, CardAction, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -78,12 +78,12 @@ function OutputCard({
     handleSelectIntegration,
     setOutput
 }: { output: AutomationOutput, handleRemove: () => void, handleSelectIntegration: (integrationId: string) => void, setOutput: (output: AutomationOutput) => void }) {
-    const { DialogContent } = useIntegrationSelector({
+    const selectorProps = {
         integrationType: output.integration as Integration,
         selectedIntegrationId: output.integrationId,
         onSelect: handleSelectIntegration,
         notionConfig: output.notionConfig,
-        onNotionConfigChange: (config) => {
+        onNotionConfigChange: (config: any) => {
             if (output) {
                 setOutput({
                     integration: Integration.NOTION as string,
@@ -93,7 +93,7 @@ function OutputCard({
             }
         },
         notionPageConfig: output.notionPageConfig,
-        onNotionPageConfigChange: (config) => {
+        onNotionPageConfigChange: (config: any) => {
             if (output) {
                 setOutput({
                     integration: Integration.NOTION_PAGE as string,
@@ -103,18 +103,18 @@ function OutputCard({
             }
         },
         slackConfig: output.slackConfig,
-        onSlackConfigChange: (config) => {
+        onSlackConfigChange: (config: any) => {
             if (output) {
                 setOutput({ ...output, slackConfig: config });
             }
         },
         confluenceConfig: output.confluenceConfig,
-        onConfluenceConfigChange: (config) => {
+        onConfluenceConfigChange: (config: any) => {
             if (output) {
                 setOutput({ ...output, confluenceConfig: config });
             }
         }
-    });
+    };
 
     return (
         <Card>
@@ -124,7 +124,7 @@ function OutputCard({
                 </CardTitle>
             </CardHeader>
             <CardContent>
-                <DialogContent />
+                <IntegrationSelector {...selectorProps} variant="dialog" />
             </CardContent>
             <CardFooter>
                 <CardAction>

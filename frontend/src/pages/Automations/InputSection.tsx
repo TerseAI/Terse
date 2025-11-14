@@ -4,7 +4,7 @@ import { AutomationInput } from "../../shared/types";
 import { SectionLayout } from "./components/SectionLayout";
 import { AddInputModal } from "./components/AddInputModal";
 import { Zap, Plus, Settings, AlertTriangle } from "lucide-react";
-import { useIntegrationSelector } from "../../components/IntegrationSelector";
+import { IntegrationSelector, useIntegrationSelector } from "../../components/IntegrationSelector";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
@@ -197,7 +197,7 @@ const InputCard = forwardRef<HTMLDivElement, {
         }
     };
 
-    const { CardContent: IntegrationCardContent, DialogContent: IntegrationDialogContent, isConfigurationIncomplete } = useIntegrationSelector(selectorProps);
+    const { isConfigurationIncomplete } = useIntegrationSelector(selectorProps);
     
     const needsConfiguration = isConfigurationIncomplete();
 
@@ -217,7 +217,7 @@ const InputCard = forwardRef<HTMLDivElement, {
                 </CardHeader>
 
                 <CardContent className="min-w-xs">
-                    <IntegrationCardContent />
+                    <IntegrationSelector {...selectorProps} variant="card" />
                 </CardContent>
 
                 <CardFooter className="justify-between">
@@ -239,7 +239,7 @@ const InputCard = forwardRef<HTMLDivElement, {
                     <DialogHeader>
                         <DialogTitle>{needsConfiguration ? "Configure Integration" : "Integration Details"}</DialogTitle>
                     </DialogHeader>
-                    <IntegrationDialogContent />
+                    <IntegrationSelector {...selectorProps} variant="dialog" />
                 </DialogContent>
             </Dialog>
         </>
