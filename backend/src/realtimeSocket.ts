@@ -16,7 +16,7 @@ let pub: ReturnType<typeof createClient> | null = null;
 let sub: ReturnType<typeof createClient> | null = null;
 
 export async function initializeRealtimeSocket(server: HttpServer): Promise<Server> {
-    console.log(chalk.blue.bold("Initializing realtime socket"));
+    console.log(chalk.blue.bold("Initializing realtime socket: ", server.address()?.toString()));
     // Set up Socket.IO server
     io = new Server(server, {
         cors: {
@@ -71,31 +71,39 @@ export async function initializeRealtimeSocket(server: HttpServer): Promise<Serv
 
     // Authentication middleware
     io.use(async (socket: Socket, next) => {
+        console.log(chalk.yellow.bold("Socket.IO connection attempt from:"), socket.handshake.address);
+        console.log(chalk.yellow.bold("Socket.IO handshake headers:"), {
+            origin: socket.handshake.headers.origin,
+            referer: socket.handshake.headers.referer,
+        });
         // Verify JWT token from auth
         const token = socket.handshake.auth?.token;
         if (!token) {
+            console.log(chalk.red.bold("Socket.IO auth failed: No token provided"));
             return next(new Error("Authentication token required"));
         }
 
         try {
             const user = await new Jwt().verify(token);
             if (!user) {
+                console.log(chalk.red.bold("Socket.IO auth failed: Invalid token"));
                 return next(new Error("Invalid token"));
             }
             console.log(chalk.blue.bold("User in socket authenticated"), user.id);
             (socket as AuthenticatedSocket).userId = user.id;
             next();
         } catch (error) {
+            console.log(chalk.red.bold("Socket.IO auth failed:"), error);
             next(new Error("Authentication failed"));
         }
     });
 
     // Connection handler
     io.on("connection", (socket: Socket) => {
-        console.log("Socket.IO connection established");
         const authenticatedSocket = socket as AuthenticatedSocket;
         const userId = authenticatedSocket.userId;
         const room = `user:${userId}`;
+        console.log(chalk.green.bold(`Socket.IO connection established for user ${userId}, room: ${room}`));
 
         socket.join(room);
 
