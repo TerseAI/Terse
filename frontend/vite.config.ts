@@ -21,6 +21,14 @@ export default defineConfig({
         changeOrigin: true,
         ws: true,
         rewrite: (path) => path.replace(/^\/api/, ""),
+        configure: (proxy, _options) => {
+          proxy.on('error', (err: NodeJS.ErrnoException) => {
+            if (err.code === 'EPIPE' || err.code === 'ECONNRESET') {
+              return;
+            }
+            console.error('Proxy error:', err);
+          });
+        },
       },
     },
   },

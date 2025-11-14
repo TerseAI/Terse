@@ -11,6 +11,9 @@ import chalk from "chalk";
 import { IAgentSession } from "./agents/AgentSession";
 import { getUserTicketManager } from "../types/user";
 
+// invoke with
+// const agentSocketServer = new (server, "/session");
+
 export class AgentSocketServer {
     private wss: WebSocketServer;
     private pending: WeakMap<WebSocket, { state: RunState<any, any>; interruption: RunToolApprovalItem }> = new WeakMap();

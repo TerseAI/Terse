@@ -2,6 +2,7 @@ import { RunHistoryRecord } from "../../../shared/RunHistoryTypes";
 import RunHistoryActionItem from "../RunHistoryActionItem";
 import RunHistoryItemHeader from "./RunHistoryItemHeader";
 import RunHistoryItemDecision from "./RunHistoryItemDecision";
+import RunHistoryItemError from "./RunHistoryItemError";
 import {
     Accordion,
     AccordionContent,
@@ -60,6 +61,13 @@ export default function RunHistoryItem({
 
     const allActionsExpanded = !!run.actions && areAllActionsExpanded(run.id, run.actions.length);
 
+    // Check if this is a failed run
+    const isError = run.status === "failed";
+    // Extract error message, removing [FILTER_ERROR] or [AGENT_ERROR] prefix if present
+    const errorMessage = isError 
+        ? run.decision.reasoning.replace(/^\[(FILTER|AGENT)_ERROR\]\s*/, '')
+        : null;
+
     return (
         <div className="overflow-hidden bg-card border border-border rounded-lg md:mb-3 min-w-[640px] md:min-w-0 shrink-0 md:shrink">
             <Accordion
@@ -79,17 +87,27 @@ export default function RunHistoryItem({
                         />
                     </AccordionTrigger>
                     <AccordionContent>
-                        <div className="text-foreground pl-8">
-                            Agent Decision:
-                        </div>
-                        <div className="mt-3 pl-8">
-                            <RunHistoryItemDecision
-                                filtered={run.filtered}
-                                reasoning={run.decision.reasoning}
+                        {isError ? (
+                            <RunHistoryItemError
+                                errorMessage={errorMessage!}
                                 isExpanded={isDecisionExpanded}
                                 onToggle={() => onToggleDecision(run.id)}
                             />
-                        </div>
+                        ) : (
+                            <>
+                                <div className="text-foreground pl-8">
+                                    Agent Decision:
+                                </div>
+                                <div className="mt-3 pl-8">
+                                    <RunHistoryItemDecision
+                                        filtered={run.filtered}
+                                        reasoning={run.decision.reasoning}
+                                        isExpanded={isDecisionExpanded}
+                                        onToggle={() => onToggleDecision(run.id)}
+                                    />
+                                </div>
+                            </>
+                        )}
 
                         {run.actions && run.actions.length > 0 && (
                             <div className="mt-3 pl-8">

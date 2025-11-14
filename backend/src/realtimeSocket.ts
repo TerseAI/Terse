@@ -16,15 +16,11 @@ let pub: ReturnType<typeof createClient> | null = null;
 let sub: ReturnType<typeof createClient> | null = null;
 
 export async function initializeRealtimeSocket(server: HttpServer): Promise<Server> {
-    console.log(chalk.blue.bold("Initializing realtime socket"));
+    console.log(chalk.blue.bold("Initializing realtime socket: ", server.address()?.toString()));
     // Set up Socket.IO server
     io = new Server(server, {
         cors: {
-            origin: urls.frontend
-                ? [urls.frontend]
-                : nodeEnv === "production"
-                    ? false // Deny all in production if FRONTEND_URL not set (security)
-                    : true, // Allow all in development (matches Express CORS config)
+            origin: getSocketCorsOrigin(),
             credentials: true,
         },
     });
@@ -71,31 +67,39 @@ export async function initializeRealtimeSocket(server: HttpServer): Promise<Serv
 
     // Authentication middleware
     io.use(async (socket: Socket, next) => {
+        console.log(chalk.yellow.bold("Socket.IO connection attempt from:"), socket.handshake.address);
+        console.log(chalk.yellow.bold("Socket.IO handshake headers:"), {
+            origin: socket.handshake.headers.origin,
+            referer: socket.handshake.headers.referer,
+        });
         // Verify JWT token from auth
         const token = socket.handshake.auth?.token;
         if (!token) {
+            console.log(chalk.red.bold("Socket.IO auth failed: No token provided"));
             return next(new Error("Authentication token required"));
         }
 
         try {
             const user = await new Jwt().verify(token);
             if (!user) {
+                console.log(chalk.red.bold("Socket.IO auth failed: Invalid token"));
                 return next(new Error("Invalid token"));
             }
             console.log(chalk.blue.bold("User in socket authenticated"), user.id);
             (socket as AuthenticatedSocket).userId = user.id;
             next();
         } catch (error) {
+            console.log(chalk.red.bold("Socket.IO auth failed:"), error);
             next(new Error("Authentication failed"));
         }
     });
 
     // Connection handler
     io.on("connection", (socket: Socket) => {
-        console.log("Socket.IO connection established");
         const authenticatedSocket = socket as AuthenticatedSocket;
         const userId = authenticatedSocket.userId;
         const room = `user:${userId}`;
+        console.log(chalk.green.bold(`Socket.IO connection established for user ${userId}, room: ${room}`));
 
         socket.join(room);
 
@@ -147,4 +151,25 @@ export function emitCacheInvalidationWithWildcard(
     // If id is provided, frontend will match on both tag and id
     // If id is not provided, frontend will match on tag only
     io.to(`user:${userId}`).emit("invalidate", { key, id });
+}
+
+function getSocketCorsOrigin(): boolean | string | string[] {
+    const isProd = nodeEnv === "production";
+
+    let socketCorsOrigin: boolean | string | string[];
+
+    if (urls.socketFrontend) {
+        socketCorsOrigin = [urls.socketFrontend];
+    } else if (isProd) {
+        console.error(
+            "[Socket.IO] SOCKET_FRONTEND_URL (urls.socketFrontend) is not set in production. " +
+            "Blocking all cross-origin Socket.IO connections for safety."
+        );
+        socketCorsOrigin = false; // or throw if you prefer hard failure
+    } else {
+        // In dev, be permissive and echo back any origin
+        socketCorsOrigin = true;
+    }
+
+    return socketCorsOrigin;
 }
