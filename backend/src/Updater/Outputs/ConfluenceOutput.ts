@@ -14,6 +14,7 @@ import chalk from "chalk";
 export interface ConfluenceSession extends Session {
     confluenceIntegration: ConfluenceIntegration; // Top level integration record
     confluenceConfig: AutomationConfluenceConfig; // Configuration for the Specific Confluence Database
+    apiToken: string; // API token stored separately (not in shared type for security)
 }
 
 export class ConfluenceOutput extends Output<ConfluenceSession> {
@@ -49,11 +50,17 @@ export class ConfluenceOutput extends Output<ConfluenceSession> {
         const confluenceIntegration: ConfluenceIntegration = {
             id: integration.id,
             confluence_user_email: integration.jira_user_email,
-            api_key: integration.api_token,
             base_url: integration.base_url,
         };
 
-        return { confluenceIntegration: confluenceIntegration, confluenceConfig: confluenceConfig, user: user, isUserInitiated: true, runActions: [] };
+        return { 
+            confluenceIntegration: confluenceIntegration, 
+            confluenceConfig: confluenceConfig, 
+            apiToken: integration.api_token,
+            user: user, 
+            isUserInitiated: true, 
+            runActions: [] 
+        };
     }
 }
 
@@ -78,7 +85,7 @@ This tool returns the current state of the Confluence page including all metadat
             authentication: {
                 basic: {
                     email: runContext.context.confluenceIntegration.confluence_user_email,
-                    apiToken: runContext.context.confluenceIntegration.api_key,
+                    apiToken: runContext.context.apiToken,
                 }
             }
         });
@@ -209,7 +216,7 @@ To find the correct position, first call confluence_query_page to see the page c
             authentication: {
                 basic: {
                     email: runContext.context.confluenceIntegration.confluence_user_email,
-                    apiToken: runContext.context.confluenceIntegration.api_key,
+                    apiToken: runContext.context.apiToken,
                 }
             }
         });
@@ -392,7 +399,7 @@ To find the correct position, first call confluence_query_page to see the page c
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Basic ${Buffer.from(`${runContext.context.confluenceIntegration.confluence_user_email}:${runContext.context.confluenceIntegration.api_key}`).toString('base64')}`,
+                    'Authorization': `Basic ${Buffer.from(`${runContext.context.confluenceIntegration.confluence_user_email}:${runContext.context.apiToken}`).toString('base64')}`,
                 },
                 body: JSON.stringify(requestBody)
             });

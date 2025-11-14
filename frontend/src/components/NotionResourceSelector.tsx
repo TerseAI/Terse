@@ -29,7 +29,10 @@ export function NotionResourceSelector({
         mutate,
     } = useNotionResources(integrationId);
 
-    const isRefreshing = isValidating && !isLoading;
+    const [isExplicitlyRefreshing, setIsExplicitlyRefreshing] = useState(false);
+    
+    // Only show spinner when explicitly refreshing (user clicked button) AND currently validating
+    const isRefreshing = isExplicitlyRefreshing && isValidating;
 
     const errorMessage = useMemo(() => {
         if (!isError) {
@@ -69,7 +72,10 @@ export function NotionResourceSelector({
     }, [defaultResourceId, integrationId, isLoading, onSelect, resources, selectedResourceId]);
 
     const handleRefresh = () => {
-        void mutate();
+        setIsExplicitlyRefreshing(true);
+        void mutate().finally(() => {
+            setIsExplicitlyRefreshing(false);
+        });
     };
 
     if (isLoading) {
@@ -156,7 +162,7 @@ function NotionResourceCombobox({
                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                 </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-full p-0" align="start">
+            <PopoverContent className="p-0" align="start">
                 <Command>
                     <CommandInput placeholder="Search pages or databases..." />
                     <CommandList>

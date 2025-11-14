@@ -4,7 +4,7 @@ import DropdownSelect from '../ui/DropdownSelect';
 import { NotionResourceSelector } from '../NotionResourceSelector';
 import { formatIntegrationDisplay, IntegrationInstance } from '../../utility/IntegrationFormatters';
 import { getIntegrationName } from '../../utility/IntegrationUtils';
-import { Integration } from '../../context/Integrations';
+import { Integration } from "@/types/Integration";
 import { NotionConfig, NotionPageConfig, NotionResourceType } from '../../shared/types';
 import { BaseIntegrationProps } from './types';
 

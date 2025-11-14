@@ -4,7 +4,7 @@ import DropdownSelect from '../ui/DropdownSelect';
 import { AtlassianConnectionForm } from '../AtlassianConnectionForm';
 import { formatIntegrationDisplay, IntegrationInstance } from '../../utility/IntegrationFormatters';
 import { getIntegrationName } from '../../utility/IntegrationUtils';
-import { Integration } from '../../context/Integrations';
+import { Integration } from "@/types/Integration";
 import { ConfluenceConfig } from '../../shared/types';
 import { BaseIntegrationProps } from './types';
 import { ConfluenceResourceSelector } from '../ConfluenceResourceSelector';
