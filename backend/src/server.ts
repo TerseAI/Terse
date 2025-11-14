@@ -80,6 +80,7 @@ import {
   handleFigmaWebhook,
 } from "./routes/figma";
 import { getConfluenceResources, setConfluenceCredentials, validateConfluenceCredentials } from "./routes/confluence";
+import { RunHistoryAction } from "./shared/RunHistoryTypes";
 
 export type Session = {
   user: User;
@@ -87,6 +88,7 @@ export type Session = {
   isUserInitiated: boolean; // true if the user has initiated the session, false if the session was initiated by the system
   teamId?: string;
   currentUser?: TicketUser;
+  runActions?: RunHistoryAction[];
 };
 
 const app = express();
