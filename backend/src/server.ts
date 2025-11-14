@@ -42,6 +42,7 @@ import {
   getGmailOAuthUrl,
   gmailCallback,
   handleGmailWebhook,
+  refreshAllGmailWatches,
 } from "./routes/gmail";
 import { fetchUserIntegrations } from "./routes/integrations";
 import {
@@ -82,6 +83,8 @@ import {
   handleFigmaWebhook,
 } from "./routes/figma";
 import { getConfluenceResources, setConfluenceCredentials, validateConfluenceCredentials } from "./routes/confluence";
+import { initializeRealtimeSocket } from "./realtimeSocket";
+import { RunHistoryAction } from "./shared/RunHistoryTypes";
 
 export type Session = {
   user: User;
@@ -89,13 +92,19 @@ export type Session = {
   isUserInitiated: boolean; // true if the user has initiated the session, false if the session was initiated by the system
   teamId?: string;
   currentUser?: TicketUser;
+  runActions?: RunHistoryAction[];
 };
 
 const app = express();
 const server = createServer(app);
 
-// WebSocket handler, keep in memory as long as the server is running!!
-const agentSocketServer = new AgentSocketServer(server, "/session");
+try {
+  await initializeRealtimeSocket(server);
+  console.log("✅ Socket.IO server initialized");
+} catch (error) {
+  console.error("❌ Failed to initialize Socket.IO server:", error);
+  process.exit(1);
+}
 
 app.use(
   cors({
@@ -269,6 +278,10 @@ app.delete("/gmail/delete-integration", authMiddleware, async (req, res) => {
 
 app.post("/webhooks/gmail", async (req, res) => {
   handleGmailWebhook(req, res);
+});
+
+app.post("/gmail/refresh-watches", async (req, res) => {
+  refreshAllGmailWatches(req, res);
 });
 
 // MARK: NOTION

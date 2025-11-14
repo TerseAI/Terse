@@ -45,10 +45,12 @@ export abstract class InputEvent {
 export class GmailEvent extends InputEvent {
     readonly integrationType: IntegrationType = IntegrationType.GMAIL;
     data: GmailEventData;
+    private integrationId: string;
     
-    constructor(data: GmailEventData) {
+    constructor(data: GmailEventData, integrationId: string) {
         super();
         this.data = data;
+        this.integrationId = integrationId;
     }
 
     formatForAutomationAgent(): string {
@@ -76,20 +78,36 @@ export class GmailEvent extends InputEvent {
             return false;
         }
 
-        // Currently Gmail has no config-based filtering (no gmail_config filters),
-        // but structure supports future addition
-        // For now, if integration type matches, the event matches
+        // If the event is not in the INBOX, it doesn't match the automation input
+        if (!this.data.labelIds.includes('INBOX')) {
+            console.log(chalk.gray(`Skipping email ${this.data.messageId} because it is not in the INBOX with label ids: ${this.data.labelIds}`));
+            return false;
+        }
+
+        // If integrationId is set, it must match the automation's integration_id
+        // This ensures automations are only triggered by emails from their configured integration
+        if (this.integrationId && automationInput.integration_id !== this.integrationId) {
+            console.log(chalk.gray(`Skipping email ${this.data.messageId} - integration ID mismatch: event from ${this.integrationId}, automation expects ${automationInput.integration_id}`));
+            return false;
+        }
+
         return true;
     }
 
     createTriggerMetadata(): RunHistoryTrigger {
+        // Construct Gmail message URL using the thread ID
+        // Format: https://mail.google.com/mail/u/0/#inbox/{threadId}
+        const gmailUrl = this.data.threadId 
+            ? `https://mail.google.com/mail/u/0/#inbox/${this.data.threadId}`
+            : undefined;
+        
         return {
             event: 'email_received',
             integration: 'gmail',
             source: this.data.to || 'Gmail',
             title: this.data.subject,
             subheader: this.data.from,
-            url: undefined, // Gmail doesn't provide direct message URLs in webhook
+            url: gmailUrl,
         };
     }
 
