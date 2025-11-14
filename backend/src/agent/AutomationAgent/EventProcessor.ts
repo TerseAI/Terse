@@ -10,6 +10,7 @@ import { ApprovalResult } from './AutomationAgent';
 import { Agent, AgentOutputType, RunResult } from '@openai/agents';
 import { Session } from '../../server';
 import { emitCacheInvalidationWithWildcard } from '../../realtimeSocket';
+import { RunHistoryAction } from '../../shared/RunHistoryTypes';
 
 // The job of this class is to take an Input Event, and check if it's a match for an Automation.
 // It will then create a Session, and summon the Automation Agent with the create user data.
@@ -119,18 +120,12 @@ export class EventProcessor {
         }
 
         // Initialize run history record with trigger details
-        // Use event's own trigger metadata creation (no hardcoded trigger creation)
-        let runId: string | null = null;
-        try {
-            const trigger = this.inputEvent.createTriggerMetadata();
-            runId = await createRunRecord({
-                automationId: automation.id,
-                trigger,
-            });
-            emitCacheInvalidationWithWildcard(this.user.id, 'runHistory', automation.id);
-        } catch (e) {
-            console.error(chalk.yellow('Failed to create run history record'), e);
-        }
+        const trigger = this.inputEvent.createTriggerMetadata();
+        const runId = await createRunRecord({
+            automationId: automation.id,
+            trigger,
+        });
+        emitCacheInvalidationWithWildcard(this.user.id, 'runHistory', automation.id);
 
         // Get the output from automation relations (already fetched with config)
         const outputIntegration = automation.output;
@@ -172,17 +167,15 @@ export class EventProcessor {
                 session
             );
         } catch (error) {
-            // Log the error and update run history if it exists
+            // Log the error and update run history
             const errorMessage = error instanceof Error ? error.message : 'Unknown error';
             console.error(chalk.red(`Error filtering event for automation "${automation.name}":`), error);
             
-            if (runId) {
-                try {
-                    await markRunFailed(runId, errorMessage, 'filter');
-                    emitCacheInvalidationWithWildcard(this.user.id, 'runHistory', automation.id);
-                } catch (e) {
-                    console.error(chalk.yellow('Failed to mark run as failed'), e);
-                }
+            try {
+                await markRunFailed(runId, errorMessage, 'filter');
+                emitCacheInvalidationWithWildcard(this.user.id, 'runHistory', automation.id);
+            } catch (e) {
+                console.error(chalk.yellow('Failed to mark run as failed'), e);
             }
             
             return new ProcessorResult(
@@ -194,22 +187,18 @@ export class EventProcessor {
 
         if (!filterResult.isRelevant) {
             console.log(chalk.gray(`Event is not relevant to automation "${automation.name}": ${filterResult.reason}`));
-            if (runId) {
-                try {
-                    await markRunSkipped(runId, filterResult.reason);
-                } catch (e) {
-                    console.error(chalk.yellow('Failed to mark run skipped'), e);
-                }
+            try {
+                await markRunSkipped(runId, filterResult.reason);
+            } catch (e) {
+                console.error(chalk.yellow('Failed to mark run skipped'), e);
             }
             return new ProcessorResult(false, `Not relevant: ${filterResult.reason}`, automation);
         }
 
-        if (runId) {
-            try {
-                await markRunProcessed(runId, filterResult.reason);
-            } catch (e) {
-                console.error(chalk.yellow('Failed to mark run processed'), e);
-            }
+        try {
+            await markRunProcessed(runId, filterResult.reason);
+        } catch (e) {
+            console.error(chalk.yellow('Failed to mark run processed'), e);
         }
 
         console.log(chalk.green(`Event is relevant to automation "${automation.name}"`));
@@ -224,17 +213,15 @@ export class EventProcessor {
         try {
             result = await automationAgent.run() as ApprovalResult<Session, Agent<Session, AgentOutputType>>;
         } catch (error) {
-            // Log the error and update run history if it exists
+            // Log the error and update run history
             const errorMessage = error instanceof Error ? error.message : 'Unknown error';
             console.error(chalk.red(`Error running automation agent for "${automation.name}":`), error);
             
-            if (runId) {
-                try {
-                    await markRunFailed(runId, errorMessage, 'agent');
-                    emitCacheInvalidationWithWildcard(this.user.id, 'runHistory', automation.id);
-                } catch (e) {
-                    console.error(chalk.yellow('Failed to mark run as failed'), e);
-                }
+            try {
+                await markRunFailed(runId, errorMessage, 'agent');
+                emitCacheInvalidationWithWildcard(this.user.id, 'runHistory', automation.id);
+            } catch (e) {
+                console.error(chalk.yellow('Failed to mark run as failed'), e);
             }
             
             // Re-throw to be caught by outer try-catch
@@ -252,15 +239,15 @@ export class EventProcessor {
 }
 
 async function persistRunResult<T extends Session>(
-    runId: string | null,
+    runId: string,
     result: RunResult<T, Agent<T, AgentOutputType>>,
     session: T,
     automation: Automation,
     approvalResult?: ApprovalResult<T, Agent<T, AgentOutputType>> | null
 ): Promise<ProcessorResult<T>> {
     // Check if session has runActions (NotionSession and future session types may have this)
-    if (runId && (session as any).runActions && Array.isArray((session as any).runActions) && (session as any).runActions.length > 0) {
-        for (const action of (session as any).runActions) {
+    if (session.runActions) {
+        for (const action of session.runActions) {
             try {
                 await appendRunAction(runId, action);
                 // Invalidate all run history queries for this automation, regardless of params
@@ -269,23 +256,23 @@ async function persistRunResult<T extends Session>(
             } catch (e) {
                 console.error(chalk.yellow('Failed to append run action'), e);
             }
-        }
+        };
     }
 
     // Finalize run status
-    if (runId) {
-        try {
-            await finalizeRunStatus(runId, result.finalOutput ? 'success' : 'failed');
-            // Invalidate all run history queries for this automation when status changes
-            emitCacheInvalidationWithWildcard(session.user.id, 'runHistory', automation.id);
-        } catch (e) {
-            console.error(chalk.yellow('Failed to finalize run status'), e);
-        }
+    const hasFinalOutput = Boolean(result.finalOutput);
+    try {
+        await finalizeRunStatus(runId, hasFinalOutput ? 'success' : 'failed');
+        // Invalidate all run history queries for this automation when status changes
+        emitCacheInvalidationWithWildcard(session.user.id, 'runHistory', automation.id);
+    } catch (e) {
+        console.error(chalk.yellow('Failed to finalize run status'), e);
     }
 
+    const finalOutput = typeof result.finalOutput === 'string' ? result.finalOutput : '';
     return new ProcessorResult<T>(
-        result.finalOutput ? true : false,
-        result.finalOutput as string,
+        hasFinalOutput,
+        finalOutput,
         automation,
         approvalResult
     );

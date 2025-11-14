@@ -11,8 +11,6 @@ import { RunHistoryAction } from "../../shared/RunHistoryTypes";
 export interface NotionDatabaseSession extends Session {
     notionIntegration: NotionIntegration; // Top level integration record
     notionConfig: AutomationNotionConfig; // Configuration for the Specific Notion Database
-    // Collect actions here (report-only); DB writes happen after agent finishes
-    runActions?: RunHistoryAction[];
 }
 
 export class NotionDatabaseOutput extends Output<NotionDatabaseSession> {

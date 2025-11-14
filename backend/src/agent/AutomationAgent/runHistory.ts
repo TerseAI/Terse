@@ -3,11 +3,6 @@ import type { RunHistoryAction as SharedRunHistoryAction, RunHistoryStatus, RunH
 
 export type RunTrigger = RunHistoryTrigger;
 
-function mapIntegration(integration: RunTrigger["integration"]) {
-    // Prisma enum values match lowercase strings in schema
-    return integration;
-}
-
 export async function createRunRecord(params: {
     automationId: string;
     trigger: RunTrigger;
@@ -18,7 +13,7 @@ export async function createRunRecord(params: {
         data: {
             automation_id: automationId,
             event: trigger.event,
-            trigger_integration: mapIntegration(trigger.integration) as any,
+            trigger_integration: trigger.integration,
             trigger_source: trigger.source,
             trigger_title: trigger.title ?? null,
             trigger_subheader: trigger.subheader ?? null,
@@ -67,7 +62,7 @@ export async function appendRunAction(
         data: {
             run_history_record_id: runId,
             action: action.action,
-            integration: mapIntegration(action.integration),
+            integration: action.integration,
             target: action.target,
             details: action.details,
             url: action.url ?? null,
