@@ -1,6 +1,6 @@
 import { forwardRef, useState, useImperativeHandle, useRef } from "react";
 import { Integration } from "@/types/Integration";
-import { AutomationInput } from "../../shared/types";
+import { AutomationInput, GitHubConfig } from "../../shared/types";
 import { SectionLayout } from "./components/SectionLayout";
 import { AddInputModal } from "./components/AddInputModal";
 import { Zap, Plus, Settings, AlertTriangle } from "lucide-react";
@@ -194,6 +194,11 @@ const InputCard = forwardRef<HTMLDivElement, {
         onGmailConfigChange: (config: GmailConfig) => {
             console.log('Gmail config changed:', config);
             setInputs(inputs.map(i => i.id === input.id ? { ...i, gmailConfig: config } : i));
+        },
+        githubConfig: input.githubConfig,
+        onGithubConfigChange: (config: GitHubConfig) => {
+            console.log('GitHub config changed:', config);
+            setInputs(inputs.map(i => i.id === input.id ? { ...i, githubConfig: config } : i));
         }
     };
 

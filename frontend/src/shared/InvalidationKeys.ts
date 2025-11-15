@@ -16,6 +16,10 @@ export const notionResourcesKey = (integrationId: string | null | undefined): re
     return ['notionResources', integrationId] as const;
 };
 
+export const githubRepositoriesKey = (): readonly [string] => {
+    return ['githubRepositories'] as const;
+};
+
 export const confluenceResourcesKey = (integrationId: string | null | undefined): readonly [string, string] | null => {
     if (!integrationId) {
         return null;

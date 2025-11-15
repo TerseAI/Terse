@@ -6,9 +6,11 @@ import { getIntegrationName } from '../../utility/IntegrationUtils';
 import { Integration } from "@/types/Integration";
 import { BaseIntegrationProps } from './types';
 import { GithubResourceSelector } from '../GithubResourceSelector';
+import { GitHubConfig } from '@/shared/types';
 
 interface GitHubIntegrationProps extends BaseIntegrationProps {
     integrationType: Integration;
+    onGithubConfigChange?: (config: GitHubConfig) => void;
 }
 
 export function GitHubIntegration({
@@ -20,7 +22,8 @@ export function GitHubIntegration({
     onConnect,
     label = 'Connection',
     integrationType,
-    variant
+    variant,
+    onGithubConfigChange
 }: GitHubIntegrationProps) {
     if (isLoading) {
         return (
@@ -62,7 +65,6 @@ export function GitHubIntegration({
             </div>
         );
     }
-
     // Dialog variant: full view
     return (
         <div className="flex flex-col gap-3">
@@ -91,7 +93,10 @@ export function GitHubIntegration({
                     <GithubResourceSelector
                         selectedRepositoryIds={[]}
                         onSelect={(repositoryIds) => {
-                            console.log(repositoryIds);
+                            console.log('GitHub repository selected:', repositoryIds);
+                            onGithubConfigChange?.({
+                                repositoryId: String(repositoryIds[0])
+                            });
                         }}
                     />
                 </div>
