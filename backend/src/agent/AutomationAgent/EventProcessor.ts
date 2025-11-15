@@ -163,7 +163,6 @@ export class EventProcessor {
             filterResult = await filterEvent<Session>(
                 this.inputEvent,
                 automation.prompt,
-                output,
                 session
             );
         } catch (error) {
