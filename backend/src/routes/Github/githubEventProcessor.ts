@@ -35,7 +35,7 @@ export async function getGithubRepositoriesForIntegration(req: Request, res: Res
 
     const result: GetGithubRepositoriesForIntegrationResponse = {
         repositories: repositories.map(r => ({
-            id: Number(r.github_repository.id),
+            id: r.github_repository.id,
             name: r.github_repository.name,
             owner: r.github_repository.owner
         }))

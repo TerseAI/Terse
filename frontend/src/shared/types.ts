@@ -264,7 +264,7 @@ export type UseConfluenceResourcesReturn<MutateType = any> = {
 };
 
 export type GitHubConfig = {
-  repositoryId?: string;
+  repositoryIds: string[];
   // Note: owner and name not needed - they're part of repository identity
   // Future: branch, path filters
 };
@@ -517,7 +517,7 @@ export type GithubAppInstallationCallbackRequest = {
 export type Repository = {
   name: string;
   owner: string;
-  id: number;
+  id: string;
 }
 
 export type GetGithubRepositoriesForIntegrationRequest = {
