@@ -60,7 +60,7 @@ export function GitHubIntegration({
     const selectedOption = connectionSelections.find(option => option.value === selectedIntegrationId) || connectionSelections[0];
 
     // Get connected repositories
-    const connectedRepositories = githubConfig?.repositoryId ? [githubConfig.repositoryId] : [];
+    const connectedRepositories = githubConfig?.repositoryIds ? githubConfig.repositoryIds : [];
 
     // Card variant: compact view
     if (variant === 'card') {

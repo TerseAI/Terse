@@ -78,7 +78,7 @@ async function createInputConfig(
                 await tx.automation_github_configs.create({
                     data: {
                         automation_input_id: inputId,
-                        repository_id: config.githubConfig.repositoryId || null,
+                        repository_id: config.githubConfig.repositoryIds || null,
                     },
                 });
             }
@@ -196,7 +196,7 @@ async function createOutputConfig(
                 await tx.automation_github_configs.create({
                     data: {
                         automation_output_id: outputId,
-                        repository_id: config.githubConfig.repositoryId || null,
+                        repository_ids: config.githubConfig.repositoryIds || [],
                     },
                 });
             }
@@ -261,7 +261,7 @@ function transformInputConfig(input: any, id: string): AutomationInput {
     }
     if (input.github_config) {
         base.githubConfig = {
-            repositoryId: input.github_config.repository_id || undefined,
+            repositoryIds: input.github_config.repository_ids,
         };
     }
     if (input.gmail_config) {
@@ -332,7 +332,7 @@ function transformOutputConfig(output: any): AutomationOutput {
     }
     if (output.github_config) {
         base.githubConfig = {
-            repositoryId: output.github_config.repository_id || undefined,
+            repositoryIds: output.github_config.repository_ids || [],
         };
     }
     if (output.gmail_config) {

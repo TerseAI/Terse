@@ -566,6 +566,7 @@ model automation_github_configs {
   automation_output_id String? @unique // FK to automation_outputs (unique constraint)
 
   repository_id String? // Repository ID (optional - references github_repositories.id if different from connection default)
+  repository_ids String[] // Leaving both for now until we can safely remove the repository_id column
 
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
@@ -575,6 +576,7 @@ model automation_github_configs {
   // Future: could add branch, path filters for more granular control
 
   @@index([repository_id])
+  @@index([repository_ids])
 }
 
 // Gmail Configuration
