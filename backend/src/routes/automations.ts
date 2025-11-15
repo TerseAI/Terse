@@ -480,6 +480,7 @@ export async function getUserAutomations(req: Request, res: Response) {
                     include: {
                         slack_config: true,
                         notion_config: true,
+                        notion_page_config: true,
                         linear_config: true,
                         jira_config: true,
                         confluence_config: true,
@@ -492,6 +493,7 @@ export async function getUserAutomations(req: Request, res: Response) {
                     include: {
                         slack_config: true,
                         notion_config: true,
+                        notion_page_config: true,
                         linear_config: true,
                         jira_config: true,
                         confluence_config: true,

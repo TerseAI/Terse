@@ -47,7 +47,7 @@ export class EventProcessor {
         const integrationType = this.inputEvent.integrationType;
 
         // Find all active automations for this user (already includes all config relations)
-        const automations = await db().automations.findMany({
+        const automations: AutomationWithRelations[] = await db().automations.findMany({
             where: {
                 user_id: this.user.id,
                 is_active: true,

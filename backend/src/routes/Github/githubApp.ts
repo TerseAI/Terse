@@ -223,6 +223,7 @@ export type GithubAppUnifiedEventRequest = {
     };
     // Additional context
     repository: {
+        id: string;
         name: string;
         owner: string;
         defaultBranch: string;
