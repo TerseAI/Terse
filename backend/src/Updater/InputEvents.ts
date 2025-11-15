@@ -534,7 +534,7 @@ export class GithubEvent extends InputEvent {
             source: this.data.repositoryName,
             title: this.data.eventType,
             subheader: this.data.username,
-            url: `https://github.com/${this.data.repositoryName}/commit/${this.data.commits[0].sha}`,
+            url: `https://github.com/${this.data.repositoryName}/`,
         };
     }
 
