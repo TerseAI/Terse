@@ -517,7 +517,7 @@ export type GithubAppInstallationCallbackRequest = {
 export type Repository = {
   name: string;
   owner: string;
-  id: string;
+  id: string; // This is the official id from github! Not to be confused with the id from github_repositories table in the DB!!!
 }
 
 export type GetGithubRepositoriesForIntegrationRequest = {

@@ -43,7 +43,7 @@ model github_repositories {
   name            String
   owner           String
   installation_id Int
-  repository_id   Int?      @unique  // has to be optional, or we will blow things up in prod.... This is the official id from github
+  repository_id   Int?     @unique // has to be optional, or we will blow things up in prod.... This is the official id from github
   created_at      DateTime @default(now())
   updated_at      DateTime @updatedAt
 
