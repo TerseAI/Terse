@@ -67,6 +67,7 @@ export async function processRepository(
         where: { 
             name: repositoryData.name, 
             owner: repositoryData.owner, 
+            repository_id: Number(repositoryData.id),
             installation_id: installationId 
         } 
     });
@@ -93,7 +94,8 @@ export async function processRepository(
                 data: {
                     name: repositoryData.name,
                     owner: repositoryData.owner,
-                    installation_id: installationId
+                    installation_id: installationId,
+                    repository_id: Number(repositoryData.id),
                 }
             });
             console.log(chalk.green('Repository created:'), repository);
