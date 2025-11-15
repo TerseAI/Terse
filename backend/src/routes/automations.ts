@@ -74,11 +74,12 @@ async function createInputConfig(
             }
             break;
         case IntegrationType.GITHUB:
+            console.log(chalk.blue("Github config received:"), chalk.yellow(JSON.stringify(config.githubConfig, null, 2)));
             if (config.githubConfig) {
                 await tx.automation_github_configs.create({
                     data: {
                         automation_input_id: inputId,
-                        repository_id: config.githubConfig.repositoryIds || null,
+                        repository_ids: config.githubConfig.repositoryIds || [],
                     },
                 });
             }

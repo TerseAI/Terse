@@ -9,8 +9,8 @@ import { cn } from "@/lib/utils";
 import { useGithubResources } from "@/hooks/api/useGithubResources";
 
 interface GithubResourceSelectorProps {
-    selectedRepositoryIds?: string[];
-    onSelect: (repositoryIds: string[]) => void;
+    selectedRepositoryIds?: number[];
+    onSelect: (repositoryIds: number[]) => void;
 }
 
 export function GithubResourceSelector({
@@ -96,8 +96,8 @@ export function GithubResourceSelector({
 
 interface GithubResourceComboboxProps {
     repositories: Repository[];
-    selectedRepositoryIds: string[];
-    onSelect: (repositoryIds: string[]) => void;
+    selectedRepositoryIds: number[];
+    onSelect: (repositoryIds: number[]) => void;
 }
 
 function GithubResourceCombobox({
@@ -111,7 +111,7 @@ function GithubResourceCombobox({
         selectedRepositoryIds.includes(repo.id)
     );
 
-    const handleToggleRepository = (repositoryId: string) => {
+    const handleToggleRepository = (repositoryId: number) => {
         const isSelected = selectedRepositoryIds.includes(repositoryId);
         if (isSelected) {
             onSelect(selectedRepositoryIds.filter(id => id !== repositoryId));
@@ -120,7 +120,7 @@ function GithubResourceCombobox({
         }
     };
 
-    const handleRemoveRepository = (repositoryId: string) => {
+    const handleRemoveRepository = (repositoryId: number) => {
         onSelect(selectedRepositoryIds.filter(id => id !== repositoryId));
     };
 
