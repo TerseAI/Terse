@@ -568,7 +568,7 @@ model automation_github_configs {
   automation_input_id  String? @unique // FK to automation_inputs (mutually exclusive with output_id)
   automation_output_id String? @unique // FK to automation_outputs (unique constraint)
 
-  repository_ids String[]
+  repository_ids Int[]
 
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
