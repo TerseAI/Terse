@@ -10,6 +10,7 @@ import { GitHubConfig } from '@/shared/types';
 
 interface GitHubIntegrationProps extends BaseIntegrationProps {
     integrationType: Integration;
+    githubConfig?: GitHubConfig;
     onGithubConfigChange?: (config: GitHubConfig) => void;
 }
 
@@ -23,6 +24,7 @@ export function GitHubIntegration({
     label = 'Connection',
     integrationType,
     variant,
+    githubConfig,
     onGithubConfigChange
 }: GitHubIntegrationProps) {
     if (isLoading) {
@@ -57,11 +59,14 @@ export function GitHubIntegration({
     }));
     const selectedOption = connectionSelections.find(option => option.value === selectedIntegrationId) || connectionSelections[0];
 
+    // Get connected repositories
+    const connectedRepositories = githubConfig?.repositoryId ? [githubConfig.repositoryId] : [];
+
     // Card variant: compact view
     if (variant === 'card') {
         return (
             <div className="text-sm truncate">
-                {selectedOption ? selectedOption.label : 'No connection selected'}
+                {connectedRepositories.length > 0 ? `Connected to ${connectedRepositories.length} repository${connectedRepositories.length !== 1 ? 'ies' : ''}` : 'No repositories connected'}
             </div>
         );
     }
@@ -91,11 +96,11 @@ export function GitHubIntegration({
             {selectedIntegrationId && (
                 <div className="mt-3 pt-3 border-t border-border">
                     <GithubResourceSelector
-                        selectedRepositoryIds={[]}
+                        selectedRepositoryIds={githubConfig?.repositoryIds ? githubConfig.repositoryIds : []}
                         onSelect={(repositoryIds) => {
-                            console.log('GitHub repository selected:', repositoryIds);
                             onGithubConfigChange?.({
-                                repositoryId: String(repositoryIds[0])
+                                ...githubConfig,
+                                repositoryIds: repositoryIds
                             });
                         }}
                     />
