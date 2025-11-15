@@ -517,7 +517,7 @@ export type GithubAppInstallationCallbackRequest = {
 export type Repository = {
   name: string;
   owner: string;
-  id: number;
+  id: string;
 }
 
 export type GetGithubRepositoriesForIntegrationRequest = {
