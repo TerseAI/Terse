@@ -1,7 +1,6 @@
 import { Agent, AgentInputItem, run } from '@openai/agents';
 import { InputEvent } from "../../Updater/InputEvents";
 import { AutomationPrompt } from "../../types/prisma";
-import { Output, ToolboxEntry } from "../../Updater/Outputs/Output";
 import { Session } from "../../server";
 import { z } from "zod";
 
@@ -23,18 +22,14 @@ const filterOutputSchema = z.object({
 export async function filterEvent<T extends Session>(
     event: InputEvent,
     automationPrompt: AutomationPrompt,
-    output: Output<T>,
     session: T
 ): Promise<EventFilterResult> {
     try {
-        const readOnlyEntries = output.toolbox.filter(entry => entry.isReadOnly);
-        const readOnlyTools = readOnlyEntries.map(entry => entry.tool);
-
         const agent = new Agent<T, typeof filterOutputSchema>({
             name: 'Automation Event Filter',
-            instructions: buildFilterSystemPrompt(readOnlyEntries),
+            instructions: buildFilterSystemPrompt(),
             model: 'gpt-4o-mini',
-            tools: readOnlyTools,
+            tools: [], // No tools - filter should not make tool calls
             outputType: filterOutputSchema,
         });
 
@@ -86,22 +81,20 @@ export async function filterEvent<T extends Session>(
     }
 }
 
-function buildFilterSystemPrompt(tools: ToolboxEntry[]): string {
-    const toolNames = tools
-        .map(entry => entry.tool.name || 'unnamed_tool')
-        .join(', ') || 'None';
-
+function buildFilterSystemPrompt(): string {
     return `You are an event relevance analyzer. Your job is to determine if an incoming event is relevant to a user's automation instructions.
 
 You are responsible for protecting the main Updater agent from spam and noise. Only pass through events that clearly match the user's intent.
 
-You have access to the following tools: ${toolNames}.
-- Use tools only when you need additional context (e.g., to inspect the current state of the target document).
-- Never modify data; tools are for read-only context gathering during filtering.
+IMPORTANT: You do NOT have access to tools. You cannot inspect the current state of the target document.
+- If the user prompt or any prompt asks you to make a decision that requires knowing the current state of the target document, you should assume the event is relevant and pass it through.
+- Do not attempt to make tool calls - you have no tools available.
+- Base your decision solely on the event content and the user's automation instructions provided to you.
 
 Guidelines:
 - Be strict but not overly restrictive.
 - Consider both the event content and the user's automation instructions.
+- If a decision requires document state knowledge, default to isRelevant: true with appropriate confidence.
 - If unsure, choose the lower-confidence option.`;
 }
 
@@ -116,5 +109,5 @@ ${eventContent}
 
 ---
 
-Determine relevance. Use tools if you need additional context. Output should match the required schema (isRelevant, reason, confidence).`;
+Determine relevance based on the event content and user instructions. If making this decision requires knowing the current state of the target document, assume the event is relevant. Output should match the required schema (isRelevant, reason, confidence).`;
 }
