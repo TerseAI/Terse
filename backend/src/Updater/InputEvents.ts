@@ -512,6 +512,7 @@ export class GithubEvent extends InputEvent {
     }
 
     matchesAutomationInput(automationInput: AutomationInputWithConfigs): boolean {
+        console.log(chalk.blue('GithubEvent matchesAutomationInput'), automationInput.integration_type, this.data.repository.id);
         if (automationInput.integration_type !== IntegrationType.GITHUB) {
             return false;
         }
@@ -519,6 +520,7 @@ export class GithubEvent extends InputEvent {
 
         // Make sure the repository is in the list of repositories configured for the automation
         if (!githubConfig?.repository_ids.includes(this.data.repository.id)) {
+            console.log(chalk.red('GithubEvent matchesAutomationInput'), 'repository not found in automation', this.data.repository.id, githubConfig?.repository_ids);
             return false;
         }
 

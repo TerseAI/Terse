@@ -78,7 +78,7 @@ export default (app: Probot) => {
           branch: context.payload.ref,
           commits: diffs,
           repository: {
-            id: context.payload.repository.id,
+            id: Number(context.payload.repository.id),
             name: context.payload.repository.name,
             owner: context.payload.repository.owner.login,
             defaultBranch: context.payload.repository.default_branch
@@ -186,7 +186,7 @@ export default (app: Probot) => {
           },
           commits: diffs,
           repository: {
-            id: payload.repository.id,
+            id: Number(payload.repository.id),
             name: payload.repository.name,
             owner: payload.repository.owner.login,
             defaultBranch: payload.repository.default_branch
