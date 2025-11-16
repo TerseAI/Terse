@@ -18,8 +18,9 @@ type OutputSectionProps = {
     output: AutomationOutput | undefined;
     setOutput: (output: AutomationOutput | undefined) => void;
     isLoading: boolean;
+    readonly?: boolean;
 }
-export const OutputSection = forwardRef<HTMLDivElement, OutputSectionProps>(({ output, setOutput, isLoading }, ref) => {
+export const OutputSection = forwardRef<HTMLDivElement, OutputSectionProps>(({ output, setOutput, isLoading, readonly = false }, ref) => {
     const [showAddModal, setShowAddModal] = useState(false);
 
     const handleSelectPlatform = (integration: Integration) => {
@@ -58,16 +59,18 @@ export const OutputSection = forwardRef<HTMLDivElement, OutputSectionProps>(({ o
             isLoading={isLoading}
         >
             {!output ? (
-                <EmptyOutputSection onCreateNew={() => setShowAddModal(true)} />
+                <EmptyOutputSection onCreateNew={() => !readonly && setShowAddModal(true)} readonly={readonly} />
             ) : (
-                <OutputCard output={output} handleRemove={handleRemove} handleSelectIntegration={handleSelectIntegration} setOutput={setOutput} />
+                <OutputCard output={output} handleRemove={handleRemove} handleSelectIntegration={handleSelectIntegration} setOutput={setOutput} readonly={readonly} />
             )}
 
-            <AddOutputModal
-                isOpen={showAddModal}
-                onClose={() => setShowAddModal(false)}
-                onSelectIntegration={handleSelectPlatform}
-            />
+            {!readonly && (
+                <AddOutputModal
+                    isOpen={showAddModal}
+                    onClose={() => setShowAddModal(false)}
+                    onSelectIntegration={handleSelectPlatform}
+                />
+            )}
         </SectionLayout>
     );
 })
@@ -76,14 +79,15 @@ function OutputCard({
     output, 
     handleRemove,
     handleSelectIntegration,
-    setOutput
-}: { output: AutomationOutput, handleRemove: () => void, handleSelectIntegration: (integrationId: string) => void, setOutput: (output: AutomationOutput) => void }) {
+    setOutput,
+    readonly = false
+}: { output: AutomationOutput, handleRemove: () => void, handleSelectIntegration: (integrationId: string) => void, setOutput: (output: AutomationOutput) => void, readonly?: boolean }) {
     const selectorProps = {
         integrationType: output.integration as Integration,
         selectedIntegrationId: output.integrationId,
-        onSelect: handleSelectIntegration,
+        onSelect: readonly ? undefined : handleSelectIntegration,
         notionConfig: output.notionConfig,
-        onNotionConfigChange: (config: any) => {
+        onNotionConfigChange: readonly ? undefined : (config: any) => {
             if (output) {
                 setOutput({
                     integration: Integration.NOTION as string,
@@ -93,7 +97,7 @@ function OutputCard({
             }
         },
         notionPageConfig: output.notionPageConfig,
-        onNotionPageConfigChange: (config: any) => {
+        onNotionPageConfigChange: readonly ? undefined : (config: any) => {
             if (output) {
                 setOutput({
                     integration: Integration.NOTION_PAGE as string,
@@ -103,17 +107,18 @@ function OutputCard({
             }
         },
         slackConfig: output.slackConfig,
-        onSlackConfigChange: (config: any) => {
+        onSlackConfigChange: readonly ? undefined : (config: any) => {
             if (output) {
                 setOutput({ ...output, slackConfig: config });
             }
         },
         confluenceConfig: output.confluenceConfig,
-        onConfluenceConfigChange: (config: any) => {
+        onConfluenceConfigChange: readonly ? undefined : (config: any) => {
             if (output) {
                 setOutput({ ...output, confluenceConfig: config });
             }
-        }
+        },
+        readonly
     };
 
     return (
@@ -126,18 +131,20 @@ function OutputCard({
             <CardContent>
                 <IntegrationSelector {...selectorProps} variant="dialog" />
             </CardContent>
-            <CardFooter>
-                <CardAction>
-                    <Button variant="destructive" onClick={handleRemove}>
-                        Remove
-                    </Button>
-                </CardAction>
-            </CardFooter>
+            {!readonly && (
+                <CardFooter>
+                    <CardAction>
+                        <Button variant="destructive" onClick={handleRemove}>
+                            Remove
+                        </Button>
+                    </CardAction>
+                </CardFooter>
+            )}
         </Card>
     );
 }
 
-function EmptyOutputSection({ onCreateNew }: { onCreateNew: () => void }) {
+function EmptyOutputSection({ onCreateNew, readonly }: { onCreateNew: () => void; readonly?: boolean }) {
     return (
         <Empty>
             <EmptyHeader>
@@ -149,15 +156,17 @@ function EmptyOutputSection({ onCreateNew }: { onCreateNew: () => void }) {
                     No output yet. Add an integration to get started.
                 </EmptyDescription>
             </EmptyHeader>
-            <EmptyContent>
-                <Button
-                    variant="outline"
-                    onClick={onCreateNew}
-                >
-                    <Plus className="h-4 w-4" />
-                    Add Output
-                </Button>
-            </EmptyContent>
+            {!readonly && (
+                <EmptyContent>
+                    <Button
+                        variant="outline"
+                        onClick={onCreateNew}
+                    >
+                        <Plus className="h-4 w-4" />
+                        Add Output
+                    </Button>
+                </EmptyContent>
+            )}
         </Empty>
     );
 }

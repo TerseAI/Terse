@@ -7,6 +7,7 @@ import type {
     AutomationPrompt,
     AutomationsResponse,
     AutomationUpdate,
+    AutomationVersionsResponse,
 } from '@/shared/types';
 
 type AutomationListArgs = {
@@ -79,6 +80,30 @@ export function useAutomation(id: string | null) {
 
     return {
         automation: data,
+        isLoading: !!id && !data && !error,
+        isError: error,
+        isValidating,
+        mutate,
+    };
+}
+
+const automationVersionsKey = (id: string | null): readonly [string, { id: string }] | null => {
+    if (!id) return null;
+    return ['automationVersions', { id }];
+};
+
+export function useAutomationVersions(id: string | null) {
+    const key = automationVersionsKey(id);
+
+    const { data, error, isValidating, mutate } = useSWR<AutomationVersionsResponse>(
+        key,
+        id ? () => BackendProvider.getAutomationVersions(id) : null,
+    );
+
+    return {
+        versions: data?.versions ?? [],
+        automationId: data?.automationId,
+        automationName: data?.automationName,
         isLoading: !!id && !data && !error,
         isError: error,
         isValidating,
@@ -168,11 +193,26 @@ export function useAutomationMutations() {
         return { ...automation, isActive: newStatus };
     };
 
+    const publishAutomation = async (id: string, mutateAutomation?: KeyedMutator<Automation>) => {
+        await BackendProvider.publishAutomation(id);
+
+        if (mutateAutomation) {
+            await mutateAutomation();
+        } else {
+            await invalidateAutomationDetail(id);
+        }
+
+        // Invalidate versions cache
+        await mutate(automationVersionsKey(id));
+        await invalidateAutomationLists();
+    };
+
     return {
         createAutomation,
         updateAutomation,
         deleteAutomation,
         toggleAutomationActive,
+        publishAutomation,
         invalidateAutomationLists,
         invalidateAutomationDetail,
     };

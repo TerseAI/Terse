@@ -8,9 +8,10 @@ type EditableTextProps = {
     onChange?: (newValue: string) => void;
     className?: string;
     placeholder?: string;
+    readonly?: boolean;
 };
 
-function EditableText({ value, onSave, onChange, className = "", placeholder = "Click to edit" }: EditableTextProps) {
+function EditableText({ value, onSave, onChange, className = "", placeholder = "Click to edit", readonly = false }: EditableTextProps) {
     const [isEditing, setIsEditing] = useState(false);
     const [text, setText] = useState(value);
     const textAreaRef = useRef<HTMLTextAreaElement>(null);
@@ -23,7 +24,7 @@ function EditableText({ value, onSave, onChange, className = "", placeholder = "
     }, [isEditing]);
 
     const handleClick = () => {
-        if (!isEditing) {
+        if (!readonly && !isEditing) {
             setIsEditing(true);
         }
     };
@@ -45,6 +46,18 @@ function EditableText({ value, onSave, onChange, className = "", placeholder = "
             setIsEditing(false);
         }
     };
+
+    if (readonly) {
+        return (
+            <div className={`w-full ${className}`}>
+                <div className="text-4xl w-full box-border text-foreground border border-transparent rounded min-h-[40px] flex items-center">
+                    <span className="leading-tight text-muted-foreground">
+                        {value || <span className="text-muted-foreground">{placeholder}</span>}
+                    </span>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className={`w-full ${className}`}>

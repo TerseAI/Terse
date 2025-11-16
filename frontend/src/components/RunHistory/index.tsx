@@ -5,6 +5,7 @@ import RunHistoryItem from "./RunHistoryItem";
 import RunHistoryLoadingState from "./RunHistoryLoadingState";
 import { RunHistoryStatus } from "../../shared/RunHistoryTypes";
 import { useRunHistory } from "../../hooks/api/useRunHistory";
+import { useAutomationVersions } from "../../hooks/api/useAutomations";
 
 // Remote data source only; no local mock
 
@@ -37,6 +38,23 @@ export default function RunHistory({ automationId }: RunHistoryProps) {
         dateRange,
         selectedStatuses,
     });
+
+    // Fetch versions to create version number map
+    const { versions } = useAutomationVersions(automationId);
+    
+    // Create a map of versionId -> versionNumber
+    const versionNumberMap = useMemo(() => {
+        const map = new Map<string, number>();
+        const productionVersions = versions
+            .filter(v => v.status === 'PRODUCTION')
+            .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()); // Sort by creation date (oldest first)
+        
+        productionVersions.forEach((version, index) => {
+            map.set(version.id, index + 1); // Version numbers start at 1
+        });
+        
+        return map;
+    }, [versions]);
 
     const filteredRuns = useMemo(() => remoteRuns, [remoteRuns]);
 
@@ -122,19 +140,25 @@ export default function RunHistory({ automationId }: RunHistoryProps) {
             ) : (
                 <div className="mb-6">
                     <div className="flex flex-col gap-3 overflow-x-auto md:overflow-visible pb-3 md:pb-0 max-w-full md:max-w-4xl lg:max-w-5xl xl:max-w-6xl mx-auto">
-                        {paginatedRuns.map((run) => (
-                            <RunHistoryItem
-                                key={run.id}
-                                run={run}
-                                isExpanded={expandedRuns.has(run.id)}
-                                onToggleRun={toggleRun}
-                                isDecisionExpanded={expandedDecisions.has(run.id)}
-                                onToggleDecision={toggleDecision}
-                                isActionExpanded={(key) => expandedIndividualActions.has(key)}
-                                onToggleAction={toggleIndividualAction}
-                                onToggleAllActionsForRun={toggleAllActionsForRun}
-                            />
-                        ))}
+                        {paginatedRuns.map((run) => {
+                            const versionNumber = run.automationVersionId 
+                                ? versionNumberMap.get(run.automationVersionId) 
+                                : undefined;
+                            return (
+                                <RunHistoryItem
+                                    key={run.id}
+                                    run={run}
+                                    versionNumber={versionNumber}
+                                    isExpanded={expandedRuns.has(run.id)}
+                                    onToggleRun={toggleRun}
+                                    isDecisionExpanded={expandedDecisions.has(run.id)}
+                                    onToggleDecision={toggleDecision}
+                                    isActionExpanded={(key) => expandedIndividualActions.has(key)}
+                                    onToggleAction={toggleIndividualAction}
+                                    onToggleAllActionsForRun={toggleAllActionsForRun}
+                                />
+                            );
+                        })}
                     </div>
                 </div>
             )}

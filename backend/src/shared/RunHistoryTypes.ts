@@ -48,6 +48,7 @@ export type RunHistoryDecision = {
 export type RunHistoryRecord = {
     id: string;
     automationId: string;
+    automationVersionId?: string;
     timestamp: string;
     trigger: RunHistoryTrigger;
     filtered: boolean;

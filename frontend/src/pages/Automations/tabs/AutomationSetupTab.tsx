@@ -1,10 +1,10 @@
 import { Button } from "@/components/ui/button";
-import { useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useRef, useState, useEffect, useCallback, useMemo } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import EditableTextField from '../../../components/ui/EditableTextField';
 import { InputsSection } from "../InputSection";
 import { OutputSection } from "../OutputSection";
-import { AutomationUpdate } from "@/shared/types";
+import { AutomationUpdate, AutomationVersion } from "@/shared/types";
 import { toast } from "sonner";
 import { getDefaultAutomationName } from "@/utility/AutomationUtils";
 import { useAutomationCount } from "@/hooks/api/useAutomationCount";
@@ -30,9 +30,30 @@ type AutomationSetupTabProps = {
     setIsActive: (isActive: boolean) => void;
     isLoading: boolean;
     mutate: KeyedMutator<Automation>;
+    productionVersion?: AutomationVersion;
+    onPublishSuccess?: () => void;
 };
 
-function SaveAutomationButton({ 
+// Helper function to deep compare two objects
+function deepEqual(obj1: any, obj2: any): boolean {
+    if (obj1 === obj2) return true;
+    if (obj1 == null || obj2 == null) return false;
+    if (typeof obj1 !== 'object' || typeof obj2 !== 'object') return false;
+    
+    const keys1 = Object.keys(obj1);
+    const keys2 = Object.keys(obj2);
+    
+    if (keys1.length !== keys2.length) return false;
+    
+    for (const key of keys1) {
+        if (!keys2.includes(key)) return false;
+        if (!deepEqual(obj1[key], obj2[key])) return false;
+    }
+    
+    return true;
+}
+
+function PublishButton({ 
     defaultName, 
     automationId, 
     name, 
@@ -40,7 +61,9 @@ function SaveAutomationButton({
     output, 
     prompt, 
     isActive,
-    mutate 
+    mutate,
+    productionVersion,
+    onPublishSuccess
 }: { 
     defaultName: string;
     automationId: string | null;
@@ -50,114 +73,111 @@ function SaveAutomationButton({
     prompt: AutomationPrompt | undefined;
     isActive: boolean;
     mutate: KeyedMutator<Automation>;
+    productionVersion?: AutomationVersion;
+    onPublishSuccess?: () => void;
 }) {
     const navigate = useNavigate();
-    const [isSaving, setIsSaving] = useState(false);
-    const [saveSuccess, setSaveSuccess] = useState(false);
-    const { createAutomation, updateAutomation } = useAutomationMutations();
+    const [searchParams, setSearchParams] = useSearchParams();
+    const [isPublishing, setIsPublishing] = useState(false);
+    const { publishAutomation } = useAutomationMutations();
 
     // Validation: all required fields must be present
-    // Each integration reports its own completeness
     const isComplete =
         inputs.length > 0 &&
         inputs.every(i => isInputComplete({ ...i, integration: i.integration as Integration })) &&
         !!output && isOutputComplete({ ...output, integration: output.integration as Integration }) &&
-        !!prompt?.text; // Ensure prompt is not empty
+        !!prompt?.text;
 
-    const isEditMode = !!automationId;
+    // Check if draft has changes from production version
+    const hasChanges = useMemo(() => {
+        if (!productionVersion) {
+            // If no production version, check if draft has any content
+            return inputs.length > 0 || !!output || !!prompt?.text;
+        }
 
-    const handleSave = async () => {
-        if (!isComplete || !inputs.length || !output) return;
+        // Compare current draft state with production version
+        const currentState = {
+            name: name || defaultName || '',
+            inputs: inputs.map(i => ({
+                integration: i.integration,
+                integrationId: i.integrationId,
+                notionConfig: i.notionConfig,
+                slackConfig: i.slackConfig,
+                figmaConfig: i.figmaConfig,
+                gmailConfig: i.gmailConfig,
+            })),
+            output: output ? {
+                integration: output.integration,
+                integrationId: output.integrationId,
+                notionConfig: output.notionConfig,
+                slackConfig: output.slackConfig,
+                notionPageConfig: output.notionPageConfig,
+                confluenceConfig: output.confluenceConfig,
+            } : undefined,
+            prompt: prompt?.text || '',
+        };
 
-        setIsSaving(true);
+        const productionState = {
+            name: productionVersion.prompt ? 'Production Automation' : 'Production Automation', // Production doesn't have name in version
+            inputs: (productionVersion.inputs || []).map(i => ({
+                integration: i.integration,
+                integrationId: i.integrationId,
+                notionConfig: i.notionConfig,
+                slackConfig: i.slackConfig,
+                figmaConfig: i.figmaConfig,
+                gmailConfig: i.gmailConfig,
+            })),
+            output: productionVersion.output ? {
+                integration: productionVersion.output.integration,
+                integrationId: productionVersion.output.integrationId,
+                notionConfig: productionVersion.output.notionConfig,
+                slackConfig: productionVersion.output.slackConfig,
+                notionPageConfig: productionVersion.output.notionPageConfig,
+                confluenceConfig: productionVersion.output.confluenceConfig,
+            } : undefined,
+            prompt: productionVersion.prompt?.text || '',
+        };
+
+        return !deepEqual(currentState, productionState);
+    }, [name, defaultName, inputs, output, prompt, productionVersion]);
+
+    const handlePublish = async () => {
+        if (!isComplete || !automationId || !inputs.length || !output) return;
+
+        setIsPublishing(true);
         try {
-            // Debug: Log inputs before mapping
-            console.log('Inputs before mapping:', inputs);
+            await publishAutomation(automationId, mutate);
+            toast.success('Automation published successfully');
             
-            const automationData: AutomationUpdate = {
-                name: name || defaultName || '',
-                inputs: inputs.map(i => {
-                    const inputData: any = {
-                        integration: i.integration,
-                        integrationId: i.integrationId,
-                    };
-                    
-                    // Only include configs if they exist and have required fields
-                    if (i.notionConfig) {
-                        inputData.notionConfig = i.notionConfig;
-                    }
-                    if (i.slackConfig) {
-                        inputData.slackConfig = i.slackConfig;
-                    }
-                    if (i.figmaConfig) {
-                        // Validate that figmaConfig has both fileKey and teamId before including it
-                        if (i.figmaConfig.fileKey && i.figmaConfig.teamId) {
-                            inputData.figmaConfig = i.figmaConfig;
-                        } else {
-                            console.warn('Figma config missing fileKey or teamId, skipping:', i.figmaConfig);
-                        }
-                    }
-                    
-                    return inputData;
-                }),
-                output: {
-                    integration: output.integration,
-                    integrationId: output.integrationId,
-                    ...(output.notionConfig && { notionConfig: output.notionConfig }),
-                    ...(output.slackConfig && { slackConfig: output.slackConfig }),
-                    ...(output.notionPageConfig && { notionPageConfig: output.notionPageConfig }),
-                    ...(output.confluenceConfig && { confluenceConfig: output.confluenceConfig })
-                },
-                prompt,
-                isActive
-            };
-
-            if (isEditMode) {
-                // Update existing automation
-                await updateAutomation({
-                    id: automationId!,
-                    data: automationData,
-                    mutateAutomation: mutate,
-                });
+            if (onPublishSuccess) {
+                onPublishSuccess();
             } else {
-                // Create new automation
-                const creation = await createAutomation({
-                    name: automationData.name || '',
-                    inputs: automationData.inputs || [],
-                    output: automationData.output || { integration: '', integrationId: undefined },
-                    prompt: automationData.prompt || { text: '' },
-                    isActive: automationData.isActive,
-                });
-
-                if (creation?.id) {
-                    navigate(`/app/automations/${creation.id}`, { replace: true });
-                }
+                // Switch to production tab by updating URL
+                const nextParams = new URLSearchParams(searchParams);
+                nextParams.set('tab', 'production');
+                setSearchParams(nextParams, { replace: true });
             }
-
-            toast.success('Automation saved successfully');
-
-            setSaveSuccess(true);
-            setTimeout(() => {
-                setSaveSuccess(false);
-            }, 1000);
         } catch (error) {
-            console.error('Error saving automation:', error);
-            alert('Failed to save automation. Please try again.');
+            console.error('Error publishing automation:', error);
+            toast.error('Failed to publish automation. Please try again.');
         } finally {
-            setIsSaving(false);
+            setIsPublishing(false);
         }
     };
 
+    if (!automationId) {
+        return null; // Don't show publish button for new automations
+    }
+
     return (
         <Button
-            onClick={handleSave}
-            disabled={!isComplete || isSaving}
+            onClick={handlePublish}
+            disabled={!isComplete || !hasChanges || isPublishing}
         >
-            {isSaving ? 'Saving...' : saveSuccess ? 'Saved!' : isComplete ? (isEditMode ? 'Update Automation' : 'Save Automation') : 'Complete All Steps'}
+            {isPublishing ? 'Publishing...' : 'Publish'}
         </Button>
-    )
+    );
 }
-
 
 export default function AutomationSetupTab({
     automationId,
@@ -172,6 +192,8 @@ export default function AutomationSetupTab({
     isActive,
     isLoading,
     mutate,
+    productionVersion,
+    onPublishSuccess,
 }: AutomationSetupTabProps) {
     const { totalCount } = useAutomationCount();
     const defaultName = getDefaultAutomationName(
@@ -179,6 +201,181 @@ export default function AutomationSetupTab({
         output ? { integration: output.integration as Integration } : undefined,
         totalCount
     );
+
+    const { updateAutomation } = useAutomationMutations();
+    const [isSaving, setIsSaving] = useState(false);
+    const lastSavedStateRef = useRef<string | null>(null);
+    const hasInitializedRef = useRef(false);
+    const lastAutomationIdRef = useRef<string | null>(null);
+
+    // Create a serialized state for comparison (only user-editable fields, not computed values)
+    const currentStateString = useMemo(() => {
+        // Only serialize the actual user-editable state, not computed values like defaultName
+        // NOTE: We don't include IDs in the comparison since they're backend-generated and change on save
+        const state = {
+            name: name || '', // Use name directly, not defaultName
+            inputs: inputs.map(i => ({
+                // Don't include id - it's backend-generated and changes on each save
+                integration: i.integration,
+                integrationId: i.integrationId,
+                notionConfig: i.notionConfig,
+                slackConfig: i.slackConfig,
+                figmaConfig: i.figmaConfig,
+                gmailConfig: i.gmailConfig,
+            })),
+            output: output ? {
+                integration: output.integration,
+                integrationId: output.integrationId,
+                notionConfig: output.notionConfig,
+                slackConfig: output.slackConfig,
+                notionPageConfig: output.notionPageConfig,
+                confluenceConfig: output.confluenceConfig,
+            } : undefined,
+            prompt: prompt?.text || '',
+        };
+        const serialized = JSON.stringify(state);
+        console.log('[AutoSave] currentStateString recalculated:', {
+            name,
+            inputsCount: inputs.length,
+            hasOutput: !!output,
+            promptText: prompt?.text?.substring(0, 50),
+            serializedLength: serialized.length,
+            serializedHash: serialized.substring(0, 50) + '...'
+        });
+        return serialized;
+    }, [name, inputs, output, prompt]);
+
+    // Initialize lastSavedState when data first loads (only once per automation)
+    useEffect(() => {
+        // Reset if automationId changed
+        if (automationId !== lastAutomationIdRef.current) {
+            console.log('[AutoSave] Automation ID changed:', {
+                old: lastAutomationIdRef.current,
+                new: automationId
+            });
+            lastAutomationIdRef.current = automationId;
+            hasInitializedRef.current = false;
+            lastSavedStateRef.current = null;
+        }
+
+        // Initialize once when data is loaded
+        if (!isLoading && automationId && currentStateString && !hasInitializedRef.current) {
+            console.log('[AutoSave] Initializing saved state:', {
+                automationId,
+                stateLength: currentStateString.length,
+                stateHash: currentStateString.substring(0, 50) + '...'
+            });
+            lastSavedStateRef.current = currentStateString;
+            hasInitializedRef.current = true;
+        }
+    }, [isLoading, automationId, currentStateString]);
+
+    // Progressive saving with debounce - only when state actually changes
+    useEffect(() => {
+        console.log('[AutoSave] Effect triggered:', {
+            automationId,
+            isLoading,
+            hasInitialized: hasInitializedRef.current,
+            currentStateLength: currentStateString?.length,
+            lastSavedStateLength: lastSavedStateRef.current?.length,
+            statesMatch: currentStateString === lastSavedStateRef.current,
+            currentStateHash: currentStateString?.substring(0, 50) + '...',
+            lastSavedStateHash: lastSavedStateRef.current?.substring(0, 50) + '...'
+        });
+
+        if (!automationId || isLoading || !hasInitializedRef.current) {
+            console.log('[AutoSave] Skipping save - conditions not met');
+            return;
+        }
+        
+        if (currentStateString === lastSavedStateRef.current) {
+            console.log('[AutoSave] Skipping save - states match');
+            return;
+        }
+
+        // Capture the state string at the moment we decide to save
+        const stateToSave = currentStateString;
+        console.log('[AutoSave] Scheduling save:', {
+            stateToSaveLength: stateToSave.length,
+            stateToSaveHash: stateToSave.substring(0, 50) + '...',
+            debounceMs: 500
+        });
+
+        const timeoutId = setTimeout(async () => {
+            console.log('[AutoSave] Executing save:', {
+                stateToSaveLength: stateToSave.length,
+                currentStateLength: currentStateString.length,
+                statesStillMatch: currentStateString === stateToSave
+            });
+
+            // Mark this state as saved BEFORE making the API call
+            // This prevents the refetch from triggering another save
+            // We do this early to prevent race conditions
+            lastSavedStateRef.current = stateToSave;
+            console.log('[AutoSave] Updated lastSavedStateRef before API call');
+            setIsSaving(true);
+            
+            try {
+                const automationData: AutomationUpdate = {
+                    name: name || defaultName || '',
+                    inputs: inputs.map(i => {
+                        const inputData: any = {
+                            integration: i.integration,
+                            integrationId: i.integrationId,
+                        };
+                        
+                        if (i.notionConfig) {
+                            inputData.notionConfig = i.notionConfig;
+                        }
+                        if (i.slackConfig) {
+                            inputData.slackConfig = i.slackConfig;
+                        }
+                        if (i.figmaConfig) {
+                            if (i.figmaConfig.fileKey && i.figmaConfig.teamId) {
+                                inputData.figmaConfig = i.figmaConfig;
+                            }
+                        }
+                        if (i.gmailConfig) {
+                            inputData.gmailConfig = i.gmailConfig;
+                        }
+                        
+                        return inputData;
+                    }),
+                    output: output ? {
+                        integration: output.integration,
+                        integrationId: output.integrationId,
+                        ...(output.notionConfig && { notionConfig: output.notionConfig }),
+                        ...(output.slackConfig && { slackConfig: output.slackConfig }),
+                        ...(output.notionPageConfig && { notionPageConfig: output.notionPageConfig }),
+                        ...(output.confluenceConfig && { confluenceConfig: output.confluenceConfig })
+                    } : undefined,
+                    prompt,
+                    isActive
+                };
+
+                console.log('[AutoSave] Calling updateAutomation API');
+                await updateAutomation({
+                    id: automationId,
+                    data: automationData,
+                    mutateAutomation: mutate,
+                });
+                console.log('[AutoSave] Save completed successfully');
+            } catch (error) {
+                // On error, reset the saved state so we can retry
+                lastSavedStateRef.current = null;
+                console.error('[AutoSave] Error saving draft:', error);
+                // Don't show error toast for auto-save failures to avoid noise
+            } finally {
+                setIsSaving(false);
+                console.log('[AutoSave] Save process finished, isSaving set to false');
+            }
+        }, 500); // 500ms debounce
+
+        return () => {
+            console.log('[AutoSave] Cleaning up timeout');
+            clearTimeout(timeoutId);
+        };
+    }, [currentStateString, automationId, name, defaultName, inputs, output, prompt, isActive, isLoading, mutate, updateAutomation]);
 
     const containerRef = useRef<HTMLDivElement>(null);
     const inputsSectionRef = useRef<Map<string, HTMLDivElement>>(new Map());
@@ -214,12 +411,15 @@ export default function AutomationSetupTab({
 
     return (
         <div className="flex flex-col h-full p-4 overflow-y-auto gap-6">
-
-                <div className="flex justify-between items-center mb-10">
-                    <div className="flex items-center gap-2">
-                        <EditableTextField value={name || defaultName || ''} onSave={(value) => setName(value)} />
-                    </div>
-                    <SaveAutomationButton 
+            <div className="flex justify-between items-center mb-10">
+                <div className="flex items-center gap-2">
+                    <EditableTextField value={name || defaultName || ''} onSave={(value) => setName(value)} />
+                    {isSaving && (
+                        <span className="text-xs text-muted-foreground">Saving...</span>
+                    )}
+                </div>
+                {automationId && (
+                    <PublishButton 
                         defaultName={defaultName}
                         automationId={automationId}
                         name={name}
@@ -228,22 +428,23 @@ export default function AutomationSetupTab({
                         prompt={prompt}
                         isActive={isActive}
                         mutate={mutate}
+                        productionVersion={productionVersion}
+                        onPublishSuccess={onPublishSuccess}
                     />
-                </div>
+                )}
+            </div>
 
-                <div ref={containerRef} className="grid grid-flow-col place-items-center gap-3 relative">
-                    <InputsSection ref={inputsSectionRef} inputs={inputs} setInputs={setInputs} isLoading={isLoading} />
+            <div ref={containerRef} className="grid grid-flow-col place-items-center gap-3 relative">
+                <InputsSection ref={inputsSectionRef} inputs={inputs} setInputs={setInputs} isLoading={isLoading} />
 
-                    <PromptSection ref={PromptSectionRef} prompt={prompt} setPrompt={setPrompt} />
+                <PromptSection ref={PromptSectionRef} prompt={prompt} setPrompt={setPrompt} />
 
-                    <OutputSection ref={OutputSectionRef} output={output} setOutput={setOutput} isLoading={isLoading} />
+                <OutputSection ref={OutputSectionRef} output={output} setOutput={setOutput} isLoading={isLoading} />
 
                 {connections.length > 0 && (
                     <SVGFlowArrows containerRef={containerRef} connections={connections} />
                 )}
             </div>
         </div>
-    )
+    );
 }
-
-

@@ -13,9 +13,10 @@ import { HelpCircle } from "lucide-react";
 type BackgroundAgentCardProps = {
     prompt: AutomationPrompt | undefined;
     setPrompt: (prompt: AutomationPrompt | undefined) => void;
+    readonly?: boolean;
 };
 
-export function BackgroundAgentCard({ prompt, setPrompt }: BackgroundAgentCardProps) {
+export function BackgroundAgentCard({ prompt, setPrompt, readonly = false }: BackgroundAgentCardProps) {
     return (
         <>
             <style>{`
@@ -82,7 +83,7 @@ export function BackgroundAgentCard({ prompt, setPrompt }: BackgroundAgentCardPr
                         </CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <PromptDialog prompt={prompt} setPrompt={setPrompt} />
+                        <PromptDialog prompt={prompt} setPrompt={setPrompt} readonly={readonly} />
                     </CardContent>
                 </Card>
             </div>
@@ -90,7 +91,7 @@ export function BackgroundAgentCard({ prompt, setPrompt }: BackgroundAgentCardPr
     )
 }
 
-function PromptDialog({ prompt, setPrompt }: BackgroundAgentCardProps) {
+function PromptDialog({ prompt, setPrompt, readonly = false }: BackgroundAgentCardProps & { readonly?: boolean }) {
     const [content, setContent] = useState(prompt?.text || '');
     const [open, setOpen] = useState(false);
     
@@ -107,6 +108,16 @@ function PromptDialog({ prompt, setPrompt }: BackgroundAgentCardProps) {
             setContent(prompt?.text || '');
         }
     };
+    if (readonly) {
+        return (
+            <div className="p-4 border rounded-lg bg-muted/50">
+                <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                    {prompt?.text || 'No prompt set'}
+                </p>
+            </div>
+        );
+    }
+
     return (
         <Dialog open={open} onOpenChange={handleOpenChange}>
             <DialogTrigger asChild>

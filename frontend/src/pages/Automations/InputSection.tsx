@@ -19,9 +19,10 @@ type InputsSectionProps = {
     inputs: AutomationInput[];
     setInputs: (inputs: AutomationInput[]) => void;
     isLoading: boolean;
+    readonly?: boolean;
 };
 
-export const InputsSection = forwardRef<Map<string, HTMLDivElement>, InputsSectionProps>(({ inputs, setInputs, isLoading }, ref) => {
+export const InputsSection = forwardRef<Map<string, HTMLDivElement>, InputsSectionProps>(({ inputs, setInputs, isLoading, readonly = false }, ref) => {
     const [showAddModal, setShowAddModal] = useState(false);
     const inputRefs = useRef<Map<string, HTMLDivElement>>(new Map());
 
@@ -57,7 +58,7 @@ export const InputsSection = forwardRef<Map<string, HTMLDivElement>, InputsSecti
             isLoading={isLoading}
         >
             {!inputs.length ? (
-                <EmptyInputSection onCreateNew={() => setShowAddModal(true)} />
+                <EmptyInputSection onCreateNew={() => !readonly && setShowAddModal(true)} readonly={readonly} />
             ) : (
                 <InputCardsLayout 
                     inputs={inputs} 
@@ -66,14 +67,17 @@ export const InputsSection = forwardRef<Map<string, HTMLDivElement>, InputsSecti
                     handleRemove={handleRemove} 
                     setShowAddModal={setShowAddModal}
                     inputRefs={inputRefs}
+                    readonly={readonly}
                 />
             )}
 
-            <AddInputModal
-                isOpen={showAddModal}
-                onClose={() => setShowAddModal(false)}
-                onSelectIntegration={handleSelectPlatform}
-            />
+            {!readonly && (
+                <AddInputModal
+                    isOpen={showAddModal}
+                    onClose={() => setShowAddModal(false)}
+                    onSelectIntegration={handleSelectPlatform}
+                />
+            )}
 
         </SectionLayout>
     );
@@ -85,14 +89,16 @@ function InputCardsLayout({
     setInputs, 
     handleRemove, 
     setShowAddModal,
-    inputRefs
+    inputRefs,
+    readonly
 }: {
     inputs: AutomationInput[], 
     handleSelectIntegration: (integrationId: string, input: AutomationInput) => void, 
     setInputs: (inputs: AutomationInput[]) => void, 
     handleRemove: (id: string) => void, 
     setShowAddModal: (show: boolean) => void,
-    inputRefs: React.MutableRefObject<Map<string, HTMLDivElement>>
+    inputRefs: React.MutableRefObject<Map<string, HTMLDivElement>>,
+    readonly: boolean
 }) {
     const isSingleInput = inputs.length === 1;
     
@@ -121,11 +127,13 @@ function InputCardsLayout({
                         );
                     })}
                 </div>
-                <div className="absolute -bottom-12 left-1/2 -translate-x-1/2">
-                    <Button variant="outline" onClick={() => setShowAddModal(true)} className="min-w-xs">
-                        Add Event Source
-                    </Button>
-                </div>
+                {!readonly && (
+                    <div className="absolute -bottom-12 left-1/2 -translate-x-1/2">
+                        <Button variant="outline" onClick={() => setShowAddModal(true)} className="min-w-xs">
+                            Add Event Source
+                        </Button>
+                    </div>
+                )}
             </div>
         );
     }
@@ -142,6 +150,7 @@ function InputCardsLayout({
                         handleSelectIntegration={handleSelectIntegration} 
                         setInputs={setInputs} 
                         handleRemove={handleRemove}
+                        readonly={readonly}
                         ref={(el) => {
                             if (el && isInputComplete({ ...input, integration: input.integration as Integration })) {
                                 inputRefs.current.set(inputId, el);
@@ -152,9 +161,11 @@ function InputCardsLayout({
                     />
                 );
             })}
-            <Button variant="outline" onClick={() => setShowAddModal(true)} className="min-w-xs">
-                Add Event Source
-            </Button>
+            {!readonly && (
+                <Button variant="outline" onClick={() => setShowAddModal(true)} className="min-w-xs">
+                    Add Event Source
+                </Button>
+            )}
         </div>
     );
 }
@@ -164,37 +175,40 @@ const InputCard = forwardRef<HTMLDivElement, {
     inputs: AutomationInput[],
     handleSelectIntegration: (integrationId: string, input: AutomationInput) => void, 
     setInputs: (inputs: AutomationInput[]) => void, 
-    handleRemove: (id: string) => void
+    handleRemove: (id: string) => void,
+    readonly?: boolean
 }>(({
     input,
     inputs,
     handleSelectIntegration,
     setInputs,
-    handleRemove
+    handleRemove,
+    readonly = false
 }, ref) => {
     const [showDetailsDialog, setShowDetailsDialog] = useState(false);
     
     const selectorProps = {
         integrationType: input.integration as Integration,
         selectedIntegrationId: input.integrationId,
-        onSelect: (integrationId: string) => handleSelectIntegration(integrationId, input),
+        onSelect: readonly ? undefined : (integrationId: string) => handleSelectIntegration(integrationId, input),
         notionConfig: input.notionConfig,
-        onNotionConfigChange: (config: NotionConfig) => {
+        onNotionConfigChange: readonly ? undefined : (config: NotionConfig) => {
             setInputs(inputs.map(i => i.id === input.id ? { ...i, notionConfig: config } : i));
         },
         slackConfig: input.slackConfig,
-        onSlackConfigChange: (config: SlackConfig) => {
+        onSlackConfigChange: readonly ? undefined : (config: SlackConfig) => {
             setInputs(inputs.map(i => i.id === input.id ? { ...i, slackConfig: config } : i));
         },
         figmaConfig: input.figmaConfig,
-        onFigmaConfigChange: (config: FigmaConfig) => {
+        onFigmaConfigChange: readonly ? undefined : (config: FigmaConfig) => {
             setInputs(inputs.map(i => i.id === input.id ? { ...i, figmaConfig: config } : i));
         },
         gmailConfig: input.gmailConfig,
-        onGmailConfigChange: (config: GmailConfig) => {
+        onGmailConfigChange: readonly ? undefined : (config: GmailConfig) => {
             console.log('Gmail config changed:', config);
             setInputs(inputs.map(i => i.id === input.id ? { ...i, gmailConfig: config } : i));
-        }
+        },
+        readonly
     };
 
     const { isConfigurationIncomplete } = useIntegrationSelector(selectorProps);
@@ -220,18 +234,20 @@ const InputCard = forwardRef<HTMLDivElement, {
                     <IntegrationSelector {...selectorProps} variant="card" />
                 </CardContent>
 
-                <CardFooter className="justify-between">
-                    <Button 
-                        variant="outline"
-                        className={needsConfiguration ? "border-yellow-500 text-yellow-600 hover:bg-yellow-50 hover:text-yellow-700 dark:text-yellow-500 dark:hover:bg-yellow-950/20 dark:hover:text-yellow-400" : ""}
-                        onClick={() => setShowDetailsDialog(true)}
-                    >
-                        {needsConfiguration ? "Configure" : "More Details"}
-                    </Button>
-                    <Button variant="destructive" onClick={() => handleRemove(input.id)}>
-                        Remove
-                    </Button>
-                </CardFooter>
+                {!readonly && (
+                    <CardFooter className="justify-between">
+                        <Button 
+                            variant="outline"
+                            className={needsConfiguration ? "border-yellow-500 text-yellow-600 hover:bg-yellow-50 hover:text-yellow-700 dark:text-yellow-500 dark:hover:bg-yellow-950/20 dark:hover:text-yellow-400" : ""}
+                            onClick={() => setShowDetailsDialog(true)}
+                        >
+                            {needsConfiguration ? "Configure" : "More Details"}
+                        </Button>
+                        <Button variant="destructive" onClick={() => handleRemove(input.id)}>
+                            Remove
+                        </Button>
+                    </CardFooter>
+                )}
             </Card>
 
             <Dialog open={showDetailsDialog} onOpenChange={setShowDetailsDialog}>
@@ -246,7 +262,7 @@ const InputCard = forwardRef<HTMLDivElement, {
     );
 });
 
-function EmptyInputSection({ onCreateNew }: { onCreateNew: () => void }) {
+function EmptyInputSection({ onCreateNew, readonly }: { onCreateNew: () => void; readonly?: boolean }) {
     return (
         <Empty>
             <EmptyHeader>
@@ -258,15 +274,17 @@ function EmptyInputSection({ onCreateNew }: { onCreateNew: () => void }) {
                     No event source yet. Add an integration to get started.
                 </EmptyDescription>
             </EmptyHeader>
-            <EmptyContent>
-                <Button
-                    variant="outline"
-                    onClick={onCreateNew}
-                >
-                    <Plus className="h-4 w-4" />
-                    Add Event Source
-                </Button>
-            </EmptyContent>
+            {!readonly && (
+                <EmptyContent>
+                    <Button
+                        variant="outline"
+                        onClick={onCreateNew}
+                    >
+                        <Plus className="h-4 w-4" />
+                        Add Event Source
+                    </Button>
+                </EmptyContent>
+            )}
         </Empty>
     );
 }

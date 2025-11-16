@@ -1,6 +1,6 @@
 import chalk from 'chalk';
 import { db } from '../../prismaClient';
-import { Automation, AutomationWithRelations, AutomationOutput, User } from '../../types/prisma';
+import { Automation, AutomationVersionWithRelations, AutomationOutput, User } from '../../types/prisma';
 import { InputEvent } from '../../Updater/InputEvents';
 import { OutputFactory } from '../../Updater/Outputs/OutputFactory';
 import { AutomationAgent } from './AutomationAgent';
@@ -46,13 +46,18 @@ export class EventProcessor {
         // Get integration type from event itself (no hardcoded checks)
         const integrationType = this.inputEvent.integrationType;
 
-        // Find all active automations for this user (already includes all config relations)
-        const automations = await db().automations.findMany({
+        // Find all active PRODUCTION automation versions for this user (already includes all config relations)
+        // CRITICAL: Only process production versions that are active - never process drafts
+        const automationVersions = await db().automation_versions.findMany({
             where: {
-                user_id: this.user.id,
+                status: 'PRODUCTION',
                 is_active: true,
+                automation: {
+                    user_id: this.user.id,
+                },
             },
             include: {
+                automation: true, // Include the container to get the name
                 prompt: true,
                 inputs: {
                     include: {
@@ -60,6 +65,7 @@ export class EventProcessor {
                         notion_config: true,
                         linear_config: true,
                         jira_config: true,
+                        confluence_config: true,
                         github_config: true,
                         gmail_config: true,
                         figma_config: true,
@@ -69,23 +75,26 @@ export class EventProcessor {
                     include: {
                         slack_config: true,
                         notion_config: true,
+                        notion_page_config: true,
                         linear_config: true,
                         jira_config: true,
+                        confluence_config: true,
                         github_config: true,
                         gmail_config: true,
+                        figma_config: true,
                     }
                 }
             }
-        }) as AutomationWithRelations[];
+        }) as AutomationVersionWithRelations[];
 
-        if (automations.length === 0) {
-            return [new ProcessorResult(false, "No automations found for this user", null)];
+        if (automationVersions.length === 0) {
+            return [new ProcessorResult(false, "No active production automations found for this user", null)];
         }
 
-        // Filter automations using event's own filtering method
+        // Filter automation versions using event's own filtering method
         // Each event type handles its own matching logic (no switch statements)
-        const matchingAutomations = automations.filter(automation =>
-            automation.inputs.some(input => this.inputEvent.matchesAutomationInput(input))
+        const matchingAutomations = automationVersions.filter(version =>
+            version.inputs.some(input => this.inputEvent.matchesAutomationInput(input))
         );
 
         if (matchingAutomations.length === 0) {
@@ -94,17 +103,18 @@ export class EventProcessor {
 
         console.log(chalk.cyan(`Found ${matchingAutomations.length} matching automation(s) for ${integrationType} event`));
 
-        // Process each matching automation
-        for (const automation of matchingAutomations) {
+        // Process each matching automation version
+        for (const version of matchingAutomations) {
             try {
-                const result = await this.processAutomation(automation);
+                const result = await this.processAutomation(version);
                 results.push(result);
             } catch (error) {
-                console.error(chalk.red(`Error processing automation ${automation.id}:`), error);
+                console.error(chalk.red(`Error processing automation ${version.automation.name} (version ${version.id}):`), error);
+                // Use the automation container for the result (already fetched in the query)
                 results.push(new ProcessorResult(
                     false,
                     `Error processing automation: ${error instanceof Error ? error.message : 'Unknown error'}`,
-                    automation
+                    version.automation
                 ));
             }
         }
@@ -112,32 +122,37 @@ export class EventProcessor {
         return results;
     }
 
-    private async processAutomation(automation: AutomationWithRelations): Promise<ProcessorResult> {
-        console.log(chalk.cyan(`Processing automation: ${automation.name} (${automation.id})`));
+    private async processAutomation(version: AutomationVersionWithRelations): Promise<ProcessorResult> {
+        const automationName = version.automation.name;
+        const automationContainerId = version.automation_id;
+        const automationContainer = version.automation; // Already fetched in the query
+        console.log(chalk.cyan(`Processing automation: ${automationName} (version ${version.id}, container ${automationContainerId})`));
 
-        if (!automation.prompt) {
-            return new ProcessorResult(false, "No prompt found for this automation", automation);
+        if (!version.prompt) {
+            return new ProcessorResult(false, "No prompt found for this automation", automationContainer);
         }
 
         // Initialize run history record with trigger details
+        // Use automation_version_id for the run history record
         const trigger = this.inputEvent.createTriggerMetadata();
         const runId = await createRunRecord({
-            automationId: automation.id,
+            automationVersionId: version.id,
             trigger,
         });
-        emitCacheInvalidationWithWildcard(this.user.id, 'runHistory', automation.id);
+        // Use automation container ID for cache invalidation (frontend queries by container ID)
+        emitCacheInvalidationWithWildcard(this.user.id, 'runHistory', automationContainerId);
 
-        // Get the output from automation relations (already fetched with config)
-        const outputIntegration = automation.output;
+        // Get the output from automation version relations (already fetched with config)
+        const outputIntegration = version.output;
 
         if (!outputIntegration) {
-            return new ProcessorResult(false, "No output integration found for this automation", automation);
+            return new ProcessorResult(false, "No output integration found for this automation", automationContainer);
         }
 
         // Use OutputFactory to create output based on integration type (no hardcoded Notion logic)
         const output = OutputFactory.createOutput(outputIntegration.integration_type);
         if (!output) {
-            return new ProcessorResult(false, `Output type ${outputIntegration.integration_type} is not supported`, automation);
+            return new ProcessorResult(false, `Output type ${outputIntegration.integration_type} is not supported`, automationContainer);
         }
 
         // Use output's config-aware session creation (no hardcoded config extraction)
@@ -153,7 +168,7 @@ export class EventProcessor {
             return new ProcessorResult(
                 false,
                 `Failed to create session: ${error instanceof Error ? error.message : 'Unknown error'}`,
-                automation
+                automationContainer
             );
         }
 
@@ -162,17 +177,17 @@ export class EventProcessor {
         try {
             filterResult = await filterEvent<Session>(
                 this.inputEvent,
-                automation.prompt,
+                version.prompt,
                 session
             );
         } catch (error) {
             // Log the error and update run history
             const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-            console.error(chalk.red(`Error filtering event for automation "${automation.name}":`), error);
+            console.error(chalk.red(`Error filtering event for automation "${automationName}":`), error);
             
             try {
                 await markRunFailed(runId, errorMessage, 'filter');
-                emitCacheInvalidationWithWildcard(this.user.id, 'runHistory', automation.id);
+                emitCacheInvalidationWithWildcard(this.user.id, 'runHistory', automationContainerId);
             } catch (e) {
                 console.error(chalk.yellow('Failed to mark run as failed'), e);
             }
@@ -180,18 +195,18 @@ export class EventProcessor {
             return new ProcessorResult(
                 false,
                 `Error during filtering: ${errorMessage}`,
-                automation
+                automationContainer
             );
         }
 
         if (!filterResult.isRelevant) {
-            console.log(chalk.gray(`Event is not relevant to automation "${automation.name}": ${filterResult.reason}`));
+            console.log(chalk.gray(`Event is not relevant to automation "${automationName}": ${filterResult.reason}`));
             try {
                 await markRunSkipped(runId, filterResult.reason);
             } catch (e) {
                 console.error(chalk.yellow('Failed to mark run skipped'), e);
             }
-            return new ProcessorResult(false, `Not relevant: ${filterResult.reason}`, automation);
+            return new ProcessorResult(false, `Not relevant: ${filterResult.reason}`, automationContainer);
         }
 
         try {
@@ -200,10 +215,10 @@ export class EventProcessor {
             console.error(chalk.yellow('Failed to mark run processed'), e);
         }
 
-        console.log(chalk.green(`Event is relevant to automation "${automation.name}"`));
+        console.log(chalk.green(`Event is relevant to automation "${automationName}"`));
 
         // Create automation agent with the session and output
-        const automationAgent = new AutomationAgent(session, output, automation.prompt, automation.inputs, outputIntegration);
+        const automationAgent = new AutomationAgent(session, output, version.prompt, version.inputs, outputIntegration);
         await automationAgent.initializeAgent();
         automationAgent.setInputEvent(this.inputEvent);
 
@@ -214,11 +229,11 @@ export class EventProcessor {
         } catch (error) {
             // Log the error and update run history
             const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-            console.error(chalk.red(`Error running automation agent for "${automation.name}":`), error);
+            console.error(chalk.red(`Error running automation agent for "${automationName}":`), error);
             
             try {
                 await markRunFailed(runId, errorMessage, 'agent');
-                emitCacheInvalidationWithWildcard(this.user.id, 'runHistory', automation.id);
+                emitCacheInvalidationWithWildcard(this.user.id, 'runHistory', automationContainerId);
             } catch (e) {
                 console.error(chalk.yellow('Failed to mark run as failed'), e);
             }
@@ -228,11 +243,11 @@ export class EventProcessor {
         }
 
         if (result.status === 'completed') {
-            console.log(chalk.green(`Automation "${automation.name}" completed:`), result.result.finalOutput);
-            return persistRunResult(runId, result.result, session, automation, result);
+            console.log(chalk.green(`Automation "${automationName}" completed:`), result.result.finalOutput);
+            return persistRunResult(runId, result.result, session, automationContainer, result);
         } else {
-            console.log(chalk.yellow(`Automation "${automation.name}" awaiting approval:`));
-            return new ProcessorResult(false, "Automation awaiting approval", automation, result);
+            console.log(chalk.yellow(`Automation "${automationName}" awaiting approval:`));
+            return new ProcessorResult(false, "Automation awaiting approval", automationContainer, result);
         }
     }
 }

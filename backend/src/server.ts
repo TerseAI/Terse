@@ -25,7 +25,11 @@ import {
   deleteAutomation,
   getUserAutomation,
   getUserAutomations,
+  getAutomationVersions,
   updateAutomation,
+  publishAutomation,
+  revertAutomation,
+  activateAutomationVersion,
 } from "./routes/automations";
 import {
   getCurrentGithubIntegration,
@@ -405,12 +409,28 @@ app.get("/automations/:id", authMiddleware, async (req, res) => {
   getUserAutomation(req, res);
 });
 
+app.get("/automations/:id/versions", authMiddleware, async (req, res) => {
+  getAutomationVersions(req, res);
+});
+
 app.post("/automations", authMiddleware, async (req, res) => {
   createAutomation(req, res);
 });
 
 app.patch("/automations/:id", authMiddleware, async (req, res) => {
   updateAutomation(req, res);
+});
+
+app.post("/automations/:id/publish", authMiddleware, async (req, res) => {
+  publishAutomation(req, res);
+});
+
+app.post("/automations/:id/revert", authMiddleware, async (req, res) => {
+  revertAutomation(req, res);
+});
+
+app.post("/automations/:id/versions/:versionId/activate", authMiddleware, async (req, res) => {
+  activateAutomationVersion(req, res);
 });
 
 app.delete("/automations/:id", authMiddleware, async (req, res) => {

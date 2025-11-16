@@ -479,10 +479,32 @@ export type AutomationPrompt = {
   text: string;
 };
 
+export type AutomationVersion = {
+    id: string;
+    status: 'DRAFT' | 'PRODUCTION';
+    isActive?: boolean;
+    createdAt: string;
+    updatedAt: string;
+    publishedBy?: string;
+    publishedAt?: string;
+    prompt?: AutomationPrompt;
+    inputs: AutomationInput[];
+    output?: AutomationOutput;
+};
+
+export type AutomationVersionsResponse = {
+    automationId: string;
+    automationName: string;
+    versions: AutomationVersion[];
+};
+
 export type Automation = {
     id: string;
     name: string;
     isActive: boolean;
+    draft?: AutomationVersion;
+    production?: AutomationVersion;
+    // For backward compatibility, include the active version at the root level
     prompt?: AutomationPrompt;
     inputs: AutomationInput[];
     output?: AutomationOutput;

@@ -6,7 +6,8 @@ import {
     AutomationOutput,
     AutomationPrompt, 
     AutomationsResponse, 
-    AutomationUpdate, 
+    AutomationUpdate,
+    AutomationVersionsResponse,
     ConfluenceIntegration, 
     ConfluenceResourcesResponse, 
     GithubIntegration, 
@@ -243,6 +244,16 @@ interface BackendService {
      * Deletes an automation
      */
     deleteAutomation(id: string): Promise<{ success: boolean; message: string }>;
+
+    /**
+     * Publishes a draft automation to production
+     */
+    publishAutomation(id: string): Promise<{ success: boolean }>;
+
+    /**
+     * Gets all versions of an automation
+     */
+    getAutomationVersions(id: string): Promise<AutomationVersionsResponse>;
 
     /**
      * Fetch run history for a specific automation with filters and pagination
@@ -641,6 +652,24 @@ export const BackendProvider: BackendService = {
             .then(response => response.data)
             .catch(error => {
                 console.error('Error deleting automation:', error);
+                throw error;
+            });
+    },
+
+    publishAutomation: (id: string) => {
+        return axios.post<{ success: boolean }>(`${backendBaseUrl}/automations/${id}/publish`, {}, { withCredentials: true })
+            .then(response => response.data)
+            .catch(error => {
+                console.error('Error publishing automation:', error);
+                throw error;
+            });
+    },
+
+    getAutomationVersions: (id: string) => {
+        return axios.get<AutomationVersionsResponse>(`${backendBaseUrl}/automations/${id}/versions`, { withCredentials: true })
+            .then(response => response.data)
+            .catch(error => {
+                console.error('Error getting automation versions:', error);
                 throw error;
             });
     },

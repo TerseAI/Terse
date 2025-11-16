@@ -4,14 +4,14 @@ import type { RunHistoryAction as SharedRunHistoryAction, RunHistoryStatus, RunH
 export type RunTrigger = RunHistoryTrigger;
 
 export async function createRunRecord(params: {
-    automationId: string;
+    automationVersionId: string;
     trigger: RunTrigger;
 }): Promise<string> {
-    const { automationId, trigger } = params;
+    const { automationVersionId, trigger } = params;
     const prisma = db();
     const record = await prisma.run_history_records.create({
         data: {
-            automation_id: automationId,
+            automation_version_id: automationVersionId,
             event: trigger.event,
             trigger_integration: trigger.integration,
             trigger_source: trigger.source,

@@ -17,12 +17,42 @@ export async function getRunHistory(req: Request, res: Response) {
       return res.status(400).json({ error: "automationId is required" });
     }
 
+    // Verify automation exists and get all its versions
+    const automation = await prisma.automations.findFirst({
+      where: { id: automationId },
+      include: {
+        versions: {
+          select: { id: true }
+        }
+      }
+    });
+
+    if (!automation) {
+      return res.status(404).json({ error: "Automation not found" });
+    }
+
+    // Get all version IDs for this automation
+    const versionIds = automation.versions.map(v => v.id);
+    
+    if (versionIds.length === 0) {
+      // No versions exist, return empty result
+      const response: GetRunHistoryResponse = {
+        items: [],
+        page: 1,
+        pageSize: 20,
+        total: 0,
+      };
+      return res.json(response);
+    }
+
     const params = parseGetRunHistoryParams(req.query);
 
     const { page, pageSize, skip, take } = parsePageParams(req, 20, 100);
 
-    // Build Prisma where clause
-    const where: Prisma.run_history_recordsWhereInput = { automation_id: automationId };
+    // Build Prisma where clause - query all versions of this automation
+    const where: Prisma.run_history_recordsWhereInput = { 
+      automation_version_id: { in: versionIds }
+    };
 
     if (params.start || params.end) {
       const startDate = parseDate(params.start);
@@ -49,7 +79,15 @@ export async function getRunHistory(req: Request, res: Response) {
     }
 
     type RunHistoryRecordWithActions = Prisma.run_history_recordsGetPayload<{
-      include: { actions: true };
+      include: { 
+        actions: true;
+        automation_version: {
+          select: {
+            automation_id: true;
+            id: true;
+          };
+        };
+      };
     }>;
 
     const [total, rows] = await prisma.$transaction([
@@ -57,7 +95,15 @@ export async function getRunHistory(req: Request, res: Response) {
       prisma.run_history_records.findMany({
         where,
         orderBy: { timestamp: "desc" },
-        include: { actions: true },
+        include: { 
+          actions: true,
+          automation_version: {
+            select: {
+              automation_id: true,
+              id: true,
+            },
+          },
+        },
         skip,
         take,
       }),
@@ -66,7 +112,8 @@ export async function getRunHistory(req: Request, res: Response) {
     // Transform Prisma rows (snake_case) to API format (camelCase)
     const items: RunHistoryRecord[] = rows.map((runRecord: RunHistoryRecordWithActions) => ({
       id: runRecord.id,
-      automationId: runRecord.automation_id,
+      automationId: runRecord.automation_version.automation_id, // Get automation_id from the version relation
+      automationVersionId: runRecord.automation_version.id, // Get version id
       timestamp: runRecord.timestamp.toISOString(),
       trigger: {
         event: runRecord.event,

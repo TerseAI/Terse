@@ -353,45 +353,67 @@ model project_activity_events {
 }
 
 // Automation tables
+// Automation container - lightweight container for automation metadata
 model automations {
   id         String   @id @default(cuid())
   user_id    String
   name       String
-  is_active  Boolean  @default(true)
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
 
-  user                users                 @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  user     users                 @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  versions automation_versions[]
+
+  @@index([user_id])
+}
+
+// Automation version - contains actual automation data (inputs, outputs, prompts)
+// Supports DRAFT and PRODUCTION status with full version history
+// Multiple PRODUCTION versions are allowed for history tracking, but only one should be active at a time
+// Only one DRAFT version per automation (enforced in application logic)
+model automation_versions {
+  id            String           @id @default(cuid())
+  automation_id String
+  status        AutomationStatus
+  is_active     Boolean          @default(true) // Only one PRODUCTION version should be active per automation
+  created_at    DateTime         @default(now())
+  updated_at    DateTime         @updatedAt
+  published_by  String? // User ID who published this version (null for drafts)
+  published_at  DateTime? // When this version was published (null for drafts)
+
+  automation          automations           @relation(fields: [automation_id], references: [id], onDelete: Cascade)
   prompt              automation_prompts?
   inputs              automation_inputs[]
   output              automation_outputs?
   run_history_records run_history_records[]
 
-  @@index([user_id])
-  @@index([is_active])
+  @@index([automation_id])
+  @@index([status])
+  @@index([automation_id, status])
+  @@index([automation_id, status, is_active]) // For efficient queries of active production versions
 }
 
 // Separate table for prompts (future-proof for versioning, templates, etc.)
 model automation_prompts {
-  id            String   @id @default(cuid())
-  automation_id String   @unique
-  content       String   @db.Text
-  created_at    DateTime @default(now())
-  updated_at    DateTime @updatedAt
+  id                    String   @id @default(cuid())
+  automation_version_id String   @unique
+  content               String   @db.Text
+  created_at            DateTime @default(now())
+  updated_at            DateTime @updatedAt
 
-  automation automations @relation(fields: [automation_id], references: [id], onDelete: Cascade)
+  automation_version automation_versions @relation(fields: [automation_version_id], references: [id], onDelete: Cascade)
 }
 
 // Polymorphic inputs - can reference any integration type
 model automation_inputs {
-  id               String          @id @default(cuid())
-  automation_id    String
-  integration_type IntegrationType
-  integration_id   String
-  created_at       DateTime        @default(now())
-  updated_at       DateTime        @updatedAt
+  id                    String          @id @default(cuid())
+  automation_version_id String
+  integration_type      IntegrationType
+  integration_id        String
+  created_at            DateTime        @default(now())
+  updated_at            DateTime        @updatedAt
 
-  automation automations @relation(fields: [automation_id], references: [id], onDelete: Cascade)
+  automation_version automation_versions @relation(fields: [automation_version_id], references: [id], onDelete: Cascade)
 
   // Configuration relations (one per integration type)
   slack_config       automation_slack_configs?
@@ -404,20 +426,20 @@ model automation_inputs {
   gmail_config       automation_gmail_configs?
   figma_config       automation_figma_configs?
 
-  @@index([automation_id])
+  @@index([automation_version_id])
   @@index([integration_type, integration_id])
 }
 
-// Single output per automation
+// Single output per automation version
 model automation_outputs {
-  id               String          @id @default(cuid())
-  automation_id    String          @unique
-  integration_type IntegrationType
-  integration_id   String
-  created_at       DateTime        @default(now())
-  updated_at       DateTime        @updatedAt
+  id                    String          @id @default(cuid())
+  automation_version_id String          @unique
+  integration_type      IntegrationType
+  integration_id        String
+  created_at            DateTime        @default(now())
+  updated_at            DateTime        @updatedAt
 
-  automation automations @relation(fields: [automation_id], references: [id], onDelete: Cascade)
+  automation_version automation_versions @relation(fields: [automation_version_id], references: [id], onDelete: Cascade)
 
   // Configuration relations (one per integration type)
   slack_config       automation_slack_configs?
@@ -630,6 +652,12 @@ enum IntegrationType {
   FIGMA
 }
 
+// Automation Version Status
+enum AutomationStatus {
+  DRAFT
+  PRODUCTION
+}
+
 // Run History enums to mirror backend/shared RunHistoryTypes
 enum RunHistoryStatus {
   success
@@ -658,32 +686,32 @@ enum RunHistoryIntegration {
 
 // Run History tables
 model run_history_records {
-  id                  String                   @id @default(cuid())
-  automation_id       String
+  id                    String                   @id @default(cuid())
+  automation_version_id String
   // Timestamp of the run (when the trigger was processed)
-  timestamp           DateTime                 @default(now())
+  timestamp             DateTime                 @default(now())
   // Trigger details (denormalized onto the record for fast reads)
-  event               String
-  trigger_integration RunHistoryIntegration
-  trigger_source      String
-  trigger_title       String?
-  trigger_subheader   String?
-  trigger_url         String?
+  event                 String
+  trigger_integration   RunHistoryIntegration
+  trigger_source        String
+  trigger_title         String?
+  trigger_subheader     String?
+  trigger_url           String?
   // Whether this item was filtered out by rules before action
-  filtered            Boolean                  @default(false)
+  filtered              Boolean                  @default(false)
   // Decision summary
-  decision_action     RunHistoryDecisionAction
-  decision_reason     String
+  decision_action       RunHistoryDecisionAction
+  decision_reason       String
   // Run status
-  status              RunHistoryStatus
-  created_at          DateTime                 @default(now())
-  updated_at          DateTime                 @updatedAt
+  status                RunHistoryStatus
+  created_at            DateTime                 @default(now())
+  updated_at            DateTime                 @updatedAt
 
-  automation       automations           @relation(fields: [automation_id], references: [id], onDelete: Cascade)
-  actions          run_history_actions[]
-  pending_approval pending_approvals?
+  automation_version automation_versions   @relation(fields: [automation_version_id], references: [id], onDelete: Cascade)
+  actions            run_history_actions[]
+  pending_approval   pending_approvals?
 
-  @@index([automation_id])
+  @@index([automation_version_id])
   @@index([status])
   @@index([timestamp])
 }

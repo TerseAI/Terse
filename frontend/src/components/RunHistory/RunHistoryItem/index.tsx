@@ -12,6 +12,7 @@ import {
 
 type Props = {
     run: RunHistoryRecord;
+    versionNumber?: number;
     isExpanded: boolean;
     onToggleRun: (runId: string) => void;
     isDecisionExpanded: boolean;
@@ -23,6 +24,7 @@ type Props = {
 
 export default function RunHistoryItem({
     run,
+    versionNumber,
     isExpanded,
     onToggleRun,
     isDecisionExpanded,
@@ -81,6 +83,7 @@ export default function RunHistoryItem({
                     <AccordionTrigger className="hover:no-underline px-4"> 
                         <RunHistoryItemHeader
                             run={run}
+                            versionNumber={versionNumber}
                             isExpanded={isExpanded}
                             formattedTimestamp={formatTimestamp(run.timestamp)}
                             onCopy={copyToClipboard}

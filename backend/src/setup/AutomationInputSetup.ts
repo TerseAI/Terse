@@ -36,13 +36,13 @@ export class AutomationInputSetup {
     ]);
 
     /**
-     * Sets up all inputs in an automation.
-     * Called after an automation is created or updated.
+     * Sets up all inputs in an automation version.
+     * Called after an automation version is published to production.
      */
-    static async setupAutomationInputs(automationId: string): Promise<void> {
+    static async setupAutomationInputs(automationVersionId: string): Promise<void> {
         try {
-            const automation = await db().automations.findUnique({
-                where: { id: automationId },
+            const automationVersion = await db().automation_versions.findUnique({
+                where: { id: automationVersionId },
                 include: {
                     inputs: {
                         include: {
@@ -58,12 +58,12 @@ export class AutomationInputSetup {
                 },
             });
 
-            if (!automation) {
-                console.log(chalk.yellow(`⚠️  Automation not found: ${automationId}`));
+            if (!automationVersion) {
+                console.log(chalk.yellow(`⚠️  Automation version not found: ${automationVersionId}`));
                 return;
             }
 
-            for (const input of automation.inputs) {
+            for (const input of automationVersion.inputs) {
                 const handler = this.handlers.get(input.integration_type);
                 if (handler) {
                     try {
@@ -90,13 +90,13 @@ export class AutomationInputSetup {
     }
 
     /**
-     * Tears down setup for all inputs in an automation.
-     * Called before an automation is deleted.
+     * Tears down setup for all inputs in an automation version.
+     * Called before an automation version is deleted or replaced.
      */
-    static async tearDownAutomationInputs(automationId: string): Promise<void> {
+    static async tearDownAutomationInputs(automationVersionId: string): Promise<void> {
         try {
-            const automation = await db().automations.findUnique({
-                where: { id: automationId },
+            const automationVersion = await db().automation_versions.findUnique({
+                where: { id: automationVersionId },
                 include: {
                     inputs: {
                         include: {
@@ -112,11 +112,11 @@ export class AutomationInputSetup {
                 },
             });
 
-            if (!automation) {
+            if (!automationVersion) {
                 return;
             }
 
-            for (const input of automation.inputs) {
+            for (const input of automationVersion.inputs) {
                 const handler = this.handlers.get(input.integration_type);
                 if (handler) {
                     try {

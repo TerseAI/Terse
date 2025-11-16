@@ -14,9 +14,10 @@ const statusOptions = [
 export default function AutomationsList() {
     const navigate = useNavigate();
     const [deletingId, setDeletingId] = useState<string | null>(null);
+    const [creatingId, setCreatingId] = useState<boolean>(false);
     const [searchQuery, setSearchQuery] = useState('');
     const [statusFilter, setStatusFilter] = useState<boolean | undefined>(undefined);
-    const { deleteAutomation } = useAutomationMutations();
+    const { deleteAutomation, createAutomation } = useAutomationMutations();
     const selectedOption = statusOptions.find(opt => opt.value === statusFilter) || statusOptions[0];
 
     const handleEdit = (automation: Automation) => {
@@ -40,15 +41,35 @@ export default function AutomationsList() {
         }
     };
 
-    const handleCreateNew = () => {
-        navigate('/app/automations/new');
+    const handleCreateNew = async () => {
+        try {
+            setCreatingId(true);
+            // Create a new automation with just a name (creates as draft)
+            const result = await createAutomation({
+                name: 'New Automation',
+                inputs: [],
+                output: { integration: '', integrationId: undefined },
+                prompt: { text: '' },
+                isActive: false,
+            });
+
+            if (result?.id) {
+                // Navigate to the new automation's edit page
+                navigate(`/app/automations/${result.id}?tab=edit`);
+            }
+        } catch (error) {
+            console.error('Failed to create automation:', error);
+            alert('Failed to create automation. Please try again.');
+        } finally {
+            setCreatingId(false);
+        }
     };
 
     return (
         <div className="flex flex-col h-full p-4">
             <div className="flex-1 overflow-y-auto">
                 <div className="mx-auto space-y-6">
-                    <AutomationsHeader onCreateNew={handleCreateNew} />
+                    <AutomationsHeader onCreateNew={handleCreateNew} isCreating={creatingId} />
 
                     <div className="grid grid-cols-20 sm:grid-flow-row gap-3">
                         <SearchBar searchQuery={searchQuery} placeholder="Search automations by name..." className="col-span-16" onSearchChange={setSearchQuery} />

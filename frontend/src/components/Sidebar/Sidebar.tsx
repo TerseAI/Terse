@@ -20,7 +20,8 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Automation } from "@/shared/types";
 import { AppSidebarHeader } from "./SidebarHeader";
 import { AppSidebarFooter } from "./SidebarFooter";
-import { useAutomations } from "@/hooks/api/useAutomations";
+import { useAutomations, useAutomationMutations } from "@/hooks/api/useAutomations";
+import { useState } from "react";
 
 interface NavItem {
     title: string;
@@ -154,8 +155,43 @@ function AutomationsList({ automations, loading }: AutomationsListProps) {
     )
 }
 
-function AutomationDropdownMenu() {
+function NewAutomationMenuItem() {
     const navigate = useNavigate();
+    const { createAutomation } = useAutomationMutations();
+    const [isCreating, setIsCreating] = useState(false);
+
+    const handleCreate = async () => {
+        try {
+            setIsCreating(true);
+            // Create a new automation with just a name (creates as draft)
+            const result = await createAutomation({
+                name: 'New Automation',
+                inputs: [],
+                output: { integration: '', integrationId: undefined },
+                prompt: { text: '' },
+                isActive: false,
+            });
+
+            if (result?.id) {
+                // Navigate to the new automation's edit page
+                navigate(`/app/automations/${result.id}?tab=edit`);
+            }
+        } catch (error) {
+            console.error('Failed to create automation:', error);
+            alert('Failed to create automation. Please try again.');
+        } finally {
+            setIsCreating(false);
+        }
+    };
+
+    return (
+        <span onClick={handleCreate} style={{ cursor: isCreating ? 'wait' : 'pointer' }}>
+            {isCreating ? 'Creating...' : 'New Automation'}
+        </span>
+    );
+}
+
+function AutomationDropdownMenu() {
     return (
         <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -165,7 +201,7 @@ function AutomationDropdownMenu() {
             </DropdownMenuTrigger>
             <DropdownMenuContent side="right" align="start">
                 <DropdownMenuItem>
-                    <span onClick={() => navigate('/app/automations/new')}>New Automation</span>
+                    <NewAutomationMenuItem />
                 </DropdownMenuItem>
             </DropdownMenuContent>
         </DropdownMenu>

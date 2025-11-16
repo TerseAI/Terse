@@ -6,12 +6,13 @@ import { Integration } from "../../../types/Integration";
 
 type Props = {
     run: RunHistoryRecord;
+    versionNumber?: number;
     isExpanded: boolean;
     formattedTimestamp: string;
     onCopy: (text: string) => void;
 };
 
-export default function RunHistoryItemHeader({ run, formattedTimestamp, onCopy }: Props) {
+export default function RunHistoryItemHeader({ run, versionNumber, formattedTimestamp, onCopy }: Props) {
     return (
         <div className="group w-full no-underline hover:no-underline">
             <div className="flex items-start gap-4">
@@ -56,6 +57,12 @@ export default function RunHistoryItemHeader({ run, formattedTimestamp, onCopy }
                             {run.trigger.subheader}
                         </span>
                         <span className="no-underline hover:no-underline">•</span>
+                        {versionNumber && (
+                            <>
+                                <span className="flex-shrink-0 no-underline hover:no-underline">Version {versionNumber}</span>
+                                <span className="no-underline hover:no-underline">•</span>
+                            </>
+                        )}
                         <span className="flex-shrink-0 no-underline hover:no-underline">{formattedTimestamp}</span>
                     </div>
                 </div>

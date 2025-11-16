@@ -64,9 +64,10 @@ export type AutomationNotionPageConfig = automation_notion_page_configs;
 
 export type AutomationConfluenceConfig = automation_confluence_configs;
 
-// Extended type for Automation with included relations (kept in sync with include used in queries)
-export type AutomationWithRelations = Prisma.automationsGetPayload<{
+// Extended type for Automation Version with included relations (kept in sync with include used in queries)
+export type AutomationVersionWithRelations = Prisma.automation_versionsGetPayload<{
   include: { 
+    automation: true; // Include the container to get the name
     prompt: true; 
     inputs: { 
       include: {
@@ -74,23 +75,106 @@ export type AutomationWithRelations = Prisma.automationsGetPayload<{
         notion_config: true;
         linear_config: true;
         jira_config: true;
+        confluence_config: true;
         github_config: true;
         gmail_config: true;
+        figma_config: true;
       }
     };
     output: {
       include: {
         slack_config: true;
         notion_config: true;
+        notion_page_config: true;
         linear_config: true;
         jira_config: true;
+        confluence_config: true;
         github_config: true;
         gmail_config: true;
-        confluence_config: true;
+        figma_config: true;
       }
     };
   };
 }>;
+
+// Extract input type from AutomationVersionWithRelations
+export type AutomationInputWithConfigs = AutomationVersionWithRelations['inputs'][number];
+
+// Type for automation version with all relations (includes published_by and published_at)
+export type AutomationVersionWithAllRelations = Prisma.automation_versionsGetPayload<{
+  include: {
+    prompt: true;
+    inputs: {
+      include: {
+        slack_config: true;
+        notion_config: true;
+        linear_config: true;
+        jira_config: true;
+        confluence_config: true;
+        github_config: true;
+        gmail_config: true;
+        figma_config: true;
+      };
+    };
+    output: {
+      include: {
+        slack_config: true;
+        notion_config: true;
+        notion_page_config: true;
+        linear_config: true;
+        jira_config: true;
+        confluence_config: true;
+        github_config: true;
+        gmail_config: true;
+        figma_config: true;
+      };
+    };
+  };
+}> & {
+  published_by: string | null;
+  published_at: Date | null;
+};
+
+// Type for automation with versions (used in getAutomationVersions)
+export type AutomationWithVersions = Omit<Prisma.automationsGetPayload<{
+  include: {
+    versions: {
+      include: {
+        prompt: true;
+        inputs: {
+          include: {
+            slack_config: true;
+            notion_config: true;
+            linear_config: true;
+            jira_config: true;
+            confluence_config: true;
+            github_config: true;
+            gmail_config: true;
+            figma_config: true;
+          };
+        };
+        output: {
+          include: {
+            slack_config: true;
+            notion_config: true;
+            notion_page_config: true;
+            linear_config: true;
+            jira_config: true;
+            confluence_config: true;
+            github_config: true;
+            gmail_config: true;
+            figma_config: true;
+          };
+        };
+      };
+    };
+  };
+}>, 'versions'> & {
+  versions: AutomationVersionWithAllRelations[];
+};
+
+// Legacy type for backward compatibility (now points to production version)
+export type AutomationWithRelations = AutomationVersionWithRelations;
 
 // Re-export the original types too
 export {
