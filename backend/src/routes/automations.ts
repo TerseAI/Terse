@@ -1444,6 +1444,9 @@ export async function createAutomation(req: Request, res: Response) {
             // Create inputs if provided
             if (inputs && inputs.length > 0) {
                 for (const input of inputs) {
+                    if (!input.integration || input.integration.trim() === '') {
+                        throw new Error(`Integration type is required for input`);
+                    }
                     const integrationType = integrationTypeMap[input.integration];
                     if (!integrationType) {
                         throw new Error(`Unknown integration type: ${input.integration}`);

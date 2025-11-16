@@ -20,7 +20,7 @@ type AutomationListArgs = {
 type CreateAutomationArgs = {
     name: string;
     inputs: AutomationInput[];
-    output: AutomationOutput;
+    output: AutomationOutput | undefined;
     prompt: AutomationPrompt;
     isActive?: boolean;
 };
@@ -126,8 +126,13 @@ export function useAutomationMutations() {
         return result;
     };
 
-    const updateAutomation = async ({ id, data, mutateAutomation }: UpdateAutomationArgs) => {
+    const updateAutomation = async ({ id, data, mutateAutomation, skipCacheUpdate }: UpdateAutomationArgs & { skipCacheUpdate?: boolean }) => {
         await BackendProvider.updateAutomation(id, data);
+
+        // Skip cache updates during autosave to prevent re-renders that close modals
+        if (skipCacheUpdate) {
+            return;
+        }
 
         if (mutateAutomation) {
             await mutateAutomation();

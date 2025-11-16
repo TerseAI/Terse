@@ -48,7 +48,7 @@ export default function AutomationsList() {
             const result = await createAutomation({
                 name: 'New Automation',
                 inputs: [],
-                output: { integration: '', integrationId: undefined },
+                output: undefined,
                 prompt: { text: '' },
                 isActive: false,
             });

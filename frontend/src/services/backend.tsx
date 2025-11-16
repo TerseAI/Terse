@@ -233,7 +233,7 @@ interface BackendService {
     /**
      * Creates a new automation
      */
-    createAutomation(name: string, inputs: AutomationInput[], output: AutomationOutput, prompt: AutomationPrompt, isActive?: boolean): Promise<{ success: boolean; id: string }>;
+    createAutomation(name: string, inputs: AutomationInput[], output: AutomationOutput | undefined, prompt: AutomationPrompt, isActive?: boolean): Promise<{ success: boolean; id: string }>;
 
     /**
      * Updates an existing automation
@@ -623,7 +623,7 @@ export const BackendProvider: BackendService = {
             });
     },
 
-    createAutomation: (name: string, inputs: AutomationInput[], output: AutomationOutput, prompt: AutomationPrompt, isActive = true) => {
+    createAutomation: (name: string, inputs: AutomationInput[], output: AutomationOutput | undefined, prompt: AutomationPrompt, isActive = true) => {
         return axios.post<{ success: boolean; id: string }>(`${backendBaseUrl}/automations`,
             { name, inputs, output, prompt, isActive },
             { withCredentials: true }
