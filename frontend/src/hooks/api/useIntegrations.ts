@@ -11,18 +11,12 @@ export type IntegrationMetadata = {
 
 const integrationsKey = (): readonly [string] => ['integrations'];
 
-/**
- * Transform IntegrationsStatus to IntegrationMetadata array
- */
 function transformToIntegrationMetadata(integrationData: IntegrationsStatus['integrations']): IntegrationMetadata[] {
     const activeIntegrations: IntegrationMetadata[] = [];
 
-    // Iterate through all integration types and check if they have data
-    // Note: If multiple instances exist for a type, we store the first one.
-    // Components that need to select a specific instance should fetch instances directly.
     for (const [integrationType, key] of Object.entries(INTEGRATION_KEY_MAP)) {
         const instances = integrationData[key];
-        if (instances && instances.length === 1) {
+        if (instances && instances.length > 0) {
             activeIntegrations.push({
                 type: integrationType as Integration,
                 integrationId: instances[0].id
@@ -54,6 +48,8 @@ export function useIntegrations() {
     const hasGmail = integrations.some(integration => integration.type === Integration.GMAIL);
     const hasNotion = integrations.some(integration => integration.type === Integration.NOTION);
     const isSetupComplete = hasGithub && (hasLinear || hasJira || hasNotion);
+    
+    console.log("Integrations:", JSON.stringify(integrations, null, 2));
 
     return {
         integrations,
