@@ -123,7 +123,7 @@ function OutputCard({
                     <IntegrationTitle integration={output.integration as Integration} iconSize="lg" />
                 </CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="max-w-xs">
                 <IntegrationSelector {...selectorProps} variant="dialog" />
             </CardContent>
             <CardFooter>
