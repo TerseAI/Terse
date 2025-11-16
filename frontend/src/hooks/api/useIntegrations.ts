@@ -49,8 +49,6 @@ export function useIntegrations() {
     const hasNotion = integrations.some(integration => integration.type === Integration.NOTION);
     const isSetupComplete = hasGithub && (hasLinear || hasJira || hasNotion);
     
-    console.log("Integrations:", JSON.stringify(integrations, null, 2));
-
     return {
         integrations,
         integrationStatus: data,

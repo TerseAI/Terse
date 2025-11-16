@@ -192,12 +192,10 @@ const InputCard = forwardRef<HTMLDivElement, {
         },
         gmailConfig: input.gmailConfig,
         onGmailConfigChange: (config: GmailConfig) => {
-            console.log('Gmail config changed:', config);
             setInputs(inputs.map(i => i.id === input.id ? { ...i, gmailConfig: config } : i));
         },
         githubConfig: input.githubConfig,
         onGithubConfigChange: (config: GitHubConfig) => {
-            console.log('GitHub config changed:', config);
             setInputs(inputs.map(i => i.id === input.id ? { ...i, githubConfig: config } : i));
         }
     };
