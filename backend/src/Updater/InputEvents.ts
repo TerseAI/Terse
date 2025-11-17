@@ -1,11 +1,11 @@
 import chalk from "chalk";
 import { IntegrationType } from "@prisma/client";
-import { GmailEventData } from "../routes/gmail";
 import { AutomationInputWithConfigs } from "../types/prisma";
 import { RunHistoryTrigger } from "../shared/RunHistoryTypes";
 import { SlackEventData, SlackChannelType } from "../shared/types";
 import { FigmaCommentEventData, FigmaCommentThreadEntry } from "../shared/types";
 import { GithubAppUnifiedEventRequest } from "../routes/Github/githubApp";
+import { GmailEventData } from "../integrations/GmailIntegration";
 
 
 export abstract class InputEvent {
