@@ -4,6 +4,7 @@ import { GithubRepository, User } from "../../types/prisma";
 import { GithubAppInstallationCallbackRequest } from "../../shared/types";
 import chalk from "chalk";
 import { processRepository } from "./githubApp";
+import { urls } from "src/config/settings";
 
 export async function processSetUpURLGithubInstallation(req: Request, res: Response) {
     const { installation_id, setup_action, state } = req.query;
@@ -45,7 +46,7 @@ export async function processSetUpURLGithubInstallation(req: Request, res: Respo
         chalk.cyan("user_id:"), chalk.yellow(user_id)
     );
 
-    res.status(200).json({ message: 'GitHub frontend installation callback processed' });
+    res.redirect(`${urls.frontend}/oauth/success`);
 }
 
 export async function processsGithubAppInstallationWebhook(req: Request, res: Response) {
