@@ -656,7 +656,7 @@ export async function createAutomation(req: Request, res: Response) {
                 }
 
                 // Validate that user owns the integration
-                const integrationId = (input as any).integrationId;
+                const integrationId = input.integrationId;
                 if (!integrationId) {
                     throw new Error(`Integration ID is required for ${input.integration}`);
                 }
@@ -684,7 +684,7 @@ export async function createAutomation(req: Request, res: Response) {
                 throw new Error(`Unknown integration type: ${output.integration}`);
             }
 
-            const outputIntegrationId = (output as any).integrationId;
+            const outputIntegrationId = output.integrationId;
             if (!outputIntegrationId) {
                 throw new Error(`Integration ID is required for ${output.integration}`);
             }
@@ -792,7 +792,7 @@ export async function saveAutomation(req: Request, res: Response) {
                     }
 
                     // Validate that user owns the integration
-                    const integrationId = (input as any).integrationId;
+                    const integrationId = input.integrationId;
                     if (!integrationId) {
                         throw new Error(`Integration ID is required for ${input.integration}`);
                     }
@@ -820,7 +820,7 @@ export async function saveAutomation(req: Request, res: Response) {
                     throw new Error(`Unknown integration type: ${output.integration}`);
                 }
 
-                const outputIntegrationId = (output as any).integrationId;
+                const outputIntegrationId = output.integrationId;
                 if (!outputIntegrationId) {
                     throw new Error(`Integration ID is required for ${output.integration}`);
                 }
@@ -874,7 +874,7 @@ export async function saveAutomation(req: Request, res: Response) {
                     }
 
                     // Validate that user owns the integration
-                    const integrationId = (input as any).integrationId;
+                    const integrationId = input.integrationId;
                     if (!integrationId) {
                         throw new Error(`Integration ID is required for ${input.integration}`);
                     }
@@ -902,7 +902,7 @@ export async function saveAutomation(req: Request, res: Response) {
                     throw new Error(`Unknown integration type: ${output.integration}`);
                 }
 
-                const outputIntegrationId = (output as any).integrationId;
+                const outputIntegrationId = output.integrationId;
                 if (!outputIntegrationId) {
                     throw new Error(`Integration ID is required for ${output.integration}`);
                 }
@@ -1004,7 +1004,7 @@ export async function updateAutomation(req: Request, res: Response) {
                     }
 
                     // Validate that user owns the integration
-                    const integrationId = (input as any).integrationId;
+                    const integrationId = input.integrationId;
                     if (!integrationId) {
                         throw new Error(`Integration ID is required for ${input.integration}`);
                     }
