@@ -97,20 +97,22 @@ export async function githubAppInstallationDeleted(req: Request, res: Response) 
     console.log('githubAppInstallationDeleted', req.body);
     const body: GithubAppInstallationDeletedRequest = req.body as GithubAppInstallationDeletedRequest;
 
-    // find all repos for this installation
-    const repositories: GithubRepository[] = await db().github_repositories.findMany({ where: { installation_id: body.installationId } });
+    const commit = db().$transaction(async (tx) => {
+        // find all repos for this installation
+        const repositories: GithubRepository[] = await tx.github_repositories.findMany({ where: { installation_id: body.installationId } });
 
-    if (repositories.length === 0) {
-        res.status(404).json({ message: 'No repositories found for this installation' });
-        return;
-    }
+        if (repositories.length === 0) {
+            res.status(404).json({ message: 'No repositories found for this installation' });
+            return;
+        }
 
-    // remove all associations for those repos
-    await db().user_github_repositories.deleteMany({ where: { github_repository_id: { in: repositories.map(repo => repo.id) } } });
+        // remove all associations for those repos
+        await tx.user_github_repositories.deleteMany({ where: { github_repository_id: { in: repositories.map(repo => repo.id) } } });
 
-    // now remove the installation + repositories
-    await db().github_repositories.deleteMany({ where: { installation_id: body.installationId } });
-    await db().user_github_installation.deleteMany({ where: { installation_id: body.installationId } });
+        // now remove the installation + repositories
+        await tx.github_repositories.deleteMany({ where: { installation_id: body.installationId } });
+        await tx.user_github_installation.deleteMany({ where: { installation_id: body.installationId } });
+    });
 
     // TODO: We need to invalidate Automations that were dependent on these repositories. This is a more general issue we don't account for yet.
 
