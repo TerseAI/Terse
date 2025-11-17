@@ -73,26 +73,6 @@ export function GitHubIntegration({
     // Dialog variant: full view
     return (
         <div className="flex flex-col gap-3">
-            <div className="flex flex-col gap-1.5">
-                <label className="font-medium">
-                    {label}
-                </label>
-                <DropdownSelect
-                    statusOptions={connectionSelections}
-                    selectedOption={selectedOption}
-                    setSelected={onSelect}
-                />
-            </div>
-
-            <Button
-                onClick={onConnect}
-                disabled={isConnecting}
-                variant="outline"
-            >
-                <Plus className="w-4 h-4" />
-                {isConnecting ? 'Connecting...' : `Connect Another ${getIntegrationName(integrationType)}`}
-            </Button>
-
             {selectedIntegrationId && (
                 <div className="mt-3 pt-3 border-t border-border">
                     <GithubResourceSelector
