@@ -136,7 +136,7 @@ function GithubResourceCombobox({
                     >
                         <span className="truncate">
                             {selectedRepositories.length > 0
-                                ? `${selectedRepositories.length} repository${selectedRepositories.length !== 1 ? 'ies' : ''} selected`
+                                ? `${selectedRepositories.length} repositor${selectedRepositories.length !== 1 ? 'ies' : 'y'} selected`
                                 : "Select repositories..."}
                         </span>
                         <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
