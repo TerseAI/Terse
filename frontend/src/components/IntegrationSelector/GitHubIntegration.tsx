@@ -1,6 +1,5 @@
 import { Plus } from 'lucide-react';
 import { Button } from '../ui/button';
-import { formatIntegrationDisplay, IntegrationInstance } from '../../utility/IntegrationFormatters';
 import { getIntegrationName } from '../../utility/IntegrationUtils';
 import { Integration } from "@/types/Integration";
 import { BaseIntegrationProps } from './types';
