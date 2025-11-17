@@ -4,19 +4,34 @@ import DailySummary from "../components/DailySummary";
 import { ActivityFeedService, DailyActivitySummary } from '../services/activityFeed';
 import { useAuth } from "../services/auth";
 import ActivityFeed from "./ActivityFeed";
+import { useFeatureFlag } from "../hooks/useFeatureFlag";
 
 function Home() {
+    // Check if user has the custom homepage feature flag enabled
+    const hasCustomHomepage = useFeatureFlag('theos-homepage');
+
+    // If feature flag is enabled, show the custom homepage
+    if (hasCustomHomepage) {
+        return (
+            <div className="grid grid-flow-row gap-4 overflow-y-auto max-w-7xl mx-auto pl-8">
+                <div className="grid grid-flow-row pr-30">
+                    <Welcome />
+                    <OverallSummary />
+                </div>
+                <div className="grid grid-flow-col min-w-0 overflow-y-auto pr-30">
+                    <ActivityFeed />
+                </div>
+            </div>
+        );
+    }
+
+    // Default homepage for users without the feature flag
     return (
-        <div className="grid grid-flow-row gap-4 overflow-y-auto max-w-7xl mx-auto pl-8">
-            <div className="grid grid-flow-row pr-30">
-                <Welcome />
-                <OverallSummary />
-            </div>
-            <div className="grid grid-flow-col min-w-0 overflow-y-auto pr-30">
-                <ActivityFeed />
-            </div>
+        <div className="max-w-7xl mx-auto pl-8 pt-8">
+            <h1 className="text-2xl pb-4">Welcome</h1>
+            <p className="text-md">This is the default homepage.</p>
         </div>
-    )
+    );
 }
 
 function OverallSummary() {
