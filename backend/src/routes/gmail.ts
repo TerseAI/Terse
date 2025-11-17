@@ -1,24 +1,15 @@
 import chalk from "chalk";
 import crypto from "crypto";
 import { Request, Response } from "express";
-import { gmail_v1, google } from "googleapis";
-import { EventProcessor, ProcessorResult } from "../agent/AutomationAgent/EventProcessor";
+import { google } from "googleapis";
 import { db } from "../prismaClient";
-import { GmailIntegration, User } from "../types/prisma";
+import { GmailIntegration} from "../types/prisma";
 import { gmail as gmailConfig, urls, cloudScheduler } from "../config/settings";
-import { GmailEvent } from "../Updater/InputEvents";
+import { getOAuth2Client, GmailIntegrationManager, GmailWebhookEvent } from "../integrations/GmailIntegration";
 
 // OAuth2 scopes for Gmail
 const SCOPES = ["https://www.googleapis.com/auth/gmail.readonly"];
 
-// Create OAuth2 client
-function getOAuth2Client() {
-  return new google.auth.OAuth2(
-    gmailConfig.clientId,
-    gmailConfig.clientSecret,
-    gmailConfig.redirectUri
-  );
-}
 
 /**
  * Generate Gmail OAuth URL
@@ -274,179 +265,6 @@ async function refreshAccessTokenIfNeeded(
 }
 
 /**
- * Fetch new message IDs from Gmail history
- */
-async function fetchNewMessageIds(
-  integration: GmailIntegration,
-  oldHistoryId: string
-): Promise<string[]> {
-  // Refresh token if needed
-  const accessToken = await refreshAccessTokenIfNeeded(integration);
-
-  const oauth2Client = getOAuth2Client();
-  oauth2Client.setCredentials({
-    access_token: accessToken,
-    refresh_token: integration.refresh_token,
-  });
-
-  const gmail = google.gmail({ version: "v1", auth: oauth2Client });
-
-  console.log(`Fetching Gmail history from ${oldHistoryId}`);
-
-  const historyResponse = await gmail.users.history.list({
-    userId: "me",
-    startHistoryId: oldHistoryId,
-    historyTypes: ["messageAdded"],
-    labelId: "INBOX",
-  });
-
-  const history = historyResponse.data.history || [];
-
-  if (history.length === 0) {
-    console.log("No new messages in history");
-    return [];
-  }
-
-  // Extract message IDs from history
-  const messageIds: string[] = [];
-  for (const record of history) {
-    if (record.messagesAdded) {
-      for (const added of record.messagesAdded) {
-        if (added.message?.id) {
-          messageIds.push(added.message.id);
-        }
-      }
-    }
-  }
-
-  console.log(`Found ${messageIds.length} new messages`);
-
-  return messageIds;
-}
-
-/**
- * Parse email message to extract useful information
- */
-export interface GmailEventData {
-  id: string;
-  threadId: string;
-  subject: string;
-  from: string;
-  to: string;
-  date: string; // Header date string (for display)
-  internalDate: string; // Gmail's internal timestamp (milliseconds since epoch)
-  messageId: string;
-  body: string;
-  snippet: string;
-  labelIds: string[];
-}
-
-async function fetchAndParseEmail(
-  gmail: gmail_v1.Gmail,
-  messageId: string
-): Promise<GmailEventData | null> {
-  try {
-    const messageResponse = await gmail.users.messages.get({
-      userId: "me",
-      id: messageId,
-      format: "full",
-    });
-
-    const message = messageResponse.data;
-    const headers = message.payload?.headers || [];
-    const getHeader = (name: string) => {
-      const header = headers.find(
-        (h) => h.name?.toLowerCase() === name.toLowerCase()
-      );
-      return header?.value || "";
-    };
-
-    const subject = getHeader("Subject");
-    const from = getHeader("From");
-    const to = getHeader("To");
-    const date = getHeader("Date");
-    const messageIdHeader = getHeader("Message-ID");
-    const labelIds = message.labelIds || [];
-
-    // Extract body - Gmail can have different structures
-    const getBody = (payload: gmail_v1.Schema$MessagePart): string => {
-      if (payload.body?.data) {
-        return Buffer.from(payload.body.data, "base64").toString("utf-8");
-      }
-
-      if (payload.parts) {
-        for (const part of payload.parts) {
-          if (part.mimeType === "text/plain" && part.body?.data) {
-            return Buffer.from(part.body.data, "base64").toString("utf-8");
-          }
-
-          // Recursively check nested parts
-          const nestedBody = getBody(part);
-          if (nestedBody) {
-            return nestedBody;
-          }
-        }
-      }
-
-      return "";
-    };
-
-    const body = getBody(message.payload || {});
-
-    return {
-      id: message.id || messageId,
-      threadId: message.threadId || "",
-      subject,
-      from,
-      to,
-      date,
-      internalDate: message.internalDate || "", // Unix timestamp in milliseconds
-      messageId: messageIdHeader,
-      body,
-      snippet: message.snippet || "",
-      labelIds,
-    };
-  } catch (error: any) {
-    // 404 errors are expected - messages can be deleted/moved before we fetch them
-    if (
-      error?.code === 404 ||
-      error?.message?.includes("Requested entity was not found")
-    ) {
-      console.log(
-        chalk.gray(`Message ${messageId} not found (likely deleted or moved)`)
-      );
-    } else {
-      // Log other errors as actual errors
-      console.error(`Error fetching message ${messageId}:`, error);
-    }
-    return null;
-  }
-}
-
-/**
- * Webhook handler for Gmail Pub/Sub notifications
- */
-
-// TODO: Might be worth building a summary of the entire thread for added context of the current event.
-
-type GmailWebhookData = {
-  emailAddress: string;
-  historyId: number;
-};
-
-type ProcessedWebhookClaim = {
-  shouldProcess: true;
-  integration: GmailIntegration;
-  user: User;
-  oldHistoryId: string;
-} | {
-  shouldProcess: false;
-  integration: null;
-  user: null;
-  oldHistoryId: null;
-};
-
-/**
  * Webhook handler for Gmail Pub/Sub notifications
  * Extracts data from request and immediately acknowledges, then processes asynchronously
  */
@@ -465,206 +283,13 @@ export async function handleGmailWebhook(req: Request, res: Response) {
   // Immediately acknowledge to Gmail to prevent duplicate deliveries
   res.status(200).send('OK');
 
-  // Process asynchronously (don't await - let it run in background)
-  processGmailWebhook(webhookData.emailAddress, webhookData.historyId).catch((error) => {
-    console.error('Gmail webhook processing error:', error);
-    // Don't send error response since we already acked the webhook
-    // Gmail will retry if we don't ack, but we already did
+  const gmailIntegration = new GmailIntegrationManager();
+  await gmailIntegration.processWebhookEvent({
+    emailAddress: webhookData.emailAddress,
+    historyId: webhookData.historyId,
   });
 }
 
-/**
- * Process a Gmail webhook notification
- * This is called asynchronously after the webhook is acknowledged
- * Only the critical history ID claim is in a transaction; rest is fast and non-blocking
- */
-async function processGmailWebhook(emailAddress: string, historyId: number): Promise<void> {
-  console.log(`Gmail notification for ${emailAddress}, historyId: ${historyId}`);
-
-  try {
-    // Step 1: Atomically claim this history ID update (CRITICAL SECTION - in transaction)
-    const claims = await db().$transaction(async (tx) => {
-      return await claimHistoryIdUpdateInTransaction(tx, emailAddress, historyId);
-    });
-
-    if (claims.length === 0) {
-      console.log(`Skipping webhook processing for ${emailAddress}`);
-      return;
-    }
-
-    for (const claim of claims) {
-      if (!claim.shouldProcess) {
-        continue;
-      }
-      const { integration, user, oldHistoryId } = claim;
-      // Step 2: Fetch message IDs from Gmail (fast, non-blocking)
-      const messageIds = await fetchNewMessageIds(integration, oldHistoryId);
-
-      if (messageIds.length === 0) {
-        console.log(`No new messages to process for ${emailAddress}`);
-        return;
-      }
-
-      // Step 3: Set up Gmail client (fast, non-blocking)
-      const accessToken = await refreshAccessTokenIfNeeded(integration);
-      const oauth2Client = getOAuth2Client();
-      oauth2Client.setCredentials({
-        access_token: accessToken,
-        refresh_token: integration.refresh_token,
-      });
-      const gmail = google.gmail({ version: 'v1', auth: oauth2Client });
-
-      const lastProcessedDate: Date | null = integration.last_processed_message_date;
-      let mostRecentEmailDate: Date | null = lastProcessedDate;
-
-      // Step 4: Process each message (fast, non-blocking)
-      for (const messageId of messageIds) {
-        // Try to mark this message as processed (non-blocking, unique constraint prevents duplicates)
-        const wasNewlyProcessed = await markMessageAsProcessed(
-          integration.id,
-          messageId,
-          String(Date.now())
-        );
-
-        if (!wasNewlyProcessed) {
-          console.log(chalk.yellow(`Skipping already processed message ${messageId}`));
-          continue;
-        }
-
-        const parsedEmail: GmailEventData | null = await fetchAndParseEmail(gmail, messageId);
-
-        if (parsedEmail) {
-          const emailTimestamp = parseInt(parsedEmail.internalDate, 10);
-          const emailDate = new Date(emailTimestamp);
-
-          console.log("Recieved Webhook for email:")
-          console.log("Email From: ", parsedEmail.from);
-          console.log("Email to: ", parsedEmail.to);
-          console.log("Email subject: ", parsedEmail.subject);
-          console.log("Email date: ", emailDate.toISOString());
-
-          // Skip messages older than the last processed message date
-          if (lastProcessedDate && emailDate <= lastProcessedDate) {
-            console.log(chalk.gray(`Skipping old message ${parsedEmail.id} from ${emailDate.toISOString()}`));
-            console.log(chalk.gray(`  Subject: ${parsedEmail.subject}`));
-
-            // Mark as processed (non-blocking)
-            await markMessageAsProcessed(integration.id, parsedEmail.id, parsedEmail.internalDate);
-            continue;
-          }
-
-          // Process email through automations (non-blocking)
-          console.log(chalk.cyan('About to process email:'));
-          console.log(chalk.cyan(`  Integration for user: ${user.email}`));
-          console.log(chalk.cyan(`  Subject: ${parsedEmail.subject}`));
-          console.log(chalk.cyan(`  From: ${parsedEmail.from}`));
-          console.log(chalk.cyan(`  To: ${parsedEmail.to}`));
-          console.log(chalk.cyan(`  Date: ${emailDate.toISOString()}`));
-
-          const eventProcessor = new EventProcessor(new GmailEvent(parsedEmail, integration.id), user);
-          const results = await eventProcessor.process();
-
-          // Process results from all automations
-          let hasSuccess = false;
-          for (const result of results) {
-            if (result.success) {
-              console.log(chalk.green(`Email processed successfully by automation: ${result.automation?.name}`));
-              hasSuccess = true;
-            } else {
-              console.log(chalk.gray(`Automation "${result.automation?.name || 'unknown'}" skipped: ${result.message}`));
-            }
-          }
-
-          // Track the most recent email date if processing succeeded
-          if (hasSuccess && (!mostRecentEmailDate || emailDate > mostRecentEmailDate)) {
-            mostRecentEmailDate = emailDate;
-          }
-        }
-      }
-
-      // Step 5: Update the last processed message date (non-blocking)
-      if (mostRecentEmailDate && mostRecentEmailDate !== lastProcessedDate) {
-        await db().gmail_integrations.update({
-          where: { id: integration.id },
-          data: { last_processed_message_date: mostRecentEmailDate },
-        });
-        console.log(chalk.green(`Updated last processed message date to ${mostRecentEmailDate.toISOString()}`));
-      }
-
-      console.log(`Successfully processed webhook for ${emailAddress}, historyId: ${historyId}`);
-    }
-  } catch (error) {
-    console.error('Error processing Gmail webhook:', error);
-    // Re-throw to ensure it's logged by the caller
-    throw error;
-  }
-}
-
-/**
- * Atomically claim a history ID update within an existing transaction
- * Returns null if the webhook should be skipped (already processed or no integration)
- */
-async function claimHistoryIdUpdateInTransaction(
-  tx: any,
-  emailAddress: string, // This is the email belonging to the gmail watch webhook
-  newHistoryId: number
-): Promise<ProcessedWebhookClaim[]> {
-  const newHistoryIdString = newHistoryId.toString();
-
-  console.log("Getting Integrations associated with email:", emailAddress, "new history id:", newHistoryIdString);
-  const integrations = await tx.gmail_integrations.findMany({
-    where: {
-      email: emailAddress,
-      is_active: true,
-    },
-  });
-
-  if (!integrations || integrations.length === 0) {
-    console.log('No active integrations found for email:', emailAddress);
-    return [{ shouldProcess: false, integration: null, user: null, oldHistoryId: null }];
-  }
-
-  const claims: ProcessedWebhookClaim[] = await Promise.all(
-    integrations.map(async (integration: GmailIntegration) => {
-      const oldHistoryId = integration.history_id;
-      const currentHistoryId = parseInt(integration.history_id, 10);
-      if (newHistoryId <= currentHistoryId) {
-        console.log(
-          chalk.yellow(
-            `Skipping webhook: historyId ${newHistoryId} is not newer than current ${currentHistoryId}`
-          )
-        );
-        return { shouldProcess: false, integration: null, user: null, oldHistoryId: null };
-      }
-
-      // Atomically update the history ID to claim this batch
-      // This prevents other concurrent webhooks from processing the same messages
-      const updatedIntegration = await tx.gmail_integrations.update({
-        where: { id: integration.id },
-        data: { history_id: newHistoryIdString },
-      });
-
-      const user = await tx.users.findUnique({
-        where: {
-          id: integration.user_id,
-        },
-      });
-
-      if (!user) {
-        console.log('No user found for integration:', integration.user_id);
-        return { shouldProcess: false, integration: null, user: null, oldHistoryId: null };
-      }
-
-      return {
-        shouldProcess: true,
-        integration: updatedIntegration,
-        user: user,
-        oldHistoryId: oldHistoryId,
-      };
-    })
-  );
-  return claims;
-}
 
 /**
  * Extract and validate webhook data from the request
@@ -677,7 +302,7 @@ function extractWebhookData(req: Request): { emailAddress: string; historyId: nu
   }
 
   try {
-    const decoded: GmailWebhookData = JSON.parse(
+    const decoded: GmailWebhookEvent = JSON.parse(
       Buffer.from(message.data, 'base64').toString()
     );
 
@@ -688,35 +313,6 @@ function extractWebhookData(req: Request): { emailAddress: string; historyId: nu
   } catch (error) {
     console.error('Error decoding webhook data:', error);
     return null;
-  }
-}
-
-/**
- * Mark a message as processed in the database
- * Returns true if the message was newly marked, false if it was already processed
- * Uses unique constraint to prevent duplicates (fast, non-blocking)
- */
-async function markMessageAsProcessed(
-  integrationId: string,
-  messageId: string,
-  internalDate: string
-): Promise<boolean> {
-  try {
-    await db().processed_gmail_messages.create({
-      data: {
-        gmail_integration_id: integrationId,
-        gmail_message_id: messageId,
-        internal_date: internalDate,
-      },
-    });
-    return true;
-  } catch (error: any) {
-    // If unique constraint fails, this message was already processed
-    if (error.code === 'P2002') {
-      return false;
-    }
-    // Re-throw other errors
-    throw error;
   }
 }
 
