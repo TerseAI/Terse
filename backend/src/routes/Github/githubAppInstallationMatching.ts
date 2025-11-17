@@ -120,6 +120,8 @@ export async function githubAppInstallationDeleted(req: Request, res: Response) 
 
     // TODO: We need to invalidate Automations that were dependent on these repositories. This is a more general issue we don't account for yet.
 
+    emitCacheInvalidationWithKey(body.username, 'integrations');
+
     res.status(200).json({ message: 'Repositories removed from user' });
 }
 
