@@ -1,6 +1,5 @@
 import { Plus } from 'lucide-react';
 import { Button } from '../ui/button';
-import DropdownSelect from '../ui/DropdownSelect';
 import { formatIntegrationDisplay, IntegrationInstance } from '../../utility/IntegrationFormatters';
 import { getIntegrationName } from '../../utility/IntegrationUtils';
 import { Integration } from "@/types/Integration";
@@ -16,12 +15,10 @@ interface GitHubIntegrationProps extends BaseIntegrationProps {
 
 export function GitHubIntegration({
     selectedIntegrationId,
-    onSelect,
     integrations,
     isLoading,
     isConnecting,
     onConnect,
-    label = 'Connection',
     integrationType,
     variant,
     githubConfig,
@@ -52,12 +49,6 @@ export function GitHubIntegration({
             </div>
         );
     }
-
-    const connectionSelections = integrations.map((integration: IntegrationInstance) => ({
-        label: formatIntegrationDisplay(integration, integrationType),
-        value: integration.id
-    }));
-    const selectedOption = connectionSelections.find(option => option.value === selectedIntegrationId) || connectionSelections[0];
 
     // Get connected repositories
     const connectedRepositories = githubConfig?.repositoryIds ? githubConfig.repositoryIds : [];
