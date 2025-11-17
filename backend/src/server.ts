@@ -28,7 +28,6 @@ import {
   updateAutomation,
 } from "./routes/automations";
 import {
-  getCurrentGithubIntegration,
   getInstallationUrl,
   githubAppUnifiedEvent,
 } from "./routes/Github/githubApp";
@@ -197,11 +196,6 @@ app.get("/session/token", authMiddleware, async (req, res) => {
 });
 
 // MARK: GITHUB APP
-
-app.get("/github/get-current-integration", authMiddleware, async (req, res) => {
-  getCurrentGithubIntegration(req, res);
-});
-
 app.get("/github/installation-url", authMiddleware, async (req, res) => {
   getInstallationUrl(req, res);
 });

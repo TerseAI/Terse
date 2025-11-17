@@ -10,7 +10,6 @@ import {
     ConfluenceIntegration, 
     ConfluenceResourcesResponse, 
     GetGithubRepositoriesForIntegrationResponse, 
-    GithubIntegration, 
     IntegrationsStatus, 
     JiraCredentialsValidationResponse, 
     JiraIntegration, 
@@ -84,12 +83,7 @@ interface BackendService {
      * Gets all integrations status in a single call
      */
     getIntegrationsStatus(): Promise<IntegrationsStatus>;
-
-    /**
-     * Gets the current GitHub integration
-     */
-    getCurrentGithubIntegration(): Promise<GithubIntegration>;
-
+    
     /**
      * Requests a GitHub app installation URL
      */
@@ -357,15 +351,6 @@ export const BackendProvider: BackendService = {
             .then(response => response.data)
             .catch(error => {
                 console.error('Error getting integrations status:', error);
-                throw error;
-            });
-    },
-
-    getCurrentGithubIntegration: () => {
-        return axios.get(`${backendBaseUrl}/github/get-current-integration`, { withCredentials: true })
-            .then(response => response.data)
-            .catch(error => {
-                console.error('Error getting current GitHub integration:', error);
                 throw error;
             });
     },
