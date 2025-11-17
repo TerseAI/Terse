@@ -36,7 +36,7 @@ export function IntegrationSelector(props: IntegrationSelectorProps & { variant?
     switch (props.integrationType) {
         case Integration.GMAIL:
             return <GmailIntegration {...baseProps} integrationType={props.integrationType} />;
-        
+
         case Integration.NOTION:
         case Integration.NOTION_PAGE:
             return (
@@ -49,7 +49,7 @@ export function IntegrationSelector(props: IntegrationSelectorProps & { variant?
                     onNotionPageConfigChange={props.onNotionPageConfigChange}
                 />
             );
-        
+
         case Integration.SLACK:
             return (
                 <SlackIntegration
@@ -59,10 +59,15 @@ export function IntegrationSelector(props: IntegrationSelectorProps & { variant?
                     onSlackConfigChange={props.onSlackConfigChange}
                 />
             );
-        
+
         case Integration.GITHUB:
-            return <GitHubIntegration {...baseProps} integrationType={props.integrationType} />;
-        
+            return <GitHubIntegration
+                {...baseProps}
+                integrationType={props.integrationType}
+                githubConfig={props.githubConfig}
+                onGithubConfigChange={props.onGithubConfigChange}
+            />;
+
         case Integration.FIGMA:
             return (
                 <FigmaIntegration
@@ -72,7 +77,7 @@ export function IntegrationSelector(props: IntegrationSelectorProps & { variant?
                     onFigmaConfigChange={props.onFigmaConfigChange}
                 />
             );
-        
+
         case Integration.JIRA:
             return (
                 <JiraIntegration
@@ -83,7 +88,7 @@ export function IntegrationSelector(props: IntegrationSelectorProps & { variant?
                     onFormCancel={handleFormCancel}
                 />
             );
-        
+
         case Integration.LINEAR:
             return (
                 <LinearIntegration
@@ -94,7 +99,7 @@ export function IntegrationSelector(props: IntegrationSelectorProps & { variant?
                     onFormCancel={handleFormCancel}
                 />
             );
-        
+
         case Integration.CONFLUENCE:
             return (
                 <ConfluenceIntegration
@@ -107,7 +112,7 @@ export function IntegrationSelector(props: IntegrationSelectorProps & { variant?
                     onConfluenceConfigChange={props.onConfluenceConfigChange}
                 />
             );
-        
+
         default:
             return null;
     }

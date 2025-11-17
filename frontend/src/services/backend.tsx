@@ -9,7 +9,7 @@ import {
     AutomationUpdate, 
     ConfluenceIntegration, 
     ConfluenceResourcesResponse, 
-    GithubIntegration, 
+    GetGithubRepositoriesForIntegrationResponse, 
     IntegrationsStatus, 
     JiraCredentialsValidationResponse, 
     JiraIntegration, 
@@ -83,16 +83,16 @@ interface BackendService {
      * Gets all integrations status in a single call
      */
     getIntegrationsStatus(): Promise<IntegrationsStatus>;
-
-    /**
-     * Gets the current GitHub integration
-     */
-    getCurrentGithubIntegration(): Promise<GithubIntegration>;
-
+    
     /**
      * Requests a GitHub app installation URL
      */
     requestGitHubAppInstallationUrl(): Promise<{ installationUrl: string }>;
+
+    /**
+     * Gets the GitHub repositories for the current integration
+     */
+    getGithubRepositoriesForIntegration(): Promise<GetGithubRepositoriesForIntegrationResponse>;
 
     /**
      * Gets the current Slack integration
@@ -355,11 +355,11 @@ export const BackendProvider: BackendService = {
             });
     },
 
-    getCurrentGithubIntegration: () => {
-        return axios.get(`${backendBaseUrl}/github/get-current-integration`, { withCredentials: true })
+    getGithubRepositoriesForIntegration: () => {
+        return axios.get(`${backendBaseUrl}/github/get-repositories-for-integration`, { withCredentials: true })
             .then(response => response.data)
             .catch(error => {
-                console.error('Error getting current GitHub integration:', error);
+                console.error('Error getting GitHub repositories for integration:', error);
                 throw error;
             });
     },

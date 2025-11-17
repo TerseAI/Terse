@@ -264,7 +264,7 @@ export type UseConfluenceResourcesReturn<MutateType = any> = {
 };
 
 export type GitHubConfig = {
-  repositoryId?: string;
+  repositoryIds: number[];
   // Note: owner and name not needed - they're part of repository identity
   // Future: branch, path filters
 };
@@ -505,3 +505,24 @@ export type AutomationsResponse = {
         totalPages: number;
     };
 };
+
+export type GithubAppInstallationCallbackRequest = {
+  name: string;
+  email: string;
+  username: string;
+  installationId: number;
+  repositories: Repository[];
+}
+
+export type Repository = {
+  name: string;
+  owner: string;
+  id: number; // This is the official id from github! Not to be confused with the id from github_repositories table in the DB!!!
+}
+
+export type GetGithubRepositoriesForIntegrationRequest = {
+}
+
+export type GetGithubRepositoriesForIntegrationResponse = {
+  repositories: Repository[];
+}

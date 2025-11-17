@@ -1,6 +1,6 @@
 import { forwardRef, useState, useImperativeHandle, useRef } from "react";
 import { Integration } from "@/types/Integration";
-import { AutomationInput } from "../../shared/types";
+import { AutomationInput, GitHubConfig } from "../../shared/types";
 import { SectionLayout } from "./components/SectionLayout";
 import { AddInputModal } from "./components/AddInputModal";
 import { Zap, Plus, Settings, AlertTriangle } from "lucide-react";
@@ -98,7 +98,7 @@ function InputCardsLayout({
     
     if (isSingleInput) {
         return (
-            <div className="relative w-full">
+            <div className="relative w-full h-full">
                 <div className="flex justify-center">
                     {inputs.map((input) => {
                         const inputId = input.id || input.integrationId || '';
@@ -192,8 +192,11 @@ const InputCard = forwardRef<HTMLDivElement, {
         },
         gmailConfig: input.gmailConfig,
         onGmailConfigChange: (config: GmailConfig) => {
-            console.log('Gmail config changed:', config);
             setInputs(inputs.map(i => i.id === input.id ? { ...i, gmailConfig: config } : i));
+        },
+        githubConfig: input.githubConfig,
+        onGithubConfigChange: (config: GitHubConfig) => {
+            setInputs(inputs.map(i => i.id === input.id ? { ...i, githubConfig: config } : i));
         }
     };
 
@@ -216,7 +219,7 @@ const InputCard = forwardRef<HTMLDivElement, {
                     </div>
                 </CardHeader>
 
-                <CardContent className="min-w-xs">
+                <CardContent className="min-w-xs max-w-xs">
                     <IntegrationSelector {...selectorProps} variant="card" />
                 </CardContent>
 

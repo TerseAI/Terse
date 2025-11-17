@@ -78,6 +78,7 @@ export default (app: Probot) => {
           branch: context.payload.ref,
           commits: diffs,
           repository: {
+            id: Number(context.payload.repository.id),
             name: context.payload.repository.name,
             owner: context.payload.repository.owner.login,
             defaultBranch: context.payload.repository.default_branch
@@ -185,6 +186,7 @@ export default (app: Probot) => {
           },
           commits: diffs,
           repository: {
+            id: Number(payload.repository.id),
             name: payload.repository.name,
             owner: payload.repository.owner.login,
             defaultBranch: payload.repository.default_branch
@@ -212,6 +214,7 @@ export default (app: Probot) => {
       owner: repo.full_name,
       id: repo.id
     }));
+
     console.log('🔧 installation.created', name, email, login, installationId, repositories);
 
     try {

@@ -54,6 +54,21 @@ export type AutomationPrompt = automation_prompts;
 
 export type AutomationInput = automation_inputs;
 
+// Extended type for AutomationInput with all config relations included
+export type AutomationInputWithConfigs = Prisma.automation_inputsGetPayload<{
+  include: {
+    slack_config: true;
+    notion_config: true;
+    notion_page_config: true;
+    linear_config: true;
+    jira_config: true;
+    confluence_config: true;
+    github_config: true;
+    gmail_config: true;
+    figma_config: true;
+  };
+}>;
+
 export type AutomationOutput = automation_outputs;
 
 export type NotionIntegration = notion_integrations;
@@ -72,21 +87,26 @@ export type AutomationWithRelations = Prisma.automationsGetPayload<{
       include: {
         slack_config: true;
         notion_config: true;
+        notion_page_config: true;
         linear_config: true;
         jira_config: true;
+        confluence_config: true;
         github_config: true;
         gmail_config: true;
+        figma_config: true;
       }
     };
     output: {
       include: {
         slack_config: true;
         notion_config: true;
+        notion_page_config: true;
         linear_config: true;
         jira_config: true;
+        confluence_config: true;
         github_config: true;
         gmail_config: true;
-        confluence_config: true;
+        figma_config: true;
       }
     };
   };

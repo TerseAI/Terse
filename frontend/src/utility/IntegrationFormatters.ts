@@ -111,11 +111,11 @@ export function formatIntegrationDisplay(
         case Integration.GITHUB:
             if (isGithubIntegration(integration)) {
                 if (integration.owner && integration.repositoryName) {
-                    return `${integration.owner}/${integration.repositoryName}`;
+                    return `Repositories connected to: ${integration.owner}`;
                 }
                 return integration.repositoryName || 'Unknown Repository';
             }
-            return 'Unknown Repository';
+            return 'No repositories connected';
 
         case Integration.FIGMA:
             if (isFigmaIntegration(integration)) {

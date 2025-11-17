@@ -97,7 +97,9 @@ function SaveAutomationButton({
                             console.warn('Figma config missing fileKey or teamId, skipping:', i.figmaConfig);
                         }
                     }
-                    
+                    if (i.githubConfig) {
+                        inputData.githubConfig = i.githubConfig;
+                    }
                     return inputData;
                 }),
                 output: {
