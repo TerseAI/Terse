@@ -135,7 +135,7 @@ export function emitCacheInvalidationWithKey(
         console.warn("Socket.IO server not initialized");
         return;
     }
-    io.to(`user:${userId}`).emit("invalidate", key);
+    io.to(`user:${userId}`).emit("invalidate", { key });
 }
 
 export function emitCacheInvalidationWithWildcard(

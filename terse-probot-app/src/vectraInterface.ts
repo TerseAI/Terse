@@ -1,7 +1,7 @@
 import axios from "axios";
 import { Jwt } from "./utility/Jwt.js";
 
-const backendBaseUrl = process.env.VECTRA_BACKEND_URL || 'http://localhost:3001';
+const backendBaseUrl = process.env.TERSE_BACKEND_URL || 'http://localhost:3001';
 
 export type Commit = {
     sha: string;

@@ -28,12 +28,14 @@ import {
   updateAutomation,
 } from "./routes/automations";
 import {
-  getCurrentGithubIntegration,
   getInstallationUrl,
-  githubAppInstallationCallback,
-  githubAppInstallationDeleted,
   githubAppUnifiedEvent,
-} from "./routes/githubApp";
+} from "./routes/Github/githubApp";
+import {
+  githubAppInstallationDeleted,
+  processSetUpURLGithubInstallation,
+  processsGithubAppInstallationWebhook,
+} from "./routes/Github/githubAppInstallationMatching";
 import {
   deleteGmailIntegration,
   getGmailOAuthUrl,
@@ -82,6 +84,7 @@ import {
 import { getConfluenceResources, setConfluenceCredentials, validateConfluenceCredentials } from "./routes/confluence";
 import { initializeRealtimeSocket } from "./realtimeSocket";
 import { RunHistoryAction } from "./shared/RunHistoryTypes";
+import { getGithubRepositoriesForIntegration } from "./routes/Github/githubEventProcessor";
 
 export type Session = {
   user: User;
@@ -193,22 +196,27 @@ app.get("/session/token", authMiddleware, async (req, res) => {
 });
 
 // MARK: GITHUB APP
-
-app.get("/github/get-current-integration", authMiddleware, async (req, res) => {
-  getCurrentGithubIntegration(req, res);
-});
-
 app.get("/github/installation-url", authMiddleware, async (req, res) => {
   getInstallationUrl(req, res);
 });
 
+app.get("/github/get-repositories-for-integration", authMiddleware, async (req, res) => {
+  getGithubRepositoriesForIntegration(req, res);
+});
+
+// THIS IS FOR THE PROBOT APP!
 app.post(
   "/github/installation-callback",
   githubAppAuthMiddleware,
   async (req, res) => {
-    githubAppInstallationCallback(req, res);
+    processsGithubAppInstallationWebhook(req, res);
   }
 );
+
+// GITHUB Will call this directly to the backend, not through the Probot app.
+app.get("/github/frontend-installation-callback", async (req, res) => {
+  processSetUpURLGithubInstallation(req, res);
+});
 
 app.post(
   "/github/installation-deleted",

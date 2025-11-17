@@ -1,6 +1,6 @@
 import { IntegrationInstance } from '@/utility/IntegrationFormatters';
 import { Integration } from "@/types/Integration";
-import { NotionConfig, NotionPageConfig, SlackConfig, FigmaConfig, ConfluenceConfig, GmailConfig } from '../../shared/types';
+import { NotionConfig, NotionPageConfig, SlackConfig, FigmaConfig, ConfluenceConfig, GmailConfig, GitHubConfig } from '../../shared/types';
 
 export interface IntegrationSelectorProps {
     integrationType: Integration;
@@ -10,6 +10,8 @@ export interface IntegrationSelectorProps {
     // Optional config handlers for integration-specific settings
     gmailConfig?: GmailConfig;
     onGmailConfigChange?: (config: GmailConfig) => void;
+    githubConfig?: GitHubConfig;
+    onGithubConfigChange?: (config: GitHubConfig) => void;
     notionConfig?: NotionConfig;
     notionPageConfig?: NotionPageConfig;
     onNotionConfigChange?: (config: NotionConfig) => void;

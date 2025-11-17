@@ -1,25 +1,27 @@
 import { Plus } from 'lucide-react';
 import { Button } from '../ui/button';
-import DropdownSelect from '../ui/DropdownSelect';
-import { formatIntegrationDisplay, IntegrationInstance } from '../../utility/IntegrationFormatters';
 import { getIntegrationName } from '../../utility/IntegrationUtils';
 import { Integration } from "@/types/Integration";
 import { BaseIntegrationProps } from './types';
+import { GithubResourceSelector } from '../GithubResourceSelector';
+import { GitHubConfig } from '@/shared/types';
 
 interface GitHubIntegrationProps extends BaseIntegrationProps {
     integrationType: Integration;
+    githubConfig?: GitHubConfig;
+    onGithubConfigChange?: (config: GitHubConfig) => void;
 }
 
 export function GitHubIntegration({
     selectedIntegrationId,
-    onSelect,
     integrations,
     isLoading,
     isConnecting,
     onConnect,
-    label = 'Connection',
     integrationType,
-    variant
+    variant,
+    githubConfig,
+    onGithubConfigChange
 }: GitHubIntegrationProps) {
     if (isLoading) {
         return (
@@ -47,43 +49,33 @@ export function GitHubIntegration({
         );
     }
 
-    const connectionSelections = integrations.map((integration: IntegrationInstance) => ({
-        label: formatIntegrationDisplay(integration, integrationType),
-        value: integration.id
-    }));
-    const selectedOption = connectionSelections.find(option => option.value === selectedIntegrationId) || connectionSelections[0];
+    // Get connected repositories
+    const connectedRepositories = githubConfig?.repositoryIds ? githubConfig.repositoryIds : [];
 
     // Card variant: compact view
     if (variant === 'card') {
         return (
-            <div className="text-sm">
-                {selectedOption ? selectedOption.label : 'No connection selected'}
+            <div className="text-sm truncate">
+                {connectedRepositories.length > 0 ? `Connected to ${connectedRepositories.length} repository${connectedRepositories.length !== 1 ? 'ies' : ''}` : 'No repositories connected'}
             </div>
         );
     }
-
     // Dialog variant: full view
     return (
         <div className="flex flex-col gap-3">
-            <div className="flex flex-col gap-1.5">
-                <label className="font-medium">
-                    {label}
-                </label>
-                <DropdownSelect
-                    statusOptions={connectionSelections}
-                    selectedOption={selectedOption}
-                    setSelected={onSelect}
-                />
-            </div>
-
-            <Button
-                onClick={onConnect}
-                disabled={isConnecting}
-                variant="outline"
-            >
-                <Plus className="w-4 h-4" />
-                {isConnecting ? 'Connecting...' : `Connect Another ${getIntegrationName(integrationType)}`}
-            </Button>
+            {selectedIntegrationId && (
+                <div className="mt-3 pt-3 border-t border-border">
+                    <GithubResourceSelector
+                        selectedRepositoryIds={githubConfig?.repositoryIds ? githubConfig.repositoryIds : []}
+                        onSelect={(repositoryIds) => {
+                            onGithubConfigChange?.({
+                                ...githubConfig,
+                                repositoryIds: repositoryIds
+                            });
+                        }}
+                    />
+                </div>
+            )}
         </div>
     );
 }

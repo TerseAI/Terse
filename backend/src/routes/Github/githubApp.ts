@@ -1,45 +1,25 @@
 import chalk from "chalk";
 import { Request, Response } from "express";
-import { db } from "../prismaClient";
-import { User, GithubRepository, UserGithubRepository } from "../types/prisma";
-import Owner from "../theOwner/Owner";
-import { Commit, UnifiedGitHubEvent } from "../theOwner/utility";
-import { search } from "../searchClient";
-import { Session } from "../server";
-import { ActivityOverview } from "../agent/agents/Analyzer";
+import { db } from "../../prismaClient";
+import { User, GithubRepository, UserGithubRepository } from "../../types/prisma";
+import Owner from "../../theOwner/Owner";
+import { Commit, UnifiedGitHubEvent } from "../../theOwner/utility";
+import { search } from "../../searchClient";
+import { Session } from "../../server";
+import { ActivityOverview } from "../../agent/agents/Analyzer";
 import { TicketEventType } from "@prisma/client";
-import { githubApp } from "../config/settings";
-
-export async function getCurrentGithubIntegration(req: Request, res: Response) {
-    if(!req.session?.user) {
-        res.status(500).json({ message: 'User not found' });
-        return;
-    }
-
-    const user: User = req.session.user;
-
-    const user_github_relation: UserGithubRepository | null = await db().user_github_repositories.findFirst({ where: { user_id: user.id } });
-
-    if(!user_github_relation) {
-        res.status(404).json({ message: 'No GitHub integration found' });
-        return;
-    }
-
-    const repository: GithubRepository | null = await db().github_repositories.findUnique({ where: { id: user_github_relation.github_repository_id } });
-
-    if(!repository) {
-        res.status(404).json({ message: 'No GitHub repository found' });
-        return;
-    }
-
-    res.status(200).json({ repositoryName: repository.name });
-}
+import { githubApp } from "../../config/settings";
+import { Repository } from "../../shared/types";
+import { processGithubEvent } from "./githubEventProcessor";
 
 // Get GitHub App installation URL
 export async function getInstallationUrl(req: Request, res: Response) {
     try {
+        const appName = githubApp.appName;
+        const clientId = githubApp.clientId;
+        const state = Buffer.from(req.session?.user?.id).toString('base64');
         // Generate GitHub App installation URL with callback
-        const installationUrl: string = `https://github.com/apps/vectra-github/installations/new?client_id=${githubApp.clientId}&state=vectra&target_type=repositories`;
+        const installationUrl: string = `https://github.com/apps/${appName}/installations/new?client_id=${clientId}&target_type=repositories&state=${state}`;
 
         res.json({
             installationUrl
@@ -50,21 +30,7 @@ export async function getInstallationUrl(req: Request, res: Response) {
     }
 }
 
-type GithubAppInstallationCallbackRequest = {
-    name: string;
-    email: string;
-    username: string;
-    installationId: number;
-    repositories: Repository[];
-}
-
-export type Repository = {
-    name: string;
-    owner: string;
-    id: number;
-}
-
-async function processRepository(
+export async function processRepository(
     repositoryData: Repository, 
     user: User, 
     installationId: number
@@ -76,6 +42,7 @@ async function processRepository(
         where: { 
             name: repositoryData.name, 
             owner: repositoryData.owner, 
+            repository_id: Number(repositoryData.id),
             installation_id: installationId 
         } 
     });
@@ -102,7 +69,8 @@ async function processRepository(
                 data: {
                     name: repositoryData.name,
                     owner: repositoryData.owner,
-                    installation_id: installationId
+                    installation_id: installationId,
+                    repository_id: Number(repositoryData.id),
                 }
             });
             console.log(chalk.green('Repository created:'), repository);
@@ -127,65 +95,6 @@ async function processRepository(
             error: error instanceof Error ? error.message : 'Unknown error' 
         };
     }
-}
-
-export async function githubAppInstallationCallback(req: Request, res: Response) {
-    const body: GithubAppInstallationCallbackRequest = req.body as GithubAppInstallationCallbackRequest;
-
-    console.log('githubAppInstallationCallback', body);
-
-    // Check if the user is regestered with us, no problem if not. Will make a placeholder user.
-    let user: User | null = await db().users.findUnique({ where: { github_username: body.username } });
-    if (!user) {
-        user = await db().users.create({
-            data: {
-                github_username: body.username,
-                is_placeholder: true,
-                email: body.email,
-                display_name: body.name
-            }
-        });
-
-        console.log(chalk.green('Placeholder user created:'), user);
-    }
-
-    // Process each repository in the array
-    const processedRepositories = await Promise.all(
-        body.repositories.map(repositoryData => 
-            processRepository(repositoryData, user, body.installationId)
-        )
-    );
-
-    res.status(200).json({ 
-        message: 'Repository installation callback processed', 
-        processedRepositories 
-    });
-}
-
-type GithubAppInstallationDeletedRequest = {
-    username: string;
-    installationId: number;
-}
-
-export async function githubAppInstallationDeleted(req: Request, res: Response) {
-    console.log('githubAppInstallationDeleted', req.body);
-    const body: GithubAppInstallationDeletedRequest = req.body as GithubAppInstallationDeletedRequest;
-
-    // find all repos for this installation
-    const repositories: GithubRepository[] = await db().github_repositories.findMany({ where: { installation_id: body.installationId } });
-
-    if (repositories.length === 0) {
-        res.status(404).json({ message: 'No repositories found for this installation' });
-        return;
-    }
-
-    // remove all associations for those repos
-    await db().user_github_repositories.deleteMany({ where: { github_repository_id: { in: repositories.map(repo => repo.id) } } });
-
-    // now remove the installation
-    await db().github_repositories.deleteMany({ where: { installation_id: body.installationId } });
-
-    res.status(200).json({ message: 'Repositories removed from user' });
 }
 
 type GithubAppRecievedCommitRequest = {
@@ -260,7 +169,7 @@ async function resolveUserGithubRelation(user: User, username: string, repositor
     });
 }
 
-type GithubAppUnifiedEventRequest = {
+export type GithubAppUnifiedEventRequest = {
     username: string;
     installationId: number;
     repositoryName: string;
@@ -289,6 +198,7 @@ type GithubAppUnifiedEventRequest = {
     };
     // Additional context
     repository: {
+        id: number;
         name: string;
         owner: string;
         defaultBranch: string;
@@ -304,6 +214,9 @@ export async function githubAppUnifiedEvent(req: Request, res: Response) {
 
     const { username, repositoryName, installationId } = body;
     console.log(chalk.blue('githubAppUnifiedEvent'), body.eventType, body.repositoryName, body.username);
+
+    /// Go run this on the new code... anything below here is legacy code for Merkle use case.
+    const results = await processGithubEvent(body);
 
     try {
         // get the user with transaction safety
@@ -415,9 +328,6 @@ async function saveActivityEvent(repository: GithubRepository, event: UnifiedGit
 }
 
 export default {
-    getCurrentGithubIntegration,
     getInstallationUrl,
-    githubAppInstallationCallback,
-    githubAppInstallationDeleted,
     githubAppUnifiedEvent
 } 

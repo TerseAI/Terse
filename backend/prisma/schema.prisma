@@ -35,6 +35,7 @@ model users {
   project_activity_events  project_activity_events[]
   automations              automations[]
   pending_approvals        pending_approvals[]
+  user_github_installation user_github_installation[]
 }
 
 model github_repositories {
@@ -42,11 +43,24 @@ model github_repositories {
   name            String
   owner           String
   installation_id Int
+  repository_id   Int      @default(0) // has to be optional, or we will blow things up in prod.... This is the official id from github
   created_at      DateTime @default(now())
   updated_at      DateTime @updatedAt
 
   user_github_repositories user_github_repositories[]
   activity_events          activity_events[]
+
+  @@unique([installation_id, repository_id])
+}
+
+model user_github_installation {
+  id              String   @id @default(cuid())
+  user_id         String? // Set by SetUpURL step. Webhook could come first though, so this needs to be nullable.
+  installation_id Int      @unique
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
+
+  user users? @relation(fields: [user_id], references: [id], onDelete: Cascade)
 }
 
 model user_github_repositories {
@@ -554,7 +568,7 @@ model automation_github_configs {
   automation_input_id  String? @unique // FK to automation_inputs (mutually exclusive with output_id)
   automation_output_id String? @unique // FK to automation_outputs (unique constraint)
 
-  repository_id String? // Repository ID (optional - references github_repositories.id if different from connection default)
+  repository_ids Int[]
 
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
@@ -563,7 +577,7 @@ model automation_github_configs {
   automation_output automation_outputs? @relation(fields: [automation_output_id], references: [id], onDelete: Cascade)
   // Future: could add branch, path filters for more granular control
 
-  @@index([repository_id])
+  @@index([repository_ids])
 }
 
 // Gmail Configuration

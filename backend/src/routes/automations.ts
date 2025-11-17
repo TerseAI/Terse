@@ -78,7 +78,7 @@ async function createInputConfig(
                 await tx.automation_github_configs.create({
                     data: {
                         automation_input_id: inputId,
-                        repository_id: config.githubConfig.repositoryId || null,
+                        repository_ids: config.githubConfig.repositoryIds || [],
                     },
                 });
             }
@@ -196,7 +196,7 @@ async function createOutputConfig(
                 await tx.automation_github_configs.create({
                     data: {
                         automation_output_id: outputId,
-                        repository_id: config.githubConfig.repositoryId || null,
+                        repository_ids: config.githubConfig.repositoryIds || [],
                     },
                 });
             }
@@ -261,7 +261,7 @@ function transformInputConfig(input: any, id: string): AutomationInput {
     }
     if (input.github_config) {
         base.githubConfig = {
-            repositoryId: input.github_config.repository_id || undefined,
+            repositoryIds: input.github_config.repository_ids,
         };
     }
     if (input.gmail_config) {
@@ -332,7 +332,7 @@ function transformOutputConfig(output: any): AutomationOutput {
     }
     if (output.github_config) {
         base.githubConfig = {
-            repositoryId: output.github_config.repository_id || undefined,
+            repositoryIds: output.github_config.repository_ids || [],
         };
     }
     if (output.gmail_config) {
@@ -480,6 +480,7 @@ export async function getUserAutomations(req: Request, res: Response) {
                     include: {
                         slack_config: true,
                         notion_config: true,
+                        notion_page_config: true,
                         linear_config: true,
                         jira_config: true,
                         confluence_config: true,
@@ -492,6 +493,7 @@ export async function getUserAutomations(req: Request, res: Response) {
                     include: {
                         slack_config: true,
                         notion_config: true,
+                        notion_page_config: true,
                         linear_config: true,
                         jira_config: true,
                         confluence_config: true,
@@ -654,7 +656,7 @@ export async function createAutomation(req: Request, res: Response) {
                 }
 
                 // Validate that user owns the integration
-                const integrationId = (input as any).integrationId;
+                const integrationId = input.integrationId;
                 if (!integrationId) {
                     throw new Error(`Integration ID is required for ${input.integration}`);
                 }
@@ -682,7 +684,7 @@ export async function createAutomation(req: Request, res: Response) {
                 throw new Error(`Unknown integration type: ${output.integration}`);
             }
 
-            const outputIntegrationId = (output as any).integrationId;
+            const outputIntegrationId = output.integrationId;
             if (!outputIntegrationId) {
                 throw new Error(`Integration ID is required for ${output.integration}`);
             }
@@ -790,7 +792,7 @@ export async function saveAutomation(req: Request, res: Response) {
                     }
 
                     // Validate that user owns the integration
-                    const integrationId = (input as any).integrationId;
+                    const integrationId = input.integrationId;
                     if (!integrationId) {
                         throw new Error(`Integration ID is required for ${input.integration}`);
                     }
@@ -818,7 +820,7 @@ export async function saveAutomation(req: Request, res: Response) {
                     throw new Error(`Unknown integration type: ${output.integration}`);
                 }
 
-                const outputIntegrationId = (output as any).integrationId;
+                const outputIntegrationId = output.integrationId;
                 if (!outputIntegrationId) {
                     throw new Error(`Integration ID is required for ${output.integration}`);
                 }
@@ -872,7 +874,7 @@ export async function saveAutomation(req: Request, res: Response) {
                     }
 
                     // Validate that user owns the integration
-                    const integrationId = (input as any).integrationId;
+                    const integrationId = input.integrationId;
                     if (!integrationId) {
                         throw new Error(`Integration ID is required for ${input.integration}`);
                     }
@@ -900,7 +902,7 @@ export async function saveAutomation(req: Request, res: Response) {
                     throw new Error(`Unknown integration type: ${output.integration}`);
                 }
 
-                const outputIntegrationId = (output as any).integrationId;
+                const outputIntegrationId = output.integrationId;
                 if (!outputIntegrationId) {
                     throw new Error(`Integration ID is required for ${output.integration}`);
                 }
@@ -1002,7 +1004,7 @@ export async function updateAutomation(req: Request, res: Response) {
                     }
 
                     // Validate that user owns the integration
-                    const integrationId = (input as any).integrationId;
+                    const integrationId = input.integrationId;
                     if (!integrationId) {
                         throw new Error(`Integration ID is required for ${input.integration}`);
                     }
