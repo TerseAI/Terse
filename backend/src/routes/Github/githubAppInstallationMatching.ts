@@ -4,8 +4,8 @@ import { GithubRepository, User } from "../../types/prisma";
 import { GithubAppInstallationCallbackRequest } from "../../shared/types";
 import chalk from "chalk";
 import { processRepository } from "./githubApp";
-import { urls } from "src/config/settings";
-import { emitCacheInvalidationWithKey } from "src/realtimeSocket";
+import { urls } from "../../config/settings";
+import { emitCacheInvalidationWithKey } from "../../realtimeSocket";
 
 export async function processSetUpURLGithubInstallation(req: Request, res: Response) {
     const { installation_id, setup_action, state } = req.query;
