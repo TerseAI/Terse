@@ -108,8 +108,11 @@ export async function githubAppInstallationDeleted(req: Request, res: Response) 
     // remove all associations for those repos
     await db().user_github_repositories.deleteMany({ where: { github_repository_id: { in: repositories.map(repo => repo.id) } } });
 
-    // now remove the installation
+    // now remove the installation + repositories
     await db().github_repositories.deleteMany({ where: { installation_id: body.installationId } });
+    await db().user_github_installation.deleteMany({ where: { installation_id: body.installationId } });
+
+    // TODO: We need to invalidate Automations that were dependent on these repositories. This is a more general issue we don't account for yet.
 
     res.status(200).json({ message: 'Repositories removed from user' });
 }
