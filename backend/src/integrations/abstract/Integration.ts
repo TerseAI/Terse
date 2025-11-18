@@ -1,4 +1,7 @@
-import { GmailIntegrationManager } from "./GmailIntegration";
+import { FigmaIntegrationManager } from "../FigmaIntegration";
+import { GithubIntegrationManager } from "../GithubIntegration";
+import { GmailIntegrationManager } from "../GmailIntegration";
+import { SlackIntegrationManager } from "../SlackIntegration";
 
 // This ensures T is a valid Prisma model type
 export interface Integration<T, WebhookEvent> {
@@ -14,6 +17,9 @@ export interface Integration<T, WebhookEvent> {
 
 export const IntegrationRegistry: Integration<any, any>[] = [
     new GmailIntegrationManager(),
+    new SlackIntegrationManager(),
+    new FigmaIntegrationManager(),
+    new GithubIntegrationManager(),
 ]
 
 

@@ -347,36 +347,6 @@ export type FigmaClientMeta = {
   node_offset: { x: number; y: number };
 };
 
-/**
- * Figma webhook comment text object (from webhook payload)
- */
-export interface FigmaWebhookCommentText {
-  text: string;
-}
-
-/**
- * Raw Figma webhook event payload
- * Generated from actual Figma webhook payload structure
- */
-export interface FigmaWebhookEvent {
-  event_type: string;
-  file_key: string;
-  file_name: string;
-  passcode: string;
-  protocol_version: string;
-  webhook_id: string;
-  timestamp: string;
-  retries: number;
-  // FILE_COMMENT specific fields
-  comment_id: string;
-  comment: FigmaWebhookCommentText[];
-  created_at: string;
-  resolved_at: string; // Empty string if not resolved
-  parent_id: string; // Empty string if no parent
-  order_id: string;
-  mentions: unknown[]; // Array of mention objects (structure unknown)
-  triggered_by: FigmaWebhookUser;
-}
 
 /**
  * Figma API comment response structure

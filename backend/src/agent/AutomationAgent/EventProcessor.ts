@@ -1,8 +1,8 @@
 import chalk from 'chalk';
 import { db } from '../../prismaClient';
-import { Automation, AutomationWithRelations, AutomationOutput, User } from '../../types/prisma';
-import { InputEvent } from '../../Updater/InputEvents';
-import { OutputFactory } from '../../Updater/Outputs/OutputFactory';
+import { Automation, AutomationWithRelations, User } from '../../types/prisma';
+import { InputEvent } from '../../integrations/abstract/InputEvent';
+import { OutputFactory } from '../../outputs/abstract/OutputFactory';
 import { AutomationAgent } from './AutomationAgent';
 import { filterEvent } from './EventFilter';
 import { appendRunAction, createRunRecord, finalizeRunStatus, markRunFailed, markRunProcessed, markRunSkipped, FailureStage } from './runHistory';
@@ -10,7 +10,6 @@ import { ApprovalResult } from './AutomationAgent';
 import { Agent, AgentOutputType, RunResult } from '@openai/agents';
 import { Session } from '../../server';
 import { emitCacheInvalidationWithWildcard } from '../../realtimeSocket';
-import { RunHistoryAction } from '../../shared/RunHistoryTypes';
 
 // The job of this class is to take an Input Event, and check if it's a match for an Automation.
 // It will then create a Session, and summon the Automation Agent with the create user data.

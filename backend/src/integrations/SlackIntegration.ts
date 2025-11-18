@@ -1,5 +1,5 @@
 import { SlackChannelType, SlackIntegration } from "src/shared/types";
-import { Integration } from "./Integration";
+import { Integration } from "./abstract/Integration";
 import { Request } from "express";
 import { slack as slackConfig } from '../config/settings';
 import crypto from 'crypto';
@@ -10,7 +10,7 @@ import { LogLevel, WebClient } from "@slack/web-api";
 import { RunHistoryTrigger } from "src/shared/RunHistoryTypes";
 import { IntegrationType } from "@prisma/client";
 import { AutomationInputWithConfigs } from "src/types/prisma";
-import { InputEvent } from "../Updater/InputEvents";
+import { InputEvent } from "./abstract/InputEvent";
 
 export class SlackIntegrationManager implements Integration<SlackIntegration, SlackMessageEvent> {
     constructor() { }

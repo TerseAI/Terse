@@ -2,25 +2,15 @@ import jwt from "jsonwebtoken";
 import { Request, Response } from "express";
 import chalk from "chalk";
 import { db } from "../prismaClient";
-import { FigmaCommentEvent } from "../Updater/InputEvents";
-import { FigmaCommentEventData, FigmaCommentThreadEntry } from "../shared/types";
-import { EventProcessor } from "../agent/AutomationAgent/EventProcessor";
-import { User } from "../types/prisma";
-import { figma_integrations } from "@prisma/client";
-import {
-  fetchFileMetadata,
-  mapCommentToDesignElements,
-  extractCommentImages,
-  fetchFigmaCommentThreadFromApi,
-  resolvePositioningContext,
-} from "../utility/figmaUtils";
-import {
-  FigmaEventTypes,
-  FigmaWebhookEvent,
-  FigmaCommentImageUrls,
-} from "../shared/types";
 import { figma as figmaConfig, jwt as jwtConfig, urls } from "../config/settings";
+import { FigmaIntegrationManager, FigmaWebhookEvent } from "../integrations/FigmaIntegration";
+import { FigmaEventTypes } from "../shared/types";
 
+// MARK: - Route Handlers
+
+/**
+ * Generate Figma OAuth URL for user authorization
+ */
 export const getFigmaOAuthUrl = async (req: Request, res: Response) => {
   const user = req.session?.user;
   if (!user) {
@@ -56,6 +46,9 @@ export const getFigmaOAuthUrl = async (req: Request, res: Response) => {
   }
 };
 
+/**
+ * Handle Figma OAuth callback
+ */
 export const figmaOAuthCallback = async (req: Request, res: Response) => {
   const { code, state, error } = req.query;
 
@@ -73,7 +66,6 @@ export const figmaOAuthCallback = async (req: Request, res: Response) => {
       userId: string;
       timestamp: number;
     };
-
 
     // Exchange authorization code for access token
     // Figma requires application/x-www-form-urlencoded format
@@ -193,7 +185,6 @@ export const figmaOAuthCallback = async (req: Request, res: Response) => {
   }
 };
 
-
 /**
  * Webhook handler for Figma comment events
  * POST /webhooks/figma
@@ -205,7 +196,7 @@ export const handleFigmaWebhook = async (req: Request, res: Response) => {
   );
 
   try {
-    const webhookEvent = req.body;
+    const webhookEvent = req.body as FigmaWebhookEvent;
     const eventType = webhookEvent.event_type;
 
     const supportedEventTypes = Object.values(FigmaEventTypes);
@@ -216,241 +207,15 @@ export const handleFigmaWebhook = async (req: Request, res: Response) => {
       return;
     }
 
-    const receivedPasscode = req.headers['x-figma-passcode'] || req.body.passcode;
-
     // Acknowledge immediately to prevent spamming the webhook
     res.status(200).json({ received: true });
 
-
-    const integrations = await db().figma_integrations.findMany({
-      where: {
-        figma_webhooks: {
-          some: {
-            passcode: receivedPasscode,
-          },
-        },
-      },
-      include: {
-        user: true,
-      },
-    });
-    if (integrations.length === 0) {
-      console.log(chalk.yellow(`⚠️  No integrations found with matching passcode`));
-      return;
-    }
-    integrations.forEach(async (integration) => {
-      if (eventType === FigmaEventTypes.FILE_COMMENT) {
-        await handleFigmaCommentEvent(integration, webhookEvent, integration.user);
-      }
+    // Process the event asynchronously
+    const figmaIntegrationManager = new FigmaIntegrationManager();
+    figmaIntegrationManager.processWebhookEvent(webhookEvent).catch((error) => {
+      console.error(chalk.red('Error processing Figma webhook event:'), error);
     });
   } catch (error) {
     console.error(chalk.red("Error in handleFigmaWebhook:"), error);
   }
-}
-
-/**
- * Handle FILE_COMMENT webhook events
- * Comment data is included in the webhook payload
- * Note: client_meta is not included in webhook payload, so we fetch it from the comment API
- */
-async function handleFigmaCommentEvent(
-  integration: figma_integrations,
-  webhookEvent: FigmaWebhookEvent,
-  user: User,
-) {
-  // Extract comment_id from top level (Figma webhook structure)
-  const commentId = webhookEvent.comment_id;
-  const fileKey = webhookEvent.file_key;
-  if (!commentId) {
-    console.log(chalk.yellow(`⚠️  FILE_COMMENT event missing comment_id`));
-    console.log(chalk.yellow(`Webhook event: ${JSON.stringify(webhookEvent, null, 2)}`));
-    return;
-  }
-  if (!fileKey) {
-    console.log(chalk.yellow(`⚠️  FILE_COMMENT event missing file_key`));
-    console.log(chalk.yellow(`Webhook event: ${JSON.stringify(webhookEvent, null, 2)}`));
-    return;
-  }
-  console.log(
-    chalk.blue(`📝 Processing FILE_COMMENT event for file ${fileKey}, comment ${commentId}`)
-  );
-
-  // Process the comment once per integration, to prevent duplicate processing
-  try {
-    await db().processed_figma_comments.create({
-      data: {
-        figma_integration_id: integration.id,
-        comment_id: commentId,
-        file_key: fileKey,
-      },
-    });
-  } catch (error: any) {
-    // Race condition - comment already being processed
-    if (error.code === 'P2002') {
-      console.log(chalk.blue(`ℹ️  Comment ${commentId} already being processed`));
-      return;
-    }
-    throw error;
-  }
-
-  // Fetch comment details from Figma API to get client_meta
-  // client_meta is not included in the webhook payload
-  const commentThreadData = await fetchFigmaCommentThreadFromApi(
-    integration.access_token,
-    fileKey,
-    commentId
-  );
-  if (!commentThreadData) {
-    console.log(chalk.yellow(`⚠️  Could not fetch comment ${commentId} from API`));
-    return;
-  }
-
-  const { comment: commentFromApi, thread } = commentThreadData;
-
-  const { rootComment, positioningComment, positioningData } = resolvePositioningContext(
-    commentFromApi,
-    thread
-  );
-
-  console.log(
-    chalk.blue(`Client Meta (event comment): ${JSON.stringify(commentFromApi.client_meta, null, 2)}`)
-  );
-  if (positioningComment && positioningComment.id !== commentFromApi.id) {
-    console.log(
-      chalk.blue(
-        `Using comment ${positioningComment.id} client_meta for positioning: ${JSON.stringify(positioningComment.client_meta, null, 2)}`
-      )
-    );
-  }
-  console.log(
-    chalk.blue(`📍 Positioning data for comment ${commentId}:`),
-    positioningData ? JSON.stringify(positioningData, null, 2) : 'null (empty client_meta)'
-  );
-
-  // Map comment to design elements using positioning data
-  let matchedNodeIds: string[] = [];
-  try {
-    const nodeId = positioningComment?.client_meta?.node_id ?? commentFromApi.client_meta?.node_id;
-    matchedNodeIds = await mapCommentToDesignElements(
-      integration.access_token,
-      fileKey,
-      positioningData,
-      nodeId
-    );
-    console.log(
-      chalk.blue(`🎯 Matched ${matchedNodeIds.length} node(s) for comment ${commentId}:`),
-      matchedNodeIds.length > 0 ? matchedNodeIds.join(', ') : 'none'
-    );
-  } catch (error) {
-    console.error(
-      chalk.red(`Error mapping comment ${commentId} to design elements:`),
-      error
-    );
-    // Continue with empty array if mapping fails
-  }
-
-  // Extract images for visual context
-  let imageUrls: FigmaCommentImageUrls = {
-    nodeImage: undefined,
-    fullFrame: undefined,
-  };
-  try {
-    imageUrls = await extractCommentImages(
-      integration.access_token,
-      fileKey,
-      matchedNodeIds,
-      positioningData
-    );
-    console.log(
-      chalk.blue(`🖼️  Extracted images for comment ${commentId}:`),
-      Object.keys(imageUrls).length > 0
-        ? `${Object.keys(imageUrls).length} image(s) extracted`
-        : 'no images extracted'
-    );
-  } catch (error) {
-    console.error(
-      chalk.red(`Error extracting images for comment ${commentId}:`),
-      error
-    );
-    // Continue with empty object if image extraction fails
-  }
-
-  // Calculate image expiry (24 hours from now)
-  const imageExpiry = imageUrls.nodeImage || imageUrls.fullFrame
-    ? new Date(Date.now() + 24 * 60 * 60 * 1000) // 24 hours
-    : null;
-
-  // Get the closest node ID for storage
-  const closestNodeId = matchedNodeIds.length > 0
-    ? matchedNodeIds[0]
-    : (positioningComment?.client_meta?.node_id ?? commentFromApi.client_meta?.node_id ?? null);
-
-  const fileMetadata = await fetchFileMetadata(integration.access_token, fileKey);
-  if (!fileMetadata) {
-    console.log(chalk.yellow(`⚠️  Could not fetch file metadata for file ${fileKey}`));
-    return;
-  }
-
-  // Store enriched context for debugging
-  try {
-    await db().figma_comment_context.create({
-      data: {
-        figma_integration_id: integration.id,
-        comment_id: commentId,
-        file_key: fileKey,
-        node_id: closestNodeId,
-        comment_data: JSON.parse(JSON.stringify({
-          ...commentFromApi,
-          thread_comments: thread,
-        })),
-        file_metadata: fileMetadata ? JSON.parse(JSON.stringify(fileMetadata)) : null,
-        positioning_data: positioningData ? JSON.parse(JSON.stringify(positioningData)) : null,
-        matched_node_ids: matchedNodeIds,
-        image_urls: Object.keys(imageUrls).length > 0 ? JSON.parse(JSON.stringify(imageUrls)) : null,
-        image_expiry: imageExpiry,
-      },
-    });
-    console.log(
-      chalk.green(`✅ Stored enriched context for comment ${commentId}`),
-      chalk.gray(`- Positioning: ${positioningData ? positioningData.type : 'none'}, Nodes: ${matchedNodeIds.length}, Images: ${Object.keys(imageUrls).length}`)
-    );
-  } catch (error) {
-    console.error(
-      chalk.red(`❌ Error storing enriched context for comment ${commentId}:`),
-      error
-    );
-    // Don't throw - continue processing even if storage fails
-  }
-
-  const rootCommentId = rootComment?.id ?? commentFromApi.id;
-
-  const threadEntries: FigmaCommentThreadEntry[] = thread.map((threadComment) => ({
-    id: threadComment.id,
-    message: threadComment.message,
-    author: threadComment.user,
-    createdAt: threadComment.created_at,
-    resolvedAt: threadComment.resolved_at ?? null,
-    parentId: threadComment.parent_id ?? null,
-    orderId: threadComment.order_id,
-    isRoot: threadComment.id === rootCommentId,
-  }));
-
-  const eventData: FigmaCommentEventData = {
-    commentId: commentFromApi.id,
-    fileKey: fileKey,
-    fileUrl: `https://www.figma.com/file/${fileKey}`,
-    nodeId: closestNodeId || undefined,
-    message: commentFromApi.message,
-    author: commentFromApi.user,
-    createdAt: commentFromApi.created_at,
-    resolved: Boolean(commentFromApi.resolved_at && commentFromApi.resolved_at !== ''),
-    thread: threadEntries,
-    fileMetadata: fileMetadata,
-    positioningData: positioningData ?? undefined,
-    matchedNodeIds: matchedNodeIds.length > 0 ? matchedNodeIds : undefined,
-    imageUrls: Object.keys(imageUrls).length > 0 ? imageUrls : undefined,
-  };
-  const figmaEvent = new FigmaCommentEvent(eventData);
-  const eventProcessor = new EventProcessor(figmaEvent, user);
-  await eventProcessor.process();
-}
+};

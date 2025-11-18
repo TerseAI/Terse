@@ -1,8 +1,8 @@
 import { Agent, AgentInputItem, run, AgentOutputType, Tool, RunResult, RunState, RunToolApprovalItem } from '@openai/agents';
 import { Session } from '../../server';
 import { systemPrompt } from './SystemPrompt';
-import { InputEvent } from '../../Updater/InputEvents';
-import { Output } from '../../Updater/Outputs/Output';
+import { InputEvent } from '../../integrations/abstract/InputEvent';
+import { Output } from '../../outputs/abstract/Output';
 import { AutomationInput, AutomationOutput, AutomationPrompt } from '../../types/prisma';
 
 export type ApprovalResult<T extends Session, AgentType extends Agent<T, AgentOutputType>> =

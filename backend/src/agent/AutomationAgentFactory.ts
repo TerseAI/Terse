@@ -1,7 +1,7 @@
 import chalk from 'chalk';
 import { db } from '../prismaClient';
 import { AutomationAgent } from './AutomationAgent/AutomationAgent';
-import { NotionDatabaseOutput, NotionDatabaseSession } from '../Updater/Outputs/NotionDatabaseOutput';
+import { NotionDatabaseOutput, NotionDatabaseSession } from '../outputs/NotionDatabaseOutput';
 import { AutomationNotionConfig, AutomationWithRelations, User } from '../types/prisma';
 
 /**
