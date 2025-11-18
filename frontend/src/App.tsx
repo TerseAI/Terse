@@ -6,6 +6,7 @@ import { AppSidebar } from "./components/Sidebar/Sidebar";
 import ActivityFeed from "./pages/ActivityFeed";
 import AutomationDetail from "./pages/Automations/AutomationDetail";
 import AutomationsList from "./pages/Automations/AutomationsList";
+import BirdsEyeViewHomepage from "./pages/BirdsEye";
 import Home from "./pages/Home";
 import LandingPageChangelog from "./pages/LandingPage_changelog";
 import Login from "./pages/Login";
@@ -18,8 +19,10 @@ import { Toaster } from "./components/ui/sonner";
 import IntegrationPage from "./pages/IntegrationPage";
 import BreadCrumb from "./components/BreadCrumb";
 import { initializeSocket, disconnectSocket } from "./socket";
+import { useFeatureFlag } from "./hooks/useFeatureFlag";
 
 function App() {
+  const hasBirdsEyeFlag = useFeatureFlag('Birds-eye-view-homepage');
   return (
     <ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme">
       <Toaster position="top-center" richColors={true} />
@@ -28,7 +31,7 @@ function App() {
           <Routes>
             <Route path="/" element={<Navigate to="/app" replace />} />
             <Route path="/app" element={<Content />}>
-              <Route index element={<Home />} />
+              <Route index element={ hasBirdsEyeFlag ? <BirdsEyeViewHomepage /> : <Home />} />
               <Route path="activity" element={<ActivityFeed />} />
               <Route path="automations" element={<AutomationsList />} />
               <Route path="automations/new" element={<AutomationDetail />} />
