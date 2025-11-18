@@ -47,6 +47,7 @@ import {
 import {
   deleteJiraCredentials,
   getJiraCredentials,
+  getAtlassianIntegrations,
   indexJiraTicket,
   setJiraCredentials,
   validateJiraCredentials,
@@ -254,6 +255,11 @@ app.get("/jira/get-api-key", authMiddleware, async (req, res) => {
 
 app.delete("/jira/delete-credentials", authMiddleware, async (req, res) => {
   deleteJiraCredentials(req, res);
+});
+
+// MARK: ATLASSIAN
+app.get("/atlassian/integrations", authMiddleware, async (req, res) => {
+  getAtlassianIntegrations(req, res);
 });
 
 // MARK: CONFLUENCE
