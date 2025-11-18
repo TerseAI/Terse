@@ -49,13 +49,6 @@ export function getIntegrationInstances<T extends IntegrationType>(
 }
 
 /**
- * Get display name for an integration type
- */
-export function getIntegrationName(type: IntegrationType): string {
-    return INTEGRATION_METADATA[type].name;
-}
-
-/**
  * Get description for an integration type
  */
 export function getIntegrationDescription(type: IntegrationType): string {
@@ -77,17 +70,6 @@ export function getAllInputIntegrationMetadata() {
         type: meta.type,
         name: meta.name,
         description: meta.inputDescription || meta.description
-    }));
-}
-
-/**
- * Get all integration metadata with output-specific descriptions
- */
-export function getAllOutputIntegrationMetadata() {
-    return Object.values(INTEGRATION_METADATA).filter(meta => meta.isOutput === true).map(meta => ({
-        type: meta.type,
-        name: meta.name,
-        description: meta.outputDescription || meta.description
     }));
 }
 
