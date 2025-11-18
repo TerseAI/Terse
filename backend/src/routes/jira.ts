@@ -23,6 +23,22 @@ export async function getJiraIntegrations(req: Request, res: Response) {
     }
 }
 
+export async function getAtlassianIntegrations(req: Request, res: Response) {
+    if (!req.session?.user) {
+        res.status(401).json({ error: 'Unauthorized' });
+        return;
+    }
+
+    try {
+        const manager = new AtlassianIntegrationManager();
+        const integrations = await manager.getInstancesForUser(req.session.user.id);
+        res.status(200).json(integrations);
+    } catch (error) {
+        console.error('Error fetching Atlassian integrations:', error);
+        res.status(500).json({ error: 'Failed to fetch Atlassian integrations' });
+    }
+}
+
 
 export const setJiraCredentials = async (req: Request, res: Response) => {
     const user = req.session?.user;

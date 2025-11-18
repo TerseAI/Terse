@@ -34,6 +34,10 @@ export const gmailIntegrationsKey = (): readonly [string] => {
     return ['gmailIntegrations'] as const;
 };
 
+export const atlassianIntegrationsKey = (): readonly [string] => {
+    return ['atlassianIntegrations'] as const;
+};
+
 export const runHistoryKey = (
     automationId: string,
     params?: GetRunHistoryParams

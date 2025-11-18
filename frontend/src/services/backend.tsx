@@ -21,8 +21,7 @@ import {
     LinearIntegration,
     SlackIntegration,
     AtlassianIntegration,
-    IntegrationInstance,
- } from "../shared/Integrations";
+} from "../shared/Integrations";
 import { User } from "../types/User";
 import { GetRunHistoryParams, GetRunHistoryResponse } from '../shared/RunHistoryTypes';
 
@@ -177,6 +176,11 @@ interface BackendService {
      * Gets all Gmail integrations for the current user
      */
     getGmailIntegrations(): Promise<GmailIntegration[]>;
+
+    /**
+     * Gets all Atlassian integrations for the current user
+     */
+    getAtlassianIntegrations(): Promise<AtlassianIntegration[]>;
 
     /**
      * Deletes the Gmail integration
@@ -532,6 +536,15 @@ export const BackendProvider: BackendService = {
             .then(response => response.data)
             .catch(error => {
                 console.error('Error getting Gmail integrations:', error);
+                throw error;
+            });
+    },
+
+    getAtlassianIntegrations: () => {
+        return axios.get<AtlassianIntegration[]>(`${backendBaseUrl}/atlassian/integrations`, { withCredentials: true })
+            .then(response => response.data)
+            .catch(error => {
+                console.error('Error getting Atlassian integrations:', error);
                 throw error;
             });
     },
