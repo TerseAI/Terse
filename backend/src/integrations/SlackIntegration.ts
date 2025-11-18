@@ -26,7 +26,11 @@ export class SlackIntegrationManager implements Integration<SlackIntegration, Sl
                 slack_integration: true
             }
         });
-        return userSlackIntegrations.map(usi => usi.slack_integration);
+        return userSlackIntegrations.map(usi => ({
+            id: usi.slack_integration.id,
+            teamId: usi.slack_integration.team_id,
+            teamName: usi.slack_integration.team_name,
+        }));
     }
 
     async processWebhookEvent(event: SlackMessageEvent): Promise<void> {

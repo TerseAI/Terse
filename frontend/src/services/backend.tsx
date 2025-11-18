@@ -23,6 +23,7 @@ import {
     AtlassianIntegration,
     FigmaIntegration,
     GithubIntegration,
+    NotionIntegration,
 } from "../shared/Integrations";
 import { User } from "../types/User";
 import { GetRunHistoryParams, GetRunHistoryResponse } from '../shared/RunHistoryTypes';
@@ -193,6 +194,21 @@ interface BackendService {
      * Gets all GitHub integrations for the current user
      */
     getGithubIntegrations(): Promise<GithubIntegration[]>;
+
+    /**
+     * Gets all Linear integrations for the current user
+     */
+    getLinearIntegrations(): Promise<LinearIntegration[]>;
+
+    /**
+     * Gets all Notion integrations for the current user
+     */
+    getNotionIntegrations(): Promise<NotionIntegration[]>;
+
+    /**
+     * Gets all Slack integrations for the current user
+     */
+    getSlackIntegrations(): Promise<SlackIntegration[]>;
 
     /**
      * Deletes the Gmail integration
@@ -575,6 +591,33 @@ export const BackendProvider: BackendService = {
             .then(response => response.data)
             .catch(error => {
                 console.error('Error getting GitHub integrations:', error);
+                throw error;
+            });
+    },
+
+    getLinearIntegrations: () => {
+        return axios.get<LinearIntegration[]>(`${backendBaseUrl}/linear/integrations`, { withCredentials: true })
+            .then(response => response.data)
+            .catch(error => {
+                console.error('Error getting Linear integrations:', error);
+                throw error;
+            });
+    },
+
+    getNotionIntegrations: () => {
+        return axios.get<NotionIntegration[]>(`${backendBaseUrl}/notion/integrations`, { withCredentials: true })
+            .then(response => response.data)
+            .catch(error => {
+                console.error('Error getting Notion integrations:', error);
+                throw error;
+            });
+    },
+
+    getSlackIntegrations: () => {
+        return axios.get<SlackIntegration[]>(`${backendBaseUrl}/slack/integrations`, { withCredentials: true })
+            .then(response => response.data)
+            .catch(error => {
+                console.error('Error getting Slack integrations:', error);
                 throw error;
             });
     },
