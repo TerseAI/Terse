@@ -1,7 +1,14 @@
 import { Request, Response } from "express";
 import { db } from "../prismaClient";
 import { IntegrationsStatus } from "../shared/types";
-import { IntegrationRegistry } from "../integrations/abstract/Integration";
+import { GmailIntegrationManager } from "../integrations/GmailIntegration";
+import { SlackIntegrationManager } from "../integrations/SlackIntegration";
+import { FigmaIntegrationManager } from "../integrations/FigmaIntegration";
+import { GithubIntegrationManager } from "../integrations/GithubIntegration";
+import { LinearIntegrationManager } from "../integrations/LinearIntegration";
+import { JiraIntegrationManager } from "../integrations/JiraIntegration";
+import { NotionIntegrationManager } from "../integrations/NotionIntegration";
+import { ConfluenceIntegrationManager } from "../integrations/ConfluenceIntegration";
 
 export async function fetchUserIntegrations(req: Request, res: Response) {
     if (!req.session?.user) {
@@ -135,5 +142,133 @@ export async function fetchUserIntegrations(req: Request, res: Response) {
     } catch (error) {
         console.error('Error fetching integrations status:', error);
         res.status(500).json({ error: 'Failed to fetch integrations status' });
+    }
+}
+
+export async function getGithubIntegrations(req: Request, res: Response) {
+    if (!req.session?.user) {
+        res.status(401).json({ error: 'Unauthorized' });
+        return;
+    }
+
+    try {
+        const manager = new GithubIntegrationManager();
+        const integrations = await manager.getInstancesForUser(req.session.user.id);
+        res.status(200).json(integrations);
+    } catch (error) {
+        console.error('Error fetching GitHub integrations:', error);
+        res.status(500).json({ error: 'Failed to fetch GitHub integrations' });
+    }
+}
+
+export async function getFigmaIntegrations(req: Request, res: Response) {
+    if (!req.session?.user) {
+        res.status(401).json({ error: 'Unauthorized' });
+        return;
+    }
+
+    try {
+        const manager = new FigmaIntegrationManager();
+        const integrations = await manager.getInstancesForUser(req.session.user.id);
+        res.status(200).json(integrations);
+    } catch (error) {
+        console.error('Error fetching Figma integrations:', error);
+        res.status(500).json({ error: 'Failed to fetch Figma integrations' });
+    }
+}
+
+export async function getJiraIntegrations(req: Request, res: Response) {
+    if (!req.session?.user) {
+        res.status(401).json({ error: 'Unauthorized' });
+        return;
+    }
+
+    try {
+        const manager = new JiraIntegrationManager();
+        const integrations = await manager.getInstancesForUser(req.session.user.id);
+        res.status(200).json(integrations);
+    } catch (error) {
+        console.error('Error fetching Jira integrations:', error);
+        res.status(500).json({ error: 'Failed to fetch Jira integrations' });
+    }
+}
+
+export async function getLinearIntegrations(req: Request, res: Response) {
+    if (!req.session?.user) {
+        res.status(401).json({ error: 'Unauthorized' });
+        return;
+    }
+
+    try {
+        const manager = new LinearIntegrationManager();
+        const integrations = await manager.getInstancesForUser(req.session.user.id);
+        res.status(200).json(integrations);
+    } catch (error) {
+        console.error('Error fetching Linear integrations:', error);
+        res.status(500).json({ error: 'Failed to fetch Linear integrations' });
+    }
+}
+
+export async function getNotionIntegrations(req: Request, res: Response) {
+    if (!req.session?.user) {
+        res.status(401).json({ error: 'Unauthorized' });
+        return;
+    }
+
+    try {
+        const manager = new NotionIntegrationManager();
+        const integrations = await manager.getInstancesForUser(req.session.user.id);
+        res.status(200).json(integrations);
+    } catch (error) {
+        console.error('Error fetching Notion integrations:', error);
+        res.status(500).json({ error: 'Failed to fetch Notion integrations' });
+    }
+}
+
+export async function getConfluenceIntegrations(req: Request, res: Response) {
+    if (!req.session?.user) {
+        res.status(401).json({ error: 'Unauthorized' });
+        return;
+    }
+
+    try {
+        const manager = new ConfluenceIntegrationManager();
+        const integrations = await manager.getInstancesForUser(req.session.user.id);
+        res.status(200).json(integrations);
+    } catch (error) {
+        console.error('Error fetching Confluence integrations:', error);
+        res.status(500).json({ error: 'Failed to fetch Confluence integrations' });
+    }
+}
+
+export async function getSlackIntegrations(req: Request, res: Response) {
+    if (!req.session?.user) {
+        res.status(401).json({ error: 'Unauthorized' });
+        return;
+    }
+
+    try {
+        const manager = new SlackIntegrationManager();
+        const integrations = await manager.getInstancesForUser(req.session.user.id);
+        res.status(200).json(integrations);
+    } catch (error) {
+        console.error('Error fetching Slack integrations:', error);
+        res.status(500).json({ error: 'Failed to fetch Slack integrations' });
+    }
+}
+
+export async function getGmailIntegrations(req: Request, res: Response) {
+    if (!req.session?.user) {
+        res.status(401).json({ error: 'Unauthorized' });
+        return;
+    }
+
+    try {
+        const manager = new GmailIntegrationManager();
+        const integrations = await manager.getInstancesForUser(req.session.user.id);
+        res.status(200).json(integrations);
+    } catch (error) {
+        console.error('Error fetching Gmail integrations:', error);
+        res.status(500).json({ error: 'Failed to fetch Gmail integrations' });
     }
 }

@@ -1,6 +1,7 @@
 import { Integration } from "./abstract/Integration";
 import { db } from "../prismaClient";
-import { AutomationInputWithConfigs, GmailIntegration, User } from "../types/prisma";
+import { AutomationInputWithConfigs, GmailIntegration as PrismaGmailIntegration, User } from "../types/prisma";
+import { GmailIntegration } from "../shared/types";
 import chalk from "chalk";
 import { gmail_v1, google } from "googleapis";
 import { gmail as gmailConfig } from "../config/settings";
@@ -13,13 +14,26 @@ import { InputEvent } from "./abstract/InputEvent";
 export class GmailIntegrationManager implements Integration<GmailIntegration, GmailWebhookEvent> {
     constructor() { }
 
-    getInstancesForUser(userId: string): Promise<GmailIntegration[]> {
+    async getInstancesForUser(userId: string): Promise<GmailIntegration[]> {
         const prisma = db();
-        return prisma.gmail_integrations.findMany({
+        const integrations = await prisma.gmail_integrations.findMany({
             where: {
                 user_id: userId,
+                is_active: true,
+            },
+            select: {
+                id: true,
+                email: true,
+                history_id: true,
+                watch_expiration: true,
             },
         });
+        return integrations.map(gi => ({
+            id: gi.id,
+            email: gi.email,
+            historyId: gi.history_id,
+            watchExpiration: gi.watch_expiration,
+        }));
     }
 
     async processWebhookEvent(event: GmailWebhookEvent): Promise<void> {
@@ -236,7 +250,7 @@ export function getOAuth2Client() {
 * Refresh access token if expired
 */
 async function refreshAccessTokenIfNeeded(
-    integration: GmailIntegration
+    integration: PrismaGmailIntegration
 ): Promise<string> {
     const now = new Date();
 
@@ -300,7 +314,7 @@ async function claimHistoryIdUpdateInTransaction(
     }
 
     const claims: ProcessedWebhookClaim[] = await Promise.all(
-        integrations.map(async (integration: GmailIntegration) => {
+        integrations.map(async (integration: PrismaGmailIntegration) => {
             const oldHistoryId = integration.history_id;
             const currentHistoryId = parseInt(integration.history_id, 10);
             if (newHistoryId <= currentHistoryId) {
@@ -374,7 +388,7 @@ async function markMessageAsProcessed(
  * Fetch new message IDs from Gmail history
  */
 async function fetchNewMessageIds(
-    integration: GmailIntegration,
+    integration: PrismaGmailIntegration,
     oldHistoryId: string
 ): Promise<string[]> {
     // Refresh token if needed
@@ -528,7 +542,7 @@ export interface GmailEventData {
 
 type ProcessedWebhookClaim = {
     shouldProcess: true;
-    integration: GmailIntegration;
+    integration: PrismaGmailIntegration;
     user: User;
     oldHistoryId: string;
 } | {
