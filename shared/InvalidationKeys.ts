@@ -38,6 +38,10 @@ export const atlassianIntegrationsKey = (): readonly [string] => {
     return ['atlassianIntegrations'] as const;
 };
 
+export const figmaIntegrationsKey = (): readonly [string] => {
+    return ['figmaIntegrations'] as const;
+};
+
 export const runHistoryKey = (
     automationId: string,
     params?: GetRunHistoryParams
