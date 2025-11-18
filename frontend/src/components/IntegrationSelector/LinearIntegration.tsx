@@ -2,32 +2,37 @@ import { Plus, PlusIcon } from 'lucide-react';
 import { Button } from '../ui/button';
 import DropdownSelect from '../ui/DropdownSelect';
 import { LinearConnectionForm } from '../LinearConnectionForm';
-import { formatIntegrationDisplay, IntegrationInstance } from '../../utility/IntegrationFormatters';
-import { getIntegrationName } from '../../utility/IntegrationUtils';
-import { IntegrationType } from "@/shared/Integrations"
+import { formatIntegrationDisplay } from '../../utility/IntegrationFormatters';
+import { INTEGRATION_METADATA, IntegrationType, LinearIntegration as LinearIntegrationType } from "@/shared/Integrations"
 import { BaseIntegrationProps } from './types';
+import { useLinearIntegrations } from '@/hooks/api/useLinearIntegrations';
+import { useState } from 'react';
 
 interface LinearIntegrationProps extends BaseIntegrationProps {
-    integrationType: IntegrationType;
-    showForm: boolean;
-    onFormSuccess: () => void;
-    onFormCancel: () => void;
 }
 
 export function LinearIntegration({
     selectedIntegrationId,
     onSelect,
-    integrations,
-    isLoading,
-    isConnecting,
-    onConnect,
     label = 'Connection',
-    integrationType,
-    showForm,
-    onFormSuccess,
-    onFormCancel,
     variant
 }: LinearIntegrationProps) {
+    const { integrations, isLoading, mutate: mutateIntegrations } = useLinearIntegrations();
+    const metadata = INTEGRATION_METADATA[IntegrationType.LINEAR];
+    const [showForm, setShowForm] = useState(false);
+    const [isConnecting, setIsConnecting] = useState(false);
+
+    function onFormSuccess() {
+        setShowForm(false);
+        mutateIntegrations();
+        setIsConnecting(false);
+    }
+
+    function onFormCancel() {
+        setShowForm(false);
+        setIsConnecting(false);
+    }
+
     if (isLoading) {
         return (
             <div className="max-w-xs flex items-center gap-2 text-sm text-muted-foreground">
@@ -45,15 +50,15 @@ export function LinearIntegration({
                     {!showForm && (
                         <div className="flex flex-col gap-3 p-4 rounded-lg border border-dashed border-input bg-card">
                             <div className="text-sm text-muted-foreground">
-                                No {getIntegrationName(integrationType)} accounts connected
+                                No {metadata.name} accounts connected
                             </div>
                             <button
-                                onClick={onConnect}
+                                onClick={() => setShowForm(true)}
                                 disabled={isConnecting}
                                 className="flex items-center justify-center gap-2 px-4 py-2 bg-accent text-accent-foreground rounded-lg hover:brightness-110 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                                 <PlusIcon className="w-4 h-4" />
-                                {isConnecting ? 'Connecting...' : `Connect ${getIntegrationName(integrationType)}`}
+                                {isConnecting ? 'Connecting...' : `Connect ${metadata.name}`}
                             </button>
                         </div>
                     )}
@@ -69,9 +74,9 @@ export function LinearIntegration({
     }
 
     // Show selector when integrations exist
-    const connectionSelections = integrations.map((integration: IntegrationTypeInstance) => ({
-        label: formatIntegrationDisplay(integration, integrationType),
-        value: IntegrationTypeType.id
+    const connectionSelections = integrations.map((integration: LinearIntegrationType) => ({
+        label: formatIntegrationDisplay(integration, metadata.type),
+        value: integration.id
     }));
     const selectedOption = connectionSelections.find(option => option.value === selectedIntegrationId) || connectionSelections[0];
 
@@ -99,12 +104,12 @@ export function LinearIntegration({
             </div>
 
             <Button
-                onClick={onConnect}
+                onClick={() => setShowForm(true)}
                 disabled={isConnecting}
                 variant="outline"
             >
                 <Plus className="w-4 h-4" />
-                {isConnecting ? 'Connecting...' : `Connect Another ${getIntegrationName(integrationType)}`}
+                {isConnecting ? 'Connecting...' : `Connect Another ${metadata.name}`}
             </Button>
         </div>
     );

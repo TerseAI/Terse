@@ -5,20 +5,12 @@ import { NotionIntegration } from './NotionIntegration';
 import { SlackIntegration } from './SlackIntegration';
 import { GitHubIntegration } from './GitHubIntegration';
 import { FigmaIntegration } from './FigmaIntegration';
-import { JiraIntegration } from './JiraIntegration';
 import { LinearIntegration } from './LinearIntegration';
 import { ConfluenceIntegration } from './ConfluenceIntegration';
-import { useIntegrationSelector } from '../../hooks/useIntegrationSelector';
 import { useOAuthConnection } from "@/hooks/useOAuthConnection";
 
 export function IntegrationSelector(props: IntegrationSelectorProps & { variant?: 'card' | 'dialog' }) {
     const { variant = 'card' } = props;
-    const {
-        showForm,
-        handleFormSuccess,
-        handleFormCancel,
-    } = useIntegrationSelector(props);
-
     const { connect, isConnecting } = useOAuthConnection(props.integrationType);
 
     const baseProps: BaseIntegrationProps = {
@@ -73,37 +65,18 @@ export function IntegrationSelector(props: IntegrationSelectorProps & { variant?
                     onFigmaConfigChange={props.onFigmaConfigChange}
                 />
             );
-
-        case IntegrationType.JIRA:
-            return (
-                <JiraIntegration
-                    {...baseProps}
-                    integrationType={props.integrationType}
-                    showForm={showForm}
-                    onFormSuccess={handleFormSuccess}
-                    onFormCancel={handleFormCancel}
-                />
-            );
-
         case IntegrationType.LINEAR:
             return (
                 <LinearIntegration
                     {...baseProps}
-                    integrationType={props.integrationType}
-                    showForm={showForm}
-                    onFormSuccess={handleFormSuccess}
-                    onFormCancel={handleFormCancel}
                 />
             );
 
-        case IntegrationType.CONFLUENCE:
+        case IntegrationType.ATLASSIAN:
             return (
                 <ConfluenceIntegration
                     {...baseProps}
                     integrationType={props.integrationType}
-                    showForm={showForm}
-                    onFormSuccess={handleFormSuccess}
-                    onFormCancel={handleFormCancel}
                     confluenceConfig={props.confluenceConfig}
                     onConfluenceConfigChange={props.onConfluenceConfigChange}
                 />
