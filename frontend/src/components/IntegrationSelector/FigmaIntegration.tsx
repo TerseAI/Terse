@@ -4,7 +4,7 @@ import DropdownSelect from '../ui/DropdownSelect';
 import { FigmaFileSelector } from '../FigmaFileSelector';
 import { formatIntegrationDisplay, IntegrationInstance } from '../../utility/IntegrationFormatters';
 import { getIntegrationName } from '../../utility/IntegrationUtils';
-import { IntegrationType } from "@/shared/types"
+import { IntegrationType } from "@/shared/Integrations"
 import { FigmaConfig } from '../../shared/types';
 import { BaseIntegrationProps } from './types';
 

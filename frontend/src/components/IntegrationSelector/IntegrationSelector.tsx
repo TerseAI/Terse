@@ -1,4 +1,4 @@
-import { IntegrationType } from "@/shared/types"
+import { IntegrationType } from "@/shared/Integrations"
 import { BaseIntegrationProps, IntegrationSelectorProps } from './types';
 import { GmailIntegration } from './GmailIntegration';
 import { NotionIntegration } from './NotionIntegration';
@@ -9,26 +9,23 @@ import { JiraIntegration } from './JiraIntegration';
 import { LinearIntegration } from './LinearIntegration';
 import { ConfluenceIntegration } from './ConfluenceIntegration';
 import { useIntegrationSelector } from '../../hooks/useIntegrationSelector';
+import { useOAuthConnection } from "@/hooks/useOAuthConnection";
 
-export function IntegrationSelector(props: IntegrationTypeSelectorProps & { variant?: 'card' | 'dialog' }) {
+export function IntegrationSelector(props: IntegrationSelectorProps & { variant?: 'card' | 'dialog' }) {
     const { variant = 'card' } = props;
     const {
-        integrations,
-        isLoading,
-        isConnecting,
         showForm,
-        handleConnectNew,
         handleFormSuccess,
         handleFormCancel,
     } = useIntegrationSelector(props);
 
+    const { connect, isConnecting } = useOAuthConnection(props.integrationType);
+
     const baseProps: BaseIntegrationProps = {
         selectedIntegrationId: props.selectedIntegrationId,
         onSelect: props.onSelect,
-        integrations,
-        isLoading,
         isConnecting,
-        onConnect: handleConnectNew,
+        onConnect: connect,
         label: props.label,
         variant,
     };
@@ -38,7 +35,6 @@ export function IntegrationSelector(props: IntegrationTypeSelectorProps & { vari
             return <GmailIntegration {...baseProps} integrationType={props.integrationType} />;
 
         case IntegrationType.NOTION:
-        case IntegrationType.NOTION_PAGE:
             return (
                 <NotionIntegration
                     {...baseProps}

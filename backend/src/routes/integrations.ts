@@ -2,9 +2,11 @@ import { Request, Response } from "express";
 import { IntegrationType } from "@prisma/client";
 import { IntegrationRegistry } from "../integrations/abstract/IntegrationRegistry";
 import { 
+    Integration,
     isOAuthIntegrationInstallation
 } from "../integrations/abstract/Integration";
 import { OAuthInstallationDetails } from "../shared/types";
+import { IntegrationDetails, IntegrationInstance } from "../shared/Integrations";
 
 
 export const getIntegrationInstallationDetails = async (req: Request, res: Response) => {
@@ -40,4 +42,22 @@ const getInstallationInformation = (integration: IntegrationType, userId: string
     }
     
     throw new Error(`Integration ${integration} does not support installation`);
+}
+
+export async function getActiveIntegrations(req: Request, res: Response) {
+    if (!req.session?.user) {
+        res.status(401).json({ error: 'Unauthorized' });
+        return;
+    }
+    const userId = req.session.user.id;
+
+    const activeIntegrations: IntegrationType[] = IntegrationRegistry
+        .filter(integration => integrationHasInstances(integration, userId))
+        .map(integration => integration.integrationType);
+
+    res.json(activeIntegrations);
+}
+
+async function integrationHasInstances(integration: Integration<IntegrationInstance, any, IntegrationDetails>, userId: string): Promise<boolean> {
+    return (await integration.getInstancesForUser(userId)).length > 0;
 }

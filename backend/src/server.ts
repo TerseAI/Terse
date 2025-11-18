@@ -39,6 +39,7 @@ import {
 import {
   deleteGmailIntegration,
   getGmailOAuthUrl,
+  getGmailIntegrations,
   gmailCallback,
   handleGmailWebhook,
   refreshAllGmailWatches,
@@ -84,7 +85,7 @@ import {
   handleFigmaWebhook,
 } from "./routes/figma";
 import { getConfluenceIntegrations, getConfluenceResources, setConfluenceCredentials, validateConfluenceCredentials } from "./routes/confluence";
-import { getIntegrationInstallationDetails } from "./routes/integrations";
+import { getActiveIntegrations, getIntegrationInstallationDetails } from "./routes/integrations";
 import { initializeRealtimeSocket } from "./realtimeSocket";
 import { RunHistoryAction } from "./shared/RunHistoryTypes";
 
@@ -274,6 +275,10 @@ app.get("/confluence/resources", authMiddleware, async (req, res) => {
 });
 
 // MARK: GMAIL
+app.get("/gmail/integrations", authMiddleware, async (req, res) => {
+  getGmailIntegrations(req, res);
+});
+
 app.get("/gmail/get-oauth-url", authMiddleware, async (req, res) => {
   getGmailOAuthUrl(req, res);
 });
@@ -442,6 +447,10 @@ app.delete("/automations/:id", authMiddleware, async (req, res) => {
 
 app.get("/integrations/:integrationType/installation-details", authMiddleware, async (req, res) => {
   getIntegrationInstallationDetails(req, res);
+});
+
+app.get("/integrations/active", authMiddleware, async (req, res) => {
+  getActiveIntegrations(req, res);
 });
 
 server.listen(3001, () => {

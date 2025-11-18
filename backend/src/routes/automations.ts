@@ -5,8 +5,7 @@ import { parsePageParams } from "../utility/pagination";
 import chalk from "chalk";
 import { AutomationInputSetup } from "../inputs/AutomationInputSetup";
 import { AutomationWithRelations } from "../types/prisma";
-import { IntegrationType} from "../shared/types";
-import { IntegrationType as PrismaIntegrationType } from "@prisma/client";
+import { IntegrationType} from "../shared/Integrations";
 import { convertIntegrationTypeToPrismaIntegrationType } from "../utility/typeConverters";
 
 // Helper function to create config record for an automation input
@@ -51,7 +50,7 @@ async function createInputConfig(
                 });
             }
             break;
-        case IntegrationType.JIRA:
+        case IntegrationType.ATLASSIAN:
             if (config.jiraConfig) {
                 await tx.automation_jira_configs.create({
                     data: {
@@ -145,26 +144,13 @@ async function createOutputConfig(
                 });
             }
             break;
-        case IntegrationType.JIRA:
+        case IntegrationType.ATLASSIAN:
             if (config.jiraConfig) {
                 await tx.automation_jira_configs.create({
                     data: {
                         automation_output_id: outputId,
                         project_key: config.jiraConfig.projectKey || null,
                         project_id: config.jiraConfig.projectId || null,
-                    },
-                });
-            }
-            break;
-        case IntegrationType.CONFLUENCE:
-            if (config.confluenceConfig) {
-                await tx.automation_confluence_configs.create({
-                    data: {
-                        automation_output_id: outputId,
-                        space_id: config.confluenceConfig.spaceId || null,
-                        space_name: config.confluenceConfig.spaceName || null,
-                        page_id: config.confluenceConfig.pageId,
-                        page_name: config.confluenceConfig.pageName || null,
                     },
                 });
             }
@@ -350,7 +336,7 @@ async function validateUserOwnsIntegration(userId: string, integrationType: Inte
             });
             return !!linearKey;
 
-        case IntegrationType.JIRA:
+        case IntegrationType.ATLASSIAN:
             const jiraKey = await prisma.jira_api_keys.findFirst({
                 where: {
                     id: integrationId,
@@ -358,16 +344,6 @@ async function validateUserOwnsIntegration(userId: string, integrationType: Inte
                 }
             });
             return !!jiraKey;
-
-        case IntegrationType.CONFLUENCE:
-            // Confluence uses the same credentials as Jira
-            const confluenceJiraKey = await prisma.jira_api_keys.findFirst({
-                where: {
-                    id: integrationId,
-                    user_id: userId
-                }
-            });
-            return !!confluenceJiraKey;
 
         case IntegrationType.SLACK:
             const userSlackIntegration = await prisma.user_slack_integrations.findFirst({

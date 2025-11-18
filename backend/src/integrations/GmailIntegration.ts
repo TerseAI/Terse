@@ -2,7 +2,8 @@ import { Integration, OAuthIntegrationInstallation } from "./abstract/Integratio
 import crypto from "crypto";
 import { db } from "../prismaClient";
 import { AutomationInputWithConfigs, GmailIntegration as PrismaGmailIntegration, User } from "../types/prisma";
-import { GmailIntegration, OAuthInstallationDetails } from "../shared/types";
+import { OAuthInstallationDetails } from "../shared/types";
+import { GmailIntegration, GmailIntegrationMetadata } from "../shared/Integrations";
 import chalk from "chalk";
 import { gmail_v1, google } from "googleapis";
 import { gmail as gmailConfig } from "../config/settings";
@@ -15,7 +16,7 @@ import { InputEvent } from "./abstract/InputEvent";
 // OAuth2 scopes for Gmail
 const SCOPES = ["https://www.googleapis.com/auth/gmail.readonly"];
 
-export class GmailIntegrationManager implements Integration<GmailIntegration, GmailWebhookEvent, GmailIntegration>, OAuthIntegrationInstallation {
+export class GmailIntegrationManager implements Integration<GmailIntegration, GmailWebhookEvent, typeof GmailIntegrationMetadata>, OAuthIntegrationInstallation {
     constructor() { }
     integrationType: IntegrationType = IntegrationType.GMAIL;
 
@@ -192,14 +193,6 @@ export class GmailIntegrationManager implements Integration<GmailIntegration, Gm
 
     deleteInstallation(integrationId: string): Promise<void> {
         return Promise.resolve();
-    }
-
-    getIntegrationMetadata(): Promise<GmailIntegration> {
-        return Promise.resolve({
-            id: this.integrationType,
-            name: 'Gmail',
-            description: 'Monitor incoming emails',
-        });
     }
 }
 

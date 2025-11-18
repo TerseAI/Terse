@@ -1,10 +1,11 @@
 import { Plus } from 'lucide-react';
 import { Button } from '../ui/button';
 import DropdownSelect from '../ui/DropdownSelect';
-import { formatIntegrationDisplay, IntegrationInstance } from '../../utility/IntegrationFormatters';
-import { getIntegrationName } from '../../utility/IntegrationUtils';
-import { IntegrationType } from "@/shared/types"
+import { IntegrationType } from "@/shared/Integrations"
 import { BaseIntegrationProps } from './types';
+import { useGmailIntegrations } from '@/hooks/api/useGmailIntegrations';
+import { useOAuthConnection } from '@/hooks/useOAuthConnection';
+import { GmailIntegration as GmailIntegrationType } from '@/shared/types';
 
 interface GmailIntegrationProps extends BaseIntegrationProps {
     integrationType: IntegrationType;
@@ -13,14 +14,13 @@ interface GmailIntegrationProps extends BaseIntegrationProps {
 export function GmailIntegration({
     selectedIntegrationId,
     onSelect,
-    integrations,
-    isLoading,
-    isConnecting,
-    onConnect,
     label = 'Connection',
-    integrationType,
     variant
 }: GmailIntegrationProps) {
+    const { integrations, isLoading } = useGmailIntegrations();
+    const { connect: connectOAuth, isConnecting: isOAuthConnecting } = useOAuthConnection(IntegrationType.GMAIL);
+
+
     if (isLoading) {
         return (
             <div className="max-w-xs flex items-center gap-2 text-sm text-muted-foreground">
@@ -34,22 +34,22 @@ export function GmailIntegration({
         return (
             <div className="max-w-xs flex flex-col gap-3 p-4 rounded-lg border border-dashed border-input bg-card">
                 <div className="text-sm text-muted-foreground">
-                    No {getIntegrationName(integrationType)} accounts connected
+                    No Gmail accounts connected
                 </div>
                 <Button
-                    onClick={onConnect}
-                    disabled={isConnecting}
+                    onClick={connectOAuth}
+                    disabled={isOAuthConnecting}
                 >
                     <Plus className="w-4 h-4" />
-                    {isConnecting ? 'Connecting...' : `Connect ${getIntegrationName(integrationType)}`}
+                    {isOAuthConnecting ? 'Connecting...' : `Connect Gmail`}
                 </Button>
             </div>
         );
     }
 
-    const connectionSelections = integrations.map((integration: IntegrationTypeInstance) => ({
-        label: formatIntegrationDisplay(integration, integrationType),
-        value: IntegrationTypeType.id
+    const connectionSelections = integrations.map((integration: GmailIntegrationType) => ({
+        label: integration.email,
+        value: integration.id
     }));
     const selectedOption = connectionSelections.find(option => option.value === selectedIntegrationId) || connectionSelections[0];
 
@@ -77,12 +77,12 @@ export function GmailIntegration({
             </div>
 
             <Button
-                onClick={onConnect}
-                disabled={isConnecting}
+                onClick={connectOAuth}
+                disabled={isOAuthConnecting}
                 variant="outline"
             >
                 <Plus className="w-4 h-4" />
-                {isConnecting ? 'Connecting...' : `Connect Another ${getIntegrationName(integrationType)}`}
+                {isOAuthConnecting ? 'Connecting...' : "Connect Another Gmail"}
             </Button>
         </div>
     );

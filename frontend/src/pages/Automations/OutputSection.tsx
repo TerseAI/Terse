@@ -1,5 +1,5 @@
 import { forwardRef, ReactNode, useState } from "react";
-import { IntegrationType } from "@/shared/types"
+import { IntegrationType } from "@/shared/Integrations"
 import { AutomationOutput } from "../../shared/types";
 import { SectionLayout } from "./components/SectionLayout";
 import { AddOutputModal } from "./components/AddOutputModal";

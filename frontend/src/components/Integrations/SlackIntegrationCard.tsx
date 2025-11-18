@@ -1,6 +1,6 @@
 import { Hash } from "lucide-react";
 import { Card, CardContent } from "../ui/card";
-import { IntegrationType } from "@/shared/types"
+import { IntegrationType } from "@/shared/Integrations"
 import { formatIntegrationDisplay } from "@/utility/IntegrationFormatters";
 import { getIntegrationInstances } from "@/utility/IntegrationUtils";
 import { IntegrationsStatus, SlackChannel } from "@/shared/types";

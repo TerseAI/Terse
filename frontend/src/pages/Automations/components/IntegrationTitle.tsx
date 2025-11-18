@@ -1,4 +1,4 @@
-import { IntegrationType } from "@/shared/types"
+import { IntegrationType } from "@/shared/Integrations"
 import { IconForInputType } from "./Integration";
 import { getIntegrationTypeName } from "../../../utility/IntegrationFormatters";
 

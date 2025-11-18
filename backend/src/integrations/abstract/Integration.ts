@@ -1,12 +1,12 @@
 import { IntegrationType } from "@prisma/client";
-import { IntegrationMetadata, OAuthInstallationDetails } from "../../shared/types";
+import { OAuthInstallationDetails } from "../../shared/types";
+import { IntegrationInstance, IntegrationDetails } from "../../shared/Integrations";
 
 // This ensures T is a valid Prisma model type
-export interface Integration<T, WebhookEvent, M extends IntegrationMetadata>  {
+export interface Integration<T extends IntegrationInstance, W, M extends IntegrationDetails>  {
     integrationType: IntegrationType;
     getInstancesForUser(userId: string): Promise<T[]>;
-    processWebhookEvent(event: WebhookEvent): Promise<void>;
-    getIntegrationMetadata(): Promise<M>;
+    processWebhookEvent(event: W): Promise<void>;
 }
 
 export interface OAuthIntegrationInstallation {
