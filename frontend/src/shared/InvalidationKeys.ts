@@ -46,6 +46,18 @@ export const githubIntegrationsKey = (): readonly [string] => {
     return ['githubIntegrations'] as const;
 };
 
+export const linearIntegrationsKey = (): readonly [string] => {
+    return ['linearIntegrations'] as const;
+};
+
+export const notionIntegrationsKey = (): readonly [string] => {
+    return ['notionIntegrations'] as const;
+};
+
+export const slackIntegrationsKey = (): readonly [string] => {
+    return ['slackIntegrations'] as const;
+};
+
 export const runHistoryKey = (
     automationId: string,
     params?: GetRunHistoryParams

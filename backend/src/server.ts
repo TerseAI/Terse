@@ -55,6 +55,7 @@ import {
 import {
   deleteLinearCredentials,
   getLinearApiKey,
+  getLinearIntegrations,
   indexLinearTicket,
   setLinearApiKey,
   validateLinearApiKey,
@@ -343,6 +344,10 @@ app.post("/webhooks/figma", async (req, res) => {
 });
 
 // MARK: LINEAR
+
+app.get("/linear/integrations", authMiddleware, async (req, res) => {
+  getLinearIntegrations(req, res);
+});
 
 app.post("/linear/set-api-key", authMiddleware, async (req, res) => {
   setLinearApiKey(req, res);
