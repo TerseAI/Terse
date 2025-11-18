@@ -1,9 +1,9 @@
 import { Integration } from "./abstract/Integration";
 import { db } from "../prismaClient";
-import { NotionIntegration } from "../shared/types";
+import { NotionIntegration, NotionIntegrationMetadata } from "../shared/Integrations";
 import { IntegrationType } from "@prisma/client";
 
-export class NotionIntegrationManager implements Integration<NotionIntegration, never> {
+export class NotionIntegrationManager implements Integration<NotionIntegration, never, typeof NotionIntegrationMetadata> {
     constructor() { }
     integrationType: IntegrationType = IntegrationType.NOTION;
 

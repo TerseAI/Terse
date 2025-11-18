@@ -1,8 +1,7 @@
-import { ConfluenceIntegrationManager } from "../ConfluenceIntegration";
+import { AtlassianIntegrationManager } from "../AtlassianIntegration";
 import { FigmaIntegrationManager } from "../FigmaIntegration";
 import { GithubIntegrationManager } from "../GithubIntegration";
 import { GmailIntegrationManager } from "../GmailIntegration";
-import { JiraIntegrationManager } from "../JiraIntegration";
 import { LinearIntegrationManager } from "../LinearIntegration";
 import { NotionIntegrationManager } from "../NotionIntegration";
 import { SlackIntegrationManager } from "../SlackIntegration";

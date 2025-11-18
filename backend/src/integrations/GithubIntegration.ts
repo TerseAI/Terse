@@ -3,7 +3,7 @@ import { db } from "../prismaClient";
 import chalk from "chalk";
 import { EventProcessor } from "../agent/AutomationAgent/EventProcessor";
 import { InputEvent } from "./abstract/InputEvent";
-import { GithubIntegration } from "../shared/types";
+import { GithubIntegration, GithubIntegrationMetadata } from "../shared/Integrations";
 import { GithubAppUnifiedEventRequest } from "../routes/github";
 import { resolveUserForGithubInstallation } from "../routes/github";
 import { User } from "../types/prisma";
@@ -11,7 +11,7 @@ import { IntegrationType } from "@prisma/client";
 import { AutomationInputWithConfigs } from "../types/prisma";
 import { RunHistoryTrigger } from "../shared/RunHistoryTypes";
 
-export class GithubIntegrationManager implements Integration<GithubIntegration, GithubAppUnifiedEventRequest> {
+export class GithubIntegrationManager implements Integration<GithubIntegration, GithubAppUnifiedEventRequest, typeof GithubIntegrationMetadata> {
     constructor() { }
     integrationType: IntegrationType = IntegrationType.GITHUB;
 

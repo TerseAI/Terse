@@ -1,5 +1,5 @@
 import { RunHistoryAction } from "../shared/RunHistoryTypes";
-import { ConfluenceIntegration } from "../shared/types";
+import { AtlassianIntegration } from "../shared/Integrations";
 import { AutomationOutput, User, AutomationConfluenceConfig } from "../types/prisma";
 import { Session } from "../server";
 import { Output, OutputType, ToolboxEntry } from "./abstract/Output";
@@ -12,7 +12,7 @@ import chalk from "chalk";
 // MARK: - Exports
 
 export interface ConfluenceSession extends Session {
-    confluenceIntegration: ConfluenceIntegration; // Top level integration record
+    atlassianIntegration: AtlassianIntegration; // Top level integration record
     confluenceConfig: AutomationConfluenceConfig; // Configuration for the Specific Confluence Database
     apiToken: string; // API token stored separately (not in shared type for security)
 }
@@ -47,14 +47,14 @@ export class ConfluenceOutput extends Output<ConfluenceSession> {
             throw new Error(`Confluence config for automation output ${automationOutputConfig.id} not found`);
         }
 
-        const confluenceIntegration: ConfluenceIntegration = {
+        const atlassianIntegration: AtlassianIntegration = {
             id: integration.id,
-            confluence_user_email: integration.jira_user_email,
-            base_url: integration.base_url,
+            email: integration.jira_user_email,
+            baseUrl: integration.base_url,
         };
 
         return { 
-            confluenceIntegration: confluenceIntegration, 
+            atlassianIntegration: atlassianIntegration, 
             confluenceConfig: confluenceConfig, 
             apiToken: integration.api_token,
             user: user, 
@@ -81,10 +81,10 @@ This tool returns the current state of the Confluence page including all metadat
         }
 
         const client = new ConfluenceClient({
-            host: runContext.context.confluenceIntegration.base_url,
+            host: runContext.context.atlassianIntegration.baseUrl,
             authentication: {
                 basic: {
-                    email: runContext.context.confluenceIntegration.confluence_user_email,
+                    email: runContext.context.atlassianIntegration.email,
                     apiToken: runContext.context.apiToken,
                 }
             }
@@ -212,10 +212,10 @@ To find the correct position, first call confluence_query_page to see the page c
         }
 
         const client = new ConfluenceClient({
-            host: runContext.context.confluenceIntegration.base_url,
+            host: runContext.context.atlassianIntegration.baseUrl,
             authentication: {
                 basic: {
-                    email: runContext.context.confluenceIntegration.confluence_user_email,
+                    email: runContext.context.atlassianIntegration.email,
                     apiToken: runContext.context.apiToken,
                 }
             }
@@ -374,7 +374,7 @@ To find the correct position, first call confluence_query_page to see the page c
 
             // Use the Confluence REST API v2 inline comments endpoint
             // Since confluence.js might not have this method, we'll make a direct HTTP request
-            const baseUrl = runContext.context.confluenceIntegration.base_url.replace(/\/$/, '');
+            const baseUrl = runContext.context.atlassianIntegration.baseUrl.replace(/\/$/, '');
             const apiUrl = `${baseUrl}/wiki/api/v2/inline-comments`;
 
             // Build the request body according to Confluence API v2 format for inline comments
@@ -399,7 +399,7 @@ To find the correct position, first call confluence_query_page to see the page c
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Basic ${Buffer.from(`${runContext.context.confluenceIntegration.confluence_user_email}:${runContext.context.apiToken}`).toString('base64')}`,
+                    'Authorization': `Basic ${Buffer.from(`${runContext.context.atlassianIntegration.email}:${runContext.context.apiToken}`).toString('base64')}`,
                 },
                 body: JSON.stringify(requestBody)
             });
