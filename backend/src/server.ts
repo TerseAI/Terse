@@ -42,7 +42,7 @@ import {
   handleGmailWebhook,
   refreshAllGmailWatches,
 } from "./routes/gmail";
-import { fetchUserIntegrations } from "./routes/integrations";
+import { fetchUserIntegrations, getConfluenceIntegrations, getFigmaIntegrations, getGithubIntegrations, getNotionIntegrations, getSlackIntegrations } from "./routes/integrations";
 import {
   deleteJiraCredentials,
   getJiraCredentials,
@@ -395,6 +395,25 @@ app.get("/integrations/status", authMiddleware, async (req, res) => {
   fetchUserIntegrations(req, res);
 });
 
+app.get("/integrations/slack", authMiddleware, async(req, res) => {
+  getSlackIntegrations(req, res);
+})
+
+app.get("/integrations/github", authMiddleware, async(req, res) => {
+  getGithubIntegrations(req, res);
+})
+
+app.get("/integrations/notion", authMiddleware, async(req, res) => {
+  getNotionIntegrations(req, res);
+})
+
+app.get("/integrations/figma", authMiddleware, async(req, res) => {
+  getFigmaIntegrations(req, res);
+})
+
+app.get("/integrations/confluence", authMiddleware, async(req, res) => {
+  getConfluenceIntegrations(req, res);
+})
 // MARK: AUTOMATIONS
 
 app.get("/automations", authMiddleware, async (req, res) => {
