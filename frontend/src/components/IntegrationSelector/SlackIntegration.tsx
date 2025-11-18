@@ -2,11 +2,11 @@ import { Plus } from 'lucide-react';
 import { Button } from '../ui/button';
 import DropdownSelect from '../ui/DropdownSelect';
 import { SlackChannelSelector } from '../SlackChannelSelector';
-import { formatIntegrationDisplay, IntegrationInstance } from '../../utility/IntegrationFormatters';
-import { getIntegrationName } from '../../utility/IntegrationUtils';
-import { IntegrationType } from "@/shared/Integrations"
+import { INTEGRATION_METADATA, IntegrationType, SlackIntegration as SlackIntegrationType } from "@/shared/Integrations"
 import { SlackConfig } from '../../shared/types';
 import { BaseIntegrationProps } from './types';
+import { useSlackIntegrations } from '@/hooks/api/useSlackIntegrations';
+import { useOAuthConnection } from '@/hooks/useOAuthConnection';
 
 interface SlackIntegrationProps extends BaseIntegrationProps {
     integrationType: IntegrationType;
@@ -17,16 +17,15 @@ interface SlackIntegrationProps extends BaseIntegrationProps {
 export function SlackIntegration({
     selectedIntegrationId,
     onSelect,
-    integrations,
-    isLoading,
-    isConnecting,
-    onConnect,
     label = 'Connection',
-    integrationType,
     slackConfig,
     onSlackConfigChange,
     variant
 }: SlackIntegrationProps) {
+    const { integrations, isLoading } = useSlackIntegrations();
+    const { connect: connectOAuth, isConnecting: isOAuthConnecting } = useOAuthConnection(IntegrationType.SLACK);
+    const metadata = INTEGRATION_METADATA[IntegrationType.SLACK];
+
     if (isLoading) {
         return (
             <div className="max-w-xs flex items-center gap-2 text-sm text-muted-foreground">
@@ -38,24 +37,24 @@ export function SlackIntegration({
 
     if (integrations.length === 0) {
         return (
-            <div className="flex flex-col gap-3 p-4 rounded-lg border border-dashed border-input bg-card">
+            <div className="max-w-xs flex flex-col gap-3 p-4 rounded-lg border border-dashed border-input bg-card">
                 <div className="text-sm text-muted-foreground">
-                    No {getIntegrationName(integrationType)} accounts connected
+                    No {metadata.name} accounts connected
                 </div>
                 <Button
-                    onClick={onConnect}
-                    disabled={isConnecting}
+                    onClick={connectOAuth}
+                    disabled={isOAuthConnecting}
                 >
                     <Plus className="w-4 h-4" />
-                    {isConnecting ? 'Connecting...' : `Connect ${getIntegrationName(integrationType)}`}
+                    {isOAuthConnecting ? 'Connecting...' : `Connect ${metadata.name}`}
                 </Button>
             </div>
         );
     }
 
-    const connectionSelections = integrations.map((integration: IntegrationTypeInstance) => ({
-        label: formatIntegrationDisplay(integration, integrationType),
-        value: IntegrationTypeType.id
+    const connectionSelections = integrations.map((integration: SlackIntegrationType) => ({
+        label: integration.teamName || 'Unknown Workspace',
+        value: integration.id
     }));
     const selectedOption = connectionSelections.find(option => option.value === selectedIntegrationId) || connectionSelections[0];
 
@@ -83,12 +82,12 @@ export function SlackIntegration({
             </div>
 
             <Button
-                onClick={onConnect}
-                disabled={isConnecting}
+                onClick={connectOAuth}
+                disabled={isOAuthConnecting}
                 variant="outline"
             >
                 <Plus className="w-4 h-4" />
-                {isConnecting ? 'Connecting...' : `Connect Another ${getIntegrationName(integrationType)}`}
+                {isOAuthConnecting ? 'Connecting...' : `Connect Another ${metadata.name}`}
             </Button>
 
             {/* Slack-specific channel selector */}
