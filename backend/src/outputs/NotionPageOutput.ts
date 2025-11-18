@@ -1,11 +1,11 @@
-import { RunHistoryAction } from "../../shared/RunHistoryTypes";
+import { RunHistoryAction } from "../shared/RunHistoryTypes";
 import { RunContext, Tool, tool } from "@openai/agents";
-import { AutomationNotionPageConfig, AutomationOutput, NotionIntegration, User } from "../../types/prisma";
-import { Session } from "../../server";
+import { AutomationNotionPageConfig, AutomationOutput, NotionIntegration, User } from "../types/prisma";
+import { Session } from "../server";
 import { Client } from '@notionhq/client';
 import { z } from "zod";
-import { Output, OutputType, ToolboxEntry } from "./Output";
-import { db } from "../../prismaClient";
+import { Output, OutputType, ToolboxEntry } from "./abstract/Output";
+import { db } from "../prismaClient";
 import chalk from "chalk";
 import { GetPageResponse, PageObjectResponse } from "@notionhq/client/build/src/api-endpoints";
 

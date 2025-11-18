@@ -3,7 +3,7 @@ import chalk from "chalk";
 import { resolveUserForGithubInstallation } from "./githubAppInstallationMatching";
 import { User } from "../../types/prisma";
 import { EventProcessor } from "../../agent/AutomationAgent/EventProcessor";
-import { GithubEvent } from "../../Updater/InputEvents";
+import { GithubEvent } from "../../integrations/GithubIntegration";
 import { db } from "../../prismaClient";
 import { Request, Response } from "express";
 import { GetGithubRepositoriesForIntegrationResponse } from "../../shared/types";

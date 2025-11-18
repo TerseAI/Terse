@@ -2,7 +2,7 @@ import * as readline from 'readline';
 import chalk from 'chalk';
 import { ApprovalResult } from '../../agent/AutomationAgent/AutomationAgent';
 import { AutomationAgentFactory } from '../../agent/AutomationAgentFactory';
-import { NotionDatabaseSession } from '../../Updater/Outputs/NotionDatabaseOutput';
+import { NotionDatabaseSession } from '../../outputs/NotionDatabaseOutput';
 import { Agent, AgentOutputType, RunToolApprovalItem } from '@openai/agents';
 import { AutomationAgent } from '../../agent/AutomationAgent/AutomationAgent';
 

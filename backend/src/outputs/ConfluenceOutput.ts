@@ -1,9 +1,9 @@
-import { RunHistoryAction } from "../../shared/RunHistoryTypes";
-import { ConfluenceIntegration } from "../../shared/types";
-import { AutomationOutput, User, AutomationConfluenceConfig } from "../../types/prisma";
-import { Session } from "../../server";
-import { Output, OutputType, ToolboxEntry } from "./Output";
-import { db } from "../../prismaClient";
+import { RunHistoryAction } from "../shared/RunHistoryTypes";
+import { ConfluenceIntegration } from "../shared/types";
+import { AutomationOutput, User, AutomationConfluenceConfig } from "../types/prisma";
+import { Session } from "../server";
+import { Output, OutputType, ToolboxEntry } from "./abstract/Output";
+import { db } from "../prismaClient";
 import { RunContext, Tool, tool } from "@openai/agents";
 import { ConfluenceClient } from 'confluence.js';
 import { z } from "zod";

@@ -1,12 +1,12 @@
-import { Output, OutputType, ToolboxEntry } from "./Output";
+import { Output, OutputType, ToolboxEntry } from "./abstract/Output";
 import { RunContext, Tool, tool } from "@openai/agents";
 import { z } from "zod";
-import { Session } from "../../server";
+import { Session } from "../server";
 import { Client } from '@notionhq/client';
-import { NotionIntegration, AutomationOutput, User, AutomationNotionConfig } from "../../types/prisma";
-import { db } from "../../prismaClient";
+import { NotionIntegration, AutomationOutput, User, AutomationNotionConfig } from "../types/prisma";
+import { db } from "../prismaClient";
 import chalk from "chalk";
-import { RunHistoryAction } from "../../shared/RunHistoryTypes";
+import { RunHistoryAction } from "../shared/RunHistoryTypes";
 
 export interface NotionDatabaseSession extends Session {
     notionIntegration: NotionIntegration; // Top level integration record

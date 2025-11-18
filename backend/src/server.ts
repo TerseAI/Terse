@@ -30,12 +30,11 @@ import {
 import {
   getInstallationUrl,
   githubAppUnifiedEvent,
-} from "./routes/Github/githubApp";
-import {
   githubAppInstallationDeleted,
   processSetUpURLGithubInstallation,
   processsGithubAppInstallationWebhook,
-} from "./routes/Github/githubAppInstallationMatching";
+  getGithubRepositoriesForIntegration,
+} from "./routes/github";
 import {
   deleteGmailIntegration,
   getGmailOAuthUrl,
@@ -84,7 +83,6 @@ import {
 import { getConfluenceResources, setConfluenceCredentials, validateConfluenceCredentials } from "./routes/confluence";
 import { initializeRealtimeSocket } from "./realtimeSocket";
 import { RunHistoryAction } from "./shared/RunHistoryTypes";
-import { getGithubRepositoriesForIntegration } from "./routes/Github/githubEventProcessor";
 
 export type Session = {
   user: User;

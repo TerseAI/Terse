@@ -1,5 +1,5 @@
 import { Agent, AgentInputItem, run } from '@openai/agents';
-import { InputEvent } from "../../Updater/InputEvents";
+import { InputEvent } from "../../integrations/abstract/InputEvent";
 import { AutomationPrompt } from "../../types/prisma";
 import { Session } from "../../server";
 import { z } from "zod";

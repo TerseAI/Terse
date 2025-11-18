@@ -1,9 +1,9 @@
 import { IntegrationType } from "@prisma/client";
 import { Output } from "./Output";
-import { NotionDatabaseOutput } from "./NotionDatabaseOutput";
-import { NotionPageOutput } from "./NotionPageOutput";
+import { NotionDatabaseOutput } from "../NotionDatabaseOutput";
+import { NotionPageOutput } from "../NotionPageOutput";
 import { Session } from "../../server";
-import { ConfluenceOutput } from "./ConfluenceOutput";
+import { ConfluenceOutput } from "../ConfluenceOutput";
 
 /**
  * Factory for creating Output instances based on IntegrationType.

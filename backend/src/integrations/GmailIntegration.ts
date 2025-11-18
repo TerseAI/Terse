@@ -1,4 +1,4 @@
-import { Integration } from "./Integration";
+import { Integration } from "./abstract/Integration";
 import { db } from "../prismaClient";
 import { AutomationInputWithConfigs, GmailIntegration, User } from "../types/prisma";
 import chalk from "chalk";
@@ -7,7 +7,7 @@ import { gmail as gmailConfig } from "../config/settings";
 import { EventProcessor } from "../agent/AutomationAgent/EventProcessor";
 import { IntegrationType } from "@prisma/client";
 import { RunHistoryTrigger } from "../shared/RunHistoryTypes";
-import { InputEvent } from "../Updater/InputEvents";
+import { InputEvent } from "./abstract/InputEvent";
 
 
 export class GmailIntegrationManager implements Integration<GmailIntegration, GmailWebhookEvent> {
