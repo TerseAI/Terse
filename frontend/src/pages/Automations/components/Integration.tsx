@@ -1,24 +1,22 @@
-import { Integration } from "@/types/Integration";
+import { IntegrationType } from "@/shared/types"
 
-export function IconForInputType({ type }: { type: Integration }) {
+export function IconForInputType({ type }: { type: IntegrationType }) {
     switch (type) {
-        case Integration.GITHUB:
+        case IntegrationType.GITHUB:
             return <GithubIcon />;
-        case Integration.LINEAR:
+        case IntegrationType.LINEAR:
             return <LinearIcon />;
-        case Integration.SLACK:
+        case IntegrationType.SLACK:
             return <SlackIcon />;
-        case Integration.GMAIL:
+        case IntegrationType.GMAIL:
             return <GmailIcon />;
-        case Integration.NOTION:
+        case IntegrationType.NOTION:
             return <NotionIcon />;
-        case Integration.NOTION_PAGE:
-            return <NotionIcon />;
-        case Integration.FIGMA:
+        case IntegrationType.FIGMA:
             return <FigmaIcon />;
-        case Integration.JIRA:
+        case IntegrationType.JIRA:
             return <JiraIcon />;
-        case Integration.CONFLUENCE:
+        case IntegrationType.CONFLUENCE:
             return <ConfluenceIcon />;
     }
 }

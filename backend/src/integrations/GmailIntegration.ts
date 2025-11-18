@@ -1,7 +1,8 @@
-import { Integration } from "./abstract/Integration";
+import { Integration, OAuthIntegrationInstallation } from "./abstract/Integration";
+import crypto from "crypto";
 import { db } from "../prismaClient";
 import { AutomationInputWithConfigs, GmailIntegration as PrismaGmailIntegration, User } from "../types/prisma";
-import { GmailIntegration } from "../shared/types";
+import { GmailIntegration, OAuthInstallationDetails } from "../shared/types";
 import chalk from "chalk";
 import { gmail_v1, google } from "googleapis";
 import { gmail as gmailConfig } from "../config/settings";
@@ -11,8 +12,12 @@ import { RunHistoryTrigger } from "../shared/RunHistoryTypes";
 import { InputEvent } from "./abstract/InputEvent";
 
 
-export class GmailIntegrationManager implements Integration<GmailIntegration, GmailWebhookEvent> {
+// OAuth2 scopes for Gmail
+const SCOPES = ["https://www.googleapis.com/auth/gmail.readonly"];
+
+export class GmailIntegrationManager implements Integration<GmailIntegration, GmailWebhookEvent, GmailIntegration>, OAuthIntegrationInstallation {
     constructor() { }
+    integrationType: IntegrationType = IntegrationType.GMAIL;
 
     async getInstancesForUser(userId: string): Promise<GmailIntegration[]> {
         const prisma = db();
@@ -157,6 +162,44 @@ export class GmailIntegrationManager implements Integration<GmailIntegration, Gm
             // Re-throw to ensure it's logged by the caller
             throw error;
         }
+    }
+    
+    getInstallationUrl(userId: string): OAuthInstallationDetails {
+        const oauth2Client = getOAuth2Client();
+
+        // Generate state for security (include user ID)
+        const state = Buffer.from(
+        JSON.stringify({
+            userId: userId,
+            random: crypto.randomBytes(16).toString("hex"),
+        })
+        ).toString("base64");
+
+        const authUrl = oauth2Client.generateAuthUrl({
+            access_type: "offline", // Get refresh token
+            scope: SCOPES,
+            state: state,
+            prompt: "consent", // Force consent screen to get refresh token
+        });
+        return {
+            oauthUrl: authUrl
+        };
+    }
+
+    processInstallationCallback(req: Request, res: Response): Promise<void> {
+        return Promise.resolve();
+    }
+
+    deleteInstallation(integrationId: string): Promise<void> {
+        return Promise.resolve();
+    }
+
+    getIntegrationMetadata(): Promise<GmailIntegration> {
+        return Promise.resolve({
+            id: this.integrationType,
+            name: 'Gmail',
+            description: 'Monitor incoming emails',
+        });
     }
 }
 

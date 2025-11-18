@@ -4,12 +4,12 @@ import DropdownSelect from '../ui/DropdownSelect';
 import { FigmaFileSelector } from '../FigmaFileSelector';
 import { formatIntegrationDisplay, IntegrationInstance } from '../../utility/IntegrationFormatters';
 import { getIntegrationName } from '../../utility/IntegrationUtils';
-import { Integration } from "@/types/Integration";
+import { IntegrationType } from "@/shared/types"
 import { FigmaConfig } from '../../shared/types';
 import { BaseIntegrationProps } from './types';
 
 interface FigmaIntegrationProps extends BaseIntegrationProps {
-    integrationType: Integration;
+    integrationType: IntegrationType;
     figmaConfig?: FigmaConfig;
     onFigmaConfigChange?: (config: FigmaConfig) => void;
 }
@@ -53,9 +53,9 @@ export function FigmaIntegration({
         );
     }
 
-    const connectionSelections = integrations.map((integration: IntegrationInstance) => ({
+    const connectionSelections = integrations.map((integration: IntegrationTypeInstance) => ({
         label: formatIntegrationDisplay(integration, integrationType),
-        value: integration.id
+        value: IntegrationTypeType.id
     }));
     const selectedOption = connectionSelections.find(option => option.value === selectedIntegrationId) || connectionSelections[0];
 

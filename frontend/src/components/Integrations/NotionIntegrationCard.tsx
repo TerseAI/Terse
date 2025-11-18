@@ -1,7 +1,7 @@
 import { FileText, Database } from "lucide-react";
 import { NotionResource } from "@/shared/types";
 import { Card, CardContent } from "../ui/card";
-import { Integration } from "@/types/Integration";
+import { IntegrationType } from "@/shared/types"
 import { IntegrationCardHeader } from "./helpers/IntegrationCardHeader";
 import { IntegrationCardFooter } from "./helpers/IntegrationCardFooter";
 import { useOAuthUrl } from "./helpers/useOAuthUrl";
@@ -10,12 +10,12 @@ import { useNotionResources } from "@/hooks/api/useNotionResources";
 import { cn } from "@/lib/utils";
 
 function NotionIntegrationCard({ integrationId, className }: { integrationId: string, className?: string }) {
-    const oauthUrl = useOAuthUrl(Integration.NOTION);
+    const oauthUrl = useOAuthUrl(IntegrationType.NOTION);
     const { resources, isLoading } = useNotionResources(integrationId);
 
     return (
         <Card className={cn(className)}>
-            <IntegrationCardHeader integration={Integration.NOTION} />
+            <IntegrationCardHeader integration={IntegrationType.NOTION} />
             <CardContent>
                 <NotionCardContent resources={resources} isLoading={isLoading} />
             </CardContent>

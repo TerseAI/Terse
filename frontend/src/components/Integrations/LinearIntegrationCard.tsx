@@ -1,5 +1,5 @@
 import { Card, CardContent } from "../ui/card";
-import { Integration } from "@/types/Integration";
+import { IntegrationType } from "@/shared/types"
 import { formatIntegrationDisplay } from "@/utility/IntegrationFormatters";
 import { getIntegrationInstances } from "@/utility/IntegrationUtils";
 import { IntegrationsStatus } from "@/shared/types";
@@ -8,16 +8,16 @@ import { IntegrationCardFooter } from "./helpers/IntegrationCardFooter";
 import { cn } from "@/lib/utils";
 
 function LinearIntegrationCard({ integrationStatus, integrationId, className }: { integrationStatus: IntegrationsStatus, integrationId: string, className?: string }) {
-    const linearInstances = getIntegrationInstances(integrationStatus.integrations, Integration.LINEAR);
+    const linearInstances = getIntegrationInstances(integrationStatus.integrations, IntegrationType.LINEAR);
     const currentInstance = linearInstances.find(instance => instance.id === integrationId) || linearInstances[0];
-    const workspaceInfo = formatIntegrationDisplay(currentInstance, Integration.LINEAR);
+    const workspaceInfo = formatIntegrationDisplay(currentInstance, IntegrationType.LINEAR);
 
     // Linear uses API key, not OAuth, so no OAuth URL available
     const oauthUrl = null;
 
     return (
         <Card className={cn(className)}>
-            <IntegrationCardHeader integration={Integration.LINEAR} />
+            <IntegrationCardHeader integration={IntegrationType.LINEAR} />
             <CardContent>
                 <LinearCardContent workspaceInfo={workspaceInfo} />
             </CardContent>

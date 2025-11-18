@@ -7,7 +7,7 @@ import {
     DialogHeader,
     DialogTitle,
 } from "../ui/dialog";
-import { Integration } from "@/types/Integration";
+import { IntegrationType } from "@/shared/types"
 import { getIntegrationInstances } from "@/utility/IntegrationUtils";
 import { IntegrationsStatus, GithubIntegration } from "@/shared/types";
 import { IntegrationCardHeader } from "./helpers/IntegrationCardHeader";
@@ -20,14 +20,14 @@ import { ExternalLink } from "lucide-react";
 const REPOSITORY_DISPLAY_THRESHOLD = 3;
 
 function GithubIntegrationCard({ integrationStatus, className, integrationId: _integrationId }: { integrationStatus: IntegrationsStatus, integrationId: string, className?: string }) {
-    const oauthUrl = useOAuthUrl(Integration.GITHUB);
-    const githubInstances = getIntegrationInstances(integrationStatus.integrations, Integration.GITHUB);
+    const oauthUrl = useOAuthUrl(IntegrationType.GITHUB);
+    const githubInstances = getIntegrationInstances(integrationStatus.integrations, IntegrationType.GITHUB);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
 
     return (
         <>
             <Card className={cn(className)}>
-                <IntegrationCardHeader integration={Integration.GITHUB} />
+                <IntegrationCardHeader integration={IntegrationType.GITHUB} />
                 <CardContent>
                     <GithubCardContent repositories={githubInstances} onViewAll={() => setIsDialogOpen(true)} />
                 </CardContent>

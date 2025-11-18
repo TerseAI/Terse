@@ -1,13 +1,13 @@
 import { Plus } from 'lucide-react';
 import { Button } from '../ui/button';
 import { getIntegrationName } from '../../utility/IntegrationUtils';
-import { Integration } from "@/types/Integration";
+import { IntegrationType } from "@/shared/types"
 import { BaseIntegrationProps } from './types';
 import { GithubResourceSelector } from '../GithubResourceSelector';
 import { GitHubConfig } from '@/shared/types';
 
 interface GitHubIntegrationProps extends BaseIntegrationProps {
-    integrationType: Integration;
+    integrationType: IntegrationType;
     githubConfig?: GitHubConfig;
     onGithubConfigChange?: (config: GitHubConfig) => void;
 }

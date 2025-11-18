@@ -1,5 +1,5 @@
 import { forwardRef, useState, useImperativeHandle, useRef } from "react";
-import { Integration } from "@/types/Integration";
+import { IntegrationType } from "@/shared/types"
 import { AutomationInput, GitHubConfig } from "../../shared/types";
 import { SectionLayout } from "./components/SectionLayout";
 import { AddInputModal } from "./components/AddInputModal";
@@ -29,9 +29,9 @@ export const InputsSection = forwardRef<Map<string, HTMLDivElement>, InputsSecti
         return inputRefs.current;
     }, [inputs]);
 
-    const handleSelectPlatform = (integration: Integration) => {
+    const handleSelectPlatform = (integration: IntegrationType) => {
         const newInputId = uuidv4(); // We need to mint a placeholder ID for the new input so that we can identify it later.
-        const newInput: AutomationInput = { id: newInputId, integration: integration as string };
+        const newInput: AutomationInput = { id: newInputId, integration: IntegrationType as string };
         const newInputs: AutomationInput[] = [...inputs, newInput];
         setInputs(newInputs);
         setShowAddModal(false);

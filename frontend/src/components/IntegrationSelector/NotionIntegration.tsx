@@ -4,12 +4,12 @@ import DropdownSelect from '../ui/DropdownSelect';
 import { NotionResourceSelector } from '../NotionResourceSelector';
 import { formatIntegrationDisplay, IntegrationInstance } from '../../utility/IntegrationFormatters';
 import { getIntegrationName } from '../../utility/IntegrationUtils';
-import { Integration } from "@/types/Integration";
+import { IntegrationType } from "@/shared/types"
 import { NotionConfig, NotionPageConfig, NotionResourceType } from '../../shared/types';
 import { BaseIntegrationProps } from './types';
 
 interface NotionIntegrationProps extends BaseIntegrationProps {
-    integrationType: Integration;
+    integrationType: IntegrationType;
     notionConfig?: NotionConfig;
     notionPageConfig?: NotionPageConfig;
     onNotionConfigChange?: (config: NotionConfig) => void;
@@ -57,9 +57,9 @@ export function NotionIntegration({
         );
     }
 
-    const connectionSelections = integrations.map((integration: IntegrationInstance) => ({
+    const connectionSelections = integrations.map((integration: IntegrationTypeInstance) => ({
         label: formatIntegrationDisplay(integration, integrationType),
-        value: integration.id
+        value: IntegrationTypeType.id
     }));
     const selectedOption = connectionSelections.find(option => option.value === selectedIntegrationId) || connectionSelections[0];
 

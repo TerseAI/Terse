@@ -1,18 +1,18 @@
-import { Integration } from "../types/Integration";
+import { IntegrationType } from "../shared/types"
 import { getIntegrationName } from "./IntegrationUtils";
 
 /**
  * Interface for automation input - only needs integration type for name generation
  */
 interface AutomationInputLike {
-    integration: Integration;
+    integration: IntegrationType;
 }
 
 /**
  * Interface for automation output - only needs integration type for name generation
  */
 interface AutomationOutputLike {
-    integration: Integration;
+    integration: IntegrationType;
 }
 
 /**

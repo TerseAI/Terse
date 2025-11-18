@@ -1,5 +1,5 @@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Integration } from "@/types/Integration";
+import { IntegrationType } from "@/shared/types"
 import { getAllOutputIntegrationMetadata } from "../../../utility/IntegrationUtils";
 import { IconForInputType } from "./Integration";
 import { Button } from "@/components/ui/button";
@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 interface AddOutputModalProps {
     isOpen: boolean;
     onClose: () => void;
-    onSelectIntegration: (integration: Integration) => void;
+    onSelectIntegration: (integration: IntegrationType) => void;
 }
 
 export function AddOutputModal({ isOpen, onClose, onSelectIntegration }: AddOutputModalProps) {
@@ -29,16 +29,16 @@ export function AddOutputModal({ isOpen, onClose, onSelectIntegration }: AddOutp
                 <div className="grid grid-cols-2 gap-3">
                     {allIntegrations.map((integration) => (
                         <button
-                            key={integration.type}
-                            onClick={() => onSelectIntegration(integration.type)}
+                            key={IntegrationType.type}
+                            onClick={() => onSelectIntegration(IntegrationType.type)}
                             className="flex flex-col items-center gap-3 p-5 rounded-lg border-2 border-border hover:border-primary hover:bg-accent transition-all duration-200 group"
                         >
                             <div className="w-16 h-16 flex items-center justify-center">
-                                <IconForInputType type={integration.type} />
+                                <IconForInputType type={IntegrationType.type} />
                             </div>
                             <div className="text-center">
-                                <div className="text-sm font-medium text-foreground mb-1">{integration.name}</div>
-                                <div className="text-xs text-muted-foreground group-hover:text-foreground transition-colors">{integration.description}</div>
+                                <div className="text-sm font-medium text-foreground mb-1">{IntegrationType.name}</div>
+                                <div className="text-xs text-muted-foreground group-hover:text-foreground transition-colors">{IntegrationType.description}</div>
                             </div>
                         </button>
                     ))}

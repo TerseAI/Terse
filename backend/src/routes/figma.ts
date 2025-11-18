@@ -8,6 +8,23 @@ import { FigmaEventTypes } from "../shared/types";
 
 // MARK: - Route Handlers
 
+export async function getFigmaIntegrations(req: Request, res: Response) {
+  if (!req.session?.user) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+  }
+
+  try {
+      const manager = new FigmaIntegrationManager();
+      const integrations = await manager.getInstancesForUser(req.session.user.id);
+      res.status(200).json(integrations);
+  } catch (error) {
+      console.error('Error fetching Figma integrations:', error);
+      res.status(500).json({ error: 'Failed to fetch Figma integrations' });
+  }
+}
+
+
 /**
  * Generate Figma OAuth URL for user authorization
  */

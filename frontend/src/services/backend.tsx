@@ -10,14 +10,15 @@ import {
     ConfluenceIntegration, 
     ConfluenceResourcesResponse, 
     GetGithubRepositoriesForIntegrationResponse, 
-    IntegrationsStatus, 
+    OAuthInstallationDetails, 
     JiraCredentialsValidationResponse, 
     JiraIntegration, 
     LinearApiKeyValidationResponse, 
     LinearIntegration, 
     NotionResourcesResponse, 
     SlackChannelsResponse, 
-    SlackIntegration
+    SlackIntegration,
+    IntegrationType
 } from "../shared/types";
 import { User } from "../types/User";
 import { GetRunHistoryParams, GetRunHistoryResponse } from '../shared/RunHistoryTypes';
@@ -80,10 +81,10 @@ interface BackendService {
     }>;
 
     /**
-     * Gets all integrations status in a single call
+     * Returns the installation details for a given integration type
      */
-    getIntegrationsStatus(): Promise<IntegrationsStatus>;
-    
+    getIntegrationInstallationDetails(integrationType: IntegrationTypeType): Promise<OAuthInstallationDetails>;
+
     /**
      * Requests a GitHub app installation URL
      */
@@ -346,11 +347,11 @@ export const BackendProvider: BackendService = {
             });
     },
 
-    getIntegrationsStatus: () => {
-        return axios.get(`${backendBaseUrl}/integrations/status`, { withCredentials: true })
+    getIntegrationInstallationDetails: (integrationType: IntegrationTypeType) => {
+        return axios.get(`${backendBaseUrl}/integrations/${integrationType}/installation-url`, { withCredentials: true })
             .then(response => response.data)
             .catch(error => {
-                console.error('Error getting integrations status:', error);
+                console.error('Error getting integration installation details:', error);
                 throw error;
             });
     },

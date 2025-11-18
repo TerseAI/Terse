@@ -14,6 +14,7 @@ import { InputEvent } from "./abstract/InputEvent";
 
 export class SlackIntegrationManager implements Integration<SlackIntegration, SlackMessageEvent> {
     constructor() { }
+    integrationType: IntegrationType = IntegrationType.SLACK;
 
     async getInstancesForUser(userId: string): Promise<SlackIntegration[]> {
         const userSlackIntegrations = await db().user_slack_integrations.findMany({

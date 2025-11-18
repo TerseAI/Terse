@@ -5,6 +5,25 @@ import { LinearAdapter } from "../ticketing/linear";
 import { findUserById, getUserTicketManager } from "../types/user";
 import { LinearWebhookPayload } from "../utility/LinearWebhookPayload";
 import { search } from "../searchClient";
+import { LinearIntegrationManager } from "src/integrations/LinearIntegration";
+
+
+export async function getLinearIntegrations(req: Request, res: Response) {
+    if (!req.session?.user) {
+        res.status(401).json({ error: 'Unauthorized' });
+        return;
+    }
+
+    try {
+        const manager = new LinearIntegrationManager();
+        const integrations = await manager.getInstancesForUser(req.session.user.id);
+        res.status(200).json(integrations);
+    } catch (error) {
+        console.error('Error fetching Linear integrations:', error);
+        res.status(500).json({ error: 'Failed to fetch Linear integrations' });
+    }
+}
+
 
 export const setLinearApiKey = async (req: Request, res: Response) => {
     let user = req.session?.user;

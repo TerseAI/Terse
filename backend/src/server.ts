@@ -6,7 +6,7 @@ import express from "express";
 import { createServer } from "http";
 // Import settings early to validate environment variables at startup
 import "./config/settings";
-import { AgentSocketServer, requestSessionSocketToken } from "./agent/socket";
+import { requestSessionSocketToken } from "./agent/socket";
 import { getActivityFeed, getDailyActivitySummary } from "./routes/activity";
 import { authMiddleware, login, logout, setSession } from "./routes/auth";
 import {
@@ -34,6 +34,7 @@ import {
   processSetUpURLGithubInstallation,
   processsGithubAppInstallationWebhook,
   getGithubRepositoriesForIntegration,
+  getGithubIntegrations,
 } from "./routes/github";
 import {
   deleteGmailIntegration,
@@ -42,7 +43,6 @@ import {
   handleGmailWebhook,
   refreshAllGmailWatches,
 } from "./routes/gmail";
-import { fetchUserIntegrations, getConfluenceIntegrations, getFigmaIntegrations, getGithubIntegrations, getNotionIntegrations, getSlackIntegrations } from "./routes/integrations";
 import {
   deleteJiraCredentials,
   getJiraCredentials,
@@ -60,7 +60,8 @@ import {
 import {
   getNotionOAuthUrl,
   notionOAuthCallback,
-  getNotionResources
+  getNotionResources,
+  getNotionIntegrations
 } from "./routes/notion";
 import { getRunHistory } from "./routes/runHistory";
 import { User as TicketUser } from "./shared/TicketSystem";
@@ -70,6 +71,7 @@ import {
   getSlackOAuthUrl,
   slackOAuthCallback,
   getSlackChannels,
+  getSlackIntegrations,
 } from "./routes/slack";
 import { TicketManager } from "./ticketing/TicketIntegration";
 import { User } from "./types/prisma";
@@ -77,10 +79,12 @@ import { JiraWebhookPayload } from "./utility/JiraWebhookPayload";
 import { LinearWebhookPayload } from "./utility/LinearWebhookPayload";
 import {
   figmaOAuthCallback,
+  getFigmaIntegrations,
   getFigmaOAuthUrl,
   handleFigmaWebhook,
 } from "./routes/figma";
-import { getConfluenceResources, setConfluenceCredentials, validateConfluenceCredentials } from "./routes/confluence";
+import { getConfluenceIntegrations, getConfluenceResources, setConfluenceCredentials, validateConfluenceCredentials } from "./routes/confluence";
+import { getIntegrationInstallationDetails } from "./routes/integrations";
 import { initializeRealtimeSocket } from "./realtimeSocket";
 import { RunHistoryAction } from "./shared/RunHistoryTypes";
 
@@ -194,6 +198,11 @@ app.get("/session/token", authMiddleware, async (req, res) => {
 });
 
 // MARK: GITHUB APP
+
+app.get("/github/integrations", authMiddleware, async(req, res) => {
+  getGithubIntegrations(req, res);
+})
+
 app.get("/github/installation-url", authMiddleware, async (req, res) => {
   getInstallationUrl(req, res);
 });
@@ -248,6 +257,10 @@ app.delete("/jira/delete-credentials", authMiddleware, async (req, res) => {
 
 // MARK: CONFLUENCE
 
+app.get("/confluence/integrations", authMiddleware, async(req, res) => {
+  getConfluenceIntegrations(req, res);
+})
+
 app.post("/confluence/set-api-key", authMiddleware, async (req, res) => {
   setConfluenceCredentials(req, res);
 });
@@ -283,6 +296,10 @@ app.post("/gmail/refresh-watches", async (req, res) => {
 
 // MARK: NOTION
 
+app.get("/notion/integrations", authMiddleware, async(req, res) => {
+  getNotionIntegrations(req, res);
+})
+
 // OAuth endpoints
 app.get("/notion/get-oauth-url", authMiddleware, async (req, res) => {
   getNotionOAuthUrl(req, res);
@@ -297,6 +314,10 @@ app.get("/notion/resources", authMiddleware, async (req, res) => {
 });
 
 // MARK: FIGMA
+
+app.get("/figma/integrations", authMiddleware, async(req, res) => {
+  getFigmaIntegrations(req, res);
+})
 
 app.get("/figma/get-oauth-url", authMiddleware, async (req, res) => {
   getFigmaOAuthUrl(req, res);
@@ -369,6 +390,10 @@ app.post("/webhooks/jira/:userId", async (req, res) => {
 
 // MARK: SLACK
 
+app.get("/slack/integrations", authMiddleware, async(req, res) => {
+  getSlackIntegrations(req, res);
+})
+
 app.get("/slack/get-current-integration", authMiddleware, async (req, res) => {
   getCurrentSlackIntegration(req, res);
 });
@@ -391,29 +416,6 @@ app.get("/slack/channels", authMiddleware, async (req, res) => {
   getSlackChannels(req, res);
 });
 
-app.get("/integrations/status", authMiddleware, async (req, res) => {
-  fetchUserIntegrations(req, res);
-});
-
-app.get("/integrations/slack", authMiddleware, async(req, res) => {
-  getSlackIntegrations(req, res);
-})
-
-app.get("/integrations/github", authMiddleware, async(req, res) => {
-  getGithubIntegrations(req, res);
-})
-
-app.get("/integrations/notion", authMiddleware, async(req, res) => {
-  getNotionIntegrations(req, res);
-})
-
-app.get("/integrations/figma", authMiddleware, async(req, res) => {
-  getFigmaIntegrations(req, res);
-})
-
-app.get("/integrations/confluence", authMiddleware, async(req, res) => {
-  getConfluenceIntegrations(req, res);
-})
 // MARK: AUTOMATIONS
 
 app.get("/automations", authMiddleware, async (req, res) => {
@@ -434,6 +436,12 @@ app.patch("/automations/:id", authMiddleware, async (req, res) => {
 
 app.delete("/automations/:id", authMiddleware, async (req, res) => {
   deleteAutomation(req, res);
+});
+
+// MARK: INTEGRATIONS
+
+app.get("/integrations/:integrationType/installation-details", authMiddleware, async (req, res) => {
+  getIntegrationInstallationDetails(req, res);
 });
 
 server.listen(3001, () => {

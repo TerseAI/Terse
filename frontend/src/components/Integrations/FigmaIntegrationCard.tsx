@@ -1,5 +1,5 @@
 import { Card, CardContent } from "../ui/card";
-import { Integration } from "@/types/Integration";
+import { IntegrationType } from "@/shared/types"
 import { formatIntegrationDisplay } from "@/utility/IntegrationFormatters";
 import { getIntegrationInstances } from "@/utility/IntegrationUtils";
 import { IntegrationsStatus } from "@/shared/types";
@@ -9,14 +9,14 @@ import { useOAuthUrl } from "./helpers/useOAuthUrl";
 import { cn } from "@/lib/utils";
 
 function FigmaIntegrationCard({ integrationStatus, integrationId, className }: { integrationStatus: IntegrationsStatus, integrationId: string, className?: string }) {
-    const figmaInstances = getIntegrationInstances(integrationStatus.integrations, Integration.FIGMA);
+    const figmaInstances = getIntegrationInstances(integrationStatus.integrations, IntegrationType.FIGMA);
     const currentInstance = figmaInstances.find(instance => instance.id === integrationId) || figmaInstances[0];
-    const accountInfo = formatIntegrationDisplay(currentInstance, Integration.FIGMA);
-    const oauthUrl = useOAuthUrl(Integration.FIGMA);
+    const accountInfo = formatIntegrationDisplay(currentInstance, IntegrationType.FIGMA);
+    const oauthUrl = useOAuthUrl(IntegrationType.FIGMA);
 
     return (
         <Card className={cn(className)}>
-            <IntegrationCardHeader integration={Integration.FIGMA} />
+            <IntegrationCardHeader integration={IntegrationType.FIGMA} />
             <CardContent>
                 <FigmaCardContent accountInfo={accountInfo} />
             </CardContent>

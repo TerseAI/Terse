@@ -20,6 +20,7 @@ import {
 
 export class FigmaIntegrationManager implements Integration<FigmaIntegration, FigmaWebhookEvent> {
     constructor() { }
+    integrationType: IntegrationType = IntegrationType.FIGMA;
 
     async getInstancesForUser(userId: string): Promise<FigmaIntegration[]> {
         const integrations = await db().figma_integrations.findMany({

@@ -1,5 +1,5 @@
 import { Card, CardContent } from "../ui/card";
-import { Integration } from "@/types/Integration";
+import { IntegrationType } from "@/shared/types"
 import { formatIntegrationDisplay } from "@/utility/IntegrationFormatters";
 import { getIntegrationInstances } from "@/utility/IntegrationUtils";
 import { IntegrationsStatus } from "@/shared/types";
@@ -8,14 +8,14 @@ import { IntegrationCardFooter } from "./helpers/IntegrationCardFooter";
 import { useOAuthUrl } from "./helpers/useOAuthUrl";
 import { cn } from "@/lib/utils";
 
-function GmailIntegrationCard({ integrationStatus, className }: { integrationStatus: IntegrationsStatus, className?: string }) {
-    const oauthUrl = useOAuthUrl(Integration.GMAIL);
-    const gmailInstances = getIntegrationInstances(integrationStatus.integrations, Integration.GMAIL);
-    const email = formatIntegrationDisplay(gmailInstances[0], Integration.GMAIL);
+function GmailIntegrationCard({ className }: { className?: string }) {
+    const oauthUrl = useOAuthUrl(IntegrationType.GMAIL);
+    const gmailInstances = [] // getIntegrationInstances(integrationStatus.integrations, IntegrationType.GMAIL);
+    const email = '' //formatIntegrationDisplay(gmailInstances[0], IntegrationType.GMAIL);
 
     return (
         <Card className={cn(className)}>
-            <IntegrationCardHeader integration={Integration.GMAIL} />
+            <IntegrationCardHeader integration={IntegrationType.GMAIL} />
             <CardContent>
                 <GmailCardContent email={email} />
             </CardContent>

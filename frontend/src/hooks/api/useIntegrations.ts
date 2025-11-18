@@ -5,20 +5,20 @@ import { INTEGRATION_KEY_MAP } from '@/utility/IntegrationUtils';
 import type { IntegrationsStatus } from '@/shared/types';
 
 export type IntegrationMetadata = {
-    type: Integration;
+    type: IntegrationType;
     integrationId: string;
 }
 
 const integrationsKey = (): readonly [string] => ['integrations'];
 
-function transformToIntegrationMetadata(integrationData: IntegrationsStatus['integrations']): IntegrationMetadata[] {
-    const activeIntegrations: IntegrationMetadata[] = [];
+function transformToIntegrationMetadata(integrationData: IntegrationTypesStatus['integrations']): IntegrationTypeMetadata[] {
+    const activeIntegrations: IntegrationTypeMetadata[] = [];
 
     for (const [integrationType, key] of Object.entries(INTEGRATION_KEY_MAP)) {
         const instances = integrationData[key];
         if (instances && instances.length > 0) {
             activeIntegrations.push({
-                type: integrationType as Integration,
+                type: IntegrationTypeType as Integration,
                 integrationId: instances[0].id
             });
         }
@@ -41,12 +41,12 @@ export function useIntegrations() {
     const isLoading = !data && !error;
 
     // Compute integration status flags
-    const hasGithub = integrations.some(integration => integration.type === Integration.GITHUB);
-    const hasLinear = integrations.some(integration => integration.type === Integration.LINEAR);
-    const hasJira = integrations.some(integration => integration.type === Integration.JIRA);
-    const hasSlack = integrations.some(integration => integration.type === Integration.SLACK);
-    const hasGmail = integrations.some(integration => integration.type === Integration.GMAIL);
-    const hasNotion = integrations.some(integration => integration.type === Integration.NOTION);
+    const hasGithub = integrations.some(integration => IntegrationType.type === IntegrationType.GITHUB);
+    const hasLinear = integrations.some(integration => IntegrationType.type === IntegrationType.LINEAR);
+    const hasJira = integrations.some(integration => IntegrationType.type === IntegrationType.JIRA);
+    const hasSlack = integrations.some(integration => IntegrationType.type === IntegrationType.SLACK);
+    const hasGmail = integrations.some(integration => IntegrationType.type === IntegrationType.GMAIL);
+    const hasNotion = integrations.some(integration => IntegrationType.type === IntegrationType.NOTION);
     const isSetupComplete = hasGithub && (hasLinear || hasJira || hasNotion);
     
     return {

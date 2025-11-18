@@ -1,8 +1,10 @@
 import { Integration } from "./abstract/Integration";
 import { db } from "../prismaClient";
 import { ConfluenceIntegration } from "../shared/types";
+import { IntegrationType } from "@prisma/client";
 
 export class ConfluenceIntegrationManager implements Integration<ConfluenceIntegration, never> {
+    integrationType: IntegrationType = IntegrationType.CONFLUENCE;
     constructor() { }
 
     async getInstancesForUser(userId: string): Promise<ConfluenceIntegration[]> {
