@@ -1,4 +1,5 @@
-import { SlackChannelType, SlackIntegration } from "../shared/types";
+import { SlackChannelType } from "../shared/types";
+import { SlackIntegration, SlackIntegrationMetadata } from "../shared/Integrations";
 import { Integration } from "./abstract/Integration";
 import { Request } from "express";
 import { slack as slackConfig } from '../config/settings';
@@ -12,7 +13,7 @@ import { IntegrationType } from "@prisma/client";
 import { AutomationInputWithConfigs } from "../types/prisma";
 import { InputEvent } from "./abstract/InputEvent";
 
-export class SlackIntegrationManager implements Integration<SlackIntegration, SlackMessageEvent> {
+export class SlackIntegrationManager implements Integration<SlackIntegration, SlackMessageEvent, typeof SlackIntegrationMetadata> {
     constructor() { }
     integrationType: IntegrationType = IntegrationType.SLACK;
 

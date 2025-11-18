@@ -5,7 +5,7 @@ import { JiraAdapter } from "../ticketing/jira";
 import { JiraWebhookPayload } from "../utility/JiraWebhookPayload";
 import { findUserById, getUserTicketManager } from "../types/user";
 import { search } from "../searchClient";
-import { JiraIntegrationManager } from "../integrations/JiraIntegration";
+import { AtlassianIntegrationManager } from "../integrations/AtlassianIntegration";
 
 export async function getJiraIntegrations(req: Request, res: Response) {
     if (!req.session?.user) {
@@ -14,7 +14,7 @@ export async function getJiraIntegrations(req: Request, res: Response) {
     }
 
     try {
-        const manager = new JiraIntegrationManager();
+        const manager = new AtlassianIntegrationManager();
         const integrations = await manager.getInstancesForUser(req.session.user.id);
         res.status(200).json(integrations);
     } catch (error) {

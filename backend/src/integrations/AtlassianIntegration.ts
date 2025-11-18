@@ -1,13 +1,13 @@
 import { Integration } from "./abstract/Integration";
 import { db } from "../prismaClient";
-import { ConfluenceIntegration } from "../shared/types";
+import { AtlassianIntegration, AtlassianIntegrationMetadata } from "../shared/Integrations";
 import { IntegrationType } from "@prisma/client";
 
-export class ConfluenceIntegrationManager implements Integration<ConfluenceIntegration, never> {
+export class AtlassianIntegrationManager implements Integration<AtlassianIntegration, never, typeof AtlassianIntegrationMetadata> {
     integrationType: IntegrationType = IntegrationType.CONFLUENCE;
     constructor() { }
 
-    async getInstancesForUser(userId: string): Promise<ConfluenceIntegration[]> {
+    async getInstancesForUser(userId: string): Promise<AtlassianIntegration[]> {
         // Confluence uses the same credentials as Jira
         const jiraKeys = await db().jira_api_keys.findMany({
             where: { user_id: userId },
@@ -19,8 +19,8 @@ export class ConfluenceIntegrationManager implements Integration<ConfluenceInteg
         });
         return jiraKeys.map(jk => ({
             id: jk.id,
-            confluence_user_email: jk.jira_user_email,
-            base_url: jk.base_url,
+            email: jk.jira_user_email,
+            baseUrl: jk.base_url,
         }));
     }
 

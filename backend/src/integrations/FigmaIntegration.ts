@@ -12,13 +12,13 @@ import {
     FigmaCommentThreadEntry,
     FigmaEventTypes,
     FigmaCommentImageUrls,
-    FigmaIntegration,
     FigmaWebhookUser,
     FigmaPositioningData,
     FigmaApiComment,
 } from "../shared/types";
+import { FigmaIntegration, FigmaIntegrationMetadata } from "../shared/Integrations";
 
-export class FigmaIntegrationManager implements Integration<FigmaIntegration, FigmaWebhookEvent> {
+export class FigmaIntegrationManager implements Integration<FigmaIntegration, FigmaWebhookEvent, typeof FigmaIntegrationMetadata> {
     constructor() { }
     integrationType: IntegrationType = IntegrationType.FIGMA;
 

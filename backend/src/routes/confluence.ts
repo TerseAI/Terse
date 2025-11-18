@@ -3,7 +3,7 @@ import { Request, Response } from "express";
 import { ConfluenceClient } from 'confluence.js';
 import type { ConfluencePage } from "../shared/types";
 import chalk from "chalk";
-import { ConfluenceIntegrationManager } from "../integrations/ConfluenceIntegration";
+import { AtlassianIntegrationManager } from "../integrations/AtlassianIntegration";
 
 // Import types from confluence.js using type-only imports
 type Content = import('confluence.js').Models.Content;
@@ -16,7 +16,7 @@ export async function getConfluenceIntegrations(req: Request, res: Response) {
     }
 
     try {
-        const manager = new ConfluenceIntegrationManager();
+        const manager = new AtlassianIntegrationManager();
         const integrations = await manager.getInstancesForUser(req.session.user.id);
         res.status(200).json(integrations);
     } catch (error) {
