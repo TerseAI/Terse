@@ -1,4 +1,4 @@
-import { IntegrationType } from "../shared/types"
+import { IntegrationType } from "../shared/Integrations"
 import {
     GmailIntegration,
     NotionIntegration,
@@ -7,22 +7,9 @@ import {
     JiraIntegration,
     GithubIntegration,
     FigmaIntegration,
-    ConfluenceIntegration
-} from "../shared/types";
-import { INTEGRATION_METADATA } from "./IntegrationUtils";
-
-/**
- * Union type for all integration instances using shared types
- */
-export type IntegrationInstance =
-    | GmailIntegration
-    | NotionIntegration
-    | SlackIntegration
-    | LinearIntegration
-    | JiraIntegration
-    | GithubIntegration
-    | FigmaIntegration
-    | ConfluenceIntegration;
+    ConfluenceIntegration,
+    INTEGRATION_METADATA,
+} from "../shared/Integrations";
 
 /**
  * Type guard functions for narrowing IntegrationInstance union

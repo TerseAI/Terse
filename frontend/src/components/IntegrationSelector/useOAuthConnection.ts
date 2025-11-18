@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { BackendProvider } from '../../services/backend';
-import { IntegrationType } from "@/shared/types"
+import { IntegrationType } from "@/shared/Integrations"
 
 export function useOAuthConnection(integrationType: IntegrationType) {
     const [isConnecting, setIsConnecting] = useState(false);

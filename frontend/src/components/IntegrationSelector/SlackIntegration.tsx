@@ -4,7 +4,7 @@ import DropdownSelect from '../ui/DropdownSelect';
 import { SlackChannelSelector } from '../SlackChannelSelector';
 import { formatIntegrationDisplay, IntegrationInstance } from '../../utility/IntegrationFormatters';
 import { getIntegrationName } from '../../utility/IntegrationUtils';
-import { IntegrationType } from "@/shared/types"
+import { IntegrationType } from "@/shared/Integrations"
 import { SlackConfig } from '../../shared/types';
 import { BaseIntegrationProps } from './types';
 

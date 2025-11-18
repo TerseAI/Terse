@@ -1,6 +1,5 @@
-import { IntegrationType } from "../shared/types"
-import { 
-    IntegrationsStatus,
+import {
+    IntegrationType,
     GmailIntegration,
     NotionIntegration,
     SlackIntegration,
@@ -8,23 +7,17 @@ import {
     JiraIntegration,
     GithubIntegration,
     FigmaIntegration,
-    ConfluenceIntegration
-} from "../shared/types";
+    ConfluenceIntegration,
+    IntegrationDetails,
+    GmailIntegrationMetadata,
+    NotionIntegrationMetadata,
+    LinearIntegrationMetadata,
+    FigmaIntegrationMetadata,
+    AtlassianIntegrationMetadata,
+    GithubIntegrationMetadata,
+    SlackIntegrationMetadata,
+} from "../shared/Integrations";
 
-/**
- * Type-safe mapping from Integration enum to IntegrationsStatus keys
- */
-export const INTEGRATION_KEY_MAP: Record<IntegrationType, keyof IntegrationsStatus['integrations']> = {
-    [IntegrationType.GMAIL]: 'gmail',
-    [IntegrationType.NOTION]: 'notion',
-   // [IntegrationType.NOTION_PAGE]: 'notion', // Poin the notion page stuff to the notion integration
-    [IntegrationType.LINEAR]: 'linear',
-    [IntegrationType.JIRA]: 'jira',
-    [IntegrationType.CONFLUENCE]: 'confluence', // Confluence shares credentials with Jira
-    [IntegrationType.SLACK]: 'slack',
-    [IntegrationType.GITHUB]: 'github',
-    [IntegrationType.FIGMA]: 'figma',
-};
 
 /**
  * Type mapping from Integration enum to the corresponding integration type
@@ -44,94 +37,6 @@ type IntegrationTypeMap = {
 /**
  * Integration metadata including display names and descriptions
  */
-export interface IntegrationMetadata {
-    type: IntegrationType;
-    name: string;
-    description: string;
-    inputDescription?: string;
-    outputDescription?: string;
-    isInput?: boolean;
-    isOutput?: boolean;
-}
-
-export const INTEGRATION_METADATA: Record<IntegrationType, IntegrationMetadata> = {
-    [IntegrationType.GMAIL]: {
-        type: IntegrationType.GMAIL,
-        name: 'Gmail',
-        description: 'Monitor incoming emails',
-        inputDescription: 'Monitor incoming emails',
-        isInput: true,
-        isOutput: false
-    },
-    [IntegrationType.NOTION]: {
-        type: IntegrationType.NOTION,
-        name: 'Notion',
-        description: 'Update living documents',
-        outputDescription: 'Update a living page',
-        isInput: false,
-        isOutput: true
-    },
-    // [IntegrationType.NOTION_PAGE]: {
-    //     type: IntegrationType.NOTION_PAGE,
-    //     name: 'Notion Page',
-    //     description: 'Update a living page',
-    //     outputDescription: 'Update a living page',
-    //     isInput: false,
-    //     isOutput: true
-    // },
-    [IntegrationType.LINEAR]: {
-        type: IntegrationType.LINEAR,
-        name: 'Linear',
-        description: 'Track ticket updates',
-        inputDescription: 'Track ticket updates',
-        outputDescription: 'Update project docs',
-        isInput: false,
-        isOutput: false
-    },
-    [IntegrationType.JIRA]: {
-        type: IntegrationType.JIRA,
-        name: 'Jira',
-        description: 'Monitor issue changes',
-        inputDescription: 'Monitor issue changes',
-        outputDescription: 'Update project docs and tickets',
-        isInput: false,
-        isOutput: false
-    },
-    [IntegrationType.CONFLUENCE]: {
-        type: IntegrationType.CONFLUENCE,
-        name: 'Confluence',
-        description: 'Update documentation',
-        inputDescription: 'Monitor page changes',
-        outputDescription: 'Update documentation pages',
-        isInput: false,
-        isOutput: true
-    },
-    [IntegrationType.SLACK]: {
-        type: IntegrationType.SLACK,
-        name: 'Slack',
-        description: 'Listen to messages',
-        inputDescription: 'Monitor channel messages',
-        outputDescription: 'Post to a channel',
-        isInput: true,
-        isOutput: false
-    },
-    [IntegrationType.GITHUB]: {
-        type: IntegrationType.GITHUB,
-        name: 'GitHub',
-        description: 'Watch commits and PRs',
-        inputDescription: 'Listen to commits, PRs, and issues',
-        isInput: true,
-        isOutput: false
-    },
-    [IntegrationType.FIGMA]: {
-        type: IntegrationType.FIGMA,
-        name: 'Figma',
-        description: 'Monitor comments on design files',
-        inputDescription: 'Monitor comments on Figma design files',
-        isInput: true,
-        isOutput: false
-    }
-};
 
 /**
  * Get the integration instances from IntegrationsStatus for a given integration type
@@ -208,7 +113,7 @@ export function clearIntegrationConfigs<T extends Record<string, any>>(
 ): Partial<T> {
     const cleared: Partial<T> = {};
     const allIntegrations = Object.values(IntegrationType);
-    
+
     for (const integration of allIntegrations) {
         const configField = getIntegrationConfigFieldName(integration) as keyof T;
         if (integration === preserveIntegration) {
@@ -221,7 +126,7 @@ export function clearIntegrationConfigs<T extends Record<string, any>>(
             cleared[configField] = undefined as any;
         }
     }
-    
+
     return cleared;
 }
 
@@ -229,7 +134,7 @@ export function clearIntegrationConfigs<T extends Record<string, any>>(
  * Checks if an input integration configuration is complete
  * Each integration type defines its own completeness requirements
  */
-export function isInputComplete(input: { integration: IntegrationType; integrationId?: string; [key: string]: any }): boolean {
+export function isInputComplete(input: { integration: IntegrationType; integrationId?: string;[key: string]: any }): boolean {
     // Base requirement: IntegrationType type and ID must be set
     if (!input.integration || !input.integrationId) {
         return false;
@@ -241,19 +146,19 @@ export function isInputComplete(input: { integration: IntegrationType; integrati
             // Figma requires both fileKey and teamId
             const figmaConfig = input.figmaConfig;
             return !!(figmaConfig?.fileKey && figmaConfig?.teamId);
-        
+
         case IntegrationType.SLACK:
             // Slack is complete if either channelId is set OR listenToUserDms is true
             const slackConfig = input.slackConfig;
             return !!(slackConfig?.channelId || slackConfig?.listenToUserDms);
-        
+
         case IntegrationType.NOTION:
-        // case IntegrationType.NOTION_PAGE:
+            // case IntegrationType.NOTION_PAGE:
             // Notion requires databaseId or pageId
             const notionConfig = input.notionConfig;
             const notionPageConfig = input.notionPageConfig;
             return !!(notionConfig?.databaseId || notionPageConfig?.pageId);
-        
+
         case IntegrationType.GMAIL:
         case IntegrationType.GITHUB:
         case IntegrationType.LINEAR:
@@ -261,7 +166,7 @@ export function isInputComplete(input: { integration: IntegrationType; integrati
         case IntegrationType.CONFLUENCE:
             // These integrations don't require additional config beyond integrationId
             return true;
-        
+
         default:
             return true;
     }
@@ -271,7 +176,7 @@ export function isInputComplete(input: { integration: IntegrationType; integrati
  * Checks if an output integration configuration is complete
  * Each integration type defines its own completeness requirements
  */
-export function isOutputComplete(output: { integration: IntegrationType; integrationId?: string; [key: string]: any }): boolean {
+export function isOutputComplete(output: { integration: IntegrationType; integrationId?: string;[key: string]: any }): boolean {
     // Base requirement: IntegrationType type and ID must be set
     if (!output.integration || !output.integrationId) {
         return false;
@@ -282,15 +187,15 @@ export function isOutputComplete(output: { integration: IntegrationType; integra
         case IntegrationType.NOTION:
             // Notion output requires databaseId
             return !!(output.notionConfig?.databaseId);
-        
+
         // case IntegrationType.NOTION_PAGE:
         //     // Notion Page output requires pageId
         //     return !!(output.notionPageConfig?.pageId);
-        
+
         case IntegrationType.SLACK:
             // Slack output requires channelId
             return !!(output.slackConfig?.channelId);
-        
+
         case IntegrationType.GMAIL:
         case IntegrationType.GITHUB:
         case IntegrationType.LINEAR:
@@ -299,7 +204,7 @@ export function isOutputComplete(output: { integration: IntegrationType; integra
         case IntegrationType.FIGMA:
             // These integrations don't require additional config beyond integrationId
             return true;
-        
+
         default:
             return true;
     }

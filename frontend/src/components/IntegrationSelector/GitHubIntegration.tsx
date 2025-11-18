@@ -1,7 +1,7 @@
 import { Plus } from 'lucide-react';
 import { Button } from '../ui/button';
 import { getIntegrationName } from '../../utility/IntegrationUtils';
-import { IntegrationType } from "@/shared/types"
+import { IntegrationType } from "@/shared/Integrations"
 import { BaseIntegrationProps } from './types';
 import { GithubResourceSelector } from '../GithubResourceSelector';
 import { GitHubConfig } from '@/shared/types';

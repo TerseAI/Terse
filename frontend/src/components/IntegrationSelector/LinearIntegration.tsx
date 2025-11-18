@@ -4,7 +4,7 @@ import DropdownSelect from '../ui/DropdownSelect';
 import { LinearConnectionForm } from '../LinearConnectionForm';
 import { formatIntegrationDisplay, IntegrationInstance } from '../../utility/IntegrationFormatters';
 import { getIntegrationName } from '../../utility/IntegrationUtils';
-import { IntegrationType } from "@/shared/types"
+import { IntegrationType } from "@/shared/Integrations"
 import { BaseIntegrationProps } from './types';
 
 interface LinearIntegrationProps extends BaseIntegrationProps {

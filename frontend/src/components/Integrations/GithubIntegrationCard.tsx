@@ -7,7 +7,7 @@ import {
     DialogHeader,
     DialogTitle,
 } from "../ui/dialog";
-import { IntegrationType } from "@/shared/types"
+import { IntegrationType } from "@/shared/Integrations"
 import { getIntegrationInstances } from "@/utility/IntegrationUtils";
 import { IntegrationsStatus, GithubIntegration } from "@/shared/types";
 import { IntegrationCardHeader } from "./helpers/IntegrationCardHeader";

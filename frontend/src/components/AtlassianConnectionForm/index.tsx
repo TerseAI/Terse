@@ -1,4 +1,4 @@
-import { IntegrationType } from "@/shared/types"
+import { IntegrationType } from "@/shared/Integrations"
 import { JiraConnectionForm } from "./JiraConnectionForm";
 import { ConfluenceConnectionForm } from "./ConfluenceConnectionForm";
 import { AtlassianConnectionFormProps } from "./types";

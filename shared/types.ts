@@ -1,4 +1,5 @@
 import { Project, Ticket } from "./TicketSystem";
+import { IntegrationType } from "./Integrations";
 
 export type User = {
   id: string;
@@ -40,21 +41,6 @@ export type ProjectActivityEvent = {
   title: string;
 };
 
-export interface IntegrationMetadata {}
-
-export interface GithubIntegration extends IntegrationMetadata {
-  id: string;
-  repositoryName: string;
-  owner?: string;
-};
-
-export interface LinearIntegration extends IntegrationMetadata {
-  id: string;
-  workspaceName?: string;
-  linearTeamId?: string;
-  linearTeamName?: string;
-};
-
 export type LinearTeam = {
   id: string;
   name: string;
@@ -73,15 +59,6 @@ export type LinearApiKeyValidationResponse = {
   error?: string;
 };
 
-export interface JiraIntegration extends IntegrationMetadata {
-  id: string;
-  baseUrl: string;
-  email: string;
-  siteName?: string;
-  projectKey?: string;
-  projectName?: string;
-};
-
 export type JiraProject = {
   id: string;
   key: string;
@@ -92,37 +69,6 @@ export type JiraCredentialsValidationResponse = {
   valid: boolean;
   projects?: JiraProject[];
   error?: string;
-};
-
-export interface SlackIntegration extends IntegrationMetadata {
-  id: string;
-  teamId?: string;
-  teamName?: string;
-};
-
-export interface GmailIntegration extends IntegrationMetadata {
-  id: string;
-  email: string; // User's Gmail address
-  historyId: string; // For tracking changes since last sync
-  watchExpiration: Date; // When the watch needs to be renewed (max 7 days)
-};
-
-export interface FigmaIntegration extends IntegrationMetadata {
-  id: string;
-  figma_user_id: string;
-  token_expiry: Date;
-};
-
-export interface ConfluenceIntegration extends IntegrationMetadata {
-  id: string;
-  confluence_user_email: string;
-  base_url: string;
-};
-
-export interface NotionIntegration extends IntegrationMetadata {
-  id: string;
-  workspaceId?: string;
-  workspaceName?: string;
 };
 
 export type NotionResourceType = 'database' | 'page';
@@ -163,18 +109,18 @@ export enum SlackChannelType {
 }
 
 
-export type IntegrationsStatus = {
-  integrations: {
-    github?: GithubIntegration[];
-    linear?: LinearIntegration[];
-    jira?: JiraIntegration[];
-    slack?: SlackIntegration[];
-    gmail?: GmailIntegration[];
-    notion?: NotionIntegration[];
-    figma?: FigmaIntegration[];
-    confluence?: ConfluenceIntegration[];
-  };
-};
+// export type IntegrationsStatus = {
+//   integrations: {
+//     github?: GithubIntegration[];
+//     linear?: LinearIntegration[];
+//     jira?: JiraIntegration[];
+//     slack?: SlackIntegration[];
+//     gmail?: GmailIntegration[];
+//     notion?: NotionIntegration[];
+//     figma?: FigmaIntegration[];
+//     confluence?: ConfluenceIntegration[];
+//   };
+// };
 
 // Typed config per integration type
 export type SlackConfig = {
@@ -485,18 +431,6 @@ export type GetGithubRepositoriesForIntegrationResponse = {
 export type OAuthInstallationDetails = {
   oauthUrl: string;
 }
-
-export enum IntegrationType {
-  GITHUB = 'github',
-  GMAIL = 'gmail',
-  LINEAR = 'linear',
-  JIRA = 'jira',
-  CONFLUENCE = 'confluence',
-  SLACK = 'slack',
-  NOTION = 'notion',
-  FIGMA = 'figma',
-  POTATO = 'potato',
-} 
 
 interface SaveAutomationRequest {
   name: string;

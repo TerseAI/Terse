@@ -1,5 +1,7 @@
 import { GetRunHistoryParams } from "./RunHistoryTypes";
 
+export const integrationsKey = (): readonly [string] => ['integrations'];
+
 export const slackChannelsKey = (integrationId: string | null | undefined): readonly [string, string] | null => {
     if (!integrationId) {
         return null;
@@ -26,6 +28,10 @@ export const confluenceResourcesKey = (integrationId: string | null | undefined)
     }
 
     return ['confluenceResources', integrationId] as const;
+};
+
+export const gmailIntegrationsKey = (): readonly [string] => {
+    return ['gmailIntegrations'] as const;
 };
 
 export const runHistoryKey = (

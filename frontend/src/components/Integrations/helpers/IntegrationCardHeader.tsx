@@ -2,7 +2,7 @@ import { IntegrationTitle } from "@/pages/Automations/components/IntegrationTitl
 import { CardHeader, CardTitle } from "../../ui/card";
 import { Badge } from "../../ui/badge";
 import { BadgeCheckIcon } from "lucide-react";
-import { IntegrationType } from "@/shared/types"
+import { IntegrationType } from "@/shared/Integrations"
 
 interface IntegrationCardHeaderProps {
     integration: IntegrationType;

@@ -1,4 +1,4 @@
-import { IntegrationType } from "@/shared/types"
+import { IntegrationType } from "@/shared/Integrations"
 import NotionIntegrationCard from "./NotionIntegrationCard";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "../ui/card";
 import { Skeleton } from "../ui/skeleton";

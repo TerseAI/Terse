@@ -1,5 +1,5 @@
 import { IntegrationInstance } from '@/utility/IntegrationFormatters';
-import { IntegrationType } from "@/shared/types"
+import { IntegrationType } from "@/shared/Integrations"
 import { NotionConfig, NotionPageConfig, SlackConfig, FigmaConfig, ConfluenceConfig, GmailConfig, GitHubConfig } from '../../shared/types';
 
 export interface IntegrationSelectorProps {
@@ -27,8 +27,6 @@ export interface IntegrationSelectorProps {
 export interface BaseIntegrationProps {
     selectedIntegrationId?: string;
     onSelect: (integrationId: string) => void;
-    integrations: IntegrationTypeInstance[];
-    isLoading: boolean;
     isConnecting: boolean;
     onConnect: () => void;
     label?: string;

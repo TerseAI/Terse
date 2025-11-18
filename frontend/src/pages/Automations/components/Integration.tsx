@@ -1,4 +1,4 @@
-import { IntegrationType } from "@/shared/types"
+import { IntegrationType } from "@/shared/Integrations"
 
 export function IconForInputType({ type }: { type: IntegrationType }) {
     switch (type) {
@@ -14,10 +14,8 @@ export function IconForInputType({ type }: { type: IntegrationType }) {
             return <NotionIcon />;
         case IntegrationType.FIGMA:
             return <FigmaIcon />;
-        case IntegrationType.JIRA:
+        case IntegrationType.ATLASSIAN:
             return <JiraIcon />;
-        case IntegrationType.CONFLUENCE:
-            return <ConfluenceIcon />;
     }
 }
 

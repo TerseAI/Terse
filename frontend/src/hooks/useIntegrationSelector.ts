@@ -1,13 +1,13 @@
 import { useEffect, useState } from 'react';
-import { IntegrationType } from "@/shared/types"
+import { IntegrationType } from "@/shared/Integrations"
 import { isInputComplete } from '../utility/IntegrationUtils';
 import { IntegrationSelectorProps } from '../components/IntegrationSelector/types';
 import { useOAuthConnection } from './useOAuthConnection';
 import { useIntegration } from './api/useIntegration';
 
-export function useIntegrationSelector(props: IntegrationTypeSelectorProps) {
+export function useIntegrationSelector(props: IntegrationSelectorProps) {
     const { integrationType, selectedIntegrationId, onSelect } = props;
-    const { instances: IntegrationTypes, isLoading, mutate } = useIntegration(integrationType);
+    // const { instances: IntegrationTypes, isLoading, mutate } = useIntegration(integrationType);
     const [showForm, setShowForm] = useState(false);
     
     const { connect: connectOAuth, isConnecting: isOAuthConnecting } = useOAuthConnection(integrationType);

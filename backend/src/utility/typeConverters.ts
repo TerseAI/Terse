@@ -1,4 +1,4 @@
-import { IntegrationType } from "../shared/types";
+import { IntegrationType } from "../shared/Integrations";
 import { IntegrationType as PrismaIntegrationType } from "@prisma/client";
 
 export const convertIntegrationTypeToPrismaIntegrationType = (integrationType: IntegrationType): PrismaIntegrationType => {
@@ -9,10 +9,8 @@ export const convertIntegrationTypeToPrismaIntegrationType = (integrationType: I
             return PrismaIntegrationType.GMAIL;
         case IntegrationType.LINEAR:
             return PrismaIntegrationType.LINEAR;
-        case IntegrationType.JIRA:
+        case IntegrationType.ATLASSIAN:
             return PrismaIntegrationType.JIRA;
-        case IntegrationType.CONFLUENCE:
-            return PrismaIntegrationType.CONFLUENCE;
         case IntegrationType.SLACK:
             return PrismaIntegrationType.SLACK;
         case IntegrationType.NOTION:

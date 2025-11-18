@@ -7,9 +7,10 @@ import { LinearIntegrationManager } from "../LinearIntegration";
 import { NotionIntegrationManager } from "../NotionIntegration";
 import { SlackIntegrationManager } from "../SlackIntegration";
 import { Integration, OAuthIntegrationInstallation } from "./Integration";
+import { IntegrationInstance, IntegrationDetails } from "../../shared/Integrations";
 
 
-type IntegrationWithInstallation = Integration<any, any> & (OAuthIntegrationInstallation);
+type IntegrationWithInstallation = Integration<IntegrationInstance, any, IntegrationDetails> & (OAuthIntegrationInstallation);
 
 
 export const IntegrationRegistry: Array<IntegrationWithInstallation> = [

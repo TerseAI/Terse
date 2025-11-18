@@ -1,5 +1,5 @@
 import { forwardRef, useState, useImperativeHandle, useRef } from "react";
-import { IntegrationType } from "@/shared/types"
+import { IntegrationType } from "../../shared/Integrations"
 import { AutomationInput, GitHubConfig } from "../../shared/types";
 import { SectionLayout } from "./components/SectionLayout";
 import { AddInputModal } from "./components/AddInputModal";
@@ -29,9 +29,9 @@ export const InputsSection = forwardRef<Map<string, HTMLDivElement>, InputsSecti
         return inputRefs.current;
     }, [inputs]);
 
-    const handleSelectPlatform = (integration: IntegrationType) => {
+    const handleSelectPlatform = (integrationType: IntegrationType) => {
         const newInputId = uuidv4(); // We need to mint a placeholder ID for the new input so that we can identify it later.
-        const newInput: AutomationInput = { id: newInputId, integration: IntegrationType as string };
+        const newInput: AutomationInput = { id: newInputId, integration: integrationType };
         const newInputs: AutomationInput[] = [...inputs, newInput];
         setInputs(newInputs);
         setShowAddModal(false);
@@ -111,7 +111,7 @@ function InputCardsLayout({
                                 setInputs={setInputs} 
                                 handleRemove={handleRemove}
                                 ref={(el) => {
-                                    if (el && isInputComplete({ ...input, integration: input.integration as Integration })) {
+                                    if (el && isInputComplete({ ...input, integration: input.integration as IntegrationType })) {
                                         inputRefs.current.set(inputId, el);
                                     } else {
                                         inputRefs.current.delete(inputId);
@@ -143,7 +143,7 @@ function InputCardsLayout({
                         setInputs={setInputs} 
                         handleRemove={handleRemove}
                         ref={(el) => {
-                            if (el && isInputComplete({ ...input, integration: input.integration as Integration })) {
+                            if (el && isInputComplete({ ...input, integration: input.integration as IntegrationType })) {
                                 inputRefs.current.set(inputId, el);
                             } else {
                                 inputRefs.current.delete(inputId);
@@ -175,7 +175,7 @@ const InputCard = forwardRef<HTMLDivElement, {
     const [showDetailsDialog, setShowDetailsDialog] = useState(false);
     
     const selectorProps = {
-        integrationType: input.integration as Integration,
+        integrationType: input.integration as IntegrationType,
         selectedIntegrationId: input.integrationId,
         onSelect: (integrationId: string) => handleSelectIntegration(integrationId, input),
         notionConfig: input.notionConfig,
@@ -209,7 +209,7 @@ const InputCard = forwardRef<HTMLDivElement, {
             <Card ref={ref}>
                 <CardHeader>
                     <div className="flex justify-between items-center">
-                        <IntegrationTitle integration={input.integration as Integration} iconSize="md" />
+                        <IntegrationTitle integration={input.integration as IntegrationType} iconSize="md" />
                         {needsConfiguration && (
                             <Badge variant="outline" className="border-yellow-500 text-yellow-600 dark:text-yellow-500">
                                 <AlertTriangle className="w-3 h-3" />

@@ -1,10 +1,9 @@
-import { IntegrationType } from "@/shared/types"
-import { useIntegrations, type IntegrationMetadata } from "@/hooks/api/useIntegrations";
+import { IntegrationType } from "@/shared/Integrations"
+import { useIntegrations } from "@/hooks/api/useIntegrations";
 import IntegrationCard, { IntegrationCardSkeleton } from "@/components/Integrations/IntegrationCard";
 import { EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { FileText } from "lucide-react";
 import { Empty } from "@/components/ui/empty";
-import { IntegrationsStatus } from "@/shared/types";
 
 function IntegrationPage() {
     const { integrations, integrationStatus, isLoading } = useIntegrations();

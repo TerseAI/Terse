@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { BackendProvider } from "@/services/backend";
-import { IntegrationType } from "@/shared/types"
+import { IntegrationType } from "@/shared/Integrations"
 
 export function useOAuthUrl(integration: IntegrationType) {
     const [oauthUrl, setOauthUrl] = useState<string | null>(null);

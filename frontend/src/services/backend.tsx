@@ -7,19 +7,22 @@ import {
     AutomationPrompt, 
     AutomationsResponse, 
     AutomationUpdate, 
-    ConfluenceIntegration, 
     ConfluenceResourcesResponse, 
     GetGithubRepositoriesForIntegrationResponse, 
     OAuthInstallationDetails, 
     JiraCredentialsValidationResponse, 
-    JiraIntegration, 
     LinearApiKeyValidationResponse, 
-    LinearIntegration, 
     NotionResourcesResponse, 
     SlackChannelsResponse, 
-    SlackIntegration,
-    IntegrationType
 } from "../shared/types";
+import { 
+    IntegrationType,
+    GmailIntegration,
+    LinearIntegration,
+    SlackIntegration,
+    AtlassianIntegration,
+    IntegrationInstance,
+ } from "../shared/Integrations";
 import { User } from "../types/User";
 import { GetRunHistoryParams, GetRunHistoryResponse } from '../shared/RunHistoryTypes';
 
@@ -83,7 +86,12 @@ interface BackendService {
     /**
      * Returns the installation details for a given integration type
      */
-    getIntegrationInstallationDetails(integrationType: IntegrationTypeType): Promise<OAuthInstallationDetails>;
+    getIntegrationInstallationDetails(integrationType: IntegrationType): Promise<OAuthInstallationDetails>;
+
+    /**
+     * Returns the active integrations for the current user
+     */
+    getActiveIntegrations(): Promise<IntegrationType[]>;
 
     /**
      * Requests a GitHub app installation URL
@@ -128,12 +136,12 @@ interface BackendService {
     /**
      * Gets the Jira API key
      */
-    getJiraApiKey(): Promise<JiraIntegration>;
+    getJiraApiKey(): Promise<AtlassianIntegration>;
 
     /**
      * Sets the Jira API key
      */
-    setJiraApiKey(email: string, baseUrl: string, apiKey: string, projectKey?: string): Promise<{ success: boolean; connection?: JiraIntegration; error?: string }>;
+    setJiraApiKey(email: string, baseUrl: string, apiKey: string, projectKey?: string): Promise<{ success: boolean; connection?: AtlassianIntegration; error?: string }>;
 
     /**
      * Validates Jira credentials and fetches available projects
@@ -148,7 +156,7 @@ interface BackendService {
     /**
      * Sets the Confluence API key
      */
-    setConfluenceApiKey(email: string, baseUrl: string, apiKey: string, projectKey?: string): Promise<{ success: boolean; connection?: ConfluenceIntegration; error?: string }>;
+    setConfluenceApiKey(email: string, baseUrl: string, apiKey: string, projectKey?: string): Promise<{ success: boolean; connection?: AtlassianIntegration; error?: string }>;
 
     /**
      * Validates Confluence credentials
@@ -164,6 +172,11 @@ interface BackendService {
      * Requests a Gmail OAuth URL
      */
     requestGmailOAuthUrl(): Promise<{ url: string }>;
+
+    /**
+     * Gets all Gmail integrations for the current user
+     */
+    getGmailIntegrations(): Promise<GmailIntegration[]>;
 
     /**
      * Deletes the Gmail integration
@@ -347,11 +360,20 @@ export const BackendProvider: BackendService = {
             });
     },
 
-    getIntegrationInstallationDetails: (integrationType: IntegrationTypeType) => {
+    getIntegrationInstallationDetails: (integrationType: IntegrationType) => {
         return axios.get(`${backendBaseUrl}/integrations/${integrationType}/installation-url`, { withCredentials: true })
             .then(response => response.data)
             .catch(error => {
                 console.error('Error getting integration installation details:', error);
+                throw error;
+            });
+    },
+
+    getActiveIntegrations: () => {
+        return axios.get(`${backendBaseUrl}/integrations/active`, { withCredentials: true })
+            .then(response => response.data)
+            .catch(error => {
+                console.error('Error getting active integrations:', error);
                 throw error;
             });
     },
@@ -501,6 +523,15 @@ export const BackendProvider: BackendService = {
             .then(response => response.data)
             .catch(error => {
                 console.error('Error requesting Gmail OAuth URL:', error);
+                throw error;
+            });
+    },
+
+    getGmailIntegrations: () => {
+        return axios.get<GmailIntegration[]>(`${backendBaseUrl}/gmail/integrations`, { withCredentials: true })
+            .then(response => response.data)
+            .catch(error => {
+                console.error('Error getting Gmail integrations:', error);
                 throw error;
             });
     },
