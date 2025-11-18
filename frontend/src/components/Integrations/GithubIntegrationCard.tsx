@@ -8,20 +8,21 @@ import {
     DialogTitle,
 } from "../ui/dialog";
 import { IntegrationType } from "@/shared/Integrations"
-import { getIntegrationInstances } from "@/utility/IntegrationUtils";
-import { IntegrationsStatus, GithubIntegration } from "@/shared/types";
+import { GithubIntegration } from "@/shared/Integrations";
 import { IntegrationCardHeader } from "./helpers/IntegrationCardHeader";
 import { IntegrationCardFooter } from "./helpers/IntegrationCardFooter";
 import { useOAuthUrl } from "./helpers/useOAuthUrl";
 import { cn } from "@/lib/utils";
-import { ExternalLink } from "lucide-react";
+import { ExternalLink, Github } from "lucide-react";
+import { useGithubIntegrations } from "@/hooks/api/useGithubIntegrations";
+import { Skeleton } from "../ui/skeleton";
 
 // Number of repositories to show on the card before showing "View all" button
 const REPOSITORY_DISPLAY_THRESHOLD = 3;
 
-function GithubIntegrationCard({ integrationStatus, className, integrationId: _integrationId }: { integrationStatus: IntegrationsStatus, integrationId: string, className?: string }) {
+function GithubIntegrationCard({ className }: { className?: string }) {
     const oauthUrl = useOAuthUrl(IntegrationType.GITHUB);
-    const githubInstances = getIntegrationInstances(integrationStatus.integrations, IntegrationType.GITHUB);
+    const { integrations, isLoading } = useGithubIntegrations();
     const [isDialogOpen, setIsDialogOpen] = useState(false);
 
     return (
@@ -29,12 +30,12 @@ function GithubIntegrationCard({ integrationStatus, className, integrationId: _i
             <Card className={cn(className)}>
                 <IntegrationCardHeader integration={IntegrationType.GITHUB} />
                 <CardContent>
-                    <GithubCardContent repositories={githubInstances} onViewAll={() => setIsDialogOpen(true)} />
+                    <GithubCardContent repositories={integrations} isLoading={isLoading} onViewAll={() => setIsDialogOpen(true)} />
                 </CardContent>
                 <IntegrationCardFooter oauthUrl={oauthUrl} />
             </Card>
             <RepositoriesDialog 
-                repositories={githubInstances} 
+                repositories={integrations} 
                 open={isDialogOpen} 
                 onOpenChange={setIsDialogOpen} 
             />
@@ -42,13 +43,24 @@ function GithubIntegrationCard({ integrationStatus, className, integrationId: _i
     )
 }
 
-function GithubCardContent({ repositories, onViewAll }: { repositories: GithubIntegration[], onViewAll: () => void }) {
+function GithubCardContent({ repositories, isLoading, onViewAll }: { repositories: GithubIntegration[], isLoading: boolean, onViewAll: () => void }) {
+    if (isLoading) {
+        return (
+            <div className="space-y-3">
+                <Skeleton className="h-12 w-full" />
+                <Skeleton className="h-12 w-full" />
+            </div>
+        );
+    }
+
     if (repositories.length === 0) {
         return (
-            <div className="flex items-center gap-4 text-sm text-muted-foreground min-w-50">
-                <span>No repositories connected</span>
+            <div className="flex flex-col items-center justify-center py-8 px-4 text-center">
+                <Github className="w-10 h-10 text-muted-foreground/50 mb-3" />
+                <p className="text-sm text-muted-foreground">No GitHub repositories connected</p>
+                <p className="text-xs text-muted-foreground/70 mt-1">Connect your GitHub repositories to get started</p>
             </div>
-        )
+        );
     }
 
     // Show first N repos on the card, with a button to view all if there are more

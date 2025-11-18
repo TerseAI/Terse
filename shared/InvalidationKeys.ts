@@ -42,6 +42,10 @@ export const figmaIntegrationsKey = (): readonly [string] => {
     return ['figmaIntegrations'] as const;
 };
 
+export const githubIntegrationsKey = (): readonly [string] => {
+    return ['githubIntegrations'] as const;
+};
+
 export const runHistoryKey = (
     automationId: string,
     params?: GetRunHistoryParams
