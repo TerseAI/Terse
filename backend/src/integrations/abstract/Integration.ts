@@ -2,6 +2,7 @@ import { FigmaIntegrationManager } from "../FigmaIntegration";
 import { GithubIntegrationManager } from "../GithubIntegration";
 import { GmailIntegrationManager } from "../GmailIntegration";
 import { SlackIntegrationManager } from "../SlackIntegration";
+import { IntegrationsStatus } from "../../shared/types";
 
 // This ensures T is a valid Prisma model type
 export interface Integration<T, WebhookEvent> {
