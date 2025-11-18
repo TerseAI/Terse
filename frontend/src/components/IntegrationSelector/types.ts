@@ -1,4 +1,3 @@
-import { IntegrationInstance } from '@/utility/IntegrationFormatters';
 import { IntegrationType } from "@/shared/Integrations"
 import { NotionConfig, NotionPageConfig, SlackConfig, FigmaConfig, ConfluenceConfig, GmailConfig, GitHubConfig } from '../../shared/types';
 

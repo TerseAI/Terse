@@ -26,7 +26,7 @@ export function AppsList({ automation }: AppsListProps) {
                         className="relative w-7 h-7 flex items-center justify-center rounded bg-card p-1"
                         title={capitalize(integration)}
                     >
-                        <IconForInputType type={integration as Integration} />
+                        <IconForInputType type={integration as IntegrationType} />
                         {count > 1 && (
                             <sup className="absolute -top-1.5 -right-1.5 text-[9px] font-mono tabular-nums leading-none z-10 text-primary-foreground rounded-full w-4 h-4 flex items-center justify-center shadow-md backdrop-blur-sm">
                                 {count}
@@ -39,7 +39,7 @@ export function AppsList({ automation }: AppsListProps) {
                 <div className="flex items-center">
                     <ChevronRight className="w-3 h-3 text-muted-foreground mx-0.5" />
                     <div className="w-7 h-7 flex items-center justify-center rounded bg-card p-1" title={capitalize(outputIntegration)}>
-                        <IconForInputType type={outputIntegration as Integration} />
+                        <IconForInputType type={outputIntegration as IntegrationType} />
                     </div>
                 </div>
             )}

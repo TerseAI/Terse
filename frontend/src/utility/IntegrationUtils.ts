@@ -1,77 +1,6 @@
 import {
-    IntegrationType,
-    GmailIntegration,
-    NotionIntegration,
-    SlackIntegration,
-    LinearIntegration,
-    GithubIntegration,
-    FigmaIntegration,
-    AtlassianIntegration,
-    IntegrationDetails,
-    GmailIntegrationMetadata,
-    NotionIntegrationMetadata,
-    LinearIntegrationMetadata,
-    FigmaIntegrationMetadata,
-    AtlassianIntegrationMetadata,
-    GithubIntegrationMetadata,
-    SlackIntegrationMetadata,
+    IntegrationType
 } from "../shared/Integrations";
-
-
-/**
- * Type mapping from Integration enum to the corresponding integration type
- */
-type IntegrationTypeMap = {
-    [IntegrationType.GMAIL]: GmailIntegration[];
-    [IntegrationType.NOTION]: NotionIntegration[];
-    //[IntegrationType.NOTION_PAGE]: NotionIntegration[];
-    [IntegrationType.LINEAR]: LinearIntegration[];
-    [IntegrationType.ATLASSIAN]: AtlassianIntegration[];
-    [IntegrationType.SLACK]: SlackIntegration[];
-    [IntegrationType.GITHUB]: GithubIntegration[];
-    [IntegrationType.FIGMA]: FigmaIntegration[];
-};
-
-/**
- * Integration metadata including display names and descriptions
- */
-
-/**
- * Get the integration instances from IntegrationsStatus for a given integration type
- * Returns a properly typed array based on the integration type
- */
-export function getIntegrationInstances<T extends IntegrationType>(
-    integrationData: IntegrationType[],
-    integrationType: T
-): IntegrationTypeMap[T] {
-    const key = INTEGRATION_KEY_MAP[integrationType];
-    return (integrationData[key] || []) as IntegrationTypeMap[T];
-}
-
-/**
- * Get description for an integration type
- */
-export function getIntegrationDescription(type: IntegrationType): string {
-    return INTEGRATION_METADATA[type].description;
-}
-
-/**
- * Get all integration metadata
- */
-export function getAllIntegrationMetadata(): IntegrationMetadata[] {
-    return Object.values(INTEGRATION_METADATA);
-}
-
-/**
- * Get all integration metadata with input-specific descriptions
- */
-export function getAllInputIntegrationMetadata() {
-    return Object.values(INTEGRATION_METADATA).filter(meta => meta.isInput === true).map(meta => ({
-        type: meta.type,
-        name: meta.name,
-        description: meta.inputDescription || meta.description
-    }));
-}
 
 /**
  * Get the config field name for an integration type
@@ -142,8 +71,7 @@ export function isInputComplete(input: { integration: IntegrationType; integrati
         case IntegrationType.GMAIL:
         case IntegrationType.GITHUB:
         case IntegrationType.LINEAR:
-        case IntegrationType.JIRA:
-        case IntegrationType.CONFLUENCE:
+        case IntegrationType.ATLASSIAN:
             // These integrations don't require additional config beyond integrationId
             return true;
 
@@ -179,8 +107,7 @@ export function isOutputComplete(output: { integration: IntegrationType; integra
         case IntegrationType.GMAIL:
         case IntegrationType.GITHUB:
         case IntegrationType.LINEAR:
-        case IntegrationType.JIRA:
-        case IntegrationType.CONFLUENCE:
+        case IntegrationType.ATLASSIAN:
         case IntegrationType.FIGMA:
             // These integrations don't require additional config beyond integrationId
             return true;

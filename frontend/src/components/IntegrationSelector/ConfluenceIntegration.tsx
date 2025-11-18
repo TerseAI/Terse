@@ -2,7 +2,6 @@ import { Plus, PlusIcon } from 'lucide-react';
 import { Button } from '../ui/button';
 import DropdownSelect from '../ui/DropdownSelect';
 import { AtlassianConnectionForm } from '../AtlassianConnectionForm';
-import { formatIntegrationDisplay } from '../../utility/IntegrationFormatters';
 import { AtlassianIntegration, INTEGRATION_METADATA, IntegrationType } from "@/shared/Integrations"
 import { ConfluenceConfig } from '../../shared/types';
 import { BaseIntegrationProps } from './types';
@@ -85,7 +84,7 @@ export function ConfluenceIntegration({
 
     // Show selector when integrations exist
     const connectionSelections = integrations.map((integration: AtlassianIntegration) => ({
-        label: formatIntegrationDisplay(integration, metadata.type),
+        label: integration.siteName || 'Unknown Site',
         value: integration.id
     }));
     const selectedOption = connectionSelections.find(option => option.value === selectedIntegrationId) || connectionSelections[0];

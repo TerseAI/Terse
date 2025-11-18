@@ -432,7 +432,7 @@ export type OAuthInstallationDetails = {
   oauthUrl: string;
 }
 
-interface SaveAutomationRequest {
+export interface SaveAutomationRequest {
   name: string;
   inputs: AutomationInput[];
   output: AutomationOutput;

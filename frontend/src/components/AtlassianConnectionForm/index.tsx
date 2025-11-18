@@ -1,5 +1,4 @@
 import { IntegrationType } from "@/shared/Integrations"
-import { JiraConnectionForm } from "./JiraConnectionForm";
 import { ConfluenceConnectionForm } from "./ConfluenceConnectionForm";
 import { AtlassianConnectionFormProps } from "./types";
 
@@ -12,16 +11,10 @@ export function AtlassianConnectionForm({
     onCancel, 
     integrationType 
 }: AtlassianConnectionFormWrapperProps) {
-    if (integrationType === IntegrationType.JIRA) {
-        return <JiraConnectionForm onSuccess={onSuccess} onCancel={onCancel} />;
-    } else if (integrationType === IntegrationType.CONFLUENCE) {
+    if (integrationType === IntegrationType.ATLASSIAN) {
         return <ConfluenceConnectionForm onSuccess={onSuccess} onCancel={onCancel} />;
     } else {
         throw new Error(`Unsupported integration type: ${integrationType}`);
     }
 }
-
-// Export child components for direct use if needed
-export { JiraConnectionForm } from "./JiraConnectionForm";
-export { ConfluenceConnectionForm } from "./ConfluenceConnectionForm";
 

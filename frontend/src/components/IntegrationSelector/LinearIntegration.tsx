@@ -2,7 +2,6 @@ import { Plus, PlusIcon } from 'lucide-react';
 import { Button } from '../ui/button';
 import DropdownSelect from '../ui/DropdownSelect';
 import { LinearConnectionForm } from '../LinearConnectionForm';
-import { formatIntegrationDisplay } from '../../utility/IntegrationFormatters';
 import { INTEGRATION_METADATA, IntegrationType, LinearIntegration as LinearIntegrationType } from "@/shared/Integrations"
 import { BaseIntegrationProps } from './types';
 import { useLinearIntegrations } from '@/hooks/api/useLinearIntegrations';
@@ -75,7 +74,7 @@ export function LinearIntegration({
 
     // Show selector when integrations exist
     const connectionSelections = integrations.map((integration: LinearIntegrationType) => ({
-        label: formatIntegrationDisplay(integration, metadata.type),
+        label: integration.linearTeamName || 'Unknown Team',
         value: integration.id
     }));
     const selectedOption = connectionSelections.find(option => option.value === selectedIntegrationId) || connectionSelections[0];
