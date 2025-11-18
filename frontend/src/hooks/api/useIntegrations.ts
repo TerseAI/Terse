@@ -1,6 +1,6 @@
 import useSWR from 'swr';
 import { BackendProvider } from '@/services/backend';
-import { INTEGRATION_METADATA, IntegrationType } from '@/shared/Integrations';
+import { IntegrationType } from '@/shared/Integrations';
 import { integrationsKey } from '@/shared/InvalidationKeys';
 
 export function useIntegrations() {
@@ -11,11 +11,11 @@ export function useIntegrations() {
         async () => {
             return BackendProvider.getActiveIntegrations();
         }
-    );  
+    );
 
-    const integrations = data ? data.map(integration => INTEGRATION_METADATA[integration]) : [];
+    const integrations = data;
     const isLoading = !data && !error;
-    
+
     return {
         integrations,
         integrationStatus: data,

@@ -21,3 +21,28 @@ export const convertIntegrationTypeToPrismaIntegrationType = (integrationType: I
             throw new Error(`Unknown integration type: ${integrationType}`);
     }
 }
+
+export const convertPrismaIntegrationTypeToIntegrationType = (prismaIntegrationType: PrismaIntegrationType): IntegrationType => {
+    switch (prismaIntegrationType) {
+        case PrismaIntegrationType.GITHUB:
+            return IntegrationType.GITHUB;
+        case PrismaIntegrationType.GMAIL:
+            return IntegrationType.GMAIL;
+        case PrismaIntegrationType.LINEAR:
+            return IntegrationType.LINEAR;
+        case PrismaIntegrationType.JIRA:
+        case PrismaIntegrationType.CONFLUENCE:
+            // Both JIRA and CONFLUENCE map to ATLASSIAN in shared enum
+            return IntegrationType.ATLASSIAN;
+        case PrismaIntegrationType.SLACK:
+            return IntegrationType.SLACK;
+        case PrismaIntegrationType.NOTION:
+        case PrismaIntegrationType.NOTION_PAGE:
+            // Both NOTION and NOTION_PAGE map to NOTION in shared enum
+            return IntegrationType.NOTION;
+        case PrismaIntegrationType.FIGMA:
+            return IntegrationType.FIGMA;
+        default:
+            throw new Error(`Unknown Prisma integration type: ${prismaIntegrationType}`);
+    }
+}
