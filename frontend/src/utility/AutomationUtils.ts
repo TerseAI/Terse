@@ -1,5 +1,4 @@
-import { IntegrationType } from "../shared/types"
-import { getIntegrationName } from "./IntegrationUtils";
+import { INTEGRATION_METADATA, IntegrationType } from "@/shared/Integrations"
 
 /**
  * Interface for automation input - only needs integration type for name generation
@@ -34,8 +33,8 @@ export function getDefaultAutomationName(
     // If both inputs and output are present, generate a descriptive name
     if (inputs.length > 0 && output !== undefined) {
         // Get all input integration names and join them with " + "
-        const inputNames = inputs.map(input => getIntegrationName(input.integration)).join(' + ');
-        const outputName = getIntegrationName(output.integration);
+        const inputNames = inputs.map(input => INTEGRATION_METADATA[input.integration].name).join(' + ');
+        const outputName = INTEGRATION_METADATA[output.integration].name;
         return `${inputNames} -> ${outputName} sync`;
     }
 

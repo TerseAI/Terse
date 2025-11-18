@@ -2,18 +2,16 @@ import { Plus, PlusIcon } from 'lucide-react';
 import { Button } from '../ui/button';
 import DropdownSelect from '../ui/DropdownSelect';
 import { AtlassianConnectionForm } from '../AtlassianConnectionForm';
-import { formatIntegrationDisplay, IntegrationInstance } from '../../utility/IntegrationFormatters';
-import { getIntegrationName } from '../../utility/IntegrationUtils';
-import { IntegrationType } from "@/shared/Integrations"
+import { formatIntegrationDisplay } from '../../utility/IntegrationFormatters';
+import { AtlassianIntegration, INTEGRATION_METADATA, IntegrationType } from "@/shared/Integrations"
 import { ConfluenceConfig } from '../../shared/types';
 import { BaseIntegrationProps } from './types';
 import { ConfluenceResourceSelector } from '../ConfluenceResourceSelector';
+import { useAtlassianIntegrations } from '@/hooks/api/useAtlassianIntegrations';
+import { useState } from 'react';
 
 interface ConfluenceIntegrationProps extends BaseIntegrationProps {
     integrationType: IntegrationType;
-    showForm: boolean;
-    onFormSuccess: () => void;
-    onFormCancel: () => void;
     confluenceConfig?: ConfluenceConfig;
     onConfluenceConfigChange?: (config: ConfluenceConfig) => void;
 }
@@ -21,19 +19,27 @@ interface ConfluenceIntegrationProps extends BaseIntegrationProps {
 export function ConfluenceIntegration({
     selectedIntegrationId,
     onSelect,
-    integrations,
-    isLoading,
-    isConnecting,
-    onConnect,
     label = 'Connection',
-    integrationType,
-    showForm,
-    onFormSuccess,
-    onFormCancel,
     confluenceConfig,
     onConfluenceConfigChange,
     variant
 }: ConfluenceIntegrationProps) {
+    const { integrations, isLoading, mutate: mutateIntegrations } = useAtlassianIntegrations();
+    const metadata = INTEGRATION_METADATA[IntegrationType.ATLASSIAN];
+    const [showForm, setShowForm] = useState(false);
+    const [isConnecting, setIsConnecting] = useState(false);
+
+    function onFormSuccess() {
+        setShowForm(false);
+        mutateIntegrations();
+        setIsConnecting(false);
+    }
+
+    function onFormCancel() {
+        setShowForm(false);
+        setIsConnecting(false);
+    }
+
     if (isLoading) {
         return (
             <div className="max-w-xs flex items-center gap-2 text-sm text-muted-foreground">
@@ -51,36 +57,36 @@ export function ConfluenceIntegration({
                     {!showForm && (
                         <div className="flex flex-col gap-3 p-4 rounded-lg border border-dashed border-input bg-card">
                             <div className="text-sm text-muted-foreground">
-                                No {getIntegrationName(integrationType)} accounts connected
+                                No {metadata.name} accounts connected
                             </div>
                             <div className="text-xs text-muted-foreground">
                                 Confluence uses the same credentials as Jira. If you have a Jira connection, it will be available here.
                             </div>
                             <button
-                                onClick={onConnect}
+                                onClick={() => setShowForm(true)}
                                 disabled={isConnecting}
                                 className="flex items-center justify-center gap-2 px-4 py-2 bg-accent text-accent-foreground rounded-lg hover:brightness-110 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                                 <PlusIcon className="w-4 h-4" />
-                                {isConnecting ? 'Connecting...' : `Connect ${getIntegrationName(integrationType)}`}
+                                {isConnecting ? 'Connecting...' : `Connect ${metadata.name}`}
                             </button>
                         </div>
                     )}
                     {showForm && (
-                        <AtlassianConnectionForm onSuccess={onFormSuccess} onCancel={onFormCancel} integrationType={integrationType} />
+                        <AtlassianConnectionForm onSuccess={onFormSuccess} onCancel={onFormCancel} integrationType={metadata.type} />
                     )}
                 </div>
             );
         } else {
             // Show form for adding another connection
-            return <AtlassianConnectionForm onSuccess={onFormSuccess} onCancel={onFormCancel} integrationType={integrationType} />;
+            return <AtlassianConnectionForm onSuccess={onFormSuccess} onCancel={onFormCancel} integrationType={metadata.type} />;
         }
     }
 
     // Show selector when integrations exist
-    const connectionSelections = integrations.map((integration: IntegrationTypeInstance) => ({
-        label: formatIntegrationDisplay(integration, integrationType),
-        value: IntegrationTypeType.id
+    const connectionSelections = integrations.map((integration: AtlassianIntegration) => ({
+        label: formatIntegrationDisplay(integration, metadata.type),
+        value: integration.id
     }));
     const selectedOption = connectionSelections.find(option => option.value === selectedIntegrationId) || connectionSelections[0];
 
@@ -108,12 +114,12 @@ export function ConfluenceIntegration({
             </div>
 
             <Button
-                onClick={onConnect}
+                onClick={() => setShowForm(true)}
                 disabled={isConnecting}
                 variant="outline"
             >
                 <Plus className="w-4 h-4" />
-                {isConnecting ? 'Connecting...' : `Connect Another ${getIntegrationName(integrationType)}`}
+                {isConnecting ? 'Connecting...' : `Connect Another ${metadata.name}`}
             </Button>
 
             {/* Confluence-specific resource selector */}
