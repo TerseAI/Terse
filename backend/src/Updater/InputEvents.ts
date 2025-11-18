@@ -5,7 +5,6 @@ import { RunHistoryTrigger } from "../shared/RunHistoryTypes";
 import { SlackEventData, SlackChannelType } from "../shared/types";
 import { FigmaCommentEventData, FigmaCommentThreadEntry } from "../shared/types";
 import { GithubAppUnifiedEventRequest } from "../routes/Github/githubApp";
-import { GmailEventData } from "../integrations/GmailIntegration";
 
 
 export abstract class InputEvent {
@@ -42,81 +41,6 @@ export abstract class InputEvent {
      * @returns Array of image URL strings. Empty array if no images are available.
      */
     abstract getImageUrls(): string[];
-}
-
-export class GmailEvent extends InputEvent {
-    readonly integrationType: IntegrationType = IntegrationType.GMAIL;
-    data: GmailEventData;
-    private integrationId: string;
-    
-    constructor(data: GmailEventData, integrationId: string) {
-        super();
-        this.data = data;
-        this.integrationId = integrationId;
-    }
-
-    formatForAutomationAgent(): string {
-        return `
-        Incoming Email Event.
-
-        Gmail Event:
-        Subject: ${this.data.subject}
-        From: ${this.data.from}
-        To: ${this.data.to}
-        Date: ${this.data.date}
-        Message ID: ${this.data.messageId}
-        Body: ${this.data.body}
-        Snippet: ${this.data.snippet}
-        `;
-    }
-
-    debugLog(): string {
-        return `Gmail Event: ${this.data.subject} message ID: ${this.data.messageId}`;
-    }
-
-    matchesAutomationInput(automationInput: AutomationInputWithConfigs): boolean {
-        // Check if integration type matches
-        if (automationInput.integration_type !== IntegrationType.GMAIL) {
-            return false;
-        }
-
-        // If the event is not in the INBOX, it doesn't match the automation input
-        if (!this.data.labelIds.includes('INBOX')) {
-            console.log(chalk.gray(`Skipping email ${this.data.messageId} because it is not in the INBOX with label ids: ${this.data.labelIds}`));
-            return false;
-        }
-
-        // If integrationId is set, it must match the automation's integration_id
-        // This ensures automations are only triggered by emails from their configured integration
-        if (this.integrationId && automationInput.integration_id !== this.integrationId) {
-            console.log(chalk.gray(`Skipping email ${this.data.messageId} - integration ID mismatch: event from ${this.integrationId}, automation expects ${automationInput.integration_id}`));
-            return false;
-        }
-
-        return true;
-    }
-
-    createTriggerMetadata(): RunHistoryTrigger {
-        // Construct Gmail message URL using the thread ID
-        // Format: https://mail.google.com/mail/u/0/#inbox/{threadId}
-        const gmailUrl = this.data.threadId 
-            ? `https://mail.google.com/mail/u/0/#inbox/${this.data.threadId}`
-            : undefined;
-        
-        return {
-            event: 'email_received',
-            integration: 'gmail',
-            source: this.data.to || 'Gmail',
-            title: this.data.subject,
-            subheader: this.data.from,
-            url: gmailUrl,
-        };
-    }
-
-    getImageUrls(): string[] {
-        // Gmail events don't include images
-        return [];
-    }
 }
 
 // MARK: - SLACK Event

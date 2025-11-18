@@ -1,6 +1,5 @@
 import { EventProcessor } from '../agent/AutomationAgent/EventProcessor';
-import { GmailEvent } from '../Updater/InputEvents';
-import { GmailEventData } from '../routes/gmail';
+import { GmailEvent, GmailEventData } from '../integrations/GmailIntegration';
 import { db } from '../prismaClient';
 import chalk from 'chalk';
 import * as readline from 'readline';
