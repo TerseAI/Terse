@@ -2,11 +2,11 @@ import { Plus } from 'lucide-react';
 import { Button } from '../ui/button';
 import DropdownSelect from '../ui/DropdownSelect';
 import { FigmaFileSelector } from '../FigmaFileSelector';
-import { formatIntegrationDisplay, IntegrationInstance } from '../../utility/IntegrationFormatters';
-import { getIntegrationName } from '../../utility/IntegrationUtils';
-import { IntegrationType } from "@/shared/Integrations"
+import { INTEGRATION_METADATA, IntegrationType, FigmaIntegration as FigmaIntegrationType } from "@/shared/Integrations"
 import { FigmaConfig } from '../../shared/types';
 import { BaseIntegrationProps } from './types';
+import { useFigmaIntegrations } from '@/hooks/api/useFigmaIntegrations';
+import { useOAuthConnection } from '@/hooks/useOAuthConnection';
 
 interface FigmaIntegrationProps extends BaseIntegrationProps {
     integrationType: IntegrationType;
@@ -17,16 +17,15 @@ interface FigmaIntegrationProps extends BaseIntegrationProps {
 export function FigmaIntegration({
     selectedIntegrationId,
     onSelect,
-    integrations,
-    isLoading,
-    isConnecting,
-    onConnect,
     label = 'Connection',
-    integrationType,
     figmaConfig,
     onFigmaConfigChange,
     variant
 }: FigmaIntegrationProps) {
+    const { integrations, isLoading } = useFigmaIntegrations();
+    const { connect: connectOAuth, isConnecting: isOAuthConnecting } = useOAuthConnection(IntegrationType.FIGMA);
+    const metadata = INTEGRATION_METADATA[IntegrationType.FIGMA];
+
     if (isLoading) {
         return (
             <div className="max-w-xs flex items-center gap-2 text-sm text-muted-foreground">
@@ -40,22 +39,22 @@ export function FigmaIntegration({
         return (
             <div className="max-w-xs flex flex-col gap-3 p-4 rounded-lg border border-dashed border-input bg-card">
                 <div className="text-sm text-muted-foreground">
-                    No {getIntegrationName(integrationType)} accounts connected
+                    No {metadata.name} accounts connected
                 </div>
                 <Button
-                    onClick={onConnect}
-                    disabled={isConnecting}
+                    onClick={connectOAuth}
+                    disabled={isOAuthConnecting}
                 >
                     <Plus className="w-4 h-4" />
-                    {isConnecting ? 'Connecting...' : `Connect ${getIntegrationName(integrationType)}`}
+                    {isOAuthConnecting ? 'Connecting...' : `Connect ${metadata.name}`}
                 </Button>
             </div>
         );
     }
 
-    const connectionSelections = integrations.map((integration: IntegrationTypeInstance) => ({
-        label: formatIntegrationDisplay(integration, integrationType),
-        value: IntegrationTypeType.id
+    const connectionSelections = integrations.map((integration: FigmaIntegrationType) => ({
+        label: integration.figma_user_id || 'Figma Account',
+        value: integration.id
     }));
     const selectedOption = connectionSelections.find(option => option.value === selectedIntegrationId) || connectionSelections[0];
 
@@ -83,17 +82,17 @@ export function FigmaIntegration({
             </div>
 
             <Button
-                onClick={onConnect}
-                disabled={isConnecting}
+                onClick={connectOAuth}
+                disabled={isOAuthConnecting}
                 variant="outline"
             >
                 <Plus className="w-4 h-4" />
-                {isConnecting ? 'Connecting...' : `Connect Another ${getIntegrationName(integrationType)}`}
+                {isOAuthConnecting ? 'Connecting...' : `Connect Another ${metadata.name}`}
             </Button>
 
             {/* Figma-specific file selector */}
             {selectedIntegrationId && onFigmaConfigChange && (
-                <div className="mt-3 pt-3 border-t border-[theme(border)]">
+                <div className="mt-3 pt-3 border-t border-border">
                     <FigmaFileSelector
                         selectedFileKey={figmaConfig?.fileKey}
                         selectedFileName={figmaConfig?.fileName}
