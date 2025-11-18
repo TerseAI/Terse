@@ -4,10 +4,9 @@ import {
     NotionIntegration,
     SlackIntegration,
     LinearIntegration,
-    JiraIntegration,
     GithubIntegration,
     FigmaIntegration,
-    ConfluenceIntegration,
+    AtlassianIntegration,
     IntegrationDetails,
     GmailIntegrationMetadata,
     NotionIntegrationMetadata,
@@ -27,8 +26,7 @@ type IntegrationTypeMap = {
     [IntegrationType.NOTION]: NotionIntegration[];
     //[IntegrationType.NOTION_PAGE]: NotionIntegration[];
     [IntegrationType.LINEAR]: LinearIntegration[];
-    [IntegrationType.JIRA]: JiraIntegration[];
-    [IntegrationType.CONFLUENCE]: ConfluenceIntegration[]; // Confluence shares credentials with Jira
+    [IntegrationType.ATLASSIAN]: AtlassianIntegration[];
     [IntegrationType.SLACK]: SlackIntegration[];
     [IntegrationType.GITHUB]: GithubIntegration[];
     [IntegrationType.FIGMA]: FigmaIntegration[];
@@ -43,7 +41,7 @@ type IntegrationTypeMap = {
  * Returns a properly typed array based on the integration type
  */
 export function getIntegrationInstances<T extends IntegrationType>(
-    integrationData: IntegrationsStatus['integrations'],
+    integrationData: IntegrationType[],
     integrationType: T
 ): IntegrationTypeMap[T] {
     const key = INTEGRATION_KEY_MAP[integrationType];
