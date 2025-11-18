@@ -1,21 +1,19 @@
 import { Card, CardContent } from "../ui/card";
 import { IntegrationType } from "@/shared/Integrations"
 import { getIntegrationInstances } from "@/utility/IntegrationUtils";
-import { IntegrationsStatus } from "@/shared/types";
 import { IntegrationCardHeader } from "./helpers/IntegrationCardHeader";
 import { cn } from "@/lib/utils";
 import { Globe, Mail } from "lucide-react";
 
-function ConfluenceIntegrationCard({ integrationStatus, integrationId, className }: { integrationStatus: IntegrationsStatus, integrationId: string, className?: string }) {
-    const confluenceInstances = getIntegrationInstances(integrationStatus.integrations, IntegrationType.CONFLUENCE);
-    const currentInstance = confluenceInstances.find(instance => instance.id === integrationId) || confluenceInstances[0];
+function AtlassianIntegrationCard({ className }: { className?: string }) {
+  
 
-    const userEmail = currentInstance.confluence_user_email;
-    const baseUrl = currentInstance.base_url;
+    const userEmail = currentInstance.email;
+    const baseUrl = currentInstance.baseUrl;
 
     return (
         <Card className={cn(className)}>
-            <IntegrationCardHeader integration={IntegrationType.CONFLUENCE} />
+            <IntegrationCardHeader integration={IntegrationType.ATLASSIAN} />
             <CardContent>
                 <ConfluenceCardContent userEmail={userEmail} baseUrl={baseUrl} />
             </CardContent>
@@ -38,5 +36,5 @@ function ConfluenceCardContent({ userEmail, baseUrl }: { userEmail: string, base
     )
 }
 
-export default ConfluenceIntegrationCard;
+export default AtlassianIntegrationCard;
 

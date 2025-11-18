@@ -6,7 +6,7 @@ import GmailIntegrationCard from "./GmailIntegrationCard";
 import SlackIntegrationCard from "./SlackIntegrationCard";
 import LinearIntegrationCard from "./LinearIntegrationCard";
 import GithubIntegrationCard from "./GithubIntegrationCard";
-import ConfluenceIntegrationCard from "./ConfluenceIntegrationCard";
+import AtlassianIntegrationCard from "./AtlassianIntegrationCard";
 import FigmaIntegrationCard from "./FigmaIntegrationCard";
 
 function IntegrationCard({ integration }: { integration: IntegrationType }) {
@@ -32,14 +32,13 @@ function IntegrationCard({ integration }: { integration: IntegrationType }) {
         //         <GithubIntegrationCard integrationStatus={integrationStatus} integrationId={integrationId} className={cardClassName} />
         //     );
         case IntegrationType.GMAIL:
-            console.log('WRFFFFF');
             return (
                 <GmailIntegrationCard className={cardClassName} />
             );
-        // case IntegrationType.CONFLUENCE:
-        //     return (
-        //         <ConfluenceIntegrationCard integrationStatus={integrationStatus} integrationId={integrationId} className={cardClassName} />
-        //     );
+        case IntegrationType.ATLASSIAN:
+            return (
+                <AtlassianIntegrationCard className={cardClassName} />
+            );
         // case IntegrationType.FIGMA:
         //     return (
         //         <FigmaIntegrationCard integrationStatus={integrationStatus} integrationId={integrationId} className={cardClassName} />
