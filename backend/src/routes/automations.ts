@@ -4,7 +4,7 @@ import { Automation, AutomationInput, AutomationOutput, AutomationPrompt } from 
 import { IntegrationType } from "@prisma/client";
 import { parsePageParams } from "../utility/pagination";
 import chalk from "chalk";
-import { AutomationInputSetup } from "../setup/AutomationInputSetup";
+import { AutomationInputSetup } from "../inputs/AutomationInputSetup";
 import { AutomationWithRelations } from "../types/prisma";
 
 // Map frontend integration string to backend IntegrationType enum

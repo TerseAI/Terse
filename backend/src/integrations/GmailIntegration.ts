@@ -14,6 +14,10 @@ import { InputEvent } from "./abstract/InputEvent";
 export class GmailIntegrationManager implements Integration<GmailIntegration, GmailWebhookEvent> {
     constructor() { }
 
+    getIntegrationType(): IntegrationType {
+        return IntegrationType.GMAIL;
+    }
+
     async getInstancesForUser(userId: string): Promise<GmailIntegration[]> {
         const prisma = db();
         const integrations = await prisma.gmail_integrations.findMany({

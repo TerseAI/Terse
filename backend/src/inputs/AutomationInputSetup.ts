@@ -1,39 +1,20 @@
 import chalk from 'chalk';
 import { IntegrationType } from '@prisma/client';
 import { db } from '../prismaClient';
-import { FigmaInputSetup } from './handlers/FigmaInputSetup';
+import { IntegrationRegistry, Integration } from '../integrations/abstract/Integration';
 
 /**
- * Interface for integration-specific setup handlers.
- * Only implement this if your integration needs setup/teardown logic.
+ * Helper function to get IntegrationManager from IntegrationType
  */
-export interface InputSetupHandler {
-    /**
-     * Sets up the integration for the given automation input.
-     * Called when an automation is created or updated.
-     * @param integrationId The ID of the integration (e.g., user_slack_integrations.id)
-     * @param automationInput The automation input with its config
-     */
-    setup(integrationId: string, automationInput: any): Promise<void>;
-
-    /**
-     * Tears down setup for the given integration and automation input.
-     * Called when an automation is deleted.
-     * @param integrationId The ID of the integration
-     * @param automationInput The automation input with its config
-     */
-    tearDown(integrationId: string, automationInput: any): Promise<void>;
+function getIntegrationManager(integrationType: IntegrationType): Integration<any, any> | null {
+    return IntegrationRegistry.find((manager: Integration<any, any>) => manager.getIntegrationType() === integrationType) || null;
 }
 
 /**
  * Handles setup/teardown for automation inputs.
- * Only integrations that need setup logic (like joining Slack channels) register handlers.
+ * Uses IntegrationRegistry to find integration managers that support setup/teardown.
  */
 export class AutomationInputSetup {
-    // Only register handlers that actually do something
-    private static handlers = new Map<IntegrationType, InputSetupHandler>([
-        [IntegrationType.FIGMA, new FigmaInputSetup()],
-    ]);
 
     /**
      * Sets up all inputs in an automation.
@@ -64,10 +45,10 @@ export class AutomationInputSetup {
             }
 
             for (const input of automation.inputs) {
-                const handler = this.handlers.get(input.integration_type);
-                if (handler) {
+                const integrationManager = getIntegrationManager(input.integration_type);
+                if (integrationManager && integrationManager.setupIntegration) {
                     try {
-                        await handler.setup(input.integration_id, input);
+                        await integrationManager.setupIntegration(input.integration_id, input);
                         console.log(
                             chalk.green(
                                 `✅ Setup completed for ${input.integration_type} input (ID: ${input.id})`
@@ -117,10 +98,10 @@ export class AutomationInputSetup {
             }
 
             for (const input of automation.inputs) {
-                const handler = this.handlers.get(input.integration_type);
-                if (handler) {
+                const integrationManager = getIntegrationManager(input.integration_type);
+                if (integrationManager && integrationManager.teardownIntegration) {
                     try {
-                        await handler.tearDown(input.integration_id, input);
+                        await integrationManager.teardownIntegration(input.integration_id, input);
                         console.log(
                             chalk.green(
                                 `✅ Teardown completed for ${input.integration_type} input`
@@ -136,7 +117,7 @@ export class AutomationInputSetup {
                         // Continue with other inputs even if one fails
                     }
                 }
-                // If no handler, skip silently
+                // If no setup/teardown method, skip silently
             }
         } catch (error) {
             console.error(chalk.red('❌ Error in tearDownAutomationInputs:'), error);

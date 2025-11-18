@@ -1,9 +1,14 @@
 import { Integration } from "./abstract/Integration";
 import { db } from "../prismaClient";
 import { ConfluenceIntegration } from "../shared/types";
+import { IntegrationType } from "@prisma/client";
 
 export class ConfluenceIntegrationManager implements Integration<ConfluenceIntegration, never> {
     constructor() { }
+
+    getIntegrationType(): IntegrationType {
+        return IntegrationType.CONFLUENCE;
+    }
 
     async getInstancesForUser(userId: string): Promise<ConfluenceIntegration[]> {
         // Confluence uses the same credentials as Jira
