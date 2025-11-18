@@ -1,24 +1,13 @@
 import { Request, Response } from "express";
 import { db } from "../prismaClient";
 import { Automation, AutomationInput, AutomationOutput, AutomationPrompt } from "../shared/types";
-import { IntegrationType } from "@prisma/client";
 import { parsePageParams } from "../utility/pagination";
 import chalk from "chalk";
 import { AutomationInputSetup } from "../inputs/AutomationInputSetup";
 import { AutomationWithRelations } from "../types/prisma";
-
-// Map frontend integration string to backend IntegrationType enum
-const integrationTypeMap: Record<string, IntegrationType> = {
-    'github': IntegrationType.GITHUB,
-    'gmail': IntegrationType.GMAIL,
-    'linear': IntegrationType.LINEAR,
-    'jira': IntegrationType.JIRA,
-    'confluence': IntegrationType.CONFLUENCE,
-    'slack': IntegrationType.SLACK,
-    'notion': IntegrationType.NOTION,
-    'notion_page': IntegrationType.NOTION_PAGE,
-    'figma': IntegrationType.FIGMA,
-};
+import { IntegrationType} from "../shared/types";
+import { IntegrationType as PrismaIntegrationType } from "@prisma/client";
+import { convertIntegrationTypeToPrismaIntegrationType } from "../utility/typeConverters";
 
 // Helper function to create config record for an automation input
 async function createInputConfig(
@@ -141,17 +130,6 @@ async function createOutputConfig(
                         automation_output_id: outputId,
                         database_id: config.notionConfig.databaseId || null,
                         database_name: config.notionConfig.databaseName || null,
-                    },
-                });
-            }
-            break;
-        case IntegrationType.NOTION_PAGE:
-            if (config.notionPageConfig) {
-                await tx.automation_notion_page_configs.create({
-                    data: {
-                        automation_output_id: outputId,
-                        page_id: config.notionPageConfig.pageId || null,
-                        page_name: config.notionPageConfig.pageName || null,
                     },
                 });
             }
@@ -417,16 +395,6 @@ async function validateUserOwnsIntegration(userId: string, integrationType: Inte
                 }
             });
             return !!notionIntegration;
-
-        case IntegrationType.NOTION_PAGE:
-            const notionPageIntegration = await prisma.notion_integrations.findFirst({
-                where: {
-                    id: integrationId,
-                    user_id: userId
-                }
-            });
-            return !!notionPageIntegration;
-
         case IntegrationType.FIGMA:
             const figmaIntegration = await prisma.figma_integrations.findFirst({
                 where: {
@@ -650,7 +618,7 @@ export async function createAutomation(req: Request, res: Response) {
 
             // Create inputs
             for (const input of inputs) {
-                const integrationType = integrationTypeMap[input.integration];
+                const integrationType = input.integration
                 if (!integrationType) {
                     throw new Error(`Unknown integration type: ${input.integration}`);
                 }
@@ -669,7 +637,7 @@ export async function createAutomation(req: Request, res: Response) {
                 const newInput = await tx.automation_inputs.create({
                     data: {
                         automation_id: newAutomation.id,
-                        integration_type: integrationType,
+                        integration_type: convertIntegrationTypeToPrismaIntegrationType(integrationType),
                         integration_id: integrationId
                     }
                 });
@@ -679,10 +647,7 @@ export async function createAutomation(req: Request, res: Response) {
             }
 
             // Create output
-            const outputIntegrationType = integrationTypeMap[output.integration];
-            if (!outputIntegrationType) {
-                throw new Error(`Unknown integration type: ${output.integration}`);
-            }
+            const outputIntegrationType = output.integration
 
             const outputIntegrationId = output.integrationId;
             if (!outputIntegrationId) {
@@ -703,7 +668,7 @@ export async function createAutomation(req: Request, res: Response) {
             const newOutput = await tx.automation_outputs.create({
                 data: {
                     automation_id: newAutomation.id,
-                    integration_type: outputIntegrationType,
+                    integration_type: convertIntegrationTypeToPrismaIntegrationType(outputIntegrationType),
                     integration_id: outputIntegrationId
                 }
             });
@@ -786,7 +751,7 @@ export async function saveAutomation(req: Request, res: Response) {
 
                 // Create new inputs
                 for (const input of inputs) {
-                    const integrationType = integrationTypeMap[input.integration];
+                    const integrationType = input.integration
                     if (!integrationType) {
                         throw new Error(`Unknown integration type: ${input.integration}`);
                     }
@@ -805,7 +770,7 @@ export async function saveAutomation(req: Request, res: Response) {
                     const newInput = await tx.automation_inputs.create({
                         data: {
                             automation_id: existingAutomation.id,
-                            integration_type: integrationType,
+                            integration_type: convertIntegrationTypeToPrismaIntegrationType(integrationType),
                             integration_id: integrationId
                         }
                     });
@@ -815,7 +780,7 @@ export async function saveAutomation(req: Request, res: Response) {
                 }
 
                 // Create new output
-                const outputIntegrationType = integrationTypeMap[output.integration];
+                const outputIntegrationType = output.integration
                 if (!outputIntegrationType) {
                     throw new Error(`Unknown integration type: ${output.integration}`);
                 }
@@ -833,7 +798,7 @@ export async function saveAutomation(req: Request, res: Response) {
                 const newOutput = await tx.automation_outputs.create({
                     data: {
                         automation_id: existingAutomation.id,
-                        integration_type: outputIntegrationType,
+                        integration_type: convertIntegrationTypeToPrismaIntegrationType(outputIntegrationType),
                         integration_id: outputIntegrationId
                     }
                 });
@@ -868,7 +833,7 @@ export async function saveAutomation(req: Request, res: Response) {
 
                 // Create inputs
                 for (const input of inputs) {
-                    const integrationType = integrationTypeMap[input.integration];
+                    const integrationType = input.integration
                     if (!integrationType) {
                         throw new Error(`Unknown integration type: ${input.integration}`);
                     }
@@ -887,7 +852,7 @@ export async function saveAutomation(req: Request, res: Response) {
                     const newInput = await tx.automation_inputs.create({
                         data: {
                             automation_id: newAutomation.id,
-                            integration_type: integrationType,
+                            integration_type: convertIntegrationTypeToPrismaIntegrationType(integrationType),
                             integration_id: integrationId
                         }
                     });
@@ -897,7 +862,7 @@ export async function saveAutomation(req: Request, res: Response) {
                 }
 
                 // Create output
-                const outputIntegrationType = integrationTypeMap[output.integration];
+                const outputIntegrationType = output.integration
                 if (!outputIntegrationType) {
                     throw new Error(`Unknown integration type: ${output.integration}`);
                 }
@@ -915,7 +880,7 @@ export async function saveAutomation(req: Request, res: Response) {
                 const newOutput = await tx.automation_outputs.create({
                     data: {
                         automation_id: newAutomation.id,
-                        integration_type: outputIntegrationType,
+                        integration_type: convertIntegrationTypeToPrismaIntegrationType(outputIntegrationType),
                         integration_id: outputIntegrationId
                     }
                 });
@@ -998,7 +963,7 @@ export async function updateAutomation(req: Request, res: Response) {
 
                 // Create new inputs
                 for (const input of inputs) {
-                    const integrationType = integrationTypeMap[input.integration];
+                    const integrationType = input.integration;
                     if (!integrationType) {
                         throw new Error(`Unknown integration type: ${input.integration}`);
                     }
@@ -1017,7 +982,7 @@ export async function updateAutomation(req: Request, res: Response) {
                     const newInput = await tx.automation_inputs.create({
                         data: {
                             automation_id: automationId,
-                            integration_type: integrationType,
+                            integration_type: convertIntegrationTypeToPrismaIntegrationType(integrationType),
                             integration_id: integrationId
                         }
                     });
@@ -1029,7 +994,7 @@ export async function updateAutomation(req: Request, res: Response) {
 
             // Update output if provided
             if (output) {
-                const outputIntegrationType = integrationTypeMap[output.integration];
+                const outputIntegrationType = output.integration;
                 if (!outputIntegrationType) {
                     throw new Error(`Unknown integration type: ${output.integration}`);
                 }
@@ -1058,7 +1023,7 @@ export async function updateAutomation(req: Request, res: Response) {
                 const newOutput = await tx.automation_outputs.create({
                     data: {
                         automation_id: automationId,
-                        integration_type: outputIntegrationType,
+                        integration_type: convertIntegrationTypeToPrismaIntegrationType(outputIntegrationType),
                         integration_id: outputIntegrationId
                     }
                 });

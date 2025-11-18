@@ -1,5 +1,5 @@
 import { forwardRef, ReactNode, useState } from "react";
-import { Integration } from "@/types/Integration";
+import { IntegrationType } from "@/shared/types"
 import { AutomationOutput } from "../../shared/types";
 import { SectionLayout } from "./components/SectionLayout";
 import { AddOutputModal } from "./components/AddOutputModal";
@@ -22,11 +22,11 @@ type OutputSectionProps = {
 export const OutputSection = forwardRef<HTMLDivElement, OutputSectionProps>(({ output, setOutput, isLoading }, ref) => {
     const [showAddModal, setShowAddModal] = useState(false);
 
-    const handleSelectPlatform = (integration: Integration) => {
+    const handleSelectPlatform = (integration: IntegrationType) => {
         // Clear all configs when switching platform (new integration type)
         const clearedConfigs = output ? clearIntegrationConfigs(output) : {};
         const newOutput: AutomationOutput = {
-            integration: integration as string,
+            integration: IntegrationType as string,
             ...clearedConfigs
         };
         setOutput(newOutput);
@@ -86,7 +86,7 @@ function OutputCard({
         onNotionConfigChange: (config: any) => {
             if (output) {
                 setOutput({
-                    integration: Integration.NOTION as string,
+                    integration: IntegrationTypeType.NOTION as string,
                     integrationId: output.integrationId,
                     notionConfig: config
                 });
@@ -96,7 +96,7 @@ function OutputCard({
         onNotionPageConfigChange: (config: any) => {
             if (output) {
                 setOutput({
-                    integration: Integration.NOTION_PAGE as string,
+                    integration: IntegrationTypeType.NOTION_PAGE as string,
                     integrationId: output.integrationId,
                     notionPageConfig: config
                 });

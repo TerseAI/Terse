@@ -1,5 +1,5 @@
 import { Card, CardContent } from "../ui/card";
-import { Integration } from "@/types/Integration";
+import { IntegrationType } from "@/shared/types"
 import { getIntegrationInstances } from "@/utility/IntegrationUtils";
 import { IntegrationsStatus } from "@/shared/types";
 import { IntegrationCardHeader } from "./helpers/IntegrationCardHeader";
@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 import { Globe, Mail } from "lucide-react";
 
 function ConfluenceIntegrationCard({ integrationStatus, integrationId, className }: { integrationStatus: IntegrationsStatus, integrationId: string, className?: string }) {
-    const confluenceInstances = getIntegrationInstances(integrationStatus.integrations, Integration.CONFLUENCE);
+    const confluenceInstances = getIntegrationInstances(integrationStatus.integrations, IntegrationType.CONFLUENCE);
     const currentInstance = confluenceInstances.find(instance => instance.id === integrationId) || confluenceInstances[0];
 
     const userEmail = currentInstance.confluence_user_email;
@@ -15,7 +15,7 @@ function ConfluenceIntegrationCard({ integrationStatus, integrationId, className
 
     return (
         <Card className={cn(className)}>
-            <IntegrationCardHeader integration={Integration.CONFLUENCE} />
+            <IntegrationCardHeader integration={IntegrationType.CONFLUENCE} />
             <CardContent>
                 <ConfluenceCardContent userEmail={userEmail} baseUrl={baseUrl} />
             </CardContent>

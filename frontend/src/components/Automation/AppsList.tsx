@@ -1,7 +1,7 @@
 import { ChevronRight } from 'lucide-react';
 import { Automation } from '../../shared/types';
 import { IconForInputType } from '../../pages/Automations/components/Integration';
-import { Integration } from "@/types/Integration";
+import { IntegrationType } from "@/shared/types"
 import { capitalize } from '../../lib/utils';
 
 interface AppsListProps {

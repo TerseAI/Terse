@@ -7,6 +7,24 @@ import { NotionResource, NotionResourcesResponse } from "../shared/types";
 import { PageObjectResponse, PartialPageObjectResponse, SearchResponse } from "@notionhq/client/build/src/api-endpoints";
 import { extractPageTitle } from "../utility/notion";
 import { notion, jwt as jwtSettings, urls } from "../config/settings";
+import { NotionIntegrationManager } from "../integrations/NotionIntegration";
+
+export async function getNotionIntegrations(req: Request, res: Response) {
+  if (!req.session?.user) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+  }
+
+  try {
+      const manager = new NotionIntegrationManager();
+      const integrations = await manager.getInstancesForUser(req.session.user.id);
+      res.status(200).json(integrations);
+  } catch (error) {
+      console.error('Error fetching Notion integrations:', error);
+      res.status(500).json({ error: 'Failed to fetch Notion integrations' });
+  }
+}
+
 
 // OAuth Functions
 

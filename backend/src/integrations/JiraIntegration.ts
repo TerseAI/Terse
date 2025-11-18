@@ -1,9 +1,11 @@
 import { Integration } from "./abstract/Integration";
 import { db } from "../prismaClient";
 import { JiraIntegration } from "../shared/types";
+import { IntegrationType } from "@prisma/client";
 
 export class JiraIntegrationManager implements Integration<JiraIntegration, never> {
     constructor() { }
+    integrationType: IntegrationType = IntegrationType.JIRA;
 
     async getInstancesForUser(userId: string): Promise<JiraIntegration[]> {
         const jiraKeys = await db().jira_api_keys.findMany({

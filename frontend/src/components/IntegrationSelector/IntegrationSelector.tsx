@@ -1,4 +1,4 @@
-import { Integration } from "@/types/Integration";
+import { IntegrationType } from "@/shared/types"
 import { BaseIntegrationProps, IntegrationSelectorProps } from './types';
 import { GmailIntegration } from './GmailIntegration';
 import { NotionIntegration } from './NotionIntegration';
@@ -10,7 +10,7 @@ import { LinearIntegration } from './LinearIntegration';
 import { ConfluenceIntegration } from './ConfluenceIntegration';
 import { useIntegrationSelector } from '../../hooks/useIntegrationSelector';
 
-export function IntegrationSelector(props: IntegrationSelectorProps & { variant?: 'card' | 'dialog' }) {
+export function IntegrationSelector(props: IntegrationTypeSelectorProps & { variant?: 'card' | 'dialog' }) {
     const { variant = 'card' } = props;
     const {
         integrations,
@@ -34,11 +34,11 @@ export function IntegrationSelector(props: IntegrationSelectorProps & { variant?
     };
 
     switch (props.integrationType) {
-        case Integration.GMAIL:
+        case IntegrationType.GMAIL:
             return <GmailIntegration {...baseProps} integrationType={props.integrationType} />;
 
-        case Integration.NOTION:
-        case Integration.NOTION_PAGE:
+        case IntegrationType.NOTION:
+        case IntegrationType.NOTION_PAGE:
             return (
                 <NotionIntegration
                     {...baseProps}
@@ -50,7 +50,7 @@ export function IntegrationSelector(props: IntegrationSelectorProps & { variant?
                 />
             );
 
-        case Integration.SLACK:
+        case IntegrationType.SLACK:
             return (
                 <SlackIntegration
                     {...baseProps}
@@ -60,7 +60,7 @@ export function IntegrationSelector(props: IntegrationSelectorProps & { variant?
                 />
             );
 
-        case Integration.GITHUB:
+        case IntegrationType.GITHUB:
             return <GitHubIntegration
                 {...baseProps}
                 integrationType={props.integrationType}
@@ -68,7 +68,7 @@ export function IntegrationSelector(props: IntegrationSelectorProps & { variant?
                 onGithubConfigChange={props.onGithubConfigChange}
             />;
 
-        case Integration.FIGMA:
+        case IntegrationType.FIGMA:
             return (
                 <FigmaIntegration
                     {...baseProps}
@@ -78,7 +78,7 @@ export function IntegrationSelector(props: IntegrationSelectorProps & { variant?
                 />
             );
 
-        case Integration.JIRA:
+        case IntegrationType.JIRA:
             return (
                 <JiraIntegration
                     {...baseProps}
@@ -89,7 +89,7 @@ export function IntegrationSelector(props: IntegrationSelectorProps & { variant?
                 />
             );
 
-        case Integration.LINEAR:
+        case IntegrationType.LINEAR:
             return (
                 <LinearIntegration
                     {...baseProps}
@@ -100,7 +100,7 @@ export function IntegrationSelector(props: IntegrationSelectorProps & { variant?
                 />
             );
 
-        case Integration.CONFLUENCE:
+        case IntegrationType.CONFLUENCE:
             return (
                 <ConfluenceIntegration
                     {...baseProps}

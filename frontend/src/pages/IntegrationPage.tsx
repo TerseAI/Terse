@@ -1,4 +1,4 @@
-import { Integration } from "@/types/Integration";
+import { IntegrationType } from "@/shared/types"
 import { useIntegrations, type IntegrationMetadata } from "@/hooks/api/useIntegrations";
 import IntegrationCard, { IntegrationCardSkeleton } from "@/components/Integrations/IntegrationCard";
 import { EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
@@ -33,7 +33,7 @@ function IntegrationPage() {
     )
 }
 
-function IntegrationContent({ integrations, integrationStatus, isLoading }: { integrations: IntegrationMetadata[], integrationStatus: IntegrationsStatus | undefined, isLoading: boolean }) {
+function IntegrationContent({ integrations, integrationStatus, isLoading }: { integrations: IntegrationTypeMetadata[], integrationStatus: IntegrationTypesStatus | undefined, isLoading: boolean }) {
     if (isLoading || !integrationStatus) {
         return (
             <>
@@ -46,7 +46,7 @@ function IntegrationContent({ integrations, integrationStatus, isLoading }: { in
     return (
         <>
             {integrations.map((integration) => (
-                <IntegrationCard key={integration.type} integration={integration.type} integrationId={integration.integrationId} integrationStatus={integrationStatus} />
+                <IntegrationCard key={IntegrationType.type} integration={IntegrationType.type} integrationId={IntegrationType.integrationId} integrationStatus={integrationStatus} />
             ))}
         </>
     )
@@ -70,11 +70,11 @@ function NoIntegrations() {
 
 
 // Function that checks if there is both Notion + Notion Page integrations. and Removes one of them
-function removeDuplicateIntegrations(integrations: IntegrationMetadata[]) {
-    const notionIntegrations = integrations.filter(integration => integration.type === Integration.NOTION);
-    const notionPageIntegrations = integrations.filter(integration => integration.type === Integration.NOTION_PAGE);
+function removeDuplicateIntegrations(integrations: IntegrationTypeMetadata[]) {
+    const notionIntegrations = integrations.filter(integration => IntegrationType.type === IntegrationType.NOTION);
+    const notionPageIntegrations = integrations.filter(integration => IntegrationType.type === IntegrationType.NOTION_PAGE);
     if (notionIntegrations.length > 0 && notionPageIntegrations.length > 0) {
-        return integrations.filter(integration => integration.type !== Integration.NOTION_PAGE);
+        return integrations.filter(integration => IntegrationType.type !== IntegrationType.NOTION_PAGE);
     }
     return integrations;
 }

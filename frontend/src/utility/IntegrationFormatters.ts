@@ -1,4 +1,4 @@
-import { Integration } from "../types/Integration";
+import { IntegrationType } from "../shared/types"
 import {
     GmailIntegration,
     NotionIntegration,
@@ -27,36 +27,36 @@ export type IntegrationInstance =
 /**
  * Type guard functions for narrowing IntegrationInstance union
  */
-function isGmailIntegration(integration: IntegrationInstance): integration is GmailIntegration {
+function isGmailIntegration(integration: IntegrationInstance): Integration is GmailIntegration {
     return 'email' in integration;
 }
 
-export function isNotionIntegration(integration: IntegrationInstance): integration is NotionIntegration {
+export function isNotionIntegration(integration: IntegrationInstance): Integration is NotionIntegration {
     return 'workspaceId' in integration || 'workspaceName' in integration || 'databaseId' in integration;
 }
 
-function isLinearIntegration(integration: IntegrationInstance): integration is LinearIntegration {
+function isLinearIntegration(integration: IntegrationInstance): Integration is LinearIntegration {
     return 'teamId' in integration || 'teamName' in integration;
 }
 
-function isJiraIntegration(integration: IntegrationInstance): integration is JiraIntegration {
+function isJiraIntegration(integration: IntegrationInstance): IntegrationType is JiraIntegration {
     return 'baseUrl' in integration || 'siteName' in integration || 'projectKey' in integration;
 }
 
-function isSlackIntegration(integration: IntegrationInstance): integration is SlackIntegration {
+function isSlackIntegration(integration: IntegrationInstance): IntegrationType is SlackIntegration {
     return 'teamId' in integration || 'teamName' in integration;
 }
 
-function isGithubIntegration(integration: IntegrationInstance): integration is GithubIntegration {
+function isGithubIntegration(integration: IntegrationInstance): IntegrationType is GithubIntegration {
     // repositoryName is unique to GithubIntegration and required
     return 'repositoryName' in integration && !('email' in integration) && !('slackTeamId' in integration) && !('apiKey' in integration);
 }
 
-function isFigmaIntegration(integration: IntegrationInstance): integration is FigmaIntegration {
+function isFigmaIntegration(integration: IntegrationInstance): IntegrationType is FigmaIntegration {
     return 'figma_user_id' in integration || 'token_expiry' in integration;
 }
 
-function isConfluenceIntegration(integration: IntegrationInstance): integration is ConfluenceIntegration {
+function isConfluenceIntegration(integration: IntegrationInstance): IntegrationType is ConfluenceIntegration {
     return 'base_url' in integration || 'email' in integration;
 }
 
@@ -66,69 +66,69 @@ function isConfluenceIntegration(integration: IntegrationInstance): integration 
  */
 export function formatIntegrationDisplay(
     integration: IntegrationInstance,
-    type: Integration
+    type: IntegrationType
 ): string {
     switch (type) {
-        case Integration.GMAIL:
+        case IntegrationType.GMAIL:
             if (isGmailIntegration(integration)) {
-                return integration.email || 'Unknown Email';
+                return Integration.email || 'Unknown Email';
             }
             return 'Unknown Email';
 
-        case Integration.NOTION:
+        case IntegrationType.NOTION:
             if (isNotionIntegration(integration)) {
-                return integration.workspaceName || integration.workspaceId || 'Unknown Workspace';
+                return IntegrationType.workspaceName || IntegrationType.workspaceId || 'Unknown Workspace';
             }
             return 'Unknown Workspace';
 
-        case Integration.LINEAR:
+        case IntegrationType.LINEAR:
             if (isLinearIntegration(integration)) {
-                if (integration.workspaceName && integration.linearTeamName) {
-                    return `${integration.workspaceName} (${integration.linearTeamName})`;
+                if (IntegrationType.workspaceName && IntegrationType.linearTeamName) {
+                    return `${IntegrationType.workspaceName} (${IntegrationType.linearTeamName})`;
                 }
-                return integration.workspaceName || 'Unknown Workspace';
+                return IntegrationType.workspaceName || 'Unknown Workspace';
             }
             return 'Unknown Workspace';
 
-        case Integration.JIRA:
+        case IntegrationType.JIRA:
             if (isJiraIntegration(integration)) {
-                if (integration.siteName && integration.projectName) {
-                    return `${integration.siteName} (${integration.projectName})`;
+                if (IntegrationType.siteName && IntegrationType.projectName) {
+                    return `${IntegrationType.siteName} (${IntegrationType.projectName})`;
                 }
-                if (integration.siteName) {
-                    return integration.siteName;
+                if (IntegrationType.siteName) {
+                    return IntegrationType.siteName;
                 }
-                return integration.baseUrl || 'Unknown Site';
+                return IntegrationType.baseUrl || 'Unknown Site';
             }
             return 'Unknown Site';
 
-        case Integration.SLACK:
+        case IntegrationType.SLACK:
             if (isSlackIntegration(integration)) {
-                return integration.teamName || 'Unknown Workspace';
+                return IntegrationType.teamName || 'Unknown Workspace';
             }
             return 'Unknown Workspace';
 
-        case Integration.GITHUB:
+        case IntegrationType.GITHUB:
             if (isGithubIntegration(integration)) {
-                if (integration.owner && integration.repositoryName) {
-                    return `Repositories connected to: ${integration.owner}`;
+                if (IntegrationType.owner && IntegrationType.repositoryName) {
+                    return `Repositories connected to: ${IntegrationType.owner}`;
                 }
-                return integration.repositoryName || 'Unknown Repository';
+                return IntegrationType.repositoryName || 'Unknown Repository';
             }
             return 'No repositories connected';
 
-        case Integration.FIGMA:
+        case IntegrationType.FIGMA:
             if (isFigmaIntegration(integration)) {
-                return integration.figma_user_id || 'Figma Account';
+                return IntegrationType.figma_user_id || 'Figma Account';
             }
             return 'Figma Account';
 
         default:
-            return integration.id;
+            return IntegrationType.id;
 
-        case Integration.CONFLUENCE:
+        case IntegrationType.CONFLUENCE:
             if (isConfluenceIntegration(integration)) {
-                return integration.base_url || integration.confluence_user_email || 'Confluence Account';
+                return IntegrationType.base_url || IntegrationType.confluence_user_email || 'Confluence Account';
             }
             return 'Confluence Account';
     }
@@ -137,6 +137,6 @@ export function formatIntegrationDisplay(
 /**
  * Get display name for an integration type
  */
-export function getIntegrationTypeName(type: Integration): string {
+export function getIntegrationTypeName(type: IntegrationType): string {
     return INTEGRATION_METADATA[type].name;
 }

@@ -40,13 +40,15 @@ export type ProjectActivityEvent = {
   title: string;
 };
 
-export type GithubIntegration = {
+export interface IntegrationMetadata {}
+
+export interface GithubIntegration extends IntegrationMetadata {
   id: string;
   repositoryName: string;
   owner?: string;
 };
 
-export type LinearIntegration = {
+export interface LinearIntegration extends IntegrationMetadata {
   id: string;
   workspaceName?: string;
   linearTeamId?: string;
@@ -71,7 +73,7 @@ export type LinearApiKeyValidationResponse = {
   error?: string;
 };
 
-export type JiraIntegration = {
+export interface JiraIntegration extends IntegrationMetadata {
   id: string;
   baseUrl: string;
   email: string;
@@ -92,32 +94,32 @@ export type JiraCredentialsValidationResponse = {
   error?: string;
 };
 
-export type SlackIntegration = {
+export interface SlackIntegration extends IntegrationMetadata {
   id: string;
   teamId?: string;
   teamName?: string;
 };
 
-export type GmailIntegration = {
+export interface GmailIntegration extends IntegrationMetadata {
   id: string;
   email: string; // User's Gmail address
   historyId: string; // For tracking changes since last sync
   watchExpiration: Date; // When the watch needs to be renewed (max 7 days)
 };
 
-export type FigmaIntegration = {
+export interface FigmaIntegration extends IntegrationMetadata {
   id: string;
   figma_user_id: string;
   token_expiry: Date;
 };
 
-export type ConfluenceIntegration = {
+export interface ConfluenceIntegration extends IntegrationMetadata {
   id: string;
   confluence_user_email: string;
   base_url: string;
 };
 
-export type NotionIntegration = {
+export interface NotionIntegration extends IntegrationMetadata {
   id: string;
   workspaceId?: string;
   workspaceName?: string;
@@ -400,7 +402,7 @@ export interface FigmaCommentEventData {
 
 export type AutomationInput = {
   id: string;
-  integration: string;
+  integration: IntegrationType;
   integrationId?: string;
   // Typed config based on integration type
   slackConfig?: SlackConfig;
@@ -414,7 +416,7 @@ export type AutomationInput = {
 };
 
 export type AutomationOutput = {
-  integration: string;
+  integration: IntegrationType;
   integrationId?: string;
   // Typed config based on integration type
   slackConfig?: SlackConfig;
@@ -478,4 +480,27 @@ export type GetGithubRepositoriesForIntegrationRequest = {
 
 export type GetGithubRepositoriesForIntegrationResponse = {
   repositories: Repository[];
+}
+
+export type OAuthInstallationDetails = {
+  oauthUrl: string;
+}
+
+export enum IntegrationType {
+  GITHUB = 'github',
+  GMAIL = 'gmail',
+  LINEAR = 'linear',
+  JIRA = 'jira',
+  CONFLUENCE = 'confluence',
+  SLACK = 'slack',
+  NOTION = 'notion',
+  FIGMA = 'figma'
+} 
+
+interface SaveAutomationRequest {
+  name: string;
+  inputs: AutomationInput[];
+  output: AutomationOutput;
+  prompt: AutomationPrompt;
+  isActive?: boolean;
 }

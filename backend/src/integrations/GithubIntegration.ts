@@ -13,6 +13,7 @@ import { RunHistoryTrigger } from "../shared/RunHistoryTypes";
 
 export class GithubIntegrationManager implements Integration<GithubIntegration, GithubAppUnifiedEventRequest> {
     constructor() { }
+    integrationType: IntegrationType = IntegrationType.GITHUB;
 
     async getInstancesForUser(userId: string): Promise<GithubIntegration[]> {
         const userGithubRepos = await db().user_github_repositories.findMany({

@@ -11,6 +11,22 @@ import { SlackIntegrationManager, isValidSlackSig, SlackMessageEvent } from '../
 
 // MARK: - Route Handlers
 
+export async function getSlackIntegrations(req: Request, res: Response) {
+  if (!req.session?.user) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+  }
+
+  try {
+      const manager = new SlackIntegrationManager();
+      const integrations = await manager.getInstancesForUser(req.session.user.id);
+      res.status(200).json(integrations);
+  } catch (error) {
+      console.error('Error fetching Slack integrations:', error);
+      res.status(500).json({ error: 'Failed to fetch Slack integrations' });
+  }
+}
+
 /**
  * Generate Slack OAuth URL for user authorization
  */

@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import { BackendProvider } from "@/services/backend";
-import { Integration } from "@/types/Integration";
+import { IntegrationType } from "@/shared/types"
 
-export function useOAuthUrl(integration: Integration) {
+export function useOAuthUrl(integration: IntegrationType) {
     const [oauthUrl, setOauthUrl] = useState<string | null>(null);
 
     useEffect(() => {
@@ -11,16 +11,16 @@ export function useOAuthUrl(integration: Integration) {
                 let response: { url: string };
 
                 switch (integration) {
-                    case Integration.GMAIL:
+                    case IntegrationType.GMAIL:
                         response = await BackendProvider.requestGmailOAuthUrl();
                         break;
-                    case Integration.NOTION:
+                    case IntegrationType.NOTION:
                         response = await BackendProvider.requestNotionOAuthUrl();
                         break;
-                    case Integration.SLACK:
+                    case IntegrationType.SLACK:
                         response = await BackendProvider.requestSlackOAuthUrl();
                         break;
-                    case Integration.GITHUB:
+                    case IntegrationType.GITHUB:
                         const githubResponse = await BackendProvider.requestGitHubAppInstallationUrl();
                         response = { url: githubResponse.installationUrl };
                         break;

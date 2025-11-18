@@ -5,6 +5,24 @@ import { JiraAdapter } from "../ticketing/jira";
 import { JiraWebhookPayload } from "../utility/JiraWebhookPayload";
 import { findUserById, getUserTicketManager } from "../types/user";
 import { search } from "../searchClient";
+import { JiraIntegrationManager } from "../integrations/JiraIntegration";
+
+export async function getJiraIntegrations(req: Request, res: Response) {
+    if (!req.session?.user) {
+        res.status(401).json({ error: 'Unauthorized' });
+        return;
+    }
+
+    try {
+        const manager = new JiraIntegrationManager();
+        const integrations = await manager.getInstancesForUser(req.session.user.id);
+        res.status(200).json(integrations);
+    } catch (error) {
+        console.error('Error fetching Jira integrations:', error);
+        res.status(500).json({ error: 'Failed to fetch Jira integrations' });
+    }
+}
+
 
 export const setJiraCredentials = async (req: Request, res: Response) => {
     const user = req.session?.user;

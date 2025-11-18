@@ -9,7 +9,7 @@ import { toast } from "sonner";
 import { getDefaultAutomationName } from "@/utility/AutomationUtils";
 import { useAutomationCount } from "@/hooks/api/useAutomationCount";
 import { isInputComplete, isOutputComplete } from "@/utility/IntegrationUtils";
-import { Integration } from "@/types/Integration";
+import { IntegrationType } from "@/shared/types"
 import { Conn, SVGFlowArrows } from "../components/FlowArrow";
 import { PromptSection } from "../PromptSection";
 import { useAutomationMutations } from "@/hooks/api/useAutomations";

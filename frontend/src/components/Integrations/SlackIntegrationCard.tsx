@@ -1,6 +1,6 @@
 import { Hash } from "lucide-react";
 import { Card, CardContent } from "../ui/card";
-import { Integration } from "@/types/Integration";
+import { IntegrationType } from "@/shared/types"
 import { formatIntegrationDisplay } from "@/utility/IntegrationFormatters";
 import { getIntegrationInstances } from "@/utility/IntegrationUtils";
 import { IntegrationsStatus, SlackChannel } from "@/shared/types";
@@ -12,16 +12,16 @@ import { useSlackChannels } from "@/hooks/api/useSlackChannels";
 import { cn } from "@/lib/utils";
 
 function SlackIntegrationCard({ integrationStatus, integrationId, className }: { integrationStatus: IntegrationsStatus, integrationId: string, className?: string }) {
-    const oauthUrl = useOAuthUrl(Integration.SLACK);
+    const oauthUrl = useOAuthUrl(IntegrationType.SLACK);
     const { channels, isLoading } = useSlackChannels(integrationId);
 
-    const slackInstances = getIntegrationInstances(integrationStatus.integrations, Integration.SLACK);
+    const slackInstances = getIntegrationInstances(integrationStatus.integrations, IntegrationType.SLACK);
     const currentInstance = slackInstances.find(instance => instance.id === integrationId) || slackInstances[0];
-    const teamName = formatIntegrationDisplay(currentInstance, Integration.SLACK);
+    const teamName = formatIntegrationDisplay(currentInstance, IntegrationType.SLACK);
 
     return (
         <Card className={cn(className)}>
-            <IntegrationCardHeader integration={Integration.SLACK} />
+            <IntegrationCardHeader integration={IntegrationType.SLACK} />
             <CardContent>
                 <SlackCardContent 
                     teamName={teamName} 

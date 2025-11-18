@@ -11,6 +11,22 @@ import { getOAuth2Client, GmailIntegrationManager, GmailWebhookEvent } from "../
 const SCOPES = ["https://www.googleapis.com/auth/gmail.readonly"];
 
 
+export async function getGmailIntegrations(req: Request, res: Response) {
+  if (!req.session?.user) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+  }
+
+  try {
+      const manager = new GmailIntegrationManager();
+      const integrations = await manager.getInstancesForUser(req.session.user.id);
+      res.status(200).json(integrations);
+  } catch (error) {
+      console.error('Error fetching Gmail integrations:', error);
+      res.status(500).json({ error: 'Failed to fetch Gmail integrations' });
+  }
+}
+
 /**
  * Generate Gmail OAuth URL
  */

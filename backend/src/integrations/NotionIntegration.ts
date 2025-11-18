@@ -1,9 +1,11 @@
 import { Integration } from "./abstract/Integration";
 import { db } from "../prismaClient";
 import { NotionIntegration } from "../shared/types";
+import { IntegrationType } from "@prisma/client";
 
 export class NotionIntegrationManager implements Integration<NotionIntegration, never> {
     constructor() { }
+    integrationType: IntegrationType = IntegrationType.NOTION;
 
     async getInstancesForUser(userId: string): Promise<NotionIntegration[]> {
         const notionIntegrations = await db().notion_integrations.findMany({

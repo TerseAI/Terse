@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { BackendProvider } from '../../services/backend';
-import { Integration } from "@/types/Integration";
+import { IntegrationType } from "@/shared/types"
 
-export function useOAuthConnection(integrationType: Integration) {
+export function useOAuthConnection(integrationType: IntegrationType) {
     const [isConnecting, setIsConnecting] = useState(false);
 
     const connect = async () => {
@@ -11,23 +11,23 @@ export function useOAuthConnection(integrationType: Integration) {
             let oauthUrl = '';
 
             switch (integrationType) {
-                case Integration.GMAIL:
+                case IntegrationType.GMAIL:
                     const gmailResponse = await BackendProvider.requestGmailOAuthUrl();
                     oauthUrl = gmailResponse.url;
                     break;
-                case Integration.NOTION:
+                case IntegrationType.NOTION:
                     const notionResponse = await BackendProvider.requestNotionOAuthUrl();
                     oauthUrl = notionResponse.url;
                     break;
-                case Integration.SLACK:
+                case IntegrationType.SLACK:
                     const slackResponse = await BackendProvider.requestSlackOAuthUrl();
                     oauthUrl = slackResponse.url;
                     break;
-                case Integration.GITHUB:
+                case IntegrationType.GITHUB:
                     const githubResponse = await BackendProvider.requestGitHubAppInstallationUrl();
                     oauthUrl = githubResponse.installationUrl;
                     break;
-                case Integration.FIGMA:
+                case IntegrationType.FIGMA:
                     const figmaResponse = await BackendProvider.requestFigmaOAuthUrl();
                     oauthUrl = figmaResponse.url;
                     break;

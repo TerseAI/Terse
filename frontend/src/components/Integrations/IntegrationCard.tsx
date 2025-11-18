@@ -1,4 +1,4 @@
-import { Integration } from "@/types/Integration";
+import { IntegrationType } from "@/shared/types"
 import NotionIntegrationCard from "./NotionIntegrationCard";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "../ui/card";
 import { Skeleton } from "../ui/skeleton";
@@ -8,45 +8,43 @@ import LinearIntegrationCard from "./LinearIntegrationCard";
 import GithubIntegrationCard from "./GithubIntegrationCard";
 import ConfluenceIntegrationCard from "./ConfluenceIntegrationCard";
 import FigmaIntegrationCard from "./FigmaIntegrationCard";
-import { IntegrationsStatus } from "@/shared/types";
 
-function IntegrationCard({ integration, integrationId, integrationStatus }: { integration: Integration, integrationId: string, integrationStatus: IntegrationsStatus }) {
+function IntegrationCard({ integration, integrationId }: { integration: IntegrationType, integrationId: string }) {
     const cardClassName = "min-w-sm";
     
-    if (integration === Integration.NOTION_PAGE || integration === Integration.NOTION) {
-        return (
-            <NotionIntegrationCard integrationId={integrationId} className={cardClassName} />
-        )
-    } else if (integration === Integration.SLACK) {
-        return (
-            <SlackIntegrationCard integrationStatus={integrationStatus} integrationId={integrationId} className={cardClassName} />
-        )
-    } else if (integration === Integration.LINEAR) {
-        return (
-            <LinearIntegrationCard integrationStatus={integrationStatus} integrationId={integrationId} className={cardClassName} />
-        )
-    } else if (integration === Integration.GITHUB) {
-        return (
-            <GithubIntegrationCard integrationStatus={integrationStatus} integrationId={integrationId} className={cardClassName} />
-        )
-    } else if (integration === Integration.GMAIL) {
-        return (
-            <GmailIntegrationCard integrationStatus={integrationStatus} className={cardClassName} />
-        )
-    } else if (integration === Integration.CONFLUENCE) {
-        return (
-            <ConfluenceIntegrationCard integrationStatus={integrationStatus} integrationId={integrationId} className={cardClassName} />
-        )
-    } else if (integration === Integration.FIGMA) {
-        return (
-            <FigmaIntegrationCard integrationStatus={integrationStatus} integrationId={integrationId} className={cardClassName} />
-        )
+    switch (integration) {
+        // case IntegrationType.NOTION:
+        //     return (
+        //         <NotionIntegrationCard integrationId={integrationId} className={cardClassName} />
+        //     );
+        // case IntegrationType.SLACK:
+        //     return (
+        //         <SlackIntegrationCard integrationStatus={integrationStatus} integrationId={integrationId} className={cardClassName} />
+        //     );
+        // case IntegrationType.LINEAR:
+        //     return (
+        //         <LinearIntegrationCard integrationStatus={integrationStatus} integrationId={integrationId} className={cardClassName} />
+        //     );
+        // case IntegrationType.GITHUB:
+        //     return (
+        //         <GithubIntegrationCard integrationStatus={integrationStatus} integrationId={integrationId} className={cardClassName} />
+        //     );
+        case IntegrationType.GMAIL:
+            return (
+                <GmailIntegrationCard className={cardClassName} />
+            );
+        // case IntegrationType.CONFLUENCE:
+        //     return (
+        //         <ConfluenceIntegrationCard integrationStatus={integrationStatus} integrationId={integrationId} className={cardClassName} />
+        //     );
+        // case IntegrationType.FIGMA:
+        //     return (
+        //         <FigmaIntegrationCard integrationStatus={integrationStatus} integrationId={integrationId} className={cardClassName} />
+        //     );
+        // default:
+            // Exhaustive check: TypeScript will error if any IntegrationType case is missing
+            // throw integration satisfies never;
     }
-    console.error(`Unknown integration: ${integration}`);
-    return (
-        <>
-        </>
-    )
 }
 
 export function IntegrationCardSkeleton() {

@@ -16,6 +16,23 @@ import { emitCacheInvalidationWithKey } from "../realtimeSocket";
 
 // MARK: - Route Handlers
 
+export async function getGithubIntegrations(req: Request, res: Response) {
+    if (!req.session?.user) {
+        res.status(401).json({ error: 'Unauthorized' });
+        return;
+    }
+
+    try {
+        const manager = new GithubIntegrationManager();
+        const integrations = await manager.getInstancesForUser(req.session.user.id);
+        res.status(200).json(integrations);
+    } catch (error) {
+        console.error('Error fetching GitHub integrations:', error);
+        res.status(500).json({ error: 'Failed to fetch GitHub integrations' });
+    }
+}
+
+
 /**
  * Get GitHub App installation URL
  */

@@ -4,12 +4,12 @@ import DropdownSelect from '../ui/DropdownSelect';
 import { SlackChannelSelector } from '../SlackChannelSelector';
 import { formatIntegrationDisplay, IntegrationInstance } from '../../utility/IntegrationFormatters';
 import { getIntegrationName } from '../../utility/IntegrationUtils';
-import { Integration } from "@/types/Integration";
+import { IntegrationType } from "@/shared/types"
 import { SlackConfig } from '../../shared/types';
 import { BaseIntegrationProps } from './types';
 
 interface SlackIntegrationProps extends BaseIntegrationProps {
-    integrationType: Integration;
+    integrationType: IntegrationType;
     slackConfig?: SlackConfig;
     onSlackConfigChange?: (config: SlackConfig) => void;
 }
@@ -53,9 +53,9 @@ export function SlackIntegration({
         );
     }
 
-    const connectionSelections = integrations.map((integration: IntegrationInstance) => ({
+    const connectionSelections = integrations.map((integration: IntegrationTypeInstance) => ({
         label: formatIntegrationDisplay(integration, integrationType),
-        value: integration.id
+        value: IntegrationTypeType.id
     }));
     const selectedOption = connectionSelections.find(option => option.value === selectedIntegrationId) || connectionSelections[0];
 

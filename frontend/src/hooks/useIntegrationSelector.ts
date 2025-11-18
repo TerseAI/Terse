@@ -1,13 +1,13 @@
 import { useEffect, useState } from 'react';
-import { Integration } from "@/types/Integration";
+import { IntegrationType } from "@/shared/types"
 import { isInputComplete } from '../utility/IntegrationUtils';
 import { IntegrationSelectorProps } from '../components/IntegrationSelector/types';
 import { useOAuthConnection } from './useOAuthConnection';
 import { useIntegration } from './api/useIntegration';
 
-export function useIntegrationSelector(props: IntegrationSelectorProps) {
+export function useIntegrationSelector(props: IntegrationTypeSelectorProps) {
     const { integrationType, selectedIntegrationId, onSelect } = props;
-    const { instances: integrations, isLoading, mutate } = useIntegration(integrationType);
+    const { instances: IntegrationTypes, isLoading, mutate } = useIntegration(integrationType);
     const [showForm, setShowForm] = useState(false);
     
     const { connect: connectOAuth, isConnecting: isOAuthConnecting } = useOAuthConnection(integrationType);
@@ -22,7 +22,7 @@ export function useIntegrationSelector(props: IntegrationSelectorProps) {
 
     const handleConnectNew = async () => {
         // For Jira, Linear, and Confluence, show form instead of OAuth
-        if (integrationType === Integration.JIRA || integrationType === Integration.LINEAR || integrationType === Integration.CONFLUENCE) {
+        if (integrationType === IntegrationType.JIRA || integrationType === IntegrationType.LINEAR || integrationType === IntegrationType.CONFLUENCE) {
             setShowForm(true);
             return;
         }

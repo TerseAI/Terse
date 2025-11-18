@@ -5,7 +5,7 @@ interface IntegrationCardFooterProps {
     oauthUrl: string | null;
 }
 
-export function IntegrationCardFooter({ oauthUrl }: IntegrationCardFooterProps) {
+export function IntegrationCardFooter({ oauthUrl }: IntegrationTypeCardFooterProps) {
     return (
         <CardFooter>
             <Button 

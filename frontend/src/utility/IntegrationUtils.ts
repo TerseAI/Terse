@@ -1,4 +1,4 @@
-import { Integration } from "../types/Integration";
+import { IntegrationType } from "../shared/types"
 import { 
     IntegrationsStatus,
     GmailIntegration,
@@ -14,38 +14,38 @@ import {
 /**
  * Type-safe mapping from Integration enum to IntegrationsStatus keys
  */
-export const INTEGRATION_KEY_MAP: Record<Integration, keyof IntegrationsStatus['integrations']> = {
-    [Integration.GMAIL]: 'gmail',
-    [Integration.NOTION]: 'notion',
-    [Integration.NOTION_PAGE]: 'notion', // Poin the notion page stuff to the notion integration
-    [Integration.LINEAR]: 'linear',
-    [Integration.JIRA]: 'jira',
-    [Integration.CONFLUENCE]: 'confluence', // Confluence shares credentials with Jira
-    [Integration.SLACK]: 'slack',
-    [Integration.GITHUB]: 'github',
-    [Integration.FIGMA]: 'figma',
+export const INTEGRATION_KEY_MAP: Record<IntegrationType, keyof IntegrationsStatus['integrations']> = {
+    [IntegrationType.GMAIL]: 'gmail',
+    [IntegrationType.NOTION]: 'notion',
+   // [IntegrationType.NOTION_PAGE]: 'notion', // Poin the notion page stuff to the notion integration
+    [IntegrationType.LINEAR]: 'linear',
+    [IntegrationType.JIRA]: 'jira',
+    [IntegrationType.CONFLUENCE]: 'confluence', // Confluence shares credentials with Jira
+    [IntegrationType.SLACK]: 'slack',
+    [IntegrationType.GITHUB]: 'github',
+    [IntegrationType.FIGMA]: 'figma',
 };
 
 /**
  * Type mapping from Integration enum to the corresponding integration type
  */
 type IntegrationTypeMap = {
-    [Integration.GMAIL]: GmailIntegration[];
-    [Integration.NOTION]: NotionIntegration[];
-    [Integration.NOTION_PAGE]: NotionIntegration[];
-    [Integration.LINEAR]: LinearIntegration[];
-    [Integration.JIRA]: JiraIntegration[];
-    [Integration.CONFLUENCE]: ConfluenceIntegration[]; // Confluence shares credentials with Jira
-    [Integration.SLACK]: SlackIntegration[];
-    [Integration.GITHUB]: GithubIntegration[];
-    [Integration.FIGMA]: FigmaIntegration[];
+    [IntegrationType.GMAIL]: GmailIntegration[];
+    [IntegrationType.NOTION]: NotionIntegration[];
+    //[IntegrationType.NOTION_PAGE]: NotionIntegration[];
+    [IntegrationType.LINEAR]: LinearIntegration[];
+    [IntegrationType.JIRA]: JiraIntegration[];
+    [IntegrationType.CONFLUENCE]: ConfluenceIntegration[]; // Confluence shares credentials with Jira
+    [IntegrationType.SLACK]: SlackIntegration[];
+    [IntegrationType.GITHUB]: GithubIntegration[];
+    [IntegrationType.FIGMA]: FigmaIntegration[];
 };
 
 /**
  * Integration metadata including display names and descriptions
  */
 export interface IntegrationMetadata {
-    type: Integration;
+    type: IntegrationType;
     name: string;
     description: string;
     inputDescription?: string;
@@ -54,33 +54,33 @@ export interface IntegrationMetadata {
     isOutput?: boolean;
 }
 
-export const INTEGRATION_METADATA: Record<Integration, IntegrationMetadata> = {
-    [Integration.GMAIL]: {
-        type: Integration.GMAIL,
+export const INTEGRATION_METADATA: Record<IntegrationType, IntegrationMetadata> = {
+    [IntegrationType.GMAIL]: {
+        type: IntegrationType.GMAIL,
         name: 'Gmail',
         description: 'Monitor incoming emails',
         inputDescription: 'Monitor incoming emails',
         isInput: true,
         isOutput: false
     },
-    [Integration.NOTION]: {
-        type: Integration.NOTION,
+    [IntegrationType.NOTION]: {
+        type: IntegrationType.NOTION,
         name: 'Notion',
         description: 'Update living documents',
         outputDescription: 'Update a living page',
         isInput: false,
         isOutput: true
     },
-    [Integration.NOTION_PAGE]: {
-        type: Integration.NOTION_PAGE,
-        name: 'Notion Page',
-        description: 'Update a living page',
-        outputDescription: 'Update a living page',
-        isInput: false,
-        isOutput: true
-    },
-    [Integration.LINEAR]: {
-        type: Integration.LINEAR,
+    // [IntegrationType.NOTION_PAGE]: {
+    //     type: IntegrationType.NOTION_PAGE,
+    //     name: 'Notion Page',
+    //     description: 'Update a living page',
+    //     outputDescription: 'Update a living page',
+    //     isInput: false,
+    //     isOutput: true
+    // },
+    [IntegrationType.LINEAR]: {
+        type: IntegrationType.LINEAR,
         name: 'Linear',
         description: 'Track ticket updates',
         inputDescription: 'Track ticket updates',
@@ -88,8 +88,8 @@ export const INTEGRATION_METADATA: Record<Integration, IntegrationMetadata> = {
         isInput: false,
         isOutput: false
     },
-    [Integration.JIRA]: {
-        type: Integration.JIRA,
+    [IntegrationType.JIRA]: {
+        type: IntegrationType.JIRA,
         name: 'Jira',
         description: 'Monitor issue changes',
         inputDescription: 'Monitor issue changes',
@@ -97,8 +97,8 @@ export const INTEGRATION_METADATA: Record<Integration, IntegrationMetadata> = {
         isInput: false,
         isOutput: false
     },
-    [Integration.CONFLUENCE]: {
-        type: Integration.CONFLUENCE,
+    [IntegrationType.CONFLUENCE]: {
+        type: IntegrationType.CONFLUENCE,
         name: 'Confluence',
         description: 'Update documentation',
         inputDescription: 'Monitor page changes',
@@ -106,8 +106,8 @@ export const INTEGRATION_METADATA: Record<Integration, IntegrationMetadata> = {
         isInput: false,
         isOutput: true
     },
-    [Integration.SLACK]: {
-        type: Integration.SLACK,
+    [IntegrationType.SLACK]: {
+        type: IntegrationType.SLACK,
         name: 'Slack',
         description: 'Listen to messages',
         inputDescription: 'Monitor channel messages',
@@ -115,16 +115,16 @@ export const INTEGRATION_METADATA: Record<Integration, IntegrationMetadata> = {
         isInput: true,
         isOutput: false
     },
-    [Integration.GITHUB]: {
-        type: Integration.GITHUB,
+    [IntegrationType.GITHUB]: {
+        type: IntegrationType.GITHUB,
         name: 'GitHub',
         description: 'Watch commits and PRs',
         inputDescription: 'Listen to commits, PRs, and issues',
         isInput: true,
         isOutput: false
     },
-    [Integration.FIGMA]: {
-        type: Integration.FIGMA,
+    [IntegrationType.FIGMA]: {
+        type: IntegrationType.FIGMA,
         name: 'Figma',
         description: 'Monitor comments on design files',
         inputDescription: 'Monitor comments on Figma design files',
@@ -137,7 +137,7 @@ export const INTEGRATION_METADATA: Record<Integration, IntegrationMetadata> = {
  * Get the integration instances from IntegrationsStatus for a given integration type
  * Returns a properly typed array based on the integration type
  */
-export function getIntegrationInstances<T extends Integration>(
+export function getIntegrationInstances<T extends IntegrationType>(
     integrationData: IntegrationsStatus['integrations'],
     integrationType: T
 ): IntegrationTypeMap[T] {
@@ -148,14 +148,14 @@ export function getIntegrationInstances<T extends Integration>(
 /**
  * Get display name for an integration type
  */
-export function getIntegrationName(type: Integration): string {
+export function getIntegrationName(type: IntegrationType): string {
     return INTEGRATION_METADATA[type].name;
 }
 
 /**
  * Get description for an integration type
  */
-export function getIntegrationDescription(type: Integration): string {
+export function getIntegrationDescription(type: IntegrationType): string {
     return INTEGRATION_METADATA[type].description;
 }
 
@@ -190,9 +190,9 @@ export function getAllOutputIntegrationMetadata() {
 
 /**
  * Get the config field name for an integration type
- * e.g., Integration.NOTION -> 'notionConfig'
+ * e.g., IntegrationType.NOTION -> 'notionConfig'
  */
-export function getIntegrationConfigFieldName(integration: Integration): string {
+export function getIntegrationConfigFieldName(integration: IntegrationType): string {
     return `${integration}Config`;
 }
 
@@ -204,10 +204,10 @@ export function getIntegrationConfigFieldName(integration: Integration): string 
  */
 export function clearIntegrationConfigs<T extends Record<string, any>>(
     obj: T,
-    preserveIntegration?: Integration
+    preserveIntegration?: IntegrationType
 ): Partial<T> {
     const cleared: Partial<T> = {};
-    const allIntegrations = Object.values(Integration);
+    const allIntegrations = Object.values(IntegrationType);
     
     for (const integration of allIntegrations) {
         const configField = getIntegrationConfigFieldName(integration) as keyof T;
@@ -229,36 +229,36 @@ export function clearIntegrationConfigs<T extends Record<string, any>>(
  * Checks if an input integration configuration is complete
  * Each integration type defines its own completeness requirements
  */
-export function isInputComplete(input: { integration: Integration; integrationId?: string; [key: string]: any }): boolean {
-    // Base requirement: integration type and ID must be set
+export function isInputComplete(input: { integration: IntegrationType; integrationId?: string; [key: string]: any }): boolean {
+    // Base requirement: IntegrationType type and ID must be set
     if (!input.integration || !input.integrationId) {
         return false;
     }
 
     // Integration-specific completeness checks
     switch (input.integration) {
-        case Integration.FIGMA:
+        case IntegrationType.FIGMA:
             // Figma requires both fileKey and teamId
             const figmaConfig = input.figmaConfig;
             return !!(figmaConfig?.fileKey && figmaConfig?.teamId);
         
-        case Integration.SLACK:
+        case IntegrationType.SLACK:
             // Slack is complete if either channelId is set OR listenToUserDms is true
             const slackConfig = input.slackConfig;
             return !!(slackConfig?.channelId || slackConfig?.listenToUserDms);
         
-        case Integration.NOTION:
-        case Integration.NOTION_PAGE:
+        case IntegrationType.NOTION:
+        // case IntegrationType.NOTION_PAGE:
             // Notion requires databaseId or pageId
             const notionConfig = input.notionConfig;
             const notionPageConfig = input.notionPageConfig;
             return !!(notionConfig?.databaseId || notionPageConfig?.pageId);
         
-        case Integration.GMAIL:
-        case Integration.GITHUB:
-        case Integration.LINEAR:
-        case Integration.JIRA:
-        case Integration.CONFLUENCE:
+        case IntegrationType.GMAIL:
+        case IntegrationType.GITHUB:
+        case IntegrationType.LINEAR:
+        case IntegrationType.JIRA:
+        case IntegrationType.CONFLUENCE:
             // These integrations don't require additional config beyond integrationId
             return true;
         
@@ -271,32 +271,32 @@ export function isInputComplete(input: { integration: Integration; integrationId
  * Checks if an output integration configuration is complete
  * Each integration type defines its own completeness requirements
  */
-export function isOutputComplete(output: { integration: Integration; integrationId?: string; [key: string]: any }): boolean {
-    // Base requirement: integration type and ID must be set
+export function isOutputComplete(output: { integration: IntegrationType; integrationId?: string; [key: string]: any }): boolean {
+    // Base requirement: IntegrationType type and ID must be set
     if (!output.integration || !output.integrationId) {
         return false;
     }
 
     // Integration-specific completeness checks
     switch (output.integration) {
-        case Integration.NOTION:
+        case IntegrationType.NOTION:
             // Notion output requires databaseId
             return !!(output.notionConfig?.databaseId);
         
-        case Integration.NOTION_PAGE:
-            // Notion Page output requires pageId
-            return !!(output.notionPageConfig?.pageId);
+        // case IntegrationType.NOTION_PAGE:
+        //     // Notion Page output requires pageId
+        //     return !!(output.notionPageConfig?.pageId);
         
-        case Integration.SLACK:
+        case IntegrationType.SLACK:
             // Slack output requires channelId
             return !!(output.slackConfig?.channelId);
         
-        case Integration.GMAIL:
-        case Integration.GITHUB:
-        case Integration.LINEAR:
-        case Integration.JIRA:
-        case Integration.CONFLUENCE:
-        case Integration.FIGMA:
+        case IntegrationType.GMAIL:
+        case IntegrationType.GITHUB:
+        case IntegrationType.LINEAR:
+        case IntegrationType.JIRA:
+        case IntegrationType.CONFLUENCE:
+        case IntegrationType.FIGMA:
             // These integrations don't require additional config beyond integrationId
             return true;
         

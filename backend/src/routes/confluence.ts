@@ -3,10 +3,27 @@ import { Request, Response } from "express";
 import { ConfluenceClient } from 'confluence.js';
 import type { ConfluencePage } from "../shared/types";
 import chalk from "chalk";
+import { ConfluenceIntegrationManager } from "../integrations/ConfluenceIntegration";
 
 // Import types from confluence.js using type-only imports
 type Content = import('confluence.js').Models.Content;
 type ContentArray = import('confluence.js').Models.ContentArray;
+
+export async function getConfluenceIntegrations(req: Request, res: Response) {
+    if (!req.session?.user) {
+        res.status(401).json({ error: 'Unauthorized' });
+        return;
+    }
+
+    try {
+        const manager = new ConfluenceIntegrationManager();
+        const integrations = await manager.getInstancesForUser(req.session.user.id);
+        res.status(200).json(integrations);
+    } catch (error) {
+        console.error('Error fetching Confluence integrations:', error);
+        res.status(500).json({ error: 'Failed to fetch Confluence integrations' });
+    }
+}
 
 export async function setConfluenceCredentials(req: Request, res: Response) {
     const user = req.session?.user;
