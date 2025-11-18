@@ -6,12 +6,11 @@ import { FileText } from "lucide-react";
 import { Empty } from "@/components/ui/empty";
 
 function IntegrationPage() {
-    const { integrations, integrationStatus, isLoading } = useIntegrations();
+    const { integrations, isLoading } = useIntegrations();
 
-    const filteredIntegrations = removeDuplicateIntegrations(integrations);
+    console.log('integrations in IntegrationPage', integrations);
 
-
-    if (!isLoading && filteredIntegrations.length === 0) {
+    if (!isLoading && integrations && integrations.length === 0 || (integrations == null)) {
         return (
             <div className="flex flex-col h-full p-4">
                 <h1 className="text-xl font-bold text-foreground mb-10">Active Integrations</h1>
@@ -26,14 +25,14 @@ function IntegrationPage() {
         <div className="flex flex-col h-full p-4">
             <h1 className="text-xl font-bold text-foreground mb-10">Active Integrations</h1>
             <div className="flex flex-row flex-wrap gap-12">
-                <IntegrationContent integrations={filteredIntegrations} integrationStatus={integrationStatus} isLoading={isLoading} />
+                <IntegrationContent integrations={integrations} isLoading={isLoading} />
             </div>
         </div>
     )
 }
 
-function IntegrationContent({ integrations, integrationStatus, isLoading }: { integrations: IntegrationTypeMetadata[], integrationStatus: IntegrationTypesStatus | undefined, isLoading: boolean }) {
-    if (isLoading || !integrationStatus) {
+function IntegrationContent({ integrations, isLoading }: { integrations: IntegrationType[], isLoading: boolean }) {
+    if (isLoading || !integrations) {
         return (
             <>
                 {Array.from({ length: 3 }).map((_, index) => (
@@ -42,10 +41,11 @@ function IntegrationContent({ integrations, integrationStatus, isLoading }: { in
             </>
         )
     }
+
     return (
         <>
             {integrations.map((integration) => (
-                <IntegrationCard key={IntegrationType.type} integration={IntegrationType.type} integrationId={IntegrationType.integrationId} integrationStatus={integrationStatus} />
+                <IntegrationCard key={integration} integration={integration} />
             ))}
         </>
     )
@@ -65,17 +65,6 @@ function NoIntegrations() {
             </EmptyHeader>
         </Empty>
     )
-}
-
-
-// Function that checks if there is both Notion + Notion Page integrations. and Removes one of them
-function removeDuplicateIntegrations(integrations: IntegrationTypeMetadata[]) {
-    const notionIntegrations = integrations.filter(integration => IntegrationType.type === IntegrationType.NOTION);
-    const notionPageIntegrations = integrations.filter(integration => IntegrationType.type === IntegrationType.NOTION_PAGE);
-    if (notionIntegrations.length > 0 && notionPageIntegrations.length > 0) {
-        return integrations.filter(integration => IntegrationType.type !== IntegrationType.NOTION_PAGE);
-    }
-    return integrations;
 }
 
 export default IntegrationPage;

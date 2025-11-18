@@ -1,6 +1,6 @@
 import useSWR, { type KeyedMutator } from 'swr';
 import { BackendProvider } from '@/services/backend';
-import type { GmailIntegration } from '@/shared/types';
+import type { GmailIntegration } from '@/shared/Integrations';
 import { gmailIntegrationsKey } from "@/shared/InvalidationKeys";
 
 type UseGmailIntegrationsReturn = {

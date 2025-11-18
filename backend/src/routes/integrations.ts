@@ -1,12 +1,12 @@
 import { Request, Response } from "express";
-import { IntegrationType } from "@prisma/client";
 import { IntegrationRegistry } from "../integrations/abstract/IntegrationRegistry";
 import { 
     Integration,
     isOAuthIntegrationInstallation
 } from "../integrations/abstract/Integration";
 import { OAuthInstallationDetails } from "../shared/types";
-import { IntegrationDetails, IntegrationInstance } from "../shared/Integrations";
+import { IntegrationDetails, IntegrationInstance, IntegrationType } from "../shared/Integrations";
+import { convertIntegrationTypeToPrismaIntegrationType, convertPrismaIntegrationTypeToIntegrationType } from "../utility/typeConverters";
 
 
 export const getIntegrationInstallationDetails = async (req: Request, res: Response) => {
@@ -32,7 +32,7 @@ export const getIntegrationInstallationDetails = async (req: Request, res: Respo
 }
 
 const getInstallationInformation = (integration: IntegrationType, userId: string): OAuthInstallationDetails => {
-    const integrationInstance = IntegrationRegistry.find(instance => instance.integrationType === integration);
+    const integrationInstance = IntegrationRegistry.find(instance => instance.integrationType === convertIntegrationTypeToPrismaIntegrationType(integration));
     if (!integrationInstance) {
         throw new Error(`Integration ${integration} not found`);
     }
@@ -53,7 +53,7 @@ export async function getActiveIntegrations(req: Request, res: Response) {
 
     const activeIntegrations: IntegrationType[] = IntegrationRegistry
         .filter(integration => integrationHasInstances(integration, userId))
-        .map(integration => integration.integrationType);
+        .map(integration => convertPrismaIntegrationTypeToIntegrationType(integration.integrationType));
 
     res.json(activeIntegrations);
 }

@@ -9,8 +9,10 @@ import GithubIntegrationCard from "./GithubIntegrationCard";
 import ConfluenceIntegrationCard from "./ConfluenceIntegrationCard";
 import FigmaIntegrationCard from "./FigmaIntegrationCard";
 
-function IntegrationCard({ integration, integrationId }: { integration: IntegrationType, integrationId: string }) {
+function IntegrationCard({ integration }: { integration: IntegrationType }) {
     const cardClassName = "min-w-sm";
+
+    console.log('integration in IntegrationCard', integration);
     
     switch (integration) {
         // case IntegrationType.NOTION:
@@ -30,6 +32,7 @@ function IntegrationCard({ integration, integrationId }: { integration: Integrat
         //         <GithubIntegrationCard integrationStatus={integrationStatus} integrationId={integrationId} className={cardClassName} />
         //     );
         case IntegrationType.GMAIL:
+            console.log('WRFFFFF');
             return (
                 <GmailIntegrationCard className={cardClassName} />
             );
