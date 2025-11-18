@@ -60,8 +60,8 @@ function SaveAutomationButton({
     // Each integration reports its own completeness
     const isComplete =
         inputs.length > 0 &&
-        inputs.every(i => isInputComplete({ ...i, integration: i.integration as Integration })) &&
-        !!output && isOutputComplete({ ...output, integration: output.integration as Integration }) &&
+        inputs.every(i => isInputComplete({ ...i, integration: i.integration as IntegrationType })) &&
+        !!output && isOutputComplete({ ...output, integration: output.integration as IntegrationType }) &&
         !!prompt?.text; // Ensure prompt is not empty
 
     const isEditMode = !!automationId;
@@ -126,7 +126,7 @@ function SaveAutomationButton({
                 const creation = await createAutomation({
                     name: automationData.name || '',
                     inputs: automationData.inputs || [],
-                    output: automationData.output || { integration: '', integrationId: undefined },
+                    output: automationData.output as AutomationOutput,
                     prompt: automationData.prompt || { text: '' },
                     isActive: automationData.isActive,
                 });
@@ -177,8 +177,8 @@ export default function AutomationSetupTab({
 }: AutomationSetupTabProps) {
     const { totalCount } = useAutomationCount();
     const defaultName = getDefaultAutomationName(
-        inputs.map(i => ({ integration: i.integration as Integration })),
-        output ? { integration: output.integration as Integration } : undefined,
+        inputs.map(i => ({ integration: i.integration as IntegrationType })),
+        output ? { integration: output.integration as IntegrationType } : undefined,
         totalCount
     );
 

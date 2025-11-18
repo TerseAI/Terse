@@ -7,6 +7,7 @@ import { AutomationInputSetup } from "../inputs/AutomationInputSetup";
 import { AutomationWithRelations } from "../types/prisma";
 import { IntegrationType} from "../shared/Integrations";
 import { convertIntegrationTypeToPrismaIntegrationType } from "../utility/typeConverters";
+import { SaveAutomationRequest } from "../shared/types";
 
 // Helper function to create config record for an automation input
 async function createInputConfig(
@@ -542,14 +543,6 @@ export async function getUserAutomation(req: Request, res: Response) {
         console.error('Error fetching automation:', error);
         res.status(500).json({ error: 'Failed to fetch automation' });
     }
-}
-
-interface SaveAutomationRequest {
-    name: string;
-    inputs: AutomationInput[];
-    output: AutomationOutput;
-    prompt: AutomationPrompt;
-    isActive?: boolean;
 }
 
 // POST /automations - Create a new automation

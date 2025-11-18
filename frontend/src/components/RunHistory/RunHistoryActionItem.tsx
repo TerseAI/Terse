@@ -3,8 +3,8 @@ import type { RunHistoryAction, RunHistoryStatus } from "../../shared/RunHistory
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "../ui/accordion";
 import { cn } from "@/lib/utils";
 import { IconForInputType } from "../../pages/Automations/components/Integration";
-import { Integration } from "../../types/Integration";
 import { capitalize } from "../../lib/utils";
+import { IntegrationType } from "../../shared/Integrations";
 
 type Props = {
     runId: string;
@@ -37,7 +37,7 @@ export default function RunHistoryActionItem({ runId, index, action, runStatus, 
                     <AccordionTrigger className="py-2 px-2 hover:no-underline">
                         <div className="flex items-center gap-2 w-full mr-2">
                             <div className="w-4 h-4 flex-shrink-0">
-                                <IconForInputType type={action.integration as Integration} />
+                                <IconForInputType type={action.integration as IntegrationType} />
                             </div>
                             <div className="flex-1">
                                 <div className="flex items-center gap-2">

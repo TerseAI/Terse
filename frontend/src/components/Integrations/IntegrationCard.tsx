@@ -11,26 +11,24 @@ import FigmaIntegrationCard from "./FigmaIntegrationCard";
 
 function IntegrationCard({ integration }: { integration: IntegrationType }) {
     const cardClassName = "min-w-sm";
-
-    console.log('integration in IntegrationCard', integration);
     
     switch (integration) {
-        // case IntegrationType.NOTION:
-        //     return (
-        //         <NotionIntegrationCard integrationId={integrationId} className={cardClassName} />
-        //     );
-        // case IntegrationType.SLACK:
-        //     return (
-        //         <SlackIntegrationCard integrationStatus={integrationStatus} integrationId={integrationId} className={cardClassName} />
-        //     );
-        // case IntegrationType.LINEAR:
-        //     return (
-        //         <LinearIntegrationCard integrationStatus={integrationStatus} integrationId={integrationId} className={cardClassName} />
-        //     );
-        // case IntegrationType.GITHUB:
-        //     return (
-        //         <GithubIntegrationCard integrationStatus={integrationStatus} integrationId={integrationId} className={cardClassName} />
-        //     );
+        case IntegrationType.NOTION:
+            return (
+                <NotionIntegrationCard className={cardClassName} />
+            );
+        case IntegrationType.SLACK:
+            return (
+                <SlackIntegrationCard className={cardClassName} />
+            );
+        case IntegrationType.LINEAR:
+            return (
+                <LinearIntegrationCard className={cardClassName} />
+            );
+        case IntegrationType.GITHUB:
+            return (
+                <GithubIntegrationCard className={cardClassName} />
+            );
         case IntegrationType.GMAIL:
             return (
                 <GmailIntegrationCard className={cardClassName} />
@@ -39,13 +37,13 @@ function IntegrationCard({ integration }: { integration: IntegrationType }) {
             return (
                 <AtlassianIntegrationCard className={cardClassName} />
             );
-        // case IntegrationType.FIGMA:
-        //     return (
-        //         <FigmaIntegrationCard integrationStatus={integrationStatus} integrationId={integrationId} className={cardClassName} />
-        //     );
-        // default:
+        case IntegrationType.FIGMA:
+            return (
+                <FigmaIntegrationCard className={cardClassName} />
+            );
+        default:
             // Exhaustive check: TypeScript will error if any IntegrationType case is missing
-            // throw integration satisfies never;
+            throw integration satisfies never;
     }
 }
 

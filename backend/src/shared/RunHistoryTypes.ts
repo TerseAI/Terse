@@ -1,24 +1,15 @@
+import { IntegrationType } from "./Integrations";
+
 export type RunHistoryStatus = "success" | "failed" | "skipped" | "in_progress";
 export type RunHistoryDecisionAction = "processed" | "skipped";
 
-// Use free-form strings for what happened and what was done
-// Use Integration enum (frontend) for which integration was involved for icons/branding
-export type Integration =
-    | "jira"
-    | "linear"
-    | "slack"
-    | "github"
-    | "notion"
-    | "gmail"
-    | "figma"
-    | "confluence";
 
     
 export type RunHistoryAction = {
     // What action was taken (free-text, e.g. "create database entry", "send notification")
     action: string;
     // Which integration this action targeted (used for icons and grouping)
-    integration: Integration;
+    integration: IntegrationType;
     // The concrete target, e.g. database name, channel name, repo, inbox, etc.
     target: string;
     // Justification for the action or extra details about why the AI did this.

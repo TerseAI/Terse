@@ -26,7 +26,7 @@ export const OutputSection = forwardRef<HTMLDivElement, OutputSectionProps>(({ o
         // Clear all configs when switching platform (new integration type)
         const clearedConfigs = output ? clearIntegrationConfigs(output) : {};
         const newOutput: AutomationOutput = {
-            integration: IntegrationType as string,
+            integration: integration,
             ...clearedConfigs
         };
         setOutput(newOutput);
@@ -79,14 +79,14 @@ function OutputCard({
     setOutput
 }: { output: AutomationOutput, handleRemove: () => void, handleSelectIntegration: (integrationId: string) => void, setOutput: (output: AutomationOutput) => void }) {
     const selectorProps = {
-        integrationType: output.integration as Integration,
+        integrationType: output.integration,
         selectedIntegrationId: output.integrationId,
         onSelect: handleSelectIntegration,
         notionConfig: output.notionConfig,
         onNotionConfigChange: (config: any) => {
             if (output) {
                 setOutput({
-                    integration: IntegrationTypeType.NOTION as string,
+                    integration: IntegrationType.NOTION,
                     integrationId: output.integrationId,
                     notionConfig: config
                 });
@@ -96,7 +96,7 @@ function OutputCard({
         onNotionPageConfigChange: (config: any) => {
             if (output) {
                 setOutput({
-                    integration: IntegrationTypeType.NOTION_PAGE as string,
+                    integration: IntegrationType.NOTION,
                     integrationId: output.integrationId,
                     notionPageConfig: config
                 });
@@ -120,7 +120,7 @@ function OutputCard({
         <Card>
             <CardHeader>
                 <CardTitle className="flex justify-between">
-                    <IntegrationTitle integration={output.integration as Integration} iconSize="lg" />
+                    <IntegrationTitle integration={output.integration} iconSize="lg" />
                 </CardTitle>
             </CardHeader>
             <CardContent className="max-w-xs">

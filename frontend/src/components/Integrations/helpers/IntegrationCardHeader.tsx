@@ -8,7 +8,7 @@ interface IntegrationCardHeaderProps {
     integration: IntegrationType;
 }
 
-export function IntegrationCardHeader({ integration }: IntegrationTypeCardHeaderProps) {
+export function IntegrationCardHeader({ integration }: IntegrationCardHeaderProps) {
     return (
         <CardHeader>
             <CardTitle>

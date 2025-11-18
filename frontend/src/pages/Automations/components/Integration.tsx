@@ -70,6 +70,6 @@ function JiraIcon() {
     return <img src="/jira.svg" alt="Jira" className="w-full h-full object-contain" />;
 }
 
-function ConfluenceIcon() {
-    return <img src="/confluence.svg" alt="Confluence" className="w-full h-full object-contain" />;
-}
+// function ConfluenceIcon() {
+//     return <img src="/confluence.svg" alt="Confluence" className="w-full h-full object-contain" />;
+// }
