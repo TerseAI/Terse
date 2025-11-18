@@ -2,7 +2,6 @@ import chalk from "chalk";
 import { IntegrationType } from "@prisma/client";
 import { AutomationInputWithConfigs } from "../types/prisma";
 import { RunHistoryTrigger } from "../shared/RunHistoryTypes";
-import { SlackEventData, SlackChannelType } from "../shared/types";
 import { FigmaCommentEventData, FigmaCommentThreadEntry } from "../shared/types";
 import { GithubAppUnifiedEventRequest } from "../routes/Github/githubApp";
 
@@ -41,82 +40,6 @@ export abstract class InputEvent {
      * @returns Array of image URL strings. Empty array if no images are available.
      */
     abstract getImageUrls(): string[];
-}
-
-// MARK: - SLACK Event
-
-export class SlackEvent extends InputEvent {
-    readonly integrationType: IntegrationType = IntegrationType.SLACK;
-    data: SlackEventData;
-    
-    constructor(data: SlackEventData) {
-        super();
-        this.data = data;
-    }
-
-    formatForAutomationAgent(): string {
-        return `
-        Incoming Slack Message Event.
-
-        Slack Event:
-        Channel: ${this.data.channelName || this.data.channelId}
-        User: ${this.data.userName || this.data.userId}
-        Message: ${this.data.text}
-        Timestamp: ${this.data.timestamp}
-        ${this.data.threadTimestamp ? `Thread: ${this.data.threadTimestamp}` : ''}
-        Team ID: ${this.data.teamId}
-        `;
-    }
-
-    debugLog(): string {
-        return `Slack Event: ${this.data.channelName || this.data.channelId} - ${this.data.userName || this.data.userId} - ${this.data.text.substring(0, 50)}`;
-    }
-
-    matchesAutomationInput(automationInput: AutomationInputWithConfigs): boolean {
-        // Check if integration type matches
-        if (automationInput.integration_type !== IntegrationType.SLACK) {
-            return false;
-        }
-
-        // If automationInput has slack_config with channel_id, filter by channel
-        // Otherwise, all Slack events match (no channel filtering)
-        const slackConfig = automationInput.slack_config;
-        if (!slackConfig) {
-            return false;
-        }
-
-        const isChannelOrGroup = (
-            this.data.channelType === SlackChannelType.CHANNEL ||
-            this.data.channelType === SlackChannelType.GROUP
-        )
-        const isDM = (
-            this.data.channelType === SlackChannelType.IM ||
-            this.data.channelType === SlackChannelType.MPIM
-        )
-
-        const matchesChannelOrGroup = isChannelOrGroup && this.data.channelId === slackConfig.channel_id;
-        const matchesDM = isDM && slackConfig?.listen_to_user_dms
-        return (
-            matchesChannelOrGroup || matchesDM
-        )
-    }
-
-    createTriggerMetadata(): RunHistoryTrigger {
-        return {
-            event: 'message_received',
-            integration: 'slack',
-            source: this.data.channelName || this.data.channelId,
-            title: this.data.text.substring(0, 100), // First 100 chars of message
-            subheader: this.data.userName || this.data.userId,
-            url: this.data.permalink,
-        };
-    }
-
-    getImageUrls(): string[] {
-        // Slack events don't currently include images
-        // Future: could extract image URLs from message attachments if needed
-        return [];
-    }
 }
 
 // MARK: - FIGMA Comment Event

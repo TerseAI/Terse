@@ -160,23 +160,6 @@ export enum SlackChannelType {
   IM = 'im'
 }
 
-/**
- * Slack event data
- * Processed Slack message event data used for automation events
- */
-export interface SlackEventData {
-  channelId: string;
-  channelName?: string;
-  userId: string;
-  userName?: string;
-  text: string;
-  timestamp: string;
-  threadTimestamp?: string;
-  teamId: string;
-  // Permalink for the message (if available)
-  permalink?: string;
-  channelType?: SlackChannelType;
-}
 
 export type IntegrationsStatus = {
   integrations: {
