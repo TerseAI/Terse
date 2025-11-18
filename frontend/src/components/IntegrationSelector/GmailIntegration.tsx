@@ -1,11 +1,10 @@
 import { Plus } from 'lucide-react';
 import { Button } from '../ui/button';
 import DropdownSelect from '../ui/DropdownSelect';
-import { IntegrationType } from "@/shared/Integrations"
+import { IntegrationType, GmailIntegration as GmailIntegrationType } from "@/shared/Integrations"
 import { BaseIntegrationProps } from './types';
 import { useGmailIntegrations } from '@/hooks/api/useGmailIntegrations';
 import { useOAuthConnection } from '@/hooks/useOAuthConnection';
-import { GmailIntegration as GmailIntegrationType } from '@/shared/types';
 
 interface GmailIntegrationProps extends BaseIntegrationProps {
     integrationType: IntegrationType;
