@@ -1,18 +1,26 @@
 import chalk from 'chalk';
 import { IntegrationType } from '@prisma/client';
 import { db } from '../prismaClient';
-import { IntegrationRegistry, Integration } from '../integrations/abstract/Integration';
+import { AutomationInputManager } from './AutomationInputManager';
+import { FigmaAutomationInputManager } from './FigmaAutomationInput';
 
 /**
- * Helper function to get IntegrationManager from IntegrationType
+ * Registry of automation input managers by integration type
  */
-function getIntegrationManager(integrationType: IntegrationType): Integration<any, any> | null {
-    return IntegrationRegistry.find((manager: Integration<any, any>) => manager.getIntegrationType() === integrationType) || null;
+const automationInputManagers = new Map<IntegrationType, AutomationInputManager>([
+    [IntegrationType.FIGMA, new FigmaAutomationInputManager()],
+]);
+
+/**
+ * Helper function to get AutomationInputManager from IntegrationType
+ */
+function getAutomationInputManager(integrationType: IntegrationType): AutomationInputManager | null {
+    return automationInputManagers.get(integrationType) || null;
 }
 
 /**
  * Handles setup/teardown for automation inputs.
- * Uses IntegrationRegistry to find integration managers that support setup/teardown.
+ * Uses automation input managers registered by integration type.
  */
 export class AutomationInputSetup {
 
@@ -33,6 +41,8 @@ export class AutomationInputSetup {
                             gmail_config: true,
                             github_config: true,
                             notion_config: true,
+                            notion_page_config: true,
+                            confluence_config: true,
                             figma_config: true,
                         },
                     },
@@ -45,10 +55,10 @@ export class AutomationInputSetup {
             }
 
             for (const input of automation.inputs) {
-                const integrationManager = getIntegrationManager(input.integration_type);
-                if (integrationManager && integrationManager.setupIntegration) {
+                const inputManager = getAutomationInputManager(input.integration_type);
+                if (inputManager) {
                     try {
-                        await integrationManager.setupIntegration(input.integration_id, input);
+                        await inputManager.setupAutomationInput(input.integration_id, input);
                         console.log(
                             chalk.green(
                                 `✅ Setup completed for ${input.integration_type} input (ID: ${input.id})`
@@ -87,6 +97,8 @@ export class AutomationInputSetup {
                             gmail_config: true,
                             github_config: true,
                             notion_config: true,
+                            notion_page_config: true,
+                            confluence_config: true,
                             figma_config: true,
                         },
                     },
@@ -98,10 +110,10 @@ export class AutomationInputSetup {
             }
 
             for (const input of automation.inputs) {
-                const integrationManager = getIntegrationManager(input.integration_type);
-                if (integrationManager && integrationManager.teardownIntegration) {
+                const inputManager = getAutomationInputManager(input.integration_type);
+                if (inputManager) {
                     try {
-                        await integrationManager.teardownIntegration(input.integration_id, input);
+                        await inputManager.teardownAutomationInput(input.integration_id, input);
                         console.log(
                             chalk.green(
                                 `✅ Teardown completed for ${input.integration_type} input`
@@ -117,7 +129,7 @@ export class AutomationInputSetup {
                         // Continue with other inputs even if one fails
                     }
                 }
-                // If no setup/teardown method, skip silently
+                // If no automation input manager, skip silently
             }
         } catch (error) {
             console.error(chalk.red('❌ Error in tearDownAutomationInputs:'), error);
