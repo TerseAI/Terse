@@ -1,14 +1,9 @@
 import { Integration } from "./abstract/Integration";
 import { db } from "../prismaClient";
 import { LinearIntegration } from "../shared/types";
-import { IntegrationType } from "@prisma/client";
 
 export class LinearIntegrationManager implements Integration<LinearIntegration, never> {
     constructor() { }
-
-    getIntegrationType(): IntegrationType {
-        return IntegrationType.LINEAR;
-    }
 
     async getInstancesForUser(userId: string): Promise<LinearIntegration[]> {
         const linearKeys = await db().linear_api_keys.findMany({

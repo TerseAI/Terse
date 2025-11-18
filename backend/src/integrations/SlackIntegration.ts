@@ -1,4 +1,4 @@
-import { SlackChannelType, SlackIntegration } from "src/shared/types";
+import { SlackChannelType, SlackIntegration } from "../shared/types";
 import { Integration } from "./abstract/Integration";
 import { Request } from "express";
 import { slack as slackConfig } from '../config/settings';
@@ -7,17 +7,13 @@ import chalk from "chalk";
 import { EventProcessor } from "../agent/AutomationAgent/EventProcessor";
 import { db } from "../prismaClient";
 import { LogLevel, WebClient } from "@slack/web-api";
-import { RunHistoryTrigger } from "src/shared/RunHistoryTypes";
+import { RunHistoryTrigger } from "../shared/RunHistoryTypes";
 import { IntegrationType } from "@prisma/client";
-import { AutomationInputWithConfigs } from "src/types/prisma";
+import { AutomationInputWithConfigs } from "../types/prisma";
 import { InputEvent } from "./abstract/InputEvent";
 
 export class SlackIntegrationManager implements Integration<SlackIntegration, SlackMessageEvent> {
     constructor() { }
-
-    getIntegrationType(): IntegrationType {
-        return IntegrationType.SLACK;
-    }
 
     async getInstancesForUser(userId: string): Promise<SlackIntegration[]> {
         const userSlackIntegrations = await db().user_slack_integrations.findMany({
