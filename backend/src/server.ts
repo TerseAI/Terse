@@ -65,13 +65,13 @@ import {
 } from "./routes/notion";
 import { getRunHistory } from "./routes/runHistory";
 import { User as TicketUser } from "./shared/TicketSystem";
-import { handleSlackEvent } from "./slack/eventHandler";
 import {
+  handleSlackWebhook,
   getCurrentSlackIntegration,
   getSlackOAuthUrl,
   slackOAuthCallback,
-} from "./slack/registerApp";
-import { getSlackChannels } from "./routes/slack";
+  getSlackChannels,
+} from "./routes/slack";
 import { TicketManager } from "./ticketing/TicketIntegration";
 import { User } from "./types/prisma";
 import { JiraWebhookPayload } from "./utility/JiraWebhookPayload";
@@ -386,13 +386,7 @@ app.get("/slack/oauth-callback", async (req, res) => {
 app.use("/slack/events", express.raw({ type: "application/json" }));
 
 app.post("/slack/events", async (req, res) => {
-  console.log("📨 [SERVER] Slack events endpoint hit - method:", req.method, "path:", req.path);
-  console.log("📨 [SERVER] Headers:", {
-    'x-slack-request-timestamp': req.headers['x-slack-request-timestamp'],
-    'x-slack-signature': req.headers['x-slack-signature'] ? 'present' : 'missing',
-    'content-type': req.headers['content-type'],
-  });
-  await handleSlackEvent(req, res);
+  await handleSlackWebhook(req, res);
 });
 
 app.get("/slack/channels", authMiddleware, async (req, res) => {
