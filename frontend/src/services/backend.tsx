@@ -22,6 +22,7 @@ import {
     SlackIntegration,
     AtlassianIntegration,
     FigmaIntegration,
+    GithubIntegration,
 } from "../shared/Integrations";
 import { User } from "../types/User";
 import { GetRunHistoryParams, GetRunHistoryResponse } from '../shared/RunHistoryTypes';
@@ -187,6 +188,11 @@ interface BackendService {
      * Gets all Figma integrations for the current user
      */
     getFigmaIntegrations(): Promise<FigmaIntegration[]>;
+
+    /**
+     * Gets all GitHub integrations for the current user
+     */
+    getGithubIntegrations(): Promise<GithubIntegration[]>;
 
     /**
      * Deletes the Gmail integration
@@ -560,6 +566,15 @@ export const BackendProvider: BackendService = {
             .then(response => response.data)
             .catch(error => {
                 console.error('Error getting Figma integrations:', error);
+                throw error;
+            });
+    },
+
+    getGithubIntegrations: () => {
+        return axios.get<GithubIntegration[]>(`${backendBaseUrl}/github/integrations`, { withCredentials: true })
+            .then(response => response.data)
+            .catch(error => {
+                console.error('Error getting GitHub integrations:', error);
                 throw error;
             });
     },
