@@ -8,12 +8,12 @@ export interface Integration<T extends IntegrationInstance, W, M extends Integra
     integrationType: IntegrationType;
     getInstancesForUser(userId: string): Promise<T[]>;
     processWebhookEvent(event: W): Promise<void>;
+    deleteInstallation(integrationId: string): Promise<void>;
 }
 
 export interface OAuthIntegrationInstallation {
     getInstallationUrl(userId: string): Promise<OAuthInstallationDetails>;
     processInstallationCallback(req: any, res: any): Promise<void>;
-    deleteInstallation(integrationId: string): Promise<void>;
 }
 
 // Type guards

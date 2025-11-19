@@ -28,5 +28,9 @@ export class AtlassianIntegrationManager implements Integration<AtlassianIntegra
         // Confluence webhooks are handled elsewhere
         throw new Error("Confluence webhooks are not processed through this integration manager");
     }
+
+    deleteInstallation(integrationId: string): Promise<void> {
+        return Promise.resolve();
+    }
 }
 

@@ -8,6 +8,7 @@ import { Output, OutputType, ToolboxEntry } from "./abstract/Output";
 import { db } from "../prismaClient";
 import chalk from "chalk";
 import { GetPageResponse, PageObjectResponse } from "@notionhq/client/build/src/api-endpoints";
+import { IntegrationType } from "../shared/Integrations";
 
 export interface NotionPageSession extends Session {
     notionIntegration: NotionIntegration; // Top level integration record
@@ -450,7 +451,7 @@ Example: "[{\"operation\": \"append\", \"blocks\": [{\"object\": \"block\", \"ty
                     runContext.context.runActions = runContext.context.runActions || [];
                     runContext.context.runActions.push({
                         action: 'append_blocks',
-                        integration: 'notion',
+                        integration: IntegrationType.NOTION,
                         target: runContext.context.notionPageConfig.page_id || runContext.context.notionPageConfig.page_name,
                         details: `Added ${response.results.length} block(s)`,
                     });
@@ -490,7 +491,7 @@ Example: "[{\"operation\": \"append\", \"blocks\": [{\"object\": \"block\", \"ty
                     runContext.context.runActions = runContext.context.runActions || [];
                     runContext.context.runActions.push({
                         action: 'update_block',
-                        integration: 'notion',
+                        integration: IntegrationType.NOTION,
                         target: runContext.context.notionPageConfig.page_id ||  runContext.context.notionPageConfig.page_name,
                         details: 'Block updated',
                     });
@@ -521,7 +522,7 @@ Example: "[{\"operation\": \"append\", \"blocks\": [{\"object\": \"block\", \"ty
                     runContext.context.runActions = runContext.context.runActions || [];
                     runContext.context.runActions.push({
                         action: 'delete_block',
-                        integration: 'notion',
+                        integration: IntegrationType.NOTION,
                         target: runContext.context.notionPageConfig.page_id || runContext.context.notionPageConfig.page_name,
                         details: 'Block deleted',
                     });

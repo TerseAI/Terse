@@ -1,5 +1,6 @@
 import { db } from "../../prismaClient";
 import type { RunHistoryAction as SharedRunHistoryAction, RunHistoryStatus, RunHistoryTrigger } from "../../shared/RunHistoryTypes";
+import { convertIntegrationTypeToRunHistoryIntegration } from "../../utility/typeConverters";
 
 export type RunTrigger = RunHistoryTrigger;
 
@@ -13,7 +14,7 @@ export async function createRunRecord(params: {
         data: {
             automation_id: automationId,
             event: trigger.event,
-            trigger_integration: trigger.integration,
+            trigger_integration: convertIntegrationTypeToRunHistoryIntegration(trigger.integration),
             trigger_source: trigger.source,
             trigger_title: trigger.title ?? null,
             trigger_subheader: trigger.subheader ?? null,
@@ -62,7 +63,7 @@ export async function appendRunAction(
         data: {
             run_history_record_id: runId,
             action: action.action,
-            integration: action.integration,
+            integration: convertIntegrationTypeToRunHistoryIntegration(action.integration),
             target: action.target,
             details: action.details,
             url: action.url ?? null,

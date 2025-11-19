@@ -1,8 +1,10 @@
 import { Request, Response } from "express";
 import { Prisma } from "@prisma/client";
 import { db, PrismaClient } from "../prismaClient";
-import type { GetRunHistoryParams, GetRunHistoryResponse, Integration, RunHistoryRecord, RunHistoryStatus } from "../shared/RunHistoryTypes";
+import type { GetRunHistoryParams, GetRunHistoryResponse, RunHistoryRecord, RunHistoryStatus } from "../shared/RunHistoryTypes";
 import { parsePageParams } from "../utility/pagination";
+import { IntegrationType } from "../shared/Integrations";
+import { convertRunHistoryIntegrationToIntegrationType } from "../utility/typeConverters";
 
 // Valid status values for validation
 const VALID_STATUSES: RunHistoryStatus[] = ["success", "failed", "skipped", "in_progress"];
@@ -70,7 +72,7 @@ export async function getRunHistory(req: Request, res: Response) {
       timestamp: runRecord.timestamp.toISOString(),
       trigger: {
         event: runRecord.event,
-        integration: runRecord.trigger_integration as Integration,
+        integration: convertRunHistoryIntegrationToIntegrationType(runRecord.trigger_integration),
         source: runRecord.trigger_source,
         title: runRecord.trigger_title ?? undefined,
         subheader: runRecord.trigger_subheader ?? undefined,
@@ -83,7 +85,7 @@ export async function getRunHistory(req: Request, res: Response) {
       },
       actions: runRecord.actions.map((action) => ({
         action: action.action,
-        integration: action.integration as Integration,
+        integration: convertRunHistoryIntegrationToIntegrationType(action.integration),
         target: action.target,
         details: action.details,
         url: action.url ?? undefined,
