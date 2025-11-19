@@ -98,6 +98,7 @@ export function NotionIntegration({
                 <div className="mt-3 pt-3 border-t border-border">
                     <NotionResourceSelector
                         integrationId={selectedIntegrationId || ''}
+                        resourceType={isPageConfig ? 'page' : 'database'}
                         selectedResourceId={
                             isPageConfig 
                                 ? (currentConfig as NotionPageConfig)?.pageId 

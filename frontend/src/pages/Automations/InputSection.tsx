@@ -80,7 +80,6 @@ export const InputsSection = forwardRef<Map<string, HTMLDivElement>, InputsSecti
 
 function InputCardsLayout({
     inputs, 
-    handleSelectIntegration, 
     setInputs, 
     handleRemove, 
     setShowAddModal,
@@ -106,7 +105,6 @@ function InputCardsLayout({
                                 key={inputId} 
                                 input={input} 
                                 inputs={inputs}
-                                handleSelectIntegration={handleSelectIntegration} 
                                 setInputs={setInputs} 
                                 handleRemove={handleRemove}
                                 ref={(el) => {
@@ -138,7 +136,6 @@ function InputCardsLayout({
                         key={inputId} 
                         input={input} 
                         inputs={inputs}
-                        handleSelectIntegration={handleSelectIntegration} 
                         setInputs={setInputs} 
                         handleRemove={handleRemove}
                         ref={(el) => {
@@ -161,13 +158,11 @@ function InputCardsLayout({
 const InputCard = forwardRef<HTMLDivElement, {
     input: TransientAutomationInput,
     inputs: TransientAutomationInput[],
-    handleSelectIntegration: (integrationId: string, input: TransientAutomationInput) => void, 
     setInputs: (inputs: TransientAutomationInput[]) => void, 
     handleRemove: (id: string) => void
 }>(({
     input,
     inputs,
-    handleSelectIntegration,
     setInputs,
     handleRemove
 }, ref) => {
