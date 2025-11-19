@@ -6,7 +6,7 @@ import { InputsSection } from "../InputSection";
 import { OutputSection } from "../OutputSection";
 import { AutomationUpdate, TransientAutomationInput, TransientAutomationOutput } from "@/shared/types";
 import { toast } from "sonner";
-import { getDefaultAutomationName } from "@/utility/AutomationUtils";
+import { getDefaultAutomationName, toAutomationInput, toAutomationOutput } from "@/utility/AutomationUtils";
 import { useAutomationCount } from "@/hooks/api/useAutomationCount";
 import { Conn, SVGFlowArrows } from "../components/FlowArrow";
 import { PromptSection } from "../PromptSection";
@@ -14,7 +14,7 @@ import { useAutomationMutations } from "@/hooks/api/useAutomations";
 import { type KeyedMutator } from 'swr';
 import { Automation, AutomationInput, AutomationOutput, AutomationPrompt } from "@/shared/types";
 
-type AutomationSetupTabProps = {
+export type AutomationSetupTabProps = {
     automationId: string | null;
     name: string | null;
     setName: (name: string) => void;
@@ -156,8 +156,8 @@ export default function AutomationSetupTab({
 
     const connections: Conn[] = []
 
-    const automationInputs = inputs.map(convertTransientAutomationInputToAutomationInput).filter(i => i != null) as AutomationInput[];
-    const automationOutput = convertTransientAutomationOutputToAutomationOutput(output)
+    const automationInputs = inputs.map(toAutomationInput).filter((i): i is AutomationInput => i !== null);
+    const automationOutput = toAutomationOutput(output)
 
     
     if (automationInputs.length > 0 && inputsSectionRef.current != null && inputsSectionRef.current.size > 0) {
@@ -206,24 +206,4 @@ export default function AutomationSetupTab({
             </div>
         </div>
     )
-}
-
-function convertTransientAutomationInputToAutomationInput(input: TransientAutomationInput): AutomationInput | null {
-    if (input.config == null) {
-        return null
-    }
-    return {
-        id: input.id,
-        config: input.config,
-    };
-}
-
-function convertTransientAutomationOutputToAutomationOutput(output?: TransientAutomationOutput): AutomationOutput | undefined {
-    if (output == null || output.config == null) {
-        return undefined
-    }
-    return {
-        id: output.id,
-        config: output.config,
-    };
 }

@@ -15,7 +15,7 @@ type UseNotionResourcesReturn = {
     mutate: KeyedMutator<NotionResourcesResponse>;
 };
 
-export function useNotionResources(integrationId: string | null | undefined, resourceType: NotionResourceType): UseNotionResourcesReturn {
+export function useNotionResources(integrationId: string | null | undefined, resourceType?: NotionResourceType): UseNotionResourcesReturn {
     const { data, error, isLoading, isValidating, mutate } = useSWR<NotionResourcesResponse>(
         notionResourcesKey(integrationId),
         integrationId ? () => BackendProvider.getNotionResources(integrationId) : null,
@@ -29,7 +29,7 @@ export function useNotionResources(integrationId: string | null | undefined, res
     const loading = Boolean(integrationId) && (isLoading || (!data && !error));
     console.log("data", JSON.stringify(data, null, 2));
     console.log("resourceType", resourceType);
-    const resources = data?.resources.filter((resource) => resource.type === resourceType) ?? [];
+    const resources = resourceType ? data?.resources.filter((resource) => resource.type === resourceType) ?? [] : data?.resources ?? [];
 
     return {
         resources: resources,
