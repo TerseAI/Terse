@@ -23,46 +23,51 @@ export function IntegrationSelector(props: InputConfigSelectorProps) {
                 />
             );
 
-        // case ConfigType.SLACK:
-        //     return (
-        //         <SlackIntegration
-        //             {...baseProps}
-        //             integrationType={props.integrationType}
-        //             slackConfig={props.slackConfig}
-        //             onSlackConfigChange={props.onSlackConfigChange}
-        //         />
-        //     );
+        case ConfigType.SLACK:
+            return (
+                <SlackIntegration
+                    input={props.input}
+                    variant={props.variant}
+                    setConfig={props.setConfig}
+                />
+            );
 
-        // case ConfigType.GITHUB:
-        //     return <GitHubIntegration
-        //         integrationType={props.integrationType}
-        //         githubConfig={props.githubConfig}
-        //         onGithubConfigChange={props.onGithubConfigChange}
-        //     />;
+        case ConfigType.GITHUB:
+            return (
+                <GitHubIntegration
+                    input={props.input}
+                    variant={props.variant}
+                    setConfig={props.setConfig}
+                />
+            );
 
-        // case ConfigType.FIGMA:
-        //     return (
-        //         <FigmaIntegration
-        //             integrationType={props.integrationType}
-        //             figmaConfig={props.figmaConfig}
-        //             onFigmaConfigChange={props.onFigmaConfigChange}
-        //         />
-        //     );
-        // case ConfigType.LINEAR:
-        //     return (
-        //         <LinearIntegration
-        //         />
-        //     );
+        case ConfigType.FIGMA:
+            return (
+                <FigmaIntegration
+                    input={props.input}
+                    variant={props.variant}
+                    setConfig={props.setConfig}
+                />
+            );
 
-        // case ConfigType.JIRA, ConfigType.CONFLUENCE:
-        //     return (
-        //         <ConfluenceIntegration
-        //             {...baseProps}
-        //             integrationType={props.integrationType}
-        //             confluenceConfig={props.confluenceConfig}
-        //             onConfluenceConfigChange={props.onConfluenceConfigChange}
-        //         />
-        //     );
+        case ConfigType.LINEAR:
+            return (
+                <LinearIntegration
+                    input={props.input}
+                    variant={props.variant}
+                    setConfig={props.setConfig}
+                />
+            );
+
+        case ConfigType.JIRA:
+        case ConfigType.CONFLUENCE:
+            return (
+                <ConfluenceIntegration
+                    input={props.input}
+                    variant={props.variant}
+                    setConfig={props.setConfig}
+                />
+            );
 
         default:
             throw new Error(`Unsupported config type: ${props.input.configType}`);

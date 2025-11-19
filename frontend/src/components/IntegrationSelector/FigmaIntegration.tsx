@@ -2,29 +2,30 @@ import { Plus } from 'lucide-react';
 import { Button } from '../ui/button';
 import DropdownSelect from '../ui/DropdownSelect';
 import { FigmaFileSelector } from '../FigmaFileSelector';
-import { INTEGRATION_METADATA, IntegrationType, FigmaIntegration as FigmaIntegrationType } from "@/shared/Integrations"
+import { IntegrationType, FigmaIntegration as FigmaIntegrationType } from "@/shared/Integrations"
 import { FigmaConfig } from '../../shared/Configs';
-import { BaseIntegrationProps } from './types';
+import { InputConfigSelectorProps } from './types';
 import { useFigmaIntegrations } from '@/hooks/api/useFigmaIntegrations';
 import { useOAuthConnection } from '@/hooks/useOAuthConnection';
-
-interface FigmaIntegrationProps extends BaseIntegrationProps {
-    integrationType: IntegrationType;
-    figmaConfig?: FigmaConfig;
-    onFigmaConfigChange?: (config: FigmaConfig) => void;
-}
+import { StatusOption } from '../ui/DropdownSelect';
+import { useState } from 'react';
 
 export function FigmaIntegration({
-    selectedIntegrationId,
-    onSelect,
-    label = 'Connection',
-    figmaConfig,
-    onFigmaConfigChange,
-    variant
-}: FigmaIntegrationProps) {
+    input,
+    variant,
+    setConfig
+}: InputConfigSelectorProps) {
     const { integrations, isLoading } = useFigmaIntegrations();
     const { connect: connectOAuth, isConnecting: isOAuthConnecting } = useOAuthConnection(IntegrationType.FIGMA);
-    const metadata = INTEGRATION_METADATA[IntegrationType.FIGMA];
+    const currentConfig = input.config as FigmaConfig | undefined;
+    const [selectedIntegrationId, setSelectedIntegrationId] = useState<string | undefined>(currentConfig?.integrationId);
+
+    function onSelect(value: string) {
+        const integration = integrations.find((integration: FigmaIntegrationType) => integration.id === value);
+        if (integration) {
+            setSelectedIntegrationId(integration.id);
+        }
+    }
 
     if (isLoading) {
         return (
@@ -39,24 +40,32 @@ export function FigmaIntegration({
         return (
             <div className="max-w-xs flex flex-col gap-3 p-4 rounded-lg border border-dashed border-input bg-card">
                 <div className="text-sm text-muted-foreground">
-                    No {metadata.name} accounts connected
+                    No Figma accounts connected
                 </div>
                 <Button
                     onClick={connectOAuth}
                     disabled={isOAuthConnecting}
                 >
                     <Plus className="w-4 h-4" />
-                    {isOAuthConnecting ? 'Connecting...' : `Connect ${metadata.name}`}
+                    {isOAuthConnecting ? 'Connecting...' : `Connect Figma`}
                 </Button>
             </div>
         );
     }
 
-    const connectionSelections = integrations.map((integration: FigmaIntegrationType) => ({
+    const connectionSelections: StatusOption[] = integrations.map((integration: FigmaIntegrationType) => ({
         label: integration.figma_user_id || 'Figma Account',
         value: integration.id
     }));
-    const selectedOption = connectionSelections.find(option => option.value === selectedIntegrationId) || connectionSelections[0];
+
+    let selectedOption = connectionSelections.find(option => option.value === selectedIntegrationId);
+    if (!selectedIntegrationId && !selectedOption && connectionSelections.length == 1) {
+        const defaultIntegration = connectionSelections[0];
+        setSelectedIntegrationId(defaultIntegration.value);
+        selectedOption = defaultIntegration;
+    } else if (!selectedOption) {
+        selectedOption = connectionSelections[0];
+    }
 
     // Card variant: compact view
     if (variant === 'card') {
@@ -72,7 +81,7 @@ export function FigmaIntegration({
         <div className="flex flex-col gap-3">
             <div className="flex flex-col gap-1.5">
                 <label className="font-medium">
-                    {label}
+                    Figma Account
                 </label>
                 <DropdownSelect
                     statusOptions={connectionSelections}
@@ -87,24 +96,26 @@ export function FigmaIntegration({
                 variant="outline"
             >
                 <Plus className="w-4 h-4" />
-                {isOAuthConnecting ? 'Connecting...' : `Connect Another ${metadata.name}`}
+                {isOAuthConnecting ? 'Connecting...' : "Connect Another Figma"}
             </Button>
 
             {/* Figma-specific file selector */}
-            {selectedIntegrationId && onFigmaConfigChange && (
+            {selectedIntegrationId && (
                 <div className="mt-3 pt-3 border-t border-border">
                     <FigmaFileSelector
-                        selectedFileKey={figmaConfig?.fileKey}
-                        selectedFileName={figmaConfig?.fileName}
-                        selectedTeamId={figmaConfig?.teamId}
+                        selectedFileKey={currentConfig?.fileKey}
+                        selectedFileName={currentConfig?.fileName}
+                        selectedTeamId={currentConfig?.teamId}
                         onSelect={(fileKey, fileName, teamId) => {
                             // Only update config if we have all required values
                             if (fileKey && teamId) {
-                                onFigmaConfigChange({
+                                const updatedConfig = new FigmaConfig(
+                                    selectedIntegrationId,
                                     fileKey,
-                                    fileName: fileName || fileKey, // Use fileKey as fallback if fileName is not provided
+                                    fileName || fileKey,
                                     teamId
-                                });
+                                );
+                                setConfig(updatedConfig);
                             }
                         }}
                     />

@@ -1,30 +1,31 @@
 import { Plus } from 'lucide-react';
 import { Button } from '../ui/button';
 import DropdownSelect from '../ui/DropdownSelect';
-import { INTEGRATION_METADATA, IntegrationType, GithubIntegration as GithubIntegrationType } from "@/shared/Integrations"
-import { BaseIntegrationProps } from './types';
+import { IntegrationType, GithubIntegration as GithubIntegrationType } from "@/shared/Integrations"
+import { InputConfigSelectorProps } from './types';
 import { GithubResourceSelector } from '../GithubResourceSelector';
 import { GitHubConfig } from '@/shared/Configs';
 import { useGithubIntegrations } from '@/hooks/api/useGithubIntegrations';
 import { useOAuthConnection } from '@/hooks/useOAuthConnection';
-
-interface GitHubIntegrationProps extends BaseIntegrationProps {
-    integrationType: IntegrationType;
-    githubConfig?: GitHubConfig;
-    onGithubConfigChange?: (config: GitHubConfig) => void;
-}
+import { StatusOption } from '../ui/DropdownSelect';
+import { useState } from 'react';
 
 export function GitHubIntegration({
-    selectedIntegrationId,
-    onSelect,
-    label = 'Connection',
+    input,
     variant,
-    githubConfig,
-    onGithubConfigChange
-}: GitHubIntegrationProps) {
+    setConfig
+}: InputConfigSelectorProps) {
     const { integrations, isLoading } = useGithubIntegrations();
     const { connect: connectOAuth, isConnecting: isOAuthConnecting } = useOAuthConnection(IntegrationType.GITHUB);
-    const metadata = INTEGRATION_METADATA[IntegrationType.GITHUB];
+    const currentConfig = input.config as GitHubConfig | undefined;
+    const [selectedIntegrationId, setSelectedIntegrationId] = useState<string | undefined>(currentConfig?.integrationId);
+
+    function onSelect(value: string) {
+        const integration = integrations.find((integration: GithubIntegrationType) => integration.id === value);
+        if (integration) {
+            setSelectedIntegrationId(integration.id);
+        }
+    }
 
     if (isLoading) {
         return (
@@ -39,28 +40,33 @@ export function GitHubIntegration({
         return (
             <div className="max-w-xs flex flex-col gap-3 p-4 rounded-lg border border-dashed border-input bg-card">
                 <div className="text-sm text-muted-foreground">
-                    No {metadata.name} accounts connected
+                    No GitHub accounts connected
                 </div>
                 <Button
                     onClick={connectOAuth}
                     disabled={isOAuthConnecting}
                 >
                     <Plus className="w-4 h-4" />
-                    {isOAuthConnecting ? 'Connecting...' : `Connect ${metadata.name}`}
+                    {isOAuthConnecting ? 'Connecting...' : `Connect GitHub`}
                 </Button>
             </div>
         );
     }
 
-    const connectionSelections = integrations.map((integration: GithubIntegrationType) => ({
+    const connectionSelections: StatusOption[] = integrations.map((integration: GithubIntegrationType) => ({
         label: integration.account_name || 'Unknown Account',
         value: integration.id
     }));
-    const selectedOption = connectionSelections.find(option => option.value === selectedIntegrationId) || connectionSelections[0];
 
-    // Get connected repositories
-    const connectedRepositories = githubConfig?.repositoryIds ? githubConfig.repositoryIds : [];
-    
+    let selectedOption = connectionSelections.find(option => option.value === selectedIntegrationId);
+    if (!selectedIntegrationId && !selectedOption && connectionSelections.length == 1) {
+        const defaultIntegration = connectionSelections[0];
+        setSelectedIntegrationId(defaultIntegration.value);
+        selectedOption = defaultIntegration;
+    } else if (!selectedOption) {
+        selectedOption = connectionSelections[0];
+    }
+
     // Find the selected integration to get its installation_id
     const selectedIntegration = selectedIntegrationId 
         ? integrations.find(i => i.id === selectedIntegrationId) 
@@ -80,7 +86,7 @@ export function GitHubIntegration({
         <div className="flex flex-col gap-3">
             <div className="flex flex-col gap-1.5">
                 <label className="font-medium">
-                    {label}
+                    GitHub Account
                 </label>
                 <DropdownSelect
                     statusOptions={connectionSelections}
@@ -95,20 +101,21 @@ export function GitHubIntegration({
                 variant="outline"
             >
                 <Plus className="w-4 h-4" />
-                {isOAuthConnecting ? 'Connecting...' : `Connect Another ${metadata.name}`}
+                {isOAuthConnecting ? 'Connecting...' : "Connect Another GitHub"}
             </Button>
 
             {/* GitHub-specific repository selector */}
-            {selectedIntegrationId && onGithubConfigChange && selectedIntegration && (
+            {selectedIntegrationId && selectedIntegration && (
                 <div className="mt-3 pt-3 border-t border-border">
                     <GithubResourceSelector
                         installationId={selectedIntegration.installation_id}
-                        selectedRepositoryIds={connectedRepositories}
+                        selectedRepositoryIds={currentConfig?.repositoryIds || []}
                         onSelect={(repositoryIds) => {
-                            onGithubConfigChange({
-                                ...githubConfig,
-                                repositoryIds: repositoryIds
-                            });
+                            const updatedConfig = new GitHubConfig(
+                                selectedIntegrationId,
+                                repositoryIds
+                            );
+                            setConfig(updatedConfig);
                         }}
                     />
                 </div>
