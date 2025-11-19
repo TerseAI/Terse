@@ -6,92 +6,10 @@ import chalk from "chalk";
 import { AutomationWithInputRelations, PrismaTransaction, AutomationWithRelations } from "../types/prisma";
 import { IntegrationType } from "../shared/Integrations";
 import { convertConfigTypeToInputConfigType, convertIntegrationTypeToPrismaIntegrationType, convertPrismaConfigToConfigInstance } from "../utility/typeConverters";
+import { getInputConfigInclude, getOutputConfigInclude } from "../utility/prismaIncludes";
 import { SaveAutomationRequest } from "../shared/types";
 import { INPUT_REGISTRY } from "../inputs/InputRegistry";
 import { INTEGRATION_REGISTRY } from "../integrations/abstract/IntegrationRegistry";
-
-/**
- * Sets up all inputs in an automation by calling setupAutomationInput on each integration.
- * Called after an automation is created or updated.
- */
-async function setupAutomationInputs(automation: AutomationWithInputRelations): Promise<void> {
-    for (const input of automation.inputs) {
-        try {
-            // Convert prisma config to shared config instance to get integration type
-            const configInstance = convertPrismaConfigToConfigInstance(input);
-            const integrationType = configInstance.integrationType;
-
-            // Find the integration from the registry
-            const integration = INTEGRATION_REGISTRY.find(
-                (int) => int.integrationType === integrationType
-            );
-
-            if (integration) {
-                await integration.setupAutomationInput(input.integration_id, input);
-                console.log(
-                    chalk.green(
-                        `✅ Setup completed for ${input.config_type} input (ID: ${input.id})`
-                    )
-                );
-            } else {
-                console.log(
-                    chalk.yellow(
-                        `⚠️  No integration found for ${integrationType} (config: ${input.config_type}). Skipping setup.`
-                    )
-                );
-            }
-        } catch (error) {
-            console.error(
-                chalk.red(
-                    `❌ Error setting up ${input.config_type} input (ID: ${input.id}):`
-                ),
-                error
-            );
-        }
-    }
-}
-
-/**
- * Tears down setup for all inputs in an automation by calling teardownAutomationInput on each integration.
- * Called before an automation is deleted.
- */
-async function tearDownAutomationInputs(automation: AutomationWithInputRelations): Promise<void> {
-    for (const input of automation.inputs) {
-        try {
-            // Convert prisma config to shared config instance to get integration type
-            const configInstance = convertPrismaConfigToConfigInstance(input);
-            const integrationType = configInstance.integrationType;
-
-            // Find the integration from the registry
-            const integration = INTEGRATION_REGISTRY.find(
-                (int) => int.integrationType === integrationType
-            );
-
-            if (integration) {
-                await integration.teardownAutomationInput(input.integration_id, input);
-                console.log(
-                    chalk.green(
-                        `✅ Teardown completed for ${input.config_type} input`
-                    )
-                );
-            } else {
-                console.log(
-                    chalk.yellow(
-                        `⚠️  No integration found for ${integrationType} (config: ${input.config_type}). Skipping teardown.`
-                    )
-                );
-            }
-        } catch (error) {
-            console.error(
-                chalk.red(
-                    `❌ Error tearing down ${input.config_type}:`
-                ),
-                error
-            );
-            // Continue with other inputs even if one fails
-        }
-    }
-}
 
 async function createInputConfig(
     tx: PrismaTransaction,
@@ -104,6 +22,7 @@ async function createInputConfig(
     }
     await input.addInputToAutomation(tx, inputId, config);
 }
+
 // Helper function to create config record for an automation input
 // async function createInputConfig(
 //     tx: any,
@@ -455,30 +374,10 @@ export async function getUserAutomations(req: Request, res: Response) {
             include: {
                 prompt: true,
                 inputs: {
-                    include: {
-                        slack_config: true,
-                        notion_config: true,
-                        notion_page_config: true,
-                        linear_config: true,
-                        jira_config: true,
-                        confluence_config: true,
-                        github_config: true,
-                        gmail_config: true,
-                        figma_config: true,
-                    }
+                    include: getInputConfigInclude()
                 },
                 output: {
-                    include: {
-                        slack_config: true,
-                        notion_config: true,
-                        notion_page_config: true,
-                        linear_config: true,
-                        jira_config: true,
-                        confluence_config: true,
-                        github_config: true,
-                        gmail_config: true,
-                        figma_config: true,
-                    }
+                    include: getOutputConfigInclude()
                 }
             },
             orderBy: { created_at: 'desc' },
@@ -533,30 +432,10 @@ export async function getUserAutomation(req: Request, res: Response) {
             include: {
                 prompt: true,
                 inputs: {
-                    include: {
-                        slack_config: true,
-                        notion_config: true,
-                        notion_page_config: true,
-                        linear_config: true,
-                        jira_config: true,
-                        confluence_config: true,
-                        github_config: true,
-                        gmail_config: true,
-                        figma_config: true,
-                    }
+                    include: getInputConfigInclude()
                 },
                 output: {
-                    include: {
-                        slack_config: true,
-                        notion_config: true,
-                        notion_page_config: true,
-                        linear_config: true,
-                        jira_config: true,
-                        confluence_config: true,
-                        github_config: true,
-                        gmail_config: true,
-                        figma_config: true,
-                    }
+                    include: getOutputConfigInclude()
                 }
             }
         });
@@ -693,17 +572,7 @@ export async function createAutomation(req: Request, res: Response) {
             where: { id: automation.id },
             include: {
                 inputs: {
-                    include: {
-                        slack_config: true,
-                        notion_config: true,
-                        notion_page_config: true,
-                        linear_config: true,
-                        jira_config: true,
-                        confluence_config: true,
-                        github_config: true,
-                        gmail_config: true,
-                        figma_config: true,
-                    }
+                    include: getInputConfigInclude()
                 },
             }
         });
@@ -857,17 +726,7 @@ export async function updateAutomation(req: Request, res: Response) {
             where: { id: automationId },
             include: {
                 inputs: {
-                    include: {
-                        slack_config: true,
-                        notion_config: true,
-                        notion_page_config: true,
-                        linear_config: true,
-                        jira_config: true,
-                        confluence_config: true,
-                        github_config: true,
-                        gmail_config: true,
-                        figma_config: true,
-                    }
+                    include: getInputConfigInclude()
                 },
             }
         });
@@ -907,17 +766,7 @@ export async function deleteAutomation(req: Request, res: Response) {
             },
             include: {
                 inputs: {
-                    include: {
-                        slack_config: true,
-                        linear_config: true,
-                        jira_config: true,
-                        gmail_config: true,
-                        github_config: true,
-                        notion_config: true,
-                        notion_page_config: true,
-                        confluence_config: true,
-                        figma_config: true,
-                    },
+                    include: getInputConfigInclude()
                 },
             }
         });
@@ -939,5 +788,83 @@ export async function deleteAutomation(req: Request, res: Response) {
     } catch (error) {
         console.error('Error deleting automation:', error);
         res.status(500).json({ error: 'Failed to delete automation', details: (error as Error).message });
+    }
+}
+
+async function setupAutomationInputs(automation: AutomationWithInputRelations): Promise<void> {
+    for (const input of automation.inputs) {
+        try {
+            // Convert prisma config to shared config instance to get integration type
+            const configInstance = convertPrismaConfigToConfigInstance(input);
+            const integrationType = configInstance.integrationType;
+
+            // Find the integration from the registry
+            const integration = INTEGRATION_REGISTRY.find(
+                (int) => int.integrationType === integrationType
+            );
+
+            if (integration) {
+                await integration.setupAutomationInput(input.integration_id, input);
+                console.log(
+                    chalk.green(
+                        `✅ Setup completed for ${input.config_type} input (ID: ${input.id})`
+                    )
+                );
+            } else {
+                console.log(
+                    chalk.yellow(
+                        `⚠️  No integration found for ${integrationType} (config: ${input.config_type}). Skipping setup.`
+                    )
+                );
+            }
+        } catch (error) {
+            console.error(
+                chalk.red(
+                    `❌ Error setting up ${input.config_type} input (ID: ${input.id}):`
+                ),
+                error
+            );
+        }
+    }
+}
+
+/**
+ * Tears down setup for all inputs in an automation by calling teardownAutomationInput on each integration.
+ * Called before an automation is deleted.
+ */
+async function tearDownAutomationInputs(automation: AutomationWithInputRelations): Promise<void> {
+    for (const input of automation.inputs) {
+        try {
+            // Convert prisma config to shared config instance to get integration type
+            const configInstance = convertPrismaConfigToConfigInstance(input);
+            const integrationType = configInstance.integrationType;
+
+            // Find the integration from the registry
+            const integration = INTEGRATION_REGISTRY.find(
+                (int) => int.integrationType === integrationType
+            );
+
+            if (integration) {
+                await integration.teardownAutomationInput(input.integration_id, input);
+                console.log(
+                    chalk.green(
+                        `✅ Teardown completed for ${input.config_type} input`
+                    )
+                );
+            } else {
+                console.log(
+                    chalk.yellow(
+                        `⚠️  No integration found for ${integrationType} (config: ${input.config_type}). Skipping teardown.`
+                    )
+                );
+            }
+        } catch (error) {
+            console.error(
+                chalk.red(
+                    `❌ Error tearing down ${input.config_type}:`
+                ),
+                error
+            );
+        }
     }
 }

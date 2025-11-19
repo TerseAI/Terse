@@ -427,7 +427,7 @@ model automation_inputs {
 model automation_outputs {
   id               String          @id @default(cuid())
   automation_id    String          @unique
-  integration_type IntegrationType
+  config_type      OutputConfigType
   integration_id   String
   created_at       DateTime        @default(now())
   updated_at       DateTime        @updatedAt
@@ -445,7 +445,7 @@ model automation_outputs {
   gmail_config       automation_gmail_configs?
   figma_config       automation_figma_configs?
 
-  @@index([integration_type, integration_id])
+  @@index([config_type, integration_id])
 }
 
 // Automation Configuration Tables - Typed config per integration type
@@ -654,6 +654,12 @@ enum InputConfigType {
   LINEAR
   GITHUB
   JIRA
+  CONFLUENCE
+}
+
+enum OutputConfigType {
+  NOTION_PAGE
+  NOTION_DATABASE
   CONFLUENCE
 }
 
