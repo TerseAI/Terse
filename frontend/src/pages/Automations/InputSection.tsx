@@ -8,7 +8,6 @@ import { IntegrationSelector } from "../../components/IntegrationSelector";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
-import { IntegrationTitle } from "./components/IntegrationTitle";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { v4 as uuidv4 } from 'uuid';

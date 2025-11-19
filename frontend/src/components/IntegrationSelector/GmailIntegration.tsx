@@ -6,6 +6,7 @@ import { InputConfigSelectorProps } from './types';
 import { useGmailIntegrations } from '@/hooks/api/useGmailIntegrations';
 import { useOAuthConnection } from '@/hooks/useOAuthConnection';
 import { GmailConfig } from '@/shared/Configs';
+import { StatusOption } from '../ui/DropdownSelect';
 
 export function GmailIntegration({
     input,
@@ -49,11 +50,19 @@ export function GmailIntegration({
         );
     }
 
-    const connectionSelections = integrations.map((integration: GmailIntegrationType) => ({
+    const connectionSelections: StatusOption[] = integrations.map((integration: GmailIntegrationType) => ({
         label: integration.email,
         value: integration.id
     }));
-    const selectedOption = connectionSelections.find(option => option.value === input.config?.integrationId) || connectionSelections[0];
+
+    let selectedOption: StatusOption | undefined = connectionSelections.find(option => option.value === input.config?.integrationId);
+    if (!selectedOption && connectionSelections.length == 1) {
+        const defaultIntegration = connectionSelections[0];
+        setConfig(new GmailConfig(defaultIntegration.value));
+        selectedOption = defaultIntegration;
+    } else if (!selectedOption) {
+        selectedOption = connectionSelections[0];
+    }
 
     // Card variant: compact view
     if (variant === 'card') {
