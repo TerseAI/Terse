@@ -1,7 +1,6 @@
 import { forwardRef, useState, useImperativeHandle, useRef } from "react";
-import { IntegrationType } from "../../shared/Integrations"
-import { AutomationInput } from "../../shared/types";
-import { ConfigInstance, GitHubConfig } from "@/shared/Configs";
+import { AutomationInput, TransientAutomationInput } from "../../shared/types";
+import { CONFIG_DETAILS, ConfigInstance, ConfigType } from "@/shared/Configs";
 import { SectionLayout } from "./components/SectionLayout";
 import { AddInputModal } from "./components/AddInputModal";
 import { Zap, Plus, Settings, AlertTriangle } from "lucide-react";
@@ -16,8 +15,8 @@ import { v4 as uuidv4 } from 'uuid';
 import { InputConfigSelectorProps } from "@/components/IntegrationSelector/types";
 
 type InputsSectionProps = {
-    inputs: AutomationInput[];
-    setInputs: (inputs: AutomationInput[]) => void;
+    inputs: TransientAutomationInput[];
+    setInputs: (inputs: TransientAutomationInput[]) => void;
     isLoading: boolean;
 };
 
@@ -29,15 +28,17 @@ export const InputsSection = forwardRef<Map<string, HTMLDivElement>, InputsSecti
         return inputRefs.current;
     }, [inputs]);
 
-    const handleSelectPlatform = (config: ConfigInstance) => {
+    const handleSelectPlatform = (config: ConfigType) => {
         const newInputId = uuidv4(); // We need to mint a placeholder ID for the new input so that we can identify it later.
-        const newInput: AutomationInput = { id: newInputId, config: config };
-        const newInputs: AutomationInput[] = [...inputs, newInput];
+        const newInput: TransientAutomationInput = { id: newInputId, config: undefined, configType: config };
+        const newInputs: TransientAutomationInput[] = [...inputs, newInput];
+        console.log("New inputs:", JSON.stringify(newInputs, null, 2));
+        console.log('Config type:', config);
         setInputs(newInputs);
         setShowAddModal(false);
     };
 
-    const handleSelectIntegration = (integrationId: string, input: AutomationInput) => {
+    const handleSelectIntegration = (integrationId: string, input: TransientAutomationInput) => {
         // Check if we have a matching input already in inputs
         const matchingInput = inputs.find(i => i.id === input.id);
         if (matchingInput) {
@@ -50,6 +51,7 @@ export const InputsSection = forwardRef<Map<string, HTMLDivElement>, InputsSecti
         setInputs(inputs.filter(input => input.id !== id));
     };
 
+    console.log("inputs length:", inputs.length);
     return (
         <SectionLayout
             subtitle="Choose which integration triggers this automation"
@@ -87,21 +89,23 @@ function InputCardsLayout({
     setShowAddModal,
     inputRefs
 }: {
-    inputs: AutomationInput[], 
-    handleSelectIntegration: (integrationId: string, input: AutomationInput) => void, 
-    setInputs: (inputs: AutomationInput[]) => void, 
+    inputs: TransientAutomationInput[], 
+    handleSelectIntegration: (integrationId: string, input: TransientAutomationInput) => void, 
+    setInputs: (inputs: TransientAutomationInput[]) => void, 
     handleRemove: (id: string) => void, 
     setShowAddModal: (show: boolean) => void,
     inputRefs: React.MutableRefObject<Map<string, HTMLDivElement>>
 }) {
     const isSingleInput = inputs.length === 1;
+    console.log("Inputs:", JSON.stringify(inputs, null, 2));
+    console.log("is single input:", isSingleInput);
     
     if (isSingleInput) {
         return (
             <div className="relative w-full h-full">
                 <div className="flex justify-center">
                     {inputs.map((input) => {
-                        const inputId = input.id || input.config.integrationId || '';
+                        const inputId = input.id || '';
                         return (
                             <InputCard 
                                 key={inputId} 
@@ -111,7 +115,7 @@ function InputCardsLayout({
                                 setInputs={setInputs} 
                                 handleRemove={handleRemove}
                                 ref={(el) => {
-                                    if (el && input.config.isComplete()) {
+                                    if (el && input.config?.isComplete()) {
                                         inputRefs.current.set(inputId, el);
                                     } else {
                                         inputRefs.current.delete(inputId);
@@ -133,7 +137,7 @@ function InputCardsLayout({
     return (
         <div className="flex flex-col gap-4">
             {inputs.map((input) => {
-                const inputId = input.id || input.config.integrationId || '';
+                const inputId = input.id || '';
                 return (
                     <InputCard 
                         key={inputId} 
@@ -143,7 +147,7 @@ function InputCardsLayout({
                         setInputs={setInputs} 
                         handleRemove={handleRemove}
                         ref={(el) => {
-                            if (el && input.config.isComplete()) {
+                            if (el && input.config?.isComplete()) {
                                 inputRefs.current.set(inputId, el);
                             } else {
                                 inputRefs.current.delete(inputId);
@@ -160,10 +164,10 @@ function InputCardsLayout({
 }
 
 const InputCard = forwardRef<HTMLDivElement, {
-    input: AutomationInput,
-    inputs: AutomationInput[],
-    handleSelectIntegration: (integrationId: string, input: AutomationInput) => void, 
-    setInputs: (inputs: AutomationInput[]) => void, 
+    input: TransientAutomationInput,
+    inputs: TransientAutomationInput[],
+    handleSelectIntegration: (integrationId: string, input: TransientAutomationInput) => void, 
+    setInputs: (inputs: TransientAutomationInput[]) => void, 
     handleRemove: (id: string) => void
 }>(({
     input,
@@ -175,17 +179,17 @@ const InputCard = forwardRef<HTMLDivElement, {
     const [showDetailsDialog, setShowDetailsDialog] = useState(false);
 
     const selectorProps: InputConfigSelectorProps = {
-        config: input.config,
-        setInput: (input: AutomationInput) => setInputs(inputs.map(i => i.id === input.id ? input : i)),
+        input: input,
+        setConfig: (config: ConfigInstance) => setInputs(inputs.map(i => i.id === input.id ? { ...i, config } : i)),
         variant: "card"
     };
-    const needsConfiguration = input.config.isComplete();
+    const needsConfiguration = input.config?.isComplete() ?? false;
     return (
         <>
             <Card ref={ref}>
                 <CardHeader>
                     <div className="flex justify-between items-center">
-                        <IntegrationTitle integration={input.config.integrationType} iconSize="md" />
+                        <IntegrationTitle configType={input.configType} iconSize="md" />
                         {needsConfiguration && (
                             <Badge variant="outline" className="border-yellow-500 text-yellow-600 dark:text-yellow-500">
                                 <AlertTriangle className="w-3 h-3" />
@@ -196,7 +200,7 @@ const InputCard = forwardRef<HTMLDivElement, {
                 </CardHeader>
 
                 <CardContent className="min-w-xs max-w-xs">
-                    <IntegrationSelector {...selectorProps} />
+                    <IntegrationSelector {...selectorProps} variant="card" />
                 </CardContent>
 
                 <CardFooter className="justify-between">

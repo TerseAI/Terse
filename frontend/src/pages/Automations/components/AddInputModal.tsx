@@ -1,7 +1,7 @@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { IconForInputType } from "./Integration";
 import { Button } from "@/components/ui/button";
-import { CONFIG_METADATA, ConfigType } from "@/shared/Configs";
+import { CONFIG_DETAILS, ConfigType } from "@/shared/Configs";
 
 interface AddInputModalProps {
     isOpen: boolean;
@@ -13,8 +13,8 @@ export function AddInputModal({ isOpen, onClose, onSelectIntegration }: AddInput
 
     // Get all integration metadata with input-specific descriptions
     const allConfigTypes = Object.values(ConfigType);
-    const allConfigTypesWithInput = allConfigTypes.filter((configType) => CONFIG_METADATA[configType as ConfigType].isInput);
-    
+    const allConfigTypesWithInput = allConfigTypes.filter((configType) => CONFIG_DETAILS[configType].isInput);
+
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
             <DialogContent className="max-w-lg">
@@ -28,21 +28,24 @@ export function AddInputModal({ isOpen, onClose, onSelectIntegration }: AddInput
                 </DialogHeader>
 
                 <div className="grid grid-cols-2 gap-3">
-                    {allConfigTypes.map((configType) => (
-                        <button
-                            key={configType}
-                            onClick={() => onSelectIntegration(configType)}
-                            className="flex flex-col items-center gap-3 p-5 rounded-lg border-2 border-border hover:border-primary hover:bg-accent transition-all duration-200 group"
-                        >
-                            <div className="w-16 h-16 flex items-center justify-center">
-                                <IconForInputType type={configType} />
-                            </div>
-                            <div className="text-center">
-                                <div className="text-sm font-medium text-foreground mb-1">TODO: Integration Name</div>
-                                <div className="text-xs text-muted-foreground group-hover:text-foreground transition-colors">Also TODO: Integration Description</div>
-                            </div>
-                        </button>
-                    ))}
+                    {allConfigTypesWithInput.map((configType) => {
+                        const configDetails = CONFIG_DETAILS[configType];
+                        return (
+                            <button
+                                key={configType}
+                                onClick={() => onSelectIntegration(configType)}
+                                className="flex flex-col items-center gap-3 p-5 rounded-lg border-2 border-border hover:border-primary hover:bg-accent transition-all duration-200 group"
+                            >
+                                <div className="w-16 h-16 flex items-center justify-center">
+                                    <IconForInputType type={configType} />
+                                </div>
+                                <div className="text-center">
+                                    <div className="text-sm font-medium text-foreground mb-1">{configDetails.name}</div>
+                                    <div className="text-xs text-muted-foreground group-hover:text-foreground transition-colors">{configDetails.description}</div>
+                                </div>
+                            </button>
+                        );
+                    })}
                 </div>
 
                 <DialogFooter>

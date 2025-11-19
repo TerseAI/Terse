@@ -1,4 +1,3 @@
-import { IntegrationType } from "@/shared/Integrations"
 import { InputConfigSelectorProps } from './types';
 import { GmailIntegration } from './GmailIntegration';
 import { NotionIntegration } from './NotionIntegration';
@@ -9,12 +8,10 @@ import { LinearIntegration } from './LinearIntegration';
 import { ConfluenceIntegration } from './ConfluenceIntegration';
 import { ConfigType } from "@/shared/Configs";
 
-export function IntegrationSelector(props: InputConfigSelectorProps & { variant?: 'card' | 'dialog' }) {
-    const { variant = 'card' } = props;
-
-    switch (props.config.configType) {
+export function IntegrationSelector(props: InputConfigSelectorProps) {
+    switch (props.input.configType) {
         case ConfigType.GMAIL:
-            return <GmailIntegration integrationType={props.config.integrationType} />;
+            return <GmailIntegration {...props} />;
 
         case ConfigType.NOTION_DATABASE, ConfigType.NOTION_PAGE:
             return (

@@ -298,6 +298,18 @@ export type AutomationPrompt = {
   text: string;
 };
 
+export type TransientAutomationInput = {
+  id: string;
+  config?: ConfigInstance;
+  configType: ConfigType;
+};
+
+export type TransientAutomationOutput = {
+  id: string;
+  config?: ConfigInstance;
+  configType: ConfigType;
+};
+
 export type Automation = {
     id: string;
     name: string;

@@ -5,18 +5,23 @@ import { IntegrationType, GmailIntegration as GmailIntegrationType } from "@/sha
 import { InputConfigSelectorProps } from './types';
 import { useGmailIntegrations } from '@/hooks/api/useGmailIntegrations';
 import { useOAuthConnection } from '@/hooks/useOAuthConnection';
-
-interface GmailIntegrationProps extends InputConfigSelectorProps {
-}
+import { GmailConfig } from '@/shared/Configs';
 
 export function GmailIntegration({
-    config,
-    setInput,
-    variant
-}: GmailIntegrationProps) {
+    input,
+    variant,
+    setConfig
+}: InputConfigSelectorProps) {
     const { integrations, isLoading } = useGmailIntegrations();
     const { connect: connectOAuth, isConnecting: isOAuthConnecting } = useOAuthConnection(IntegrationType.GMAIL);
 
+    function onSelect(value: string) {
+        const integration = integrations.find((integration: GmailIntegrationType) => integration.id === value);
+        if (integration) {
+            const gmailConfig = new GmailConfig(integration.id);
+            setConfig(gmailConfig);
+        }
+    }
 
     if (isLoading) {
         return (
@@ -48,7 +53,7 @@ export function GmailIntegration({
         label: integration.email,
         value: integration.id
     }));
-    const selectedOption = connectionSelections.find(option => option.value === config.integrationId) || connectionSelections[0];
+    const selectedOption = connectionSelections.find(option => option.value === input.config?.integrationId) || connectionSelections[0];
 
     // Card variant: compact view
     if (variant === 'card') {

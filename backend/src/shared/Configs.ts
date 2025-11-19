@@ -12,20 +12,112 @@ export enum ConfigType {
     CONFLUENCE = 'confluence',
 }
 
+// MARK: Config Metadata
+export interface ConfigDetails {
+    configType: ConfigType;
+    name: string;
+    description: string;
+    isInput: boolean;
+    isOutput: boolean;
+}
+
+// Metadata objects - using const objects instead of classes
+export const GmailConfigMetadata = {
+    configType: ConfigType.GMAIL,
+    name: 'Gmail',
+    description: 'Monitor incoming emails',
+    isInput: true,
+    isOutput: false,
+} as const satisfies ConfigDetails;
+
+export const FigmaConfigMetadata = {
+    configType: ConfigType.FIGMA,
+    name: 'Figma',
+    description: 'Monitor design changes in Figma files',
+    isInput: true,
+    isOutput: false,
+} as const satisfies ConfigDetails;
+
+export const SlackConfigMetadata = {
+    configType: ConfigType.SLACK,
+    name: 'Slack',
+    description: 'Monitor messages in Slack channels or DMs',
+    isInput: true,
+    isOutput: false,
+} as const satisfies ConfigDetails;
+
+export const NotionDatabaseConfigMetadata = {
+    configType: ConfigType.NOTION_DATABASE,
+    name: 'Notion Database',
+    description: 'Update and monitor Notion databases',
+    isInput: false,
+    isOutput: true,
+} as const satisfies ConfigDetails;
+
+export const NotionPageConfigMetadata = {
+    configType: ConfigType.NOTION_PAGE,
+    name: 'Notion Page',
+    description: 'Update and monitor Notion pages',
+    isInput: false,
+    isOutput: true,
+} as const satisfies ConfigDetails;
+
+export const LinearConfigMetadata = {
+    configType: ConfigType.LINEAR,
+    name: 'Linear',
+    description: 'Monitor and update Linear issues',
+    isInput: true,
+    isOutput: true,
+} as const satisfies ConfigDetails;
+
+export const GitHubConfigMetadata = {
+    configType: ConfigType.GITHUB,
+    name: 'GitHub',
+    description: 'Monitor GitHub repository events',
+    isInput: true,
+    isOutput: false,
+} as const satisfies ConfigDetails;
+
+export const JiraConfigMetadata = {
+    configType: ConfigType.JIRA,
+    name: 'Jira',
+    description: 'Monitor and update Jira issues',
+    isInput: true,
+    isOutput: true,
+} as const satisfies ConfigDetails;
+
+export const ConfluenceConfigMetadata = {
+    configType: ConfigType.CONFLUENCE,
+    name: 'Confluence',
+    description: 'Update Confluence pages',
+    isInput: false,
+    isOutput: true,
+} as const satisfies ConfigDetails;
+
+export type ConfigDetailsMap = Record<ConfigType, ConfigDetails>;
+
+export const CONFIG_DETAILS: ConfigDetailsMap = {
+    [ConfigType.GMAIL]: GmailConfigMetadata,
+    [ConfigType.FIGMA]: FigmaConfigMetadata,
+    [ConfigType.SLACK]: SlackConfigMetadata,
+    [ConfigType.NOTION_DATABASE]: NotionDatabaseConfigMetadata,
+    [ConfigType.NOTION_PAGE]: NotionPageConfigMetadata,
+    [ConfigType.LINEAR]: LinearConfigMetadata,
+    [ConfigType.GITHUB]: GitHubConfigMetadata,
+    [ConfigType.JIRA]: JiraConfigMetadata,
+    [ConfigType.CONFLUENCE]: ConfluenceConfigMetadata,
+} as const satisfies ConfigDetailsMap;
+
 export interface ConfigInstance {
     integrationId: string;
     integrationType: IntegrationType;
     configType: ConfigType;
     isComplete(): boolean;
-    isInput: boolean;
-    isOutput: boolean;
 }
 
 export class GmailConfig implements ConfigInstance {
     integrationType: IntegrationType = IntegrationType.GMAIL;
     configType: ConfigType = ConfigType.GMAIL;
-    isInput: boolean = true;
-    isOutput: boolean = false;
 
     constructor(
         public integrationId: string,
@@ -41,8 +133,6 @@ export class GmailConfig implements ConfigInstance {
 export class FigmaConfig implements ConfigInstance {
     integrationType: IntegrationType = IntegrationType.FIGMA;
     configType: ConfigType = ConfigType.FIGMA;
-    isInput: boolean = true;
-    isOutput: boolean = false;
 
     constructor(
         public integrationId: string,
@@ -61,8 +151,6 @@ export class FigmaConfig implements ConfigInstance {
 export class SlackConfig implements ConfigInstance {
     integrationType: IntegrationType = IntegrationType.SLACK;
     configType: ConfigType = ConfigType.SLACK;
-    isInput: boolean = true;
-    isOutput: boolean = false;
 
     constructor(
         public integrationId: string,
@@ -78,12 +166,9 @@ export class SlackConfig implements ConfigInstance {
     }
 };
 
-
 export class NotionConfig implements ConfigInstance {
     integrationType: IntegrationType = IntegrationType.NOTION;
     configType: ConfigType = ConfigType.NOTION_DATABASE;
-    isInput: boolean = false;
-    isOutput: boolean = true;
 
     constructor(
         public integrationId: string,
@@ -101,8 +186,6 @@ export class NotionConfig implements ConfigInstance {
 export class NotionPageConfig implements ConfigInstance {
     integrationType: IntegrationType = IntegrationType.NOTION;
     configType: ConfigType = ConfigType.NOTION_PAGE;
-    isInput: boolean = false;
-    isOutput: boolean = true;
     
     constructor(
         public integrationId: string,
@@ -120,8 +203,6 @@ export class NotionPageConfig implements ConfigInstance {
 export class LinearConfig implements ConfigInstance {
     integrationType: IntegrationType = IntegrationType.LINEAR;
     configType: ConfigType = ConfigType.LINEAR;
-    isInput: boolean = true;
-    isOutput: boolean = true;
 
     constructor(
         public integrationId: string,
@@ -139,8 +220,6 @@ export class LinearConfig implements ConfigInstance {
 export class GitHubConfig implements ConfigInstance {
     integrationType: IntegrationType = IntegrationType.GITHUB;
     configType: ConfigType = ConfigType.GITHUB;
-    isInput: boolean = true;
-    isOutput: boolean = false;
     
     constructor(
         public integrationId: string,
@@ -157,8 +236,6 @@ export class GitHubConfig implements ConfigInstance {
 export class JiraConfig implements ConfigInstance {
     integrationType: IntegrationType = IntegrationType.ATLASSIAN;
     configType: ConfigType = ConfigType.JIRA;
-    isInput: boolean = true;
-    isOutput: boolean = true;
 
     constructor(
         public integrationId: string,
@@ -176,8 +253,6 @@ export class JiraConfig implements ConfigInstance {
 export class ConfluenceConfig implements ConfigInstance {
     integrationType: IntegrationType = IntegrationType.ATLASSIAN;
     configType: ConfigType = ConfigType.CONFLUENCE;
-    isInput: boolean = false;
-    isOutput: boolean = true;
     
     constructor(
         public integrationId: string,

@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import EditableTextField from '../../../components/ui/EditableTextField';
 import { InputsSection } from "../InputSection";
 import { OutputSection } from "../OutputSection";
-import { AutomationUpdate } from "@/shared/types";
+import { AutomationUpdate, TransientAutomationInput, TransientAutomationOutput } from "@/shared/types";
 import { toast } from "sonner";
 import { getDefaultAutomationName } from "@/utility/AutomationUtils";
 import { useAutomationCount } from "@/hooks/api/useAutomationCount";
@@ -18,10 +18,10 @@ type AutomationSetupTabProps = {
     automationId: string | null;
     name: string | null;
     setName: (name: string) => void;
-    inputs: AutomationInput[];
-    setInputs: (inputs: AutomationInput[]) => void;
-    output: AutomationOutput | undefined;
-    setOutput: (output: AutomationOutput | undefined) => void;
+    inputs: TransientAutomationInput[];
+    setInputs: (inputs: TransientAutomationInput[]) => void;
+    output: TransientAutomationOutput | undefined;
+    setOutput: (output: TransientAutomationOutput | undefined) => void;
     prompt: AutomationPrompt | undefined;
     setPrompt: (prompt: AutomationPrompt | undefined) => void;
     isActive: boolean;
@@ -155,18 +155,18 @@ export default function AutomationSetupTab({
     };
 
     const connections: Conn[] = []
+
+    const automationInputs = inputs.map(convertTransientAutomationInputToAutomationInput).filter(i => i != null) as AutomationInput[];
+    const automationOutput = convertTransientAutomationOutputToAutomationOutput(output)
     
-    if (inputs.length > 0 && inputsSectionRef.current != null && inputsSectionRef.current.size > 0) {
-        inputs.forEach((input) => {
-            if (input.config.integrationId != null) {
-                const inputId = input.id || input.config.integrationId || '';
-                const inputCardRef = createMapElementRef(inputsSectionRef, inputId);
-                connections.push({ 
-                    id: `input-to-prompt-${input.config.integrationType}-${input.config.integrationId}`, 
-                    from: inputCardRef, 
-                    to: PromptSectionRef 
-                });
-            }
+    if (automationInputs.length > 0 && inputsSectionRef.current != null && inputsSectionRef.current.size > 0) {
+        automationInputs.forEach((input) => {
+            const inputCardRef = createMapElementRef(inputsSectionRef, input.id);
+            connections.push({ 
+                id: `input-to-prompt-${input.config.integrationType}-${input.config.integrationId}`, 
+                from: inputCardRef, 
+                to: PromptSectionRef 
+            });
         });
     }
     if (prompt != null && PromptSectionRef.current != null && OutputSectionRef.current != null && output != null) {
@@ -184,8 +184,8 @@ export default function AutomationSetupTab({
                         defaultName={defaultName}
                         automationId={automationId}
                         name={name}
-                        inputs={inputs}
-                        output={output}
+                        inputs={automationInputs}
+                        output={automationOutput}
                         prompt={prompt}
                         isActive={isActive}
                         mutate={mutate}
@@ -207,4 +207,22 @@ export default function AutomationSetupTab({
     )
 }
 
+function convertTransientAutomationInputToAutomationInput(input: TransientAutomationInput): AutomationInput | null {
+    if (input.config == null) {
+        return null
+    }
+    return {
+        id: input.id,
+        config: input.config,
+    };
+}
 
+function convertTransientAutomationOutputToAutomationOutput(output?: TransientAutomationOutput): AutomationOutput | undefined {
+    if (output == null || output.config == null) {
+        return undefined
+    }
+    return {
+        id: output.id,
+        config: output.config,
+    };
+}
