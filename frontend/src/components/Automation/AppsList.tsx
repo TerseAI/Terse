@@ -1,6 +1,6 @@
 import { ChevronRight } from 'lucide-react';
 import { Automation } from '../../shared/types';
-import { IconForConfigType, IconForIntegration } from '../../pages/Automations/components/Integration';
+import { IconForIntegration } from '../../pages/Automations/components/Integration';
 import { IntegrationType } from "@/shared/Integrations"
 import { capitalize } from '../../lib/utils';
 
