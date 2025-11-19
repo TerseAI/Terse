@@ -2,29 +2,30 @@ import { Plus } from 'lucide-react';
 import { Button } from '../ui/button';
 import DropdownSelect from '../ui/DropdownSelect';
 import { SlackChannelSelector } from '../SlackChannelSelector';
-import { INTEGRATION_METADATA, IntegrationType, SlackIntegration as SlackIntegrationType } from "@/shared/Integrations"
+import { IntegrationType, SlackIntegration as SlackIntegrationType } from "@/shared/Integrations"
 import { SlackConfig } from '../../shared/Configs';
-import { BaseIntegrationProps } from './types';
+import { InputConfigSelectorProps } from './types';
 import { useSlackIntegrations } from '@/hooks/api/useSlackIntegrations';
 import { useOAuthConnection } from '@/hooks/useOAuthConnection';
-
-interface SlackIntegrationProps extends BaseIntegrationProps {
-    integrationType: IntegrationType;
-    slackConfig?: SlackConfig;
-    onSlackConfigChange?: (config: SlackConfig) => void;
-}
+import { StatusOption } from '../ui/DropdownSelect';
+import { useState } from 'react';
 
 export function SlackIntegration({
-    selectedIntegrationId,
-    onSelect,
-    label = 'Connection',
-    slackConfig,
-    onSlackConfigChange,
-    variant
-}: SlackIntegrationProps) {
+    input,
+    variant,
+    setConfig
+}: InputConfigSelectorProps) {
     const { integrations, isLoading } = useSlackIntegrations();
     const { connect: connectOAuth, isConnecting: isOAuthConnecting } = useOAuthConnection(IntegrationType.SLACK);
-    const metadata = INTEGRATION_METADATA[IntegrationType.SLACK];
+    const currentConfig = input.config as SlackConfig | undefined;
+    const [selectedIntegrationId, setSelectedIntegrationId] = useState<string | undefined>(currentConfig?.integrationId);
+
+    function onSelect(value: string) {
+        const integration = integrations.find((integration: SlackIntegrationType) => integration.id === value);
+        if (integration) {
+            setSelectedIntegrationId(integration.id);
+        }
+    }
 
     if (isLoading) {
         return (
@@ -39,24 +40,32 @@ export function SlackIntegration({
         return (
             <div className="max-w-xs flex flex-col gap-3 p-4 rounded-lg border border-dashed border-input bg-card">
                 <div className="text-sm text-muted-foreground">
-                    No {metadata.name} accounts connected
+                    No Slack accounts connected
                 </div>
                 <Button
                     onClick={connectOAuth}
                     disabled={isOAuthConnecting}
                 >
                     <Plus className="w-4 h-4" />
-                    {isOAuthConnecting ? 'Connecting...' : `Connect ${metadata.name}`}
+                    {isOAuthConnecting ? 'Connecting...' : `Connect Slack`}
                 </Button>
             </div>
         );
     }
 
-    const connectionSelections = integrations.map((integration: SlackIntegrationType) => ({
+    const connectionSelections: StatusOption[] = integrations.map((integration: SlackIntegrationType) => ({
         label: integration.teamName || 'Unknown Workspace',
         value: integration.id
     }));
-    const selectedOption = connectionSelections.find(option => option.value === selectedIntegrationId) || connectionSelections[0];
+
+    let selectedOption = connectionSelections.find(option => option.value === selectedIntegrationId);
+    if (!selectedIntegrationId && !selectedOption && connectionSelections.length == 1) {
+        const defaultIntegration = connectionSelections[0];
+        setSelectedIntegrationId(defaultIntegration.value);
+        selectedOption = defaultIntegration;
+    } else if (!selectedOption) {
+        selectedOption = connectionSelections[0];
+    }
 
     // Card variant: compact view
     if (variant === 'card') {
@@ -72,7 +81,7 @@ export function SlackIntegration({
         <div className="flex flex-col gap-3">
             <div className="flex flex-col gap-1.5">
                 <label className="font-medium">
-                    {label}
+                    Slack Workspace
                 </label>
                 <DropdownSelect
                     statusOptions={connectionSelections}
@@ -87,34 +96,34 @@ export function SlackIntegration({
                 variant="outline"
             >
                 <Plus className="w-4 h-4" />
-                {isOAuthConnecting ? 'Connecting...' : `Connect Another ${metadata.name}`}
+                {isOAuthConnecting ? 'Connecting...' : "Connect Another Slack"}
             </Button>
 
             {/* Slack-specific channel selector */}
-            {selectedIntegrationId && onSlackConfigChange && (
+            {selectedIntegrationId && (
                 <div className="mt-3 pt-3 border-t border-border">
                     <SlackChannelSelector
                         integrationId={selectedIntegrationId}
-                        selectedChannelId={slackConfig?.channelId}
-                        listenToUserDms={slackConfig?.listenToUserDms}
+                        selectedChannelId={currentConfig?.channelId}
+                        listenToUserDms={currentConfig?.listenToUserDms}
                         onSelect={(channelId, channelName) => {
                             const hasChannel = channelId && channelId.trim() !== '';
-                            onSlackConfigChange({
-                                ...slackConfig,
-                                channelId: hasChannel ? channelId : undefined,
-                                channelName: hasChannel ? channelName : undefined,
-                                // Clear listenToUserDms when a channel is selected
-                                listenToUserDms: hasChannel ? false : slackConfig?.listenToUserDms
-                            });
+                            const updatedConfig = new SlackConfig(
+                                selectedIntegrationId,
+                                hasChannel ? channelId : undefined,
+                                hasChannel ? channelName : undefined,
+                                hasChannel ? false : currentConfig?.listenToUserDms
+                            );
+                            setConfig(updatedConfig);
                         }}
                         onListenToUserDmsChange={(listenToUserDms) => {
-                            onSlackConfigChange({
-                                ...slackConfig,
-                                listenToUserDms,
-                                // Clear channelId when DMs are selected
-                                channelId: listenToUserDms ? undefined : slackConfig?.channelId,
-                                channelName: listenToUserDms ? undefined : slackConfig?.channelName
-                            });
+                            const updatedConfig = new SlackConfig(
+                                selectedIntegrationId,
+                                listenToUserDms ? undefined : currentConfig?.channelId,
+                                listenToUserDms ? undefined : currentConfig?.channelName,
+                                listenToUserDms
+                            );
+                            setConfig(updatedConfig);
                         }}
                     />
                 </div>

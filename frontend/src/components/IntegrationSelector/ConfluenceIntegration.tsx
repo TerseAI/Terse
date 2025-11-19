@@ -4,29 +4,30 @@ import DropdownSelect from '../ui/DropdownSelect';
 import { AtlassianConnectionForm } from '../AtlassianConnectionForm';
 import { AtlassianIntegration, INTEGRATION_METADATA, IntegrationType } from "@/shared/Integrations"
 import { ConfluenceConfig } from '../../shared/Configs';
-import { BaseIntegrationProps } from './types';
+import { InputConfigSelectorProps } from './types';
 import { ConfluenceResourceSelector } from '../ConfluenceResourceSelector';
 import { useAtlassianIntegrations } from '@/hooks/api/useAtlassianIntegrations';
 import { useState } from 'react';
-
-interface ConfluenceIntegrationProps extends BaseIntegrationProps {
-    integrationType: IntegrationType;
-    confluenceConfig?: ConfluenceConfig;
-    onConfluenceConfigChange?: (config: ConfluenceConfig) => void;
-}
+import { StatusOption } from '../ui/DropdownSelect';
 
 export function ConfluenceIntegration({
-    selectedIntegrationId,
-    onSelect,
-    label = 'Connection',
-    confluenceConfig,
-    onConfluenceConfigChange,
-    variant
-}: ConfluenceIntegrationProps) {
+    input,
+    variant,
+    setConfig
+}: InputConfigSelectorProps) {
     const { integrations, isLoading, mutate: mutateIntegrations } = useAtlassianIntegrations();
     const metadata = INTEGRATION_METADATA[IntegrationType.ATLASSIAN];
+    const currentConfig = input.config as ConfluenceConfig | undefined;
+    const [selectedIntegrationId, setSelectedIntegrationId] = useState<string | undefined>(currentConfig?.integrationId);
     const [showForm, setShowForm] = useState(false);
     const [isConnecting, setIsConnecting] = useState(false);
+
+    function onSelect(value: string) {
+        const integration = integrations.find((integration: AtlassianIntegration) => integration.id === value);
+        if (integration) {
+            setSelectedIntegrationId(integration.id);
+        }
+    }
 
     function onFormSuccess() {
         setShowForm(false);
@@ -83,11 +84,19 @@ export function ConfluenceIntegration({
     }
 
     // Show selector when integrations exist
-    const connectionSelections = integrations.map((integration: AtlassianIntegration) => ({
+    const connectionSelections: StatusOption[] = integrations.map((integration: AtlassianIntegration) => ({
         label: integration.siteName || 'Unknown Site',
         value: integration.id
     }));
-    const selectedOption = connectionSelections.find(option => option.value === selectedIntegrationId) || connectionSelections[0];
+
+    let selectedOption = connectionSelections.find(option => option.value === selectedIntegrationId);
+    if (!selectedIntegrationId && !selectedOption && connectionSelections.length == 1) {
+        const defaultIntegration = connectionSelections[0];
+        setSelectedIntegrationId(defaultIntegration.value);
+        selectedOption = defaultIntegration;
+    } else if (!selectedOption) {
+        selectedOption = connectionSelections[0];
+    }
 
     // Card variant: compact view
     if (variant === 'card') {
@@ -103,7 +112,7 @@ export function ConfluenceIntegration({
         <div className="flex flex-col gap-3">
             <div className="flex flex-col gap-1.5">
                 <label className="font-medium">
-                    {label}
+                    Atlassian Site
                 </label>
                 <DropdownSelect
                     statusOptions={connectionSelections}
@@ -122,19 +131,20 @@ export function ConfluenceIntegration({
             </Button>
 
             {/* Confluence-specific resource selector */}
-            {selectedIntegrationId && onConfluenceConfigChange && (
+            {selectedIntegrationId && (
                 <div className="mt-3 pt-3 border-t border-border">
                     <ConfluenceResourceSelector
                         integrationId={selectedIntegrationId}
-                        selectedResourceId={confluenceConfig?.pageId}
+                        selectedResourceId={currentConfig?.pageId}
                         onSelect={(resourceId, resourceTitle, spaceId, spaceName) => {
-                            onConfluenceConfigChange({
-                                ...confluenceConfig,
-                                pageId: resourceId,
-                                pageName: resourceTitle,
-                                spaceId: spaceId,
-                                spaceName: spaceName,
-                            });
+                            const updatedConfig = new ConfluenceConfig(
+                                selectedIntegrationId,
+                                spaceName,
+                                spaceId,
+                                resourceId,
+                                resourceTitle
+                            );
+                            setConfig(updatedConfig);
                         }}
                     />
                 </div>
