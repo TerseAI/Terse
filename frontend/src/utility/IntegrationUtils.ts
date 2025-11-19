@@ -74,9 +74,8 @@ export function isInputComplete(input: { integration: IntegrationType; integrati
         case IntegrationType.ATLASSIAN:
             // These integrations don't require additional config beyond integrationId
             return true;
-
         default:
-            return true;
+            throw input.integration satisfies never;
     }
 }
 
@@ -113,6 +112,6 @@ export function isOutputComplete(output: { integration: IntegrationType; integra
             return true;
 
         default:
-            return true;
+            throw output.integration satisfies never;
     }
 }

@@ -83,6 +83,6 @@ export function IntegrationSelector(props: IntegrationSelectorProps & { variant?
             );
 
         default:
-            return null;
+            throw props.integrationType satisfies never;
     }
 }

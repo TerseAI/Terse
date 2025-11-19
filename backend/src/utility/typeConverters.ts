@@ -18,7 +18,7 @@ export const convertIntegrationTypeToPrismaIntegrationType = (integrationType: I
         case IntegrationType.FIGMA:
             return PrismaIntegrationType.FIGMA;
         default:
-            throw new Error(`Unknown integration type: ${integrationType}`);
+            throw integrationType satisfies never;
     }
 }
 
@@ -43,7 +43,7 @@ export const convertPrismaIntegrationTypeToIntegrationType = (prismaIntegrationT
         case PrismaIntegrationType.FIGMA:
             return IntegrationType.FIGMA;
         default:
-            throw new Error(`Unknown Prisma integration type: ${prismaIntegrationType}`);
+            throw prismaIntegrationType satisfies never;
     }
 }
 
@@ -64,7 +64,7 @@ export const convertIntegrationTypeToRunHistoryIntegration = (integrationType: I
         case IntegrationType.FIGMA:
             return RunHistoryIntegration.figma;
         default:
-            throw new Error(`Unknown integration type: ${integrationType}`);
+            throw integrationType satisfies never;
     }
 }
 
@@ -87,6 +87,6 @@ export const convertRunHistoryIntegrationToIntegrationType = (runHistoryIntegrat
         case RunHistoryIntegration.figma:
             return IntegrationType.FIGMA;
         default:
-            throw new Error(`Unknown run history integration: ${runHistoryIntegration}`);
+            throw runHistoryIntegration satisfies never;
     }
 }
