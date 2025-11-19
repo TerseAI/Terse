@@ -1,6 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
 import { Badge } from "../components/ui/badge";
-import { TrendingUp, TrendingDown, Activity, Zap, Hash, Clock } from "lucide-react";
+import { TrendingUp, TrendingDown, Activity, Zap, Hash, Clock, BarChart3, PlayCircle, Settings } from "lucide-react";
 import { AppsList } from "../components/Automation/AppsList";
 import { Automation } from "../shared/types";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "../components/ui/chart";
@@ -9,10 +9,14 @@ import { RunHistoryAction } from "../shared/RunHistoryTypes";
 import { IconForInputType } from "../pages/Automations/components/Integration";
 import { Integration } from "@/types/Integration";
 import { ScrollArea } from "../components/ui/scroll-area";
+import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "../components/ui/empty";
 
 function Home() {
+    // Flag to easily test empty states - set to false to see empty states
+    const USE_MOCK_DATA = true;
+
     // Mock data
-    const metrics = [
+    const metrics = USE_MOCK_DATA ? [
         {
             label: "Total events processed",
             value: "12,450",
@@ -40,10 +44,10 @@ function Home() {
             subtext: "Channels connected",
             icon: Hash,
         },
-    ];
+    ] : [];
 
     // Mock data for recently edited automations
-    const recentAutomations: (Automation & { lastEdited: string; lastEventProcessedAt: string })[] = [
+    const recentAutomations: (Automation & { lastEdited: string; lastEventProcessedAt: string })[] = USE_MOCK_DATA ? [
         {
             id: "1",
             name: "Slack to Linear Issue Creator",
@@ -89,10 +93,10 @@ function Home() {
             lastEdited: "2 days ago",
             lastEventProcessedAt: "30 minutes ago",
         },
-    ];
+    ] : [];
 
     // Mock data for events processed per day (last 7 days)
-    const eventsPerDay = [
+    const eventsPerDay = USE_MOCK_DATA ? [
         { date: "Mon", events: 1240 },
         { date: "Tue", events: 1890 },
         { date: "Wed", events: 2100 },
@@ -100,17 +104,17 @@ function Home() {
         { date: "Fri", events: 2300 },
         { date: "Sat", events: 980 },
         { date: "Sun", events: 1190 },
-    ];
+    ] : [];
 
     const chartConfig = {
         events: {
             label: "Events",
-            color: "hsl(var(--chart-1))",
+            color: "var(--chart-1)",
         },
     };
 
     // Mock data for recently run actions
-    const recentActions: (RunHistoryAction & { timestamp: string; automationName: string })[] = [
+    const recentActions: (RunHistoryAction & { timestamp: string; automationName: string })[] = USE_MOCK_DATA ? [
         {
             action: "Created Linear issue",
             integration: "linear",
@@ -151,7 +155,7 @@ function Home() {
             timestamp: "32 minutes ago",
             automationName: "Slack to Jira Sync",
         },
-    ];
+    ] : [];
 
     return (
         <div className="mx-auto p-8 space-y-8"> 
@@ -169,33 +173,47 @@ function Home() {
                             <CardTitle>Daily Events</CardTitle>
                         </CardHeader>
                         <CardContent>
-                            <ChartContainer config={chartConfig} className="h-[300px]">
-                                <AreaChart data={eventsPerDay}>
-                                    <CartesianGrid strokeDasharray="3 3" />
-                                    <XAxis 
-                                        dataKey="date" 
-                                        tickLine={false}
-                                        axisLine={false}
-                                        tickMargin={8}
-                                    />
-                                    <YAxis 
-                                        tickLine={false}
-                                        axisLine={false}
-                                        tickMargin={8}
-                                    />
-                                    <ChartTooltip 
-                                        cursor={false}
-                                        content={<ChartTooltipContent indicator="dot" />}
-                                    />
-                                    <Area 
-                                        type="monotone" 
-                                        dataKey="events" 
-                                        stroke="var(--color-events)" 
-                                        fill="var(--color-events)" 
-                                        fillOpacity={0.2}
-                                    />
-                                </AreaChart>
-                            </ChartContainer>
+                            {eventsPerDay.length > 0 ? (
+                                <ChartContainer config={chartConfig} className="h-[300px]">
+                                    <AreaChart data={eventsPerDay}>
+                                        <CartesianGrid strokeDasharray="3 3" />
+                                        <XAxis 
+                                            dataKey="date" 
+                                            tickLine={false}
+                                            axisLine={false}
+                                            tickMargin={8}
+                                        />
+                                        <YAxis 
+                                            tickLine={false}
+                                            axisLine={false}
+                                            tickMargin={8}
+                                        />
+                                        <ChartTooltip 
+                                            cursor={false}
+                                            content={<ChartTooltipContent indicator="dot" />}
+                                        />
+                                        <Area 
+                                            type="monotone" 
+                                            dataKey="events" 
+                                            stroke="var(--color-events)" 
+                                            fill="var(--color-events)" 
+                                            fillOpacity={0.2}
+                                        />
+                                    </AreaChart>
+                                </ChartContainer>
+                            ) : (
+                                <Empty className="h-[300px] border-0">
+                                    <EmptyHeader>
+                                        <EmptyMedia variant="icon">
+                                            <BarChart3 className="text-primary" />
+                                        </EmptyMedia>
+                                        <EmptyTitle>No events yet</EmptyTitle>
+                                        <EmptyDescription>
+                                            Event processing data will appear here once your automations start running
+                                        </EmptyDescription>
+                                    </EmptyHeader>
+                                </Empty>
+                            )}
                         </CardContent>
                     </Card>
                 </div>
@@ -207,13 +225,27 @@ function Home() {
                             <CardTitle>Recent Activity</CardTitle>
                         </CardHeader>
                         <CardContent>
-                            <ScrollArea className="h-[300px]">
-                                <div className="space-y-4 pr-4">
-                                    {recentActions.map((action, index) => (
-                                        <ActionItem key={index} action={action} />
-                                    ))}
-                                </div>
-                            </ScrollArea>
+                            {recentActions.length > 0 ? (
+                                <ScrollArea className="h-[300px]">
+                                    <div className="space-y-4 pr-4">
+                                        {recentActions.map((action, index) => (
+                                            <ActionItem key={index} action={action} />
+                                        ))}
+                                    </div>
+                                </ScrollArea>
+                            ) : (
+                                <Empty className="h-[300px] border-0">
+                                    <EmptyHeader>
+                                        <EmptyMedia variant="icon">
+                                            <PlayCircle className="text-primary" />
+                                        </EmptyMedia>
+                                        <EmptyTitle>No actions yet</EmptyTitle>
+                                        <EmptyDescription>
+                                            Actions taken by your automations will appear here once they start processing events
+                                        </EmptyDescription>
+                                    </EmptyHeader>
+                                </Empty>
+                            )}
                         </CardContent>
                     </Card>
                 </div>
@@ -221,11 +253,29 @@ function Home() {
 
             <div>
                 <h2 className="text-2xl font-bold mb-4">Recently Edited Automations</h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {recentAutomations.slice(0, 3).map((automation) => (
-                        <AutomationCard key={automation.id} automation={automation} />
-                    ))}
-                </div>
+                {recentAutomations.length > 0 ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {recentAutomations.slice(0, 3).map((automation) => (
+                            <AutomationCard key={automation.id} automation={automation} />
+                        ))}
+                    </div>
+                ) : (
+                    <Card>
+                        <CardContent className="py-12">
+                            <Empty className="border-0">
+                                <EmptyHeader>
+                                    <EmptyMedia variant="icon">
+                                        <Settings className="text-primary" />
+                                    </EmptyMedia>
+                                    <EmptyTitle>No automations yet</EmptyTitle>
+                                    <EmptyDescription>
+                                        Create your first automation to start automating your workflow
+                                    </EmptyDescription>
+                                </EmptyHeader>
+                            </Empty>
+                        </CardContent>
+                    </Card>
+                )}
             </div>
         </div>
     );
