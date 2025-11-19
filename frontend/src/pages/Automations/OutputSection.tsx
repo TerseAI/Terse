@@ -6,7 +6,7 @@ import { FileText, Plus } from "lucide-react";
 import { IntegrationSelector } from "../../components/IntegrationSelector";
 import { Button } from "@/components/ui/button";
 import { Card, CardAction, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { IntegrationTitle } from "./components/IntegrationTitle";
+import { ConfigTitle } from "./components/ConfigTitle";
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { v4 as uuidv4 } from 'uuid';
 import { ConfigInstance, ConfigType } from "@/shared/Configs";
@@ -83,7 +83,7 @@ function OutputCard({
         <Card>
             <CardHeader>
                 <CardTitle className="flex justify-between">
-                    <IntegrationTitle configType={output.config?.configType || output.configType} iconSize="lg" />
+                    <ConfigTitle configType={output.config?.configType || output.configType} iconSize="lg" />
                 </CardTitle>
             </CardHeader>
             <CardContent className="max-w-xs">

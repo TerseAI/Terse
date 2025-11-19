@@ -1,5 +1,5 @@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { IconForInputType } from "./Integration";
+import { IconForConfigType } from "./Integration";
 import { Button } from "@/components/ui/button";
 import { CONFIG_DETAILS, ConfigType } from "@/shared/Configs";
 
@@ -37,7 +37,7 @@ export function AddInputModal({ isOpen, onClose, onSelectIntegration }: AddInput
                                 className="flex flex-col items-center gap-3 p-5 rounded-lg border-2 border-border hover:border-primary hover:bg-accent transition-all duration-200 group"
                             >
                                 <div className="w-16 h-16 flex items-center justify-center">
-                                    <IconForInputType type={configType} />
+                                    <IconForConfigType type={configType} />
                                 </div>
                                 <div className="text-center">
                                     <div className="text-sm font-medium text-foreground mb-1">{configDetails.name}</div>

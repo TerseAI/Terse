@@ -13,6 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Badge } from "@/components/ui/badge";
 import { v4 as uuidv4 } from 'uuid';
 import { InputConfigSelectorProps } from "@/components/IntegrationSelector/types";
+import { ConfigTitle } from "./components/ConfigTitle";
 
 type InputsSectionProps = {
     inputs: TransientAutomationInput[];
@@ -186,7 +187,7 @@ const InputCard = forwardRef<HTMLDivElement, {
             <Card ref={ref}>
                 <CardHeader>
                     <div className="flex justify-between items-center">
-                        <IntegrationTitle configType={input.config?.configType || input.configType} iconSize="md" />
+                        <ConfigTitle configType={input.config?.configType || input.configType} iconSize="md" />
                         {needsConfiguration && (
                             <Badge variant="outline" className="border-yellow-500 text-yellow-600 dark:text-yellow-500">
                                 <AlertTriangle className="w-3 h-3" />
