@@ -1,20 +1,22 @@
-import { IntegrationType } from "@/shared/Integrations"
+import { ConfigType } from "@/shared/Configs";
 
-export function IconForInputType({ type }: { type: IntegrationType }) {
+export function IconForInputType({ type }: { type: ConfigType }) {
     switch (type) {
-        case IntegrationType.GITHUB:
+        case ConfigType.GITHUB:
             return <GithubIcon />;
-        case IntegrationType.LINEAR:
+        case ConfigType.LINEAR:
             return <LinearIcon />;
-        case IntegrationType.SLACK:
+        case ConfigType.SLACK:
             return <SlackIcon />;
-        case IntegrationType.GMAIL:
+        case ConfigType.GMAIL:
             return <GmailIcon />;
-        case IntegrationType.NOTION:
+        case ConfigType.NOTION_DATABASE:
+        case ConfigType.NOTION_PAGE:
             return <NotionIcon />;
-        case IntegrationType.FIGMA:
+        case ConfigType.FIGMA:
             return <FigmaIcon />;
-        case IntegrationType.ATLASSIAN:
+        case ConfigType.JIRA:
+        case ConfigType.CONFLUENCE:
             return <JiraIcon />;
         default:
             // Exhaustive check: TypeScript will error if any IntegrationType case is missing

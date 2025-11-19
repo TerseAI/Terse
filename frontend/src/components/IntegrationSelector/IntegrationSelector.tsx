@@ -1,5 +1,5 @@
 import { IntegrationType } from "@/shared/Integrations"
-import { BaseIntegrationProps, IntegrationSelectorProps } from './types';
+import { InputConfigSelectorProps } from './types';
 import { GmailIntegration } from './GmailIntegration';
 import { NotionIntegration } from './NotionIntegration';
 import { SlackIntegration } from './SlackIntegration';
@@ -7,26 +7,16 @@ import { GitHubIntegration } from './GitHubIntegration';
 import { FigmaIntegration } from './FigmaIntegration';
 import { LinearIntegration } from './LinearIntegration';
 import { ConfluenceIntegration } from './ConfluenceIntegration';
-import { useOAuthConnection } from "@/hooks/useOAuthConnection";
+import { ConfigType } from "@/shared/Configs";
 
-export function IntegrationSelector(props: IntegrationSelectorProps & { variant?: 'card' | 'dialog' }) {
+export function IntegrationSelector(props: InputConfigSelectorProps & { variant?: 'card' | 'dialog' }) {
     const { variant = 'card' } = props;
-    const { connect, isConnecting } = useOAuthConnection(props.integrationType);
 
-    const baseProps: BaseIntegrationProps = {
-        selectedIntegrationId: props.selectedIntegrationId,
-        onSelect: props.onSelect,
-        isConnecting,
-        onConnect: connect,
-        label: props.label,
-        variant,
-    };
+    switch (props.config.configType) {
+        case ConfigType.GMAIL:
+            return <GmailIntegration integrationType={props.config.integrationType} />;
 
-    switch (props.integrationType) {
-        case IntegrationType.GMAIL:
-            return <GmailIntegration {...baseProps} integrationType={props.integrationType} />;
-
-        case IntegrationType.NOTION:
+        case ConfigType.NOTION_DATABASE, ConfigType.NOTION_PAGE:
             return (
                 <NotionIntegration
                     {...baseProps}
@@ -38,7 +28,7 @@ export function IntegrationSelector(props: IntegrationSelectorProps & { variant?
                 />
             );
 
-        case IntegrationType.SLACK:
+        case ConfigType.SLACK:
             return (
                 <SlackIntegration
                     {...baseProps}
@@ -48,31 +38,28 @@ export function IntegrationSelector(props: IntegrationSelectorProps & { variant?
                 />
             );
 
-        case IntegrationType.GITHUB:
+        case ConfigType.GITHUB:
             return <GitHubIntegration
-                {...baseProps}
                 integrationType={props.integrationType}
                 githubConfig={props.githubConfig}
                 onGithubConfigChange={props.onGithubConfigChange}
             />;
 
-        case IntegrationType.FIGMA:
+        case ConfigType.FIGMA:
             return (
                 <FigmaIntegration
-                    {...baseProps}
                     integrationType={props.integrationType}
                     figmaConfig={props.figmaConfig}
                     onFigmaConfigChange={props.onFigmaConfigChange}
                 />
             );
-        case IntegrationType.LINEAR:
+        case ConfigType.LINEAR:
             return (
                 <LinearIntegration
-                    {...baseProps}
                 />
             );
 
-        case IntegrationType.ATLASSIAN:
+        case ConfigType.JIRA, ConfigType.CONFLUENCE:
             return (
                 <ConfluenceIntegration
                     {...baseProps}
@@ -83,6 +70,6 @@ export function IntegrationSelector(props: IntegrationSelectorProps & { variant?
             );
 
         default:
-            throw props.integrationType satisfies never;
+            throw props.config.configType satisfies never;
     }
 }

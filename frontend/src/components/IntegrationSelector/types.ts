@@ -1,26 +1,33 @@
 import { IntegrationType } from "@/shared/Integrations"
-import { NotionConfig, NotionPageConfig, SlackConfig, FigmaConfig, ConfluenceConfig, GmailConfig, GitHubConfig } from '../../shared/Configs';
+import { NotionConfig, NotionPageConfig, SlackConfig, FigmaConfig, ConfluenceConfig, GmailConfig, GitHubConfig, ConfigInstance } from '../../shared/Configs';
+import { AutomationInput } from "@/shared/types";
 
-export interface IntegrationSelectorProps {
-    integrationType: IntegrationType;
-    selectedIntegrationId?: string;
-    onSelect: (integrationId: string) => void;
-    label?: string;
-    // Optional config handlers for integration-specific settings
-    gmailConfig?: GmailConfig;
-    onGmailConfigChange?: (config: GmailConfig) => void;
-    githubConfig?: GitHubConfig;
-    onGithubConfigChange?: (config: GitHubConfig) => void;
-    notionConfig?: NotionConfig;
-    notionPageConfig?: NotionPageConfig;
-    onNotionConfigChange?: (config: NotionConfig) => void;
-    onNotionPageConfigChange?: (config: NotionPageConfig) => void;
-    slackConfig?: SlackConfig;
-    onSlackConfigChange?: (config: SlackConfig) => void;
-    figmaConfig?: FigmaConfig;
-    onFigmaConfigChange?: (config: FigmaConfig) => void;
-    confluenceConfig?: ConfluenceConfig;
-    onConfluenceConfigChange?: (config: ConfluenceConfig) => void;
+// export interface IntegrationSelectorProps {
+//     integrationType: IntegrationType;
+//     selectedIntegrationId?: string;
+//     onSelect: (integrationId: string) => void;
+//     label?: string;
+//     // Optional config handlers for integration-specific settings
+//     gmailConfig?: GmailConfig;
+//     onGmailConfigChange?: (config: GmailConfig) => void;
+//     githubConfig?: GitHubConfig;
+//     onGithubConfigChange?: (config: GitHubConfig) => void;
+//     notionConfig?: NotionConfig;
+//     notionPageConfig?: NotionPageConfig;
+//     onNotionConfigChange?: (config: NotionConfig) => void;
+//     onNotionPageConfigChange?: (config: NotionPageConfig) => void;
+//     slackConfig?: SlackConfig;
+//     onSlackConfigChange?: (config: SlackConfig) => void;
+//     figmaConfig?: FigmaConfig;
+//     onFigmaConfigChange?: (config: FigmaConfig) => void;
+//     confluenceConfig?: ConfluenceConfig;
+//     onConfluenceConfigChange?: (config: ConfluenceConfig) => void;
+// }
+
+export interface InputConfigSelectorProps {
+    config: ConfigInstance;
+    variant: 'card' | 'dialog';
+    setInput: (input: AutomationInput) => void;
 }
 
 export interface BaseIntegrationProps {
