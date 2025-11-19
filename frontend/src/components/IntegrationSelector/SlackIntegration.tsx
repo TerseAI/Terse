@@ -3,7 +3,7 @@ import { Button } from '../ui/button';
 import DropdownSelect from '../ui/DropdownSelect';
 import { SlackChannelSelector } from '../SlackChannelSelector';
 import { INTEGRATION_METADATA, IntegrationType, SlackIntegration as SlackIntegrationType } from "@/shared/Integrations"
-import { SlackConfig } from '../../shared/types';
+import { SlackConfig } from '../../shared/Configs';
 import { BaseIntegrationProps } from './types';
 import { useSlackIntegrations } from '@/hooks/api/useSlackIntegrations';
 import { useOAuthConnection } from '@/hooks/useOAuthConnection';

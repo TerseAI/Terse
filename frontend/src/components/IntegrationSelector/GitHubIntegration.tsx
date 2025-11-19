@@ -4,7 +4,7 @@ import DropdownSelect from '../ui/DropdownSelect';
 import { INTEGRATION_METADATA, IntegrationType, GithubIntegration as GithubIntegrationType } from "@/shared/Integrations"
 import { BaseIntegrationProps } from './types';
 import { GithubResourceSelector } from '../GithubResourceSelector';
-import { GitHubConfig } from '@/shared/types';
+import { GitHubConfig } from '@/shared/Configs';
 import { useGithubIntegrations } from '@/hooks/api/useGithubIntegrations';
 import { useOAuthConnection } from '@/hooks/useOAuthConnection';
 

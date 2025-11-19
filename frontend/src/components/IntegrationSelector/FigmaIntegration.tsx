@@ -3,7 +3,7 @@ import { Button } from '../ui/button';
 import DropdownSelect from '../ui/DropdownSelect';
 import { FigmaFileSelector } from '../FigmaFileSelector';
 import { INTEGRATION_METADATA, IntegrationType, FigmaIntegration as FigmaIntegrationType } from "@/shared/Integrations"
-import { FigmaConfig } from '../../shared/types';
+import { FigmaConfig } from '../../shared/Configs';
 import { BaseIntegrationProps } from './types';
 import { useFigmaIntegrations } from '@/hooks/api/useFigmaIntegrations';
 import { useOAuthConnection } from '@/hooks/useOAuthConnection';
