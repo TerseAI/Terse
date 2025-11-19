@@ -1,4 +1,4 @@
-import { Output, OutputType, ToolboxEntry } from "./abstract/Output";
+import { Output, ToolboxEntry } from "./abstract/Output";
 import { RunContext, Tool, tool } from "@openai/agents";
 import { z } from "zod";
 import { Session } from "../server";
@@ -6,8 +6,8 @@ import { Client } from '@notionhq/client';
 import { NotionIntegration, AutomationOutput, User, AutomationNotionConfig } from "../types/prisma";
 import { db } from "../prismaClient";
 import chalk from "chalk";
-import { RunHistoryAction } from "../shared/RunHistoryTypes";
 import { IntegrationType } from "../shared/Integrations";
+import { OutputConfigType } from "@prisma/client";
 
 export interface NotionDatabaseSession extends Session {
     notionIntegration: NotionIntegration; // Top level integration record
@@ -20,7 +20,7 @@ export class NotionDatabaseOutput extends Output<NotionDatabaseSession> {
             { tool: notionQueryDatabaseTool as Tool, isReadOnly: true },
             { tool: notionModifyPageTool as Tool, isReadOnly: false },
         ];
-        super(OutputType.Notion, toolbox);
+        super(OutputConfigType.NOTION_DATABASE, toolbox);
     }
 
     async createSessionFromConfig(

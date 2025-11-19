@@ -86,12 +86,8 @@ export async function deleteGmailIntegration(req: Request, res: Response) {
       },
     });
 
-    await db().automation_outputs.deleteMany({
-      where: {
-        integration_type: "GMAIL",
-        integration_id: integration.id,
-      },
-    });
+    // Note: Gmail is not a valid output type (only NOTION_PAGE, NOTION_DATABASE, CONFLUENCE are supported)
+    // No automation_outputs to delete for Gmail integrations
 
     // Set is_active to false instead of deleting
     await db().gmail_integrations.update({

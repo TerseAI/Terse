@@ -2,6 +2,7 @@ import { IntegrationType } from "../shared/Integrations";
 import { 
     InputConfigType, 
     IntegrationType as PrismaIntegrationType, 
+    OutputConfigType,
     RunHistoryIntegration,
     RunHistoryStatus as PrismaRunHistoryStatus,
     RunHistoryDecisionAction as PrismaRunHistoryDecisionAction
@@ -263,5 +264,22 @@ export const convertInputConfigTypeToConfigType = (inputConfigType: InputConfigT
             return ConfigType.CONFLUENCE;
         default:
             throw inputConfigType satisfies never;
+    }
+}
+
+/**
+ * Converts ConfigType to OutputConfigType.
+ * Only NOTION_PAGE, NOTION_DATABASE, and CONFLUENCE are valid output config types.
+ */
+export const convertConfigTypeToOutputConfigType = (configType: ConfigType): OutputConfigType => {
+    switch (configType) {
+        case ConfigType.NOTION_PAGE:
+            return OutputConfigType.NOTION_PAGE;
+        case ConfigType.NOTION_DATABASE:
+            return OutputConfigType.NOTION_DATABASE;
+        case ConfigType.CONFLUENCE:
+            return OutputConfigType.CONFLUENCE;
+        default:
+            throw new Error(`ConfigType ${configType} is not a valid output config type. Only NOTION_PAGE, NOTION_DATABASE, and CONFLUENCE are supported.`);
     }
 }

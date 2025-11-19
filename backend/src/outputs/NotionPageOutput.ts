@@ -4,11 +4,12 @@ import { AutomationNotionPageConfig, AutomationOutput, NotionIntegration, User }
 import { Session } from "../server";
 import { Client } from '@notionhq/client';
 import { z } from "zod";
-import { Output, OutputType, ToolboxEntry } from "./abstract/Output";
+import { Output, ToolboxEntry } from "./abstract/Output";
 import { db } from "../prismaClient";
 import chalk from "chalk";
 import { GetPageResponse, PageObjectResponse } from "@notionhq/client/build/src/api-endpoints";
 import { IntegrationType } from "../shared/Integrations";
+import { OutputConfigType } from "@prisma/client";
 
 export interface NotionPageSession extends Session {
     notionIntegration: NotionIntegration; // Top level integration record
@@ -23,7 +24,7 @@ export class NotionPageOutput extends Output<NotionPageSession> {
             { tool: notionQueryPageTool as Tool, isReadOnly: true },
             { tool: notionModifyBlocksTool as Tool, isReadOnly: false },
         ];
-        super(OutputType.NotionPage, toolbox);
+        super(OutputConfigType.NOTION_PAGE, toolbox);
     }
 
     async createSessionFromConfig(
