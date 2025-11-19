@@ -33,17 +33,6 @@ export const OutputSection = forwardRef<HTMLDivElement, OutputSectionProps>(({ o
         setShowAddModal(false);
     };
 
-    const handleSelectIntegration = (configType: ConfigType) => {
-        if (output) {
-            // Clear all configs when switching integration instances (will be re-selected when selector loads)
-            setOutput({
-                ...output,
-                config: undefined,
-                configType: configType,
-            });
-        }
-    };
-
     const handleRemove = () => {
         setOutput(undefined);
     };
@@ -58,7 +47,7 @@ export const OutputSection = forwardRef<HTMLDivElement, OutputSectionProps>(({ o
             {!output ? (
                 <EmptyOutputSection onCreateNew={() => setShowAddModal(true)} />
             ) : (
-                <OutputCard output={output} handleRemove={handleRemove} handleSelectIntegration={handleSelectIntegration} setOutput={setOutput} />
+                <OutputCard output={output} handleRemove={handleRemove} setOutput={setOutput} />
             )}
 
             <AddOutputModal
@@ -73,11 +62,12 @@ export const OutputSection = forwardRef<HTMLDivElement, OutputSectionProps>(({ o
 function OutputCard({ 
     output, 
     handleRemove,
-    handleSelectIntegration,
     setOutput
-}: { output: TransientAutomationOutput, handleRemove: () => void, handleSelectIntegration: (configType: ConfigType) => void, setOutput: (output: TransientAutomationOutput) => void }) {
+}: { output: TransientAutomationOutput, handleRemove: () => void, setOutput: (output: TransientAutomationOutput) => void }) {
 
-    console.log("Output in outputCard", JSON.stringify(output, null, 2));
+    function onSelect(config: ConfigInstance) {
+        setOutput({ ...output, config: config, configType: config.configType });
+    }
 
     return (
         <Card>
@@ -87,7 +77,7 @@ function OutputCard({
                 </CardTitle>
             </CardHeader>
             <CardContent className="max-w-xs">
-                <IntegrationSelector input={output} variant="dialog" setConfig={(config: ConfigInstance) => setOutput({ ...output, config: config })} />
+                <IntegrationSelector input={output} variant="dialog" setConfig={onSelect} />
             </CardContent>
             <CardFooter>
                 <CardAction>
