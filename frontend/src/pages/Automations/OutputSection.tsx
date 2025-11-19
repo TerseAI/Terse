@@ -2,12 +2,13 @@ import { forwardRef, ReactNode, useState } from "react";
 import { TransientAutomationOutput } from "../../shared/types";
 import { SectionLayout } from "./components/SectionLayout";
 import { AddOutputModal } from "./components/AddOutputModal";
-import { FileText, Plus } from "lucide-react";
+import { FileText, Plus, AlertTriangle } from "lucide-react";
 import { IntegrationSelector } from "../../components/IntegrationSelector";
 import { Button } from "@/components/ui/button";
-import { Card, CardAction, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { ConfigTitle } from "./components/ConfigTitle";
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
+import { Badge } from "@/components/ui/badge";
 import { v4 as uuidv4 } from 'uuid';
 import { ConfigInstance, ConfigType } from "@/shared/Configs";
 
@@ -69,22 +70,29 @@ function OutputCard({
         setOutput({ ...output, config: config, configType: config.configType });
     }
 
+    // Output needs configuration if there's no config OR if the config is not complete
+    const needsConfiguration = !output.config || !output.config.isComplete();
+
     return (
         <Card>
             <CardHeader>
-                <CardTitle className="flex justify-between">
+                <CardTitle className="flex justify-between items-center">
                     <ConfigTitle configType={output.config?.configType || output.configType} iconSize="lg" />
+                    {needsConfiguration && (
+                        <Badge variant="outline" className="border-yellow-500 text-yellow-600 dark:text-yellow-500">
+                            <AlertTriangle className="w-3 h-3" />
+                            Needs Configuration
+                        </Badge>
+                    )}
                 </CardTitle>
             </CardHeader>
             <CardContent className="max-w-xs">
                 <IntegrationSelector input={output} variant="dialog" setConfig={onSelect} />
             </CardContent>
             <CardFooter>
-                <CardAction>
-                    <Button variant="destructive" onClick={handleRemove}>
-                        Remove
-                    </Button>
-                </CardAction>
+                <Button variant="destructive" onClick={handleRemove}>
+                    Remove
+                </Button>
             </CardFooter>
         </Card>
     );
