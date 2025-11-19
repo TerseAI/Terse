@@ -1,23 +1,103 @@
 import { Request, Response } from "express";
 import { db } from "../prismaClient";
-import { Automation, AutomationInput, AutomationOutput, AutomationPrompt, AutomationsResponse } from "../shared/types";
+import { Automation, AutomationInput, AutomationOutput, AutomationsResponse } from "../shared/types";
 import { parsePageParams } from "../utility/pagination";
 import chalk from "chalk";
-import { AutomationInputSetup } from "../inputs/AutomationInputSetup";
-import { AutomationWithRelations, PrismaTransaction } from "../types/prisma";
-import { IntegrationType} from "../shared/Integrations";
+import { AutomationWithInputRelations, PrismaTransaction, AutomationWithRelations } from "../types/prisma";
+import { IntegrationType } from "../shared/Integrations";
 import { convertConfigTypeToInputConfigType, convertIntegrationTypeToPrismaIntegrationType, convertPrismaConfigToConfigInstance } from "../utility/typeConverters";
 import { SaveAutomationRequest } from "../shared/types";
 import { INPUT_REGISTRY } from "../inputs/InputRegistry";
-import { INTEGRATION_REGISTRY } from "src/integrations/abstract/IntegrationRegistry";
+import { INTEGRATION_REGISTRY } from "../integrations/abstract/IntegrationRegistry";
 
+/**
+ * Sets up all inputs in an automation by calling setupAutomationInput on each integration.
+ * Called after an automation is created or updated.
+ */
+async function setupAutomationInputs(automation: AutomationWithInputRelations): Promise<void> {
+    for (const input of automation.inputs) {
+        try {
+            // Convert prisma config to shared config instance to get integration type
+            const configInstance = convertPrismaConfigToConfigInstance(input);
+            const integrationType = configInstance.integrationType;
+
+            // Find the integration from the registry
+            const integration = INTEGRATION_REGISTRY.find(
+                (int) => int.integrationType === integrationType
+            );
+
+            if (integration) {
+                await integration.setupAutomationInput(input.integration_id, input);
+                console.log(
+                    chalk.green(
+                        `✅ Setup completed for ${input.config_type} input (ID: ${input.id})`
+                    )
+                );
+            } else {
+                console.log(
+                    chalk.yellow(
+                        `⚠️  No integration found for ${integrationType} (config: ${input.config_type}). Skipping setup.`
+                    )
+                );
+            }
+        } catch (error) {
+            console.error(
+                chalk.red(
+                    `❌ Error setting up ${input.config_type} input (ID: ${input.id}):`
+                ),
+                error
+            );
+        }
+    }
+}
+
+/**
+ * Tears down setup for all inputs in an automation by calling teardownAutomationInput on each integration.
+ * Called before an automation is deleted.
+ */
+async function tearDownAutomationInputs(automation: AutomationWithInputRelations): Promise<void> {
+    for (const input of automation.inputs) {
+        try {
+            // Convert prisma config to shared config instance to get integration type
+            const configInstance = convertPrismaConfigToConfigInstance(input);
+            const integrationType = configInstance.integrationType;
+
+            // Find the integration from the registry
+            const integration = INTEGRATION_REGISTRY.find(
+                (int) => int.integrationType === integrationType
+            );
+
+            if (integration) {
+                await integration.teardownAutomationInput(input.integration_id, input);
+                console.log(
+                    chalk.green(
+                        `✅ Teardown completed for ${input.config_type} input`
+                    )
+                );
+            } else {
+                console.log(
+                    chalk.yellow(
+                        `⚠️  No integration found for ${integrationType} (config: ${input.config_type}). Skipping teardown.`
+                    )
+                );
+            }
+        } catch (error) {
+            console.error(
+                chalk.red(
+                    `❌ Error tearing down ${input.config_type}:`
+                ),
+                error
+            );
+            // Continue with other inputs even if one fails
+        }
+    }
+}
 
 async function createInputConfig(
     tx: PrismaTransaction,
     inputId: string,
     config: AutomationInput
-): Promise<void> 
-{
+): Promise<void> {
     const input = INPUT_REGISTRY.find(input => input.configType === config.config.configType);
     if (!input) {
         throw new Error(`Input not found for integration type: ${config.config.configType}`);
@@ -609,226 +689,36 @@ export async function createAutomation(req: Request, res: Response) {
             return newAutomation;
         });
 
+        const automationWithRelations: AutomationWithInputRelations | null = await prisma.automations.findFirst({
+            where: { id: automation.id },
+            include: {
+                inputs: {
+                    include: {
+                        slack_config: true,
+                        notion_config: true,
+                        notion_page_config: true,
+                        linear_config: true,
+                        jira_config: true,
+                        confluence_config: true,
+                        github_config: true,
+                        gmail_config: true,
+                        figma_config: true,
+                    }
+                },
+            }
+        });
+
+        if(!automationWithRelations) {
+            throw new Error(`Automation not found: ${automation.id}`);
+        }
+
         // Set up automation inputs (e.g., create webhooks for Figma)
-        await AutomationInputSetup.setupAutomationInputs(automation.id);
+        await setupAutomationInputs(automationWithRelations);
 
         res.status(201).json({ success: true, id: automation.id });
     } catch (error) {
         console.error('Error creating automation:', error);
         res.status(500).json({ error: 'Failed to create automation', details: (error as Error).message });
-    }
-}
-
-// Legacy endpoint - kept for backward compatibility
-export async function saveAutomation(req: Request, res: Response) {
-    if (!req.session?.user) {
-        res.status(401).json({ error: 'Unauthorized' });
-        return;
-    }
-
-    const userId = req.session.user.id;
-    const { name, inputs, output, prompt } = req.body as SaveAutomationRequest;
-
-    // Validate request
-    if (!name || !inputs || inputs.length === 0 || !output || !prompt?.text) {
-        res.status(400).json({ error: 'Invalid request: missing required fields' });
-        return;
-    }
-
-    try {
-        const prisma = db();
-
-        // Check if user already has an automation
-        const existingAutomation = await prisma.automations.findFirst({
-            where: { user_id: userId }
-        });
-
-        if (existingAutomation) {
-            // Tear down old inputs before updating
-            await AutomationInputSetup.tearDownAutomationInputs(existingAutomation.id);
-
-            // Update existing automation
-            await prisma.$transaction(async (tx) => {
-                // Delete old inputs and output
-                await tx.automation_inputs.deleteMany({
-                    where: { automation_id: existingAutomation.id }
-                });
-
-                const existingOutput = await tx.automation_outputs.findUnique({
-                    where: { automation_id: existingAutomation.id }
-                });
-                if (existingOutput) {
-                    await tx.automation_outputs.delete({
-                        where: { automation_id: existingAutomation.id }
-                    });
-                }
-
-                // Update automation name
-                await tx.automations.update({
-                    where: { id: existingAutomation.id },
-                    data: { name }
-                });
-
-                // Update or create prompt
-                await tx.automation_prompts.upsert({
-                    where: { automation_id: existingAutomation.id },
-                    update: { content: prompt.text },
-                    create: {
-                        automation_id: existingAutomation.id,
-                        content: prompt.text
-                    }
-                });
-
-                // Create new inputs
-                for (const input of inputs) {
-                    const integrationType = input.config.configType
-                    if (!integrationType) {
-                        throw new Error(`Unknown integration type: ${input.config.configType}`);
-                    }
-
-                    // Validate that user owns the integration
-                    const integrationId = input.config.integrationId;
-                    if (!integrationId) {
-                        throw new Error(`Integration ID is required for ${input.config.configType}`);
-                    }
-
-                    const isOwner = await validateUserOwnsIntegration(userId, input.config.integrationType, integrationId);
-                    if (!isOwner) {
-                        throw new Error(`Integration ${input.config.configType} not found or not owned by user`);
-                    }
-
-                    const newInput = await tx.automation_inputs.create({
-                        data: {
-                            automation_id: existingAutomation.id,
-                            config_type: convertConfigTypeToInputConfigType(input.config.configType),
-                            integration_id: integrationId
-                        }
-                    });
-
-                    // Create config record if provided
-                    await createInputConfig(tx, newInput.id, input);
-                }
-
-                // Create new output
-                const outputIntegrationType = output.integration
-                if (!outputIntegrationType) {
-                    throw new Error(`Unknown integration type: ${output.integration}`);
-                }
-
-                const outputIntegrationId = output.integrationId;
-                if (!outputIntegrationId) {
-                    throw new Error(`Integration ID is required for ${output.integration}`);
-                }
-
-                const isOwner = await validateUserOwnsIntegration(userId, outputIntegrationType, outputIntegrationId);
-                if (!isOwner) {
-                    throw new Error(`Integration ${output.integration} not found or not owned by user`);
-                }
-
-                const newOutput = await tx.automation_outputs.create({
-                    data: {
-                        automation_id: existingAutomation.id,
-                        integration_type: convertIntegrationTypeToPrismaIntegrationType(outputIntegrationType),
-                        integration_id: outputIntegrationId
-                    }
-                });
-
-                // Create config record if provided
-                await createOutputConfig(tx, newOutput.id, outputIntegrationType, output);
-            });
-
-            // Set up new automation inputs after update
-            await AutomationInputSetup.setupAutomationInputs(existingAutomation.id);
-
-            res.status(200).json({ success: true, id: existingAutomation.id });
-        } else {
-            // Create new automation
-            const automation = await prisma.$transaction(async (tx) => {
-                // Create automation
-                const newAutomation = await tx.automations.create({
-                    data: {
-                        user_id: userId,
-                        name,
-                        is_active: true
-                    }
-                });
-
-                // Create prompt
-                await tx.automation_prompts.create({
-                    data: {
-                        automation_id: newAutomation.id,
-                        content: prompt.text
-                    }
-                });
-
-                // Create inputs
-                for (const input of inputs) {
-                    const integrationType = input.config.integrationType
-                    if (!integrationType) {
-                        throw new Error(`Unknown integration type: ${input.config.integrationType}`);
-                    }
-
-                    // Validate that user owns the integration
-                    const integrationId = input.config.integrationId;
-                    if (!integrationId) {
-                        throw new Error(`Integration ID is required for ${input.config.integrationType}`);
-                    }
-
-                    const isOwner = await validateUserOwnsIntegration(userId, integrationType, integrationId);
-                    if (!isOwner) {
-                        throw new Error(`Integration ${input.config.integrationType} not found or not owned by user`);
-                    }
-
-                    const newInput = await tx.automation_inputs.create({
-                        data: {
-                            automation_id: newAutomation.id,
-                            config_type: convertConfigTypeToInputConfigType(input.config.configType),
-                            integration_id: integrationId
-                        }
-                    });
-
-                    // Create config record if provided
-                    await createInputConfig(tx, newInput.id, input);
-                }
-
-                // Create output
-                const outputIntegrationType = output.integration
-                if (!outputIntegrationType) {
-                    throw new Error(`Unknown integration type: ${output.integration}`);
-                }
-
-                const outputIntegrationId = output.integrationId;
-                if (!outputIntegrationId) {
-                    throw new Error(`Integration ID is required for ${output.integration}`);
-                }
-
-                const isOwner = await validateUserOwnsIntegration(userId, outputIntegrationType, outputIntegrationId);
-                if (!isOwner) {
-                    throw new Error(`Integration ${output.integration} not found or not owned by user`);
-                }
-
-                const newOutput = await tx.automation_outputs.create({
-                    data: {
-                        automation_id: newAutomation.id,
-                        integration_type: convertIntegrationTypeToPrismaIntegrationType(outputIntegrationType),
-                        integration_id: outputIntegrationId
-                    }
-                });
-
-                // Create config record if provided
-                await createOutputConfig(tx, newOutput.id, outputIntegrationType, output);
-
-                return newAutomation;
-            });
-
-            // Set up automation inputs (e.g., create webhooks for Figma)
-            await AutomationInputSetup.setupAutomationInputs(automation.id);
-
-            res.status(201).json({ success: true, id: automation.id });
-        }
-    } catch (error) {
-        console.error('Error saving automation:', error);
-        res.status(500).json({ error: 'Failed to save automation', details: (error as Error).message });
     }
 }
 
@@ -963,8 +853,31 @@ export async function updateAutomation(req: Request, res: Response) {
             }
         });
 
+        const automationWithInputRelations: AutomationWithInputRelations | null = await prisma.automations.findFirst({
+            where: { id: automationId },
+            include: {
+                inputs: {
+                    include: {
+                        slack_config: true,
+                        notion_config: true,
+                        notion_page_config: true,
+                        linear_config: true,
+                        jira_config: true,
+                        confluence_config: true,
+                        github_config: true,
+                        gmail_config: true,
+                        figma_config: true,
+                    }
+                },
+            }
+        });
+
+        if(!automationWithInputRelations) {
+            throw new Error(`Automation not found: ${automationId}`);
+        }
+
         // Set up automation inputs (e.g., create webhooks for Figma)
-        await AutomationInputSetup.setupAutomationInputs(automationId);
+        await setupAutomationInputs(automationWithInputRelations);
 
         res.status(200).json({ success: true, id: automationId });
     } catch (error) {
@@ -987,11 +900,26 @@ export async function deleteAutomation(req: Request, res: Response) {
         const prisma = db();
 
         // Check if automation exists and belongs to user
-        const existingAutomation = await prisma.automations.findFirst({
+        const existingAutomation: AutomationWithInputRelations | null = await prisma.automations.findFirst({
             where: {
                 id: automationId,
                 user_id: userId
             },
+            include: {
+                inputs: {
+                    include: {
+                        slack_config: true,
+                        linear_config: true,
+                        jira_config: true,
+                        gmail_config: true,
+                        github_config: true,
+                        notion_config: true,
+                        notion_page_config: true,
+                        confluence_config: true,
+                        figma_config: true,
+                    },
+                },
+            }
         });
 
         if (!existingAutomation) {
@@ -1000,7 +928,7 @@ export async function deleteAutomation(req: Request, res: Response) {
         }
 
         // Tear down automation inputs (e.g., delete webhooks for Figma)
-        await AutomationInputSetup.tearDownAutomationInputs(automationId);
+        await tearDownAutomationInputs(existingAutomation);
 
         // Delete automation (cascade will delete related records)
         await prisma.automations.delete({

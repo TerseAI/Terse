@@ -2,6 +2,7 @@ import { Integration } from "./abstract/Integration";
 import { db } from "../prismaClient";
 import { AtlassianIntegration, AtlassianIntegrationMetadata } from "../shared/Integrations";
 import { IntegrationType } from "../shared/Integrations";
+import { AutomationInputWithConfigs } from "../types/prisma";
 
 export class AtlassianIntegrationManager implements Integration<AtlassianIntegration, never, typeof AtlassianIntegrationMetadata> {
     integrationType: IntegrationType = IntegrationType.ATLASSIAN;
@@ -31,6 +32,16 @@ export class AtlassianIntegrationManager implements Integration<AtlassianIntegra
 
     deleteInstallation(integrationId: string): Promise<void> {
         return Promise.resolve();
+    }
+
+    async setupAutomationInput(integrationId: string, automationInput: AutomationInputWithConfigs): Promise<void> {
+        // Atlassian doesn't require any setup for automation inputs
+        // Webhooks are managed at the integration level
+    }
+
+    async teardownAutomationInput(integrationId: string, automationInput: AutomationInputWithConfigs): Promise<void> {
+        // Atlassian doesn't require any teardown for automation inputs
+        // Webhooks are managed at the integration level
     }
 }
 
