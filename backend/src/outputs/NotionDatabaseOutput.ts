@@ -7,6 +7,7 @@ import { NotionIntegration, AutomationOutput, User, AutomationNotionConfig } fro
 import { db } from "../prismaClient";
 import chalk from "chalk";
 import { RunHistoryAction } from "../shared/RunHistoryTypes";
+import { IntegrationType } from "../shared/Integrations";
 
 export interface NotionDatabaseSession extends Session {
     notionIntegration: NotionIntegration; // Top level integration record
@@ -269,7 +270,7 @@ Use notion_query_database first to see existing property names and structure.`,
                 runContext.context.runActions = runContext.context.runActions || [];
                 runContext.context.runActions.push({
                     action: 'update_page',
-                    integration: 'notion',
+                    integration: IntegrationType.NOTION,
                     target: runContext.context.notionConfig.database_name || runContext.context.notionConfig.database_id,
                     details: 'Notion page updated',
                     url: 'url' in response ? (response as any).url : undefined,
@@ -294,7 +295,7 @@ Use notion_query_database first to see existing property names and structure.`,
                 runContext.context.runActions = runContext.context.runActions || [];
                 runContext.context.runActions.push({
                     action: 'create_page',
-                    integration: 'notion',
+                    integration: IntegrationType.NOTION,
                     target: runContext.context.notionConfig.database_name || runContext.context.notionConfig.database_id,
                     details: 'Notion page created',
                     url: 'url' in response ? (response as any).url : undefined,

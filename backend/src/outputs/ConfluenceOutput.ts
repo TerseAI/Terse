@@ -1,5 +1,5 @@
 import { RunHistoryAction } from "../shared/RunHistoryTypes";
-import { AtlassianIntegration } from "../shared/Integrations";
+import { AtlassianIntegration, IntegrationType } from "../shared/Integrations";
 import { AutomationOutput, User, AutomationConfluenceConfig } from "../types/prisma";
 import { Session } from "../server";
 import { Output, OutputType, ToolboxEntry } from "./abstract/Output";
@@ -415,7 +415,7 @@ To find the correct position, first call confluence_query_page to see the page c
             runContext.context.runActions = runContext.context.runActions || [];
             runContext.context.runActions.push({
                 action: 'add_inline_comment',
-                integration: 'confluence',
+                integration: IntegrationType.ATLASSIAN,
                 target: runContext.context.confluenceConfig.page_id || runContext.context.confluenceConfig.page_name || 'unknown',
                 details: `Added inline comment at position ${startPos}-${endPos}: ${comment_text.substring(0, 50)}${comment_text.length > 50 ? '...' : ''}`,
             });

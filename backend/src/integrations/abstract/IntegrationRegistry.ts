@@ -13,12 +13,12 @@ type IntegrationWithInstallation = Integration<IntegrationInstance, any, Integra
 
 
 export const IntegrationRegistry: Array<IntegrationWithInstallation> = [
-    new AtlassianIntegrationManager(),
+    //new AtlassianIntegrationManager(),
     new FigmaIntegrationManager(),
     new GithubIntegrationManager(),
     new GmailIntegrationManager(),
     //new JiraIntegrationManager(),
-    new LinearIntegrationManager(),
+    //new LinearIntegrationManager(),
     new NotionIntegrationManager(),
     new SlackIntegrationManager(),
 ]

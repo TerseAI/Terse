@@ -30,5 +30,9 @@ export class LinearIntegrationManager implements Integration<LinearIntegration, 
         // Linear webhooks are handled elsewhere
         throw new Error("Linear webhooks are not processed through this integration manager");
     }
+
+    deleteInstallation(integrationId: string): Promise<void> {
+        return Promise.resolve();
+    }
 }
 

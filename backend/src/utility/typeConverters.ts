@@ -1,5 +1,5 @@
 import { IntegrationType } from "../shared/Integrations";
-import { IntegrationType as PrismaIntegrationType } from "@prisma/client";
+import { IntegrationType as PrismaIntegrationType, RunHistoryIntegration } from "@prisma/client";
 
 export const convertIntegrationTypeToPrismaIntegrationType = (integrationType: IntegrationType): PrismaIntegrationType => {
     switch (integrationType) {
@@ -44,5 +44,49 @@ export const convertPrismaIntegrationTypeToIntegrationType = (prismaIntegrationT
             return IntegrationType.FIGMA;
         default:
             throw new Error(`Unknown Prisma integration type: ${prismaIntegrationType}`);
+    }
+}
+
+export const convertIntegrationTypeToRunHistoryIntegration = (integrationType: IntegrationType): RunHistoryIntegration => {
+    switch (integrationType) {
+        case IntegrationType.GITHUB:
+            return RunHistoryIntegration.github;
+        case IntegrationType.GMAIL:
+            return RunHistoryIntegration.gmail;
+        case IntegrationType.LINEAR:
+            return RunHistoryIntegration.linear;
+        case IntegrationType.ATLASSIAN:
+            return RunHistoryIntegration.confluence; // ATLASSIAN maps to confluence in run history
+        case IntegrationType.SLACK:
+            return RunHistoryIntegration.slack;
+        case IntegrationType.NOTION:
+            return RunHistoryIntegration.notion;
+        case IntegrationType.FIGMA:
+            return RunHistoryIntegration.figma;
+        default:
+            throw new Error(`Unknown integration type: ${integrationType}`);
+    }
+}
+
+export const convertRunHistoryIntegrationToIntegrationType = (runHistoryIntegration: RunHistoryIntegration): IntegrationType => {
+    switch (runHistoryIntegration) {
+        case RunHistoryIntegration.github:
+            return IntegrationType.GITHUB;
+        case RunHistoryIntegration.gmail:
+            return IntegrationType.GMAIL;
+        case RunHistoryIntegration.linear:
+            return IntegrationType.LINEAR;
+        case RunHistoryIntegration.confluence:
+        case RunHistoryIntegration.jira:
+            // Both map to ATLASSIAN in shared enum
+            return IntegrationType.ATLASSIAN;
+        case RunHistoryIntegration.slack:
+            return IntegrationType.SLACK;
+        case RunHistoryIntegration.notion:
+            return IntegrationType.NOTION;
+        case RunHistoryIntegration.figma:
+            return IntegrationType.FIGMA;
+        default:
+            throw new Error(`Unknown run history integration: ${runHistoryIntegration}`);
     }
 }
