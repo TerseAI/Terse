@@ -1,47 +1,45 @@
 import { forwardRef, ReactNode, useState } from "react";
-import { IntegrationType } from "@/shared/Integrations"
-import { AutomationOutput } from "../../shared/types";
+import { TransientAutomationOutput } from "../../shared/types";
 import { SectionLayout } from "./components/SectionLayout";
 import { AddOutputModal } from "./components/AddOutputModal";
 import { FileText, Plus } from "lucide-react";
 import { IntegrationSelector } from "../../components/IntegrationSelector";
-import { clearIntegrationConfigs } from "../../utility/IntegrationUtils";
 import { Button } from "@/components/ui/button";
 import { Card, CardAction, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { IntegrationTitle } from "./components/IntegrationTitle";
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
+import { v4 as uuidv4 } from 'uuid';
+import { ConfigInstance, ConfigType } from "@/shared/Configs";
 
 type OutputSectionProps = {
     subtitle?: string;
     children?: ReactNode;
     icon?: ReactNode;
-    output: AutomationOutput | undefined;
-    setOutput: (output: AutomationOutput | undefined) => void;
+    output: TransientAutomationOutput | undefined;
+    setOutput: (output: TransientAutomationOutput | undefined) => void;
     isLoading: boolean;
 }
 export const OutputSection = forwardRef<HTMLDivElement, OutputSectionProps>(({ output, setOutput, isLoading }, ref) => {
     const [showAddModal, setShowAddModal] = useState(false);
 
-    const handleSelectPlatform = (integration: IntegrationType) => {
+    const handleSelectPlatform = (configType: ConfigType) => {
         // Clear all configs when switching platform (new integration type)
-        const clearedConfigs = output ? clearIntegrationConfigs(output) : {};
-        const newOutput: AutomationOutput = {
-            integration: integration,
-            ...clearedConfigs
+        const newOutput: TransientAutomationOutput = {
+            id: uuidv4(),
+            config: undefined,
+            configType: configType,
         };
         setOutput(newOutput);
         setShowAddModal(false);
     };
 
-    const handleSelectIntegration = (integrationId: string) => {
+    const handleSelectIntegration = (configType: ConfigType) => {
         if (output) {
             // Clear all configs when switching integration instances (will be re-selected when selector loads)
-            const clearedConfigs = clearIntegrationConfigs(output);
-            console.log("Cleared configs:", JSON.stringify(clearedConfigs, null, 2));
             setOutput({
                 ...output,
-                integrationId,
-                ...clearedConfigs
+                config: undefined,
+                configType: configType,
             });
         }
     };
@@ -77,54 +75,17 @@ function OutputCard({
     handleRemove,
     handleSelectIntegration,
     setOutput
-}: { output: AutomationOutput, handleRemove: () => void, handleSelectIntegration: (integrationId: string) => void, setOutput: (output: AutomationOutput) => void }) {
-    const selectorProps = {
-        integrationType: output.integration,
-        selectedIntegrationId: output.integrationId,
-        onSelect: handleSelectIntegration,
-        notionConfig: output.notionConfig,
-        onNotionConfigChange: (config: any) => {
-            if (output) {
-                setOutput({
-                    integration: IntegrationType.NOTION,
-                    integrationId: output.integrationId,
-                    notionConfig: config
-                });
-            }
-        },
-        notionPageConfig: output.notionPageConfig,
-        onNotionPageConfigChange: (config: any) => {
-            if (output) {
-                setOutput({
-                    integration: IntegrationType.NOTION,
-                    integrationId: output.integrationId,
-                    notionPageConfig: config
-                });
-            }
-        },
-        slackConfig: output.slackConfig,
-        onSlackConfigChange: (config: any) => {
-            if (output) {
-                setOutput({ ...output, slackConfig: config });
-            }
-        },
-        confluenceConfig: output.confluenceConfig,
-        onConfluenceConfigChange: (config: any) => {
-            if (output) {
-                setOutput({ ...output, confluenceConfig: config });
-            }
-        }
-    };
+}: { output: TransientAutomationOutput, handleRemove: () => void, handleSelectIntegration: (configType: ConfigType) => void, setOutput: (output: TransientAutomationOutput) => void }) {
 
     return (
         <Card>
             <CardHeader>
                 <CardTitle className="flex justify-between">
-                    <IntegrationTitle integration={output.integration} iconSize="lg" />
+                    <IntegrationTitle configType={output.configType} iconSize="lg" />
                 </CardTitle>
             </CardHeader>
             <CardContent className="max-w-xs">
-                <IntegrationSelector {...selectorProps} variant="dialog" />
+                <IntegrationSelector input={output} variant="dialog" setConfig={(config: ConfigInstance) => setOutput({ ...output, config: config })} />
             </CardContent>
             <CardFooter>
                 <CardAction>

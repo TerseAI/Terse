@@ -1,6 +1,6 @@
 import { forwardRef, useState, useImperativeHandle, useRef } from "react";
-import { AutomationInput, TransientAutomationInput } from "../../shared/types";
-import { CONFIG_DETAILS, ConfigInstance, ConfigType } from "@/shared/Configs";
+import { TransientAutomationInput } from "../../shared/types";
+import { ConfigInstance, ConfigType } from "@/shared/Configs";
 import { SectionLayout } from "./components/SectionLayout";
 import { AddInputModal } from "./components/AddInputModal";
 import { Zap, Plus, Settings, AlertTriangle } from "lucide-react";

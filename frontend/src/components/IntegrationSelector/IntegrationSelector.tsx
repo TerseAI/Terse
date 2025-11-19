@@ -13,60 +13,58 @@ export function IntegrationSelector(props: InputConfigSelectorProps) {
         case ConfigType.GMAIL:
             return <GmailIntegration {...props} />;
 
-        case ConfigType.NOTION_DATABASE, ConfigType.NOTION_PAGE:
+        case ConfigType.NOTION_DATABASE:
+        case ConfigType.NOTION_PAGE:
             return (
                 <NotionIntegration
-                    {...baseProps}
-                    integrationType={props.integrationType}
-                    notionConfig={props.notionConfig}
-                    notionPageConfig={props.notionPageConfig}
-                    onNotionConfigChange={props.onNotionConfigChange}
-                    onNotionPageConfigChange={props.onNotionPageConfigChange}
+                    input={props.input}
+                    variant={props.variant}
+                    setConfig={props.setConfig}
                 />
             );
 
-        case ConfigType.SLACK:
-            return (
-                <SlackIntegration
-                    {...baseProps}
-                    integrationType={props.integrationType}
-                    slackConfig={props.slackConfig}
-                    onSlackConfigChange={props.onSlackConfigChange}
-                />
-            );
+        // case ConfigType.SLACK:
+        //     return (
+        //         <SlackIntegration
+        //             {...baseProps}
+        //             integrationType={props.integrationType}
+        //             slackConfig={props.slackConfig}
+        //             onSlackConfigChange={props.onSlackConfigChange}
+        //         />
+        //     );
 
-        case ConfigType.GITHUB:
-            return <GitHubIntegration
-                integrationType={props.integrationType}
-                githubConfig={props.githubConfig}
-                onGithubConfigChange={props.onGithubConfigChange}
-            />;
+        // case ConfigType.GITHUB:
+        //     return <GitHubIntegration
+        //         integrationType={props.integrationType}
+        //         githubConfig={props.githubConfig}
+        //         onGithubConfigChange={props.onGithubConfigChange}
+        //     />;
 
-        case ConfigType.FIGMA:
-            return (
-                <FigmaIntegration
-                    integrationType={props.integrationType}
-                    figmaConfig={props.figmaConfig}
-                    onFigmaConfigChange={props.onFigmaConfigChange}
-                />
-            );
-        case ConfigType.LINEAR:
-            return (
-                <LinearIntegration
-                />
-            );
+        // case ConfigType.FIGMA:
+        //     return (
+        //         <FigmaIntegration
+        //             integrationType={props.integrationType}
+        //             figmaConfig={props.figmaConfig}
+        //             onFigmaConfigChange={props.onFigmaConfigChange}
+        //         />
+        //     );
+        // case ConfigType.LINEAR:
+        //     return (
+        //         <LinearIntegration
+        //         />
+        //     );
 
-        case ConfigType.JIRA, ConfigType.CONFLUENCE:
-            return (
-                <ConfluenceIntegration
-                    {...baseProps}
-                    integrationType={props.integrationType}
-                    confluenceConfig={props.confluenceConfig}
-                    onConfluenceConfigChange={props.onConfluenceConfigChange}
-                />
-            );
+        // case ConfigType.JIRA, ConfigType.CONFLUENCE:
+        //     return (
+        //         <ConfluenceIntegration
+        //             {...baseProps}
+        //             integrationType={props.integrationType}
+        //             confluenceConfig={props.confluenceConfig}
+        //             onConfluenceConfigChange={props.onConfluenceConfigChange}
+        //         />
+        //     );
 
         default:
-            throw props.config.configType satisfies never;
+            throw new Error(`Unsupported config type: ${props.input.configType}`);
     }
 }
