@@ -101,9 +101,9 @@ interface BackendService {
     requestGitHubAppInstallationUrl(): Promise<{ installationUrl: string }>;
 
     /**
-     * Gets the GitHub repositories for the current integration
+     * Gets the GitHub repositories for a specific installation
      */
-    getGithubRepositoriesForIntegration(): Promise<GetGithubRepositoriesForIntegrationResponse>;
+    getGithubRepositoriesForIntegration(installationId: number): Promise<GetGithubRepositoriesForIntegrationResponse>;
 
     /**
      * Gets the current Slack integration
@@ -390,8 +390,11 @@ export const BackendProvider: BackendService = {
             });
     },
 
-    getGithubRepositoriesForIntegration: () => {
-        return axios.get(`${backendBaseUrl}/github/get-repositories-for-integration`, { withCredentials: true })
+    getGithubRepositoriesForIntegration: (installationId: number) => {
+        return axios.get(`${backendBaseUrl}/github/get-repositories-for-integration`, {
+            params: { installation_id: installationId },
+            withCredentials: true
+        })
             .then(response => response.data)
             .catch(error => {
                 console.error('Error getting GitHub repositories for integration:', error);

@@ -16,6 +16,9 @@ export function IconForInputType({ type }: { type: IntegrationType }) {
             return <FigmaIcon />;
         case IntegrationType.ATLASSIAN:
             return <JiraIcon />;
+        default:
+            // Exhaustive check: TypeScript will error if any IntegrationType case is missing
+            throw type satisfies never;
     }
 }
 

@@ -84,11 +84,26 @@ export async function processsGithubAppInstallationWebhook(req: Request, res: Re
         console.log(chalk.green('Placeholder user created:'), user);
     }
 
-    // Update the user_github_installation record with the user_id
+    // Update the user_github_installation record with the user_id and account_name
+    const updateData: { user_id: string; account_name?: string | null } = {
+        user_id: user.id
+    };
+    if (body.accountName !== undefined) {
+        updateData.account_name = body.accountName;
+    }
+    
+    const createData: { user_id: string; installation_id: number; account_name?: string | null } = {
+        user_id: user.id,
+        installation_id: body.installationId
+    };
+    if (body.accountName !== undefined) {
+        createData.account_name = body.accountName;
+    }
+    
     await db().user_github_installation.upsert({
         where: { installation_id: body.installationId },
-        update: { user_id: user.id },
-        create: { user_id: user.id, installation_id: body.installationId }
+        update: updateData,
+        create: createData
     });
 
     // Process each repository in the array
@@ -206,7 +221,7 @@ export async function githubAppUnifiedEvent(req: Request, res: Response) {
 }
 
 /**
- * Get repositories for a GitHub integration
+ * Get repositories for a GitHub integration by installation_id
  */
 export async function getGithubRepositoriesForIntegration(req: Request, res: Response) {
     if (!req.session?.user) {
@@ -215,13 +230,42 @@ export async function getGithubRepositoriesForIntegration(req: Request, res: Res
     }
 
     const user = req.session.user;
-    const repositories = await db().user_github_repositories.findMany({ where: { user_id: user.id }, include: { github_repository: true } });
+    const installationId = req.query.installation_id as string | undefined;
+
+    if (!installationId) {
+        res.status(400).json({ message: 'installation_id is required' });
+        return;
+    }
+
+    const installationIdNumber = parseInt(installationId);
+    if (isNaN(installationIdNumber)) {
+        res.status(400).json({ message: 'installation_id must be a number' });
+        return;
+    }
+
+    // Verify the installation belongs to the user
+    const installation = await db().user_github_installation.findFirst({
+        where: {
+            installation_id: installationIdNumber,
+            user_id: user.id
+        }
+    });
+
+    if (!installation) {
+        res.status(404).json({ message: 'Installation not found or does not belong to user' });
+        return;
+    }
+
+    // Get repositories for this installation
+    const repositories = await db().github_repositories.findMany({
+        where: { installation_id: installationIdNumber }
+    });
 
     const result: GetGithubRepositoriesForIntegrationResponse = {
         repositories: repositories.map(r => ({
-            id: r.github_repository.repository_id,
-            name: r.github_repository.name,
-            owner: r.github_repository.owner
+            id: r.repository_id,
+            name: r.name,
+            owner: r.owner
         }))
     };
     

@@ -135,8 +135,8 @@ export interface AtlassianIntegration extends IntegrationInstance {
 
 export interface GithubIntegration extends IntegrationInstance {
     id: string;
-    repositoryName: string;
-    owner?: string;
+    installation_id: number;
+    account_name?: string | null; // GitHub username or organization name where the app was installed
 };
 
 export interface LinearIntegration extends IntegrationInstance {

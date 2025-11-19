@@ -9,15 +9,17 @@ import { cn } from "@/lib/utils";
 import { useGithubResources } from "@/hooks/api/useGithubResources";
 
 interface GithubResourceSelectorProps {
+    installationId: number | null | undefined;
     selectedRepositoryIds?: number[];
     onSelect: (repositoryIds: number[]) => void;
 }
 
 export function GithubResourceSelector({
+    installationId,
     selectedRepositoryIds = [],
     onSelect
 }: GithubResourceSelectorProps) {
-    const { repositories, isLoading, isError, error, isValidating, mutate } = useGithubResources();
+    const { repositories, isLoading, isError, error, isValidating, mutate } = useGithubResources(installationId);
     const [isRefreshing, setIsRefreshing] = useState(false);
 
     const handleRefresh = async () => {
@@ -30,6 +32,14 @@ export function GithubResourceSelector({
     };
 
     const errorMessage = error instanceof Error ? error.message : (typeof error === 'string' ? error : 'Failed to load repositories');
+
+    if (!installationId) {
+        return (
+            <div className="text-sm text-muted-foreground">
+                Please select a GitHub connection to view repositories.
+            </div>
+        );
+    }
 
     if (isLoading) {
         return (
