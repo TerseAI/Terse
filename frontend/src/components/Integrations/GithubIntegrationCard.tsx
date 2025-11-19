@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent } from "../ui/card";
 import { Button } from "../ui/button";
 import {
@@ -8,34 +8,78 @@ import {
     DialogTitle,
 } from "../ui/dialog";
 import { IntegrationType } from "@/shared/Integrations"
-import { GithubIntegration } from "@/shared/Integrations";
 import { IntegrationCardHeader } from "./helpers/IntegrationCardHeader";
 import { IntegrationCardFooter } from "./helpers/IntegrationCardFooter";
 import { useOAuthConnection } from "@/hooks/useOAuthConnection";
 import { cn } from "@/lib/utils";
 import { ExternalLink, Github } from "lucide-react";
 import { useGithubIntegrations } from "@/hooks/api/useGithubIntegrations";
+import { useGithubResources } from "@/hooks/api/useGithubResources";
 import { Skeleton } from "../ui/skeleton";
+import { Repository } from "@/shared/types";
+import DropdownSelect from "../ui/DropdownSelect";
 
 // Number of repositories to show on the card before showing "View all" button
 const REPOSITORY_DISPLAY_THRESHOLD = 3;
 
 function GithubIntegrationCard({ className }: { className?: string }) {
     const { connect, isConnecting } = useOAuthConnection(IntegrationType.GITHUB);
-    const { integrations, isLoading } = useGithubIntegrations();
+    const { integrations, isLoading: isLoadingIntegrations } = useGithubIntegrations();
     const [isDialogOpen, setIsDialogOpen] = useState(false);
+    const [selectedInstallationId, setSelectedInstallationId] = useState<number | null>(null);
+
+    // Update selected installation when integrations are loaded
+    useEffect(() => {
+        if (integrations.length > 0 && selectedInstallationId === null) {
+            setSelectedInstallationId(integrations[0].installation_id);
+        }
+    }, [integrations, selectedInstallationId]);
+
+    // Fetch repositories only for the selected installation
+    const { repositories, isLoading: isLoadingRepositories } = useGithubResources(selectedInstallationId);
+    const isLoading = isLoadingIntegrations || isLoadingRepositories;
+
+    const connectionSelections = integrations.map((integration) => ({
+        label: integration.account_name || 'Unknown Account',
+        value: integration.installation_id.toString()
+    }));
+
+    const selectedOption = connectionSelections.find(
+        option => option.value === selectedInstallationId?.toString()
+    ) || connectionSelections[0];
+
+    const handleInstallationChange = (value: string) => {
+        const installationId = parseInt(value);
+        if (!isNaN(installationId)) {
+            setSelectedInstallationId(installationId);
+        }
+    };
 
     return (
         <>
             <Card className={cn(className)}>
                 <IntegrationCardHeader integration={IntegrationType.GITHUB} />
                 <CardContent>
-                    <GithubCardContent repositories={integrations} isLoading={isLoading} onViewAll={() => setIsDialogOpen(true)} />
+                    {integrations.length > 0 && (
+                        <div className="mb-4">
+                            <label className="text-sm font-medium mb-1.5 block">Connection</label>
+                            <DropdownSelect
+                                statusOptions={connectionSelections}
+                                selectedOption={selectedOption}
+                                setSelected={handleInstallationChange}
+                            />
+                        </div>
+                    )}
+                    <GithubCardContent 
+                        repositories={repositories} 
+                        isLoading={isLoading} 
+                        onViewAll={() => setIsDialogOpen(true)} 
+                    />
                 </CardContent>
                 <IntegrationCardFooter connect={connect} isConnecting={isConnecting} />
             </Card>
             <RepositoriesDialog 
-                repositories={integrations} 
+                repositories={repositories} 
                 open={isDialogOpen} 
                 onOpenChange={setIsDialogOpen} 
             />
@@ -43,7 +87,7 @@ function GithubIntegrationCard({ className }: { className?: string }) {
     )
 }
 
-function GithubCardContent({ repositories, isLoading, onViewAll }: { repositories: GithubIntegration[], isLoading: boolean, onViewAll: () => void }) {
+function GithubCardContent({ repositories, isLoading, onViewAll }: { repositories: Repository[], isLoading: boolean, onViewAll: () => void }) {
     if (isLoading) {
         return (
             <div className="space-y-3">
@@ -75,9 +119,9 @@ function GithubCardContent({ repositories, isLoading, onViewAll }: { repositorie
             <ul className="list-disc list-inside space-y-1 ml-2">
                 {displayRepos.map((repo) => (
                     <li key={repo.id}>
-                        {repo.owner && repo.repositoryName 
-                            ? `${repo.owner}/${repo.repositoryName}`
-                            : repo.repositoryName || 'Unknown Repository'}
+                        {repo.owner && repo.name 
+                            ? `${repo.owner}/${repo.name}`
+                            : repo.name || 'Unknown Repository'}
                     </li>
                 ))}
             </ul>
@@ -95,7 +139,7 @@ function RepositoriesDialog({
     open, 
     onOpenChange 
 }: { 
-    repositories: GithubIntegration[], 
+    repositories: Repository[], 
     open: boolean, 
     onOpenChange: (open: boolean) => void 
 }) {
@@ -113,11 +157,11 @@ function RepositoriesDialog({
                     ) : (
                         <ul className="space-y-2">
                             {repositories.map((repo) => {
-                                const repoName = repo.owner && repo.repositoryName 
-                                    ? `${repo.owner}/${repo.repositoryName}`
-                                    : repo.repositoryName || 'Unknown Repository';
-                                const repoUrl = repo.owner && repo.repositoryName
-                                    ? `https://github.com/${repo.owner}/${repo.repositoryName}`
+                                const repoName = repo.owner && repo.name 
+                                    ? `${repo.owner}/${repo.name}`
+                                    : repo.name || 'Unknown Repository';
+                                const repoUrl = repo.owner && repo.name
+                                    ? `https://github.com/${repo.owner}/${repo.name}`
                                     : null;
 
                                 return (

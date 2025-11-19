@@ -412,6 +412,7 @@ export type GithubAppInstallationCallbackRequest = {
   email: string;
   username: string;
   installationId: number;
+  accountName: string | null;
   repositories: Repository[];
 }
 

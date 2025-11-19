@@ -19,14 +19,13 @@ export class GithubIntegrationManager implements Integration<GithubIntegration, 
     integrationType: IntegrationType = IntegrationType.GITHUB;
 
     async getInstancesForUser(userId: string): Promise<GithubIntegration[]> {
-        const userGithubRepos = await db().user_github_repositories.findMany({
-            where: { user_id: userId },
-            include: { github_repository: true }
+        const userGithubInstallations = await db().user_github_installation.findMany({
+            where: { user_id: userId }
         });
-        return userGithubRepos.map(ugr => ({
-            id: ugr.github_repository.id,
-            repositoryName: ugr.github_repository.name,
-            owner: ugr.github_repository.owner
+        return userGithubInstallations.map(ugi => ({
+            id: ugi.id,
+            installation_id: ugi.installation_id,
+            account_name: ugi.account_name || null,
         }));
     }
 
@@ -83,10 +82,11 @@ export class GithubIntegrationManager implements Integration<GithubIntegration, 
         }
 
         // create a new user_github_installation record
+        // Note: account_name will be populated by the webhook callback if not already set
         await db().user_github_installation.upsert({
             where: { installation_id: installation_id_number },
             update: { user_id: user_id },
-            create: { user_id: user_id, installation_id: installation_id_number }
+            create: { user_id: user_id, installation_id: installation_id_number, account_name: null }
         });
 
         console.log(

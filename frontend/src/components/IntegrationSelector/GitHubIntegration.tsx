@@ -53,15 +53,18 @@ export function GitHubIntegration({
     }
 
     const connectionSelections = integrations.map((integration: GithubIntegrationType) => ({
-        label: integration.owner 
-            ? `Repositories connected to: ${integration.owner}` 
-            : integration.repositoryName || 'Unknown Repository',
+        label: integration.account_name || 'Unknown Account',
         value: integration.id
     }));
     const selectedOption = connectionSelections.find(option => option.value === selectedIntegrationId) || connectionSelections[0];
 
     // Get connected repositories
     const connectedRepositories = githubConfig?.repositoryIds ? githubConfig.repositoryIds : [];
+    
+    // Find the selected integration to get its installation_id
+    const selectedIntegration = selectedIntegrationId 
+        ? integrations.find(i => i.id === selectedIntegrationId) 
+        : null;
 
     // Card variant: compact view
     if (variant === 'card') {
@@ -96,9 +99,10 @@ export function GitHubIntegration({
             </Button>
 
             {/* GitHub-specific repository selector */}
-            {selectedIntegrationId && onGithubConfigChange && (
+            {selectedIntegrationId && onGithubConfigChange && selectedIntegration && (
                 <div className="mt-3 pt-3 border-t border-border">
                     <GithubResourceSelector
+                        installationId={selectedIntegration.installation_id}
                         selectedRepositoryIds={connectedRepositories}
                         onSelect={(repositoryIds) => {
                             onGithubConfigChange({
