@@ -1,8 +1,7 @@
 import { ExternalLink, Copy } from "lucide-react";
 import type { RunHistoryRecord } from "../../../shared/RunHistoryTypes";
 import RunHistoryStatusBadge from "../RunHistoryStatusBadge";
-import { IconForConfigType } from "../../../pages/Automations/components/Integration";
-import { IntegrationType } from "../../../shared/Integrations";
+import { IconForIntegration } from "../../../pages/Automations/components/Integration";
 
 type Props = {
     run: RunHistoryRecord;
@@ -18,7 +17,7 @@ export default function RunHistoryItemHeader({ run, formattedTimestamp, onCopy }
                 <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
                         <div className="text-muted-foreground size-4 flex-shrink-0">
-                            <IconForConfigType type={run.trigger.integration as IntegrationType} />
+                            <IconForIntegration integration={run.trigger.integration} />
                         </div>
                         <span 
                             className="text-foreground truncate no-underline hover:no-underline max-w-[780px]" 
