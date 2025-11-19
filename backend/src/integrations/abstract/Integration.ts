@@ -1,6 +1,5 @@
-import { IntegrationType } from "@prisma/client";
 import { OAuthInstallationDetails } from "../../shared/types";
-import { IntegrationInstance, IntegrationDetails } from "../../shared/Integrations";
+import { IntegrationInstance, IntegrationDetails, IntegrationType } from "../../shared/Integrations";
 import { Request, Response } from "express";
 
 // This ensures T is a valid Prisma model type

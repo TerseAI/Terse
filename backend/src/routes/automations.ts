@@ -1,108 +1,123 @@
 import { Request, Response } from "express";
 import { db } from "../prismaClient";
-import { Automation, AutomationInput, AutomationOutput, AutomationPrompt } from "../shared/types";
+import { Automation, AutomationInput, AutomationOutput, AutomationPrompt, AutomationsResponse } from "../shared/types";
 import { parsePageParams } from "../utility/pagination";
 import chalk from "chalk";
 import { AutomationInputSetup } from "../inputs/AutomationInputSetup";
-import { AutomationWithRelations } from "../types/prisma";
+import { AutomationWithRelations, PrismaTransaction } from "../types/prisma";
 import { IntegrationType} from "../shared/Integrations";
-import { convertIntegrationTypeToPrismaIntegrationType } from "../utility/typeConverters";
+import { convertConfigTypeToInputConfigType, convertIntegrationTypeToPrismaIntegrationType, convertPrismaConfigToConfigInstance } from "../utility/typeConverters";
 import { SaveAutomationRequest } from "../shared/types";
+import { INPUT_REGISTRY } from "../inputs/InputRegistry";
+import { INTEGRATION_REGISTRY } from "src/integrations/abstract/IntegrationRegistry";
 
-// Helper function to create config record for an automation input
+
 async function createInputConfig(
-    tx: any,
+    tx: PrismaTransaction,
     inputId: string,
-    integrationType: IntegrationType,
     config: AutomationInput
-): Promise<void> {
-    switch (integrationType) {
-        case IntegrationType.SLACK:
-            if (config.slackConfig) {
-                await tx.automation_slack_configs.create({
-                    data: {
-                        automation_input_id: inputId,
-                        channel_id: config.slackConfig.channelId || null,
-                        channel_name: config.slackConfig.channelName || null,
-                        listen_to_user_dms: config.slackConfig.listenToUserDms || false,
-                    },
-                });
-            }
-            break;
-        case IntegrationType.NOTION:
-            if (config.notionConfig) {
-                await tx.automation_notion_configs.create({
-                    data: {
-                        automation_input_id: inputId,
-                        database_id: config.notionConfig.databaseId || null,
-                        database_name: config.notionConfig.databaseName || null,
-                    },
-                });
-            }
-            break;
-        case IntegrationType.LINEAR:
-            if (config.linearConfig) {
-                await tx.automation_linear_configs.create({
-                    data: {
-                        automation_input_id: inputId,
-                        project_id: config.linearConfig.projectId || null,
-                        project_name: config.linearConfig.projectName || null,
-                    },
-                });
-            }
-            break;
-        case IntegrationType.ATLASSIAN:
-            if (config.jiraConfig) {
-                await tx.automation_jira_configs.create({
-                    data: {
-                        automation_input_id: inputId,
-                        project_key: config.jiraConfig.projectKey || null,
-                        project_id: config.jiraConfig.projectId || null,
-                    },
-                });
-            }
-            break;
-        case IntegrationType.GITHUB:
-            if (config.githubConfig) {
-                await tx.automation_github_configs.create({
-                    data: {
-                        automation_input_id: inputId,
-                        repository_ids: config.githubConfig.repositoryIds || [],
-                    },
-                });
-            }
-            break;
-        case IntegrationType.GMAIL:
-            // Gmail configs are empty for now, but create record for consistency
-            await tx.automation_gmail_configs.create({
-                data: {
-                    automation_input_id: inputId,
-                },
-            });
-            break;
-        case IntegrationType.FIGMA:
-            // Figma config is required for Figma integrations
-            if (!config.figmaConfig) {
-                throw new Error('figmaConfig is required for Figma integration');
-            }
-            console.log(chalk.blue("Figma config received:"), chalk.yellow(JSON.stringify(config.figmaConfig, null, 2)));
-            // Validate that fileKey is provided for Figma configs
-            if (!config.figmaConfig.fileKey || config.figmaConfig.fileKey.trim() === '') {
-                throw new Error('fileKey is required for Figma integration');
-            }
-            await tx.automation_figma_configs.create({
-                data: {
-                    automation_input: {
-                        connect: { id: inputId }
-                    },
-                    file_key: config.figmaConfig.fileKey,
-                    file_name: config.figmaConfig.fileName || null,
-                    team_id: config.figmaConfig.teamId || null,
-                },
-            });
-            break;
+): Promise<void> 
+{
+    const input = INPUT_REGISTRY.find(input => input.configType === config.config.configType);
+    if (!input) {
+        throw new Error(`Input not found for integration type: ${config.config.configType}`);
     }
+    await input.addInputToAutomation(tx, inputId, config);
 }
+// Helper function to create config record for an automation input
+// async function createInputConfig(
+//     tx: any,
+//     inputId: string,
+//     integrationType: IntegrationType,
+//     config: AutomationInput
+// ): Promise<void> {
+//     switch (integrationType) {
+//         case IntegrationType.SLACK:
+//             if (config.slackConfig) {
+//                 await tx.automation_slack_configs.create({
+//                     data: {
+//                         automation_input_id: inputId,
+//                         channel_id: config.slackConfig.channelId || null,
+//                         channel_name: config.slackConfig.channelName || null,
+//                         listen_to_user_dms: config.slackConfig.listenToUserDms || false,
+//                     },
+//                 });
+//             }
+//             break;
+//         case IntegrationType.NOTION:
+//             if (config.notionConfig) {
+//                 await tx.automation_notion_configs.create({
+//                     data: {
+//                         automation_input_id: inputId,
+//                         database_id: config.notionConfig.databaseId || null,
+//                         database_name: config.notionConfig.databaseName || null,
+//                     },
+//                 });
+//             }
+//             break;
+//         case IntegrationType.LINEAR:
+//             if (config.linearConfig) {
+//                 await tx.automation_linear_configs.create({
+//                     data: {
+//                         automation_input_id: inputId,
+//                         project_id: config.linearConfig.projectId || null,
+//                         project_name: config.linearConfig.projectName || null,
+//                     },
+//                 });
+//             }
+//             break;
+//         case IntegrationType.ATLASSIAN:
+//             if (config.jiraConfig) {
+//                 await tx.automation_jira_configs.create({
+//                     data: {
+//                         automation_input_id: inputId,
+//                         project_key: config.jiraConfig.projectKey || null,
+//                         project_id: config.jiraConfig.projectId || null,
+//                     },
+//                 });
+//             }
+//             break;
+//         case IntegrationType.GITHUB:
+//             if (config.githubConfig) {
+//                 await tx.automation_github_configs.create({
+//                     data: {
+//                         automation_input_id: inputId,
+//                         repository_ids: config.githubConfig.repositoryIds || [],
+//                     },
+//                 });
+//             }
+//             break;
+//         case IntegrationType.GMAIL:
+//             // Gmail configs are empty for now, but create record for consistency
+//             await tx.automation_gmail_configs.create({
+//                 data: {
+//                     automation_input_id: inputId,
+//                 },
+//             });
+//             break;
+//         case IntegrationType.FIGMA:
+//             // Figma config is required for Figma integrations
+//             if (!config.figmaConfig) {
+//                 throw new Error('figmaConfig is required for Figma integration');
+//             }
+//             console.log(chalk.blue("Figma config received:"), chalk.yellow(JSON.stringify(config.figmaConfig, null, 2)));
+//             // Validate that fileKey is provided for Figma configs
+//             if (!config.figmaConfig.fileKey || config.figmaConfig.fileKey.trim() === '') {
+//                 throw new Error('fileKey is required for Figma integration');
+//             }
+//             await tx.automation_figma_configs.create({
+//                 data: {
+//                     automation_input: {
+//                         connect: { id: inputId }
+//                     },
+//                     file_key: config.figmaConfig.fileKey,
+//                     file_name: config.figmaConfig.fileName || null,
+//                     team_id: config.figmaConfig.teamId || null,
+//                 },
+//             });
+//             break;
+//     }
+// }
 
 // Helper function to create config record for an automation output
 async function createOutputConfig(
@@ -191,199 +206,137 @@ async function createOutputConfig(
     }
 }
 
-// Helper function to transform config from database to API format
-function transformInputConfig(input: any, id: string): AutomationInput {
-    const base: AutomationInput = {
-        id: id,
-        integration: input.integration_type.toLowerCase(),
-        integrationId: input.integration_id,
-    };
+// // Helper function to transform config from database to API format
+// function transformInputConfig(input: any, id: string): AutomationInput {
+//     const base: AutomationInput = {
+//         id: id,
+//         integration: input.integration_type.toLowerCase(),
+//         integrationId: input.integration_id,
+//     };
 
-    if (input.slack_config) {
-        base.slackConfig = {
-            channelId: input.slack_config.channel_id || undefined,
-            channelName: input.slack_config.channel_name || undefined,
-            listenToUserDms: input.slack_config.listen_to_user_dms || false,
-        };
-    }
-    if (input.notion_config) {
-        base.notionConfig = {
-            databaseId: input.notion_config.database_id || undefined,
-            databaseName: input.notion_config.database_name || undefined,
-        };
-    }
-    if (input.linear_config) {
-        base.linearConfig = {
-            projectId: input.linear_config.project_id || undefined,
-            projectName: input.linear_config.project_name || undefined,
-        };
-    }
-    if (input.jira_config) {
-        base.jiraConfig = {
-            projectKey: input.jira_config.project_key || undefined,
-            projectId: input.jira_config.project_id || undefined,
-        };
-    }
-    if (input.github_config) {
-        base.githubConfig = {
-            repositoryIds: input.github_config.repository_ids,
-        };
-    }
-    if (input.gmail_config) {
-        base.gmailConfig = {};
-    }
-    if (input.figma_config) {
-        base.figmaConfig = {
-            fileKey: input.figma_config.file_key || undefined,
-            fileName: input.figma_config.file_name || undefined,
-            teamId: input.figma_config.team_id || undefined,
-        };
-    }
+//     if (input.slack_config) {
+//         base.slackConfig = {
+//             channelId: input.slack_config.channel_id || undefined,
+//             channelName: input.slack_config.channel_name || undefined,
+//             listenToUserDms: input.slack_config.listen_to_user_dms || false,
+//         };
+//     }
+//     if (input.notion_config) {
+//         base.notionConfig = {
+//             databaseId: input.notion_config.database_id || undefined,
+//             databaseName: input.notion_config.database_name || undefined,
+//         };
+//     }
+//     if (input.linear_config) {
+//         base.linearConfig = {
+//             projectId: input.linear_config.project_id || undefined,
+//             projectName: input.linear_config.project_name || undefined,
+//         };
+//     }
+//     if (input.jira_config) {
+//         base.jiraConfig = {
+//             projectKey: input.jira_config.project_key || undefined,
+//             projectId: input.jira_config.project_id || undefined,
+//         };
+//     }
+//     if (input.github_config) {
+//         base.githubConfig = {
+//             repositoryIds: input.github_config.repository_ids,
+//         };
+//     }
+//     if (input.gmail_config) {
+//         base.gmailConfig = {};
+//     }
+//     if (input.figma_config) {
+//         base.figmaConfig = {
+//             fileKey: input.figma_config.file_key || undefined,
+//             fileName: input.figma_config.file_name || undefined,
+//             teamId: input.figma_config.team_id || undefined,
+//         };
+//     }
 
-    return base;
-}
+//     return base;
+// }
 
 // Helper function to transform output config from database to API format
 // TODO: I feel like this shouldn't exist?
-function transformOutputConfig(output: any): AutomationOutput {
-    const base: AutomationOutput = {
-        integration: output.integration_type.toLowerCase(),
-        integrationId: output.integration_id,
-    };
+// function transformOutputConfig(output: any): AutomationOutput {
+//     const base: AutomationOutput = {
+//         integration: output.integration_type.toLowerCase(),
+//         integrationId: output.integration_id,
+//     };
 
-    if (output.slack_config) {
-        base.slackConfig = {
-            channelId: output.slack_config.channel_id || undefined,
-            channelName: output.slack_config.channel_name || undefined,
-        };
-    }
-    if (output.notion_config) {
-        base.notionConfig = {
-            databaseId: output.notion_config.database_id || undefined,
-            databaseName: output.notion_config.database_name || undefined,
-        };
-    }
-    if (output.notion_page_config) {
-        base.notionPageConfig = {
-            pageId: output.notion_page_config.page_id || undefined,
-            pageName: output.notion_page_config.page_name || undefined,
-        };
-    }
-    if (output.linear_config) {
-        base.linearConfig = {
-            projectId: output.linear_config.project_id || undefined,
-            projectName: output.linear_config.project_name || undefined,
-        };
-    }
-    if (output.jira_config) {
-        base.jiraConfig = {
-            projectKey: output.jira_config.project_key || undefined,
-            projectId: output.jira_config.project_id || undefined,
-        };
-    }
-    if (output.notion_page_config) {
-        base.notionPageConfig = {
-            pageId: output.notion_page_config.page_id || undefined,
-            pageName: output.notion_page_config.page_name || undefined,
-        };
-    }
-    if (output.confluence_config) {
-        base.confluenceConfig = {
-            spaceId: output.confluence_config.space_id || undefined,
-            spaceName: output.confluence_config.space_name || undefined,
-            pageId: output.confluence_config.page_id,
-            pageName: output.confluence_config.page_name || undefined,
-        };
-    }
-    if (output.github_config) {
-        base.githubConfig = {
-            repositoryIds: output.github_config.repository_ids || [],
-        };
-    }
-    if (output.gmail_config) {
-        base.gmailConfig = {};
-    }
-    if (output.figma_config) {
-        base.figmaConfig = {
-            fileKey: output.figma_config.file_key || undefined,
-            fileName: output.figma_config.file_name || undefined,
-            teamId: output.figma_config.team_id || undefined,
-        };
-    }
+//     if (output.slack_config) {
+//         base.slackConfig = {
+//             channelId: output.slack_config.channel_id || undefined,
+//             channelName: output.slack_config.channel_name || undefined,
+//         };
+//     }
+//     if (output.notion_config) {
+//         base.notionConfig = {
+//             databaseId: output.notion_config.database_id || undefined,
+//             databaseName: output.notion_config.database_name || undefined,
+//         };
+//     }
+//     if (output.notion_page_config) {
+//         base.notionPageConfig = {
+//             pageId: output.notion_page_config.page_id || undefined,
+//             pageName: output.notion_page_config.page_name || undefined,
+//         };
+//     }
+//     if (output.linear_config) {
+//         base.linearConfig = {
+//             projectId: output.linear_config.project_id || undefined,
+//             projectName: output.linear_config.project_name || undefined,
+//         };
+//     }
+//     if (output.jira_config) {
+//         base.jiraConfig = {
+//             projectKey: output.jira_config.project_key || undefined,
+//             projectId: output.jira_config.project_id || undefined,
+//         };
+//     }
+//     if (output.notion_page_config) {
+//         base.notionPageConfig = {
+//             pageId: output.notion_page_config.page_id || undefined,
+//             pageName: output.notion_page_config.page_name || undefined,
+//         };
+//     }
+//     if (output.confluence_config) {
+//         base.confluenceConfig = {
+//             spaceId: output.confluence_config.space_id || undefined,
+//             spaceName: output.confluence_config.space_name || undefined,
+//             pageId: output.confluence_config.page_id,
+//             pageName: output.confluence_config.page_name || undefined,
+//         };
+//     }
+//     if (output.github_config) {
+//         base.githubConfig = {
+//             repositoryIds: output.github_config.repository_ids || [],
+//         };
+//     }
+//     if (output.gmail_config) {
+//         base.gmailConfig = {};
+//     }
+//     if (output.figma_config) {
+//         base.figmaConfig = {
+//             fileKey: output.figma_config.file_key || undefined,
+//             fileName: output.figma_config.file_name || undefined,
+//             teamId: output.figma_config.team_id || undefined,
+//         };
+//     }
 
-    return base;
-}
+//     return base;
+// }
 
 // Helper function to validate that user owns an integration
 async function validateUserOwnsIntegration(userId: string, integrationType: IntegrationType, integrationId: string): Promise<boolean> {
-    const prisma = db();
-
-    switch (integrationType) {
-        case IntegrationType.GITHUB:
-            const userGithubRepo = await prisma.user_github_repositories.findFirst({
-                where: {
-                    user_id: userId,
-                    github_repository_id: integrationId
-                }
-            });
-            return !!userGithubRepo;
-
-        case IntegrationType.LINEAR:
-            const linearKey = await prisma.linear_api_keys.findFirst({
-                where: {
-                    id: integrationId,
-                    user_id: userId
-                }
-            });
-            return !!linearKey;
-
-        case IntegrationType.ATLASSIAN:
-            const jiraKey = await prisma.jira_api_keys.findFirst({
-                where: {
-                    id: integrationId,
-                    user_id: userId
-                }
-            });
-            return !!jiraKey;
-
-        case IntegrationType.SLACK:
-            const userSlackIntegration = await prisma.user_slack_integrations.findFirst({
-                where: {
-                    id: integrationId,
-                    user_id: userId
-                }
-            });
-            return !!userSlackIntegration;
-
-        case IntegrationType.GMAIL:
-            const gmailIntegration = await prisma.gmail_integrations.findFirst({
-                where: {
-                    id: integrationId,
-                    user_id: userId
-                }
-            });
-            return !!gmailIntegration;
-
-        case IntegrationType.NOTION:
-            const notionIntegration = await prisma.notion_integrations.findFirst({
-                where: {
-                    id: integrationId,
-                    user_id: userId
-                }
-            });
-            return !!notionIntegration;
-        case IntegrationType.FIGMA:
-            const figmaIntegration = await prisma.figma_integrations.findFirst({
-                where: {
-                    id: integrationId,
-                    user_id: userId
-                }
-            });
-            return !!figmaIntegration;
-
-        default:
-            return false;
+    const integration = INTEGRATION_REGISTRY.find(integration => integration.integrationType === integrationType);
+    if (!integration) {
+        throw new Error(`Integration ${integrationType} not found`);
     }
+    const instances = await integration.getInstancesForUser(userId);
+    return instances.some(instance => instance.id === integrationId);
 }
 
 // GET /automations - List all automations with pagination
@@ -454,18 +407,21 @@ export async function getUserAutomations(req: Request, res: Response) {
         });
 
         // Transform the data to match frontend format
-        const response = {
+        const response: AutomationsResponse = {
             automations: automations.map(automation => ({
                 id: automation.id,
                 name: automation.name,
                 isActive: automation.is_active,
                 prompt: automation.prompt ? { text: automation.prompt.content } : undefined,
-                inputs: automation.inputs.map(input => transformInputConfig(input, input.id)),
-                output: automation.output ? transformOutputConfig(automation.output) : undefined
+                inputs: automation.inputs.map(input => ({
+                    id: input.id,
+                    config: convertPrismaConfigToConfigInstance(input)
+                })),
+                output: automation.output ? undefined : undefined // TODO: Transform output config
             })),
             pagination: {
                 page,
-                pageSize,
+                limit: pageSize,
                 total,
                 totalPages: Math.ceil(total / pageSize)
             }
@@ -489,7 +445,7 @@ export async function getUserAutomation(req: Request, res: Response) {
     const automationId = req.params.id;
 
     try {
-        const automation = await db().automations.findFirst({
+        const automation: AutomationWithRelations | null = await db().automations.findFirst({
             where: {
                 id: automationId,
                 user_id: userId
@@ -500,8 +456,10 @@ export async function getUserAutomation(req: Request, res: Response) {
                     include: {
                         slack_config: true,
                         notion_config: true,
+                        notion_page_config: true,
                         linear_config: true,
                         jira_config: true,
+                        confluence_config: true,
                         github_config: true,
                         gmail_config: true,
                         figma_config: true,
@@ -534,8 +492,11 @@ export async function getUserAutomation(req: Request, res: Response) {
             name: automation.name,
             isActive: automation.is_active,
             prompt: automation.prompt ? { text: automation.prompt.content } : undefined,
-            inputs: automation.inputs.map(input => transformInputConfig(input, input.id)),
-            output: automation.output ? transformOutputConfig(automation.output) : undefined
+            inputs: automation.inputs.map(input => ({
+                id: input.id,
+                config: convertPrismaConfigToConfigInstance(input)
+            })),
+            output: undefined
         };
 
         res.status(200).json(response);
@@ -587,32 +548,32 @@ export async function createAutomation(req: Request, res: Response) {
 
             // Create inputs
             for (const input of inputs) {
-                const integrationType = input.integration
+                const integrationType = input.config.integrationType
                 if (!integrationType) {
-                    throw new Error(`Unknown integration type: ${input.integration}`);
+                    throw new Error(`Unknown integration type: ${input.config.integrationType}`);
                 }
 
                 // Validate that user owns the integration
-                const integrationId = input.integrationId;
+                const integrationId = input.config.integrationId;
                 if (!integrationId) {
-                    throw new Error(`Integration ID is required for ${input.integration}`);
+                    throw new Error(`Integration ID is required for ${input.config.integrationType}`);
                 }
 
                 const isOwner = await validateUserOwnsIntegration(userId, integrationType, integrationId);
                 if (!isOwner) {
-                    throw new Error(`Integration ${input.integration} not found or not owned by user`);
+                    throw new Error(`Integration ${input.config.integrationType} not found or not owned by user`);
                 }
 
                 const newInput = await tx.automation_inputs.create({
                     data: {
                         automation_id: newAutomation.id,
-                        integration_type: convertIntegrationTypeToPrismaIntegrationType(integrationType),
+                        config_type: convertConfigTypeToInputConfigType(input.config.configType),
                         integration_id: integrationId
                     }
                 });
 
                 // Create config record if provided
-                await createInputConfig(tx, newInput.id, integrationType, input);
+                await createInputConfig(tx, newInput.id, input);
             }
 
             // Create output
@@ -720,32 +681,32 @@ export async function saveAutomation(req: Request, res: Response) {
 
                 // Create new inputs
                 for (const input of inputs) {
-                    const integrationType = input.integration
+                    const integrationType = input.config.configType
                     if (!integrationType) {
-                        throw new Error(`Unknown integration type: ${input.integration}`);
+                        throw new Error(`Unknown integration type: ${input.config.configType}`);
                     }
 
                     // Validate that user owns the integration
-                    const integrationId = input.integrationId;
+                    const integrationId = input.config.integrationId;
                     if (!integrationId) {
-                        throw new Error(`Integration ID is required for ${input.integration}`);
+                        throw new Error(`Integration ID is required for ${input.config.configType}`);
                     }
 
-                    const isOwner = await validateUserOwnsIntegration(userId, integrationType, integrationId);
+                    const isOwner = await validateUserOwnsIntegration(userId, input.config.integrationType, integrationId);
                     if (!isOwner) {
-                        throw new Error(`Integration ${input.integration} not found or not owned by user`);
+                        throw new Error(`Integration ${input.config.configType} not found or not owned by user`);
                     }
 
                     const newInput = await tx.automation_inputs.create({
                         data: {
                             automation_id: existingAutomation.id,
-                            integration_type: convertIntegrationTypeToPrismaIntegrationType(integrationType),
+                            config_type: convertConfigTypeToInputConfigType(input.config.configType),
                             integration_id: integrationId
                         }
                     });
 
                     // Create config record if provided
-                    await createInputConfig(tx, newInput.id, integrationType, input);
+                    await createInputConfig(tx, newInput.id, input);
                 }
 
                 // Create new output
@@ -802,32 +763,32 @@ export async function saveAutomation(req: Request, res: Response) {
 
                 // Create inputs
                 for (const input of inputs) {
-                    const integrationType = input.integration
+                    const integrationType = input.config.integrationType
                     if (!integrationType) {
-                        throw new Error(`Unknown integration type: ${input.integration}`);
+                        throw new Error(`Unknown integration type: ${input.config.integrationType}`);
                     }
 
                     // Validate that user owns the integration
-                    const integrationId = input.integrationId;
+                    const integrationId = input.config.integrationId;
                     if (!integrationId) {
-                        throw new Error(`Integration ID is required for ${input.integration}`);
+                        throw new Error(`Integration ID is required for ${input.config.integrationType}`);
                     }
 
                     const isOwner = await validateUserOwnsIntegration(userId, integrationType, integrationId);
                     if (!isOwner) {
-                        throw new Error(`Integration ${input.integration} not found or not owned by user`);
+                        throw new Error(`Integration ${input.config.integrationType} not found or not owned by user`);
                     }
 
                     const newInput = await tx.automation_inputs.create({
                         data: {
                             automation_id: newAutomation.id,
-                            integration_type: convertIntegrationTypeToPrismaIntegrationType(integrationType),
+                            config_type: convertConfigTypeToInputConfigType(input.config.configType),
                             integration_id: integrationId
                         }
                     });
 
                     // Create config record if provided
-                    await createInputConfig(tx, newInput.id, integrationType, input);
+                    await createInputConfig(tx, newInput.id, input);
                 }
 
                 // Create output
@@ -932,32 +893,32 @@ export async function updateAutomation(req: Request, res: Response) {
 
                 // Create new inputs
                 for (const input of inputs) {
-                    const integrationType = input.integration;
+                    const integrationType = input.config.integrationType;
                     if (!integrationType) {
-                        throw new Error(`Unknown integration type: ${input.integration}`);
+                        throw new Error(`Unknown integration type: ${input.config.integrationType}`);
                     }
 
                     // Validate that user owns the integration
-                    const integrationId = input.integrationId;
+                    const integrationId = input.config.integrationId;
                     if (!integrationId) {
-                        throw new Error(`Integration ID is required for ${input.integration}`);
+                        throw new Error(`Integration ID is required for ${input.config.integrationType}`);
                     }
 
                     const isOwner = await validateUserOwnsIntegration(userId, integrationType, integrationId);
                     if (!isOwner) {
-                        throw new Error(`Integration ${input.integration} not found or not owned by user`);
+                        throw new Error(`Integration ${input.config.integrationType} not found or not owned by user`);
                     }
 
                     const newInput = await tx.automation_inputs.create({
                         data: {
                             automation_id: automationId,
-                            integration_type: convertIntegrationTypeToPrismaIntegrationType(integrationType),
+                            config_type: convertConfigTypeToInputConfigType(input.config.configType),
                             integration_id: integrationId
                         }
                     });
 
                     // Create config record if provided
-                    await createInputConfig(tx, newInput.id, integrationType, input);
+                    await createInputConfig(tx, newInput.id, input);
                 }
             }
 

@@ -1,7 +1,7 @@
 import { Integration } from "./abstract/Integration";
 import { db } from "../prismaClient";
 import { LinearIntegration, LinearIntegrationMetadata } from "../shared/Integrations";
-import { IntegrationType } from "@prisma/client";
+import { IntegrationType } from "../shared/Integrations";
 
 export class LinearIntegrationManager implements Integration<LinearIntegration, never, typeof LinearIntegrationMetadata> {
     constructor() { }

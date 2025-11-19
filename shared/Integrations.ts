@@ -75,15 +75,7 @@ export const GithubIntegrationMetadata = {
     isOutput: false,
 } as const satisfies IntegrationDetails;
 
-export type IntegrationMetadataMap = {
-    [IntegrationType.GMAIL]: typeof GmailIntegrationMetadata;
-    [IntegrationType.NOTION]: typeof NotionIntegrationMetadata;
-    [IntegrationType.LINEAR]: typeof LinearIntegrationMetadata;
-    [IntegrationType.SLACK]: typeof SlackIntegrationMetadata;
-    [IntegrationType.FIGMA]: typeof FigmaIntegrationMetadata;
-    [IntegrationType.ATLASSIAN]: typeof AtlassianIntegrationMetadata;
-    [IntegrationType.GITHUB]: typeof GithubIntegrationMetadata;
-} & Record<IntegrationType, IntegrationDetails>; // Allow indexing with any IntegrationType
+export type IntegrationMetadataMap = Record<IntegrationType, IntegrationDetails>; // Allow indexing with any IntegrationType
 
 export const INTEGRATION_METADATA: IntegrationMetadataMap = {
     [IntegrationType.GMAIL]: GmailIntegrationMetadata,
@@ -96,7 +88,9 @@ export const INTEGRATION_METADATA: IntegrationMetadataMap = {
 } as const satisfies IntegrationMetadataMap;
 
 // MARK: Integration Details
-export interface IntegrationInstance { }
+export interface IntegrationInstance {
+    id: string;
+ }
 
 
 export interface SlackIntegration extends IntegrationInstance {

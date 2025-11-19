@@ -1,7 +1,9 @@
-import { IntegrationDetails, IntegrationInstance } from "../shared/Integrations";
-import { Integration } from "../integrations/abstract/Integration";
+import { PrismaTransaction } from "../types/prisma";
+import { ConfigInstance, ConfigType } from "../shared/Configs";
 
-
-export interface Input<T extends Integration<I, W, M>, I extends IntegrationInstance, W, M extends IntegrationDetails> {
-    
+export interface Input<
+    TConfig extends ConfigInstance
+> {
+    configType: ConfigType;
+    addInputToAutomation(tx: PrismaTransaction, automationInputId: string, input: TConfig): Promise<void>;
 }

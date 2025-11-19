@@ -1,7 +1,7 @@
 import { AutomationInputManager } from "./AutomationInputManager";
 import { AutomationInputWithConfigs } from "../types/prisma";
 import { db } from "../prismaClient";
-import { IntegrationType } from "@prisma/client";
+import { InputConfigType, IntegrationType } from "@prisma/client";
 import chalk from "chalk";
 import { generateWebhookPasscode } from "../utility/webhookSecrets";
 import { urls, nodeEnv } from "../config/settings";
@@ -175,7 +175,7 @@ export class FigmaAutomationInputManager implements AutomationInputManager {
         // Check if any other active automations are using this team
         const otherAutomations = await db().automation_inputs.findMany({
             where: {
-                integration_type: IntegrationType.FIGMA,
+                config_type: InputConfigType.FIGMA,
                 automation: {
                     is_active: true,
                 },

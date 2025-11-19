@@ -6,6 +6,7 @@ import { findUserById, getUserTicketManager } from "../types/user";
 import { LinearWebhookPayload } from "../utility/LinearWebhookPayload";
 import { search } from "../searchClient";
 import { LinearIntegrationManager } from "src/integrations/LinearIntegration";
+import { InputConfigType } from "@prisma/client";
 
 
 export async function getLinearIntegrations(req: Request, res: Response) {
@@ -236,7 +237,7 @@ export const deleteLinearCredentials = async (req: Request, res: Response) => {
     // Clean up automation inputs/outputs that reference this Linear integration
     await db().automation_inputs.deleteMany({
         where: {
-            integration_type: 'LINEAR',
+            config_type: InputConfigType.LINEAR,
             integration_id: linearApiKey.id
         }
     });

@@ -1,6 +1,6 @@
 import { Project, Ticket } from "./TicketSystem";
 import { IntegrationType } from "./Integrations";
-import { ConfluenceConfig, JiraConfig, LinearConfig, NotionConfig, NotionPageConfig, SlackConfig, GmailConfig, FigmaConfig, GitHubConfig } from "./Configs";
+import { ConfluenceConfig, JiraConfig, LinearConfig, NotionConfig, NotionPageConfig, SlackConfig, GmailConfig, FigmaConfig, GitHubConfig, ConfigInstance } from "./Configs";
 
 export type User = {
   id: string;
@@ -286,17 +286,16 @@ export interface FigmaCommentEventData {
 
 export type AutomationInput = {
   id: string;
-  integration: IntegrationType;
-  integrationId?: string;
+  config: ConfigInstance;
   // Typed config based on integration type
-  slackConfig?: SlackConfig;
-  notionConfig?: NotionConfig;
-  linearConfig?: LinearConfig;
-  jiraConfig?: JiraConfig;
-  confluenceConfig?: ConfluenceConfig;
-  githubConfig?: GitHubConfig;
-  gmailConfig?: GmailConfig;
-  figmaConfig?: FigmaConfig;
+  // slackConfig?: SlackConfig;
+  // notionConfig?: NotionConfig;
+  // linearConfig?: LinearConfig;
+  // jiraConfig?: JiraConfig;
+  // confluenceConfig?: ConfluenceConfig;
+  // githubConfig?: GitHubConfig;
+  // gmailConfig?: GmailConfig;
+  // figmaConfig?: FigmaConfig;
 };
 
 export type AutomationOutput = {

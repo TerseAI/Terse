@@ -240,12 +240,6 @@ interface BackendService {
     }): Promise<Connection>;
 
     /**
-     * Gets the user's automation (returns null if none exists)
-     * @deprecated Use getUserAutomations instead
-     */
-    getUserAutomation(): Promise<Automation | null>;
-
-    /**
      * Gets all automations for the user with pagination
      */
     getUserAutomations(page?: number, limit?: number, isActive?: boolean, search?: string): Promise<AutomationsResponse>;
@@ -638,15 +632,6 @@ export const BackendProvider: BackendService = {
         console.log('Connecting to completion socket', link);
         const socket = new WebSocket(link);
         return new Connection(socket, onOpen, onClose, onError, onMessageReceived);
-    },
-
-    getUserAutomation: () => {
-        return axios.get<Automation | null>(`${backendBaseUrl}/automations`, { withCredentials: true })
-            .then(response => response.data)
-            .catch(error => {
-                console.error('Error getting user automation:', error);
-                throw error;
-            });
     },
 
     getUserAutomations: (page = 1, limit = 10, isActive?: boolean, search?: string) => {

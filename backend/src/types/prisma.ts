@@ -19,7 +19,8 @@ import {
   Prisma,
   automation_notion_configs,
   automation_notion_page_configs,
-  automation_confluence_configs
+  automation_confluence_configs,
+  PrismaClient
 } from '@prisma/client';
 
 
@@ -111,6 +112,10 @@ export type AutomationWithRelations = Prisma.automationsGetPayload<{
     };
   };
 }>;
+
+// Extract the transaction type from PrismaClient
+export type PrismaTransaction = Parameters<Parameters<PrismaClient['$transaction']>[0]>[0];
+
 
 // Re-export the original types too
 export {

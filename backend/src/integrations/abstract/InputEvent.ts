@@ -1,4 +1,4 @@
-import { IntegrationType } from "@prisma/client";
+import { IntegrationType } from "../../shared/Integrations";
 import { AutomationInputWithConfigs } from "../../types/prisma";
 import { RunHistoryTrigger } from "../../shared/RunHistoryTypes";
 

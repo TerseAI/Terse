@@ -6,6 +6,7 @@ import { JiraWebhookPayload } from "../utility/JiraWebhookPayload";
 import { findUserById, getUserTicketManager } from "../types/user";
 import { search } from "../searchClient";
 import { AtlassianIntegrationManager } from "../integrations/AtlassianIntegration";
+import { InputConfigType } from "@prisma/client";
 
 export async function getJiraIntegrations(req: Request, res: Response) {
     if (!req.session?.user) {
@@ -207,7 +208,7 @@ export const deleteJiraCredentials = async (req: Request, res: Response) => {
     // Clean up automation inputs/outputs that reference this Jira integration
     await db().automation_inputs.deleteMany({
         where: {
-            integration_type: 'JIRA',
+            config_type: InputConfigType.JIRA,
             integration_id: creds.id
         }
     });

@@ -3,16 +3,16 @@ import { db } from "../prismaClient";
 import chalk from "chalk";
 import { EventProcessor } from "../agent/AutomationAgent/EventProcessor";
 import { InputEvent } from "./abstract/InputEvent";
-import { GithubIntegration, GithubIntegrationMetadata, IntegrationType as SharedIntegrationType } from "../shared/Integrations";
+import { GithubIntegration, GithubIntegrationMetadata, IntegrationType } from "../shared/Integrations";
 import { GithubAppUnifiedEventRequest } from "../routes/github";
 import { resolveUserForGithubInstallation } from "../routes/github";
 import { User } from "../types/prisma";
-import { IntegrationType } from "@prisma/client";
 import { AutomationInputWithConfigs } from "../types/prisma";
 import { RunHistoryTrigger } from "../shared/RunHistoryTypes";
 import { OAuthInstallationDetails } from "../shared/types";
 import { githubApp, urls } from "../config/settings";
 import { Request, Response } from "express";
+import { InputConfigType } from "@prisma/client";
 
 export class GithubIntegrationManager implements Integration<GithubIntegration, GithubAppUnifiedEventRequest, typeof GithubIntegrationMetadata>, OAuthIntegrationInstallation {
     constructor() { }
@@ -231,8 +231,7 @@ export class GithubEvent extends InputEvent {
     }
 
     matchesAutomationInput(automationInput: AutomationInputWithConfigs): boolean {
-        console.log(chalk.blue('GithubEvent matchesAutomationInput'), automationInput.integration_type, this.data.repository.id);
-        if (automationInput.integration_type !== IntegrationType.GITHUB) {
+        if (automationInput.config_type !== InputConfigType.GITHUB) {
             return false;
         }
         const githubConfig = automationInput.github_config;
@@ -249,7 +248,7 @@ export class GithubEvent extends InputEvent {
     createTriggerMetadata(): RunHistoryTrigger {
         return {
             event: 'github_event',
-            integration: SharedIntegrationType.GITHUB,
+            integration: IntegrationType.GITHUB,
             source: this.data.repositoryName,
             title: this.data.eventType,
             subheader: this.data.username,
