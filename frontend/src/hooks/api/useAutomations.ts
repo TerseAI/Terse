@@ -2,9 +2,6 @@ import useSWR, { mutate, type KeyedMutator } from 'swr';
 import { BackendProvider } from '@/services/backend';
 import type {
     Automation,
-    AutomationInput,
-    AutomationOutput,
-    AutomationPrompt,
     AutomationsResponse,
     AutomationUpdate,
 } from '@/shared/types';
@@ -14,14 +11,6 @@ type AutomationListArgs = {
     limit?: number;
     isActive?: boolean;
     search?: string;
-};
-
-type CreateAutomationArgs = {
-    name: string;
-    inputs: AutomationInput[];
-    output: AutomationOutput;
-    prompt: AutomationPrompt;
-    isActive?: boolean;
 };
 
 type UpdateAutomationArgs = {
@@ -95,7 +84,7 @@ function invalidateAutomationDetail(id: string) {
 }
 
 export function useAutomationMutations() {
-    const createAutomation = async ({ name, inputs, output, prompt, isActive }: CreateAutomationArgs) => {
+    const createAutomation = async ({ name, inputs, output, prompt, isActive }: Omit<Automation, 'id'>) => {
         const result = await BackendProvider.createAutomation(name, inputs, output, prompt, isActive);
         await invalidateAutomationLists();
         return result;

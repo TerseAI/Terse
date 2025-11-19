@@ -302,9 +302,9 @@ export type Automation = {
     id: string;
     name: string;
     isActive: boolean;
-    prompt?: AutomationPrompt;
+    prompt: AutomationPrompt;
     inputs: AutomationInput[];
-    output?: AutomationOutput;
+    output: AutomationOutput;
 };
 
 export type AutomationUpdate = {
@@ -349,12 +349,4 @@ export type GetGithubRepositoriesForIntegrationResponse = {
 
 export type OAuthInstallationDetails = {
   oauthUrl: string;
-}
-
-export interface SaveAutomationRequest {
-  name: string;
-  inputs: AutomationInput[];
-  output: AutomationOutput;
-  prompt: AutomationPrompt;
-  isActive?: boolean;
 }

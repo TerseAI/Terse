@@ -2,18 +2,16 @@ import { Plus } from 'lucide-react';
 import { Button } from '../ui/button';
 import DropdownSelect from '../ui/DropdownSelect';
 import { IntegrationType, GmailIntegration as GmailIntegrationType } from "@/shared/Integrations"
-import { BaseIntegrationProps } from './types';
+import { InputConfigSelectorProps } from './types';
 import { useGmailIntegrations } from '@/hooks/api/useGmailIntegrations';
 import { useOAuthConnection } from '@/hooks/useOAuthConnection';
 
-interface GmailIntegrationProps extends BaseIntegrationProps {
-    integrationType: IntegrationType;
+interface GmailIntegrationProps extends InputConfigSelectorProps {
 }
 
 export function GmailIntegration({
-    selectedIntegrationId,
-    onSelect,
-    label = 'Connection',
+    config,
+    setInput,
     variant
 }: GmailIntegrationProps) {
     const { integrations, isLoading } = useGmailIntegrations();
@@ -50,7 +48,7 @@ export function GmailIntegration({
         label: integration.email,
         value: integration.id
     }));
-    const selectedOption = connectionSelections.find(option => option.value === selectedIntegrationId) || connectionSelections[0];
+    const selectedOption = connectionSelections.find(option => option.value === config.integrationId) || connectionSelections[0];
 
     // Card variant: compact view
     if (variant === 'card') {
@@ -66,7 +64,7 @@ export function GmailIntegration({
         <div className="flex flex-col gap-3">
             <div className="flex flex-col gap-1.5">
                 <label className="font-medium">
-                    {label}
+                    Gmail Account
                 </label>
                 <DropdownSelect
                     statusOptions={connectionSelections}

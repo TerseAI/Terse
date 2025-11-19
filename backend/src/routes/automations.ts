@@ -1,14 +1,13 @@
 import { Request, Response } from "express";
 import { db } from "../prismaClient";
-import { Automation, AutomationInput, AutomationOutput, AutomationsResponse } from "../shared/types";
+import { Automation, AutomationInput, AutomationsResponse, AutomationUpdate } from "../shared/types";
 import { parsePageParams } from "../utility/pagination";
 import chalk from "chalk";
 import { AutomationWithInputRelations, PrismaTransaction, AutomationWithRelations } from "../types/prisma";
 import { IntegrationType } from "../shared/Integrations";
-import { convertConfigTypeToInputConfigType, convertConfigTypeToOutputConfigType, convertIntegrationTypeToPrismaIntegrationType, convertPrismaConfigToConfigInstance } from "../utility/typeConverters";
-import { ConfigInstance, ConfigType } from "../shared/Configs";
+import { convertConfigTypeToInputConfigType, convertConfigTypeToOutputConfigType, convertPrismaConfigToConfigInstance } from "../utility/typeConverters";
+import { ConfigInstance } from "../shared/Configs";
 import { getInputConfigInclude, getOutputConfigInclude } from "../utility/prismaIncludes";
-import { SaveAutomationRequest } from "../shared/types";
 import { INPUT_REGISTRY } from "../inputs/InputRegistry";
 import { INTEGRATION_REGISTRY } from "../integrations/abstract/IntegrationRegistry";
 import { OutputFactory } from "src/outputs/abstract/OutputFactory";
@@ -183,7 +182,7 @@ export async function createAutomation(req: Request, res: Response) {
     }
 
     const userId = req.session.user.id;
-    const { name, inputs, output, prompt, isActive = true } = req.body as SaveAutomationRequest;
+    const { name, inputs, output, prompt, isActive = true } = req.body as AutomationUpdate;
     console.log(chalk.green("Output from frontend:"), chalk.yellow(JSON.stringify(output, null, 2)));
     console.log(chalk.blue("Inputs from frontend:"), chalk.yellow(JSON.stringify(inputs, null, 2)));
 
@@ -311,7 +310,7 @@ export async function updateAutomation(req: Request, res: Response) {
 
     const userId = req.session.user.id;
     const automationId = req.params.id;
-    const { name, inputs, output, prompt, isActive } = req.body as Partial<SaveAutomationRequest>;
+    const { name, inputs, output, prompt, isActive } = req.body as Partial<AutomationUpdate>;
 
     try {
         const prisma = db();
