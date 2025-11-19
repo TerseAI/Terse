@@ -1,6 +1,6 @@
 import { RunHistoryAction } from "../shared/RunHistoryTypes";
 import { RunContext, Tool, tool } from "@openai/agents";
-import { AutomationNotionPageConfig, AutomationOutput, NotionIntegration, User } from "../types/prisma";
+import { AutomationNotionPageConfig, AutomationOutput, NotionIntegration, PrismaTransaction, User } from "../types/prisma";
 import { Session } from "../server";
 import { Client } from '@notionhq/client';
 import { z } from "zod";
@@ -10,6 +10,7 @@ import chalk from "chalk";
 import { GetPageResponse, PageObjectResponse } from "@notionhq/client/build/src/api-endpoints";
 import { IntegrationType } from "../shared/Integrations";
 import { OutputConfigType } from "@prisma/client";
+import { NotionPageConfig } from "../shared/Configs";
 
 export interface NotionPageSession extends Session {
     notionIntegration: NotionIntegration; // Top level integration record
@@ -18,7 +19,7 @@ export interface NotionPageSession extends Session {
     runActions?: RunHistoryAction[];
 }
 
-export class NotionPageOutput extends Output<NotionPageSession> {
+export class NotionPageOutput extends Output<NotionPageSession, NotionPageConfig> {
     constructor() {
         const toolbox: ToolboxEntry[] = [
             { tool: notionQueryPageTool as Tool, isReadOnly: true },
@@ -49,6 +50,16 @@ export class NotionPageOutput extends Output<NotionPageSession> {
         }
 
         return { notionIntegration: integration, notionPageConfig: notionPageConfig, user: user, isUserInitiated: true, runActions: [] };
+    }
+
+    async addOutputToAutomation(tx: PrismaTransaction, automationOutputId: string, output: NotionPageConfig): Promise<void> {
+        await tx.automation_notion_page_configs.create({
+            data: {
+                automation_output_id: automationOutputId,
+                page_id: output.pageId || '',
+                page_name: output.pageName || '',
+            },
+        });
     }
 }
 

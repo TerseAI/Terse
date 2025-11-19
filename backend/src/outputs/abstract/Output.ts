@@ -2,8 +2,9 @@
 
 import { Tool } from "@openai/agents";
 import { Session } from "../../server";
-import { AutomationOutput, User } from "../../types/prisma";
+import { AutomationOutput, PrismaTransaction, User } from "../../types/prisma";
 import { OutputConfigType } from "@prisma/client";
+import { ConfigInstance } from "src/shared/Configs";
 // You can only have one output at a time. Basically, it's just a specific integration + a toolbox to modify the content.
 // For Notion, we should support multiple integrations with the same account. 
 
@@ -12,7 +13,7 @@ export interface ToolboxEntry {
     isReadOnly: boolean;
 }
 
-export abstract class Output<T extends Session> {
+export abstract class Output<T extends Session, TConfig extends ConfigInstance> {
     integration: OutputConfigType;
     readonly toolbox: readonly ToolboxEntry[];
 
@@ -34,4 +35,6 @@ export abstract class Output<T extends Session> {
         automationOutputConfig: AutomationOutput, // AutomationOutput with loaded config relations
         user: User
     ): Promise<T>;
+
+    abstract addOutputToAutomation(tx: PrismaTransaction, automationOutputId: string, output: TConfig): Promise<void>;
 }

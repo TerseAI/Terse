@@ -3,10 +3,11 @@ import { RunContext, Tool, tool } from "@openai/agents";
 import { z } from "zod";
 import { Session } from "../server";
 import { Client } from '@notionhq/client';
-import { NotionIntegration, AutomationOutput, User, AutomationNotionConfig } from "../types/prisma";
+import { NotionIntegration, AutomationOutput, User, AutomationNotionConfig, PrismaTransaction } from "../types/prisma";
 import { db } from "../prismaClient";
 import chalk from "chalk";
 import { IntegrationType } from "../shared/Integrations";
+import { NotionConfig } from "../shared/Configs";
 import { OutputConfigType } from "@prisma/client";
 
 export interface NotionDatabaseSession extends Session {
@@ -14,7 +15,7 @@ export interface NotionDatabaseSession extends Session {
     notionConfig: AutomationNotionConfig; // Configuration for the Specific Notion Database
 }
 
-export class NotionDatabaseOutput extends Output<NotionDatabaseSession> {
+export class NotionDatabaseOutput extends Output<NotionDatabaseSession, NotionConfig> {
     constructor() {
         const toolbox: ToolboxEntry[] = [
             { tool: notionQueryDatabaseTool as Tool, isReadOnly: true },
@@ -53,6 +54,15 @@ export class NotionDatabaseOutput extends Output<NotionDatabaseSession> {
             // Collect actions from tools; will be persisted after run
             runActions: [],
         };
+    }
+    async addOutputToAutomation(tx: PrismaTransaction, automationOutputId: string, output: NotionConfig): Promise<void> {
+        await tx.automation_notion_configs.create({
+            data: {
+                automation_output_id: automationOutputId,
+                database_id: output.databaseId || '',
+                database_name: output.databaseName || '',
+            },
+        });
     }
 }
 

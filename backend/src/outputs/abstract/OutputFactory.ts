@@ -4,6 +4,7 @@ import { NotionDatabaseOutput } from "../NotionDatabaseOutput";
 import { NotionPageOutput } from "../NotionPageOutput";
 import { Session } from "../../server";
 import { ConfluenceOutput } from "../ConfluenceOutput";
+import { ConfigInstance } from "../../shared/Configs";
 
 /**
  * Factory for creating Output instances based on IntegrationType.
@@ -11,7 +12,7 @@ import { ConfluenceOutput } from "../ConfluenceOutput";
  * No switch statements - each output type is registered independently.
  */
 export class OutputFactory {
-    private static readonly OUTPUT_REGISTRY: Map<OutputConfigType, () => Output<Session>> = new Map<OutputConfigType, () => Output<Session>>([
+    public static readonly OUTPUT_REGISTRY: Map<OutputConfigType, () => Output<Session, ConfigInstance>> = new Map<OutputConfigType, () => Output<Session, ConfigInstance>>([
         [OutputConfigType.NOTION_DATABASE, () => new NotionDatabaseOutput()],
         [OutputConfigType.NOTION_PAGE, () => new NotionPageOutput()],
         [OutputConfigType.CONFLUENCE, () => new ConfluenceOutput()]
@@ -22,7 +23,7 @@ export class OutputFactory {
      * @param integrationType The integration type to create an output for
      * @returns An Output instance, or null if the integration type is not supported
      */
-    static createOutput(integrationType: OutputConfigType): Output<Session> | null {
+    static createOutput(integrationType: OutputConfigType): Output<Session, ConfigInstance> | null {
         const factory = this.OUTPUT_REGISTRY.get(integrationType);
         if (!factory) {
             return null;
