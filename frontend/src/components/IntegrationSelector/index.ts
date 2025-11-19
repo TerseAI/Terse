@@ -1,3 +1,3 @@
 export { IntegrationSelector } from './IntegrationSelector';
-export type { IntegrationSelectorProps } from './types';
+export type { InputConfigSelectorProps } from './types';
 

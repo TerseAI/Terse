@@ -5,6 +5,7 @@ import type {
     AutomationsResponse,
     AutomationUpdate,
 } from '@/shared/types';
+import { deserializeConfig } from '@/utility/ConfigUtils';
 
 type AutomationListArgs = {
     page?: number;
@@ -41,7 +42,22 @@ export function useAutomations(params: AutomationListArgs = {}) {
         key,
         async () => {
             const { page = 1, limit = 25, isActive, search } = params;
-            return BackendProvider.getUserAutomations(page, limit, isActive, search);
+            const response = await BackendProvider.getUserAutomations(page, limit, isActive, search);
+            // Deserialize configs from JSON to class instances
+            return {
+                ...response,
+                automations: response.automations.map(automation => ({
+                    ...automation,
+                    inputs: automation.inputs.map(input => ({
+                        ...input,
+                        config: deserializeConfig(input.config)
+                    })),
+                    output: {
+                        ...automation.output,
+                        config: deserializeConfig(automation.output.config)
+                    }
+                }))
+            };
         },
         {
             keepPreviousData: true,
@@ -63,7 +79,21 @@ export function useAutomation(id: string | null) {
 
     const { data, error, isValidating, mutate } = useSWR<Automation>(
         key,
-        id ? () => BackendProvider.getAutomationById(id) : null,
+        id ? async () => {
+            const automation = await BackendProvider.getAutomationById(id);
+            // Deserialize configs from JSON to class instances
+            return {
+                ...automation,
+                inputs: automation.inputs.map(input => ({
+                    ...input,
+                    config: deserializeConfig(input.config)
+                })),
+                output: {
+                    ...automation.output,
+                    config: deserializeConfig(automation.output.config)
+                }
+            };
+        } : null,
     );
 
     return {
@@ -122,7 +152,22 @@ export function useAutomationMutations() {
                 async () => {
                     await BackendProvider.updateAutomation(automation.id, { isActive: newStatus });
                     const { page = 1, limit = 25, isActive, search } = params;
-                    return BackendProvider.getUserAutomations(page, limit, isActive, search);
+                    const response = await BackendProvider.getUserAutomations(page, limit, isActive, search);
+                    // Deserialize configs from JSON to class instances
+                    return {
+                        ...response,
+                        automations: response.automations.map(automation => ({
+                            ...automation,
+                            inputs: automation.inputs.map(input => ({
+                                ...input,
+                                config: deserializeConfig(input.config)
+                            })),
+                            output: {
+                                ...automation.output,
+                                config: deserializeConfig(automation.output.config)
+                            }
+                        }))
+                    };
                 },
                 {
                     optimisticData: (currentData?: AutomationsResponse, displayedData?: AutomationsResponse) => {

@@ -6,13 +6,3 @@ export interface InputConfigSelectorProps {
     variant: 'card' | 'dialog';
     setConfig: (config: ConfigInstance) => void;
 }
-
-export interface BaseIntegrationProps {
-    selectedIntegrationId?: string;
-    onSelect: (integrationId: string) => void;
-    isConnecting: boolean;
-    onConnect: () => void;
-    label?: string;
-    variant?: 'card' | 'dialog';
-}
-

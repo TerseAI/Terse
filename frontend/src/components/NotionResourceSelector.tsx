@@ -47,29 +47,29 @@ export function NotionResourceSelector({
         return 'Failed to load databases';
     }, [error, isError]);
 
-    useEffect(() => {
-        if (!integrationId || isLoading || resources.length === 0) {
-            return;
-        }
+    // useEffect(() => {
+    //     if (!integrationId || isLoading || resources.length === 0) {
+    //         return;
+    //     }
 
-        if (selectedResourceId) {
-            return;
-        }
+    //     if (selectedResourceId) {
+    //         return;
+    //     }
 
-        let resourceToSelect: NotionResource | undefined;
+    //     let resourceToSelect: NotionResource | undefined;
 
-        if (defaultResourceId) {
-            resourceToSelect = resources.find((resource) => resource.id === defaultResourceId);
-        }
+    //     if (defaultResourceId) {
+    //         resourceToSelect = resources.find((resource) => resource.id === defaultResourceId);
+    //     }
 
-        if (!resourceToSelect) {
-            resourceToSelect = resources[0];
-        }
+    //     if (!resourceToSelect) {
+    //         resourceToSelect = resources[0];
+    //     }
 
-        if (resourceToSelect) {
-            onSelect(resourceToSelect.id, resourceToSelect.title, resourceToSelect.type);
-        }
-    }, [defaultResourceId, integrationId, isLoading, onSelect, resources, selectedResourceId]);
+    //     if (resourceToSelect) {
+    //         onSelect(resourceToSelect.id, resourceToSelect.title, resourceToSelect.type);
+    //     }
+    // }, [defaultResourceId, integrationId, isLoading, onSelect, resources, selectedResourceId]);
 
     const handleRefresh = () => {
         setIsExplicitlyRefreshing(true);

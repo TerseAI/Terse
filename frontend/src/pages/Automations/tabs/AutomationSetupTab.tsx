@@ -54,6 +54,10 @@ function SaveAutomationButton({
     const [saveSuccess, setSaveSuccess] = useState(false);
     const { createAutomation, updateAutomation } = useAutomationMutations();
 
+    console.log("Inputs:", JSON.stringify(inputs, null, 2));
+    console.log("Output:", JSON.stringify(output, null, 2));
+    console.log("Prompt:", JSON.stringify(prompt, null, 2));
+
     // Validation: all required fields must be present
     // Each integration reports its own completeness
     const isComplete =
@@ -156,8 +160,16 @@ export default function AutomationSetupTab({
 
     const connections: Conn[] = []
 
+    console.log("Transient Inputs:", JSON.stringify(inputs, null, 2));
+    console.log("Transient output:", JSON.stringify(output, null, 2));
+    console.log("Prompt:", JSON.stringify(prompt, null, 2));
+
     const automationInputs = inputs.map(convertTransientAutomationInputToAutomationInput).filter(i => i != null) as AutomationInput[];
     const automationOutput = convertTransientAutomationOutputToAutomationOutput(output)
+
+    // console.log("Automation inputs:", JSON.stringify(automationInputs, null, 2));
+    // console.log("Automation output:", JSON.stringify(automationOutput, null, 2));
+    // console.log("Prompt:", JSON.stringify(prompt, null, 2));
     
     if (automationInputs.length > 0 && inputsSectionRef.current != null && inputsSectionRef.current.size > 0) {
         automationInputs.forEach((input) => {

@@ -8,6 +8,7 @@ import { NotionResourceType } from '@/shared/types';
 import { InputConfigSelectorProps } from './types';
 import { useNotionIntegrations } from '@/hooks/api/useNotionIntegrations';
 import { useOAuthConnection } from '@/hooks/useOAuthConnection';
+import { useState } from 'react';
 
 export function NotionIntegration({
     input,
@@ -19,17 +20,12 @@ export function NotionIntegration({
     const isDatabaseConfig = input.configType === ConfigType.NOTION_DATABASE;
     const isPageConfig = input.configType === ConfigType.NOTION_PAGE;
     const currentConfig = input.config as NotionConfig | NotionPageConfig | undefined;
+    const [selectedIntegrationId, setSelectedIntegrationId] = useState<string | undefined>(currentConfig?.integrationId);
 
     function onSelect(value: string) {
         const integration = integrations.find((integration: NotionIntegrationType) => integration.id === value);
         if (integration) {
-            if (isDatabaseConfig) {
-                const notionConfig = new NotionConfig(integration.id);
-                setConfig(notionConfig);
-            } else if (isPageConfig) {
-                const notionPageConfig = new NotionPageConfig(integration.id);
-                setConfig(notionPageConfig);
-            }
+            setSelectedIntegrationId(integration.id);
         }
     }
 
@@ -98,26 +94,26 @@ export function NotionIntegration({
             </Button>
 
             {/* Notion-specific resource selector */}
-            {currentConfig?.integrationId && (
+            {selectedIntegrationId && (
                 <div className="mt-3 pt-3 border-t border-border">
                     <NotionResourceSelector
-                        integrationId={currentConfig.integrationId}
+                        integrationId={selectedIntegrationId || ''}
                         selectedResourceId={
                             isPageConfig 
                                 ? (currentConfig as NotionPageConfig)?.pageId 
                                 : (currentConfig as NotionConfig)?.databaseId
                         }
                         onSelect={(resourceId: string, resourceName: string, resourceType: NotionResourceType) => {
-                            if (resourceType === 'database' && isDatabaseConfig && currentConfig) {
+                            if (resourceType === 'database') {
                                 const updatedConfig = new NotionConfig(
-                                    currentConfig.integrationId,
+                                    selectedIntegrationId || '',
                                     resourceId,
                                     resourceName
                                 );
                                 setConfig(updatedConfig);
-                            } else if (resourceType === 'page' && isPageConfig && currentConfig) {
+                            } else if (resourceType === 'page') {
                                 const updatedConfig = new NotionPageConfig(
-                                    currentConfig.integrationId,
+                                    selectedIntegrationId || '',
                                     resourceId,
                                     resourceName
                                 );
