@@ -22,7 +22,7 @@ export type RunHistoryTrigger = {
     // What event occurred to trigger the run (free-text, e.g. "email received", "database row created")
     event: string;
     // Which integration this trigger came from (used for icons and grouping)
-    integration: Integration;
+    integration: IntegrationType;
     // Source or context of the trigger (e.g. Gmail, Notion DB name, repo name)
     source: string;
     // Title of the trigger (Subject of the email, name of the database, etc.)

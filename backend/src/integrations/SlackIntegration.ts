@@ -1,8 +1,8 @@
-import { SlackChannelType } from "../shared/types";
-import { SlackIntegration, SlackIntegrationMetadata } from "../shared/Integrations";
-import { Integration } from "./abstract/Integration";
-import { Request } from "express";
-import { slack as slackConfig } from '../config/settings';
+import { SlackChannelType, OAuthInstallationDetails } from "../shared/types";
+import { SlackIntegration, SlackIntegrationMetadata, IntegrationType as SharedIntegrationType } from "../shared/Integrations";
+import { Integration, OAuthIntegrationInstallation } from "./abstract/Integration";
+import { Request, Response } from "express";
+import { slack as slackConfig, jwt as jwtConfig } from '../config/settings';
 import crypto from 'crypto';
 import chalk from "chalk";
 import { EventProcessor } from "../agent/AutomationAgent/EventProcessor";
@@ -12,8 +12,9 @@ import { RunHistoryTrigger } from "../shared/RunHistoryTypes";
 import { IntegrationType } from "@prisma/client";
 import { AutomationInputWithConfigs } from "../types/prisma";
 import { InputEvent } from "./abstract/InputEvent";
+import jwt from "jsonwebtoken";
 
-export class SlackIntegrationManager implements Integration<SlackIntegration, SlackMessageEvent, typeof SlackIntegrationMetadata> {
+export class SlackIntegrationManager implements Integration<SlackIntegration, SlackMessageEvent, typeof SlackIntegrationMetadata>, OAuthIntegrationInstallation {
     constructor() { }
     integrationType: IntegrationType = IntegrationType.SLACK;
 
@@ -96,6 +97,38 @@ export class SlackIntegrationManager implements Integration<SlackIntegration, Sl
             await tokensEvent.tokens?.oauth?.forEach(deactivateToken);
         }
     }
+
+    async getInstallationUrl(userId: string): Promise<OAuthInstallationDetails> {
+        const client_id = slackConfig.clientId;
+        const redirect_uri = slackConfig.oauthCallbackUrl;
+
+        const scope = "channels:history,channels:manage,groups:history,groups:write,im:history,im:write,mpim:history,mpim:write";
+        const user_scope = "channels:history,channels:read,groups:history,groups:read,im:history,im:read,mpim:history,mpim:read,users:read,channels:write,groups:write,mpim:write,im:write"
+
+        // create JWT and attach to url as state
+        const jwtToken = jwt.sign(
+            { userId: userId },
+            jwtConfig.secret,
+            { expiresIn: "7d" }
+        );
+
+        const state = encodeURIComponent(jwtToken);
+
+        const encodedRedirectUri = encodeURIComponent(redirect_uri);
+        const url = `https://slack.com/oauth/v2/authorize?scope=${scope}&user_scope=${user_scope}&redirect_uri=${encodedRedirectUri}&client_id=${client_id}&state=${state}`;
+
+        return {
+            oauthUrl: url
+        };
+    }
+
+    async processInstallationCallback(req: Request, res: Response): Promise<void> {
+        return Promise.resolve();
+    }
+
+    deleteInstallation(integrationId: string): Promise<void> {
+        return Promise.resolve();
+    }
 }
 
 // MARK: - SLACK Event
@@ -159,7 +192,7 @@ export class SlackEvent extends InputEvent {
     createTriggerMetadata(): RunHistoryTrigger {
         return {
             event: 'message_received',
-            integration: 'slack',
+            integration: SharedIntegrationType.SLACK,
             source: this.data.channelName || this.data.channelId,
             title: this.data.text.substring(0, 100), // First 100 chars of message
             subheader: this.data.userName || this.data.userId,

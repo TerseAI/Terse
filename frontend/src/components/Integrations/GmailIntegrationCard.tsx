@@ -2,14 +2,14 @@ import { Card, CardContent } from "../ui/card";
 import { IntegrationType } from "@/shared/Integrations"
 import { IntegrationCardHeader } from "./helpers/IntegrationCardHeader";
 import { IntegrationCardFooter } from "./helpers/IntegrationCardFooter";
-import { useOAuthUrl } from "./helpers/useOAuthUrl";
+import { useOAuthConnection } from "@/hooks/useOAuthConnection";
 import { cn } from "@/lib/utils";
 import { useGmailIntegrations } from "@/hooks/api/useGmailIntegrations";
 import { Skeleton } from "../ui/skeleton";
 import { Mail } from "lucide-react";
 
 function GmailIntegrationCard({ className }: { className?: string }) {
-    const oauthUrl = useOAuthUrl(IntegrationType.GMAIL);
+    const { connect, isConnecting } = useOAuthConnection(IntegrationType.GMAIL);
     const { integrations, isLoading } = useGmailIntegrations(); 
 
     return (
@@ -18,7 +18,7 @@ function GmailIntegrationCard({ className }: { className?: string }) {
             <CardContent>
                 <GmailCardContent integrations={integrations} isLoading={isLoading} />
             </CardContent>
-            <IntegrationCardFooter oauthUrl={oauthUrl} />
+            <IntegrationCardFooter connect={connect} isConnecting={isConnecting} />
         </Card>
     )
 }

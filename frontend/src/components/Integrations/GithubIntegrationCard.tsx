@@ -11,7 +11,7 @@ import { IntegrationType } from "@/shared/Integrations"
 import { GithubIntegration } from "@/shared/Integrations";
 import { IntegrationCardHeader } from "./helpers/IntegrationCardHeader";
 import { IntegrationCardFooter } from "./helpers/IntegrationCardFooter";
-import { useOAuthUrl } from "./helpers/useOAuthUrl";
+import { useOAuthConnection } from "@/hooks/useOAuthConnection";
 import { cn } from "@/lib/utils";
 import { ExternalLink, Github } from "lucide-react";
 import { useGithubIntegrations } from "@/hooks/api/useGithubIntegrations";
@@ -21,7 +21,7 @@ import { Skeleton } from "../ui/skeleton";
 const REPOSITORY_DISPLAY_THRESHOLD = 3;
 
 function GithubIntegrationCard({ className }: { className?: string }) {
-    const oauthUrl = useOAuthUrl(IntegrationType.GITHUB);
+    const { connect, isConnecting } = useOAuthConnection(IntegrationType.GITHUB);
     const { integrations, isLoading } = useGithubIntegrations();
     const [isDialogOpen, setIsDialogOpen] = useState(false);
 
@@ -32,7 +32,7 @@ function GithubIntegrationCard({ className }: { className?: string }) {
                 <CardContent>
                     <GithubCardContent repositories={integrations} isLoading={isLoading} onViewAll={() => setIsDialogOpen(true)} />
                 </CardContent>
-                <IntegrationCardFooter oauthUrl={oauthUrl} />
+                <IntegrationCardFooter connect={connect} isConnecting={isConnecting} />
             </Card>
             <RepositoriesDialog 
                 repositories={integrations} 

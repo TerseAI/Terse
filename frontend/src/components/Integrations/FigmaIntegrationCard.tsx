@@ -2,14 +2,14 @@ import { Card, CardContent } from "../ui/card";
 import { IntegrationType } from "@/shared/Integrations"
 import { IntegrationCardHeader } from "./helpers/IntegrationCardHeader";
 import { IntegrationCardFooter } from "./helpers/IntegrationCardFooter";
-import { useOAuthUrl } from "./helpers/useOAuthUrl";
+import { useOAuthConnection } from "@/hooks/useOAuthConnection";
 import { cn } from "@/lib/utils";
 import { useFigmaIntegrations } from "@/hooks/api/useFigmaIntegrations";
 import { Skeleton } from "../ui/skeleton";
 import { Palette } from "lucide-react";
 
 function FigmaIntegrationCard({ className }: { className?: string }) {
-    const oauthUrl = useOAuthUrl(IntegrationType.FIGMA);
+    const { connect, isConnecting } = useOAuthConnection(IntegrationType.FIGMA);
     const { integrations, isLoading } = useFigmaIntegrations(); 
 
     return (
@@ -18,7 +18,7 @@ function FigmaIntegrationCard({ className }: { className?: string }) {
             <CardContent>
                 <FigmaCardContent integrations={integrations} isLoading={isLoading} />
             </CardContent>
-            <IntegrationCardFooter oauthUrl={oauthUrl} />
+            <IntegrationCardFooter connect={connect} isConnecting={isConnecting} />
         </Card>
     )
 }

@@ -1,6 +1,7 @@
 import { IntegrationType } from "@prisma/client";
 import { OAuthInstallationDetails } from "../../shared/types";
 import { IntegrationInstance, IntegrationDetails } from "../../shared/Integrations";
+import { Request, Response } from "express";
 
 // This ensures T is a valid Prisma model type
 export interface Integration<T extends IntegrationInstance, W, M extends IntegrationDetails>  {
@@ -10,8 +11,8 @@ export interface Integration<T extends IntegrationInstance, W, M extends Integra
 }
 
 export interface OAuthIntegrationInstallation {
-    getInstallationUrl(userId: string): OAuthInstallationDetails;
-    processInstallationCallback(req: Request, res: Response): Promise<void>;
+    getInstallationUrl(userId: string): Promise<OAuthInstallationDetails>;
+    processInstallationCallback(req: any, res: any): Promise<void>;
     deleteInstallation(integrationId: string): Promise<void>;
 }
 

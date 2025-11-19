@@ -3,7 +3,7 @@ import crypto from "crypto";
 import { db } from "../prismaClient";
 import { AutomationInputWithConfigs, GmailIntegration as PrismaGmailIntegration, User } from "../types/prisma";
 import { OAuthInstallationDetails } from "../shared/types";
-import { GmailIntegration, GmailIntegrationMetadata } from "../shared/Integrations";
+import { GmailIntegration, GmailIntegrationMetadata, IntegrationType as SharedIntegrationType } from "../shared/Integrations";
 import chalk from "chalk";
 import { gmail_v1, google } from "googleapis";
 import { gmail as gmailConfig } from "../config/settings";
@@ -165,7 +165,7 @@ export class GmailIntegrationManager implements Integration<GmailIntegration, Gm
         }
     }
     
-    getInstallationUrl(userId: string): OAuthInstallationDetails {
+    async getInstallationUrl(userId: string): Promise<OAuthInstallationDetails> {
         const oauth2Client = getOAuth2Client();
 
         // Generate state for security (include user ID)
@@ -187,7 +187,7 @@ export class GmailIntegrationManager implements Integration<GmailIntegration, Gm
         };
     }
 
-    processInstallationCallback(req: Request, res: Response): Promise<void> {
+    async processInstallationCallback(req: Request, res: Response): Promise<void> {
         return Promise.resolve();
     }
 
@@ -258,7 +258,7 @@ export class GmailEvent extends InputEvent {
 
         return {
             event: 'email_received',
-            integration: 'gmail',
+            integration: SharedIntegrationType.GMAIL,
             source: this.data.to || 'Gmail',
             title: this.data.subject,
             subheader: this.data.from,

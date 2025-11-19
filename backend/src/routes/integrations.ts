@@ -23,7 +23,7 @@ export const getIntegrationInstallationDetails = async (req: Request, res: Respo
         }
 
         const userId = req.session.user.id;
-        const installationDetails = getInstallationInformation(integrationType as IntegrationType, userId);
+        const installationDetails = await getInstallationInformation(integrationType as IntegrationType, userId);
         res.json(installationDetails);
     } catch (error: any) {
         console.error('Error getting installation details:', error);
@@ -31,14 +31,14 @@ export const getIntegrationInstallationDetails = async (req: Request, res: Respo
     }
 }
 
-const getInstallationInformation = (integration: IntegrationType, userId: string): OAuthInstallationDetails => {
+const getInstallationInformation = async (integration: IntegrationType, userId: string): Promise<OAuthInstallationDetails> => {
     const integrationInstance = IntegrationRegistry.find(instance => instance.integrationType === convertIntegrationTypeToPrismaIntegrationType(integration));
     if (!integrationInstance) {
         throw new Error(`Integration ${integration} not found`);
     }
     
     if (isOAuthIntegrationInstallation(integrationInstance)) {
-        return integrationInstance.getInstallationUrl(userId);
+        return await integrationInstance.getInstallationUrl(userId);
     }
     
     throw new Error(`Integration ${integration} does not support installation`);

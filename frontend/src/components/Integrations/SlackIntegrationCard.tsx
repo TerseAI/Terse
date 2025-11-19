@@ -4,7 +4,7 @@ import { IntegrationType } from "@/shared/Integrations"
 import { SlackChannel } from "@/shared/types";
 import { IntegrationCardHeader } from "./helpers/IntegrationCardHeader";
 import { IntegrationCardFooter } from "./helpers/IntegrationCardFooter";
-import { useOAuthUrl } from "./helpers/useOAuthUrl";
+import { useOAuthConnection } from "@/hooks/useOAuthConnection";
 import { CountDisplay } from "./helpers/CountDisplay";
 import { useSlackChannels } from "@/hooks/api/useSlackChannels";
 import { useSlackIntegrations } from "@/hooks/api/useSlackIntegrations";
@@ -12,7 +12,7 @@ import { cn } from "@/lib/utils";
 import { Skeleton } from "../ui/skeleton";
 
 function SlackIntegrationCard({ className }: { className?: string }) {
-    const oauthUrl = useOAuthUrl(IntegrationType.SLACK);
+    const { connect, isConnecting } = useOAuthConnection(IntegrationType.SLACK);
     const { integrations, isLoading: integrationsLoading } = useSlackIntegrations();
     const firstIntegrationId = integrations[0]?.id;
     const { channels, isLoading: channelsLoading } = useSlackChannels(firstIntegrationId || null);
@@ -27,7 +27,7 @@ function SlackIntegrationCard({ className }: { className?: string }) {
                     isLoading={integrationsLoading || channelsLoading} 
                 />
             </CardContent>
-            <IntegrationCardFooter oauthUrl={oauthUrl} />
+            <IntegrationCardFooter connect={connect} isConnecting={isConnecting} />
         </Card>
     )
 }
