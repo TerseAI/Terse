@@ -2,9 +2,8 @@ import { ExternalLink } from "lucide-react";
 import type { RunHistoryAction, RunHistoryStatus } from "../../shared/RunHistoryTypes";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "../ui/accordion";
 import { cn } from "@/lib/utils";
-import { IconForConfigType } from "../../pages/Automations/components/Integration";
+import { IconForIntegration } from "../../pages/Automations/components/Integration";
 import { capitalize } from "../../lib/utils";
-import { IntegrationType } from "../../shared/Integrations";
 
 type Props = {
     runId: string;
@@ -37,7 +36,7 @@ export default function RunHistoryActionItem({ runId, index, action, runStatus, 
                     <AccordionTrigger className="py-2 px-2 hover:no-underline">
                         <div className="flex items-center gap-2 w-full mr-2">
                             <div className="w-4 h-4 flex-shrink-0">
-                                <IconForConfigType type={action.integration as IntegrationType} />
+                                <IconForIntegration integration={action.integration} />
                             </div>
                             <div className="flex-1">
                                 <div className="flex items-center gap-2">
