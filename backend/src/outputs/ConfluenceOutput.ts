@@ -1,6 +1,6 @@
 import { RunHistoryAction } from "../shared/RunHistoryTypes";
 import { AtlassianIntegration, IntegrationType } from "../shared/Integrations";
-import { AutomationOutput, User, AutomationConfluenceConfig } from "../types/prisma";
+import { AutomationOutput, User, AutomationConfluenceConfig, PrismaTransaction } from "../types/prisma";
 import { Session } from "../server";
 import { Output, ToolboxEntry } from "./abstract/Output";
 import { db } from "../prismaClient";
@@ -9,6 +9,7 @@ import { ConfluenceClient } from 'confluence.js';
 import { z } from "zod";
 import chalk from "chalk";
 import { OutputConfigType } from "@prisma/client";
+import { ConfluenceConfig } from "../shared/Configs";
 
 // MARK: - Exports
 
@@ -18,7 +19,7 @@ export interface ConfluenceSession extends Session {
     apiToken: string; // API token stored separately (not in shared type for security)
 }
 
-export class ConfluenceOutput extends Output<ConfluenceSession> {
+export class ConfluenceOutput extends Output<ConfluenceSession, ConfluenceConfig> {
     constructor() {
         const toolbox: ToolboxEntry[] = [
             { tool: confluenceQueryPageTool as Tool, isReadOnly: true },
@@ -62,6 +63,18 @@ export class ConfluenceOutput extends Output<ConfluenceSession> {
             isUserInitiated: true, 
             runActions: [] 
         };
+    }
+
+    async addOutputToAutomation(tx: PrismaTransaction, automationOutputId: string, output: ConfluenceConfig): Promise<void> {
+        await tx.automation_confluence_configs.create({
+            data: {
+                automation_output_id: automationOutputId,
+                space_name: output.spaceName,
+                space_id: output.spaceId,
+                page_id: output.pageId,
+                page_name: output.pageName,
+            },
+        });
     }
 }
 

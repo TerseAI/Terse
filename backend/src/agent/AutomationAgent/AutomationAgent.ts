@@ -4,6 +4,7 @@ import { systemPrompt } from './SystemPrompt';
 import { InputEvent } from '../../integrations/abstract/InputEvent';
 import { Output } from '../../outputs/abstract/Output';
 import { AutomationInput, AutomationOutput, AutomationPrompt } from '../../types/prisma';
+import { ConfigInstance } from 'src/shared/Configs';
 
 export type ApprovalResult<T extends Session, AgentType extends Agent<T, AgentOutputType>> =
   | {
@@ -18,7 +19,7 @@ export type ApprovalResult<T extends Session, AgentType extends Agent<T, AgentOu
 
 export type Decision = 'approve' | 'reject';
 
-export class AutomationAgent<T extends Session> {
+export class AutomationAgent<T extends Session, TConfig extends ConfigInstance> {
     private history: AgentInputItem[] = [];
     private session: T;
     private inputEvent: InputEvent | null = null;
@@ -28,7 +29,7 @@ export class AutomationAgent<T extends Session> {
     private agent?: Agent<T, AgentOutputType>;
     private tools: Tool<T>[] = [];
 
-    constructor(session: T, output: Output<T>, automationPrompt: AutomationPrompt, automationInputs: AutomationInput[], automationOutput: AutomationOutput) {
+    constructor(session: T, output: Output<T, TConfig>, automationPrompt: AutomationPrompt, automationInputs: AutomationInput[], automationOutput: AutomationOutput) {
         this.history = [];
         this.session = session;
         this.automationPrompt = automationPrompt;
