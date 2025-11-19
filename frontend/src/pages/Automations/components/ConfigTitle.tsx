@@ -1,13 +1,13 @@
-import { IconForIntegration } from "./Integration";
-import { INTEGRATION_METADATA, IntegrationType } from "@/shared/Integrations";
+import { IconForConfigType } from "./Integration";
+import { CONFIG_DETAILS, ConfigType } from "@/shared/Configs";
 
-interface IntegrationTitleProps {
-    integration: IntegrationType;
+interface ConfigTitleProps {
+    configType: ConfigType;
     iconSize?: "sm" | "md" | "lg";
     className?: string;
 }
 
-export function IntegrationTitle({ integration, iconSize = "sm", className = "" }: IntegrationTitleProps) {
+export function ConfigTitle({ configType, iconSize = "sm", className = "" }: ConfigTitleProps) {
     const iconSizeClasses = {
         sm: "w-5 h-5",
         md: "w-6 h-6",
@@ -15,26 +15,26 @@ export function IntegrationTitle({ integration, iconSize = "sm", className = "" 
     };
 
     // Special case for Confluence/Jira - they share the same integration
-    if (integration === IntegrationType.ATLASSIAN) {
+    if (configType === ConfigType.CONFLUENCE || configType === ConfigType.JIRA) {
         return (
             <div className={`flex items-center gap-2 ${className}`}>
                 <div className={`${iconSizeClasses[iconSize]} flex items-center justify-center gap-0.5`}>
                     <div className="w-1/2 h-full flex items-center justify-center">
-                        <IconForIntegration integration={integration} />
+                        <IconForConfigType type={configType} />
                     </div>
                 </div>
-                <span>{INTEGRATION_METADATA[integration].name}</span>
+                <span>{CONFIG_DETAILS[configType].name}</span>
             </div>
         );
     }
 
-    console.log("Integration:", integration);
+    console.log("Config Type:", configType);
     return (
         <div className={`flex items-center gap-2 ${className}`}>
             <div className={`${iconSizeClasses[iconSize]} flex items-center justify-center`}>
-                <IconForIntegration integration={integration} />
+                <IconForConfigType type={configType} />
             </div>
-            {INTEGRATION_METADATA[integration].name}
+            {CONFIG_DETAILS[configType].name}
         </div>
     );
 }
