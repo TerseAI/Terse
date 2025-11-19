@@ -6,7 +6,7 @@ import chalk from "chalk";
 import { AutomationWithInputRelations, PrismaTransaction, AutomationWithRelations } from "../types/prisma";
 import { IntegrationType } from "../shared/Integrations";
 import { convertConfigTypeToInputConfigType, convertConfigTypeToOutputConfigType, convertPrismaConfigToConfigInstance } from "../utility/typeConverters";
-import { ConfigInstance } from "../shared/Configs";
+import { ConfigInstance, ConfigType } from "../shared/Configs";
 import { getInputConfigInclude, getOutputConfigInclude } from "../utility/prismaIncludes";
 import { INPUT_REGISTRY } from "../inputs/InputRegistry";
 import { INTEGRATION_REGISTRY } from "../integrations/abstract/IntegrationRegistry";
@@ -94,18 +94,25 @@ export async function getUserAutomations(req: Request, res: Response) {
             take
         });
 
+        if (!automations.some(automation => automation.output)) {
+            throw new Error(`Automation output not found`);
+        }
+
         // Transform the data to match frontend format
         const response: AutomationsResponse = {
             automations: automations.map(automation => ({
                 id: automation.id,
                 name: automation.name,
                 isActive: automation.is_active,
-                prompt: automation.prompt ? { text: automation.prompt.content } : undefined,
+                prompt: automation.prompt ? { text: automation.prompt.content } : { text: '' },
                 inputs: automation.inputs.map(input => ({
                     id: input.id,
                     config: convertPrismaConfigToConfigInstance(input)
                 })),
-                output: automation.output ? undefined : undefined // TODO: Transform output config
+                output: {
+                    id: automation.output!.id,
+                    config: convertPrismaConfigToConfigInstance(automation.output!),
+                }
             })),
             pagination: {
                 page,
@@ -149,7 +156,7 @@ export async function getUserAutomation(req: Request, res: Response) {
             }
         });
 
-        if (!automation) {
+        if (!automation || !automation.output) {
             res.status(404).json({ error: 'Automation not found' });
             return;
         }
@@ -159,12 +166,15 @@ export async function getUserAutomation(req: Request, res: Response) {
             id: automation.id,
             name: automation.name,
             isActive: automation.is_active,
-            prompt: automation.prompt ? { text: automation.prompt.content } : undefined,
+            prompt: automation.prompt ? { text: automation.prompt.content } : { text: '' },
             inputs: automation.inputs.map(input => ({
                 id: input.id,
                 config: convertPrismaConfigToConfigInstance(input)
             })),
-            output: undefined
+            output: {
+                id: automation.output.id,
+                config: convertPrismaConfigToConfigInstance(automation.output),
+            }
         };
 
         res.status(200).json(response);

@@ -28,6 +28,7 @@ export function IntegrationTitle({ configType, iconSize = "sm", className = "" }
         );
     }
 
+    console.log("Config Type:", configType);
     return (
         <div className={`flex items-center gap-2 ${className}`}>
             <div className={`${iconSizeClasses[iconSize]} flex items-center justify-center`}>

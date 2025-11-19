@@ -9,7 +9,7 @@ import { ConfluenceIntegration } from './ConfluenceIntegration';
 import { ConfigType } from "@/shared/Configs";
 
 export function IntegrationSelector(props: InputConfigSelectorProps) {
-    switch (props.input.configType) {
+    switch (props.input.config?.configType || props.input.configType) {
         case ConfigType.GMAIL:
             return <GmailIntegration {...props} />;
 

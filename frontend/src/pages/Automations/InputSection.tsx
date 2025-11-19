@@ -32,8 +32,6 @@ export const InputsSection = forwardRef<Map<string, HTMLDivElement>, InputsSecti
         const newInputId = uuidv4(); // We need to mint a placeholder ID for the new input so that we can identify it later.
         const newInput: TransientAutomationInput = { id: newInputId, config: undefined, configType: config };
         const newInputs: TransientAutomationInput[] = [...inputs, newInput];
-        console.log("New inputs:", JSON.stringify(newInputs, null, 2));
-        console.log('Config type:', config);
         setInputs(newInputs);
         setShowAddModal(false);
     };
@@ -51,7 +49,6 @@ export const InputsSection = forwardRef<Map<string, HTMLDivElement>, InputsSecti
         setInputs(inputs.filter(input => input.id !== id));
     };
 
-    console.log("inputs length:", inputs.length);
     return (
         <SectionLayout
             subtitle="Choose which integration triggers this automation"
@@ -97,8 +94,6 @@ function InputCardsLayout({
     inputRefs: React.MutableRefObject<Map<string, HTMLDivElement>>
 }) {
     const isSingleInput = inputs.length === 1;
-    console.log("Inputs:", JSON.stringify(inputs, null, 2));
-    console.log("is single input:", isSingleInput);
     
     if (isSingleInput) {
         return (
@@ -177,19 +172,21 @@ const InputCard = forwardRef<HTMLDivElement, {
     handleRemove
 }, ref) => {
     const [showDetailsDialog, setShowDetailsDialog] = useState(false);
+    console.log("Input in inputCard", JSON.stringify(input, null, 2));
 
     const selectorProps: InputConfigSelectorProps = {
         input: input,
-        setConfig: (config: ConfigInstance) => setInputs(inputs.map(i => i.id === input.id ? { ...i, config } : i)),
+        setConfig: (config: ConfigInstance) => setInputs(inputs.map(i => i.id === input.id ? { ...i, config, configType: config.configType } : i)),
         variant: "card"
     };
-    const needsConfiguration = input.config?.isComplete() ?? false;
+    // Input needs configuration if there's no config OR if the config is not complete
+    const needsConfiguration = !input.config || !input.config.isComplete();
     return (
         <>
             <Card ref={ref}>
                 <CardHeader>
                     <div className="flex justify-between items-center">
-                        <IntegrationTitle configType={input.configType} iconSize="md" />
+                        <IntegrationTitle configType={input.config?.configType || input.configType} iconSize="md" />
                         {needsConfiguration && (
                             <Badge variant="outline" className="border-yellow-500 text-yellow-600 dark:text-yellow-500">
                                 <AlertTriangle className="w-3 h-3" />

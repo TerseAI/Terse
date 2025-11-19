@@ -77,11 +77,13 @@ function OutputCard({
     setOutput
 }: { output: TransientAutomationOutput, handleRemove: () => void, handleSelectIntegration: (configType: ConfigType) => void, setOutput: (output: TransientAutomationOutput) => void }) {
 
+    console.log("Output in outputCard", JSON.stringify(output, null, 2));
+
     return (
         <Card>
             <CardHeader>
                 <CardTitle className="flex justify-between">
-                    <IntegrationTitle configType={output.configType} iconSize="lg" />
+                    <IntegrationTitle configType={output.config?.configType || output.configType} iconSize="lg" />
                 </CardTitle>
             </CardHeader>
             <CardContent className="max-w-xs">

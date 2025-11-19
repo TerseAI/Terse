@@ -1,0 +1,93 @@
+import { ConfigInstance, ConfigType, GmailConfig, FigmaConfig, SlackConfig, NotionConfig, NotionPageConfig, LinearConfig, GitHubConfig, JiraConfig, ConfluenceConfig } from '@/shared/Configs';
+
+/**
+ * Converts a plain JSON config object (from backend) back into a ConfigInstance class.
+ * This is necessary because JSON serialization loses the prototype chain.
+ */
+export function deserializeConfig(jsonConfig: any): ConfigInstance {
+    if (!jsonConfig || !jsonConfig.configType) {
+        throw new Error('Invalid config: missing configType');
+    }
+
+    // If it's already a class instance with the isComplete method, return it as-is
+    if (typeof jsonConfig.isComplete === 'function') {
+        return jsonConfig as ConfigInstance;
+    }
+
+    // Otherwise, re-instantiate based on configType
+    const configType = jsonConfig.configType as ConfigType;
+    const integrationId = jsonConfig.integrationId;
+
+    if (!integrationId) {
+        throw new Error('Invalid config: missing integrationId');
+    }
+
+    switch (configType) {
+        case ConfigType.GMAIL:
+            return new GmailConfig(integrationId);
+
+        case ConfigType.FIGMA:
+            return new FigmaConfig(
+                integrationId,
+                jsonConfig.fileKey || '',
+                jsonConfig.fileName || '',
+                jsonConfig.teamId || ''
+            );
+
+        case ConfigType.SLACK:
+            return new SlackConfig(
+                integrationId,
+                jsonConfig.channelId,
+                jsonConfig.channelName,
+                jsonConfig.listenToUserDms || false
+            );
+
+        case ConfigType.NOTION_DATABASE:
+            return new NotionConfig(
+                integrationId,
+                jsonConfig.databaseId,
+                jsonConfig.databaseName
+            );
+
+        case ConfigType.NOTION_PAGE:
+            return new NotionPageConfig(
+                integrationId,
+                jsonConfig.pageId,
+                jsonConfig.pageName
+            );
+
+        case ConfigType.LINEAR:
+            return new LinearConfig(
+                integrationId,
+                jsonConfig.projectId,
+                jsonConfig.projectName
+            );
+
+        case ConfigType.GITHUB:
+            return new GitHubConfig(
+                integrationId,
+                jsonConfig.repositoryIds || []
+            );
+
+        case ConfigType.JIRA:
+            return new JiraConfig(
+                integrationId,
+                jsonConfig.projectKey,
+                jsonConfig.projectId
+            );
+
+        case ConfigType.CONFLUENCE:
+            return new ConfluenceConfig(
+                integrationId,
+                jsonConfig.spaceName || '',
+                jsonConfig.spaceId || '',
+                jsonConfig.pageId || '',
+                jsonConfig.pageName || ''
+            );
+
+        default:
+            const _exhaustive: never = configType;
+            throw new Error(`Unknown config type: ${_exhaustive}`);
+    }
+}
+
