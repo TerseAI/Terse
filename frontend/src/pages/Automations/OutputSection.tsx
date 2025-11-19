@@ -77,7 +77,7 @@ function OutputCard({
         <Card>
             <CardHeader>
                 <CardTitle className="flex justify-between items-center">
-                    <ConfigTitle configType={output.config?.configType || output.configType} iconSize="lg" />
+                    <ConfigTitle configType={output.configType} iconSize="lg" />
                     {needsConfiguration && (
                         <Badge variant="outline" className="border-yellow-500 text-yellow-600 dark:text-yellow-500">
                             <AlertTriangle className="w-3 h-3" />

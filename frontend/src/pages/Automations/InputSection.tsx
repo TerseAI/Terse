@@ -99,19 +99,18 @@ function InputCardsLayout({
             <div className="relative w-full h-full">
                 <div className="flex justify-center">
                     {inputs.map((input) => {
-                        const inputId = input.id || '';
                         return (
                             <InputCard 
-                                key={inputId} 
+                                key={input.id} 
                                 input={input} 
                                 inputs={inputs}
                                 setInputs={setInputs} 
                                 handleRemove={handleRemove}
                                 ref={(el) => {
                                     if (el && input.config?.isComplete()) {
-                                        inputRefs.current.set(inputId, el);
+                                        inputRefs.current.set(input.id, el);
                                     } else {
-                                        inputRefs.current.delete(inputId);
+                                        inputRefs.current.delete(input.id);
                                     }
                                 }}
                             />
@@ -130,19 +129,18 @@ function InputCardsLayout({
     return (
         <div className="flex flex-col gap-4">
             {inputs.map((input) => {
-                const inputId = input.id || '';
                 return (
                     <InputCard 
-                        key={inputId} 
+                        key={input.id} 
                         input={input} 
                         inputs={inputs}
                         setInputs={setInputs} 
                         handleRemove={handleRemove}
                         ref={(el) => {
                             if (el && input.config?.isComplete()) {
-                                inputRefs.current.set(inputId, el);
+                                inputRefs.current.set(input.id, el);
                             } else {
-                                inputRefs.current.delete(inputId);
+                                inputRefs.current.delete(input.id);
                             }
                         }}
                     />
@@ -167,7 +165,6 @@ const InputCard = forwardRef<HTMLDivElement, {
     handleRemove
 }, ref) => {
     const [showDetailsDialog, setShowDetailsDialog] = useState(false);
-    console.log("Input in inputCard", JSON.stringify(input, null, 2));
 
     const selectorProps: InputConfigSelectorProps = {
         input: input,
@@ -181,7 +178,7 @@ const InputCard = forwardRef<HTMLDivElement, {
             <Card ref={ref}>
                 <CardHeader>
                     <div className="flex justify-between items-center">
-                        <ConfigTitle configType={input.config?.configType || input.configType} iconSize="md" />
+                        <ConfigTitle configType={input.configType} iconSize="md" />
                         {needsConfiguration && (
                             <Badge variant="outline" className="border-yellow-500 text-yellow-600 dark:text-yellow-500">
                                 <AlertTriangle className="w-3 h-3" />
