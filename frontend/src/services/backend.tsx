@@ -393,7 +393,7 @@ export const BackendProvider: BackendService = {
     },
 
     getIntegrationInstallationDetails: (integrationType: IntegrationType) => {
-        return axios.get(`${backendBaseUrl}/integrations/${integrationType}/installation-url`, { withCredentials: true })
+        return axios.get(`${backendBaseUrl}/integrations/${integrationType}/installation-details`, { withCredentials: true })
             .then(response => response.data)
             .catch(error => {
                 console.error('Error getting integration installation details:', error);

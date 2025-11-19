@@ -8,8 +8,7 @@ import { Skeleton } from "../ui/skeleton";
 import { Target } from "lucide-react";
 
 function LinearIntegrationCard({ className }: { className?: string }) {
-    // Linear uses API key, not OAuth, so no OAuth URL available
-    const oauthUrl = null;
+    // Linear uses API key, not OAuth
     const { integrations, isLoading } = useLinearIntegrations();
 
     return (
@@ -18,7 +17,7 @@ function LinearIntegrationCard({ className }: { className?: string }) {
             <CardContent>
                 <LinearCardContent integrations={integrations} isLoading={isLoading} />
             </CardContent>
-            <IntegrationCardFooter oauthUrl={oauthUrl} />
+            <IntegrationCardFooter />
         </Card>
     )
 }

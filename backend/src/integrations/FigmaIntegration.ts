@@ -1,4 +1,4 @@
-import { Integration } from "./abstract/Integration";
+import { Integration, OAuthIntegrationInstallation } from "./abstract/Integration";
 import { db } from "../prismaClient";
 import { User, AutomationInputWithConfigs } from "../types/prisma";
 import { figma_integrations } from "@prisma/client";
@@ -15,10 +15,14 @@ import {
     FigmaWebhookUser,
     FigmaPositioningData,
     FigmaApiComment,
+    OAuthInstallationDetails,
 } from "../shared/types";
-import { FigmaIntegration, FigmaIntegrationMetadata } from "../shared/Integrations";
+import { FigmaIntegration, FigmaIntegrationMetadata, IntegrationType as SharedIntegrationType } from "../shared/Integrations";
+import jwt from "jsonwebtoken";
+import { figma as figmaConfig, jwt as jwtConfig } from "../config/settings";
+import { Request, Response } from "express";
 
-export class FigmaIntegrationManager implements Integration<FigmaIntegration, FigmaWebhookEvent, typeof FigmaIntegrationMetadata> {
+export class FigmaIntegrationManager implements Integration<FigmaIntegration, FigmaWebhookEvent, typeof FigmaIntegrationMetadata>, OAuthIntegrationInstallation {
     constructor() { }
     integrationType: IntegrationType = IntegrationType.FIGMA;
 
@@ -69,6 +73,37 @@ export class FigmaIntegrationManager implements Integration<FigmaIntegration, Fi
                 await handleFigmaCommentEvent(integration, event, integration.user);
             }
         }
+    }
+
+    async getInstallationUrl(userId: string): Promise<OAuthInstallationDetails> {
+        // Generate state token for security (prevents CSRF)
+        const state = jwt.sign(
+            { userId: userId, timestamp: Date.now() },
+            jwtConfig.secret,
+            { expiresIn: "10m" }
+        );
+
+        const scope = "current_user:read,file_comments:read,file_content:read,file_metadata:read,file_versions:read,library_assets:read,library_content:read,team_library_content:read,file_dev_resources:read,projects:read,webhooks:read,webhooks:write";
+
+        // Build OAuth URL with proper encoding
+        const authUrl = new URL("https://www.figma.com/oauth");
+        authUrl.searchParams.append("client_id", figmaConfig.clientId);
+        authUrl.searchParams.append("redirect_uri", figmaConfig.redirectUrl);
+        authUrl.searchParams.append("scope", scope);
+        authUrl.searchParams.append("state", state);
+        authUrl.searchParams.append("response_type", "code");
+
+        return {
+            oauthUrl: authUrl.toString()
+        };
+    }
+
+    async processInstallationCallback(req: Request, res: Response): Promise<void> {
+        return Promise.resolve();
+    }
+
+    deleteInstallation(integrationId: string): Promise<void> {
+        return Promise.resolve();
     }
 }
 
@@ -238,7 +273,7 @@ export class FigmaCommentEvent extends InputEvent {
         
         return {
             event: 'comment_added',
-            integration: 'figma',
+            integration: SharedIntegrationType.FIGMA,
             source: this.data.fileKey,
             title: this.data.message.substring(0, 100), // First 100 chars of comment
             subheader: subheader,

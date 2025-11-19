@@ -4,7 +4,7 @@ import { Card, CardContent } from "../ui/card";
 import { IntegrationType } from "@/shared/Integrations"
 import { IntegrationCardHeader } from "./helpers/IntegrationCardHeader";
 import { IntegrationCardFooter } from "./helpers/IntegrationCardFooter";
-import { useOAuthUrl } from "./helpers/useOAuthUrl";
+import { useOAuthConnection } from "@/hooks/useOAuthConnection";
 import { CountDisplay } from "./helpers/CountDisplay";
 import { useNotionResources } from "@/hooks/api/useNotionResources";
 import { useNotionIntegrations } from "@/hooks/api/useNotionIntegrations";
@@ -12,7 +12,7 @@ import { cn } from "@/lib/utils";
 import { Skeleton } from "../ui/skeleton";
 
 function NotionIntegrationCard({ className }: { className?: string }) {
-    const oauthUrl = useOAuthUrl(IntegrationType.NOTION);
+    const { connect, isConnecting } = useOAuthConnection(IntegrationType.NOTION);
     const { integrations, isLoading: integrationsLoading } = useNotionIntegrations();
     const firstIntegrationId = integrations[0]?.id;
     const { resources, isLoading: resourcesLoading } = useNotionResources(firstIntegrationId || null);
@@ -27,7 +27,7 @@ function NotionIntegrationCard({ className }: { className?: string }) {
                     isLoading={integrationsLoading || resourcesLoading} 
                 />
             </CardContent>
-            <IntegrationCardFooter oauthUrl={oauthUrl} />
+            <IntegrationCardFooter connect={connect} isConnecting={isConnecting} />
         </Card>
     )
 }

@@ -1,17 +1,20 @@
-import { Integration } from "./abstract/Integration";
+import { Integration, OAuthIntegrationInstallation } from "./abstract/Integration";
 import { db } from "../prismaClient";
 import chalk from "chalk";
 import { EventProcessor } from "../agent/AutomationAgent/EventProcessor";
 import { InputEvent } from "./abstract/InputEvent";
-import { GithubIntegration, GithubIntegrationMetadata } from "../shared/Integrations";
+import { GithubIntegration, GithubIntegrationMetadata, IntegrationType as SharedIntegrationType } from "../shared/Integrations";
 import { GithubAppUnifiedEventRequest } from "../routes/github";
 import { resolveUserForGithubInstallation } from "../routes/github";
 import { User } from "../types/prisma";
 import { IntegrationType } from "@prisma/client";
 import { AutomationInputWithConfigs } from "../types/prisma";
 import { RunHistoryTrigger } from "../shared/RunHistoryTypes";
+import { OAuthInstallationDetails } from "../shared/types";
+import { githubApp } from "../config/settings";
+import { Request, Response } from "express";
 
-export class GithubIntegrationManager implements Integration<GithubIntegration, GithubAppUnifiedEventRequest, typeof GithubIntegrationMetadata> {
+export class GithubIntegrationManager implements Integration<GithubIntegration, GithubAppUnifiedEventRequest, typeof GithubIntegrationMetadata>, OAuthIntegrationInstallation {
     constructor() { }
     integrationType: IntegrationType = IntegrationType.GITHUB;
 
@@ -38,6 +41,26 @@ export class GithubIntegrationManager implements Integration<GithubIntegration, 
         const githubEvent = new GithubEvent(event);
         const eventProcessor = new EventProcessor(githubEvent, user);
         await eventProcessor.process();
+    }
+
+    async getInstallationUrl(userId: string): Promise<OAuthInstallationDetails> {
+        const appName = githubApp.appName;
+        const clientId = githubApp.clientId;
+        const state = Buffer.from(userId).toString('base64');
+        // Generate GitHub App installation URL with callback
+        const installationUrl: string = `https://github.com/apps/${appName}/installations/new?client_id=${clientId}&target_type=repositories&state=${state}`;
+
+        return {
+            oauthUrl: installationUrl
+        };
+    }
+
+    async processInstallationCallback(req: Request, res: Response): Promise<void> {
+        return Promise.resolve();
+    }
+
+    deleteInstallation(integrationId: string): Promise<void> {
+        return Promise.resolve();
     }
 }
 
@@ -187,7 +210,7 @@ export class GithubEvent extends InputEvent {
     createTriggerMetadata(): RunHistoryTrigger {
         return {
             event: 'github_event',
-            integration: 'github',
+            integration: SharedIntegrationType.GITHUB,
             source: this.data.repositoryName,
             title: this.data.eventType,
             subheader: this.data.username,

@@ -2,14 +2,14 @@ import { Card, CardContent } from "../ui/card";
 import { IntegrationType } from "@/shared/Integrations"
 import { IntegrationCardHeader } from "./helpers/IntegrationCardHeader";
 import { IntegrationCardFooter } from "./helpers/IntegrationCardFooter";
-import { useOAuthUrl } from "./helpers/useOAuthUrl";
+import { useOAuthConnection } from "@/hooks/useOAuthConnection";
 import { cn } from "@/lib/utils";
 import { useAtlassianIntegrations } from "@/hooks/api/useAtlassianIntegrations";
 import { Skeleton } from "../ui/skeleton";
 import { Globe, Mail } from "lucide-react";
 
 function AtlassianIntegrationCard({ className }: { className?: string }) {
-    const oauthUrl = useOAuthUrl(IntegrationType.ATLASSIAN);
+    const { connect, isConnecting } = useOAuthConnection(IntegrationType.ATLASSIAN);
     const { integrations, isLoading } = useAtlassianIntegrations(); 
 
     return (
@@ -18,7 +18,7 @@ function AtlassianIntegrationCard({ className }: { className?: string }) {
             <CardContent>
                 <AtlassianCardContent integrations={integrations} isLoading={isLoading} />
             </CardContent>
-            <IntegrationCardFooter oauthUrl={oauthUrl} />
+            <IntegrationCardFooter connect={connect} isConnecting={isConnecting} />
         </Card>
     )
 }
