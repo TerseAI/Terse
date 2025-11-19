@@ -1,4 +1,4 @@
-import { IntegrationType } from "@prisma/client";
+import { IntegrationType, OutputConfigType } from "@prisma/client";
 import { Output } from "./Output";
 import { NotionDatabaseOutput } from "../NotionDatabaseOutput";
 import { NotionPageOutput } from "../NotionPageOutput";
@@ -11,10 +11,10 @@ import { ConfluenceOutput } from "../ConfluenceOutput";
  * No switch statements - each output type is registered independently.
  */
 export class OutputFactory {
-    private static readonly outputRegistry: Map<IntegrationType, () => Output<Session>> = new Map<IntegrationType, () => Output<Session>>([
-        [IntegrationType.NOTION, () => new NotionDatabaseOutput()],
-        [IntegrationType.NOTION_PAGE, () => new NotionPageOutput()],
-        [IntegrationType.CONFLUENCE, () => new ConfluenceOutput()]
+    private static readonly OUTPUT_REGISTRY: Map<OutputConfigType, () => Output<Session>> = new Map<OutputConfigType, () => Output<Session>>([
+        [OutputConfigType.NOTION_DATABASE, () => new NotionDatabaseOutput()],
+        [OutputConfigType.NOTION_PAGE, () => new NotionPageOutput()],
+        [OutputConfigType.CONFLUENCE, () => new ConfluenceOutput()]
     ]);
 
     /**
@@ -22,8 +22,8 @@ export class OutputFactory {
      * @param integrationType The integration type to create an output for
      * @returns An Output instance, or null if the integration type is not supported
      */
-    static createOutput(integrationType: IntegrationType): Output<Session> | null {
-        const factory = this.outputRegistry.get(integrationType);
+    static createOutput(integrationType: OutputConfigType): Output<Session> | null {
+        const factory = this.OUTPUT_REGISTRY.get(integrationType);
         if (!factory) {
             return null;
         }
@@ -35,7 +35,7 @@ export class OutputFactory {
      * @param integrationType The integration type to check
      * @returns true if the integration type is supported as an output
      */
-    static isSupported(integrationType: IntegrationType): boolean {
-        return this.outputRegistry.has(integrationType);
+    static isSupported(integrationType: OutputConfigType): boolean {
+        return this.OUTPUT_REGISTRY.has(integrationType);
     }
 }

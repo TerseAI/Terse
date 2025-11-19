@@ -2,12 +2,13 @@ import { RunHistoryAction } from "../shared/RunHistoryTypes";
 import { AtlassianIntegration, IntegrationType } from "../shared/Integrations";
 import { AutomationOutput, User, AutomationConfluenceConfig } from "../types/prisma";
 import { Session } from "../server";
-import { Output, OutputType, ToolboxEntry } from "./abstract/Output";
+import { Output, ToolboxEntry } from "./abstract/Output";
 import { db } from "../prismaClient";
 import { RunContext, Tool, tool } from "@openai/agents";
 import { ConfluenceClient } from 'confluence.js';
 import { z } from "zod";
 import chalk from "chalk";
+import { OutputConfigType } from "@prisma/client";
 
 // MARK: - Exports
 
@@ -23,7 +24,7 @@ export class ConfluenceOutput extends Output<ConfluenceSession> {
             { tool: confluenceQueryPageTool as Tool, isReadOnly: true },
             { tool: confluenceAddCommentTool as Tool, isReadOnly: false },
         ];
-        super(OutputType.Confluence, toolbox);
+        super(OutputConfigType.CONFLUENCE, toolbox);
     }
 
     async createSessionFromConfig(

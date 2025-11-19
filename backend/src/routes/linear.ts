@@ -242,12 +242,8 @@ export const deleteLinearCredentials = async (req: Request, res: Response) => {
         }
     });
 
-    await db().automation_outputs.deleteMany({
-        where: {
-            integration_type: 'LINEAR',
-            integration_id: linearApiKey.id
-        }
-    });
+    // Note: Linear is not a valid output type (only NOTION_PAGE, NOTION_DATABASE, CONFLUENCE are supported)
+    // No automation_outputs to delete for Linear integrations
 
     await db().linear_api_keys.delete({ where: { id: integrationId } });
     console.log(chalk.green('Deleted Linear credentials for user'), chalk.yellow(user.id));

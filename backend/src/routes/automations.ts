@@ -5,11 +5,29 @@ import { parsePageParams } from "../utility/pagination";
 import chalk from "chalk";
 import { AutomationWithInputRelations, PrismaTransaction, AutomationWithRelations } from "../types/prisma";
 import { IntegrationType } from "../shared/Integrations";
-import { convertConfigTypeToInputConfigType, convertIntegrationTypeToPrismaIntegrationType, convertPrismaConfigToConfigInstance } from "../utility/typeConverters";
+import { convertConfigTypeToInputConfigType, convertConfigTypeToOutputConfigType, convertIntegrationTypeToPrismaIntegrationType, convertPrismaConfigToConfigInstance } from "../utility/typeConverters";
+import { ConfigType } from "../shared/Configs";
 import { getInputConfigInclude, getOutputConfigInclude } from "../utility/prismaIncludes";
 import { SaveAutomationRequest } from "../shared/types";
 import { INPUT_REGISTRY } from "../inputs/InputRegistry";
 import { INTEGRATION_REGISTRY } from "../integrations/abstract/IntegrationRegistry";
+
+/**
+ * Determines the ConfigType from an AutomationOutput object.
+ * Checks which config field is present (notionConfig, notionPageConfig, confluenceConfig).
+ */
+function getOutputConfigType(output: AutomationOutput): ConfigType {
+    if (output.notionPageConfig) {
+        return ConfigType.NOTION_PAGE;
+    }
+    if (output.notionConfig) {
+        return ConfigType.NOTION_DATABASE;
+    }
+    if (output.confluenceConfig) {
+        return ConfigType.CONFLUENCE;
+    }
+    throw new Error('Output must have one of: notionConfig, notionPageConfig, or confluenceConfig');
+}
 
 async function createInputConfig(
     tx: PrismaTransaction,
@@ -537,6 +555,7 @@ export async function createAutomation(req: Request, res: Response) {
 
             // Create output
             const outputIntegrationType = output.integration
+            const outputConfigType = getOutputConfigType(output);
 
             const outputIntegrationId = output.integrationId;
             if (!outputIntegrationId) {
@@ -557,7 +576,7 @@ export async function createAutomation(req: Request, res: Response) {
             const newOutput = await tx.automation_outputs.create({
                 data: {
                     automation_id: newAutomation.id,
-                    integration_type: convertIntegrationTypeToPrismaIntegrationType(outputIntegrationType),
+                    config_type: convertConfigTypeToOutputConfigType(outputConfigType),
                     integration_id: outputIntegrationId
                 }
             });
@@ -688,6 +707,7 @@ export async function updateAutomation(req: Request, res: Response) {
                     throw new Error(`Unknown integration type: ${output.integration}`);
                 }
 
+                const outputConfigType = getOutputConfigType(output);
                 const outputIntegrationId = output.integrationId;
                 if (!outputIntegrationId) {
                     throw new Error(`Integration ID is required for ${output.integration}`);
@@ -712,7 +732,7 @@ export async function updateAutomation(req: Request, res: Response) {
                 const newOutput = await tx.automation_outputs.create({
                     data: {
                         automation_id: automationId,
-                        integration_type: convertIntegrationTypeToPrismaIntegrationType(outputIntegrationType),
+                        config_type: convertConfigTypeToOutputConfigType(outputConfigType),
                         integration_id: outputIntegrationId
                     }
                 });

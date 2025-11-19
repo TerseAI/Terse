@@ -213,12 +213,8 @@ export const deleteJiraCredentials = async (req: Request, res: Response) => {
         }
     });
 
-    await db().automation_outputs.deleteMany({
-        where: {
-            integration_type: 'JIRA',
-            integration_id: creds.id
-        }
-    });
+    // Note: Jira is not a valid output type (only NOTION_PAGE, NOTION_DATABASE, CONFLUENCE are supported)
+    // No automation_outputs to delete for Jira integrations
 
     await db().jira_api_keys.delete({ where: { id: integrationId } });
     console.log(chalk.green('Deleted Jira credentials for user'), chalk.yellow(user.id));

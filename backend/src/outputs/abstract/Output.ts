@@ -3,6 +3,7 @@
 import { Tool } from "@openai/agents";
 import { Session } from "../../server";
 import { AutomationOutput, User } from "../../types/prisma";
+import { OutputConfigType } from "@prisma/client";
 // You can only have one output at a time. Basically, it's just a specific integration + a toolbox to modify the content.
 // For Notion, we should support multiple integrations with the same account. 
 
@@ -11,17 +12,11 @@ export interface ToolboxEntry {
     isReadOnly: boolean;
 }
 
-export enum OutputType {
-    Notion = "notion",
-    NotionPage = "notion_page",
-    Confluence = "confluence",
-}   
-
 export abstract class Output<T extends Session> {
-    integration: OutputType;
+    integration: OutputConfigType;
     readonly toolbox: readonly ToolboxEntry[];
 
-    constructor(integration: OutputType, toolbox: readonly ToolboxEntry[]) {
+    constructor(integration: OutputConfigType, toolbox: readonly ToolboxEntry[]) {
         this.integration = integration;
         this.toolbox = toolbox;
     }
