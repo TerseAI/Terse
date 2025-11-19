@@ -2,6 +2,7 @@ import useSWR, { type KeyedMutator } from 'swr';
 import { BackendProvider } from '@/services/backend';
 import type { GithubIntegration } from '@/shared/Integrations';
 import { githubIntegrationsKey } from "@/shared/InvalidationKeys";
+import { useOAuthSuccessListener } from '@/hooks/useOAuthSuccessListener';
 
 type UseGithubIntegrationsReturn = {
     integrations: GithubIntegration[];
@@ -22,6 +23,8 @@ export function useGithubIntegrations(): UseGithubIntegrationsReturn {
             revalidateOnReconnect: true,
         },
     );
+
+    useOAuthSuccessListener(mutate);
 
     const loading = (isLoading || (!data && !error));
 

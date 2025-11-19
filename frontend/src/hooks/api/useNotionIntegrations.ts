@@ -2,6 +2,7 @@ import useSWR, { type KeyedMutator } from 'swr';
 import { BackendProvider } from '@/services/backend';
 import type { NotionIntegration } from '@/shared/Integrations';
 import { notionIntegrationsKey } from "@/shared/InvalidationKeys";
+import { useOAuthSuccessListener } from '@/hooks/useOAuthSuccessListener';
 
 type UseNotionIntegrationsReturn = {
     integrations: NotionIntegration[];
@@ -22,6 +23,8 @@ export function useNotionIntegrations(): UseNotionIntegrationsReturn {
             revalidateOnReconnect: true,
         },
     );
+
+    useOAuthSuccessListener(mutate);
 
     const loading = (isLoading || (!data && !error));
 

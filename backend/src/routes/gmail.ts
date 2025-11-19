@@ -28,140 +28,11 @@ export async function getGmailIntegrations(req: Request, res: Response) {
 }
 
 /**
- * Generate Gmail OAuth URL
- */
-export async function getGmailOAuthUrl(req: Request, res: Response) {
-  console.log("getGmailOAuthUrl route hit");
-
-  if (!req.session?.user) {
-    return res.status(401).json({ error: "Unauthorized" });
-  }
-
-  try {
-    const oauth2Client = getOAuth2Client();
-
-    // Generate state for security (include user ID)
-    const state = Buffer.from(
-      JSON.stringify({
-        userId: req.session.user.id,
-        random: crypto.randomBytes(16).toString("hex"),
-      })
-    ).toString("base64");
-
-    const authUrl = oauth2Client.generateAuthUrl({
-      access_type: "offline", // Get refresh token
-      scope: SCOPES,
-      state: state,
-      prompt: "consent", // Force consent screen to get refresh token
-    });
-
-    res.json({ url: authUrl });
-  } catch (error) {
-    console.error("Error generating Gmail OAuth URL:", error);
-    res.status(500).json({ error: "Failed to generate OAuth URL" });
-  }
-}
-
-/**
  * Handle Gmail OAuth callback
  */
 export async function gmailCallback(req: Request, res: Response) {
-  const { code, state } = req.query as { code?: string; state?: string };
-
-  console.log("Gmail OAuth callback received");
-
-  if (!code || !state) {
-    return res.redirect(`${urls.frontend}/oauth/error`);
-  }
-
-  try {
-    // Decode state to get user ID
-    const stateData = JSON.parse(Buffer.from(state, "base64").toString());
-    const userId = stateData.userId;
-
-    if (!userId) {
-      return res.redirect(`${urls.frontend}/oauth/error`);
-    }
-
-    const oauth2Client = getOAuth2Client();
-
-    // Exchange code for tokens
-    const { tokens } = await oauth2Client.getToken(code);
-    oauth2Client.setCredentials(tokens);
-
-    if (!tokens.access_token || !tokens.refresh_token) {
-      return res.redirect(`${urls.frontend}/oauth/error`);
-    }
-
-    // Get user's email address
-    const gmail = google.gmail({ version: "v1", auth: oauth2Client });
-    const profile = await gmail.users.getProfile({ userId: "me" });
-    const emailAddress = profile.data.emailAddress;
-
-    if (!emailAddress) {
-      return res.redirect(`${urls.frontend}/oauth/error`);
-    }
-
-    // Set up Gmail watch
-    const watchResponse = await gmail.users.watch({
-      userId: "me",
-      requestBody: {
-        topicName: gmailConfig.pubsubTopic,
-        labelIds: ["INBOX"],
-        labelFilterAction: "include"
-      },
-    });
-
-    const historyId = watchResponse.data.historyId;
-    const expiration = watchResponse.data.expiration;
-
-    if (!historyId || !expiration) {
-      return res.redirect(`${urls.frontend}/oauth/error`);
-    }
-
-    // Calculate token expiry
-    const tokenExpiry = tokens.expiry_date
-      ? new Date(tokens.expiry_date)
-      : new Date(Date.now() + 3600 * 1000); // Default 1 hour
-
-    // Store in database and set is_active to true
-    await db().gmail_integrations.upsert({
-      where: {
-        user_id_email: {
-          user_id: userId,
-          email: emailAddress,
-        },
-      },
-      create: {
-        user_id: userId,
-        email: emailAddress,
-        history_id: historyId,
-        watch_expiration: new Date(parseInt(expiration)),
-        access_token: tokens.access_token,
-        refresh_token: tokens.refresh_token,
-        token_expiry: tokenExpiry,
-        is_active: true,
-        last_processed_message_date: new Date(), // Set initial date to prevent processing historical messages
-      },
-      update: {
-        history_id: historyId,
-        watch_expiration: new Date(parseInt(expiration)),
-        access_token: tokens.access_token,
-        refresh_token: tokens.refresh_token,
-        token_expiry: tokenExpiry,
-        is_active: true, // Reactivate if it was previously disabled
-        // Don't reset last_processed_message_date on reactivation - preserve existing value
-      },
-    });
-
-    console.log(`Gmail integration activated for ${emailAddress}`);
-
-    // Redirect to success page which will auto-close the popup
-    res.redirect(`${urls.frontend}/oauth/success`);
-  } catch (error) {
-    console.error("Gmail OAuth error:", error);
-    res.redirect(`${urls.frontend}/oauth/error`);
-  }
+  const integration = new GmailIntegrationManager();
+  await integration.processInstallationCallback(req, res);
 }
 
 /**
@@ -485,7 +356,6 @@ export async function refreshAllGmailWatches(req: Request, res: Response) {
 }
 
 export default {
-  getGmailOAuthUrl,
   gmailCallback,
   deleteGmailIntegration,
   handleGmailWebhook,

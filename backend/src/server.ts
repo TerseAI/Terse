@@ -38,7 +38,6 @@ import {
 } from "./routes/github";
 import {
   deleteGmailIntegration,
-  getGmailOAuthUrl,
   getGmailIntegrations,
   gmailCallback,
   handleGmailWebhook,
@@ -61,7 +60,6 @@ import {
   validateLinearApiKey,
 } from "./routes/linear";
 import {
-  getNotionOAuthUrl,
   notionOAuthCallback,
   getNotionResources,
   getNotionIntegrations
@@ -71,7 +69,6 @@ import { User as TicketUser } from "./shared/TicketSystem";
 import {
   handleSlackWebhook,
   getCurrentSlackIntegration,
-  getSlackOAuthUrl,
   slackOAuthCallback,
   getSlackChannels,
   getSlackIntegrations,
@@ -83,7 +80,6 @@ import { LinearWebhookPayload } from "./utility/LinearWebhookPayload";
 import {
   figmaOAuthCallback,
   getFigmaIntegrations,
-  getFigmaOAuthUrl,
   handleFigmaWebhook,
 } from "./routes/figma";
 import { getConfluenceIntegrations, getConfluenceResources, setConfluenceCredentials, validateConfluenceCredentials } from "./routes/confluence";
@@ -286,10 +282,6 @@ app.get("/gmail/integrations", authMiddleware, async (req, res) => {
   getGmailIntegrations(req, res);
 });
 
-app.get("/gmail/get-oauth-url", authMiddleware, async (req, res) => {
-  getGmailOAuthUrl(req, res);
-});
-
 app.get("/gmail/callback", async (req, res) => {
   gmailCallback(req, res);
 });
@@ -313,9 +305,6 @@ app.get("/notion/integrations", authMiddleware, async(req, res) => {
 })
 
 // OAuth endpoints
-app.get("/notion/get-oauth-url", authMiddleware, async (req, res) => {
-  getNotionOAuthUrl(req, res);
-});
 
 app.get("/notion/oauth/callback", async (req, res) => {
   notionOAuthCallback(req, res);
@@ -330,10 +319,6 @@ app.get("/notion/resources", authMiddleware, async (req, res) => {
 app.get("/figma/integrations", authMiddleware, async(req, res) => {
   getFigmaIntegrations(req, res);
 })
-
-app.get("/figma/get-oauth-url", authMiddleware, async (req, res) => {
-  getFigmaOAuthUrl(req, res);
-});
 
 app.get("/figma/oauth/callback", async (req, res) => {
   figmaOAuthCallback(req, res);
@@ -412,10 +397,6 @@ app.get("/slack/integrations", authMiddleware, async(req, res) => {
 
 app.get("/slack/get-current-integration", authMiddleware, async (req, res) => {
   getCurrentSlackIntegration(req, res);
-});
-
-app.get("/slack/get-oauth-url", authMiddleware, async (req, res) => {
-  getSlackOAuthUrl(req, res);
 });
 
 app.get("/slack/oauth-callback", async (req, res) => {

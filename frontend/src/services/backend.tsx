@@ -111,11 +111,6 @@ interface BackendService {
     getCurrentSlackIntegration(): Promise<SlackIntegration>;
 
     /**
-     * Requests a Slack OAuth URL
-     */
-    requestSlackOAuthUrl(): Promise<{ url: string }>;
-
-    /**
      * Gets the Linear API key
      */
     getLinearApiKey(): Promise<LinearIntegration>;
@@ -171,11 +166,6 @@ interface BackendService {
     getConfluenceResources(integrationId: string): Promise<ConfluenceResourcesResponse>;
 
     /**
-     * Requests a Gmail OAuth URL
-     */
-    requestGmailOAuthUrl(): Promise<{ url: string }>;
-
-    /**
      * Gets all Gmail integrations for the current user
      */
     getGmailIntegrations(): Promise<GmailIntegration[]>;
@@ -220,11 +210,6 @@ interface BackendService {
     deleteNotionIntegration(): Promise<void>;
 
     /**
-     * Gets the Notion OAuth URL
-     */
-    requestNotionOAuthUrl(): Promise<{ url: string }>;
-
-    /**
      * Gets available databases for a Notion integration
      */
     getNotionResources(integrationId: string): Promise<NotionResourcesResponse>;
@@ -233,11 +218,6 @@ interface BackendService {
      * Gets available channels for a Slack integration
      */
     getSlackChannels(integrationId: string): Promise<SlackChannelsResponse>;
-
-    /**
-     * Requests a Figma OAuth URL
-     */
-    requestFigmaOAuthUrl(): Promise<{ url: string }>;
 
     /**
      * Requests a session socket token
@@ -437,15 +417,6 @@ export const BackendProvider: BackendService = {
             });
     },
 
-    requestSlackOAuthUrl: () => {
-        return axios.get(`${backendBaseUrl}/slack/get-oauth-url`, { withCredentials: true })
-            .then(response => response.data)
-            .catch(error => {
-                console.error('Error requesting Slack OAuth URL:', error);
-                throw error;
-            });
-    },
-
     getLinearApiKey: () => {
         return axios.get(`${backendBaseUrl}/linear/get-api-key`, { withCredentials: true })
             .then(response => response.data)
@@ -550,15 +521,6 @@ export const BackendProvider: BackendService = {
             });
     },
 
-    requestGmailOAuthUrl: () => {
-        return axios.get(`${backendBaseUrl}/gmail/get-oauth-url`, { withCredentials: true })
-            .then(response => response.data)
-            .catch(error => {
-                console.error('Error requesting Gmail OAuth URL:', error);
-                throw error;
-            });
-    },
-
     getGmailIntegrations: () => {
         return axios.get<GmailIntegration[]>(`${backendBaseUrl}/gmail/integrations`, { withCredentials: true })
             .then(response => response.data)
@@ -636,24 +598,6 @@ export const BackendProvider: BackendService = {
             .then(response => response.data)
             .catch(error => {
                 console.error('Error deleting Notion integration:', error);
-                throw error;
-            });
-    },
-
-    requestNotionOAuthUrl: () => {
-        return axios.get(`${backendBaseUrl}/notion/get-oauth-url`, { withCredentials: true })
-            .then(response => response.data)
-            .catch(error => {
-                console.error('Error requesting Notion OAuth URL:', error);
-                throw error;
-            });
-    },
-
-    requestFigmaOAuthUrl: () => {
-        return axios.get(`${backendBaseUrl}/figma/get-oauth-url`, { withCredentials: true })
-            .then(response => response.data)
-            .catch(error => {
-                console.error('Error requesting Figma OAuth URL:', error);
                 throw error;
             });
     },

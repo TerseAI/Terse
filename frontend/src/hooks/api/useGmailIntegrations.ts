@@ -2,6 +2,7 @@ import useSWR, { type KeyedMutator } from 'swr';
 import { BackendProvider } from '@/services/backend';
 import type { GmailIntegration } from '@/shared/Integrations';
 import { gmailIntegrationsKey } from "@/shared/InvalidationKeys";
+import { useOAuthSuccessListener } from '@/hooks/useOAuthSuccessListener';
 
 type UseGmailIntegrationsReturn = {
     integrations: GmailIntegration[];
@@ -22,6 +23,8 @@ export function useGmailIntegrations(): UseGmailIntegrationsReturn {
             revalidateOnReconnect: true,
         },
     );
+
+    useOAuthSuccessListener(mutate);
 
     const loading = (isLoading || (!data && !error));
 

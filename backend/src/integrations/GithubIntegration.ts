@@ -11,7 +11,7 @@ import { IntegrationType } from "@prisma/client";
 import { AutomationInputWithConfigs } from "../types/prisma";
 import { RunHistoryTrigger } from "../shared/RunHistoryTypes";
 import { OAuthInstallationDetails } from "../shared/types";
-import { githubApp } from "../config/settings";
+import { githubApp, urls } from "../config/settings";
 import { Request, Response } from "express";
 
 export class GithubIntegrationManager implements Integration<GithubIntegration, GithubAppUnifiedEventRequest, typeof GithubIntegrationMetadata>, OAuthIntegrationInstallation {
@@ -56,7 +56,46 @@ export class GithubIntegrationManager implements Integration<GithubIntegration, 
     }
 
     async processInstallationCallback(req: Request, res: Response): Promise<void> {
-        return Promise.resolve();
+        const { installation_id, setup_action, state } = req.query;
+
+        console.log(
+            chalk.bgBlue.white.bold("[GitHub Setup URL Installation]"),
+            chalk.cyan("installation_id:"), chalk.yellow(installation_id),
+            chalk.cyan("setup_action:"), chalk.yellow(setup_action),
+            chalk.cyan("state:"), chalk.yellow(state)
+        );
+
+        // extract user_id from state
+        const user_id = Buffer.from(state as string, 'base64').toString('utf-8');
+
+        if (!user_id) {
+            console.error(chalk.red.bold("[GitHub Setup URL Installation]"), chalk.red("ERROR: User ID not found in state"));
+            res.status(400).json({ message: 'User ID not found in state' });
+            return;
+        }
+
+        // parse installation_id as number
+        const installation_id_number = parseInt(installation_id as string);
+        if (isNaN(installation_id_number)) {
+            console.error(chalk.red.bold("[GitHub Setup URL Installation]"), chalk.red("ERROR: Installation ID is not a number:"), installation_id);
+            res.status(400).json({ message: 'Installation ID is not a number' });
+            return;
+        }
+
+        // create a new user_github_installation record
+        await db().user_github_installation.upsert({
+            where: { installation_id: installation_id_number },
+            update: { user_id: user_id },
+            create: { user_id: user_id, installation_id: installation_id_number }
+        });
+
+        console.log(
+            chalk.green("[GitHub Setup URL Installation]"),
+            chalk.cyan("Upsert completed for installation_id:"), chalk.yellow(installation_id_number),
+            chalk.cyan("user_id:"), chalk.yellow(user_id)
+        );
+
+        res.redirect(`${urls.frontend}/oauth/success`);
     }
 
     deleteInstallation(integrationId: string): Promise<void> {
