@@ -6,11 +6,12 @@ import { OAuthInstallationDetails } from "../shared/types";
 import { GmailIntegration, GmailIntegrationMetadata, IntegrationType as SharedIntegrationType } from "../shared/Integrations";
 import chalk from "chalk";
 import { gmail_v1, google } from "googleapis";
-import { gmail as gmailConfig } from "../config/settings";
+import { gmail as gmailConfig, urls } from "../config/settings";
 import { EventProcessor } from "../agent/AutomationAgent/EventProcessor";
 import { IntegrationType } from "@prisma/client";
 import { RunHistoryTrigger } from "../shared/RunHistoryTypes";
 import { InputEvent } from "./abstract/InputEvent";
+import { Request, Response } from "express";
 
 
 // OAuth2 scopes for Gmail
@@ -188,7 +189,107 @@ export class GmailIntegrationManager implements Integration<GmailIntegration, Gm
     }
 
     async processInstallationCallback(req: Request, res: Response): Promise<void> {
-        return Promise.resolve();
+        const { code, state } = req.query as { code?: string; state?: string };
+
+        console.log("Gmail OAuth callback received");
+
+        if (!code || !state) {
+            res.redirect(`${urls.frontend}/oauth/error`);
+            return;
+        }
+
+        try {
+            // Decode state to get user ID
+            const stateData = JSON.parse(Buffer.from(state, "base64").toString());
+            const userId = stateData.userId;
+
+            if (!userId) {
+                res.redirect(`${urls.frontend}/oauth/error`);
+                return;
+            }
+
+            const oauth2Client = getOAuth2Client();
+
+            // Exchange code for tokens
+            const { tokens } = await oauth2Client.getToken(code);
+            oauth2Client.setCredentials(tokens);
+
+            if (!tokens.access_token || !tokens.refresh_token) {
+                res.redirect(`${urls.frontend}/oauth/error`);
+                return;
+            }
+
+            // Get user's email address
+            const gmail = google.gmail({ version: "v1", auth: oauth2Client });
+            const profile = await gmail.users.getProfile({ userId: "me" });
+            const emailAddress = profile.data.emailAddress;
+
+            if (!emailAddress) {
+                res.redirect(`${urls.frontend}/oauth/error`);
+                return;
+            }
+
+            // Set up Gmail watch
+            const watchResponse = await gmail.users.watch({
+                userId: "me",
+                requestBody: {
+                    topicName: gmailConfig.pubsubTopic,
+                    labelIds: ["INBOX"],
+                    labelFilterAction: "include"
+                },
+            });
+
+            const historyId = watchResponse.data.historyId;
+            const expiration = watchResponse.data.expiration;
+
+            if (!historyId || !expiration) {
+                res.redirect(`${urls.frontend}/oauth/error`);
+                return;
+            }
+
+            // Calculate token expiry
+            const tokenExpiry = tokens.expiry_date
+                ? new Date(tokens.expiry_date)
+                : new Date(Date.now() + 3600 * 1000); // Default 1 hour
+
+            // Store in database and set is_active to true
+            await db().gmail_integrations.upsert({
+                where: {
+                    user_id_email: {
+                        user_id: userId,
+                        email: emailAddress,
+                    },
+                },
+                create: {
+                    user_id: userId,
+                    email: emailAddress,
+                    history_id: historyId,
+                    watch_expiration: new Date(parseInt(expiration)),
+                    access_token: tokens.access_token,
+                    refresh_token: tokens.refresh_token,
+                    token_expiry: tokenExpiry,
+                    is_active: true,
+                    last_processed_message_date: new Date(), // Set initial date to prevent processing historical messages
+                },
+                update: {
+                    history_id: historyId,
+                    watch_expiration: new Date(parseInt(expiration)),
+                    access_token: tokens.access_token,
+                    refresh_token: tokens.refresh_token,
+                    token_expiry: tokenExpiry,
+                    is_active: true, // Reactivate if it was previously disabled
+                    // Don't reset last_processed_message_date on reactivation - preserve existing value
+                },
+            });
+
+            console.log(`Gmail integration activated for ${emailAddress}`);
+
+            // Redirect to success page which will auto-close the popup
+            res.redirect(`${urls.frontend}/oauth/success`);
+        } catch (error) {
+            console.error("Gmail OAuth error:", error);
+            res.redirect(`${urls.frontend}/oauth/error`);
+        }
     }
 
     deleteInstallation(integrationId: string): Promise<void> {

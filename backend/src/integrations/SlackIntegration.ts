@@ -2,7 +2,7 @@ import { SlackChannelType, OAuthInstallationDetails } from "../shared/types";
 import { SlackIntegration, SlackIntegrationMetadata, IntegrationType as SharedIntegrationType } from "../shared/Integrations";
 import { Integration, OAuthIntegrationInstallation } from "./abstract/Integration";
 import { Request, Response } from "express";
-import { slack as slackConfig, jwt as jwtConfig } from '../config/settings';
+import { slack as slackConfig, jwt as jwtConfig, urls } from '../config/settings';
 import crypto from 'crypto';
 import chalk from "chalk";
 import { EventProcessor } from "../agent/AutomationAgent/EventProcessor";
@@ -13,6 +13,8 @@ import { IntegrationType } from "@prisma/client";
 import { AutomationInputWithConfigs } from "../types/prisma";
 import { InputEvent } from "./abstract/InputEvent";
 import jwt from "jsonwebtoken";
+import axios from "axios";
+import { Jwt } from "../utility/jwt";
 
 export class SlackIntegrationManager implements Integration<SlackIntegration, SlackMessageEvent, typeof SlackIntegrationMetadata>, OAuthIntegrationInstallation {
     constructor() { }
@@ -123,7 +125,149 @@ export class SlackIntegrationManager implements Integration<SlackIntegration, Sl
     }
 
     async processInstallationCallback(req: Request, res: Response): Promise<void> {
-        return Promise.resolve();
+        const frontendUrl = urls.frontend;
+
+        // Check if Slack returned an error (user denied access, etc.)
+        if (req.query.error) {
+            console.error("Slack OAuth error:", req.query.error);
+            res.redirect(`${frontendUrl}/oauth/error`);
+            return;
+        }
+
+        // grab temporary code from query
+        const code = req.query.code as string;
+        const state = req.query.state as string;
+
+        if (!code || !state) {
+            console.error("Missing code or state in OAuth callback");
+            res.redirect(`${frontendUrl}/oauth/error`);
+            return;
+        }
+
+        const jwtUtil = new Jwt();
+        const user = await jwtUtil.verify(state);
+
+        if (!user) {
+            console.error("Invalid or expired state token");
+            res.redirect(`${frontendUrl}/oauth/error`);
+            return;
+        }
+
+        const client_id = slackConfig.clientId;
+        const client_secret = slackConfig.clientSecret;
+        const redirect_uri = slackConfig.oauthCallbackUrl;
+
+        try {
+            const response = await axios.post<SlackOAuthResponse>('https://slack.com/api/oauth.v2.access',
+                {
+                    code: code,
+                    client_id: client_id,
+                    client_secret: client_secret,
+                    redirect_uri: redirect_uri,
+                }, {
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                }
+            }
+            );
+
+            console.log("Slack OAuth response:", response.data);
+
+            const { access_token, authed_user, team } = response.data;
+
+            if (!response.data.ok || !team || !team.id) {
+                console.error("Slack OAuth response not ok:", response.data);
+                res.redirect(`${frontendUrl}/oauth/error`);
+                return;
+            }
+
+            // check if the slack integration already exists
+            let slackIntegration = await db().slack_integrations.findFirst({
+                where: {
+                    team_id: team.id
+                }
+            });
+
+            await db().$transaction(async (tx) => {
+                if (slackIntegration) {
+                    console.log("Slack integration already exists, continuing with adding user relation");
+                    // Update existing integration with user_scope
+                    await tx.slack_integrations.update({
+                        where: {
+                            team_id: slackIntegration.team_id
+                        },
+                        data: {
+                            app_id: response.data.app_id,
+                            bot_user_id: response.data.bot_user_id,
+                            team_id: response.data.team.id,
+                            team_name: response.data.team.name,
+                            access_token: access_token,
+                        }
+                    });
+                } else {
+                    console.log(chalk.blue("Slack integration does not exist, creating it"));
+                    slackIntegration = await tx.slack_integrations.create({
+                        data: {
+                            app_id: response.data.app_id,
+                            bot_user_id: response.data.bot_user_id,
+                            team_id: response.data.team.id,
+                            team_name: response.data.team.name,
+                            access_token: access_token,
+                        }
+                    });
+                    console.log(chalk.green("Slack integration created"));
+                }
+
+                const dmChannelId = await this.openChat(access_token, authed_user.id);
+
+                if (!dmChannelId || !dmChannelId.id) {
+                    console.error("Error opening chat");
+                    throw new Error('Failed to open chat');
+                }
+
+                await tx.user_slack_integrations.upsert({
+                    where: {
+                        user_id_slack_team_id: {
+                            user_id: user.id,
+                            slack_team_id: slackIntegration.team_id,
+                        }
+                    },
+                    update: {
+                        authed_user_id: authed_user.id,
+                        authed_user_access_token: authed_user.access_token,
+                    },
+                    create: {
+                        user_id: user.id,
+                        slack_team_id: slackIntegration.team_id,
+                        authed_user_id: authed_user.id,
+                        authed_user_access_token: authed_user.access_token,
+                    }
+                });
+            });
+
+            console.log("Slack OAuth completed successfully");
+            res.redirect(`${frontendUrl}/oauth/success`);
+        } catch (error) {
+            console.error('Error exchanging code for access token:', error);
+            res.redirect(`${frontendUrl}/oauth/error`);
+        }
+    }
+
+    private async openChat(accessToken: string, authedUserId: string) {
+        try {
+            const client = new WebClient(accessToken, {
+                logLevel: LogLevel.DEBUG
+            });
+
+            const { channel } = await client.conversations.open({
+                users: authedUserId
+            });
+
+            return channel;
+        } catch (error) {
+            console.error('Error opening chat:', error);
+            return null;
+        }
     }
 
     deleteInstallation(integrationId: string): Promise<void> {
@@ -779,4 +923,28 @@ interface SlackAuthorizations {
     user_id: string;
     is_bot: boolean;
     is_enterprise_install: boolean;
+}
+
+/**
+ * Slack OAuth response interface
+ */
+interface SlackOAuthResponse {
+    ok: boolean;
+    access_token: string;
+    token_type: string;
+    bot_user_id: string;
+    app_id: string;
+    team: {
+        name: string;
+        id: string;
+    };
+    enterprise: {
+        name: string;
+        id: string;
+    };
+    authed_user: {
+        id: string;
+        access_token: string;
+        token_type: string;
+    };
 }

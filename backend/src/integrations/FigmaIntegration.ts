@@ -19,7 +19,7 @@ import {
 } from "../shared/types";
 import { FigmaIntegration, FigmaIntegrationMetadata, IntegrationType as SharedIntegrationType } from "../shared/Integrations";
 import jwt from "jsonwebtoken";
-import { figma as figmaConfig, jwt as jwtConfig } from "../config/settings";
+import { figma as figmaConfig, jwt as jwtConfig, urls } from "../config/settings";
 import { Request, Response } from "express";
 
 export class FigmaIntegrationManager implements Integration<FigmaIntegration, FigmaWebhookEvent, typeof FigmaIntegrationMetadata>, OAuthIntegrationInstallation {
@@ -99,7 +99,141 @@ export class FigmaIntegrationManager implements Integration<FigmaIntegration, Fi
     }
 
     async processInstallationCallback(req: Request, res: Response): Promise<void> {
-        return Promise.resolve();
+        const { code, state, error } = req.query;
+
+        if (error) {
+            console.error(chalk.red("Figma OAuth error:"), error);
+            res.redirect(`${urls.frontend}/oauth/error`);
+            return;
+        }
+
+        if (!code || !state) {
+            res.status(400).json({ error: "Missing code or state parameter" });
+            return;
+        }
+        try {
+            // Verify state token to prevent CSRF attacks
+            const decoded = jwt.verify(state as string, jwtConfig.secret) as {
+                userId: string;
+                timestamp: number;
+            };
+
+            // Exchange authorization code for access token
+            // Figma requires application/x-www-form-urlencoded format
+            const params = new URLSearchParams({
+                redirect_uri: figmaConfig.redirectUrl,
+                code: code as string,
+                grant_type: "authorization_code",
+            });
+
+            const tokenResponse = await fetch("https://api.figma.com/v1/oauth/token", {
+                method: "POST",
+                headers: {
+                    Authorization: `Basic ${Buffer.from(
+                        `${figmaConfig.clientId}:${figmaConfig.clientSecret}`
+                    ).toString("base64")}`,
+                    "Content-Type": "application/x-www-form-urlencoded",
+                },
+                body: params.toString(),
+            });
+
+            if (!tokenResponse.ok) {
+                const errorText = await tokenResponse.text();
+                console.error(chalk.red("Figma token exchange failed:"), errorText);
+                throw new Error(`Figma token exchange failed: ${errorText}`);
+            }
+
+            const tokenData = await tokenResponse.json();
+            const { access_token, refresh_token, expires_in, user_id_string } = tokenData;
+
+            console.log(
+                chalk.blue("🔑 Received Figma access token for user"),
+                chalk.yellow(decoded.userId)
+            );
+            console.log(
+                chalk.blue("👤 Figma User ID:"),
+                chalk.yellow(user_id_string)
+            );
+            console.log(
+                chalk.blue("Expires in:"),
+                chalk.yellow(expires_in)
+            );
+
+            // Calculate token expiry
+            const tokenExpiry = new Date(Date.now() + (expires_in * 1000));
+
+            // Fetch user info from Figma API to get email
+            let userEmail: string | null = null;
+            try {
+                const userInfoResponse = await fetch("https://api.figma.com/v1/me", {
+                    method: "GET",
+                    headers: {
+                        "Authorization": `Bearer ${access_token}`,
+                    },
+                });
+
+                if (userInfoResponse.ok) {
+                    const userInfo = await userInfoResponse.json();
+                    userEmail = userInfo.email || null;
+                    console.log(
+                        chalk.blue("📧 Figma User Email:"),
+                        chalk.yellow(userEmail || "Not available")
+                    );
+                }
+            } catch (error) {
+                console.error(chalk.yellow("⚠️  Could not fetch Figma user email (non-critical):"), error);
+                // Continue without email - it's not critical
+            }
+
+            // Check if a connection for this Figma user already exists
+            const existing = await db().figma_integrations.findFirst({
+                where: {
+                    user_id: decoded.userId,
+                    figma_user_id: user_id_string,
+                },
+            });
+
+            if (!existing) {
+                await db().figma_integrations.create({
+                    data: {
+                        user_id: decoded.userId,
+                        figma_user_id: user_id_string,
+                        access_token: access_token,
+                        refresh_token: refresh_token || null,
+                        token_expiry: tokenExpiry,
+                    },
+                });
+                console.log(
+                    chalk.green("✅ Created Figma connection for user"),
+                    chalk.yellow(decoded.userId)
+                );
+            } else {
+                // Update existing connection with new token (in case it was revoked and re-authorized)
+                await db().figma_integrations.update({
+                    where: { id: existing.id },
+                    data: {
+                        access_token: access_token,
+                        refresh_token: refresh_token || null,
+                        token_expiry: tokenExpiry,
+                    },
+                });
+                console.log(
+                    chalk.green("✅ Updated Figma connection token for user"),
+                    chalk.yellow(decoded.userId)
+                );
+            }
+
+            console.log(
+                chalk.green("✅ Figma OAuth completed for user"),
+                chalk.yellow(decoded.userId)
+            );
+
+            // Redirect to success page which will auto-close the popup
+            res.redirect(`${urls.frontend}/oauth/success`);
+        } catch (error) {
+            console.error(chalk.red("Error in Figma OAuth callback:"), error);
+            res.redirect(`${urls.frontend}/oauth/error`);
+        }
     }
 
     deleteInstallation(integrationId: string): Promise<void> {

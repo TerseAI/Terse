@@ -2,6 +2,7 @@ import useSWR, { type KeyedMutator } from 'swr';
 import { BackendProvider } from '@/services/backend';
 import type { SlackIntegration } from '@/shared/Integrations';
 import { slackIntegrationsKey } from "@/shared/InvalidationKeys";
+import { useOAuthSuccessListener } from '@/hooks/useOAuthSuccessListener';
 
 type UseSlackIntegrationsReturn = {
     integrations: SlackIntegration[];
@@ -22,6 +23,8 @@ export function useSlackIntegrations(): UseSlackIntegrationsReturn {
             revalidateOnReconnect: true,
         },
     );
+
+    useOAuthSuccessListener(mutate);
 
     const loading = (isLoading || (!data && !error));
 
