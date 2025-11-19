@@ -3,7 +3,7 @@ import { Button } from '../ui/button';
 import DropdownSelect from '../ui/DropdownSelect';
 import { AtlassianConnectionForm } from '../AtlassianConnectionForm';
 import { AtlassianIntegration, INTEGRATION_METADATA, IntegrationType } from "@/shared/Integrations"
-import { ConfluenceConfig } from '../../shared/types';
+import { ConfluenceConfig } from '../../shared/Configs';
 import { BaseIntegrationProps } from './types';
 import { ConfluenceResourceSelector } from '../ConfluenceResourceSelector';
 import { useAtlassianIntegrations } from '@/hooks/api/useAtlassianIntegrations';

@@ -1,6 +1,7 @@
 import { forwardRef, useState, useImperativeHandle, useRef } from "react";
 import { IntegrationType } from "../../shared/Integrations"
-import { AutomationInput, GitHubConfig } from "../../shared/types";
+import { AutomationInput } from "../../shared/types";
+import { GitHubConfig } from "@/shared/Configs";
 import { SectionLayout } from "./components/SectionLayout";
 import { AddInputModal } from "./components/AddInputModal";
 import { Zap, Plus, Settings, AlertTriangle } from "lucide-react";
@@ -11,7 +12,7 @@ import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTi
 import { IntegrationTitle } from "./components/IntegrationTitle";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { FigmaConfig, GmailConfig, NotionConfig, SlackConfig } from "@/shared/types";
+import { FigmaConfig, GmailConfig, NotionConfig, SlackConfig } from "@/shared/Configs";
 import { isInputComplete } from "../../utility/IntegrationUtils";
 import { v4 as uuidv4 } from 'uuid';
 

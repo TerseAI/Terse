@@ -1,5 +1,5 @@
 import { IntegrationType } from "@/shared/Integrations"
-import { NotionConfig, NotionPageConfig, SlackConfig, FigmaConfig, ConfluenceConfig, GmailConfig, GitHubConfig } from '../../shared/types';
+import { NotionConfig, NotionPageConfig, SlackConfig, FigmaConfig, ConfluenceConfig, GmailConfig, GitHubConfig } from '../../shared/Configs';
 
 export interface IntegrationSelectorProps {
     integrationType: IntegrationType;

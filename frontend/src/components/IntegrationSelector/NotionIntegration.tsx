@@ -3,7 +3,8 @@ import { Button } from '../ui/button';
 import DropdownSelect from '../ui/DropdownSelect';
 import { NotionResourceSelector } from '../NotionResourceSelector';
 import { INTEGRATION_METADATA, IntegrationType, NotionIntegration as NotionIntegrationType } from "@/shared/Integrations"
-import { NotionConfig, NotionPageConfig, NotionResourceType } from '../../shared/types';
+import { NotionConfig, NotionPageConfig } from '../../shared/Configs';
+import { NotionResourceType } from '@/shared/types';
 import { BaseIntegrationProps } from './types';
 import { useNotionIntegrations } from '@/hooks/api/useNotionIntegrations';
 import { useOAuthConnection } from '@/hooks/useOAuthConnection';

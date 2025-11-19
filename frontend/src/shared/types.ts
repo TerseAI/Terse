@@ -1,5 +1,6 @@
 import { Project, Ticket } from "./TicketSystem";
 import { IntegrationType } from "./Integrations";
+import { ConfluenceConfig, JiraConfig, LinearConfig, NotionConfig, NotionPageConfig, SlackConfig, GmailConfig, FigmaConfig, GitHubConfig } from "./Configs";
 
 export type User = {
   id: string;
@@ -109,53 +110,6 @@ export enum SlackChannelType {
 }
 
 
-// export type IntegrationsStatus = {
-//   integrations: {
-//     github?: GithubIntegration[];
-//     linear?: LinearIntegration[];
-//     jira?: JiraIntegration[];
-//     slack?: SlackIntegration[];
-//     gmail?: GmailIntegration[];
-//     notion?: NotionIntegration[];
-//     figma?: FigmaIntegration[];
-//     confluence?: ConfluenceIntegration[];
-//   };
-// };
-
-// Typed config per integration type
-export type SlackConfig = {
-  channelId?: string;
-  channelName?: string;
-  listenToUserDms?: boolean;
-};
-
-export type NotionConfig = {
-  databaseId?: string;
-  databaseName?: string;
-};
-
-export type NotionPageConfig = {
-  pageId?: string;
-  pageName?: string;
-};
-
-export type LinearConfig = {
-  projectId?: string;
-  projectName?: string;
-};
-
-export type JiraConfig = {
-  projectKey?: string;
-  projectId?: string;
-};
-
-export type ConfluenceConfig = {
-  spaceName: string;
-  spaceId: string;
-  pageId: string; // Page ID (required for outputs - specific page to write to)
-  pageName: string; // Page display name (for UI, optional)
-};
-
 export type ConfluencePage = {
   id: string;
   title: string;
@@ -192,22 +146,6 @@ export type UseConfluenceResourcesReturn<MutateType = any> = {
   error: unknown;
   isValidating: boolean;
   mutate: MutateType;
-};
-
-export type GitHubConfig = {
-  repositoryIds: number[];
-  // Note: owner and name not needed - they're part of repository identity
-  // Future: branch, path filters
-};
-
-export type GmailConfig = {
-  // Currently empty, but typed for future extensibility
-};
-
-export type FigmaConfig = {
-  fileKey: string;
-  fileName: string; // Optional display name
-  teamId: string; // Figma team ID (required for webhook creation)
 };
 
 // Figma webhook and API types
