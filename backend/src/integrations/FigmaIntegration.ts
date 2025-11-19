@@ -1,10 +1,9 @@
 import { Integration, OAuthIntegrationInstallation } from "./abstract/Integration";
 import { db } from "../prismaClient";
 import { User, AutomationInputWithConfigs } from "../types/prisma";
-import { figma_integrations } from "@prisma/client";
+import { figma_integrations, InputConfigType } from "@prisma/client";
 import chalk from "chalk";
 import { EventProcessor } from "../agent/AutomationAgent/EventProcessor";
-import { IntegrationType } from "@prisma/client";
 import { RunHistoryTrigger } from "../shared/RunHistoryTypes";
 import { InputEvent } from "./abstract/InputEvent";
 import {
@@ -17,7 +16,7 @@ import {
     FigmaApiComment,
     OAuthInstallationDetails,
 } from "../shared/types";
-import { FigmaIntegration, FigmaIntegrationMetadata, IntegrationType as SharedIntegrationType } from "../shared/Integrations";
+import { FigmaIntegration, FigmaIntegrationMetadata, IntegrationType } from "../shared/Integrations";
 import jwt from "jsonwebtoken";
 import { figma as figmaConfig, jwt as jwtConfig, urls } from "../config/settings";
 import { Request, Response } from "express";
@@ -385,7 +384,7 @@ export class FigmaCommentEvent extends InputEvent {
 
     matchesAutomationInput(automationInput: AutomationInputWithConfigs): boolean {
         // Check if integration type matches
-        if (automationInput.integration_type !== IntegrationType.FIGMA) {
+        if (automationInput.config_type !== InputConfigType.FIGMA) {
             return false;
         }
 
@@ -407,7 +406,7 @@ export class FigmaCommentEvent extends InputEvent {
         
         return {
             event: 'comment_added',
-            integration: SharedIntegrationType.FIGMA,
+            integration: IntegrationType.FIGMA,
             source: this.data.fileKey,
             title: this.data.message.substring(0, 100), // First 100 chars of comment
             subheader: subheader,

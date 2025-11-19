@@ -3,12 +3,12 @@ import crypto from "crypto";
 import { db } from "../prismaClient";
 import { AutomationInputWithConfigs, GmailIntegration as PrismaGmailIntegration, User } from "../types/prisma";
 import { OAuthInstallationDetails } from "../shared/types";
-import { GmailIntegration, GmailIntegrationMetadata, IntegrationType as SharedIntegrationType } from "../shared/Integrations";
+import { GmailIntegration, GmailIntegrationMetadata, IntegrationType } from "../shared/Integrations";
 import chalk from "chalk";
 import { gmail_v1, google } from "googleapis";
 import { gmail as gmailConfig, urls } from "../config/settings";
 import { EventProcessor } from "../agent/AutomationAgent/EventProcessor";
-import { IntegrationType } from "@prisma/client";
+import { InputConfigType } from "@prisma/client";
 import { RunHistoryTrigger } from "../shared/RunHistoryTypes";
 import { InputEvent } from "./abstract/InputEvent";
 import { Request, Response } from "express";
@@ -330,7 +330,7 @@ export class GmailEvent extends InputEvent {
 
     matchesAutomationInput(automationInput: AutomationInputWithConfigs): boolean {
         // Check if integration type matches
-        if (automationInput.integration_type !== IntegrationType.GMAIL) {
+        if (automationInput.config_type !== InputConfigType.GMAIL) {
             return false;
         }
 
@@ -359,7 +359,7 @@ export class GmailEvent extends InputEvent {
 
         return {
             event: 'email_received',
-            integration: SharedIntegrationType.GMAIL,
+            integration: IntegrationType.GMAIL,
             source: this.data.to || 'Gmail',
             title: this.data.subject,
             subheader: this.data.from,

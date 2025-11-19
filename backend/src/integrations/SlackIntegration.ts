@@ -1,5 +1,5 @@
 import { SlackChannelType, OAuthInstallationDetails } from "../shared/types";
-import { SlackIntegration, SlackIntegrationMetadata, IntegrationType as SharedIntegrationType } from "../shared/Integrations";
+import { SlackIntegration, SlackIntegrationMetadata } from "../shared/Integrations";
 import { Integration, OAuthIntegrationInstallation } from "./abstract/Integration";
 import { Request, Response } from "express";
 import { slack as slackConfig, jwt as jwtConfig, urls } from '../config/settings';
@@ -9,12 +9,14 @@ import { EventProcessor } from "../agent/AutomationAgent/EventProcessor";
 import { db } from "../prismaClient";
 import { LogLevel, WebClient } from "@slack/web-api";
 import { RunHistoryTrigger } from "../shared/RunHistoryTypes";
-import { IntegrationType } from "@prisma/client";
 import { AutomationInputWithConfigs } from "../types/prisma";
 import { InputEvent } from "./abstract/InputEvent";
 import jwt from "jsonwebtoken";
 import axios from "axios";
 import { Jwt } from "../utility/jwt";
+import { IntegrationType } from "../shared/Integrations";
+import { ConfigType } from "src/shared/Configs";
+import { InputConfigType } from "@prisma/client";
 
 export class SlackIntegrationManager implements Integration<SlackIntegration, SlackMessageEvent, typeof SlackIntegrationMetadata>, OAuthIntegrationInstallation {
     constructor() { }
@@ -306,7 +308,7 @@ export class SlackEvent extends InputEvent {
 
     matchesAutomationInput(automationInput: AutomationInputWithConfigs): boolean {
         // Check if integration type matches
-        if (automationInput.integration_type !== IntegrationType.SLACK) {
+        if (automationInput.config_type !== InputConfigType.SLACK) {
             return false;
         }
 
@@ -336,7 +338,7 @@ export class SlackEvent extends InputEvent {
     createTriggerMetadata(): RunHistoryTrigger {
         return {
             event: 'message_received',
-            integration: SharedIntegrationType.SLACK,
+            integration: IntegrationType.SLACK,
             source: this.data.channelName || this.data.channelId,
             title: this.data.text.substring(0, 100), // First 100 chars of message
             subheader: this.data.userName || this.data.userId,

@@ -1,21 +1,22 @@
 import chalk from 'chalk';
-import { IntegrationType } from '@prisma/client';
+import { InputConfigType, IntegrationType } from '@prisma/client';
 import { db } from '../prismaClient';
 import { AutomationInputManager } from './AutomationInputManager';
 import { FigmaAutomationInputManager } from './FigmaAutomationInput';
+import { AutomationInputWithConfigs, AutomationWithRelations } from 'src/types/prisma';
 
 /**
  * Registry of automation input managers by integration type
  */
-const automationInputManagers = new Map<IntegrationType, AutomationInputManager>([
-    [IntegrationType.FIGMA, new FigmaAutomationInputManager()],
+const automationInputManagers = new Map<InputConfigType, AutomationInputManager>([
+    [InputConfigType.FIGMA, new FigmaAutomationInputManager()],
 ]);
 
 /**
  * Helper function to get AutomationInputManager from IntegrationType
  */
-function getAutomationInputManager(integrationType: IntegrationType): AutomationInputManager | null {
-    return automationInputManagers.get(integrationType) || null;
+function getAutomationInputManager(configType: InputConfigType): AutomationInputManager | null {
+    return automationInputManagers.get(configType) || null;
 }
 
 /**
@@ -55,19 +56,19 @@ export class AutomationInputSetup {
             }
 
             for (const input of automation.inputs) {
-                const inputManager = getAutomationInputManager(input.integration_type);
+                const inputManager = getAutomationInputManager(input.config_type);
                 if (inputManager) {
                     try {
                         await inputManager.setupAutomationInput(input.integration_id, input);
                         console.log(
                             chalk.green(
-                                `✅ Setup completed for ${input.integration_type} input (ID: ${input.id})`
+                                `✅ Setup completed for ${input.config_type} input (ID: ${input.id})`
                             )
                         );
                     } catch (error) {
                         console.error(
                             chalk.red(
-                                `❌ Error setting up ${input.integration_type} input (ID: ${input.id}):`
+                                `❌ Error setting up ${input.config_type} input (ID: ${input.id}):`
                             ),
                             error
                         );
@@ -110,19 +111,19 @@ export class AutomationInputSetup {
             }
 
             for (const input of automation.inputs) {
-                const inputManager = getAutomationInputManager(input.integration_type);
+                const inputManager = getAutomationInputManager(input.config_type);
                 if (inputManager) {
                     try {
                         await inputManager.teardownAutomationInput(input.integration_id, input);
                         console.log(
                             chalk.green(
-                                `✅ Teardown completed for ${input.integration_type} input`
+                                `✅ Teardown completed for ${input.config_type} input`
                             )
                         );
                     } catch (error) {
                         console.error(
                             chalk.red(
-                                `❌ Error tearing down ${input.integration_type}:`
+                                `❌ Error tearing down ${input.config_type}:`
                             ),
                             error
                         );

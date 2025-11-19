@@ -1,10 +1,10 @@
 import { Integration } from "./abstract/Integration";
 import { db } from "../prismaClient";
 import { AtlassianIntegration, AtlassianIntegrationMetadata } from "../shared/Integrations";
-import { IntegrationType } from "@prisma/client";
+import { IntegrationType } from "../shared/Integrations";
 
 export class AtlassianIntegrationManager implements Integration<AtlassianIntegration, never, typeof AtlassianIntegrationMetadata> {
-    integrationType: IntegrationType = IntegrationType.CONFLUENCE;
+    integrationType: IntegrationType = IntegrationType.ATLASSIAN;
     constructor() { }
 
     async getInstancesForUser(userId: string): Promise<AtlassianIntegration[]> {

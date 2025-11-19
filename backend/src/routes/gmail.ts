@@ -6,6 +6,7 @@ import { db } from "../prismaClient";
 import { GmailIntegration} from "../types/prisma";
 import { gmail as gmailConfig, urls, cloudScheduler } from "../config/settings";
 import { getOAuth2Client, GmailIntegrationManager, GmailWebhookEvent } from "../integrations/GmailIntegration";
+import { InputConfigType } from "@prisma/client";
 
 // OAuth2 scopes for Gmail
 const SCOPES = ["https://www.googleapis.com/auth/gmail.readonly"];
@@ -80,7 +81,7 @@ export async function deleteGmailIntegration(req: Request, res: Response) {
     // Clean up automation inputs/outputs that reference this Gmail integration
     await db().automation_inputs.deleteMany({
       where: {
-        integration_type: "GMAIL",
+        config_type: InputConfigType.GMAIL,
         integration_id: integration.id,
       },
     });

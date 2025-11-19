@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { IntegrationRegistry } from "../integrations/abstract/IntegrationRegistry";
+import { INTEGRATION_REGISTRY } from "../integrations/abstract/IntegrationRegistry";
 import { 
     Integration,
     isOAuthIntegrationInstallation
@@ -32,7 +32,7 @@ export const getIntegrationInstallationDetails = async (req: Request, res: Respo
 }
 
 const getInstallationInformation = async (integration: IntegrationType, userId: string): Promise<OAuthInstallationDetails> => {
-    const integrationInstance = IntegrationRegistry.find(instance => instance.integrationType === convertIntegrationTypeToPrismaIntegrationType(integration));
+    const integrationInstance = INTEGRATION_REGISTRY.find(instance => instance.integrationType === integration);
     if (!integrationInstance) {
         throw new Error(`Integration ${integration} not found`);
     }
@@ -51,9 +51,9 @@ export async function getActiveIntegrations(req: Request, res: Response) {
     }
     const userId = req.session.user.id;
 
-    const activeIntegrations: IntegrationType[] = IntegrationRegistry
+    const activeIntegrations: IntegrationType[] = INTEGRATION_REGISTRY
         .filter(integration => integrationHasInstances(integration, userId))
-        .map(integration => convertPrismaIntegrationTypeToIntegrationType(integration.integrationType));
+        .map(integration => integration.integrationType);
 
     res.json(activeIntegrations);
 }

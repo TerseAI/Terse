@@ -401,7 +401,7 @@ model automation_prompts {
 model automation_inputs {
   id               String          @id @default(cuid())
   automation_id    String
-  integration_type IntegrationType
+  config_type      InputConfigType
   integration_id   String
   created_at       DateTime        @default(now())
   updated_at       DateTime        @updatedAt
@@ -420,7 +420,7 @@ model automation_inputs {
   figma_config       automation_figma_configs?
 
   @@index([automation_id])
-  @@index([integration_type, integration_id])
+  @@index([config_type, integration_id])
 }
 
 // Single output per automation
@@ -643,6 +643,18 @@ enum IntegrationType {
   NOTION
   NOTION_PAGE
   FIGMA
+}
+
+enum InputConfigType {
+  GMAIL
+  FIGMA
+  SLACK
+  NOTION_PAGE
+  NOTION_DATABASE
+  LINEAR
+  GITHUB
+  JIRA
+  CONFLUENCE
 }
 
 // Run History enums to mirror backend/shared RunHistoryTypes

@@ -12,7 +12,7 @@ import { IntegrationInstance, IntegrationDetails } from "../../shared/Integratio
 type IntegrationWithInstallation = Integration<IntegrationInstance, any, IntegrationDetails> & (OAuthIntegrationInstallation);
 
 
-export const IntegrationRegistry: Array<IntegrationWithInstallation> = [
+export const INTEGRATION_REGISTRY: Array<IntegrationWithInstallation> = [
     //new AtlassianIntegrationManager(),
     new FigmaIntegrationManager(),
     new GithubIntegrationManager(),
