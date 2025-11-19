@@ -2,6 +2,7 @@ import { Integration } from "./abstract/Integration";
 import { db } from "../prismaClient";
 import { LinearIntegration, LinearIntegrationMetadata } from "../shared/Integrations";
 import { IntegrationType } from "../shared/Integrations";
+import { AutomationInputWithConfigs } from "../types/prisma";
 
 export class LinearIntegrationManager implements Integration<LinearIntegration, never, typeof LinearIntegrationMetadata> {
     constructor() { }
@@ -33,6 +34,16 @@ export class LinearIntegrationManager implements Integration<LinearIntegration, 
 
     deleteInstallation(integrationId: string): Promise<void> {
         return Promise.resolve();
+    }
+
+    async setupAutomationInput(integrationId: string, automationInput: AutomationInputWithConfigs): Promise<void> {
+        // Linear doesn't require any setup for automation inputs
+        // Webhooks are managed at the integration level
+    }
+
+    async teardownAutomationInput(integrationId: string, automationInput: AutomationInputWithConfigs): Promise<void> {
+        // Linear doesn't require any teardown for automation inputs
+        // Webhooks are managed at the integration level
     }
 }
 

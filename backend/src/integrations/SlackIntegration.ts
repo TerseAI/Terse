@@ -275,6 +275,16 @@ export class SlackIntegrationManager implements Integration<SlackIntegration, Sl
     deleteInstallation(integrationId: string): Promise<void> {
         return Promise.resolve();
     }
+
+    async setupAutomationInput(integrationId: string, automationInput: AutomationInputWithConfigs): Promise<void> {
+        // Slack doesn't require any setup for automation inputs
+        // Webhooks are managed at the integration level
+    }
+
+    async teardownAutomationInput(integrationId: string, automationInput: AutomationInputWithConfigs): Promise<void> {
+        // Slack doesn't require any teardown for automation inputs
+        // Webhooks are managed at the integration level
+    }
 }
 
 // MARK: - SLACK Event
