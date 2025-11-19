@@ -1,6 +1,5 @@
 import { Project, Ticket } from "./TicketSystem";
-import { IntegrationType } from "./Integrations";
-import { ConfluenceConfig, JiraConfig, LinearConfig, NotionConfig, NotionPageConfig, SlackConfig, GmailConfig, FigmaConfig, GitHubConfig, ConfigInstance, ConfigType } from "./Configs";
+import { ConfigInstance, ConfigType } from "./Configs";
 
 export type User = {
   id: string;

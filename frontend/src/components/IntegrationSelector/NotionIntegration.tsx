@@ -59,7 +59,15 @@ export function NotionIntegration({
         label: integration.workspaceName || 'Unknown Workspace',
         value: integration.id
     }));
-    const selectedOption = connectionSelections.find(option => option.value === currentConfig?.integrationId) || connectionSelections[0];
+
+    let selectedOption = connectionSelections.find(option => option.value === currentConfig?.integrationId)
+    if (!selectedIntegrationId && !selectedOption && connectionSelections.length == 1) {
+        const defaultIntegration = connectionSelections[0];
+        setSelectedIntegrationId(defaultIntegration.value);
+        selectedOption = defaultIntegration
+    } else if (!selectedOption) {
+        selectedOption = connectionSelections[0];
+    }
 
     // Card variant: compact view
     if (variant === 'card') {
