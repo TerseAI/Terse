@@ -1,6 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
 import { Badge } from "../components/ui/badge";
-import { TrendingUp, TrendingDown, Activity, Zap, Hash, Clock, BarChart3, PlayCircle, Settings } from "lucide-react";
+import { TrendingUp, TrendingDown, Activity, Zap, Hash, Clock, BarChart3, PlayCircle, Settings, Plus } from "lucide-react";
 import { AppsList } from "../components/Automation/AppsList";
 import { Automation } from "../shared/types";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "../components/ui/chart";
@@ -8,14 +8,17 @@ import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts";
 import { RunHistoryAction } from "../shared/RunHistoryTypes";
 import { IconForIntegration } from "../pages/Automations/components/Integration";
 import { ScrollArea } from "../components/ui/scroll-area";
-import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "../components/ui/empty";
+import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "../components/ui/empty";
 import { IntegrationType } from "../shared/Integrations";
 import { useRecentAutomations } from "../hooks/api/useRecentAutomations";
 import { formatRelativeTime } from "../utility/timeUtils";
+import { useNavigate } from "react-router-dom";
+import { Button } from "../components/ui/button";
 
 function Home() {
     // Flag to easily test empty states - set to false to see empty states
     const USE_MOCK_DATA = true;
+    const navigate = useNavigate();
 
     const { automations: recentAutomationsData, isLoading: isLoadingAutomations } = useRecentAutomations(3);
 
@@ -54,7 +57,7 @@ function Home() {
     const recentAutomations = recentAutomationsData.map(automation => ({
         ...automation,
         lastEdited: formatRelativeTime(automation.updatedAt),
-        lastEventProcessedAt: automation.lastEventProcessedAt 
+        lastEventProcessedAt: automation.lastEventProcessedAt
             ? formatRelativeTime(automation.lastEventProcessedAt)
             : "Never",
     }));
@@ -122,7 +125,7 @@ function Home() {
     ] : [];
 
     return (
-        <div className="mx-auto p-8 space-y-8"> 
+        <div className="mx-auto p-8 space-y-8">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {metrics.map((metric) => (
                     <MetricCard key={metric.label} {...metric} />
@@ -141,26 +144,26 @@ function Home() {
                                 <ChartContainer config={chartConfig} className="h-[300px]">
                                     <AreaChart data={eventsPerDay}>
                                         <CartesianGrid strokeDasharray="3 3" />
-                                        <XAxis 
-                                            dataKey="date" 
+                                        <XAxis
+                                            dataKey="date"
                                             tickLine={false}
                                             axisLine={false}
                                             tickMargin={8}
                                         />
-                                        <YAxis 
+                                        <YAxis
                                             tickLine={false}
                                             axisLine={false}
                                             tickMargin={8}
                                         />
-                                        <ChartTooltip 
+                                        <ChartTooltip
                                             cursor={false}
                                             content={<ChartTooltipContent indicator="dot" />}
                                         />
-                                        <Area 
-                                            type="monotone" 
-                                            dataKey="events" 
-                                            stroke="var(--color-events)" 
-                                            fill="var(--color-events)" 
+                                        <Area
+                                            type="monotone"
+                                            dataKey="events"
+                                            stroke="var(--color-events)"
+                                            fill="var(--color-events)"
                                             fillOpacity={0.2}
                                         />
                                     </AreaChart>
@@ -230,21 +233,28 @@ function Home() {
                         ))}
                     </div>
                 ) : (
-                    <Card>
-                        <CardContent className="py-12">
-                            <Empty className="border-0">
-                                <EmptyHeader>
-                                    <EmptyMedia variant="icon">
-                                        <Settings className="text-primary" />
-                                    </EmptyMedia>
-                                    <EmptyTitle>No automations yet</EmptyTitle>
-                                    <EmptyDescription>
-                                        Create your first automation to start automating your workflow
-                                    </EmptyDescription>
-                                </EmptyHeader>
-                            </Empty>
-                        </CardContent>
-                    </Card>
+
+                    <Empty className="border-0">
+                        <EmptyHeader>
+                            <EmptyMedia variant="icon">
+                                <Settings className="text-primary" />
+                            </EmptyMedia>
+                            <EmptyTitle>No automations yet</EmptyTitle>
+                            <EmptyDescription>
+                                Create your first automation to start automating your workflow
+                            </EmptyDescription>
+                        </EmptyHeader>
+                        <EmptyContent>
+                            <Button
+                                variant="default"
+                                onClick={() => navigate('/app/automations/new')}
+                            >
+                                <Plus className="h-4 w-4" />
+                                Create Automation
+                            </Button>
+                        </EmptyContent>
+                    </Empty>
+
                 )}
             </div>
         </div>
@@ -273,8 +283,8 @@ function MetricCard({ label, value, change, trend, description, subtext, icon: I
                         <p className="text-sm text-muted-foreground mb-2">{label}</p>
                         <div className="flex items-baseline gap-2">
                             <h2 className="text-3xl font-bold">{value}</h2>
-                            <Badge 
-                                variant="outline" 
+                            <Badge
+                                variant="outline"
                                 className={`${trendColor} border-muted bg-muted/50`}
                             >
                                 <TrendIcon className="h-3 w-3" />
@@ -314,7 +324,7 @@ function AutomationCard({ automation }: AutomationCardProps) {
                             {automation.name}
                         </CardTitle>
                         <div className="flex items-center gap-2 flex-wrap">
-                            <Badge 
+                            <Badge
                                 variant={automation.isActive ? "default" : "outline"}
                                 className="text-xs"
                             >
