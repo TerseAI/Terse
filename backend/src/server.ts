@@ -82,10 +82,9 @@ import {
   handleFigmaWebhook,
 } from "./routes/figma";
 import { getConfluenceIntegrations, getConfluenceResources, setConfluenceCredentials, validateConfluenceCredentials } from "./routes/confluence";
-import { getActiveIntegrations, getIntegrationInstallationDetails } from "./routes/integrations";
+import { getAllIntegrations, getActiveIntegrations, getIntegrationInstallationDetails } from "./routes/integrations";
 import { initializeRealtimeSocket } from "./realtimeSocket";
 import { RunHistoryAction } from "./shared/RunHistoryTypes";
-import { settings } from "./config/settings";
 
 export type Session = {
   user: User;
@@ -425,10 +424,13 @@ app.get("/integrations/:integrationType/installation-details", authMiddleware, a
   getIntegrationInstallationDetails(req, res);
 });
 
+app.get("/integrations", authMiddleware, async (req, res) => {
+  getAllIntegrations(req, res);
+});
+
 app.get("/integrations/active", authMiddleware, async (req, res) => {
   getActiveIntegrations(req, res);
 });
-
 server.listen(3001, () => {
   console.log("🚀 Express backend running on http://localhost:3001");
   console.log("📝 Logging is enabled - all console.log statements should appear");

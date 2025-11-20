@@ -5,8 +5,7 @@ import {
     isOAuthIntegrationInstallation
 } from "../integrations/abstract/Integration";
 import { OAuthInstallationDetails } from "../shared/types";
-import { IntegrationDetails, IntegrationInstance, IntegrationType } from "../shared/Integrations";
-import { convertIntegrationTypeToPrismaIntegrationType, convertPrismaIntegrationTypeToIntegrationType } from "../utility/typeConverters";
+import { IntegrationDetails, IntegrationInstance, IntegrationType, IntegrationWithStatus } from "../shared/Integrations";
 
 
 export const getIntegrationInstallationDetails = async (req: Request, res: Response) => {
@@ -44,6 +43,26 @@ const getInstallationInformation = async (integration: IntegrationType, userId: 
     throw new Error(`Integration ${integration} does not support installation`);
 }
 
+export async function getAllIntegrations(req: Request, res: Response) {
+    if (!req.session?.user) {
+        res.status(401).json({ error: 'Unauthorized' });
+        return;
+    }
+    const userId = req.session.user.id;
+
+    const hasInstancesResults = await Promise.all(
+        INTEGRATION_REGISTRY.map(integration => integrationHasInstances(integration, userId))
+    );
+
+    const integrations: IntegrationWithStatus[] = INTEGRATION_REGISTRY.map((integration, index) => ({
+        integrationType: integration.integrationType,
+        isActive: hasInstancesResults[index],
+    }));
+
+    res.json(integrations);
+}
+
+// Keep for backwards compatibility
 export async function getActiveIntegrations(req: Request, res: Response) {
     if (!req.session?.user) {
         res.status(401).json({ error: 'Unauthorized' });
