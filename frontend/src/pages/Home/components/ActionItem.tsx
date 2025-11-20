@@ -21,10 +21,7 @@ export function ActionItem({ action }: ActionItemProps) {
                     </span>
                 </div>
                 <p className="text-xs text-muted-foreground mb-1">
-                    {action.automationName}
-                </p>
-                <p className="text-xs text-muted-foreground">
-                    {action.target} • {action.details}
+                    {action.automationName} • {action.details}
                 </p>
             </div>
         </div>

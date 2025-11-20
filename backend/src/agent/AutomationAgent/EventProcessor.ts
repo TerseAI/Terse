@@ -230,14 +230,12 @@ async function persistRunResult<T extends Session>(
     automation: Automation,
     approvalResult?: ApprovalResult<T, Agent<T, AgentOutputType>> | null
 ): Promise<ProcessorResult<T>> {
-    // Check if session has runActions (NotionSession and future session types may have this)
     if (session.runActions) {
         for (const action of session.runActions) {
             try {
                 await appendRunAction(runId, action);
-                // Invalidate all run history queries for this automation, regardless of params
-                // The frontend will match on tag='runHistory' and id=automationId
                 emitCacheInvalidationWithWildcard(session.user.id, 'runHistory', automation.id);
+                emitCacheInvalidationWithKey(session.user.id, 'recentActions');
             } catch (e) {
                 console.error(chalk.yellow('Failed to append run action'), e);
             }
