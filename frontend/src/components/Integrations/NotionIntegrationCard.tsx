@@ -4,6 +4,7 @@ import { Card, CardContent } from "../ui/card";
 import { IntegrationType } from "@/shared/Integrations"
 import { IntegrationCardHeader } from "./helpers/IntegrationCardHeader";
 import { IntegrationCardFooter } from "./helpers/IntegrationCardFooter";
+import { IntegrationItem } from "./helpers/IntegrationItem";
 import { useOAuthConnection } from "@/hooks/useOAuthConnection";
 import { CountDisplay } from "./helpers/CountDisplay";
 import { useNotionResources } from "@/hooks/api/useNotionResources";
@@ -58,29 +59,23 @@ function NotionCardContent({ integrations, resources, isLoading }: { integration
     return (
         <div className="space-y-2">
             {integrations.map((integration) => (
-                <div
+                <IntegrationItem
                     key={integration.id}
-                    className="flex items-center gap-3 p-3 rounded-lg border border-border bg-card hover:bg-accent/50 transition-colors group"
-                >
-                    <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
-                        <BookOpen className="w-4 h-4 text-primary" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                        <div className="text-sm font-medium text-foreground truncate">
-                            {integration.workspaceName || 'Unknown Workspace'}
-                        </div>
-                        <div className="flex items-center gap-4 text-xs text-muted-foreground mt-0.5">
-                            <div className="flex items-center gap-1">
+                    icon={<BookOpen className="w-4 h-4" />}
+                    title={integration.workspaceName || 'Unknown Workspace'}
+                    description={
+                        <span className="flex items-center gap-4">
+                            <span className="flex items-center gap-1">
                                 <FileText className="size-3" />
                                 <PagesCount numberOfPages={numberOfPages} isLoading={isLoading} />
-                            </div>
-                            <div className="flex items-center gap-1">
+                            </span>
+                            <span className="flex items-center gap-1">
                                 <Database className="size-3" />
                                 <DatabaseCount numberOfDatabases={numberOfDatabases} isLoading={isLoading} />
-                            </div>
-                        </div>
-                    </div>
-                </div>
+                            </span>
+                        </span>
+                    }
+                />
             ))}
         </div>
     );
