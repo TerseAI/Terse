@@ -85,6 +85,7 @@ import { getConfluenceIntegrations, getConfluenceResources, setConfluenceCredent
 import { getActiveIntegrations, getIntegrationInstallationDetails } from "./routes/integrations";
 import { initializeRealtimeSocket } from "./realtimeSocket";
 import { RunHistoryAction } from "./shared/RunHistoryTypes";
+import { settings } from "./config/settings";
 
 export type Session = {
   user: User;
@@ -94,6 +95,9 @@ export type Session = {
   currentUser?: TicketUser;
   runActions?: RunHistoryAction[];
 };
+
+console.log("Node Env:", settings.nodeEnv);
+
 
 const app = express();
 const server = createServer(app);
