@@ -3,7 +3,7 @@ import { db } from "../prismaClient";
 import { LinearIntegration, LinearIntegrationMetadata } from "../shared/Integrations";
 import { IntegrationType } from "../shared/Integrations";
 import { AutomationInputWithConfigs } from "../types/prisma";
-import { OAuthInstallationDetails } from "src/shared/types";
+import { OAuthInstallationDetails } from "../shared/types";
 import jwt from "jsonwebtoken";
 import { settings } from "../config/settings";
 import { Request, Response } from "express";

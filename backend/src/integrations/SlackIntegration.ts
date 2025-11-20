@@ -15,7 +15,7 @@ import jwt from "jsonwebtoken";
 import axios from "axios";
 import { Jwt } from "../utility/jwt";
 import { IntegrationType } from "../shared/Integrations";
-import { ConfigType } from "src/shared/Configs";
+import { ConfigType } from "../shared/Configs";
 import { InputConfigType } from "@prisma/client";
 
 export class SlackIntegrationManager implements Integration<SlackIntegration, SlackMessageEvent, typeof SlackIntegrationMetadata>, OAuthIntegrationInstallation {

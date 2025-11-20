@@ -4,7 +4,7 @@ import { Tool } from "@openai/agents";
 import { Session } from "../../server";
 import { AutomationOutput, PrismaTransaction, User } from "../../types/prisma";
 import { OutputConfigType } from "@prisma/client";
-import { ConfigInstance } from "src/shared/Configs";
+import { ConfigInstance } from "../../shared/Configs";
 // You can only have one output at a time. Basically, it's just a specific integration + a toolbox to modify the content.
 // For Notion, we should support multiple integrations with the same account. 
 
