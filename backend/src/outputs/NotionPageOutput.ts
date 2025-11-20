@@ -1,6 +1,6 @@
 import { RunHistoryAction } from "../shared/RunHistoryTypes";
 import { RunContext, Tool, tool } from "@openai/agents";
-import { AutomationNotionPageConfig, AutomationOutput, NotionIntegration, PrismaTransaction, User } from "../types/prisma";
+import { ChannelNotionPageConfig, ChannelOutput, NotionIntegration, PrismaTransaction, User } from "../types/prisma";
 import { Session } from "../server";
 import { Client } from '@notionhq/client';
 import { z } from "zod";
@@ -11,10 +11,11 @@ import { GetPageResponse, PageObjectResponse } from "@notionhq/client/build/src/
 import { IntegrationType } from "../shared/Integrations";
 import { OutputConfigType } from "@prisma/client";
 import { NotionPageConfig } from "../shared/Configs";
+import { getBlockTypeName, describeBlocks } from "../utility/notion";
 
 export interface NotionPageSession extends Session {
     notionIntegration: NotionIntegration; // Top level integration record
-    notionPageConfig: AutomationNotionPageConfig; // Configuration for the Specific Notion Page
+    notionPageConfig: ChannelNotionPageConfig; // Configuration for the Specific Notion Page
     // Collect actions here (report-only); DB writes happen after agent finishes
     runActions?: RunHistoryAction[];
 }
@@ -30,7 +31,7 @@ export class NotionPageOutput extends Output<NotionPageSession, NotionPageConfig
 
     async createSessionFromConfig(
         integrationId: string,
-        automationOutputConfig: AutomationOutput,
+        channelOutputConfig: ChannelOutput,
         user: User
     ): Promise<NotionPageSession> {
         const integration = await db().notion_integrations.findFirst({
@@ -41,21 +42,21 @@ export class NotionPageOutput extends Output<NotionPageSession, NotionPageConfig
             throw new Error(`Notion integration ${integrationId} not found`);
         }
 
-        const notionPageConfig: AutomationNotionPageConfig | null = await db().automation_notion_page_configs.findFirst({
-            where: { automation_output_id: automationOutputConfig.id }
+        const notionPageConfig: ChannelNotionPageConfig | null = await db().automation_notion_page_configs.findFirst({
+            where: { automation_output_id: channelOutputConfig.id }
         });
 
         if (!notionPageConfig) {
-            throw new Error(`Notion page config for automation output ${automationOutputConfig.id} not found`);
+            throw new Error(`Notion page config for automation output ${channelOutputConfig.id} not found`);
         }
 
         return { notionIntegration: integration, notionPageConfig: notionPageConfig, user: user, isUserInitiated: true, runActions: [] };
     }
 
-    async addOutputToAutomation(tx: PrismaTransaction, automationOutputId: string, output: NotionPageConfig): Promise<void> {
+    async addOutputToChannel(tx: PrismaTransaction, channelOutputId: string, output: NotionPageConfig): Promise<void> {
         await tx.automation_notion_page_configs.create({
             data: {
-                automation_output_id: automationOutputId,
+                automation_output_id: channelOutputId,
                 page_id: output.pageId || '',
                 page_name: output.pageName || '',
             },
@@ -460,12 +461,14 @@ Example: "[{\"operation\": \"append\", \"blocks\": [{\"object\": \"block\", \"ty
                     });
 
                     // Report action
+                    const blockDescription = describeBlocks(op.blocks);
+                    const pageName = runContext.context.notionPageConfig.page_name || 'Notion page';
                     runContext.context.runActions = runContext.context.runActions || [];
                     runContext.context.runActions.push({
-                        action: 'append_blocks',
+                        action: 'Added content',
                         integration: IntegrationType.NOTION,
-                        target: runContext.context.notionPageConfig.page_id || runContext.context.notionPageConfig.page_name,
-                        details: `Added ${response.results.length} block(s)`,
+                        target: pageName,
+                        details: `Added ${response.results.length} ${response.results.length === 1 ? 'item' : 'items'}: ${blockDescription}`,
                     });
                 } else if (op.operation === 'update') {
                     if (!op.block_id) {
@@ -500,12 +503,14 @@ Example: "[{\"operation\": \"append\", \"blocks\": [{\"object\": \"block\", \"ty
                     });
 
                     // Report action
+                    const pageName = runContext.context.notionPageConfig.page_name || 'Notion page';
+                    const blockType = getBlockTypeName(op.block);
                     runContext.context.runActions = runContext.context.runActions || [];
                     runContext.context.runActions.push({
-                        action: 'update_block',
+                        action: 'Updated content',
                         integration: IntegrationType.NOTION,
-                        target: runContext.context.notionPageConfig.page_id ||  runContext.context.notionPageConfig.page_name,
-                        details: 'Block updated',
+                        target: pageName,
+                        details: `Updated ${blockType}`,
                     });
                 } else if (op.operation === 'delete') {
                     if (!op.block_id) {
@@ -531,12 +536,13 @@ Example: "[{\"operation\": \"append\", \"blocks\": [{\"object\": \"block\", \"ty
                     });
 
                     // Report action
+                    const pageName = runContext.context.notionPageConfig.page_name || 'Notion page';
                     runContext.context.runActions = runContext.context.runActions || [];
                     runContext.context.runActions.push({
-                        action: 'delete_block',
+                        action: 'Removed content',
                         integration: IntegrationType.NOTION,
-                        target: runContext.context.notionPageConfig.page_id || runContext.context.notionPageConfig.page_name,
-                        details: 'Block deleted',
+                        target: pageName,
+                        details: 'Removed content block',
                     });
                 } else {
                     results.push({

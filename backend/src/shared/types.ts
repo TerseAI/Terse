@@ -285,57 +285,62 @@ export interface FigmaCommentEventData {
   imageUrls?: FigmaCommentImageUrls;
 }
 
-export type AutomationInput = {
+export type ChannelInput = {
   id: string;
   config: ConfigInstance;
 };
 
-export type AutomationOutput = {
+export type ChannelOutput = {
   id: string;
   config: ConfigInstance;
 };
 
-export type AutomationPrompt = {
+export type ChannelPrompt = {
   text: string;
 };
 
-export type TransientAutomationInput = {
+export type TransientChannelInput = {
   id: string;
   config?: ConfigInstance;
   configType: ConfigType;
 };
 
-export type TransientAutomationOutput = {
+export type TransientChannelOutput = {
   id: string;
   config?: ConfigInstance;
   configType: ConfigType;
 };
 
-export type Automation = {
+export type Channel = {
     id: string;
     name: string;
     isActive: boolean;
-    prompt: AutomationPrompt;
-    inputs: AutomationInput[];
-    output: AutomationOutput;
+    prompt: ChannelPrompt;
+    inputs: ChannelInput[];
+    output: ChannelOutput;
 };
 
-export type AutomationUpdate = {
+export type ChannelUpdate = {
     name?: string;
-    inputs?: AutomationInput[];
-    output?: AutomationOutput;
-    prompt?: AutomationPrompt;
+    inputs?: ChannelInput[];
+    output?: ChannelOutput;
+    prompt?: ChannelPrompt;
     isActive?: boolean;
 };
 
-export type AutomationsResponse = {
-    automations: Automation[];
+export type ChannelsResponse = {
+    channels: Channel[];
     pagination: {
         page: number;
         limit: number;
         total: number;
         totalPages: number;
     };
+};
+
+export type RecentChannel = Channel & {
+  updatedAt: string;
+  lastEventProcessedAt: string | null;
 };
 
 export type GithubAppInstallationCallbackRequest = {
@@ -362,4 +367,40 @@ export type GetGithubRepositoriesForIntegrationResponse = {
 
 export type OAuthInstallationDetails = {
   oauthUrl: string;
+}
+
+export enum DayOfWeek {
+  Sun = "Sun",
+  Mon = "Mon",
+  Tue = "Tue",
+  Wed = "Wed",
+  Thu = "Thu",
+  Fri = "Fri",
+  Sat = "Sat",
+}
+
+export interface DailyEventCount {
+  date: DayOfWeek;
+  events: number;
+}
+
+export interface RecentAction {
+  action: string;
+  integration: string; // IntegrationType as string
+  target: string;
+  details: string;
+  url?: string;
+  timestamp: string; // ISO date string
+  channelName: string;
+}
+
+export interface StatsResponse {
+  totalEventsProcessed: number;
+  totalEventsProcessedChange: string; // Percentage change from previous period
+  actionsTaken: number;
+  actionsTakenChange: string; // Percentage change from previous period
+  numberOfChannels: number;
+  numberOfChannelsChange: string; // Absolute change (e.g., "+2")
+  dailyEvents: DailyEventCount[]; // Events per day for the last 7 days
+  recentActions: RecentAction[]; // Recent actions (last 10)
 }

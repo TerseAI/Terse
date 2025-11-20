@@ -71,11 +71,11 @@ export const slackIntegrationsKey = (): readonly [string] => {
 };
 
 export const runHistoryKey = (
-    automationId: string,
+    channelId: string,
     params?: GetRunHistoryParams
 ): readonly [string, string, string] | readonly [string, string] => {
     if (!params || Object.keys(params).length === 0) {
-        return ['runHistory', automationId] as const;
+        return ['runHistory', channelId] as const;
     }
     
     // Yea we may need to rethink how we do this. I think it may be better to just fetch all params and fiter on the client.
@@ -89,5 +89,16 @@ export const runHistoryKey = (
         }
     }
     const serializedParams = JSON.stringify(sortedParams);
-    return ['runHistory', automationId, serializedParams] as const;
+    return ['runHistory', channelId, serializedParams] as const;
+};
+
+export const recentChannelsKey = (limit?: number): readonly [string, number] | readonly [string] => {
+    if (limit !== undefined) {
+        return ['recentChannels', limit] as const;
+    }
+    return ['recentChannels'] as const;
+};
+
+export const statsKey = (): readonly [string] => {
+    return ['stats'] as const;
 };

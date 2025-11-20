@@ -146,7 +146,7 @@ export async function githubAppInstallationDeleted(req: Request, res: Response) 
         res.status(200).json({ message: 'Repositories removed from user' });
     });
 
-    // TODO: We need to invalidate Automations that were dependent on these repositories. This is a more general issue we don't account for yet.
+    // TODO: We need to invalidate Channels that were dependent on these repositories. This is a more general issue we don't account for yet.
 
     emitCacheInvalidationWithKey(body.username, 'integrations');
 }

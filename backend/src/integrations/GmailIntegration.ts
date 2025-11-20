@@ -1,13 +1,13 @@
 import { Integration, OAuthIntegrationInstallation } from "./abstract/Integration";
 import crypto from "crypto";
 import { db } from "../prismaClient";
-import { AutomationInputWithConfigs, GmailIntegration as PrismaGmailIntegration, User } from "../types/prisma";
+import { ChannelInputWithConfigs, GmailIntegration as PrismaGmailIntegration, User } from "../types/prisma";
 import { OAuthInstallationDetails } from "../shared/types";
 import { GmailIntegration, GmailIntegrationMetadata, IntegrationType } from "../shared/Integrations";
 import chalk from "chalk";
 import { gmail_v1, google } from "googleapis";
 import { gmail as gmailConfig, urls } from "../config/settings";
-import { EventProcessor } from "../agent/AutomationAgent/EventProcessor";
+import { EventProcessor } from "../agent/ChannelAgent/EventProcessor";
 import { InputConfigType } from "@prisma/client";
 import { RunHistoryTrigger } from "../shared/RunHistoryTypes";
 import { InputEvent } from "./abstract/InputEvent";
@@ -134,10 +134,10 @@ export class GmailIntegrationManager implements Integration<GmailIntegration, Gm
                         let hasSuccess = false;
                         for (const result of results) {
                             if (result.success) {
-                                console.log(chalk.green(`Email processed successfully by automation: ${result.automation?.name}`));
+                                console.log(chalk.green(`Email processed successfully by channel: ${result.channel?.name || 'unknown'}`));
                                 hasSuccess = true;
                             } else {
-                                console.log(chalk.gray(`Automation "${result.automation?.name || 'unknown'}" skipped: ${result.message}`));
+                                console.log(chalk.gray(`Channel "${result.channel?.name || 'unknown'}" skipped: ${result.message}`));
                             }
                         }
 
@@ -296,13 +296,13 @@ export class GmailIntegrationManager implements Integration<GmailIntegration, Gm
         return Promise.resolve();
     }
 
-    async setupAutomationInput(integrationId: string, automationInput: AutomationInputWithConfigs): Promise<void> {
-        // Gmail doesn't require any setup for automation inputs
+    async setupChannelInput(integrationId: string, channelInput: ChannelInputWithConfigs): Promise<void> {
+        // Gmail doesn't require any setup for channel inputs
         // Webhooks are managed at the integration level
     }
 
-    async teardownAutomationInput(integrationId: string, automationInput: AutomationInputWithConfigs): Promise<void> {
-        // Gmail doesn't require any teardown for automation inputs
+    async teardownChannelInput(integrationId: string, channelInput: ChannelInputWithConfigs): Promise<void> {
+        // Gmail doesn't require any teardown for channel inputs
         // Webhooks are managed at the integration level
     }
 }
@@ -319,7 +319,7 @@ export class GmailEvent extends InputEvent {
         this.integrationId = integrationId;
     }
 
-    formatForAutomationAgent(): string {
+    formatForChannelAgent(): string {
         return `
         Incoming Email Event.
 
@@ -338,13 +338,13 @@ export class GmailEvent extends InputEvent {
         return `Gmail Event: ${this.data.subject} message ID: ${this.data.messageId}`;
     }
 
-    matchesAutomationInput(automationInput: AutomationInputWithConfigs): boolean {
+    matchesChannelInput(channelInput: ChannelInputWithConfigs): boolean {
         // Check if integration type matches
-        if (automationInput.config_type !== InputConfigType.GMAIL) {
+        if (channelInput.config_type !== InputConfigType.GMAIL) {
             return false;
         }
 
-        // If the event is not in the INBOX, it doesn't match the automation input
+        // If the event is not in the INBOX, it doesn't match the channel input
         if (!this.data.labelIds.includes('INBOX')) {
             console.log(chalk.gray(`Skipping email ${this.data.messageId} because it is not in the INBOX with label ids: ${this.data.labelIds}`));
             return false;
@@ -352,8 +352,8 @@ export class GmailEvent extends InputEvent {
 
         // If integrationId is set, it must match the automation's integration_id
         // This ensures automations are only triggered by emails from their configured integration
-        if (this.integrationId && automationInput.integration_id !== this.integrationId) {
-            console.log(chalk.gray(`Skipping email ${this.data.messageId} - integration ID mismatch: event from ${this.integrationId}, automation expects ${automationInput.integration_id}`));
+        if (this.integrationId && channelInput.integration_id !== this.integrationId) {
+            console.log(chalk.gray(`Skipping email ${this.data.messageId} - integration ID mismatch: event from ${this.integrationId}, channel expects ${channelInput.integration_id}`));
             return false;
         }
 

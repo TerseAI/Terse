@@ -78,7 +78,7 @@ export async function deleteGmailIntegration(req: Request, res: Response) {
       console.warn("Error stopping Gmail watch:", stopError);
     }
 
-    // Clean up automation inputs/outputs that reference this Gmail integration
+    // Clean up channel inputs/outputs that reference this Gmail integration
     await db().automation_inputs.deleteMany({
       where: {
         config_type: InputConfigType.GMAIL,
@@ -87,7 +87,7 @@ export async function deleteGmailIntegration(req: Request, res: Response) {
     });
 
     // Note: Gmail is not a valid output type (only NOTION_PAGE, NOTION_DATABASE, CONFLUENCE are supported)
-    // No automation_outputs to delete for Gmail integrations
+    // No channel outputs to delete for Gmail integrations
 
     // Set is_active to false instead of deleting
     await db().gmail_integrations.update({

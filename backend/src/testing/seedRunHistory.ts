@@ -8,7 +8,7 @@ function daysAgo(n: number): Date {
   return d;
 }
 
-export async function seedRunHistory(automationId: string): Promise<void> {
+export async function seedRunHistory(channelId: string): Promise<void> {
   const samples = [
     {
       timestamp: daysAgo(0),
@@ -55,7 +55,7 @@ export async function seedRunHistory(automationId: string): Promise<void> {
 
     const rec = await (prisma as any).run_history_records.create({
       data: {
-        automation_id: automationId,
+        channel_id: channelId,
         timestamp,
         event: template.trigger.event,
         trigger_integration: template.trigger.integration as any,
@@ -86,10 +86,10 @@ export async function seedRunHistory(automationId: string): Promise<void> {
   }
 }
 
-export async function clearRunHistory(automationId: string): Promise<void> {
-  // Find all run history record ids for this automation
+export async function clearRunHistory(channelId: string): Promise<void> {
+  // Find all run history record ids for this channel
   const records: Array<{ id: string }> = await (prisma as any).run_history_records.findMany({
-    where: { automation_id: automationId },
+    where: { channel_id: channelId },
     select: { id: true },
   });
 
@@ -112,23 +112,23 @@ async function main(): Promise<void> {
   const arg2 = process.argv[2];
   const arg3 = process.argv[3];
   if (!arg2) {
-    console.error('Usage:\n  Seed:  node dist/testing/seedRunHistory.js <automationId>\n  Clear: node dist/testing/seedRunHistory.js --clear <automationId>');
+    console.error('Usage:\n  Seed:  node dist/testing/seedRunHistory.js <channelId>\n  Clear: node dist/testing/seedRunHistory.js --clear <channelId>');
     process.exit(1);
   }
   if (arg2 === '--clear') {
-    const automationId = arg3;
-    if (!automationId) {
-      console.error('Please provide an automationId to clear.');
+    const channelId = arg3;
+    if (!channelId) {
+      console.error('Please provide an channelId to clear.');
       process.exit(1);
     }
-    await clearRunHistory(automationId);
-    console.log('Cleared run history for automation', automationId);
+    await clearRunHistory(channelId);
+    console.log('Cleared run history for channel', channelId);
     return;
   }
 
-  const automationId = arg2;
-  await seedRunHistory(automationId);
-  console.log('Seeded run history for automation', automationId);
+  const channelId = arg2;
+  await seedRunHistory(channelId);
+  console.log('Seeded run history for channel', channelId);
 }
 
 // Execute when run directly (compiled output path)

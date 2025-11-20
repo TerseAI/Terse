@@ -1,12 +1,8 @@
 import { Request, Response } from "express";
 import chalk from "chalk";
 import { db } from "../prismaClient";
-import { JiraAdapter } from "../ticketing/jira";
 import { JiraWebhookPayload } from "../utility/JiraWebhookPayload";
-import { findUserById, getUserTicketManager } from "../types/user";
-import { search } from "../searchClient";
 import { AtlassianIntegrationManager } from "../integrations/AtlassianIntegration";
-import { InputConfigType } from "@prisma/client";
 
 export async function getJiraIntegrations(req: Request, res: Response) {
     if (!req.session?.user) {

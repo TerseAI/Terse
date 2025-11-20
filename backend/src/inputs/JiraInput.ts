@@ -11,7 +11,7 @@ export class JiraInput implements Input<JiraConfig> {
         this.integrationManager = new AtlassianIntegrationManager();
     }
 
-    async addInputToAutomation(tx: PrismaTransaction, automationInputId: string, input: JiraConfig): Promise<void> {
+    async addInputToChannel(tx: PrismaTransaction, automationInputId: string, input: JiraConfig): Promise<void> {
         await tx.automation_jira_configs.create({
             data: {
                 automation_input_id: automationInputId,

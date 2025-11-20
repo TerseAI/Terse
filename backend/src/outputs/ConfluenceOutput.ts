@@ -1,6 +1,6 @@
 import { RunHistoryAction } from "../shared/RunHistoryTypes";
 import { AtlassianIntegration, IntegrationType } from "../shared/Integrations";
-import { AutomationOutput, User, AutomationConfluenceConfig, PrismaTransaction } from "../types/prisma";
+import { ChannelOutput, User, ChannelConfluenceConfig, PrismaTransaction } from "../types/prisma";
 import { Session } from "../server";
 import { Output, ToolboxEntry } from "./abstract/Output";
 import { db } from "../prismaClient";
@@ -15,7 +15,7 @@ import { ConfluenceConfig } from "../shared/Configs";
 
 export interface ConfluenceSession extends Session {
     atlassianIntegration: AtlassianIntegration; // Top level integration record
-    confluenceConfig: AutomationConfluenceConfig; // Configuration for the Specific Confluence Database
+    confluenceConfig: ChannelConfluenceConfig; // Configuration for the Specific Confluence Database
     apiToken: string; // API token stored separately (not in shared type for security)
 }
 
@@ -30,7 +30,7 @@ export class ConfluenceOutput extends Output<ConfluenceSession, ConfluenceConfig
 
     async createSessionFromConfig(
         integrationId: string,
-        automationOutputConfig: AutomationOutput,
+        channelOutputConfig: ChannelOutput,
         user: User
     ): Promise<ConfluenceSession> {
         // Check OAuth integrations first
@@ -42,12 +42,12 @@ export class ConfluenceOutput extends Output<ConfluenceSession, ConfluenceConfig
             throw new Error(`Confluence integration ${integrationId} not found`);
         }
 
-        const confluenceConfig: AutomationConfluenceConfig | null = await db().automation_confluence_configs.findFirst({
-            where: { automation_output_id: automationOutputConfig.id }
+        const confluenceConfig: ChannelConfluenceConfig | null = await db().automation_confluence_configs.findFirst({
+            where: { automation_output_id: channelOutputConfig.id }
         });
 
         if (!confluenceConfig) {
-            throw new Error(`Confluence config for automation output ${automationOutputConfig.id} not found`);
+            throw new Error(`Confluence config for automation output ${channelOutputConfig.id} not found`);
         }
 
         const integrationId_final = oauthIntegration?.id
@@ -71,10 +71,10 @@ export class ConfluenceOutput extends Output<ConfluenceSession, ConfluenceConfig
         };
     }
 
-    async addOutputToAutomation(tx: PrismaTransaction, automationOutputId: string, output: ConfluenceConfig): Promise<void> {
+    async addOutputToChannel(tx: PrismaTransaction, channelOutputId: string, output: ConfluenceConfig): Promise<void> {
         await tx.automation_confluence_configs.create({
             data: {
-                automation_output_id: automationOutputId,
+                automation_output_id: channelOutputId,
                 space_name: output.spaceName,
                 space_id: output.spaceId,
                 page_id: output.pageId,
@@ -432,12 +432,16 @@ To find the correct position, first call confluence_query_page to see the page c
             const commentResponse = await response.json() as InlineCommentResponse;
 
             // Report action
+            const pageName = runContext.context.confluenceConfig.page_name || 'Confluence page';
+            const commentPreview = comment_text.length > 60 
+                ? comment_text.substring(0, 60) + '...' 
+                : comment_text;
             runContext.context.runActions = runContext.context.runActions || [];
             runContext.context.runActions.push({
-                action: 'add_inline_comment',
+                action: 'Added Inline comment',
                 integration: IntegrationType.ATLASSIAN,
-                target: runContext.context.confluenceConfig.page_id || runContext.context.confluenceConfig.page_name || 'unknown',
-                details: `Added inline comment at position ${startPos}-${endPos}: ${comment_text.substring(0, 50)}${comment_text.length > 50 ? '...' : ''}`,
+                target: pageName,
+                details: commentPreview,
             });
 
             return {
