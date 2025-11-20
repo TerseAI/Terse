@@ -6,6 +6,7 @@ import { GitHubIntegration } from './GitHubIntegration';
 import { FigmaIntegration } from './FigmaIntegration';
 import { LinearIntegration } from './LinearIntegration';
 import { ConfluenceIntegration } from './ConfluenceIntegration';
+import { JiraIntegration } from './JiraIntegration';
 import { ConfigType } from "@/shared/Configs";
 
 export function IntegrationSelector(props: InputConfigSelectorProps) {
@@ -60,6 +61,14 @@ export function IntegrationSelector(props: InputConfigSelectorProps) {
             );
 
         case ConfigType.JIRA:
+            return (
+                <JiraIntegration
+                    input={props.input}
+                    variant={props.variant}
+                    setConfig={props.setConfig}
+                />
+            );
+
         case ConfigType.CONFLUENCE:
             return (
                 <ConfluenceIntegration

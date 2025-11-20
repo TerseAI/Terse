@@ -123,22 +123,29 @@ export async function getConfluenceResources(req: Request, res: Response) {
         return res.status(400).json({ success: false, error: 'integrationId is required' });
     }
 
-    const integration = await db().jira_api_keys.findFirst({
+    // Check OAuth integrations first
+    const oauthIntegration = await db().atlassian_integrations.findFirst({
         where: {
             id: integrationId,
             user_id: user.id,
         },
     });
-    if (!integration) {
+
+    if (!oauthIntegration) {
         return res.status(404).json({ success: false, error: 'Integration not found' });
     }
 
+    // Determine which type of integration we have and get the appropriate token
+    const baseUrl = oauthIntegration?.base_url
+    const email = oauthIntegration?.jira_user_email
+    const token = oauthIntegration?.access_token
+
     const client = new ConfluenceClient({
-        host: integration.base_url,
+        host: baseUrl,
         authentication: {
             basic: {
-                email: integration.jira_user_email,
-                apiToken: integration.api_token,
+                email: email,
+                apiToken: token,
             }
         },
     });

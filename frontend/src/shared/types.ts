@@ -56,11 +56,22 @@ export type JiraProject = {
   id: string;
   key: string;
   name: string;
+  projectTypeKey?: string;
 };
 
 export type JiraCredentialsValidationResponse = {
   valid: boolean;
   projects?: JiraProject[];
+  error?: string;
+};
+
+export type JiraResourcesResponse = {
+  success: boolean;
+  resources: {
+    projects: Array<{ id: string; key: string; name: string; projectTypeKey: string }>;
+    baseUrl: string;
+    cloudId: string;
+  };
   error?: string;
 };
 
