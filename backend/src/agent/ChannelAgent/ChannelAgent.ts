@@ -1,6 +1,6 @@
 import { Agent, AgentInputItem, run, AgentOutputType, Tool, RunResult, RunState, RunToolApprovalItem } from '@openai/agents';
 import { Session } from '../../server';
-import { systemPrompt } from '../ChannelAgent/SystemPrompt';
+import { systemPrompt } from './SystemPrompt';
 import { InputEvent } from '../../integrations/abstract/InputEvent';
 import { Output } from '../../outputs/abstract/Output';
 import { ChannelInput, ChannelOutput, ChannelPrompt } from '../../types/prisma';

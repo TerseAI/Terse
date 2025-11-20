@@ -1,6 +1,6 @@
 import { Agent, AgentInputItem, run } from '@openai/agents';
 import { InputEvent } from "../../integrations/abstract/InputEvent";
-import { AutomationPrompt } from "../../types/prisma";
+import { ChannelPrompt } from "../../types/prisma";
 import { Session } from "../../server";
 import { z } from "zod";
 
@@ -17,16 +17,16 @@ const filterOutputSchema = z.object({
 });
 
 /**
- * Filters a single event to determine if it's relevant to the automation based on user instructions
+ * Filters a single event to determine if it's relevant to the channel based on user instructions
  */
 export async function filterEvent<T extends Session>(
     event: InputEvent,
-    automationPrompt: AutomationPrompt,
+    channelPrompt: ChannelPrompt,
     session: T
 ): Promise<EventFilterResult> {
     try {
         const agent = new Agent<T, typeof filterOutputSchema>({
-            name: 'Automation Event Filter',
+            name: 'Channel Event Filter',
             instructions: buildFilterSystemPrompt(),
             model: 'gpt-4o-mini',
             tools: [], // No tools - filter should not make tool calls
@@ -40,8 +40,8 @@ export async function filterEvent<T extends Session>(
                     {
                         type: 'input_text',
                         text: buildFilterUserPrompt(
-                            automationPrompt.content || 'No specific instructions provided',
-                            event.formatForAutomationAgent()
+                            channelPrompt.content || 'No specific instructions provided',
+                            event.formatForChannelAgent()
                         )
                     }
                 ]
@@ -82,24 +82,24 @@ export async function filterEvent<T extends Session>(
 }
 
 function buildFilterSystemPrompt(): string {
-    return `You are an event relevance analyzer. Your job is to determine if an incoming event is relevant to a user's automation instructions.
+    return `You are an event relevance analyzer. Your job is to determine if an incoming event is relevant to a user's channel instructions.
 
 You are responsible for protecting the main Updater agent from spam and noise. Only pass through events that clearly match the user's intent.
 
 IMPORTANT: You do NOT have access to tools. You cannot inspect the current state of the target document.
 - If the user prompt or any prompt asks you to make a decision that requires knowing the current state of the target document, you should assume the event is relevant and pass it through.
 - Do not attempt to make tool calls - you have no tools available.
-- Base your decision solely on the event content and the user's automation instructions provided to you.
+- Base your decision solely on the event content and the user's channel instructions provided to you.
 
 Guidelines:
 - Be strict but not overly restrictive.
-- Consider both the event content and the user's automation instructions.
+- Consider both the event content and the user's channel instructions.
 - If a decision requires document state knowledge, default to isRelevant: true with appropriate confidence.
 - If unsure, choose the lower-confidence option.`;
 }
 
 function buildFilterUserPrompt(userInstructions: string, eventContent: string): string {
-    return `User's Automation Instructions:
+    return `User's Channel Instructions:
 ${userInstructions}
 
 ---

@@ -190,7 +190,7 @@ app.get("/stats", authMiddleware, async (req, res) => {
 
 // MARK: RUN HISTORY
 
-app.get("/run-history/:automationId", authMiddleware, async (req, res) => {
+app.get("/run-history/:channelId", authMiddleware, async (req, res) => {
   getRunHistory(req, res);
 });
 

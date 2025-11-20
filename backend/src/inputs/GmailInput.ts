@@ -11,10 +11,10 @@ export class GmailInput implements Input<GmailConfig> {
         this.integrationManager = new GmailIntegrationManager();
     }
 
-    async addInputToAutomation(tx: PrismaTransaction, automationInputId: string, input: GmailConfig): Promise<void> {
+    async addInputToChannel(tx: PrismaTransaction, channelInputId: string, input: GmailConfig): Promise<void> {
         await tx.automation_gmail_configs.create({
             data: {
-                automation_input_id: automationInputId,
+                automation_input_id: channelInputId,
             },
         });
     }
