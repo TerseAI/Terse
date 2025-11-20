@@ -2,9 +2,10 @@ import * as readline from 'readline';
 import chalk from 'chalk';
 import { ApprovalResult } from '../../agent/AutomationAgent/AutomationAgent';
 import { AutomationAgentFactory } from '../../agent/AutomationAgentFactory';
-import { NotionDatabaseSession } from '../../Updater/Outputs/NotionDatabaseOutput';
+import { NotionDatabaseSession } from '../../outputs/NotionDatabaseOutput';
 import { Agent, AgentOutputType, RunToolApprovalItem } from '@openai/agents';
 import { AutomationAgent } from '../../agent/AutomationAgent/AutomationAgent';
+import { NotionConfig } from '../../shared/Configs';
 
 /**
  * Type for pending approval state in test scripts
@@ -43,7 +44,7 @@ export async function resumeApprovalFlow(state: PendingApprovalState | null): Pr
     }
 
     // Reconstruct the automation agent
-    const automationAgent: AutomationAgent<NotionDatabaseSession> = await AutomationAgentFactory.createFromAutomationId(state.automationId);
+    const automationAgent: AutomationAgent<NotionDatabaseSession, NotionConfig> = await AutomationAgentFactory.createFromAutomationId(state.automationId);
     await automationAgent.initializeAgent();
 
     // Call resume on the AutomationAgent

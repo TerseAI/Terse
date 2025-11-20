@@ -1,37 +1,8 @@
-import { IntegrationInstance } from '@/utility/IntegrationFormatters';
-import { Integration } from "@/types/Integration";
-import { NotionConfig, NotionPageConfig, SlackConfig, FigmaConfig, ConfluenceConfig, GmailConfig, GitHubConfig } from '../../shared/types';
+import { TransientAutomationInput } from '@/shared/types';
+import { ConfigInstance } from '../../shared/Configs';
 
-export interface IntegrationSelectorProps {
-    integrationType: Integration;
-    selectedIntegrationId?: string;
-    onSelect: (integrationId: string) => void;
-    label?: string;
-    // Optional config handlers for integration-specific settings
-    gmailConfig?: GmailConfig;
-    onGmailConfigChange?: (config: GmailConfig) => void;
-    githubConfig?: GitHubConfig;
-    onGithubConfigChange?: (config: GitHubConfig) => void;
-    notionConfig?: NotionConfig;
-    notionPageConfig?: NotionPageConfig;
-    onNotionConfigChange?: (config: NotionConfig) => void;
-    onNotionPageConfigChange?: (config: NotionPageConfig) => void;
-    slackConfig?: SlackConfig;
-    onSlackConfigChange?: (config: SlackConfig) => void;
-    figmaConfig?: FigmaConfig;
-    onFigmaConfigChange?: (config: FigmaConfig) => void;
-    confluenceConfig?: ConfluenceConfig;
-    onConfluenceConfigChange?: (config: ConfluenceConfig) => void;
+export interface InputConfigSelectorProps {
+    input: TransientAutomationInput;
+    variant: 'card' | 'dialog';
+    setConfig: (config: ConfigInstance) => void;
 }
-
-export interface BaseIntegrationProps {
-    selectedIntegrationId?: string;
-    onSelect: (integrationId: string) => void;
-    integrations: IntegrationInstance[];
-    isLoading: boolean;
-    isConnecting: boolean;
-    onConnect: () => void;
-    label?: string;
-    variant?: 'card' | 'dialog';
-}
-

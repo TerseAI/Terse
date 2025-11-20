@@ -2,10 +2,10 @@ import { IntegrationTitle } from "@/pages/Automations/components/IntegrationTitl
 import { CardHeader, CardTitle } from "../../ui/card";
 import { Badge } from "../../ui/badge";
 import { BadgeCheckIcon } from "lucide-react";
-import { Integration } from "@/types/Integration";
+import { IntegrationType } from "@/shared/Integrations"
 
 interface IntegrationCardHeaderProps {
-    integration: Integration;
+    integration: IntegrationType;
 }
 
 export function IntegrationCardHeader({ integration }: IntegrationCardHeaderProps) {

@@ -1,7 +1,7 @@
 import { ChevronRight } from 'lucide-react';
 import { Automation } from '../../shared/types';
-import { IconForInputType } from '../../pages/Automations/components/Integration';
-import { Integration } from "@/types/Integration";
+import { IconForIntegration } from '../../pages/Automations/components/Integration';
+import { IntegrationType } from "@/shared/Integrations"
 import { capitalize } from '../../lib/utils';
 
 interface AppsListProps {
@@ -10,13 +10,13 @@ interface AppsListProps {
 
 export function AppsList({ automation }: AppsListProps) {
     // Count integrations using a hashmap
-    const integrationCounts = new Map<string, number>();
+    const integrationCounts = new Map<IntegrationType, number>();
     automation.inputs.forEach(input => {
-        const count = integrationCounts.get(input.integration) || 0;
-        integrationCounts.set(input.integration, count + 1);
+        const count = integrationCounts.get(input.config.integrationType) || 0;
+        integrationCounts.set(input.config.integrationType, count + 1);
     });
 
-    const outputIntegration = automation.output?.integration;
+    const outputIntegration = automation.output?.config?.integrationType;
 
     return (
         <div className="flex items-center gap-1.5">
@@ -26,7 +26,7 @@ export function AppsList({ automation }: AppsListProps) {
                         className="relative w-7 h-7 flex items-center justify-center rounded bg-card p-1"
                         title={capitalize(integration)}
                     >
-                        <IconForInputType type={integration as Integration} />
+                        <IconForIntegration integration={integration} />
                         {count > 1 && (
                             <sup className="absolute -top-1.5 -right-1.5 text-[9px] font-mono tabular-nums leading-none z-10 text-primary-foreground rounded-full w-4 h-4 flex items-center justify-center shadow-md backdrop-blur-sm">
                                 {count}
@@ -39,7 +39,7 @@ export function AppsList({ automation }: AppsListProps) {
                 <div className="flex items-center">
                     <ChevronRight className="w-3 h-3 text-muted-foreground mx-0.5" />
                     <div className="w-7 h-7 flex items-center justify-center rounded bg-card p-1" title={capitalize(outputIntegration)}>
-                        <IconForInputType type={outputIntegration as Integration} />
+                        <IconForIntegration integration={outputIntegration} />
                     </div>
                 </div>
             )}

@@ -1,119 +1,75 @@
-import { Integration } from "@/types/Integration";
-import { BaseIntegrationProps, IntegrationSelectorProps } from './types';
+import { InputConfigSelectorProps } from './types';
 import { GmailIntegration } from './GmailIntegration';
 import { NotionIntegration } from './NotionIntegration';
 import { SlackIntegration } from './SlackIntegration';
 import { GitHubIntegration } from './GitHubIntegration';
 import { FigmaIntegration } from './FigmaIntegration';
-import { JiraIntegration } from './JiraIntegration';
 import { LinearIntegration } from './LinearIntegration';
 import { ConfluenceIntegration } from './ConfluenceIntegration';
-import { useIntegrationSelector } from '../../hooks/useIntegrationSelector';
+import { ConfigType } from "@/shared/Configs";
 
-export function IntegrationSelector(props: IntegrationSelectorProps & { variant?: 'card' | 'dialog' }) {
-    const { variant = 'card' } = props;
-    const {
-        integrations,
-        isLoading,
-        isConnecting,
-        showForm,
-        handleConnectNew,
-        handleFormSuccess,
-        handleFormCancel,
-    } = useIntegrationSelector(props);
+export function IntegrationSelector(props: InputConfigSelectorProps) {
+    switch (props.input.config?.configType || props.input.configType) {
+        case ConfigType.GMAIL:
+            return <GmailIntegration {...props} />;
 
-    const baseProps: BaseIntegrationProps = {
-        selectedIntegrationId: props.selectedIntegrationId,
-        onSelect: props.onSelect,
-        integrations,
-        isLoading,
-        isConnecting,
-        onConnect: handleConnectNew,
-        label: props.label,
-        variant,
-    };
-
-    switch (props.integrationType) {
-        case Integration.GMAIL:
-            return <GmailIntegration {...baseProps} integrationType={props.integrationType} />;
-
-        case Integration.NOTION:
-        case Integration.NOTION_PAGE:
+        case ConfigType.NOTION_DATABASE:
+        case ConfigType.NOTION_PAGE:
             return (
                 <NotionIntegration
-                    {...baseProps}
-                    integrationType={props.integrationType}
-                    notionConfig={props.notionConfig}
-                    notionPageConfig={props.notionPageConfig}
-                    onNotionConfigChange={props.onNotionConfigChange}
-                    onNotionPageConfigChange={props.onNotionPageConfigChange}
+                    input={props.input}
+                    variant={props.variant}
+                    setConfig={props.setConfig}
                 />
             );
 
-        case Integration.SLACK:
+        case ConfigType.SLACK:
             return (
                 <SlackIntegration
-                    {...baseProps}
-                    integrationType={props.integrationType}
-                    slackConfig={props.slackConfig}
-                    onSlackConfigChange={props.onSlackConfigChange}
+                    input={props.input}
+                    variant={props.variant}
+                    setConfig={props.setConfig}
                 />
             );
 
-        case Integration.GITHUB:
-            return <GitHubIntegration
-                {...baseProps}
-                integrationType={props.integrationType}
-                githubConfig={props.githubConfig}
-                onGithubConfigChange={props.onGithubConfigChange}
-            />;
+        case ConfigType.GITHUB:
+            return (
+                <GitHubIntegration
+                    input={props.input}
+                    variant={props.variant}
+                    setConfig={props.setConfig}
+                />
+            );
 
-        case Integration.FIGMA:
+        case ConfigType.FIGMA:
             return (
                 <FigmaIntegration
-                    {...baseProps}
-                    integrationType={props.integrationType}
-                    figmaConfig={props.figmaConfig}
-                    onFigmaConfigChange={props.onFigmaConfigChange}
+                    input={props.input}
+                    variant={props.variant}
+                    setConfig={props.setConfig}
                 />
             );
 
-        case Integration.JIRA:
-            return (
-                <JiraIntegration
-                    {...baseProps}
-                    integrationType={props.integrationType}
-                    showForm={showForm}
-                    onFormSuccess={handleFormSuccess}
-                    onFormCancel={handleFormCancel}
-                />
-            );
-
-        case Integration.LINEAR:
+        case ConfigType.LINEAR:
             return (
                 <LinearIntegration
-                    {...baseProps}
-                    integrationType={props.integrationType}
-                    showForm={showForm}
-                    onFormSuccess={handleFormSuccess}
-                    onFormCancel={handleFormCancel}
+                    input={props.input}
+                    variant={props.variant}
+                    setConfig={props.setConfig}
                 />
             );
 
-        case Integration.CONFLUENCE:
+        case ConfigType.JIRA:
+        case ConfigType.CONFLUENCE:
             return (
                 <ConfluenceIntegration
-                    {...baseProps}
-                    integrationType={props.integrationType}
-                    showForm={showForm}
-                    onFormSuccess={handleFormSuccess}
-                    onFormCancel={handleFormCancel}
-                    confluenceConfig={props.confluenceConfig}
-                    onConfluenceConfigChange={props.onConfluenceConfigChange}
+                    input={props.input}
+                    variant={props.variant}
+                    setConfig={props.setConfig}
                 />
             );
 
         default:
-            return null;
+            throw new Error(`Unsupported config type: ${props.input.configType}`);
     }
 }

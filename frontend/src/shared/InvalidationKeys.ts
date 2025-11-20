@@ -1,5 +1,7 @@
 import { GetRunHistoryParams } from "./RunHistoryTypes";
 
+export const integrationsKey = (): readonly [string] => ['integrations'];
+
 export const slackChannelsKey = (integrationId: string | null | undefined): readonly [string, string] | null => {
     if (!integrationId) {
         return null;
@@ -16,8 +18,12 @@ export const notionResourcesKey = (integrationId: string | null | undefined): re
     return ['notionResources', integrationId] as const;
 };
 
-export const githubRepositoriesKey = (): readonly [string] => {
-    return ['githubRepositories'] as const;
+export const githubRepositoriesKey = (installationId: number | null | undefined): readonly [string, number] | null => {
+    if (!installationId) {
+        return null;
+    }
+
+    return ['githubRepositories', installationId] as const;
 };
 
 export const confluenceResourcesKey = (integrationId: string | null | undefined): readonly [string, string] | null => {
@@ -26,6 +32,34 @@ export const confluenceResourcesKey = (integrationId: string | null | undefined)
     }
 
     return ['confluenceResources', integrationId] as const;
+};
+
+export const gmailIntegrationsKey = (): readonly [string] => {
+    return ['gmailIntegrations'] as const;
+};
+
+export const atlassianIntegrationsKey = (): readonly [string] => {
+    return ['atlassianIntegrations'] as const;
+};
+
+export const figmaIntegrationsKey = (): readonly [string] => {
+    return ['figmaIntegrations'] as const;
+};
+
+export const githubIntegrationsKey = (): readonly [string] => {
+    return ['githubIntegrations'] as const;
+};
+
+export const linearIntegrationsKey = (): readonly [string] => {
+    return ['linearIntegrations'] as const;
+};
+
+export const notionIntegrationsKey = (): readonly [string] => {
+    return ['notionIntegrations'] as const;
+};
+
+export const slackIntegrationsKey = (): readonly [string] => {
+    return ['slackIntegrations'] as const;
 };
 
 export const runHistoryKey = (

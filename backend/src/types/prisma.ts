@@ -19,7 +19,8 @@ import {
   Prisma,
   automation_notion_configs,
   automation_notion_page_configs,
-  automation_confluence_configs
+  automation_confluence_configs,
+  PrismaClient
 } from '@prisma/client';
 
 
@@ -79,10 +80,8 @@ export type AutomationNotionPageConfig = automation_notion_page_configs;
 
 export type AutomationConfluenceConfig = automation_confluence_configs;
 
-// Extended type for Automation with included relations (kept in sync with include used in queries)
-export type AutomationWithRelations = Prisma.automationsGetPayload<{
-  include: { 
-    prompt: true; 
+export type AutomationWithInputRelations = Prisma.automationsGetPayload<{
+  include: {
     inputs: { 
       include: {
         slack_config: true;
@@ -96,6 +95,11 @@ export type AutomationWithRelations = Prisma.automationsGetPayload<{
         figma_config: true;
       }
     };
+  }
+}>;
+
+export type AutomationWithOutputRelations = Prisma.automationsGetPayload<{
+  include: {
     output: {
       include: {
         slack_config: true;
@@ -109,8 +113,19 @@ export type AutomationWithRelations = Prisma.automationsGetPayload<{
         figma_config: true;
       }
     };
-  };
+  }
 }>;
+
+export type AutomationWithPromptRelations = Prisma.automationsGetPayload<{
+  include: {
+    prompt: true;
+  }
+}>;
+
+export type AutomationWithRelations = AutomationWithInputRelations & AutomationWithOutputRelations & AutomationWithPromptRelations;
+
+// Extract the transaction type from PrismaClient
+export type PrismaTransaction = Parameters<Parameters<PrismaClient['$transaction']>[0]>[0];
 
 // Re-export the original types too
 export {

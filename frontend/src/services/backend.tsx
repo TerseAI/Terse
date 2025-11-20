@@ -7,18 +7,23 @@ import {
     AutomationPrompt, 
     AutomationsResponse, 
     AutomationUpdate, 
-    ConfluenceIntegration, 
     ConfluenceResourcesResponse, 
     GetGithubRepositoriesForIntegrationResponse, 
-    IntegrationsStatus, 
+    OAuthInstallationDetails, 
     JiraCredentialsValidationResponse, 
-    JiraIntegration, 
-    LinearApiKeyValidationResponse, 
-    LinearIntegration, 
     NotionResourcesResponse, 
     SlackChannelsResponse, 
-    SlackIntegration
 } from "../shared/types";
+import { 
+    IntegrationType,
+    GmailIntegration,
+    LinearIntegration,
+    SlackIntegration,
+    AtlassianIntegration,
+    FigmaIntegration,
+    GithubIntegration,
+    NotionIntegration,
+} from "../shared/Integrations";
 import { User } from "../types/User";
 import { GetRunHistoryParams, GetRunHistoryResponse } from '../shared/RunHistoryTypes';
 
@@ -80,19 +85,24 @@ interface BackendService {
     }>;
 
     /**
-     * Gets all integrations status in a single call
+     * Returns the installation details for a given integration type
      */
-    getIntegrationsStatus(): Promise<IntegrationsStatus>;
-    
+    getIntegrationInstallationDetails(integrationType: IntegrationType): Promise<OAuthInstallationDetails>;
+
+    /**
+     * Returns the active integrations for the current user
+     */
+    getActiveIntegrations(): Promise<IntegrationType[]>;
+
     /**
      * Requests a GitHub app installation URL
      */
     requestGitHubAppInstallationUrl(): Promise<{ installationUrl: string }>;
 
     /**
-     * Gets the GitHub repositories for the current integration
+     * Gets the GitHub repositories for a specific installation
      */
-    getGithubRepositoriesForIntegration(): Promise<GetGithubRepositoriesForIntegrationResponse>;
+    getGithubRepositoriesForIntegration(installationId: number): Promise<GetGithubRepositoriesForIntegrationResponse>;
 
     /**
      * Gets the current Slack integration
@@ -100,39 +110,14 @@ interface BackendService {
     getCurrentSlackIntegration(): Promise<SlackIntegration>;
 
     /**
-     * Requests a Slack OAuth URL
-     */
-    requestSlackOAuthUrl(): Promise<{ url: string }>;
-
-    /**
-     * Gets the Linear API key
-     */
-    getLinearApiKey(): Promise<LinearIntegration>;
-
-    /**
-     * Sets the Linear API key
-     */
-    setLinearApiKey(apiKey: string, teamId?: string): Promise<{ success: boolean; connection?: any; error?: string }>;
-
-    /**
-     * Validates Linear API key and fetches available teams
-     */
-    validateLinearApiKey(apiKey: string): Promise<LinearApiKeyValidationResponse>;
-
-    /**
-     * Deletes the Linear API key
-     */
-    deleteLinearApiKey(): Promise<void>;
-
-    /**
      * Gets the Jira API key
      */
-    getJiraApiKey(): Promise<JiraIntegration>;
+    getJiraApiKey(): Promise<AtlassianIntegration>;
 
     /**
      * Sets the Jira API key
      */
-    setJiraApiKey(email: string, baseUrl: string, apiKey: string, projectKey?: string): Promise<{ success: boolean; connection?: JiraIntegration; error?: string }>;
+    setJiraApiKey(email: string, baseUrl: string, apiKey: string, projectKey?: string): Promise<{ success: boolean; connection?: AtlassianIntegration; error?: string }>;
 
     /**
      * Validates Jira credentials and fetches available projects
@@ -147,7 +132,7 @@ interface BackendService {
     /**
      * Sets the Confluence API key
      */
-    setConfluenceApiKey(email: string, baseUrl: string, apiKey: string, projectKey?: string): Promise<{ success: boolean; connection?: ConfluenceIntegration; error?: string }>;
+    setConfluenceApiKey(email: string, baseUrl: string, apiKey: string, projectKey?: string): Promise<{ success: boolean; connection?: AtlassianIntegration; error?: string }>;
 
     /**
      * Validates Confluence credentials
@@ -160,9 +145,39 @@ interface BackendService {
     getConfluenceResources(integrationId: string): Promise<ConfluenceResourcesResponse>;
 
     /**
-     * Requests a Gmail OAuth URL
+     * Gets all Gmail integrations for the current user
      */
-    requestGmailOAuthUrl(): Promise<{ url: string }>;
+    getGmailIntegrations(): Promise<GmailIntegration[]>;
+
+    /**
+     * Gets all Atlassian integrations for the current user
+     */
+    getAtlassianIntegrations(): Promise<AtlassianIntegration[]>;
+
+    /**
+     * Gets all Figma integrations for the current user
+     */
+    getFigmaIntegrations(): Promise<FigmaIntegration[]>;
+
+    /**
+     * Gets all GitHub integrations for the current user
+     */
+    getGithubIntegrations(): Promise<GithubIntegration[]>;
+
+    /**
+     * Gets all Linear integrations for the current user
+     */
+    getLinearIntegrations(): Promise<LinearIntegration[]>;
+
+    /**
+     * Gets all Notion integrations for the current user
+     */
+    getNotionIntegrations(): Promise<NotionIntegration[]>;
+
+    /**
+     * Gets all Slack integrations for the current user
+     */
+    getSlackIntegrations(): Promise<SlackIntegration[]>;
 
     /**
      * Deletes the Gmail integration
@@ -174,11 +189,6 @@ interface BackendService {
     deleteNotionIntegration(): Promise<void>;
 
     /**
-     * Gets the Notion OAuth URL
-     */
-    requestNotionOAuthUrl(): Promise<{ url: string }>;
-
-    /**
      * Gets available databases for a Notion integration
      */
     getNotionResources(integrationId: string): Promise<NotionResourcesResponse>;
@@ -187,11 +197,6 @@ interface BackendService {
      * Gets available channels for a Slack integration
      */
     getSlackChannels(integrationId: string): Promise<SlackChannelsResponse>;
-
-    /**
-     * Requests a Figma OAuth URL
-     */
-    requestFigmaOAuthUrl(): Promise<{ url: string }>;
 
     /**
      * Requests a session socket token
@@ -212,12 +217,6 @@ interface BackendService {
         onClose: () => void,
         onError: (error: Event) => void
     }): Promise<Connection>;
-
-    /**
-     * Gets the user's automation (returns null if none exists)
-     * @deprecated Use getUserAutomations instead
-     */
-    getUserAutomation(): Promise<Automation | null>;
 
     /**
      * Gets all automations for the user with pagination
@@ -346,17 +345,29 @@ export const BackendProvider: BackendService = {
             });
     },
 
-    getIntegrationsStatus: () => {
-        return axios.get(`${backendBaseUrl}/integrations/status`, { withCredentials: true })
+    getIntegrationInstallationDetails: (integrationType: IntegrationType) => {
+        return axios.get(`${backendBaseUrl}/integrations/${integrationType}/installation-details`, { withCredentials: true })
             .then(response => response.data)
             .catch(error => {
-                console.error('Error getting integrations status:', error);
+                console.error('Error getting integration installation details:', error);
                 throw error;
             });
     },
 
-    getGithubRepositoriesForIntegration: () => {
-        return axios.get(`${backendBaseUrl}/github/get-repositories-for-integration`, { withCredentials: true })
+    getActiveIntegrations: () => {
+        return axios.get(`${backendBaseUrl}/integrations/active`, { withCredentials: true })
+            .then(response => response.data)
+            .catch(error => {
+                console.error('Error getting active integrations:', error);
+                throw error;
+            });
+    },
+
+    getGithubRepositoriesForIntegration: (installationId: number) => {
+        return axios.get(`${backendBaseUrl}/github/get-repositories-for-integration`, {
+            params: { installation_id: installationId },
+            withCredentials: true
+        })
             .then(response => response.data)
             .catch(error => {
                 console.error('Error getting GitHub repositories for integration:', error);
@@ -378,53 +389,6 @@ export const BackendProvider: BackendService = {
             .then(response => response.data)
             .catch(error => {
                 console.error('Error getting current Slack integration:', error);
-                throw error;
-            });
-    },
-
-    requestSlackOAuthUrl: () => {
-        return axios.get(`${backendBaseUrl}/slack/get-oauth-url`, { withCredentials: true })
-            .then(response => response.data)
-            .catch(error => {
-                console.error('Error requesting Slack OAuth URL:', error);
-                throw error;
-            });
-    },
-
-    getLinearApiKey: () => {
-        return axios.get(`${backendBaseUrl}/linear/get-api-key`, { withCredentials: true })
-            .then(response => response.data)
-            .catch(error => {
-                console.error('Error getting Linear API key:', error);
-                throw error;
-            });
-    },
-
-    setLinearApiKey: (apiKey: string, teamId?: string) => {
-        return axios.post(`${backendBaseUrl}/linear/set-api-key`, { apiKey, teamId }, { withCredentials: true })
-            .then(response => response.data)
-            .catch(error => {
-                console.error('Error setting Linear API key:', error);
-                const errorMessage = error.response?.data?.error || 'Failed to create Linear connection';
-                throw { success: false, error: errorMessage };
-            });
-    },
-
-    validateLinearApiKey: (apiKey: string) => {
-        return axios.post(`${backendBaseUrl}/linear/validate-and-fetch-teams`, { apiKey }, { withCredentials: true })
-            .then(response => response.data)
-            .catch(error => {
-                console.error('Error validating Linear API key:', error);
-                const errorMessage = error.response?.data?.error || 'Failed to validate API key';
-                return { valid: false, error: errorMessage };
-            });
-    },
-
-    deleteLinearApiKey: () => {
-        return axios.delete(`${backendBaseUrl}/linear/delete-credentials`, { withCredentials: true })
-            .then(response => response.data)
-            .catch(error => {
-                console.error('Error deleting Linear API key:', error);
                 throw error;
             });
     },
@@ -495,11 +459,65 @@ export const BackendProvider: BackendService = {
             });
     },
 
-    requestGmailOAuthUrl: () => {
-        return axios.get(`${backendBaseUrl}/gmail/get-oauth-url`, { withCredentials: true })
+    getGmailIntegrations: () => {
+        return axios.get<GmailIntegration[]>(`${backendBaseUrl}/gmail/integrations`, { withCredentials: true })
             .then(response => response.data)
             .catch(error => {
-                console.error('Error requesting Gmail OAuth URL:', error);
+                console.error('Error getting Gmail integrations:', error);
+                throw error;
+            });
+    },
+
+    getAtlassianIntegrations: () => {
+        return axios.get<AtlassianIntegration[]>(`${backendBaseUrl}/atlassian/integrations`, { withCredentials: true })
+            .then(response => response.data)
+            .catch(error => {
+                console.error('Error getting Atlassian integrations:', error);
+                throw error;
+            });
+    },
+
+    getFigmaIntegrations: () => {
+        return axios.get<FigmaIntegration[]>(`${backendBaseUrl}/figma/integrations`, { withCredentials: true })
+            .then(response => response.data)
+            .catch(error => {
+                console.error('Error getting Figma integrations:', error);
+                throw error;
+            });
+    },
+
+    getGithubIntegrations: () => {
+        return axios.get<GithubIntegration[]>(`${backendBaseUrl}/github/integrations`, { withCredentials: true })
+            .then(response => response.data)
+            .catch(error => {
+                console.error('Error getting GitHub integrations:', error);
+                throw error;
+            });
+    },
+
+    getLinearIntegrations: () => {
+        return axios.get<LinearIntegration[]>(`${backendBaseUrl}/linear/integrations`, { withCredentials: true })
+            .then(response => response.data)
+            .catch(error => {
+                console.error('Error getting Linear integrations:', error);
+                throw error;
+            });
+    },
+
+    getNotionIntegrations: () => {
+        return axios.get<NotionIntegration[]>(`${backendBaseUrl}/notion/integrations`, { withCredentials: true })
+            .then(response => response.data)
+            .catch(error => {
+                console.error('Error getting Notion integrations:', error);
+                throw error;
+            });
+    },
+
+    getSlackIntegrations: () => {
+        return axios.get<SlackIntegration[]>(`${backendBaseUrl}/slack/integrations`, { withCredentials: true })
+            .then(response => response.data)
+            .catch(error => {
+                console.error('Error getting Slack integrations:', error);
                 throw error;
             });
     },
@@ -518,24 +536,6 @@ export const BackendProvider: BackendService = {
             .then(response => response.data)
             .catch(error => {
                 console.error('Error deleting Notion integration:', error);
-                throw error;
-            });
-    },
-
-    requestNotionOAuthUrl: () => {
-        return axios.get(`${backendBaseUrl}/notion/get-oauth-url`, { withCredentials: true })
-            .then(response => response.data)
-            .catch(error => {
-                console.error('Error requesting Notion OAuth URL:', error);
-                throw error;
-            });
-    },
-
-    requestFigmaOAuthUrl: () => {
-        return axios.get(`${backendBaseUrl}/figma/get-oauth-url`, { withCredentials: true })
-            .then(response => response.data)
-            .catch(error => {
-                console.error('Error requesting Figma OAuth URL:', error);
                 throw error;
             });
     },
@@ -573,15 +573,6 @@ export const BackendProvider: BackendService = {
         console.log('Connecting to completion socket', link);
         const socket = new WebSocket(link);
         return new Connection(socket, onOpen, onClose, onError, onMessageReceived);
-    },
-
-    getUserAutomation: () => {
-        return axios.get<Automation | null>(`${backendBaseUrl}/automations`, { withCredentials: true })
-            .then(response => response.data)
-            .catch(error => {
-                console.error('Error getting user automation:', error);
-                throw error;
-            });
     },
 
     getUserAutomations: (page = 1, limit = 10, isActive?: boolean, search?: string) => {

@@ -209,16 +209,18 @@ export default (app: Probot) => {
     const name = context.payload.sender?.name || '';
     const login = context.payload.sender?.login;
     const installationId = context.payload.installation.id;
+
+
+    // Get the account (user or org) where the app was installed
+    const accountName = context.payload.installation.account?.login || null;
     const repositories = context.payload.repositories.map((repo) => ({
       name: repo.name,
       owner: repo.full_name,
       id: repo.id
     }));
 
-    console.log('🔧 installation.created', name, email, login, installationId, repositories);
-
     try {
-      await VectraInterface.githubAppInstallationCallback(name, email, login, installationId, repositories);
+      await VectraInterface.githubAppInstallationCallback(name, email, login, installationId, accountName, repositories);
     } catch (error) {
       console.error('Error calling githubAppInstallationCallback:', error);
     }

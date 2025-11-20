@@ -2,8 +2,6 @@ import { Search } from '../searchClient';
 import { Session } from '../server';
 import { ActivityOverview, Analyzer } from '../agent/agents/Analyzer';
 import chalk from 'chalk';
-import { db } from '../prismaClient';
-import { sendMessage } from '../slack/sendMessage';
 import { Commit, UnifiedGitHubEvent } from './utility';
 import { enrich, EnrichmentResult } from './Enrich';
 
