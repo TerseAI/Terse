@@ -6,11 +6,11 @@ import chalk from "chalk";
 import { AutomationWithInputRelations, PrismaTransaction, AutomationWithRelations } from "../types/prisma";
 import { IntegrationType } from "../shared/Integrations";
 import { convertConfigTypeToInputConfigType, convertConfigTypeToOutputConfigType, convertPrismaConfigToConfigInstance } from "../utility/typeConverters";
-import { ConfigInstance, ConfigType } from "../shared/Configs";
+import { ConfigInstance } from "../shared/Configs";
 import { getInputConfigInclude, getOutputConfigInclude } from "../utility/prismaIncludes";
 import { INPUT_REGISTRY } from "../inputs/InputRegistry";
 import { INTEGRATION_REGISTRY } from "../integrations/abstract/IntegrationRegistry";
-import { OutputFactory } from "src/outputs/abstract/OutputFactory";
+import { OutputFactory } from "../outputs/abstract/OutputFactory";
 
 async function createInputConfig(
     tx: PrismaTransaction,

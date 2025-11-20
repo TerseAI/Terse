@@ -1,4 +1,4 @@
-import { SlackIntegrationManager } from "src/integrations/SlackIntegration";
+import { SlackIntegrationManager } from "../integrations/SlackIntegration";
 import { ConfigType, GitHubConfig } from "../shared/Configs";
 import { Input } from "./Input";
 import { PrismaTransaction } from "../types/prisma";
