@@ -138,3 +138,8 @@ export interface LinearIntegration extends IntegrationInstance {
     id: string;
     workspaceName: string;
 };
+
+export interface IntegrationWithStatus {
+    integrationType: IntegrationType;
+    isActive: boolean;
+}
