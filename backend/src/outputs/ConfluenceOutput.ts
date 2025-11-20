@@ -432,7 +432,7 @@ To find the correct position, first call confluence_query_page to see the page c
                 : comment_text;
             runContext.context.runActions = runContext.context.runActions || [];
             runContext.context.runActions.push({
-                action: 'Added comment',
+                action: 'Added Inline comment',
                 integration: IntegrationType.ATLASSIAN,
                 target: pageName,
                 details: commentPreview,
