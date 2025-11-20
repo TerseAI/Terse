@@ -10,7 +10,7 @@ import AtlassianIntegrationCard from "./AtlassianIntegrationCard";
 import FigmaIntegrationCard from "./FigmaIntegrationCard";
 
 function IntegrationCard({ integration }: { integration: IntegrationType }) {
-    const cardClassName = "min-w-sm";
+    const cardClassName = "min-w-sm max-w-sm";
     
     switch (integration) {
         case IntegrationType.NOTION:
