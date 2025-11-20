@@ -90,3 +90,7 @@ export const recentAutomationsKey = (limit?: number): readonly [string, number] 
     }
     return ['recentAutomations'] as const;
 };
+
+export const statsKey = (): readonly [string] => {
+    return ['stats'] as const;
+};

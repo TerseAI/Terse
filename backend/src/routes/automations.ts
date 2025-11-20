@@ -102,20 +102,7 @@ export async function getUserAutomations(req: Request, res: Response) {
 
         // Transform the data to match frontend format
         const response: AutomationsResponse = {
-            automations: automations.map(automation => ({
-                id: automation.id,
-                name: automation.name,
-                isActive: automation.is_active,
-                prompt: automation.prompt ? { text: automation.prompt.content } : { text: '' },
-                inputs: automation.inputs.map(input => ({
-                    id: input.id,
-                    config: convertPrismaConfigToConfigInstance(input)
-                })),
-                output: {
-                    id: automation.output!.id,
-                    config: convertPrismaConfigToConfigInstance(automation.output!),
-                }
-            })),
+            automations: automations.map(automation => transformAutomationToFrontendFormat(automation)),
             pagination: {
                 page,
                 limit: pageSize,
@@ -187,18 +174,7 @@ export async function getRecentAutomations(req: Request, res: Response) {
         const response = automations.map(automation => {
             const lastEventTimestamp = lastEventMap.get(automation.id);
             return {
-                id: automation.id,
-                name: automation.name,
-                isActive: automation.is_active,
-                prompt: automation.prompt ? { text: automation.prompt.content } : { text: '' },
-                inputs: automation.inputs.map(input => ({
-                    id: input.id,
-                    config: convertPrismaConfigToConfigInstance(input)
-                })),
-                output: {
-                    id: automation.output!.id,
-                    config: convertPrismaConfigToConfigInstance(automation.output!),
-                },
+                ...transformAutomationToFrontendFormat(automation),
                 updatedAt: automation.updated_at.toISOString(),
                 lastEventProcessedAt: lastEventTimestamp ? lastEventTimestamp.toISOString() : null,
             };
@@ -244,20 +220,7 @@ export async function getUserAutomation(req: Request, res: Response) {
         }
 
         // Transform the data to match frontend format
-        const response: Automation = {
-            id: automation.id,
-            name: automation.name,
-            isActive: automation.is_active,
-            prompt: automation.prompt ? { text: automation.prompt.content } : { text: '' },
-            inputs: automation.inputs.map(input => ({
-                id: input.id,
-                config: convertPrismaConfigToConfigInstance(input)
-            })),
-            output: {
-                id: automation.output.id,
-                config: convertPrismaConfigToConfigInstance(automation.output),
-            }
-        };
+        const response: Automation = transformAutomationToFrontendFormat(automation);
 
         res.status(200).json(response);
     } catch (error) {
@@ -601,6 +564,28 @@ export async function deleteAutomation(req: Request, res: Response) {
         console.error('Error deleting automation:', error);
         res.status(500).json({ error: 'Failed to delete automation', details: (error as Error).message });
     }
+}
+
+// Helper function to transform AutomationWithRelations to frontend Automation format
+function transformAutomationToFrontendFormat(automation: AutomationWithRelations): Automation {
+    if (!automation.output) {
+        throw new Error(`Automation output not found for automation ${automation.id}`);
+    }
+
+    return {
+        id: automation.id,
+        name: automation.name,
+        isActive: automation.is_active,
+        prompt: automation.prompt ? { text: automation.prompt.content } : { text: '' },
+        inputs: automation.inputs.map(input => ({
+            id: input.id,
+            config: convertPrismaConfigToConfigInstance(input)
+        })),
+        output: {
+            id: automation.output.id,
+            config: convertPrismaConfigToConfigInstance(automation.output),
+        }
+    };
 }
 
 async function setupAutomationInputs(automation: AutomationWithInputRelations): Promise<void> {

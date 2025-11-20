@@ -359,3 +359,12 @@ export type GetGithubRepositoriesForIntegrationResponse = {
 export type OAuthInstallationDetails = {
   oauthUrl: string;
 }
+
+export interface StatsResponse {
+  totalEventsProcessed: number;
+  totalEventsProcessedChange: string; // Percentage change from previous period
+  actionsTaken: number;
+  actionsTakenChange: string; // Percentage change from previous period
+  numberOfAutomations: number;
+  numberOfAutomationsChange: string; // Absolute change (e.g., "+2")
+}
