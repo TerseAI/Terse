@@ -5,17 +5,16 @@ import { Request, Response } from "express";
 import { slack as slackConfig, jwt as jwtConfig, urls } from '../config/settings';
 import crypto from 'crypto';
 import chalk from "chalk";
-import { EventProcessor } from "../agent/AutomationAgent/EventProcessor";
+import { EventProcessor } from "../agent/ChannelAgent/EventProcessor";
 import { db } from "../prismaClient";
 import { LogLevel, WebClient } from "@slack/web-api";
 import { RunHistoryTrigger } from "../shared/RunHistoryTypes";
-import { AutomationInputWithConfigs } from "../types/prisma";
+import { ChannelInputWithConfigs } from "../types/prisma";
 import { InputEvent } from "./abstract/InputEvent";
 import jwt from "jsonwebtoken";
 import axios from "axios";
 import { Jwt } from "../utility/jwt";
 import { IntegrationType } from "../shared/Integrations";
-import { ConfigType } from "../shared/Configs";
 import { InputConfigType } from "@prisma/client";
 
 export class SlackIntegrationManager implements Integration<SlackIntegration, SlackMessageEvent, typeof SlackIntegrationMetadata>, OAuthIntegrationInstallation {
@@ -276,13 +275,13 @@ export class SlackIntegrationManager implements Integration<SlackIntegration, Sl
         return Promise.resolve();
     }
 
-    async setupAutomationInput(integrationId: string, automationInput: AutomationInputWithConfigs): Promise<void> {
-        // Slack doesn't require any setup for automation inputs
+    async setupChannelInput(integrationId: string, channelInput: ChannelInputWithConfigs): Promise<void> {
+        // Slack doesn't require any setup for channel inputs
         // Webhooks are managed at the integration level
     }
 
-    async teardownAutomationInput(integrationId: string, automationInput: AutomationInputWithConfigs): Promise<void> {
-        // Slack doesn't require any teardown for automation inputs
+    async teardownChannelInput(integrationId: string, channelInput: ChannelInputWithConfigs): Promise<void> {
+        // Slack doesn't require any teardown for channel inputs
         // Webhooks are managed at the integration level
     }
 }
@@ -298,7 +297,7 @@ export class SlackEvent extends InputEvent {
         this.data = data;
     }
 
-    formatForAutomationAgent(): string {
+    formatForChannelAgent(): string {
         return `
         Incoming Slack Message Event.
 
@@ -316,15 +315,15 @@ export class SlackEvent extends InputEvent {
         return `Slack Event: ${this.data.channelName || this.data.channelId} - ${this.data.userName || this.data.userId} - ${this.data.text.substring(0, 50)}`;
     }
 
-    matchesAutomationInput(automationInput: AutomationInputWithConfigs): boolean {
+    matchesChannelInput(channelInput: ChannelInputWithConfigs): boolean {
         // Check if integration type matches
-        if (automationInput.config_type !== InputConfigType.SLACK) {
+        if (channelInput.config_type !== InputConfigType.SLACK) {
             return false;
         }
 
-        // If automationInput has slack_config with channel_id, filter by channel
+        // If channelInput has slack_config with channel_id, filter by channel
         // Otherwise, all Slack events match (no channel filtering)
-        const slackConfig = automationInput.slack_config;
+        const slackConfig = channelInput.slack_config;
         if (!slackConfig) {
             return false;
         }
@@ -659,14 +658,14 @@ async function handleSlackMessage(event: SlackMessageEvent, teamId: string, auth
                 const results = await eventProcessor.process();
 
                 // Log results for this user
-                if (results.length > 0 && results.some(r => r.success || r.automation !== null)) {
-                    totalMatches += results.filter(r => r.success || r.automation !== null).length;
+                if (results.length > 0 && results.some(r => r.success || r.channel !== null)) {
+                    totalMatches += results.filter(r => r.success || r.channel !== null).length;
                     console.log(chalk.green(`User ${userSlackIntegration.user.email}: ${results.length} automation(s) matched`));
                     for (const result of results) {
                         if (result.success) {
-                            console.log(chalk.green(`  ✓ Automation "${result.automation?.name}" processed successfully`));
-                        } else if (result.automation) {
-                            console.log(chalk.yellow(`  ⚠ Automation "${result.automation.name}": ${result.message}`));
+                            console.log(chalk.green(`  ✓ Channel "${result.channel?.name}" processed successfully`));
+                        } else if (result.channel) {
+                            console.log(chalk.yellow(`  ⚠ Channel "${result.channel?.name}": ${result.message}`));
                         }
                     }
                 }
@@ -746,7 +745,7 @@ type SlackApiSettledResult<T = unknown> = PromiseSettledResult<SlackApiResponse<
 
 /**
  * Slack event data
- * Processed Slack message event data used for automation events
+ * Processed Slack message event data used for channel events
  */
 export interface SlackEventData {
     channelId: string;

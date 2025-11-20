@@ -4,10 +4,8 @@ import {
     IntegrationType as PrismaIntegrationType, 
     OutputConfigType,
     RunHistoryIntegration,
-    RunHistoryStatus as PrismaRunHistoryStatus,
-    RunHistoryDecisionAction as PrismaRunHistoryDecisionAction
 } from "@prisma/client";
-import { AutomationInputWithConfigs } from "../types/prisma";
+import { ChannelInputWithConfigs } from "../types/prisma";
 import { 
     ConfigInstance, 
     GmailConfig, 
@@ -21,15 +19,6 @@ import {
     ConfluenceConfig,
     ConfigType
 } from "../shared/Configs";
-import {
-    RunHistoryStatus,
-    RunHistoryDecisionAction,
-    RunHistoryRecord,
-    RunHistoryAction,
-    RunHistoryTrigger,
-    RunHistoryDecision
-} from "../shared/RunHistoryTypes";
-import { Prisma } from "@prisma/client";
 
 export const convertIntegrationTypeToPrismaIntegrationType = (integrationType: IntegrationType): PrismaIntegrationType => {
     switch (integrationType) {
@@ -121,83 +110,83 @@ export const convertRunHistoryIntegrationToIntegrationType = (runHistoryIntegrat
     }
 }
 
-export const convertPrismaConfigToConfigInstance = (automationInput: AutomationInputWithConfigs): ConfigInstance => {
-    const integrationId = automationInput.integration_id;
+export const convertPrismaConfigToConfigInstance = (channelInput: ChannelInputWithConfigs): ConfigInstance => {
+    const integrationId = channelInput.integration_id;
 
     // Determine which config is present and create the appropriate ConfigInstance
-    if (automationInput.gmail_config) {
+    if (channelInput.gmail_config) {
         return new GmailConfig(integrationId);
     }
 
-    if (automationInput.figma_config) {
+    if (channelInput.figma_config) {
         return new FigmaConfig(
             integrationId,
-            automationInput.figma_config.file_key,
-            automationInput.figma_config.file_name || '',
-            automationInput.figma_config.team_id || ''
+            channelInput.figma_config.file_key,
+            channelInput.figma_config.file_name || '',
+            channelInput.figma_config.team_id || ''
         );
     }
 
-    if (automationInput.slack_config) {
+    if (channelInput.slack_config) {
         return new SlackConfig(
             integrationId,
-            automationInput.slack_config.channel_id || undefined,
-            automationInput.slack_config.channel_name || undefined,
-            automationInput.slack_config.listen_to_user_dms || false
+            channelInput.slack_config.channel_id || undefined,
+            channelInput.slack_config.channel_name || undefined,
+            channelInput.slack_config.listen_to_user_dms || false
         );
     }
 
-    if (automationInput.notion_page_config) {
+    if (channelInput.notion_page_config) {
         return new NotionPageConfig(
             integrationId,
-            automationInput.notion_page_config.page_id || undefined,
-            automationInput.notion_page_config.page_name || undefined
+            channelInput.notion_page_config.page_id || undefined,
+            channelInput.notion_page_config.page_name || undefined
         );
     }
 
-    if (automationInput.notion_config) {
+    if (channelInput.notion_config) {
         return new NotionConfig(
             integrationId,
-            automationInput.notion_config.database_id || undefined,
-            automationInput.notion_config.database_name || undefined
+            channelInput.notion_config.database_id || undefined,
+            channelInput.notion_config.database_name || undefined
         );
     }
 
-    if (automationInput.linear_config) {
+    if (channelInput.linear_config) {
         return new LinearConfig(
             integrationId,
-            automationInput.linear_config.project_id || undefined,
-            automationInput.linear_config.project_name || undefined
+            channelInput.linear_config.project_id || undefined,
+            channelInput.linear_config.project_name || undefined
         );
     }
 
-    if (automationInput.github_config) {
+    if (channelInput.github_config) {
         return new GitHubConfig(
             integrationId,
-            automationInput.github_config.repository_ids || []
+            channelInput.github_config.repository_ids || []
         );
     }
 
-    if (automationInput.jira_config) {
+    if (channelInput.jira_config) {
         return new JiraConfig(
             integrationId,
-            automationInput.jira_config.project_key || undefined,
-            automationInput.jira_config.project_id || undefined
+            channelInput.jira_config.project_key || undefined,
+            channelInput.jira_config.project_id || undefined
         );
     }
 
-    if (automationInput.confluence_config) {
+    if (channelInput.confluence_config) {
         return new ConfluenceConfig(
             integrationId,
-            automationInput.confluence_config.space_name || '',
-            automationInput.confluence_config.space_id || '',
-            automationInput.confluence_config.page_id || '',
-            automationInput.confluence_config.page_name || ''
+            channelInput.confluence_config.space_name || '',
+            channelInput.confluence_config.space_id || '',
+            channelInput.confluence_config.page_id || '',
+            channelInput.confluence_config.page_name || ''
         );
     }
 
     // Type guard to ensure we implement conversion here
-    switch (automationInput.config_type) {
+    switch (channelInput.config_type) {
         case InputConfigType.GMAIL:
         case InputConfigType.FIGMA:
         case InputConfigType.SLACK:
@@ -209,10 +198,10 @@ export const convertPrismaConfigToConfigInstance = (automationInput: AutomationI
         case InputConfigType.CONFLUENCE:
             break;
         default:
-            throw automationInput.config_type satisfies never;
+            throw channelInput.config_type satisfies never;
     }
 
-    throw new Error(`No config found for automation input ${automationInput.id}`);
+    throw new Error(`No config found for channel input ${channelInput.id}`);
 }
 
 // ConfigType converters

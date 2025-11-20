@@ -49,13 +49,17 @@ export type SubActivityCommitAssociation = sub_activity_commit_associations;
 
 export type GmailIntegration = gmail_integrations;
 
+// Keep old names for database compatibility, but export as Channel types
 export type Automation = automations;
+export type Channel = automations; // Alias for rebranding
 
 export type AutomationPrompt = automation_prompts;
+export type ChannelPrompt = automation_prompts; // Alias for rebranding
 
 export type AutomationInput = automation_inputs;
+export type ChannelInput = automation_inputs; // Alias for rebranding
 
-// Extended type for AutomationInput with all config relations included
+// Extended type for ChannelInput with all config relations included
 export type AutomationInputWithConfigs = Prisma.automation_inputsGetPayload<{
   include: {
     slack_config: true;
@@ -69,16 +73,21 @@ export type AutomationInputWithConfigs = Prisma.automation_inputsGetPayload<{
     figma_config: true;
   };
 }>;
+export type ChannelInputWithConfigs = AutomationInputWithConfigs; // Alias for rebranding
 
 export type AutomationOutput = automation_outputs;
+export type ChannelOutput = automation_outputs; // Alias for rebranding
 
 export type NotionIntegration = notion_integrations;
 
 export type AutomationNotionConfig = automation_notion_configs;
+export type ChannelNotionConfig = automation_notion_configs; // Alias for rebranding
 
 export type AutomationNotionPageConfig = automation_notion_page_configs;
+export type ChannelNotionPageConfig = automation_notion_page_configs; // Alias for rebranding
 
 export type AutomationConfluenceConfig = automation_confluence_configs;
+export type ChannelConfluenceConfig = automation_confluence_configs; // Alias for rebranding
 
 export type AutomationWithInputRelations = Prisma.automationsGetPayload<{
   include: {
@@ -97,6 +106,7 @@ export type AutomationWithInputRelations = Prisma.automationsGetPayload<{
     };
   }
 }>;
+export type ChannelWithInputRelations = AutomationWithInputRelations; // Alias for rebranding
 
 export type AutomationWithOutputRelations = Prisma.automationsGetPayload<{
   include: {
@@ -115,14 +125,17 @@ export type AutomationWithOutputRelations = Prisma.automationsGetPayload<{
     };
   }
 }>;
+export type ChannelWithOutputRelations = AutomationWithOutputRelations; // Alias for rebranding
 
 export type AutomationWithPromptRelations = Prisma.automationsGetPayload<{
   include: {
     prompt: true;
   }
 }>;
+export type ChannelWithPromptRelations = AutomationWithPromptRelations; // Alias for rebranding
 
 export type AutomationWithRelations = AutomationWithInputRelations & AutomationWithOutputRelations & AutomationWithPromptRelations;
+export type ChannelWithRelations = ChannelWithInputRelations & ChannelWithOutputRelations & ChannelWithPromptRelations; // Alias for rebranding
 
 // Extract the transaction type from PrismaClient
 export type PrismaTransaction = Parameters<Parameters<PrismaClient['$transaction']>[0]>[0];

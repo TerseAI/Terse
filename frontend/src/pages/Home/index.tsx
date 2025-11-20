@@ -1,4 +1,4 @@
-import { useRecentAutomations } from "../../hooks/api/useRecentAutomations";
+import { useRecentChannels } from "../../hooks/api/useRecentChannels";
 import { useStats } from "../../hooks/api/useStats";
 import { formatRelativeTime } from "../../utility/timeUtils";
 import { IntegrationType } from "../../shared/Integrations";
@@ -6,26 +6,26 @@ import { RunHistoryAction } from "../../shared/RunHistoryTypes";
 import { StatsMetricsSection } from "./components/StatsMetricsSection";
 import { DailyEventsChart } from "./components/DailyEventsChart";
 import { RecentActionsSection } from "./components/RecentActionsSection";
-import { RecentAutomationsSection } from "./components/RecentAutomationsSection";
+import { RecentChannelsSection } from "./components/RecentChannelsSection";
 import { transformStatsToMetrics } from "./utils";
 
 function Home() {
-    const { automations: recentAutomationsData, isLoading: isLoadingAutomations } = useRecentAutomations(3);
+    const { channels: recentChannelsData, isLoading: isLoadingChannels } = useRecentChannels(3);
     const { stats, isLoading: isLoadingStats } = useStats();
 
     const metrics = transformStatsToMetrics(stats);
 
-    const recentAutomations = recentAutomationsData.map(automation => ({
-        ...automation,
-        lastEdited: formatRelativeTime(automation.updatedAt),
-        lastEventProcessedAt: automation.lastEventProcessedAt
-            ? formatRelativeTime(automation.lastEventProcessedAt)
+    const recentChannels = recentChannelsData.map(channel => ({
+        ...channel,
+        lastEdited: formatRelativeTime(channel.updatedAt),
+        lastEventProcessedAt: channel.lastEventProcessedAt
+            ? formatRelativeTime(channel.lastEventProcessedAt)
             : "Never",
     }));
 
     const eventsPerDay = stats?.dailyEvents || [];
 
-    const recentActions: (RunHistoryAction & { timestamp: string; automationName: string })[] = stats?.recentActions
+    const recentActions: (RunHistoryAction & { timestamp: string; channelName: string })[] = stats?.recentActions
         ? stats.recentActions.map((action) => ({
               action: action.action,
               integration: action.integration as IntegrationType,
@@ -33,7 +33,7 @@ function Home() {
               details: action.details,
               url: action.url,
               timestamp: formatRelativeTime(action.timestamp),
-              automationName: action.automationName,
+              channelName: action.channelName,
           }))
         : [];
 
@@ -46,9 +46,9 @@ function Home() {
                 <RecentActionsSection recentActions={recentActions} />
             </div>
 
-            <RecentAutomationsSection 
-                isLoading={isLoadingAutomations} 
-                automations={recentAutomations} 
+            <RecentChannelsSection 
+                isLoading={isLoadingChannels} 
+                channels={recentChannels} 
             />
         </div>
     );

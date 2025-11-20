@@ -13,18 +13,18 @@ export async function getRunHistory(req: Request, res: Response) {
   try {
     const prisma: PrismaClient = db();
 
-    // req.params contains URL path parameters (e.g., /run-history/:automationId)
-    const automationId = (req.params.automationId as string | undefined)?.trim();
-    if (!automationId) {
-      return res.status(400).json({ error: "automationId is required" });
+    // req.params contains URL path parameters (e.g., /run-history/:channelId)
+    const channelId = (req.params.channelId as string | undefined)?.trim();
+    if (!channelId) {
+      return res.status(400).json({ error: "channelId is required" });
     }
 
     const params = parseGetRunHistoryParams(req.query);
 
     const { page, pageSize, skip, take } = parsePageParams(req, 20, 100);
 
-    // Build Prisma where clause
-    const where: Prisma.run_history_recordsWhereInput = { automation_id: automationId };
+    // Build Prisma where clause (database column is still automation_id)
+    const where: Prisma.run_history_recordsWhereInput = { automation_id: channelId };
 
     if (params.start || params.end) {
       const startDate = parseDate(params.start);
@@ -68,7 +68,7 @@ export async function getRunHistory(req: Request, res: Response) {
     // Transform Prisma rows (snake_case) to API format (camelCase)
     const items: RunHistoryRecord[] = rows.map((runRecord: RunHistoryRecordWithActions) => ({
       id: runRecord.id,
-      automationId: runRecord.automation_id,
+      channelId: runRecord.automation_id, // Database column is automation_id, but API uses channelId
       timestamp: runRecord.timestamp.toISOString(),
       trigger: {
         event: runRecord.event,

@@ -1,8 +1,8 @@
 import { RunHistoryAction } from "../../../shared/RunHistoryTypes";
-import { IconForIntegration } from "../../Automations/components/Integration";
+import { IconForIntegration } from "../../Channels/components/Integration";
 
 export interface ActionItemProps {
-    action: RunHistoryAction & { timestamp: string; automationName: string };
+    action: RunHistoryAction & { timestamp: string; channelName: string };
 }
 
 export function ActionItem({ action }: ActionItemProps) {
@@ -21,7 +21,7 @@ export function ActionItem({ action }: ActionItemProps) {
                     </span>
                 </div>
                 <p className="text-xs text-muted-foreground mb-1">
-                    {action.automationName} • {action.details}
+                    {action.channelName} • {action.details}
                 </p>
             </div>
         </div>

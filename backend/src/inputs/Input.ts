@@ -5,5 +5,5 @@ export interface Input<
     TConfig extends ConfigInstance
 > {
     configType: ConfigType;
-    addInputToAutomation(tx: PrismaTransaction, automationInputId: string, input: TConfig): Promise<void>;
+    addInputToChannel(tx: PrismaTransaction, channelInputId: string, input: TConfig): Promise<void>;
 }
