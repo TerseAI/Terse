@@ -23,6 +23,7 @@ import {
 import {
   createAutomation,
   deleteAutomation,
+  getRecentAutomations,
   getUserAutomation,
   getUserAutomations,
   updateAutomation,
@@ -62,6 +63,7 @@ import {
   getNotionIntegrations
 } from "./routes/notion";
 import { getRunHistory } from "./routes/runHistory";
+import { getStats } from "./routes/stats";
 import { User as TicketUser } from "./shared/TicketSystem";
 import {
   handleSlackWebhook,
@@ -179,6 +181,11 @@ app.get("/activity-feed", authMiddleware, async (req, res) => {
 // Add daily summary route
 app.get("/activity/daily-summary", authMiddleware, async (req, res) => {
   getDailyActivitySummary(req, res);
+});
+
+// MARK: STATS
+app.get("/stats", authMiddleware, async (req, res) => {
+  getStats(req, res);
 });
 
 // MARK: RUN HISTORY
@@ -389,6 +396,10 @@ app.get("/slack/channels", authMiddleware, async (req, res) => {
 
 app.get("/automations", authMiddleware, async (req, res) => {
   getUserAutomations(req, res);
+});
+
+app.get("/automations/recent", authMiddleware, async (req, res) => {
+  getRecentAutomations(req, res);
 });
 
 app.get("/automations/:id", authMiddleware, async (req, res) => {

@@ -1,4 +1,4 @@
-import { Home, MoreHorizontal, Plug, Zap } from "lucide-react"
+import { Eye, Home, MoreHorizontal, Plug, Zap } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
 import {
     Sidebar,
@@ -21,33 +21,7 @@ import { Automation } from "@/shared/types";
 import { AppSidebarHeader } from "./SidebarHeader";
 import { AppSidebarFooter } from "./SidebarFooter";
 import { useAutomations } from "@/hooks/api/useAutomations";
-
-interface NavItem {
-    title: string;
-    url: string;
-    icon: LucideIcon;
-}
-
-const ApplicationItems: NavItem[] = [
-    {
-        title: "Home",
-        url: "/app",
-        icon: Home,
-    },
-    {
-        title: "Automations",
-        url: "/app/automations",
-        icon: Zap,
-    }
-]
-
-const SettingsItems: NavItem[] = [
-    {
-        title: "Integrations",
-        url: "/app/integrations",
-        icon: Plug,
-    },
-]
+import { useFeatureFlag } from "@/hooks/useFeatureFlag";
 
 export function AppSidebar() {
     const { automations, isLoading } = useAutomations({ limit: 100 });
@@ -82,10 +56,12 @@ interface ApplicationNavigationProps {
 
 function ApplicationNavigation({ automations, loading }: ApplicationNavigationProps) {
     const location = useLocation();
+    const hasBirdsEyeFlag = useFeatureFlag('Birds-eye-view-homepage');
+    const applicationItems = hasBirdsEyeFlag ? BirdsEyeApplicationItems : DefaultApplicationItems;
 
     return (
         <SidebarMenu>
-            {ApplicationItems.map((item) => (
+            {applicationItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
                     <SidebarMenuButton asChild data-active={location.pathname === item.url}>
                         <Link to={item.url}>
@@ -194,3 +170,48 @@ function AutomationListItem({ automation }: AutomationListItemProps) {
 }
 
 export default Sidebar;
+
+interface NavItem {
+    title: string;
+    url: string;
+    icon: LucideIcon;
+}
+
+const DefaultApplicationItems: NavItem[] = [
+    {
+        title: "Home",
+        url: "/app",
+        icon: Home,
+    },
+    {
+        title: "Automations",
+        url: "/app/automations",
+        icon: Zap,
+    }
+]
+
+const BirdsEyeApplicationItems: NavItem[] = [
+    {
+        title: "Birds Eye",
+        url: "/app/birds-eye",
+        icon: Eye,
+    },
+    {
+        title: "Home",
+        url: "/app",
+        icon: Home,
+    },
+    {
+        title: "Automations",
+        url: "/app/automations",
+        icon: Zap,
+    }
+]
+
+const SettingsItems: NavItem[] = [
+    {
+        title: "Integrations",
+        url: "/app/integrations",
+        icon: Plug,
+    },
+]
