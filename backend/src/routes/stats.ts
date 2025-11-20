@@ -3,6 +3,11 @@ import { db } from "../prismaClient";
 import { StatsResponse, DayOfWeek, RecentAction } from "../shared/types";
 import { convertRunHistoryIntegrationToIntegrationType } from "../utility/typeConverters";
 
+// Stats configuration constants
+const CHART_TIME_WINDOW_DAYS = 7; // Number of days for the daily events chart
+const METRICS_USE_MONTHLY = true; // If true, metrics use monthly periods; if false, use METRICS_TIME_WINDOW_DAYS
+const METRICS_TIME_WINDOW_DAYS = 30; // Number of days for metrics when METRICS_USE_MONTHLY is false
+
 export async function getStats(req: Request, res: Response) {
     const user = req.session?.user;
     if (!user) {
@@ -15,9 +20,28 @@ export async function getStats(req: Request, res: Response) {
 
         // Calculate date ranges for comparison
         const now = new Date();
-        const currentPeriodStart = new Date(now.getFullYear(), now.getMonth(), 1); // Start of current month
-        const previousPeriodStart = new Date(now.getFullYear(), now.getMonth() - 1, 1); // Start of previous month
-        const previousPeriodEnd = new Date(now.getFullYear(), now.getMonth(), 0); // End of previous month
+        let currentPeriodStart: Date;
+        let previousPeriodStart: Date;
+        let previousPeriodEnd: Date;
+
+        if (METRICS_USE_MONTHLY) {
+            // Monthly periods
+            currentPeriodStart = new Date(now.getFullYear(), now.getMonth(), 1); // Start of current month
+            previousPeriodStart = new Date(now.getFullYear(), now.getMonth() - 1, 1); // Start of previous month
+            previousPeriodEnd = new Date(now.getFullYear(), now.getMonth(), 0); // End of previous month
+        } else {
+            // Days-based periods
+            currentPeriodStart = new Date(now);
+            currentPeriodStart.setDate(currentPeriodStart.getDate() - METRICS_TIME_WINDOW_DAYS);
+            currentPeriodStart.setHours(0, 0, 0, 0);
+            
+            previousPeriodEnd = new Date(currentPeriodStart);
+            previousPeriodEnd.setMilliseconds(previousPeriodEnd.getMilliseconds() - 1);
+            
+            previousPeriodStart = new Date(previousPeriodEnd);
+            previousPeriodStart.setDate(previousPeriodStart.getDate() - METRICS_TIME_WINDOW_DAYS);
+            previousPeriodStart.setHours(0, 0, 0, 0);
+        }
 
         // 1. Total Events Processed
         // Count run_history_records for user's automations (this is the source of truth for processed events)
@@ -98,19 +122,19 @@ export async function getStats(req: Request, res: Response) {
         const automationsChange = currentAutomationsCount - previousAutomationsCount;
         const automationsChangeString = automationsChange >= 0 ? `+${automationsChange}` : `${automationsChange}`;
 
-        // 4. Daily Events (last 7 days)
-        const sevenDaysAgo = new Date(now);
-        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-        sevenDaysAgo.setHours(0, 0, 0, 0);
+        // 4. Daily Events (chart time window)
+        const chartStartDate = new Date(now);
+        chartStartDate.setDate(chartStartDate.getDate() - CHART_TIME_WINDOW_DAYS);
+        chartStartDate.setHours(0, 0, 0, 0);
 
-        // Get all run history records for the last 7 days
+        // Get all run history records for the chart time window
         const recentRecords = await prisma.run_history_records.findMany({
             where: {
                 automation: {
                     user_id: userId,
                 },
                 timestamp: {
-                    gte: sevenDaysAgo,
+                    gte: chartStartDate,
                 },
             },
             select: {
@@ -122,10 +146,10 @@ export async function getStats(req: Request, res: Response) {
         const dayNames: DayOfWeek[] = [DayOfWeek.Sun, DayOfWeek.Mon, DayOfWeek.Tue, DayOfWeek.Wed, DayOfWeek.Thu, DayOfWeek.Fri, DayOfWeek.Sat];
         const eventsByDay = new Map<DayOfWeek, number>();
 
-        // Initialize all 7 days with 0
-        for (let i = 0; i < 7; i++) {
+        // Initialize all days in the chart time window with 0
+        for (let i = 0; i < CHART_TIME_WINDOW_DAYS; i++) {
             const date = new Date(now);
-            date.setDate(date.getDate() - (6 - i));
+            date.setDate(date.getDate() - (CHART_TIME_WINDOW_DAYS - 1 - i));
             date.setHours(0, 0, 0, 0);
             const dayName = dayNames[date.getDay()];
             eventsByDay.set(dayName, 0);
@@ -140,11 +164,11 @@ export async function getStats(req: Request, res: Response) {
             eventsByDay.set(dayName, currentCount + 1);
         }
 
-        // Convert to array format, ensuring we have the last 7 days in order
+        // Convert to array format, ensuring we have all days in the chart time window in order
         const dailyEvents: Array<{ date: DayOfWeek; events: number }> = [];
-        for (let i = 0; i < 7; i++) {
+        for (let i = 0; i < CHART_TIME_WINDOW_DAYS; i++) {
             const date = new Date(now);
-            date.setDate(date.getDate() - (6 - i));
+            date.setDate(date.getDate() - (CHART_TIME_WINDOW_DAYS - 1 - i));
             const dayName = dayNames[date.getDay()];
             dailyEvents.push({
                 date: dayName,
