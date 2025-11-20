@@ -277,12 +277,13 @@ Use notion_query_database first to see existing property names and structure.`,
                     properties: properties as Record<string, any>,
                 });
                 // Report action (no DB writes here)
+                const databaseName = runContext.context.notionConfig.database_name || 'Notion database';
                 runContext.context.runActions = runContext.context.runActions || [];
                 runContext.context.runActions.push({
-                    action: 'update_page',
+                    action: 'Updated page',
                     integration: IntegrationType.NOTION,
-                    target: runContext.context.notionConfig.database_name || runContext.context.notionConfig.database_id,
-                    details: 'Notion page updated',
+                    target: databaseName,
+                    details: 'Updated page in database',
                     url: 'url' in response ? (response as any).url : undefined,
                 });
                 return {
@@ -302,12 +303,13 @@ Use notion_query_database first to see existing property names and structure.`,
                 });
                 console.log(chalk.green("Notion database modified successfully"));
                 // Report action (no DB writes here)
+                const databaseName = runContext.context.notionConfig.database_name || 'Notion database';
                 runContext.context.runActions = runContext.context.runActions || [];
                 runContext.context.runActions.push({
-                    action: 'create_page',
+                    action: 'Created page',
                     integration: IntegrationType.NOTION,
-                    target: runContext.context.notionConfig.database_name || runContext.context.notionConfig.database_id,
-                    details: 'Notion page created',
+                    target: databaseName,
+                    details: 'Created new page in database',
                     url: 'url' in response ? (response as any).url : undefined,
                 });
                 return {
