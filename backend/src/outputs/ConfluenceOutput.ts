@@ -100,14 +100,16 @@ This tool returns the current state of the Confluence page including all metadat
             throw new Error("No context provided");
         }
 
+        // For OAuth bearer tokens, extract host from baseUrl (remove protocol)
+        const host = runContext.context.atlassianIntegration.baseUrl.replace(/^https?:\/\//, '').replace(/\/$/, '');
+
         const client = new ConfluenceClient({
-            host: runContext.context.atlassianIntegration.baseUrl,
+            host: host,
             authentication: {
-                basic: {
-                    email: runContext.context.atlassianIntegration.email,
-                    apiToken: runContext.context.apiToken,
+                oauth2: {
+                    accessToken: runContext.context.apiToken, // apiToken contains the OAuth access_token
                 }
-            }
+            } 
         });
 
         const pageId = runContext.context.confluenceConfig.page_id as string;
@@ -231,12 +233,12 @@ To find the correct position, first call confluence_query_page to see the page c
             throw new Error(chalk.red.bold("No context provided"));
         }
 
+        // Use OAuth bearer token authentication
         const client = new ConfluenceClient({
             host: runContext.context.atlassianIntegration.baseUrl,
             authentication: {
-                basic: {
-                    email: runContext.context.atlassianIntegration.email,
-                    apiToken: runContext.context.apiToken,
+                oauth2: {
+                    accessToken: runContext.context.apiToken, // apiToken contains the OAuth access_token
                 }
             }
         });
@@ -415,11 +417,12 @@ To find the correct position, first call confluence_query_page to see the page c
                 }
             };
 
+            // Use OAuth bearer token for authentication
             const response = await fetch(apiUrl, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Basic ${Buffer.from(`${runContext.context.atlassianIntegration.email}:${runContext.context.apiToken}`).toString('base64')}`,
+                    'Authorization': `Bearer ${runContext.context.apiToken}`, // apiToken contains the OAuth access_token
                 },
                 body: JSON.stringify(requestBody)
             });

@@ -139,16 +139,6 @@ interface BackendService {
     deleteJiraApiKey(): Promise<void>;
 
     /**
-     * Sets the Confluence API key
-     */
-    setConfluenceApiKey(email: string, baseUrl: string, apiKey: string, projectKey?: string): Promise<{ success: boolean; connection?: AtlassianIntegration; error?: string }>;
-
-    /**
-     * Validates Confluence credentials
-     */
-    validateConfluenceCredentials(baseUrl: string, email: string, apiKey: string): Promise<{ valid: boolean; error?: string }>;
-
-    /**
      * Gets the Confluence resources
      */
     getConfluenceResources(integrationId: string): Promise<ConfluenceResourcesResponse>;
@@ -455,25 +445,6 @@ export const BackendProvider: BackendService = {
             .then(response => response.data)
             .catch(error => {
                 console.error('Error deleting Jira API key:', error);
-                throw error;
-            });
-    },
-
-    setConfluenceApiKey: (email: string, baseUrl: string, apiKey: string) => {
-        return axios.post(`${backendBaseUrl}/confluence/set-api-key`, { email, baseUrl, apiKey }, { withCredentials: true })
-            .then(response => response.data)
-            .catch(error => {
-                console.error('Error setting Confluence API key:', error);
-                const errorMessage = error.response?.data?.error || 'Failed to create Confluence connection';
-                throw { success: false, error: errorMessage };
-            });
-    },
-
-    validateConfluenceCredentials: (baseUrl: string, email: string, apiKey: string) => {
-        return axios.post(`${backendBaseUrl}/confluence/validate-credentials`, { baseUrl, email, apiKey }, { withCredentials: true })
-            .then(response => response.data)
-            .catch(error => {
-                console.error('Error validating Confluence credentials:', error);
                 throw error;
             });
     },

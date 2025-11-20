@@ -72,18 +72,15 @@ import {
 } from "./routes/slack";
 import { TicketManager } from "./ticketing/TicketIntegration";
 import { User } from "./types/prisma";
-import { JiraWebhookPayload } from "./utility/JiraWebhookPayload";
-import { LinearWebhookPayload } from "./utility/LinearWebhookPayload";
 import {
   figmaOAuthCallback,
   getFigmaIntegrations,
   handleFigmaWebhook,
 } from "./routes/figma";
-import { getConfluenceIntegrations, getConfluenceResources, setConfluenceCredentials, validateConfluenceCredentials } from "./routes/confluence";
+import { getConfluenceIntegrations, getConfluenceResources } from "./routes/confluence";
 import { getActiveIntegrations, getIntegrationInstallationDetails } from "./routes/integrations";
 import { initializeRealtimeSocket } from "./realtimeSocket";
 import { RunHistoryAction } from "./shared/RunHistoryTypes";
-import { settings } from "./config/settings";
 
 export type Session = {
   user: User;
@@ -257,16 +254,8 @@ app.get("/atlassian/oauth/callback", async (req, res) => {
 
 // MARK: CONFLUENCE
 
-app.get("/confluence/integrations", authMiddleware, async(req, res) => {
+app.get("/confluence/integrations", authMiddleware, async (req, res) => {
   getConfluenceIntegrations(req, res);
-})
-
-app.post("/confluence/set-api-key", authMiddleware, async (req, res) => {
-  setConfluenceCredentials(req, res);
-});
-
-app.post("/confluence/validate-credentials", authMiddleware, async (req, res) => {
-  validateConfluenceCredentials(req, res);
 });
 
 app.get("/confluence/resources", authMiddleware, async (req, res) => {
