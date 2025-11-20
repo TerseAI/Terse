@@ -1,33 +1,35 @@
-import { Plus, PlusIcon } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { Button } from '../ui/button';
 import DropdownSelect from '../ui/DropdownSelect';
-import { LinearConnectionForm } from '../LinearConnectionForm';
-import { formatIntegrationDisplay, IntegrationInstance } from '../../utility/IntegrationFormatters';
-import { getIntegrationName } from '../../utility/IntegrationUtils';
-import { Integration } from "@/types/Integration";
-import { BaseIntegrationProps } from './types';
-
-interface LinearIntegrationProps extends BaseIntegrationProps {
-    integrationType: Integration;
-    showForm: boolean;
-    onFormSuccess: () => void;
-    onFormCancel: () => void;
-}
+import { LinearIntegration as LinearIntegrationType, IntegrationType } from "@/shared/Integrations"
+import { LinearConfig } from '../../shared/Configs';
+import { InputConfigSelectorProps } from './types';
+import { useLinearIntegrations } from '@/hooks/api/useLinearIntegrations';
+import { useOAuthConnection } from '@/hooks/useOAuthConnection';
+import { StatusOption } from '../ui/DropdownSelect';
 
 export function LinearIntegration({
-    selectedIntegrationId,
-    onSelect,
-    integrations,
-    isLoading,
-    isConnecting,
-    onConnect,
-    label = 'Connection',
-    integrationType,
-    showForm,
-    onFormSuccess,
-    onFormCancel,
-    variant
-}: LinearIntegrationProps) {
+    input,
+    variant,
+    setConfig
+}: InputConfigSelectorProps) {
+    const { integrations, isLoading } = useLinearIntegrations();
+    const { connect: connectOAuth, isConnecting: isOAuthConnecting } = useOAuthConnection(IntegrationType.LINEAR);
+    const currentConfig = input.config as LinearConfig | undefined;
+
+    function onSelect(value: string) {
+        const integration = integrations.find((integration: LinearIntegrationType) => integration.id === value);
+        if (integration) {
+            // Linear doesn't have a resource selector, so create a minimal config when integration is selected
+            const linearConfig = new LinearConfig(
+                integration.id,
+                currentConfig?.projectId,
+                currentConfig?.projectName
+            );
+            setConfig(linearConfig);
+        }
+    }
+
     if (isLoading) {
         return (
             <div className="max-w-xs flex items-center gap-2 text-sm text-muted-foreground">
@@ -37,43 +39,40 @@ export function LinearIntegration({
         );
     }
 
-    // Show form when there are no integrations or when explicitly requested
-    if (showForm || integrations.length === 0) {
-        if (integrations.length === 0) {
-            return (
-                <div className="max-w-xs">
-                    {!showForm && (
-                        <div className="flex flex-col gap-3 p-4 rounded-lg border border-dashed border-input bg-card">
-                            <div className="text-sm text-muted-foreground">
-                                No {getIntegrationName(integrationType)} accounts connected
-                            </div>
-                            <button
-                                onClick={onConnect}
-                                disabled={isConnecting}
-                                className="flex items-center justify-center gap-2 px-4 py-2 bg-accent text-accent-foreground rounded-lg hover:brightness-110 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                                <PlusIcon className="w-4 h-4" />
-                                {isConnecting ? 'Connecting...' : `Connect ${getIntegrationName(integrationType)}`}
-                            </button>
-                        </div>
-                    )}
-                    {showForm && (
-                        <LinearConnectionForm onSuccess={onFormSuccess} onCancel={onFormCancel} />
-                    )}
+    if (integrations.length === 0) {
+        return (
+            <div className="max-w-xs flex flex-col gap-3 p-4 rounded-lg border border-dashed border-input bg-card">
+                <div className="text-sm text-muted-foreground">
+                    No Linear accounts connected
                 </div>
-            );
-        } else {
-            // Show form for adding another connection
-            return <LinearConnectionForm onSuccess={onFormSuccess} onCancel={onFormCancel} />;
-        }
+                <Button
+                    onClick={connectOAuth}
+                    disabled={isOAuthConnecting}
+                >
+                    <Plus className="w-4 h-4" />
+                    {isOAuthConnecting ? 'Connecting...' : `Connect Linear`}
+                </Button>
+            </div>
+        );
     }
 
-    // Show selector when integrations exist
-    const connectionSelections = integrations.map((integration: IntegrationInstance) => ({
-        label: formatIntegrationDisplay(integration, integrationType),
+    const connectionSelections: StatusOption[] = integrations.map((integration: LinearIntegrationType) => ({
+        label: integration.workspaceName || 'Unknown Team',
         value: integration.id
     }));
-    const selectedOption = connectionSelections.find(option => option.value === selectedIntegrationId) || connectionSelections[0];
+
+    let selectedOption: StatusOption | undefined = connectionSelections.find(option => option.value === input.config?.integrationId);
+    if (!selectedOption && connectionSelections.length == 1) {
+        const defaultIntegration = connectionSelections[0];
+        setConfig(new LinearConfig(
+            defaultIntegration.value,
+            currentConfig?.projectId,
+            currentConfig?.projectName
+        ));
+        selectedOption = defaultIntegration;
+    } else if (!selectedOption) {
+        selectedOption = connectionSelections[0];
+    }
 
     // Card variant: compact view
     if (variant === 'card') {
@@ -89,7 +88,7 @@ export function LinearIntegration({
         <div className="flex flex-col gap-3">
             <div className="flex flex-col gap-1.5">
                 <label className="font-medium">
-                    {label}
+                    Linear Team
                 </label>
                 <DropdownSelect
                     statusOptions={connectionSelections}
@@ -99,12 +98,12 @@ export function LinearIntegration({
             </div>
 
             <Button
-                onClick={onConnect}
-                disabled={isConnecting}
+                onClick={connectOAuth}
+                disabled={isOAuthConnecting}
                 variant="outline"
             >
                 <Plus className="w-4 h-4" />
-                {isConnecting ? 'Connecting...' : `Connect Another ${getIntegrationName(integrationType)}`}
+                {isOAuthConnecting ? 'Connecting...' : "Connect Another Linear"}
             </Button>
         </div>
     );

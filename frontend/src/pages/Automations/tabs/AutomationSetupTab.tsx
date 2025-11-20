@@ -4,26 +4,24 @@ import { useNavigate } from "react-router-dom";
 import EditableTextField from '../../../components/ui/EditableTextField';
 import { InputsSection } from "../InputSection";
 import { OutputSection } from "../OutputSection";
-import { AutomationUpdate } from "@/shared/types";
+import { AutomationUpdate, TransientAutomationInput, TransientAutomationOutput } from "@/shared/types";
 import { toast } from "sonner";
-import { getDefaultAutomationName } from "@/utility/AutomationUtils";
+import { getDefaultAutomationName, toAutomationInput, toAutomationOutput } from "@/utility/AutomationUtils";
 import { useAutomationCount } from "@/hooks/api/useAutomationCount";
-import { isInputComplete, isOutputComplete } from "@/utility/IntegrationUtils";
-import { Integration } from "@/types/Integration";
 import { Conn, SVGFlowArrows } from "../components/FlowArrow";
 import { PromptSection } from "../PromptSection";
 import { useAutomationMutations } from "@/hooks/api/useAutomations";
 import { type KeyedMutator } from 'swr';
 import { Automation, AutomationInput, AutomationOutput, AutomationPrompt } from "@/shared/types";
 
-type AutomationSetupTabProps = {
+export type AutomationSetupTabProps = {
     automationId: string | null;
     name: string | null;
     setName: (name: string) => void;
-    inputs: AutomationInput[];
-    setInputs: (inputs: AutomationInput[]) => void;
-    output: AutomationOutput | undefined;
-    setOutput: (output: AutomationOutput | undefined) => void;
+    inputs: TransientAutomationInput[];
+    setInputs: (inputs: TransientAutomationInput[]) => void;
+    output: TransientAutomationOutput | undefined;
+    setOutput: (output: TransientAutomationOutput | undefined) => void;
     prompt: AutomationPrompt | undefined;
     setPrompt: (prompt: AutomationPrompt | undefined) => void;
     isActive: boolean;
@@ -60,8 +58,8 @@ function SaveAutomationButton({
     // Each integration reports its own completeness
     const isComplete =
         inputs.length > 0 &&
-        inputs.every(i => isInputComplete({ ...i, integration: i.integration as Integration })) &&
-        !!output && isOutputComplete({ ...output, integration: output.integration as Integration }) &&
+        inputs.every(i => i.config != null && i.config.isComplete()) &&
+        !!output && output.config.isComplete() &&
         !!prompt?.text; // Ensure prompt is not empty
 
     const isEditMode = !!automationId;
@@ -70,46 +68,11 @@ function SaveAutomationButton({
         if (!isComplete || !inputs.length || !output) return;
 
         setIsSaving(true);
-        try {
-            // Debug: Log inputs before mapping
-            console.log('Inputs before mapping:', inputs);
-            
+        try {    
             const automationData: AutomationUpdate = {
                 name: name || defaultName || '',
-                inputs: inputs.map(i => {
-                    const inputData: any = {
-                        integration: i.integration,
-                        integrationId: i.integrationId,
-                    };
-                    
-                    // Only include configs if they exist and have required fields
-                    if (i.notionConfig) {
-                        inputData.notionConfig = i.notionConfig;
-                    }
-                    if (i.slackConfig) {
-                        inputData.slackConfig = i.slackConfig;
-                    }
-                    if (i.figmaConfig) {
-                        // Validate that figmaConfig has both fileKey and teamId before including it
-                        if (i.figmaConfig.fileKey && i.figmaConfig.teamId) {
-                            inputData.figmaConfig = i.figmaConfig;
-                        } else {
-                            console.warn('Figma config missing fileKey or teamId, skipping:', i.figmaConfig);
-                        }
-                    }
-                    if (i.githubConfig) {
-                        inputData.githubConfig = i.githubConfig;
-                    }
-                    return inputData;
-                }),
-                output: {
-                    integration: output.integration,
-                    integrationId: output.integrationId,
-                    ...(output.notionConfig && { notionConfig: output.notionConfig }),
-                    ...(output.slackConfig && { slackConfig: output.slackConfig }),
-                    ...(output.notionPageConfig && { notionPageConfig: output.notionPageConfig }),
-                    ...(output.confluenceConfig && { confluenceConfig: output.confluenceConfig })
-                },
+                inputs,
+                output,
                 prompt,
                 isActive
             };
@@ -121,14 +84,14 @@ function SaveAutomationButton({
                     data: automationData,
                     mutateAutomation: mutate,
                 });
-            } else {
+            } else if (isComplete && automationData.output && automationData.inputs && automationData.inputs.length > 0) {
                 // Create new automation
                 const creation = await createAutomation({
                     name: automationData.name || '',
                     inputs: automationData.inputs || [],
-                    output: automationData.output || { integration: '', integrationId: undefined },
+                    output: automationData.output,
                     prompt: automationData.prompt || { text: '' },
-                    isActive: automationData.isActive,
+                    isActive: automationData.isActive || true,
                 });
 
                 if (creation?.id) {
@@ -176,11 +139,7 @@ export default function AutomationSetupTab({
     mutate,
 }: AutomationSetupTabProps) {
     const { totalCount } = useAutomationCount();
-    const defaultName = getDefaultAutomationName(
-        inputs.map(i => ({ integration: i.integration as Integration })),
-        output ? { integration: output.integration as Integration } : undefined,
-        totalCount
-    );
+    const defaultName = getDefaultAutomationName(totalCount);
 
     const containerRef = useRef<HTMLDivElement>(null);
     const inputsSectionRef = useRef<Map<string, HTMLDivElement>>(new Map());
@@ -196,18 +155,19 @@ export default function AutomationSetupTab({
     };
 
     const connections: Conn[] = []
+
+    const automationInputs = inputs.map(toAutomationInput).filter((i): i is AutomationInput => i !== null);
+    const automationOutput = toAutomationOutput(output)
+
     
-    if (inputs.length > 0 && inputsSectionRef.current != null && inputsSectionRef.current.size > 0) {
-        inputs.forEach((input) => {
-            if (input.integration != null && input.integrationId != null) {
-                const inputId = input.id || input.integrationId || '';
-                const inputCardRef = createMapElementRef(inputsSectionRef, inputId);
-                connections.push({ 
-                    id: `input-to-prompt-${input.integration}-${input.integrationId}`, 
-                    from: inputCardRef, 
-                    to: PromptSectionRef 
-                });
-            }
+    if (automationInputs.length > 0 && inputsSectionRef.current != null && inputsSectionRef.current.size > 0) {
+        automationInputs.forEach((input) => {
+            const inputCardRef = createMapElementRef(inputsSectionRef, input.id);
+            connections.push({ 
+                id: `input-to-prompt-${input.config.integrationType}-${input.config.integrationId}`, 
+                from: inputCardRef, 
+                to: PromptSectionRef 
+            });
         });
     }
     if (prompt != null && PromptSectionRef.current != null && OutputSectionRef.current != null && output != null) {
@@ -225,8 +185,8 @@ export default function AutomationSetupTab({
                         defaultName={defaultName}
                         automationId={automationId}
                         name={name}
-                        inputs={inputs}
-                        output={output}
+                        inputs={automationInputs}
+                        output={automationOutput}
                         prompt={prompt}
                         isActive={isActive}
                         mutate={mutate}
@@ -247,5 +207,3 @@ export default function AutomationSetupTab({
         </div>
     )
 }
-
-

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useState } from "react";
 import { NotionResource, NotionResourceType } from "../shared/types";
 import { Check, ChevronsUpDown } from "lucide-react";
 import { Button } from "./ui/button";
@@ -11,65 +11,29 @@ import { RefreshButton } from "./RefreshButton";
 interface NotionResourceSelectorProps {
     integrationId: string;
     selectedResourceId?: string;
+    resourceType: NotionResourceType;
     onSelect: (resourceId: string, resourceName: string, resourceType: NotionResourceType) => void;
 }
 
 export function NotionResourceSelector({
     integrationId,
     selectedResourceId,
+    resourceType,
     onSelect
 }: NotionResourceSelectorProps) {
     const {
         resources,
-        selectedResourceId: defaultResourceId,
         isLoading,
         isError,
         error,
         isValidating,
         mutate,
-    } = useNotionResources(integrationId);
+    } = useNotionResources(integrationId, resourceType);
 
     const [isExplicitlyRefreshing, setIsExplicitlyRefreshing] = useState(false);
     
     // Only show spinner when explicitly refreshing (user clicked button) AND currently validating
     const isRefreshing = isExplicitlyRefreshing && isValidating;
-
-    const errorMessage = useMemo(() => {
-        if (!isError) {
-            return null;
-        }
-        if (error instanceof Error) {
-            return error.message;
-        }
-        if (typeof error === 'string') {
-            return error;
-        }
-        return 'Failed to load databases';
-    }, [error, isError]);
-
-    useEffect(() => {
-        if (!integrationId || isLoading || resources.length === 0) {
-            return;
-        }
-
-        if (selectedResourceId) {
-            return;
-        }
-
-        let resourceToSelect: NotionResource | undefined;
-
-        if (defaultResourceId) {
-            resourceToSelect = resources.find((resource) => resource.id === defaultResourceId);
-        }
-
-        if (!resourceToSelect) {
-            resourceToSelect = resources[0];
-        }
-
-        if (resourceToSelect) {
-            onSelect(resourceToSelect.id, resourceToSelect.title, resourceToSelect.type);
-        }
-    }, [defaultResourceId, integrationId, isLoading, onSelect, resources, selectedResourceId]);
 
     const handleRefresh = () => {
         setIsExplicitlyRefreshing(true);
@@ -86,10 +50,10 @@ export function NotionResourceSelector({
         );
     }
 
-    if (errorMessage) {
+    if (isError && error) {
         return (
             <div className="space-y-2">
-                <div className="text-sm text-destructive">{errorMessage}</div>
+                <div className="text-sm text-destructive">{error instanceof Error ? error.message : (typeof error === 'string' ? error : 'Failed to load databases')}</div>
                 <Button
                     onClick={handleRefresh}
                     variant="link"

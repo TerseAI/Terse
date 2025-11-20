@@ -1,11 +1,12 @@
 import { Tab, TabGroup, TabList, TabPanel, TabPanels } from "@headlessui/react";
 import { Settings, Clock } from "lucide-react";
 import { useParams, useSearchParams } from "react-router-dom";
-import AutomationSetupTab from "./tabs/AutomationSetupTab";
+import AutomationSetupTab, { AutomationSetupTabProps } from "./tabs/AutomationSetupTab";
 import AutomationRunHistoryTab from "./tabs/AutomationRunHistoryTab";
 import { useEffect, useState} from "react";
 import { useAutomation } from "../../hooks/api/useAutomations";
-import { AutomationInput, AutomationOutput, AutomationPrompt } from "../../shared/types";
+import { AutomationPrompt, TransientAutomationInput, TransientAutomationOutput } from "../../shared/types";
+import { toTransientAutomationInput, toTransientAutomationOutput } from "../../utility/AutomationUtils";
 
 function AutomationDetail() {
     const { id } = useParams<{ id: string }>();
@@ -17,19 +18,19 @@ function AutomationDetail() {
     // Fetch automation data using useSWR
     const { automation, isLoading: isFetching, mutate } = useAutomation(automationId);
 
-    // Local state for editing
+    // Local state for editing - use transient types for the editing interface
     const [name, setName] = useState<string | null>(null);
-    const [inputs, setInputs] = useState<AutomationInput[]>([]);
-    const [output, setOutput] = useState<AutomationOutput | undefined>(undefined);
+    const [inputs, setInputs] = useState<TransientAutomationInput[]>([]);
+    const [output, setOutput] = useState<TransientAutomationOutput | undefined>(undefined);
     const [prompt, setPrompt] = useState<AutomationPrompt | undefined>(undefined);
     const [isActive, setIsActive] = useState<boolean>(true);
 
-    // Sync local state with fetched data
+    // Sync local state with fetched data - convert from AutomationInput/Output to Transient types
     useEffect(() => {
         if (automation) {
             setName(automation.name);
-            setInputs(automation.inputs);
-            setOutput(automation.output);
+            setInputs(automation.inputs.map(toTransientAutomationInput));
+            setOutput(automation.output ? toTransientAutomationOutput(automation.output) : undefined);
             setPrompt(automation.prompt);
             setIsActive(automation.isActive);
         } else if (!automationId) {
@@ -56,7 +57,8 @@ function AutomationDetail() {
     }, [searchParams]);
 
     // Prepare props for child components
-    const automationProps = {
+    // Note: inputs and output are already in TransientAutomationInput/Output format
+    const automationProps: AutomationSetupTabProps = {
         automationId,
         name,
         setName,

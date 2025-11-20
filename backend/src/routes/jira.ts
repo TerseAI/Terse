@@ -5,6 +5,41 @@ import { JiraAdapter } from "../ticketing/jira";
 import { JiraWebhookPayload } from "../utility/JiraWebhookPayload";
 import { findUserById, getUserTicketManager } from "../types/user";
 import { search } from "../searchClient";
+import { AtlassianIntegrationManager } from "../integrations/AtlassianIntegration";
+import { InputConfigType } from "@prisma/client";
+
+export async function getJiraIntegrations(req: Request, res: Response) {
+    if (!req.session?.user) {
+        res.status(401).json({ error: 'Unauthorized' });
+        return;
+    }
+
+    try {
+        const manager = new AtlassianIntegrationManager();
+        const integrations = await manager.getInstancesForUser(req.session.user.id);
+        res.status(200).json(integrations);
+    } catch (error) {
+        console.error('Error fetching Jira integrations:', error);
+        res.status(500).json({ error: 'Failed to fetch Jira integrations' });
+    }
+}
+
+export async function getAtlassianIntegrations(req: Request, res: Response) {
+    if (!req.session?.user) {
+        res.status(401).json({ error: 'Unauthorized' });
+        return;
+    }
+
+    try {
+        const manager = new AtlassianIntegrationManager();
+        const integrations = await manager.getInstancesForUser(req.session.user.id);
+        res.status(200).json(integrations);
+    } catch (error) {
+        console.error('Error fetching Atlassian integrations:', error);
+        res.status(500).json({ error: 'Failed to fetch Atlassian integrations' });
+    }
+}
+
 
 export const setJiraCredentials = async (req: Request, res: Response) => {
     const user = req.session?.user;
@@ -173,17 +208,13 @@ export const deleteJiraCredentials = async (req: Request, res: Response) => {
     // Clean up automation inputs/outputs that reference this Jira integration
     await db().automation_inputs.deleteMany({
         where: {
-            integration_type: 'JIRA',
+            config_type: InputConfigType.JIRA,
             integration_id: creds.id
         }
     });
 
-    await db().automation_outputs.deleteMany({
-        where: {
-            integration_type: 'JIRA',
-            integration_id: creds.id
-        }
-    });
+    // Note: Jira is not a valid output type (only NOTION_PAGE, NOTION_DATABASE, CONFLUENCE are supported)
+    // No automation_outputs to delete for Jira integrations
 
     await db().jira_api_keys.delete({ where: { id: integrationId } });
     console.log(chalk.green('Deleted Jira credentials for user'), chalk.yellow(user.id));

@@ -6,7 +6,7 @@ import express from "express";
 import { createServer } from "http";
 // Import settings early to validate environment variables at startup
 import "./config/settings";
-import { AgentSocketServer, requestSessionSocketToken } from "./agent/socket";
+import { requestSessionSocketToken } from "./agent/socket";
 import { getActivityFeed, getDailyActivitySummary } from "./routes/activity";
 import { authMiddleware, login, logout, setSession } from "./routes/auth";
 import {
@@ -30,61 +30,59 @@ import {
 import {
   getInstallationUrl,
   githubAppUnifiedEvent,
-} from "./routes/Github/githubApp";
-import {
   githubAppInstallationDeleted,
   processSetUpURLGithubInstallation,
   processsGithubAppInstallationWebhook,
-} from "./routes/Github/githubAppInstallationMatching";
+  getGithubRepositoriesForIntegration,
+  getGithubIntegrations,
+} from "./routes/github";
 import {
   deleteGmailIntegration,
-  getGmailOAuthUrl,
+  getGmailIntegrations,
   gmailCallback,
   handleGmailWebhook,
   refreshAllGmailWatches,
 } from "./routes/gmail";
-import { fetchUserIntegrations } from "./routes/integrations";
 import {
   deleteJiraCredentials,
   getJiraCredentials,
+  getAtlassianIntegrations,
   indexJiraTicket,
   setJiraCredentials,
   validateJiraCredentials,
 } from "./routes/jira";
 import {
-  deleteLinearCredentials,
-  getLinearApiKey,
-  indexLinearTicket,
-  setLinearApiKey,
-  validateLinearApiKey,
+  linearOAuthCallback,
+  getLinearIntegrations,
+  handleLinearWebhook,
 } from "./routes/linear";
 import {
-  getNotionOAuthUrl,
   notionOAuthCallback,
-  getNotionResources
+  getNotionResources,
+  getNotionIntegrations
 } from "./routes/notion";
 import { getRunHistory } from "./routes/runHistory";
 import { User as TicketUser } from "./shared/TicketSystem";
-import { handleSlackEvent } from "./slack/eventHandler";
 import {
+  handleSlackWebhook,
   getCurrentSlackIntegration,
-  getSlackOAuthUrl,
   slackOAuthCallback,
-} from "./slack/registerApp";
-import { getSlackChannels } from "./routes/slack";
+  getSlackChannels,
+  getSlackIntegrations,
+} from "./routes/slack";
 import { TicketManager } from "./ticketing/TicketIntegration";
 import { User } from "./types/prisma";
 import { JiraWebhookPayload } from "./utility/JiraWebhookPayload";
 import { LinearWebhookPayload } from "./utility/LinearWebhookPayload";
 import {
   figmaOAuthCallback,
-  getFigmaOAuthUrl,
+  getFigmaIntegrations,
   handleFigmaWebhook,
 } from "./routes/figma";
-import { getConfluenceResources, setConfluenceCredentials, validateConfluenceCredentials } from "./routes/confluence";
+import { getConfluenceIntegrations, getConfluenceResources, setConfluenceCredentials, validateConfluenceCredentials } from "./routes/confluence";
+import { getActiveIntegrations, getIntegrationInstallationDetails } from "./routes/integrations";
 import { initializeRealtimeSocket } from "./realtimeSocket";
 import { RunHistoryAction } from "./shared/RunHistoryTypes";
-import { getGithubRepositoriesForIntegration } from "./routes/Github/githubEventProcessor";
 
 export type Session = {
   user: User;
@@ -120,9 +118,9 @@ app.use((req, res, next) => {
   next();
 });
 
-// Parse JSON for all routes except Slack events (which needs raw body for signature verification)
+// Parse JSON for all routes except Slack events and Linear webhook (which need raw body for signature verification)
 app.use((req, res, next) => {
-  if (req.path === "/slack/events") {
+  if (req.path === "/slack/events" || req.path === "/linear/webhook") {
     next();
   } else {
     bodyParser.json()(req, res, next);
@@ -196,6 +194,11 @@ app.get("/session/token", authMiddleware, async (req, res) => {
 });
 
 // MARK: GITHUB APP
+
+app.get("/github/integrations", authMiddleware, async(req, res) => {
+  getGithubIntegrations(req, res);
+})
+
 app.get("/github/installation-url", authMiddleware, async (req, res) => {
   getInstallationUrl(req, res);
 });
@@ -248,7 +251,16 @@ app.delete("/jira/delete-credentials", authMiddleware, async (req, res) => {
   deleteJiraCredentials(req, res);
 });
 
+// MARK: ATLASSIAN
+app.get("/atlassian/integrations", authMiddleware, async (req, res) => {
+  getAtlassianIntegrations(req, res);
+});
+
 // MARK: CONFLUENCE
+
+app.get("/confluence/integrations", authMiddleware, async(req, res) => {
+  getConfluenceIntegrations(req, res);
+})
 
 app.post("/confluence/set-api-key", authMiddleware, async (req, res) => {
   setConfluenceCredentials(req, res);
@@ -263,8 +275,8 @@ app.get("/confluence/resources", authMiddleware, async (req, res) => {
 });
 
 // MARK: GMAIL
-app.get("/gmail/get-oauth-url", authMiddleware, async (req, res) => {
-  getGmailOAuthUrl(req, res);
+app.get("/gmail/integrations", authMiddleware, async (req, res) => {
+  getGmailIntegrations(req, res);
 });
 
 app.get("/gmail/callback", async (req, res) => {
@@ -285,10 +297,11 @@ app.post("/gmail/refresh-watches", async (req, res) => {
 
 // MARK: NOTION
 
+app.get("/notion/integrations", authMiddleware, async(req, res) => {
+  getNotionIntegrations(req, res);
+})
+
 // OAuth endpoints
-app.get("/notion/get-oauth-url", authMiddleware, async (req, res) => {
-  getNotionOAuthUrl(req, res);
-});
 
 app.get("/notion/oauth/callback", async (req, res) => {
   notionOAuthCallback(req, res);
@@ -300,9 +313,9 @@ app.get("/notion/resources", authMiddleware, async (req, res) => {
 
 // MARK: FIGMA
 
-app.get("/figma/get-oauth-url", authMiddleware, async (req, res) => {
-  getFigmaOAuthUrl(req, res);
-});
+app.get("/figma/integrations", authMiddleware, async(req, res) => {
+  getFigmaIntegrations(req, res);
+})
 
 app.get("/figma/oauth/callback", async (req, res) => {
   figmaOAuthCallback(req, res);
@@ -314,40 +327,19 @@ app.post("/webhooks/figma", async (req, res) => {
 
 // MARK: LINEAR
 
-app.post("/linear/set-api-key", authMiddleware, async (req, res) => {
-  setLinearApiKey(req, res);
+app.get("/linear/oauth/callback", async (req, res) => {
+  linearOAuthCallback(req, res);
 });
 
-app.post("/linear/validate-and-fetch-teams", authMiddleware, async (req, res) => {
-  validateLinearApiKey(req, res);
+// Linear webhook needs raw body for signature verification
+app.use("/linear/webhook", express.raw({ type: "application/json" }));
+
+app.post("/linear/webhook", async (req, res) => {
+  handleLinearWebhook(req, res);
 });
 
-app.get("/linear/get-api-key", authMiddleware, async (req, res) => {
-  getLinearApiKey(req, res);
-});
-
-app.delete("/linear/delete-credentials", authMiddleware, async (req, res) => {
-  deleteLinearCredentials(req, res);
-});
-
-app.post("/webhooks/linear/:userId", async (req, res) => {
-  const { userId } = req.params;
-  const event: LinearWebhookPayload = req.body;
-
-  // Update your search index based on the event
-  switch (event.type) {
-    case "Issue":
-      await indexLinearTicket(userId, event);
-      break;
-    case "Comment":
-      console.log("Comment", event);
-      break;
-    case "Project":
-      console.log("Project", event);
-      break;
-  }
-
-  res.json({ received: true });
+app.get("/linear/integrations", authMiddleware, async (req, res) => {
+  getLinearIntegrations(req, res);
 });
 
 app.post("/webhooks/jira/:userId", async (req, res) => {
@@ -371,12 +363,12 @@ app.post("/webhooks/jira/:userId", async (req, res) => {
 
 // MARK: SLACK
 
+app.get("/slack/integrations", authMiddleware, async(req, res) => {
+  getSlackIntegrations(req, res);
+})
+
 app.get("/slack/get-current-integration", authMiddleware, async (req, res) => {
   getCurrentSlackIntegration(req, res);
-});
-
-app.get("/slack/get-oauth-url", authMiddleware, async (req, res) => {
-  getSlackOAuthUrl(req, res);
 });
 
 app.get("/slack/oauth-callback", async (req, res) => {
@@ -386,21 +378,11 @@ app.get("/slack/oauth-callback", async (req, res) => {
 app.use("/slack/events", express.raw({ type: "application/json" }));
 
 app.post("/slack/events", async (req, res) => {
-  console.log("📨 [SERVER] Slack events endpoint hit - method:", req.method, "path:", req.path);
-  console.log("📨 [SERVER] Headers:", {
-    'x-slack-request-timestamp': req.headers['x-slack-request-timestamp'],
-    'x-slack-signature': req.headers['x-slack-signature'] ? 'present' : 'missing',
-    'content-type': req.headers['content-type'],
-  });
-  await handleSlackEvent(req, res);
+  await handleSlackWebhook(req, res);
 });
 
 app.get("/slack/channels", authMiddleware, async (req, res) => {
   getSlackChannels(req, res);
-});
-
-app.get("/integrations/status", authMiddleware, async (req, res) => {
-  fetchUserIntegrations(req, res);
 });
 
 // MARK: AUTOMATIONS
@@ -423,6 +405,16 @@ app.patch("/automations/:id", authMiddleware, async (req, res) => {
 
 app.delete("/automations/:id", authMiddleware, async (req, res) => {
   deleteAutomation(req, res);
+});
+
+// MARK: INTEGRATIONS
+
+app.get("/integrations/:integrationType/installation-details", authMiddleware, async (req, res) => {
+  getIntegrationInstallationDetails(req, res);
+});
+
+app.get("/integrations/active", authMiddleware, async (req, res) => {
+  getActiveIntegrations(req, res);
 });
 
 server.listen(3001, () => {
