@@ -205,7 +205,7 @@ export const deleteJiraCredentials = async (req: Request, res: Response) => {
         await adapter.tearDownWebhook(creds.webhook_id);
     }
 
-    // Clean up automation inputs/outputs that reference this Jira integration
+    // Clean up channel inputs/outputs that reference this Jira integration
     await db().automation_inputs.deleteMany({
         where: {
             config_type: InputConfigType.JIRA,
@@ -214,7 +214,7 @@ export const deleteJiraCredentials = async (req: Request, res: Response) => {
     });
 
     // Note: Jira is not a valid output type (only NOTION_PAGE, NOTION_DATABASE, CONFLUENCE are supported)
-    // No automation_outputs to delete for Jira integrations
+    // No channel outputs to delete for Jira integrations
 
     await db().jira_api_keys.delete({ where: { id: integrationId } });
     console.log(chalk.green('Deleted Jira credentials for user'), chalk.yellow(user.id));

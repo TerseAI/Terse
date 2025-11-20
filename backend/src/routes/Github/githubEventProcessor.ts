@@ -2,7 +2,7 @@ import { GithubAppUnifiedEventRequest } from "./githubApp";
 import chalk from "chalk";
 import { resolveUserForGithubInstallation } from "./githubAppInstallationMatching";
 import { User } from "../../types/prisma";
-import { EventProcessor } from "../../agent/AutomationAgent/EventProcessor";
+import { EventProcessor } from "../../agent/ChannelAgent/EventProcessor";
 import { GithubEvent } from "../../integrations/GithubIntegration";
 import { db } from "../../prismaClient";
 import { Request, Response } from "express";

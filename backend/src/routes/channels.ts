@@ -192,7 +192,7 @@ export async function getUserChannel(req: Request, res: Response) {
     const channelId = req.params.id;
 
     try {
-        const channel: ChannelWithRelations | null = await db().channels.findFirst({
+        const channel: ChannelWithRelations | null = await db().automations.findFirst({
             where: {
                 id: channelId,
                 user_id: userId

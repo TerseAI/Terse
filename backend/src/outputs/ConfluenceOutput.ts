@@ -1,6 +1,6 @@
 import { RunHistoryAction } from "../shared/RunHistoryTypes";
 import { AtlassianIntegration, IntegrationType } from "../shared/Integrations";
-import { AutomationOutput, User, AutomationConfluenceConfig, PrismaTransaction } from "../types/prisma";
+import { ChannelOutput, User, ChannelConfluenceConfig, PrismaTransaction } from "../types/prisma";
 import { Session } from "../server";
 import { Output, ToolboxEntry } from "./abstract/Output";
 import { db } from "../prismaClient";
@@ -15,7 +15,7 @@ import { ConfluenceConfig } from "../shared/Configs";
 
 export interface ConfluenceSession extends Session {
     atlassianIntegration: AtlassianIntegration; // Top level integration record
-    confluenceConfig: AutomationConfluenceConfig; // Configuration for the Specific Confluence Database
+    confluenceConfig: ChannelConfluenceConfig; // Configuration for the Specific Confluence Database
     apiToken: string; // API token stored separately (not in shared type for security)
 }
 
@@ -30,7 +30,7 @@ export class ConfluenceOutput extends Output<ConfluenceSession, ConfluenceConfig
 
     async createSessionFromConfig(
         integrationId: string,
-        automationOutputConfig: AutomationOutput,
+        channelOutputConfig: ChannelOutput,
         user: User
     ): Promise<ConfluenceSession> {
         const integration = await db().jira_api_keys.findFirst({
@@ -41,12 +41,12 @@ export class ConfluenceOutput extends Output<ConfluenceSession, ConfluenceConfig
             throw new Error(`Confluence integration ${integrationId} not found`);
         }
 
-        const confluenceConfig: AutomationConfluenceConfig | null = await db().automation_confluence_configs.findFirst({
-            where: { automation_output_id: automationOutputConfig.id }
+        const confluenceConfig: ChannelConfluenceConfig | null = await db().automation_confluence_configs.findFirst({
+            where: { automation_output_id: channelOutputConfig.id }
         });
 
         if (!confluenceConfig) {
-            throw new Error(`Confluence config for automation output ${automationOutputConfig.id} not found`);
+            throw new Error(`Confluence config for automation output ${channelOutputConfig.id} not found`);
         }
 
         const atlassianIntegration: AtlassianIntegration = {
@@ -65,10 +65,10 @@ export class ConfluenceOutput extends Output<ConfluenceSession, ConfluenceConfig
         };
     }
 
-    async addOutputToAutomation(tx: PrismaTransaction, automationOutputId: string, output: ConfluenceConfig): Promise<void> {
+    async addOutputToChannel(tx: PrismaTransaction, channelOutputId: string, output: ConfluenceConfig): Promise<void> {
         await tx.automation_confluence_configs.create({
             data: {
-                automation_output_id: automationOutputId,
+                automation_output_id: channelOutputId,
                 space_name: output.spaceName,
                 space_id: output.spaceId,
                 page_id: output.pageId,

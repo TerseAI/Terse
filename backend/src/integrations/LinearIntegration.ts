@@ -2,7 +2,7 @@ import { Integration, OAuthIntegrationInstallation } from "./abstract/Integratio
 import { db } from "../prismaClient";
 import { LinearIntegration, LinearIntegrationMetadata } from "../shared/Integrations";
 import { IntegrationType } from "../shared/Integrations";
-import { AutomationInputWithConfigs } from "../types/prisma";
+import { ChannelInputWithConfigs } from "../types/prisma";
 import { OAuthInstallationDetails } from "../shared/types";
 import jwt from "jsonwebtoken";
 import { settings } from "../config/settings";
@@ -14,7 +14,7 @@ import { LinearWebhookPayload } from "../utility/LinearWebhookPayload";
 import { InputEvent } from "./abstract/InputEvent";
 import { InputConfigType } from "@prisma/client";
 import { RunHistoryTrigger } from "../shared/RunHistoryTypes";
-import { EventProcessor } from "../agent/AutomationAgent/EventProcessor";
+import { EventProcessor } from "../agent/ChannelAgent/EventProcessor";
 
 export class LinearIntegrationManager implements Integration<LinearIntegration, LinearWebhookPayload, typeof LinearIntegrationMetadata>, OAuthIntegrationInstallation {
     constructor() { }
@@ -278,13 +278,13 @@ export class LinearIntegrationManager implements Integration<LinearIntegration, 
         return Promise.resolve();
     }
 
-    async setupAutomationInput(integrationId: string, automationInput: AutomationInputWithConfigs): Promise<void> {
-        // Linear doesn't require any setup for automation inputs
+    async setupChannelInput(integrationId: string, channelInput: ChannelInputWithConfigs): Promise<void> {
+        // Linear doesn't require any setup for channel inputs
         // Webhooks are managed at the integration level
     }
 
-    async teardownAutomationInput(integrationId: string, automationInput: AutomationInputWithConfigs): Promise<void> {
-        // Linear doesn't require any teardown for automation inputs
+    async teardownChannelInput(integrationId: string, channelInput: ChannelInputWithConfigs): Promise<void> {
+        // Linear doesn't require any teardown for channel inputs
         // Webhooks are managed at the integration level
     }
 }
@@ -302,7 +302,7 @@ export class LinearEvent extends InputEvent {
         this.integrationId = integrationId;
     }
 
-    formatForAutomationAgent(): string {
+    formatForChannelAgent(): string {
         const indentMultiline = (text: string): string =>
             text
                 .split('\n')
@@ -377,10 +377,10 @@ export class LinearEvent extends InputEvent {
         return `Linear ${this.data.type} Event: ${this.data.action}`;
     }
 
-    matchesAutomationInput(automationInput: AutomationInputWithConfigs): boolean {
-        console.log(chalk.cyan(`Checking if Linear event matches automation input: ${automationInput.config_type}`));
+    matchesChannelInput(channelInput: ChannelInputWithConfigs): boolean {
+        console.log(chalk.cyan(`Checking if Linear event matches channel input: ${channelInput.config_type}`));
         // Check if integration type matches
-        if (automationInput.config_type !== InputConfigType.LINEAR) {
+        if (channelInput.config_type !== InputConfigType.LINEAR) {
             return false;
         }
 

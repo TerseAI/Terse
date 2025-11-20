@@ -13,10 +13,10 @@ export class SlackInput implements Input<SlackConfig> {
         this.integrationManager = new SlackIntegrationManager();
     }
 
-    async addInputToAutomation(tx: PrismaTransaction, automationInputId: string, input: SlackConfig): Promise<void> {
+    async addInputToChannel(tx: PrismaTransaction, channelInputId: string, input: SlackConfig): Promise<void> {
         await tx.automation_slack_configs.create({
             data: {
-                automation_input_id: automationInputId,
+                automation_input_id: channelInputId, // Database column is still automation_input_id
                 channel_id: input.channelId,
                 channel_name: input.channelName,
                 listen_to_user_dms: input.listenToUserDms,

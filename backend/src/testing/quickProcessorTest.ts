@@ -1,4 +1,4 @@
-import { EventProcessor } from '../agent/AutomationAgent/EventProcessor';
+import { EventProcessor } from '../agent/ChannelAgent/EventProcessor';
 import { GmailEvent, GmailEventData } from '../integrations/GmailIntegration';
 import { db } from '../prismaClient';
 import chalk from 'chalk';
@@ -106,14 +106,14 @@ async function runQuickTest() {
                 if (result.success) {
                     console.log(chalk.green('  ✓ Success'));
                     console.log(chalk.gray('  Message:'), result.message);
-                    if (result.automation) {
-                        console.log(chalk.gray('  Automation:'), result.automation.name);
+                    if (result.channel) {
+                        console.log(chalk.gray('  Channel:'), result.channel.name);
                     }
                 } else {
                     console.log(chalk.red('  ✗ Failed'));
                     console.log(chalk.gray('  Message:'), result.message);
-                    if (result.automation) {
-                        console.log(chalk.gray('  Automation:'), result.automation.name);
+                    if (result.channel) {
+                        console.log(chalk.gray('  Channel:'), result.channel.name);
                     }
                 }
             }
@@ -123,15 +123,15 @@ async function runQuickTest() {
 
         // Check if any result has a pending approval
         for (const result of results) {
-            if (result.approvalResult && result.approvalResult.status === 'awaiting_approval' && result.automation) {
+            if (result.approvalResult && result.approvalResult.status === 'awaiting_approval' && result.channel) {
                 pendingApprovalState = {
-                    automationId: result.automation.id,
+                    channelId: result.channel.id,
                     serializedState: JSON.stringify(result.approvalResult.state),
                     interruptions: result.approvalResult.interruptions,
                 };
 
-                console.log(chalk.cyan('\n⏸️  Automation paused awaiting approval'));
-                console.log(chalk.gray(`Automation: ${result.automation.name}`));
+                console.log(chalk.cyan('\n⏸️  Channel paused awaiting approval'));
+                console.log(chalk.gray(`Channel: ${result.channel.name}`));
                 console.log(chalk.gray(`Pending interruptions: ${pendingApprovalState.interruptions.length}`));
                 console.log();
 
@@ -144,10 +144,10 @@ async function runQuickTest() {
                 rl.close();
 
                 if (approved) {
-                    console.log(chalk.green('\n✓ Approved! Resuming automation...\n'));
+                    console.log(chalk.green('\n✓ Approved! Resuming channel...\n'));
                     await resumeApprovalFlow(pendingApprovalState);
                 } else {
-                    console.log(chalk.yellow('\n✗ Rejected. Automation cancelled.\n'));
+                    console.log(chalk.yellow('\n✗ Rejected. Channel cancelled.\n'));
                 }
             }
         }

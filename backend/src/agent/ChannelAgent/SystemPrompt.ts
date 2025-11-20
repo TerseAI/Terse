@@ -1,7 +1,7 @@
-import { AutomationInput, AutomationOutput, AutomationPrompt } from "../../types/prisma";
+import { ChannelInput, ChannelOutput, ChannelPrompt } from "../../types/prisma";
 import { Session } from "../../server";
 
-export async function systemPrompt(session: Session, automationPrompt: AutomationPrompt, automationInputs: AutomationInput[], automationOutput: AutomationOutput): Promise<string> {
+export async function systemPrompt(session: Session, channelPrompt: ChannelPrompt, channelInputs: ChannelInput[], channelOutput: ChannelOutput): Promise<string> {
     return `
     This is the current user: 
     ${JSON.stringify(session.user, null, 2)}
@@ -20,13 +20,13 @@ export async function systemPrompt(session: Session, automationPrompt: Automatio
     Each document output has a specific set of tools that you can use to update the document. You must use the tools provided to you to update the document.
 
      Here are the inputs provided by the user:
-    ${JSON.stringify(automationInputs, null, 2)}
+    ${JSON.stringify(channelInputs, null, 2)}
 
     Here are the instructions provided by the user:
-    ${automationPrompt.content || 'No instructions provided'}
+    ${channelPrompt.content || 'No instructions provided'}
 
     Here are the output destination provided by the user:
-    ${JSON.stringify(automationOutput, null, 2)}
+    ${JSON.stringify(channelOutput, null, 2)}
 
     You will need to decide what to do based on the instructions.
 
