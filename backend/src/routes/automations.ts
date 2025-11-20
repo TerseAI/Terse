@@ -26,7 +26,6 @@ async function createInputConfig(
     await input.addInputToAutomation(tx, inputId, config.config);
 }
 
-// Helper function to create config record for an automation output
 async function createOutputConfig(
     tx: any,
     outputId: string,
@@ -39,7 +38,6 @@ async function createOutputConfig(
     await output().addOutputToAutomation(tx, outputId, config);
 }
 
-// Helper function to validate that user owns an integration
 async function validateUserOwnsIntegration(userId: string, integrationType: IntegrationType, integrationId: string): Promise<boolean> {
     const integration = INTEGRATION_REGISTRY.find(integration => integration.integrationType === integrationType);
     if (!integration) {
@@ -132,7 +130,7 @@ export async function getRecentAutomations(req: Request, res: Response) {
         const prisma = db();
 
         // Get recently modified automations ordered by updated_at
-        const automations: AutomationWithRelations[] = await prisma.automations.findMany({
+        const automations: (AutomationWithRelations & { run_history_records: { timestamp: Date }[] })[] = await prisma.automations.findMany({
             where: {
                 user_id: userId,
             },
@@ -143,6 +141,13 @@ export async function getRecentAutomations(req: Request, res: Response) {
                 },
                 output: {
                     include: getOutputConfigInclude()
+                },
+                run_history_records: {
+                    orderBy: { timestamp: 'desc' },
+                    take: 1,
+                    select: {
+                        timestamp: true
+                    }
                 }
             },
             orderBy: { updated_at: 'desc' },
@@ -150,26 +155,15 @@ export async function getRecentAutomations(req: Request, res: Response) {
         });
 
         // Get the last event processed time for each automation
-        const automationIds = automations.map(a => a.id);
         const lastEventMap = new Map<string, Date>();
-        
-        // For each automation, get the most recent run history record
-        for (const automationId of automationIds) {
-            const lastEvent = await prisma.run_history_records.findFirst({
-                where: {
-                    automation_id: automationId
-                },
-                select: {
-                    timestamp: true,
-                },
-                orderBy: { timestamp: 'desc' }
-            });
-            
+
+        for (const automation of automations) {
+            // run_history_records is an array (even with take: 1), so get the first element
+            const lastEvent = automation.run_history_records[0];
             if (lastEvent) {
-                lastEventMap.set(automationId, lastEvent.timestamp);
+                lastEventMap.set(automation.id, lastEvent.timestamp);
             }
         }
-
         // Transform the data to match frontend format with timestamps
         const response = automations.map(automation => {
             const lastEventTimestamp = lastEventMap.get(automation.id);
@@ -342,7 +336,7 @@ export async function createAutomation(req: Request, res: Response) {
             }
         });
 
-        if(!automationWithRelations) {
+        if (!automationWithRelations) {
             throw new Error(`Automation not found: ${automation.id}`);
         }
 
@@ -500,7 +494,7 @@ export async function updateAutomation(req: Request, res: Response) {
             }
         });
 
-        if(!automationWithInputRelations) {
+        if (!automationWithInputRelations) {
             throw new Error(`Automation not found: ${automationId}`);
         }
 
