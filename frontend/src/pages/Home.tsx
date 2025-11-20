@@ -1,5 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
 import { Badge } from "../components/ui/badge";
+import { Skeleton } from "../components/ui/skeleton";
 import { TrendingUp, TrendingDown, Activity, Zap, Hash, Clock, BarChart3, PlayCircle, Settings, Plus } from "lucide-react";
 import { AppsList } from "../components/Automation/AppsList";
 import { Automation } from "../shared/types";
@@ -11,19 +12,59 @@ import { ScrollArea } from "../components/ui/scroll-area";
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "../components/ui/empty";
 import { IntegrationType } from "../shared/Integrations";
 import { useRecentAutomations } from "../hooks/api/useRecentAutomations";
+import { useStats } from "../hooks/api/useStats";
 import { formatRelativeTime } from "../utility/timeUtils";
 import { useNavigate } from "react-router-dom";
 import { Button } from "../components/ui/button";
 
 function Home() {
     // Flag to easily test empty states - set to false to see empty states
-    const USE_MOCK_DATA = true;
+    const USE_MOCK_DATA = false;
     const navigate = useNavigate();
 
     const { automations: recentAutomationsData, isLoading: isLoadingAutomations } = useRecentAutomations(3);
+    const { stats, isLoading: isLoadingStats } = useStats();
 
-    // Mock data
-    const metrics = USE_MOCK_DATA ? [
+    // Format number with commas
+    const formatNumber = (num: number): string => {
+        return num.toLocaleString();
+    };
+
+    // Determine trend from change string
+    const getTrend = (change: string): "up" | "down" => {
+        return change.startsWith("+") || (!change.startsWith("-") && change !== "0%") ? "up" : "down";
+    };
+
+    // Transform stats data to match the component's expected format
+    const metrics = stats ? [
+        {
+            label: "Total events processed",
+            value: formatNumber(stats.totalEventsProcessed),
+            change: stats.totalEventsProcessedChange,
+            trend: getTrend(stats.totalEventsProcessedChange),
+            description: "Events processed this month",
+            subtext: "Events for the last 6 months",
+            icon: Activity,
+        },
+        {
+            label: "Actions Taken",
+            value: formatNumber(stats.actionsTaken),
+            change: stats.actionsTakenChange,
+            trend: getTrend(stats.actionsTakenChange),
+            description: "Trending up this month",
+            subtext: "Actions for the last 6 months",
+            icon: Zap,
+        },
+        {
+            label: "Number of Automations",
+            value: formatNumber(stats.numberOfAutomations),
+            change: stats.numberOfAutomationsChange,
+            trend: getTrend(stats.numberOfAutomationsChange),
+            description: "Total automations",
+            subtext: "Automations created",
+            icon: Hash,
+        },
+    ] : USE_MOCK_DATA ? [
         {
             label: "Total events processed",
             value: "12,450",
@@ -127,9 +168,53 @@ function Home() {
     return (
         <div className="mx-auto p-8 space-y-8">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {metrics.map((metric) => (
-                    <MetricCard key={metric.label} {...metric} />
-                ))}
+                {isLoadingStats ? (
+                    <>
+                        {[1, 2, 3].map((i) => (
+                            <Card key={i} className="relative">
+                                <CardHeader className="pb-4">
+                                    <div className="flex items-start justify-between">
+                                        <div className="flex-1">
+                                            <Skeleton className="h-4 w-32 mb-2" />
+                                            <div className="flex items-baseline gap-2">
+                                                <Skeleton className="h-8 w-24" />
+                                                <Skeleton className="h-5 w-16" />
+                                            </div>
+                                        </div>
+                                        <Skeleton className="h-9 w-9 rounded-lg" />
+                                    </div>
+                                </CardHeader>
+                                <CardContent>
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex-1">
+                                            <Skeleton className="h-4 w-40 mb-1" />
+                                            <Skeleton className="h-3 w-32" />
+                                        </div>
+                                        <Skeleton className="h-5 w-5" />
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        ))}
+                    </>
+                ) : metrics.length > 0 ? (
+                    metrics.map((metric) => (
+                        <MetricCard key={metric.label} {...metric} />
+                    ))
+                ) : (
+                    <div className="col-span-3">
+                        <Empty className="border-0">
+                            <EmptyHeader>
+                                <EmptyMedia variant="icon">
+                                    <BarChart3 className="text-primary" />
+                                </EmptyMedia>
+                                <EmptyTitle>No stats available</EmptyTitle>
+                                <EmptyDescription>
+                                    Statistics will appear here once you start using automations
+                                </EmptyDescription>
+                            </EmptyHeader>
+                        </Empty>
+                    </div>
+                )}
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

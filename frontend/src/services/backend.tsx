@@ -13,7 +13,8 @@ import {
     JiraCredentialsValidationResponse, 
     NotionResourcesResponse, 
     RecentAutomation,
-    SlackChannelsResponse, 
+    SlackChannelsResponse,
+    StatsResponse, 
 } from "../shared/types";
 import { 
     IntegrationType,
@@ -85,6 +86,11 @@ interface BackendService {
         summary: string;
         eventCount: number;
     }>;
+
+    /**
+     * Gets statistics for the homepage dashboard
+     */
+    getStats(): Promise<StatsResponse>;
 
     /**
      * Returns the installation details for a given integration type
@@ -348,6 +354,15 @@ export const BackendProvider: BackendService = {
             .then(response => response.data)
             .catch(error => {
                 console.error('Error getting daily activity summary:', error);
+                throw error;
+            });
+    },
+
+    getStats: () => {
+        return axios.get(`${backendBaseUrl}/stats`, { withCredentials: true })
+            .then(response => response.data)
+            .catch(error => {
+                console.error('Error getting stats:', error);
                 throw error;
             });
     },
