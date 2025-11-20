@@ -27,8 +27,6 @@ export function useNotionResources(integrationId: string | null | undefined, res
     );
 
     const loading = Boolean(integrationId) && (isLoading || (!data && !error));
-    console.log("data", JSON.stringify(data, null, 2));
-    console.log("resourceType", resourceType);
     const resources = resourceType ? data?.resources.filter((resource) => resource.type === resourceType) ?? [] : data?.resources ?? [];
 
     return {

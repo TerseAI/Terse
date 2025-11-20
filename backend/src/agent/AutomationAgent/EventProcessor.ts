@@ -9,7 +9,7 @@ import { appendRunAction, createRunRecord, finalizeRunStatus, markRunFailed, mar
 import { ApprovalResult } from './AutomationAgent';
 import { Agent, AgentOutputType, RunResult } from '@openai/agents';
 import { Session } from '../../server';
-import { emitCacheInvalidationWithWildcard } from '../../realtimeSocket';
+import { emitCacheInvalidationWithKey, emitCacheInvalidationWithWildcard } from '../../realtimeSocket';
 import { getInputConfigInclude, getOutputConfigInclude } from '../../utility/prismaIncludes';
 
 // The job of this class is to take an Input Event, and check if it's a match for an Automation.
@@ -111,6 +111,7 @@ export class EventProcessor {
             trigger,
         });
         emitCacheInvalidationWithWildcard(this.user.id, 'runHistory', automation.id);
+        emitCacheInvalidationWithKey(this.user.id, 'recentAutomations');
 
         // Get the output from automation relations (already fetched with config)
         const outputIntegration = automation.output;
@@ -229,14 +230,12 @@ async function persistRunResult<T extends Session>(
     automation: Automation,
     approvalResult?: ApprovalResult<T, Agent<T, AgentOutputType>> | null
 ): Promise<ProcessorResult<T>> {
-    // Check if session has runActions (NotionSession and future session types may have this)
     if (session.runActions) {
         for (const action of session.runActions) {
             try {
                 await appendRunAction(runId, action);
-                // Invalidate all run history queries for this automation, regardless of params
-                // The frontend will match on tag='runHistory' and id=automationId
                 emitCacheInvalidationWithWildcard(session.user.id, 'runHistory', automation.id);
+                emitCacheInvalidationWithKey(session.user.id, 'recentActions');
             } catch (e) {
                 console.error(chalk.yellow('Failed to append run action'), e);
             }

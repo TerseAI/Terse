@@ -12,7 +12,9 @@ import {
     OAuthInstallationDetails, 
     JiraCredentialsValidationResponse, 
     NotionResourcesResponse, 
-    SlackChannelsResponse, 
+    RecentAutomation,
+    SlackChannelsResponse,
+    StatsResponse, 
 } from "../shared/types";
 import { 
     IntegrationType,
@@ -26,6 +28,7 @@ import {
 } from "../shared/Integrations";
 import { User } from "../types/User";
 import { GetRunHistoryParams, GetRunHistoryResponse } from '../shared/RunHistoryTypes';
+import { deserializeConfig } from '../utility/ConfigUtils';
 
 const backendBaseUrl = '/api';
 
@@ -83,6 +86,11 @@ interface BackendService {
         summary: string;
         eventCount: number;
     }>;
+
+    /**
+     * Gets statistics for the homepage dashboard
+     */
+    getStats(): Promise<StatsResponse>;
 
     /**
      * Returns the installation details for a given integration type
@@ -224,6 +232,11 @@ interface BackendService {
     getUserAutomations(page?: number, limit?: number, isActive?: boolean, search?: string): Promise<AutomationsResponse>;
 
     /**
+     * Gets recently modified automations with last event processed time
+     */
+    getRecentAutomations(limit?: number): Promise<RecentAutomation[]>;
+
+    /**
      * Gets a single automation by ID
      */
     getAutomationById(id: string): Promise<Automation>;
@@ -341,6 +354,15 @@ export const BackendProvider: BackendService = {
             .then(response => response.data)
             .catch(error => {
                 console.error('Error getting daily activity summary:', error);
+                throw error;
+            });
+    },
+
+    getStats: () => {
+        return axios.get(`${backendBaseUrl}/stats`, { withCredentials: true })
+            .then(response => response.data)
+            .catch(error => {
+                console.error('Error getting stats:', error);
                 throw error;
             });
     },
@@ -590,6 +612,31 @@ export const BackendProvider: BackendService = {
             .then(response => response.data)
             .catch(error => {
                 console.error('Error getting automations:', error);
+                throw error;
+            });
+    },
+
+    getRecentAutomations: (limit = 3) => {
+        const params = new URLSearchParams();
+        params.append('limit', limit.toString());
+
+        return axios.get<RecentAutomation[]>(`${backendBaseUrl}/automations/recent?${params.toString()}`, { withCredentials: true })
+            .then(response => {
+                // Deserialize configs from JSON to class instances
+                return response.data.map(automation => ({
+                    ...automation,
+                    inputs: automation.inputs.map(input => ({
+                        ...input,
+                        config: deserializeConfig(input.config)
+                    })),
+                    output: {
+                        ...automation.output,
+                        config: deserializeConfig(automation.output.config)
+                    }
+                }));
+            })
+            .catch(error => {
+                console.error('Error getting recent automations:', error);
                 throw error;
             });
     },

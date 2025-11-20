@@ -11,6 +11,7 @@ import { getInputConfigInclude, getOutputConfigInclude } from "../utility/prisma
 import { INPUT_REGISTRY } from "../inputs/InputRegistry";
 import { INTEGRATION_REGISTRY } from "../integrations/abstract/IntegrationRegistry";
 import { OutputFactory } from "../outputs/abstract/OutputFactory";
+import { emitCacheInvalidationWithKey } from "../realtimeSocket";
 
 async function createInputConfig(
     tx: PrismaTransaction,
@@ -25,7 +26,6 @@ async function createInputConfig(
     await input.addInputToAutomation(tx, inputId, config.config);
 }
 
-// Helper function to create config record for an automation output
 async function createOutputConfig(
     tx: any,
     outputId: string,
@@ -38,7 +38,6 @@ async function createOutputConfig(
     await output().addOutputToAutomation(tx, outputId, config);
 }
 
-// Helper function to validate that user owns an integration
 async function validateUserOwnsIntegration(userId: string, integrationType: IntegrationType, integrationId: string): Promise<boolean> {
     const integration = INTEGRATION_REGISTRY.find(integration => integration.integrationType === integrationType);
     if (!integration) {
@@ -101,20 +100,7 @@ export async function getUserAutomations(req: Request, res: Response) {
 
         // Transform the data to match frontend format
         const response: AutomationsResponse = {
-            automations: automations.map(automation => ({
-                id: automation.id,
-                name: automation.name,
-                isActive: automation.is_active,
-                prompt: automation.prompt ? { text: automation.prompt.content } : { text: '' },
-                inputs: automation.inputs.map(input => ({
-                    id: input.id,
-                    config: convertPrismaConfigToConfigInstance(input)
-                })),
-                output: {
-                    id: automation.output!.id,
-                    config: convertPrismaConfigToConfigInstance(automation.output!),
-                }
-            })),
+            automations: automations.map(automation => transformAutomationToFrontendFormat(automation)),
             pagination: {
                 page,
                 limit: pageSize,
@@ -127,6 +113,71 @@ export async function getUserAutomations(req: Request, res: Response) {
     } catch (error) {
         console.error('Error fetching automations:', error);
         res.status(500).json({ error: 'Failed to fetch automations' });
+    }
+}
+
+// GET /automations/recent - Get recently modified automations with last event processed time
+export async function getRecentAutomations(req: Request, res: Response) {
+    if (!req.session?.user) {
+        res.status(401).json({ error: 'Unauthorized' });
+        return;
+    }
+
+    const userId = req.session.user.id;
+    const limit = parseInt(req.query.limit as string) || 3;
+
+    try {
+        const prisma = db();
+
+        // Get recently modified automations ordered by updated_at
+        const automations: (AutomationWithRelations & { run_history_records: { timestamp: Date }[] })[] = await prisma.automations.findMany({
+            where: {
+                user_id: userId,
+            },
+            include: {
+                prompt: true,
+                inputs: {
+                    include: getInputConfigInclude()
+                },
+                output: {
+                    include: getOutputConfigInclude()
+                },
+                run_history_records: {
+                    orderBy: { timestamp: 'desc' },
+                    take: 1,
+                    select: {
+                        timestamp: true
+                    }
+                }
+            },
+            orderBy: { updated_at: 'desc' },
+            take: limit
+        });
+
+        // Get the last event processed time for each automation
+        const lastEventMap = new Map<string, Date>();
+
+        for (const automation of automations) {
+            // run_history_records is an array (even with take: 1), so get the first element
+            const lastEvent = automation.run_history_records[0];
+            if (lastEvent) {
+                lastEventMap.set(automation.id, lastEvent.timestamp);
+            }
+        }
+        // Transform the data to match frontend format with timestamps
+        const response = automations.map(automation => {
+            const lastEventTimestamp = lastEventMap.get(automation.id);
+            return {
+                ...transformAutomationToFrontendFormat(automation),
+                updatedAt: automation.updated_at.toISOString(),
+                lastEventProcessedAt: lastEventTimestamp ? lastEventTimestamp.toISOString() : null,
+            };
+        });
+
+        res.status(200).json(response);
+    } catch (error) {
+        console.error('Error fetching recent automations:', error);
+        res.status(500).json({ error: 'Failed to fetch recent automations' });
     }
 }
 
@@ -163,20 +214,7 @@ export async function getUserAutomation(req: Request, res: Response) {
         }
 
         // Transform the data to match frontend format
-        const response: Automation = {
-            id: automation.id,
-            name: automation.name,
-            isActive: automation.is_active,
-            prompt: automation.prompt ? { text: automation.prompt.content } : { text: '' },
-            inputs: automation.inputs.map(input => ({
-                id: input.id,
-                config: convertPrismaConfigToConfigInstance(input)
-            })),
-            output: {
-                id: automation.output.id,
-                config: convertPrismaConfigToConfigInstance(automation.output),
-            }
-        };
+        const response: Automation = transformAutomationToFrontendFormat(automation);
 
         res.status(200).json(response);
     } catch (error) {
@@ -298,12 +336,15 @@ export async function createAutomation(req: Request, res: Response) {
             }
         });
 
-        if(!automationWithRelations) {
+        if (!automationWithRelations) {
             throw new Error(`Automation not found: ${automation.id}`);
         }
 
         // Set up automation inputs (e.g., create webhooks for Figma)
         await setupAutomationInputs(automationWithRelations);
+
+        // Invalidate recent automations cache
+        emitCacheInvalidationWithKey(userId, 'recentAutomations');
 
         res.status(201).json({ success: true, id: automation.id });
     } catch (error) {
@@ -453,12 +494,15 @@ export async function updateAutomation(req: Request, res: Response) {
             }
         });
 
-        if(!automationWithInputRelations) {
+        if (!automationWithInputRelations) {
             throw new Error(`Automation not found: ${automationId}`);
         }
 
         // Set up automation inputs (e.g., create webhooks for Figma)
         await setupAutomationInputs(automationWithInputRelations);
+
+        // Invalidate recent automations cache
+        emitCacheInvalidationWithKey(userId, 'recentAutomations');
 
         res.status(200).json({ success: true, id: automationId });
     } catch (error) {
@@ -506,11 +550,36 @@ export async function deleteAutomation(req: Request, res: Response) {
             where: { id: automationId }
         });
 
+        // Invalidate recent automations cache
+        emitCacheInvalidationWithKey(userId, 'recentAutomations');
+
         res.status(200).json({ success: true, message: 'Automation deleted successfully' });
     } catch (error) {
         console.error('Error deleting automation:', error);
         res.status(500).json({ error: 'Failed to delete automation', details: (error as Error).message });
     }
+}
+
+// Helper function to transform AutomationWithRelations to frontend Automation format
+function transformAutomationToFrontendFormat(automation: AutomationWithRelations): Automation {
+    if (!automation.output) {
+        throw new Error(`Automation output not found for automation ${automation.id}`);
+    }
+
+    return {
+        id: automation.id,
+        name: automation.name,
+        isActive: automation.is_active,
+        prompt: automation.prompt ? { text: automation.prompt.content } : { text: '' },
+        inputs: automation.inputs.map(input => ({
+            id: input.id,
+            config: convertPrismaConfigToConfigInstance(input)
+        })),
+        output: {
+            id: automation.output.id,
+            config: convertPrismaConfigToConfigInstance(automation.output),
+        }
+    };
 }
 
 async function setupAutomationInputs(automation: AutomationWithInputRelations): Promise<void> {

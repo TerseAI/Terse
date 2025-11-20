@@ -426,12 +426,16 @@ To find the correct position, first call confluence_query_page to see the page c
             const commentResponse = await response.json() as InlineCommentResponse;
 
             // Report action
+            const pageName = runContext.context.confluenceConfig.page_name || 'Confluence page';
+            const commentPreview = comment_text.length > 60 
+                ? comment_text.substring(0, 60) + '...' 
+                : comment_text;
             runContext.context.runActions = runContext.context.runActions || [];
             runContext.context.runActions.push({
-                action: 'add_inline_comment',
+                action: 'Added Inline comment',
                 integration: IntegrationType.ATLASSIAN,
-                target: runContext.context.confluenceConfig.page_id || runContext.context.confluenceConfig.page_name || 'unknown',
-                details: `Added inline comment at position ${startPos}-${endPos}: ${comment_text.substring(0, 50)}${comment_text.length > 50 ? '...' : ''}`,
+                target: pageName,
+                details: commentPreview,
             });
 
             return {

@@ -329,6 +329,11 @@ export type AutomationsResponse = {
     };
 };
 
+export type RecentAutomation = Automation & {
+  updatedAt: string;
+  lastEventProcessedAt: string | null;
+};
+
 export type GithubAppInstallationCallbackRequest = {
   name: string;
   email: string;
@@ -353,4 +358,40 @@ export type GetGithubRepositoriesForIntegrationResponse = {
 
 export type OAuthInstallationDetails = {
   oauthUrl: string;
+}
+
+export enum DayOfWeek {
+  Sun = "Sun",
+  Mon = "Mon",
+  Tue = "Tue",
+  Wed = "Wed",
+  Thu = "Thu",
+  Fri = "Fri",
+  Sat = "Sat",
+}
+
+export interface DailyEventCount {
+  date: DayOfWeek;
+  events: number;
+}
+
+export interface RecentAction {
+  action: string;
+  integration: string; // IntegrationType as string
+  target: string;
+  details: string;
+  url?: string;
+  timestamp: string; // ISO date string
+  automationName: string;
+}
+
+export interface StatsResponse {
+  totalEventsProcessed: number;
+  totalEventsProcessedChange: string; // Percentage change from previous period
+  actionsTaken: number;
+  actionsTakenChange: string; // Percentage change from previous period
+  numberOfAutomations: number;
+  numberOfAutomationsChange: string; // Absolute change (e.g., "+2")
+  dailyEvents: DailyEventCount[]; // Events per day for the last 7 days
+  recentActions: RecentAction[]; // Recent actions (last 10)
 }
