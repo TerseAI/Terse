@@ -6,30 +6,35 @@ import { FileText } from "lucide-react";
 import { Empty } from "@/components/ui/empty";
 
 function IntegrationPage() {
-    const { integrations, isLoading } = useIntegrations();
+    const { integrations: activeIntegrations, inactiveIntegrations, isLoading } = useIntegrations();
     
-    if (!isLoading && integrations && integrations.length === 0 || (integrations == null)) {
-        return (
-            <div className="flex flex-col h-full p-4">
-                <h1 className="text-xl font-bold text-foreground mb-10">Active Integrations</h1>
-                <div className="flex flex-row flex-wrap gap-12">
-                    <NoIntegrations />
-                </div>
-            </div>
-        )
-    }
+    const hasActive = activeIntegrations && activeIntegrations.length > 0;
+    const hasInactive = inactiveIntegrations && inactiveIntegrations.length > 0;
 
     return (
         <div className="flex flex-col h-full p-4">
             <h1 className="text-xl font-bold text-foreground mb-10">Active Integrations</h1>
-            <div className="flex flex-row flex-wrap gap-12">
-                <IntegrationContent integrations={integrations} isLoading={isLoading} />
+            <div className="flex flex-row flex-wrap gap-12 mb-12">
+                {isLoading || hasActive ? (
+                    <IntegrationContent integrations={activeIntegrations ?? []} isLoading={isLoading} />
+                ) : (
+                    <NoIntegrations />
+                )}
             </div>
+
+            {hasInactive && (
+                <>
+                    <h1 className="text-xl font-bold text-foreground mb-10">Inactive Integrations</h1>
+                    <div className="flex flex-row flex-wrap gap-12">
+                        <IntegrationContent integrations={inactiveIntegrations ?? []} isLoading={isLoading} isActive={false} />
+                    </div>
+                </>
+            )}
         </div>
     )
 }
 
-function IntegrationContent({ integrations, isLoading }: { integrations: IntegrationType[], isLoading: boolean }) {
+function IntegrationContent({ integrations, isLoading, isActive = true }: { integrations: IntegrationType[], isLoading: boolean, isActive?: boolean }) {
     if (isLoading || !integrations) {
         return (
             <>
@@ -43,7 +48,7 @@ function IntegrationContent({ integrations, isLoading }: { integrations: Integra
     return (
         <>
             {integrations.map((integration) => (
-                <IntegrationCard key={integration} integration={integration} />
+                <IntegrationCard key={integration} integration={integration} isActive={isActive} />
             ))}
         </>
     )
