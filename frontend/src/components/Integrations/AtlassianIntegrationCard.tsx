@@ -2,6 +2,7 @@ import { Card, CardContent } from "../ui/card";
 import { IntegrationType } from "@/shared/Integrations"
 import { IntegrationCardHeader } from "./helpers/IntegrationCardHeader";
 import { IntegrationCardFooter } from "./helpers/IntegrationCardFooter";
+import { IntegrationItem } from "./helpers/IntegrationItem";
 import { useOAuthConnection } from "@/hooks/useOAuthConnection";
 import { cn } from "@/lib/utils";
 import { useAtlassianIntegrations } from "@/hooks/api/useAtlassianIntegrations";
@@ -46,23 +47,17 @@ function AtlassianCardContent({ integrations, isLoading }: { integrations: Array
     return (
         <div className="space-y-2">
             {integrations.map((integration) => (
-                <div
+                <IntegrationItem
                     key={integration.id}
-                    className="flex items-center gap-3 p-3 rounded-lg border border-border bg-card hover:bg-accent/50 transition-colors group"
-                >
-                    <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
-                        <Globe className="w-4 h-4 text-primary" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                        <div className="text-sm font-medium text-foreground truncate">
-                            {integration.baseUrl}
-                        </div>
-                        <div className="text-xs text-muted-foreground mt-0.5 flex items-center gap-2">
+                    icon={<Globe className="w-4 h-4" />}
+                    title={integration.baseUrl}
+                    description={
+                        <span className="flex items-center gap-2">
                             <Mail className="w-3 h-3" />
                             <span className="truncate">{integration.email}</span>
-                        </div>
-                    </div>
-                </div>
+                        </span>
+                    }
+                />
             ))}
         </div>
     );
