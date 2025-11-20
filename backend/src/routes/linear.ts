@@ -1,11 +1,8 @@
 import { Request, Response } from "express";
-import { db } from "../prismaClient";
 import chalk from "chalk";
 import crypto from "crypto";
-import { findUserById, getUserTicketManager } from "../types/user";
 import { LinearWebhookPayload } from "../utility/LinearWebhookPayload";
-import { search } from "../searchClient";
-import { LinearIntegrationManager } from "src/integrations/LinearIntegration";
+import { LinearIntegrationManager } from "../integrations/LinearIntegration";
 import { settings } from "../config/settings";
 
 

@@ -1,6 +1,6 @@
 import { OAuthInstallationDetails } from "../../shared/types";
 import { IntegrationInstance, IntegrationDetails, IntegrationType } from "../../shared/Integrations";
-import { AutomationInputWithConfigs } from "src/types/prisma";
+import { AutomationInputWithConfigs } from "../../types/prisma";
 
 // This ensures T is a valid Prisma model type
 export interface Integration<T extends IntegrationInstance, W, M extends IntegrationDetails>  {
