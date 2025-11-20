@@ -151,6 +151,8 @@ export const getSlackChannels = async (req: Request, res: Response) => {
       },
     });
 
+    console.log(chalk.cyan('🔵 [SLACK CHANNELS] userSlackIntegration:', userSlackIntegration));
+
     if (!userSlackIntegration || !userSlackIntegration.slack_integration) {
       return res.status(404).json({ error: "Slack integration not found" });
     }
