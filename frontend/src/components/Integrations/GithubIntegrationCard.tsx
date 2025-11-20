@@ -37,7 +37,6 @@ function GithubIntegrationCard({ className }: { className?: string }) {
 
     // Fetch repositories only for the selected installation
     const { repositories, isLoading: isLoadingRepositories } = useGithubResources(selectedInstallationId);
-    const isLoading = isLoadingIntegrations || isLoadingRepositories;
 
     const connectionSelections = integrations.map((integration) => ({
         label: integration.account_name || 'Unknown Account',
@@ -60,21 +59,34 @@ function GithubIntegrationCard({ className }: { className?: string }) {
             <Card className={cn(className)}>
                 <IntegrationCardHeader integration={IntegrationType.GITHUB} />
                 <CardContent>
-                    {integrations.length > 0 && (
-                        <div className="mb-4">
-                            <label className="text-sm font-medium mb-1.5 block">Connection</label>
-                            <DropdownSelect
-                                statusOptions={connectionSelections}
-                                selectedOption={selectedOption}
-                                setSelected={handleInstallationChange}
-                            />
+                    {isLoadingIntegrations ? (
+                        <div className="space-y-3">
+                            <Skeleton className="h-12 w-full" />
+                            <Skeleton className="h-12 w-full" />
                         </div>
+                    ) : integrations.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center py-8 px-4 text-center">
+                            <Github className="w-10 h-10 text-muted-foreground/50 mb-3" />
+                            <p className="text-sm text-muted-foreground">No GitHub integration connected</p>
+                            <p className="text-xs text-muted-foreground/70 mt-1">Connect your GitHub account to get started</p>
+                        </div>
+                    ) : (
+                        <>
+                            <div className="mb-4">
+                                <label className="text-sm font-medium mb-1.5 block">Connection</label>
+                                <DropdownSelect
+                                    statusOptions={connectionSelections}
+                                    selectedOption={selectedOption}
+                                    setSelected={handleInstallationChange}
+                                />
+                            </div>
+                            <GithubCardContent 
+                                repositories={repositories} 
+                                isLoading={isLoadingRepositories} 
+                                onViewAll={() => setIsDialogOpen(true)} 
+                            />
+                        </>
                     )}
-                    <GithubCardContent 
-                        repositories={repositories} 
-                        isLoading={isLoading} 
-                        onViewAll={() => setIsDialogOpen(true)} 
-                    />
                 </CardContent>
                 <IntegrationCardFooter connect={connect} isConnecting={isConnecting} />
             </Card>
