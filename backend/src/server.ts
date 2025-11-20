@@ -52,12 +52,10 @@ import {
   validateJiraCredentials,
 } from "./routes/jira";
 import {
-  deleteLinearCredentials,
-  getLinearApiKey,
+  linearOAuthCallback,
   getLinearIntegrations,
   indexLinearTicket,
-  setLinearApiKey,
-  validateLinearApiKey,
+  handleLinearWebhook,
 } from "./routes/linear";
 import {
   notionOAuthCallback,
@@ -330,24 +328,16 @@ app.post("/webhooks/figma", async (req, res) => {
 
 // MARK: LINEAR
 
+app.get("/linear/oauth/callback", async (req, res) => {
+  linearOAuthCallback(req, res);
+});
+
+app.get("/linear/webhook", async (req, res) => {
+  handleLinearWebhook(req, res);
+});
+
 app.get("/linear/integrations", authMiddleware, async (req, res) => {
   getLinearIntegrations(req, res);
-});
-
-app.post("/linear/set-api-key", authMiddleware, async (req, res) => {
-  setLinearApiKey(req, res);
-});
-
-app.post("/linear/validate-and-fetch-teams", authMiddleware, async (req, res) => {
-  validateLinearApiKey(req, res);
-});
-
-app.get("/linear/get-api-key", authMiddleware, async (req, res) => {
-  getLinearApiKey(req, res);
-});
-
-app.delete("/linear/delete-credentials", authMiddleware, async (req, res) => {
-  deleteLinearCredentials(req, res);
 });
 
 app.post("/webhooks/linear/:userId", async (req, res) => {

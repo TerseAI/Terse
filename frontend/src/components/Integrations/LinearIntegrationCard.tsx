@@ -56,11 +56,6 @@ function LinearCardContent({ integrations, isLoading }: { integrations: Array<{ 
                         <div className="text-sm font-medium text-foreground truncate">
                             {integration.workspaceName || 'Unknown Workspace'}
                         </div>
-                        {integration.linearTeamName && (
-                            <div className="text-xs text-muted-foreground mt-0.5">
-                                {integration.linearTeamName}
-                            </div>
-                        )}
                     </div>
                 </div>
             ))}

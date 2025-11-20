@@ -24,7 +24,8 @@ model users {
   is_placeholder  Boolean  @default(false)
 
   user_github_repositories user_github_repositories[]
-  linear_api_keys          linear_api_keys[]
+  linear_api_keys          linear_api_keys[] // @deprecated - Use linear_integrations instead
+  linear_integrations      linear_integrations[]
   user_slack_integrations  user_slack_integrations[]
   jira_api_keys            jira_api_keys[]
   gmail_integrations       gmail_integrations[]
@@ -77,6 +78,8 @@ model user_github_repositories {
   @@unique([user_id, github_repository_id])
 }
 
+// @deprecated - This table is deprecated. Use linear_integrations instead for OAuth-based connections.
+// The old table is kept for backward compatibility with existing API key-based connections.
 model linear_api_keys {
   id             String   @id @default(cuid())
   user_id        String
@@ -95,6 +98,26 @@ model linear_api_keys {
 
   @@index([user_id])
   @@index([workspace_id, team_id])
+}
+
+// Replaces linear_api_keys for new OAuth connections
+model linear_integrations {
+  id             String   @id @default(cuid())
+  user_id        String
+  linear_user_id String
+  workspace_id   String
+  workspace_name String
+  access_token   String
+  refresh_token  String
+  token_expiry   DateTime
+  created_at     DateTime @default(now())
+  updated_at     DateTime @updatedAt
+
+  user users @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id])
+  @@index([workspace_id])
+  @@index([token_expiry]) // For finding tokens that need refresh
 }
 
 model user_slack_integrations {
@@ -400,12 +423,12 @@ model automation_prompts {
 
 // Polymorphic inputs - can reference any integration type
 model automation_inputs {
-  id               String          @id @default(cuid())
-  automation_id    String
-  config_type      InputConfigType
-  integration_id   String
-  created_at       DateTime        @default(now())
-  updated_at       DateTime        @updatedAt
+  id             String          @id @default(cuid())
+  automation_id  String
+  config_type    InputConfigType
+  integration_id String
+  created_at     DateTime        @default(now())
+  updated_at     DateTime        @updatedAt
 
   automation automations @relation(fields: [automation_id], references: [id], onDelete: Cascade)
 
@@ -426,12 +449,12 @@ model automation_inputs {
 
 // Single output per automation
 model automation_outputs {
-  id               String          @id @default(cuid())
-  automation_id    String          @unique
-  config_type      OutputConfigType
-  integration_id   String
-  created_at       DateTime        @default(now())
-  updated_at       DateTime        @updatedAt
+  id             String           @id @default(cuid())
+  automation_id  String           @unique
+  config_type    OutputConfigType
+  integration_id String
+  created_at     DateTime         @default(now())
+  updated_at     DateTime         @updatedAt
 
   automation automations @relation(fields: [automation_id], references: [id], onDelete: Cascade)
 

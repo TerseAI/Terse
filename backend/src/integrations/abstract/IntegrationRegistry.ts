@@ -18,7 +18,7 @@ export const INTEGRATION_REGISTRY: Array<IntegrationWithInstallation> = [
     new GithubIntegrationManager(),
     new GmailIntegrationManager(),
     //new JiraIntegrationManager(),
-    //new LinearIntegrationManager(),
+    new LinearIntegrationManager(),
     new NotionIntegrationManager(),
     new SlackIntegrationManager(),
 ]

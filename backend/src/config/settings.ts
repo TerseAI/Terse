@@ -105,6 +105,14 @@ export const settings = {
     signingSecret: optionalEnv('SLACK_SIGNING_SECRET'),
   },
 
+  // Linear OAuth
+  linear: {
+    clientId: requireEnv('LINEAR_CLIENT_ID'),
+    clientSecret: requireEnv('LINEAR_CLIENT_SECRET_ID'),
+    oauthCallbackUrl: requireEnv('LINEAR_OAUTH_CALLBACK_URL'),
+    signingSecret: optionalEnv('LINEAR_SIGNING_SECRET'),
+  },
+
   // Cloud Scheduler (for cron jobs)
   cloudScheduler: {
     secret: requireEnv('CLOUD_SCHEDULER_SECRET'),

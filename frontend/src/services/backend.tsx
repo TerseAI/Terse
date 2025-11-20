@@ -11,7 +11,6 @@ import {
     GetGithubRepositoriesForIntegrationResponse, 
     OAuthInstallationDetails, 
     JiraCredentialsValidationResponse, 
-    LinearApiKeyValidationResponse, 
     NotionResourcesResponse, 
     SlackChannelsResponse, 
 } from "../shared/types";
@@ -109,26 +108,6 @@ interface BackendService {
      * Gets the current Slack integration
      */
     getCurrentSlackIntegration(): Promise<SlackIntegration>;
-
-    /**
-     * Gets the Linear API key
-     */
-    getLinearApiKey(): Promise<LinearIntegration>;
-
-    /**
-     * Sets the Linear API key
-     */
-    setLinearApiKey(apiKey: string, teamId?: string): Promise<{ success: boolean; connection?: any; error?: string }>;
-
-    /**
-     * Validates Linear API key and fetches available teams
-     */
-    validateLinearApiKey(apiKey: string): Promise<LinearApiKeyValidationResponse>;
-
-    /**
-     * Deletes the Linear API key
-     */
-    deleteLinearApiKey(): Promise<void>;
 
     /**
      * Gets the Jira API key
@@ -410,44 +389,6 @@ export const BackendProvider: BackendService = {
             .then(response => response.data)
             .catch(error => {
                 console.error('Error getting current Slack integration:', error);
-                throw error;
-            });
-    },
-
-    getLinearApiKey: () => {
-        return axios.get(`${backendBaseUrl}/linear/get-api-key`, { withCredentials: true })
-            .then(response => response.data)
-            .catch(error => {
-                console.error('Error getting Linear API key:', error);
-                throw error;
-            });
-    },
-
-    setLinearApiKey: (apiKey: string, teamId?: string) => {
-        return axios.post(`${backendBaseUrl}/linear/set-api-key`, { apiKey, teamId }, { withCredentials: true })
-            .then(response => response.data)
-            .catch(error => {
-                console.error('Error setting Linear API key:', error);
-                const errorMessage = error.response?.data?.error || 'Failed to create Linear connection';
-                throw { success: false, error: errorMessage };
-            });
-    },
-
-    validateLinearApiKey: (apiKey: string) => {
-        return axios.post(`${backendBaseUrl}/linear/validate-and-fetch-teams`, { apiKey }, { withCredentials: true })
-            .then(response => response.data)
-            .catch(error => {
-                console.error('Error validating Linear API key:', error);
-                const errorMessage = error.response?.data?.error || 'Failed to validate API key';
-                return { valid: false, error: errorMessage };
-            });
-    },
-
-    deleteLinearApiKey: () => {
-        return axios.delete(`${backendBaseUrl}/linear/delete-credentials`, { withCredentials: true })
-            .then(response => response.data)
-            .catch(error => {
-                console.error('Error deleting Linear API key:', error);
                 throw error;
             });
     },

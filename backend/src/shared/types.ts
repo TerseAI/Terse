@@ -52,13 +52,6 @@ export type LinearWorkspace = {
   name: string;
 };
 
-export type LinearApiKeyValidationResponse = {
-  valid: boolean;
-  workspace?: LinearWorkspace;
-  teams?: LinearTeam[];
-  error?: string;
-};
-
 export type JiraProject = {
   id: string;
   key: string;
