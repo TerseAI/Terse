@@ -110,7 +110,7 @@ export const settings = {
     clientId: requireEnv('LINEAR_CLIENT_ID'),
     clientSecret: requireEnv('LINEAR_CLIENT_SECRET_ID'),
     oauthCallbackUrl: requireEnv('LINEAR_OAUTH_CALLBACK_URL'),
-    signingSecret: optionalEnv('LINEAR_SIGNING_SECRET'),
+    signingSecret: requireEnv('LINEAR_WEBHOOK_SIGNING_SECRET'),
   },
 
   // Cloud Scheduler (for cron jobs)

@@ -1,13 +1,44 @@
 import { Request, Response } from "express";
 import { db } from "../prismaClient";
 import chalk from "chalk";
-import { LinearAdapter } from "../ticketing/linear";
+import crypto from "crypto";
 import { findUserById, getUserTicketManager } from "../types/user";
 import { LinearWebhookPayload } from "../utility/LinearWebhookPayload";
 import { search } from "../searchClient";
 import { LinearIntegrationManager } from "src/integrations/LinearIntegration";
-import { InputConfigType } from "@prisma/client";
+import { settings } from "../config/settings";
 
+
+/**
+ * Verify Linear webhook signature
+ * @param headerSignatureString - The Linear-Signature header value (hex-encoded)
+ * @param rawBody - The raw request body as a Buffer
+ * @returns true if signature is valid, false otherwise
+ */
+function verifySignature(headerSignatureString: string | undefined, rawBody: Buffer): boolean {
+    if (typeof headerSignatureString !== "string") {
+        return false;
+    }
+
+    const LINEAR_WEBHOOK_SECRET = settings.linear.signingSecret;
+    if (!LINEAR_WEBHOOK_SECRET) {
+        console.error(chalk.red("❌ LINEAR_WEBHOOK_SECRET is not configured"));
+        return false;
+    }
+
+    try {
+        const headerSignature = Buffer.from(headerSignatureString, "hex");
+        const computedSignature = crypto
+            .createHmac("sha256", LINEAR_WEBHOOK_SECRET)
+            .update(rawBody)
+            .digest();
+
+        return crypto.timingSafeEqual(computedSignature, headerSignature);
+    } catch (error) {
+        console.error(chalk.red("❌ Error verifying signature:"), error);
+        return false;
+    }
+}
 
 // OAuth Functions
 export const linearOAuthCallback = async (req: Request, res: Response) => {
@@ -16,10 +47,41 @@ export const linearOAuthCallback = async (req: Request, res: Response) => {
 };
 
 export const handleLinearWebhook = async (req: Request, res: Response) => {
-    // ack early, avoid spamming the webhook
-    res.status(200).json({ received: true });
+    try {
+        // Get raw body (Buffer from express.raw())
+        const rawBody = req.body as Buffer;
+        if (!rawBody || !Buffer.isBuffer(rawBody)) {
+            console.error(chalk.red("❌ [LINEAR WEBHOOK] Missing or invalid raw body"));
+            return res.sendStatus(400);
+        }
 
-    const integration = new LinearIntegrationManager();
+        // Verify signature
+        const headerSignature = req.get("linear-signature");
+        if (!verifySignature(headerSignature, rawBody)) {
+            console.error(chalk.red("❌ [LINEAR WEBHOOK] Invalid signature"));
+            return res.sendStatus(401);
+        }
+
+        // Parse JSON body
+        let body: LinearWebhookPayload;
+        try {
+            body = JSON.parse(rawBody.toString("utf8")) as LinearWebhookPayload;
+        } catch (error) {
+            console.error(chalk.red("❌ [LINEAR WEBHOOK] Failed to parse JSON body:"), error);
+            return res.sendStatus(400);
+        }
+
+        // Ack early, avoid spamming the webhook
+        res.status(200).json({ received: true });
+
+        // Process webhook event asynchronously
+        const integration = new LinearIntegrationManager();
+        await integration.processWebhookEvent(body);
+    } catch (error) {
+        console.error(chalk.red("❌ [LINEAR WEBHOOK] Error processing webhook:"), error);
+        // Indicate to Linear that there was a server error so the webhook is retried later
+        return res.sendStatus(500);
+    }
 };
 
 export async function getLinearIntegrations(req: Request, res: Response) {
@@ -36,41 +98,4 @@ export async function getLinearIntegrations(req: Request, res: Response) {
         console.error('Error fetching Linear integrations:', error);
         res.status(500).json({ error: 'Failed to fetch Linear integrations' });
     }
-}
-
-export const indexLinearTicket = async (linerarUserId: string, body: LinearWebhookPayload) => {
-    // check list of linear integrations for this user
-    let linearIntegrations = await db().linear_api_keys.findFirst({
-        where: {
-            linear_user_id: linerarUserId
-        }
-    });
-
-    if (!linearIntegrations) {
-        console.log("No Linear integrations found for user", linerarUserId);
-        return null;
-    }
-
-    let userId = linearIntegrations.user_id;
-
-    let user = await findUserById(userId);
-    if (!user) {
-        return null;
-    }
-
-    const ticketManager = await getUserTicketManager(user.id);
-    if (!ticketManager) {
-        return null;
-    }
-
-    let ticketId = body.data.id;
-
-    let searchItems = await ticketManager.searchItemsForTicket(ticketId);
-    if (searchItems.length === 0) {
-        return null;
-    }
-
-    await search().bulkInsert(searchItems);
-
-    console.log(chalk.green("✅ Indexed ticket"), chalk.yellow(ticketId));
 }
