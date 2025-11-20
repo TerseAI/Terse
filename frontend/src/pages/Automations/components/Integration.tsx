@@ -39,6 +39,8 @@ export function IconForIntegration({ integration }: { integration: IntegrationTy
             return <NotionIcon />;
         case IntegrationType.FIGMA:
             return <FigmaIcon />;
+        case IntegrationType.ATLASSIAN:
+            return <JiraConfluenceIcon />;
     }
 }
 
@@ -93,6 +95,11 @@ function JiraIcon() {
     return <img src="/jira.svg" alt="Jira" className="w-full h-full object-contain" />;
 }
 
-// function ConfluenceIcon() {
-//     return <img src="/confluence.svg" alt="Confluence" className="w-full h-full object-contain" />;
-// }
+function JiraConfluenceIcon() {
+    return (
+        <div className="flex items-center gap-2">
+            <img src="/jira.svg" alt="Jira" className="w-full h-full object-contain" />
+            <img src="/confluence.svg" alt="Confluence" className="w-full h-full object-contain" />
+        </div>
+    );
+}
