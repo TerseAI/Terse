@@ -7,7 +7,6 @@ import { Empty } from "@/components/ui/empty";
 
 function IntegrationPage() {
     const { integrations, isLoading } = useIntegrations();
-    console.log("integrations", JSON.stringify(integrations, null, 2));
     
     if (!isLoading && integrations && integrations.length === 0 || (integrations == null)) {
         return (
