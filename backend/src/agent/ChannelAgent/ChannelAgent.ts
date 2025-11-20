@@ -5,6 +5,7 @@ import { InputEvent } from '../../integrations/abstract/InputEvent';
 import { Output } from '../../outputs/abstract/Output';
 import { ChannelInput, ChannelOutput, ChannelPrompt } from '../../types/prisma';
 import { ConfigInstance } from '../../shared/Configs';
+import { settings } from '../../config/settings';
 
 export type ApprovalResult<T extends Session, AgentType extends Agent<T, AgentOutputType>> =
   | {
@@ -39,9 +40,9 @@ export class ChannelAgent<T extends Session, TConfig extends ConfigInstance> {
     }
 
     chooseChannelAgentModel(): string {
-        // if we are local dev, use cheaper model
-        if (process.env.NODE_ENV === 'development') {
-            return 'gpt-4o-mini';
+        const nodeEnv = settings.nodeEnv;
+        if (nodeEnv === 'development') {
+            return 'gpt-5-mini';
         }
         return 'gpt-5';
     }
