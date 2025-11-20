@@ -14,21 +14,6 @@ export function IntegrationTitle({ integration, iconSize = "sm", className = "" 
         lg: "w-8 h-8"
     };
 
-    // Special case for Confluence/Jira - they share the same integration
-    if (integration === IntegrationType.ATLASSIAN) {
-        return (
-            <div className={`flex items-center gap-2 ${className}`}>
-                <div className={`${iconSizeClasses[iconSize]} flex items-center justify-center gap-0.5`}>
-                    <div className="w-1/2 h-full flex items-center justify-center">
-                        <IconForIntegration integration={integration} />
-                    </div>
-                </div>
-                <span>{INTEGRATION_METADATA[integration].name}</span>
-            </div>
-        );
-    }
-
-    console.log("Integration:", integration);
     return (
         <div className={`flex items-center gap-2 ${className}`}>
             <div className={`${iconSizeClasses[iconSize]} flex items-center justify-center`}>
