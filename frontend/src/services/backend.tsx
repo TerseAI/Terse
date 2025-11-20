@@ -11,6 +11,7 @@ import {
     GetGithubRepositoriesForIntegrationResponse, 
     OAuthInstallationDetails, 
     JiraCredentialsValidationResponse, 
+    JiraResourcesResponse,
     NotionResourcesResponse, 
     SlackChannelsResponse, 
 } from "../shared/types";
@@ -143,6 +144,11 @@ interface BackendService {
      * Gets the Confluence resources
      */
     getConfluenceResources(integrationId: string): Promise<ConfluenceResourcesResponse>;
+
+    /**
+     * Gets Jira resources (projects) for a specific integration
+     */
+    getJiraResources(integrationId: string): Promise<JiraResourcesResponse>;
 
     /**
      * Gets all Gmail integrations for the current user
@@ -455,6 +461,15 @@ export const BackendProvider: BackendService = {
             .then(response => response.data)
             .catch(error => {
                 console.error('Error fetching Confluence resources:', error);
+                throw error;
+            });
+    },
+
+    getJiraResources: (integrationId: string) => {
+        return axios.get<JiraResourcesResponse>(`${backendBaseUrl}/jira/resources?integrationId=${encodeURIComponent(integrationId)}`, { withCredentials: true })
+            .then(response => response.data)
+            .catch(error => {
+                console.error('Error fetching Jira resources:', error);
                 throw error;
             });
     },

@@ -44,12 +44,10 @@ import {
   refreshAllGmailWatches,
 } from "./routes/gmail";
 import {
-  deleteJiraCredentials,
-  getJiraCredentials,
   getAtlassianIntegrations,
-  indexJiraTicket,
-  setJiraCredentials,
-  validateJiraCredentials,
+  atlassianOAuthCallback,
+  handleJiraWebhook,
+  getJiraResources,
 } from "./routes/jira";
 import {
   linearOAuthCallback,
@@ -235,25 +233,18 @@ app.post("/github/unified-event", async (req, res) => {
 
 // MARK: JIRA
 
-app.post("/jira/set-api-key", authMiddleware, async (req, res) => {
-  setJiraCredentials(req, res);
-});
-
-app.post("/jira/validate-and-fetch-projects", authMiddleware, async (req, res) => {
-  validateJiraCredentials(req, res);
-});
-
-app.get("/jira/get-api-key", authMiddleware, async (req, res) => {
-  getJiraCredentials(req, res);
-});
-
-app.delete("/jira/delete-credentials", authMiddleware, async (req, res) => {
-  deleteJiraCredentials(req, res);
-});
-
 // MARK: ATLASSIAN
 app.get("/atlassian/integrations", authMiddleware, async (req, res) => {
   getAtlassianIntegrations(req, res);
+});
+
+app.get("/jira/resources", authMiddleware, async (req, res) => {
+  getJiraResources(req, res);
+});
+
+// OAuth endpoints
+app.get("/atlassian/oauth/callback", async (req, res) => {
+  atlassianOAuthCallback(req, res);
 });
 
 // MARK: CONFLUENCE
@@ -342,23 +333,9 @@ app.get("/linear/integrations", authMiddleware, async (req, res) => {
   getLinearIntegrations(req, res);
 });
 
-app.post("/webhooks/jira/:userId", async (req, res) => {
-  const { userId } = req.params;
-  const event: JiraWebhookPayload = req.body;
-
-  console.log("Jira webhook event received:", event.webhookEvent);
-
-  // Update your search index based on the event
-  if (event.webhookEvent.startsWith("jira:issue_")) {
-    await indexJiraTicket(userId, event);
-  } else if (event.webhookEvent.includes("comment_")) {
-    console.log("Jira Comment event", event.webhookEvent);
-    // Could also index comments if needed
-  } else {
-    console.log("Other Jira event", event.webhookEvent);
-  }
-
-  res.json({ received: true });
+app.post("/webhooks/jira/:accountId", async (req, res) => {
+  // Use the new webhook handler which verifies authenticity and processes the event
+  handleJiraWebhook(req, res);
 });
 
 // MARK: SLACK

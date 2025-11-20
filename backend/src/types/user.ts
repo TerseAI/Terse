@@ -3,7 +3,7 @@ import { db } from "../prismaClient";
 import { TicketManager } from "../ticketing/TicketIntegration";
 import { JiraAdapter } from "../ticketing/jira";
 import { LinearAdapter } from "../ticketing/linear";
-import { JiraApiKey, LinearApiKey, User } from "./prisma";
+import { JiraApiKey, AtlassianIntegration, LinearApiKey, User } from "./prisma";
 
 export async function login(
   email: string,

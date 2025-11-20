@@ -33,11 +33,12 @@ export class ConfluenceOutput extends Output<ConfluenceSession, ConfluenceConfig
         automationOutputConfig: AutomationOutput,
         user: User
     ): Promise<ConfluenceSession> {
-        const integration = await db().jira_api_keys.findFirst({
+        // Check OAuth integrations first
+        const oauthIntegration = await db().atlassian_integrations.findFirst({
             where: { id: integrationId }
         });
 
-        if (!integration) {
+        if (!oauthIntegration) {
             throw new Error(`Confluence integration ${integrationId} not found`);
         }
 
@@ -49,16 +50,21 @@ export class ConfluenceOutput extends Output<ConfluenceSession, ConfluenceConfig
             throw new Error(`Confluence config for automation output ${automationOutputConfig.id} not found`);
         }
 
+        const integrationId_final = oauthIntegration?.id
+        const email = oauthIntegration?.jira_user_email
+        const baseUrl = oauthIntegration?.base_url
+        const token = oauthIntegration?.access_token
+
         const atlassianIntegration: AtlassianIntegration = {
-            id: integration.id,
-            email: integration.jira_user_email,
-            baseUrl: integration.base_url,
+            id: integrationId_final,
+            email: email,
+            baseUrl: baseUrl,
         };
 
         return { 
             atlassianIntegration: atlassianIntegration, 
             confluenceConfig: confluenceConfig, 
-            apiToken: integration.api_token,
+            apiToken: token,
             user: user, 
             isUserInitiated: true, 
             runActions: [] 
