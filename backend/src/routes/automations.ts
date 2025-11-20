@@ -11,6 +11,7 @@ import { getInputConfigInclude, getOutputConfigInclude } from "../utility/prisma
 import { INPUT_REGISTRY } from "../inputs/InputRegistry";
 import { INTEGRATION_REGISTRY } from "../integrations/abstract/IntegrationRegistry";
 import { OutputFactory } from "../outputs/abstract/OutputFactory";
+import { emitCacheInvalidationWithKey } from "../realtimeSocket";
 
 async function createInputConfig(
     tx: PrismaTransaction,
@@ -127,6 +128,86 @@ export async function getUserAutomations(req: Request, res: Response) {
     } catch (error) {
         console.error('Error fetching automations:', error);
         res.status(500).json({ error: 'Failed to fetch automations' });
+    }
+}
+
+// GET /automations/recent - Get recently modified automations with last event processed time
+export async function getRecentAutomations(req: Request, res: Response) {
+    if (!req.session?.user) {
+        res.status(401).json({ error: 'Unauthorized' });
+        return;
+    }
+
+    const userId = req.session.user.id;
+    const limit = parseInt(req.query.limit as string) || 3;
+
+    try {
+        const prisma = db();
+
+        // Get recently modified automations ordered by updated_at
+        const automations: AutomationWithRelations[] = await prisma.automations.findMany({
+            where: {
+                user_id: userId,
+            },
+            include: {
+                prompt: true,
+                inputs: {
+                    include: getInputConfigInclude()
+                },
+                output: {
+                    include: getOutputConfigInclude()
+                }
+            },
+            orderBy: { updated_at: 'desc' },
+            take: limit
+        });
+
+        // Get the last event processed time for each automation
+        const automationIds = automations.map(a => a.id);
+        const lastEventMap = new Map<string, Date>();
+        
+        // For each automation, get the most recent run history record
+        for (const automationId of automationIds) {
+            const lastEvent = await prisma.run_history_records.findFirst({
+                where: {
+                    automation_id: automationId
+                },
+                select: {
+                    timestamp: true,
+                },
+                orderBy: { timestamp: 'desc' }
+            });
+            
+            if (lastEvent) {
+                lastEventMap.set(automationId, lastEvent.timestamp);
+            }
+        }
+
+        // Transform the data to match frontend format with timestamps
+        const response = automations.map(automation => {
+            const lastEventTimestamp = lastEventMap.get(automation.id);
+            return {
+                id: automation.id,
+                name: automation.name,
+                isActive: automation.is_active,
+                prompt: automation.prompt ? { text: automation.prompt.content } : { text: '' },
+                inputs: automation.inputs.map(input => ({
+                    id: input.id,
+                    config: convertPrismaConfigToConfigInstance(input)
+                })),
+                output: {
+                    id: automation.output!.id,
+                    config: convertPrismaConfigToConfigInstance(automation.output!),
+                },
+                updatedAt: automation.updated_at.toISOString(),
+                lastEventProcessedAt: lastEventTimestamp ? lastEventTimestamp.toISOString() : null,
+            };
+        });
+
+        res.status(200).json(response);
+    } catch (error) {
+        console.error('Error fetching recent automations:', error);
+        res.status(500).json({ error: 'Failed to fetch recent automations' });
     }
 }
 
@@ -305,6 +386,9 @@ export async function createAutomation(req: Request, res: Response) {
         // Set up automation inputs (e.g., create webhooks for Figma)
         await setupAutomationInputs(automationWithRelations);
 
+        // Invalidate recent automations cache
+        emitCacheInvalidationWithKey(userId, 'recentAutomations');
+
         res.status(201).json({ success: true, id: automation.id });
     } catch (error) {
         console.error('Error creating automation:', error);
@@ -460,6 +544,9 @@ export async function updateAutomation(req: Request, res: Response) {
         // Set up automation inputs (e.g., create webhooks for Figma)
         await setupAutomationInputs(automationWithInputRelations);
 
+        // Invalidate recent automations cache
+        emitCacheInvalidationWithKey(userId, 'recentAutomations');
+
         res.status(200).json({ success: true, id: automationId });
     } catch (error) {
         console.error('Error updating automation:', error);
@@ -505,6 +592,9 @@ export async function deleteAutomation(req: Request, res: Response) {
         await prisma.automations.delete({
             where: { id: automationId }
         });
+
+        // Invalidate recent automations cache
+        emitCacheInvalidationWithKey(userId, 'recentAutomations');
 
         res.status(200).json({ success: true, message: 'Automation deleted successfully' });
     } catch (error) {

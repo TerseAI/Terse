@@ -9,7 +9,7 @@ import { appendRunAction, createRunRecord, finalizeRunStatus, markRunFailed, mar
 import { ApprovalResult } from './AutomationAgent';
 import { Agent, AgentOutputType, RunResult } from '@openai/agents';
 import { Session } from '../../server';
-import { emitCacheInvalidationWithWildcard } from '../../realtimeSocket';
+import { emitCacheInvalidationWithKey, emitCacheInvalidationWithWildcard } from '../../realtimeSocket';
 import { getInputConfigInclude, getOutputConfigInclude } from '../../utility/prismaIncludes';
 
 // The job of this class is to take an Input Event, and check if it's a match for an Automation.
@@ -111,6 +111,7 @@ export class EventProcessor {
             trigger,
         });
         emitCacheInvalidationWithWildcard(this.user.id, 'runHistory', automation.id);
+        emitCacheInvalidationWithKey(this.user.id, 'recentAutomations');
 
         // Get the output from automation relations (already fetched with config)
         const outputIntegration = automation.output;

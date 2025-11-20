@@ -6,14 +6,18 @@ import { Automation } from "../shared/types";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "../components/ui/chart";
 import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts";
 import { RunHistoryAction } from "../shared/RunHistoryTypes";
-import { IconForInputType } from "../pages/Automations/components/Integration";
-import { Integration } from "@/types/Integration";
+import { IconForIntegration } from "../pages/Automations/components/Integration";
 import { ScrollArea } from "../components/ui/scroll-area";
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "../components/ui/empty";
+import { IntegrationType } from "../shared/Integrations";
+import { useRecentAutomations } from "../hooks/api/useRecentAutomations";
+import { formatRelativeTime } from "../utility/timeUtils";
 
 function Home() {
     // Flag to easily test empty states - set to false to see empty states
     const USE_MOCK_DATA = true;
+
+    const { automations: recentAutomationsData, isLoading: isLoadingAutomations } = useRecentAutomations(3);
 
     // Mock data
     const metrics = USE_MOCK_DATA ? [
@@ -46,54 +50,14 @@ function Home() {
         },
     ] : [];
 
-    // Mock data for recently edited automations
-    const recentAutomations: (Automation & { lastEdited: string; lastEventProcessedAt: string })[] = USE_MOCK_DATA ? [
-        {
-            id: "1",
-            name: "Slack to Linear Issue Creator",
-            isActive: true,
-            inputs: [
-                { id: "1", integration: "slack" },
-                { id: "2", integration: "linear" },
-            ],
-            output: { integration: "linear" },
-            lastEdited: "2 hours ago",
-            lastEventProcessedAt: "15 minutes ago",
-        },
-        {
-            id: "2",
-            name: "Gmail to Notion Page",
-            isActive: true,
-            inputs: [
-                { id: "3", integration: "gmail" },
-            ],
-            output: { integration: "notion" },
-            lastEdited: "5 hours ago",
-            lastEventProcessedAt: "1 hour ago",
-        },
-        {
-            id: "3",
-            name: "GitHub PR to Slack Notifier",
-            isActive: false,
-            inputs: [
-                { id: "4", integration: "github" },
-            ],
-            output: { integration: "slack" },
-            lastEdited: "1 day ago",
-            lastEventProcessedAt: "3 days ago",
-        },
-        {
-            id: "4",
-            name: "Confluence to Linear Task",
-            isActive: true,
-            inputs: [
-                { id: "5", integration: "confluence" },
-            ],
-            output: { integration: "linear" },
-            lastEdited: "2 days ago",
-            lastEventProcessedAt: "30 minutes ago",
-        },
-    ] : [];
+    // Transform real data to match the component's expected format
+    const recentAutomations = recentAutomationsData.map(automation => ({
+        ...automation,
+        lastEdited: formatRelativeTime(automation.updatedAt),
+        lastEventProcessedAt: automation.lastEventProcessedAt 
+            ? formatRelativeTime(automation.lastEventProcessedAt)
+            : "Never",
+    }));
 
     // Mock data for events processed per day (last 7 days)
     const eventsPerDay = USE_MOCK_DATA ? [
@@ -117,7 +81,7 @@ function Home() {
     const recentActions: (RunHistoryAction & { timestamp: string; automationName: string })[] = USE_MOCK_DATA ? [
         {
             action: "Created Linear issue",
-            integration: "linear",
+            integration: IntegrationType.LINEAR,
             target: "Engineering Team",
             details: "Issue created from Slack message",
             timestamp: "5 minutes ago",
@@ -125,7 +89,7 @@ function Home() {
         },
         {
             action: "Created Notion page",
-            integration: "notion",
+            integration: IntegrationType.NOTION,
             target: "Project Database",
             details: "Page created from Gmail email",
             timestamp: "12 minutes ago",
@@ -133,7 +97,7 @@ function Home() {
         },
         {
             action: "Sent Slack notification",
-            integration: "slack",
+            integration: IntegrationType.SLACK,
             target: "#engineering",
             details: "Notified team about GitHub PR",
             timestamp: "18 minutes ago",
@@ -141,7 +105,7 @@ function Home() {
         },
         {
             action: "Created Linear task",
-            integration: "linear",
+            integration: IntegrationType.LINEAR,
             target: "Product Team",
             details: "Task created from Confluence page",
             timestamp: "25 minutes ago",
@@ -149,7 +113,7 @@ function Home() {
         },
         {
             action: "Updated Jira ticket",
-            integration: "jira",
+            integration: IntegrationType.ATLASSIAN,
             target: "PROJ-123",
             details: "Ticket updated from Slack message",
             timestamp: "32 minutes ago",
@@ -253,9 +217,15 @@ function Home() {
 
             <div>
                 <h2 className="text-2xl font-bold mb-4">Recently Edited Automations</h2>
-                {recentAutomations.length > 0 ? (
+                {isLoadingAutomations ? (
+                    <Card>
+                        <CardContent className="py-12">
+                            <div className="text-center text-muted-foreground">Loading...</div>
+                        </CardContent>
+                    </Card>
+                ) : recentAutomations.length > 0 ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {recentAutomations.slice(0, 3).map((automation) => (
+                        {recentAutomations.map((automation) => (
                             <AutomationCard key={automation.id} automation={automation} />
                         ))}
                     </div>
@@ -378,7 +348,7 @@ function ActionItem({ action }: ActionItemProps) {
         <div className="flex items-start gap-3 pb-4 border-b last:border-0 last:pb-0">
             <div className="mt-0.5">
                 <div className="w-8 h-8 flex items-center justify-center rounded bg-muted/50">
-                    <IconForInputType type={action.integration as Integration} />
+                    <IconForIntegration integration={action.integration} />
                 </div>
             </div>
             <div className="flex-1 min-w-0">

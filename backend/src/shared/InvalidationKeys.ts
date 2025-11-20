@@ -83,3 +83,10 @@ export const runHistoryKey = (
     const serializedParams = JSON.stringify(sortedParams);
     return ['runHistory', automationId, serializedParams] as const;
 };
+
+export const recentAutomationsKey = (limit?: number): readonly [string, number] | readonly [string] => {
+    if (limit !== undefined) {
+        return ['recentAutomations', limit] as const;
+    }
+    return ['recentAutomations'] as const;
+};

@@ -329,6 +329,11 @@ export type AutomationsResponse = {
     };
 };
 
+export type RecentAutomation = Automation & {
+  updatedAt: string;
+  lastEventProcessedAt: string | null;
+};
+
 export type GithubAppInstallationCallbackRequest = {
   name: string;
   email: string;
