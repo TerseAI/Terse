@@ -96,9 +96,6 @@ export type Session = {
   runActions?: RunHistoryAction[];
 };
 
-console.log("Node Env:", settings.nodeEnv);
-
-
 const app = express();
 const server = createServer(app);
 
