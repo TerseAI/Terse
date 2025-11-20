@@ -876,7 +876,19 @@ export class JiraEvent extends InputEvent {
                 issueSections.push(`Due Date: ${issue.fields.duedate}`);
             }
 
-            issueSections.push(`URL: ${issue.self.replace('/rest/api/3/issue/', '/browse/')}`);
+            // Convert REST API URL to browse URL using issue key
+            let issueUrl = issue.self;
+            if (issue.self && issue.key) {
+                try {
+                    const urlObj = new URL(issue.self);
+                    const baseUrl = `${urlObj.protocol}//${urlObj.hostname}`;
+                    issueUrl = `${baseUrl}/browse/${issue.key}`;
+                } catch (error) {
+                    // Fallback to string replacement if URL parsing fails
+                    issueUrl = issue.self.replace(/\/rest\/api\/[23]\/issue\//, '/browse/');
+                }
+            }
+            issueSections.push(`URL: ${issueUrl}`);
 
             // Add changelog if present (shows what changed)
             if (this.data.changelog && this.data.changelog.items && this.data.changelog.items.length > 0) {
@@ -981,7 +993,19 @@ export class JiraEvent extends InputEvent {
         let source: string;
 
         if (issue) {
-            url = issue.self.replace('/rest/api/3/issue/', '/browse/');
+            // Convert REST API URL to browse URL
+            // Handle both /rest/api/2/issue/ and /rest/api/3/issue/ formats
+            // Use issue key to construct proper browse URL: https://domain.atlassian.net/browse/KEY-123
+            if (issue.self) {
+                try {
+                    const urlObj = new URL(issue.self);
+                    const baseUrl = `${urlObj.protocol}//${urlObj.hostname}`;
+                    url = `${baseUrl}/browse/${issue.key}`;
+                } catch (error) {
+                    // Fallback to string replacement if URL parsing fails
+                    url = issue.self.replace(/\/rest\/api\/[23]\/issue\//, '/browse/');
+                }
+            }
             title = issue.fields.summary;
             subheader = `${issue.key} - ${issue.fields.status.name}`;
             source = issue.fields.project.name || issue.fields.project.key;
@@ -990,7 +1014,17 @@ export class JiraEvent extends InputEvent {
             // Use this.data.issue directly to avoid type narrowing issues
             const commentIssue = this.data.issue;
             if (commentIssue) {
-                url = commentIssue.self.replace('/rest/api/3/issue/', '/browse/');
+                // Convert REST API URL to browse URL using issue key
+                if (commentIssue.self) {
+                    try {
+                        const urlObj = new URL(commentIssue.self);
+                        const baseUrl = `${urlObj.protocol}//${urlObj.hostname}`;
+                        url = `${baseUrl}/browse/${commentIssue.key}`;
+                    } catch (error) {
+                        // Fallback to string replacement if URL parsing fails
+                        url = commentIssue.self.replace(/\/rest\/api\/[23]\/issue\//, '/browse/');
+                    }
+                }
                 title = `Comment on ${commentIssue.key}`;
                 source = commentIssue.fields.project.name || commentIssue.fields.project.key;
             } else {
