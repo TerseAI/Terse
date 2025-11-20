@@ -95,7 +95,7 @@ export async function getUserAutomations(req: Request, res: Response) {
             take
         });
 
-        if (!automations.some(automation => automation.output)) {
+        if (automations.length > 0 && !automations.some(automation => automation.output)) {
             throw new Error(`Automation output not found`);
         }
 
