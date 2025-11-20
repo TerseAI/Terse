@@ -1,4 +1,4 @@
-import { Home, MoreHorizontal, Plug, Zap } from "lucide-react"
+import { Eye, Home, MoreHorizontal, Plug, Zap } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
 import {
     Sidebar,
@@ -17,40 +17,14 @@ import {
 } from "@/components/ui/sidebar"
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "../ui/dropdown-menu";
-import { Automation } from "@/shared/types";
+import { Channel } from "@/shared/types";
 import { AppSidebarHeader } from "./SidebarHeader";
 import { AppSidebarFooter } from "./SidebarFooter";
-import { useAutomations } from "@/hooks/api/useAutomations";
-
-interface NavItem {
-    title: string;
-    url: string;
-    icon: LucideIcon;
-}
-
-const ApplicationItems: NavItem[] = [
-    {
-        title: "Home",
-        url: "/app",
-        icon: Home,
-    },
-    {
-        title: "Automations",
-        url: "/app/automations",
-        icon: Zap,
-    }
-]
-
-const SettingsItems: NavItem[] = [
-    {
-        title: "Integrations",
-        url: "/app/integrations",
-        icon: Plug,
-    },
-]
+import { useChannels } from "@/hooks/api/useChannels";
+import { useFeatureFlag } from "@/hooks/useFeatureFlag";
 
 export function AppSidebar() {
-    const { automations, isLoading } = useAutomations({ limit: 100 });
+    const { channels, isLoading } = useChannels({ limit: 100 });
 
     return (
         <Sidebar>
@@ -59,7 +33,7 @@ export function AppSidebar() {
                 <SidebarGroup>
                     <SidebarGroupLabel>Application</SidebarGroupLabel>
                     <SidebarGroupContent>
-                        <ApplicationNavigation automations={automations} loading={isLoading} />
+                        <ApplicationNavigation channels={channels} loading={isLoading} />
                     </SidebarGroupContent>
                 </SidebarGroup>
 
@@ -76,16 +50,18 @@ export function AppSidebar() {
 }
 
 interface ApplicationNavigationProps {
-    automations: Automation[];
+    channels: Channel[];
     loading: boolean;
 }
 
-function ApplicationNavigation({ automations, loading }: ApplicationNavigationProps) {
+function ApplicationNavigation({ channels, loading }: ApplicationNavigationProps) {
     const location = useLocation();
+    const hasBirdsEyeFlag = useFeatureFlag('Birds-eye-view-homepage');
+    const applicationItems = hasBirdsEyeFlag ? BirdsEyeApplicationItems : DefaultApplicationItems;
 
     return (
         <SidebarMenu>
-            {ApplicationItems.map((item) => (
+            {applicationItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
                     <SidebarMenuButton asChild data-active={location.pathname === item.url}>
                         <Link to={item.url}>
@@ -93,11 +69,11 @@ function ApplicationNavigation({ automations, loading }: ApplicationNavigationPr
                             <span>{item.title}</span>
                         </Link>
                     </SidebarMenuButton>
-                    {item.title === "Automations" &&
-                        <AutomationDropdownMenu />
+                    {item.title === "Channels" &&
+                        <ChannelDropdownMenu />
                     }
-                    {item.title === "Automations" && (
-                        <AutomationsList automations={automations} loading={loading} />
+                    {item.title === "Channels" && (
+                        <ChannelsList channels={channels} loading={loading} />
                     )}
                 </SidebarMenuItem>
             ))}
@@ -124,11 +100,11 @@ function SettingsNavigation() {
     )
 }
 
-interface AutomationsListProps {
-    automations: Automation[];
+interface ChannelsListProps {
+    channels: Channel[];
     loading: boolean;
 }
-function AutomationsList({ automations, loading }: AutomationsListProps) {
+function ChannelsList({ channels, loading }: ChannelsListProps) {
     if (loading) {
         return (
             <SidebarMenuSub>
@@ -147,14 +123,14 @@ function AutomationsList({ automations, loading }: AutomationsListProps) {
 
     return (
         <>
-            {automations.map((automation) => (
-                <AutomationListItem key={automation.id} automation={automation} />
+            {channels.map((channel) => (
+                <ChannelListItem key={channel.id} channel={channel} />
             ))}
         </>
     )
 }
 
-function AutomationDropdownMenu() {
+function ChannelDropdownMenu() {
     const navigate = useNavigate();
     return (
         <DropdownMenu>
@@ -165,27 +141,27 @@ function AutomationDropdownMenu() {
             </DropdownMenuTrigger>
             <DropdownMenuContent side="right" align="start">
                 <DropdownMenuItem>
-                    <span onClick={() => navigate('/app/automations/new')}>New Automation</span>
+                    <span onClick={() => navigate('/app/channels/new')}>New Channel</span>
                 </DropdownMenuItem>
             </DropdownMenuContent>
         </DropdownMenu>
     )
 }
 
-interface AutomationListItemProps {
-    automation: Automation;
+interface ChannelListItemProps {
+    channel: Channel;
 }
 
-function AutomationListItem({ automation }: AutomationListItemProps) {
+function ChannelListItem({ channel }: ChannelListItemProps) {
     const location = useLocation();
-    const isActive = location.pathname === `/app/automations/${automation.id}`;
+    const isActive = location.pathname === `/app/channels/${channel.id}`;
 
     return (
         <SidebarMenuSub>
             <SidebarMenuSubItem>
                 <SidebarMenuSubButton asChild data-active={isActive}>
-                    <Link to={`/app/automations/${automation.id}`}>
-                        <span>{automation.name}</span>
+                    <Link to={`/app/channels/${channel.id}`}>
+                        <span>{channel.name}</span>
                     </Link>
                 </SidebarMenuSubButton>
             </SidebarMenuSubItem>
@@ -194,3 +170,48 @@ function AutomationListItem({ automation }: AutomationListItemProps) {
 }
 
 export default Sidebar;
+
+interface NavItem {
+    title: string;
+    url: string;
+    icon: LucideIcon;
+}
+
+const DefaultApplicationItems: NavItem[] = [
+    {
+        title: "Home",
+        url: "/app",
+        icon: Home,
+    },
+    {
+        title: "Channels",
+        url: "/app/channels",
+        icon: Zap,
+    }
+]
+
+const BirdsEyeApplicationItems: NavItem[] = [
+    {
+        title: "Birds Eye",
+        url: "/app/birds-eye",
+        icon: Eye,
+    },
+    {
+        title: "Home",
+        url: "/app",
+        icon: Home,
+    },
+    {
+        title: "Channels",
+        url: "/app/channels",
+        icon: Zap,
+    }
+]
+
+const SettingsItems: NavItem[] = [
+    {
+        title: "Integrations",
+        url: "/app/integrations",
+        icon: Plug,
+    },
+]

@@ -40,6 +40,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       try {
         let me = await BackendProvider.getCurrentUser();
         setUser(me);
+        posthog.identify(me.id, {
+          email: me.email,
+          display_name: me.display_name,
+          github_username: me.github_username,
+        });
       } catch (error) {
         console.error("Error fetching user:", error);
       } finally {
@@ -53,6 +58,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     try {
       await BackendProvider.authenticateUser(email, password);
       let me = await BackendProvider.getCurrentUser();
+      posthog.identify(me.id, {
+        email: me.email,
+        display_name: me.display_name,
+        github_username: me.github_username,
+      });
       posthog.capture(PosthogEvents.USER_SIGNED_IN, {
         email: me.email,
       });
@@ -65,6 +75,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const initSession = async (token: string) => {
     await BackendProvider.setSession(token);
     let me = await BackendProvider.getCurrentUser();
+
+    posthog.identify(me.id, {
+      email: me.email,
+      display_name: me.display_name,
+      github_username: me.github_username,
+    });
+
     setUser(me);
   }
 
@@ -73,6 +90,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       email: user?.email || 'unknown',
     });
     await BackendProvider.terminateSession();
+    posthog.reset(); // Reset PostHog identification on logout
     setUser(null);
   };
 

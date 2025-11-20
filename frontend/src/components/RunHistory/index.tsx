@@ -9,10 +9,10 @@ import { useRunHistory } from "../../hooks/api/useRunHistory";
 // Remote data source only; no local mock
 
 type RunHistoryProps = {
-    automationId: string | null;
+    channelId: string | null;
 };
 
-export default function RunHistory({ automationId }: RunHistoryProps) {
+export default function RunHistory({ channelId }: RunHistoryProps) {
     const [expandedRuns, setExpandedRuns] = useState<Set<string>>(new Set());
     const [expandedDecisions, setExpandedDecisions] = useState<Set<string>>(new Set());
     const [expandedIndividualActions, setExpandedIndividualActions] = useState<Set<string>>(new Set());
@@ -30,7 +30,7 @@ export default function RunHistory({ automationId }: RunHistoryProps) {
     });
 
     const { runs: remoteRuns, total, isLoading } = useRunHistory({
-        automationId,
+        channelId,
         page: currentPage,
         pageSize: runsPerPage,
         searchQuery,

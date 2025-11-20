@@ -1,5 +1,5 @@
 /**
- * Returns the include object for automation input configs.
+ * Returns the include object for channel input configs.
  * Can be extended or spread for custom queries (e.g., groupBy).
  */
 export function getInputConfigInclude() {
@@ -17,7 +17,7 @@ export function getInputConfigInclude() {
 }
 
 /**
- * Returns the include object for automation output configs.
+ * Returns the include object for channel output configs.
  * Can be extended or spread for custom queries (e.g., groupBy).
  */
 export function getOutputConfigInclude() {

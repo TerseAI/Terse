@@ -2,7 +2,7 @@ import { ExternalLink } from "lucide-react";
 import type { RunHistoryAction, RunHistoryStatus } from "../../shared/RunHistoryTypes";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "../ui/accordion";
 import { cn } from "@/lib/utils";
-import { IconForIntegration } from "../../pages/Automations/components/Integration";
+import { IconForIntegration } from "../../pages/Channels/components/Integration";
 import { capitalize } from "../../lib/utils";
 
 type Props = {

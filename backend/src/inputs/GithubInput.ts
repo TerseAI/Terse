@@ -13,10 +13,10 @@ export class GithubInput implements Input<GitHubConfig> {
         this.integrationManager = new SlackIntegrationManager();
     }
 
-    async addInputToAutomation(tx: PrismaTransaction, automationInputId: string, input: GitHubConfig): Promise<void> {
+    async addInputToChannel(tx: PrismaTransaction, channelInputId: string, input: GitHubConfig): Promise<void> {
         await tx.automation_github_configs.create({
             data: {
-                automation_input_id: automationInputId,
+                automation_input_id: channelInputId,
                 repository_ids: input.repositoryIds,
             },
         });

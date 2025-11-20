@@ -1,19 +1,21 @@
 import axios from 'axios';
 import { ModelEvent, ModelRequest } from "../shared/ModelEvents";
 import {
-    Automation,
-    AutomationInput, 
-    AutomationOutput,
-    AutomationPrompt, 
-    AutomationsResponse, 
-    AutomationUpdate, 
+    Channel,
+    ChannelInput, 
+    ChannelOutput,
+    ChannelPrompt, 
+    ChannelsResponse, 
+    ChannelUpdate, 
     ConfluenceResourcesResponse, 
     GetGithubRepositoriesForIntegrationResponse, 
     OAuthInstallationDetails, 
     JiraCredentialsValidationResponse, 
     JiraResourcesResponse,
     NotionResourcesResponse, 
-    SlackChannelsResponse, 
+    RecentChannel,
+    SlackChannelsResponse,
+    StatsResponse, 
 } from "../shared/types";
 import { 
     IntegrationType,
@@ -27,6 +29,7 @@ import {
 } from "../shared/Integrations";
 import { User } from "../types/User";
 import { GetRunHistoryParams, GetRunHistoryResponse } from '../shared/RunHistoryTypes';
+import { deserializeConfig } from '../utility/ConfigUtils';
 
 const backendBaseUrl = '/api';
 
@@ -84,6 +87,11 @@ interface BackendService {
         summary: string;
         eventCount: number;
     }>;
+
+    /**
+     * Gets statistics for the homepage dashboard
+     */
+    getStats(): Promise<StatsResponse>;
 
     /**
      * Returns the installation details for a given integration type
@@ -225,34 +233,39 @@ interface BackendService {
     }): Promise<Connection>;
 
     /**
-     * Gets all automations for the user with pagination
+     * Gets all channels for the user with pagination
      */
-    getUserAutomations(page?: number, limit?: number, isActive?: boolean, search?: string): Promise<AutomationsResponse>;
+    getUserChannels(page?: number, limit?: number, isActive?: boolean, search?: string): Promise<ChannelsResponse>;
 
     /**
-     * Gets a single automation by ID
+     * Gets recently modified channels with last event processed time
      */
-    getAutomationById(id: string): Promise<Automation>;
+    getRecentChannels(limit?: number): Promise<RecentChannel[]>;
 
     /**
-     * Creates a new automation
+     * Gets a single channel by ID
      */
-    createAutomation(name: string, inputs: AutomationInput[], output: AutomationOutput, prompt: AutomationPrompt, isActive?: boolean): Promise<{ success: boolean; id: string }>;
+    getChannelById(id: string): Promise<Channel>;
 
     /**
-     * Updates an existing automation
+     * Creates a new channel
      */
-    updateAutomation(id: string, data: AutomationUpdate): Promise<{ success: boolean; id: string }>;
+    createChannel(name: string, inputs: ChannelInput[], output: ChannelOutput, prompt: ChannelPrompt, isActive?: boolean): Promise<{ success: boolean; id: string }>;
 
     /**
-     * Deletes an automation
+     * Updates an existing channel
      */
-    deleteAutomation(id: string): Promise<{ success: boolean; message: string }>;
+    updateChannel(id: string, data: ChannelUpdate): Promise<{ success: boolean; id: string }>;
 
     /**
-     * Fetch run history for a specific automation with filters and pagination
+     * Deletes a channel
      */
-    getRunHistory(automationId: string, params: GetRunHistoryParams): Promise<GetRunHistoryResponse>;
+    deleteChannel(id: string): Promise<{ success: boolean; message: string }>;
+
+    /**
+     * Fetch run history for a specific channel with filters and pagination
+     */
+    getRunHistory(channelId: string, params: GetRunHistoryParams): Promise<GetRunHistoryResponse>;
 }
 
 export const BackendProvider: BackendService = {
@@ -347,6 +360,15 @@ export const BackendProvider: BackendService = {
             .then(response => response.data)
             .catch(error => {
                 console.error('Error getting daily activity summary:', error);
+                throw error;
+            });
+    },
+
+    getStats: () => {
+        return axios.get(`${backendBaseUrl}/stats`, { withCredentials: true })
+            .then(response => response.data)
+            .catch(error => {
+                console.error('Error getting stats:', error);
                 throw error;
             });
     },
@@ -590,7 +612,7 @@ export const BackendProvider: BackendService = {
         return new Connection(socket, onOpen, onClose, onError, onMessageReceived);
     },
 
-    getUserAutomations: (page = 1, limit = 10, isActive?: boolean, search?: string) => {
+    getUserChannels: (page = 1, limit = 10, isActive?: boolean, search?: string) => {
         const params = new URLSearchParams();
         params.append('page', page.toString());
         params.append('limit', limit.toString());
@@ -601,57 +623,82 @@ export const BackendProvider: BackendService = {
             params.append('search', search);
         }
 
-        return axios.get<AutomationsResponse>(`${backendBaseUrl}/automations?${params.toString()}`, { withCredentials: true })
+        return axios.get<ChannelsResponse>(`${backendBaseUrl}/channels?${params.toString()}`, { withCredentials: true })
             .then(response => response.data)
             .catch(error => {
-                console.error('Error getting automations:', error);
+                console.error('Error getting channels:', error);
                 throw error;
             });
     },
 
-    getAutomationById: (id: string) => {
-        return axios.get<Automation>(`${backendBaseUrl}/automations/${id}`, { withCredentials: true })
-            .then(response => response.data)
+    getRecentChannels: (limit = 3) => {
+        const params = new URLSearchParams();
+        params.append('limit', limit.toString());
+
+        return axios.get<RecentChannel[]>(`${backendBaseUrl}/channels/recent?${params.toString()}`, { withCredentials: true })
+            .then(response => {
+                // Deserialize configs from JSON to class instances
+                return response.data.map(channel => ({
+                    ...channel,
+                    inputs: channel.inputs.map(input => ({
+                        ...input,
+                        config: deserializeConfig(input.config)
+                    })),
+                    output: {
+                        ...channel.output,
+                        config: deserializeConfig(channel.output.config)
+                    }
+                }));
+            })
             .catch(error => {
-                console.error('Error getting automation:', error);
+                console.error('Error getting recent channels:', error);
                 throw error;
             });
     },
 
-    createAutomation: (name: string, inputs: AutomationInput[], output: AutomationOutput, prompt: AutomationPrompt, isActive = true) => {
-        return axios.post<{ success: boolean; id: string }>(`${backendBaseUrl}/automations`,
+    getChannelById: (id: string) => {
+        return axios.get<Channel>(`${backendBaseUrl}/channels/${id}`, { withCredentials: true })
+            .then(response => response.data)
+            .catch(error => {
+                console.error('Error getting channel:', error);
+                throw error;
+            });
+    },
+
+    createChannel: (name: string, inputs: ChannelInput[], output: ChannelOutput, prompt: ChannelPrompt, isActive = true) => {
+        return axios.post<{ success: boolean; id: string }>(`${backendBaseUrl}/channels`,
             { name, inputs, output, prompt, isActive },
             { withCredentials: true }
         )
             .then(response => response.data)
             .catch(error => {
-                console.error('Error creating automation:', error);
+                console.error('Error creating channel:', error);
                 throw error;
             });
     },
 
-    updateAutomation: (id: string, data: AutomationUpdate) => {
-        return axios.patch<{ success: boolean; id: string }>(`${backendBaseUrl}/automations/${id}`,
+    updateChannel: (id: string, data: ChannelUpdate) => {
+        return axios.patch<{ success: boolean; id: string }>(`${backendBaseUrl}/channels/${id}`,
             data,
             { withCredentials: true }
         )
             .then(response => response.data)
             .catch(error => {
-                console.error('Error updating automation:', error);
+                console.error('Error updating channel:', error);
                 throw error;
             });
     },
 
-    deleteAutomation: (id: string) => {
-        return axios.delete<{ success: boolean; message: string }>(`${backendBaseUrl}/automations/${id}`, { withCredentials: true })
+    deleteChannel: (id: string) => {
+        return axios.delete<{ success: boolean; message: string }>(`${backendBaseUrl}/channels/${id}`, { withCredentials: true })
             .then(response => response.data)
             .catch(error => {
-                console.error('Error deleting automation:', error);
+                console.error('Error deleting channel:', error);
                 throw error;
             });
     },
 
-    getRunHistory: (automationId, params) => {
+    getRunHistory: (channelId, params) => {
         const usp = new URLSearchParams();
         if (params.page) usp.append('page', String(params.page));
         if (params.pageSize) usp.append('pageSize', String(params.pageSize));
@@ -659,7 +706,7 @@ export const BackendProvider: BackendService = {
         if (params.start) usp.append('start', params.start);
         if (params.end) usp.append('end', params.end);
         if (params.status && params.status.length) usp.append('status', params.status.join(','));
-        const url = `${backendBaseUrl}/run-history/${encodeURIComponent(automationId)}${usp.toString() ? `?${usp.toString()}` : ''}`;
+        const url = `${backendBaseUrl}/run-history/${encodeURIComponent(channelId)}${usp.toString() ? `?${usp.toString()}` : ''}`;
         return axios.get<GetRunHistoryResponse>(url, { withCredentials: true })
             .then(r => r.data)
             .catch(error => {

@@ -1,13 +1,13 @@
 import { Integration, OAuthIntegrationInstallation } from "./abstract/Integration";
 import { db } from "../prismaClient";
 import chalk from "chalk";
-import { EventProcessor } from "../agent/AutomationAgent/EventProcessor";
+import { EventProcessor } from "../agent/ChannelAgent/EventProcessor";
 import { InputEvent } from "./abstract/InputEvent";
 import { GithubIntegration, GithubIntegrationMetadata, IntegrationType } from "../shared/Integrations";
 import { GithubAppUnifiedEventRequest } from "../routes/github";
 import { resolveUserForGithubInstallation } from "../routes/github";
 import { User } from "../types/prisma";
-import { AutomationInputWithConfigs } from "../types/prisma";
+import { ChannelInputWithConfigs } from "../types/prisma";
 import { RunHistoryTrigger } from "../shared/RunHistoryTypes";
 import { OAuthInstallationDetails } from "../shared/types";
 import { githubApp, urls } from "../config/settings";
@@ -102,13 +102,13 @@ export class GithubIntegrationManager implements Integration<GithubIntegration, 
         return Promise.resolve();
     }
 
-    async setupAutomationInput(integrationId: string, automationInput: AutomationInputWithConfigs): Promise<void> {
-        // GitHub doesn't require any setup for automation inputs
+    async setupChannelInput(integrationId: string, channelInput: ChannelInputWithConfigs): Promise<void> {
+        // GitHub doesn't require any setup for channel inputs
         // Webhooks are managed at the integration level
     }
 
-    async teardownAutomationInput(integrationId: string, automationInput: AutomationInputWithConfigs): Promise<void> {
-        // GitHub doesn't require any teardown for automation inputs
+    async teardownChannelInput(integrationId: string, channelInput: ChannelInputWithConfigs): Promise<void> {
+        // GitHub doesn't require any teardown for channel inputs
         // Webhooks are managed at the integration level
     }
 }
@@ -124,7 +124,7 @@ export class GithubEvent extends InputEvent {
         this.data = data;
     }
 
-    formatForAutomationAgent(): string {
+    formatForChannelAgent(): string {
         const indentMultiline = (text: string): string =>
             text
                 .split('\n')
@@ -240,15 +240,15 @@ export class GithubEvent extends InputEvent {
         return `GitHub Event: ${this.data.eventType} - ${this.data.repositoryName} - ${this.data.username}`;
     }
 
-    matchesAutomationInput(automationInput: AutomationInputWithConfigs): boolean {
-        if (automationInput.config_type !== InputConfigType.GITHUB) {
+    matchesChannelInput(channelInput: ChannelInputWithConfigs): boolean {
+        if (channelInput.config_type !== InputConfigType.GITHUB) {
             return false;
         }
-        const githubConfig = automationInput.github_config;
+        const githubConfig = channelInput.github_config;
 
-        // Make sure the repository is in the list of repositories configured for the automation
+        // Make sure the repository is in the list of repositories configured for the channel
         if (!githubConfig?.repository_ids.includes(this.data.repository.id)) {
-            console.log(chalk.red('GithubEvent matchesAutomationInput'), 'repository not found in automation', this.data.repository.id, githubConfig?.repository_ids);
+            console.log(chalk.red('GithubEvent matchesChannelInput'), 'repository not found in channel', this.data.repository.id, githubConfig?.repository_ids);
             return false;
         }
 

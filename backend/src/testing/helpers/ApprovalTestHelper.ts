@@ -1,17 +1,17 @@
 import * as readline from 'readline';
 import chalk from 'chalk';
-import { ApprovalResult } from '../../agent/AutomationAgent/AutomationAgent';
-import { AutomationAgentFactory } from '../../agent/AutomationAgentFactory';
+import { ApprovalResult } from '../../agent/ChannelAgent/ChannelAgent';
+import { ChannelAgentFactory } from '../../agent/ChannelAgentFactory';
 import { NotionDatabaseSession } from '../../outputs/NotionDatabaseOutput';
 import { Agent, AgentOutputType, RunToolApprovalItem } from '@openai/agents';
-import { AutomationAgent } from '../../agent/AutomationAgent/AutomationAgent';
+import { ChannelAgent } from '../../agent/ChannelAgent/ChannelAgent';
 import { NotionConfig } from '../../shared/Configs';
 
 /**
  * Type for pending approval state in test scripts
  */
 export type PendingApprovalState = {
-  automationId: string;
+  channelId: string;
   serializedState: string;
   interruptions: RunToolApprovalItem[];
 };
@@ -28,13 +28,13 @@ export function promptForApprovalDecision(rl: readline.Interface): Promise<boole
 }
 
 /**
- * Resume an automation from saved approval state
+ * Resume an channel from saved approval state
  */
 export async function resumeApprovalFlow(state: PendingApprovalState | null): Promise<void> {
   if (!state) return;
 
   try {
-    console.log(chalk.yellow('\n🔄 Resuming automation...\n'));
+    console.log(chalk.yellow('\n🔄 Resuming channel...\n'));
 
     // Get the first interruption to approve/reject
     const interruption: RunToolApprovalItem = state.interruptions[0];
@@ -43,25 +43,25 @@ export async function resumeApprovalFlow(state: PendingApprovalState | null): Pr
       return;
     }
 
-    // Reconstruct the automation agent
-    const automationAgent: AutomationAgent<NotionDatabaseSession, NotionConfig> = await AutomationAgentFactory.createFromAutomationId(state.automationId);
-    await automationAgent.initializeAgent();
+    // Reconstruct the channel agent
+    const channelAgent: ChannelAgent<NotionDatabaseSession, NotionConfig> = await ChannelAgentFactory.createFromChannelId(state.channelId);
+    await channelAgent.initializeAgent();
 
-    // Call resume on the AutomationAgent
-    const resumed: ApprovalResult<NotionDatabaseSession, Agent<NotionDatabaseSession, AgentOutputType>> = await automationAgent.resume(
+    // Call resume on the ChannelAgent
+    const resumed: ApprovalResult<NotionDatabaseSession, Agent<NotionDatabaseSession, AgentOutputType>> = await channelAgent.resume(
       state.serializedState,
       'approve',
       interruption
     );
 
     if (resumed.status === 'completed') {
-      console.log(chalk.green('✓ Automation completed successfully!'));
+      console.log(chalk.green('✓ Channel completed successfully!'));
       console.log(chalk.gray('Final output:'), resumed.result.finalOutput);
     } else {
       console.log(chalk.yellow('⏸️  Another approval is needed'));
       console.log(chalk.gray(`Pending interruptions: ${resumed.interruptions.length}`));
     }
   } catch (error) {
-    console.error(chalk.red('Error resuming automation:'), error);
+    console.error(chalk.red('Error resuming channel:'), error);
   }
 }

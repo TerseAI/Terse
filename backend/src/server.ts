@@ -21,12 +21,13 @@ import {
   googleLoginURL,
 } from "./routes/auth/googleAuth";
 import {
-  createAutomation,
-  deleteAutomation,
-  getUserAutomation,
-  getUserAutomations,
-  updateAutomation,
-} from "./routes/automations";
+  createChannel,
+  deleteChannel,
+  getRecentChannels,
+  getUserChannel,
+  getUserChannels,
+  updateChannel,
+} from "./routes/channels";
 import {
   getInstallationUrl,
   githubAppUnifiedEvent,
@@ -60,6 +61,7 @@ import {
   getNotionIntegrations
 } from "./routes/notion";
 import { getRunHistory } from "./routes/runHistory";
+import { getStats } from "./routes/stats";
 import { User as TicketUser } from "./shared/TicketSystem";
 import {
   handleSlackWebhook,
@@ -81,6 +83,7 @@ import { getConfluenceIntegrations, getConfluenceResources, setConfluenceCredent
 import { getActiveIntegrations, getIntegrationInstallationDetails } from "./routes/integrations";
 import { initializeRealtimeSocket } from "./realtimeSocket";
 import { RunHistoryAction } from "./shared/RunHistoryTypes";
+import { settings } from "./config/settings";
 
 export type Session = {
   user: User;
@@ -179,9 +182,14 @@ app.get("/activity/daily-summary", authMiddleware, async (req, res) => {
   getDailyActivitySummary(req, res);
 });
 
+// MARK: STATS
+app.get("/stats", authMiddleware, async (req, res) => {
+  getStats(req, res);
+});
+
 // MARK: RUN HISTORY
 
-app.get("/run-history/:automationId", authMiddleware, async (req, res) => {
+app.get("/run-history/:channelId", authMiddleware, async (req, res) => {
   getRunHistory(req, res);
 });
 
@@ -362,26 +370,30 @@ app.get("/slack/channels", authMiddleware, async (req, res) => {
   getSlackChannels(req, res);
 });
 
-// MARK: AUTOMATIONS
+// MARK: CHANNELS
 
-app.get("/automations", authMiddleware, async (req, res) => {
-  getUserAutomations(req, res);
+app.get("/channels", authMiddleware, async (req, res) => {
+  getUserChannels(req, res);
 });
 
-app.get("/automations/:id", authMiddleware, async (req, res) => {
-  getUserAutomation(req, res);
+app.get("/channels/recent", authMiddleware, async (req, res) => {
+  getRecentChannels(req, res);
 });
 
-app.post("/automations", authMiddleware, async (req, res) => {
-  createAutomation(req, res);
+app.get("/channels/:id", authMiddleware, async (req, res) => {
+  getUserChannel(req, res);
 });
 
-app.patch("/automations/:id", authMiddleware, async (req, res) => {
-  updateAutomation(req, res);
+app.post("/channels", authMiddleware, async (req, res) => {
+  createChannel(req, res);
 });
 
-app.delete("/automations/:id", authMiddleware, async (req, res) => {
-  deleteAutomation(req, res);
+app.patch("/channels/:id", authMiddleware, async (req, res) => {
+  updateChannel(req, res);
+});
+
+app.delete("/channels/:id", authMiddleware, async (req, res) => {
+  deleteChannel(req, res);
 });
 
 // MARK: INTEGRATIONS

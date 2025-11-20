@@ -3,7 +3,7 @@ import { RunContext, Tool, tool } from "@openai/agents";
 import { z } from "zod";
 import { Session } from "../server";
 import { Client } from '@notionhq/client';
-import { NotionIntegration, AutomationOutput, User, AutomationNotionConfig, PrismaTransaction } from "../types/prisma";
+import { NotionIntegration, ChannelOutput, User, ChannelNotionConfig, PrismaTransaction } from "../types/prisma";
 import { db } from "../prismaClient";
 import chalk from "chalk";
 import { IntegrationType } from "../shared/Integrations";
@@ -12,7 +12,7 @@ import { OutputConfigType } from "@prisma/client";
 
 export interface NotionDatabaseSession extends Session {
     notionIntegration: NotionIntegration; // Top level integration record
-    notionConfig: AutomationNotionConfig; // Configuration for the Specific Notion Database
+    notionConfig: ChannelNotionConfig; // Configuration for the Specific Notion Database
 }
 
 export class NotionDatabaseOutput extends Output<NotionDatabaseSession, NotionConfig> {
@@ -26,7 +26,7 @@ export class NotionDatabaseOutput extends Output<NotionDatabaseSession, NotionCo
 
     async createSessionFromConfig(
         integrationId: string,
-        automationOutputConfig: AutomationOutput,
+        channelOutputConfig: ChannelOutput,
         user: User
     ): Promise<NotionDatabaseSession> {
         // NotionOutput knows how to fetch its own integration
@@ -38,12 +38,12 @@ export class NotionDatabaseOutput extends Output<NotionDatabaseSession, NotionCo
             throw new Error(`Notion integration ${integrationId} not found`);
         }
 
-        const notionConfig: AutomationNotionConfig | null = await db().automation_notion_configs.findFirst({
-            where: { automation_output_id: automationOutputConfig.id }
+        const notionConfig: ChannelNotionConfig | null = await db().automation_notion_configs.findFirst({
+            where: { automation_output_id: channelOutputConfig.id }
         });
 
         if (!notionConfig) {
-            throw new Error(`Notion config for automation output ${automationOutputConfig.id} not found`);
+            throw new Error(`Notion config for channel output ${channelOutputConfig.id} not found`);
         }
 
         return {
@@ -55,10 +55,10 @@ export class NotionDatabaseOutput extends Output<NotionDatabaseSession, NotionCo
             runActions: [],
         };
     }
-    async addOutputToAutomation(tx: PrismaTransaction, automationOutputId: string, output: NotionConfig): Promise<void> {
+    async addOutputToChannel(tx: PrismaTransaction, channelOutputId: string, output: NotionConfig): Promise<void> {
         await tx.automation_notion_configs.create({
             data: {
-                automation_output_id: automationOutputId,
+                automation_output_id: channelOutputId,
                 database_id: output.databaseId || '',
                 database_name: output.databaseName || '',
             },
@@ -277,12 +277,13 @@ Use notion_query_database first to see existing property names and structure.`,
                     properties: properties as Record<string, any>,
                 });
                 // Report action (no DB writes here)
+                const databaseName = runContext.context.notionConfig.database_name || 'Notion database';
                 runContext.context.runActions = runContext.context.runActions || [];
                 runContext.context.runActions.push({
-                    action: 'update_page',
+                    action: 'Updated page',
                     integration: IntegrationType.NOTION,
-                    target: runContext.context.notionConfig.database_name || runContext.context.notionConfig.database_id,
-                    details: 'Notion page updated',
+                    target: databaseName,
+                    details: 'Updated page in database',
                     url: 'url' in response ? (response as any).url : undefined,
                 });
                 return {
@@ -302,12 +303,13 @@ Use notion_query_database first to see existing property names and structure.`,
                 });
                 console.log(chalk.green("Notion database modified successfully"));
                 // Report action (no DB writes here)
+                const databaseName = runContext.context.notionConfig.database_name || 'Notion database';
                 runContext.context.runActions = runContext.context.runActions || [];
                 runContext.context.runActions.push({
-                    action: 'create_page',
+                    action: 'Created page',
                     integration: IntegrationType.NOTION,
-                    target: runContext.context.notionConfig.database_name || runContext.context.notionConfig.database_id,
-                    details: 'Notion page created',
+                    target: databaseName,
+                    details: 'Created new page in database',
                     url: 'url' in response ? (response as any).url : undefined,
                 });
                 return {
