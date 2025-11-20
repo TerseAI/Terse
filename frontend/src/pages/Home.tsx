@@ -331,8 +331,17 @@ interface AutomationCardProps {
 }
 
 function AutomationCard({ automation }: AutomationCardProps) {
+    const navigate = useNavigate();
+
+    const handleClick = () => {
+        navigate(`/app/automations/${automation.id}`);
+    };
+
     return (
-        <Card className="hover:shadow-md transition-shadow relative">
+        <Card 
+            className="hover:shadow-md transition-shadow relative cursor-pointer"
+            onClick={handleClick}
+        >
             <CardHeader className="pb-3">
                 <div className="flex items-start justify-between">
                     <div className="flex-1 min-w-0">
