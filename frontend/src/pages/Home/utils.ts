@@ -44,12 +44,12 @@ export function transformStatsToMetrics(stats: StatsResponse | null): MetricData
             icon: Zap,
         },
         {
-            label: "Number of Automations",
-            value: formatNumber(stats.numberOfAutomations),
-            change: stats.numberOfAutomationsChange,
-            trend: getTrend(stats.numberOfAutomationsChange),
-            description: "Total automations",
-            subtext: "Automations created",
+            label: "Number of Channels",
+            value: formatNumber(stats.numberOfChannels),
+            change: stats.numberOfChannelsChange,
+            trend: getTrend(stats.numberOfChannelsChange),
+            description: "Total channels",
+            subtext: "Channels created",
             icon: Hash,
         },
     ];

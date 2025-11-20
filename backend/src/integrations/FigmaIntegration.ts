@@ -1,11 +1,11 @@
 import { Integration, OAuthIntegrationInstallation } from "./abstract/Integration";
 import { db } from "../prismaClient";
-import { User, AutomationInputWithConfigs } from "../types/prisma";
+import { User, ChannelInputWithConfigs } from "../types/prisma";
 import { figma_integrations, InputConfigType, IntegrationType as PrismaIntegrationType } from "@prisma/client";
 import { generateWebhookPasscode } from "../utility/webhookSecrets";
 import { nodeEnv } from "../config/settings";
 import chalk from "chalk";
-import { EventProcessor } from "../agent/AutomationAgent/EventProcessor";
+import { EventProcessor } from "../agent/ChannelAgent/EventProcessor";
 import { RunHistoryTrigger } from "../shared/RunHistoryTypes";
 import { InputEvent } from "./abstract/InputEvent";
 import {
@@ -238,17 +238,17 @@ export class FigmaIntegrationManager implements Integration<FigmaIntegration, Fi
     return Promise.resolve();
   }
 
-  async setupAutomationInput(integrationId: string, automationInput: AutomationInputWithConfigs): Promise<void> {
+  async setupChannelInput(integrationId: string, channelInput: ChannelInputWithConfigs): Promise<void> {
     // Check if figma_config exists at all
-    if (!automationInput.figma_config) {
-      console.log(chalk.yellow(`⚠️  No Figma config found for input ${automationInput.id}. Skipping webhook setup.`));
+    if (!channelInput.figma_config) {
+      console.log(chalk.yellow(`⚠️  No Figma config found for input ${channelInput.id}. Skipping webhook setup.`));
       return;
     }
 
-    const fileKey = automationInput.figma_config.file_key;
+    const fileKey = channelInput.figma_config.file_key;
 
     if (!fileKey) {
-      console.log(chalk.yellow(`⚠️  No file_key specified in Figma config for input ${automationInput.id}`));
+      console.log(chalk.yellow(`⚠️  No file_key specified in Figma config for input ${channelInput.id}`));
       return;
     }
 
@@ -263,7 +263,7 @@ export class FigmaIntegrationManager implements Integration<FigmaIntegration, Fi
     }
 
     // Get team ID from config - required for webhook creation
-    const teamId = automationInput.figma_config.team_id;
+    const teamId = channelInput.figma_config.team_id;
 
     if (!teamId) {
       throw new Error(`team_id is required for creating Figma webhooks. Please provide a team ID in the Figma configuration for file ${fileKey}.`);
@@ -381,11 +381,11 @@ export class FigmaIntegrationManager implements Integration<FigmaIntegration, Fi
     }
   }
 
-  async teardownAutomationInput(integrationId: string, automationInput: AutomationInputWithConfigs): Promise<void> {
-    const teamId = automationInput.figma_config?.team_id;
+  async teardownChannelInput(integrationId: string, channelInput: ChannelInputWithConfigs): Promise<void> {
+    const teamId = channelInput.figma_config?.team_id;
 
     if (!teamId) {
-      console.log(chalk.blue(`ℹ️  No team_id in config, skipping webhook cleanup for automation input ${automationInput.id}`));
+      console.log(chalk.blue(`ℹ️  No team_id in config, skipping webhook cleanup for channel input ${channelInput.id}`));
       return;
     }
 
@@ -407,7 +407,7 @@ export class FigmaIntegrationManager implements Integration<FigmaIntegration, Fi
           is_active: true,
         },
         NOT: {
-          id: automationInput.id,
+          id: channelInput.id,
         },
       },
       include: {
@@ -415,7 +415,7 @@ export class FigmaIntegrationManager implements Integration<FigmaIntegration, Fi
       },
     });
 
-    // Check if any other active automation uses the same team
+    // Check if any other active channel uses the same team
     const otherTeamUsers = otherAutomations.filter(
       (input) => input.figma_config?.team_id === teamId
     );
@@ -492,7 +492,7 @@ export class FigmaCommentEvent extends InputEvent {
     this.data = data;
   }
 
-  formatForAutomationAgent(): string {
+  formatForChannelAgent(): string {
     const indentMultiline = (text: string): string =>
       text
         .split('\n')
@@ -623,20 +623,20 @@ export class FigmaCommentEvent extends InputEvent {
     return `Figma Comment Event: File ${this.data.fileKey} - ${this.data.author.handle} - ${this.data.message.substring(0, 50)}`;
   }
 
-  matchesAutomationInput(automationInput: AutomationInputWithConfigs): boolean {
+  matchesChannelInput(channelInput: ChannelInputWithConfigs): boolean {
     // Check if integration type matches
-    if (automationInput.config_type !== InputConfigType.FIGMA) {
+    if (channelInput.config_type !== InputConfigType.FIGMA) {
       return false;
     }
 
     // Require file_key to be configured and match the event's file_key
-    const figmaConfig = automationInput.figma_config;
+    const figmaConfig = channelInput.figma_config;
     if (!figmaConfig?.file_key) {
-      // No file_key configured means this automation should not match any events
+      // No file_key configured means this channel should not match any events
       return false;
     }
 
-    // Event's file_key must match the automation input's file_key
+    // Event's file_key must match the channel input's file_key
     return this.data.fileKey === figmaConfig.file_key;
   }
 

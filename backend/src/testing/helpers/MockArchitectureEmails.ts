@@ -17,7 +17,7 @@ export const MOCK_CRM_SALES_PIPELINE_EMAILS = {
     'meeting-scheduled': {
         id: 'msg_002',
         threadId: 'thread_001',
-        subject: 'Re: Looking for AI automation solutions for our team',
+        subject: 'Re: Looking for AI channel solutions for our team',
         from: 'jennifer.martinez@techstartup.io',
         to: DEFAULT_USER_EMAIL,
         date: new Date().toISOString(),
@@ -30,13 +30,13 @@ export const MOCK_CRM_SALES_PIPELINE_EMAILS = {
     'qualified-opportunity': {
         id: 'msg_003',
         threadId: 'thread_001',
-        subject: 'Re: Looking for AI automation solutions - Next steps',
+        subject: 'Re: Looking for AI channel solutions - Next steps',
         from: 'jennifer.martinez@techstartup.io',
         to: DEFAULT_USER_EMAIL,
         date: new Date().toISOString(),
         internalDate: new Date().getTime().toString(),
         messageId: '<qualified003@techstartup.io>',
-        body: 'Hi,\n\nGreat call yesterday! Alex and I are both really excited about working together. Your approach to automation aligns perfectly with what we\'re trying to achieve.\n\nWe\'ve discussed internally and we\'d like to move forward with a pilot project. Specifically:\n\n1. Phase 1: Automate our customer onboarding workflow (weeks 1-3)\n2. Phase 2: Build Notion-Slack integration for our sales team (weeks 4-6)\n3. Phase 3: Implement AI-powered email routing for support (weeks 7-9)\n\nBudget-wise, we\'re comfortable with the $8K/month retainer you mentioned. Can you send over:\n- A formal proposal with timeline and deliverables\n- Your standard contract terms\n- References from 2-3 similar clients\n\nWe\'re hoping to have everything signed by end of next week so we can start on the 1st.\n\nBest,\nJennifer Martinez\nCOO, TechStartup Inc.',
+        body: 'Hi,\n\nGreat call yesterday! Alex and I are both really excited about working together. Your approach to channel aligns perfectly with what we\'re trying to achieve.\n\nWe\'ve discussed internally and we\'d like to move forward with a pilot project. Specifically:\n\n1. Phase 1: Automate our customer onboarding workflow (weeks 1-3)\n2. Phase 2: Build Notion-Slack integration for our sales team (weeks 4-6)\n3. Phase 3: Implement AI-powered email routing for support (weeks 7-9)\n\nBudget-wise, we\'re comfortable with the $8K/month retainer you mentioned. Can you send over:\n- A formal proposal with timeline and deliverables\n- Your standard contract terms\n- References from 2-3 similar clients\n\nWe\'re hoping to have everything signed by end of next week so we can start on the 1st.\n\nBest,\nJennifer Martinez\nCOO, TechStartup Inc.',
         snippet: 'Great call yesterday! Alex and I are both really excited about working together...',
         labelIds: ['INBOX']
     },

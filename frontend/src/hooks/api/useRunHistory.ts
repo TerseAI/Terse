@@ -4,7 +4,7 @@ import type { GetRunHistoryParams, GetRunHistoryResponse } from '@/shared/RunHis
 import { runHistoryKey } from '@/shared/InvalidationKeys';
 
 type UseRunHistoryParams = {
-    automationId: string | null | undefined;
+    channelId: string | null | undefined;
     page?: number;
     pageSize?: number;
     searchQuery?: string;
@@ -13,7 +13,7 @@ type UseRunHistoryParams = {
 };
 
 export function useRunHistory({
-    automationId,
+    channelId,
     page = 1,
     pageSize = 10,
     searchQuery = '',
@@ -44,7 +44,7 @@ export function useRunHistory({
         status: statusArray.length < 4 ? statusArray as any : undefined,
     };
     
-    if (!automationId) {
+    if (!channelId) {
         return {
             runs: [],
             total: 0,
@@ -57,12 +57,12 @@ export function useRunHistory({
         };
     }
     
-    const key = runHistoryKey(automationId, params);
+    const key = runHistoryKey(channelId, params);
 
     const { data, error, isValidating, mutate } = useSWR<GetRunHistoryResponse>(
         key,
-        automationId ? async () => {
-            return BackendProvider.getRunHistory(automationId, params);
+        channelId ? async () => {
+            return BackendProvider.getRunHistory(channelId, params);
         } : null,
         {
             keepPreviousData: true,
@@ -74,7 +74,7 @@ export function useRunHistory({
         total: data?.total ?? 0,
         page: data?.page ?? page,
         pageSize: data?.pageSize ?? pageSize,
-        isLoading: !data && !error && !!automationId,
+        isLoading: !data && !error && !!channelId,
         isError: error,
         isValidating,
         mutate,

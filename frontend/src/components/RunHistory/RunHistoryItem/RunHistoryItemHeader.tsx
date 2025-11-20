@@ -1,7 +1,7 @@
 import { ExternalLink, Copy } from "lucide-react";
 import type { RunHistoryRecord } from "../../../shared/RunHistoryTypes";
 import RunHistoryStatusBadge from "../RunHistoryStatusBadge";
-import { IconForIntegration } from "../../../pages/Automations/components/Integration";
+import { IconForIntegration } from "../../../pages/Channels/components/Integration";
 
 type Props = {
     run: RunHistoryRecord;

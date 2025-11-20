@@ -4,8 +4,8 @@ import { useEffect } from "react";
 import Spin from "./components/loading/Spin";
 import { AppSidebar } from "./components/Sidebar/Sidebar";
 import ActivityFeed from "./pages/ActivityFeed";
-import AutomationDetail from "./pages/Automations/AutomationDetail";
-import AutomationsList from "./pages/Automations/AutomationsList";
+import ChannelDetail from "./pages/Channels/ChannelDetail";
+import ChannelsList from "./pages/Channels/ChannelsList";
 import BirdsEyeViewHomepage from "./pages/BirdsEye";
 import Home from "./pages/Home";
 import LandingPageChangelog from "./pages/LandingPage_changelog";
@@ -33,9 +33,9 @@ function App() {
             <Route path="/app" element={<Content />}>
               <Route index element={ hasBirdsEyeFlag ? <BirdsEyeViewHomepage /> : <Home />} />
               <Route path="activity" element={<ActivityFeed />} />
-              <Route path="automations" element={<AutomationsList />} />
-              <Route path="automations/new" element={<AutomationDetail />} />
-              <Route path="automations/:id" element={<AutomationDetail />} />
+              <Route path="channels" element={<ChannelsList />} />
+              <Route path="channels/new" element={<ChannelDetail />} />
+              <Route path="channels/:id" element={<ChannelDetail />} />
               <Route path="integrations" element={<IntegrationPage />} />
             </Route>
             <Route path="/changelog" element={<LandingPageChangelog />} />

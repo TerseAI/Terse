@@ -276,51 +276,51 @@ export interface FigmaCommentEventData {
   imageUrls?: FigmaCommentImageUrls;
 }
 
-export type AutomationInput = {
+export type ChannelInput = {
   id: string;
   config: ConfigInstance;
 };
 
-export type AutomationOutput = {
+export type ChannelOutput = {
   id: string;
   config: ConfigInstance;
 };
 
-export type AutomationPrompt = {
+export type ChannelPrompt = {
   text: string;
 };
 
-export type TransientAutomationInput = {
+export type TransientChannelInput = {
   id: string;
   config?: ConfigInstance;
   configType: ConfigType;
 };
 
-export type TransientAutomationOutput = {
+export type TransientChannelOutput = {
   id: string;
   config?: ConfigInstance;
   configType: ConfigType;
 };
 
-export type Automation = {
+export type Channel = {
     id: string;
     name: string;
     isActive: boolean;
-    prompt: AutomationPrompt;
-    inputs: AutomationInput[];
-    output: AutomationOutput;
+    prompt: ChannelPrompt;
+    inputs: ChannelInput[];
+    output: ChannelOutput;
 };
 
-export type AutomationUpdate = {
+export type ChannelUpdate = {
     name?: string;
-    inputs?: AutomationInput[];
-    output?: AutomationOutput;
-    prompt?: AutomationPrompt;
+    inputs?: ChannelInput[];
+    output?: ChannelOutput;
+    prompt?: ChannelPrompt;
     isActive?: boolean;
 };
 
-export type AutomationsResponse = {
-    automations: Automation[];
+export type ChannelsResponse = {
+    channels: Channel[];
     pagination: {
         page: number;
         limit: number;
@@ -329,7 +329,7 @@ export type AutomationsResponse = {
     };
 };
 
-export type RecentAutomation = Automation & {
+export type RecentChannel = Channel & {
   updatedAt: string;
   lastEventProcessedAt: string | null;
 };
@@ -382,7 +382,7 @@ export interface RecentAction {
   details: string;
   url?: string;
   timestamp: string; // ISO date string
-  automationName: string;
+  channelName: string;
 }
 
 export interface StatsResponse {
@@ -390,8 +390,8 @@ export interface StatsResponse {
   totalEventsProcessedChange: string; // Percentage change from previous period
   actionsTaken: number;
   actionsTakenChange: string; // Percentage change from previous period
-  numberOfAutomations: number;
-  numberOfAutomationsChange: string; // Absolute change (e.g., "+2")
+  numberOfChannels: number;
+  numberOfChannelsChange: string; // Absolute change (e.g., "+2")
   dailyEvents: DailyEventCount[]; // Events per day for the last 7 days
   recentActions: RecentAction[]; // Recent actions (last 10)
 }

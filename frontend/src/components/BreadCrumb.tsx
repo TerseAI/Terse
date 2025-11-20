@@ -3,16 +3,16 @@ import { SidebarTrigger } from "./ui/sidebar";
 import { useLocation, useParams, Link } from "react-router-dom";
 import { ChevronDownIcon } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "./ui/dropdown-menu";
-import { useAutomation } from "@/hooks/api/useAutomations";
-import { useAutomations } from "@/hooks/api/useAutomations";
+import { useChannel } from "@/hooks/api/useChannels";
+import { useChannels } from "@/hooks/api/useChannels";
 
 // Route path to display name mapping
 const routeLabels: Record<string, string> = {
     "": "Home",
     "app": "Home",
     "activity": "Activity Feed",
-    "automations": "Automations",
-    "new": "New Automation",
+    "channels": "Channels",
+    "new": "New Channel",
     "integrations": "Integrations",
 };
 
@@ -23,11 +23,11 @@ function BreadCrumb() {
     // Parse path segments
     const pathSegments = location.pathname.split('/').filter(Boolean);
 
-    // Get automation if we're on an automation detail page
-    const automationId = params.id && location.pathname.includes('/automations/') && params.id !== 'new' 
+    // Get channel if we're on an channel detail page
+    const channelId = params.id && location.pathname.includes('/channels/') && params.id !== 'new' 
         ? params.id 
         : null;
-    const { automation, isLoading } = useAutomation(automationId);
+    const { channel, isLoading } = useChannel(channelId);
 
     // Build breadcrumb items
     const buildBreadcrumbItems = () => {
@@ -51,48 +51,48 @@ function BreadCrumb() {
 
             items.push(<BreadcrumbSeparator key={`sep-${i}`} />);
 
-            // Special handling for automation routes
-            if (segment === 'automations') {
+            // Special handling for channel routes
+            if (segment === 'channels') {
                 // Check if next segment is an ID or 'new'
                 const nextSegment = appSegments[i + 1];
 
                 if (nextSegment === 'new') {
-                    // New automation page
+                    // New channel page
                     items.push(
-                        <BreadcrumbItem key="automations">
+                        <BreadcrumbItem key="channels">
                             <BreadcrumbLink asChild>
-                                <Link to="/app/automations">Automations</Link>
+                                <Link to="/app/channels">Channels</Link>
                             </BreadcrumbLink>
                         </BreadcrumbItem>
                     );
                     items.push(<BreadcrumbSeparator key="sep-new" />);
                     items.push(
-                        <BreadcrumbItem key="new-automation">
-                            <BreadcrumbPage>New Automation</BreadcrumbPage>
+                        <BreadcrumbItem key="new-channel">
+                            <BreadcrumbPage>New Channel</BreadcrumbPage>
                         </BreadcrumbItem>
                     );
                     break; // We've handled both segments
                 } else if (params.id && nextSegment === params.id) {
-                    // Automation detail page
+                    // Channel detail page
                     items.push(
-                        <BreadcrumbItem key="automations">
-                            <AutomationDropdownMenu />
+                        <BreadcrumbItem key="channels">
+                            <ChannelDropdownMenu />
                         </BreadcrumbItem>
                     );
-                    items.push(<BreadcrumbSeparator key="sep-automation" />);
+                    items.push(<BreadcrumbSeparator key="sep-channel" />);
                     items.push(
-                        <BreadcrumbItem key="automation-detail">
+                        <BreadcrumbItem key="channel-detail">
                             <BreadcrumbPage>
-                                {isLoading ? "Loading..." : (automation?.name || params.id)}
+                                {isLoading ? "Loading..." : (channel?.name || params.id)}
                             </BreadcrumbPage>
                         </BreadcrumbItem>
                     );
                     break; // We've handled both segments
                 } else {
-                    // Just the automations list page
+                    // Just the channels list page
                     items.push(
-                        <BreadcrumbItem key="automations">
-                            <BreadcrumbPage>Automations</BreadcrumbPage>
+                        <BreadcrumbItem key="channels">
+                            <BreadcrumbPage>Channels</BreadcrumbPage>
                         </BreadcrumbItem>
                     );
                     break;
@@ -149,13 +149,13 @@ function BreadCrumb() {
     );
 }
 
-function AutomationDropdownMenu() {
-    const { automations, isLoading } = useAutomations();
+function ChannelDropdownMenu() {
+    const { channels, isLoading } = useChannels();
 
-    if (isLoading || !automations.length) {
+    if (isLoading || !channels.length) {
         return (
             <BreadcrumbLink asChild>
-                <Link to="/app/automations">Automations</Link>
+                <Link to="/app/channels">Channels</Link>
             </BreadcrumbLink>
         )
     }
@@ -163,13 +163,13 @@ function AutomationDropdownMenu() {
     return (
         <DropdownMenu>
             <DropdownMenuTrigger className="flex items-center gap-1 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-3.5">
-                Automations
+                Channels
                 <ChevronDownIcon />
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start">
-                {automations.map(automation => (
-                    <DropdownMenuItem key={automation.id}>
-                        <Link to={`/app/automations/${automation.id}`}>{automation.name}</Link>
+                {channels.map(channel => (
+                    <DropdownMenuItem key={channel.id}>
+                        <Link to={`/app/channels/${channel.id}`}>{channel.name}</Link>
                     </DropdownMenuItem>
                 ))}
             </DropdownMenuContent>
