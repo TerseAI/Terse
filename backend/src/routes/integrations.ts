@@ -51,8 +51,12 @@ export async function getActiveIntegrations(req: Request, res: Response) {
     }
     const userId = req.session.user.id;
 
+    const hasInstancesResults = await Promise.all(
+        INTEGRATION_REGISTRY.map(integration => integrationHasInstances(integration, userId))
+    );
+
     const activeIntegrations: IntegrationType[] = INTEGRATION_REGISTRY
-        .filter(integration => integrationHasInstances(integration, userId))
+        .filter((_, index) => hasInstancesResults[index])
         .map(integration => integration.integrationType);
 
     res.json(activeIntegrations);
