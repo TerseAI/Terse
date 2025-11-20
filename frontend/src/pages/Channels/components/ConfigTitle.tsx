@@ -28,7 +28,6 @@ export function ConfigTitle({ configType, iconSize = "sm", className = "" }: Con
         );
     }
 
-    console.log("Config Type:", configType);
     return (
         <div className={`flex items-center gap-2 ${className}`}>
             <div className={`${iconSizeClasses[iconSize]} flex items-center justify-center`}>
