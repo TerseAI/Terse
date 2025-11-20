@@ -4,7 +4,7 @@ import { AutomationAgent } from './AutomationAgent/AutomationAgent';
 import { NotionDatabaseOutput, NotionDatabaseSession } from '../outputs/NotionDatabaseOutput';
 import { AutomationWithRelations, User } from '../types/prisma';
 import { NotionConfig } from '../shared/Configs';
-import { getInputConfigInclude, getOutputConfigInclude } from 'src/utility/prismaIncludes';
+import { getInputConfigInclude, getOutputConfigInclude } from '../utility/prismaIncludes';
 
 /**
  * Factory for creating AutomationAgent instances from automation configurations.

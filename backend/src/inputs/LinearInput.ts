@@ -1,8 +1,7 @@
 import { ConfigType, GmailConfig, LinearConfig } from "../shared/Configs";
-import { GmailIntegrationManager } from "../integrations/GmailIntegration";
 import { Input } from "./Input";
 import { PrismaTransaction } from "../types/prisma";
-import { LinearIntegrationManager } from "src/integrations/LinearIntegration";
+import { LinearIntegrationManager } from "../integrations/LinearIntegration";
 
 export class LinearInput implements Input<LinearConfig> {
     integrationManager: LinearIntegrationManager;
