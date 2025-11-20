@@ -1,18 +1,17 @@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Integration } from "@/types/Integration";
-import { getAllOutputIntegrationMetadata } from "../../../utility/IntegrationUtils";
-import { IconForInputType } from "./Integration";
+import { IconForConfigType } from "./Integration";
 import { Button } from "@/components/ui/button";
+import { CONFIG_DETAILS, ConfigType } from "@/shared/Configs";
 
 interface AddOutputModalProps {
     isOpen: boolean;
     onClose: () => void;
-    onSelectIntegration: (integration: Integration) => void;
+    onSelectIntegration: (configType: ConfigType) => void;
 }
 
 export function AddOutputModal({ isOpen, onClose, onSelectIntegration }: AddOutputModalProps) {
     // Get all integration metadata with output-specific descriptions
-    const allIntegrations = getAllOutputIntegrationMetadata();
+    const allConfigTypes = Object.values(CONFIG_DETAILS).filter((config) => config.isOutput);
 
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
@@ -27,18 +26,18 @@ export function AddOutputModal({ isOpen, onClose, onSelectIntegration }: AddOutp
                 </DialogHeader>
 
                 <div className="grid grid-cols-2 gap-3">
-                    {allIntegrations.map((integration) => (
+                    {allConfigTypes.map((config) => (
                         <button
-                            key={integration.type}
-                            onClick={() => onSelectIntegration(integration.type)}
+                            key={config.configType}
+                            onClick={() => onSelectIntegration(config.configType)}
                             className="flex flex-col items-center gap-3 p-5 rounded-lg border-2 border-border hover:border-primary hover:bg-accent transition-all duration-200 group"
                         >
                             <div className="w-16 h-16 flex items-center justify-center">
-                                <IconForInputType type={integration.type} />
+                                <IconForConfigType type={config.configType} />
                             </div>
                             <div className="text-center">
-                                <div className="text-sm font-medium text-foreground mb-1">{integration.name}</div>
-                                <div className="text-xs text-muted-foreground group-hover:text-foreground transition-colors">{integration.description}</div>
+                                <div className="text-sm font-medium text-foreground mb-1">{config.name}</div>
+                                <div className="text-xs text-muted-foreground group-hover:text-foreground transition-colors">{ config.description}</div>
                             </div>
                         </button>
                     ))}

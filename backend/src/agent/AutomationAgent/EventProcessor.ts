@@ -1,8 +1,8 @@
 import chalk from 'chalk';
 import { db } from '../../prismaClient';
-import { Automation, AutomationWithRelations, AutomationOutput, User } from '../../types/prisma';
-import { InputEvent } from '../../Updater/InputEvents';
-import { OutputFactory } from '../../Updater/Outputs/OutputFactory';
+import { Automation, AutomationWithRelations, User } from '../../types/prisma';
+import { InputEvent } from '../../integrations/abstract/InputEvent';
+import { OutputFactory } from '../../outputs/abstract/OutputFactory';
 import { AutomationAgent } from './AutomationAgent';
 import { filterEvent } from './EventFilter';
 import { appendRunAction, createRunRecord, finalizeRunStatus, markRunFailed, markRunProcessed, markRunSkipped, FailureStage } from './runHistory';
@@ -10,7 +10,7 @@ import { ApprovalResult } from './AutomationAgent';
 import { Agent, AgentOutputType, RunResult } from '@openai/agents';
 import { Session } from '../../server';
 import { emitCacheInvalidationWithWildcard } from '../../realtimeSocket';
-import { RunHistoryAction } from '../../shared/RunHistoryTypes';
+import { getInputConfigInclude, getOutputConfigInclude } from '../../utility/prismaIncludes';
 
 // The job of this class is to take an Input Event, and check if it's a match for an Automation.
 // It will then create a Session, and summon the Automation Agent with the create user data.
@@ -55,25 +55,10 @@ export class EventProcessor {
             include: {
                 prompt: true,
                 inputs: {
-                    include: {
-                        slack_config: true,
-                        notion_config: true,
-                        linear_config: true,
-                        jira_config: true,
-                        github_config: true,
-                        gmail_config: true,
-                        figma_config: true,
-                    }
+                    include: getInputConfigInclude()
                 },
                 output: {
-                    include: {
-                        slack_config: true,
-                        notion_config: true,
-                        linear_config: true,
-                        jira_config: true,
-                        github_config: true,
-                        gmail_config: true,
-                    }
+                    include: getOutputConfigInclude()
                 }
             }
         }) as AutomationWithRelations[];
@@ -134,10 +119,10 @@ export class EventProcessor {
             return new ProcessorResult(false, "No output integration found for this automation", automation);
         }
 
-        // Use OutputFactory to create output based on integration type (no hardcoded Notion logic)
-        const output = OutputFactory.createOutput(outputIntegration.integration_type);
+        // Use OutputFactory to create output based on config type (no hardcoded Notion logic)
+        const output = OutputFactory.createOutput(outputIntegration.config_type);
         if (!output) {
-            return new ProcessorResult(false, `Output type ${outputIntegration.integration_type} is not supported`, automation);
+            return new ProcessorResult(false, `Output type ${outputIntegration.config_type} is not supported`, automation);
         }
 
         // Use output's config-aware session creation (no hardcoded config extraction)

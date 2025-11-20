@@ -1,66 +1,95 @@
-import { Hash } from "lucide-react";
+import { Hash, MessageSquare } from "lucide-react";
 import { Card, CardContent } from "../ui/card";
-import { Integration } from "@/types/Integration";
-import { formatIntegrationDisplay } from "@/utility/IntegrationFormatters";
-import { getIntegrationInstances } from "@/utility/IntegrationUtils";
-import { IntegrationsStatus, SlackChannel } from "@/shared/types";
+import { IntegrationType } from "@/shared/Integrations"
+import { SlackChannel } from "@/shared/types";
 import { IntegrationCardHeader } from "./helpers/IntegrationCardHeader";
 import { IntegrationCardFooter } from "./helpers/IntegrationCardFooter";
-import { useOAuthUrl } from "./helpers/useOAuthUrl";
+import { useOAuthConnection } from "@/hooks/useOAuthConnection";
 import { CountDisplay } from "./helpers/CountDisplay";
 import { useSlackChannels } from "@/hooks/api/useSlackChannels";
+import { useSlackIntegrations } from "@/hooks/api/useSlackIntegrations";
 import { cn } from "@/lib/utils";
+import { Skeleton } from "../ui/skeleton";
 
-function SlackIntegrationCard({ integrationStatus, integrationId, className }: { integrationStatus: IntegrationsStatus, integrationId: string, className?: string }) {
-    const oauthUrl = useOAuthUrl(Integration.SLACK);
-    const { channels, isLoading } = useSlackChannels(integrationId);
-
-    const slackInstances = getIntegrationInstances(integrationStatus.integrations, Integration.SLACK);
-    const currentInstance = slackInstances.find(instance => instance.id === integrationId) || slackInstances[0];
-    const teamName = formatIntegrationDisplay(currentInstance, Integration.SLACK);
+function SlackIntegrationCard({ className }: { className?: string }) {
+    const { connect, isConnecting } = useOAuthConnection(IntegrationType.SLACK);
+    const { integrations, isLoading: integrationsLoading } = useSlackIntegrations();
+    const firstIntegrationId = integrations[0]?.id;
+    const { channels, isLoading: channelsLoading } = useSlackChannels(firstIntegrationId || null);
 
     return (
         <Card className={cn(className)}>
-            <IntegrationCardHeader integration={Integration.SLACK} />
+            <IntegrationCardHeader integration={IntegrationType.SLACK} />
             <CardContent>
                 <SlackCardContent 
-                    teamName={teamName} 
+                    integrations={integrations}
                     channels={channels} 
-                    isLoading={isLoading} 
+                    isLoading={integrationsLoading || channelsLoading} 
                 />
             </CardContent>
-            <IntegrationCardFooter oauthUrl={oauthUrl} />
+            <IntegrationCardFooter connect={connect} isConnecting={isConnecting} />
         </Card>
     )
 }
 
 function SlackCardContent({ 
-    teamName, 
+    integrations,
     channels, 
     isLoading 
 }: { 
-    teamName: string | null;
+    integrations: Array<{ id: string; teamId?: string; teamName?: string }>;
     channels: SlackChannel[];
     isLoading: boolean;
 }) {
+    if (isLoading && integrations.length === 0) {
+        return (
+            <div className="space-y-3">
+                <Skeleton className="h-12 w-full" />
+                <Skeleton className="h-12 w-full" />
+            </div>
+        );
+    }
+
+    if (integrations.length === 0) {
+        return (
+            <div className="flex flex-col items-center justify-center py-8 px-4 text-center">
+                <MessageSquare className="w-10 h-10 text-muted-foreground/50 mb-3" />
+                <p className="text-sm text-muted-foreground">No Slack integrations connected</p>
+                <p className="text-xs text-muted-foreground/70 mt-1">Connect your Slack workspace to get started</p>
+            </div>
+        );
+    }
+
     const channelCount = channels.length;
     const availableChannels = channels.filter(ch => !ch.isArchived).length;
 
     return (
-        <div className="flex items-center gap-4 text-sm text-muted-foreground">
-            <div className="flex items-center gap-2">
-                <span>{teamName || 'Unknown Workspace'}</span>
-            </div>
-            <div className="flex items-center gap-2">
-                <Hash className="size-4" />
-                <ChannelsCount 
-                    channelCount={availableChannels} 
-                    totalChannels={channelCount}
-                    isLoading={isLoading} 
-                />
-            </div>
+        <div className="space-y-2">
+            {integrations.map((integration) => (
+                <div
+                    key={integration.id}
+                    className="flex items-center gap-3 p-3 rounded-lg border border-border bg-card hover:bg-accent/50 transition-colors group"
+                >
+                    <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
+                        <MessageSquare className="w-4 h-4 text-primary" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                        <div className="text-sm font-medium text-foreground truncate">
+                            {integration.teamName || 'Unknown Workspace'}
+                        </div>
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
+                            <Hash className="size-3" />
+                            <ChannelsCount 
+                                channelCount={availableChannels} 
+                                totalChannels={channelCount}
+                                isLoading={isLoading} 
+                            />
+                        </div>
+                    </div>
+                </div>
+            ))}
         </div>
-    )
+    );
 }
 
 function ChannelsCount({ 

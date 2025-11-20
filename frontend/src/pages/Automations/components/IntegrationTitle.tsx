@@ -1,9 +1,8 @@
-import { Integration } from "@/types/Integration";
-import { IconForInputType } from "./Integration";
-import { getIntegrationTypeName } from "../../../utility/IntegrationFormatters";
+import { IconForIntegration } from "./Integration";
+import { INTEGRATION_METADATA, IntegrationType } from "@/shared/Integrations";
 
 interface IntegrationTitleProps {
-    integration: Integration;
+    integration: IntegrationType;
     iconSize?: "sm" | "md" | "lg";
     className?: string;
 }
@@ -15,29 +14,12 @@ export function IntegrationTitle({ integration, iconSize = "sm", className = "" 
         lg: "w-8 h-8"
     };
 
-    // Special case for Confluence/Jira - they share the same integration
-    if (integration === Integration.CONFLUENCE || integration === Integration.JIRA) {
-        return (
-            <div className={`flex items-center gap-2 ${className}`}>
-                <div className={`${iconSizeClasses[iconSize]} flex items-center justify-center gap-0.5`}>
-                    <div className="w-1/2 h-full flex items-center justify-center">
-                        <IconForInputType type={Integration.JIRA} />
-                    </div>
-                    <div className="w-1/2 h-full flex items-center justify-center">
-                        <IconForInputType type={Integration.CONFLUENCE} />
-                    </div>
-                </div>
-                <span>Atlassian</span>
-            </div>
-        );
-    }
-
     return (
         <div className={`flex items-center gap-2 ${className}`}>
             <div className={`${iconSizeClasses[iconSize]} flex items-center justify-center`}>
-                <IconForInputType type={integration} />
+                <IconForIntegration integration={integration} />
             </div>
-            {getIntegrationTypeName(integration)}
+            {INTEGRATION_METADATA[integration].name}
         </div>
     );
 }
