@@ -4,7 +4,7 @@ import { systemPrompt } from './SystemPrompt';
 import { InputEvent } from '../../integrations/abstract/InputEvent';
 import { Output } from '../../outputs/abstract/Output';
 import { AutomationInput, AutomationOutput, AutomationPrompt } from '../../types/prisma';
-import { ConfigInstance } from 'src/shared/Configs';
+import { ConfigInstance } from '../../shared/Configs';
 
 export type ApprovalResult<T extends Session, AgentType extends Agent<T, AgentOutputType>> =
   | {
