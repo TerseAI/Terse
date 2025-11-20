@@ -24,10 +24,13 @@ export function DailyEventsChart({ eventsPerDay }: DailyEventsChartProps) {
                 <CardHeader>
                     <CardTitle>Daily Events</CardTitle>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="-ml-6">
                     {eventsPerDay.length > 0 ? (
-                        <ChartContainer config={chartConfig} className="h-[300px]">
-                            <AreaChart data={eventsPerDay}>
+                        <ChartContainer config={chartConfig} className="h-[300px] w-full [&>div]:!w-full">
+                            <AreaChart 
+                                data={eventsPerDay}
+                                margin={{ left: 24, right: 24, top: 0, bottom: 0 }}
+                            >
                                 <CartesianGrid strokeDasharray="3 3" />
                                 <XAxis
                                     dataKey="date"
