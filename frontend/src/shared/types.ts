@@ -130,6 +130,15 @@ export type ConfluenceResourcesResponse = {
   total: number;
 };
 
+export type JiraResourcesResponse = {
+  success: boolean;
+  resources: {
+    projects: Array<{ id: string; key: string; name: string; projectTypeKey: string }>;
+    baseUrl: string;
+    cloudId: string;
+  };
+};
+
 export type UseConfluenceResourcesReturn<MutateType = any> = {
   resources: ConfluencePage[];
   response: ConfluenceResourcesResponse | undefined;
