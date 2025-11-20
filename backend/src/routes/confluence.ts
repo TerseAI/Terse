@@ -25,93 +25,6 @@ export async function getConfluenceIntegrations(req: Request, res: Response) {
     }
 }
 
-export async function setConfluenceCredentials(req: Request, res: Response) {
-    const user = req.session?.user;
-    if (!user) {
-        return res.status(401).json({ success: false, error: 'Unauthorized' });
-    }
-
-    const { baseUrl, apiKey, email } = req.body;
-    if (!baseUrl || !apiKey || !email) {
-        return res.status(400).json({ success: false, error: 'baseUrl, apiKey, and email are required' });
-    }
-
-    try {
-        const valid = await validateConfluenceCredentialsPrivate(email, baseUrl, apiKey);
-        if (!valid) {
-            return res.status(400).json({ success: false, error: 'Invalid credentials' });
-        }
-
-        // Extract site name from baseUrl
-        let siteName = baseUrl;
-        const siteNameMatch = baseUrl.match(/https?:\/\/([^.]+)/);
-        if (siteNameMatch) {
-            siteName = siteNameMatch[1];
-        }
-
-        const connection = await db().jira_api_keys.create({
-            data: {
-                user_id: user.id,
-                jira_user_email: email,
-                base_url: baseUrl,
-                site_name: siteName,
-                api_token: apiKey,
-            }
-        });
-
-        console.log(chalk.green('✅ Created Confluence integration:'), chalk.yellow(siteName));
-
-        return res.status(200).json({
-            success: true,
-            connection: {
-                id: connection.id,
-                baseUrl: connection.base_url,
-                siteName: connection.site_name,
-                email: connection.jira_user_email,
-            }
-        });
-    } catch (error) {
-        console.error(chalk.red('Error creating Confluence connection:'), error);
-        return res.status(500).json({ success: false, error: 'Failed to create connection' });
-    }
-}
-
-
-export async function validateConfluenceCredentials(req: Request, res: Response) {
-    const user = req.session?.user;
-    if (!user) {
-        return res.status(401).json({ success: false, error: 'Unauthorized' });
-    }
-
-    const { baseUrl, email, apiKey } = req.body;
-    if (!baseUrl || !email || !apiKey) {
-        return res.status(400).json({ success: false, error: 'baseUrl, email, and apiKey are required' });
-    }
-
-    const valid = await validateConfluenceCredentialsPrivate(email, baseUrl, apiKey);
-    if (!valid) {
-        return res.status(400).json({ success: false, error: 'Invalid credentials' });
-    }
-
-    return res.status(200).json({ success: true });
-}
-
-
-async function validateConfluenceCredentialsPrivate(email: string, baseUrl: string, apiKey: string): Promise<boolean> {
-    const client = new ConfluenceClient({
-        host: baseUrl,
-        authentication: {
-            basic: {
-                email: email,
-                apiToken: apiKey,
-            }
-        },
-    });
-    const user = await client.users.getCurrentUser();
-    console.log("Confluence user:", user);
-    return user !== null;
-}
-
 export async function getConfluenceResources(req: Request, res: Response) {
     const user = req.session?.user;
     if (!user) {
@@ -135,20 +48,25 @@ export async function getConfluenceResources(req: Request, res: Response) {
         return res.status(404).json({ success: false, error: 'Integration not found' });
     }
 
-    // Determine which type of integration we have and get the appropriate token
-    const baseUrl = oauthIntegration?.base_url
-    const email = oauthIntegration?.jira_user_email
-    const token = oauthIntegration?.access_token
+    // Get OAuth token from integration
+    const baseUrl = oauthIntegration.base_url;
+    const accessToken = oauthIntegration.access_token;
 
+    if (!accessToken) {
+        return res.status(400).json({ success: false, error: 'Integration missing access token' });
+    }
+
+    // For OAuth bearer tokens with Atlassian Cloud, we use the token directly
     const client = new ConfluenceClient({
         host: baseUrl,
         authentication: {
-            basic: {
-                email: email,
-                apiToken: token,
+            oauth2: {
+                accessToken: accessToken,
             }
-        },
+        }
     });
+
+    console.log(chalk.green('Confluence client created successfully'));
 
     try {
         // Fetch all pages using the content API
@@ -159,12 +77,15 @@ export async function getConfluenceResources(req: Request, res: Response) {
         let hasMore = true;
 
         while (hasMore) {
+            console.log(chalk.green('Fetching content...'));
             const contentResponse = await client.content.getContent({
                 type: 'page',
                 limit: limit,
                 start: start,
                 expand: ['space', 'version'],
             }) as ContentArray;
+
+            console.log(chalk.green('Content fetched successfully'));
 
             const resources = mapContentToConfluencePages(contentResponse.results);
 

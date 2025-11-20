@@ -2,6 +2,7 @@ import useSWR, { type KeyedMutator } from 'swr';
 import { BackendProvider } from '@/services/backend';
 import type { AtlassianIntegration } from '@/shared/Integrations';
 import { atlassianIntegrationsKey } from "@/shared/InvalidationKeys";
+import { useOAuthSuccessListener } from '@/hooks/useOAuthSuccessListener';
 
 type UseAtlassianIntegrationsReturn = {
     integrations: AtlassianIntegration[];
@@ -22,6 +23,8 @@ export function useAtlassianIntegrations(): UseAtlassianIntegrationsReturn {
             revalidateOnReconnect: true,
         },
     );
+
+    useOAuthSuccessListener(mutate);
 
     const loading = (isLoading || (!data && !error));
 
