@@ -16,149 +16,11 @@ import { InputConfigType } from "@prisma/client";
 import { RunHistoryTrigger } from "../shared/RunHistoryTypes";
 import { EventProcessor } from "../agent/ChannelAgent/EventProcessor";
 
-// Types for Jira webhook API responses
-interface JiraWebhookRegistrationResult {
-    createdWebhookId?: number;
-    errors?: string[];
-}
-
-interface JiraWebhookRegistrationResponse {
-    webhookRegistrationResult: JiraWebhookRegistrationResult[];
-}
+// MARK: - Integration Manager
 
 export class AtlassianIntegrationManager implements Integration<AtlassianIntegration, JiraWebhookPayload, typeof AtlassianIntegrationMetadata>, OAuthIntegrationInstallation {
     integrationType: IntegrationType = IntegrationType.ATLASSIAN;
     constructor() { }
-
-    /**
-     * Creates a Jira webhook using OAuth bearer token authentication
-     * Events tracked: issue creation, updates, comments for ticket management automation
-     */
-    private async createJiraWebhook(
-        cloudId: string,
-        accessToken: string,
-        accountId: string
-    ): Promise<{ webhookId: string; webhookSecret: string }> {
-        const webhookSecret = generateWebhookSecret(32);
-        const backendUrl = urls.backend;
-
-        // Webhook events relevant for a bot automating ticket management
-        const webhookEvents = [
-            'jira:issue_created',      // New tickets
-            'jira:issue_updated',      // State changes, assignments, field updates
-            'comment_created',          // Comments added to issues
-            'comment_updated',          // Comments edited
-            'comment_deleted',          // Comments removed
-        ];
-
-        const webhookUrl = `${backendUrl}/webhooks/jira/${accountId}`;
-
-        // For Jira Cloud OAuth 2.0 apps, use the REST API v3 webhook endpoint
-        // Documentation: https://developer.atlassian.com/cloud/jira/platform/webhooks/
-        const webhookEndpoint = `https://api.atlassian.com/ex/jira/${cloudId}/rest/api/3/webhook`;
-
-
-        const webhookPayload = {
-            url: webhookUrl,
-            webhooks: [
-                {
-                    // Jira doesn't allow empty jqlFilter, so we use a dummy project key that doesn't exist
-                    // https://community.developer.atlassian.com/t/listening-for-changes-update-delete-in-all-issues-of-the-workspace/56266/6
-                    jqlFilter: "issueKey != NONEXISTENTPROJECT-1",
-                    events: webhookEvents,
-                }
-            ]
-        };
-
-        const webhookResponse = await fetch(
-            webhookEndpoint,
-            {
-                method: "POST",
-                headers: {
-                    "Authorization": `Bearer ${accessToken}`,
-                    "Accept": "application/json",
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify(webhookPayload),
-            }
-        );
-
-        if (!webhookResponse.ok) {
-            const errorText = await webhookResponse.text();
-            console.error(chalk.red("Failed to create Jira webhook:"), errorText);
-            throw new Error(`Failed to create Jira webhook: ${errorText}`);
-        }
-
-        // Parse the webhook registration response
-        // Response format: { "webhookRegistrationResult": [{ "createdWebhookId": 1 }, ...] }
-        const response = await webhookResponse.json() as JiraWebhookRegistrationResponse;
-        
-        // Extract the results array from the response wrapper
-        const webhookResults = response.webhookRegistrationResult;
-
-        if (!Array.isArray(webhookResults) || webhookResults.length === 0) {
-            throw new Error("Invalid webhook response format: missing webhookRegistrationResult array");
-        }
-
-        const firstResult = webhookResults[0];
-
-        // Check for errors
-        if (firstResult.errors && firstResult.errors.length > 0) {
-            throw new Error(`Webhook registration failed: ${firstResult.errors.join(", ")}`);
-        }
-
-        // Extract webhook ID from the response
-        const webhookId = firstResult.createdWebhookId?.toString();
-
-        if (!webhookId) {
-            throw new Error("Could not extract webhook ID from Jira API response");
-        }
-
-        console.log(
-            chalk.green("✅ Created Jira webhook:"),
-            chalk.cyan(webhookId),
-            chalk.blue("with events:"),
-            chalk.yellow(webhookEvents.join(", "))
-        );
-
-        return { webhookId, webhookSecret };
-    }
-
-    /**
-     * Deletes a Jira webhook using OAuth bearer token authentication
-     */
-    private async deleteJiraWebhook(
-        cloudId: string,
-        accessToken: string,
-        webhookId: string
-    ): Promise<void> {
-        // For Jira Cloud OAuth 2.0 apps, delete webhooks using the REST API v3 endpoint
-        // Format: DELETE /rest/api/3/webhook with body { "webhookIds": [id1, id2, ...] }
-        const webhookEndpoint = `https://api.atlassian.com/ex/jira/${cloudId}/rest/api/3/webhook`;
-
-        const webhookResponse = await fetch(
-            webhookEndpoint,
-            {
-                method: "DELETE",
-                headers: {
-                    "Authorization": `Bearer ${accessToken}`,
-                    "Accept": "application/json",
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify({
-                    webhookIds: [parseInt(webhookId, 10)]
-                }),
-            }
-        );
-
-        if (!webhookResponse.ok && webhookResponse.status !== 404) {
-            const errorText = await webhookResponse.text();
-            console.error(chalk.red("Failed to delete Jira webhook:"), errorText);
-            throw new Error(`Failed to delete Jira webhook: ${errorText}`);
-        }
-
-        console.log(chalk.green("✅ Deleted Jira webhook:"), chalk.cyan(webhookId));
-    }
 
     async getInstallationUrl(userId: string): Promise<OAuthInstallationDetails> {
         // Generate state token for security (prevents CSRF)
@@ -821,9 +683,141 @@ export class AtlassianIntegrationManager implements Integration<AtlassianIntegra
             // Don't throw - allow automation teardown to continue even if webhook deletion fails
         }
     }
+
+    // MARK: - Helper Methods
+
+    /**
+     * Creates a Jira webhook using OAuth bearer token authentication
+     * Events tracked: issue creation, updates, comments for ticket management automation
+     */
+    private async createJiraWebhook(
+        cloudId: string,
+        accessToken: string,
+        accountId: string
+    ): Promise<{ webhookId: string; webhookSecret: string }> {
+        const webhookSecret = generateWebhookSecret(32);
+        const backendUrl = urls.backend;
+
+        // Webhook events relevant for a bot automating ticket management
+        const webhookEvents = [
+            'jira:issue_created',      // New tickets
+            'jira:issue_updated',      // State changes, assignments, field updates
+            'comment_created',          // Comments added to issues
+            'comment_updated',          // Comments edited
+            'comment_deleted',          // Comments removed
+        ];
+
+        const webhookUrl = `${backendUrl}/webhooks/jira/${accountId}`;
+
+        // For Jira Cloud OAuth 2.0 apps, use the REST API v3 webhook endpoint
+        // Documentation: https://developer.atlassian.com/cloud/jira/platform/webhooks/
+        const webhookEndpoint = `https://api.atlassian.com/ex/jira/${cloudId}/rest/api/3/webhook`;
+
+
+        const webhookPayload = {
+            url: webhookUrl,
+            webhooks: [
+                {
+                    // Jira doesn't allow empty jqlFilter, so we use a dummy project key that doesn't exist
+                    // https://community.developer.atlassian.com/t/listening-for-changes-update-delete-in-all-issues-of-the-workspace/56266/6
+                    jqlFilter: "issueKey != NONEXISTENTPROJECT-1",
+                    events: webhookEvents,
+                }
+            ]
+        };
+
+        const webhookResponse = await fetch(
+            webhookEndpoint,
+            {
+                method: "POST",
+                headers: {
+                    "Authorization": `Bearer ${accessToken}`,
+                    "Accept": "application/json",
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify(webhookPayload),
+            }
+        );
+
+        if (!webhookResponse.ok) {
+            const errorText = await webhookResponse.text();
+            console.error(chalk.red("Failed to create Jira webhook:"), errorText);
+            throw new Error(`Failed to create Jira webhook: ${errorText}`);
+        }
+
+        // Parse the webhook registration response
+        // Response format: { "webhookRegistrationResult": [{ "createdWebhookId": 1 }, ...] }
+        const response = await webhookResponse.json() as JiraWebhookRegistrationResponse;
+        
+        // Extract the results array from the response wrapper
+        const webhookResults = response.webhookRegistrationResult;
+
+        if (!Array.isArray(webhookResults) || webhookResults.length === 0) {
+            throw new Error("Invalid webhook response format: missing webhookRegistrationResult array");
+        }
+
+        const firstResult = webhookResults[0];
+
+        // Check for errors
+        if (firstResult.errors && firstResult.errors.length > 0) {
+            throw new Error(`Webhook registration failed: ${firstResult.errors.join(", ")}`);
+        }
+
+        // Extract webhook ID from the response
+        const webhookId = firstResult.createdWebhookId?.toString();
+
+        if (!webhookId) {
+            throw new Error("Could not extract webhook ID from Jira API response");
+        }
+
+        console.log(
+            chalk.green("✅ Created Jira webhook:"),
+            chalk.cyan(webhookId),
+            chalk.blue("with events:"),
+            chalk.yellow(webhookEvents.join(", "))
+        );
+
+        return { webhookId, webhookSecret };
+    }
+
+    /**
+     * Deletes a Jira webhook using OAuth bearer token authentication
+     */
+    private async deleteJiraWebhook(
+        cloudId: string,
+        accessToken: string,
+        webhookId: string
+    ): Promise<void> {
+        // For Jira Cloud OAuth 2.0 apps, delete webhooks using the REST API v3 endpoint
+        // Format: DELETE /rest/api/3/webhook with body { "webhookIds": [id1, id2, ...] }
+        const webhookEndpoint = `https://api.atlassian.com/ex/jira/${cloudId}/rest/api/3/webhook`;
+
+        const webhookResponse = await fetch(
+            webhookEndpoint,
+            {
+                method: "DELETE",
+                headers: {
+                    "Authorization": `Bearer ${accessToken}`,
+                    "Accept": "application/json",
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    webhookIds: [parseInt(webhookId, 10)]
+                }),
+            }
+        );
+
+        if (!webhookResponse.ok && webhookResponse.status !== 404) {
+            const errorText = await webhookResponse.text();
+            console.error(chalk.red("Failed to delete Jira webhook:"), errorText);
+            throw new Error(`Failed to delete Jira webhook: ${errorText}`);
+        }
+
+        console.log(chalk.green("✅ Deleted Jira webhook:"), chalk.cyan(webhookId));
+    }
 }
 
-// MARK: - JiraEvent
+// MARK: - Event Definition
 
 export class JiraEvent extends InputEvent {
     readonly integrationType: IntegrationType = IntegrationType.ATLASSIAN;
@@ -1056,3 +1050,14 @@ export class JiraEvent extends InputEvent {
     }
 }
 
+// MARK: - Interfaces
+
+// Types for Jira webhook API responses
+interface JiraWebhookRegistrationResult {
+    createdWebhookId?: number;
+    errors?: string[];
+}
+
+interface JiraWebhookRegistrationResponse {
+    webhookRegistrationResult: JiraWebhookRegistrationResult[];
+}
