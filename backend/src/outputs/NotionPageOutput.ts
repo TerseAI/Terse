@@ -11,6 +11,7 @@ import { GetPageResponse, PageObjectResponse } from "@notionhq/client/build/src/
 import { IntegrationType } from "../shared/Integrations";
 import { OutputConfigType } from "@prisma/client";
 import { NotionPageConfig } from "../shared/Configs";
+import { getBlockTypeName, describeBlocks } from "../utility/notion";
 
 export interface NotionPageSession extends Session {
     notionIntegration: NotionIntegration; // Top level integration record
@@ -460,12 +461,14 @@ Example: "[{\"operation\": \"append\", \"blocks\": [{\"object\": \"block\", \"ty
                     });
 
                     // Report action
+                    const blockDescription = describeBlocks(op.blocks);
+                    const pageName = runContext.context.notionPageConfig.page_name || 'Notion page';
                     runContext.context.runActions = runContext.context.runActions || [];
                     runContext.context.runActions.push({
-                        action: 'append_blocks',
+                        action: 'Added content',
                         integration: IntegrationType.NOTION,
-                        target: runContext.context.notionPageConfig.page_id || runContext.context.notionPageConfig.page_name,
-                        details: `Added ${response.results.length} block(s)`,
+                        target: pageName,
+                        details: `Added ${response.results.length} ${response.results.length === 1 ? 'item' : 'items'}: ${blockDescription}`,
                     });
                 } else if (op.operation === 'update') {
                     if (!op.block_id) {
@@ -500,12 +503,14 @@ Example: "[{\"operation\": \"append\", \"blocks\": [{\"object\": \"block\", \"ty
                     });
 
                     // Report action
+                    const pageName = runContext.context.notionPageConfig.page_name || 'Notion page';
+                    const blockType = getBlockTypeName(op.block);
                     runContext.context.runActions = runContext.context.runActions || [];
                     runContext.context.runActions.push({
-                        action: 'update_block',
+                        action: 'Updated content',
                         integration: IntegrationType.NOTION,
-                        target: runContext.context.notionPageConfig.page_id ||  runContext.context.notionPageConfig.page_name,
-                        details: 'Block updated',
+                        target: pageName,
+                        details: `Updated ${blockType}`,
                     });
                 } else if (op.operation === 'delete') {
                     if (!op.block_id) {
@@ -531,12 +536,13 @@ Example: "[{\"operation\": \"append\", \"blocks\": [{\"object\": \"block\", \"ty
                     });
 
                     // Report action
+                    const pageName = runContext.context.notionPageConfig.page_name || 'Notion page';
                     runContext.context.runActions = runContext.context.runActions || [];
                     runContext.context.runActions.push({
-                        action: 'delete_block',
+                        action: 'Removed content',
                         integration: IntegrationType.NOTION,
-                        target: runContext.context.notionPageConfig.page_id || runContext.context.notionPageConfig.page_name,
-                        details: 'Block deleted',
+                        target: pageName,
+                        details: 'Removed content block',
                     });
                 } else {
                     results.push({
