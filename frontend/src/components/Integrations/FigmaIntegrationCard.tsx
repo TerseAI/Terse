@@ -1,5 +1,5 @@
 import { Card, CardContent } from "../ui/card";
-import { IntegrationType } from "@/shared/Integrations"
+import { FigmaIntegration, IntegrationType } from "@/shared/Integrations"
 import { IntegrationCardHeader } from "./helpers/IntegrationCardHeader";
 import { IntegrationCardFooter } from "./helpers/IntegrationCardFooter";
 import { useOAuthConnection } from "@/hooks/useOAuthConnection";
@@ -23,7 +23,7 @@ function FigmaIntegrationCard({ className }: { className?: string }) {
     )
 }
 
-function FigmaCardContent({ integrations, isLoading }: { integrations: Array<{ id: string; figma_user_id: string; token_expiry: Date }>, isLoading: boolean }) {
+function FigmaCardContent({ integrations, isLoading }: { integrations: Array<FigmaIntegration>, isLoading: boolean }) {
     if (isLoading) {
         return (
             <div className="space-y-3">
@@ -55,7 +55,7 @@ function FigmaCardContent({ integrations, isLoading }: { integrations: Array<{ i
                     </div>
                     <div className="flex-1 min-w-0">
                         <div className="text-sm font-medium text-foreground truncate">
-                            {integration.figma_user_id}
+                            {integration.handle || integration.figma_user_id}
                         </div>
                         <div className="text-xs text-muted-foreground mt-0.5">
                             Figma account

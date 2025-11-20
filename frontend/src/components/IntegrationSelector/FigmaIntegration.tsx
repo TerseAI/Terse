@@ -54,7 +54,7 @@ export function FigmaIntegration({
     }
 
     const connectionSelections: StatusOption[] = integrations.map((integration: FigmaIntegrationType) => ({
-        label: integration.figma_user_id || 'Figma Account',
+        label: integration.handle || integration.figma_user_id || 'Figma Account',
         value: integration.id
     }));
 

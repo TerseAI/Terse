@@ -215,6 +215,7 @@ model notion_integrations {
 model figma_integrations {
   id            String   @id @default(cuid())
   user_id       String
+  handle        String
   figma_user_id String
   access_token  String
   refresh_token String

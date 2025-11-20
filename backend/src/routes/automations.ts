@@ -17,11 +17,12 @@ async function createInputConfig(
     inputId: string,
     config: AutomationInput
 ): Promise<void> {
+    console.log(chalk.cyan('🔵 [INPUT CONFIG] config:', JSON.stringify(config, null, 2)));
     const input = INPUT_REGISTRY.find(input => input.configType === config.config.configType);
     if (!input) {
         throw new Error(`Input not found for integration type: ${config.config.configType}`);
     }
-    await input.addInputToAutomation(tx, inputId, config);
+    await input.addInputToAutomation(tx, inputId, config.config);
 }
 
 // Helper function to create config record for an automation output

@@ -32,7 +32,7 @@ export class SlackIntegrationManager implements Integration<SlackIntegration, Sl
             }
         });
         return userSlackIntegrations.map(usi => ({
-            id: usi.slack_integration.id,
+            id: usi.id,
             teamId: usi.slack_integration.team_id,
             teamName: usi.slack_integration.team_name,
         }));

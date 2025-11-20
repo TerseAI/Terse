@@ -108,6 +108,7 @@ export interface GmailIntegration extends IntegrationInstance {
 
 export interface FigmaIntegration extends IntegrationInstance {
     id: string;
+    handle: string;
     figma_user_id: string;
     token_expiry: Date;
 };
