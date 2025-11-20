@@ -18,8 +18,6 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "../components/ui/button";
 
 function Home() {
-    // Flag to easily test empty states - set to false to see empty states
-    const USE_MOCK_DATA = false;
     const navigate = useNavigate();
 
     const { automations: recentAutomationsData, isLoading: isLoadingAutomations } = useRecentAutomations(3);
@@ -64,34 +62,6 @@ function Home() {
             subtext: "Automations created",
             icon: Hash,
         },
-    ] : USE_MOCK_DATA ? [
-        {
-            label: "Total events processed",
-            value: "12,450",
-            change: "+12.5%",
-            trend: "up" as const,
-            description: "Events processed this month",
-            subtext: "Events for the last 6 months",
-            icon: Activity,
-        },
-        {
-            label: "Actions Taken",
-            value: "3,247",
-            change: "+8.2%",
-            trend: "up" as const,
-            description: "Trending up this month",
-            subtext: "Actions for the last 6 months",
-            icon: Zap,
-        },
-        {
-            label: "Number of Channels",
-            value: "24",
-            change: "+2",
-            trend: "up" as const,
-            description: "Active channels",
-            subtext: "Channels connected",
-            icon: Hash,
-        },
     ] : [];
 
     // Transform real data to match the component's expected format
@@ -103,16 +73,8 @@ function Home() {
             : "Never",
     }));
 
-    // Mock data for events processed per day (last 7 days)
-    const eventsPerDay = USE_MOCK_DATA ? [
-        { date: "Mon", events: 1240 },
-        { date: "Tue", events: 1890 },
-        { date: "Wed", events: 2100 },
-        { date: "Thu", events: 1750 },
-        { date: "Fri", events: 2300 },
-        { date: "Sat", events: 980 },
-        { date: "Sun", events: 1190 },
-    ] : [];
+    // Get daily events from stats
+    const eventsPerDay = stats?.dailyEvents || [];
 
     const chartConfig = {
         events: {
@@ -121,49 +83,18 @@ function Home() {
         },
     };
 
-    // Mock data for recently run actions
-    const recentActions: (RunHistoryAction & { timestamp: string; automationName: string })[] = USE_MOCK_DATA ? [
-        {
-            action: "Created Linear issue",
-            integration: IntegrationType.LINEAR,
-            target: "Engineering Team",
-            details: "Issue created from Slack message",
-            timestamp: "5 minutes ago",
-            automationName: "Slack to Linear Issue Creator",
-        },
-        {
-            action: "Created Notion page",
-            integration: IntegrationType.NOTION,
-            target: "Project Database",
-            details: "Page created from Gmail email",
-            timestamp: "12 minutes ago",
-            automationName: "Gmail to Notion Page",
-        },
-        {
-            action: "Sent Slack notification",
-            integration: IntegrationType.SLACK,
-            target: "#engineering",
-            details: "Notified team about GitHub PR",
-            timestamp: "18 minutes ago",
-            automationName: "GitHub PR to Slack Notifier",
-        },
-        {
-            action: "Created Linear task",
-            integration: IntegrationType.LINEAR,
-            target: "Product Team",
-            details: "Task created from Confluence page",
-            timestamp: "25 minutes ago",
-            automationName: "Confluence to Linear Task",
-        },
-        {
-            action: "Updated Jira ticket",
-            integration: IntegrationType.ATLASSIAN,
-            target: "PROJ-123",
-            details: "Ticket updated from Slack message",
-            timestamp: "32 minutes ago",
-            automationName: "Slack to Jira Sync",
-        },
-    ] : [];
+    // Get recent actions from stats
+    const recentActions: (RunHistoryAction & { timestamp: string; automationName: string })[] = stats?.recentActions
+        ? stats.recentActions.map((action) => ({
+              action: action.action,
+              integration: action.integration as IntegrationType,
+              target: action.target,
+              details: action.details,
+              url: action.url,
+              timestamp: formatRelativeTime(action.timestamp),
+              automationName: action.automationName,
+          }))
+        : [];
 
     return (
         <div className="mx-auto p-8 space-y-8">
