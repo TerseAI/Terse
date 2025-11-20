@@ -5,7 +5,6 @@ import { Session } from "../server";
 import { Output, ToolboxEntry } from "./abstract/Output";
 import { db } from "../prismaClient";
 import { RunContext, Tool, tool } from "@openai/agents";
-import { ConfluenceClient } from 'confluence.js';
 import { z } from "zod";
 import chalk from "chalk";
 import { OutputConfigType } from "@prisma/client";
@@ -17,6 +16,7 @@ export interface ConfluenceSession extends Session {
     atlassianIntegration: AtlassianIntegration; // Top level integration record
     confluenceConfig: ChannelConfluenceConfig; // Configuration for the Specific Confluence Database
     apiToken: string; // API token stored separately (not in shared type for security)
+    cloudId?: string; // Cloud ID for OAuth API gateway access
 }
 
 export class ConfluenceOutput extends Output<ConfluenceSession, ConfluenceConfig> {
@@ -54,6 +54,7 @@ export class ConfluenceOutput extends Output<ConfluenceSession, ConfluenceConfig
         const email = oauthIntegration?.jira_user_email
         const baseUrl = oauthIntegration?.base_url
         const token = oauthIntegration?.access_token
+        const cloudId = oauthIntegration?.cloud_id
 
         const atlassianIntegration: AtlassianIntegration = {
             id: integrationId_final,
@@ -65,6 +66,7 @@ export class ConfluenceOutput extends Output<ConfluenceSession, ConfluenceConfig
             atlassianIntegration: atlassianIntegration, 
             confluenceConfig: confluenceConfig, 
             apiToken: token,
+            cloudId: cloudId || undefined,
             user: user, 
             isUserInitiated: true, 
             runActions: [] 
@@ -100,26 +102,32 @@ This tool returns the current state of the Confluence page including all metadat
             throw new Error("No context provided");
         }
 
-        // For OAuth bearer tokens, extract host from baseUrl (remove protocol)
-        const host = runContext.context.atlassianIntegration.baseUrl.replace(/^https?:\/\//, '').replace(/\/$/, '');
-
-        const client = new ConfluenceClient({
-            host: host,
-            authentication: {
-                oauth2: {
-                    accessToken: runContext.context.apiToken, // apiToken contains the OAuth access_token
-                }
-            } 
-        });
+        if (!runContext.context.cloudId) {
+            throw new Error("Cloud ID is required for Confluence API access");
+        }
 
         const pageId = runContext.context.confluenceConfig.page_id as string;
+        const apiBaseUrl = `https://api.atlassian.com/ex/confluence/${runContext.context.cloudId}/wiki/rest/api`;
 
         try {
-            // Fetch page with body content, space, and version information
-            const pageInfo: Content = await client.content.getContentById({
-                id: pageId,
-                expand: ['body.storage', 'body.view', 'body.export_view', 'space', 'version', 'ancestors', 'descendants'],
+            // Fetch page with body content, space, and version information using direct REST API
+            const expandParams = 'body.storage,body.view,body.export_view,space,version,ancestors,descendants';
+            const pageUrl = `${apiBaseUrl}/content/${pageId}?expand=${expandParams}`;
+            
+            const pageResponse = await fetch(pageUrl, {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${runContext.context.apiToken}`,
+                    'Accept': 'application/json',
+                },
             });
+
+            if (!pageResponse.ok) {
+                const errorText = await pageResponse.text();
+                throw new Error(`Confluence API error: ${pageResponse.status} ${pageResponse.statusText} - ${errorText}`);
+            }
+
+            const pageInfo: any = await pageResponse.json();
 
             // Extract readable information
             const metadata: PageMetadata = {
@@ -175,7 +183,7 @@ This tool returns the current state of the Confluence page including all metadat
 
             // Extract ancestors and descendants if available
             const ancestors: AncestorOrDescendant[] = Array.isArray(pageInfo.ancestors) 
-                ? pageInfo.ancestors.map((ancestor) => ({
+                ? pageInfo.ancestors.map((ancestor: any) => ({
                     id: String(ancestor.id),
                     title: ancestor.title || 'Untitled',
                     type: ancestor.type || 'page',
@@ -183,13 +191,13 @@ This tool returns the current state of the Confluence page including all metadat
                 : [];
 
             const descendants: AncestorOrDescendant[] = pageInfo.descendants && typeof pageInfo.descendants === 'object' && 'results' in pageInfo.descendants
-                ? (pageInfo.descendants as { results: Content[] }).results.map((descendant) => ({
+                ? (pageInfo.descendants as { results: any[] }).results.map((descendant: any) => ({
                     id: String(descendant.id),
                     title: descendant.title || 'Untitled',
                     type: descendant.type || 'page',
                 }))
                 : Array.isArray(pageInfo.descendants)
-                ? pageInfo.descendants.map((descendant) => ({
+                ? pageInfo.descendants.map((descendant: any) => ({
                     id: String(descendant.id),
                     title: descendant.title || 'Untitled',
                     type: descendant.type || 'page',
@@ -233,24 +241,30 @@ To find the correct position, first call confluence_query_page to see the page c
             throw new Error(chalk.red.bold("No context provided"));
         }
 
-        // Use OAuth bearer token authentication
-        const client = new ConfluenceClient({
-            host: runContext.context.atlassianIntegration.baseUrl,
-            authentication: {
-                oauth2: {
-                    accessToken: runContext.context.apiToken, // apiToken contains the OAuth access_token
-                }
-            }
-        });
+        if (!runContext.context.cloudId) {
+            throw new Error("Cloud ID is required for Confluence API access");
+        }
 
         const pageId = runContext.context.confluenceConfig.page_id as string;
+        const apiBaseUrl = `https://api.atlassian.com/ex/confluence/${runContext.context.cloudId}/wiki/rest/api`;
 
         try {
-            // Fetch the page content once
-            const pageInfo: Content = await client.content.getContentById({
-                id: pageId,
-                expand: ['body.storage'],
+            // Fetch the page content once using direct REST API
+            const pageUrl = `${apiBaseUrl}/content/${pageId}?expand=body.storage`;
+            const pageResponse = await fetch(pageUrl, {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${runContext.context.apiToken}`,
+                    'Accept': 'application/json',
+                },
             });
+
+            if (!pageResponse.ok) {
+                const errorText = await pageResponse.text();
+                throw new Error(`Confluence API error: ${pageResponse.status} ${pageResponse.statusText} - ${errorText}`);
+            }
+
+            const pageInfo: any = await pageResponse.json();
             const storageContent = pageInfo.body?.storage?.value || '';
             
             // Get plain text version of storage content for matching
@@ -394,10 +408,8 @@ To find the correct position, first call confluence_query_page to see the page c
                 matchIndex = 0;
             }
 
-            // Use the Confluence REST API v2 inline comments endpoint
-            // Since confluence.js might not have this method, we'll make a direct HTTP request
-            const baseUrl = runContext.context.atlassianIntegration.baseUrl.replace(/\/$/, '');
-            const apiUrl = `${baseUrl}/wiki/api/v2/inline-comments`;
+            // Use the Confluence REST API v2 inline comments endpoint via API gateway
+            const apiUrl = `https://api.atlassian.com/ex/confluence/${runContext.context.cloudId}/wiki/api/v2/inline-comments`;
 
             // Build the request body according to Confluence API v2 format for inline comments
             const requestBody: InlineCommentRequestBody = {

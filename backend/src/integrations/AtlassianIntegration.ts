@@ -42,8 +42,12 @@ export class AtlassianIntegrationManager implements Integration<AtlassianIntegra
             'read:jira-user',
             'read:confluence-content.all',
             'read:confluence-space.summary',
+            'read:confluence-props',
+            'read:confluence-content.permission',
+            'read:confluence-content.summary',
             'readonly:content.attachment:confluence',
-            'search:confluence-content',
+            'search:confluence',
+            'read:page:confluence',
             'write:confluence-content',
             'manage:jira-webhook'
         ].join(' ');
