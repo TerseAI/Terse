@@ -54,7 +54,6 @@ import {
 import {
   linearOAuthCallback,
   getLinearIntegrations,
-  indexLinearTicket,
   handleLinearWebhook,
 } from "./routes/linear";
 import {
@@ -119,9 +118,9 @@ app.use((req, res, next) => {
   next();
 });
 
-// Parse JSON for all routes except Slack events (which needs raw body for signature verification)
+// Parse JSON for all routes except Slack events and Linear webhook (which need raw body for signature verification)
 app.use((req, res, next) => {
-  if (req.path === "/slack/events") {
+  if (req.path === "/slack/events" || req.path === "/linear/webhook") {
     next();
   } else {
     bodyParser.json()(req, res, next);
@@ -332,32 +331,15 @@ app.get("/linear/oauth/callback", async (req, res) => {
   linearOAuthCallback(req, res);
 });
 
-app.get("/linear/webhook", async (req, res) => {
+// Linear webhook needs raw body for signature verification
+app.use("/linear/webhook", express.raw({ type: "application/json" }));
+
+app.post("/linear/webhook", async (req, res) => {
   handleLinearWebhook(req, res);
 });
 
 app.get("/linear/integrations", authMiddleware, async (req, res) => {
   getLinearIntegrations(req, res);
-});
-
-app.post("/webhooks/linear/:userId", async (req, res) => {
-  const { userId } = req.params;
-  const event: LinearWebhookPayload = req.body;
-
-  // Update your search index based on the event
-  switch (event.type) {
-    case "Issue":
-      await indexLinearTicket(userId, event);
-      break;
-    case "Comment":
-      console.log("Comment", event);
-      break;
-    case "Project":
-      console.log("Project", event);
-      break;
-  }
-
-  res.json({ received: true });
 });
 
 app.post("/webhooks/jira/:userId", async (req, res) => {

@@ -52,6 +52,7 @@ export interface LinearWebhookPayload {
       // Add other fields as needed
     };
     type: 'Issue' | 'Comment' | 'Project' | string;
+    url?: string;
     organizationId: string;
     webhookTimestamp: number;
     webhookId: string;

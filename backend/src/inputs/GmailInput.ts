@@ -1,7 +1,6 @@
 import { ConfigType, GmailConfig } from "../shared/Configs";
 import { GmailIntegrationManager } from "../integrations/GmailIntegration";
 import { Input } from "./Input";
-import { Integration } from "../integrations/abstract/Integration";
 import { PrismaTransaction } from "../types/prisma";
 
 export class GmailInput implements Input<GmailConfig> {
