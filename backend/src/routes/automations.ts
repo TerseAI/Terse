@@ -45,6 +45,9 @@ async function validateUserOwnsIntegration(userId: string, integrationType: Inte
         throw new Error(`Integration ${integrationType} not found`);
     }
     const instances = await integration.getInstancesForUser(userId);
+    console.log(chalk.green("Integration type:"), chalk.yellow(integrationType));
+    console.log(chalk.green("Integration ID:"), chalk.yellow(integrationId));
+    console.log(chalk.green("Instances:"), chalk.yellow(JSON.stringify(instances, null, 2)));
     return instances.some(instance => instance.id === integrationId);
 }
 

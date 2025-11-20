@@ -34,6 +34,14 @@ export const confluenceResourcesKey = (integrationId: string | null | undefined)
     return ['confluenceResources', integrationId] as const;
 };
 
+export const jiraResourcesKey = (integrationId: string | null | undefined): readonly [string, string] | null => {
+    if (!integrationId) {
+        return null;
+    }
+
+    return ['jiraResources', integrationId] as const;
+};
+
 export const gmailIntegrationsKey = (): readonly [string] => {
     return ['gmailIntegrations'] as const;
 };

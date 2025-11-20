@@ -16,6 +16,16 @@ import { InputConfigType } from "@prisma/client";
 import { RunHistoryTrigger } from "../shared/RunHistoryTypes";
 import { EventProcessor } from "../agent/AutomationAgent/EventProcessor";
 
+// Types for Jira webhook API responses
+interface JiraWebhookRegistrationResult {
+    createdWebhookId?: number;
+    errors?: string[];
+}
+
+interface JiraWebhookRegistrationResponse {
+    webhookRegistrationResult: JiraWebhookRegistrationResult[];
+}
+
 export class AtlassianIntegrationManager implements Integration<AtlassianIntegration, JiraWebhookPayload, typeof AtlassianIntegrationMetadata>, OAuthIntegrationInstallation {
     integrationType: IntegrationType = IntegrationType.ATLASSIAN;
     constructor() { }
@@ -43,8 +53,25 @@ export class AtlassianIntegrationManager implements Integration<AtlassianIntegra
 
         const webhookUrl = `${backendUrl}/webhooks/jira/${accountId}`;
 
+        // For Jira Cloud OAuth 2.0 apps, use the REST API v3 webhook endpoint
+        // Documentation: https://developer.atlassian.com/cloud/jira/platform/webhooks/
+        const webhookEndpoint = `https://api.atlassian.com/ex/jira/${cloudId}/rest/api/3/webhook`;
+
+
+        const webhookPayload = {
+            url: webhookUrl,
+            webhooks: [
+                {
+                    // Jira doesn't allow empty jqlFilter, so we use a dummy project key that doesn't exist
+                    // https://community.developer.atlassian.com/t/listening-for-changes-update-delete-in-all-issues-of-the-workspace/56266/6
+                    jqlFilter: "issueKey != NONEXISTENTPROJECT-1",
+                    events: webhookEvents,
+                }
+            ]
+        };
+
         const webhookResponse = await fetch(
-            `https://api.atlassian.com/ex/jira/${cloudId}/rest/api/3/webhook`,
+            webhookEndpoint,
             {
                 method: "POST",
                 headers: {
@@ -52,13 +79,7 @@ export class AtlassianIntegrationManager implements Integration<AtlassianIntegra
                     "Accept": "application/json",
                     "Content-Type": "application/json",
                 },
-                body: JSON.stringify({
-                    name: "Terse AI Ticket Management",
-                    url: webhookUrl,
-                    events: webhookEvents,
-                    // Jira REST API v3 doesn't support webhook secrets directly
-                    // We store webhook_secret for potential future verification mechanisms
-                }),
+                body: JSON.stringify(webhookPayload),
             }
         );
 
@@ -68,11 +89,27 @@ export class AtlassianIntegrationManager implements Integration<AtlassianIntegra
             throw new Error(`Failed to create Jira webhook: ${errorText}`);
         }
 
-        const webhook = await webhookResponse.json();
+        // Parse the webhook registration response
+        // Response format: { "webhookRegistrationResult": [{ "createdWebhookId": 1 }, ...] }
+        const response = await webhookResponse.json() as JiraWebhookRegistrationResponse;
         
-        // Extract webhook ID from the self URL (format: .../webhook/{id})
-        const webhookId = webhook.self?.split('/').pop() || webhook.id?.toString();
-        
+        // Extract the results array from the response wrapper
+        const webhookResults = response.webhookRegistrationResult;
+
+        if (!Array.isArray(webhookResults) || webhookResults.length === 0) {
+            throw new Error("Invalid webhook response format: missing webhookRegistrationResult array");
+        }
+
+        const firstResult = webhookResults[0];
+
+        // Check for errors
+        if (firstResult.errors && firstResult.errors.length > 0) {
+            throw new Error(`Webhook registration failed: ${firstResult.errors.join(", ")}`);
+        }
+
+        // Extract webhook ID from the response
+        const webhookId = firstResult.createdWebhookId?.toString();
+
         if (!webhookId) {
             throw new Error("Could not extract webhook ID from Jira API response");
         }
@@ -95,14 +132,22 @@ export class AtlassianIntegrationManager implements Integration<AtlassianIntegra
         accessToken: string,
         webhookId: string
     ): Promise<void> {
+        // For Jira Cloud OAuth 2.0 apps, delete webhooks using the REST API v3 endpoint
+        // Format: DELETE /rest/api/3/webhook with body { "webhookIds": [id1, id2, ...] }
+        const webhookEndpoint = `https://api.atlassian.com/ex/jira/${cloudId}/rest/api/3/webhook`;
+
         const webhookResponse = await fetch(
-            `https://api.atlassian.com/ex/jira/${cloudId}/rest/api/3/webhook/${webhookId}`,
+            webhookEndpoint,
             {
                 method: "DELETE",
                 headers: {
                     "Authorization": `Bearer ${accessToken}`,
                     "Accept": "application/json",
+                    "Content-Type": "application/json",
                 },
+                body: JSON.stringify({
+                    webhookIds: [parseInt(webhookId, 10)]
+                }),
             }
         );
 
@@ -231,7 +276,7 @@ export class AtlassianIntegrationManager implements Integration<AtlassianIntegra
             }
 
             const resources = await resourcesResponse.json();
-            
+
             if (!resources || resources.length === 0) {
                 console.error(chalk.red("No accessible resources found"));
                 res.redirect(`${urls.frontend}/oauth/error`);
@@ -309,7 +354,7 @@ export class AtlassianIntegrationManager implements Integration<AtlassianIntegra
             // Create webhook for Jira events (if accountId is available)
             let webhookId: string | null = null;
             let webhookSecret: string | null = null;
-            
+
             if (accountId) {
                 try {
                     // Delete existing webhook if present
@@ -397,35 +442,14 @@ export class AtlassianIntegrationManager implements Integration<AtlassianIntegra
                 site_name: true,
             }
         });
-        
-        // Legacy API key integrations (for backward compatibility)
-        const legacyIntegrations = await db().jira_api_keys.findMany({
-            where: { user_id: userId },
-            select: {
-                id: true,
-                jira_user_email: true,
-                base_url: true,
-                site_name: true,
-            }
-        });
-        
+
         // Combine both types
-        const allIntegrations = [
-            ...oauthIntegrations.map(oi => ({
-                id: oi.id,
-                email: oi.jira_user_email,
-                baseUrl: oi.base_url,
-                siteName: oi.site_name || undefined,
-            })),
-            ...legacyIntegrations.map(li => ({
-                id: li.id,
-                email: li.jira_user_email,
-                baseUrl: li.base_url,
-                siteName: li.site_name || undefined,
-            }))
-        ];
-        
-        return allIntegrations;
+        return oauthIntegrations.map(oi => ({
+            id: oi.id,
+            email: oi.jira_user_email,
+            baseUrl: oi.base_url,
+            siteName: oi.site_name || undefined,
+        }));
     }
 
     async processWebhookEvent(event: JiraWebhookPayload): Promise<void> {
@@ -438,7 +462,7 @@ export class AtlassianIntegrationManager implements Integration<AtlassianIntegra
         // The webhook payload includes user email, which we can use to match integrations
         const userEmail = event.user?.emailAddress;
         const issueUrl = event.issue?.self;
-        
+
         if (!userEmail && !issueUrl) {
             console.log(
                 chalk.yellow("⚠️  [JIRA INTEGRATION MANAGER] No user email or issue URL found in webhook payload")
@@ -568,13 +592,234 @@ export class AtlassianIntegrationManager implements Integration<AtlassianIntegra
     }
 
     async setupAutomationInput(integrationId: string, automationInput: AutomationInputWithConfigs): Promise<void> {
-        // Atlassian doesn't require any setup for automation inputs
-        // Webhooks are managed at the integration level
+        try {
+            // Get the integration
+            const integration = await db().atlassian_integrations.findUnique({
+                where: { id: integrationId },
+            });
+
+            if (!integration) {
+                console.warn(chalk.yellow(`⚠️  Integration ${integrationId} not found, skipping webhook setup`));
+                return;
+            }
+
+            // In development, always recreate webhook to ensure URL is current
+            // (especially important when using Cloudflare tunnels that change URLs)
+            const isDevelopment = settings.nodeEnv === 'development';
+
+            // In development, always delete existing webhook and recreate to ensure URL is current
+            if (isDevelopment && integration.webhook_id) {
+                console.log(
+                    chalk.blue("🔄 Development mode: recreating webhook for integration"),
+                    chalk.cyan(integrationId),
+                    chalk.blue("to ensure URL is current")
+                );
+
+                if (integration.cloud_id && integration.access_token) {
+                    try {
+                        await this.deleteJiraWebhook(
+                            integration.cloud_id,
+                            integration.access_token,
+                            integration.webhook_id
+                        );
+                    } catch (error) {
+                        console.warn(
+                            chalk.yellow("⚠️  Could not delete existing webhook, continuing with creation"),
+                            error
+                        );
+                    }
+                }
+            } else if (integration.webhook_id) {
+                // Not localhost and webhook exists - leave it as is
+                console.log(
+                    chalk.blue("✅ Webhook already exists for integration"),
+                    chalk.cyan(integrationId),
+                    chalk.blue("(webhook ID:"),
+                    chalk.yellow(integration.webhook_id),
+                    chalk.blue(")")
+                );
+                return;
+            }
+
+            // Webhook doesn't exist or we're on localhost and need to recreate it
+            // First, get the accountId from the API
+            if (!integration.cloud_id || !integration.access_token) {
+                console.warn(
+                    chalk.yellow(`⚠️  Integration ${integrationId} missing cloud_id or access_token, cannot create webhook`)
+                );
+                return;
+            }
+
+            console.log(
+                chalk.blue("🔧 Creating webhook for integration"),
+                chalk.cyan(integrationId)
+            );
+
+            // Get user accountId from Jira API
+            const userInfoResponse = await fetch(
+                `https://api.atlassian.com/ex/jira/${integration.cloud_id}/rest/api/3/myself`,
+                {
+                    method: "GET",
+                    headers: {
+                        "Authorization": `Bearer ${integration.access_token}`,
+                        "Accept": "application/json",
+                    },
+                }
+            );
+
+            let accountId: string | null = null;
+            if (userInfoResponse.ok) {
+                const userInfo = await userInfoResponse.json();
+                accountId = userInfo.accountId || null;
+            } else {
+                // Try the /me endpoint as fallback
+                const meResponse = await fetch("https://api.atlassian.com/me", {
+                    method: "GET",
+                    headers: {
+                        "Authorization": `Bearer ${integration.access_token}`,
+                        "Accept": "application/json",
+                    },
+                });
+                if (meResponse.ok) {
+                    const meInfo = await meResponse.json();
+                    accountId = meInfo.accountId || null;
+                }
+            }
+
+            if (!accountId) {
+                console.warn(
+                    chalk.yellow(`⚠️  Could not determine accountId for integration ${integrationId}, skipping webhook creation`)
+                );
+                return;
+            }
+
+            // Create the webhook
+            const webhook = await this.createJiraWebhook(
+                integration.cloud_id,
+                integration.access_token,
+                accountId
+            );
+
+            // Update the integration with the webhook ID
+            await db().atlassian_integrations.update({
+                where: { id: integrationId },
+                data: {
+                    webhook_id: webhook.webhookId,
+                    webhook_secret: webhook.webhookSecret,
+                },
+            });
+
+            console.log(
+                chalk.green("✅ Created and registered webhook for integration"),
+                chalk.cyan(integrationId),
+                chalk.blue("(webhook ID:"),
+                chalk.yellow(webhook.webhookId),
+                chalk.blue(")")
+            );
+        } catch (error) {
+            console.error(
+                chalk.red(`❌ Error setting up webhook for integration ${integrationId}:`),
+                error
+            );
+            // Don't throw - allow automation setup to continue even if webhook creation fails
+        }
     }
 
     async teardownAutomationInput(integrationId: string, automationInput: AutomationInputWithConfigs): Promise<void> {
-        // Atlassian doesn't require any teardown for automation inputs
-        // Webhooks are managed at the integration level
+        try {
+            // Get the integration
+            const integration = await db().atlassian_integrations.findUnique({
+                where: { id: integrationId },
+            });
+
+            if (!integration || !integration.webhook_id) {
+                // No webhook to clean up
+                return;
+            }
+
+            // Check if there are other automations using this integration
+            // Query for automations with this integration_id, excluding the current automation
+            const otherAutomations = await db().automation_inputs.findMany({
+                where: {
+                    integration_id: integrationId,
+                    automation_id: {
+                        not: automationInput.automation_id,
+                    },
+                    config_type: InputConfigType.JIRA,
+                },
+                select: {
+                    automation_id: true,
+                },
+            });
+
+            // If there are other automations using this integration, keep the webhook
+            if (otherAutomations.length > 0) {
+                console.log(
+                    chalk.blue("ℹ️  Keeping webhook for integration"),
+                    chalk.cyan(integrationId),
+                    chalk.blue("(used by"),
+                    chalk.yellow(otherAutomations.length),
+                    chalk.blue("other automation(s))")
+                );
+                return;
+            }
+
+            // No other automations use this integration, safe to delete the webhook
+            console.log(
+                chalk.blue("🗑️  Deleting webhook for integration"),
+                chalk.cyan(integrationId),
+                chalk.blue("(no other automations depend on it)")
+            );
+
+            if (!integration.cloud_id || !integration.access_token) {
+                console.warn(
+                    chalk.yellow(`⚠️  Integration ${integrationId} missing cloud_id or access_token, cannot delete webhook`)
+                );
+                // Still clear the webhook_id from the database
+                await db().atlassian_integrations.update({
+                    where: { id: integrationId },
+                    data: {
+                        webhook_id: null,
+                        webhook_secret: null,
+                    },
+                });
+                return;
+            }
+
+            // Delete the webhook from Jira
+            try {
+                await this.deleteJiraWebhook(
+                    integration.cloud_id,
+                    integration.access_token,
+                    integration.webhook_id
+                );
+            } catch (error) {
+                console.error(
+                    chalk.red(`⚠️  Failed to delete webhook from Jira, but clearing from database:`),
+                    error
+                );
+            }
+
+            // Clear the webhook_id from the database
+            await db().atlassian_integrations.update({
+                where: { id: integrationId },
+                data: {
+                    webhook_id: null,
+                    webhook_secret: null,
+                },
+            });
+
+            console.log(
+                chalk.green("✅ Deleted webhook for integration"),
+                chalk.cyan(integrationId)
+            );
+        } catch (error) {
+            console.error(
+                chalk.red(`❌ Error tearing down webhook for integration ${integrationId}:`),
+                error
+            );
+            // Don't throw - allow automation teardown to continue even if webhook deletion fails
+        }
     }
 }
 
@@ -618,7 +863,7 @@ export class JiraEvent extends InputEvent {
             issueSections.push(`Priority: ${issue.fields.priority.name}`);
             issueSections.push(`Project: ${issue.fields.project.name} (${issue.fields.project.key})`);
             issueSections.push(`Issue Type: ${issue.fields.issuetype.name}`);
-            
+
             if (issue.fields.assignee) {
                 issueSections.push(`Assignee: ${issue.fields.assignee.displayName}`);
             }
@@ -667,7 +912,7 @@ export class JiraEvent extends InputEvent {
     debugLog(): string {
         const issue = this.data.issue;
         const comment = this.data.comment;
-        
+
         if (issue) {
             return `Jira ${this.data.webhookEvent}: ${issue.key} - ${issue.fields.summary}`;
         } else if (comment) {
@@ -687,7 +932,7 @@ export class JiraEvent extends InputEvent {
 
         // Get the Jira config if it exists
         const jiraConfig = automationInput.jira_config;
-        
+
         // If no project filter is configured, match all Jira events
         if (!jiraConfig || (!jiraConfig.project_key && !jiraConfig.project_id)) {
             return true;
