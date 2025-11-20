@@ -23,6 +23,7 @@ import {
 import {
   createAutomation,
   deleteAutomation,
+  getRecentAutomations,
   getUserAutomation,
   getUserAutomations,
   updateAutomation,
@@ -389,6 +390,10 @@ app.get("/slack/channels", authMiddleware, async (req, res) => {
 
 app.get("/automations", authMiddleware, async (req, res) => {
   getUserAutomations(req, res);
+});
+
+app.get("/automations/recent", authMiddleware, async (req, res) => {
+  getRecentAutomations(req, res);
 });
 
 app.get("/automations/:id", authMiddleware, async (req, res) => {
