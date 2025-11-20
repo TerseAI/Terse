@@ -1,47 +1,47 @@
 import { Tab, TabGroup, TabList, TabPanel, TabPanels } from "@headlessui/react";
 import { Settings, Clock } from "lucide-react";
 import { useParams, useSearchParams } from "react-router-dom";
-import AutomationSetupTab, { AutomationSetupTabProps } from "./tabs/AutomationSetupTab";
-import AutomationRunHistoryTab from "./tabs/AutomationRunHistoryTab";
+import ChannelSetupTab, { ChannelSetupTabProps } from "./tabs/ChannelSetupTab";
+import ChannelRunHistoryTab from "./tabs/ChannelRunHistoryTab";
 import { useEffect, useState} from "react";
-import { useAutomation } from "../../hooks/api/useAutomations";
-import { AutomationPrompt, TransientAutomationInput, TransientAutomationOutput } from "../../shared/types";
-import { toTransientAutomationInput, toTransientAutomationOutput } from "../../utility/AutomationUtils";
+import { useChannel } from "../../hooks/api/useChannels";
+import { ChannelPrompt, TransientChannelInput, TransientChannelOutput } from "../../shared/types";
+import { toTransientChannelInput, toTransientChannelOutput } from "../../utility/ChannelUtils";
 
-function AutomationDetail() {
+function ChannelDetail() {
     const { id } = useParams<{ id: string }>();
     const [searchParams, setSearchParams] = useSearchParams();
 
-    // Only pass automationId if it's not "new"
-    const automationId = id && id !== 'new' ? id : null;
+    // Only pass channelId if it's not "new"
+    const channelId = id && id !== 'new' ? id : null;
 
-    // Fetch automation data using useSWR
-    const { automation, isLoading: isFetching, mutate } = useAutomation(automationId);
+    // Fetch channel data using useSWR
+    const { channel, isLoading: isFetching, mutate } = useChannel(channelId);
 
     // Local state for editing - use transient types for the editing interface
     const [name, setName] = useState<string | null>(null);
-    const [inputs, setInputs] = useState<TransientAutomationInput[]>([]);
-    const [output, setOutput] = useState<TransientAutomationOutput | undefined>(undefined);
-    const [prompt, setPrompt] = useState<AutomationPrompt | undefined>(undefined);
+    const [inputs, setInputs] = useState<TransientChannelInput[]>([]);
+    const [output, setOutput] = useState<TransientChannelOutput | undefined>(undefined);
+    const [prompt, setPrompt] = useState<ChannelPrompt | undefined>(undefined);
     const [isActive, setIsActive] = useState<boolean>(true);
 
-    // Sync local state with fetched data - convert from AutomationInput/Output to Transient types
+    // Sync local state with fetched data - convert from ChannelInput/Output to Transient types
     useEffect(() => {
-        if (automation) {
-            setName(automation.name);
-            setInputs(automation.inputs.map(toTransientAutomationInput));
-            setOutput(automation.output ? toTransientAutomationOutput(automation.output) : undefined);
-            setPrompt(automation.prompt);
-            setIsActive(automation.isActive);
-        } else if (!automationId) {
-            // Reset to blank state for new automation
+        if (channel) {
+            setName(channel.name);
+            setInputs(channel.inputs.map(toTransientChannelInput));
+            setOutput(channel.output ? toTransientChannelOutput(channel.output) : undefined);
+            setPrompt(channel.prompt);
+            setIsActive(channel.isActive);
+        } else if (!channelId) {
+            // Reset to blank state for new channel
             setName(null);
             setInputs([]);
             setOutput(undefined);
             setPrompt(undefined);
             setIsActive(true);
         }
-    }, [automation, automationId]);
+    }, [channel, channelId]);
 
     const tabs = ['setup', 'history'] as const;
     const tabFromQuery = searchParams.get('tab');
@@ -57,9 +57,9 @@ function AutomationDetail() {
     }, [searchParams]);
 
     // Prepare props for child components
-    // Note: inputs and output are already in TransientAutomationInput/Output format
-    const automationProps: AutomationSetupTabProps = {
-        automationId,
+    // Note: inputs and output are already in TransientChannelInput/Output format
+    const channelProps: ChannelSetupTabProps = {
+        channelId,
         name,
         setName,
         inputs,
@@ -97,10 +97,10 @@ function AutomationDetail() {
                         </TabList>
                         <TabPanels className="flex-1 min-h-0 flex">
                             <TabPanel className="flex-1 min-h-0 flex flex-col">
-                                <AutomationSetupTab {...automationProps} />
+                                <ChannelSetupTab {...channelProps} />
                             </TabPanel>
                             <TabPanel className="flex-1 min-h-0 flex flex-col">
-                                <AutomationRunHistoryTab automationId={automationId} />
+                                <ChannelRunHistoryTab channelId={channelId} />
                             </TabPanel>
                         </TabPanels>
                     </TabGroup>
@@ -110,4 +110,4 @@ function AutomationDetail() {
     )
 }
 
-export default AutomationDetail;
+export default ChannelDetail;

@@ -2,15 +2,15 @@ import { MessageCircle } from "lucide-react";
 import { SectionLayout } from "./components/SectionLayout";
 import { BackgroundAgentCard } from "./components/BackgroundAgentCard";
 import { forwardRef, ReactNode } from "react";
-import { AutomationPrompt } from "../../shared/types";
+import { ChannelPrompt } from "../../shared/types";
 
 type PromptSectionProps = {
     subtitle?: string;
     children?: ReactNode;
     icon?: ReactNode;
     isLoading?: boolean;
-    prompt: AutomationPrompt | undefined;
-    setPrompt: (prompt: AutomationPrompt | undefined) => void;
+    prompt: ChannelPrompt | undefined;
+    setPrompt: (prompt: ChannelPrompt | undefined) => void;
 }
 export const PromptSection = forwardRef<HTMLDivElement, PromptSectionProps>(({ prompt, setPrompt }, ref) => {
     return (

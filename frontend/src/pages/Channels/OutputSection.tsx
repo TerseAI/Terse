@@ -1,5 +1,5 @@
 import { forwardRef, ReactNode, useState } from "react";
-import { TransientAutomationOutput } from "../../shared/types";
+import { TransientChannelOutput } from "../../shared/types";
 import { SectionLayout } from "./components/SectionLayout";
 import { AddOutputModal } from "./components/AddOutputModal";
 import { FileText, Plus, AlertTriangle } from "lucide-react";
@@ -16,8 +16,8 @@ type OutputSectionProps = {
     subtitle?: string;
     children?: ReactNode;
     icon?: ReactNode;
-    output: TransientAutomationOutput | undefined;
-    setOutput: (output: TransientAutomationOutput | undefined) => void;
+    output: TransientChannelOutput | undefined;
+    setOutput: (output: TransientChannelOutput | undefined) => void;
     isLoading: boolean;
 }
 export const OutputSection = forwardRef<HTMLDivElement, OutputSectionProps>(({ output, setOutput, isLoading }, ref) => {
@@ -25,7 +25,7 @@ export const OutputSection = forwardRef<HTMLDivElement, OutputSectionProps>(({ o
 
     const handleSelectPlatform = (configType: ConfigType) => {
         // Clear all configs when switching platform (new integration type)
-        const newOutput: TransientAutomationOutput = {
+        const newOutput: TransientChannelOutput = {
             id: uuidv4(),
             config: undefined,
             configType: configType,
@@ -64,7 +64,7 @@ function OutputCard({
     output, 
     handleRemove,
     setOutput
-}: { output: TransientAutomationOutput, handleRemove: () => void, setOutput: (output: TransientAutomationOutput) => void }) {
+}: { output: TransientChannelOutput, handleRemove: () => void, setOutput: (output: TransientChannelOutput) => void }) {
 
     function onSelect(config: ConfigInstance) {
         setOutput({ ...output, config: config, configType: config.configType });

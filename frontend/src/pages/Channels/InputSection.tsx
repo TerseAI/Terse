@@ -1,5 +1,5 @@
 import { forwardRef, useState, useImperativeHandle, useRef } from "react";
-import { TransientAutomationInput } from "../../shared/types";
+import { TransientChannelInput } from "../../shared/types";
 import { ConfigInstance, ConfigType } from "@/shared/Configs";
 import { SectionLayout } from "./components/SectionLayout";
 import { AddInputModal } from "./components/AddInputModal";
@@ -15,8 +15,8 @@ import { InputConfigSelectorProps } from "@/components/IntegrationSelector/types
 import { ConfigTitle } from "./components/ConfigTitle";
 
 type InputsSectionProps = {
-    inputs: TransientAutomationInput[];
-    setInputs: (inputs: TransientAutomationInput[]) => void;
+    inputs: TransientChannelInput[];
+    setInputs: (inputs: TransientChannelInput[]) => void;
     isLoading: boolean;
 };
 
@@ -30,13 +30,13 @@ export const InputsSection = forwardRef<Map<string, HTMLDivElement>, InputsSecti
 
     const handleSelectPlatform = (config: ConfigType) => {
         const newInputId = uuidv4(); // We need to mint a placeholder ID for the new input so that we can identify it later.
-        const newInput: TransientAutomationInput = { id: newInputId, config: undefined, configType: config };
-        const newInputs: TransientAutomationInput[] = [...inputs, newInput];
+        const newInput: TransientChannelInput = { id: newInputId, config: undefined, configType: config };
+        const newInputs: TransientChannelInput[] = [...inputs, newInput];
         setInputs(newInputs);
         setShowAddModal(false);
     };
 
-    const handleSelectIntegration = (integrationId: string, input: TransientAutomationInput) => {
+    const handleSelectIntegration = (integrationId: string, input: TransientChannelInput) => {
         // Check if we have a matching input already in inputs
         const matchingInput = inputs.find(i => i.id === input.id);
         if (matchingInput) {
@@ -85,9 +85,9 @@ function InputCardsLayout({
     setShowAddModal,
     inputRefs
 }: {
-    inputs: TransientAutomationInput[], 
-    handleSelectIntegration: (integrationId: string, input: TransientAutomationInput) => void, 
-    setInputs: (inputs: TransientAutomationInput[]) => void, 
+    inputs: TransientChannelInput[], 
+    handleSelectIntegration: (integrationId: string, input: TransientChannelInput) => void, 
+    setInputs: (inputs: TransientChannelInput[]) => void, 
     handleRemove: (id: string) => void, 
     setShowAddModal: (show: boolean) => void,
     inputRefs: React.MutableRefObject<Map<string, HTMLDivElement>>
@@ -154,9 +154,9 @@ function InputCardsLayout({
 }
 
 const InputCard = forwardRef<HTMLDivElement, {
-    input: TransientAutomationInput,
-    inputs: TransientAutomationInput[],
-    setInputs: (inputs: TransientAutomationInput[]) => void, 
+    input: TransientChannelInput,
+    inputs: TransientChannelInput[],
+    setInputs: (inputs: TransientChannelInput[]) => void, 
     handleRemove: (id: string) => void
 }>(({
     input,

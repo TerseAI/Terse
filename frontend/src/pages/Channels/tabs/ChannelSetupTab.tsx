@@ -4,35 +4,35 @@ import { useNavigate } from "react-router-dom";
 import EditableTextField from '../../../components/ui/EditableTextField';
 import { InputsSection } from "../InputSection";
 import { OutputSection } from "../OutputSection";
-import { AutomationUpdate, TransientAutomationInput, TransientAutomationOutput } from "@/shared/types";
+import { ChannelUpdate, TransientChannelInput, TransientChannelOutput } from "@/shared/types";
 import { toast } from "sonner";
-import { getDefaultAutomationName, toAutomationInput, toAutomationOutput } from "@/utility/AutomationUtils";
-import { useAutomationCount } from "@/hooks/api/useAutomationCount";
+import { getDefaultChannelName, toChannelInput, toChannelOutput } from "@/utility/ChannelUtils";
+import { useChannelCount } from "@/hooks/api/useChannelCount";
 import { Conn, SVGFlowArrows } from "../components/FlowArrow";
 import { PromptSection } from "../PromptSection";
-import { useAutomationMutations } from "@/hooks/api/useAutomations";
+import { useChannelMutations } from "@/hooks/api/useChannels";
 import { type KeyedMutator } from 'swr';
-import { Automation, AutomationInput, AutomationOutput, AutomationPrompt } from "@/shared/types";
+import { Channel, ChannelInput, ChannelOutput, ChannelPrompt } from "@/shared/types";
 
-export type AutomationSetupTabProps = {
-    automationId: string | null;
+export type ChannelSetupTabProps = {
+    channelId: string | null;
     name: string | null;
     setName: (name: string) => void;
-    inputs: TransientAutomationInput[];
-    setInputs: (inputs: TransientAutomationInput[]) => void;
-    output: TransientAutomationOutput | undefined;
-    setOutput: (output: TransientAutomationOutput | undefined) => void;
-    prompt: AutomationPrompt | undefined;
-    setPrompt: (prompt: AutomationPrompt | undefined) => void;
+    inputs: TransientChannelInput[];
+    setInputs: (inputs: TransientChannelInput[]) => void;
+    output: TransientChannelOutput | undefined;
+    setOutput: (output: TransientChannelOutput | undefined) => void;
+    prompt: ChannelPrompt | undefined;
+    setPrompt: (prompt: ChannelPrompt | undefined) => void;
     isActive: boolean;
     setIsActive: (isActive: boolean) => void;
     isLoading: boolean;
-    mutate: KeyedMutator<Automation>;
+    mutate: KeyedMutator<Channel>;
 };
 
-function SaveAutomationButton({ 
+function SaveChannelButton({ 
     defaultName, 
-    automationId, 
+    channelId, 
     name, 
     inputs, 
     output, 
@@ -41,18 +41,18 @@ function SaveAutomationButton({
     mutate 
 }: { 
     defaultName: string;
-    automationId: string | null;
+    channelId: string | null;
     name: string | null;
-    inputs: AutomationInput[];
-    output: AutomationOutput | undefined;
-    prompt: AutomationPrompt | undefined;
+    inputs: ChannelInput[];
+    output: ChannelOutput | undefined;
+    prompt: ChannelPrompt | undefined;
     isActive: boolean;
-    mutate: KeyedMutator<Automation>;
+    mutate: KeyedMutator<Channel>;
 }) {
     const navigate = useNavigate();
     const [isSaving, setIsSaving] = useState(false);
     const [saveSuccess, setSaveSuccess] = useState(false);
-    const { createAutomation, updateAutomation } = useAutomationMutations();
+    const { createChannel, updateChannel } = useChannelMutations();
 
     // Validation: all required fields must be present
     // Each integration reports its own completeness
@@ -62,14 +62,14 @@ function SaveAutomationButton({
         !!output && output.config.isComplete() &&
         !!prompt?.text; // Ensure prompt is not empty
 
-    const isEditMode = !!automationId;
+    const isEditMode = !!channelId;
 
     const handleSave = async () => {
         if (!isComplete || !inputs.length || !output) return;
 
         setIsSaving(true);
         try {    
-            const automationData: AutomationUpdate = {
+            const channelData: ChannelUpdate = {
                 name: name || defaultName || '',
                 inputs,
                 output,
@@ -78,36 +78,36 @@ function SaveAutomationButton({
             };
 
             if (isEditMode) {
-                // Update existing automation
-                await updateAutomation({
-                    id: automationId!,
-                    data: automationData,
-                    mutateAutomation: mutate,
+                // Update existing channel
+                await updateChannel({
+                    id: channelId!,
+                    data: channelData,
+                    mutateChannel: mutate,
                 });
-            } else if (isComplete && automationData.output && automationData.inputs && automationData.inputs.length > 0) {
-                // Create new automation
-                const creation = await createAutomation({
-                    name: automationData.name || '',
-                    inputs: automationData.inputs || [],
-                    output: automationData.output,
-                    prompt: automationData.prompt || { text: '' },
-                    isActive: automationData.isActive || true,
+            } else if (isComplete && channelData.output && channelData.inputs && channelData.inputs.length > 0) {
+                // Create new channel
+                const creation = await createChannel({
+                    name: channelData.name || '',
+                    inputs: channelData.inputs || [],
+                    output: channelData.output,
+                    prompt: channelData.prompt || { text: '' },
+                    isActive: channelData.isActive || true,
                 });
 
                 if (creation?.id) {
-                    navigate(`/app/automations/${creation.id}`, { replace: true });
+                    navigate(`/app/channels/${creation.id}`, { replace: true });
                 }
             }
 
-            toast.success('Automation saved successfully');
+            toast.success('Channel saved successfully');
 
             setSaveSuccess(true);
             setTimeout(() => {
                 setSaveSuccess(false);
             }, 1000);
         } catch (error) {
-            console.error('Error saving automation:', error);
-            alert('Failed to save automation. Please try again.');
+            console.error('Error saving channel:', error);
+            alert('Failed to save channel. Please try again.');
         } finally {
             setIsSaving(false);
         }
@@ -118,14 +118,14 @@ function SaveAutomationButton({
             onClick={handleSave}
             disabled={!isComplete || isSaving}
         >
-            {isSaving ? 'Saving...' : saveSuccess ? 'Saved!' : isComplete ? (isEditMode ? 'Update Automation' : 'Save Automation') : 'Complete All Steps'}
+            {isSaving ? 'Saving...' : saveSuccess ? 'Saved!' : isComplete ? (isEditMode ? 'Update Channel' : 'Save Channel') : 'Complete All Steps'}
         </Button>
     )
 }
 
 
-export default function AutomationSetupTab({
-    automationId,
+export default function ChannelSetupTab({
+    channelId,
     name,
     setName,
     inputs,
@@ -137,9 +137,9 @@ export default function AutomationSetupTab({
     isActive,
     isLoading,
     mutate,
-}: AutomationSetupTabProps) {
-    const { totalCount } = useAutomationCount();
-    const defaultName = getDefaultAutomationName(totalCount);
+}: ChannelSetupTabProps) {
+    const { totalCount } = useChannelCount();
+    const defaultName = getDefaultChannelName(totalCount);
 
     const containerRef = useRef<HTMLDivElement>(null);
     const inputsSectionRef = useRef<Map<string, HTMLDivElement>>(new Map());
@@ -156,12 +156,12 @@ export default function AutomationSetupTab({
 
     const connections: Conn[] = []
 
-    const automationInputs = inputs.map(toAutomationInput).filter((i): i is AutomationInput => i !== null);
-    const automationOutput = toAutomationOutput(output)
+    const channelInputs = inputs.map(toChannelInput).filter((i): i is ChannelInput => i !== null);
+    const channelOutput = toChannelOutput(output)
 
     
-    if (automationInputs.length > 0 && inputsSectionRef.current != null && inputsSectionRef.current.size > 0) {
-        automationInputs.forEach((input) => {
+    if (channelInputs.length > 0 && inputsSectionRef.current != null && inputsSectionRef.current.size > 0) {
+        channelInputs.forEach((input) => {
             const inputCardRef = createMapElementRef(inputsSectionRef, input.id);
             connections.push({ 
                 id: `input-to-prompt-${input.config.integrationType}-${input.config.integrationId}`, 
@@ -181,12 +181,12 @@ export default function AutomationSetupTab({
                     <div className="flex items-center gap-2">
                         <EditableTextField value={name || defaultName || ''} onSave={(value) => setName(value)} />
                     </div>
-                    <SaveAutomationButton 
+                    <SaveChannelButton 
                         defaultName={defaultName}
-                        automationId={automationId}
+                        channelId={channelId}
                         name={name}
-                        inputs={automationInputs}
-                        output={automationOutput}
+                        inputs={channelInputs}
+                        output={channelOutput}
                         prompt={prompt}
                         isActive={isActive}
                         mutate={mutate}

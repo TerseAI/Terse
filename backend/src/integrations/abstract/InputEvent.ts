@@ -1,5 +1,5 @@
 import { IntegrationType } from "../../shared/Integrations";
-import { AutomationInputWithConfigs } from "../../types/prisma";
+import { ChannelInputWithConfigs } from "../../types/prisma";
 import { RunHistoryTrigger } from "../../shared/RunHistoryTypes";
 
 export abstract class InputEvent {
@@ -10,18 +10,18 @@ export abstract class InputEvent {
     }
 
     // This method will be used to format the Event into the format expected by the LLM. MUST BE A STRING
-    abstract formatForAutomationAgent(): string;
+    abstract formatForChannelAgent(): string;
 
     // Use this for formatting how we log this
     abstract debugLog(): string;
 
     /**
-     * Check if this event matches the given automation input.
+     * Check if this event matches the given channel input.
      * Each event subclass implements its own filtering logic.
-     * @param automationInput The automation input to check against (with config relations loaded)
-     * @returns true if this event matches the automation input
+     * @param channelInput The channel input to check against (with config relations loaded)
+     * @returns true if this event matches the channel input
      */
-    abstract matchesAutomationInput(automationInput: AutomationInputWithConfigs): boolean;
+    abstract matchesChannelInput(channelInput: ChannelInputWithConfigs): boolean;
 
     /**
      * Create trigger metadata for run history.

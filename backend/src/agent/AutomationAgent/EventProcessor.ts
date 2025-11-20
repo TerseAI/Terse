@@ -1,30 +1,30 @@
 import chalk from 'chalk';
 import { db } from '../../prismaClient';
-import { Automation, AutomationWithRelations, User } from '../../types/prisma';
+import { Channel, ChannelWithRelations, User } from '../../types/prisma';
 import { InputEvent } from '../../integrations/abstract/InputEvent';
 import { OutputFactory } from '../../outputs/abstract/OutputFactory';
-import { AutomationAgent } from './AutomationAgent';
+import { ChannelAgent } from './ChannelAgent';
 import { filterEvent } from './EventFilter';
 import { appendRunAction, createRunRecord, finalizeRunStatus, markRunFailed, markRunProcessed, markRunSkipped, FailureStage } from './runHistory';
-import { ApprovalResult } from './AutomationAgent';
+import { ApprovalResult } from './ChannelAgent';
 import { Agent, AgentOutputType, RunResult } from '@openai/agents';
 import { Session } from '../../server';
 import { emitCacheInvalidationWithKey, emitCacheInvalidationWithWildcard } from '../../realtimeSocket';
 import { getInputConfigInclude, getOutputConfigInclude } from '../../utility/prismaIncludes';
 
-// The job of this class is to take an Input Event, and check if it's a match for an Automation.
-// It will then create a Session, and summon the Automation Agent with the create user data.
+// The job of this class is to take an Input Event, and check if it's a match for an Channel.
+// It will then create a Session, and summon the Channel Agent with the create user data.
 
 export class ProcessorResult<T extends Session = Session> {
     success: boolean;
     message: string;
-    automation: Automation | null;
+    channel: Channel | null;
     approvalResult?: ApprovalResult<T, Agent<T, AgentOutputType>> | null;
 
-    constructor(success: boolean, message: string, automation: Automation | null, approvalResult?: ApprovalResult<T, Agent<T, AgentOutputType>> | null) {
+    constructor(success: boolean, message: string, channel: Channel | null, approvalResult?: ApprovalResult<T, Agent<T, AgentOutputType>> | null) {
         this.success = success;
         this.message = message;
-        this.automation = automation;
+        this.channel = channel;
         this.approvalResult = approvalResult;
     }
 }
@@ -46,8 +46,8 @@ export class EventProcessor {
         // Get integration type from event itself (no hardcoded checks)
         const integrationType = this.inputEvent.integrationType;
 
-        // Find all active automations for this user (already includes all config relations)
-        const automations: AutomationWithRelations[] = await db().automations.findMany({
+        // Find all active channels for this user (already includes all config relations)
+        const channels: ChannelWithRelations[] = await db().automations.findMany({
             where: {
                 user_id: this.user.id,
                 is_active: true,
@@ -61,35 +61,35 @@ export class EventProcessor {
                     include: getOutputConfigInclude()
                 }
             }
-        }) as AutomationWithRelations[];
+        }) as ChannelWithRelations[];
 
-        if (automations.length === 0) {
-            return [new ProcessorResult(false, "No automations found for this user", null)];
+        if (channels.length === 0) {
+            return [new ProcessorResult(false, "No channels found for this user", null)];
         }
 
-        // Filter automations using event's own filtering method
+        // Filter channels using event's own filtering method
         // Each event type handles its own matching logic (no switch statements)
-        const matchingAutomations = automations.filter(automation =>
-            automation.inputs.some(input => this.inputEvent.matchesAutomationInput(input))
+        const matchingChannels = channels.filter(channel =>
+            channel.inputs.some(input => this.inputEvent.matchesChannelInput(input))
         );
 
-        if (matchingAutomations.length === 0) {
-            return [new ProcessorResult(false, `No automations match this ${integrationType} event`, null)];
+        if (matchingChannels.length === 0) {
+            return [new ProcessorResult(false, `No channels match this ${integrationType} event`, null)];
         }
 
-        console.log(chalk.cyan(`Found ${matchingAutomations.length} matching automation(s) for ${integrationType} event`));
+        console.log(chalk.cyan(`Found ${matchingChannels.length} matching channel(s) for ${integrationType} event`));
 
-        // Process each matching automation
-        for (const automation of matchingAutomations) {
+        // Process each matching channel
+        for (const channel of matchingChannels) {
             try {
-                const result = await this.processAutomation(automation);
+                const result = await this.processChannel(channel);
                 results.push(result);
             } catch (error) {
-                console.error(chalk.red(`Error processing automation ${automation.id}:`), error);
+                console.error(chalk.red(`Error processing channel ${channel.id}:`), error);
                 results.push(new ProcessorResult(
                     false,
-                    `Error processing automation: ${error instanceof Error ? error.message : 'Unknown error'}`,
-                    automation
+                    `Error processing channel: ${error instanceof Error ? error.message : 'Unknown error'}`,
+                    channel
                 ));
             }
         }
@@ -97,33 +97,33 @@ export class EventProcessor {
         return results;
     }
 
-    private async processAutomation(automation: AutomationWithRelations): Promise<ProcessorResult> {
-        console.log(chalk.cyan(`Processing automation: ${automation.name} (${automation.id})`));
+    private async processChannel(channel: ChannelWithRelations): Promise<ProcessorResult> {
+        console.log(chalk.cyan(`Processing channel: ${channel.name} (${channel.id})`));
 
-        if (!automation.prompt) {
-            return new ProcessorResult(false, "No prompt found for this automation", automation);
+        if (!channel.prompt) {
+            return new ProcessorResult(false, "No prompt found for this channel", channel);
         }
 
         // Initialize run history record with trigger details
         const trigger = this.inputEvent.createTriggerMetadata();
         const runId = await createRunRecord({
-            automationId: automation.id,
+            channelId: channel.id,
             trigger,
         });
-        emitCacheInvalidationWithWildcard(this.user.id, 'runHistory', automation.id);
-        emitCacheInvalidationWithKey(this.user.id, 'recentAutomations');
+        emitCacheInvalidationWithWildcard(this.user.id, 'runHistory', channel.id);
+        emitCacheInvalidationWithKey(this.user.id, 'recentChannels');
 
-        // Get the output from automation relations (already fetched with config)
-        const outputIntegration = automation.output;
+        // Get the output from channel relations (already fetched with config)
+        const outputIntegration = channel.output;
 
         if (!outputIntegration) {
-            return new ProcessorResult(false, "No output integration found for this automation", automation);
+            return new ProcessorResult(false, "No output integration found for this channel", channel);
         }
 
         // Use OutputFactory to create output based on config type (no hardcoded Notion logic)
         const output = OutputFactory.createOutput(outputIntegration.config_type);
         if (!output) {
-            return new ProcessorResult(false, `Output type ${outputIntegration.config_type} is not supported`, automation);
+            return new ProcessorResult(false, `Output type ${outputIntegration.config_type} is not supported`, channel);
         }
 
         // Use output's config-aware session creation (no hardcoded config extraction)
@@ -139,26 +139,26 @@ export class EventProcessor {
             return new ProcessorResult(
                 false,
                 `Failed to create session: ${error instanceof Error ? error.message : 'Unknown error'}`,
-                automation
+                channel
             );
         }
 
-        // Filter the event using AI to see if it's relevant to this automation
+        // Filter the event using AI to see if it's relevant to this channel
         let filterResult;
         try {
             filterResult = await filterEvent<Session>(
                 this.inputEvent,
-                automation.prompt,
+                channel.prompt,
                 session
             );
         } catch (error) {
             // Log the error and update run history
             const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-            console.error(chalk.red(`Error filtering event for automation "${automation.name}":`), error);
+            console.error(chalk.red(`Error filtering event for channel "${channel.name}":`), error);
             
             try {
                 await markRunFailed(runId, errorMessage, 'filter');
-                emitCacheInvalidationWithWildcard(this.user.id, 'runHistory', automation.id);
+                emitCacheInvalidationWithWildcard(this.user.id, 'runHistory', channel.id);
             } catch (e) {
                 console.error(chalk.yellow('Failed to mark run as failed'), e);
             }
@@ -166,18 +166,18 @@ export class EventProcessor {
             return new ProcessorResult(
                 false,
                 `Error during filtering: ${errorMessage}`,
-                automation
+                channel
             );
         }
 
         if (!filterResult.isRelevant) {
-            console.log(chalk.gray(`Event is not relevant to automation "${automation.name}": ${filterResult.reason}`));
+            console.log(chalk.gray(`Event is not relevant to channel "${channel.name}": ${filterResult.reason}`));
             try {
                 await markRunSkipped(runId, filterResult.reason);
             } catch (e) {
                 console.error(chalk.yellow('Failed to mark run skipped'), e);
             }
-            return new ProcessorResult(false, `Not relevant: ${filterResult.reason}`, automation);
+            return new ProcessorResult(false, `Not relevant: ${filterResult.reason}`, channel);
         }
 
         try {
@@ -186,25 +186,25 @@ export class EventProcessor {
             console.error(chalk.yellow('Failed to mark run processed'), e);
         }
 
-        console.log(chalk.green(`Event is relevant to automation "${automation.name}"`));
+        console.log(chalk.green(`Event is relevant to channel "${channel.name}"`));
 
-        // Create automation agent with the session and output
-        const automationAgent = new AutomationAgent(session, output, automation.prompt, automation.inputs, outputIntegration);
-        await automationAgent.initializeAgent();
-        automationAgent.setInputEvent(this.inputEvent);
+        // Create channel agent with the session and output
+        const channelAgent = new ChannelAgent(session, output, channel.prompt, channel.inputs, outputIntegration);
+        await channelAgent.initializeAgent();
+        channelAgent.setInputEvent(this.inputEvent);
 
-        // Run the automation agent
+        // Run the channel agent
         let result: ApprovalResult<Session, Agent<Session, AgentOutputType>>;
         try {
-            result = await automationAgent.run() as ApprovalResult<Session, Agent<Session, AgentOutputType>>;
+            result = await channelAgent.run() as ApprovalResult<Session, Agent<Session, AgentOutputType>>;
         } catch (error) {
             // Log the error and update run history
             const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-            console.error(chalk.red(`Error running automation agent for "${automation.name}":`), error);
+            console.error(chalk.red(`Error running channel agent for "${channel.name}":`), error);
             
             try {
                 await markRunFailed(runId, errorMessage, 'agent');
-                emitCacheInvalidationWithWildcard(this.user.id, 'runHistory', automation.id);
+                emitCacheInvalidationWithWildcard(this.user.id, 'runHistory', channel.id);
             } catch (e) {
                 console.error(chalk.yellow('Failed to mark run as failed'), e);
             }
@@ -214,11 +214,11 @@ export class EventProcessor {
         }
 
         if (result.status === 'completed') {
-            console.log(chalk.green(`Automation "${automation.name}" completed:`), result.result.finalOutput);
-            return persistRunResult(runId, result.result, session, automation, result);
+            console.log(chalk.green(`Channel "${channel.name}" completed:`), result.result.finalOutput);
+            return persistRunResult(runId, result.result, session, channel, result);
         } else {
-            console.log(chalk.yellow(`Automation "${automation.name}" awaiting approval:`));
-            return new ProcessorResult(false, "Automation awaiting approval", automation, result);
+            console.log(chalk.yellow(`Channel "${channel.name}" awaiting approval:`));
+            return new ProcessorResult(false, "Channel awaiting approval", channel, result);
         }
     }
 }
@@ -227,14 +227,14 @@ async function persistRunResult<T extends Session>(
     runId: string,
     result: RunResult<T, Agent<T, AgentOutputType>>,
     session: T,
-    automation: Automation,
+    channel: Channel,
     approvalResult?: ApprovalResult<T, Agent<T, AgentOutputType>> | null
 ): Promise<ProcessorResult<T>> {
     if (session.runActions) {
         for (const action of session.runActions) {
             try {
                 await appendRunAction(runId, action);
-                emitCacheInvalidationWithWildcard(session.user.id, 'runHistory', automation.id);
+                emitCacheInvalidationWithWildcard(session.user.id, 'runHistory', channel.id);
                 emitCacheInvalidationWithKey(session.user.id, 'recentActions');
             } catch (e) {
                 console.error(chalk.yellow('Failed to append run action'), e);
@@ -246,8 +246,8 @@ async function persistRunResult<T extends Session>(
     const hasFinalOutput = Boolean(result.finalOutput);
     try {
         await finalizeRunStatus(runId, hasFinalOutput ? 'success' : 'failed');
-        // Invalidate all run history queries for this automation when status changes
-        emitCacheInvalidationWithWildcard(session.user.id, 'runHistory', automation.id);
+        // Invalidate all run history queries for this channel when status changes
+        emitCacheInvalidationWithWildcard(session.user.id, 'runHistory', channel.id);
     } catch (e) {
         console.error(chalk.yellow('Failed to finalize run status'), e);
     }
@@ -256,7 +256,7 @@ async function persistRunResult<T extends Session>(
     return new ProcessorResult<T>(
         hasFinalOutput,
         finalOutput,
-        automation,
+        channel,
         approvalResult
     );
 }

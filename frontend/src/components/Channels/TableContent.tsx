@@ -1,5 +1,5 @@
 import { flexRender, Table } from '@tanstack/react-table';
-import { Automation } from '../../shared/types';
+import { Channel } from '../../shared/types';
 import {
     Table as ShadcnTable,
     TableBody,
@@ -10,8 +10,8 @@ import {
 } from '../ui/table';
 
 interface TableContentProps {
-    table: Table<Automation>;
-    onEdit: (automation: Automation) => void;
+    table: Table<Channel>;
+    onEdit: (channel: Channel) => void;
 }
 
 export function TableContent({ table, onEdit }: TableContentProps) {

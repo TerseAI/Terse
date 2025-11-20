@@ -1,8 +1,8 @@
-import { TransientAutomationInput } from '@/shared/types';
+import { TransientChannelInput } from '@/shared/types';
 import { ConfigInstance } from '../../shared/Configs';
 
 export interface InputConfigSelectorProps {
-    input: TransientAutomationInput;
+    input: TransientChannelInput;
     variant: 'card' | 'dialog';
     setConfig: (config: ConfigInstance) => void;
 }

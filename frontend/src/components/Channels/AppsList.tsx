@@ -1,22 +1,22 @@
 import { ChevronRight } from 'lucide-react';
-import { Automation } from '../../shared/types';
-import { IconForIntegration } from '../../pages/Automations/components/Integration';
+import { Channel } from '../../shared/types';
+import { IconForIntegration } from '../../pages/Channels/components/Integration';
 import { IntegrationType } from "@/shared/Integrations"
 import { capitalize } from '../../lib/utils';
 
 interface AppsListProps {
-    automation: Automation;
+    channel: Channel;
 }
 
-export function AppsList({ automation }: AppsListProps) {
+export function AppsList({ channel }: AppsListProps) {
     // Count integrations using a hashmap
     const integrationCounts = new Map<IntegrationType, number>();
-    automation.inputs.forEach(input => {
+    channel.inputs.forEach(input => {
         const count = integrationCounts.get(input.config.integrationType) || 0;
         integrationCounts.set(input.config.integrationType, count + 1);
     });
 
-    const outputIntegration = automation.output?.config?.integrationType;
+    const outputIntegration = channel.output?.config?.integrationType;
 
     return (
         <div className="flex items-center gap-1.5">

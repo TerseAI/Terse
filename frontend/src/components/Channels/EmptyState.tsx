@@ -21,11 +21,11 @@ export function EmptyState({ hasFilters, onCreateNew }: EmptyStateProps) {
                 <EmptyMedia variant="icon">
                     <Settings className="text-primary" />
                 </EmptyMedia>
-                <EmptyTitle>No automations found</EmptyTitle>
+                <EmptyTitle>No channels found</EmptyTitle>
                 <EmptyDescription>
                     {hasFilters
                         ? "Try adjusting your search or filters"
-                        : "Create your first automation to get started"}
+                        : "Create your first channel to get started"}
                 </EmptyDescription>
             </EmptyHeader>
             {!hasFilters && onCreateNew && (
@@ -35,7 +35,7 @@ export function EmptyState({ hasFilters, onCreateNew }: EmptyStateProps) {
                         onClick={onCreateNew}
                     >
                         <Plus className="h-4 w-4" />
-                        Add Automation
+                        Add Channel
                     </Button>
                 </EmptyContent>
             )}
