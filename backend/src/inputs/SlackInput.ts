@@ -14,8 +14,6 @@ export class SlackInput implements Input<SlackConfig> {
     }
 
     async addInputToAutomation(tx: PrismaTransaction, automationInputId: string, input: SlackConfig): Promise<void> {
-        console.log(chalk.cyan('🔵 [SLACK INPUT] input:', JSON.stringify(input, null, 2)));
-        console.log(chalk.cyan('🔵 [SLACK INPUT] automationInputId:', automationInputId));
         await tx.automation_slack_configs.create({
             data: {
                 automation_input_id: automationInputId,

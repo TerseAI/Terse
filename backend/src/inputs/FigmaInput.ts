@@ -15,8 +15,6 @@ export class FigmaInput implements Input<FigmaConfig> {
     }
 
     async addInputToAutomation(tx: PrismaTransaction, automationInputId: string, input: FigmaConfig): Promise<void> {
-        console.log(chalk.cyan('🔵 [SLACK INPUT] input:', JSON.stringify(input, null, 2)));
-        console.log(chalk.cyan('🔵 [SLACK INPUT] automationInputId:', automationInputId));
         await tx.automation_figma_configs.create({
             data: {
                 automation_input_id: automationInputId,

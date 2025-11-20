@@ -14,8 +14,6 @@ export class GithubInput implements Input<GitHubConfig> {
     }
 
     async addInputToAutomation(tx: PrismaTransaction, automationInputId: string, input: GitHubConfig): Promise<void> {
-        console.log(chalk.cyan('🔵 [SLACK INPUT] input:', JSON.stringify(input, null, 2)));
-        console.log(chalk.cyan('🔵 [SLACK INPUT] automationInputId:', automationInputId));
         await tx.automation_github_configs.create({
             data: {
                 automation_input_id: automationInputId,
