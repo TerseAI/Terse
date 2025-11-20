@@ -1,43 +1,19 @@
 import { useState } from 'react';
+import { IntegrationType } from "@/shared/Integrations"
 import { BackendProvider } from '../services/backend';
-import { Integration } from "@/types/Integration";
 
-export function useOAuthConnection(integrationType: Integration) {
+export function useOAuthConnection(integrationType: IntegrationType) {
     const [isConnecting, setIsConnecting] = useState(false);
 
     const connect = async () => {
         setIsConnecting(true);
         try {
-            let oauthUrl = '';
-
-            switch (integrationType) {
-                case Integration.GMAIL:
-                    const gmailResponse = await BackendProvider.requestGmailOAuthUrl();
-                    oauthUrl = gmailResponse.url;
-                    break;
-                case Integration.NOTION:
-                    const notionResponse = await BackendProvider.requestNotionOAuthUrl();
-                    oauthUrl = notionResponse.url;
-                    break;
-                case Integration.SLACK:
-                    const slackResponse = await BackendProvider.requestSlackOAuthUrl();
-                    oauthUrl = slackResponse.url;
-                    break;
-                case Integration.GITHUB:
-                    const githubResponse = await BackendProvider.requestGitHubAppInstallationUrl();
-                    oauthUrl = githubResponse.installationUrl;
-                    break;
-                case Integration.FIGMA:
-                    const figmaResponse = await BackendProvider.requestFigmaOAuthUrl();
-                    oauthUrl = figmaResponse.url;
-                    break;
-                default:
-                    console.error('OAuth not supported for this integration type');
-                    return;
-            }
-
-            if (oauthUrl) {
-                window.open(oauthUrl, 'oauth-popup', 'width=600,height=700');
+            const installationDetails = await BackendProvider.getIntegrationInstallationDetails(integrationType);
+            
+            if (installationDetails?.oauthUrl) {
+                window.open(installationDetails.oauthUrl, 'oauth-popup', 'width=600,height=700');
+            } else {
+                console.error('OAuth URL not available for this integration type');
             }
         } catch (error) {
             console.error('Error initiating OAuth:', error);

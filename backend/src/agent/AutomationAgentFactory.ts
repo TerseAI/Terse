@@ -1,8 +1,10 @@
 import chalk from 'chalk';
 import { db } from '../prismaClient';
 import { AutomationAgent } from './AutomationAgent/AutomationAgent';
-import { NotionDatabaseOutput, NotionDatabaseSession } from '../Updater/Outputs/NotionDatabaseOutput';
-import { AutomationNotionConfig, AutomationWithRelations, User } from '../types/prisma';
+import { NotionDatabaseOutput, NotionDatabaseSession } from '../outputs/NotionDatabaseOutput';
+import { AutomationWithRelations, User } from '../types/prisma';
+import { NotionConfig } from '../shared/Configs';
+import { getInputConfigInclude, getOutputConfigInclude } from 'src/utility/prismaIncludes';
 
 /**
  * Factory for creating AutomationAgent instances from automation configurations.
@@ -12,7 +14,7 @@ export class AutomationAgentFactory {
   static async createFromAutomationId(
     automationId: string,
     isUserInitiated: boolean = true
-  ): Promise<AutomationAgent<NotionDatabaseSession>> {
+  ): Promise<AutomationAgent<NotionDatabaseSession, NotionConfig>> {
     try {
       // Load automation with all relationships
       const automation: AutomationWithRelations | null = await db().automations.findUnique({
@@ -20,30 +22,10 @@ export class AutomationAgentFactory {
         include: {
           prompt: true,
           inputs: {
-            include: {
-              slack_config: true,
-              notion_config: true,
-              linear_config: true,
-              jira_config: true,
-              github_config: true,
-              notion_page_config: true,
-              confluence_config: true,
-              figma_config: true,
-              gmail_config: true,
-            },
+            include: getInputConfigInclude(),
           },
           output: {
-            include: {
-              slack_config: true,
-              notion_config: true,
-              linear_config: true,
-              jira_config: true,
-              github_config: true,
-              notion_page_config: true,
-              figma_config: true,
-              gmail_config: true,
-              confluence_config: true,
-            },
+            include: getOutputConfigInclude(),
           },
         },
       });
@@ -87,7 +69,7 @@ export class AutomationAgentFactory {
       );
 
       // Create fresh AutomationAgent
-      const automationAgent = new AutomationAgent<NotionDatabaseSession>(
+      const automationAgent = new AutomationAgent<NotionDatabaseSession, NotionConfig>(
         session,
         notionOutput,
         automation.prompt!,

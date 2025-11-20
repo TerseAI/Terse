@@ -1,4 +1,5 @@
 import { Project, Ticket } from "./TicketSystem";
+import { ConfigInstance, ConfigType } from "./Configs";
 
 export type User = {
   id: string;
@@ -40,19 +41,6 @@ export type ProjectActivityEvent = {
   title: string;
 };
 
-export type GithubIntegration = {
-  id: string;
-  repositoryName: string;
-  owner?: string;
-};
-
-export type LinearIntegration = {
-  id: string;
-  workspaceName?: string;
-  linearTeamId?: string;
-  linearTeamName?: string;
-};
-
 export type LinearTeam = {
   id: string;
   name: string;
@@ -62,22 +50,6 @@ export type LinearTeam = {
 export type LinearWorkspace = {
   id: string;
   name: string;
-};
-
-export type LinearApiKeyValidationResponse = {
-  valid: boolean;
-  workspace?: LinearWorkspace;
-  teams?: LinearTeam[];
-  error?: string;
-};
-
-export type JiraIntegration = {
-  id: string;
-  baseUrl: string;
-  email: string;
-  siteName?: string;
-  projectKey?: string;
-  projectName?: string;
 };
 
 export type JiraProject = {
@@ -90,37 +62,6 @@ export type JiraCredentialsValidationResponse = {
   valid: boolean;
   projects?: JiraProject[];
   error?: string;
-};
-
-export type SlackIntegration = {
-  id: string;
-  teamId?: string;
-  teamName?: string;
-};
-
-export type GmailIntegration = {
-  id: string;
-  email: string; // User's Gmail address
-  historyId: string; // For tracking changes since last sync
-  watchExpiration: Date; // When the watch needs to be renewed (max 7 days)
-};
-
-export type FigmaIntegration = {
-  id: string;
-  figma_user_id: string;
-  token_expiry: Date;
-};
-
-export type ConfluenceIntegration = {
-  id: string;
-  confluence_user_email: string;
-  base_url: string;
-};
-
-export type NotionIntegration = {
-  id: string;
-  workspaceId?: string;
-  workspaceName?: string;
 };
 
 export type NotionResourceType = 'database' | 'page';
@@ -160,70 +101,6 @@ export enum SlackChannelType {
   IM = 'im'
 }
 
-/**
- * Slack event data
- * Processed Slack message event data used for automation events
- */
-export interface SlackEventData {
-  channelId: string;
-  channelName?: string;
-  userId: string;
-  userName?: string;
-  text: string;
-  timestamp: string;
-  threadTimestamp?: string;
-  teamId: string;
-  // Permalink for the message (if available)
-  permalink?: string;
-  channelType?: SlackChannelType;
-}
-
-export type IntegrationsStatus = {
-  integrations: {
-    github?: GithubIntegration[];
-    linear?: LinearIntegration[];
-    jira?: JiraIntegration[];
-    slack?: SlackIntegration[];
-    gmail?: GmailIntegration[];
-    notion?: NotionIntegration[];
-    figma?: FigmaIntegration[];
-    confluence?: ConfluenceIntegration[];
-  };
-};
-
-// Typed config per integration type
-export type SlackConfig = {
-  channelId?: string;
-  channelName?: string;
-  listenToUserDms?: boolean;
-};
-
-export type NotionConfig = {
-  databaseId?: string;
-  databaseName?: string;
-};
-
-export type NotionPageConfig = {
-  pageId?: string;
-  pageName?: string;
-};
-
-export type LinearConfig = {
-  projectId?: string;
-  projectName?: string;
-};
-
-export type JiraConfig = {
-  projectKey?: string;
-  projectId?: string;
-};
-
-export type ConfluenceConfig = {
-  spaceName: string;
-  spaceId: string;
-  pageId: string; // Page ID (required for outputs - specific page to write to)
-  pageName: string; // Page display name (for UI, optional)
-};
 
 export type ConfluencePage = {
   id: string;
@@ -261,22 +138,6 @@ export type UseConfluenceResourcesReturn<MutateType = any> = {
   error: unknown;
   isValidating: boolean;
   mutate: MutateType;
-};
-
-export type GitHubConfig = {
-  repositoryIds: number[];
-  // Note: owner and name not needed - they're part of repository identity
-  // Future: branch, path filters
-};
-
-export type GmailConfig = {
-  // Currently empty, but typed for future extensibility
-};
-
-export type FigmaConfig = {
-  fileKey: string;
-  fileName: string; // Optional display name
-  teamId: string; // Figma team ID (required for webhook creation)
 };
 
 // Figma webhook and API types
@@ -364,36 +225,6 @@ export type FigmaClientMeta = {
   node_offset: { x: number; y: number };
 };
 
-/**
- * Figma webhook comment text object (from webhook payload)
- */
-export interface FigmaWebhookCommentText {
-  text: string;
-}
-
-/**
- * Raw Figma webhook event payload
- * Generated from actual Figma webhook payload structure
- */
-export interface FigmaWebhookEvent {
-  event_type: string;
-  file_key: string;
-  file_name: string;
-  passcode: string;
-  protocol_version: string;
-  webhook_id: string;
-  timestamp: string;
-  retries: number;
-  // FILE_COMMENT specific fields
-  comment_id: string;
-  comment: FigmaWebhookCommentText[];
-  created_at: string;
-  resolved_at: string; // Empty string if not resolved
-  parent_id: string; // Empty string if no parent
-  order_id: string;
-  mentions: unknown[]; // Array of mention objects (structure unknown)
-  triggered_by: FigmaWebhookUser;
-}
 
 /**
  * Figma API comment response structure
@@ -447,45 +278,37 @@ export interface FigmaCommentEventData {
 
 export type AutomationInput = {
   id: string;
-  integration: string;
-  integrationId?: string;
-  // Typed config based on integration type
-  slackConfig?: SlackConfig;
-  notionConfig?: NotionConfig;
-  linearConfig?: LinearConfig;
-  jiraConfig?: JiraConfig;
-  confluenceConfig?: ConfluenceConfig;
-  githubConfig?: GitHubConfig;
-  gmailConfig?: GmailConfig;
-  figmaConfig?: FigmaConfig;
+  config: ConfigInstance;
 };
 
 export type AutomationOutput = {
-  integration: string;
-  integrationId?: string;
-  // Typed config based on integration type
-  slackConfig?: SlackConfig;
-  notionConfig?: NotionConfig;
-  notionPageConfig?: NotionPageConfig;
-  linearConfig?: LinearConfig;
-  jiraConfig?: JiraConfig;
-  confluenceConfig?: ConfluenceConfig;
-  githubConfig?: GitHubConfig;
-  gmailConfig?: GmailConfig;
-  figmaConfig?: FigmaConfig;
+  id: string;
+  config: ConfigInstance;
 };
 
 export type AutomationPrompt = {
   text: string;
 };
 
+export type TransientAutomationInput = {
+  id: string;
+  config?: ConfigInstance;
+  configType: ConfigType;
+};
+
+export type TransientAutomationOutput = {
+  id: string;
+  config?: ConfigInstance;
+  configType: ConfigType;
+};
+
 export type Automation = {
     id: string;
     name: string;
     isActive: boolean;
-    prompt?: AutomationPrompt;
+    prompt: AutomationPrompt;
     inputs: AutomationInput[];
-    output?: AutomationOutput;
+    output: AutomationOutput;
 };
 
 export type AutomationUpdate = {
@@ -511,6 +334,7 @@ export type GithubAppInstallationCallbackRequest = {
   email: string;
   username: string;
   installationId: number;
+  accountName: string | null;
   repositories: Repository[];
 }
 
@@ -525,4 +349,8 @@ export type GetGithubRepositoriesForIntegrationRequest = {
 
 export type GetGithubRepositoriesForIntegrationResponse = {
   repositories: Repository[];
+}
+
+export type OAuthInstallationDetails = {
+  oauthUrl: string;
 }

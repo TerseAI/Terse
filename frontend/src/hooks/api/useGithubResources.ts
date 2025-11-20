@@ -13,10 +13,10 @@ type UseGithubResourcesReturn = {
     mutate: KeyedMutator<GetGithubRepositoriesForIntegrationResponse>;
 };
 
-export function useGithubResources(): UseGithubResourcesReturn {
+export function useGithubResources(installationId: number | null | undefined): UseGithubResourcesReturn {
     const { data, error, isLoading, isValidating, mutate } = useSWR<GetGithubRepositoriesForIntegrationResponse>(
-        githubRepositoriesKey(),
-        () => BackendProvider.getGithubRepositoriesForIntegration(),
+        installationId ? githubRepositoriesKey(installationId) : null,
+        installationId ? () => BackendProvider.getGithubRepositoriesForIntegration(installationId) : null,
         {
             keepPreviousData: true,
             revalidateOnFocus: false,

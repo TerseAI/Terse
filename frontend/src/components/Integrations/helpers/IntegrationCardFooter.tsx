@@ -2,20 +2,17 @@ import { CardFooter } from "../../ui/card";
 import { Button } from "../../ui/button";
 
 interface IntegrationCardFooterProps {
-    oauthUrl: string | null;
+    connect?: () => void;
+    isConnecting?: boolean;
 }
 
-export function IntegrationCardFooter({ oauthUrl }: IntegrationCardFooterProps) {
+export function IntegrationCardFooter({ connect, isConnecting = false }: IntegrationCardFooterProps) {
     return (
         <CardFooter>
             <Button 
                 variant="outline" 
-                disabled={!oauthUrl}
-                onClick={() => {
-                    if (oauthUrl) {
-                        window.open(oauthUrl, 'oauth-popup', 'width=600,height=700');
-                    }
-                }}
+                disabled={isConnecting || !connect}
+                onClick={connect || undefined}
             >
                 Manage Connection
             </Button>

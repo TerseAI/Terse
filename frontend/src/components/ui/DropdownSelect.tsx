@@ -8,7 +8,7 @@ import {
 import { Button } from "./button";
 import { ChevronDown } from "lucide-react";
 
-type StatusOption = {
+export type StatusOption = {
     label: string;
     value: string;
 }

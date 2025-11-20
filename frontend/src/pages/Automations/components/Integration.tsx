@@ -1,25 +1,46 @@
-import { Integration } from "@/types/Integration";
+import { ConfigType } from "@/shared/Configs";
+import { IntegrationType } from "@/shared/Integrations";
 
-export function IconForInputType({ type }: { type: Integration }) {
+export function IconForConfigType({ type }: { type: ConfigType }) {
     switch (type) {
-        case Integration.GITHUB:
+        case ConfigType.GITHUB:
             return <GithubIcon />;
-        case Integration.LINEAR:
+        case ConfigType.LINEAR:
             return <LinearIcon />;
-        case Integration.SLACK:
+        case ConfigType.SLACK:
             return <SlackIcon />;
-        case Integration.GMAIL:
+        case ConfigType.GMAIL:
             return <GmailIcon />;
-        case Integration.NOTION:
+        case ConfigType.NOTION_DATABASE:
+        case ConfigType.NOTION_PAGE:
             return <NotionIcon />;
-        case Integration.NOTION_PAGE:
-            return <NotionIcon />;
-        case Integration.FIGMA:
+        case ConfigType.FIGMA:
             return <FigmaIcon />;
-        case Integration.JIRA:
+        case ConfigType.JIRA:
+        case ConfigType.CONFLUENCE:
             return <JiraIcon />;
-        case Integration.CONFLUENCE:
-            return <ConfluenceIcon />;
+        default:
+            // Exhaustive check: TypeScript will error if any IntegrationType case is missing
+            throw type satisfies never;
+    }
+}
+
+export function IconForIntegration({ integration }: { integration: IntegrationType }) {
+    switch (integration) {
+        case IntegrationType.GITHUB:
+            return <GithubIcon />;
+        case IntegrationType.LINEAR:
+            return <LinearIcon />;
+        case IntegrationType.SLACK:
+            return <SlackIcon />;
+        case IntegrationType.GMAIL:
+            return <GmailIcon />;
+        case IntegrationType.NOTION:
+            return <NotionIcon />;
+        case IntegrationType.FIGMA:
+            return <FigmaIcon />;
+        case IntegrationType.ATLASSIAN:
+            return <JiraConfluenceIcon />;
     }
 }
 
@@ -74,6 +95,11 @@ function JiraIcon() {
     return <img src="/jira.svg" alt="Jira" className="w-full h-full object-contain" />;
 }
 
-function ConfluenceIcon() {
-    return <img src="/confluence.svg" alt="Confluence" className="w-full h-full object-contain" />;
+function JiraConfluenceIcon() {
+    return (
+        <div className="flex items-center gap-2">
+            <img src="/jira.svg" alt="Jira" className="w-full h-full object-contain" />
+            <img src="/confluence.svg" alt="Confluence" className="w-full h-full object-contain" />
+        </div>
+    );
 }
