@@ -22,7 +22,6 @@ export class GithubIntegrationManager implements Integration<GithubIntegration, 
         const userGithubInstallations = await db().user_github_installation.findMany({
             where: { user_id: userId }
         });
-        console.log("userGithubInstallations", JSON.stringify(userGithubInstallations, null, 2));
         return userGithubInstallations.map(ugi => ({
             id: ugi.id,
             installation_id: ugi.installation_id,

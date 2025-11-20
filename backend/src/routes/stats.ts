@@ -14,40 +14,66 @@ export async function getStats(req: Request, res: Response) {
         return res.status(401).json({ error: "Unauthorized" });
     }
 
-    try {
-        const prisma = db();
-        const userId = user.id;
+    const prisma = db();
+    const userId = user.id;
 
-        // Calculate date ranges for comparison
-        const now = new Date();
-        let currentPeriodStart: Date;
-        let previousPeriodStart: Date;
-        let previousPeriodEnd: Date;
+    // Calculate date ranges for comparison
+    const now = new Date();
+    let currentPeriodStart: Date;
+    let previousPeriodStart: Date;
+    let previousPeriodEnd: Date;
 
-        if (METRICS_USE_MONTHLY) {
-            // Monthly periods
-            currentPeriodStart = new Date(now.getFullYear(), now.getMonth(), 1); // Start of current month
-            previousPeriodStart = new Date(now.getFullYear(), now.getMonth() - 1, 1); // Start of previous month
-            previousPeriodEnd = new Date(now.getFullYear(), now.getMonth(), 0); // End of previous month
-        } else {
-            // Days-based periods
-            currentPeriodStart = new Date(now);
-            currentPeriodStart.setDate(currentPeriodStart.getDate() - METRICS_TIME_WINDOW_DAYS);
-            currentPeriodStart.setHours(0, 0, 0, 0);
-            
-            previousPeriodEnd = new Date(currentPeriodStart);
-            previousPeriodEnd.setMilliseconds(previousPeriodEnd.getMilliseconds() - 1);
-            
-            previousPeriodStart = new Date(previousPeriodEnd);
-            previousPeriodStart.setDate(previousPeriodStart.getDate() - METRICS_TIME_WINDOW_DAYS);
-            previousPeriodStart.setHours(0, 0, 0, 0);
-        }
+    if (METRICS_USE_MONTHLY) {
+        currentPeriodStart = new Date(now.getFullYear(), now.getMonth(), 1); // Start of current month
+        previousPeriodStart = new Date(now.getFullYear(), now.getMonth() - 1, 1); // Start of previous month
+        previousPeriodEnd = new Date(now.getFullYear(), now.getMonth(), 0); // End of previous month
+    } else {
+        currentPeriodStart = new Date(now);
+        currentPeriodStart.setDate(currentPeriodStart.getDate() - METRICS_TIME_WINDOW_DAYS);
+        currentPeriodStart.setHours(0, 0, 0, 0);
 
-        // 1. Total Events Processed
-        // Count run_history_records for user's automations (this is the source of truth for processed events)
-        const [currentTotalEvents, previousTotalEvents] = await Promise.all([
-            prisma.run_history_records.count({
-                where: {
+        previousPeriodEnd = new Date(currentPeriodStart);
+        previousPeriodEnd.setMilliseconds(previousPeriodEnd.getMilliseconds() - 1);
+
+        previousPeriodStart = new Date(previousPeriodEnd);
+        previousPeriodStart.setDate(previousPeriodStart.getDate() - METRICS_TIME_WINDOW_DAYS);
+        previousPeriodStart.setHours(0, 0, 0, 0);
+    }
+
+    // 1. Total Events Processed
+    // Count run_history_records for user's automations (this is the source of truth for processed events)
+    const [currentTotalEvents, previousTotalEvents] = await Promise.all([
+        prisma.run_history_records.count({
+            where: {
+                automation: {
+                    user_id: userId,
+                },
+                timestamp: {
+                    gte: currentPeriodStart,
+                },
+            },
+        }),
+        prisma.run_history_records.count({
+            where: {
+                automation: {
+                    user_id: userId,
+                },
+                timestamp: {
+                    gte: previousPeriodStart,
+                    lte: previousPeriodEnd,
+                },
+            },
+        }),
+    ]);
+
+    const totalEventsChange = calculatePercentageChange(previousTotalEvents, currentTotalEvents);
+
+    // 2. Actions Taken
+    // Count actions from run_history_actions for user's automations
+    const [currentActionsCount, previousActionsCount] = await Promise.all([
+        prisma.run_history_actions.count({
+            where: {
+                run_history_record: {
                     automation: {
                         user_id: userId,
                     },
@@ -55,9 +81,11 @@ export async function getStats(req: Request, res: Response) {
                         gte: currentPeriodStart,
                     },
                 },
-            }),
-            prisma.run_history_records.count({
-                where: {
+            },
+        }),
+        prisma.run_history_actions.count({
+            where: {
+                run_history_record: {
                     automation: {
                         user_id: userId,
                     },
@@ -66,171 +94,133 @@ export async function getStats(req: Request, res: Response) {
                         lte: previousPeriodEnd,
                     },
                 },
-            }),
-        ]);
+            },
+        }),
+    ]);
 
-        const totalEventsChange = calculatePercentageChange(previousTotalEvents, currentTotalEvents);
+    const actionsTakenChange = calculatePercentageChange(previousActionsCount, currentActionsCount);
 
-        // 2. Actions Taken
-        // Count actions from run_history_actions for user's automations
-        const [currentActionsCount, previousActionsCount] = await Promise.all([
-            prisma.run_history_actions.count({
-                where: {
-                    run_history_record: {
-                        automation: {
-                            user_id: userId,
-                        },
-                        timestamp: {
-                            gte: currentPeriodStart,
-                        },
-                    },
-                },
-            }),
-            prisma.run_history_actions.count({
-                where: {
-                    run_history_record: {
-                        automation: {
-                            user_id: userId,
-                        },
-                        timestamp: {
-                            gte: previousPeriodStart,
-                            lte: previousPeriodEnd,
-                        },
-                    },
-                },
-            }),
-        ]);
-
-        const actionsTakenChange = calculatePercentageChange(previousActionsCount, currentActionsCount);
-
-        // 3. Number of Automations
-        // Count user's automations
-        const [currentAutomationsCount, previousAutomationsCount] = await Promise.all([
-            prisma.automations.count({
-                where: {
-                    user_id: userId,
-                },
-            }),
-            prisma.automations.count({
-                where: {
-                    user_id: userId,
-                    created_at: { lte: previousPeriodEnd },
-                },
-            }),
-        ]);
-
-        const automationsChange = currentAutomationsCount - previousAutomationsCount;
-        const automationsChangeString = automationsChange >= 0 ? `+${automationsChange}` : `${automationsChange}`;
-
-        // 4. Daily Events (chart time window)
-        const chartStartDate = new Date(now);
-        chartStartDate.setDate(chartStartDate.getDate() - CHART_TIME_WINDOW_DAYS);
-        chartStartDate.setHours(0, 0, 0, 0);
-
-        // Get all run history records for the chart time window
-        const recentRecords = await prisma.run_history_records.findMany({
+    // 3. Number of Automations
+    // Count user's automations
+    const [currentAutomationsCount, previousAutomationsCount] = await Promise.all([
+        prisma.automations.count({
             where: {
+                user_id: userId,
+            },
+        }),
+        prisma.automations.count({
+            where: {
+                user_id: userId,
+                created_at: { lte: previousPeriodEnd },
+            },
+        }),
+    ]);
+
+    const automationsChange = currentAutomationsCount - previousAutomationsCount;
+    const automationsChangeString = automationsChange >= 0 ? `+${automationsChange}` : `${automationsChange}`;
+
+    // 4. Daily Events (chart time window)
+    const chartStartDate = new Date(now);
+    chartStartDate.setDate(chartStartDate.getDate() - CHART_TIME_WINDOW_DAYS);
+    chartStartDate.setHours(0, 0, 0, 0);
+
+    // Get all run history records for the chart time window
+    const recentRecords = await prisma.run_history_records.findMany({
+        where: {
+            automation: {
+                user_id: userId,
+            },
+            timestamp: {
+                gte: chartStartDate,
+            },
+        },
+        select: {
+            timestamp: true,
+        },
+    });
+
+    // Group by day and count events
+    const dayNames: DayOfWeek[] = [DayOfWeek.Sun, DayOfWeek.Mon, DayOfWeek.Tue, DayOfWeek.Wed, DayOfWeek.Thu, DayOfWeek.Fri, DayOfWeek.Sat];
+    const eventsByDay = new Map<DayOfWeek, number>();
+
+    // Initialize all days in the chart time window with 0
+    for (let i = 0; i < CHART_TIME_WINDOW_DAYS; i++) {
+        const date = new Date(now);
+        date.setDate(date.getDate() - (CHART_TIME_WINDOW_DAYS - 1 - i));
+        date.setHours(0, 0, 0, 0);
+        const dayName = dayNames[date.getDay()];
+        eventsByDay.set(dayName, 0);
+    }
+
+    // Count events per day
+    for (const record of recentRecords) {
+        const recordDate = new Date(record.timestamp);
+        recordDate.setHours(0, 0, 0, 0);
+        const dayName = dayNames[recordDate.getDay()];
+        const currentCount = eventsByDay.get(dayName) || 0;
+        eventsByDay.set(dayName, currentCount + 1);
+    }
+
+    // Convert to array format, ensuring we have all days in the chart time window in order
+    const dailyEvents: Array<{ date: DayOfWeek; events: number }> = [];
+    for (let i = 0; i < CHART_TIME_WINDOW_DAYS; i++) {
+        const date = new Date(now);
+        date.setDate(date.getDate() - (CHART_TIME_WINDOW_DAYS - 1 - i));
+        const dayName = dayNames[date.getDay()];
+        dailyEvents.push({
+            date: dayName,
+            events: eventsByDay.get(dayName) || 0,
+        });
+    }
+
+    // 5. Recent Actions (last 10)
+    const recentActionsData = await prisma.run_history_actions.findMany({
+        where: {
+            run_history_record: {
                 automation: {
                     user_id: userId,
                 },
-                timestamp: {
-                    gte: chartStartDate,
-                },
             },
-            select: {
-                timestamp: true,
-            },
-        });
-
-        // Group by day and count events
-        const dayNames: DayOfWeek[] = [DayOfWeek.Sun, DayOfWeek.Mon, DayOfWeek.Tue, DayOfWeek.Wed, DayOfWeek.Thu, DayOfWeek.Fri, DayOfWeek.Sat];
-        const eventsByDay = new Map<DayOfWeek, number>();
-
-        // Initialize all days in the chart time window with 0
-        for (let i = 0; i < CHART_TIME_WINDOW_DAYS; i++) {
-            const date = new Date(now);
-            date.setDate(date.getDate() - (CHART_TIME_WINDOW_DAYS - 1 - i));
-            date.setHours(0, 0, 0, 0);
-            const dayName = dayNames[date.getDay()];
-            eventsByDay.set(dayName, 0);
-        }
-
-        // Count events per day
-        for (const record of recentRecords) {
-            const recordDate = new Date(record.timestamp);
-            recordDate.setHours(0, 0, 0, 0);
-            const dayName = dayNames[recordDate.getDay()];
-            const currentCount = eventsByDay.get(dayName) || 0;
-            eventsByDay.set(dayName, currentCount + 1);
-        }
-
-        // Convert to array format, ensuring we have all days in the chart time window in order
-        const dailyEvents: Array<{ date: DayOfWeek; events: number }> = [];
-        for (let i = 0; i < CHART_TIME_WINDOW_DAYS; i++) {
-            const date = new Date(now);
-            date.setDate(date.getDate() - (CHART_TIME_WINDOW_DAYS - 1 - i));
-            const dayName = dayNames[date.getDay()];
-            dailyEvents.push({
-                date: dayName,
-                events: eventsByDay.get(dayName) || 0,
-            });
-        }
-
-        // 5. Recent Actions (last 10)
-        const recentActionsData = await prisma.run_history_actions.findMany({
-            where: {
-                run_history_record: {
+        },
+        include: {
+            run_history_record: {
+                include: {
                     automation: {
-                        user_id: userId,
-                    },
-                },
-            },
-            include: {
-                run_history_record: {
-                    include: {
-                        automation: {
-                            select: {
-                                name: true,
-                            },
+                        select: {
+                            name: true,
                         },
                     },
                 },
             },
-            orderBy: {
-                created_at: "desc",
-            },
-            take: 10,
-        });
+        },
+        orderBy: {
+            created_at: "desc",
+        },
+        take: 10,
+    });
 
-        const recentActions: RecentAction[] = recentActionsData.map((action) => ({
-            action: action.action,
-            integration: convertRunHistoryIntegrationToIntegrationType(action.integration) as string,
-            target: action.target,
-            details: action.details,
-            url: action.url ?? undefined,
-            timestamp: action.run_history_record.timestamp.toISOString(),
-            automationName: action.run_history_record.automation.name,
-        }));
+    const recentActions: RecentAction[] = recentActionsData.map((action) => ({
+        action: action.action,
+        integration: convertRunHistoryIntegrationToIntegrationType(action.integration) as string,
+        target: action.target,
+        details: action.details,
+        url: action.url ?? undefined,
+        timestamp: action.run_history_record.timestamp.toISOString(),
+        automationName: action.run_history_record.automation.name,
+    }));
 
-        const response: StatsResponse = {
-            totalEventsProcessed: currentTotalEvents,
-            totalEventsProcessedChange: totalEventsChange,
-            actionsTaken: currentActionsCount,
-            actionsTakenChange: actionsTakenChange,
-            numberOfAutomations: currentAutomationsCount,
-            numberOfAutomationsChange: automationsChangeString,
-            dailyEvents,
-            recentActions,
-        };
+    const response: StatsResponse = {
+        totalEventsProcessed: currentTotalEvents,
+        totalEventsProcessedChange: totalEventsChange,
+        actionsTaken: currentActionsCount,
+        actionsTakenChange: actionsTakenChange,
+        numberOfAutomations: currentAutomationsCount,
+        numberOfAutomationsChange: automationsChangeString,
+        dailyEvents,
+        recentActions,
+    };
 
-        res.json(response);
-    } catch (err) {
-        console.error("Error fetching stats:", err);
-        res.status(500).json({
-            error: "Failed to fetch stats",
-            details: err instanceof Error ? err.message : "Unknown error",
-        });
-    }
+    res.json(response);
 }
 
 /**
