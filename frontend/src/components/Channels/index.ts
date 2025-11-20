@@ -1,4 +1,4 @@
-export { AutomationsHeader } from './AutomationsHeader';
+export { ChannelsHeader } from './ChannelsHeader';
 export { SearchBar } from './SearchBar';
 export { StatusFilter } from './StatusFilter';
 export { DeletingModal } from './DeletingModal';

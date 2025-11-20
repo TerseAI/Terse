@@ -25,11 +25,11 @@ export function PaginationControls({
                             <span className="font-medium text-[theme(text-primary)]">
                                 {Math.min(page * limit, total)}
                             </span>{' '}
-                            of <span className="font-medium text-[theme(text-primary)]">{total}</span> automations
+                            of <span className="font-medium text-[theme(text-primary)]">{total}</span> channels
                         </>
                     ) : (
                         <>
-                            <span className="font-medium text-[theme(text-primary)]">{total}</span> {total === 1 ? 'automation' : 'automations'}
+                            <span className="font-medium text-[theme(text-primary)]">{total}</span> {total === 1 ? 'channel' : 'channels'}
                         </>
                     )}
                 </div>

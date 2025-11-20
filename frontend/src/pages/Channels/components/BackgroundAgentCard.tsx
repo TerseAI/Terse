@@ -1,7 +1,7 @@
 import { Brain } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useState, useEffect } from "react";
-import { AutomationPrompt } from "@/shared/types";
+import { ChannelPrompt } from "@/shared/types";
 import { Dialog } from "@/components/ui/dialog";
 import { DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -11,8 +11,8 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { HelpCircle } from "lucide-react";
 
 type BackgroundAgentCardProps = {
-    prompt: AutomationPrompt | undefined;
-    setPrompt: (prompt: AutomationPrompt | undefined) => void;
+    prompt: ChannelPrompt | undefined;
+    setPrompt: (prompt: ChannelPrompt | undefined) => void;
 };
 
 export function BackgroundAgentCard({ prompt, setPrompt }: BackgroundAgentCardProps) {

@@ -21,13 +21,13 @@ import {
   googleLoginURL,
 } from "./routes/auth/googleAuth";
 import {
-  createAutomation,
-  deleteAutomation,
-  getRecentAutomations,
-  getUserAutomation,
-  getUserAutomations,
-  updateAutomation,
-} from "./routes/automations";
+  createChannel,
+  deleteChannel,
+  getRecentChannels,
+  getUserChannel,
+  getUserChannels,
+  updateChannel,
+} from "./routes/channels";
 import {
   getInstallationUrl,
   githubAppUnifiedEvent,
@@ -392,30 +392,30 @@ app.get("/slack/channels", authMiddleware, async (req, res) => {
   getSlackChannels(req, res);
 });
 
-// MARK: AUTOMATIONS
+// MARK: CHANNELS
 
-app.get("/automations", authMiddleware, async (req, res) => {
-  getUserAutomations(req, res);
+app.get("/channels", authMiddleware, async (req, res) => {
+  getUserChannels(req, res);
 });
 
-app.get("/automations/recent", authMiddleware, async (req, res) => {
-  getRecentAutomations(req, res);
+app.get("/channels/recent", authMiddleware, async (req, res) => {
+  getRecentChannels(req, res);
 });
 
-app.get("/automations/:id", authMiddleware, async (req, res) => {
-  getUserAutomation(req, res);
+app.get("/channels/:id", authMiddleware, async (req, res) => {
+  getUserChannel(req, res);
 });
 
-app.post("/automations", authMiddleware, async (req, res) => {
-  createAutomation(req, res);
+app.post("/channels", authMiddleware, async (req, res) => {
+  createChannel(req, res);
 });
 
-app.patch("/automations/:id", authMiddleware, async (req, res) => {
-  updateAutomation(req, res);
+app.patch("/channels/:id", authMiddleware, async (req, res) => {
+  updateChannel(req, res);
 });
 
-app.delete("/automations/:id", authMiddleware, async (req, res) => {
-  deleteAutomation(req, res);
+app.delete("/channels/:id", authMiddleware, async (req, res) => {
+  deleteChannel(req, res);
 });
 
 // MARK: INTEGRATIONS

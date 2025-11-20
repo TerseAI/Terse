@@ -1,14 +1,14 @@
 import RunHistory from "../../../components/RunHistory/index";
 
-type AutomationRunHistoryTabProps = {
-    automationId: string | null;
+type ChannelRunHistoryTabProps = {
+    channelId: string | null;
 };
 
-export default function AutomationRunHistoryTab({ automationId }: AutomationRunHistoryTabProps) {
+export default function ChannelRunHistoryTab({ channelId }: ChannelRunHistoryTabProps) {
     return (
         <div className="flex flex-col h-full min-h-0">
             <div className="flex-1 overflow-y-auto w-full">
-                <RunHistory automationId={automationId} />
+                <RunHistory channelId={channelId} />
             </div>
         </div>
     );

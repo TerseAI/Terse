@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { AutomationsTable } from '../../components/AutomationsTable';
-import { AutomationsHeader, SearchBar, StatusFilter, DeletingModal } from '../../components/Automation';
-import { Automation } from '../../shared/types';
-import { useAutomationMutations } from '@/hooks/api/useAutomations';
+import { ChannelsTable } from '../../components/ChannelsTable';
+import { ChannelsHeader, SearchBar, StatusFilter, DeletingModal } from '../../components/Channels';
+import { Channel } from '../../shared/types';
+import { useChannelMutations } from '@/hooks/api/useChannels';
 
 const statusOptions = [
     { value: undefined, label: 'All' },
@@ -11,47 +11,47 @@ const statusOptions = [
     { value: false, label: 'Inactive' },
 ];
 
-export default function AutomationsList() {
+export default function ChannelsList() {
     const navigate = useNavigate();
     const [deletingId, setDeletingId] = useState<string | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
     const [statusFilter, setStatusFilter] = useState<boolean | undefined>(undefined);
-    const { deleteAutomation } = useAutomationMutations();
+    const { deleteChannel } = useChannelMutations();
     const selectedOption = statusOptions.find(opt => opt.value === statusFilter) || statusOptions[0];
 
-    const handleEdit = (automation: Automation) => {
-        // Navigate to edit page (we'll need to update the Automations page to support editing)
-        navigate(`/app/automations/${automation.id}`);
+    const handleEdit = (channel: Channel) => {
+        // Navigate to edit page
+        navigate(`/app/channels/${channel.id}`);
     };
 
-    const handleDelete = async (automation: Automation) => {
-        if (!window.confirm(`Are you sure you want to delete "${automation.name}"?`)) {
+    const handleDelete = async (channel: Channel) => {
+        if (!window.confirm(`Are you sure you want to delete "${channel.name}"?`)) {
             return;
         }
 
         try {
-            setDeletingId(automation.id);
-            await deleteAutomation(automation.id);
+            setDeletingId(channel.id);
+            await deleteChannel(channel.id);
         } catch (error) {
-            console.error('Failed to delete automation:', error);
-            alert('Failed to delete automation. Please try again.');
+            console.error('Failed to delete channel:', error);
+            alert('Failed to delete channel. Please try again.');
         } finally {
             setDeletingId(null);
         }
     };
 
     const handleCreateNew = () => {
-        navigate('/app/automations/new');
+        navigate('/app/channels/new');
     };
 
     return (
         <div className="flex flex-col h-full p-4">
             <div className="flex-1 overflow-y-auto">
                 <div className="mx-auto space-y-6">
-                    <AutomationsHeader onCreateNew={handleCreateNew} />
+                    <ChannelsHeader onCreateNew={handleCreateNew} />
 
                     <div className="grid grid-cols-20 sm:grid-flow-row gap-3">
-                        <SearchBar searchQuery={searchQuery} placeholder="Search automations by name..." className="col-span-16" onSearchChange={setSearchQuery} />
+                        <SearchBar searchQuery={searchQuery} placeholder="Search channels by name..." className="col-span-16" onSearchChange={setSearchQuery} />
                         <StatusFilter
                             statusOptions={statusOptions}
                             selectedOption={selectedOption}
@@ -60,7 +60,7 @@ export default function AutomationsList() {
                         />
                     </div>
 
-                    <AutomationsTable
+                    <ChannelsTable
                         onEdit={handleEdit}
                         onDelete={handleDelete}
                         onCreateNew={handleCreateNew}

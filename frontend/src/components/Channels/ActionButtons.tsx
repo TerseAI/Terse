@@ -1,32 +1,32 @@
 import { Trash, Pencil } from 'lucide-react';
-import { Automation } from '../../shared/types';
+import { Channel } from '../../shared/types';
 
 interface ActionButtonsProps {
-    automation: Automation;
-    onEdit: (automation: Automation) => void;
-    onDelete: (automation: Automation) => void;
+    channel: Channel;
+    onEdit: (channel: Channel) => void;
+    onDelete: (channel: Channel) => void;
 }
 
-export function ActionButtons({ automation, onEdit, onDelete }: ActionButtonsProps) {
+export function ActionButtons({ channel, onEdit, onDelete }: ActionButtonsProps) {
     return (
         <div className="flex gap-2">
             <button
                 onClick={(e) => {
                     e.stopPropagation();
-                    onEdit(automation);
+                    onEdit(channel);
                 }}
                 className="p-1 text-primary hover:scale-110 rounded transition-colors cursor-pointer"
-                title="Edit automation"
+                title="Edit channel"
             >
                 <Pencil className="h-5 w-5" />
             </button>
             <button
                 onClick={(e) => {
                     e.stopPropagation();
-                    onDelete(automation);
+                    onDelete(channel);
                 }}
                 className="p-1 text-destructive hover:scale-110 rounded transition-colors cursor-pointer"
-                title="Delete automation"
+                title="Delete channel"
             >
                 <Trash className="h-5 w-5" />
             </button>

@@ -4,7 +4,7 @@ import {
     getCoreRowModel,
     useReactTable,
 } from '@tanstack/react-table';
-import { Automation } from '../shared/types';
+import { Channel } from '../shared/types';
 import {
     LoadingState,
     EmptyState,
@@ -13,30 +13,30 @@ import {
     ActionButtons,
     PaginationControls,
     TableContent,
-} from './Automation';
-import { useAutomations, useAutomationMutations } from '@/hooks/api/useAutomations';
+} from './Channels';
+import { useChannels, useChannelMutations } from '@/hooks/api/useChannels';
 
-type AutomationsTableProps = {
-    onEdit: (automation: Automation) => void;
-    onDelete: (automation: Automation) => void;
+type ChannelsTableProps = {
+    onEdit: (channel: Channel) => void;
+    onDelete: (channel: Channel) => void;
     onCreateNew?: () => void;
     searchQuery?: string;
     statusFilter?: boolean;
 };
 
-export function AutomationsTable({ onEdit, onDelete, onCreateNew, searchQuery, statusFilter }: AutomationsTableProps) {
+export function ChannelsTable({ onEdit, onDelete, onCreateNew, searchQuery, statusFilter }: ChannelsTableProps) {
     const [page, setPage] = useState(1);
     const [limit, setLimit] = useState(25);
-    const { automations, pagination, isLoading, mutate } = useAutomations({
+    const { channels, pagination, isLoading, mutate } = useChannels({
         page,
         limit,
         isActive: statusFilter,
         search: searchQuery,
     });
-    const { toggleAutomationActive } = useAutomationMutations();
+    const { toggleChannelActive } = useChannelMutations();
 
     const totalPages = pagination?.totalPages ?? 1;
-    const total = pagination?.total ?? automations.length;
+    const total = pagination?.total ?? channels.length;
 
     // Reset to first page when search query or status filter changes
     useEffect(() => {
@@ -48,9 +48,9 @@ export function AutomationsTable({ onEdit, onDelete, onCreateNew, searchQuery, s
         setPage(1); // Reset to first page when changing limit
     };
 
-    const handleToggleStatus = async (automation: Automation) => {
+    const handleToggleStatus = async (channel: Channel) => {
         try {
-            await toggleAutomationActive(automation, {
+            await toggleChannelActive(channel, {
                 mutateList: mutate,
                 params: {
                     page,
@@ -60,17 +60,17 @@ export function AutomationsTable({ onEdit, onDelete, onCreateNew, searchQuery, s
                 },
             });
         } catch (error) {
-            console.error('Failed to toggle automation status:', error);
+            console.error('Failed to toggle channel status:', error);
         }
     };
 
-    const columns: ColumnDef<Automation>[] = [
+    const columns: ColumnDef<Channel>[] = [
         {
             accessorKey: 'isActive',
             header: 'Status',
             cell: ({ row }) => (
                 <StatusToggle
-                    automation={row.original}
+                    channel={row.original}
                     onToggle={handleToggleStatus}
                 />
             ),
@@ -87,14 +87,14 @@ export function AutomationsTable({ onEdit, onDelete, onCreateNew, searchQuery, s
         {
             id: 'apps',
             header: 'Apps',
-            cell: ({ row }) => <AppsList automation={row.original} />,
+            cell: ({ row }) => <AppsList channel={row.original} />,
         },
         {
             id: 'actions',
             header: 'Actions',
             cell: ({ row }) => (
                 <ActionButtons
-                    automation={row.original}
+                    channel={row.original}
                     onEdit={onEdit}
                     onDelete={onDelete}
                 />
@@ -103,18 +103,18 @@ export function AutomationsTable({ onEdit, onDelete, onCreateNew, searchQuery, s
     ];
 
     const table = useReactTable({
-        data: automations,
+        data: channels,
         columns,
         getCoreRowModel: getCoreRowModel(),
         manualPagination: true,
         pageCount: totalPages,
     });
 
-    if (isLoading && automations.length === 0) {
+    if (isLoading && channels.length === 0) {
         return <LoadingState />;
     }
 
-    if (!isLoading && automations.length === 0) {
+    if (!isLoading && channels.length === 0) {
         const hasFilters: boolean = searchQuery !== '' || statusFilter !== undefined;
         return <EmptyState hasFilters={hasFilters} onCreateNew={onCreateNew} />;
     }
