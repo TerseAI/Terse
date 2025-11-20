@@ -26,7 +26,7 @@ function IntegrationPage() {
                 <>
                     <h1 className="text-xl font-bold text-foreground mb-10">Inactive Integrations</h1>
                     <div className="flex flex-row flex-wrap gap-12">
-                        <IntegrationContent integrations={inactiveIntegrations ?? []} isLoading={isLoading} />
+                        <IntegrationContent integrations={inactiveIntegrations ?? []} isLoading={isLoading} isActive={false} />
                     </div>
                 </>
             )}
@@ -34,7 +34,7 @@ function IntegrationPage() {
     )
 }
 
-function IntegrationContent({ integrations, isLoading }: { integrations: IntegrationType[], isLoading: boolean }) {
+function IntegrationContent({ integrations, isLoading, isActive = true }: { integrations: IntegrationType[], isLoading: boolean, isActive?: boolean }) {
     if (isLoading || !integrations) {
         return (
             <>
@@ -48,7 +48,7 @@ function IntegrationContent({ integrations, isLoading }: { integrations: Integra
     return (
         <>
             {integrations.map((integration) => (
-                <IntegrationCard key={integration} integration={integration} />
+                <IntegrationCard key={integration} integration={integration} isActive={isActive} />
             ))}
         </>
     )

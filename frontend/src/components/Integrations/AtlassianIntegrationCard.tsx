@@ -8,13 +8,13 @@ import { useAtlassianIntegrations } from "@/hooks/api/useAtlassianIntegrations";
 import { Skeleton } from "../ui/skeleton";
 import { Globe, Mail } from "lucide-react";
 
-function AtlassianIntegrationCard({ className }: { className?: string }) {
+function AtlassianIntegrationCard({ className, isActive = true }: { className?: string; isActive?: boolean }) {
     const { connect, isConnecting } = useOAuthConnection(IntegrationType.ATLASSIAN);
     const { integrations, isLoading } = useAtlassianIntegrations(); 
 
     return (
         <Card className={cn(className)}>
-            <IntegrationCardHeader integration={IntegrationType.ATLASSIAN} />
+            <IntegrationCardHeader integration={IntegrationType.ATLASSIAN} isActive={isActive} />
             <CardContent>
                 <AtlassianCardContent integrations={integrations} isLoading={isLoading} />
             </CardContent>
