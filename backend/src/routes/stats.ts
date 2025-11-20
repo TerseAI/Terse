@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import { db } from "../prismaClient";
-import { StatsResponse } from "../shared/types";
+import { StatsResponse, DayOfWeek, RecentAction } from "../shared/types";
+import { convertRunHistoryIntegrationToIntegrationType } from "../utility/typeConverters";
 
 export async function getStats(req: Request, res: Response) {
     const user = req.session?.user;
@@ -97,6 +98,96 @@ export async function getStats(req: Request, res: Response) {
         const automationsChange = currentAutomationsCount - previousAutomationsCount;
         const automationsChangeString = automationsChange >= 0 ? `+${automationsChange}` : `${automationsChange}`;
 
+        // 4. Daily Events (last 7 days)
+        const sevenDaysAgo = new Date(now);
+        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+        sevenDaysAgo.setHours(0, 0, 0, 0);
+
+        // Get all run history records for the last 7 days
+        const recentRecords = await prisma.run_history_records.findMany({
+            where: {
+                automation: {
+                    user_id: userId,
+                },
+                timestamp: {
+                    gte: sevenDaysAgo,
+                },
+            },
+            select: {
+                timestamp: true,
+            },
+        });
+
+        // Group by day and count events
+        const dayNames: DayOfWeek[] = [DayOfWeek.Sun, DayOfWeek.Mon, DayOfWeek.Tue, DayOfWeek.Wed, DayOfWeek.Thu, DayOfWeek.Fri, DayOfWeek.Sat];
+        const eventsByDay = new Map<DayOfWeek, number>();
+
+        // Initialize all 7 days with 0
+        for (let i = 0; i < 7; i++) {
+            const date = new Date(now);
+            date.setDate(date.getDate() - (6 - i));
+            date.setHours(0, 0, 0, 0);
+            const dayName = dayNames[date.getDay()];
+            eventsByDay.set(dayName, 0);
+        }
+
+        // Count events per day
+        for (const record of recentRecords) {
+            const recordDate = new Date(record.timestamp);
+            recordDate.setHours(0, 0, 0, 0);
+            const dayName = dayNames[recordDate.getDay()];
+            const currentCount = eventsByDay.get(dayName) || 0;
+            eventsByDay.set(dayName, currentCount + 1);
+        }
+
+        // Convert to array format, ensuring we have the last 7 days in order
+        const dailyEvents: Array<{ date: DayOfWeek; events: number }> = [];
+        for (let i = 0; i < 7; i++) {
+            const date = new Date(now);
+            date.setDate(date.getDate() - (6 - i));
+            const dayName = dayNames[date.getDay()];
+            dailyEvents.push({
+                date: dayName,
+                events: eventsByDay.get(dayName) || 0,
+            });
+        }
+
+        // 5. Recent Actions (last 10)
+        const recentActionsData = await prisma.run_history_actions.findMany({
+            where: {
+                run_history_record: {
+                    automation: {
+                        user_id: userId,
+                    },
+                },
+            },
+            include: {
+                run_history_record: {
+                    include: {
+                        automation: {
+                            select: {
+                                name: true,
+                            },
+                        },
+                    },
+                },
+            },
+            orderBy: {
+                created_at: "desc",
+            },
+            take: 10,
+        });
+
+        const recentActions: RecentAction[] = recentActionsData.map((action) => ({
+            action: action.action,
+            integration: convertRunHistoryIntegrationToIntegrationType(action.integration) as string,
+            target: action.target,
+            details: action.details,
+            url: action.url ?? undefined,
+            timestamp: action.run_history_record.timestamp.toISOString(),
+            automationName: action.run_history_record.automation.name,
+        }));
+
         const response: StatsResponse = {
             totalEventsProcessed: currentTotalEvents,
             totalEventsProcessedChange: totalEventsChange,
@@ -104,6 +195,8 @@ export async function getStats(req: Request, res: Response) {
             actionsTakenChange: actionsTakenChange,
             numberOfAutomations: currentAutomationsCount,
             numberOfAutomationsChange: automationsChangeString,
+            dailyEvents,
+            recentActions,
         };
 
         res.json(response);
