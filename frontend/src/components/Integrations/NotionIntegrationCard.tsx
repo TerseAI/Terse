@@ -11,7 +11,7 @@ import { useNotionIntegrations } from "@/hooks/api/useNotionIntegrations";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "../ui/skeleton";
 
-function NotionIntegrationCard({ className }: { className?: string }) {
+function NotionIntegrationCard({ className, isActive = true }: { className?: string; isActive?: boolean }) {
     const { connect, isConnecting } = useOAuthConnection(IntegrationType.NOTION);
     const { integrations, isLoading: integrationsLoading } = useNotionIntegrations();
     const firstIntegrationId = integrations[0]?.id;
@@ -19,7 +19,7 @@ function NotionIntegrationCard({ className }: { className?: string }) {
 
     return (
         <Card className={cn(className)}>
-            <IntegrationCardHeader integration={IntegrationType.NOTION} />
+            <IntegrationCardHeader integration={IntegrationType.NOTION} isActive={isActive} />
             <CardContent>
                 <NotionCardContent 
                     integrations={integrations} 

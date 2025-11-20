@@ -11,7 +11,7 @@ import { useSlackIntegrations } from "@/hooks/api/useSlackIntegrations";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "../ui/skeleton";
 
-function SlackIntegrationCard({ className }: { className?: string }) {
+function SlackIntegrationCard({ className, isActive = true }: { className?: string; isActive?: boolean }) {
     const { connect, isConnecting } = useOAuthConnection(IntegrationType.SLACK);
     const { integrations, isLoading: integrationsLoading } = useSlackIntegrations();
     const firstIntegrationId = integrations[0]?.id;
@@ -19,7 +19,7 @@ function SlackIntegrationCard({ className }: { className?: string }) {
 
     return (
         <Card className={cn(className)}>
-            <IntegrationCardHeader integration={IntegrationType.SLACK} />
+            <IntegrationCardHeader integration={IntegrationType.SLACK} isActive={isActive} />
             <CardContent>
                 <SlackCardContent 
                     integrations={integrations}

@@ -8,13 +8,13 @@ import { useFigmaIntegrations } from "@/hooks/api/useFigmaIntegrations";
 import { Skeleton } from "../ui/skeleton";
 import { Palette } from "lucide-react";
 
-function FigmaIntegrationCard({ className }: { className?: string }) {
+function FigmaIntegrationCard({ className, isActive = true }: { className?: string; isActive?: boolean }) {
     const { connect, isConnecting } = useOAuthConnection(IntegrationType.FIGMA);
     const { integrations, isLoading } = useFigmaIntegrations(); 
 
     return (
         <Card className={cn(className)}>
-            <IntegrationCardHeader integration={IntegrationType.FIGMA} />
+            <IntegrationCardHeader integration={IntegrationType.FIGMA} isActive={isActive} />
             <CardContent>
                 <FigmaCardContent integrations={integrations} isLoading={isLoading} />
             </CardContent>
@@ -48,7 +48,7 @@ function FigmaCardContent({ integrations, isLoading }: { integrations: Array<Fig
             {integrations.map((integration) => (
                 <div
                     key={integration.id}
-                    className="flex items-center gap-3 p-3 rounded-lg border border-border bg-card hover:bg-accent/50 transition-colors group"
+                    className="flex items-center gap-3 p-3 rounded-lg border border-border bg-card transition-colors group"
                 >
                     <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
                         <Palette className="w-4 h-4 text-primary" />

@@ -8,13 +8,13 @@ import { useGmailIntegrations } from "@/hooks/api/useGmailIntegrations";
 import { Skeleton } from "../ui/skeleton";
 import { Mail } from "lucide-react";
 
-function GmailIntegrationCard({ className }: { className?: string }) {
+function GmailIntegrationCard({ className, isActive = true }: { className?: string; isActive?: boolean }) {
     const { connect, isConnecting } = useOAuthConnection(IntegrationType.GMAIL);
     const { integrations, isLoading } = useGmailIntegrations(); 
 
     return (
         <Card className={cn(className)}>
-            <IntegrationCardHeader integration={IntegrationType.GMAIL} />
+            <IntegrationCardHeader integration={IntegrationType.GMAIL} isActive={isActive} />
             <CardContent>
                 <GmailCardContent integrations={integrations} isLoading={isLoading} />
             </CardContent>

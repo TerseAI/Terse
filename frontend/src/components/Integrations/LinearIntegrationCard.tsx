@@ -7,13 +7,13 @@ import { useLinearIntegrations } from "@/hooks/api/useLinearIntegrations";
 import { Skeleton } from "../ui/skeleton";
 import { Target } from "lucide-react";
 
-function LinearIntegrationCard({ className }: { className?: string }) {
+function LinearIntegrationCard({ className, isActive = true }: { className?: string; isActive?: boolean }) {
     // Linear uses API key, not OAuth
     const { integrations, isLoading } = useLinearIntegrations();
 
     return (
         <Card className={cn(className)}>
-            <IntegrationCardHeader integration={IntegrationType.LINEAR} />
+            <IntegrationCardHeader integration={IntegrationType.LINEAR} isActive={isActive} />
             <CardContent>
                 <LinearCardContent integrations={integrations} isLoading={isLoading} />
             </CardContent>
