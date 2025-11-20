@@ -2,6 +2,7 @@ import useSWR, { type KeyedMutator } from 'swr';
 import { BackendProvider } from '@/services/backend';
 import type { LinearIntegration } from '@/shared/Integrations';
 import { linearIntegrationsKey } from "@/shared/InvalidationKeys";
+import { useOAuthSuccessListener } from '@/hooks/useOAuthSuccessListener';
 
 type UseLinearIntegrationsReturn = {
     integrations: LinearIntegration[];
@@ -22,6 +23,8 @@ export function useLinearIntegrations(): UseLinearIntegrationsReturn {
             revalidateOnReconnect: true,
         },
     );
+
+    useOAuthSuccessListener(mutate);
 
     const loading = (isLoading || (!data && !error));
 

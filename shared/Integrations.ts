@@ -136,7 +136,5 @@ export interface GithubIntegration extends IntegrationInstance {
 
 export interface LinearIntegration extends IntegrationInstance {
     id: string;
-    workspaceName?: string;
-    linearTeamId?: string;
-    linearTeamName?: string;
+    workspaceName: string;
 };
