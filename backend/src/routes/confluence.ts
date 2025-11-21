@@ -91,8 +91,6 @@ export async function getConfluenceResources(req: Request, res: Response) {
             const pagesData = await pagesResponse.json() as ConfluencePagesV2Response;
             const resources = mapV2PagesToConfluencePages(pagesData.results || []);
 
-            console.log(chalk.blue('Confluence resources:'), resources);
-
             allResources.push(...resources);
 
             // Check for next page using _links.next or Link header

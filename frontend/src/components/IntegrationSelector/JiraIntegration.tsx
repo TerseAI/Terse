@@ -6,6 +6,7 @@ import { JiraConfig } from '../../shared/Configs';
 import { InputConfigSelectorProps } from './types';
 import { useJiraIntegrations } from '@/hooks/api/useJiraIntegrations';
 import { useOAuthConnection } from '@/hooks/useOAuthConnection';
+import { useIntegrationId } from '@/hooks/useIntegrationId';
 import { StatusOption } from '../ui/DropdownSelect';
 import { useJiraResources } from '@/hooks/api/useJiraResources';
 import {
@@ -16,6 +17,7 @@ import {
     SelectValue,
 } from "../ui/select";
 import { useEffect } from 'react';
+import { ConfigType } from '../../shared/Configs';
 
 export function JiraIntegration({
     input,
@@ -25,7 +27,7 @@ export function JiraIntegration({
     const { integrations, isLoading } = useJiraIntegrations();
     const { connect: connectOAuth, isConnecting: isOAuthConnecting } = useOAuthConnection(IntegrationType.ATLASSIAN);
     const currentConfig = input.config as JiraConfig | undefined;
-    const selectedIntegrationId = currentConfig?.integrationId;
+    const [selectedIntegrationId] = useIntegrationId(currentConfig, ConfigType.JIRA);
 
     // Fetch projects when an integration is selected
     const { projects, isLoading: isLoadingProjects } = useJiraResources(

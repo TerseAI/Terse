@@ -2,12 +2,12 @@ import { Plus } from 'lucide-react';
 import { Button } from '../ui/button';
 import DropdownSelect from '../ui/DropdownSelect';
 import { AtlassianIntegration, IntegrationType } from "@/shared/Integrations"
-import { ConfluenceConfig } from '../../shared/Configs';
+import { ConfluenceConfig, ConfigType } from '../../shared/Configs';
 import { InputConfigSelectorProps } from './types';
 import { ConfluenceResourceSelector } from '../ConfluenceResourceSelector';
 import { useAtlassianIntegrations } from '@/hooks/api/useAtlassianIntegrations';
 import { useOAuthConnection } from '@/hooks/useOAuthConnection';
-import { useState } from 'react';
+import { useIntegrationId } from '@/hooks/useIntegrationId';
 import { StatusOption } from '../ui/DropdownSelect';
 
 export function ConfluenceIntegration({
@@ -18,7 +18,7 @@ export function ConfluenceIntegration({
     const { integrations, isLoading } = useAtlassianIntegrations();
     const { connect: connectOAuth, isConnecting: isOAuthConnecting } = useOAuthConnection(IntegrationType.ATLASSIAN);
     const currentConfig = input.config as ConfluenceConfig | undefined;
-    const [selectedIntegrationId, setSelectedIntegrationId] = useState<string | undefined>(currentConfig?.integrationId);
+    const [selectedIntegrationId, setSelectedIntegrationId] = useIntegrationId(currentConfig, ConfigType.CONFLUENCE);
 
     function onSelect(value: string) {
         const integration = integrations.find((integration: AtlassianIntegration) => integration.id === value);

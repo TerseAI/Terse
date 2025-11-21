@@ -49,6 +49,8 @@ export class AtlassianIntegrationManager implements Integration<AtlassianIntegra
             'search:confluence',
             'read:page:confluence',
             'write:confluence-content',
+            'write:comment:confluence',
+            "read:comment:confluence",
             'manage:jira-webhook'
         ].join(' ');
 
@@ -858,7 +860,9 @@ export class JiraEvent extends InputEvent {
                 issueSections.push(`Description:\n${indentMultiline(issue.fields.description)}`);
             }
             issueSections.push(`Status: ${issue.fields.status.name}`);
-            issueSections.push(`Priority: ${issue.fields.priority.name}`);
+            if (issue.fields.priority) {
+                issueSections.push(`Priority: ${issue.fields.priority.name}`);
+            }
             issueSections.push(`Project: ${issue.fields.project.name} (${issue.fields.project.key})`);
             issueSections.push(`Issue Type: ${issue.fields.issuetype.name}`);
 

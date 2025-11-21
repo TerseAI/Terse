@@ -5,7 +5,8 @@ import { IntegrationType, GmailIntegration as GmailIntegrationType } from "@/sha
 import { InputConfigSelectorProps } from './types';
 import { useGmailIntegrations } from '@/hooks/api/useGmailIntegrations';
 import { useOAuthConnection } from '@/hooks/useOAuthConnection';
-import { GmailConfig } from '@/shared/Configs';
+import { useIntegrationId } from '@/hooks/useIntegrationId';
+import { GmailConfig, ConfigType } from '@/shared/Configs';
 import { StatusOption } from '../ui/DropdownSelect';
 
 export function GmailIntegration({
@@ -15,6 +16,8 @@ export function GmailIntegration({
 }: InputConfigSelectorProps) {
     const { integrations, isLoading } = useGmailIntegrations();
     const { connect: connectOAuth, isConnecting: isOAuthConnecting } = useOAuthConnection(IntegrationType.GMAIL);
+    const currentConfig = input.config as GmailConfig | undefined;
+    const [selectedIntegrationId] = useIntegrationId(currentConfig, ConfigType.GMAIL);
 
     function onSelect(value: string) {
         const integration = integrations.find((integration: GmailIntegrationType) => integration.id === value);
@@ -55,7 +58,7 @@ export function GmailIntegration({
         value: integration.id
     }));
 
-    let selectedOption: StatusOption | undefined = connectionSelections.find(option => option.value === input.config?.integrationId);
+    let selectedOption: StatusOption | undefined = connectionSelections.find(option => option.value === selectedIntegrationId);
     if (!selectedOption && connectionSelections.length == 1) {
         const defaultIntegration = connectionSelections[0];
         setConfig(new GmailConfig(defaultIntegration.value));
