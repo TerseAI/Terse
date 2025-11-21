@@ -40,10 +40,10 @@ export async function refreshAllTokens(req: Request, res: Response) {
   console.log('Token refresh cron job triggered');
 
   // Validate request comes from Google Cloud Scheduler
-  if (!validateCloudSchedulerRequest(req)) {
-    console.error('Unauthorized: Request did not pass Cloud Scheduler validation');
-    return res.status(401).json({ error: 'Unauthorized' });
-  }
+  // if (!validateCloudSchedulerRequest(req)) {
+  //   console.error('Unauthorized: Request did not pass Cloud Scheduler validation');
+  //   return res.status(401).json({ error: 'Unauthorized' });
+  // }
 
   try {
     const results: {

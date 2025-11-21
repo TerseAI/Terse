@@ -133,6 +133,31 @@ export class GithubIntegrationManager implements Integration<GithubIntegration, 
         // Return false to indicate no refresh was needed/performed
         return false;
     }
+
+    async getAccessToken(integrationId: string): Promise<string | null> {
+        // GitHub App uses installation-based authentication, not traditional OAuth tokens
+        // Tokens are generated on-demand using JWT and the installation ID
+        // This method returns null because we don't store access tokens in the database
+        // Token generation happens elsewhere when making API calls (typically using GitHub App's private key)
+        try {
+            const installation = await db().user_github_installation.findUnique({
+                where: { id: integrationId },
+            });
+
+            if (!installation) {
+                console.error(`GitHub installation ${integrationId} not found`);
+                return null;
+            }
+
+            // GitHub App installations don't store access tokens
+            // They generate tokens on-demand using the installation ID and App credentials
+            // Return null to indicate tokens must be generated via GitHub App flow
+            return null;
+        } catch (error) {
+            console.error(`Error getting GitHub access token for installation ${integrationId}:`, error);
+            return null;
+        }
+    }
 }
 
 // MARK: - GithubEvent

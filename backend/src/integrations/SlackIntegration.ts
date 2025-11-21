@@ -303,6 +303,30 @@ export class SlackIntegrationManager implements Integration<SlackIntegration, Sl
         // Return false to indicate no refresh was needed/performed
         return false;
     }
+
+    async getAccessToken(integrationId: string): Promise<string | null> {
+        try {
+            // Slack integrationId is the user_slack_integrations.id
+            // We need to get the associated slack_integration to access the token
+            const userSlackIntegration = await db().user_slack_integrations.findUnique({
+                where: { id: integrationId },
+                include: {
+                    slack_integration: true,
+                },
+            });
+
+            if (!userSlackIntegration || !userSlackIntegration.slack_integration) {
+                console.error(`Slack integration ${integrationId} not found`);
+                return null;
+            }
+
+            // Slack tokens are long-lived and don't expire, so just return the token
+            return userSlackIntegration.slack_integration.access_token || null;
+        } catch (error) {
+            console.error(`Error getting Slack access token for integration ${integrationId}:`, error);
+            return null;
+        }
+    }
 }
 
 // MARK: - SLACK Event

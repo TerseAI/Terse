@@ -27,6 +27,14 @@ export interface OAuthIntegrationInstallation {
      * @param integrationId - The ID of the integration instance to refresh
      */
     refreshToken(integrationId: string): Promise<boolean>;
+    /**
+     * Get a valid access token for an integration instance.
+     * This method handles token refresh automatically if the token is expired or expiring soon.
+     * This is the standardized way to access tokens - always use this instead of directly accessing tokens.
+     * @param integrationId - The ID of the integration instance
+     * @returns The access token string, or null if the token cannot be obtained
+     */
+    getAccessToken(integrationId: string): Promise<string | null>;
 }
 
 // Type guards

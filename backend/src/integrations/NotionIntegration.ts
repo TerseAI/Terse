@@ -252,5 +252,27 @@ export class NotionIntegrationManager implements Integration<NotionIntegration, 
         // Return false to indicate no refresh was needed/performed
         return false;
     }
+
+    async getAccessToken(integrationId: string): Promise<string | null> {
+        try {
+            const integration = await db().notion_integrations.findUnique({
+                where: { id: integrationId },
+                select: {
+                    integration_token: true,
+                },
+            });
+
+            if (!integration) {
+                console.error(`Notion integration ${integrationId} not found`);
+                return null;
+            }
+
+            // Notion tokens are long-lived and don't expire, so just return the token
+            return integration.integration_token || null;
+        } catch (error) {
+            console.error(`Error getting Notion access token for integration ${integrationId}:`, error);
+            return null;
+        }
+    }
 }
 

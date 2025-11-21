@@ -4,7 +4,7 @@ import { Request, Response } from "express";
 import { google } from "googleapis";
 import { db } from "../prismaClient";
 import { GmailIntegration} from "../types/prisma";
-import { gmail as gmailConfig, urls, cloudScheduler } from "../config/settings";
+import { gmail as gmailConfig, urls, cloudScheduler, OAUTH_TOKEN_REFRESH_THRESHOLD_MS } from "../config/settings";
 import { getOAuth2Client, GmailIntegrationManager, GmailWebhookEvent } from "../integrations/GmailIntegration";
 import { InputConfigType } from "@prisma/client";
 
@@ -113,10 +113,10 @@ async function refreshAccessTokenIfNeeded(
 ): Promise<string> {
   const now = new Date();
 
-  // Check if token is expired or will expire in the next 5 minutes
+  // Check if token is expired or will expire within the refresh threshold
   if (
     integration.token_expiry &&
-    integration.token_expiry <= new Date(now.getTime() + 5 * 60 * 1000)
+    integration.token_expiry <= new Date(now.getTime() + OAUTH_TOKEN_REFRESH_THRESHOLD_MS)
   ) {
     console.log("Access token expired or expiring soon, refreshing...");
 
