@@ -150,7 +150,7 @@ export const {
   optional,
 } = settings;
 
-  // Type exports
+// Type exports
 export type Settings = typeof settings;
 
 // OAuth token refresh threshold
