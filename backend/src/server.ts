@@ -41,8 +41,7 @@ import {
   deleteGmailIntegration,
   getGmailIntegrations,
   gmailCallback,
-  handleGmailWebhook,
-  refreshAllGmailWatches,
+  handleGmailWebhook
 } from "./routes/gmail";
 import { refreshAllTokens } from "./routes/refreshTokens";
 import {
@@ -279,11 +278,6 @@ app.delete("/gmail/delete-integration", authMiddleware, async (req, res) => {
 app.post("/webhooks/gmail", async (req, res) => {
   handleGmailWebhook(req, res);
 });
-
-app.post("/gmail/refresh-watches", async (req, res) => {
-  refreshAllGmailWatches(req, res);
-});
-
 // MARK: REFRESH TOKENS
 
 app.post("/refresh-tokens", async (req, res) => {
