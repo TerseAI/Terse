@@ -9,37 +9,37 @@ import GithubIntegrationCard from "./GithubIntegrationCard";
 import AtlassianIntegrationCard from "./AtlassianIntegrationCard";
 import FigmaIntegrationCard from "./FigmaIntegrationCard";
 
-function IntegrationCard({ integration }: { integration: IntegrationType }) {
-    const cardClassName = "min-w-sm";
+function IntegrationCard({ integration, isActive = true }: { integration: IntegrationType; isActive?: boolean }) {
+    const cardClassName = "min-w-sm max-w-sm";
     
     switch (integration) {
         case IntegrationType.NOTION:
             return (
-                <NotionIntegrationCard className={cardClassName} />
+                <NotionIntegrationCard className={cardClassName} isActive={isActive} />
             );
         case IntegrationType.SLACK:
             return (
-                <SlackIntegrationCard className={cardClassName} />
+                <SlackIntegrationCard className={cardClassName} isActive={isActive} />
             );
         case IntegrationType.LINEAR:
             return (
-                <LinearIntegrationCard className={cardClassName} />
+                <LinearIntegrationCard className={cardClassName} isActive={isActive} />
             );
         case IntegrationType.GITHUB:
             return (
-                <GithubIntegrationCard className={cardClassName} />
+                <GithubIntegrationCard className={cardClassName} isActive={isActive} />
             );
         case IntegrationType.GMAIL:
             return (
-                <GmailIntegrationCard className={cardClassName} />
+                <GmailIntegrationCard className={cardClassName} isActive={isActive} />
             );
         case IntegrationType.ATLASSIAN:
             return (
-                <AtlassianIntegrationCard className={cardClassName} />
+                <AtlassianIntegrationCard className={cardClassName} isActive={isActive} />
             );
         case IntegrationType.FIGMA:
             return (
-                <FigmaIntegrationCard className={cardClassName} />
+                <FigmaIntegrationCard className={cardClassName} isActive={isActive} />
             );
         default:
             // Exhaustive check: TypeScript will error if any IntegrationType case is missing
