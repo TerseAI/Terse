@@ -7,8 +7,9 @@ import { FigmaConfig } from '../../shared/Configs';
 import { InputConfigSelectorProps } from './types';
 import { useFigmaIntegrations } from '@/hooks/api/useFigmaIntegrations';
 import { useOAuthConnection } from '@/hooks/useOAuthConnection';
+import { useIntegrationId } from '@/hooks/useIntegrationId';
 import { StatusOption } from '../ui/DropdownSelect';
-import { useState } from 'react';
+import { ConfigType } from '../../shared/Configs';
 
 export function FigmaIntegration({
     input,
@@ -18,7 +19,7 @@ export function FigmaIntegration({
     const { integrations, isLoading } = useFigmaIntegrations();
     const { connect: connectOAuth, isConnecting: isOAuthConnecting } = useOAuthConnection(IntegrationType.FIGMA);
     const currentConfig = input.config as FigmaConfig | undefined;
-    const [selectedIntegrationId, setSelectedIntegrationId] = useState<string | undefined>(currentConfig?.integrationId);
+    const [selectedIntegrationId, setSelectedIntegrationId] = useIntegrationId(currentConfig, ConfigType.FIGMA);
 
     function onSelect(value: string) {
         const integration = integrations.find((integration: FigmaIntegrationType) => integration.id === value);

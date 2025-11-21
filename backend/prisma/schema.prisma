@@ -27,7 +27,8 @@ model users {
   linear_api_keys          linear_api_keys[] // @deprecated - Use linear_integrations instead
   linear_integrations      linear_integrations[]
   user_slack_integrations  user_slack_integrations[]
-  jira_api_keys            jira_api_keys[]
+  jira_api_keys            jira_api_keys[] // @deprecated - Use atlassian_integrations instead
+  atlassian_integrations   atlassian_integrations[]
   gmail_integrations       gmail_integrations[]
   notion_integrations      notion_integrations[]
   figma_integrations       figma_integrations[]
@@ -151,6 +152,8 @@ model slack_integrations {
   processed_slack_events  processed_slack_events[]
 }
 
+// @deprecated - This table is deprecated. Use atlassian_integrations instead for OAuth-based connections.
+// The old table is kept for backward compatibility with existing API key-based connections.
 model jira_api_keys {
   id              String   @id @default(cuid())
   user_id         String
@@ -168,6 +171,31 @@ model jira_api_keys {
 
   @@index([user_id])
   @@index([base_url, project_key])
+}
+
+// Replaces jira_api_keys for new OAuth connections
+model atlassian_integrations {
+  id              String   @id @default(cuid())
+  user_id         String
+  jira_user_email String   // User email in Atlassian/Jira
+  base_url        String   // Base URL of the Atlassian instance (e.g., https://company.atlassian.net)
+  cloud_id        String   // Atlassian cloud ID for API calls
+  site_name       String?  // Extracted site name from base_url
+  project_key     String?  // Connection-level default project key. Can be overridden per automation via automation_jira_configs.project_key
+  project_name    String?  // Connection-level default project name (display only)
+  webhook_id      String?  // Webhook ID for Jira events
+  webhook_secret  String?  // Webhook secret for verifying webhook payloads
+  access_token    String   // OAuth access token
+  refresh_token   String   // OAuth refresh token
+  token_expiry    DateTime // Token expiration time
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
+
+  user users @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id])
+  @@index([base_url, project_key])
+  @@index([token_expiry]) // For finding tokens that need refresh
 }
 
 model gmail_integrations {

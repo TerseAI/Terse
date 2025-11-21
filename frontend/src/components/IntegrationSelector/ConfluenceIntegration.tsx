@@ -1,13 +1,13 @@
-import { Plus, PlusIcon } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { Button } from '../ui/button';
 import DropdownSelect from '../ui/DropdownSelect';
-import { AtlassianConnectionForm } from '../AtlassianConnectionForm';
-import { AtlassianIntegration, INTEGRATION_METADATA, IntegrationType } from "@/shared/Integrations"
-import { ConfluenceConfig } from '../../shared/Configs';
+import { AtlassianIntegration, IntegrationType } from "@/shared/Integrations"
+import { ConfluenceConfig, ConfigType } from '../../shared/Configs';
 import { InputConfigSelectorProps } from './types';
 import { ConfluenceResourceSelector } from '../ConfluenceResourceSelector';
 import { useAtlassianIntegrations } from '@/hooks/api/useAtlassianIntegrations';
-import { useState } from 'react';
+import { useOAuthConnection } from '@/hooks/useOAuthConnection';
+import { useIntegrationId } from '@/hooks/useIntegrationId';
 import { StatusOption } from '../ui/DropdownSelect';
 
 export function ConfluenceIntegration({
@@ -15,29 +15,16 @@ export function ConfluenceIntegration({
     variant,
     setConfig
 }: InputConfigSelectorProps) {
-    const { integrations, isLoading, mutate: mutateIntegrations } = useAtlassianIntegrations();
-    const metadata = INTEGRATION_METADATA[IntegrationType.ATLASSIAN];
+    const { integrations, isLoading } = useAtlassianIntegrations();
+    const { connect: connectOAuth, isConnecting: isOAuthConnecting } = useOAuthConnection(IntegrationType.ATLASSIAN);
     const currentConfig = input.config as ConfluenceConfig | undefined;
-    const [selectedIntegrationId, setSelectedIntegrationId] = useState<string | undefined>(currentConfig?.integrationId);
-    const [showForm, setShowForm] = useState(false);
-    const [isConnecting, setIsConnecting] = useState(false);
+    const [selectedIntegrationId, setSelectedIntegrationId] = useIntegrationId(currentConfig, ConfigType.CONFLUENCE);
 
     function onSelect(value: string) {
         const integration = integrations.find((integration: AtlassianIntegration) => integration.id === value);
         if (integration) {
             setSelectedIntegrationId(integration.id);
         }
-    }
-
-    function onFormSuccess() {
-        setShowForm(false);
-        mutateIntegrations();
-        setIsConnecting(false);
-    }
-
-    function onFormCancel() {
-        setShowForm(false);
-        setIsConnecting(false);
     }
 
     if (isLoading) {
@@ -49,43 +36,29 @@ export function ConfluenceIntegration({
         );
     }
 
-    // Show form when there are no integrations or when explicitly requested
-    if (showForm || integrations.length === 0) {
-        if (integrations.length === 0) {
-            return (
-                <div className="max-w-xs">
-                    {!showForm && (
-                        <div className="flex flex-col gap-3 p-4 rounded-lg border border-dashed border-input bg-card">
-                            <div className="text-sm text-muted-foreground">
-                                No {metadata.name} accounts connected
-                            </div>
-                            <div className="text-xs text-muted-foreground">
-                                Confluence uses the same credentials as Jira. If you have a Jira connection, it will be available here.
-                            </div>
-                            <button
-                                onClick={() => setShowForm(true)}
-                                disabled={isConnecting}
-                                className="flex items-center justify-center gap-2 px-4 py-2 bg-accent text-accent-foreground rounded-lg hover:brightness-110 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                                <PlusIcon className="w-4 h-4" />
-                                {isConnecting ? 'Connecting...' : `Connect ${metadata.name}`}
-                            </button>
-                        </div>
-                    )}
-                    {showForm && (
-                        <AtlassianConnectionForm onSuccess={onFormSuccess} onCancel={onFormCancel} integrationType={metadata.type} />
-                    )}
+    if (integrations.length === 0) {
+        return (
+            <div className="max-w-xs flex flex-col gap-3 p-4 rounded-lg border border-dashed border-input bg-card">
+                <div className="text-sm text-muted-foreground">
+                    No Atlassian accounts connected
                 </div>
-            );
-        } else {
-            // Show form for adding another connection
-            return <AtlassianConnectionForm onSuccess={onFormSuccess} onCancel={onFormCancel} integrationType={metadata.type} />;
-        }
+                <div className="text-xs text-muted-foreground">
+                    Confluence uses the same credentials as Jira. If you have a Jira connection, it will be available here.
+                </div>
+                <Button
+                    onClick={connectOAuth}
+                    disabled={isOAuthConnecting}
+                >
+                    <Plus className="w-4 h-4" />
+                    {isOAuthConnecting ? 'Connecting...' : `Connect Atlassian`}
+                </Button>
+            </div>
+        );
     }
 
     // Show selector when integrations exist
     const connectionSelections: StatusOption[] = integrations.map((integration: AtlassianIntegration) => ({
-        label: integration.siteName || 'Unknown Site',
+        label: integration.siteName || integration.baseUrl || 'Unknown Site',
         value: integration.id
     }));
 
@@ -122,12 +95,12 @@ export function ConfluenceIntegration({
             </div>
 
             <Button
-                onClick={() => setShowForm(true)}
-                disabled={isConnecting}
+                onClick={connectOAuth}
+                disabled={isOAuthConnecting}
                 variant="outline"
             >
                 <Plus className="w-4 h-4" />
-                {isConnecting ? 'Connecting...' : `Connect Another ${metadata.name}`}
+                {isOAuthConnecting ? 'Connecting...' : "Connect Another Atlassian"}
             </Button>
 
             {/* Confluence-specific resource selector */}

@@ -7,8 +7,9 @@ import { GithubResourceSelector } from '../GithubResourceSelector';
 import { GitHubConfig } from '@/shared/Configs';
 import { useGithubIntegrations } from '@/hooks/api/useGithubIntegrations';
 import { useOAuthConnection } from '@/hooks/useOAuthConnection';
+import { useIntegrationId } from '@/hooks/useIntegrationId';
 import { StatusOption } from '../ui/DropdownSelect';
-import { useState } from 'react';
+import { ConfigType } from '@/shared/Configs';
 
 export function GitHubIntegration({
     input,
@@ -18,7 +19,7 @@ export function GitHubIntegration({
     const { integrations, isLoading } = useGithubIntegrations();
     const { connect: connectOAuth, isConnecting: isOAuthConnecting } = useOAuthConnection(IntegrationType.GITHUB);
     const currentConfig = input.config as GitHubConfig | undefined;
-    const [selectedIntegrationId, setSelectedIntegrationId] = useState<string | undefined>(currentConfig?.integrationId);
+    const [selectedIntegrationId, setSelectedIntegrationId] = useIntegrationId(currentConfig, ConfigType.GITHUB);
 
     function onSelect(value: string) {
         const integration = integrations.find((integration: GithubIntegrationType) => integration.id === value);

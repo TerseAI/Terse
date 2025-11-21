@@ -113,6 +113,13 @@ export const settings = {
     signingSecret: requireEnv('LINEAR_WEBHOOK_SIGNING_SECRET'),
   },
 
+  // Atlassian OAuth
+  atlassian: {
+    clientId: requireEnv('ATLASSIAN_CLIENT_ID'),
+    clientSecret: requireEnv('ATLASSIAN_CLIENT_SECRET'),
+    callbackUrl: requireEnv('ATLASSIAN_CALLBACK_URL'),
+  },
+
   // Cloud Scheduler (for cron jobs)
   cloudScheduler: {
     secret: requireEnv('CLOUD_SCHEDULER_SECRET'),
