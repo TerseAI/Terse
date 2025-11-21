@@ -33,6 +33,21 @@ export class NotionIntegrationManager implements Integration<NotionIntegration, 
         }));
     }
 
+    async getAllActiveInstances(): Promise<NotionIntegration[]> {
+        const notionIntegrations = await db().notion_integrations.findMany({
+            select: {
+                id: true,
+                workspace_id: true,
+                workspace_name: true,
+            }
+        });
+        return notionIntegrations.map(ni => ({
+            id: ni.id,
+            workspaceId: ni.workspace_id || undefined,
+            workspaceName: ni.workspace_name || undefined,
+        }));
+    }
+
     async processWebhookEvent(event: never): Promise<void> {
         // Notion webhooks are handled elsewhere
         throw new Error("Notion webhooks are not processed through this integration manager");
@@ -230,6 +245,12 @@ export class NotionIntegrationManager implements Integration<NotionIntegration, 
     async teardownChannelInput(integrationId: string, automationInput: ChannelInputWithConfigs): Promise<void> {
         // Notion doesn't require any teardown for automation inputs
         // Webhooks are managed at the integration level
+    }
+
+    async refreshToken(integrationId: string): Promise<boolean> {
+        // Notion OAuth doesn't use refresh tokens - tokens are long-lived
+        // Return false to indicate no refresh was needed/performed
+        return false;
     }
 }
 

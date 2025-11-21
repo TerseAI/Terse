@@ -320,6 +320,23 @@ export class AtlassianIntegrationManager implements Integration<AtlassianIntegra
         }));
     }
 
+    async getAllActiveInstances(): Promise<AtlassianIntegration[]> {
+        const integrations = await db().atlassian_integrations.findMany({
+            select: {
+                id: true,
+                jira_user_email: true,
+                base_url: true,
+                site_name: true,
+            },
+        });
+        return integrations.map(oi => ({
+            id: oi.id,
+            email: oi.jira_user_email,
+            baseUrl: oi.base_url,
+            siteName: oi.site_name || undefined,
+        }));
+    }
+
     async processWebhookEvent(event: JiraWebhookPayload): Promise<void> {
         console.log(
             chalk.blue("📥 [JIRA INTEGRATION MANAGER] Received webhook event:"),
@@ -590,6 +607,83 @@ export class AtlassianIntegrationManager implements Integration<AtlassianIntegra
                 error
             );
             // Don't throw - allow automation setup to continue even if webhook creation fails
+        }
+    }
+
+    async refreshToken(integrationId: string): Promise<boolean> {
+        try {
+            const integration = await db().atlassian_integrations.findUnique({
+                where: { id: integrationId },
+            });
+
+            if (!integration) {
+                console.log(`Atlassian integration ${integrationId} not found`);
+                return false;
+            }
+
+            const now = new Date();
+            // Check if token is expired or will expire in the next 5 minutes
+            if (
+                integration.token_expiry &&
+                integration.token_expiry <= new Date(now.getTime() + 5 * 60 * 1000)
+            ) {
+                console.log(`Refreshing Atlassian access token for integration ${integrationId}`);
+
+                if (!integration.refresh_token || integration.refresh_token === "") {
+                    console.error(`No refresh token available for Atlassian integration ${integrationId}`);
+                    return false;
+                }
+
+                // Exchange refresh token for new access token
+                const tokenResponse = await fetch("https://auth.atlassian.com/oauth/token", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({
+                        grant_type: "refresh_token",
+                        client_id: settings.atlassian.clientId,
+                        client_secret: settings.atlassian.clientSecret,
+                        refresh_token: integration.refresh_token,
+                    }),
+                });
+
+                if (!tokenResponse.ok) {
+                    const errorText = await tokenResponse.text();
+                    console.error(`Atlassian token refresh failed for integration ${integrationId}:`, errorText);
+                    return false;
+                }
+
+                const tokenData = await tokenResponse.json();
+                const { access_token, refresh_token, expires_in } = tokenData;
+
+                if (!access_token) {
+                    console.error(`No access token received from Atlassian refresh for integration ${integrationId}`);
+                    return false;
+                }
+
+                // Calculate token expiry
+                const tokenExpiry = new Date(Date.now() + (expires_in || 3600) * 1000);
+
+                // Update the database with new tokens
+                await db().atlassian_integrations.update({
+                    where: { id: integration.id },
+                    data: {
+                        access_token: access_token,
+                        refresh_token: refresh_token || integration.refresh_token, // Preserve existing if new one not provided
+                        token_expiry: tokenExpiry,
+                    },
+                });
+
+                console.log(`Successfully refreshed Atlassian access token for integration ${integrationId}`);
+                return true;
+            }
+
+            // Token is still valid, no refresh needed
+            return false;
+        } catch (error) {
+            console.error(`Error refreshing Atlassian token for integration ${integrationId}:`, error);
+            return false;
         }
     }
 

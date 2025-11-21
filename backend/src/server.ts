@@ -44,6 +44,7 @@ import {
   handleGmailWebhook,
   refreshAllGmailWatches,
 } from "./routes/gmail";
+import { refreshAllTokens } from "./routes/refreshTokens";
 import {
   getAtlassianIntegrations,
   atlassianOAuthCallback,
@@ -281,6 +282,12 @@ app.post("/webhooks/gmail", async (req, res) => {
 
 app.post("/gmail/refresh-watches", async (req, res) => {
   refreshAllGmailWatches(req, res);
+});
+
+// MARK: REFRESH TOKENS
+
+app.post("/refresh-tokens", async (req, res) => {
+  refreshAllTokens(req, res);
 });
 
 // MARK: NOTION

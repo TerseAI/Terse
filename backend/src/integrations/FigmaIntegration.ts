@@ -41,6 +41,23 @@ export class FigmaIntegrationManager implements Integration<FigmaIntegration, Fi
     }));
   }
 
+  async getAllActiveInstances(): Promise<FigmaIntegration[]> {
+    const integrations = await db().figma_integrations.findMany({
+      select: {
+        id: true,
+        handle: true,
+        figma_user_id: true,
+        token_expiry: true,
+      },
+    });
+    return integrations.map(integration => ({
+      id: integration.id,
+      handle: integration.handle,
+      figma_user_id: integration.figma_user_id,
+      token_expiry: integration.token_expiry,
+    }));
+  }
+
   async processWebhookEvent(event: FigmaWebhookEvent): Promise<void> {
     const eventType = event.event_type;
 
@@ -378,6 +395,87 @@ export class FigmaIntegrationManager implements Integration<FigmaIntegration, Fi
     } catch (error) {
       console.error(chalk.red(`❌ Error creating Figma webhooks for team ${teamId}:`), error);
       throw error;
+    }
+  }
+
+  async refreshToken(integrationId: string): Promise<boolean> {
+    try {
+      const integration = await db().figma_integrations.findUnique({
+        where: { id: integrationId },
+      });
+
+      if (!integration) {
+        console.log(`Figma integration ${integrationId} not found`);
+        return false;
+      }
+
+      const now = new Date();
+      // Check if token is expired or will expire in the next 5 minutes
+      if (
+        integration.token_expiry &&
+        integration.token_expiry <= new Date(now.getTime() + 5 * 60 * 1000)
+      ) {
+        console.log(`Refreshing Figma access token for integration ${integrationId}`);
+
+        if (!integration.refresh_token) {
+          console.error(`No refresh token available for Figma integration ${integrationId}`);
+          return false;
+        }
+
+        // Exchange refresh token for new access token
+        // Figma requires application/x-www-form-urlencoded format
+        const params = new URLSearchParams({
+          grant_type: "refresh_token",
+          refresh_token: integration.refresh_token,
+        });
+
+        const tokenResponse = await fetch("https://api.figma.com/v1/oauth/token", {
+          method: "POST",
+          headers: {
+            Authorization: `Basic ${Buffer.from(
+              `${figmaConfig.clientId}:${figmaConfig.clientSecret}`
+            ).toString("base64")}`,
+            "Content-Type": "application/x-www-form-urlencoded",
+          },
+          body: params.toString(),
+        });
+
+        if (!tokenResponse.ok) {
+          const errorText = await tokenResponse.text();
+          console.error(`Figma token refresh failed for integration ${integrationId}:`, errorText);
+          return false;
+        }
+
+        const tokenData = await tokenResponse.json();
+        const { access_token, refresh_token, expires_in } = tokenData;
+
+        if (!access_token) {
+          console.error(`No access token received from Figma refresh for integration ${integrationId}`);
+          return false;
+        }
+
+        // Calculate token expiry
+        const tokenExpiry = new Date(Date.now() + (expires_in * 1000));
+
+        // Update the database with new tokens
+        await db().figma_integrations.update({
+          where: { id: integration.id },
+          data: {
+            access_token: access_token,
+            refresh_token: refresh_token || integration.refresh_token, // Preserve existing if new one not provided
+            token_expiry: tokenExpiry,
+          },
+        });
+
+        console.log(`Successfully refreshed Figma access token for integration ${integrationId}`);
+        return true;
+      }
+
+      // Token is still valid, no refresh needed
+      return false;
+    } catch (error) {
+      console.error(`Error refreshing Figma token for integration ${integrationId}:`, error);
+      return false;
     }
   }
 
