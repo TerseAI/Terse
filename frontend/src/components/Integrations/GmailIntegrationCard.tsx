@@ -2,19 +2,20 @@ import { Card, CardContent } from "../ui/card";
 import { IntegrationType } from "@/shared/Integrations"
 import { IntegrationCardHeader } from "./helpers/IntegrationCardHeader";
 import { IntegrationCardFooter } from "./helpers/IntegrationCardFooter";
+import { IntegrationItem } from "./helpers/IntegrationItem";
 import { useOAuthConnection } from "@/hooks/useOAuthConnection";
 import { cn } from "@/lib/utils";
 import { useGmailIntegrations } from "@/hooks/api/useGmailIntegrations";
 import { Skeleton } from "../ui/skeleton";
 import { Mail } from "lucide-react";
 
-function GmailIntegrationCard({ className }: { className?: string }) {
+function GmailIntegrationCard({ className, isActive = true }: { className?: string; isActive?: boolean }) {
     const { connect, isConnecting } = useOAuthConnection(IntegrationType.GMAIL);
     const { integrations, isLoading } = useGmailIntegrations(); 
 
     return (
         <Card className={cn(className)}>
-            <IntegrationCardHeader integration={IntegrationType.GMAIL} />
+            <IntegrationCardHeader integration={IntegrationType.GMAIL} isActive={isActive} />
             <CardContent>
                 <GmailCardContent integrations={integrations} isLoading={isLoading} />
             </CardContent>
@@ -46,22 +47,12 @@ function GmailCardContent({ integrations, isLoading }: { integrations: Array<{ i
     return (
         <div className="space-y-2">
             {integrations.map((integration) => (
-                <div
+                <IntegrationItem
                     key={integration.id}
-                    className="flex items-center gap-3 p-3 rounded-lg border border-border bg-card hover:bg-accent/50 transition-colors group"
-                >
-                    <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
-                        <Mail className="w-4 h-4 text-primary" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                        <div className="text-sm font-medium text-foreground truncate">
-                            {integration.email}
-                        </div>
-                        <div className="text-xs text-muted-foreground mt-0.5">
-                            Gmail account
-                        </div>
-                    </div>
-                </div>
+                    icon={<Mail className="w-4 h-4" />}
+                    title={integration.email}
+                    description="Gmail account"
+                />
             ))}
         </div>
     );

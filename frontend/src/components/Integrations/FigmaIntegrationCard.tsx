@@ -2,19 +2,20 @@ import { Card, CardContent } from "../ui/card";
 import { FigmaIntegration, IntegrationType } from "@/shared/Integrations"
 import { IntegrationCardHeader } from "./helpers/IntegrationCardHeader";
 import { IntegrationCardFooter } from "./helpers/IntegrationCardFooter";
+import { IntegrationItem } from "./helpers/IntegrationItem";
 import { useOAuthConnection } from "@/hooks/useOAuthConnection";
 import { cn } from "@/lib/utils";
 import { useFigmaIntegrations } from "@/hooks/api/useFigmaIntegrations";
 import { Skeleton } from "../ui/skeleton";
 import { Palette } from "lucide-react";
 
-function FigmaIntegrationCard({ className }: { className?: string }) {
+function FigmaIntegrationCard({ className, isActive = true }: { className?: string; isActive?: boolean }) {
     const { connect, isConnecting } = useOAuthConnection(IntegrationType.FIGMA);
     const { integrations, isLoading } = useFigmaIntegrations(); 
 
     return (
         <Card className={cn(className)}>
-            <IntegrationCardHeader integration={IntegrationType.FIGMA} />
+            <IntegrationCardHeader integration={IntegrationType.FIGMA} isActive={isActive} />
             <CardContent>
                 <FigmaCardContent integrations={integrations} isLoading={isLoading} />
             </CardContent>
@@ -46,22 +47,12 @@ function FigmaCardContent({ integrations, isLoading }: { integrations: Array<Fig
     return (
         <div className="space-y-2">
             {integrations.map((integration) => (
-                <div
+                <IntegrationItem
                     key={integration.id}
-                    className="flex items-center gap-3 p-3 rounded-lg border border-border bg-card hover:bg-accent/50 transition-colors group"
-                >
-                    <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
-                        <Palette className="w-4 h-4 text-primary" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                        <div className="text-sm font-medium text-foreground truncate">
-                            {integration.handle || integration.figma_user_id}
-                        </div>
-                        <div className="text-xs text-muted-foreground mt-0.5">
-                            Figma account
-                        </div>
-                    </div>
-                </div>
+                    icon={<Palette className="w-4 h-4" />}
+                    title={integration.handle || integration.figma_user_id}
+                    description="Figma account"
+                />
             ))}
         </div>
     );

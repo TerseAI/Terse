@@ -6,18 +6,21 @@ import { IntegrationType } from "@/shared/Integrations"
 
 interface IntegrationCardHeaderProps {
     integration: IntegrationType;
+    isActive?: boolean;
 }
 
-export function IntegrationCardHeader({ integration }: IntegrationCardHeaderProps) {
+export function IntegrationCardHeader({ integration, isActive = true }: IntegrationCardHeaderProps) {
     return (
         <CardHeader>
             <CardTitle>
                 <div className="flex justify-between">
                     <IntegrationTitle integration={integration} iconSize="lg" />
-                    <Badge variant="secondary" className="text-foreground">
-                        <BadgeCheckIcon className="size-3 text-primary" />
-                        Connected
-                    </Badge>
+                    {isActive && (
+                        <Badge variant="secondary" className="text-foreground">
+                            <BadgeCheckIcon className="size-3 text-primary" />
+                            Connected
+                        </Badge>
+                    )}
                 </div>
             </CardTitle>
         </CardHeader>
