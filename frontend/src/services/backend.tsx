@@ -19,6 +19,7 @@ import {
 } from "../shared/types";
 import { 
     IntegrationType,
+    IntegrationWithStatus,
     GmailIntegration,
     LinearIntegration,
     SlackIntegration,
@@ -97,6 +98,11 @@ interface BackendService {
      * Returns the installation details for a given integration type
      */
     getIntegrationInstallationDetails(integrationType: IntegrationType): Promise<OAuthInstallationDetails>;
+
+    /**
+     * Returns all integrations with their active status for the current user
+     */
+    getAllIntegrations(): Promise<IntegrationWithStatus[]>;
 
     /**
      * Returns the active integrations for the current user
@@ -368,6 +374,15 @@ export const BackendProvider: BackendService = {
             .then(response => response.data)
             .catch(error => {
                 console.error('Error getting integration installation details:', error);
+                throw error;
+            });
+    },
+
+    getAllIntegrations: () => {
+        return axios.get(`${backendBaseUrl}/integrations`, { withCredentials: true })
+            .then(response => response.data)
+            .catch(error => {
+                console.error('Error getting all integrations:', error);
                 throw error;
             });
     },

@@ -391,10 +391,13 @@ app.get("/integrations/:integrationType/installation-details", authMiddleware, a
   getIntegrationInstallationDetails(req, res);
 });
 
+app.get("/integrations", authMiddleware, async (req, res) => {
+  getAllIntegrations(req, res);
+});
+
 app.get("/integrations/active", authMiddleware, async (req, res) => {
   getActiveIntegrations(req, res);
 });
-
 server.listen(3001, () => {
   console.log("🚀 Express backend running on http://localhost:3001");
   console.log("📝 Logging is enabled - all console.log statements should appear");
