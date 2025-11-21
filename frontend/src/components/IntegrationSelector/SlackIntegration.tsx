@@ -7,8 +7,9 @@ import { SlackConfig } from '../../shared/Configs';
 import { InputConfigSelectorProps } from './types';
 import { useSlackIntegrations } from '@/hooks/api/useSlackIntegrations';
 import { useOAuthConnection } from '@/hooks/useOAuthConnection';
+import { useIntegrationId } from '@/hooks/useIntegrationId';
 import { StatusOption } from '../ui/DropdownSelect';
-import { useState } from 'react';
+import { ConfigType } from '../../shared/Configs';
 
 export function SlackIntegration({
     input,
@@ -18,7 +19,7 @@ export function SlackIntegration({
     const { integrations, isLoading } = useSlackIntegrations();
     const { connect: connectOAuth, isConnecting: isOAuthConnecting } = useOAuthConnection(IntegrationType.SLACK);
     const currentConfig = input.config as SlackConfig | undefined;
-    const [selectedIntegrationId, setSelectedIntegrationId] = useState<string | undefined>(currentConfig?.integrationId);
+    const [selectedIntegrationId, setSelectedIntegrationId] = useIntegrationId(currentConfig, ConfigType.SLACK);
 
     function onSelect(value: string) {
         const integration = integrations.find((integration: SlackIntegrationType) => integration.id === value);

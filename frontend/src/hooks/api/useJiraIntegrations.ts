@@ -4,7 +4,7 @@ import type { AtlassianIntegration } from '@/shared/Integrations';
 import { atlassianIntegrationsKey } from "@/shared/InvalidationKeys";
 import { useOAuthSuccessListener } from '@/hooks/useOAuthSuccessListener';
 
-type UseAtlassianIntegrationsReturn = {
+type UseJiraIntegrationsReturn = {
     integrations: AtlassianIntegration[];
     isLoading: boolean;
     isError: boolean;
@@ -13,7 +13,7 @@ type UseAtlassianIntegrationsReturn = {
     mutate: KeyedMutator<AtlassianIntegration[]>;
 };
 
-export function useAtlassianIntegrations(): UseAtlassianIntegrationsReturn {
+export function useJiraIntegrations(): UseJiraIntegrationsReturn {
     const { data, error, isLoading, isValidating, mutate } = useSWR<AtlassianIntegration[]>(
         atlassianIntegrationsKey(),
         () => BackendProvider.getAtlassianIntegrations(),

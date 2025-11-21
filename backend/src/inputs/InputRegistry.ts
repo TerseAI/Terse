@@ -2,6 +2,7 @@ import { FigmaInput } from "./FigmaInput";
 import { GithubInput } from "./GithubInput";
 import { GmailInput } from "./GmailInput";
 import { Input } from "./Input";
+import { JiraInput } from "./JiraInput";
 import { LinearInput } from "./LinearInput";
 import { SlackInput } from "./SlackInput";
 
@@ -10,5 +11,6 @@ export const INPUT_REGISTRY: Input<any>[] = [
     new SlackInput(),
     new FigmaInput(),
     new GithubInput(),
-    new LinearInput()
+    new LinearInput(),
+    new JiraInput()
 ];

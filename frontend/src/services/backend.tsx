@@ -11,6 +11,7 @@ import {
     GetGithubRepositoriesForIntegrationResponse, 
     OAuthInstallationDetails, 
     JiraCredentialsValidationResponse, 
+    JiraResourcesResponse,
     NotionResourcesResponse, 
     RecentChannel,
     SlackChannelsResponse,
@@ -144,19 +145,14 @@ interface BackendService {
     deleteJiraApiKey(): Promise<void>;
 
     /**
-     * Sets the Confluence API key
-     */
-    setConfluenceApiKey(email: string, baseUrl: string, apiKey: string, projectKey?: string): Promise<{ success: boolean; connection?: AtlassianIntegration; error?: string }>;
-
-    /**
-     * Validates Confluence credentials
-     */
-    validateConfluenceCredentials(baseUrl: string, email: string, apiKey: string): Promise<{ valid: boolean; error?: string }>;
-
-    /**
      * Gets the Confluence resources
      */
     getConfluenceResources(integrationId: string): Promise<ConfluenceResourcesResponse>;
+
+    /**
+     * Gets Jira resources (projects) for a specific integration
+     */
+    getJiraResources(integrationId: string): Promise<JiraResourcesResponse>;
 
     /**
      * Gets all Gmail integrations for the current user
@@ -468,30 +464,20 @@ export const BackendProvider: BackendService = {
             });
     },
 
-    setConfluenceApiKey: (email: string, baseUrl: string, apiKey: string) => {
-        return axios.post(`${backendBaseUrl}/confluence/set-api-key`, { email, baseUrl, apiKey }, { withCredentials: true })
-            .then(response => response.data)
-            .catch(error => {
-                console.error('Error setting Confluence API key:', error);
-                const errorMessage = error.response?.data?.error || 'Failed to create Confluence connection';
-                throw { success: false, error: errorMessage };
-            });
-    },
-
-    validateConfluenceCredentials: (baseUrl: string, email: string, apiKey: string) => {
-        return axios.post(`${backendBaseUrl}/confluence/validate-credentials`, { baseUrl, email, apiKey }, { withCredentials: true })
-            .then(response => response.data)
-            .catch(error => {
-                console.error('Error validating Confluence credentials:', error);
-                throw error;
-            });
-    },
-
     getConfluenceResources: (integrationId: string) => {
         return axios.get<ConfluenceResourcesResponse>(`${backendBaseUrl}/confluence/resources?integrationId=${encodeURIComponent(integrationId)}`, { withCredentials: true })
             .then(response => response.data)
             .catch(error => {
                 console.error('Error fetching Confluence resources:', error);
+                throw error;
+            });
+    },
+
+    getJiraResources: (integrationId: string) => {
+        return axios.get<JiraResourcesResponse>(`${backendBaseUrl}/jira/resources?integrationId=${encodeURIComponent(integrationId)}`, { withCredentials: true })
+            .then(response => response.data)
+            .catch(error => {
+                console.error('Error fetching Jira resources:', error);
                 throw error;
             });
     },

@@ -14,7 +14,7 @@ export type BaseFormValues = z.infer<typeof baseFormSchema>;
 export type JiraFormValues = z.infer<typeof jiraFormSchema>;
 
 export interface AtlassianConnectionFormProps {
-    onSuccess: () => void;
+    onSuccess?: () => void;
     onCancel?: () => void;
 }
 

@@ -8,7 +8,7 @@ import { NotionResourceType } from '@/shared/types';
 import { InputConfigSelectorProps } from './types';
 import { useNotionIntegrations } from '@/hooks/api/useNotionIntegrations';
 import { useOAuthConnection } from '@/hooks/useOAuthConnection';
-import { useState } from 'react';
+import { useIntegrationId } from '@/hooks/useIntegrationId';
 
 export function NotionIntegration({
     input,
@@ -20,7 +20,10 @@ export function NotionIntegration({
     const isDatabaseConfig = input.configType === ConfigType.NOTION_DATABASE;
     const isPageConfig = input.configType === ConfigType.NOTION_PAGE;
     const currentConfig = input.config as NotionConfig | NotionPageConfig | undefined;
-    const [selectedIntegrationId, setSelectedIntegrationId] = useState<string | undefined>(currentConfig?.integrationId);
+    const [selectedIntegrationId, setSelectedIntegrationId] = useIntegrationId(
+        currentConfig, 
+        [ConfigType.NOTION_DATABASE, ConfigType.NOTION_PAGE]
+    );
 
     function onSelect(value: string) {
         const integration = integrations.find((integration: NotionIntegrationType) => integration.id === value);

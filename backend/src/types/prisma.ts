@@ -2,7 +2,9 @@ import {
   users,
   github_repositories,
   linear_api_keys,
+  linear_integrations,
   jira_api_keys,
+  atlassian_integrations,
   slack_integrations,
   user_slack_integrations,
   user_github_repositories,
@@ -31,7 +33,11 @@ export type GithubRepository = github_repositories;
 
 export type LinearApiKey = linear_api_keys;
 
+export type LinearIntegration = linear_integrations;
+
 export type JiraApiKey = jira_api_keys;
+
+export type AtlassianIntegration = atlassian_integrations;
 
 export type SlackIntegration = slack_integrations;
 
@@ -145,7 +151,9 @@ export {
   users,
   github_repositories,
   linear_api_keys,
+  linear_integrations,
   jira_api_keys,
+  atlassian_integrations,
   slack_integrations,
   user_slack_integrations,
   user_github_repositories,
