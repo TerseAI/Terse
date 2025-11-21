@@ -35,6 +35,20 @@ export class LinearIntegrationManager implements Integration<LinearIntegration, 
         }));
     }
 
+    async getAllActiveInstances(): Promise<LinearIntegration[]> {
+        const integrations = await db().linear_integrations.findMany({
+            select: {
+                id: true,
+                workspace_id: true,
+                workspace_name: true,
+            },
+        });
+        return integrations.map((li) => ({
+            id: li.id,
+            workspaceName: li.workspace_name,
+        }));
+    }
+
     async processWebhookEvent(event: LinearWebhookPayload): Promise<void> {
         console.log(
             chalk.blue("📥 [LINEAR INTEGRATION MANAGER] Received webhook event:"),
@@ -286,6 +300,84 @@ export class LinearIntegrationManager implements Integration<LinearIntegration, 
     async teardownChannelInput(integrationId: string, channelInput: ChannelInputWithConfigs): Promise<void> {
         // Linear doesn't require any teardown for channel inputs
         // Webhooks are managed at the integration level
+    }
+
+    async refreshToken(integrationId: string): Promise<boolean> {
+        try {
+            const integration = await db().linear_integrations.findUnique({
+                where: { id: integrationId },
+            });
+
+            if (!integration) {
+                console.log(`Linear integration ${integrationId} not found`);
+                return false;
+            }
+
+            const now = new Date();
+            // Check if token is expired or will expire in the next 5 minutes
+            if (
+                integration.token_expiry &&
+                integration.token_expiry <= new Date(now.getTime() + 5 * 60 * 1000)
+            ) {
+                console.log(`Refreshing Linear access token for integration ${integrationId}`);
+
+                if (!integration.refresh_token) {
+                    console.error(`No refresh token available for Linear integration ${integrationId}`);
+                    return false;
+                }
+
+                // Exchange refresh token for new access token
+                const params = new URLSearchParams();
+                params.append("refresh_token", integration.refresh_token);
+                params.append("client_id", settings.linear.clientId);
+                params.append("client_secret", settings.linear.clientSecret);
+                params.append("grant_type", "refresh_token");
+
+                const tokenResponse = await fetch("https://api.linear.app/oauth/token", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/x-www-form-urlencoded",
+                    },
+                    body: params.toString(),
+                });
+
+                if (!tokenResponse.ok) {
+                    const errorText = await tokenResponse.text();
+                    console.error(`Linear token refresh failed for integration ${integrationId}:`, errorText);
+                    return false;
+                }
+
+                const tokenData = await tokenResponse.json();
+                const { access_token, refresh_token, expires_in } = tokenData;
+
+                if (!access_token) {
+                    console.error(`No access token received from Linear refresh for integration ${integrationId}`);
+                    return false;
+                }
+
+                // Calculate token expiry
+                const tokenExpiry = new Date(Date.now() + (expires_in || 3600) * 1000);
+
+                // Update the database with new tokens
+                await db().linear_integrations.update({
+                    where: { id: integration.id },
+                    data: {
+                        access_token: access_token,
+                        refresh_token: refresh_token || integration.refresh_token, // Preserve existing if new one not provided
+                        token_expiry: tokenExpiry,
+                    },
+                });
+
+                console.log(`Successfully refreshed Linear access token for integration ${integrationId}`);
+                return true;
+            }
+
+            // Token is still valid, no refresh needed
+            return false;
+        } catch (error) {
+            console.error(`Error refreshing Linear token for integration ${integrationId}:`, error);
+            return false;
+        }
     }
 }
 

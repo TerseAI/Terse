@@ -29,6 +29,21 @@ export class GithubIntegrationManager implements Integration<GithubIntegration, 
         }));
     }
 
+    async getAllActiveInstances(): Promise<GithubIntegration[]> {
+        const userGithubInstallations = await db().user_github_installation.findMany({
+            select: {
+                id: true,
+                installation_id: true,
+                account_name: true,
+            }
+        });
+        return userGithubInstallations.map(ugi => ({
+            id: ugi.id,
+            installation_id: ugi.installation_id,
+            account_name: ugi.account_name || null,
+        }));
+    }
+
     async processWebhookEvent(event: GithubAppUnifiedEventRequest): Promise<void> {
         const user: User | null = await resolveUserForGithubInstallation(event.installationId, event.username);
 
@@ -110,6 +125,13 @@ export class GithubIntegrationManager implements Integration<GithubIntegration, 
     async teardownChannelInput(integrationId: string, channelInput: ChannelInputWithConfigs): Promise<void> {
         // GitHub doesn't require any teardown for channel inputs
         // Webhooks are managed at the integration level
+    }
+
+    async refreshToken(integrationId: string): Promise<boolean> {
+        // GitHub uses installation-based authentication that doesn't use traditional OAuth refresh tokens
+        // Tokens are generated on-demand from the installation
+        // Return false to indicate no refresh was needed/performed
+        return false;
     }
 }
 

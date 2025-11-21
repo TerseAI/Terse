@@ -37,6 +37,19 @@ export class SlackIntegrationManager implements Integration<SlackIntegration, Sl
         }));
     }
 
+    async getAllActiveInstances(): Promise<SlackIntegration[]> {
+        const userSlackIntegrations = await db().user_slack_integrations.findMany({
+            include: {
+                slack_integration: true
+            }
+        });
+        return userSlackIntegrations.map(usi => ({
+            id: usi.id,
+            teamId: usi.slack_integration.team_id,
+            teamName: usi.slack_integration.team_name,
+        }));
+    }
+
     async processWebhookEvent(event: SlackMessageEvent): Promise<void> {
         // For event_callback types, check if we've already processed this event
         const { team_id, event_id, type, authorizations } = event;
@@ -283,6 +296,12 @@ export class SlackIntegrationManager implements Integration<SlackIntegration, Sl
     async teardownChannelInput(integrationId: string, channelInput: ChannelInputWithConfigs): Promise<void> {
         // Slack doesn't require any teardown for channel inputs
         // Webhooks are managed at the integration level
+    }
+
+    async refreshToken(integrationId: string): Promise<boolean> {
+        // Slack uses app-level tokens that are long-lived and don't require refresh
+        // Return false to indicate no refresh was needed/performed
+        return false;
     }
 }
 

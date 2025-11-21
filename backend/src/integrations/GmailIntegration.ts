@@ -43,6 +43,24 @@ export class GmailIntegrationManager implements Integration<GmailIntegration, Gm
         }));
     }
 
+    async getAllActiveInstances(): Promise<GmailIntegration[]> {
+        const integrations = await db().gmail_integrations.findMany({
+            where: { is_active: true },
+            select: {
+                id: true,
+                email: true,
+                history_id: true,
+                watch_expiration: true,
+            },
+        });
+        return integrations.map(gi => ({
+            id: gi.id,
+            email: gi.email,
+            historyId: gi.history_id,
+            watchExpiration: gi.watch_expiration,
+        }));
+    }
+
     async processWebhookEvent(event: GmailWebhookEvent): Promise<void> {
         const { emailAddress, historyId } = event;
         console.log(`Gmail notification for ${emailAddress}, historyId: ${historyId}`);
@@ -304,6 +322,111 @@ export class GmailIntegrationManager implements Integration<GmailIntegration, Gm
     async teardownChannelInput(integrationId: string, channelInput: ChannelInputWithConfigs): Promise<void> {
         // Gmail doesn't require any teardown for channel inputs
         // Webhooks are managed at the integration level
+    }
+
+    async refreshToken(integrationId: string): Promise<boolean> {
+        try {
+            const integration = await db().gmail_integrations.findUnique({
+                where: { id: integrationId },
+            });
+
+            if (!integration || !integration.is_active) {
+                console.log(`Gmail integration ${integrationId} not found or inactive`);
+                return false;
+            }
+
+            const now = new Date();
+            let tokenRefreshed = false;
+            let accessToken = integration.access_token;
+            let tokenExpiry = integration.token_expiry;
+
+            // Check if token is expired or will expire in the next 5 minutes
+            if (
+                integration.token_expiry &&
+                integration.token_expiry <= new Date(now.getTime() + 5 * 60 * 1000)
+            ) {
+                console.log(`Refreshing Gmail access token for integration ${integrationId}`);
+
+                const oauth2Client = getOAuth2Client();
+                oauth2Client.setCredentials({
+                    refresh_token: integration.refresh_token,
+                });
+
+                const { credentials } = await oauth2Client.refreshAccessToken();
+
+                const newTokenExpiry = credentials.expiry_date
+                    ? new Date(credentials.expiry_date)
+                    : new Date(Date.now() + 3600 * 1000);
+
+                accessToken = credentials.access_token!;
+                tokenExpiry = newTokenExpiry;
+
+                // Update the database with new tokens
+                await db().gmail_integrations.update({
+                    where: { id: integration.id },
+                    data: {
+                        access_token: accessToken,
+                        token_expiry: newTokenExpiry,
+                    },
+                });
+
+                console.log(`Successfully refreshed Gmail access token for integration ${integrationId}`);
+                tokenRefreshed = true;
+            }
+
+            // Also refresh the Gmail watch if it's expiring soon (within 24 hours) or if token was refreshed
+            const watchNeedsRefresh = !integration.watch_expiration || 
+                integration.watch_expiration <= new Date(now.getTime() + 24 * 60 * 60 * 1000);
+
+            if (watchNeedsRefresh || tokenRefreshed) {
+                console.log(`Refreshing Gmail watch for integration ${integrationId}`);
+
+                // Set up OAuth client with current credentials
+                const oauth2Client = getOAuth2Client();
+                oauth2Client.setCredentials({
+                    access_token: accessToken,
+                    refresh_token: integration.refresh_token,
+                    expiry_date: tokenExpiry.getTime(),
+                });
+
+                // Get Gmail client
+                const gmail = google.gmail({ version: "v1", auth: oauth2Client });
+
+                // Refresh the watch
+                const watchResponse = await gmail.users.watch({
+                    userId: "me",
+                    requestBody: {
+                        topicName: gmailConfig.pubsubTopic,
+                        labelIds: ["INBOX"],
+                        labelFilterAction: "include"
+                    },
+                });
+
+                const historyId = watchResponse.data.historyId;
+                const expiration = watchResponse.data.expiration;
+
+                if (!historyId || !expiration) {
+                    console.error(`Failed to refresh watch for ${integrationId}: Missing historyId or expiration`);
+                    // Don't fail the whole operation if watch refresh fails
+                } else {
+                    // Update the database with new watch information
+                    await db().gmail_integrations.update({
+                        where: { id: integration.id },
+                        data: {
+                            history_id: historyId,
+                            watch_expiration: new Date(parseInt(expiration)),
+                        },
+                    });
+
+                    console.log(`Successfully refreshed Gmail watch for ${integrationId}. New expiration: ${new Date(parseInt(expiration)).toISOString()}`);
+                }
+            }
+
+            return tokenRefreshed;
+        } catch (error) {
+            console.error(`Error refreshing Gmail token for integration ${integrationId}:`, error);
+            return false;
+        }
     }
 }
 
