@@ -78,7 +78,7 @@ import {
   handleFigmaWebhook,
 } from "./routes/figma";
 import { getConfluenceIntegrations, getConfluenceResources } from "./routes/confluence";
-import { getActiveIntegrations, getIntegrationInstallationDetails } from "./routes/integrations";
+import { getActiveIntegrations, getAllIntegrations, getIntegrationInstallationDetails } from "./routes/integrations";
 import { initializeRealtimeSocket } from "./realtimeSocket";
 import { RunHistoryAction } from "./shared/RunHistoryTypes";
 
