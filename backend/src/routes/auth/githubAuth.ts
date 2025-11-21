@@ -46,6 +46,7 @@ export function githubLoginURL(req: Request, res: Response) {
 
 export async function githubLogin(req: Request, res: Response) {
     console.log('githubLogin route has been hit')
+    console.log('githubLogin Payload content', req)
     const state = crypto.randomBytes(8).toString('hex');
     const redirectUrl = `https://github.com/login/oauth/authorize?client_id=${githubAuth.clientId}&redirect_uri=${encodeURIComponent(githubAuth.callbackUrl)}&scope=read:user%20user:email&state=${state}`;
 
