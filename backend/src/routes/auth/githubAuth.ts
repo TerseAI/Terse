@@ -81,6 +81,8 @@ export async function githubCallback(req: Request, res: Response) {
             headers: { Authorization: `Bearer ${githubAccessToken}` }
         });
 
+        console.log('GitHub OAuth user response:', userResp.data)
+
         let email = userResp.data.email as string | null;
         const name = (userResp.data.name as string) || (userResp.data.login as string);
         const githubUsername = userResp.data.login as string;
