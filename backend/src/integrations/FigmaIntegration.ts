@@ -20,7 +20,7 @@ import {
 } from "../shared/types";
 import { FigmaIntegration, FigmaIntegrationMetadata, IntegrationType } from "../shared/Integrations";
 import jwt from "jsonwebtoken";
-import { figma as figmaConfig, jwt as jwtConfig, urls } from "../config/settings";
+import { figma as figmaConfig, jwt as jwtConfig, urls, OAUTH_TOKEN_REFRESH_THRESHOLD_MS } from "../config/settings";
 import { Request, Response } from "express";
 
 export class FigmaIntegrationManager implements Integration<FigmaIntegration, FigmaWebhookEvent, typeof FigmaIntegrationMetadata>, OAuthIntegrationInstallation {
@@ -89,7 +89,7 @@ export class FigmaIntegrationManager implements Integration<FigmaIntegration, Fi
 
     for (const integration of integrations) {
       if (eventType === FigmaEventTypes.FILE_COMMENT) {
-        await handleFigmaCommentEvent(integration, event, integration.user);
+        await this.handleFigmaCommentEvent(integration, event, integration.user);
       }
     }
   }
@@ -293,7 +293,11 @@ export class FigmaIntegrationManager implements Integration<FigmaIntegration, Fi
     const eventTypes = ['FILE_COMMENT'];
 
     try {
-      const accessToken = figmaIntegration.access_token;
+      // Get valid access token (handles refresh automatically)
+      const accessToken = await this.getAccessToken(integrationId);
+      if (!accessToken) {
+        throw new Error(`Could not get valid access token for Figma integration ${integrationId}`);
+      }
       const isDevelopment = nodeEnv !== 'production';
 
       // Create or reuse team-level webhooks for both event types
@@ -398,6 +402,106 @@ export class FigmaIntegrationManager implements Integration<FigmaIntegration, Fi
     }
   }
 
+  async teardownChannelInput(integrationId: string, channelInput: ChannelInputWithConfigs): Promise<void> {
+    const teamId = channelInput.figma_config?.team_id;
+
+    if (!teamId) {
+      console.log(chalk.blue(`ℹ️  No team_id in config, skipping webhook cleanup for channel input ${channelInput.id}`));
+      return;
+    }
+
+    // Get Figma integration
+    const figmaIntegration = await db().figma_integrations.findFirst({
+      where: { id: integrationId },
+    });
+
+    if (!figmaIntegration) {
+      console.log(chalk.yellow(`⚠️  Figma integration not found: ${integrationId}`));
+      return;
+    }
+
+    // Check if any other active automations are using this team
+    const otherAutomations = await db().automation_inputs.findMany({
+      where: {
+        config_type: InputConfigType.FIGMA,
+        automation: {
+          is_active: true,
+        },
+        NOT: {
+          id: channelInput.id,
+        },
+      },
+      include: {
+        figma_config: true,
+      },
+    });
+
+    // Check if any other active channel uses the same team
+    const otherTeamUsers = otherAutomations.filter(
+      (input) => input.figma_config?.team_id === teamId
+    );
+
+    if (otherTeamUsers.length > 0) {
+      console.log(
+        chalk.blue(`ℹ️  Team ${teamId} still in use by ${otherTeamUsers.length} other automation(s). Keeping team-level webhooks.`)
+      );
+      return; // Don't delete webhooks, other automations are using them
+    }
+
+    // No other automations use this team, so we can delete the team-level webhooks
+    const webhooks = await db().figma_webhooks.findMany({
+      where: {
+        figma_integration_id: figmaIntegration.id,
+        team_id: teamId,
+      },
+    });
+
+    if (webhooks.length === 0) {
+      console.log(chalk.blue(`ℹ️  No webhooks found for team ${teamId}`));
+      return;
+    }
+
+    // Get valid access token (handles refresh automatically)
+    const accessToken = await this.getAccessToken(integrationId);
+    if (!accessToken) {
+      console.log(chalk.yellow(`⚠️  Could not get valid access token, skipping webhook deletion`));
+      return;
+    }
+
+    // Delete all team-level webhooks for this team
+    for (const webhook of webhooks) {
+      try {
+        const deleteResponse = await fetch(`https://api.figma.com/v2/webhooks/${webhook.webhook_id}`, {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+          },
+        });
+
+        if (!deleteResponse.ok && deleteResponse.status !== 404) {
+          // 404 means webhook already deleted, which is fine
+          const errorText = await deleteResponse.text();
+          console.error(chalk.red(`Failed to delete Figma webhook ${webhook.webhook_id} (${webhook.event_type}): ${errorText}`));
+        } else {
+          console.log(chalk.green(`✅ Deleted team-level Figma webhook ${webhook.webhook_id} (${webhook.event_type}) for team ${teamId}`));
+        }
+      } catch (error) {
+        console.error(chalk.red(`❌ Error deleting Figma webhook ${webhook.webhook_id}:`), error);
+        // Continue with database cleanup even if API call fails
+      }
+    }
+
+    // Delete webhook records from database
+    await db().figma_webhooks.deleteMany({
+      where: {
+        figma_integration_id: figmaIntegration.id,
+        team_id: teamId,
+      },
+    });
+
+    console.log(chalk.blue(`📤 Team ${teamId} no longer monitored by any automations`));
+  }
+
   async refreshToken(integrationId: string): Promise<boolean> {
     try {
       const integration = await db().figma_integrations.findUnique({
@@ -410,10 +514,10 @@ export class FigmaIntegrationManager implements Integration<FigmaIntegration, Fi
       }
 
       const now = new Date();
-      // Check if token is expired or will expire in the next 5 minutes
+      // Check if token is expired or will expire within the refresh threshold
       if (
         integration.token_expiry &&
-        integration.token_expiry <= new Date(now.getTime() + 5 * 60 * 1000)
+        integration.token_expiry <= new Date(now.getTime() + OAUTH_TOKEN_REFRESH_THRESHOLD_MS)
       ) {
         console.log(`Refreshing Figma access token for integration ${integrationId}`);
 
@@ -479,103 +583,216 @@ export class FigmaIntegrationManager implements Integration<FigmaIntegration, Fi
     }
   }
 
-  async teardownChannelInput(integrationId: string, channelInput: ChannelInputWithConfigs): Promise<void> {
-    const teamId = channelInput.figma_config?.team_id;
+  async getAccessToken(integrationId: string): Promise<string | null> {
+    try {
+      const integration = await db().figma_integrations.findUnique({
+        where: { id: integrationId },
+      });
 
-    if (!teamId) {
-      console.log(chalk.blue(`ℹ️  No team_id in config, skipping webhook cleanup for channel input ${channelInput.id}`));
+      if (!integration) {
+        console.error(`Figma integration ${integrationId} not found`);
+        return null;
+      }
+
+      // Ensure token is refreshed if needed
+      await this.refreshToken(integrationId);
+
+      // Fetch the integration again to get the potentially refreshed token
+      const refreshedIntegration = await db().figma_integrations.findUnique({
+        where: { id: integrationId },
+      });
+
+      return refreshedIntegration?.access_token || null;
+    } catch (error) {
+      console.error(`Error getting Figma access token for integration ${integrationId}:`, error);
+      return null;
+    }
+  }
+
+  /**
+   * Handle FILE_COMMENT webhook events
+   * Comment data is included in the webhook payload
+   * Note: client_meta is not included in webhook payload, so we fetch it from the comment API
+   */
+  private async handleFigmaCommentEvent(
+    integration: figma_integrations,
+    webhookEvent: FigmaWebhookEvent,
+    user: User,
+  ): Promise<void> {
+    // Extract comment_id from top level (Figma webhook structure)
+    const commentId = webhookEvent.comment_id;
+    const fileKey = webhookEvent.file_key;
+    if (!commentId) {
+      console.log(chalk.yellow(`⚠️  FILE_COMMENT event missing comment_id`));
+      console.log(chalk.yellow(`Webhook event: ${JSON.stringify(webhookEvent, null, 2)}`));
       return;
     }
-
-    // Get Figma integration
-    const figmaIntegration = await db().figma_integrations.findFirst({
-      where: { id: integrationId },
-    });
-
-    if (!figmaIntegration) {
-      console.log(chalk.yellow(`⚠️  Figma integration not found: ${integrationId}`));
+    if (!fileKey) {
+      console.log(chalk.yellow(`⚠️  FILE_COMMENT event missing file_key`));
+      console.log(chalk.yellow(`Webhook event: ${JSON.stringify(webhookEvent, null, 2)}`));
       return;
     }
-
-    // Check if any other active automations are using this team
-    const otherAutomations = await db().automation_inputs.findMany({
-      where: {
-        config_type: InputConfigType.FIGMA,
-        automation: {
-          is_active: true,
-        },
-        NOT: {
-          id: channelInput.id,
-        },
-      },
-      include: {
-        figma_config: true,
-      },
-    });
-
-    // Check if any other active channel uses the same team
-    const otherTeamUsers = otherAutomations.filter(
-      (input) => input.figma_config?.team_id === teamId
+    console.log(
+      chalk.blue(`📝 Processing FILE_COMMENT event for file ${fileKey}, comment ${commentId}`)
     );
 
-    if (otherTeamUsers.length > 0) {
-      console.log(
-        chalk.blue(`ℹ️  Team ${teamId} still in use by ${otherTeamUsers.length} other automation(s). Keeping team-level webhooks.`)
-      );
-      return; // Don't delete webhooks, other automations are using them
-    }
-
-    // No other automations use this team, so we can delete the team-level webhooks
-    const webhooks = await db().figma_webhooks.findMany({
-      where: {
-        figma_integration_id: figmaIntegration.id,
-        team_id: teamId,
-      },
-    });
-
-    if (webhooks.length === 0) {
-      console.log(chalk.blue(`ℹ️  No webhooks found for team ${teamId}`));
-      return;
-    }
-
-    const accessToken = figmaIntegration.access_token;
-    if (!accessToken) {
-      console.log(chalk.yellow(`⚠️  No access token found, skipping webhook deletion`));
-      return;
-    }
-
-    // Delete all team-level webhooks for this team
-    for (const webhook of webhooks) {
-      try {
-        const deleteResponse = await fetch(`https://api.figma.com/v2/webhooks/${webhook.webhook_id}`, {
-          method: 'DELETE',
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
-          },
-        });
-
-        if (!deleteResponse.ok && deleteResponse.status !== 404) {
-          // 404 means webhook already deleted, which is fine
-          const errorText = await deleteResponse.text();
-          console.error(chalk.red(`Failed to delete Figma webhook ${webhook.webhook_id} (${webhook.event_type}): ${errorText}`));
-        } else {
-          console.log(chalk.green(`✅ Deleted team-level Figma webhook ${webhook.webhook_id} (${webhook.event_type}) for team ${teamId}`));
-        }
-      } catch (error) {
-        console.error(chalk.red(`❌ Error deleting Figma webhook ${webhook.webhook_id}:`), error);
-        // Continue with database cleanup even if API call fails
+    // Process the comment once per integration, to prevent duplicate processing
+    try {
+      await db().processed_figma_comments.create({
+        data: {
+          figma_integration_id: integration.id,
+          comment_id: commentId,
+          file_key: fileKey,
+        },
+      });
+    } catch (error: any) {
+      // Race condition - comment already being processed
+      if (error.code === 'P2002') {
+        console.log(chalk.blue(`ℹ️  Comment ${commentId} already being processed`));
+        return;
       }
+      throw error;
     }
 
-    // Delete webhook records from database
-    await db().figma_webhooks.deleteMany({
-      where: {
-        figma_integration_id: figmaIntegration.id,
-        team_id: teamId,
-      },
+    // Get valid access token (handles refresh automatically)
+    const accessToken = await this.getAccessToken(integration.id);
+    if (!accessToken) {
+      console.log(chalk.yellow(`⚠️  Could not get valid access token for Figma integration ${integration.id}`));
+      return;
+    }
+
+    // Fetch comment details from Figma API to get client_meta
+    // client_meta is not included in the webhook payload
+    const commentThreadData = await fetchFigmaCommentThreadFromApi(
+      accessToken,
+      fileKey,
+      commentId
+    );
+    if (!commentThreadData) {
+      console.log(chalk.yellow(`⚠️  Could not fetch comment ${commentId} from API`));
+      return;
+    }
+
+    const { comment: commentFromApi, thread } = commentThreadData;
+
+    const { rootComment, positioningComment, positioningData } = resolvePositioningContext(
+      commentFromApi,
+      thread
+    );
+
+    console.log(
+      chalk.blue(`Client Meta (event comment): ${JSON.stringify(commentFromApi.client_meta, null, 2)}`)
+    );
+    if (positioningComment && positioningComment.id !== commentFromApi.id) {
+      console.log(
+        chalk.blue(
+          `Using comment ${positioningComment.id} client_meta for positioning: ${JSON.stringify(positioningComment.client_meta, null, 2)}`
+        )
+      );
+    }
+    console.log(
+      chalk.blue(`📍 Positioning data for comment ${commentId}:`),
+      positioningData ? JSON.stringify(positioningData, null, 2) : 'null (empty client_meta)'
+    );
+
+    // Map comment to design elements using positioning data
+    let matchedNodeIds: string[] = [];
+    try {
+      const nodeId = positioningComment?.client_meta?.node_id ?? commentFromApi.client_meta?.node_id;
+      matchedNodeIds = await mapCommentToDesignElements(
+        accessToken,
+        fileKey,
+        positioningData,
+        nodeId
+      );
+      console.log(
+        chalk.blue(`🎯 Matched ${matchedNodeIds.length} node(s) for comment ${commentId}:`),
+        matchedNodeIds.length > 0 ? matchedNodeIds.join(', ') : 'none'
+      );
+    } catch (error) {
+      console.error(
+        chalk.red(`Error mapping comment ${commentId} to design elements:`),
+        error
+      );
+      // Continue with empty array if mapping fails
+    }
+
+    // Extract images for visual context
+    let imageUrls: FigmaCommentImageUrls = {
+      nodeImage: undefined,
+      fullFrame: undefined,
+    };
+    try {
+      imageUrls = await extractCommentImages(
+        accessToken,
+        fileKey,
+        matchedNodeIds,
+        positioningData
+      );
+      console.log(
+        chalk.blue(`🖼️  Extracted images for comment ${commentId}:`),
+        Object.keys(imageUrls).length > 0
+          ? `${Object.keys(imageUrls).length} image(s) extracted`
+          : 'no images extracted'
+      );
+    } catch (error) {
+      console.error(
+        chalk.red(`Error extracting images for comment ${commentId}:`),
+        error
+      );
+      // Continue with empty object if image extraction fails
+    }
+
+    // Calculate image expiry (24 hours from now)
+    const imageExpiry = imageUrls.nodeImage || imageUrls.fullFrame
+      ? new Date(Date.now() + 24 * 60 * 60 * 1000) // 24 hours
+      : null;
+
+    // Get the closest node ID for storage
+    const closestNodeId = matchedNodeIds.length > 0
+      ? matchedNodeIds[0]
+      : (positioningComment?.client_meta?.node_id ?? commentFromApi.client_meta?.node_id ?? null);
+
+    const fileMetadata = await fetchFileMetadata(accessToken, fileKey);
+    if (!fileMetadata) {
+      console.log(chalk.yellow(`⚠️  Could not fetch file metadata for file ${fileKey}`));
+      return;
+    }
+
+    // Map thread from FigmaApiComment[] to FigmaCommentThreadEntry[]
+    const threadEntries: FigmaCommentThreadEntry[] = thread.map((comment) => ({
+      id: comment.id,
+      message: comment.message,
+      author: comment.user,
+      createdAt: comment.created_at,
+      resolvedAt: comment.resolved_at,
+      parentId: comment.parent_id ?? null,
+      orderId: comment.order_id,
+      isRoot: !comment.parent_id,
+    }));
+
+    // Convert resolved_at to boolean, and positioningData null to undefined
+    const resolved = commentFromApi.resolved_at !== null;
+    const positioningDataOrUndefined = positioningData ?? undefined;
+
+    const figmaEvent = new FigmaCommentEvent({
+      commentId: commentId,
+      fileKey: fileKey,
+      fileUrl: fileMetadata.url,
+      nodeId: closestNodeId || undefined,
+      message: commentFromApi.message || '',
+      author: commentFromApi.user,
+      createdAt: commentFromApi.created_at,
+      resolved: resolved,
+      thread: threadEntries,
+      fileMetadata: fileMetadata,
+      positioningData: positioningDataOrUndefined,
+      matchedNodeIds: matchedNodeIds.length > 0 ? matchedNodeIds : undefined,
+      imageUrls: imageUrls.nodeImage || imageUrls.fullFrame ? imageUrls : undefined,
     });
 
-    console.log(chalk.blue(`📤 Team ${teamId} no longer monitored by any automations`));
+    const eventProcessor = new EventProcessor(figmaEvent, user);
+    await eventProcessor.process();
   }
 }
 
@@ -771,9 +988,8 @@ export class FigmaCommentEvent extends InputEvent {
 // MARK: - Helper Functions
 
 /**
- * Handle FILE_COMMENT webhook events
- * Comment data is included in the webhook payload
- * Note: client_meta is not included in webhook payload, so we fetch it from the comment API
+ * DEPRECATED: This function has been moved to FigmaIntegrationManager.handleFigmaCommentEvent
+ * This is kept for backwards compatibility but should not be used
  */
 async function handleFigmaCommentEvent(
   integration: figma_integrations,

@@ -6,7 +6,7 @@ import { OAuthInstallationDetails } from "../shared/types";
 import { GmailIntegration, GmailIntegrationMetadata, IntegrationType } from "../shared/Integrations";
 import chalk from "chalk";
 import { gmail_v1, google } from "googleapis";
-import { gmail as gmailConfig, urls } from "../config/settings";
+import { gmail as gmailConfig, urls, OAUTH_TOKEN_REFRESH_THRESHOLD_MS } from "../config/settings";
 import { EventProcessor } from "../agent/ChannelAgent/EventProcessor";
 import { InputConfigType } from "@prisma/client";
 import { RunHistoryTrigger } from "../shared/RunHistoryTypes";
@@ -340,10 +340,10 @@ export class GmailIntegrationManager implements Integration<GmailIntegration, Gm
             let accessToken = integration.access_token;
             let tokenExpiry = integration.token_expiry;
 
-            // Check if token is expired or will expire in the next 5 minutes
+            // Check if token is expired or will expire within the refresh threshold
             if (
                 integration.token_expiry &&
-                integration.token_expiry <= new Date(now.getTime() + 5 * 60 * 1000)
+                integration.token_expiry <= new Date(now.getTime() + OAUTH_TOKEN_REFRESH_THRESHOLD_MS)
             ) {
                 console.log(`Refreshing Gmail access token for integration ${integrationId}`);
 
@@ -426,6 +426,25 @@ export class GmailIntegrationManager implements Integration<GmailIntegration, Gm
         } catch (error) {
             console.error(`Error refreshing Gmail token for integration ${integrationId}:`, error);
             return false;
+        }
+    }
+
+    async getAccessToken(integrationId: string): Promise<string | null> {
+        try {
+            const integration = await db().gmail_integrations.findUnique({
+                where: { id: integrationId },
+            });
+
+            if (!integration || !integration.is_active) {
+                console.error(`Gmail integration ${integrationId} not found or inactive`);
+                return null;
+            }
+
+            // Use the existing helper function to ensure token is refreshed if needed
+            return await refreshAccessTokenIfNeeded(integration);
+        } catch (error) {
+            console.error(`Error getting Gmail access token for integration ${integrationId}:`, error);
+            return null;
         }
     }
 }
@@ -524,10 +543,10 @@ async function refreshAccessTokenIfNeeded(
 ): Promise<string> {
     const now = new Date();
 
-    // Check if token is expired or will expire in the next 5 minutes
+    // Check if token is expired or will expire within the refresh threshold
     if (
         integration.token_expiry &&
-        integration.token_expiry <= new Date(now.getTime() + 5 * 60 * 1000)
+        integration.token_expiry <= new Date(now.getTime() + OAUTH_TOKEN_REFRESH_THRESHOLD_MS)
     ) {
         console.log("Access token expired or expiring soon, refreshing...");
 

@@ -8,13 +8,15 @@ import jwt from "jsonwebtoken";
 import { settings } from "../config/settings";
 import { Request, Response } from "express";
 import chalk from "chalk";
-import { urls } from "../config/settings";
+import { urls} from "../config/settings";
 import { generateWebhookSecret } from "../utility/webhookSecrets";
 import { JiraWebhookPayload } from "../utility/JiraWebhookPayload";
 import { InputEvent } from "./abstract/InputEvent";
 import { InputConfigType } from "@prisma/client";
 import { RunHistoryTrigger } from "../shared/RunHistoryTypes";
 import { EventProcessor } from "../agent/ChannelAgent/EventProcessor";
+
+const OAUTH_TOKEN_REFRESH_THRESHOLD_MS = 1000 * 60 * 30; // 30 minutes (expires access token after 1 hour)
 
 // MARK: - Integration Manager
 
@@ -448,16 +450,20 @@ export class AtlassianIntegrationManager implements Integration<AtlassianIntegra
             }
 
             // Delete webhook if it exists
-            if (integration.webhook_id && integration.cloud_id && integration.access_token) {
-                try {
-                    await this.deleteJiraWebhook(
-                        integration.cloud_id,
-                        integration.access_token,
-                        integration.webhook_id
-                    );
-                } catch (error) {
-                    console.error(chalk.red("⚠️  Failed to delete webhook during integration deletion:"), error);
-                    // Continue with deletion even if webhook deletion fails
+            if (integration.webhook_id && integration.cloud_id) {
+                // Get valid access token before using it
+                const accessToken = await this.getAccessToken(integration.id);
+                if (accessToken) {
+                    try {
+                        await this.deleteJiraWebhook(
+                            integration.cloud_id,
+                            accessToken,
+                            integration.webhook_id
+                        );
+                    } catch (error) {
+                        console.error(chalk.red("⚠️  Failed to delete webhook during integration deletion:"), error);
+                        // Continue with deletion even if webhook deletion fails
+                    }
                 }
             }
 
@@ -500,18 +506,22 @@ export class AtlassianIntegrationManager implements Integration<AtlassianIntegra
                     chalk.blue("to ensure URL is current")
                 );
 
-                if (integration.cloud_id && integration.access_token) {
-                    try {
-                        await this.deleteJiraWebhook(
-                            integration.cloud_id,
-                            integration.access_token,
-                            integration.webhook_id
-                        );
-                    } catch (error) {
-                        console.warn(
-                            chalk.yellow("⚠️  Could not delete existing webhook, continuing with creation"),
-                            error
-                        );
+                if (integration.cloud_id) {
+                    // Get valid access token before using it
+                    const accessToken = await this.getAccessToken(integrationId);
+                    if (accessToken) {
+                        try {
+                            await this.deleteJiraWebhook(
+                                integration.cloud_id,
+                                accessToken,
+                                integration.webhook_id
+                            );
+                        } catch (error) {
+                            console.warn(
+                                chalk.yellow("⚠️  Could not delete existing webhook, continuing with creation"),
+                                error
+                            );
+                        }
                     }
                 }
             } else if (integration.webhook_id) {
@@ -528,9 +538,18 @@ export class AtlassianIntegrationManager implements Integration<AtlassianIntegra
 
             // Webhook doesn't exist or we're on localhost and need to recreate it
             // First, get the accountId from the API
-            if (!integration.cloud_id || !integration.access_token) {
+            if (!integration.cloud_id) {
                 console.warn(
-                    chalk.yellow(`⚠️  Integration ${integrationId} missing cloud_id or access_token, cannot create webhook`)
+                    chalk.yellow(`⚠️  Integration ${integrationId} missing cloud_id, cannot create webhook`)
+                );
+                return;
+            }
+
+            // Get valid access token before using it
+            const accessToken = await this.getAccessToken(integrationId);
+            if (!accessToken) {
+                console.warn(
+                    chalk.yellow(`⚠️  Could not get valid access token for integration ${integrationId}, cannot create webhook`)
                 );
                 return;
             }
@@ -546,7 +565,7 @@ export class AtlassianIntegrationManager implements Integration<AtlassianIntegra
                 {
                     method: "GET",
                     headers: {
-                        "Authorization": `Bearer ${integration.access_token}`,
+                        "Authorization": `Bearer ${accessToken}`,
                         "Accept": "application/json",
                     },
                 }
@@ -561,7 +580,7 @@ export class AtlassianIntegrationManager implements Integration<AtlassianIntegra
                 const meResponse = await fetch("https://api.atlassian.com/me", {
                     method: "GET",
                     headers: {
-                        "Authorization": `Bearer ${integration.access_token}`,
+                        "Authorization": `Bearer ${accessToken}`,
                         "Accept": "application/json",
                     },
                 });
@@ -581,7 +600,7 @@ export class AtlassianIntegrationManager implements Integration<AtlassianIntegra
             // Create the webhook
             const webhook = await this.createJiraWebhook(
                 integration.cloud_id,
-                integration.access_token,
+                accessToken,
                 accountId
             );
 
@@ -622,10 +641,10 @@ export class AtlassianIntegrationManager implements Integration<AtlassianIntegra
             }
 
             const now = new Date();
-            // Check if token is expired or will expire in the next 5 minutes
+            // Check if token is expired or will expire within the refresh threshold
             if (
                 integration.token_expiry &&
-                integration.token_expiry <= new Date(now.getTime() + 5 * 60 * 1000)
+                integration.token_expiry <= new Date(now.getTime() + OAUTH_TOKEN_REFRESH_THRESHOLD_MS)
             ) {
                 console.log(`Refreshing Atlassian access token for integration ${integrationId}`);
 
@@ -733,9 +752,26 @@ export class AtlassianIntegrationManager implements Integration<AtlassianIntegra
                 chalk.blue("(no other automations depend on it)")
             );
 
-            if (!integration.cloud_id || !integration.access_token) {
+            if (!integration.cloud_id) {
                 console.warn(
-                    chalk.yellow(`⚠️  Integration ${integrationId} missing cloud_id or access_token, cannot delete webhook`)
+                    chalk.yellow(`⚠️  Integration ${integrationId} missing cloud_id, cannot delete webhook`)
+                );
+                // Still clear the webhook_id from the database
+                await db().atlassian_integrations.update({
+                    where: { id: integrationId },
+                    data: {
+                        webhook_id: null,
+                        webhook_secret: null,
+                    },
+                });
+                return;
+            }
+
+            // Get valid access token before using it
+            const accessToken = await this.getAccessToken(integrationId);
+            if (!accessToken) {
+                console.warn(
+                    chalk.yellow(`⚠️  Could not get valid access token for integration ${integrationId}, cannot delete webhook`)
                 );
                 // Still clear the webhook_id from the database
                 await db().atlassian_integrations.update({
@@ -752,7 +788,7 @@ export class AtlassianIntegrationManager implements Integration<AtlassianIntegra
             try {
                 await this.deleteJiraWebhook(
                     integration.cloud_id,
-                    integration.access_token,
+                    accessToken,
                     integration.webhook_id
                 );
             } catch (error) {
@@ -785,6 +821,86 @@ export class AtlassianIntegrationManager implements Integration<AtlassianIntegra
     }
 
     // MARK: - Helper Methods
+
+    async getAccessToken(integrationId: string): Promise<string | null> {
+        try {
+            const integration = await db().atlassian_integrations.findUnique({
+                where: { id: integrationId },
+            });
+
+            if (!integration) {
+                console.error(`Atlassian integration ${integrationId} not found`);
+                return null;
+            }
+
+            const now = new Date();
+            // Check if token is expired or will expire within the refresh threshold
+            if (
+                integration.token_expiry &&
+                integration.token_expiry <= new Date(now.getTime() + OAUTH_TOKEN_REFRESH_THRESHOLD_MS)
+            ) {
+                console.log(`Atlassian access token expiring soon for integration ${integrationId}, refreshing...`);
+
+                if (!integration.refresh_token || integration.refresh_token === "") {
+                    console.error(`No refresh token available for Atlassian integration ${integrationId}`);
+                    return null;
+                }
+
+                // Exchange refresh token for new access token
+                const tokenResponse = await fetch("https://auth.atlassian.com/oauth/token", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({
+                        grant_type: "refresh_token",
+                        client_id: settings.atlassian.clientId,
+                        client_secret: settings.atlassian.clientSecret,
+                        refresh_token: integration.refresh_token,
+                    }),
+                });
+
+                if (!tokenResponse.ok) {
+                    const errorText = await tokenResponse.text();
+                    console.error(`Atlassian token refresh failed for integration ${integrationId}:`, errorText);
+                    // Return existing token as fallback - it might still work
+                    return integration.access_token;
+                }
+
+                const tokenData = await tokenResponse.json();
+                const { access_token, refresh_token, expires_in } = tokenData;
+
+                if (!access_token) {
+                    console.error(`No access token received from Atlassian refresh for integration ${integrationId}`);
+                    // Return existing token as fallback
+                    return integration.access_token;
+                }
+
+                // Calculate token expiry
+                const tokenExpiry = new Date(Date.now() + (expires_in || 3600) * 1000);
+
+                // Update the database with new tokens
+                await db().atlassian_integrations.update({
+                    where: { id: integration.id },
+                    data: {
+                        access_token: access_token,
+                        refresh_token: refresh_token || integration.refresh_token, // Preserve existing if new one not provided
+                        token_expiry: tokenExpiry,
+                    },
+                });
+
+                console.log(`Successfully refreshed Atlassian access token for integration ${integrationId}`);
+                return access_token;
+            }
+
+            // Token is still valid
+            return integration.access_token;
+        } catch (error) {
+            console.error(`Error ensuring valid access token for integration ${integrationId}:`, error);
+            // Return null on error - caller should handle
+            return null;
+        }
+    }
 
     /**
      * Creates a Jira webhook using OAuth bearer token authentication
