@@ -33,7 +33,7 @@ export class ConfluenceOutput extends Output<ConfluenceSession, ConfluenceConfig
         channelOutputConfig: ChannelOutput,
         user: User
     ): Promise<ConfluenceSession> {
-        // Check OAuth integrations first
+        // Fetch OAuth integration
         const oauthIntegration = await db().atlassian_integrations.findFirst({
             where: { id: integrationId }
         });
@@ -42,7 +42,8 @@ export class ConfluenceOutput extends Output<ConfluenceSession, ConfluenceConfig
             throw new Error(`Confluence integration ${integrationId} not found`);
         }
 
-        const confluenceConfig: ChannelConfluenceConfig | null = await db().automation_confluence_configs.findFirst({
+        // Fetch Confluence configuration
+        const confluenceConfig = await db().automation_confluence_configs.findFirst({
             where: { automation_output_id: channelOutputConfig.id }
         });
 
@@ -50,24 +51,19 @@ export class ConfluenceOutput extends Output<ConfluenceSession, ConfluenceConfig
             throw new Error(`Confluence config for automation output ${channelOutputConfig.id} not found`);
         }
 
-        const integrationId_final = oauthIntegration?.id
-        const email = oauthIntegration?.jira_user_email
-        const baseUrl = oauthIntegration?.base_url
-        const token = oauthIntegration?.access_token
-        const cloudId = oauthIntegration?.cloud_id
-
+        // Build Atlassian integration object
         const atlassianIntegration: AtlassianIntegration = {
-            id: integrationId_final,
-            email: email,
-            baseUrl: baseUrl,
+            id: oauthIntegration.id,
+            email: oauthIntegration.jira_user_email,
+            baseUrl: oauthIntegration.base_url,
         };
 
         return { 
-            atlassianIntegration: atlassianIntegration, 
-            confluenceConfig: confluenceConfig, 
-            apiToken: token,
-            cloudId: cloudId || undefined,
-            user: user, 
+            atlassianIntegration, 
+            confluenceConfig, 
+            apiToken: oauthIntegration.access_token,
+            cloudId: oauthIntegration.cloud_id || undefined,
+            user, 
             isUserInitiated: true, 
             runActions: [] 
         };
@@ -107,102 +103,20 @@ This tool returns the current state of the Confluence page including all metadat
         }
 
         const pageId = runContext.context.confluenceConfig.page_id as string;
-        const apiBaseUrl = `https://api.atlassian.com/ex/confluence/${runContext.context.cloudId}/wiki/rest/api`;
 
         try {
-            // Fetch page with body content, space, and version information using direct REST API
-            const expandParams = 'body.storage,body.view,body.export_view,space,version,ancestors,descendants';
-            const pageUrl = `${apiBaseUrl}/content/${pageId}?expand=${expandParams}`;
-            
-            const pageResponse = await fetch(pageUrl, {
-                method: 'GET',
-                headers: {
-                    'Authorization': `Bearer ${runContext.context.apiToken}`,
-                    'Accept': 'application/json',
-                },
-            });
+            // Fetch page using REST API v2
+            const pageInfo = await fetchConfluencePage(
+                runContext.context.cloudId,
+                pageId,
+                runContext.context.apiToken,
+                'storage'
+            );
 
-            if (!pageResponse.ok) {
-                const errorText = await pageResponse.text();
-                throw new Error(`Confluence API error: ${pageResponse.status} ${pageResponse.statusText} - ${errorText}`);
-            }
-
-            const pageInfo: any = await pageResponse.json();
-
-            // Extract readable information
-            const metadata: PageMetadata = {
-                page_id: pageInfo.id,
-                title: pageInfo.title || 'Untitled',
-                type: pageInfo.type,
-                status: pageInfo.status || 'current',
-                space: pageInfo.space ? {
-                    id: pageInfo.space.id,
-                    key: pageInfo.space.key,
-                    name: pageInfo.space.name,
-                    type: pageInfo.space.type,
-                } : undefined,
-                version: pageInfo.version ? {
-                    number: pageInfo.version.number,
-                    when: pageInfo.version.when,
-                    message: pageInfo.version.message,
-                    by: pageInfo.version.by ? {
-                        type: pageInfo.version.by.type,
-                        username: pageInfo.version.by.username,
-                        userKey: pageInfo.version.by.userKey,
-                        accountId: pageInfo.version.by.accountId,
-                        displayName: pageInfo.version.by.displayName,
-                    } : undefined,
-                } : undefined,
-                created_date: 'createdDate' in pageInfo ? (pageInfo as { createdDate?: string }).createdDate : undefined,
-                last_modified: 'lastModified' in pageInfo ? (pageInfo as { lastModified?: string }).lastModified : undefined,
-                url: pageInfo._links?.webui || (pageInfo._links?.base && pageInfo._links?.webui ? pageInfo._links.base + pageInfo._links.webui : undefined),
-            };
-
-            // Extract body content in different formats
-            const body: BodyContent = {};
-            if (pageInfo.body) {
-                if (pageInfo.body.storage) {
-                    body.storage = {
-                        value: pageInfo.body.storage.value,
-                        representation: pageInfo.body.storage.representation,
-                    };
-                }
-                if (pageInfo.body.view) {
-                    body.view = {
-                        value: pageInfo.body.view.value,
-                        representation: pageInfo.body.view.representation,
-                    };
-                }
-                if (pageInfo.body.export_view) {
-                    body.export_view = {
-                        value: pageInfo.body.export_view.value,
-                        representation: pageInfo.body.export_view.representation,
-                    };
-                }
-            }
-
-            // Extract ancestors and descendants if available
-            const ancestors: AncestorOrDescendant[] = Array.isArray(pageInfo.ancestors) 
-                ? pageInfo.ancestors.map((ancestor: any) => ({
-                    id: String(ancestor.id),
-                    title: ancestor.title || 'Untitled',
-                    type: ancestor.type || 'page',
-                }))
-                : [];
-
-            const descendants: AncestorOrDescendant[] = pageInfo.descendants && typeof pageInfo.descendants === 'object' && 'results' in pageInfo.descendants
-                ? (pageInfo.descendants as { results: any[] }).results.map((descendant: any) => ({
-                    id: String(descendant.id),
-                    title: descendant.title || 'Untitled',
-                    type: descendant.type || 'page',
-                }))
-                : Array.isArray(pageInfo.descendants)
-                ? pageInfo.descendants.map((descendant: any) => ({
-                    id: String(descendant.id),
-                    title: descendant.title || 'Untitled',
-                    type: descendant.type || 'page',
-                }))
-                : [];
+            // Extract metadata, body, and relationships
+            const metadata = extractPageMetadata(pageInfo);
+            const body = extractBodyContent(pageInfo);
+            const { ancestors, descendants } = extractAncestorsAndDescendants(pageInfo);
 
             return {
                 ...metadata,
@@ -246,37 +160,26 @@ To find the correct position, first call confluence_query_page to see the page c
         }
 
         const pageId = runContext.context.confluenceConfig.page_id as string;
-        const apiBaseUrl = `https://api.atlassian.com/ex/confluence/${runContext.context.cloudId}/wiki/rest/api`;
+        const apiBaseUrl = `https://api.atlassian.com/ex/confluence/${runContext.context.cloudId}/wiki/api/v2`;
 
         try {
-            // Fetch the page content once using direct REST API
-            const pageUrl = `${apiBaseUrl}/content/${pageId}?expand=body.storage`;
-            const pageResponse = await fetch(pageUrl, {
-                method: 'GET',
-                headers: {
-                    'Authorization': `Bearer ${runContext.context.apiToken}`,
-                    'Accept': 'application/json',
-                },
-            });
-
-            if (!pageResponse.ok) {
-                const errorText = await pageResponse.text();
-                throw new Error(`Confluence API error: ${pageResponse.status} ${pageResponse.statusText} - ${errorText}`);
-            }
-
-            const pageInfo: any = await pageResponse.json();
-            const storageContent = pageInfo.body?.storage?.value || '';
+            // Fetch the page content
+            const pageInfo = await fetchConfluencePage(
+                runContext.context.cloudId,
+                pageId,
+                runContext.context.apiToken,
+                'storage'
+            );
             
-            // Get plain text version of storage content for matching
+            const storageContent = extractStorageContent(pageInfo);
             const plainTextContent = stripHtmlTags(storageContent);
 
             // Determine start and end positions
             let startPos = start_position ?? undefined;
             let endPos = end_position ?? undefined;
 
-            // If text_to_comment_on is provided, find its position in plain text, then map to storage format
+            // If text_to_comment_on is provided, find its position and map to storage format
             if (text_to_comment_on && text_to_comment_on !== null && startPos === undefined && endPos === undefined) {
-                // Find in plain text first
                 const plainTextIndex = plainTextContent.indexOf(text_to_comment_on);
                 
                 if (plainTextIndex === -1) {
@@ -284,134 +187,37 @@ To find the correct position, first call confluence_query_page to see the page c
                 }
 
                 // Map plain text positions to storage format positions
-                // This is approximate - we find the position in storage that corresponds to the plain text position
-                let storagePos = 0;
-                let plainTextPos = 0;
-                let inTag = false;
-                
-                // Find the storage position that corresponds to the plain text position
-                for (let i = 0; i < storageContent.length && plainTextPos < plainTextIndex; i++) {
-                    if (storageContent[i] === '<') {
-                        inTag = true;
-                    } else if (storageContent[i] === '>') {
-                        inTag = false;
-                    } else if (!inTag) {
-                        // Skip entity references
-                        if (storageContent[i] === '&') {
-                            const entityEnd = storageContent.indexOf(';', i);
-                            if (entityEnd !== -1) {
-                                i = entityEnd;
-                                plainTextPos++;
-                                continue;
-                            }
-                        }
-                        plainTextPos++;
-                    }
-                    storagePos = i + 1;
-                }
-                
-                startPos = storagePos;
-                // For end position, we need to account for the length of the text
-                // This is a simplified approach - find where the text ends in storage
-                const endPlainTextPos = plainTextIndex + text_to_comment_on.length;
-                let endStoragePos = storagePos;
-                let endPlainTextCount = plainTextIndex;
-                inTag = false;
-                
-                for (let i = storagePos; i < storageContent.length && endPlainTextCount < endPlainTextPos; i++) {
-                    if (storageContent[i] === '<') {
-                        inTag = true;
-                    } else if (storageContent[i] === '>') {
-                        inTag = false;
-                    } else if (!inTag) {
-                        if (storageContent[i] === '&') {
-                            const entityEnd = storageContent.indexOf(';', i);
-                            if (entityEnd !== -1) {
-                                i = entityEnd;
-                                endPlainTextCount++;
-                                endStoragePos = i + 1;
-                                continue;
-                            }
-                        }
-                        endPlainTextCount++;
-                    }
-                    endStoragePos = i + 1;
-                }
-                
-                endPos = endStoragePos;
+                const positions = mapPlainTextRangeToStoragePositions(
+                    storageContent,
+                    plainTextIndex,
+                    text_to_comment_on.length
+                );
+                startPos = positions.start;
+                endPos = positions.end;
             }
 
             if (startPos === undefined || endPos === undefined) {
                 throw new Error('Either text_to_comment_on or both start_position and end_position must be provided.');
             }
 
-            // Use Confluence Storage Format for the comment body with proper XHTML escaping
-            const escapedCommentText = escapeXhtml(comment_text);
-            // Split by newlines and wrap each line in <p> tags (preserve empty lines as empty paragraphs)
-            const paragraphs = escapedCommentText.split(/\n/);
-            const storageFormatBody = paragraphs.length > 0 
-                ? paragraphs.map(p => `<p>${p}</p>`).join('')
-                : '<p></p>';
+            // Format comment as Confluence Storage Format
+            const storageFormatBody = formatCommentAsStorage(comment_text);
 
-            // Get the selected text from the page content for textSelection (plain text, not XHTML)
-            let selectedText = '';
-            if (text_to_comment_on && text_to_comment_on !== null) {
-                selectedText = text_to_comment_on;
-            } else {
-                // Extract XHTML at the specified position, then strip tags to get plain text
-                const htmlSelection = storageContent.substring(startPos, endPos);
-                selectedText = stripHtmlTags(htmlSelection);
-            }
+            // Get the selected text for textSelection (plain text, not XHTML)
+            const selectedText = text_to_comment_on && text_to_comment_on !== null
+                ? text_to_comment_on
+                : stripHtmlTags(storageContent.substring(startPos, endPos));
 
-            // Find all occurrences of the selected text in plain text to calculate match index and count
-            let matchIndex = 0;
-            let matchCount = 0;
-            let searchIndex = 0;
-            const matches: number[] = [];
-            
-            // Calculate the plain text position that corresponds to our storage start position
-            let plainTextStartPos = 0;
-            let plainTextCount = 0;
-            let inTag = false;
-            for (let i = 0; i < Math.min(startPos, storageContent.length); i++) {
-                if (storageContent[i] === '<') {
-                    inTag = true;
-                } else if (storageContent[i] === '>') {
-                    inTag = false;
-                } else if (!inTag) {
-                    if (storageContent[i] === '&') {
-                        const entityEnd = storageContent.indexOf(';', i);
-                        if (entityEnd !== -1) {
-                            i = entityEnd;
-                            plainTextCount++;
-                            continue;
-                        }
-                    }
-                    plainTextCount++;
-                }
-            }
-            plainTextStartPos = plainTextCount;
-            
-            while ((searchIndex = plainTextContent.indexOf(selectedText, searchIndex)) !== -1) {
-                matches.push(searchIndex);
-                // Check if this match corresponds to our start position
-                if (searchIndex === plainTextStartPos || (matches.length === 1 && matchIndex === 0)) {
-                    matchIndex = matches.length - 1;
-                }
-                searchIndex += selectedText.length;
-            }
-            matchCount = matches.length;
-            
-            // If no matches found, default to 1 match at index 0
-            if (matchCount === 0) {
-                matchCount = 1;
-                matchIndex = 0;
-            }
+            // Calculate match index and count
+            const plainTextStartPos = mapStorageToPlainTextPosition(storageContent, startPos);
+            const { matchIndex, matchCount } = findTextMatches(
+                plainTextContent,
+                selectedText,
+                plainTextStartPos
+            );
 
-            // Use the Confluence REST API v2 inline comments endpoint via API gateway
-            const apiUrl = `https://api.atlassian.com/ex/confluence/${runContext.context.cloudId}/wiki/api/v2/inline-comments`;
-
-            // Build the request body according to Confluence API v2 format for inline comments
+            // Create inline comment via API
+            const apiUrl = `${getConfluenceApiBaseUrl(runContext.context.cloudId)}/inline-comments`;
             const requestBody: InlineCommentRequestBody = {
                 pageId: pageId,
                 body: {
@@ -429,12 +235,11 @@ To find the correct position, first call confluence_query_page to see the page c
                 }
             };
 
-            // Use OAuth bearer token for authentication
             const response = await fetch(apiUrl, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${runContext.context.apiToken}`, // apiToken contains the OAuth access_token
+                    ...getConfluenceApiHeaders(runContext.context.apiToken),
                 },
                 body: JSON.stringify(requestBody)
             });
@@ -557,6 +362,304 @@ interface InlineCommentResponse {
 }
 
 // MARK: - Helpers
+
+/**
+ * Constructs the Confluence API base URL for OAuth integrations
+ */
+function getConfluenceApiBaseUrl(cloudId: string): string {
+    return `https://api.atlassian.com/ex/confluence/${cloudId}/wiki/api/v2`;
+}
+
+/**
+ * Creates standard headers for Confluence API requests
+ */
+function getConfluenceApiHeaders(accessToken: string): Record<string, string> {
+    return {
+        'Authorization': `Bearer ${accessToken}`,
+        'Accept': 'application/json',
+    };
+}
+
+/**
+ * Fetches a Confluence page by ID using the REST API v2
+ */
+async function fetchConfluencePage(
+    cloudId: string,
+    pageId: string,
+    accessToken: string,
+    bodyFormat: 'storage' | 'view' | 'export_view' = 'storage'
+): Promise<any> {
+    const apiBaseUrl = getConfluenceApiBaseUrl(cloudId);
+    const pageUrl = `${apiBaseUrl}/pages/${pageId}?body-format=${bodyFormat}`;
+    
+    const response = await fetch(pageUrl, {
+        method: 'GET',
+        headers: getConfluenceApiHeaders(accessToken),
+    });
+
+    if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Confluence API error: ${response.status} ${response.statusText} - ${errorText}`);
+    }
+
+    return await response.json();
+}
+
+/**
+ * Extracts storage content from Confluence API v2 page response
+ */
+function extractStorageContent(pageInfo: any): string {
+    if (pageInfo.body?.storage) {
+        return typeof pageInfo.body.storage === 'string' 
+            ? pageInfo.body.storage 
+            : pageInfo.body.storage.value || '';
+    } else if (pageInfo.body) {
+        // Fallback: body might be directly in pageInfo.body
+        return typeof pageInfo.body === 'string' 
+            ? pageInfo.body 
+            : pageInfo.body.value || '';
+    }
+    return '';
+}
+
+/**
+ * Extracts body content in different formats from page response
+ */
+function extractBodyContent(pageInfo: any): BodyContent {
+    const body: BodyContent = {};
+    const storageContent = extractStorageContent(pageInfo);
+    
+    if (storageContent) {
+        body.storage = {
+            value: storageContent,
+            representation: 'storage',
+        };
+        // Use storage format for view and export_view as fallback
+        body.view = {
+            value: storageContent,
+            representation: 'view',
+        };
+        body.export_view = {
+            value: storageContent,
+            representation: 'export_view',
+        };
+    }
+    
+    return body;
+}
+
+/**
+ * Extracts page metadata from Confluence API v2 response
+ */
+function extractPageMetadata(pageInfo: any): PageMetadata {
+    return {
+        page_id: pageInfo.id,
+        title: pageInfo.title || 'Untitled',
+        type: pageInfo.type || 'page',
+        status: pageInfo.status || 'current',
+        space: pageInfo.space ? {
+            id: pageInfo.space.id || pageInfo.spaceId,
+            key: pageInfo.space.key || pageInfo.spaceId || String(pageInfo.space.id),
+            name: pageInfo.space.name || pageInfo.spaceId || String(pageInfo.space.id),
+            type: pageInfo.space.type || 'space',
+        } : pageInfo.spaceId ? {
+            id: pageInfo.spaceId,
+            key: pageInfo.spaceId,
+            name: pageInfo.spaceId,
+            type: 'space',
+        } : undefined,
+        version: pageInfo.version ? {
+            number: pageInfo.version.number,
+            when: pageInfo.version.when || pageInfo.version.createdAt || '',
+            message: pageInfo.version.message,
+            by: pageInfo.version.by ? {
+                type: pageInfo.version.by.type,
+                username: pageInfo.version.by.username,
+                userKey: pageInfo.version.by.userKey,
+                accountId: pageInfo.version.by.accountId,
+                displayName: pageInfo.version.by.displayName,
+            } : undefined,
+        } : undefined,
+        created_date: pageInfo.createdDate || pageInfo.createdAt,
+        last_modified: pageInfo.lastModified || pageInfo.version?.createdAt,
+        url: pageInfo._links?.webui || (pageInfo._links?.base && pageInfo._links?.webui ? pageInfo._links.base + pageInfo._links.webui : undefined),
+    };
+}
+
+/**
+ * Extracts ancestors and descendants from page response
+ */
+function extractAncestorsAndDescendants(pageInfo: any): {
+    ancestors: AncestorOrDescendant[];
+    descendants: AncestorOrDescendant[];
+} {
+    const ancestors: AncestorOrDescendant[] = pageInfo.parentId ? [{
+        id: String(pageInfo.parentId),
+        title: pageInfo.parentTitle || 'Parent page',
+        type: pageInfo.parentType || 'page',
+    }] : Array.isArray(pageInfo.ancestors) 
+        ? pageInfo.ancestors.map((ancestor: any) => ({
+            id: String(ancestor.id),
+            title: ancestor.title || 'Untitled',
+            type: ancestor.type || 'page',
+        }))
+        : [];
+
+    const descendants: AncestorOrDescendant[] = pageInfo.descendants && typeof pageInfo.descendants === 'object' && 'results' in pageInfo.descendants
+        ? (pageInfo.descendants as { results: any[] }).results.map((descendant: any) => ({
+            id: String(descendant.id),
+            title: descendant.title || 'Untitled',
+            type: descendant.type || 'page',
+        }))
+        : Array.isArray(pageInfo.descendants)
+        ? pageInfo.descendants.map((descendant: any) => ({
+            id: String(descendant.id),
+            title: descendant.title || 'Untitled',
+            type: descendant.type || 'page',
+        }))
+        : [];
+
+    return { ancestors, descendants };
+}
+
+/**
+ * Maps a plain text position to a storage format position
+ */
+function mapPlainTextToStoragePosition(
+    storageContent: string,
+    plainTextPosition: number
+): number {
+    let storagePos = 0;
+    let plainTextPos = 0;
+    let inTag = false;
+    
+    for (let i = 0; i < storageContent.length && plainTextPos < plainTextPosition; i++) {
+        if (storageContent[i] === '<') {
+            inTag = true;
+        } else if (storageContent[i] === '>') {
+            inTag = false;
+        } else if (!inTag) {
+            // Skip entity references
+            if (storageContent[i] === '&') {
+                const entityEnd = storageContent.indexOf(';', i);
+                if (entityEnd !== -1) {
+                    i = entityEnd;
+                    plainTextPos++;
+                    continue;
+                }
+            }
+            plainTextPos++;
+        }
+        storagePos = i + 1;
+    }
+    
+    return storagePos;
+}
+
+/**
+ * Maps a plain text range to storage format positions
+ */
+function mapPlainTextRangeToStoragePositions(
+    storageContent: string,
+    plainTextStart: number,
+    plainTextLength: number
+): { start: number; end: number } {
+    const startPos = mapPlainTextToStoragePosition(storageContent, plainTextStart);
+    const endPlainTextPos = plainTextStart + plainTextLength;
+    
+    let endStoragePos = startPos;
+    let endPlainTextCount = plainTextStart;
+    let inTag = false;
+    
+    for (let i = startPos; i < storageContent.length && endPlainTextCount < endPlainTextPos; i++) {
+        if (storageContent[i] === '<') {
+            inTag = true;
+        } else if (storageContent[i] === '>') {
+            inTag = false;
+        } else if (!inTag) {
+            if (storageContent[i] === '&') {
+                const entityEnd = storageContent.indexOf(';', i);
+                if (entityEnd !== -1) {
+                    i = entityEnd;
+                    endPlainTextCount++;
+                    endStoragePos = i + 1;
+                    continue;
+                }
+            }
+            endPlainTextCount++;
+        }
+        endStoragePos = i + 1;
+    }
+    
+    return { start: startPos, end: endStoragePos };
+}
+
+/**
+ * Calculates the plain text position that corresponds to a storage position
+ */
+function mapStorageToPlainTextPosition(
+    storageContent: string,
+    storagePosition: number
+): number {
+    let plainTextCount = 0;
+    let inTag = false;
+    
+    for (let i = 0; i < Math.min(storagePosition, storageContent.length); i++) {
+        if (storageContent[i] === '<') {
+            inTag = true;
+        } else if (storageContent[i] === '>') {
+            inTag = false;
+        } else if (!inTag) {
+            if (storageContent[i] === '&') {
+                const entityEnd = storageContent.indexOf(';', i);
+                if (entityEnd !== -1) {
+                    i = entityEnd;
+                    plainTextCount++;
+                    continue;
+                }
+            }
+            plainTextCount++;
+        }
+    }
+    
+    return plainTextCount;
+}
+
+/**
+ * Finds all occurrences of text in plain text and calculates match index
+ */
+function findTextMatches(
+    plainTextContent: string,
+    selectedText: string,
+    startPlainTextPosition: number
+): { matchIndex: number; matchCount: number } {
+    const matches: number[] = [];
+    let searchIndex = 0;
+    
+    while ((searchIndex = plainTextContent.indexOf(selectedText, searchIndex)) !== -1) {
+        matches.push(searchIndex);
+        searchIndex += selectedText.length;
+    }
+    
+    const matchCount = matches.length || 1; // Default to 1 if no matches
+    const matchIndex = matches.findIndex(pos => pos === startPlainTextPosition);
+    
+    return {
+        matchIndex: matchIndex >= 0 ? matchIndex : 0,
+        matchCount,
+    };
+}
+
+/**
+ * Formats comment text as Confluence Storage Format
+ */
+function formatCommentAsStorage(commentText: string): string {
+    const escapedCommentText = escapeXhtml(commentText);
+    const paragraphs = escapedCommentText.split(/\n/);
+    return paragraphs.length > 0 
+        ? paragraphs.map(p => `<p>${p}</p>`).join('')
+        : '<p></p>';
+}
 
 /**
  * Escapes special characters for XHTML/XML content

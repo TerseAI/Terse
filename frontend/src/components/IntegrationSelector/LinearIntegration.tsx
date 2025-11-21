@@ -6,7 +6,9 @@ import { LinearConfig } from '../../shared/Configs';
 import { InputConfigSelectorProps } from './types';
 import { useLinearIntegrations } from '@/hooks/api/useLinearIntegrations';
 import { useOAuthConnection } from '@/hooks/useOAuthConnection';
+import { useIntegrationId } from '@/hooks/useIntegrationId';
 import { StatusOption } from '../ui/DropdownSelect';
+import { ConfigType } from '../../shared/Configs';
 
 export function LinearIntegration({
     input,
@@ -16,6 +18,7 @@ export function LinearIntegration({
     const { integrations, isLoading } = useLinearIntegrations();
     const { connect: connectOAuth, isConnecting: isOAuthConnecting } = useOAuthConnection(IntegrationType.LINEAR);
     const currentConfig = input.config as LinearConfig | undefined;
+    const [selectedIntegrationId] = useIntegrationId(currentConfig, ConfigType.LINEAR);
 
     function onSelect(value: string) {
         const integration = integrations.find((integration: LinearIntegrationType) => integration.id === value);
@@ -61,7 +64,7 @@ export function LinearIntegration({
         value: integration.id
     }));
 
-    let selectedOption: StatusOption | undefined = connectionSelections.find(option => option.value === input.config?.integrationId);
+    let selectedOption: StatusOption | undefined = connectionSelections.find(option => option.value === selectedIntegrationId);
     if (!selectedOption && connectionSelections.length == 1) {
         const defaultIntegration = connectionSelections[0];
         setConfig(new LinearConfig(
