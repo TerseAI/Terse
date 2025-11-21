@@ -113,6 +113,12 @@ export interface ConfigInstance {
     integrationType: IntegrationType;
     configType: ConfigType;
     isComplete(): boolean;
+    /**
+     * Formats this config instance for agent context.
+     * Returns a human-readable string representation that excludes technical IDs
+     * and includes only helpful context for an AI agent.
+     */
+    formatForAgent(): string;
 }
 
 export class GmailConfig implements ConfigInstance {
@@ -127,6 +133,10 @@ export class GmailConfig implements ConfigInstance {
     isComplete(): boolean {
         // Gmail only requires integrationId (base check handled in isInputComplete)
         return true;
+    }
+
+    formatForAgent(): string {
+        return 'Type: Gmail\nMonitoring email inbox';
     }
 };
 
@@ -146,6 +156,16 @@ export class FigmaConfig implements ConfigInstance {
         // Figma requires both fileKey and teamId
         return !!(this.fileKey && this.teamId);
     }
+
+    formatForAgent(): string {
+        const parts: string[] = ['Type: Figma'];
+        if (this.fileName) {
+            parts.push(`File: ${this.fileName}`);
+        } else if (this.fileKey) {
+            parts.push(`File Key: ${this.fileKey}`);
+        }
+        return parts.join('\n');
+    }
 };
 // Typed config per integration type
 export class SlackConfig implements ConfigInstance {
@@ -164,6 +184,19 @@ export class SlackConfig implements ConfigInstance {
         // Slack is complete if either channelId is set OR listenToUserDms is true
         return !!(this.channelId || this.listenToUserDms);
     }
+
+    formatForAgent(): string {
+        const parts: string[] = ['Type: Slack'];
+        if (this.channelName) {
+            parts.push(`Channel: ${this.channelName}`);
+        } else if (this.channelId) {
+            parts.push(`Channel ID: ${this.channelId}`);
+        }
+        if (this.listenToUserDms) {
+            parts.push('Also listening to: Direct Messages');
+        }
+        return parts.join('\n');
+    }
 };
 
 export class NotionConfig implements ConfigInstance {
@@ -180,6 +213,16 @@ export class NotionConfig implements ConfigInstance {
     isComplete(): boolean {
         // Notion requires databaseId
         return !!this.databaseId;
+    }
+
+    formatForAgent(): string {
+        const parts: string[] = ['Type: Notion Database'];
+        if (this.databaseName) {
+            parts.push(`Database: ${this.databaseName}`);
+        } else if (this.databaseId) {
+            parts.push(`Database ID: ${this.databaseId}`);
+        }
+        return parts.join('\n');
     }
 };
 
@@ -198,6 +241,16 @@ export class NotionPageConfig implements ConfigInstance {
         // Notion Page requires pageId
         return !!this.pageId;
     }
+
+    formatForAgent(): string {
+        const parts: string[] = ['Type: Notion Page'];
+        if (this.pageName) {
+            parts.push(`Page: ${this.pageName}`);
+        } else if (this.pageId) {
+            parts.push(`Page ID: ${this.pageId}`);
+        }
+        return parts.join('\n');
+    }
 };
 
 export class LinearConfig implements ConfigInstance {
@@ -215,6 +268,16 @@ export class LinearConfig implements ConfigInstance {
         // Linear only requires integrationId (base check handled in isInputComplete)
         return true;
     }
+
+    formatForAgent(): string {
+        const parts: string[] = ['Type: Linear'];
+        if (this.projectName) {
+            parts.push(`Project: ${this.projectName}`);
+        } else if (this.projectId) {
+            parts.push(`Project ID: ${this.projectId}`);
+        }
+        return parts.join('\n');
+    }
 };
 
 export class GitHubConfig implements ConfigInstance {
@@ -230,6 +293,15 @@ export class GitHubConfig implements ConfigInstance {
     isComplete(): boolean {
         // GitHub only requires integrationId (base check handled in isInputComplete)
         return true;
+    }
+
+    formatForAgent(): string {
+        const parts: string[] = ['Type: GitHub'];
+        if (this.repositoryIds && this.repositoryIds.length > 0) {
+            const count = this.repositoryIds.length;
+            parts.push(`Monitoring ${count} repository${count === 1 ? '' : 'ies'}`);
+        }
+        return parts.join('\n');
     }
 };
 
@@ -247,6 +319,16 @@ export class JiraConfig implements ConfigInstance {
     isComplete(): boolean {
         // Jira only requires integrationId (base check handled in isInputComplete)
         return true;
+    }
+
+    formatForAgent(): string {
+        const parts: string[] = ['Type: Jira'];
+        if (this.projectKey) {
+            parts.push(`Project: ${this.projectKey}`);
+        } else if (this.projectId) {
+            parts.push(`Project ID: ${this.projectId}`);
+        }
+        return parts.join('\n');
     }
 };
 
@@ -266,6 +348,21 @@ export class ConfluenceConfig implements ConfigInstance {
     isComplete(): boolean {
         // Confluence only requires integrationId (base check handled in isInputComplete)
         return true;
+    }
+
+    formatForAgent(): string {
+        const parts: string[] = ['Type: Confluence'];
+        if (this.spaceName) {
+            parts.push(`Space: ${this.spaceName}`);
+        } else if (this.spaceId) {
+            parts.push(`Space ID: ${this.spaceId}`);
+        }
+        if (this.pageName) {
+            parts.push(`Page: ${this.pageName}`);
+        } else if (this.pageId) {
+            parts.push(`Page ID: ${this.pageId}`);
+        }
+        return parts.join('\n');
     }
 };
 

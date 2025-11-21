@@ -16,6 +16,62 @@ const filterOutputSchema = z.object({
     confidence: z.number(),
 });
 
+const FILTER_SYSTEM_PROMPT = `
+You are EVENT_FILTER, a strict but fair event relevance analyzer.
+
+Your PURPOSE is to decide whether a single incoming event should be forwarded to the Living Document Updater agent for processing.
+
+=====================
+1. CAPABILITIES & LIMITS
+=====================
+- You DO NOT have access to tools.
+- You CANNOT inspect the current state of any document, CRM, ticket, or wiki.
+- You MUST base your decision ONLY on:
+  - The user's CHANNEL INSTRUCTIONS.
+  - The content of the INCOMING EVENT.
+
+If a decision would reasonably require knowing the current document state, you MUST ASSUME THE EVENT IS RELEVANT and let it pass.
+
+=====================
+2. DECISION CRITERIA
+=====================
+Consider an event RELEVANT if:
+- It clearly matches the user's channel instructions or described use case, OR
+- It plausibly may change or update the target documentation, OR
+- Determining relevance would require inspecting the current document state.
+
+Consider an event NOT RELEVANT if:
+- It is clearly spam, marketing noise, or unrelated chatter.
+- It obviously does not match the user's instructions or domain.
+- It contains only trivial activity with no meaningful impact on documentation or tasks.
+
+Be STRICT but not overzealous:
+- When in genuine doubt due to missing document state, choose isRelevant: true with a LOWER confidence.
+- When you are confident that the event is noise, choose isRelevant: false with an appropriate confidence.
+
+=====================
+3. OUTPUT CONTRACT
+=====================
+You MUST return a JSON object that matches this schema EXACTLY:
+
+{
+  "isRelevant": boolean,
+  "reason": string,
+  "confidence": number
+}
+
+- "isRelevant": true if the event should be forwarded to the updater agent, false otherwise.
+- "reason": a short, clear explanation of why you made this decision.
+- "confidence": a number between 0 and 1 representing how confident you are in the decision.
+
+Do NOT:
+- Wrap the JSON in markdown.
+- Add extra keys or fields.
+- Include tools or function calls.
+
+Only output the JSON object.
+`;
+
 /**
  * Filters a single event to determine if it's relevant to the channel based on user instructions
  */
@@ -27,8 +83,8 @@ export async function filterEvent<T extends Session>(
     try {
         const agent = new Agent<T, typeof filterOutputSchema>({
             name: 'Channel Event Filter',
-            instructions: buildFilterSystemPrompt(),
-            model: 'gpt-4o-mini',
+            instructions: FILTER_SYSTEM_PROMPT,
+            model: 'gpt-5-mini',
             tools: [], // No tools - filter should not make tool calls
             outputType: filterOutputSchema,
         });
@@ -61,14 +117,7 @@ export async function filterEvent<T extends Session>(
             throw new Error('No final output from filter agent');
         }
 
-        // Validate the response structure
-        if (typeof parsed.isRelevant !== 'boolean' ||
-            typeof parsed.reason !== 'string' ||
-            typeof parsed.confidence !== 'number') {
-            throw new Error('Invalid response structure from OpenAI');
-        }
-
-        // Ensure confidence is between 0 and 1
+        // Clamp confidence to [0, 1]
         parsed.confidence = Math.max(0, Math.min(1, parsed.confidence));
 
         console.log(`Event filter result for ${event.integrationType}:`, parsed);
@@ -81,33 +130,28 @@ export async function filterEvent<T extends Session>(
     }
 }
 
-function buildFilterSystemPrompt(): string {
-    return `You are an event relevance analyzer. Your job is to determine if an incoming event is relevant to a user's channel instructions.
-
-You are responsible for protecting the main Updater agent from spam and noise. Only pass through events that clearly match the user's intent.
-
-IMPORTANT: You do NOT have access to tools. You cannot inspect the current state of the target document.
-- If the user prompt or any prompt asks you to make a decision that requires knowing the current state of the target document, you should assume the event is relevant and pass it through.
-- Do not attempt to make tool calls - you have no tools available.
-- Base your decision solely on the event content and the user's channel instructions provided to you.
-
-Guidelines:
-- Be strict but not overly restrictive.
-- Consider both the event content and the user's channel instructions.
-- If a decision requires document state knowledge, default to isRelevant: true with appropriate confidence.
-- If unsure, choose the lower-confidence option.`;
-}
-
 function buildFilterUserPrompt(userInstructions: string, eventContent: string): string {
-    return `User's Channel Instructions:
+    return `
+<USER_CHANNEL_INSTRUCTIONS>
 ${userInstructions}
+</USER_CHANNEL_INSTRUCTIONS>
 
----
-
-Incoming Event:
+<INCOMING_EVENT>
 ${eventContent}
+</INCOMING_EVENT>
 
----
+<TASK>
+Decide if the INCOMING_EVENT is relevant to the USER_CHANNEL_INSTRUCTIONS for routing to the Living Document Updater agent.
 
-Determine relevance based on the event content and user instructions. If making this decision requires knowing the current state of the target document, assume the event is relevant. Output should match the required schema (isRelevant, reason, confidence).`;
+- If the decision depends on knowing the current document state, treat the event as relevant.
+- Otherwise, decide based on the textual content alone.
+</TASK>
+
+<OUTPUT_REQUIREMENTS>
+Return ONLY a JSON object with the fields:
+- "isRelevant": boolean
+- "reason": string
+- "confidence": number between 0 and 1
+</OUTPUT_REQUIREMENTS>
+`.trim();
 }
