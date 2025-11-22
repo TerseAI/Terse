@@ -5,7 +5,7 @@ import {
     OutputConfigType,
     RunHistoryIntegration,
 } from "@prisma/client";
-import { ChannelInputWithConfigs } from "../types/prisma";
+import { ChannelInputWithConfigs, ChannelOutputWithConfigs } from "../types/prisma";
 import { 
     ConfigInstance, 
     GmailConfig, 
@@ -202,6 +202,54 @@ export const convertPrismaConfigToConfigInstance = (channelInput: ChannelInputWi
     }
 
     throw new Error(`No config found for channel input ${channelInput.id}`);
+}
+
+/**
+ * Converts a ChannelOutput with configs to a ConfigInstance.
+ * Similar to convertPrismaConfigToConfigInstance but for outputs.
+ */
+export const convertPrismaOutputConfigToConfigInstance = (channelOutput: ChannelOutputWithConfigs): ConfigInstance => {
+    const integrationId = channelOutput.integration_id;
+
+    // Determine which config is present and create the appropriate ConfigInstance
+    // Note: Outputs only support NOTION_PAGE, NOTION_DATABASE, and CONFLUENCE
+    if (channelOutput.notion_page_config) {
+        return new NotionPageConfig(
+            integrationId,
+            channelOutput.notion_page_config.page_id || undefined,
+            channelOutput.notion_page_config.page_name || undefined
+        );
+    }
+
+    if (channelOutput.notion_config) {
+        return new NotionConfig(
+            integrationId,
+            channelOutput.notion_config.database_id || undefined,
+            channelOutput.notion_config.database_name || undefined
+        );
+    }
+
+    if (channelOutput.confluence_config) {
+        return new ConfluenceConfig(
+            integrationId,
+            channelOutput.confluence_config.space_name || '',
+            channelOutput.confluence_config.space_id || '',
+            channelOutput.confluence_config.page_id || '',
+            channelOutput.confluence_config.page_name || ''
+        );
+    }
+
+    // Type guard to ensure we implement conversion here
+    switch (channelOutput.config_type) {
+        case OutputConfigType.NOTION_PAGE:
+        case OutputConfigType.NOTION_DATABASE:
+        case OutputConfigType.CONFLUENCE:
+            break;
+        default:
+            throw channelOutput.config_type satisfies never;
+    }
+
+    throw new Error(`No config found for channel output ${channelOutput.id}`);
 }
 
 // ConfigType converters
