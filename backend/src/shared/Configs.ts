@@ -113,11 +113,6 @@ export interface ConfigInstance {
     integrationType: IntegrationType;
     configType: ConfigType;
     isComplete(): boolean;
-    /**
-     * Formats this config instance for agent context.
-     * Returns a human-readable string representation that excludes technical IDs
-     * and includes only helpful context for an AI agent.
-     */
     formatForAgent(): string;
 }
 
@@ -136,7 +131,7 @@ export class GmailConfig implements ConfigInstance {
     }
 
     formatForAgent(): string {
-        return 'Type: Gmail\nMonitoring email inbox';
+        return `Type: Gmail\nIntegration ID: ${this.integrationId}`;
     }
 };
 
@@ -158,10 +153,11 @@ export class FigmaConfig implements ConfigInstance {
     }
 
     formatForAgent(): string {
-        const parts: string[] = ['Type: Figma'];
+        const parts = [`Type: Figma`, `Integration ID: ${this.integrationId}`];
         if (this.fileName) {
             parts.push(`File: ${this.fileName}`);
-        } else if (this.fileKey) {
+        }
+        if (this.fileKey) {
             parts.push(`File Key: ${this.fileKey}`);
         }
         return parts.join('\n');
@@ -186,14 +182,14 @@ export class SlackConfig implements ConfigInstance {
     }
 
     formatForAgent(): string {
-        const parts: string[] = ['Type: Slack'];
+        const parts = [`Type: Slack`, `Integration ID: ${this.integrationId}`];
         if (this.channelName) {
             parts.push(`Channel: ${this.channelName}`);
         } else if (this.channelId) {
             parts.push(`Channel ID: ${this.channelId}`);
         }
         if (this.listenToUserDms) {
-            parts.push('Also listening to: Direct Messages');
+            parts.push(`Listening to user DMs: Yes`);
         }
         return parts.join('\n');
     }
@@ -216,7 +212,7 @@ export class NotionConfig implements ConfigInstance {
     }
 
     formatForAgent(): string {
-        const parts: string[] = ['Type: Notion Database'];
+        const parts = [`Type: Notion Database`, `Integration ID: ${this.integrationId}`];
         if (this.databaseName) {
             parts.push(`Database: ${this.databaseName}`);
         } else if (this.databaseId) {
@@ -243,7 +239,7 @@ export class NotionPageConfig implements ConfigInstance {
     }
 
     formatForAgent(): string {
-        const parts: string[] = ['Type: Notion Page'];
+        const parts = [`Type: Notion Page`, `Integration ID: ${this.integrationId}`];
         if (this.pageName) {
             parts.push(`Page: ${this.pageName}`);
         } else if (this.pageId) {
@@ -270,7 +266,7 @@ export class LinearConfig implements ConfigInstance {
     }
 
     formatForAgent(): string {
-        const parts: string[] = ['Type: Linear'];
+        const parts = [`Type: Linear`, `Integration ID: ${this.integrationId}`];
         if (this.projectName) {
             parts.push(`Project: ${this.projectName}`);
         } else if (this.projectId) {
@@ -296,10 +292,9 @@ export class GitHubConfig implements ConfigInstance {
     }
 
     formatForAgent(): string {
-        const parts: string[] = ['Type: GitHub'];
-        if (this.repositoryIds && this.repositoryIds.length > 0) {
-            const count = this.repositoryIds.length;
-            parts.push(`Monitoring ${count} repository${count === 1 ? '' : 'ies'}`);
+        const parts = [`Type: GitHub`, `Integration ID: ${this.integrationId}`];
+        if (this.repositoryIds.length > 0) {
+            parts.push(`Repositories: ${this.repositoryIds.join(', ')}`);
         }
         return parts.join('\n');
     }
@@ -322,9 +317,9 @@ export class JiraConfig implements ConfigInstance {
     }
 
     formatForAgent(): string {
-        const parts: string[] = ['Type: Jira'];
+        const parts = [`Type: Jira`, `Integration ID: ${this.integrationId}`];
         if (this.projectKey) {
-            parts.push(`Project: ${this.projectKey}`);
+            parts.push(`Project Key: ${this.projectKey}`);
         } else if (this.projectId) {
             parts.push(`Project ID: ${this.projectId}`);
         }
@@ -351,11 +346,9 @@ export class ConfluenceConfig implements ConfigInstance {
     }
 
     formatForAgent(): string {
-        const parts: string[] = ['Type: Confluence'];
+        const parts = [`Type: Confluence`, `Integration ID: ${this.integrationId}`];
         if (this.spaceName) {
             parts.push(`Space: ${this.spaceName}`);
-        } else if (this.spaceId) {
-            parts.push(`Space ID: ${this.spaceId}`);
         }
         if (this.pageName) {
             parts.push(`Page: ${this.pageName}`);
