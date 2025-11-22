@@ -5,7 +5,7 @@ import crypto from "crypto";
 import chalk from "chalk";
 import axios from "axios";
 import { findUserByEmail, findUserByGitHubUsername, createUser, updateUserGitHubUsername } from "../../types/user";
-import { githubAuth } from "../../config/settings";
+import { githubApp, githubAuth } from "../../config/settings";
 
 export const githubAppAuthMiddleware = async (req: Request, res: Response, next: NextFunction) => {
     console.log('githubAppAuthMiddleware route has been hit')
@@ -133,4 +133,13 @@ export async function githubCallback(req: Request, res: Response) {
         console.error('GitHub OAuth error:', error);
         res.status(500).send('Authentication failed');
     }
+}
+
+export async function githubAppOAuth(req: Request, res: Response) {
+    console.log('githubAppOAuth route has been hit')
+    console.log('githubAppOAuth Payload content', req)
+    const state = crypto.randomBytes(8).toString('hex');
+    const gitubAppClientId = githubApp.clientId;
+    const redirectUrl = `https://github.com/login/oauth/authorize?client_id=${gitubAppClientId}&redirect_uri=${encodeURIComponent(githubAuth.callbackUrl)}&scope=read:user%20user:email&state=${state}`;
+    res.redirect(redirectUrl);
 }

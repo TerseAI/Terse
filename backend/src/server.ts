@@ -11,6 +11,7 @@ import { getActivityFeed, getDailyActivitySummary } from "./routes/activity";
 import { authMiddleware, login, logout, setSession } from "./routes/auth";
 import {
   githubAppAuthMiddleware,
+  githubAppOAuth,
   githubCallback,
   githubLogin,
   githubLoginURL,
@@ -134,6 +135,10 @@ app.get("/me", authMiddleware, (req, res) => {
 
 app.get("/auth/github", async (req, res) => {
   githubLogin(req, res);
+});
+
+app.get("/auth/github-app", async (req, res) => {
+  githubAppOAuth(req, res);
 });
 
 app.get("/auth/google", async (req, res) => {
