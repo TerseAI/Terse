@@ -84,6 +84,22 @@ export type ChannelInputWithConfigs = AutomationInputWithConfigs; // Alias for r
 export type AutomationOutput = automation_outputs;
 export type ChannelOutput = automation_outputs; // Alias for rebranding
 
+// Extended type for ChannelOutput with all config relations included
+export type AutomationOutputWithConfigs = Prisma.automation_outputsGetPayload<{
+  include: {
+    slack_config: true;
+    notion_config: true;
+    notion_page_config: true;
+    linear_config: true;
+    jira_config: true;
+    confluence_config: true;
+    github_config: true;
+    gmail_config: true;
+    figma_config: true;
+  };
+}>;
+export type ChannelOutputWithConfigs = AutomationOutputWithConfigs; // Alias for rebranding
+
 export type NotionIntegration = notion_integrations;
 
 export type AutomationNotionConfig = automation_notion_configs;
