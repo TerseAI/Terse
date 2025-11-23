@@ -14,6 +14,7 @@ import { githubApp, urls } from "../config/settings";
 import { Request, Response } from "express";
 import { InputConfigType } from "@prisma/client";
 import axios from "axios";
+import { GithubAppUser } from "../routes/GithubTypes";
 
 export class GithubIntegrationManager implements Integration<GithubIntegration, GithubAppUnifiedEventRequest, typeof GithubIntegrationMetadata>, OAuthIntegrationInstallation {
     constructor() { }
@@ -97,6 +98,8 @@ export class GithubIntegrationManager implements Integration<GithubIntegration, 
         );
 
         const authToken = await exchangeCodeForAccessToken(code);
+        const user = await getGithubAppUser(authToken);
+        const repositories = await getRepositoriesWithAppUserCanAccess(user.name, authToken);
 
         res.redirect(`${urls.frontend}/oauth/success`);
     }
@@ -121,7 +124,7 @@ export class GithubIntegrationManager implements Integration<GithubIntegration, 
 export class GithubEvent extends InputEvent {
     readonly integrationType: IntegrationType = IntegrationType.GITHUB;
     data: GithubAppUnifiedEventRequest;
-    
+
     constructor(data: GithubAppUnifiedEventRequest) {
         super();
         this.data = data;
@@ -159,7 +162,7 @@ export class GithubEvent extends InputEvent {
         ].join('\n');
 
         // Branch information (for push events)
-        const branchInfo = this.data.branch 
+        const branchInfo = this.data.branch
             ? `Branch: ${this.data.branch}`
             : null;
 
@@ -186,21 +189,21 @@ export class GithubEvent extends InputEvent {
         if (this.data.commits && this.data.commits.length > 0) {
             const commitLines: string[] = [];
             commitLines.push(`Commits (${this.data.commits.length}):`);
-            
+
             this.data.commits.forEach((commit, index) => {
                 const shortSha = commit.sha.substring(0, 7);
                 const commitUrl = `https://github.com/${this.data.repository.owner}/${this.data.repository.name}/commit/${commit.sha}`;
-                
+
                 commitLines.push(`\n${index + 1}. Commit ${shortSha}: ${commit.name}`);
                 commitLines.push(`   URL: ${commitUrl}`);
-                
+
                 if (commit.fileDiffs && commit.fileDiffs.length > 0) {
                     commitLines.push(`   Files Changed: ${commit.fileDiffs.length}`);
-                    
+
                     // List files changed
                     const fileList = commit.fileDiffs.map(f => `     - ${f.filename}`).join('\n');
                     commitLines.push(`   Files:\n${fileList}`);
-                    
+
                     // Show diffs for important files (limit to first 3 files to avoid overwhelming)
                     const filesToShow = commit.fileDiffs.slice(0, 3);
                     filesToShow.forEach(file => {
@@ -211,18 +214,18 @@ export class GithubEvent extends InputEvent {
                             const truncatedDiff = diffLines.length > maxDiffLines
                                 ? diffLines.slice(0, maxDiffLines).join('\n') + `\n     ... (${diffLines.length - maxDiffLines} more lines)`
                                 : file.diff;
-                            
+
                             commitLines.push(`\n   Diff for ${file.filename}:`);
                             commitLines.push(indentMultiline(truncatedDiff));
                         }
                     });
-                    
+
                     if (commit.fileDiffs.length > 3) {
                         commitLines.push(`\n   ... and ${commit.fileDiffs.length - 3} more file(s) changed`);
                     }
                 }
             });
-            
+
             commitsInfo = commitLines.join('\n');
         }
 
@@ -257,7 +260,7 @@ export class GithubEvent extends InputEvent {
 
         return true
     }
-    
+
     createTriggerMetadata(): RunHistoryTrigger {
         return {
             event: 'github_event',
@@ -275,30 +278,40 @@ export class GithubEvent extends InputEvent {
 }
 
 // Utility functions
-async function getRepositoriesWithAppUserCanAccess(githubUsername: string, oAuthCode: string): Promise<GithubRepository[]> {
-    const accessToken = await exchangeCodeForAccessToken(oAuthCode);
+async function getRepositoriesWithAppUserCanAccess(githubUsername: string, oAuthToken: string): Promise<GithubRepository[]> {
     return [];
 }
 
-// async function fetchGithubUsernameFromOAuthToken(oAuthToken: string): Promise<string> {
+async function getGithubAppUser(githubAppAccessToken: string): Promise<GithubAppUser> {
+    const resp = await axios.get(
+        'https://api.github.com/user',
+        {
+            headers: {
+                Authorization: `Bearer ${githubAppAccessToken}`,
+                Accept: 'application/vnd.github+json',
+            }
+        }
+    );
 
-// }
+    console.log('Github App user:', resp.data);
+    return resp.data;
+}
 
 async function exchangeCodeForAccessToken(code: string): Promise<string> {
     const tokenResp = await axios.post(
         'https://github.com/login/oauth/access_token',
         {
-          client_id: githubApp.clientId,
-          client_secret: githubApp.clientSecret,
-          code,
-          redirect_uri: githubApp.callbackUrl,
+            client_id: githubApp.clientId,
+            client_secret: githubApp.clientSecret,
+            code,
+            redirect_uri: githubApp.callbackUrl,
         },
         {
-          headers: { Accept: 'application/json' },
+            headers: { Accept: 'application/json' },
         }
-      );
-    
-      const accessToken = tokenResp.data.access_token;
-      console.log('GitHub App user access token:', accessToken);
-      return accessToken;
+    );
+
+    const accessToken = tokenResp.data.access_token;
+    console.log('GitHub App user access token:', accessToken);
+    return accessToken;
 }

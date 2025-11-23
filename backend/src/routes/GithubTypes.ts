@@ -106,3 +106,10 @@ export type FileDiff = {
     filename: string;
     diff: string;
 }
+
+export type GithubAppUser = {
+    login: string;
+    id: number;
+    name: string;
+    avatar_url: string;
+}
