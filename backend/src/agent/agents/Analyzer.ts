@@ -3,7 +3,7 @@ import { Session } from "../../server";
 import chalk from "chalk";
 import { EntityType } from "../../shared/Entities";
 import { ChangedItem, ChangeEventType } from "../../shared/ModelEvents";
-import { Commit } from "../../theOwner/utility";
+import { Commit } from "../../routes/GithubTypes";
 import { createActionSummaryTool, createCommitSummaryTool } from "../tools/ActionEventTools";
 import { Project, Ticket } from "../../shared/TicketSystem";
 import { ProjectActivityEvent, TicketActivityEvent } from "../../shared/types";

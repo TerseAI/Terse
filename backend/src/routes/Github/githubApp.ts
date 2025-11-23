@@ -3,7 +3,7 @@ import { Request, Response } from "express";
 import { db } from "../../prismaClient";
 import { User, GithubRepository, UserGithubRepository } from "../../types/prisma";
 import Owner from "../../theOwner/Owner";
-import { Commit, UnifiedGitHubEvent } from "../../theOwner/utility";
+import { Commit, GithubAppUnifiedEventRequest } from "../../routes/GithubTypes";
 import { search } from "../../searchClient";
 import { Session } from "../../server";
 import { ActivityOverview } from "../../agent/agents/Analyzer";
@@ -169,46 +169,6 @@ async function resolveUserGithubRelation(user: User, username: string, repositor
     });
 }
 
-export type GithubAppUnifiedEventRequest = {
-    username: string;
-    installationId: number;
-    repositoryName: string;
-    eventType: 'push' | 'pull_request.opened' | 'pull_request.synchronize' | 'pull_request.closed' | 'pull_request.merged';
-    branch?: string;
-    commits: Commit[];
-    pullRequest?: {
-        id: string;
-        number: number;
-        title: string;
-        body?: string;
-        state: 'open' | 'closed';
-        merged: boolean;
-        head: {
-            ref: string;
-            sha: string;
-        };
-        base: {
-            ref: string;
-            sha: string;
-        };
-        user: {
-            login: string;
-            email?: string;
-        };
-    };
-    // Additional context
-    repository: {
-        id: number;
-        name: string;
-        owner: string;
-        defaultBranch: string;
-    };
-    sender: {
-        login: string;
-        email?: string;
-    };
-}
-
 export async function githubAppUnifiedEvent(req: Request, res: Response) {
     const body: GithubAppUnifiedEventRequest = req.body as GithubAppUnifiedEventRequest;
 
@@ -271,7 +231,7 @@ export async function githubAppUnifiedEvent(req: Request, res: Response) {
     }
 }
 
-async function saveActivityEvent(repository: GithubRepository, event: UnifiedGitHubEvent, summary: ActivityOverview, userId: string) {
+async function saveActivityEvent(repository: GithubRepository, event: GithubAppUnifiedEventRequest, summary: ActivityOverview, userId: string) {
     const githubActivityEvent = await db().activity_events.create({
         data: {
             user_id: userId,
