@@ -177,16 +177,16 @@ model jira_api_keys {
 model atlassian_integrations {
   id              String   @id @default(cuid())
   user_id         String
-  jira_user_email String   // User email in Atlassian/Jira
-  base_url        String   // Base URL of the Atlassian instance (e.g., https://company.atlassian.net)
-  cloud_id        String   // Atlassian cloud ID for API calls
-  site_name       String?  // Extracted site name from base_url
-  project_key     String?  // Connection-level default project key. Can be overridden per automation via automation_jira_configs.project_key
-  project_name    String?  // Connection-level default project name (display only)
-  webhook_id      String?  // Webhook ID for Jira events
-  webhook_secret  String?  // Webhook secret for verifying webhook payloads
-  access_token    String   // OAuth access token
-  refresh_token   String   // OAuth refresh token
+  jira_user_email String // User email in Atlassian/Jira
+  base_url        String // Base URL of the Atlassian instance (e.g., https://company.atlassian.net)
+  cloud_id        String // Atlassian cloud ID for API calls
+  site_name       String? // Extracted site name from base_url
+  project_key     String? // Connection-level default project key. Can be overridden per automation via automation_jira_configs.project_key
+  project_name    String? // Connection-level default project name (display only)
+  webhook_id      String? // Webhook ID for Jira events
+  webhook_secret  String? // Webhook secret for verifying webhook payloads
+  access_token    String // OAuth access token
+  refresh_token   String // OAuth refresh token
   token_expiry    DateTime // Token expiration time
   created_at      DateTime @default(now())
   updated_at      DateTime @updatedAt

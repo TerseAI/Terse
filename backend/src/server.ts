@@ -153,6 +153,10 @@ app.get("/auth/github/callback", async (req, res) => {
   githubCallback(req, res);
 });
 
+app.get("/auth/github-app/callback", async (req, res) => {
+  githubCallback(req, res);
+});
+
 app.get("/auth/google/callback", async (req, res) => {
   googleCallback(req, res);
 });
