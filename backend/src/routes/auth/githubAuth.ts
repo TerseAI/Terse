@@ -135,9 +135,24 @@ export async function githubCallback(req: Request, res: Response) {
 }
 
 export async function githubAppOAuth(req: Request, res: Response) {
-    console.log('githubAppOAuth route has been hit')
-    const state = crypto.randomBytes(8).toString('hex');
-    const gitubAppClientId = githubApp.clientId;
-    const redirectUrl = `https://github.com/login/oauth/authorize?client_id=${gitubAppClientId}&redirect_uri=${encodeURIComponent(githubAuth.callbackUrl)}&scope=read:user%20user:email&state=${state}`;
-    res.redirect(redirectUrl);
+    console.log('githubAppOAuth route has been hit');
+
+    const state = crypto.randomBytes(16).toString('hex');
+
+    const clientId = githubApp.clientId;
+    const redirectUri = githubAuth.callbackUrl;
+
+    const scopes = [
+        'read:user',
+        'read:org'
+    ].join('%20');
+
+    const url = 
+      `https://github.com/login/oauth/authorize?` +
+      `client_id=${clientId}` +
+      `&redirect_uri=${encodeURIComponent(redirectUri)}` +
+      `&scope=${scopes}` +
+      `&state=${state}`;
+
+    res.redirect(url);
 }
