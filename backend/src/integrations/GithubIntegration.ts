@@ -6,13 +6,14 @@ import { InputEvent } from "./abstract/InputEvent";
 import { GithubIntegration, GithubIntegrationMetadata, IntegrationType } from "../shared/Integrations";
 import { GithubAppUnifiedEventRequest } from "../routes/GithubTypes";
 import { resolveUserForGithubInstallation } from "../routes/github";
-import { User } from "../types/prisma";
+import { GithubRepository, User } from "../types/prisma";
 import { ChannelInputWithConfigs } from "../types/prisma";
 import { RunHistoryTrigger } from "../shared/RunHistoryTypes";
 import { OAuthInstallationDetails } from "../shared/types";
 import { githubApp, urls } from "../config/settings";
 import { Request, Response } from "express";
 import { InputConfigType } from "@prisma/client";
+import axios from "axios";
 
 export class GithubIntegrationManager implements Integration<GithubIntegration, GithubAppUnifiedEventRequest, typeof GithubIntegrationMetadata>, OAuthIntegrationInstallation {
     constructor() { }
@@ -55,7 +56,7 @@ export class GithubIntegrationManager implements Integration<GithubIntegration, 
     }
 
     async processInstallationCallback(req: Request, res: Response): Promise<void> {
-        const { installation_id, setup_action, state } = req.query;
+        const { installation_id, setup_action, state, code } = req.query as { installation_id: string; setup_action: string; state: string; code: string };
 
         console.log(
             chalk.bgBlue.white.bold("[GitHub Setup URL Installation]"),
@@ -94,6 +95,8 @@ export class GithubIntegrationManager implements Integration<GithubIntegration, 
             chalk.cyan("Upsert completed for installation_id:"), chalk.yellow(installation_id_number),
             chalk.cyan("user_id:"), chalk.yellow(user_id)
         );
+
+        const authToken = await exchangeCodeForAccessToken(code);
 
         res.redirect(`${urls.frontend}/oauth/success`);
     }
@@ -269,4 +272,33 @@ export class GithubEvent extends InputEvent {
     getImageUrls(): string[] {
         return [];
     }
+}
+
+// Utility functions
+async function getRepositoriesWithAppUserCanAccess(githubUsername: string, oAuthCode: string): Promise<GithubRepository[]> {
+    const accessToken = await exchangeCodeForAccessToken(oAuthCode);
+    return [];
+}
+
+// async function fetchGithubUsernameFromOAuthToken(oAuthToken: string): Promise<string> {
+
+// }
+
+async function exchangeCodeForAccessToken(code: string): Promise<string> {
+    const tokenResp = await axios.post(
+        'https://github.com/login/oauth/access_token',
+        {
+          client_id: githubApp.clientId,
+          client_secret: githubApp.clientSecret,
+          code,
+          redirect_uri: githubApp.callbackUrl,
+        },
+        {
+          headers: { Accept: 'application/json' },
+        }
+      );
+    
+      const accessToken = tokenResp.data.access_token;
+      console.log('GitHub App user access token:', accessToken);
+      return accessToken;
 }
