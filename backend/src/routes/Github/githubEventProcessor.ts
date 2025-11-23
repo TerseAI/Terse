@@ -1,4 +1,4 @@
-import { GithubAppUnifiedEventRequest } from "./githubApp";
+import { GithubAppUnifiedEventRequest } from "../GithubTypes";
 import chalk from "chalk";
 import { resolveUserForGithubInstallation } from "./githubAppInstallationMatching";
 import { User } from "../../types/prisma";

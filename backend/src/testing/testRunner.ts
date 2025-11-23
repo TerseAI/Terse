@@ -108,6 +108,7 @@ function setupTestScenarios(testEnv: OwnerTestEnvironment) {
                 }
             ],
             repository: {
+                id: 123,
                 name: 'test-repo',
                 owner: 'testuser',
                 defaultBranch: 'main'
