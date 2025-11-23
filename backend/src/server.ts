@@ -154,6 +154,7 @@ app.get("/auth/github/callback", async (req, res) => {
   githubCallback(req, res);
 });
 
+// GITHUB Will call this immediately after the user installs the app.
 app.get("/auth/github-app/callback", async (req, res) => {
   githubAppCallback(req, res);
 });
@@ -228,11 +229,6 @@ app.post(
     processsGithubAppInstallationWebhook(req, res);
   }
 );
-
-// GITHUB Will call this directly to the backend, not through the Probot app.
-// app.get("/github/frontend-installation-callback", async (req, res) => {
-//   processSetUpURLGithubInstallation(req, res);
-// });
 
 app.post(
   "/github/installation-deleted",
