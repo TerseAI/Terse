@@ -140,7 +140,7 @@ export async function githubAppOAuth(req: Request, res: Response) {
     const state = crypto.randomBytes(16).toString('hex');
 
     const clientId = githubApp.clientId;
-    const redirectUri = githubAuth.callbackUrl;
+    const redirectUri = githubApp.callbackUrl;
 
     const scopes = [
         'read:user',
@@ -155,4 +155,15 @@ export async function githubAppOAuth(req: Request, res: Response) {
       `&state=${state}`;
 
     res.redirect(url);
+}
+
+export function githubAppCallback(req: Request, res: Response) {
+    console.log('githubAppCallback route has been hit');
+    const { code, state } = req.query as { code?: string; state?: string };
+
+    console.log(chalk.blue('🔗 Github App OAuth callback received:'), chalk.cyan(JSON.stringify(req.query, null, 2)), chalk.yellow(JSON.stringify(req.body, null, 2)));
+
+    if (!code || !state) {
+        return res.status(400).send('Invalid OAuth state');
+    }
 }

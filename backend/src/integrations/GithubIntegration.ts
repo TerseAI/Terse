@@ -4,7 +4,7 @@ import chalk from "chalk";
 import { EventProcessor } from "../agent/ChannelAgent/EventProcessor";
 import { InputEvent } from "./abstract/InputEvent";
 import { GithubIntegration, GithubIntegrationMetadata, IntegrationType } from "../shared/Integrations";
-import { GithubAppUnifiedEventRequest } from "../routes/github";
+import { GithubAppUnifiedEventRequest } from "../routes/GithubTypes";
 import { resolveUserForGithubInstallation } from "../routes/github";
 import { User } from "../types/prisma";
 import { ChannelInputWithConfigs } from "../types/prisma";

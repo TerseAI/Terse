@@ -74,6 +74,7 @@ export const settings = {
   githubApp: {
     clientId: requireEnv('GITHUB_CLIENT_ID'),
     clientSecret: requireEnv('GITHUB_CLIENT_SECRET'),
+    callbackUrl: requireEnv('GITHUB_APP_CALLBACK_URL'),
     appName: requireEnv('GITHUB_APP_NAME'),
   },
 

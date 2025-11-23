@@ -1,55 +1,7 @@
 import { SearchResult } from "../search/SearchItem";
+import { Commit, GithubAppUnifiedEventRequest } from "../routes/GithubTypes";
 
-export type Commit = {
-    sha: string;
-    name: string;
-    fileDiffs: FileDiff[];
-}
-
-export type FileDiff = {
-    filename: string;
-    diff: string;
-}
-
-export type UnifiedGitHubEvent = {
-    username: string;
-    installationId: number;
-    repositoryName: string;
-    eventType: 'push' | 'pull_request.opened' | 'pull_request.synchronize' | 'pull_request.closed' | 'pull_request.merged';
-    branch?: string;
-    commits: Commit[];
-    pullRequest?: {
-        id: string;
-        number: number;
-        title: string;
-        body?: string;
-        state: 'open' | 'closed';
-        merged: boolean;
-        head: {
-            ref: string;
-            sha: string;
-        };
-        base: {
-            ref: string;
-            sha: string;
-        };
-        user: {
-            login: string;
-            email?: string;
-        };
-    };
-    repository: {
-        name: string;
-        owner: string;
-        defaultBranch: string;
-    };
-    sender: {
-        login: string;
-        email?: string;
-    };
-}
-
-export const unifiedGitHubEventForAgent = (event: UnifiedGitHubEvent, searchResults: SearchResult[]): string => {
+export const unifiedGitHubEventForAgent = (event: GithubAppUnifiedEventRequest, searchResults: SearchResult[]): string => {
     let eventString = `
     Unified GitHub Event:
     username: ${event.username}
