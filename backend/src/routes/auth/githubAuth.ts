@@ -6,6 +6,7 @@ import chalk from "chalk";
 import axios from "axios";
 import { findUserByEmail, findUserByGitHubUsername, createUser, updateUserGitHubUsername } from "../../types/user";
 import { githubApp, githubAuth } from "../../config/settings";
+import { GithubIntegrationManager } from "../../integrations/GithubIntegration";
 
 export const githubAppAuthMiddleware = async (req: Request, res: Response, next: NextFunction) => {
     console.log('githubAppAuthMiddleware route has been hit')
@@ -157,13 +158,13 @@ export async function githubAppOAuth(req: Request, res: Response) {
     res.redirect(url);
 }
 
-export function githubAppCallback(req: Request, res: Response) {
-    console.log('githubAppCallback route has been hit');
+export async function githubAppCallback(req: Request, res: Response) {
+    console.log(chalk.blue('🔗 Github App OAuth callback received:'), chalk.cyan(JSON.stringify(req.query, null, 2)));
     const { code, state } = req.query as { code?: string; state?: string };
-
-    console.log(chalk.blue('🔗 Github App OAuth callback received:'), chalk.cyan(JSON.stringify(req.query, null, 2)), chalk.yellow(JSON.stringify(req.body, null, 2)));
-
     if (!code || !state) {
         return res.status(400).send('Invalid OAuth state');
     }
+
+    const integration = new GithubIntegrationManager();
+    await integration.processInstallationCallback(req, res);
 }

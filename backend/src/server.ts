@@ -230,9 +230,9 @@ app.post(
 );
 
 // GITHUB Will call this directly to the backend, not through the Probot app.
-app.get("/github/frontend-installation-callback", async (req, res) => {
-  processSetUpURLGithubInstallation(req, res);
-});
+// app.get("/github/frontend-installation-callback", async (req, res) => {
+//   processSetUpURLGithubInstallation(req, res);
+// });
 
 app.post(
   "/github/installation-deleted",
