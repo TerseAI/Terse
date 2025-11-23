@@ -57,6 +57,7 @@ export async function getInstallationUrl(req: Request, res: Response) {
  * Handle GitHub App installation callback from setup URL
  */
 export async function processSetUpURLGithubInstallation(req: Request, res: Response) {
+    console.log('processSetUpURLGithubInstallation', req.query);
     const integration = new GithubIntegrationManager();
     await integration.processInstallationCallback(req, res);
 }
