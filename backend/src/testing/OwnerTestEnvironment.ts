@@ -1,4 +1,4 @@
-import { UnifiedGitHubEvent, Commit, FileDiff } from '../theOwner/utility';
+import { GithubAppUnifiedEventRequest, Commit, FileDiff } from '../routes/GithubTypes';
 import { Ticket, TicketState, User as TicketUser, Team, Project, TicketSystemType } from '../shared/TicketSystem';
 import { Session } from '../server';
 import { Search } from '../searchClient';
@@ -13,7 +13,7 @@ import { MockTicketManager } from './MockTicketManager';
 export interface TestScenario {
     name: string;
     description: string;
-    githubEvent: UnifiedGitHubEvent;
+    githubEvent: GithubAppUnifiedEventRequest;
     ticketSystemState: {
         tickets: Ticket[];
         states: TicketState[];
@@ -233,6 +233,7 @@ export class OwnerTestEnvironment {
                 branch: 'main',
                 commits,
                 repository: {
+                    id: 123,
                     name: repositoryName,
                     owner: username,
                     defaultBranch: 'main'
@@ -272,6 +273,7 @@ export class OwnerTestEnvironment {
                 branch: 'main',
                 commits,
                 repository: {
+                    id: 123,
                     name: repositoryName,
                     owner: username,
                     defaultBranch: 'main'
@@ -352,6 +354,7 @@ export class OwnerTestEnvironment {
                     }
                 },
                 repository: {
+                    id: 123,
                     name: repositoryName,
                     owner: username,
                     defaultBranch: 'main'

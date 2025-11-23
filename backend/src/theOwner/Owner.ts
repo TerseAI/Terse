@@ -2,7 +2,7 @@ import { Search } from '../searchClient';
 import { Session } from '../server';
 import { ActivityOverview, Analyzer } from '../agent/agents/Analyzer';
 import chalk from 'chalk';
-import { Commit, UnifiedGitHubEvent } from './utility';
+import { Commit, GithubAppUnifiedEventRequest } from '../routes/GithubTypes';
 import { enrich, EnrichmentResult } from './Enrich';
 
 class Owner {
@@ -14,7 +14,7 @@ class Owner {
         this.session = session;
     }
 
-    async handleUnifiedGitHubEvent(event: UnifiedGitHubEvent): Promise<ActivityOverview | null> {
+    async handleUnifiedGitHubEvent(event: GithubAppUnifiedEventRequest): Promise<ActivityOverview | null> {
         const eventId = `${event.username}-${event.repositoryName}-${event.eventType}-${event.branch}-${Date.now()}`;
         console.log(chalk.blue(`[${eventId}] The owner is handling a unified GitHub event`), event.eventType, event.repositoryName, event.username);
         console.log(chalk.blue(`[${eventId}] Session user:`, this.session.user.github_username, 'Team ID:', this.session.teamId));
