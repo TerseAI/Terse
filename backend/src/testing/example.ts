@@ -1,6 +1,5 @@
 import { OwnerTestEnvironment, TestScenario } from './OwnerTestEnvironment';
-import { Commit } from '../theOwner/utility';
-import { Ticket, TicketState } from '../shared/TicketSystem';
+import { Ticket } from '../shared/TicketSystem';
 
 // Example of how to create and run custom test scenarios
 async function runCustomScenarios() {
@@ -29,6 +28,7 @@ async function runCustomScenarios() {
                 }
             ],
             repository: {
+                id: 123,
                 name: 'my-app',
                 owner: 'developer',
                 defaultBranch: 'main'
@@ -101,6 +101,7 @@ async function runCustomScenarios() {
                 }
             },
             repository: {
+                id: 123,
                 name: 'my-app',
                 owner: 'developer',
                 defaultBranch: 'main'
@@ -187,6 +188,7 @@ function createScenarioFromTemplate(
                 }
             ],
             repository: {
+                id: 123,
                 name: repoName,
                 owner: username,
                 defaultBranch: 'main'
