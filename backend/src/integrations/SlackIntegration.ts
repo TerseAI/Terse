@@ -504,34 +504,25 @@ async function handleSlackMessage(event: SlackMessageEvent, teamId: string, auth
             return;
         }
 
-        // Determine which workspaceUserIntegrations are in play based on channel type
-        // Channel type is available directly on the event
+        const workspaceUserIntegrations = await db().user_slack_integrations.findMany({
+            where: {
+                slack_team_id: teamId
+            },
+            include: {
+                user: true
+            }
+        });
+
         const channelType = messageEvent.channel_type;
         const isPublicChannel = channelType === SlackChannelType.CHANNEL;
         const isPrivateChannel = channelType === SlackChannelType.GROUP;
         const isDM = channelType === SlackChannelType.IM || channelType === SlackChannelType.MPIM;
 
-        let workspaceUserIntegrations: UserSlackIntegrationWithUser[] = [];
 
-        if (isPublicChannel) {
-            // Public channel: include everyone who has the integration installed
-            console.log(chalk.blue('Public channel - including all workspace users with integration'));
-            workspaceUserIntegrations = await db().user_slack_integrations.findMany({
-                where: {
-                    slack_team_id: teamId
-                },
-                include: {
-                    user: true
-                }
-            });
-        } else if (isPrivateChannel || isDM) {
-            // Private channel or DM: only include users who are members of the channel
-            const channelTypeName = isPrivateChannel ? 'Private channel' : 'DM';
-            console.log(chalk.blue(`${channelTypeName} - checking channel membership`));
-            
+        const isInChannel = async (integration: UserSlackIntegrationWithUser) => {
             try {
                 // Use bot token to get channel members
-                const botClient = new WebClient(slackIntegration.access_token, {
+                const botClient = new WebClient(integration.authed_user_access_token, {
                     logLevel: LogLevel.INFO
                 });
 
@@ -540,51 +531,43 @@ async function handleSlackMessage(event: SlackMessageEvent, teamId: string, auth
                 });
 
                 if (membersRes.ok && membersRes.members && membersRes.members.length > 0) {
-                    // Get all channel member IDs (excluding the bot)
-                    const botUserId = slackIntegration.bot_user_id;
-                    const channelMemberIds = membersRes.members.filter(id => id !== botUserId);
-                    
-                    if (channelMemberIds.length === 0) {
-                        console.log(chalk.yellow(`⚠ ${channelTypeName} has no members (only bot)`));
-                        workspaceUserIntegrations = [];
-                    } else {
-                        console.log(chalk.green(`✓ ${channelTypeName} has ${channelMemberIds.length} member(s): ${channelMemberIds.join(', ')} (bot: ${botUserId})`));
-                        
-                        // Get all workspace user integrations for this team
-                        const allWorkspaceIntegrations = await db().user_slack_integrations.findMany({
-                            where: {
-                                slack_team_id: teamId
-                            },
-                            include: {
-                                user: true
-                            }
-                        });
-                        
-                        // Filter to only those whose authed_user_id is in the channel members
-                        workspaceUserIntegrations = allWorkspaceIntegrations.filter(
-                            integration => integration.authed_user_id && channelMemberIds.includes(integration.authed_user_id)
-                        );
-                        
-                        console.log(chalk.blue(`✓ Found ${workspaceUserIntegrations.length} user integration(s) matching channel members`));
-                    }
+                    const channelMemberIds = membersRes.members
+                    return channelMemberIds.includes(integration.authed_user_id)
                 } else {
                     const errorMsg = membersRes.error || (membersRes.members?.length === 0 ? 'no members' : 'unknown error');
-                    console.log(chalk.yellow(`⚠ Could not get ${channelTypeName} members - ${errorMsg}`));
-                    workspaceUserIntegrations = [];
+                    console.log(chalk.yellow(`⚠ Could not get members - ${errorMsg}`));
+                    return false;
                 }
             } catch (error) {
-                console.error(chalk.red(`Error getting ${channelTypeName} members:`), error);
-                // Return empty array if we can't get members
-                workspaceUserIntegrations = [];
+                console.error(chalk.red(`Error getting members:`), error);
+                return false;
             }
         }
 
-        if (workspaceUserIntegrations.length === 0) {
+        // Filter integrations: public channels include all, private/DM channels only include users who are members
+        let filteredWorkspaceUserIntegrations: UserSlackIntegrationWithUser[];
+        if (isPublicChannel) {
+            // Public channels: include all workspace integrations
+            filteredWorkspaceUserIntegrations = workspaceUserIntegrations;
+        } else {
+            // Private channels or DMs: only include integrations where the user is in the channel
+            const channelMembershipChecks = await Promise.all(
+                workspaceUserIntegrations.map(async (integration) => ({
+                    integration,
+                    isMember: await isInChannel(integration)
+                }))
+            );
+            filteredWorkspaceUserIntegrations = channelMembershipChecks
+                .filter(({ isMember }) => isMember)
+                .map(({ integration }) => integration);
+        }
+
+        if (filteredWorkspaceUserIntegrations.length === 0) {
             console.log(chalk.yellow('No users found with Slack integrations for this workspace'));
             return;
         }
 
-        const authedUserAccessToken = workspaceUserIntegrations[0].authed_user_access_token;
+        const authedUserAccessToken = filteredWorkspaceUserIntegrations[0].authed_user_access_token;
         if (!authedUserAccessToken) {
             console.log(chalk.yellow('No authed user access token found for user'));
             return;
@@ -665,7 +648,7 @@ async function handleSlackMessage(event: SlackMessageEvent, teamId: string, auth
         // Process the event against automations for all users in this workspace
         // This ensures messages from any workspace user can trigger automations
         let totalMatches = 0;
-        for (const userSlackIntegration of workspaceUserIntegrations) {
+        for (const userSlackIntegration of filteredWorkspaceUserIntegrations) {
             try {
                 const eventProcessor = new EventProcessor(slackEvent, userSlackIntegration.user);
                 const results = await eventProcessor.process();
