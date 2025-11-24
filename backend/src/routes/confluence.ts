@@ -45,16 +45,18 @@ export async function getConfluenceResources(req: Request, res: Response) {
         return res.status(404).json({ success: false, error: 'Integration not found' });
     }
 
-    // Get OAuth token and cloudId from integration
-    const accessToken = oauthIntegration.access_token;
+    // Get cloudId from integration
     const cloudId = oauthIntegration.cloud_id;
-
-    if (!accessToken) {
-        return res.status(400).json({ success: false, error: 'Integration missing access token' });
-    }
 
     if (!cloudId) {
         return res.status(400).json({ success: false, error: 'Integration missing cloud ID' });
+    }
+
+    // Get valid access token (handles refresh automatically)
+    const manager = new AtlassianIntegrationManager();
+    const accessToken = await manager.getAccessToken(integrationId);
+    if (!accessToken) {
+        return res.status(400).json({ success: false, error: 'Could not get valid access token' });
     }
 
     try {

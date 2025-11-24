@@ -37,6 +37,19 @@ export class SlackIntegrationManager implements Integration<SlackIntegration, Sl
         }));
     }
 
+    async getAllActiveInstances(): Promise<SlackIntegration[]> {
+        const userSlackIntegrations = await db().user_slack_integrations.findMany({
+            include: {
+                slack_integration: true
+            }
+        });
+        return userSlackIntegrations.map(usi => ({
+            id: usi.id,
+            teamId: usi.slack_integration.team_id,
+            teamName: usi.slack_integration.team_name,
+        }));
+    }
+
     async processWebhookEvent(event: SlackMessageEvent): Promise<void> {
         // For event_callback types, check if we've already processed this event
         const { team_id, event_id, type, authorizations } = event;
@@ -283,6 +296,36 @@ export class SlackIntegrationManager implements Integration<SlackIntegration, Sl
     async teardownChannelInput(integrationId: string, channelInput: ChannelInputWithConfigs): Promise<void> {
         // Slack doesn't require any teardown for channel inputs
         // Webhooks are managed at the integration level
+    }
+
+    async refreshToken(integrationId: string): Promise<boolean> {
+        // Slack uses app-level tokens that are long-lived and don't require refresh
+        // Return false to indicate no refresh was needed/performed
+        return false;
+    }
+
+    async getAccessToken(integrationId: string): Promise<string | null> {
+        try {
+            // Slack integrationId is the user_slack_integrations.id
+            // We need to get the associated slack_integration to access the token
+            const userSlackIntegration = await db().user_slack_integrations.findUnique({
+                where: { id: integrationId },
+                include: {
+                    slack_integration: true,
+                },
+            });
+
+            if (!userSlackIntegration || !userSlackIntegration.slack_integration) {
+                console.error(`Slack integration ${integrationId} not found`);
+                return null;
+            }
+
+            // Slack tokens are long-lived and don't expire, so just return the token
+            return userSlackIntegration.slack_integration.access_token || null;
+        } catch (error) {
+            console.error(`Error getting Slack access token for integration ${integrationId}:`, error);
+            return null;
+        }
     }
 }
 

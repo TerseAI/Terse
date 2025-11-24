@@ -5,7 +5,7 @@ import { IntegrationType } from "../shared/Integrations";
 import { ChannelInputWithConfigs } from "../types/prisma";
 import { OAuthInstallationDetails } from "../shared/types";
 import jwt from "jsonwebtoken";
-import { settings } from "../config/settings";
+import { settings, OAUTH_TOKEN_REFRESH_THRESHOLD_MS } from "../config/settings";
 import { Request, Response } from "express";
 import chalk from "chalk";
 import { LinearAdapter } from "../ticketing/linear";
@@ -30,6 +30,20 @@ export class LinearIntegrationManager implements Integration<LinearIntegration, 
             }
         });
         return linearIntegrations.map((li) => ({
+            id: li.id,
+            workspaceName: li.workspace_name,
+        }));
+    }
+
+    async getAllActiveInstances(): Promise<LinearIntegration[]> {
+        const integrations = await db().linear_integrations.findMany({
+            select: {
+                id: true,
+                workspace_id: true,
+                workspace_name: true,
+            },
+        });
+        return integrations.map((li) => ({
             id: li.id,
             workspaceName: li.workspace_name,
         }));
@@ -86,22 +100,31 @@ export class LinearIntegrationManager implements Integration<LinearIntegration, 
                 // Enrich context using LinearAdapter
                 let enrichedEvent = event;
                 try {
-                    const adapter = new LinearAdapter(integration.access_token);
-                    
-                    // If this is an Issue event, fetch additional details
-                    if (event.type === "Issue" && event.data?.id) {
-                        try {
-                            const issue = await adapter.findTicket(event.data.id);
-                            // Enrich the event with additional context from the API
-                            // The event already has most data, but we can add any missing fields
-                            console.log(
-                                chalk.blue(`📊 [LINEAR INTEGRATION MANAGER] Enriched issue context for ${event.data.id}`)
-                            );
-                        } catch (error) {
-                            console.log(
-                                chalk.yellow(`⚠️  [LINEAR INTEGRATION MANAGER] Could not enrich issue context: ${error}`)
-                            );
-                            // Continue with original event if enrichment fails
+                    // Get valid access token (handles refresh automatically)
+                    const accessToken = await this.getAccessToken(integration.id);
+                    if (!accessToken) {
+                        console.log(
+                            chalk.yellow(`⚠️  [LINEAR INTEGRATION MANAGER] Could not get valid access token for integration ${integration.id}`)
+                        );
+                        // Continue with original event if token cannot be obtained
+                    } else {
+                        const adapter = new LinearAdapter(accessToken);
+                        
+                        // If this is an Issue event, fetch additional details
+                        if (event.type === "Issue" && event.data?.id) {
+                            try {
+                                const issue = await adapter.findTicket(event.data.id);
+                                // Enrich the event with additional context from the API
+                                // The event already has most data, but we can add any missing fields
+                                console.log(
+                                    chalk.blue(`📊 [LINEAR INTEGRATION MANAGER] Enriched issue context for ${event.data.id}`)
+                                );
+                            } catch (error) {
+                                console.log(
+                                    chalk.yellow(`⚠️  [LINEAR INTEGRATION MANAGER] Could not enrich issue context: ${error}`)
+                                );
+                                // Continue with original event if enrichment fails
+                            }
                         }
                     }
                 } catch (error) {
@@ -286,6 +309,136 @@ export class LinearIntegrationManager implements Integration<LinearIntegration, 
     async teardownChannelInput(integrationId: string, channelInput: ChannelInputWithConfigs): Promise<void> {
         // Linear doesn't require any teardown for channel inputs
         // Webhooks are managed at the integration level
+    }
+
+    async refreshToken(integrationId: string): Promise<boolean> {
+        try {
+            const integration = await db().linear_integrations.findUnique({
+                where: { id: integrationId },
+            });
+
+            if (!integration) {
+                console.log(`Linear integration ${integrationId} not found`);
+                return false;
+            }
+
+            // Store the original token expiry to detect if refresh happened
+            const originalTokenExpiry = integration.token_expiry;
+
+            // Use getAccessToken which internally handles token refresh
+            const accessToken = await this.getAccessToken(integrationId);
+            if (!accessToken) {
+                // Check if token was actually refreshed by comparing expiry dates
+                const updatedIntegration = await db().linear_integrations.findUnique({
+                    where: { id: integrationId },
+                    select: { token_expiry: true },
+                });
+
+                if (!updatedIntegration || !originalTokenExpiry || !updatedIntegration.token_expiry) {
+                    return false;
+                }
+
+                // If expiry changed, token was refreshed
+                return updatedIntegration.token_expiry.getTime() !== originalTokenExpiry.getTime();
+            }
+
+            // Check if token was refreshed by comparing expiry dates
+            const updatedIntegration = await db().linear_integrations.findUnique({
+                where: { id: integrationId },
+                select: { token_expiry: true },
+            });
+
+            if (!updatedIntegration || !originalTokenExpiry || !updatedIntegration.token_expiry) {
+                return false;
+            }
+
+            // Token was refreshed if expiry changed
+            return updatedIntegration.token_expiry.getTime() !== originalTokenExpiry.getTime();
+        } catch (error) {
+            console.error(`Error refreshing Linear token for integration ${integrationId}:`, error);
+            return false;
+        }
+    }
+
+    async getAccessToken(integrationId: string): Promise<string | null> {
+        try {
+            const integration = await db().linear_integrations.findUnique({
+                where: { id: integrationId },
+            });
+
+            if (!integration) {
+                console.error(`Linear integration ${integrationId} not found`);
+                return null;
+            }
+
+            const now = new Date();
+            // Check if token is expired or will expire within the refresh threshold
+            if (
+                integration.token_expiry &&
+                integration.token_expiry <= new Date(now.getTime() + OAUTH_TOKEN_REFRESH_THRESHOLD_MS)
+            ) {
+                console.log(`Linear access token expiring soon for integration ${integrationId}, refreshing...`);
+
+                if (!integration.refresh_token) {
+                    console.error(`No refresh token available for Linear integration ${integrationId}`);
+                    return integration.access_token; // Return existing token as fallback
+                }
+
+                // Exchange refresh token for new access token
+                const params = new URLSearchParams();
+                params.append("refresh_token", integration.refresh_token);
+                params.append("client_id", settings.linear.clientId);
+                params.append("client_secret", settings.linear.clientSecret);
+                params.append("grant_type", "refresh_token");
+
+                const tokenResponse = await fetch("https://api.linear.app/oauth/token", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/x-www-form-urlencoded",
+                    },
+                    body: params.toString(),
+                });
+
+                if (!tokenResponse.ok) {
+                    const errorText = await tokenResponse.text();
+                    console.error(`Linear token refresh failed for integration ${integrationId}:`, errorText);
+                    // Return existing token as fallback - it might still work
+                    return integration.access_token;
+                }
+
+                const tokenData = await tokenResponse.json();
+                const { access_token, refresh_token, expires_in } = tokenData;
+
+                if (!access_token) {
+                    console.error(`No access token received from Linear refresh for integration ${integrationId}`);
+                    // Return existing token as fallback
+                    return integration.access_token;
+                }
+
+                // Calculate token expiry
+                const tokenExpiry = new Date(Date.now() + (expires_in || 3600) * 1000);
+
+                // Update the database with new tokens
+                await db().linear_integrations.update({
+                    where: { id: integration.id },
+                    data: {
+                        access_token: access_token,
+                        refresh_token: refresh_token || integration.refresh_token, // Preserve existing if new one not provided
+                        token_expiry: tokenExpiry,
+                    },
+                });
+
+                console.log(`Successfully refreshed Linear access token for integration ${integrationId}`);
+                return access_token;
+            }
+
+            // Token is still valid
+            return integration.access_token;
+        } catch (error) {
+            console.error(`Error getting Linear access token for integration ${integrationId}:`, error);
+            // Return null on error - caller should handle
+            return null;
+        }
     }
 }
 
