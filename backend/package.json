@@ -29,7 +29,7 @@
   "license": "ISC",
   "dependencies": {
     "@linear/sdk": "^45.3.0",
-    "@notionhq/client": "^2.3.0",
+    "@notionhq/client": "^5.4.0",
     "@openai/agents": "^0.0.10",
     "@prisma/client": "^6.19.0",
     "@slack/web-api": "^7.9.3",

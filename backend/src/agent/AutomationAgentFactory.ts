@@ -1,7 +1,7 @@
 import chalk from 'chalk';
 import { db } from '../prismaClient';
 import { ChannelAgent } from './ChannelAgent/ChannelAgent';
-import { NotionDatabaseOutput, NotionDatabaseSession } from '../outputs/NotionDatabaseOutput';
+import { NotionDatabaseOutput, NotionDatabaseSession } from '../outputs/notion/NotionDatabaseOutput';
 import { ChannelWithRelations, User } from '../types/prisma';
 import { NotionConfig } from '../shared/Configs';
 import { getInputConfigInclude, getOutputConfigInclude } from '../utility/prismaIncludes';

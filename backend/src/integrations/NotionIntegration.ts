@@ -132,56 +132,6 @@ export class NotionIntegrationManager implements Integration<NotionIntegration, 
                 chalk.yellow(workspace_name || workspace_id)
             );
 
-            // Fetch available databases
-            const notionClient = new Client({ auth: access_token });
-            const databasesResponse: SearchResponse = await notionClient.search({
-                filter: { property: "object", value: "database" },
-                page_size: 100,
-            });
-
-            const pagesResponse: SearchResponse = await notionClient.search({
-                filter: { property: "object", value: "page" },
-                page_size: 100,
-            });
-
-            const databases: NotionResource[] = databasesResponse.results.map(
-                (db: any) => ({
-                    id: db.id,
-                    title: db.title?.[0]?.plain_text || "Untitled Database",
-                    url: db.url,
-                    type: 'database',
-                })
-            );
-
-            const pages: NotionResource[] = pagesResponse.results
-                .filter((page): page is PageObjectResponse | PartialPageObjectResponse => page.object === 'page')
-                .map((page: PageObjectResponse | PartialPageObjectResponse) => ({
-                    id: page.id,
-                    title: extractPageTitle(page),
-                    url: 'url' in page ? page.url : '',
-                    type: 'page' as const,
-                }));
-
-            const resources: NotionResource[] = [...databases, ...pages];
-
-            console.log(
-                chalk.blue(`📊 Found ${resources.length} pages and databases for user`),
-                chalk.yellow(decoded.userId)
-            );
-
-            if (databases.length === 0) {
-                console.error(
-                    chalk.red("No pages or databases found for user"),
-                    chalk.yellow(decoded.userId)
-                );
-                res.redirect(`${urls.frontend}/oauth/error`);
-                return;
-            }
-
-            // Create ONE connection with the first database as default
-            // Users can select different databases per automation via automation_notion_configs
-            const defaultDatabase = databases[0];
-
             // Check if a connection for this workspace already exists
             const existing = await db().notion_integrations.findFirst({
                 where: {
@@ -199,13 +149,7 @@ export class NotionIntegrationManager implements Integration<NotionIntegration, 
                         integration_token: access_token,
                     },
                 });
-                console.log(
-                    chalk.green("✅ Created Notion connection:"),
-                    chalk.yellow(`${workspace_name || "Workspace"} (default: ${defaultDatabase.title})`)
-                );
-                console.log(
-                    chalk.blue(`📊 ${databases.length} databases available for this connection`)
-                );
+
             } else {
                 // Update existing connection with new token (in case it was revoked and re-authorized)
                 await db().notion_integrations.update({

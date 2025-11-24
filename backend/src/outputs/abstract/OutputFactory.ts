@@ -1,7 +1,7 @@
-import { IntegrationType, OutputConfigType } from "@prisma/client";
+import { OutputConfigType } from "@prisma/client";
 import { Output } from "./Output";
-import { NotionDatabaseOutput } from "../NotionDatabaseOutput";
-import { NotionPageOutput } from "../NotionPageOutput";
+import { NotionDatabaseOutput } from "../notion/NotionDatabaseOutput";
+import { NotionPageOutput } from "../notion/NotionPageOutput";
 import { Session } from "../../server";
 import { ConfluenceOutput } from "../ConfluenceOutput";
 import { ConfigInstance } from "../../shared/Configs";
