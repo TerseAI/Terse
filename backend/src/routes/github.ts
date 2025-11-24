@@ -330,6 +330,13 @@ export async function processRepository(
             }
         });
 
+        // associate the user with the installation
+        await db().user_github_installation.upsert({
+            where: { installation_id: installationId },
+            update: { user_id: user.id },
+            create: { user_id: user.id, installation_id: installationId }
+        });
+
         console.log(chalk.green('User associated with repository:'), repositoryData.name);
         return { name: repositoryData.name, status: 'associated' };
 
