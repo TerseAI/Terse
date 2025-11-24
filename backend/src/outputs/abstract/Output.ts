@@ -29,4 +29,14 @@ export abstract class Output<T extends Session, TConfig extends ConfigInstance> 
     ): Promise<T>;
 
     abstract addOutputToChannel(tx: PrismaTransaction, channelOutputId: string, output: TConfig): Promise<void>;
+
+    /**
+     * Returns output-specific system instructions that will be appended to the base system prompt.
+     * Override this method in subclasses to provide output-specific guidance.
+     * @param session The session context
+     * @returns Additional system instructions as a string
+     */
+    getSystemInstructions(session: T): string {
+        return '';
+    }
 }
