@@ -640,66 +640,39 @@ export class AtlassianIntegrationManager implements Integration<AtlassianIntegra
                 return false;
             }
 
-            const now = new Date();
-            // Check if token is expired or will expire within the refresh threshold
-            if (
-                integration.token_expiry &&
-                integration.token_expiry <= new Date(now.getTime() + OAUTH_TOKEN_REFRESH_THRESHOLD_MS)
-            ) {
-                console.log(`Refreshing Atlassian access token for integration ${integrationId}`);
+            // Store the original token expiry to detect if refresh happened
+            const originalTokenExpiry = integration.token_expiry;
 
-                if (!integration.refresh_token || integration.refresh_token === "") {
-                    console.error(`No refresh token available for Atlassian integration ${integrationId}`);
-                    return false;
-                }
-
-                // Exchange refresh token for new access token
-                const tokenResponse = await fetch("https://auth.atlassian.com/oauth/token", {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                    },
-                    body: JSON.stringify({
-                        grant_type: "refresh_token",
-                        client_id: settings.atlassian.clientId,
-                        client_secret: settings.atlassian.clientSecret,
-                        refresh_token: integration.refresh_token,
-                    }),
+            // Use getAccessToken which internally handles token refresh
+            const accessToken = await this.getAccessToken(integrationId);
+            if (!accessToken) {
+                // getAccessToken returns null on error, but might return existing token as fallback
+                // Check if token was actually refreshed by comparing expiry dates
+                const updatedIntegration = await db().atlassian_integrations.findUnique({
+                    where: { id: integrationId },
+                    select: { token_expiry: true },
                 });
 
-                if (!tokenResponse.ok) {
-                    const errorText = await tokenResponse.text();
-                    console.error(`Atlassian token refresh failed for integration ${integrationId}:`, errorText);
+                if (!updatedIntegration || !originalTokenExpiry || !updatedIntegration.token_expiry) {
                     return false;
                 }
 
-                const tokenData = await tokenResponse.json();
-                const { access_token, refresh_token, expires_in } = tokenData;
-
-                if (!access_token) {
-                    console.error(`No access token received from Atlassian refresh for integration ${integrationId}`);
-                    return false;
-                }
-
-                // Calculate token expiry
-                const tokenExpiry = new Date(Date.now() + (expires_in || 3600) * 1000);
-
-                // Update the database with new tokens
-                await db().atlassian_integrations.update({
-                    where: { id: integration.id },
-                    data: {
-                        access_token: access_token,
-                        refresh_token: refresh_token || integration.refresh_token, // Preserve existing if new one not provided
-                        token_expiry: tokenExpiry,
-                    },
-                });
-
-                console.log(`Successfully refreshed Atlassian access token for integration ${integrationId}`);
-                return true;
+                // If expiry changed, token was refreshed
+                return updatedIntegration.token_expiry.getTime() !== originalTokenExpiry.getTime();
             }
 
-            // Token is still valid, no refresh needed
-            return false;
+            // Check if token was refreshed by comparing expiry dates
+            const updatedIntegration = await db().atlassian_integrations.findUnique({
+                where: { id: integrationId },
+                select: { token_expiry: true },
+            });
+
+            if (!updatedIntegration || !originalTokenExpiry || !updatedIntegration.token_expiry) {
+                return false;
+            }
+
+            // Token was refreshed if expiry changed
+            return updatedIntegration.token_expiry.getTime() !== originalTokenExpiry.getTime();
         } catch (error) {
             console.error(`Error refreshing Atlassian token for integration ${integrationId}:`, error);
             return false;

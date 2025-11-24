@@ -335,46 +335,28 @@ export class GmailIntegrationManager implements Integration<GmailIntegration, Gm
                 return false;
             }
 
-            const now = new Date();
-            let tokenRefreshed = false;
-            let accessToken = integration.access_token;
-            let tokenExpiry = integration.token_expiry;
+            // Store the original token expiry to detect if refresh happened
+            const originalTokenExpiry = integration.token_expiry;
 
-            // Check if token is expired or will expire within the refresh threshold
-            if (
-                integration.token_expiry &&
-                integration.token_expiry <= new Date(now.getTime() + OAUTH_TOKEN_REFRESH_THRESHOLD_MS)
-            ) {
-                console.log(`Refreshing Gmail access token for integration ${integrationId}`);
-
-                const oauth2Client = getOAuth2Client();
-                oauth2Client.setCredentials({
-                    refresh_token: integration.refresh_token,
-                });
-
-                const { credentials } = await oauth2Client.refreshAccessToken();
-
-                const newTokenExpiry = credentials.expiry_date
-                    ? new Date(credentials.expiry_date)
-                    : new Date(Date.now() + 3600 * 1000);
-
-                accessToken = credentials.access_token!;
-                tokenExpiry = newTokenExpiry;
-
-                // Update the database with new tokens
-                await db().gmail_integrations.update({
-                    where: { id: integration.id },
-                    data: {
-                        access_token: accessToken,
-                        token_expiry: newTokenExpiry,
-                    },
-                });
-
-                console.log(`Successfully refreshed Gmail access token for integration ${integrationId}`);
-                tokenRefreshed = true;
+            // Use getAccessToken which internally handles token refresh via refreshAccessTokenIfNeeded
+            const accessToken = await this.getAccessToken(integrationId);
+            if (!accessToken) {
+                console.error(`Failed to get access token for Gmail integration ${integrationId}`);
+                return false;
             }
 
+            // Check if token was refreshed by comparing expiry dates
+            const updatedIntegration = await db().gmail_integrations.findUnique({
+                where: { id: integrationId },
+                select: { token_expiry: true, refresh_token: true },
+            });
+
+            const tokenRefreshed = updatedIntegration && originalTokenExpiry && updatedIntegration.token_expiry
+                ? updatedIntegration.token_expiry.getTime() !== originalTokenExpiry.getTime()
+                : false;
+
             // Also refresh the Gmail watch if it's expiring soon (within 24 hours) or if token was refreshed
+            const now = new Date();
             const watchNeedsRefresh = !integration.watch_expiration || 
                 integration.watch_expiration <= new Date(now.getTime() + 24 * 60 * 60 * 1000);
 
@@ -383,10 +365,11 @@ export class GmailIntegrationManager implements Integration<GmailIntegration, Gm
 
                 // Set up OAuth client with current credentials
                 const oauth2Client = getOAuth2Client();
+                const currentExpiry = updatedIntegration?.token_expiry || integration.token_expiry;
                 oauth2Client.setCredentials({
                     access_token: accessToken,
-                    refresh_token: integration.refresh_token,
-                    expiry_date: tokenExpiry.getTime(),
+                    refresh_token: updatedIntegration?.refresh_token || integration.refresh_token,
+                    expiry_date: currentExpiry?.getTime(),
                 });
 
                 // Get Gmail client
