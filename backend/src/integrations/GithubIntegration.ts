@@ -109,10 +109,6 @@ export class GithubIntegrationManager implements Integration<GithubIntegration, 
             chalk.cyan("user_id:"), chalk.yellow(user_id)
         );
 
-        const authToken = await exchangeCodeForAccessToken(code);
-        const user = await getGithubAppUser(authToken);
-        const repositories = await getGithubUserRepos(authToken);
-
         res.redirect(`${urls.frontend}/oauth/success`);
     }
 
