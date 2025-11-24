@@ -9,7 +9,6 @@ import { Session } from "../server";
 import { ActivityOverview } from "../agent/agents/Analyzer";
 import { TicketEventType } from "@prisma/client";
 import { githubApp } from "../config/settings";
-import { urls } from "../config/settings";
 import { Repository, GithubAppInstallationCallbackRequest, GetGithubRepositoriesForIntegrationResponse } from "../shared/types";
 import { GithubIntegrationManager } from "../integrations/GithubIntegration";
 import { emitCacheInvalidationWithKey } from "../realtimeSocket";

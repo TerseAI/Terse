@@ -9,8 +9,6 @@ import { emitCacheInvalidationWithKey } from "../../realtimeSocket";
 export async function processsGithubAppInstallationWebhook(req: Request, res: Response) {
     const body: GithubAppInstallationCallbackRequest = req.body as GithubAppInstallationCallbackRequest;
 
-    console.log('githubAppInstallationCallback', body);
-
     // Check if the user is regestered with us, no problem if not. Will make a placeholder user.
     let user: User | null = await resolveUserForGithubInstallation(body.installationId, body.username);
     if (!user) {

@@ -14,7 +14,6 @@ import {
   githubAppCallback,
   githubAppOAuth,
   githubCallback,
-  githubLogin,
   githubLoginURL,
 } from "./routes/auth/githubAuth";
 import {
@@ -132,10 +131,6 @@ app.use(cookieParser());
 
 app.get("/me", authMiddleware, (req, res) => {
   res.send(req.session?.user);
-});
-
-app.get("/auth/github", async (req, res) => {
-  githubLogin(req, res);
 });
 
 app.get("/auth/github-app", async (req, res) => {
