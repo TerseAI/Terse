@@ -322,17 +322,66 @@ export class LinearIntegrationManager implements Integration<LinearIntegration, 
                 return false;
             }
 
+            // Store the original token expiry to detect if refresh happened
+            const originalTokenExpiry = integration.token_expiry;
+
+            // Use getAccessToken which internally handles token refresh
+            const accessToken = await this.getAccessToken(integrationId);
+            if (!accessToken) {
+                // Check if token was actually refreshed by comparing expiry dates
+                const updatedIntegration = await db().linear_integrations.findUnique({
+                    where: { id: integrationId },
+                    select: { token_expiry: true },
+                });
+
+                if (!updatedIntegration || !originalTokenExpiry || !updatedIntegration.token_expiry) {
+                    return false;
+                }
+
+                // If expiry changed, token was refreshed
+                return updatedIntegration.token_expiry.getTime() !== originalTokenExpiry.getTime();
+            }
+
+            // Check if token was refreshed by comparing expiry dates
+            const updatedIntegration = await db().linear_integrations.findUnique({
+                where: { id: integrationId },
+                select: { token_expiry: true },
+            });
+
+            if (!updatedIntegration || !originalTokenExpiry || !updatedIntegration.token_expiry) {
+                return false;
+            }
+
+            // Token was refreshed if expiry changed
+            return updatedIntegration.token_expiry.getTime() !== originalTokenExpiry.getTime();
+        } catch (error) {
+            console.error(`Error refreshing Linear token for integration ${integrationId}:`, error);
+            return false;
+        }
+    }
+
+    async getAccessToken(integrationId: string): Promise<string | null> {
+        try {
+            const integration = await db().linear_integrations.findUnique({
+                where: { id: integrationId },
+            });
+
+            if (!integration) {
+                console.error(`Linear integration ${integrationId} not found`);
+                return null;
+            }
+
             const now = new Date();
             // Check if token is expired or will expire within the refresh threshold
             if (
                 integration.token_expiry &&
                 integration.token_expiry <= new Date(now.getTime() + OAUTH_TOKEN_REFRESH_THRESHOLD_MS)
             ) {
-                console.log(`Refreshing Linear access token for integration ${integrationId}`);
+                console.log(`Linear access token expiring soon for integration ${integrationId}, refreshing...`);
 
                 if (!integration.refresh_token) {
                     console.error(`No refresh token available for Linear integration ${integrationId}`);
-                    return false;
+                    return integration.access_token; // Return existing token as fallback
                 }
 
                 // Exchange refresh token for new access token
@@ -353,7 +402,8 @@ export class LinearIntegrationManager implements Integration<LinearIntegration, 
                 if (!tokenResponse.ok) {
                     const errorText = await tokenResponse.text();
                     console.error(`Linear token refresh failed for integration ${integrationId}:`, errorText);
-                    return false;
+                    // Return existing token as fallback - it might still work
+                    return integration.access_token;
                 }
 
                 const tokenData = await tokenResponse.json();
@@ -361,7 +411,8 @@ export class LinearIntegrationManager implements Integration<LinearIntegration, 
 
                 if (!access_token) {
                     console.error(`No access token received from Linear refresh for integration ${integrationId}`);
-                    return false;
+                    // Return existing token as fallback
+                    return integration.access_token;
                 }
 
                 // Calculate token expiry
@@ -378,39 +429,14 @@ export class LinearIntegrationManager implements Integration<LinearIntegration, 
                 });
 
                 console.log(`Successfully refreshed Linear access token for integration ${integrationId}`);
-                return true;
+                return access_token;
             }
 
-            // Token is still valid, no refresh needed
-            return false;
-        } catch (error) {
-            console.error(`Error refreshing Linear token for integration ${integrationId}:`, error);
-            return false;
-        }
-    }
-
-    async getAccessToken(integrationId: string): Promise<string | null> {
-        try {
-            const integration = await db().linear_integrations.findUnique({
-                where: { id: integrationId },
-            });
-
-            if (!integration) {
-                console.error(`Linear integration ${integrationId} not found`);
-                return null;
-            }
-
-            // Ensure token is refreshed if needed
-            await this.refreshToken(integrationId);
-
-            // Fetch the integration again to get the potentially refreshed token
-            const refreshedIntegration = await db().linear_integrations.findUnique({
-                where: { id: integrationId },
-            });
-
-            return refreshedIntegration?.access_token || null;
+            // Token is still valid
+            return integration.access_token;
         } catch (error) {
             console.error(`Error getting Linear access token for integration ${integrationId}:`, error);
+            // Return null on error - caller should handle
             return null;
         }
     }
