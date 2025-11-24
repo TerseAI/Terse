@@ -99,7 +99,7 @@ export class GithubIntegrationManager implements Integration<GithubIntegration, 
 
         const authToken = await exchangeCodeForAccessToken(code);
         const user = await getGithubAppUser(authToken);
-        const repositories = await getRepositoriesWithAppUserCanAccess(user.name, authToken);
+        const repositories = await getGithubUserRepos(authToken);
 
         res.redirect(`${urls.frontend}/oauth/success`);
     }
@@ -277,11 +277,6 @@ export class GithubEvent extends InputEvent {
     }
 }
 
-// Utility functions
-async function getRepositoriesWithAppUserCanAccess(githubUsername: string, oAuthToken: string): Promise<GithubRepository[]> {
-    return [];
-}
-
 async function getGithubAppUser(githubAppAccessToken: string): Promise<GithubAppUser> {
     const resp = await axios.get(
         'https://api.github.com/user',
@@ -314,4 +309,43 @@ async function exchangeCodeForAccessToken(code: string): Promise<string> {
     const accessToken = tokenResp.data.access_token;
     console.log('GitHub App user access token:', accessToken);
     return accessToken;
+}
+
+export async function getGithubUserRepos(oAuthToken: string): Promise<GithubRepository[]> {
+    try {
+        const perPage = 100; // GitHub max is 100
+        const page = Number(1);
+
+        const resp = await axios.get('https://api.github.com/user/repos', {
+            headers: {
+                Authorization: `Bearer ${oAuthToken}`,
+                Accept: 'application/vnd.github+json',
+            },
+            params: {
+                per_page: perPage,
+                page,
+                affiliation: 'owner,collaborator,organization_member', // include org repos
+                sort: 'full_name',
+                direction: 'asc',
+            },
+        });
+
+        console.log('Github user repos:', resp.data);
+
+        // You can return raw, or map down to what you need
+        const repos: GithubRepository[] = resp.data.map((r: any) => ({
+            id: r.id,
+            name: r.name,
+            owner: r.owner.login,
+            private: r.private,
+            html_url: r.html_url,
+            default_branch: r.default_branch,
+        }));
+
+        return repos;
+
+    } catch (err: any) {
+        console.error('Error fetching GitHub user repos:', err.response?.data || err.message);
+        return [];
+    }
 }
