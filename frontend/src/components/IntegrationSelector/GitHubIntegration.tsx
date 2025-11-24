@@ -10,14 +10,12 @@ import { useOAuthConnection } from '@/hooks/useOAuthConnection';
 import { useIntegrationId } from '@/hooks/useIntegrationId';
 import { StatusOption } from '../ui/DropdownSelect';
 import { ConfigType } from '@/shared/Configs';
-import { useAuth } from '../../services/auth';
 
 export function GitHubIntegration({
     input,
     variant,
     setConfig
 }: InputConfigSelectorProps) {
-    const { loginWithGithub } = useAuth();
     const { integrations, isLoading } = useGithubIntegrations();
     const { connect: connectOAuth, isConnecting: isOAuthConnecting } = useOAuthConnection(IntegrationType.GITHUB);
     const currentConfig = input.config as GitHubConfig | undefined;
@@ -43,21 +41,14 @@ export function GitHubIntegration({
         return (
             <div className="max-w-xs flex flex-col gap-3 p-4 rounded-lg border border-dashed border-input bg-card">
                 <div className="text-sm text-muted-foreground">
-                    No GitHub accounts connected. If your repositories already have the app installed, you can connect your account to start using it.
+                    No GitHub integrations connected. Connect your GitHub account to access your repositories.
                 </div>
-                <Button
-                    onClick={loginWithGithub}
-                    disabled={isOAuthConnecting}
-                >
-                    <Plus className="w-4 h-4" />
-                    {isOAuthConnecting ? 'Connecting...' : `Connect Account`}
-                </Button>
                 <Button
                     onClick={connectOAuth}
                     disabled={isOAuthConnecting}
                 >
                     <Plus className="w-4 h-4" />
-                    {isOAuthConnecting ? 'Connecting...' : `Install GitHub App`}
+                    {isOAuthConnecting ? 'Connecting...' : `Connect GitHub`}
                 </Button>
             </div>
         );

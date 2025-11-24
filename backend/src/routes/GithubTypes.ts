@@ -113,3 +113,9 @@ export type GithubAppUser = {
     name: string;
     avatar_url: string;
 }
+
+export type GithubUserRepository = {
+    id: number;
+    name: string;
+    owner: string;
+}

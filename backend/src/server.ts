@@ -11,7 +11,7 @@ import { getActivityFeed, getDailyActivitySummary } from "./routes/activity";
 import { authMiddleware, login, logout, setSession } from "./routes/auth";
 import {
   githubAppAuthMiddleware,
-  githubAppCallback,
+  githubAppCallbackIntegrate,
   githubAppOAuth,
   githubCallback,
   githubLoginURL,
@@ -145,13 +145,13 @@ app.post("/auth/set-session", async (req, res) => {
   setSession(req, res);
 });
 
-app.get("/auth/github/callback", async (req, res) => {
+app.get("/auth/github-login/callback", async (req, res) => {
   githubCallback(req, res);
 });
 
 // GITHUB Will call this immediately after the user installs the app.
 app.get("/auth/github-app/callback", async (req, res) => {
-  githubAppCallback(req, res);
+  githubAppCallbackIntegrate(req, res);
 });
 
 app.get("/auth/google/callback", async (req, res) => {
