@@ -491,10 +491,6 @@ async function handleSlackMessage(event: SlackMessageEvent, teamId: string, auth
             return;
         }
 
-        // Ignore bot messages and messages without text
-        if (messageEvent.bot_id || !messageEvent.text || messageEvent.subtype) {
-            return;
-        }
 
         // Get the Slack integration
         const slackIntegration = await db().slack_integrations.findFirst({
