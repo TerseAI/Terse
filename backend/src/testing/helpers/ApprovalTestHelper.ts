@@ -2,7 +2,7 @@ import * as readline from 'readline';
 import chalk from 'chalk';
 import { ApprovalResult } from '../../agent/ChannelAgent/ChannelAgent';
 import { ChannelAgentFactory } from '../../agent/ChannelAgentFactory';
-import { NotionDatabaseSession } from '../../outputs/NotionDatabaseOutput';
+import { NotionDatabaseSession } from '../../outputs/notion/NotionDatabaseOutput';
 import { Agent, AgentOutputType, RunToolApprovalItem } from '@openai/agents';
 import { ChannelAgent } from '../../agent/ChannelAgent/ChannelAgent';
 import { NotionConfig } from '../../shared/Configs';
