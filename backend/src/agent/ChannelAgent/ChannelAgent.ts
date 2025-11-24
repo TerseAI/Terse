@@ -29,12 +29,14 @@ export class ChannelAgent<T extends Session, TConfig extends ConfigInstance> {
     private channelPrompt: ChannelPrompt;
     private channelInputs: ChannelInput[];
     private channelOutput: ChannelOutput;
+    private output: Output<T, TConfig>;
     private agent?: Agent<T, AgentOutputType>;
     private tools: Tool<T>[] = [];
 
     constructor(session: T, output: Output<T, TConfig>, channelPrompt: ChannelPrompt, channelInputs: ChannelInput[], channelOutput: ChannelOutput) {
         this.history = [];
         this.session = session;
+        this.output = output;
         this.channelPrompt = channelPrompt;
         this.channelInputs = channelInputs;
         this.channelOutput = channelOutput;
@@ -50,9 +52,15 @@ export class ChannelAgent<T extends Session, TConfig extends ConfigInstance> {
     }
 
     async initializeAgent(): Promise<void> {
+        // Get output-specific system instructions
+        const outputInstructions = this.output.getSystemInstructions(this.session);
+        const fullSystemPrompt = outputInstructions 
+            ? `${systemPrompt}\n\n${outputInstructions}`
+            : systemPrompt;
+
         const agent = new Agent<T, AgentOutputType>({
             name: 'Living Document Automator',
-            instructions: systemPrompt,
+            instructions: fullSystemPrompt,
             model: this.chooseChannelAgentModel(),
             tools: this.tools
         });

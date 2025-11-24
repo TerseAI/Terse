@@ -65,7 +65,7 @@ export const getNotionResources = async (req: Request, res: Response) => {
     // Fetch databases from Notion API
     const notionClient = new Client({ auth: accessToken });
     const databasesResponse = await notionClient.search({
-      filter: { property: "object", value: "database" },
+      filter: { property: "object", value: "data_source" },
       page_size: 100,
     });
 

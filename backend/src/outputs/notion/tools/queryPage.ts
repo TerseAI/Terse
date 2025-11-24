@@ -1,71 +1,11 @@
-import { RunHistoryAction } from "../shared/RunHistoryTypes";
-import { RunContext, Tool, tool } from "@openai/agents";
-import { ChannelNotionPageConfig, ChannelOutput, NotionIntegration, PrismaTransaction, User } from "../types/prisma";
-import { Session } from "../server";
-import { Client } from '@notionhq/client';
+import { RunContext, tool } from "@openai/agents";
 import { z } from "zod";
-import { Output, ToolboxEntry } from "./abstract/Output";
-import { db } from "../prismaClient";
-import chalk from "chalk";
+import { Client } from '@notionhq/client';
+import { NotionPageSession } from "../NotionPageOutput";
 import { GetPageResponse, PageObjectResponse } from "@notionhq/client/build/src/api-endpoints";
-import { IntegrationType } from "../shared/Integrations";
-import { OutputConfigType } from "@prisma/client";
-import { NotionPageConfig } from "../shared/Configs";
-import { getBlockTypeName, describeBlocks } from "../utility/notion";
 
-export interface NotionPageSession extends Session {
-    notionIntegration: NotionIntegration; // Top level integration record
-    notionPageConfig: ChannelNotionPageConfig; // Configuration for the Specific Notion Page
-    // Collect actions here (report-only); DB writes happen after agent finishes
-    runActions?: RunHistoryAction[];
-}
-
-export class NotionPageOutput extends Output<NotionPageSession, NotionPageConfig> {
-    constructor() {
-        const toolbox: ToolboxEntry[] = [
-            { tool: notionQueryPageTool as Tool, isReadOnly: true },
-            { tool: notionModifyBlocksTool as Tool, isReadOnly: false },
-        ];
-        super(OutputConfigType.NOTION_PAGE, toolbox);
-    }
-
-    async createSessionFromConfig(
-        integrationId: string,
-        channelOutputConfig: ChannelOutput,
-        user: User
-    ): Promise<NotionPageSession> {
-        const integration = await db().notion_integrations.findFirst({
-            where: { id: integrationId }
-        });
-
-        if (!integration) {
-            throw new Error(`Notion integration ${integrationId} not found`);
-        }
-
-        const notionPageConfig: ChannelNotionPageConfig | null = await db().automation_notion_page_configs.findFirst({
-            where: { automation_output_id: channelOutputConfig.id }
-        });
-
-        if (!notionPageConfig) {
-            throw new Error(`Notion page config for automation output ${channelOutputConfig.id} not found`);
-        }
-
-        return { notionIntegration: integration, notionPageConfig: notionPageConfig, user: user, isUserInitiated: true, runActions: [] };
-    }
-
-    async addOutputToChannel(tx: PrismaTransaction, channelOutputId: string, output: NotionPageConfig): Promise<void> {
-        await tx.automation_notion_page_configs.create({
-            data: {
-                automation_output_id: channelOutputId,
-                page_id: output.pageId || '',
-                page_name: output.pageName || '',
-            },
-        });
-    }
-}
-
-// Helper function to extract readable values from Notion property objects
-function extractPropertyValue(property: any): any {
+// Helper function to extract readable values from Notion page property objects
+function extractPagePropertyValue(property: any): any {
     switch (property.type) {
         case 'title':
             return property.title.map((t: any) => t.plain_text).join('');
@@ -283,7 +223,7 @@ async function fetchAllBlocks(notion: Client, blockId: string): Promise<any[]> {
     return allBlocks;
 }
 
-const notionQueryPageTool = tool({
+export const notionQueryPageTool = tool({
     name: 'notion_query_page',
     description: `Call this tool ONCE at the beginning of your run to get the page state. After calling it once, remember and reuse the results - DO NOT call it multiple times in the same run.
 
@@ -317,7 +257,7 @@ This tool returns the current state of the page including all properties, metada
         const properties: Record<string, any> = {};
         if (isFullPage(pageInfo) && pageInfo.properties) {
             for (const [key, value] of Object.entries(pageInfo.properties)) {
-                properties[key] = extractPropertyValue(value);
+                properties[key] = extractPagePropertyValue(value);
             }
         }
 
@@ -369,206 +309,3 @@ This tool returns the current state of the page including all properties, metada
     }
 });
 
-// Tool 3: Modify blocks (add, update, delete) in the Notion page
-const notionModifyBlocksTool = tool({
-    name: 'notion_modify_blocks',
-    description: `Add, update, or delete blocks in the page content. Use this to modify the page content (paragraphs, headings, lists, etc.). 
-    
-Operations:
-- append: Add new blocks to the page (or to a parent block if parent_block_id is provided)
-- update: Update an existing block by block_id
-- delete: Delete (archive) a block by block_id
-
-Examples:
-- Append paragraph: {"operation": "append", "blocks": [{"object": "block", "type": "paragraph", "paragraph": {"rich_text": [{"type": "text", "text": {"content": "Hello world"}}]}}]}
-- Append heading: {"operation": "append", "blocks": [{"object": "block", "type": "heading_1", "heading_1": {"rich_text": [{"type": "text", "text": {"content": "Title"}}]}}]}
-- Update block: {"operation": "update", "block_id": "abc123", "block": {"paragraph": {"rich_text": [{"type": "text", "text": {"content": "Updated text"}}]}}}
-- Delete block: {"operation": "delete", "block_id": "abc123"}`,
-    parameters: z.object({
-        operations_json: z.string().describe(`JSON string with an array of operations. Each operation should have:
-- operation: "append" | "update" | "delete"
-- For append: blocks (array of block objects) and optional parent_block_id
-- For update: block_id and block (block object with the type-specific properties)
-- For delete: block_id
-
-Example: "[{\"operation\": \"append\", \"blocks\": [{\"object\": \"block\", \"type\": \"paragraph\", \"paragraph\": {\"rich_text\": [{\"type\": \"text\", \"text\": {\"content\": \"New content\"}}]}}]}]"`),
-    }),
-    execute: async ({ operations_json }, runContext?: RunContext<NotionPageSession>) => {
-        console.log(chalk.bgMagenta.white.bold('🛠️ Executing notion_modify_blocks tool'));
-        console.log(chalk.cyan('  Operations JSON: '), chalk.greenBright(operations_json));
-
-        // Parse the JSON string
-        let operations: Array<{
-            operation: 'append' | 'update' | 'delete';
-            blocks?: any[];
-            parent_block_id?: string;
-            block_id?: string;
-            block?: any;
-        }>;
-        try {
-            operations = JSON.parse(operations_json);
-            if (!Array.isArray(operations)) {
-                return {
-                    success: false,
-                    error: 'operations_json must be an array',
-                    hint: 'Ensure operations_json is a JSON array of operations'
-                };
-            }
-        } catch (error) {
-            return {
-                success: false,
-                error: 'Invalid JSON in operations_json parameter',
-                hint: 'Ensure operations_json is a valid JSON string array'
-            };
-        }
-
-        if (!runContext?.context) {
-            throw new Error("No context provided");
-        }
-
-        const notion = new Client({
-            auth: runContext.context.notionIntegration.integration_token,
-        });
-
-        const pageId = runContext.context.notionPageConfig.page_id as string;
-        const results: any[] = [];
-        let hasErrors = false;
-
-        for (const op of operations) {
-            try {
-                if (op.operation === 'append') {
-                    if (!op.blocks || !Array.isArray(op.blocks) || op.blocks.length === 0) {
-                        results.push({
-                            operation: 'append',
-                            success: false,
-                            error: 'blocks array is required and must not be empty'
-                        });
-                        hasErrors = true;
-                        continue;
-                    }
-
-                    const targetId = op.parent_block_id || pageId;
-                    const response = await notion.blocks.children.append({
-                        block_id: targetId,
-                        children: op.blocks,
-                    });
-
-                    results.push({
-                        operation: 'append',
-                        success: true,
-                        block_ids: response.results.map((b: any) => b.id),
-                        blocks_count: response.results.length,
-                    });
-
-                    // Report action
-                    const blockDescription = describeBlocks(op.blocks);
-                    const pageName = runContext.context.notionPageConfig.page_name || 'Notion page';
-                    runContext.context.runActions = runContext.context.runActions || [];
-                    runContext.context.runActions.push({
-                        action: 'Added content',
-                        integration: IntegrationType.NOTION,
-                        target: pageName,
-                        details: `Added ${response.results.length} ${response.results.length === 1 ? 'item' : 'items'}: ${blockDescription}`,
-                    });
-                } else if (op.operation === 'update') {
-                    if (!op.block_id) {
-                        results.push({
-                            operation: 'update',
-                            success: false,
-                            error: 'block_id is required for update operation'
-                        });
-                        hasErrors = true;
-                        continue;
-                    }
-
-                    if (!op.block || typeof op.block !== 'object') {
-                        results.push({
-                            operation: 'update',
-                            success: false,
-                            error: 'block object is required for update operation'
-                        });
-                        hasErrors = true;
-                        continue;
-                    }
-
-                    const response = await notion.blocks.update({
-                        block_id: op.block_id,
-                        ...op.block,
-                    });
-
-                    results.push({
-                        operation: 'update',
-                        success: true,
-                        block_id: response.id,
-                    });
-
-                    // Report action
-                    const pageName = runContext.context.notionPageConfig.page_name || 'Notion page';
-                    const blockType = getBlockTypeName(op.block);
-                    runContext.context.runActions = runContext.context.runActions || [];
-                    runContext.context.runActions.push({
-                        action: 'Updated content',
-                        integration: IntegrationType.NOTION,
-                        target: pageName,
-                        details: `Updated ${blockType}`,
-                    });
-                } else if (op.operation === 'delete') {
-                    if (!op.block_id) {
-                        results.push({
-                            operation: 'delete',
-                            success: false,
-                            error: 'block_id is required for delete operation'
-                        });
-                        hasErrors = true;
-                        continue;
-                    }
-
-                    // Delete by archiving
-                    const response = await notion.blocks.update({
-                        block_id: op.block_id,
-                        archived: true,
-                    });
-
-                    results.push({
-                        operation: 'delete',
-                        success: true,
-                        block_id: response.id,
-                    });
-
-                    // Report action
-                    const pageName = runContext.context.notionPageConfig.page_name || 'Notion page';
-                    runContext.context.runActions = runContext.context.runActions || [];
-                    runContext.context.runActions.push({
-                        action: 'Removed content',
-                        integration: IntegrationType.NOTION,
-                        target: pageName,
-                        details: 'Removed content block',
-                    });
-                } else {
-                    results.push({
-                        operation: op.operation,
-                        success: false,
-                        error: `Unknown operation: ${op.operation}. Must be 'append', 'update', or 'delete'`
-                    });
-                    hasErrors = true;
-                }
-            } catch (error: any) {
-                results.push({
-                    operation: op.operation,
-                    success: false,
-                    error: error.message,
-                    hint: 'Check that block structure matches Notion API format and block_id is valid'
-                });
-                hasErrors = true;
-            }
-        }
-
-        return {
-            success: !hasErrors,
-            results: results,
-            operations_count: operations.length,
-            successful_count: results.filter((r: any) => r.success).length,
-            failed_count: results.filter((r: any) => !r.success).length,
-        };
-    }
-});
