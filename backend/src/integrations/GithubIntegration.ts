@@ -5,7 +5,7 @@ import { EventProcessor } from "../agent/ChannelAgent/EventProcessor";
 import { InputEvent } from "./abstract/InputEvent";
 import { GithubIntegration, GithubIntegrationMetadata, IntegrationType } from "../shared/Integrations";
 import { GithubAppUnifiedEventRequest } from "../routes/GithubTypes";
-import { resolveUserForGithubInstallation } from "../routes/github";
+import { processRepository, resolveUserForGithubInstallation } from "../routes/github";
 import { GithubRepository, User } from "../types/prisma";
 import { ChannelInputWithConfigs } from "../types/prisma";
 import { RunHistoryTrigger } from "../shared/RunHistoryTypes";
@@ -66,8 +66,20 @@ export class GithubIntegrationManager implements Integration<GithubIntegration, 
             chalk.cyan("state:"), chalk.yellow(state)
         );
 
+        const authToken = await exchangeCodeForAccessToken(code);
+        const githubAppUser = await getGithubAppUser(authToken);
+
         // extract user_id from state
         const user_id = Buffer.from(state as string, 'base64').toString('utf-8');
+        const user: User | null = await db().users.findUnique({
+            where: { id: user_id }
+        });
+
+        if (!user) {
+            console.error(chalk.red.bold("[GitHub Setup URL Installation]"), chalk.red("ERROR: User not found"));
+            res.status(400).json({ message: 'User not found' });
+            return;
+        }
 
         if (!user_id) {
             console.error(chalk.red.bold("[GitHub Setup URL Installation]"), chalk.red("ERROR: User ID not found in state"));
@@ -88,7 +100,7 @@ export class GithubIntegrationManager implements Integration<GithubIntegration, 
         await db().user_github_installation.upsert({
             where: { installation_id: installation_id_number },
             update: { user_id: user_id },
-            create: { user_id: user_id, installation_id: installation_id_number, account_name: null }
+            create: { user_id: user_id, installation_id: installation_id_number, account_name: githubAppUser.name }
         });
 
         console.log(
@@ -311,7 +323,7 @@ async function exchangeCodeForAccessToken(code: string): Promise<string> {
     return accessToken;
 }
 
-export async function getGithubUserRepos(oAuthToken: string): Promise<GithubRepository[]> {
+export async function getGithubUserRepos(oAuthToken: string): Promise<Omit<GithubRepository, 'installation_id'>[]> {
     try {
         const perPage = 100; // GitHub max is 100
         const page = Number(1);
@@ -333,13 +345,10 @@ export async function getGithubUserRepos(oAuthToken: string): Promise<GithubRepo
         console.log('Github user repos:', resp.data);
 
         // You can return raw, or map down to what you need
-        const repos: GithubRepository[] = resp.data.map((r: any) => ({
+        const repos: Omit<GithubRepository, 'installation_id'>[] = resp.data.map((r: any) => ({
             id: r.id,
             name: r.name,
             owner: r.owner.login,
-            private: r.private,
-            html_url: r.html_url,
-            default_branch: r.default_branch,
         }));
 
         return repos;
