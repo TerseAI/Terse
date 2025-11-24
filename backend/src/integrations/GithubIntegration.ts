@@ -29,6 +29,21 @@ export class GithubIntegrationManager implements Integration<GithubIntegration, 
         }));
     }
 
+    async getAllActiveInstances(): Promise<GithubIntegration[]> {
+        const userGithubInstallations = await db().user_github_installation.findMany({
+            select: {
+                id: true,
+                installation_id: true,
+                account_name: true,
+            }
+        });
+        return userGithubInstallations.map(ugi => ({
+            id: ugi.id,
+            installation_id: ugi.installation_id,
+            account_name: ugi.account_name || null,
+        }));
+    }
+
     async processWebhookEvent(event: GithubAppUnifiedEventRequest): Promise<void> {
         const user: User | null = await resolveUserForGithubInstallation(event.installationId, event.username);
 
@@ -110,6 +125,38 @@ export class GithubIntegrationManager implements Integration<GithubIntegration, 
     async teardownChannelInput(integrationId: string, channelInput: ChannelInputWithConfigs): Promise<void> {
         // GitHub doesn't require any teardown for channel inputs
         // Webhooks are managed at the integration level
+    }
+
+    async refreshToken(integrationId: string): Promise<boolean> {
+        // GitHub uses installation-based authentication that doesn't use traditional OAuth refresh tokens
+        // Tokens are generated on-demand from the installation
+        // Return false to indicate no refresh was needed/performed
+        return false;
+    }
+
+    async getAccessToken(integrationId: string): Promise<string | null> {
+        // GitHub App uses installation-based authentication, not traditional OAuth tokens
+        // Tokens are generated on-demand using JWT and the installation ID
+        // This method returns null because we don't store access tokens in the database
+        // Token generation happens elsewhere when making API calls (typically using GitHub App's private key)
+        try {
+            const installation = await db().user_github_installation.findUnique({
+                where: { id: integrationId },
+            });
+
+            if (!installation) {
+                console.error(`GitHub installation ${integrationId} not found`);
+                return null;
+            }
+
+            // GitHub App installations don't store access tokens
+            // They generate tokens on-demand using the installation ID and App credentials
+            // Return null to indicate tokens must be generated via GitHub App flow
+            return null;
+        } catch (error) {
+            console.error(`Error getting GitHub access token for installation ${integrationId}:`, error);
+            return null;
+        }
     }
 }
 

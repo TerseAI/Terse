@@ -20,7 +20,7 @@ import {
 } from "../shared/types";
 import { FigmaIntegration, FigmaIntegrationMetadata, IntegrationType } from "../shared/Integrations";
 import jwt from "jsonwebtoken";
-import { figma as figmaConfig, jwt as jwtConfig, urls } from "../config/settings";
+import { figma as figmaConfig, jwt as jwtConfig, urls, OAUTH_TOKEN_REFRESH_THRESHOLD_MS } from "../config/settings";
 import { Request, Response } from "express";
 
 export class FigmaIntegrationManager implements Integration<FigmaIntegration, FigmaWebhookEvent, typeof FigmaIntegrationMetadata>, OAuthIntegrationInstallation {
@@ -31,6 +31,23 @@ export class FigmaIntegrationManager implements Integration<FigmaIntegration, Fi
     const integrations = await db().figma_integrations.findMany({
       where: {
         user_id: userId,
+      },
+    });
+    return integrations.map(integration => ({
+      id: integration.id,
+      handle: integration.handle,
+      figma_user_id: integration.figma_user_id,
+      token_expiry: integration.token_expiry,
+    }));
+  }
+
+  async getAllActiveInstances(): Promise<FigmaIntegration[]> {
+    const integrations = await db().figma_integrations.findMany({
+      select: {
+        id: true,
+        handle: true,
+        figma_user_id: true,
+        token_expiry: true,
       },
     });
     return integrations.map(integration => ({
@@ -72,7 +89,7 @@ export class FigmaIntegrationManager implements Integration<FigmaIntegration, Fi
 
     for (const integration of integrations) {
       if (eventType === FigmaEventTypes.FILE_COMMENT) {
-        await handleFigmaCommentEvent(integration, event, integration.user);
+        await this.handleFigmaCommentEvent(integration, event, integration.user);
       }
     }
   }
@@ -276,7 +293,11 @@ export class FigmaIntegrationManager implements Integration<FigmaIntegration, Fi
     const eventTypes = ['FILE_COMMENT'];
 
     try {
-      const accessToken = figmaIntegration.access_token;
+      // Get valid access token (handles refresh automatically)
+      const accessToken = await this.getAccessToken(integrationId);
+      if (!accessToken) {
+        throw new Error(`Could not get valid access token for Figma integration ${integrationId}`);
+      }
       const isDevelopment = nodeEnv !== 'production';
 
       // Create or reuse team-level webhooks for both event types
@@ -440,9 +461,10 @@ export class FigmaIntegrationManager implements Integration<FigmaIntegration, Fi
       return;
     }
 
-    const accessToken = figmaIntegration.access_token;
+    // Get valid access token (handles refresh automatically)
+    const accessToken = await this.getAccessToken(integrationId);
     if (!accessToken) {
-      console.log(chalk.yellow(`⚠️  No access token found, skipping webhook deletion`));
+      console.log(chalk.yellow(`⚠️  Could not get valid access token, skipping webhook deletion`));
       return;
     }
 
@@ -478,6 +500,325 @@ export class FigmaIntegrationManager implements Integration<FigmaIntegration, Fi
     });
 
     console.log(chalk.blue(`📤 Team ${teamId} no longer monitored by any automations`));
+  }
+
+  async refreshToken(integrationId: string): Promise<boolean> {
+    try {
+      const integration = await db().figma_integrations.findUnique({
+        where: { id: integrationId },
+      });
+
+      if (!integration) {
+        console.log(`Figma integration ${integrationId} not found`);
+        return false;
+      }
+
+      // Store the original token expiry to detect if refresh happened
+      const originalTokenExpiry = integration.token_expiry;
+
+      // Use getAccessToken which internally handles token refresh
+      const accessToken = await this.getAccessToken(integrationId);
+      if (!accessToken) {
+        // Check if token was actually refreshed by comparing expiry dates
+        const updatedIntegration = await db().figma_integrations.findUnique({
+          where: { id: integrationId },
+          select: { token_expiry: true },
+        });
+
+        if (!updatedIntegration || !originalTokenExpiry || !updatedIntegration.token_expiry) {
+          return false;
+        }
+
+        // If expiry changed, token was refreshed
+        return updatedIntegration.token_expiry.getTime() !== originalTokenExpiry.getTime();
+      }
+
+      // Check if token was refreshed by comparing expiry dates
+      const updatedIntegration = await db().figma_integrations.findUnique({
+        where: { id: integrationId },
+        select: { token_expiry: true },
+      });
+
+      if (!updatedIntegration || !originalTokenExpiry || !updatedIntegration.token_expiry) {
+        return false;
+      }
+
+      // Token was refreshed if expiry changed
+      return updatedIntegration.token_expiry.getTime() !== originalTokenExpiry.getTime();
+    } catch (error) {
+      console.error(`Error refreshing Figma token for integration ${integrationId}:`, error);
+      return false;
+    }
+  }
+
+  async getAccessToken(integrationId: string): Promise<string | null> {
+    try {
+      const integration = await db().figma_integrations.findUnique({
+        where: { id: integrationId },
+      });
+
+      if (!integration) {
+        console.error(`Figma integration ${integrationId} not found`);
+        return null;
+      }
+
+      const now = new Date();
+      // Check if token is expired or will expire within the refresh threshold
+      if (
+        integration.token_expiry &&
+        integration.token_expiry <= new Date(now.getTime() + OAUTH_TOKEN_REFRESH_THRESHOLD_MS)
+      ) {
+        console.log(`Figma access token expiring soon for integration ${integrationId}, refreshing...`);
+
+        if (!integration.refresh_token) {
+          console.error(`No refresh token available for Figma integration ${integrationId}`);
+          return integration.access_token; // Return existing token as fallback
+        }
+
+        // Exchange refresh token for new access token
+        // Figma requires application/x-www-form-urlencoded format
+        const params = new URLSearchParams({
+          grant_type: "refresh_token",
+          refresh_token: integration.refresh_token,
+        });
+
+        const tokenResponse = await fetch("https://api.figma.com/v1/oauth/token", {
+          method: "POST",
+          headers: {
+            Authorization: `Basic ${Buffer.from(
+              `${figmaConfig.clientId}:${figmaConfig.clientSecret}`
+            ).toString("base64")}`,
+            "Content-Type": "application/x-www-form-urlencoded",
+          },
+          body: params.toString(),
+        });
+
+        if (!tokenResponse.ok) {
+          const errorText = await tokenResponse.text();
+          console.error(`Figma token refresh failed for integration ${integrationId}:`, errorText);
+          // Return existing token as fallback - it might still work
+          return integration.access_token;
+        }
+
+        const tokenData = await tokenResponse.json();
+        const { access_token, refresh_token, expires_in } = tokenData;
+
+        if (!access_token) {
+          console.error(`No access token received from Figma refresh for integration ${integrationId}`);
+          // Return existing token as fallback
+          return integration.access_token;
+        }
+
+        // Calculate token expiry
+        const tokenExpiry = new Date(Date.now() + (expires_in * 1000));
+
+        // Update the database with new tokens
+        await db().figma_integrations.update({
+          where: { id: integration.id },
+          data: {
+            access_token: access_token,
+            refresh_token: refresh_token || integration.refresh_token, // Preserve existing if new one not provided
+            token_expiry: tokenExpiry,
+          },
+        });
+
+        console.log(`Successfully refreshed Figma access token for integration ${integrationId}`);
+        return access_token;
+      }
+
+      // Token is still valid
+      return integration.access_token;
+    } catch (error) {
+      console.error(`Error getting Figma access token for integration ${integrationId}:`, error);
+      // Return null on error - caller should handle
+      return null;
+    }
+  }
+
+  /**
+   * Handle FILE_COMMENT webhook events
+   * Comment data is included in the webhook payload
+   * Note: client_meta is not included in webhook payload, so we fetch it from the comment API
+   */
+  private async handleFigmaCommentEvent(
+    integration: figma_integrations,
+    webhookEvent: FigmaWebhookEvent,
+    user: User,
+  ): Promise<void> {
+    // Extract comment_id from top level (Figma webhook structure)
+    const commentId = webhookEvent.comment_id;
+    const fileKey = webhookEvent.file_key;
+    if (!commentId) {
+      console.log(chalk.yellow(`⚠️  FILE_COMMENT event missing comment_id`));
+      console.log(chalk.yellow(`Webhook event: ${JSON.stringify(webhookEvent, null, 2)}`));
+      return;
+    }
+    if (!fileKey) {
+      console.log(chalk.yellow(`⚠️  FILE_COMMENT event missing file_key`));
+      console.log(chalk.yellow(`Webhook event: ${JSON.stringify(webhookEvent, null, 2)}`));
+      return;
+    }
+    console.log(
+      chalk.blue(`📝 Processing FILE_COMMENT event for file ${fileKey}, comment ${commentId}`)
+    );
+
+    // Process the comment once per integration, to prevent duplicate processing
+    try {
+      await db().processed_figma_comments.create({
+        data: {
+          figma_integration_id: integration.id,
+          comment_id: commentId,
+          file_key: fileKey,
+        },
+      });
+    } catch (error: any) {
+      // Race condition - comment already being processed
+      if (error.code === 'P2002') {
+        console.log(chalk.blue(`ℹ️  Comment ${commentId} already being processed`));
+        return;
+      }
+      throw error;
+    }
+
+    // Get valid access token (handles refresh automatically)
+    const accessToken = await this.getAccessToken(integration.id);
+    if (!accessToken) {
+      console.log(chalk.yellow(`⚠️  Could not get valid access token for Figma integration ${integration.id}`));
+      return;
+    }
+
+    // Fetch comment details from Figma API to get client_meta
+    // client_meta is not included in the webhook payload
+    const commentThreadData = await fetchFigmaCommentThreadFromApi(
+      accessToken,
+      fileKey,
+      commentId
+    );
+    if (!commentThreadData) {
+      console.log(chalk.yellow(`⚠️  Could not fetch comment ${commentId} from API`));
+      return;
+    }
+
+    const { comment: commentFromApi, thread } = commentThreadData;
+
+    const { rootComment, positioningComment, positioningData } = resolvePositioningContext(
+      commentFromApi,
+      thread
+    );
+
+    console.log(
+      chalk.blue(`Client Meta (event comment): ${JSON.stringify(commentFromApi.client_meta, null, 2)}`)
+    );
+    if (positioningComment && positioningComment.id !== commentFromApi.id) {
+      console.log(
+        chalk.blue(
+          `Using comment ${positioningComment.id} client_meta for positioning: ${JSON.stringify(positioningComment.client_meta, null, 2)}`
+        )
+      );
+    }
+    console.log(
+      chalk.blue(`📍 Positioning data for comment ${commentId}:`),
+      positioningData ? JSON.stringify(positioningData, null, 2) : 'null (empty client_meta)'
+    );
+
+    // Map comment to design elements using positioning data
+    let matchedNodeIds: string[] = [];
+    try {
+      const nodeId = positioningComment?.client_meta?.node_id ?? commentFromApi.client_meta?.node_id;
+      matchedNodeIds = await mapCommentToDesignElements(
+        accessToken,
+        fileKey,
+        positioningData,
+        nodeId
+      );
+      console.log(
+        chalk.blue(`🎯 Matched ${matchedNodeIds.length} node(s) for comment ${commentId}:`),
+        matchedNodeIds.length > 0 ? matchedNodeIds.join(', ') : 'none'
+      );
+    } catch (error) {
+      console.error(
+        chalk.red(`Error mapping comment ${commentId} to design elements:`),
+        error
+      );
+      // Continue with empty array if mapping fails
+    }
+
+    // Extract images for visual context
+    let imageUrls: FigmaCommentImageUrls = {
+      nodeImage: undefined,
+      fullFrame: undefined,
+    };
+    try {
+      imageUrls = await extractCommentImages(
+        accessToken,
+        fileKey,
+        matchedNodeIds,
+        positioningData
+      );
+      console.log(
+        chalk.blue(`🖼️  Extracted images for comment ${commentId}:`),
+        Object.keys(imageUrls).length > 0
+          ? `${Object.keys(imageUrls).length} image(s) extracted`
+          : 'no images extracted'
+      );
+    } catch (error) {
+      console.error(
+        chalk.red(`Error extracting images for comment ${commentId}:`),
+        error
+      );
+      // Continue with empty object if image extraction fails
+    }
+
+    // Calculate image expiry (24 hours from now)
+    const imageExpiry = imageUrls.nodeImage || imageUrls.fullFrame
+      ? new Date(Date.now() + 24 * 60 * 60 * 1000) // 24 hours
+      : null;
+
+    // Get the closest node ID for storage
+    const closestNodeId = matchedNodeIds.length > 0
+      ? matchedNodeIds[0]
+      : (positioningComment?.client_meta?.node_id ?? commentFromApi.client_meta?.node_id ?? null);
+
+    const fileMetadata = await fetchFileMetadata(accessToken, fileKey);
+    if (!fileMetadata) {
+      console.log(chalk.yellow(`⚠️  Could not fetch file metadata for file ${fileKey}`));
+      return;
+    }
+
+    // Map thread from FigmaApiComment[] to FigmaCommentThreadEntry[]
+    const threadEntries: FigmaCommentThreadEntry[] = thread.map((comment) => ({
+      id: comment.id,
+      message: comment.message,
+      author: comment.user,
+      createdAt: comment.created_at,
+      resolvedAt: comment.resolved_at,
+      parentId: comment.parent_id ?? null,
+      orderId: comment.order_id,
+      isRoot: !comment.parent_id,
+    }));
+
+    // Convert resolved_at to boolean, and positioningData null to undefined
+    const resolved = commentFromApi.resolved_at !== null;
+    const positioningDataOrUndefined = positioningData ?? undefined;
+
+    const figmaEvent = new FigmaCommentEvent({
+      commentId: commentId,
+      fileKey: fileKey,
+      fileUrl: fileMetadata.url,
+      nodeId: closestNodeId || undefined,
+      message: commentFromApi.message || '',
+      author: commentFromApi.user,
+      createdAt: commentFromApi.created_at,
+      resolved: resolved,
+      thread: threadEntries,
+      fileMetadata: fileMetadata,
+      positioningData: positioningDataOrUndefined,
+      matchedNodeIds: matchedNodeIds.length > 0 ? matchedNodeIds : undefined,
+      imageUrls: imageUrls.nodeImage || imageUrls.fullFrame ? imageUrls : undefined,
+    });
+
+    const eventProcessor = new EventProcessor(figmaEvent, user);
+    await eventProcessor.process();
   }
 }
 
@@ -671,213 +1012,6 @@ export class FigmaCommentEvent extends InputEvent {
 }
 
 // MARK: - Helper Functions
-
-/**
- * Handle FILE_COMMENT webhook events
- * Comment data is included in the webhook payload
- * Note: client_meta is not included in webhook payload, so we fetch it from the comment API
- */
-async function handleFigmaCommentEvent(
-  integration: figma_integrations,
-  webhookEvent: FigmaWebhookEvent,
-  user: User,
-) {
-  // Extract comment_id from top level (Figma webhook structure)
-  const commentId = webhookEvent.comment_id;
-  const fileKey = webhookEvent.file_key;
-  if (!commentId) {
-    console.log(chalk.yellow(`⚠️  FILE_COMMENT event missing comment_id`));
-    console.log(chalk.yellow(`Webhook event: ${JSON.stringify(webhookEvent, null, 2)}`));
-    return;
-  }
-  if (!fileKey) {
-    console.log(chalk.yellow(`⚠️  FILE_COMMENT event missing file_key`));
-    console.log(chalk.yellow(`Webhook event: ${JSON.stringify(webhookEvent, null, 2)}`));
-    return;
-  }
-  console.log(
-    chalk.blue(`📝 Processing FILE_COMMENT event for file ${fileKey}, comment ${commentId}`)
-  );
-
-  // Process the comment once per integration, to prevent duplicate processing
-  try {
-    await db().processed_figma_comments.create({
-      data: {
-        figma_integration_id: integration.id,
-        comment_id: commentId,
-        file_key: fileKey,
-      },
-    });
-  } catch (error: any) {
-    // Race condition - comment already being processed
-    if (error.code === 'P2002') {
-      console.log(chalk.blue(`ℹ️  Comment ${commentId} already being processed`));
-      return;
-    }
-    throw error;
-  }
-
-  // Fetch comment details from Figma API to get client_meta
-  // client_meta is not included in the webhook payload
-  const commentThreadData = await fetchFigmaCommentThreadFromApi(
-    integration.access_token,
-    fileKey,
-    commentId
-  );
-  if (!commentThreadData) {
-    console.log(chalk.yellow(`⚠️  Could not fetch comment ${commentId} from API`));
-    return;
-  }
-
-  const { comment: commentFromApi, thread } = commentThreadData;
-
-  const { rootComment, positioningComment, positioningData } = resolvePositioningContext(
-    commentFromApi,
-    thread
-  );
-
-  console.log(
-    chalk.blue(`Client Meta (event comment): ${JSON.stringify(commentFromApi.client_meta, null, 2)}`)
-  );
-  if (positioningComment && positioningComment.id !== commentFromApi.id) {
-    console.log(
-      chalk.blue(
-        `Using comment ${positioningComment.id} client_meta for positioning: ${JSON.stringify(positioningComment.client_meta, null, 2)}`
-      )
-    );
-  }
-  console.log(
-    chalk.blue(`📍 Positioning data for comment ${commentId}:`),
-    positioningData ? JSON.stringify(positioningData, null, 2) : 'null (empty client_meta)'
-  );
-
-  // Map comment to design elements using positioning data
-  let matchedNodeIds: string[] = [];
-  try {
-    const nodeId = positioningComment?.client_meta?.node_id ?? commentFromApi.client_meta?.node_id;
-    matchedNodeIds = await mapCommentToDesignElements(
-      integration.access_token,
-      fileKey,
-      positioningData,
-      nodeId
-    );
-    console.log(
-      chalk.blue(`🎯 Matched ${matchedNodeIds.length} node(s) for comment ${commentId}:`),
-      matchedNodeIds.length > 0 ? matchedNodeIds.join(', ') : 'none'
-    );
-  } catch (error) {
-    console.error(
-      chalk.red(`Error mapping comment ${commentId} to design elements:`),
-      error
-    );
-    // Continue with empty array if mapping fails
-  }
-
-  // Extract images for visual context
-  let imageUrls: FigmaCommentImageUrls = {
-    nodeImage: undefined,
-    fullFrame: undefined,
-  };
-  try {
-    imageUrls = await extractCommentImages(
-      integration.access_token,
-      fileKey,
-      matchedNodeIds,
-      positioningData
-    );
-    console.log(
-      chalk.blue(`🖼️  Extracted images for comment ${commentId}:`),
-      Object.keys(imageUrls).length > 0
-        ? `${Object.keys(imageUrls).length} image(s) extracted`
-        : 'no images extracted'
-    );
-  } catch (error) {
-    console.error(
-      chalk.red(`Error extracting images for comment ${commentId}:`),
-      error
-    );
-    // Continue with empty object if image extraction fails
-  }
-
-  // Calculate image expiry (24 hours from now)
-  const imageExpiry = imageUrls.nodeImage || imageUrls.fullFrame
-    ? new Date(Date.now() + 24 * 60 * 60 * 1000) // 24 hours
-    : null;
-
-  // Get the closest node ID for storage
-  const closestNodeId = matchedNodeIds.length > 0
-    ? matchedNodeIds[0]
-    : (positioningComment?.client_meta?.node_id ?? commentFromApi.client_meta?.node_id ?? null);
-
-  const fileMetadata = await fetchFileMetadata(integration.access_token, fileKey);
-  if (!fileMetadata) {
-    console.log(chalk.yellow(`⚠️  Could not fetch file metadata for file ${fileKey}`));
-    return;
-  }
-
-  // Store enriched context for debugging
-  try {
-    await db().figma_comment_context.create({
-      data: {
-        figma_integration_id: integration.id,
-        comment_id: commentId,
-        file_key: fileKey,
-        node_id: closestNodeId,
-        comment_data: JSON.parse(JSON.stringify({
-          ...commentFromApi,
-          thread_comments: thread,
-        })),
-        file_metadata: fileMetadata ? JSON.parse(JSON.stringify(fileMetadata)) : null,
-        positioning_data: positioningData ? JSON.parse(JSON.stringify(positioningData)) : null,
-        matched_node_ids: matchedNodeIds,
-        image_urls: Object.keys(imageUrls).length > 0 ? JSON.parse(JSON.stringify(imageUrls)) : null,
-        image_expiry: imageExpiry,
-      },
-    });
-    console.log(
-      chalk.green(`✅ Stored enriched context for comment ${commentId}`),
-      chalk.gray(`- Positioning: ${positioningData ? positioningData.type : 'none'}, Nodes: ${matchedNodeIds.length}, Images: ${Object.keys(imageUrls).length}`)
-    );
-  } catch (error) {
-    console.error(
-      chalk.red(`❌ Error storing enriched context for comment ${commentId}:`),
-      error
-    );
-    // Don't throw - continue processing even if storage fails
-  }
-
-  const rootCommentId = rootComment?.id ?? commentFromApi.id;
-
-  const threadEntries: FigmaCommentThreadEntry[] = thread.map((threadComment) => ({
-    id: threadComment.id,
-    message: threadComment.message,
-    author: threadComment.user,
-    createdAt: threadComment.created_at,
-    resolvedAt: threadComment.resolved_at ?? null,
-    parentId: threadComment.parent_id ?? null,
-    orderId: threadComment.order_id,
-    isRoot: threadComment.id === rootCommentId,
-  }));
-
-  const eventData: FigmaCommentEventData = {
-    commentId: commentFromApi.id,
-    fileKey: fileKey,
-    fileUrl: `https://www.figma.com/file/${fileKey}`,
-    nodeId: closestNodeId || undefined,
-    message: commentFromApi.message,
-    author: commentFromApi.user,
-    createdAt: commentFromApi.created_at,
-    resolved: Boolean(commentFromApi.resolved_at && commentFromApi.resolved_at !== ''),
-    thread: threadEntries,
-    fileMetadata: fileMetadata,
-    positioningData: positioningData ?? undefined,
-    matchedNodeIds: matchedNodeIds.length > 0 ? matchedNodeIds : undefined,
-    imageUrls: Object.keys(imageUrls).length > 0 ? imageUrls : undefined,
-  };
-  const figmaEvent = new FigmaCommentEvent(eventData);
-  const eventProcessor = new EventProcessor(figmaEvent, user);
-  await eventProcessor.process();
-}
 
 /**
  * Get Figma access token for a user

@@ -55,8 +55,15 @@ export const getNotionResources = async (req: Request, res: Response) => {
       return res.status(404).json({ error: "Notion integration not found" });
     }
 
+    // Get valid access token (handles refresh automatically)
+    const manager = new NotionIntegrationManager();
+    const accessToken = await manager.getAccessToken(integrationId);
+    if (!accessToken) {
+      return res.status(400).json({ error: "Could not get valid access token" });
+    }
+
     // Fetch databases from Notion API
-    const notionClient = new Client({ auth: integration.integration_token });
+    const notionClient = new Client({ auth: accessToken });
     const databasesResponse = await notionClient.search({
       filter: { property: "object", value: "database" },
       page_size: 100,

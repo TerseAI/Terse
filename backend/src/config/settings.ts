@@ -154,4 +154,8 @@ export const {
 // Type exports
 export type Settings = typeof settings;
 
+// OAuth token refresh threshold
+// If a token is expiring within this time window, it will be refreshed proactively
+export const OAUTH_TOKEN_REFRESH_THRESHOLD_MS = 12 * 60 * 60 * 1000; // 12 hours in milliseconds
+
 

@@ -137,12 +137,18 @@ export async function getJiraResources(req: Request, res: Response) {
             return res.status(404).json({ success: false, error: 'Integration not found' });
         }
 
-        if (!integration.cloud_id || !integration.access_token) {
-            return res.status(400).json({ success: false, error: 'Integration missing cloud_id or access_token' });
+        if (!integration.cloud_id) {
+            return res.status(400).json({ success: false, error: 'Integration missing cloud_id' });
+        }
+
+        // Get valid access token (handles refresh automatically)
+        const manager = new AtlassianIntegrationManager();
+        const accessToken = await manager.getAccessToken(integrationId);
+        if (!accessToken) {
+            return res.status(400).json({ success: false, error: 'Could not get valid access token' });
         }
 
         const cloudId = integration.cloud_id;
-        const accessToken = integration.access_token;
         const baseUrl = integration.base_url;
 
         // Fetch all projects using OAuth token
