@@ -14,7 +14,7 @@ import { githubApp, urls } from "../config/settings";
 import { Request, Response } from "express";
 import { InputConfigType } from "@prisma/client";
 import axios from "axios";
-import { GithubAppUser } from "../routes/GithubTypes";
+import { GithubAppUser, GithubUserRepository } from "../routes/GithubTypes";
 
 export class GithubIntegrationManager implements Integration<GithubIntegration, GithubAppUnifiedEventRequest, typeof GithubIntegrationMetadata>, OAuthIntegrationInstallation {
     constructor() { }
@@ -47,9 +47,9 @@ export class GithubIntegrationManager implements Integration<GithubIntegration, 
     async getInstallationUrl(userId: string): Promise<OAuthInstallationDetails> {
         const appName = githubApp.appName;
         const clientId = githubApp.clientId;
+        const redirectUri = githubApp.integrateCallbackUrl;
         const state = Buffer.from(userId).toString('base64');
-        // Generate GitHub App installation URL with callback
-        const installationUrl: string = `https://github.com/apps/${appName}/installations/new?client_id=${clientId}&target_type=repositories&state=${state}`;
+        const installationUrl: string = `https://github.com/apps/${appName}/installations/new?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&target_type=repositories&state=${state}`;
 
         return {
             oauthUrl: installationUrl
@@ -66,9 +66,6 @@ export class GithubIntegrationManager implements Integration<GithubIntegration, 
             chalk.cyan("state:"), chalk.yellow(state)
         );
 
-        const authToken = await exchangeCodeForAccessToken(code);
-        const githubAppUser = await getGithubAppUser(authToken);
-
         // extract user_id from state
         const user_id = Buffer.from(state as string, 'base64').toString('utf-8');
         const user: User | null = await db().users.findUnique({
@@ -78,12 +75,6 @@ export class GithubIntegrationManager implements Integration<GithubIntegration, 
         if (!user) {
             console.error(chalk.red.bold("[GitHub Setup URL Installation]"), chalk.red("ERROR: User not found"));
             res.status(400).json({ message: 'User not found' });
-            return;
-        }
-
-        if (!user_id) {
-            console.error(chalk.red.bold("[GitHub Setup URL Installation]"), chalk.red("ERROR: User ID not found in state"));
-            res.status(400).json({ message: 'User ID not found in state' });
             return;
         }
 
@@ -100,7 +91,16 @@ export class GithubIntegrationManager implements Integration<GithubIntegration, 
         await db().user_github_installation.upsert({
             where: { installation_id: installation_id_number },
             update: { user_id: user_id },
-            create: { user_id: user_id, installation_id: installation_id_number, account_name: githubAppUser.name }
+            create: { user_id: user_id, installation_id: installation_id_number }
+        });
+
+        const authToken = await exchangeCodeForAccessToken(code);
+        const githubAppUser = await getGithubAppUser(authToken.access_token);
+
+        await db().github_app_tokens.upsert({
+            where: { user_id_github_username: { user_id: user_id, github_username: githubAppUser.name } },
+            update: { access_token: authToken.access_token, refresh_token: authToken.refresh_token, token_expiry: new Date(Date.now() + authToken.expires_in * 1000) },
+            create: { user_id: user_id, github_username: githubAppUser.name, access_token: authToken.access_token, refresh_token: authToken.refresh_token, token_expiry: new Date(Date.now() + authToken.expires_in * 1000) }
         });
 
         console.log(
@@ -300,26 +300,27 @@ async function getGithubAppUser(githubAppAccessToken: string): Promise<GithubApp
     return resp.data;
 }
 
-async function exchangeCodeForAccessToken(code: string): Promise<string> {
+async function exchangeCodeForAccessToken(code: string): Promise<{ access_token: string; refresh_token: string; expires_in: number }> {
     const tokenResp = await axios.post(
         'https://github.com/login/oauth/access_token',
         {
             client_id: githubApp.clientId,
             client_secret: githubApp.clientSecret,
             code,
-            redirect_uri: githubApp.callbackUrl,
         },
         {
             headers: { Accept: 'application/json' },
         }
     );
 
+    console.log('GitHub App token response:', tokenResp.data);
     const accessToken = tokenResp.data.access_token;
-    console.log('GitHub App user access token:', accessToken);
-    return accessToken;
+    const refreshToken = tokenResp.data.refresh_token;
+    const expiresIn = tokenResp.data.expires_in;
+    return { access_token: accessToken, refresh_token: refreshToken, expires_in: expiresIn };
 }
 
-export async function getGithubUserRepos(oAuthToken: string): Promise<Omit<GithubRepository, 'installation_id'>[]> {
+export async function getGithubUserRepos(oAuthToken: string): Promise<GithubUserRepository[]> {
     try {
         const perPage = 100; // GitHub max is 100
         const page = Number(1);
@@ -338,10 +339,10 @@ export async function getGithubUserRepos(oAuthToken: string): Promise<Omit<Githu
             },
         });
 
-        console.log('Github user repos:', resp.data);
+        // console.log('Github user repos:', resp.data);
 
         // You can return raw, or map down to what you need
-        const repos: Omit<GithubRepository, 'installation_id'>[] = resp.data.map((r: any) => ({
+        const repos: GithubUserRepository[] = resp.data.map((r: any) => ({
             id: r.id,
             name: r.name,
             owner: r.owner.login,
@@ -353,4 +354,19 @@ export async function getGithubUserRepos(oAuthToken: string): Promise<Omit<Githu
         console.error('Error fetching GitHub user repos:', err.response?.data || err.message);
         return [];
     }
+}
+
+export async function userRepositoriesWithAppInstalled(userRepositories: GithubUserRepository[], user: User): Promise<GithubRepository[]> {
+    // Fetch all repositories that have the app installed. Just get everything in the github_repositories table. Fetch only the installation_id and repository_id.
+    const repositoriesWithTerse: GithubRepository[] = await db().github_repositories.findMany();
+
+    // Turn the reposWIthTerse into a hash map by repository_id
+    const repositoriesWithTerseMap = new Map<number, GithubRepository>();
+    repositoriesWithTerse.forEach((repository: GithubRepository) => {
+        repositoriesWithTerseMap.set(repository.repository_id, repository);
+    });
+
+    // only choose the userRepos that are in the list of repositoriesWithTerse
+    const repositoriesWithAppInstalled = userRepositories.filter((userRepository) => repositoriesWithTerseMap.has(userRepository.id));
+    return repositoriesWithAppInstalled.map((userRepository) => repositoriesWithTerseMap.get(userRepository.id) as GithubRepository);
 }
