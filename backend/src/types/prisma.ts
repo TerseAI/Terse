@@ -43,6 +43,13 @@ export type SlackIntegration = slack_integrations;
 
 export type UserSlackIntegration = user_slack_integrations;
 
+// Extended type for UserSlackIntegration with user relation included
+export type UserSlackIntegrationWithUser = Prisma.user_slack_integrationsGetPayload<{
+  include: {
+    user: true;
+  };
+}>;
+
 export type UserGithubRepository = user_github_repositories;
 
 export type ActivityEvent = activity_events;

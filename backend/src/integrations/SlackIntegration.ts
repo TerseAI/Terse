@@ -9,7 +9,7 @@ import { EventProcessor } from "../agent/ChannelAgent/EventProcessor";
 import { db } from "../prismaClient";
 import { LogLevel, WebClient } from "@slack/web-api";
 import { RunHistoryTrigger } from "../shared/RunHistoryTypes";
-import { ChannelInputWithConfigs } from "../types/prisma";
+import { ChannelInputWithConfigs, UserSlackIntegrationWithUser } from "../types/prisma";
 import { InputEvent } from "./abstract/InputEvent";
 import jwt from "jsonwebtoken";
 import axios from "axios";
@@ -508,25 +508,18 @@ async function handleSlackMessage(event: SlackMessageEvent, teamId: string, auth
             return;
         }
 
-        const hasBotAuthorization = authorizations.find(
-            authorization => authorization.is_bot && authorization.user_id === slackIntegration.bot_user_id
-        );
-
-        // Get authorization user IDs for explicit user authorization checks
-        const authorizationUserIds = authorizations.map(authorization => authorization.user_id);
-
-        // Determine which workspaceUserIntegrations are in play based on channel type and authorization
+        // Determine which workspaceUserIntegrations are in play based on channel type
         // Channel type is available directly on the event
         const channelType = messageEvent.channel_type;
         const isPublicChannel = channelType === SlackChannelType.CHANNEL;
         const isPrivateChannel = channelType === SlackChannelType.GROUP;
         const isDM = channelType === SlackChannelType.IM || channelType === SlackChannelType.MPIM;
 
-        let workspaceUserIntegrations;
+        let workspaceUserIntegrations: UserSlackIntegrationWithUser[] = [];
 
-        if (isPublicChannel && hasBotAuthorization) {
-            // Public channel with bot authorization: all workspaceUserIntegrations in the space are in play
-            console.log(chalk.blue('Public channel with bot authorization - including all workspace users'));
+        if (isPublicChannel) {
+            // Public channel: include everyone who has the integration installed
+            console.log(chalk.blue('Public channel - including all workspace users with integration'));
             workspaceUserIntegrations = await db().user_slack_integrations.findMany({
                 where: {
                     slack_team_id: teamId
@@ -536,34 +529,58 @@ async function handleSlackMessage(event: SlackMessageEvent, teamId: string, auth
                 }
             });
         } else if (isPrivateChannel || isDM) {
-            // Private channel or DM: only workspaceUserIntegrations with explicit user authorization
+            // Private channel or DM: only include users who are members of the channel
             const channelTypeName = isPrivateChannel ? 'Private channel' : 'DM';
-            console.log(chalk.blue(`${channelTypeName} - including only explicitly authorized users`));
-            workspaceUserIntegrations = await db().user_slack_integrations.findMany({
-                where: {
-                    slack_team_id: teamId,
-                    authed_user_id: {
-                        in: authorizationUserIds
+            console.log(chalk.blue(`${channelTypeName} - checking channel membership`));
+            
+            try {
+                // Use bot token to get channel members
+                const botClient = new WebClient(slackIntegration.access_token, {
+                    logLevel: LogLevel.INFO
+                });
+
+                const membersRes = await botClient.conversations.members({
+                    channel: messageEvent.channel!
+                });
+
+                if (membersRes.ok && membersRes.members && membersRes.members.length > 0) {
+                    // Get all channel member IDs (excluding the bot)
+                    const botUserId = slackIntegration.bot_user_id;
+                    const channelMemberIds = membersRes.members.filter(id => id !== botUserId);
+                    
+                    if (channelMemberIds.length === 0) {
+                        console.log(chalk.yellow(`⚠ ${channelTypeName} has no members (only bot)`));
+                        workspaceUserIntegrations = [];
+                    } else {
+                        console.log(chalk.green(`✓ ${channelTypeName} has ${channelMemberIds.length} member(s): ${channelMemberIds.join(', ')} (bot: ${botUserId})`));
+                        
+                        // Get all workspace user integrations for this team
+                        const allWorkspaceIntegrations = await db().user_slack_integrations.findMany({
+                            where: {
+                                slack_team_id: teamId
+                            },
+                            include: {
+                                user: true
+                            }
+                        });
+                        
+                        // Filter to only those whose authed_user_id is in the channel members
+                        workspaceUserIntegrations = allWorkspaceIntegrations.filter(
+                            integration => integration.authed_user_id && channelMemberIds.includes(integration.authed_user_id)
+                        );
+                        
+                        console.log(chalk.blue(`✓ Found ${workspaceUserIntegrations.length} user integration(s) matching channel members`));
                     }
-                },
-                include: {
-                    user: true
+                } else {
+                    const errorMsg = membersRes.error || (membersRes.members?.length === 0 ? 'no members' : 'unknown error');
+                    console.log(chalk.yellow(`⚠ Could not get ${channelTypeName} members - ${errorMsg}`));
+                    workspaceUserIntegrations = [];
                 }
-            });
-        } else {
-            // Public channel without bot authorization or unknown type: use explicit authorization
-            console.log(chalk.blue(`${channelType || 'Unknown channel type'} - including only explicitly authorized users`));
-            workspaceUserIntegrations = await db().user_slack_integrations.findMany({
-                where: {
-                    slack_team_id: teamId,
-                    authed_user_id: {
-                        in: authorizationUserIds
-                    }
-                },
-                include: {
-                    user: true
-                }
-            });
+            } catch (error) {
+                console.error(chalk.red(`Error getting ${channelTypeName} members:`), error);
+                // Return empty array if we can't get members
+                workspaceUserIntegrations = [];
+            }
         }
 
         if (workspaceUserIntegrations.length === 0) {
