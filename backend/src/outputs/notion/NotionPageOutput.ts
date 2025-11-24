@@ -1,17 +1,17 @@
-import { RunHistoryAction } from "../shared/RunHistoryTypes";
+import { RunHistoryAction } from "../../shared/RunHistoryTypes";
 import { RunContext, Tool, tool } from "@openai/agents";
-import { ChannelNotionPageConfig, ChannelOutput, NotionIntegration, PrismaTransaction, User } from "../types/prisma";
-import { Session } from "../server";
+import { ChannelNotionPageConfig, ChannelOutput, NotionIntegration, PrismaTransaction, User } from "../../types/prisma";
+import { Session } from "../../server";
 import { Client } from '@notionhq/client';
 import { z } from "zod";
-import { Output, ToolboxEntry } from "./abstract/Output";
-import { db } from "../prismaClient";
+import { Output, ToolboxEntry } from "../abstract/Output";
+import { db } from "../../prismaClient";
 import chalk from "chalk";
 import { GetPageResponse, PageObjectResponse } from "@notionhq/client/build/src/api-endpoints";
-import { IntegrationType } from "../shared/Integrations";
+import { IntegrationType } from "../../shared/Integrations";
 import { OutputConfigType } from "@prisma/client";
-import { NotionPageConfig } from "../shared/Configs";
-import { getBlockTypeName, describeBlocks } from "../utility/notion";
+import { NotionPageConfig } from "../../shared/Configs";
+import { getBlockTypeName, describeBlocks } from "../../utility/notion";
 
 export interface NotionPageSession extends Session {
     notionIntegration: NotionIntegration; // Top level integration record
