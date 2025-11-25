@@ -6,7 +6,7 @@ import chalk from "chalk";
 import axios from "axios";
 import { findUserByEmail, findUserByGitHubUsername, createUser, updateUserGitHubUsername } from "../../types/user";
 import { githubApp } from "../../config/settings";
-import { getGithubUserRepos, GithubIntegrationManager, userRepositoriesWithAppInstalled, exchangeCodeForAccessToken, getGithubAppUser } from "../../integrations/GithubIntegration";
+import { GithubIntegrationManager, exchangeCodeForAccessToken, getGithubAppUser } from "../../integrations/GithubIntegration";
 import { GithubRepository, User } from "../../types/prisma";
 import { db } from "../../prismaClient";
 import { processRepository } from "../github";
@@ -127,15 +127,6 @@ export async function githubCallback(req: Request, res: Response) {
                 token_expiry: tokenExpiry 
             }
         });
-
-        // Get all repositories for the user, see which ones have the app installed, associate them with the user
-        const repositories = await getGithubUserRepos(githubAccessToken);
-        const repositoriesWithAppInstalled = await userRepositoriesWithAppInstalled(repositories, user);
-        await Promise.all(repositoriesWithAppInstalled.map((repository: GithubRepository) => processRepository({
-            id: repository.repository_id,
-            name: repository.name,
-            owner: repository.owner
-        }, user, repository.installation_id)));
 
         const token = await new Jwt().sign(user.id);
 

@@ -62,15 +62,7 @@ export const settings = {
     frontendRedirect: requireEnv('GMAIL_FRONTEND_REDIRECT'),
   },
 
-  // GitHub Auth (for login)
-  // githubAuth: {
-  //   clientId: requireEnv('GITHUB_AUTH_CLIENT_ID'),
-  //   clientSecret: requireEnv('GITHUB_AUTH_CLIENT_SECRET'),
-  //   callbackUrl: requireEnv('GITHUB_CALLBACK_URL'),
-  //   loginRedirect: requireEnv('GITHUB_LOGIN_REDIRECT'),
-  // },
-
-  // GitHub App (for repository integration)
+  // GitHub App (for repository integration and OAuth)
   githubApp: {
     clientId: requireEnv('GITHUB_CLIENT_ID'),
     clientSecret: requireEnv('GITHUB_CLIENT_SECRET'),
