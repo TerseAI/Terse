@@ -285,7 +285,7 @@ export class GithubEvent extends InputEvent {
     }
 }
 
-async function getGithubAppUser(githubAppAccessToken: string): Promise<GithubAppUser> {
+export async function getGithubAppUser(githubAppAccessToken: string): Promise<GithubAppUser> {
     const resp = await axios.get(
         'https://api.github.com/user',
         {
@@ -300,13 +300,14 @@ async function getGithubAppUser(githubAppAccessToken: string): Promise<GithubApp
     return resp.data;
 }
 
-async function exchangeCodeForAccessToken(code: string): Promise<{ access_token: string; refresh_token: string; expires_in: number }> {
+export async function exchangeCodeForAccessToken(code: string, redirectUri?: string): Promise<{ access_token: string; refresh_token: string; expires_in: number }> {
     const tokenResp = await axios.post(
         'https://github.com/login/oauth/access_token',
         {
             client_id: githubApp.clientId,
             client_secret: githubApp.clientSecret,
             code,
+            ...(redirectUri && { redirect_uri: redirectUri }),
         },
         {
             headers: { Accept: 'application/json' },

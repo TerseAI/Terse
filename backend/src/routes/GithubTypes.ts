@@ -112,6 +112,7 @@ export type GithubAppUser = {
     id: number;
     name: string;
     avatar_url: string;
+    email: string | null;
 }
 
 export type GithubUserRepository = {
