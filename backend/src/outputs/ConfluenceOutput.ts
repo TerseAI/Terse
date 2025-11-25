@@ -64,8 +64,7 @@ export class ConfluenceOutput extends Output<ConfluenceSession, ConfluenceConfig
             apiToken: oauthIntegration.access_token,
             cloudId: oauthIntegration.cloud_id || undefined,
             user, 
-            isUserInitiated: true, 
-            runActions: [] 
+            isUserInitiated: true
         };
     }
 
@@ -171,6 +170,10 @@ To find the correct position, first call confluence_query_page to see the page c
                 'storage'
             );
             
+            // Extract page URL from metadata
+            const pageMetadata = extractPageMetadata(pageInfo);
+            const pageUrl = pageMetadata.url;
+            
             const storageContent = extractStorageContent(pageInfo);
             const plainTextContent = stripHtmlTags(storageContent);
 
@@ -251,19 +254,6 @@ To find the correct position, first call confluence_query_page to see the page c
 
             const commentResponse = await response.json() as InlineCommentResponse;
 
-            // Report action
-            const pageName = runContext.context.confluenceConfig.page_name || 'Confluence page';
-            const commentPreview = comment_text.length > 60 
-                ? comment_text.substring(0, 60) + '...' 
-                : comment_text;
-            runContext.context.runActions = runContext.context.runActions || [];
-            runContext.context.runActions.push({
-                action: 'Added Inline comment',
-                integration: IntegrationType.ATLASSIAN,
-                target: pageName,
-                details: commentPreview,
-            });
-
             return {
                 success: true,
                 comment_id: commentResponse.id,
@@ -274,6 +264,8 @@ To find the correct position, first call confluence_query_page to see the page c
                 },
                 text_commented_on: text_to_comment_on ?? undefined,
                 message: 'Inline comment added successfully to the page',
+                url: pageUrl,
+                integration: IntegrationType.ATLASSIAN
             };
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : String(error);

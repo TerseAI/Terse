@@ -6,6 +6,7 @@ import { db } from "../../prismaClient";
 import { NotionConfig } from "../../shared/Configs";
 import { OutputConfigType } from "@prisma/client";
 import { notionQueryDatabaseTool, notionModifyPageTool, notionGetSchemaTool } from "./tools";
+import { IntegrationType } from "../../shared/Integrations";
 
 export interface NotionDatabaseSession extends Session {
     notionIntegration: NotionIntegration; // Top level integration record
@@ -49,8 +50,6 @@ export class NotionDatabaseOutput extends Output<NotionDatabaseSession, NotionCo
             notionConfig: notionConfig,
             user: user,
             isUserInitiated: true,
-            // Collect actions from tools; will be persisted after run
-            runActions: [],
         };
     }
     async addOutputToChannel(tx: PrismaTransaction, channelOutputId: string, output: NotionConfig): Promise<void> {
