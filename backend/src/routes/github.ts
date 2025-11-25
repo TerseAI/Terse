@@ -3,16 +3,15 @@ import { Request, Response } from "express";
 import { db } from "../prismaClient";
 import { User, GithubRepository, UserGithubRepository } from "../types/prisma";
 import Owner from "../theOwner/Owner";
-import { GithubAppUnifiedEventRequest, GithubAppInstallationDeletedRequest } from "../routes/GithubTypes";
+import { GithubAppUnifiedEventRequest, GithubAppInstallationDeletedRequest, GithubUserRepository, GithubAppInstallationRepository } from "../routes/GithubTypes";
 import { search } from "../searchClient";
 import { Session } from "../server";
 import { ActivityOverview } from "../agent/agents/Analyzer";
 import { TicketEventType } from "@prisma/client";
 import { githubApp } from "../config/settings";
 import { Repository, GithubAppInstallationCallbackRequest, GetGithubRepositoriesForIntegrationResponse } from "../shared/types";
-import { GithubIntegrationManager } from "../integrations/GithubIntegration";
+import { getAppInstallationRepositories, getAppInstallationsForUser, GithubIntegrationManager } from "../integrations/GithubIntegration";
 import { emitCacheInvalidationWithKey } from "../realtimeSocket";
-import { getGithubUserRepos, userRepositoriesWithAppInstalled } from "../integrations/GithubIntegration";
 
 // MARK: - Route Handlers
 
@@ -220,24 +219,24 @@ export async function getGithubRepositoriesForIntegration(req: Request, res: Res
         return;
     }
 
-    const repositories = await getGithubUserRepos(accessToken.access_token);
-    const repositoriesWithAppInstalled = await userRepositoriesWithAppInstalled(repositories, user);
+    let repositories: GithubAppInstallationRepository[] = [];
+    const installations = await getAppInstallationsForUser(accessToken.access_token);
+    for (const installation of installations.installations) {
+        const installationRepositories = await getAppInstallationRepositories(accessToken.access_token, installation.id);
+        repositories.push(...installationRepositories);
+        console.log('GitHub App installation repositories:', repositories);
+    }
 
     const result: GetGithubRepositoriesForIntegrationResponse = {
-        repositories: repositoriesWithAppInstalled.map(r => ({
-            id: r.repository_id,
+        repositories: repositories.map(r => ({
+            id: r.id,
             name: r.name,
-            owner: r.owner
+            owner: r.owner.login
         }))
-    };
+    };    
     res.status(200).json(result);
 }
 
-// MARK: - Helper Functions
-
-/**
- * Process a repository and associate it with a user
- */
 export async function processRepository(
     repositoryData: Repository,
     user: User,

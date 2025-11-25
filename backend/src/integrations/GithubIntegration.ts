@@ -4,7 +4,7 @@ import chalk from "chalk";
 import { EventProcessor } from "../agent/ChannelAgent/EventProcessor";
 import { InputEvent } from "./abstract/InputEvent";
 import { GithubIntegration, GithubIntegrationMetadata, IntegrationType } from "../shared/Integrations";
-import { GithubAppUnifiedEventRequest } from "../routes/GithubTypes";
+import { GithubAppInstallationRepository, GithubAppInstallationRepositoryResponse, GithubAppInstallationResponse, GithubAppUnifiedEventRequest } from "../routes/GithubTypes";
 import { processRepository, resolveUserForGithubInstallation } from "../routes/github";
 import { GithubRepository, User } from "../types/prisma";
 import { ChannelInputWithConfigs } from "../types/prisma";
@@ -13,7 +13,7 @@ import { OAuthInstallationDetails } from "../shared/types";
 import { githubApp, urls } from "../config/settings";
 import { Request, Response } from "express";
 import { InputConfigType } from "@prisma/client";
-import axios from "axios";
+import axios, { AxiosResponse } from "axios";
 import { GithubAppUser, GithubUserRepository } from "../routes/GithubTypes";
 
 export class GithubIntegrationManager implements Integration<GithubIntegration, GithubAppUnifiedEventRequest, typeof GithubIntegrationMetadata>, OAuthIntegrationInstallation {
@@ -321,53 +321,23 @@ export async function exchangeCodeForAccessToken(code: string, redirectUri?: str
     return { access_token: accessToken, refresh_token: refreshToken, expires_in: expiresIn };
 }
 
-export async function getGithubUserRepos(oAuthToken: string): Promise<GithubUserRepository[]> {
-    try {
-        const perPage = 100; // GitHub max is 100
-        const page = Number(1);
-
-        const resp = await axios.get('https://api.github.com/user/repos', {
-            headers: {
-                Authorization: `Bearer ${oAuthToken}`,
-                Accept: 'application/vnd.github+json',
-            },
-            params: {
-                per_page: perPage,
-                page,
-                affiliation: 'owner,collaborator,organization_member', // include org repos
-                sort: 'full_name',
-                direction: 'asc',
-            },
-        });
-
-        // console.log('Github user repos:', resp.data);
-
-        // You can return raw, or map down to what you need
-        const repos: GithubUserRepository[] = resp.data.map((r: any) => ({
-            id: r.id,
-            name: r.name,
-            owner: r.owner.login,
-        }));
-
-        return repos;
-
-    } catch (err: any) {
-        console.error('Error fetching GitHub user repos:', err.response?.data || err.message);
-        return [];
-    }
+export async function getAppInstallationsForUser(oAuthToken: string): Promise<GithubAppInstallationResponse> {
+    const resp: AxiosResponse<GithubAppInstallationResponse> = await axios.get('https://api.github.com/user/installations', {
+        headers: {
+            Authorization: `Bearer ${oAuthToken}`,
+            Accept: 'application/vnd.github+json',
+        },
+    });
+    console.log('GitHub App installations:', resp.data);
+    return resp.data;
 }
 
-export async function userRepositoriesWithAppInstalled(userRepositories: GithubUserRepository[], user: User): Promise<GithubRepository[]> {
-    // Fetch all repositories that have the app installed. Just get everything in the github_repositories table. Fetch only the installation_id and repository_id.
-    const repositoriesWithTerse: GithubRepository[] = await db().github_repositories.findMany();
-
-    // Turn the reposWIthTerse into a hash map by repository_id
-    const repositoriesWithTerseMap = new Map<number, GithubRepository>();
-    repositoriesWithTerse.forEach((repository: GithubRepository) => {
-        repositoriesWithTerseMap.set(repository.repository_id, repository);
+export async function getAppInstallationRepositories(oAuthToken: string, installationId: number): Promise<GithubAppInstallationRepository[]> {
+    const resp: AxiosResponse<GithubAppInstallationRepositoryResponse> = await axios.get(`https://api.github.com/user/installations/${installationId}/repositories`, {
+        headers: {
+            Authorization: `Bearer ${oAuthToken}`,
+            Accept: 'application/vnd.github+json',
+        },
     });
-
-    // only choose the userRepos that are in the list of repositoriesWithTerse
-    const repositoriesWithAppInstalled = userRepositories.filter((userRepository) => repositoriesWithTerseMap.has(userRepository.id));
-    return repositoriesWithAppInstalled.map((userRepository) => repositoriesWithTerseMap.get(userRepository.id) as GithubRepository);
+    return resp.data.repositories;
 }
