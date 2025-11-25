@@ -224,7 +224,6 @@ export async function getGithubRepositoriesForIntegration(req: Request, res: Res
     for (const installation of installations.installations) {
         const installationRepositories = await getAppInstallationRepositories(accessToken.access_token, installation.id);
         repositories.push(...installationRepositories);
-        console.log('GitHub App installation repositories:', repositories);
     }
 
     const result: GetGithubRepositoriesForIntegrationResponse = {
