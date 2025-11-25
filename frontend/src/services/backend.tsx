@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { ModelEvent, ModelRequest } from "../shared/ModelEvents";
+import type { RunHistoryModelEvent } from "../shared/RunHistoryTypes";
 import {
     Channel,
     ChannelInput, 
@@ -262,6 +263,11 @@ interface BackendService {
      * Fetch run history for a specific channel with filters and pagination
      */
     getRunHistory(channelId: string, params: GetRunHistoryParams): Promise<GetRunHistoryResponse>;
+
+    /**
+     * Fetch chat history for a specific run
+     */
+    getChatHistory(runId: string): Promise<{ events: Array<RunHistoryModelEvent>; startTimestamp?: string; endTimestamp?: string; status?: string }>;
 }
 
 export const BackendProvider: BackendService = {
@@ -699,7 +705,17 @@ export const BackendProvider: BackendService = {
                 console.error('Error fetching run history:', error);
                 throw error;
             });
-    }
+    },
+
+    getChatHistory: (runId) => {
+        const url = `${backendBaseUrl}/run-history/${encodeURIComponent(runId)}/chat`;
+        return axios.get<{ events: Array<RunHistoryModelEvent>; startTimestamp?: string; endTimestamp?: string; status?: string }>(url, { withCredentials: true })
+            .then(r => r.data)
+            .catch(error => {
+                console.error('Error fetching chat history:', error);
+                throw error;
+            });
+    },
 }
 
 export class Connection {

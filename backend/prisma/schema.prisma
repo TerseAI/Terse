@@ -767,6 +767,7 @@ model run_history_records {
   automation       automations           @relation(fields: [automation_id], references: [id], onDelete: Cascade)
   actions          run_history_actions[]
   pending_approval pending_approvals?
+  chat_events      run_history_chat_events[]
 
   @@index([automation_id])
   @@index([status])
@@ -804,4 +805,19 @@ model pending_approvals {
 
   @@index([user_id])
   @@index([created_at])
+}
+
+// Chat events from ChannelAgent streaming
+model run_history_chat_events {
+  id                    String   @id @default(cuid())
+  run_history_record_id String
+  event_type            String   // TextDelta, ToolCall, ToolCallComplete, ToolApprovalRequest, NaturalStop, Failure
+  event_data            Json     // Event-specific data (delta, step_id, parameters, etc.)
+  timestamp             DateTime  @default(now())
+  created_at            DateTime  @default(now())
+
+  run_history_record run_history_records @relation(fields: [run_history_record_id], references: [id], onDelete: Cascade)
+
+  @@index([run_history_record_id])
+  @@index([timestamp])
 }

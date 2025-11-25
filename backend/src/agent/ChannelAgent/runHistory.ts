@@ -1,6 +1,7 @@
 import { db } from "../../prismaClient";
 import type { RunHistoryAction as SharedRunHistoryAction, RunHistoryStatus, RunHistoryTrigger } from "../../shared/RunHistoryTypes";
 import { convertIntegrationTypeToRunHistoryIntegration } from "../../utility/typeConverters";
+import { ModelEvent } from "../../shared/ModelEvents";
 
 export type RunTrigger = RunHistoryTrigger;
 
@@ -97,5 +98,32 @@ export async function markRunFailed(runId: string, errorMessage: string, stage?:
             decision_reason: prefixedMessage,
         },
     });
+}
+
+/**
+ * Stores a chat event in the database and returns the created event's ID
+ */
+export async function storeChatEvent(runId: string, event: ModelEvent): Promise<string> {
+    const prisma = db();
+    
+    // Extract event type and data
+    const eventType = event.type;
+    
+    // Store event-specific data as JSON
+    // Remove the 'type' field from the event data since we store it separately
+    const eventData: any = { ...event };
+    delete eventData.type;
+    
+    const created = await prisma.run_history_chat_events.create({
+        data: {
+            run_history_record_id: runId,
+            event_type: eventType,
+            event_data: eventData,
+            timestamp: new Date(),
+        },
+        select: { id: true },
+    });
+    
+    return created.id;
 }
 

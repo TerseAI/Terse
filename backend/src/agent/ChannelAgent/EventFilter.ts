@@ -1,7 +1,9 @@
-import { Agent, AgentInputItem, run } from '@openai/agents';
+import { Agent, AgentInputItem, run, StreamedRunResult, AgentOutputType } from '@openai/agents';
 import { InputEvent } from "../../integrations/abstract/InputEvent";
 import { ChannelPrompt } from "../../types/prisma";
 import { Session } from "../../server";
+import { ModelEvent } from '../../shared/ModelEvents';
+import { streamChannelAgentEvents } from './streaming';
 import { z } from "zod";
 
 export interface EventFilterResult {
@@ -64,22 +66,24 @@ You MUST return a JSON object that matches this schema EXACTLY:
 - "reason": a short, clear explanation of why you made this decision.
 - "confidence": a number between 0 and 1 representing how confident you are in the decision.
 
-Do NOT:
-- Wrap the JSON in markdown.
-- Add extra keys or fields.
-- Include tools or function calls.
-
-Only output the JSON object.
+You may provide additional context and analysis in your text response, but you MUST include the structured JSON output.
 `;
 
 /**
  * Filters a single event to determine if it's relevant to the channel based on user instructions
+ * Returns both the filter result and an async generator for streaming events
  */
 export async function filterEvent<T extends Session>(
     event: InputEvent,
     channelPrompt: ChannelPrompt,
-    session: T
-): Promise<EventFilterResult> {
+    session: T,
+    options?: {
+        runId?: string;
+        userId?: string;
+        channelId?: string;
+        onEvent?: (event: ModelEvent) => Promise<void>;
+    }
+): Promise<{ result: EventFilterResult; stream: StreamedRunResult<T, Agent<T, any>> }> {
     try {
         const agent = new Agent<T, typeof filterOutputSchema>({
             name: 'Channel Event Filter',
@@ -106,12 +110,26 @@ export async function filterEvent<T extends Session>(
 
         const result = await run(agent, history, {
             context: session,
+            stream: true,
         });
 
         if (result.interruptions && result.interruptions.length > 0) {
             throw new Error('Filter agent requested tool approval, which is not supported for event filtering.');
         }
 
+        // Stream events if callback is provided
+        if (options?.onEvent) {
+            try {
+                for await (const modelEvent of streamChannelAgentEvents(result)) {
+                    await options.onEvent(modelEvent);
+                }
+            } catch (error) {
+                console.error('Error streaming filter events:', error);
+                // Continue with parsing even if streaming fails
+            }
+        }
+
+        // Get structured output from result
         const parsed = result.finalOutput ?? null;
         if (!parsed) {
             throw new Error('No final output from filter agent');
@@ -121,7 +139,7 @@ export async function filterEvent<T extends Session>(
         parsed.confidence = Math.max(0, Math.min(1, parsed.confidence));
 
         console.log(`Event filter result for ${event.integrationType}:`, parsed);
-        return parsed;
+        return { result: parsed, stream: result };
 
     } catch (error) {
         // Re-throw error to be handled by the caller (EventProcessor)

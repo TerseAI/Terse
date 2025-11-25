@@ -5,6 +5,7 @@ import type { GetRunHistoryParams, GetRunHistoryResponse, RunHistoryRecord, RunH
 import { parsePageParams } from "../utility/pagination";
 import { IntegrationType } from "../shared/Integrations";
 import { convertRunHistoryIntegrationToIntegrationType } from "../utility/typeConverters";
+import { ModelEvent } from "../shared/ModelEvents";
 
 // Valid status values for validation
 const VALID_STATUSES: RunHistoryStatus[] = ["success", "failed", "skipped", "in_progress"];
@@ -163,4 +164,132 @@ function parseGetRunHistoryParams(query: Request["query"]): GetRunHistoryParams 
   }
 
   return params;
+}
+
+/**
+ * Get chat history for a specific run
+ * Route: GET /api/run-history/:runId/chat
+ */
+export async function getChatHistory(req: Request, res: Response) {
+  try {
+    const prisma: PrismaClient = db();
+
+    // req.params contains URL path parameters
+    const runId = (req.params.runId as string | undefined)?.trim();
+    if (!runId) {
+      return res.status(400).json({ error: "runId is required" });
+    }
+
+    // Fetch the run record to get start/end timestamps
+    const runRecord = await prisma.run_history_records.findUnique({
+      where: { id: runId },
+      select: {
+        timestamp: true,
+        updated_at: true,
+        status: true,
+      },
+    });
+
+    if (!runRecord) {
+      return res.status(404).json({ error: "Run not found" });
+    }
+
+    // Fetch all chat events for this run, ordered by timestamp
+    const chatEvents = await prisma.run_history_chat_events.findMany({
+      where: {
+        run_history_record_id: runId,
+      },
+      orderBy: {
+        timestamp: "asc",
+      },
+    });
+
+    // Transform database format back to ModelEvent format with timestamps
+    const events = chatEvents.map((event) => {
+      const eventData = event.event_data as any;
+      
+      // Reconstruct the ModelEvent based on event_type, including timestamp and ID
+      const baseEvent = {
+        id: event.id,
+        timestamp: event.timestamp.toISOString(),
+      };
+      
+      switch (event.event_type) {
+        case "TextDelta":
+          return {
+            ...baseEvent,
+            type: "TextDelta",
+            delta: eventData.delta,
+            step_id: eventData.step_id,
+          };
+        
+        case "ToolCall":
+          return {
+            ...baseEvent,
+            type: "ToolCall",
+            summary: eventData.summary,
+            step_id: eventData.step_id,
+            parameters: eventData.parameters,
+          };
+        
+        case "ToolCallComplete":
+          return {
+            ...baseEvent,
+            type: "ToolCallComplete",
+            tool_name: eventData.tool_name,
+            status: eventData.status,
+            step_id: eventData.step_id,
+            changed_items: eventData.changed_items || [],
+          };
+        
+        case "ToolApprovalRequest":
+          return {
+            ...baseEvent,
+            type: "ToolApprovalRequest",
+            step_id: eventData.step_id,
+            name: eventData.name,
+            arguments: eventData.arguments,
+          };
+        
+        case "Failure":
+          return {
+            ...baseEvent,
+            type: "Failure",
+            error: eventData.error,
+          };
+        
+        case "NaturalStop":
+          return {
+            ...baseEvent,
+            type: "NaturalStop",
+          };
+        
+        case "FilterResult":
+          return {
+            ...baseEvent,
+            type: "FilterResult",
+            isRelevant: eventData.isRelevant,
+            reason: eventData.reason,
+            confidence: eventData.confidence,
+          };
+        
+        default:
+          // Unknown event type, return as-is with timestamp
+          return {
+            ...baseEvent,
+            ...eventData,
+          };
+      }
+    });
+
+    res.json({ 
+      events,
+      startTimestamp: runRecord.timestamp.toISOString(),
+      endTimestamp: runRecord.updated_at.toISOString(),
+      status: runRecord.status,
+    });
+  } catch (err) {
+    console.error("Failed to fetch chat history", err);
+    res.status(500).json({ error: "Failed to fetch chat history" });
+  }
 }
