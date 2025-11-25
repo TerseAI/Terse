@@ -8,10 +8,10 @@ import { ConfigInstance } from '../../shared/Configs';
 import { settings } from '../../config/settings';
 import { formatChannelInputsForAgent, formatChannelOutputForAgent } from './formatContext';
 import { UserFormatter } from '../../utility/UserFormatter';
-import { streamChannelAgentEvents } from './streaming';
+import { toEventStream } from '../streaming';
 import { storeChatEvent } from './runHistory';
 import { getRealtimeSocket } from '../../realtimeSocket';
-import type { RunHistoryModelEvent, RunHistoryModelSocketEvent } from '../../shared/RunHistoryTypes';
+import type { RunHistoryModelEvent, RunHistoryModelSocketEvent, RunHistoryStreamingParams } from '../../shared/RunHistoryTypes';
 
 export type ApprovalResult<T extends Session, AgentType extends Agent<T, AgentOutputType>> =
   | {
@@ -76,11 +76,7 @@ export class ChannelAgent<T extends Session, TConfig extends ConfigInstance> {
         this.inputEvent = event;
     }
 
-    async run(params?: {
-        runId?: string;
-        userId?: string;
-        channelId?: string;
-    }): Promise<ApprovalResult<T, Agent<T, AgentOutputType>>> {
+    async run(streamingParams?: RunHistoryStreamingParams): Promise<ApprovalResult<T, Agent<T, AgentOutputType>>> {
         console.log("Running Channel Agent");
         await this.initializeAgent();
       
@@ -139,15 +135,15 @@ export class ChannelAgent<T extends Session, TConfig extends ConfigInstance> {
           stream: true,
         });
 
-        // Stream events if runId, userId, and channelId are provided
-        if (params?.runId && params?.userId && params?.channelId) {
+        // Stream events if streamingParams is provided with all required fields
+        if (streamingParams?.runId && streamingParams?.userId && streamingParams?.channelId) {
             const io = getRealtimeSocket();
-            const userRoom = `user:${params.userId}`;
+            const userRoom = `user:${streamingParams.userId}`;
             
             try {
-                for await (const modelEvent of streamChannelAgentEvents(result)) {
+                for await (const modelEvent of toEventStream(result)) {
                     // Store event in database and get the ID
-                    const eventId = await storeChatEvent(params.runId!, modelEvent);
+                    const eventId = await storeChatEvent(streamingParams.runId, modelEvent);
                     
                     // Emit event via Socket.IO with timestamp and ID
                     if (io) {
@@ -157,8 +153,8 @@ export class ChannelAgent<T extends Session, TConfig extends ConfigInstance> {
                             timestamp: new Date().toISOString(),
                         };
                         const payload: RunHistoryModelSocketEvent = {
-                            runId: params.runId,
-                            channelId: params.channelId,
+                            runId: streamingParams.runId,
+                            channelId: streamingParams.channelId,
                             runHistoryModelEvent,
                         };
                         io.to(userRoom).emit('channel:chat:event', payload);

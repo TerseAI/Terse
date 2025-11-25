@@ -204,82 +204,14 @@ export async function getChatHistory(req: Request, res: Response) {
       },
     });
 
-    // Transform database format back to ModelEvent format with timestamps
+    // Deserialize events directly from JSON, adding id and timestamp
     const events = chatEvents.map((event) => {
-      const eventData = event.event_data as any;
-      
-      // Reconstruct the ModelEvent based on event_type, including timestamp and ID
-      const baseEvent = {
+      const modelEvent = event.event_json as ModelEvent;
+      return {
+        ...modelEvent,
         id: event.id,
         timestamp: event.timestamp.toISOString(),
       };
-      
-      switch (event.event_type) {
-        case "TextDelta":
-          return {
-            ...baseEvent,
-            type: "TextDelta",
-            delta: eventData.delta,
-            step_id: eventData.step_id,
-          };
-        
-        case "ToolCall":
-          return {
-            ...baseEvent,
-            type: "ToolCall",
-            summary: eventData.summary,
-            step_id: eventData.step_id,
-            parameters: eventData.parameters,
-          };
-        
-        case "ToolCallComplete":
-          return {
-            ...baseEvent,
-            type: "ToolCallComplete",
-            tool_name: eventData.tool_name,
-            status: eventData.status,
-            step_id: eventData.step_id,
-            changed_items: eventData.changed_items || [],
-          };
-        
-        case "ToolApprovalRequest":
-          return {
-            ...baseEvent,
-            type: "ToolApprovalRequest",
-            step_id: eventData.step_id,
-            name: eventData.name,
-            arguments: eventData.arguments,
-          };
-        
-        case "Failure":
-          return {
-            ...baseEvent,
-            type: "Failure",
-            error: eventData.error,
-          };
-        
-        case "NaturalStop":
-          return {
-            ...baseEvent,
-            type: "NaturalStop",
-          };
-        
-        case "FilterResult":
-          return {
-            ...baseEvent,
-            type: "FilterResult",
-            isRelevant: eventData.isRelevant,
-            reason: eventData.reason,
-            confidence: eventData.confidence,
-          };
-        
-        default:
-          // Unknown event type, return as-is with timestamp
-          return {
-            ...baseEvent,
-            ...eventData,
-          };
-      }
     });
 
     res.json({ 

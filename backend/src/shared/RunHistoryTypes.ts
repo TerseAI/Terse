@@ -74,3 +74,13 @@ export type RunHistoryModelSocketEvent = {
     runHistoryModelEvent: RunHistoryModelEvent;
 };
 
+export type RunHistoryStreamingParams = {
+    runId?: string;
+    userId?: string;
+    channelId?: string;
+};
+
+export type RunHistoryStreamingParamsWithCallback = RunHistoryStreamingParams & {
+    onEvent?: (event: ModelEvent) => Promise<void>;
+};
+

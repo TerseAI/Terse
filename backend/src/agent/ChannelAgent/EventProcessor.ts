@@ -5,14 +5,12 @@ import { InputEvent } from '../../integrations/abstract/InputEvent';
 import { OutputFactory } from '../../outputs/abstract/OutputFactory';
 import { ChannelAgent } from './ChannelAgent';
 import { filterEvent } from './EventFilter';
-import { appendRunAction, createRunRecord, finalizeRunStatus, markRunFailed, markRunProcessed, markRunSkipped, FailureStage, storeChatEvent } from './runHistory';
-import { getRealtimeSocket } from '../../realtimeSocket';
+import { appendRunAction, createRunRecord, finalizeRunStatus, markRunFailed, markRunProcessed, markRunSkipped, FailureStage } from './runHistory';
 import { ApprovalResult } from './ChannelAgent';
 import { Agent, AgentOutputType, RunResult } from '@openai/agents';
 import { Session } from '../../server';
 import { emitCacheInvalidationWithKey, emitCacheInvalidationWithWildcard } from '../../realtimeSocket';
 import { getInputConfigInclude, getOutputConfigInclude } from '../../utility/prismaIncludes';
-import type { RunHistoryModelEvent, RunHistoryModelSocketEvent } from '../../shared/RunHistoryTypes';
 
 // The job of this class is to take an Input Event, and check if it's a match for an Channel.
 // It will then create a Session, and summon the Channel Agent with the create user data.
@@ -148,9 +146,6 @@ export class EventProcessor {
         // Filter the event using AI to see if it's relevant to this channel
         let filterResult;
         try {
-            const io = getRealtimeSocket();
-            const userRoom = `user:${this.user.id}`;
-            
             const filterResponse = await filterEvent<Session>(
                 this.inputEvent,
                 channel.prompt,
@@ -159,58 +154,10 @@ export class EventProcessor {
                     runId,
                     userId: this.user.id,
                     channelId: channel.id,
-                    onEvent: async (modelEvent) => {
-                        // Skip TextDelta events from filter agent - we'll store the structured FilterResult instead
-                        if (modelEvent.type === 'TextDelta') {
-                            return;
-                        }
-                        
-                        // Store event in database and get the ID
-                        const eventId = await storeChatEvent(runId, modelEvent);
-                        
-                        // Emit event via Socket.IO with timestamp and ID
-                        if (io) {
-                            const runHistoryModelEvent: RunHistoryModelEvent = {
-                                ...modelEvent,
-                                id: eventId,
-                                timestamp: new Date().toISOString(),
-                            };
-                            const payload: RunHistoryModelSocketEvent = {
-                                runId,
-                                channelId: channel.id,
-                                runHistoryModelEvent,
-                            };
-                            io.to(userRoom).emit('channel:chat:event', payload);
-                        }
-                    },
                 }
             );
             
             filterResult = filterResponse.result;
-            
-            // Store the filter result as a structured event
-            const filterResultEvent = {
-                type: 'FilterResult' as const,
-                isRelevant: filterResult.isRelevant,
-                reason: filterResult.reason,
-                confidence: filterResult.confidence,
-            };
-            const filterEventId = await storeChatEvent(runId, filterResultEvent);
-            
-            // Emit the filter result event
-            if (io) {
-                const runHistoryModelEvent: RunHistoryModelEvent = {
-                    ...filterResultEvent,
-                    id: filterEventId,
-                    timestamp: new Date().toISOString(),
-                };
-                const payload: RunHistoryModelSocketEvent = {
-                    runId,
-                    channelId: channel.id,
-                    runHistoryModelEvent,
-                };
-                io.to(userRoom).emit('channel:chat:event', payload);
-            }
         } catch (error) {
             // Log the error and update run history
             const errorMessage = error instanceof Error ? error.message : 'Unknown error';

@@ -108,9 +108,7 @@ export class AgentSocketServer {
     };
 
     private async streamResultWithInterruptions(ws: WebSocket, agent: IAgentSession<any>, result: StreamedRunResult<any, any>) {
-        let eventStream = await toEventStream(result, agent);
-
-        for await (const event of eventStream) {
+        for await (const event of toEventStream(result, agent)) {
             this.sendMessage(ws, event);
         }
 
@@ -130,8 +128,8 @@ export class AgentSocketServer {
         console.log(chalk.yellow.bold("🔌 Result final output"), result.finalOutput);
 
         agent.setHistory(result.history);
-
-        this.sendMessage(ws, { type: 'NaturalStop' });
+        
+        // NaturalStop is already sent by toEventStream
     }
 
     private async sendMessage(ws: WebSocket, message: ModelEvent) {

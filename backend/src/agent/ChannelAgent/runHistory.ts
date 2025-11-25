@@ -106,19 +106,13 @@ export async function markRunFailed(runId: string, errorMessage: string, stage?:
 export async function storeChatEvent(runId: string, event: ModelEvent): Promise<string> {
     const prisma = db();
     
-    // Extract event type and data
-    const eventType = event.type;
-    
-    // Store event-specific data as JSON
-    // Remove the 'type' field from the event data since we store it separately
-    const eventData: any = { ...event };
-    delete eventData.type;
-    
+    // Store the full event as JSON for easy deserialization
+    // Keep event_type for querying/filtering purposes
     const created = await prisma.run_history_chat_events.create({
         data: {
             run_history_record_id: runId,
-            event_type: eventType,
-            event_data: eventData,
+            event_type: event.type,
+            event_json: event as any, // Store full ModelEvent as JSON
             timestamp: new Date(),
         },
         select: { id: true },
