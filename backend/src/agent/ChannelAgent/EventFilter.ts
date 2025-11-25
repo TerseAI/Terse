@@ -3,8 +3,11 @@ import { InputEvent } from "../../integrations/abstract/InputEvent";
 import { ChannelPrompt } from "../../types/prisma";
 import { Session } from "../../server";
 import { ModelEvent } from '../../shared/ModelEvents';
-import { streamChannelAgentEvents } from './streaming';
+import { toEventStream } from '../streaming';
 import { z } from "zod";
+import type { RunHistoryStreamingParams, RunHistoryModelEvent, RunHistoryModelSocketEvent } from '../../shared/RunHistoryTypes';
+import { storeChatEvent } from './runHistory';
+import { getRealtimeSocket } from '../../realtimeSocket';
 
 export interface EventFilterResult {
     isRelevant: boolean;
@@ -72,17 +75,14 @@ You may provide additional context and analysis in your text response, but you M
 /**
  * Filters a single event to determine if it's relevant to the channel based on user instructions
  * Returns both the filter result and an async generator for streaming events
+ * 
+ * If streamingParams are provided, automatically handles storing events and emitting them via Socket.IO
  */
 export async function filterEvent<T extends Session>(
     event: InputEvent,
     channelPrompt: ChannelPrompt,
     session: T,
-    options?: {
-        runId?: string;
-        userId?: string;
-        channelId?: string;
-        onEvent?: (event: ModelEvent) => Promise<void>;
-    }
+    streamingParams?: RunHistoryStreamingParams
 ): Promise<{ result: EventFilterResult; stream: StreamedRunResult<T, Agent<T, any>> }> {
     try {
         const agent = new Agent<T, typeof filterOutputSchema>({
@@ -117,11 +117,35 @@ export async function filterEvent<T extends Session>(
             throw new Error('Filter agent requested tool approval, which is not supported for event filtering.');
         }
 
-        // Stream events if callback is provided
-        if (options?.onEvent) {
+        // Handle streaming and channel management if streamingParams are provided
+        if (streamingParams?.runId && streamingParams?.userId && streamingParams?.channelId) {
+            const io = getRealtimeSocket();
+            const userRoom = `user:${streamingParams.userId}`;
+            
             try {
-                for await (const modelEvent of streamChannelAgentEvents(result)) {
-                    await options.onEvent(modelEvent);
+                for await (const modelEvent of toEventStream(result)) {
+                    // Skip TextDelta events from filter agent - we'll store the structured FilterResult instead
+                    if (modelEvent.type === 'TextDelta') {
+                        continue;
+                    }
+                    
+                    // Store event in database and get the ID
+                    const eventId = await storeChatEvent(streamingParams.runId, modelEvent);
+                    
+                    // Emit event via Socket.IO with timestamp and ID
+                    if (io) {
+                        const runHistoryModelEvent: RunHistoryModelEvent = {
+                            ...modelEvent,
+                            id: eventId,
+                            timestamp: new Date().toISOString(),
+                        };
+                        const payload: RunHistoryModelSocketEvent = {
+                            runId: streamingParams.runId,
+                            channelId: streamingParams.channelId,
+                            runHistoryModelEvent,
+                        };
+                        io.to(userRoom).emit('channel:chat:event', payload);
+                    }
                 }
             } catch (error) {
                 console.error('Error streaming filter events:', error);
@@ -137,6 +161,33 @@ export async function filterEvent<T extends Session>(
 
         // Clamp confidence to [0, 1]
         parsed.confidence = Math.max(0, Math.min(1, parsed.confidence));
+
+        // Store and emit the filter result event if streamingParams are provided
+        if (streamingParams?.runId && streamingParams?.userId && streamingParams?.channelId) {
+            const filterResultEvent = {
+                type: 'FilterResult' as const,
+                isRelevant: parsed.isRelevant,
+                reason: parsed.reason,
+                confidence: parsed.confidence,
+            };
+            const filterEventId = await storeChatEvent(streamingParams.runId, filterResultEvent);
+            
+            const io = getRealtimeSocket();
+            if (io) {
+                const userRoom = `user:${streamingParams.userId}`;
+                const runHistoryModelEvent: RunHistoryModelEvent = {
+                    ...filterResultEvent,
+                    id: filterEventId,
+                    timestamp: new Date().toISOString(),
+                };
+                const payload: RunHistoryModelSocketEvent = {
+                    runId: streamingParams.runId,
+                    channelId: streamingParams.channelId,
+                    runHistoryModelEvent,
+                };
+                io.to(userRoom).emit('channel:chat:event', payload);
+            }
+        }
 
         console.log(`Event filter result for ${event.integrationType}:`, parsed);
         return { result: parsed, stream: result };

@@ -811,8 +811,8 @@ model pending_approvals {
 model run_history_chat_events {
   id                    String   @id @default(cuid())
   run_history_record_id String
-  event_type            String   // TextDelta, ToolCall, ToolCallComplete, ToolApprovalRequest, NaturalStop, Failure
-  event_data            Json     // Event-specific data (delta, step_id, parameters, etc.)
+  event_type            String   // TextDelta, ToolCall, ToolCallComplete, ToolApprovalRequest, NaturalStop, Failure (kept for querying/filtering)
+  event_json            Json     // Full ModelEvent stored as JSON for easy deserialization
   timestamp             DateTime  @default(now())
   created_at            DateTime  @default(now())
 
