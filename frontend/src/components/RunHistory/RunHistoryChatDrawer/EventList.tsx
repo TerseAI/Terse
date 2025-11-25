@@ -46,7 +46,7 @@ export default function EventList({
             {messageOrder.map((item, index) => {
                 const timestamp = item.timestamp;
 
-                if (item.type === 'text') {
+                if (item.type === 'TextDelta') {
                     const text = accumulatedMessages.get(item.stepId) || '';
                     return (
                         <div key={`${item.stepId}-${index}`}>
@@ -55,7 +55,7 @@ export default function EventList({
                     );
                 }
 
-                if (item.type === 'tool') {
+                if (item.type === 'ToolCall') {
                     const toolCallData = toolCallMap.get(item.stepId);
                     if (!toolCallData) return null;
                     return (
@@ -71,7 +71,7 @@ export default function EventList({
                     );
                 }
 
-                if (item.type === 'approval') {
+                if (item.type === 'ToolApprovalRequest') {
                     const approvalEvent = events.find((e) => {
                         if (e.type === 'ToolApprovalRequest' && e.step_id === item.stepId) {
                             return true;
@@ -92,11 +92,11 @@ export default function EventList({
                 }
 
                 // Skip stop events - don't display "Agent completed" messages
-                if (item.type === 'stop') {
+                if (item.type === 'NaturalStop') {
                     return null;
                 }
 
-                if (item.type === 'filter') {
+                if (item.type === 'FilterResult') {
                     if (filterResultEvent) {
                         return (
                             <div key={`${item.stepId}-${index}`}>
@@ -106,7 +106,7 @@ export default function EventList({
                     }
                 }
 
-                if (item.type === 'failure') {
+                if (item.type === 'Failure') {
                     const failureEvent = events.find((e) => e.type === 'Failure') as { type: 'Failure'; error: string; timestamp?: string } | undefined;
                     if (failureEvent) {
                         return (

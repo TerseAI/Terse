@@ -3,7 +3,7 @@ import type { ModelEvent } from '@/shared/ModelEvents';
 
 export type MessageOrderItem = {
     stepId: string;
-    type: 'text' | 'tool' | 'approval' | 'stop' | 'failure' | 'filter';
+    type: 'TextDelta' | 'ToolCall' | 'ToolApprovalRequest' | 'NaturalStop' | 'Failure' | 'FilterResult';
     timestamp?: string;
 };
 
@@ -26,20 +26,20 @@ export function useChatEvents(events: Array<ModelEvent & { timestamp?: string }>
         events.forEach((event, index) => {
             // FilterResult should appear first
             if (event.type === 'FilterResult') {
-                if (!messageOrder.find((m) => m.stepId === 'filter' && m.type === 'filter')) {
+                if (!messageOrder.find((m) => m.stepId === 'filter' && m.type === 'FilterResult')) {
                     messageOrder.unshift({ 
                         stepId: 'filter', 
-                        type: 'filter',
+                        type: 'FilterResult',
                         timestamp: (event as any).timestamp,
                     });
                 }
             } else if (event.type === 'TextDelta') {
                 const current = accumulatedMessages.get(event.step_id) || '';
                 accumulatedMessages.set(event.step_id, current + event.delta);
-                if (!messageOrder.find((m) => m.stepId === event.step_id && m.type === 'text')) {
+                if (!messageOrder.find((m) => m.stepId === event.step_id && m.type === 'TextDelta')) {
                     messageOrder.push({ 
                         stepId: event.step_id, 
-                        type: 'text',
+                        type: 'TextDelta',
                         timestamp: (event as any).timestamp,
                     });
                 }
@@ -48,7 +48,7 @@ export function useChatEvents(events: Array<ModelEvent & { timestamp?: string }>
                     toolCallMap.set(event.step_id, { firstSeenIndex: index });
                     messageOrder.push({ 
                         stepId: event.step_id, 
-                        type: 'tool',
+                        type: 'ToolCall',
                         timestamp: (event as any).timestamp,
                     });
                 }
@@ -62,7 +62,7 @@ export function useChatEvents(events: Array<ModelEvent & { timestamp?: string }>
                     toolCallMap.set(event.step_id, { firstSeenIndex: index });
                     messageOrder.push({ 
                         stepId: event.step_id, 
-                        type: 'tool',
+                        type: 'ToolCall',
                         timestamp: (event as any).timestamp,
                     });
                 }
@@ -74,19 +74,19 @@ export function useChatEvents(events: Array<ModelEvent & { timestamp?: string }>
             } else if (event.type === 'ToolApprovalRequest') {
                 messageOrder.push({ 
                     stepId: event.step_id, 
-                    type: 'approval',
+                    type: 'ToolApprovalRequest',
                     timestamp: (event as any).timestamp,
                 });
             } else if (event.type === 'NaturalStop') {
                 messageOrder.push({ 
                     stepId: 'stop', 
-                    type: 'stop',
+                    type: 'NaturalStop',
                     timestamp: (event as any).timestamp,
                 });
             } else if (event.type === 'Failure') {
                 messageOrder.push({ 
                     stepId: 'failure', 
-                    type: 'failure',
+                    type: 'Failure',
                     timestamp: (event as any).timestamp,
                 });
             }
