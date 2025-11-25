@@ -6,7 +6,7 @@ import chalk from "chalk";
 import axios from "axios";
 import { findUserByEmail, findUserByGitHubUsername, createUser, updateUserGitHubUsername } from "../../types/user";
 import { githubApp } from "../../config/settings";
-import { getGithubUserRepos, GithubIntegrationManager, userRepositoriesWithAppInstalled } from "../../integrations/GithubIntegration";
+import { getGithubUserRepos, GithubIntegrationManager, userRepositoriesWithAppInstalled, exchangeCodeForAccessToken, getGithubAppUser } from "../../integrations/GithubIntegration";
 import { GithubRepository, User } from "../../types/prisma";
 import { db } from "../../prismaClient";
 import { processRepository } from "../github";
@@ -44,7 +44,7 @@ export const githubAppAuthMiddleware = async (req: Request, res: Response, next:
 
 export function githubLoginURL(req: Request, res: Response) {
     const state = crypto.randomBytes(8).toString('hex');
-    const redirectUri = githubApp.loginRedirect;
+    const redirectUri = githubApp.loginCallbackUrl;
     const redirectUrl = `https://github.com/login/oauth/authorize?client_id=${githubApp.clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=read:user%20user:email&state=${state}`;
     res.json({ url: redirectUrl });
 }
@@ -59,29 +59,18 @@ export async function githubCallback(req: Request, res: Response) {
     }
 
     try {
-        const tokenResp = await axios.post('https://github.com/login/oauth/access_token', {
-            client_id: githubApp.clientId,
-            client_secret: githubApp.clientSecret,
-            code,
-            redirect_uri: githubApp.loginCallbackUrl,
-        }, {
-            headers: { Accept: 'application/json' }
-        });
+        const tokenData = await exchangeCodeForAccessToken(code, githubApp.loginCallbackUrl);
+        const githubAccessToken = tokenData.access_token;
 
-        const githubAccessToken = tokenResp.data.access_token;
         if (!githubAccessToken) {
             return res.status(400).send('Failed to obtain access token');
         }
 
-        const userResp = await axios.get('https://api.github.com/user', {
-            headers: { Authorization: `Bearer ${githubAccessToken}` }
-        });
+        const githubUser = await getGithubAppUser(githubAccessToken);
 
-        console.log('GitHub OAuth user response:', userResp.data)
-
-        let email = userResp.data.email as string | null;
-        const name = (userResp.data.name as string) || (userResp.data.login as string);
-        const githubUsername = userResp.data.login as string;
+        let email = githubUser.email;
+        const name = githubUser.name || githubUser.login;
+        const githubUsername = githubUser.login;
 
         if (!email) {
             const emailsResp = await axios.get('https://api.github.com/user/emails', {
@@ -97,6 +86,9 @@ export async function githubCallback(req: Request, res: Response) {
 
         let user = await findUserByGitHubUsername(githubUsername);
         if (!user) {
+            user = await findUserByEmail(email);
+        }
+        if (!user) {
             // Create new user with GitHub username
             user = await createUser(name, email, githubUsername);
         } else if (user.github_username !== githubUsername) {
@@ -111,9 +103,9 @@ export async function githubCallback(req: Request, res: Response) {
             return res.status(500).send('Failed to create or find user');
         }
 
-        const expiresIn = tokenResp.data.expires_in || 28800; // Default to 8 hours
+        const expiresIn = tokenData.expires_in || 28800; // Default to 8 hours
         const tokenExpiry = new Date(Date.now() + expiresIn * 1000);
-        const refreshToken = tokenResp.data.refresh_token || '';
+        const refreshToken = tokenData.refresh_token || '';
 
         await db().github_app_tokens.upsert({
             where: { 
