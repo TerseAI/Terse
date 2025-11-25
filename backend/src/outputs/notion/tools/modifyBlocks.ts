@@ -175,6 +175,8 @@ Example: "[{\"operation\": \"append\", \"blocks\": [{\"object\": \"block\", \"ty
             operations_count: operations.length,
             successful_count: results.filter((r: any) => r.success).length,
             failed_count: results.filter((r: any) => !r.success).length,
+            page_id: pageId,
+            url: pageUrl,
         };
     }
 });

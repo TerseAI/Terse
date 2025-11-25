@@ -302,6 +302,7 @@ This tool returns the current state of the page including all properties, metada
 
         return {
             ...metadata,
+            url: metadata.url, // Explicitly include url at top level
             properties: properties,
             properties_raw: isFullPage(pageInfo) ? pageInfo.properties : undefined, // Include raw properties for reference
             blocks: blocks,

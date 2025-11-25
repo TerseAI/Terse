@@ -5,6 +5,7 @@ import { cn } from '@/lib/utils';
 import { RunHistoryStatus } from '@/shared/RunHistoryTypes';
 import { formatTimestamp, getFullTimestamp, parseToolInfo } from './utils';
 import type { ToolCallData } from './useChatEvents';
+import { ExternalLink } from 'lucide-react';
 
 type Props = {
     toolCallData: ToolCallData;
@@ -34,6 +35,7 @@ export default function ToolCallEvent({
     const toolName = toolCall?.summary || toolComplete?.tool_name || 'Unknown Tool';
     const parameters = toolCall?.parameters || '{}';
     const integration = toolCall?.integration || toolComplete?.integration;
+    const url = toolComplete?.url;
     const toolInfo = parseToolInfo(toolName, parameters, integration);
     
     return (
@@ -57,7 +59,7 @@ export default function ToolCallEvent({
                                                 <IconForIntegration integration={toolInfo.integration} />
                                             </div>
                                         )}
-                                        <div className="flex-1">
+                                        <div className="flex-1 flex items-center gap-2">
                                             <span className="text-foreground text-sm">
                                                 {isCompleted && '✓ '}
                                                 {isInProgress && '⟳ '}
@@ -66,6 +68,17 @@ export default function ToolCallEvent({
                                                 {toolInfo.target && ` → ${toolInfo.target}`}
                                                 {isCompleted && toolComplete?.status && ` (${toolComplete.status})`}
                                             </span>
+                                            {url && (
+                                                <a
+                                                    href={url}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    onClick={(e) => e.stopPropagation()}
+                                                    className="flex items-center gap-1 text-foreground flex-shrink-0 hover:text-primary transition-colors"
+                                                >
+                                                    <ExternalLink className="w-3 h-3" />
+                                                </a>
+                                            )}
                                         </div>
                                     </div>
                                 </AccordionTrigger>
