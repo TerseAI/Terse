@@ -7,6 +7,7 @@ import { db } from "../../prismaClient";
 import { OutputConfigType } from "@prisma/client";
 import { NotionPageConfig } from "../../shared/Configs";
 import { notionQueryPageTool, notionModifyBlocksTool } from "./tools";
+import { IntegrationType } from "../../shared/Integrations";
 
 export interface NotionPageSession extends Session {
     notionIntegration: NotionIntegration; // Top level integration record
@@ -45,7 +46,7 @@ export class NotionPageOutput extends Output<NotionPageSession, NotionPageConfig
             throw new Error(`Notion page config for automation output ${channelOutputConfig.id} not found`);
         }
 
-        return { notionIntegration: integration, notionPageConfig: notionPageConfig, user: user, isUserInitiated: true, runActions: [] };
+        return { notionIntegration: integration, notionPageConfig: notionPageConfig, user: user, isUserInitiated: true };
     }
 
     async addOutputToChannel(tx: PrismaTransaction, channelOutputId: string, output: NotionPageConfig): Promise<void> {
