@@ -689,6 +689,21 @@ export class LinearAdapter implements TicketManager {
 
     // helper
     private async convertLinearTicket(issue: Issue): Promise<Ticket> {
+        // Construct Linear URL: https://linear.app/{organizationSlug}/issue/{identifier}
+        // Linear SDK Issue doesn't expose URL directly, so we construct it
+        let url: string | undefined;
+        try {
+            const organization = await this.client.organization;
+            // Organization has a urlKey property that is the slug
+            const orgSlug = (organization as any).urlKey || organization.name?.toLowerCase().replace(/\s+/g, '-');
+            if (orgSlug && issue.identifier) {
+                url = `https://linear.app/${orgSlug}/issue/${issue.identifier}`;
+            }
+        } catch (error) {
+            // If we can't get organization, URL will be undefined
+            console.warn('Could not construct Linear ticket URL:', error);
+        }
+        
         return {
             id: issue.id,
             identifier: issue.identifier,
@@ -715,7 +730,8 @@ export class LinearAdapter implements TicketManager {
                 key: (await issue.team)?.key || ''
             },
             createdAt: issue.createdAt.toISOString(),
-            updatedAt: issue.updatedAt.toISOString()
+            updatedAt: issue.updatedAt.toISOString(),
+            url: url,
         }
     }
 }

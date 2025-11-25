@@ -1,6 +1,7 @@
 import { RecentAction } from "../../../shared/types";
 import { IconForIntegration } from "../../Channels/components/Integration";
 import { IntegrationType } from "../../../shared/Integrations";
+import { ExternalLink } from "lucide-react";
 
 export interface ActionItemProps {
     action: RecentAction;
@@ -16,7 +17,19 @@ export function ActionItem({ action }: ActionItemProps) {
             </div>
             <div className="flex-1 min-w-0">
                 <div className="flex items-start justify-between gap-2 mb-1">
-                    <p className="text-sm font-medium">{action.action}</p>
+                    <div className="flex items-center gap-2 flex-1 min-w-0">
+                        <p className="text-sm font-medium">{action.action}</p>
+                        {action.url && (
+                            <a
+                                href={action.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center gap-1 text-foreground flex-shrink-0 hover:text-primary transition-colors"
+                            >
+                                <ExternalLink className="w-3 h-3" />
+                            </a>
+                        )}
+                    </div>
                     <span className="text-xs text-muted-foreground whitespace-nowrap">
                         {action.timestamp}
                     </span>

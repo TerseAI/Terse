@@ -4,6 +4,7 @@ import { Session } from "../server";
 import { IAgentSession } from "./agents/AgentSession";
 import { Output } from "../outputs/abstract/Output";
 import { ConfigInstance } from "../shared/Configs";
+import { IntegrationType } from "../shared/Integrations";
 
 // Enums for event types
 export enum RawModelStreamEventType {
@@ -121,6 +122,12 @@ export enum RawModelStreamEventType {
         // Get integration from mapping or use unknown as fallback
         const integration = toolToIntegrationMap?.get(item.name) || "unknown";
         
+        // Extract URL from tool output
+        let url: string | undefined;
+        if (item.output) {
+          url = extractUrlFromToolOutput(item.name, item.output, integration);
+        }
+        
         yield {
           type: "ToolCallComplete",
           tool_name: item.name,
@@ -128,6 +135,7 @@ export enum RawModelStreamEventType {
           step_id: item.callId,
           changed_items: changedItems,
           integration: integration,
+          url: url,
         };
       }
     }
@@ -137,3 +145,36 @@ export enum RawModelStreamEventType {
       type: "NaturalStop",
     };
   }
+
+/**
+ * Extracts URL from tool output.
+ * Each tool should return a `url` field at the top level of its output if a URL is available.
+ * Handles both JSON string outputs and object outputs.
+ */
+function extractUrlFromToolOutput(toolName: string, output: any, integration: string): string | undefined {
+  try {
+    let parsedOutput: any = output;
+    
+    // If output is a string, try to parse it as JSON
+    if (typeof output === 'string') {
+      try {
+        parsedOutput = JSON.parse(output);
+      } catch (parseError) {
+        // If parsing fails, it's not JSON, return undefined
+        return undefined;
+      }
+    }
+    
+    // Check if parsed output has a url field at the top level
+    if (parsedOutput && typeof parsedOutput === 'object' && parsedOutput !== null) {
+      if ('url' in parsedOutput && typeof parsedOutput.url === 'string') {
+        return parsedOutput.url;
+      }
+    }
+    
+    return undefined;
+  } catch (error) {
+    // If extraction fails, return undefined
+    return undefined;
+  }
+}

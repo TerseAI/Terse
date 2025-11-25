@@ -87,10 +87,14 @@ IMPORTANT:
                     page_id: validPageId,
                     properties: properties as Record<string, any>,
                 });
+                // Construct Notion page URL: https://www.notion.so/{pageId} (dashes removed)
+                const pageIdWithoutDashes = response.id.replace(/-/g, '');
+                const pageUrl = `https://www.notion.so/${pageIdWithoutDashes}`;
                 return {
                     success: true,
                     action: 'updated',
                     page_id: response.id,
+                    url: pageUrl,
                 };
             } else {
                 // Create new page
@@ -102,10 +106,14 @@ IMPORTANT:
                     properties: properties as Record<string, any>,
                 });
                 console.log(chalk.green("Notion database modified successfully"));
+                // Construct Notion page URL: https://www.notion.so/{pageId} (dashes removed)
+                const pageIdWithoutDashes = response.id.replace(/-/g, '');
+                const pageUrl = `https://www.notion.so/${pageIdWithoutDashes}`;
                 return {
                     success: true,
                     action: 'created',
-                    page_id: response.id
+                    page_id: response.id,
+                    url: pageUrl,
                 };
             }
         } catch (error: any) {

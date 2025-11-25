@@ -119,6 +119,7 @@ This tool returns the current state of the Confluence page including all metadat
 
             return {
                 ...metadata,
+                url: metadata.url, // Explicitly include url at top level
                 body: body,
                 body_text: body.storage?.value || body.view?.value || body.export_view?.value || '',
                 ancestors: ancestors,
@@ -264,6 +265,7 @@ To find the correct position, first call confluence_query_page to see the page c
                 },
                 text_commented_on: text_to_comment_on ?? undefined,
                 message: 'Inline comment added successfully to the page',
+                url: pageUrl, // Return the page URL so it can be linked to
             };
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : String(error);

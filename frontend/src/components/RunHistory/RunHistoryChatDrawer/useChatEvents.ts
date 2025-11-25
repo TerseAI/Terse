@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import type { ModelEvent } from '@/shared/ModelEvents';
+import type { ModelEvent, ToolCall, ToolCallComplete } from '@/shared/ModelEvents';
 
 export type MessageOrderItem = {
     stepId: string;
@@ -8,8 +8,8 @@ export type MessageOrderItem = {
 };
 
 export type ToolCallData = {
-    toolCall?: { type: 'ToolCall'; summary: string; step_id: string; parameters: string; integration: string; timestamp?: string };
-    toolComplete?: { type: 'ToolCallComplete'; tool_name: string; status: string; step_id: string; changed_items: any[]; integration: string; timestamp?: string };
+    toolCall?: ToolCall & { timestamp?: string };
+    toolComplete?: ToolCallComplete & { timestamp?: string };
     firstSeenIndex: number;
 };
 

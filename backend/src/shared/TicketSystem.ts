@@ -36,6 +36,7 @@ export interface Ticket {
     };
     createdAt: string;
     updatedAt: string;
+    url?: string; // URL to view the ticket in the ticket system
 }
 
 export interface User {
