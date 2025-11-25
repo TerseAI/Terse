@@ -2,6 +2,7 @@ import { RunContext, tool } from "@openai/agents";
 import { z } from "zod";
 import { Client } from '@notionhq/client';
 import { NotionDatabaseSession } from "../NotionDatabaseOutput";
+import { IntegrationType } from "../../../shared/Integrations";
 
 // Helper function to build property schema with format examples
 function buildPropertySchema(propertyName: string, propertyConfig: any): any {

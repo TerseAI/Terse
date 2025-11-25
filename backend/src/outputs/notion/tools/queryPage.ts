@@ -3,6 +3,7 @@ import { z } from "zod";
 import { Client } from '@notionhq/client';
 import { NotionPageSession } from "../NotionPageOutput";
 import { GetPageResponse, PageObjectResponse } from "@notionhq/client/build/src/api-endpoints";
+import { IntegrationType } from "../../../shared/Integrations";
 
 // Helper function to extract readable values from Notion page property objects
 function extractPagePropertyValue(property: any): any {

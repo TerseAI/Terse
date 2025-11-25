@@ -264,8 +264,6 @@ To find the correct position, first call confluence_query_page to see the page c
                 },
                 text_commented_on: text_to_comment_on ?? undefined,
                 message: 'Inline comment added successfully to the page',
-                url: pageUrl,
-                integration: IntegrationType.ATLASSIAN
             };
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : String(error);

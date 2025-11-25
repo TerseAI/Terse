@@ -1,8 +1,8 @@
 import { RunContext, tool } from "@openai/agents";
 import { z } from "zod";
 import { Client } from '@notionhq/client';
-import chalk from "chalk";
 import { NotionDatabaseSession } from "../NotionDatabaseOutput";
+import { IntegrationType } from "../../../shared/Integrations";
 
 // Helper function to extract readable values from Notion property objects
 function extractPropertyValue(property: any): any {
