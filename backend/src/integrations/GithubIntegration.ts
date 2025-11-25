@@ -5,8 +5,8 @@ import { EventProcessor } from "../agent/ChannelAgent/EventProcessor";
 import { InputEvent } from "./abstract/InputEvent";
 import { GithubIntegration, GithubIntegrationMetadata, IntegrationType } from "../shared/Integrations";
 import { GithubAppInstallationRepository, GithubAppInstallationRepositoryResponse, GithubAppInstallationResponse, GithubAppUnifiedEventRequest } from "../routes/GithubTypes";
-import { processRepository, resolveUserForGithubInstallation } from "../routes/github";
-import { GithubRepository, User } from "../types/prisma";
+import { resolveUserForGithubInstallation } from "../routes/github";
+import { User } from "../types/prisma";
 import { ChannelInputWithConfigs } from "../types/prisma";
 import { RunHistoryTrigger } from "../shared/RunHistoryTypes";
 import { OAuthInstallationDetails } from "../shared/types";
@@ -14,20 +14,21 @@ import { githubApp, urls } from "../config/settings";
 import { Request, Response } from "express";
 import { InputConfigType } from "@prisma/client";
 import axios, { AxiosResponse } from "axios";
-import { GithubAppUser, GithubUserRepository } from "../routes/GithubTypes";
+import { GithubAppUser } from "../routes/GithubTypes";
 
 export class GithubIntegrationManager implements Integration<GithubIntegration, GithubAppUnifiedEventRequest, typeof GithubIntegrationMetadata>, OAuthIntegrationInstallation {
     constructor() { }
     integrationType: IntegrationType = IntegrationType.GITHUB;
 
     async getInstancesForUser(userId: string): Promise<GithubIntegration[]> {
-        const userGithubInstallations = await db().user_github_installation.findMany({
+        const userAccounts = await db().github_app_tokens.findMany({
             where: { user_id: userId }
         });
-        return userGithubInstallations.map(ugi => ({
-            id: ugi.id,
-            installation_id: ugi.installation_id,
-            account_name: ugi.account_name || null,
+        const appInstallations = await getAppInstallationsForUser(userAccounts[0].access_token);
+        return appInstallations.installations.map(ai => ({
+            id: ai.id.toString(),
+            installation_id: ai.id,
+            account_name: ai.account.login,
         }));
     }
 
@@ -314,7 +315,6 @@ export async function exchangeCodeForAccessToken(code: string, redirectUri?: str
         }
     );
 
-    console.log('GitHub App token response:', tokenResp.data);
     const accessToken = tokenResp.data.access_token;
     const refreshToken = tokenResp.data.refresh_token;
     const expiresIn = tokenResp.data.expires_in;
@@ -328,7 +328,6 @@ export async function getAppInstallationsForUser(oAuthToken: string): Promise<Gi
             Accept: 'application/vnd.github+json',
         },
     });
-    console.log('GitHub App installations:', resp.data);
     return resp.data;
 }
 

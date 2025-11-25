@@ -7,9 +7,7 @@ import axios from "axios";
 import { findUserByEmail, findUserByGitHubUsername, createUser, updateUserGitHubUsername } from "../../types/user";
 import { githubApp } from "../../config/settings";
 import { GithubIntegrationManager, exchangeCodeForAccessToken, getGithubAppUser } from "../../integrations/GithubIntegration";
-import { GithubRepository, User } from "../../types/prisma";
 import { db } from "../../prismaClient";
-import { processRepository } from "../github";
 
 export const githubAppAuthMiddleware = async (req: Request, res: Response, next: NextFunction) => {
     console.log('githubAppAuthMiddleware route has been hit')
