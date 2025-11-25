@@ -9,6 +9,7 @@ import { settings } from '../../config/settings';
 import { formatChannelInputsForAgent, formatChannelOutputForAgent } from './formatContext';
 import { UserFormatter } from '../../utility/UserFormatter';
 import { toEventStream } from '../streaming';
+import { convertOutputConfigTypeToIntegrationType } from '../../utility/typeConverters';
 import { storeChatEvent } from './runHistory';
 import { getRealtimeSocket } from '../../realtimeSocket';
 import type { RunHistoryModelEvent, RunHistoryModelSocketEvent, RunHistoryStreamingParams } from '../../shared/RunHistoryTypes';
@@ -37,6 +38,8 @@ export class ChannelAgent<T extends Session, TConfig extends ConfigInstance> {
     private agent?: Agent<T, AgentOutputType>;
     private tools: Tool<T>[] = [];
 
+    private toolToIntegrationMap: Map<string, string> = new Map();
+
     constructor(session: T, output: Output<T, TConfig>, channelPrompt: ChannelPrompt, channelInputs: ChannelInput[], channelOutput: ChannelOutput) {
         this.history = [];
         this.session = session;
@@ -45,6 +48,13 @@ export class ChannelAgent<T extends Session, TConfig extends ConfigInstance> {
         this.channelInputs = channelInputs;
         this.channelOutput = channelOutput;
         this.tools = output.toolbox.map(entry => entry.tool);
+        
+        // Build tool-to-integration mapping
+        const integrationType = convertOutputConfigTypeToIntegrationType(output.integration);
+        const integrationString = integrationType; // IntegrationType enum values are strings
+        output.toolbox.forEach(entry => {
+            this.toolToIntegrationMap.set(entry.tool.name, integrationString);
+        });
     }
 
     chooseChannelAgentModel(): string {
@@ -141,7 +151,7 @@ export class ChannelAgent<T extends Session, TConfig extends ConfigInstance> {
             const userRoom = `user:${streamingParams.userId}`;
             
             try {
-                for await (const modelEvent of toEventStream(result)) {
+                for await (const modelEvent of toEventStream(result, undefined, this.toolToIntegrationMap)) {
                     // Store event in database and get the ID
                     const eventId = await storeChatEvent(streamingParams.runId, modelEvent);
                     

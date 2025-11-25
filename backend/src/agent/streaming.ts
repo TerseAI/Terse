@@ -66,10 +66,12 @@ export enum RawModelStreamEventType {
    * Works with any agent output type (AgentOutputType or Zod schemas)
    * @param result - The streamed run result from the agent
    * @param agentSession - Optional agent session for tracking changed items. If not provided, changed_items will be empty.
+   * @param toolToIntegrationMap - Map from tool name to integration type string. Used to annotate tool calls with their integration.
    */
   export async function* toEventStream<T extends Session = Session>(
     result: StreamedRunResult<T, Agent<T, any>>,
-    agentSession?: IAgentSession<any>
+    agentSession?: IAgentSession<any>,
+    toolToIntegrationMap?: Map<string, string>
   ): AsyncGenerator<ModelEvent, void, unknown> {
     for await (const event of result as AsyncIterable<RawModelStreamEvent | ToolCallCompleteEvent | ToolCalledEvent>) {          
       // TextDelta: output_text_delta
@@ -93,12 +95,16 @@ export enum RawModelStreamEventType {
         const toolCalledEvent = event as ToolCalledEvent;
         const item = toolCalledEvent.item.rawItem;
         
+        // Get integration from mapping or use unknown as fallback
+        const integration = toolToIntegrationMap?.get(item.name) || "unknown";
+        
         // Send ToolCall event with the actual parameters
         yield {
           type: "ToolCall",
           summary: item.name,
           step_id: item.callId,
-          parameters: item.arguments
+          parameters: item.arguments,
+          integration: integration
         };
       }
 
@@ -112,12 +118,16 @@ export enum RawModelStreamEventType {
         // Get the changed items for this tool call, or use empty array if no session provided
         const changedItems = agentSession?.getAndClearChangedItems() || [];
         
+        // Get integration from mapping or use unknown as fallback
+        const integration = toolToIntegrationMap?.get(item.name) || "unknown";
+        
         yield {
           type: "ToolCallComplete",
           tool_name: item.name,
           status: item.status,
           step_id: item.callId,
           changed_items: changedItems,
+          integration: integration,
         };
       }
     }

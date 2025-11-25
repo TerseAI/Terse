@@ -1,4 +1,4 @@
-import { RunHistoryAction } from "../shared/RunHistoryTypes";
+
 import { AtlassianIntegration, IntegrationType } from "../shared/Integrations";
 import { ChannelOutput, User, ChannelConfluenceConfig, PrismaTransaction } from "../types/prisma";
 import { Session } from "../server";

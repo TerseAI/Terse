@@ -320,3 +320,19 @@ export const convertConfigTypeToOutputConfigType = (configType: ConfigType): Out
             throw new Error(`ConfigType ${configType} is not a valid output config type. Only NOTION_PAGE, NOTION_DATABASE, and CONFLUENCE are supported.`);
     }
 }
+
+/**
+ * Converts OutputConfigType to IntegrationType.
+ * Maps output configuration types to their corresponding integration types.
+ */
+export const convertOutputConfigTypeToIntegrationType = (outputConfigType: OutputConfigType): IntegrationType => {
+    switch (outputConfigType) {
+        case OutputConfigType.NOTION_PAGE:
+        case OutputConfigType.NOTION_DATABASE:
+            return IntegrationType.NOTION;
+        case OutputConfigType.CONFLUENCE:
+            return IntegrationType.ATLASSIAN;
+        default:
+            throw outputConfigType satisfies never;
+    }
+}

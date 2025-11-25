@@ -82,7 +82,6 @@ import {
 import { getConfluenceIntegrations, getConfluenceResources } from "./routes/confluence";
 import { getActiveIntegrations, getAllIntegrations, getIntegrationInstallationDetails } from "./routes/integrations";
 import { initializeRealtimeSocket } from "./realtimeSocket";
-import { RunHistoryAction } from "./shared/RunHistoryTypes";
 
 export type Session = {
   user: User;
@@ -90,8 +89,6 @@ export type Session = {
   isUserInitiated: boolean; // true if the user has initiated the session, false if the session was initiated by the system
   teamId?: string;
   currentUser?: TicketUser;
-  /** @deprecated Use chat event tracking via ModelEvents instead. This field is kept for backward compatibility but will be removed in a future version. */
-  runActions?: RunHistoryAction[];
 };
 
 const app = express();

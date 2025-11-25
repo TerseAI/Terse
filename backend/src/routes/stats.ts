@@ -2,6 +2,8 @@ import { Request, Response } from "express";
 import { db } from "../prismaClient";
 import { StatsResponse, DayOfWeek, RecentAction } from "../shared/types";
 import { convertRunHistoryIntegrationToIntegrationType } from "../utility/typeConverters";
+import { IntegrationType } from "../shared/Integrations";
+import type { ToolCallComplete } from "../shared/ModelEvents";
 
 // Stats configuration constants
 const CHART_TIME_WINDOW_DAYS = 7; // Number of days for the daily events chart
@@ -69,10 +71,11 @@ export async function getStats(req: Request, res: Response) {
     const totalEventsChange = calculatePercentageChange(previousTotalEvents, currentTotalEvents);
 
     // 2. Actions Taken
-    // Count actions from run_history_actions for user's channels
+    // Count completed tool calls from run_history_chat_events for user's channels
     const [currentActionsCount, previousActionsCount] = await Promise.all([
-        prisma.run_history_actions.count({
+        prisma.run_history_chat_events.count({
             where: {
+                event_type: "ToolCallComplete",
                 run_history_record: {
                     automation: {
                         user_id: userId,
@@ -83,8 +86,9 @@ export async function getStats(req: Request, res: Response) {
                 },
             },
         }),
-        prisma.run_history_actions.count({
+        prisma.run_history_chat_events.count({
             where: {
+                event_type: "ToolCallComplete",
                 run_history_record: {
                     automation: {
                         user_id: userId,
@@ -173,9 +177,10 @@ export async function getStats(req: Request, res: Response) {
         });
     }
 
-    // 5. Recent Actions (last 10)
-    const recentActionsData = await prisma.run_history_actions.findMany({
+    // 5. Recent Actions (last 10 completed tool calls)
+    const recentToolCallsData = await prisma.run_history_chat_events.findMany({
         where: {
+            event_type: "ToolCallComplete",
             run_history_record: {
                 automation: {
                     user_id: userId,
@@ -194,20 +199,36 @@ export async function getStats(req: Request, res: Response) {
             },
         },
         orderBy: {
-            created_at: "desc",
+            timestamp: "desc",
         },
         take: 10,
     });
 
-    const recentActions: RecentAction[] = recentActionsData.map((action) => ({
-        action: action.action,
-        integration: convertRunHistoryIntegrationToIntegrationType(action.integration) as string,
-        target: action.target,
-        details: action.details,
-        url: action.url ?? undefined,
-        timestamp: action.run_history_record.timestamp.toISOString(),
-        channelName: action.run_history_record.automation.name,
-    }));
+    const recentActions: RecentAction[] = recentToolCallsData.map((event) => {
+        const toolCallComplete = event.event_json as ToolCallComplete;
+        
+        // Integration is now required and provided directly from the tool call event
+        const integration = toolCallComplete.integration as IntegrationType;
+
+        // Generate details from status and changed items
+        let details = toolCallComplete.status === "success" ? "Tool call completed successfully" : toolCallComplete.status;
+        if (toolCallComplete.changed_items && toolCallComplete.changed_items.length > 0) {
+            const itemsSummary = toolCallComplete.changed_items
+                .map(item => `${item.change_event_type} ${item.type_name}`)
+                .join(", ");
+            details = `${details}. ${itemsSummary}`;
+        }
+
+        return {
+            action: toolCallComplete.tool_name,
+            integration: integration,
+            target: '',
+            details: details,
+            url: toolCallComplete.url ?? undefined,
+            timestamp: event.timestamp.toISOString(),
+            channelName: event.run_history_record.automation.name,
+        };
+    });
 
     const response: StatsResponse = {
         totalEventsProcessed: currentTotalEvents,

@@ -1,5 +1,5 @@
 import { db } from "../../prismaClient";
-import type { RunHistoryAction as SharedRunHistoryAction, RunHistoryStatus, RunHistoryTrigger } from "../../shared/RunHistoryTypes";
+import type { RunHistoryStatus, RunHistoryTrigger } from "../../shared/RunHistoryTypes";
 import { convertIntegrationTypeToRunHistoryIntegration } from "../../utility/typeConverters";
 import { ModelEvent } from "../../shared/ModelEvents";
 
@@ -52,22 +52,6 @@ export async function markRunProcessed(runId: string, reason?: string): Promise<
             filtered: false,
             decision_action: "processed",
             decision_reason: reason ?? "",
-        },
-    });
-}
-
-export async function appendRunAction(
-    runId: string,
-    action: SharedRunHistoryAction,
-): Promise<void> {
-    await db().run_history_actions.create({
-        data: {
-            run_history_record_id: runId,
-            action: action.action,
-            integration: convertIntegrationTypeToRunHistoryIntegration(action.integration),
-            target: action.target,
-            details: action.details,
-            url: action.url ?? null,
         },
     });
 }
