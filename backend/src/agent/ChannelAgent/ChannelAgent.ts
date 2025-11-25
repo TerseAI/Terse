@@ -141,7 +141,7 @@ export class ChannelAgent<T extends Session, TConfig extends ConfigInstance> {
             const userRoom = `user:${streamingParams.userId}`;
             
             try {
-                for await (const modelEvent of toEventStream(result, undefined)) {
+                for await (const modelEvent of toEventStream(result)) {
                     // Store event in database and get the ID
                     const eventId = await storeChatEvent(streamingParams.runId, modelEvent);
                     

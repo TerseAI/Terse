@@ -91,8 +91,6 @@ IMPORTANT:
                     success: true,
                     action: 'updated',
                     page_id: response.id,
-                    url: 'url' in response ? response.url : undefined,
-                    integration: IntegrationType.NOTION
                 };
             } else {
                 // Create new page
@@ -107,9 +105,7 @@ IMPORTANT:
                 return {
                     success: true,
                     action: 'created',
-                    page_id: response.id,
-                    url: 'url' in response ? response.url : undefined,
-                    integration: IntegrationType.NOTION
+                    page_id: response.id
                 };
             }
         } catch (error: any) {

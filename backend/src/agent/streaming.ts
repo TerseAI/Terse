@@ -93,8 +93,6 @@ export enum RawModelStreamEventType {
         const toolCalledEvent = event as ToolCalledEvent;
         const item = toolCalledEvent.item.rawItem;
         
-        console.log('ToolCalled', item.name, item.callId);
-        
         // Send ToolCall event with the actual parameters
         yield {
           type: "ToolCall",
@@ -114,26 +112,12 @@ export enum RawModelStreamEventType {
         // Get the changed items for this tool call, or use empty array if no session provided
         const changedItems = agentSession?.getAndClearChangedItems() || [];
         
-        // Extract integration and URL from tool response if present
-        let integration: string | undefined;
-        let url: string | undefined;
-        if (item.output && typeof item.output === 'object') {
-          if ('integration' in item.output && typeof item.output.integration === 'string') {
-            integration = item.output.integration;
-          }
-          if ('url' in item.output && typeof item.output.url === 'string' && item.output.url) {
-            url = item.output.url;
-          }
-        }
-        
         yield {
           type: "ToolCallComplete",
           tool_name: item.name,
           status: item.status,
           step_id: item.callId,
           changed_items: changedItems,
-          integration,
-          url
         };
       }
     }
