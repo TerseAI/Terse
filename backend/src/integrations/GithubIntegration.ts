@@ -24,12 +24,15 @@ export class GithubIntegrationManager implements Integration<GithubIntegration, 
         const userAccounts = await db().github_app_tokens.findMany({
             where: { user_id: userId }
         });
-        const appInstallations = await getAppInstallationsForUser(userAccounts[0].access_token);
-        return appInstallations.installations.map(ai => ({
-            id: ai.id.toString(),
-            installation_id: ai.id,
-            account_name: ai.account.login,
+        const installations = await Promise.all(userAccounts.map(async (ua) => {
+            const appInstallations = await getAppInstallationsForUser(ua.access_token);
+            return appInstallations.installations.map(ai => ({
+                id: ai.id.toString(),
+                installation_id: ai.id,
+                account_name: ai.account.login,
+            }));
         }));
+        return installations.flat();
     }
 
     async processWebhookEvent(event: GithubAppUnifiedEventRequest): Promise<void> {
@@ -286,6 +289,7 @@ export class GithubEvent extends InputEvent {
     }
 }
 
+// MARK: - Helper Functions - GITHUB REST API
 export async function getGithubAppUser(githubAppAccessToken: string): Promise<GithubAppUser> {
     const resp = await axios.get(
         'https://api.github.com/user',
