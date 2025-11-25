@@ -62,7 +62,7 @@ import {
   getNotionResources,
   getNotionIntegrations
 } from "./routes/notion";
-import { getRunHistory } from "./routes/runHistory";
+import { getRunHistory, getChatHistory } from "./routes/runHistory";
 import { getStats } from "./routes/stats";
 import { User as TicketUser } from "./shared/TicketSystem";
 import {
@@ -199,6 +199,10 @@ app.get("/stats", authMiddleware, async (req, res) => {
 
 app.get("/run-history/:channelId", authMiddleware, async (req, res) => {
   getRunHistory(req, res);
+});
+
+app.get("/run-history/:runId/chat", authMiddleware, async (req, res) => {
+  getChatHistory(req, res);
 });
 
 // MARK: SESSION
