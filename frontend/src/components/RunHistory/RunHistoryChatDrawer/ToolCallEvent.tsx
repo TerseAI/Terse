@@ -1,10 +1,9 @@
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { IconForIntegration } from '@/pages/Channels/components/Integration';
-import { ExternalLink } from 'lucide-react';
 import { capitalize } from '@/lib/utils';
 import { cn } from '@/lib/utils';
 import { RunHistoryStatus } from '@/shared/RunHistoryTypes';
-import { formatTimestamp, getFullTimestamp, parseToolInfo, extractDocumentUrlFromChangedItems } from './utils';
+import { formatTimestamp, getFullTimestamp, parseToolInfo } from './utils';
 import type { ToolCallData } from './useChatEvents';
 
 type Props = {
@@ -34,13 +33,8 @@ export default function ToolCallEvent({
     // Use toolCall for info if available, otherwise use toolComplete
     const toolName = toolCall?.summary || toolComplete?.tool_name || 'Unknown Tool';
     const parameters = toolCall?.parameters || '{}';
-    const toolInfo = parseToolInfo(toolName, parameters);
-    
-    // Try to extract URL from changed_items or parameters
-    let url: string | null = toolInfo.url;
-    if (!url && toolComplete?.changed_items && toolComplete.changed_items.length > 0) {
-        url = extractDocumentUrlFromChangedItems(toolComplete.changed_items, toolInfo.integration);
-    }
+    const integration = toolCall?.integration || toolComplete?.integration;
+    const toolInfo = parseToolInfo(toolName, parameters, integration);
     
     return (
         <div key={`tool-${stepId}`} className="mb-4 select-text">
@@ -64,27 +58,14 @@ export default function ToolCallEvent({
                                             </div>
                                         )}
                                         <div className="flex-1">
-                                            <div className="flex items-center gap-2">
-                                                <span className="text-foreground text-sm">
-                                                    {isCompleted && '✓ '}
-                                                    {isInProgress && '⟳ '}
-                                                    {toolInfo.action}
-                                                    {toolInfo.integration && ` on ${capitalize(toolInfo.integration)}`}
-                                                    {toolInfo.target && ` → ${toolInfo.target}`}
-                                                    {isCompleted && toolComplete?.status && ` (${toolComplete.status})`}
-                                                </span>
-                                                {url && (
-                                                    <a
-                                                        href={url}
-                                                        target="_blank"
-                                                        rel="noopener noreferrer"
-                                                        onClick={(e) => e.stopPropagation()}
-                                                        className="text-primary hover:opacity-80 transition-opacity"
-                                                    >
-                                                        <ExternalLink className="w-3 h-3" />
-                                                    </a>
-                                                )}
-                                            </div>
+                                            <span className="text-foreground text-sm">
+                                                {isCompleted && '✓ '}
+                                                {isInProgress && '⟳ '}
+                                                {toolInfo.action}
+                                                {toolInfo.integration && ` on ${capitalize(toolInfo.integration)}`}
+                                                {toolInfo.target && ` → ${toolInfo.target}`}
+                                                {isCompleted && toolComplete?.status && ` (${toolComplete.status})`}
+                                            </span>
                                         </div>
                                     </div>
                                 </AccordionTrigger>

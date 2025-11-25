@@ -8,8 +8,8 @@ export type MessageOrderItem = {
 };
 
 export type ToolCallData = {
-    toolCall?: { type: 'ToolCall'; summary: string; step_id: string; parameters: string; timestamp?: string };
-    toolComplete?: { type: 'ToolCallComplete'; tool_name: string; status: string; step_id: string; changed_items: any[]; timestamp?: string };
+    toolCall?: { type: 'ToolCall'; summary: string; step_id: string; parameters: string; integration: string; timestamp?: string };
+    toolComplete?: { type: 'ToolCallComplete'; tool_name: string; status: string; step_id: string; changed_items: any[]; integration: string; timestamp?: string };
     firstSeenIndex: number;
 };
 

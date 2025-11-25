@@ -25,8 +25,8 @@ export type ToolApprovalRequest = { step_id: string, name: string, arguments: st
 
 export type TextDelta = { delta: string, step_id: string, };
 
-export type ToolCall = { summary: string, step_id: string, parameters: string, };
+export type ToolCall = { summary: string, step_id: string, parameters: string, integration: string, };
 
-export type ToolCallComplete = { tool_name: string, status: string, step_id: string, changed_items: ChangedItem[], integration?: string, url?: string };
+export type ToolCallComplete = { tool_name: string, status: string, step_id: string, changed_items: ChangedItem[], integration: string, url?: string };
 
 export type FilterResult = { isRelevant: boolean, reason: string, confidence: number };

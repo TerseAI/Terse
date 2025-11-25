@@ -1,5 +1,6 @@
 import moment from 'moment';
 import { IntegrationType } from '@/shared/Integrations';
+import { capitalize } from '@/lib/utils';
 
 // Helper function to format timestamp
 export function formatTimestamp(timestamp?: string): string {
@@ -35,64 +36,22 @@ export function getFullTimestamp(timestamp?: string): string {
 }
 
 // Helper function to parse tool name and extract integration/action info
-export function parseToolInfo(toolName: string, parameters: string): {
+export function parseToolInfo(toolName: string, parameters: string, integration?: string): {
     integration: IntegrationType | null;
     action: string;
     target: string;
-    url: string | null;
     details: string;
 } {
-    let integration: IntegrationType | null = null;
+    // Use integration from event directly, no need to infer
+    let integrationType: IntegrationType | null = null;
+    if (integration) {
+        // Map string to IntegrationType enum
+        integrationType = integration as IntegrationType;
+    }
+    
     let action = toolName;
     let target = '';
-    let url: string | null = null;
-    let details = '';
-
-    // Try to infer integration from tool name
-    const toolLower = toolName.toLowerCase();
-    if (toolLower.includes('jira') || toolLower.includes('atlassian')) {
-        integration = IntegrationType.ATLASSIAN;
-    } else if (toolLower.includes('linear') && !toolLower.includes('jira')) {
-        integration = IntegrationType.LINEAR;
-    } else if (toolLower.includes('notion')) {
-        integration = IntegrationType.NOTION;
-    } else if (toolLower.includes('confluence')) {
-        integration = IntegrationType.ATLASSIAN;
-    } else if (toolLower.includes('slack')) {
-        integration = IntegrationType.SLACK;
-    } else if (toolLower.includes('github')) {
-        integration = IntegrationType.GITHUB;
-    } else if (toolLower.includes('figma')) {
-        integration = IntegrationType.FIGMA;
-    } else if (toolLower.includes('gmail')) {
-        integration = IntegrationType.GMAIL;
-    }
-
-    // Parse parameters JSON
-    try {
-        const params = JSON.parse(parameters);
-        
-        // Extract target from common parameter fields
-        if (params.title) target = params.title;
-        else if (params.name) target = params.name;
-        else if (params.query) target = params.query;
-        else if (params.id) target = params.id;
-        else if (params.target) target = params.target;
-        
-        // Extract URL from various possible locations
-        // Notion: pageId can be converted to URL, or url field might exist
-        if (params.url) {
-            url = params.url;
-        } else if (params.link) {
-            url = params.link;
-        }
-        
-        // Format details
-        details = JSON.stringify(params, null, 2);
-    } catch (e) {
-        // If parameters aren't valid JSON, use as-is
-        details = parameters;
-    }
+    let details = parameters
 
     // Format action name (convert "Create Ticket" to "create_ticket" style, then format)
     const formatAction = (s: string) => {
@@ -107,21 +66,21 @@ export function parseToolInfo(toolName: string, parameters: string): {
     
     action = formatAction(toolName);
 
-    return { integration, action, target, url, details };
-}
-
-// Helper function to extract document URL from changed_items
-export function extractDocumentUrlFromChangedItems(changedItems: any[], integration: IntegrationType | null): string | null {
-    if (!changedItems || changedItems.length === 0 || !integration) {
-        return null;
-    }
-
-    // Look for URL in changed items
-    for (const item of changedItems) {
-        if (item.url) {
-            return item.url;
+    // Remove integration prefix from action name if it exists (e.g., "Notion Query Page" -> "Query Page")
+    // This avoids redundant display like "Notion Query Page on Notion"
+    if (integrationType && action) {
+        const integrationName = capitalize(integrationType);
+        // Check if action starts with the integration name
+        if (action.toLowerCase().startsWith(integrationName.toLowerCase() + ' ')) {
+            action = action.substring(integrationName.length + 1).trim();
+        }
+        // Also handle cases like "notion_query_page" -> "notion Query Page" after formatting
+        const actionWords = action.split(' ');
+        if (actionWords.length > 1 && actionWords[0].toLowerCase() === integrationName.toLowerCase()) {
+            action = actionWords.slice(1).join(' ');
         }
     }
-    return null;
+
+    return { integration: integrationType, action, target, details };
 }
 
