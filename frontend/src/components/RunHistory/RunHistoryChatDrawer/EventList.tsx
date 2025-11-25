@@ -38,44 +38,13 @@ export default function EventList({
         return <div className="py-8 text-center text-muted-foreground">No chat events yet</div>;
     }
 
-    // Check if we have a FilterResult event
+    // Find FilterResult event once for reuse
     const filterResultEvent = events.find((e) => e.type === 'FilterResult') as { type: 'FilterResult'; isRelevant: boolean; reason: string; confidence: number; timestamp?: string } | undefined;
-
-    const getTimestampForEvent = (item: MessageOrderItem): string | undefined => {
-        const eventForTimestamp = events.find((e) => {
-            if (item.type === 'text' && e.type === 'TextDelta' && e.step_id === item.stepId) {
-                return true;
-            }
-            if (item.type === 'tool') {
-                const toolData = toolCallMap.get(item.stepId);
-                if (toolData?.toolCall && e.type === 'ToolCall' && e.step_id === item.stepId) {
-                    return true;
-                }
-                if (toolData?.toolComplete && e.type === 'ToolCallComplete' && e.step_id === item.stepId) {
-                    return true;
-                }
-            }
-            if (item.type === 'approval' && e.type === 'ToolApprovalRequest' && e.step_id === item.stepId) {
-                return true;
-            }
-            if (item.type === 'stop' && e.type === 'NaturalStop') {
-                return true;
-            }
-            if (item.type === 'failure' && e.type === 'Failure') {
-                return true;
-            }
-            if (item.type === 'filter' && e.type === 'FilterResult') {
-                return true;
-            }
-            return false;
-        });
-        return (eventForTimestamp as any)?.timestamp;
-    };
 
     return (
         <>
             {messageOrder.map((item, index) => {
-                const timestamp = getTimestampForEvent(item);
+                const timestamp = item.timestamp;
 
                 if (item.type === 'text') {
                     const text = accumulatedMessages.get(item.stepId) || '';
