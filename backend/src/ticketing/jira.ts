@@ -54,14 +54,11 @@ export class JiraAdapter implements TicketManager {
     type: TicketSystemType = TicketSystemType.Jira;
 
     private client: JiraClient;
-    private baseUrl: string;
 
     constructor(options: { baseUrl: string; email: string; apiToken: string }) {
-        this.baseUrl = options.baseUrl.replace(/^https?:\/\//, '');
-        const protocol = options.baseUrl.startsWith('https') ? 'https' : 'http';
         this.client = new JiraClient({
-            host: this.baseUrl,
-            protocol: protocol,
+            host: options.baseUrl.replace(/^https?:\/\//, ''),
+            protocol: options.baseUrl.startsWith('https') ? 'https' : 'http',
             username: options.email,
             password: options.apiToken,
             apiVersion: '3'
@@ -344,18 +341,6 @@ export class JiraAdapter implements TicketManager {
     }
 
     private convertIssue(issue: any): Ticket {
-        // Construct Jira URL: https://{baseUrl}/browse/{issue.key}
-        let url: string | undefined;
-        try {
-            if (this.baseUrl && issue.key) {
-                // Use https by default, but we stored the baseUrl without protocol
-                url = `https://${this.baseUrl}/browse/${issue.key}`;
-            }
-        } catch (error) {
-            // If we can't construct URL, it will be undefined
-            console.warn('Could not construct Jira ticket URL:', error);
-        }
-        
         return {
             id: issue.id,
             identifier: issue.key,
@@ -378,7 +363,7 @@ export class JiraAdapter implements TicketManager {
             },
             team: { id: issue.fields.project.id, name: issue.fields.project.name, key: issue.fields.project.key },
             createdAt: issue.fields.created,
-            updatedAt: issue.fields.updated,
+            updatedAt: issue.fields.updated
         };
     }
 }
