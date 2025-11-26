@@ -5,7 +5,7 @@ import { InputEvent } from '../../integrations/abstract/InputEvent';
 import { OutputFactory } from '../../outputs/abstract/OutputFactory';
 import { ChannelAgent } from './ChannelAgent';
 import { filterEvent } from './EventFilter';
-import { createRunRecord, finalizeRunStatus, markRunFailed, markRunProcessed, markRunSkipped, FailureStage } from './runHistory';
+import { createRunRecord, finalizeRunStatus, markRunFailed, markRunProcessed, markRunSkipped, FailureStage, appendRunAction } from './runHistory';
 import { ApprovalResult } from './ChannelAgent';
 import { Agent, AgentOutputType, RunResult } from '@openai/agents';
 import { Session } from '../../server';
@@ -243,6 +243,18 @@ async function persistRunResult<T extends Session>(
     channel: Channel,
     approvalResult?: ApprovalResult<T, Agent<T, AgentOutputType>> | null
 ): Promise<ProcessorResult<T>> {
+    if (session.runActions) {
+        for (const action of session.runActions) {
+            try {
+                await appendRunAction(runId, action);
+                emitCacheInvalidationWithWildcard(session.user.id, 'runHistory', channel.id);
+                emitCacheInvalidationWithKey(session.user.id, 'recentActions');
+            } catch (e) {
+                console.error(chalk.yellow('Failed to append run action'), e);
+            }
+        };
+    }
+
     // Finalize run status
     const hasFinalOutput = Boolean(result.finalOutput);
     try {

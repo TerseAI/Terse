@@ -67,8 +67,6 @@ Example: "[{\"operation\": \"append\", \"blocks\": [{\"object\": \"block\", \"ty
         });
 
         const pageId = runContext.context.notionPageConfig.page_id as string;
-        // Construct Notion page URL: https://www.notion.so/{pageId} (dashes removed)
-        const pageUrl = pageId ? `https://www.notion.so/${pageId.replace(/-/g, '')}` : undefined;
         const results: any[] = [];
         let hasErrors = false;
 
@@ -96,6 +94,17 @@ Example: "[{\"operation\": \"append\", \"blocks\": [{\"object\": \"block\", \"ty
                         success: true,
                         block_ids: response.results.map((b: any) => b.id),
                         blocks_count: response.results.length,
+                    });
+
+                    // Report action
+                    const blockDescription = describeBlocks(op.blocks);
+                    const pageName = runContext.context.notionPageConfig.page_name || 'Notion page';
+                    runContext.context.runActions = runContext.context.runActions || [];
+                    runContext.context.runActions.push({
+                        action: 'Added content',
+                        integration: IntegrationType.NOTION,
+                        target: pageName,
+                        details: `Added ${response.results.length} ${response.results.length === 1 ? 'item' : 'items'}: ${blockDescription}`,
                     });
                 } else if (op.operation === 'update') {
                     if (!op.block_id) {
@@ -128,6 +137,17 @@ Example: "[{\"operation\": \"append\", \"blocks\": [{\"object\": \"block\", \"ty
                         success: true,
                         block_id: response.id,
                     });
+
+                    // Report action
+                    const pageName = runContext.context.notionPageConfig.page_name || 'Notion page';
+                    const blockType = getBlockTypeName(op.block);
+                    runContext.context.runActions = runContext.context.runActions || [];
+                    runContext.context.runActions.push({
+                        action: 'Updated content',
+                        integration: IntegrationType.NOTION,
+                        target: pageName,
+                        details: `Updated ${blockType}`,
+                    });
                 } else if (op.operation === 'delete') {
                     if (!op.block_id) {
                         results.push({
@@ -149,6 +169,16 @@ Example: "[{\"operation\": \"append\", \"blocks\": [{\"object\": \"block\", \"ty
                         operation: 'delete',
                         success: true,
                         block_id: response.id,
+                    });
+
+                    // Report action
+                    const pageName = runContext.context.notionPageConfig.page_name || 'Notion page';
+                    runContext.context.runActions = runContext.context.runActions || [];
+                    runContext.context.runActions.push({
+                        action: 'Removed content',
+                        integration: IntegrationType.NOTION,
+                        target: pageName,
+                        details: 'Removed content block',
                     });
                 } else {
                     results.push({
@@ -175,8 +205,6 @@ Example: "[{\"operation\": \"append\", \"blocks\": [{\"object\": \"block\", \"ty
             operations_count: operations.length,
             successful_count: results.filter((r: any) => r.success).length,
             failed_count: results.filter((r: any) => !r.success).length,
-            page_id: pageId,
-            url: pageUrl,
         };
     }
 });
