@@ -7,7 +7,6 @@ import { db } from "../../prismaClient";
 import { OutputConfigType } from "@prisma/client";
 import { NotionPageConfig } from "../../shared/Configs";
 import { notionQueryPageTool, notionModifyBlocksTool } from "./tools";
-import { IntegrationType } from "../../shared/Integrations";
 
 export interface NotionPageSession extends Session {
     notionIntegration: NotionIntegration; // Top level integration record

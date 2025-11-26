@@ -1,25 +1,14 @@
-import { useEffect, useRef, useState, useMemo } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
     Drawer,
     DrawerContent,
 } from '@/components/ui/drawer';
-import { useChannelChatEvents } from '@/hooks/useChannelChatEvents';
-import { useChatHistory } from '@/hooks/api/useChatHistory';
-import { RunHistoryStatus, RunHistoryTrigger, RunHistoryRecord, RunHistoryModelEvent } from '@/shared/RunHistoryTypes';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import { RunHistoryStatus, RunHistoryTrigger, RunHistoryRecord } from '@/shared/RunHistoryTypes';
 import { cn } from '@/lib/utils';
 import RunHistoryChatDrawerHeader from './RunHistoryChatDrawerHeader';
-import EventList from './EventList';
+import RunHistoryChatAdapter from './RunHistoryChatAdapter';
+import { Chat } from '@/components/chat/Chat';
 import RunTimestamps from './RunTimestamps';
-import { useChatEvents } from './useChatEvents';
-
-/**
- * Get the unique ID for an event to use for deduplication
- * Events from the database and socket should both have an 'id' field
- */
-function getEventId(event: RunHistoryModelEvent): string | null {
-    return event.id || null;
-}
 
 type Props = {
     runId: string;
@@ -50,18 +39,12 @@ export default function RunHistoryChatDrawer({
     onFullscreenChange,
     isInitialOpen = true,
 }: Props) {
-    const scrollAreaRef = useRef<HTMLDivElement>(null);
-    const [expandedToolCalls, setExpandedToolCalls] = useState<Set<string>>(new Set());
     const [internalFullscreen, setInternalFullscreen] = useState(false);
     const prevRunIdRef = useRef<string | null>(null);
     
-    // Use external fullscreen state if provided, otherwise use internal
     const isFullscreen = onFullscreenChange ? externalIsFullscreen : internalFullscreen;
-    
-    // Determine if this is an initial open or navigation
     const isActuallyInitialOpen = isInitialOpen && (prevRunIdRef.current === null || prevRunIdRef.current !== runId);
     
-    // Update prevRunId when runId changes, reset when drawer closes. Used to trigger animation only on initial open.
     useEffect(() => {
         if (isOpen) {
             prevRunIdRef.current = runId;
@@ -77,65 +60,8 @@ export default function RunHistoryChatDrawer({
             setInternalFullscreen(fullscreen);
         }
     };
-    
-    // Only fetch chat history when drawer is open
+
     const isActiveRun = status === 'in_progress';
-    const { events: realtimeEvents } = useChannelChatEvents(isOpen && isActiveRun ? runId : null);
-    const { events: historyEvents, isLoading, startTimestamp, endTimestamp, mutate: mutateChatHistory } = useChatHistory(isOpen ? runId : null);
-    
-    // Merge events based on run status
-    const events: Array<RunHistoryModelEvent> = useMemo(() => {
-        // Completed runs: API is source of truth (simple case)
-        mutateChatHistory();
-        
-        // Active runs: merge API (stored) + websocket (live)
-        // Handles page refresh - API has history, websocket has new events
-        const eventMap = new Map<string, RunHistoryModelEvent>();
-        
-        // Add all API events first (already stored in database)
-        historyEvents.forEach(event => {
-            const id = getEventId(event);
-            if (id) {
-                eventMap.set(id, event);
-            }
-        });
-        
-        // Add websocket events that aren't in API yet
-        realtimeEvents.forEach(event => {
-            const id = getEventId(event);
-            if (id && !eventMap.has(id)) {
-                eventMap.set(id, event);
-            }
-        });
-        
-        // Sort by timestamp
-        return Array.from(eventMap.values()).sort((a, b) => 
-            new Date(a.timestamp || 0).getTime() - new Date(b.timestamp || 0).getTime()
-        );
-    }, [isActiveRun, historyEvents, realtimeEvents]);
-
-    // Process events using custom hook
-    const { accumulatedMessages, toolCallMap, messageOrder } = useChatEvents(events);
-
-    // Auto-scroll to bottom when new events arrive
-    useEffect(() => {
-        if (scrollAreaRef.current && isOpen) {
-            const scrollContainer = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
-            if (scrollContainer) {
-                scrollContainer.scrollTop = scrollContainer.scrollHeight;
-            }
-        }
-    }, [events, isOpen]);
-
-    const handleToggleToolCall = (stepId: string, expanded: boolean) => {
-        const next = new Set(expandedToolCalls);
-        if (expanded) {
-            next.add(stepId);
-        } else {
-            next.delete(stepId);
-        }
-        setExpandedToolCalls(next);
-    };
 
     return (
         <Drawer open={isOpen} onOpenChange={onOpenChange} direction="right" shouldScaleBackground={isActuallyInitialOpen}>
@@ -157,34 +83,36 @@ export default function RunHistoryChatDrawer({
                     onFullscreenChange={handleFullscreenChange}
                 />
                 <div className={cn(
-                    "flex-1 overflow-hidden min-h-0",
+                    "flex-1 overflow-hidden min-h-0 bg-background",
                     isFullscreen && "mx-auto w-full"
                 )}>
-                    <ScrollArea ref={scrollAreaRef} className={cn(
-                        "h-full pb-6 select-text",
-                        isFullscreen ? "px-8" : "px-4"
-                    )}>
-                        <div className="py-2 pr-2 select-text space-y-4">
-                            <EventList
-                                events={events}
-                                messageOrder={messageOrder}
-                                toolCallMap={toolCallMap}
-                                accumulatedMessages={accumulatedMessages}
-                                expandedToolCalls={expandedToolCalls}
-                                onToggleToolCall={handleToggleToolCall}
-                                isLoading={isLoading}
-                                status={status}
-                                isActiveRun={isActiveRun}
-                            />
-                            <RunTimestamps
-                                startTimestamp={startTimestamp}
-                                endTimestamp={endTimestamp}
-                            />
-                        </div>
-                    </ScrollArea>
+                    {isOpen && (
+                        <RunHistoryChatAdapter runId={runId} status={status}>
+                            {({ turns, isLoading, startTimestamp, endTimestamp, subscribeToEvents, sendMessage }) => (
+                                <div className="flex flex-col h-full relative">
+                                    <div className="flex-1 min-h-0">
+                                        <Chat 
+                                            turns={turns} 
+                                            subscribeToEvents={subscribeToEvents}
+                                            sendMessage={sendMessage}
+                                            EmptyContentPlaceholder={
+                                                isLoading 
+                                                    ? <div className="p-4 text-center text-muted-foreground">Loading history...</div> 
+                                                    : <div className="p-4 text-center text-muted-foreground">No events found</div>
+                                            }
+                                        />
+                                    </div>
+                                    {!isActiveRun && (
+                                        <div className="flex-shrink-0 border-t bg-background p-2">
+                                             <RunTimestamps startTimestamp={startTimestamp} endTimestamp={endTimestamp} />
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                        </RunHistoryChatAdapter>
+                    )}
                 </div>
             </DrawerContent>
         </Drawer>
     );
 }
-

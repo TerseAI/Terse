@@ -1,13 +1,11 @@
 import { EntityType } from "./Entities";
 
-export enum ChangeEventType {
+export enum  ChangeEventType {
     CREATED = 'CREATED',
     UPDATED = 'UPDATED',
 }
 
 export type ChangedItem = { type_name: EntityType, id: string, change_event_type: ChangeEventType };
-
-export type ActorReference = { id: string, actor_type: string, };
 
 export type Failure = { error: string, };
 
@@ -17,7 +15,7 @@ export type ModelEvent = { "type": "ToolApprovalRequest" } & ToolApprovalRequest
 
 export type ModelRequest = { "type": "SendModelRequest" } & SendModelRequest | { "type": "ToolApprovalResponse" } & ToolApprovalResponse;
 
-export type SendModelRequest = { user_message: string, visible_actors: Array<ActorReference>, timezone: string, };
+export type SendModelRequest = { user_message: string, timezone: string, };
 
 export type ToolApprovalResponse = { step_id: string, approved: boolean };
 
@@ -27,6 +25,6 @@ export type TextDelta = { delta: string, step_id: string, };
 
 export type ToolCall = { summary: string, step_id: string, parameters: string, integration: string, };
 
-export type ToolCallComplete = { tool_name: string, status: string, step_id: string, changed_items: ChangedItem[], integration: string, url?: string };
+export type ToolCallComplete = { tool_name: string, status: string, step_id: string, changed_items: ChangedItem[], integration: string, url?: string, result?: string };
 
 export type FilterResult = { isRelevant: boolean, reason: string, confidence: number };

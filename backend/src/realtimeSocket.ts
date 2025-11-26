@@ -5,6 +5,7 @@ import { createAdapter } from "@socket.io/redis-adapter";
 import { Jwt } from "./utility/jwt";
 import chalk from "chalk";
 import { urls, nodeEnv, optional } from "./config/settings";
+import { ModelRequest } from "./shared/ModelEvents";
 
 // Extended Socket type with userId property
 interface AuthenticatedSocket extends Socket {
@@ -102,6 +103,18 @@ export async function initializeRealtimeSocket(server: HttpServer): Promise<Serv
         console.log(chalk.green.bold(`Socket.IO connection established for user ${userId}, room: ${room}`));
 
         socket.join(room);
+
+        // Listen for channel chat messages
+        socket.on("channel:chat:message", async (payload: { runId: string | null; message: ModelRequest }) => {
+            const { runId, message } = payload;
+            console.log(chalk.blue.bold(`[channel:chat:message] Received message for runId: ${runId}`), message, userId);
+            
+            // TODO: Implement message processing logic here
+            // This could involve:
+            // 1. Getting the run record to find the channelId
+            // 2. Creating/continuing a ChannelAgent for that channel
+            // 3. Processing the message and streaming the response back
+        });
 
         // presence: mark online (60s TTL), refresh every 25s (only if Redis is available)
         if (pub) {
