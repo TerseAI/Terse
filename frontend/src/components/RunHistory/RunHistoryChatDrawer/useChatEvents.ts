@@ -16,11 +16,14 @@ export type ToolCallData = {
 export function useChatEvents(events: Array<ModelEvent & { timestamp?: string }>) {
     return useMemo(() => {
         // Accumulate text deltas by step_id
+        // - Websocket during active runs: many small deltas → accumulate here
+        // - API after completion: already complete messages → still accumulate for consistency
         const accumulatedMessages = new Map<string, string>();
         
         // Track tool calls and completions together
         const toolCallMap = new Map<string, ToolCallData>();
         
+        // Maintain display order of all events
         const messageOrder: MessageOrderItem[] = [];
 
         events.forEach((event, index) => {
@@ -34,8 +37,12 @@ export function useChatEvents(events: Array<ModelEvent & { timestamp?: string }>
                     });
                 }
             } else if (event.type === 'TextDelta') {
+                // Accumulate deltas: "Hello" + " world" → "Hello world"
+                // Backend stores complete deltas, but websocket streams them piece by piece
                 const current = accumulatedMessages.get(event.step_id) || '';
                 accumulatedMessages.set(event.step_id, current + event.delta);
+                
+                // Add to message order only once per step_id
                 if (!messageOrder.find((m) => m.stepId === event.step_id && m.type === 'TextDelta')) {
                     messageOrder.push({ 
                         stepId: event.step_id, 
