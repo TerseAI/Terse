@@ -85,7 +85,7 @@ model github_app_tokens {
   user_id         String
   github_username String
   access_token    String
-  refresh_token   String
+  refresh_token   String?
   token_expiry    DateTime?
   created_at      DateTime @default(now())
   updated_at      DateTime @updatedAt
