@@ -209,7 +209,7 @@ export class EventProcessor {
                 runId,
                 userId: this.user.id,
                 channelId: channel.id,
-            }) as ApprovalResult<Session, Agent<Session, AgentOutputType>>;
+            }) as unknown as ApprovalResult<Session, Agent<Session, AgentOutputType>>;
         } catch (error) {
             // Log the error and update run history
             const errorMessage = error instanceof Error ? error.message : 'Unknown error';
