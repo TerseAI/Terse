@@ -1,4 +1,4 @@
-import { getFullTimestamp } from './utils';
+import { getFullTimestamp } from '@/utility/timeUtils';
 
 type Props = {
     startTimestamp?: string;

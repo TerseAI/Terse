@@ -1,7 +1,8 @@
 import { useRecentChannels } from "../../hooks/api/useRecentChannels";
 import { useStats } from "../../hooks/api/useStats";
 import { formatRelativeTime } from "../../utility/timeUtils";
-import { RecentAction } from "../../shared/types";
+import { IntegrationType } from "../../shared/Integrations";
+import { RunHistoryAction } from "../../shared/RunHistoryTypes";
 import { StatsMetricsSection } from "./components/StatsMetricsSection";
 import { DailyEventsChart } from "./components/DailyEventsChart";
 import { RecentActionsSection } from "./components/RecentActionsSection";
@@ -24,10 +25,15 @@ function Home() {
 
     const eventsPerDay = stats?.dailyEvents || [];
 
-    const recentActions: RecentAction[] = stats?.recentActions
+    const recentActions: (RunHistoryAction & { timestamp: string; channelName: string })[] = stats?.recentActions
         ? stats.recentActions.map((action) => ({
-              ...action,
+              action: action.action,
+              integration: action.integration as IntegrationType,
+              target: action.target,
+              details: action.details,
+              url: action.url,
               timestamp: formatRelativeTime(action.timestamp),
+              channelName: action.channelName,
           }))
         : [];
 

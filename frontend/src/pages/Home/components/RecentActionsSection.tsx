@@ -3,10 +3,10 @@ import { ScrollArea } from "../../../components/ui/scroll-area";
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "../../../components/ui/empty";
 import { PlayCircle } from "lucide-react";
 import { ActionItem } from "./ActionItem";
-import { RecentAction } from "../../../shared/types";
+import { RunHistoryAction } from "../../../shared/RunHistoryTypes";
 
 interface RecentActionsSectionProps {
-    recentActions: RecentAction[];
+    recentActions: (RunHistoryAction & { timestamp: string; channelName: string })[];
 }
 
 export function RecentActionsSection({ recentActions }: RecentActionsSectionProps) {

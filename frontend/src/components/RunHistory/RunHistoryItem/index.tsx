@@ -1,10 +1,10 @@
-import moment from 'moment';
 import { RunHistoryRecord } from "../../../shared/RunHistoryTypes";
 import RunHistoryItemHeader from "./RunHistoryItemHeader";
 import RunHistoryChatDrawer from "../RunHistoryChatDrawer";
 import { Button } from "@/components/ui/button";
 import { MessageSquare } from "lucide-react";
 import RunHistoryStatusBadge from "../RunHistoryStatusBadge";
+import { formatTimestamp } from "@/utility/timeUtils";
 
 type Props = {
     run: RunHistoryRecord;
@@ -39,16 +39,6 @@ export default function RunHistoryItem({
         if (onDrawerOpenChange) {
             onDrawerOpenChange(open);
         }
-    };
-    const formatTimestamp = (timestamp: string) => {
-        const date = moment(timestamp);
-        const now = moment();
-        const diffMs = now.diff(date);
-        const minutes = Math.floor(diffMs / (1000 * 60));
-        const hours = Math.floor(diffMs / (1000 * 60 * 60));
-        if (minutes < 60) return `${minutes}m ago`;
-        if (hours < 24) return `${hours}h ago`;
-        return date.format('MMM D, h:mm A');
     };
 
     const copyToClipboard = (text: string) => {
