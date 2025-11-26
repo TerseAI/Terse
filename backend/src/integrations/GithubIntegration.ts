@@ -4,8 +4,8 @@ import chalk from "chalk";
 import { EventProcessor } from "../agent/ChannelAgent/EventProcessor";
 import { InputEvent } from "./abstract/InputEvent";
 import { GithubIntegration, GithubIntegrationMetadata, IntegrationType } from "../shared/Integrations";
-import { GithubAppUnifiedEventRequest } from "../routes/GithubTypes";
-import { resolveUserForGithubInstallation } from "../routes/github";
+import { GithubAppInstallationRepository, GithubAppInstallationRepositoryResponse, GithubAppInstallationResponse, GithubAppUnifiedEventRequest } from "../routes/GithubTypes";
+import { resolveUsersForGithubInstallation } from "../routes/github";
 import { User } from "../types/prisma";
 import { ChannelInputWithConfigs } from "../types/prisma";
 import { RunHistoryTrigger } from "../shared/RunHistoryTypes";
@@ -13,20 +13,26 @@ import { OAuthInstallationDetails } from "../shared/types";
 import { githubApp, urls } from "../config/settings";
 import { Request, Response } from "express";
 import { InputConfigType } from "@prisma/client";
+import axios, { AxiosResponse } from "axios";
+import { GithubAppUser } from "../routes/GithubTypes";
 
 export class GithubIntegrationManager implements Integration<GithubIntegration, GithubAppUnifiedEventRequest, typeof GithubIntegrationMetadata>, OAuthIntegrationInstallation {
     constructor() { }
     integrationType: IntegrationType = IntegrationType.GITHUB;
 
     async getInstancesForUser(userId: string): Promise<GithubIntegration[]> {
-        const userGithubInstallations = await db().user_github_installation.findMany({
+        const userAccounts = await db().github_app_tokens.findMany({
             where: { user_id: userId }
         });
-        return userGithubInstallations.map(ugi => ({
-            id: ugi.id,
-            installation_id: ugi.installation_id,
-            account_name: ugi.account_name || null,
+        const installations = await Promise.all(userAccounts.map(async (ua) => {
+            const appInstallations = await getAppInstallationsForUser(ua.access_token);
+            return appInstallations.installations.map(ai => ({
+                id: ai.id.toString(),
+                installation_id: ai.id,
+                account_name: ai.account.login,
+            }));
         }));
+        return installations.flat();
     }
 
     async getAllActiveInstances(): Promise<GithubIntegration[]> {
@@ -45,24 +51,26 @@ export class GithubIntegrationManager implements Integration<GithubIntegration, 
     }
 
     async processWebhookEvent(event: GithubAppUnifiedEventRequest): Promise<void> {
-        const user: User | null = await resolveUserForGithubInstallation(event.installationId, event.username);
+        const users: User[] = await resolveUsersForGithubInstallation(event.installationId);
 
-        if (!user) {
-            console.log(chalk.yellow(`⚠️  No user found for GitHub event from ${event.username}`));
+        if (users.length === 0) {
+            console.log(chalk.yellow(`⚠️  No users found for GitHub event from ${event.installationId}`));
             return;
         }
-
-        const githubEvent = new GithubEvent(event);
-        const eventProcessor = new EventProcessor(githubEvent, user);
-        await eventProcessor.process();
+        
+        for (const user of users) {
+            const githubEvent = new GithubEvent(event);
+            const eventProcessor = new EventProcessor(githubEvent, user);
+            await eventProcessor.process();
+        }
     }
 
     async getInstallationUrl(userId: string): Promise<OAuthInstallationDetails> {
         const appName = githubApp.appName;
         const clientId = githubApp.clientId;
+        const redirectUri = githubApp.integrateCallbackUrl;
         const state = Buffer.from(userId).toString('base64');
-        // Generate GitHub App installation URL with callback
-        const installationUrl: string = `https://github.com/apps/${appName}/installations/new?client_id=${clientId}&target_type=repositories&state=${state}`;
+        const installationUrl: string = `https://github.com/apps/${appName}/installations/new?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&target_type=repositories&state=${state}`;
 
         return {
             oauthUrl: installationUrl
@@ -70,7 +78,7 @@ export class GithubIntegrationManager implements Integration<GithubIntegration, 
     }
 
     async processInstallationCallback(req: Request, res: Response): Promise<void> {
-        const { installation_id, setup_action, state } = req.query;
+        const { installation_id, setup_action, state, code } = req.query as { installation_id: string; setup_action: string; state: string; code: string };
 
         console.log(
             chalk.bgBlue.white.bold("[GitHub Setup URL Installation]"),
@@ -81,10 +89,13 @@ export class GithubIntegrationManager implements Integration<GithubIntegration, 
 
         // extract user_id from state
         const user_id = Buffer.from(state as string, 'base64').toString('utf-8');
+        const user: User | null = await db().users.findUnique({
+            where: { id: user_id }
+        });
 
-        if (!user_id) {
-            console.error(chalk.red.bold("[GitHub Setup URL Installation]"), chalk.red("ERROR: User ID not found in state"));
-            res.status(400).json({ message: 'User ID not found in state' });
+        if (!user) {
+            console.error(chalk.red.bold("[GitHub Setup URL Installation]"), chalk.red("ERROR: User not found"));
+            res.status(400).json({ message: 'User not found' });
             return;
         }
 
@@ -101,7 +112,16 @@ export class GithubIntegrationManager implements Integration<GithubIntegration, 
         await db().user_github_installation.upsert({
             where: { installation_id: installation_id_number },
             update: { user_id: user_id },
-            create: { user_id: user_id, installation_id: installation_id_number, account_name: null }
+            create: { user_id: user_id, installation_id: installation_id_number }
+        });
+
+        const authToken = await exchangeCodeForAccessToken(code);
+        const githubAppUser = await getGithubAppUser(authToken.access_token);
+
+        await db().github_app_tokens.upsert({
+            where: { user_id_github_username: { user_id: user_id, github_username: githubAppUser.name } },
+            update: { access_token: authToken.access_token, refresh_token: authToken.refresh_token, token_expiry: new Date(Date.now() + authToken.expires_in * 1000) },
+            create: { user_id: user_id, github_username: githubAppUser.name, access_token: authToken.access_token, refresh_token: authToken.refresh_token, token_expiry: new Date(Date.now() + authToken.expires_in * 1000) }
         });
 
         console.log(
@@ -165,7 +185,7 @@ export class GithubIntegrationManager implements Integration<GithubIntegration, 
 export class GithubEvent extends InputEvent {
     readonly integrationType: IntegrationType = IntegrationType.GITHUB;
     data: GithubAppUnifiedEventRequest;
-    
+
     constructor(data: GithubAppUnifiedEventRequest) {
         super();
         this.data = data;
@@ -203,7 +223,7 @@ export class GithubEvent extends InputEvent {
         ].join('\n');
 
         // Branch information (for push events)
-        const branchInfo = this.data.branch 
+        const branchInfo = this.data.branch
             ? `Branch: ${this.data.branch}`
             : null;
 
@@ -230,21 +250,21 @@ export class GithubEvent extends InputEvent {
         if (this.data.commits && this.data.commits.length > 0) {
             const commitLines: string[] = [];
             commitLines.push(`Commits (${this.data.commits.length}):`);
-            
+
             this.data.commits.forEach((commit, index) => {
                 const shortSha = commit.sha.substring(0, 7);
                 const commitUrl = `https://github.com/${this.data.repository.owner}/${this.data.repository.name}/commit/${commit.sha}`;
-                
+
                 commitLines.push(`\n${index + 1}. Commit ${shortSha}: ${commit.name}`);
                 commitLines.push(`   URL: ${commitUrl}`);
-                
+
                 if (commit.fileDiffs && commit.fileDiffs.length > 0) {
                     commitLines.push(`   Files Changed: ${commit.fileDiffs.length}`);
-                    
+
                     // List files changed
                     const fileList = commit.fileDiffs.map(f => `     - ${f.filename}`).join('\n');
                     commitLines.push(`   Files:\n${fileList}`);
-                    
+
                     // Show diffs for important files (limit to first 3 files to avoid overwhelming)
                     const filesToShow = commit.fileDiffs.slice(0, 3);
                     filesToShow.forEach(file => {
@@ -255,18 +275,18 @@ export class GithubEvent extends InputEvent {
                             const truncatedDiff = diffLines.length > maxDiffLines
                                 ? diffLines.slice(0, maxDiffLines).join('\n') + `\n     ... (${diffLines.length - maxDiffLines} more lines)`
                                 : file.diff;
-                            
+
                             commitLines.push(`\n   Diff for ${file.filename}:`);
                             commitLines.push(indentMultiline(truncatedDiff));
                         }
                     });
-                    
+
                     if (commit.fileDiffs.length > 3) {
                         commitLines.push(`\n   ... and ${commit.fileDiffs.length - 3} more file(s) changed`);
                     }
                 }
             });
-            
+
             commitsInfo = commitLines.join('\n');
         }
 
@@ -301,7 +321,7 @@ export class GithubEvent extends InputEvent {
 
         return true
     }
-    
+
     createTriggerMetadata(): RunHistoryTrigger {
         return {
             event: 'github_event',
@@ -316,4 +336,65 @@ export class GithubEvent extends InputEvent {
     getImageUrls(): string[] {
         return [];
     }
+}
+
+// MARK: - Helper Functions - GITHUB REST API
+export async function getGithubAppUser(githubAppAccessToken: string): Promise<GithubAppUser> {
+    const resp = await axios.get(
+        'https://api.github.com/user',
+        {
+            headers: {
+                Authorization: `Bearer ${githubAppAccessToken}`,
+                Accept: 'application/vnd.github+json',
+            }
+        }
+    );
+
+    console.log('Github App user:', resp.data);
+    return resp.data;
+}
+
+export async function exchangeCodeForAccessToken(code: string, redirectUri?: string): Promise<{ access_token: string; refresh_token: string; expires_in: number }> {
+    const tokenResp = await axios.post(
+        'https://github.com/login/oauth/access_token',
+        {
+            client_id: githubApp.clientId,
+            client_secret: githubApp.clientSecret,
+            code,
+            ...(redirectUri && { redirect_uri: redirectUri }),
+        },
+        {
+            headers: { Accept: 'application/json' },
+        }
+    );
+
+    const accessToken = tokenResp.data.access_token;
+    const refreshToken = tokenResp.data.refresh_token;
+    const expiresIn = tokenResp.data.expires_in;
+    return { access_token: accessToken, refresh_token: refreshToken, expires_in: expiresIn };
+}
+
+export async function getAppInstallationsForUser(oAuthToken: string): Promise<GithubAppInstallationResponse> {
+    try {
+        const resp: AxiosResponse<GithubAppInstallationResponse> = await axios.get('https://api.github.com/user/installations', {
+            headers: {
+                Authorization: `Bearer ${oAuthToken}`,
+                Accept: 'application/vnd.github+json',
+            },
+        });
+        return resp.data;
+    } catch (error) {
+        console.error('Error getting app installations for user:', error);
+        return { total_count: 0, installations: [] };
+    }
+}
+
+export async function getAppInstallationRepositories(oAuthToken: string, installationId: number): Promise<GithubAppInstallationRepository[]> {
+    const resp: AxiosResponse<GithubAppInstallationRepositoryResponse> = await axios.get(`https://api.github.com/user/installations/${installationId}/repositories`, {
+        headers: {
+            Authorization: `Bearer ${oAuthToken}`,
+            Accept: 'application/vnd.github+json',
+        },
+    });
+    return resp.data.repositories;
 }
