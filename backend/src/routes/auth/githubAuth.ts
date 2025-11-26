@@ -101,9 +101,6 @@ export async function githubCallback(req: Request, res: Response) {
             return res.status(500).send('Failed to create or find user');
         }
 
-        const expiresIn = tokenData.expires_in || 28800; // Default to 8 hours
-        const refreshToken = tokenData.refresh_token || '';
-
         await db().github_app_tokens.upsert({
             where: { 
                 user_id_github_username: {
