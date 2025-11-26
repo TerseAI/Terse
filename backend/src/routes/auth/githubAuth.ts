@@ -5,8 +5,9 @@ import crypto from "crypto";
 import chalk from "chalk";
 import axios from "axios";
 import { findUserByEmail, findUserByGitHubUsername, createUser, updateUserGitHubUsername } from "../../types/user";
-import { githubApp, githubAuth } from "../../config/settings";
-import { GithubIntegrationManager } from "../../integrations/GithubIntegration";
+import { githubApp } from "../../config/settings";
+import { GithubIntegrationManager, exchangeCodeForAccessToken, getGithubAppUser } from "../../integrations/GithubIntegration";
+import { db } from "../../prismaClient";
 
 export const githubAppAuthMiddleware = async (req: Request, res: Response, next: NextFunction) => {
     console.log('githubAppAuthMiddleware route has been hit')
@@ -41,17 +42,9 @@ export const githubAppAuthMiddleware = async (req: Request, res: Response, next:
 
 export function githubLoginURL(req: Request, res: Response) {
     const state = crypto.randomBytes(8).toString('hex');
-    const redirectUrl = `https://github.com/login/oauth/authorize?client_id=${githubAuth.clientId}&redirect_uri=${encodeURIComponent(githubAuth.callbackUrl)}&scope=read:user%20user:email&state=${state}`;
+    const redirectUri = githubApp.loginCallbackUrl;
+    const redirectUrl = `https://github.com/login/oauth/authorize?client_id=${githubApp.clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=read:user%20user:email&state=${state}`;
     res.json({ url: redirectUrl });
-}
-
-export async function githubLogin(req: Request, res: Response) {
-    console.log('githubLogin route has been hit')
-    const state = crypto.randomBytes(8).toString('hex');
-    const redirectUrl = `https://github.com/login/oauth/authorize?client_id=${githubAuth.clientId}&redirect_uri=${encodeURIComponent(githubAuth.callbackUrl)}&scope=read:user%20user:email&state=${state}`;
-
-    console.log('redirectUrl', redirectUrl)
-    res.redirect(redirectUrl);
 }
 
 export async function githubCallback(req: Request, res: Response) {
@@ -64,29 +57,18 @@ export async function githubCallback(req: Request, res: Response) {
     }
 
     try {
-        const tokenResp = await axios.post('https://github.com/login/oauth/access_token', {
-            client_id: githubAuth.clientId,
-            client_secret: githubAuth.clientSecret,
-            code,
-            redirect_uri: githubAuth.callbackUrl,
-        }, {
-            headers: { Accept: 'application/json' }
-        });
+        const tokenData = await exchangeCodeForAccessToken(code, githubApp.loginCallbackUrl);
+        const githubAccessToken = tokenData.access_token;
 
-        const githubAccessToken = tokenResp.data.access_token;
         if (!githubAccessToken) {
             return res.status(400).send('Failed to obtain access token');
         }
 
-        const userResp = await axios.get('https://api.github.com/user', {
-            headers: { Authorization: `Bearer ${githubAccessToken}` }
-        });
+        const githubUser = await getGithubAppUser(githubAccessToken);
 
-        console.log('GitHub OAuth user response:', userResp.data)
-
-        let email = userResp.data.email as string | null;
-        const name = (userResp.data.name as string) || (userResp.data.login as string);
-        const githubUsername = userResp.data.login as string;
+        let email = githubUser.email;
+        const name = githubUser.name || githubUser.login;
+        const githubUsername = githubUser.login;
 
         if (!email) {
             const emailsResp = await axios.get('https://api.github.com/user/emails', {
@@ -102,6 +84,9 @@ export async function githubCallback(req: Request, res: Response) {
 
         let user = await findUserByGitHubUsername(githubUsername);
         if (!user) {
+            user = await findUserByEmail(email);
+        }
+        if (!user) {
             // Create new user with GitHub username
             user = await createUser(name, email, githubUsername);
         } else if (user.github_username !== githubUsername) {
@@ -116,6 +101,31 @@ export async function githubCallback(req: Request, res: Response) {
             return res.status(500).send('Failed to create or find user');
         }
 
+        const expiresIn = tokenData.expires_in || 28800; // Default to 8 hours
+        const tokenExpiry = new Date(Date.now() + expiresIn * 1000);
+        const refreshToken = tokenData.refresh_token || '';
+
+        await db().github_app_tokens.upsert({
+            where: { 
+                user_id_github_username: {
+                    user_id: user.id, 
+                    github_username: githubUsername 
+                }
+            },
+            update: { 
+                access_token: githubAccessToken, 
+                refresh_token: refreshToken, 
+                token_expiry: tokenExpiry 
+            },
+            create: { 
+                user_id: user.id, 
+                github_username: githubUsername, 
+                access_token: githubAccessToken, 
+                refresh_token: refreshToken, 
+                token_expiry: tokenExpiry 
+            }
+        });
+
         const token = await new Jwt().sign(user.id);
 
         res.send(`
@@ -124,7 +134,7 @@ export async function githubCallback(req: Request, res: Response) {
                 window.opener.postMessage({
                   type: 'GITHUB_AUTH_SUCCESS',
                   token: '${token}'
-                }, '${githubAuth.loginRedirect}');
+                }, '${githubApp.loginRedirect}');
                 window.close();
               }
             </script>
@@ -141,7 +151,7 @@ export async function githubAppOAuth(req: Request, res: Response) {
     const state = crypto.randomBytes(16).toString('hex');
 
     const clientId = githubApp.clientId;
-    const redirectUri = githubApp.callbackUrl;
+    const redirectUri = githubApp.loginCallbackUrl;
 
     const scopes = [
         'read:user',
@@ -158,7 +168,7 @@ export async function githubAppOAuth(req: Request, res: Response) {
     res.redirect(url);
 }
 
-export async function githubAppCallback(req: Request, res: Response) {
+export async function githubAppCallbackIntegrate(req: Request, res: Response) {
     console.log(chalk.blue('🔗 Github App OAuth callback received:'), chalk.cyan(JSON.stringify(req.query, null, 2)));
     const { code, state } = req.query as { code?: string; state?: string };
     if (!code || !state) {
