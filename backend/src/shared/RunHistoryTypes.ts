@@ -4,6 +4,19 @@ import type { ModelEvent } from "./ModelEvents";
 export type RunHistoryStatus = "success" | "failed" | "skipped" | "in_progress";
 export type RunHistoryDecisionAction = "processed" | "skipped";
 
+export type RunHistoryAction = {
+   // What action was taken (free-text, e.g. "create database entry", "send notification")
+   action: string;
+   // Which integration this action targeted (used for icons and grouping)
+   integration: IntegrationType;
+   // The concrete target, e.g. database name, channel name, repo, inbox, etc.
+   target: string;
+   // Justification for the action or extra details about why the AI did this.
+   details: string;
+   // Link to the thing that got operated on.
+   url?: string; 
+}
+
 export type RunHistoryTrigger = {
     // What event occurred to trigger the run (free-text, e.g. "email received", "database row created")
     event: string;
@@ -31,6 +44,7 @@ export type RunHistoryRecord = {
     trigger: RunHistoryTrigger;
     filtered: boolean;
     decision: RunHistoryDecision;
+    actions?: RunHistoryAction[];
     status: RunHistoryStatus;
 };
 
