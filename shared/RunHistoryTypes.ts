@@ -15,6 +15,8 @@ export type RunHistoryAction = {
    details: string;
    // Link to the thing that got operated on.
    url?: string; 
+   // The step_id of the tool call that generated this action
+   step_id?: string;
 }
 
 export type RunHistoryTrigger = {

@@ -782,11 +782,13 @@ model run_history_actions {
   target                String
   details               String
   url                   String?
+  step_id               String?
   created_at            DateTime              @default(now())
 
   run_history_record run_history_records @relation(fields: [run_history_record_id], references: [id], onDelete: Cascade)
 
   @@index([run_history_record_id])
+  @@index([step_id])
 }
 
 // Pending approvals for tools that require human approval

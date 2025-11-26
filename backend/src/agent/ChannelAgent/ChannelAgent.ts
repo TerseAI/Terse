@@ -13,21 +13,33 @@ import { convertOutputConfigTypeToIntegrationType } from '../../utility/typeConv
 import { storeChatEvent } from './runHistory';
 import { getRealtimeSocket } from '../../realtimeSocket';
 import type { RunHistoryModelEvent, RunHistoryModelSocketEvent, RunHistoryStreamingParams } from '../../shared/RunHistoryTypes';
+import { EntityType } from '../../shared/Entities';
+import { ChangedItem, ChangeEventType } from '../../shared/ModelEvents';
 
-export type ApprovalResult<T extends Session, AgentType extends Agent<T, AgentOutputType>> =
-  | {
-    status: 'completed';
-    result: RunResult<T, AgentType>;
-  }
-  | {
-    status: 'awaiting_approval';
-    state: RunState<T, AgentType>;
-    interruptions: RunToolApprovalItem[];
-  };
+
+
+export interface SessionWithTracking extends Session {
+    trackChange(type: EntityType, id: string | number, eventType: ChangeEventType): void;
+    getAndClearChangedItems(): ChangedItem[];
+    getChangedItems(): ChangedItem[];
+}
+
+
+
+export type ApprovalResult<T extends SessionWithTracking, AgentType extends Agent<T, AgentOutputType>> =
+    | {
+        status: 'completed';
+        result: RunResult<T, AgentType>;
+    }
+    | {
+        status: 'awaiting_approval';
+        state: RunState<T, AgentType>;
+        interruptions: RunToolApprovalItem[];
+    };
 
 export type Decision = 'approve' | 'reject';
 
-export class ChannelAgent<T extends Session, TConfig extends ConfigInstance> {
+export class ChannelAgent<T extends SessionWithTracking, TConfig extends ConfigInstance> {
     private history: AgentInputItem[] = [];
     private session: T;
     private inputEvent: InputEvent | null = null;
@@ -48,7 +60,7 @@ export class ChannelAgent<T extends Session, TConfig extends ConfigInstance> {
         this.channelInputs = channelInputs;
         this.channelOutput = channelOutput;
         this.tools = output.toolbox.map(entry => entry.tool);
-        
+
         // Build tool-to-integration mapping
         const integrationType = convertOutputConfigTypeToIntegrationType(output.integration);
         const integrationString = integrationType; // IntegrationType enum values are strings
@@ -68,7 +80,7 @@ export class ChannelAgent<T extends Session, TConfig extends ConfigInstance> {
     async initializeAgent(): Promise<void> {
         // Get output-specific system instructions
         const outputInstructions = this.output.getSystemInstructions(this.session);
-        const fullSystemPrompt = outputInstructions 
+        const fullSystemPrompt = outputInstructions
             ? `${systemPrompt}\n\n${outputInstructions}`
             : systemPrompt;
 
@@ -89,15 +101,15 @@ export class ChannelAgent<T extends Session, TConfig extends ConfigInstance> {
     async run(streamingParams?: RunHistoryStreamingParams): Promise<ApprovalResult<T, Agent<T, AgentOutputType>>> {
         console.log("Running Channel Agent");
         await this.initializeAgent();
-      
+
         if (!this.agent) {
-          throw new Error("Agent not initialized. Call initializeAgent() before run()");
+            throw new Error("Agent not initialized. Call initializeAgent() before run()");
         }
-      
+
         if (!this.inputEvent) {
-          throw new Error("No input event set. Call setInputEvent() before run()");
+            throw new Error("No input event set. Call setInputEvent() before run()");
         }
-      
+
         const structuredUserText = `
       <USER_CONTEXT>
       ${UserFormatter.formatForAgent(this.session.user)}
@@ -119,49 +131,49 @@ export class ChannelAgent<T extends Session, TConfig extends ConfigInstance> {
       ${this.inputEvent.formatForChannelAgent()}
       </EVENT>
         `.trim();
-      
+
         const content: any[] = [
-          {
-            type: 'input_text',
-            text: structuredUserText,
-          },
+            {
+                type: 'input_text',
+                text: structuredUserText,
+            },
         ];
-      
+
         const imageUrls = this.inputEvent.getImageUrls();
         for (const imageUrl of imageUrls) {
-          content.push({
-            type: 'input_image',
-            image: imageUrl,
-          });
+            content.push({
+                type: 'input_image',
+                image: imageUrl,
+            });
         }
-      
+
         this.history.push({
-          role: 'user',
-          content,
+            role: 'user',
+            content,
         });
-      
+
         const result = await run(this.agent, this.history, {
-          context: this.session as T,
-          stream: true,
+            context: this.session as T,
+            stream: true,
         });
 
         // Stream events if streamingParams is provided with all required fields
         if (streamingParams?.runId && streamingParams?.userId && streamingParams?.channelId) {
             const io = getRealtimeSocket();
             const userRoom = `user:${streamingParams.userId}`;
-            
+
             // Accumulate TextDelta events by step_id
             const accumulatedDeltas = new Map<string, { text: string; firstTimestamp: string; eventId?: string }>();
             let lastTextDeltaStepId: string | null = null;
-            
+
             try {
                 for await (const modelEvent of toEventStream(result, undefined, this.toolToIntegrationMap)) {
                     const timestamp = new Date().toISOString();
-                    
+
                     // Handle TextDelta accumulation
                     if (modelEvent.type === 'TextDelta') {
                         const { step_id, delta } = modelEvent;
-                        
+
                         // If we've moved to a new step_id, store the previous accumulated message
                         if (lastTextDeltaStepId && lastTextDeltaStepId !== step_id && accumulatedDeltas.has(lastTextDeltaStepId)) {
                             const accumulated = accumulatedDeltas.get(lastTextDeltaStepId)!;
@@ -173,7 +185,7 @@ export class ChannelAgent<T extends Session, TConfig extends ConfigInstance> {
                             const eventId = await storeChatEvent(streamingParams.runId, finalEvent);
                             accumulated.eventId = eventId;
                         }
-                        
+
                         // Accumulate the delta
                         if (!accumulatedDeltas.has(step_id)) {
                             accumulatedDeltas.set(step_id, { text: delta, firstTimestamp: timestamp });
@@ -182,7 +194,7 @@ export class ChannelAgent<T extends Session, TConfig extends ConfigInstance> {
                             accumulated.text += delta;
                         }
                         lastTextDeltaStepId = step_id;
-                        
+
                         // Always emit the delta via Socket.IO for real-time display
                         if (io) {
                             const runHistoryModelEvent: RunHistoryModelEvent = {
@@ -200,7 +212,7 @@ export class ChannelAgent<T extends Session, TConfig extends ConfigInstance> {
                     } else {
                         // For non-TextDelta events, store immediately
                         const eventId = await storeChatEvent(streamingParams.runId, modelEvent);
-                        
+
                         // Emit event via Socket.IO with timestamp and ID
                         if (io) {
                             const runHistoryModelEvent: RunHistoryModelEvent = {
@@ -217,7 +229,7 @@ export class ChannelAgent<T extends Session, TConfig extends ConfigInstance> {
                         }
                     }
                 }
-                
+
                 // Store any remaining accumulated TextDelta events
                 if (lastTextDeltaStepId && accumulatedDeltas.has(lastTextDeltaStepId)) {
                     const accumulated = accumulatedDeltas.get(lastTextDeltaStepId)!;
@@ -232,7 +244,7 @@ export class ChannelAgent<T extends Session, TConfig extends ConfigInstance> {
                 }
             } catch (error) {
                 console.error('Error streaming channel agent events:', error);
-                
+
                 // Even on error, try to store any accumulated TextDelta events
                 if (lastTextDeltaStepId && accumulatedDeltas.has(lastTextDeltaStepId)) {
                     const accumulated = accumulatedDeltas.get(lastTextDeltaStepId)!;
@@ -249,7 +261,7 @@ export class ChannelAgent<T extends Session, TConfig extends ConfigInstance> {
                         }
                     }
                 }
-                
+
                 // Continue with normal flow even if streaming fails
             }
         } else {
@@ -269,22 +281,22 @@ export class ChannelAgent<T extends Session, TConfig extends ConfigInstance> {
                 }
             }
         }
-      
+
         const hasInterruptions = result.interruptions && result.interruptions.length > 0;
-      
+
         if (hasInterruptions) {
-          return {
-            status: 'awaiting_approval',
-            state: result.state,
-            interruptions: result.interruptions,
-          };
+            return {
+                status: 'awaiting_approval',
+                state: result.state,
+                interruptions: result.interruptions,
+            };
         }
-      
+
         return {
-          status: 'completed',
-          result,
+            status: 'completed',
+            result,
         };
-      }
+    }
 
     async resume(
         serializedState: string,
