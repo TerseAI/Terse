@@ -121,7 +121,7 @@ export class GithubIntegrationManager implements Integration<GithubIntegration, 
         await db().github_app_tokens.upsert({
             where: { user_id_github_username: { user_id: user_id, github_username: githubAppUser.name } },
             update: { access_token: authToken.access_token, refresh_token: authToken.refresh_token, token_expiry: new Date(Date.now() + authToken.expires_in * 1000) },
-            create: { user_id: user_id, github_username: githubAppUser.name, access_token: authToken.access_token, refresh_token: authToken.refresh_token, token_expiry: new Date(Date.now() + authToken.expires_in * 1000) }
+            create: { user_id: user_id, github_username: githubAppUser.name, access_token: authToken.access_token, refresh_token: authToken.refresh_token }
         });
 
         console.log(
