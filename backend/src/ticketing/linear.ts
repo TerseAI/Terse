@@ -731,7 +731,6 @@ export class LinearAdapter implements TicketManager {
             },
             createdAt: issue.createdAt.toISOString(),
             updatedAt: issue.updatedAt.toISOString(),
-            url: url,
         }
     }
 }
