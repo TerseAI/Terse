@@ -90,7 +90,6 @@ export type Session = {
   isUserInitiated: boolean; // true if the user has initiated the session, false if the session was initiated by the system
   teamId?: string;
   currentUser?: TicketUser;
-  runActions?: RunHistoryAction[];
 };
 
 const app = express();

@@ -90,8 +90,7 @@ IMPORTANT:
                 });
                 // Report action (no DB writes here)
                 const databaseName = runContext.context.notionConfig.database_name || 'Notion database';
-                runContext.context.runActions = runContext.context.runActions || [];
-                runContext.context.runActions.push({
+                runContext.context.trackAction({
                     action: 'Updated page',
                     integration: IntegrationType.NOTION,
                     target: databaseName,
@@ -116,8 +115,7 @@ IMPORTANT:
                 console.log(chalk.green("Notion database modified successfully"));
                 // Report action (no DB writes here)
                 const databaseName = runContext.context.notionConfig.database_name || 'Notion database';
-                runContext.context.runActions = runContext.context.runActions || [];
-                runContext.context.runActions.push({
+                runContext.context.trackAction({
                     action: 'Created page',
                     integration: IntegrationType.NOTION,
                     target: databaseName,

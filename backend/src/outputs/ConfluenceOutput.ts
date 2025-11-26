@@ -9,6 +9,7 @@ import { z } from "zod";
 import chalk from "chalk";
 import { OutputConfigType } from "@prisma/client";
 import { ConfluenceConfig } from "../shared/Configs";
+import { SessionWithTracking } from "../agent/ChannelAgent/ChannelAgent";
 
 // MARK: - Exports
 
@@ -65,7 +66,6 @@ export class ConfluenceOutput extends Output<ConfluenceSession, ConfluenceConfig
             cloudId: oauthIntegration.cloud_id || undefined,
             user, 
             isUserInitiated: true, 
-            runActions: [] 
         };
     }
 
@@ -148,7 +148,7 @@ To find the correct position, first call confluence_query_page to see the page c
         start_position: z.number().nullable().optional().describe('Optional: The start character position (offset) in the page storage format where the comment should be attached. Required if text_to_comment_on is not provided.'),
         end_position: z.number().nullable().optional().describe('Optional: The end character position (offset) in the page storage format where the comment should be attached. Required if text_to_comment_on is not provided.'),
     }),
-    execute: async ({ comment_text, text_to_comment_on, start_position, end_position }, runContext?: RunContext<ConfluenceSession>) => {
+    execute: async ({ comment_text, text_to_comment_on, start_position, end_position }, runContext?: RunContext<SessionWithTracking<ConfluenceSession>>) => {
         // Use chalk for highlighting the log output
         console.log(chalk.bgBlue.white.bold("[Confluence Add Comment]"), chalk.yellow("Executing confluence_add_comment tool: "), chalk.cyan(comment_text), chalk.magenta(text_to_comment_on), chalk.green(start_position), chalk.green(end_position));
         if (!runContext?.context) {
@@ -160,7 +160,6 @@ To find the correct position, first call confluence_query_page to see the page c
         }
 
         const pageId = runContext.context.confluenceConfig.page_id as string;
-        const apiBaseUrl = `https://api.atlassian.com/ex/confluence/${runContext.context.cloudId}/wiki/api/v2`;
 
         try {
             // Fetch the page content
@@ -256,8 +255,7 @@ To find the correct position, first call confluence_query_page to see the page c
             const commentPreview = comment_text.length > 60 
                 ? comment_text.substring(0, 60) + '...' 
                 : comment_text;
-            runContext.context.runActions = runContext.context.runActions || [];
-            runContext.context.runActions.push({
+            runContext.context.trackAction({
                 action: 'Added Inline comment',
                 integration: IntegrationType.ATLASSIAN,
                 target: pageName,

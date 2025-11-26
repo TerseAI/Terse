@@ -5,12 +5,13 @@ import { InputEvent } from '../../integrations/abstract/InputEvent';
 import { OutputFactory } from '../../outputs/abstract/OutputFactory';
 import { ChannelAgent } from './ChannelAgent';
 import { filterEvent } from './EventFilter';
-import { createRunRecord, finalizeRunStatus, markRunFailed, markRunProcessed, markRunSkipped, FailureStage, appendRunAction } from './runHistory';
+import { createRunRecord, finalizeRunStatus, markRunFailed, markRunProcessed, markRunSkipped, appendRunAction } from './runHistory';
 import { ApprovalResult } from './ChannelAgent';
 import { Agent, AgentOutputType, RunResult } from '@openai/agents';
 import { Session } from '../../server';
 import { emitCacheInvalidationWithKey, emitCacheInvalidationWithWildcard } from '../../realtimeSocket';
 import { getInputConfigInclude, getOutputConfigInclude } from '../../utility/prismaIncludes';
+import { RunHistoryAction } from '../../shared/RunHistoryTypes';
 
 // The job of this class is to take an Input Event, and check if it's a match for an Channel.
 // It will then create a Session, and summon the Channel Agent with the create user data.
@@ -198,7 +199,7 @@ export class EventProcessor {
         console.log(chalk.green(`Event is relevant to channel "${channel.name}"`));
 
         // Create channel agent with the session and output
-        const channelAgent = new ChannelAgent(session, output, channel.prompt, channel.inputs, outputIntegration);
+        const channelAgent = new ChannelAgent(session, output, channel, runId);
         await channelAgent.initializeAgent();
         channelAgent.setInputEvent(this.inputEvent);
 
@@ -243,18 +244,6 @@ async function persistRunResult<T extends Session>(
     channel: Channel,
     approvalResult?: ApprovalResult<T, Agent<T, AgentOutputType>> | null
 ): Promise<ProcessorResult<T>> {
-    if (session.runActions) {
-        for (const action of session.runActions) {
-            try {
-                await appendRunAction(runId, action);
-                emitCacheInvalidationWithWildcard(session.user.id, 'runHistory', channel.id);
-                emitCacheInvalidationWithKey(session.user.id, 'recentActions');
-            } catch (e) {
-                console.error(chalk.yellow('Failed to append run action'), e);
-            }
-        };
-    }
-
     // Finalize run status
     const hasFinalOutput = Boolean(result.finalOutput);
     try {
@@ -272,4 +261,21 @@ async function persistRunResult<T extends Session>(
         channel,
         approvalResult
     );
+}
+
+export async function persistRunAction<T extends Session>(
+    runId: string,
+    channel: Channel,
+    session: T,
+    action: RunHistoryAction,
+): Promise<string | undefined> {
+    try {
+        const actionId = await appendRunAction(runId, action);
+        emitCacheInvalidationWithWildcard(session.user.id, 'runHistory', channel.id);
+        emitCacheInvalidationWithKey(session.user.id, 'recentActions');
+        return actionId;
+    } catch (e) {
+        console.error(chalk.yellow('Failed to append run action'), e);
+    }
+    return undefined;
 }
