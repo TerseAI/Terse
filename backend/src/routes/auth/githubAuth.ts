@@ -102,7 +102,6 @@ export async function githubCallback(req: Request, res: Response) {
         }
 
         const expiresIn = tokenData.expires_in || 28800; // Default to 8 hours
-        const tokenExpiry = new Date(Date.now() + expiresIn * 1000);
         const refreshToken = tokenData.refresh_token || '';
 
         await db().github_app_tokens.upsert({
@@ -115,14 +114,12 @@ export async function githubCallback(req: Request, res: Response) {
             update: { 
                 access_token: githubAccessToken, 
                 refresh_token: refreshToken, 
-                token_expiry: tokenExpiry 
             },
             create: { 
                 user_id: user.id, 
                 github_username: githubUsername, 
                 access_token: githubAccessToken, 
                 refresh_token: refreshToken, 
-                token_expiry: tokenExpiry 
             }
         });
 
