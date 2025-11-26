@@ -2,6 +2,7 @@ import { io, Socket } from 'socket.io-client';
 import { mutate } from 'swr';
 import { BackendProvider } from './services/backend';
 import type { RunHistoryModelSocketEvent } from './shared/RunHistoryTypes';
+import { ModelEvent, ModelRequest } from './shared/ModelEvents';
 
 let socket: Socket | null = null;
 
@@ -116,4 +117,12 @@ export function disconnectSocket() {
         socket.disconnect();
         socket = null;
     }
+}
+
+export function sendChatMessage(runId: string | null, message: ModelRequest): void {
+    if (!socket || !socket.connected) {
+        console.warn('Socket not connected, cannot send message');
+        return;
+    }
+    socket.emit('channel:chat:message', { runId, message });
 }
