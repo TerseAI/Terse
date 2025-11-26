@@ -83,57 +83,38 @@ export default function RunHistoryChatDrawer({
     const { events: realtimeEvents } = useChannelChatEvents(isOpen && isActiveRun ? runId : null);
     const { events: historyEvents, isLoading, startTimestamp, endTimestamp } = useChatHistory(isOpen ? runId : null);
     
-    // Keep track of realtime events even after run completes to prevent disappearing messages
-    const realtimeEventsRef = useRef<Array<RunHistoryModelEvent>>([]);
-    
-    useEffect(() => {
-        // Update ref with current realtime events
-        if (realtimeEvents.length > 0) {
-            realtimeEventsRef.current = realtimeEvents;
-        }
-    }, [realtimeEvents]);
-
-    // Merge and deduplicate events from both sources using event IDs
+    // Merge events based on run status
     const events: Array<RunHistoryModelEvent> = useMemo(() => {
-        // Create a map to deduplicate events by their unique ID
+        // Completed runs: API is source of truth (simple case)
+        if (!isActiveRun) {
+            return historyEvents;
+        }
+        
+        // Active runs: merge API (stored) + websocket (live)
+        // Handles page refresh - API has history, websocket has new events
         const eventMap = new Map<string, RunHistoryModelEvent>();
         
-        // First, add all database events (source of truth)
-        // Database events take precedence as they're the authoritative source
-        historyEvents.forEach((event) => {
-            const eventId = getEventId(event);
-            if (eventId) {
-                eventMap.set(eventId, event);
-            } else {
-                // Fallback: if no ID, add with a generated key (shouldn't happen for DB events)
-                console.warn('Database event missing ID:', event);
+        // Add all API events first (already stored in database)
+        historyEvents.forEach(event => {
+            const id = getEventId(event);
+            if (id) {
+                eventMap.set(id, event);
             }
         });
         
-        // Then, add socket events that aren't already in the database
-        // Use current realtimeEvents if available, otherwise fall back to ref (for completed runs)
-        const eventsToMerge = realtimeEvents.length > 0 ? realtimeEvents : realtimeEventsRef.current;
-        eventsToMerge.forEach((event) => {
-            const eventId = getEventId(event);
-            if (eventId) {
-                // Only add if not already present (database takes precedence)
-                if (!eventMap.has(eventId)) {
-                    eventMap.set(eventId, event);
-                }
-            } else {
-                // Fallback: if socket event has no ID, log a warning
-                // In practice, all events should have IDs after this change
-                console.warn('Socket event missing ID:', event);
+        // Add websocket events that aren't in API yet
+        realtimeEvents.forEach(event => {
+            const id = getEventId(event);
+            if (id && !eventMap.has(id)) {
+                eventMap.set(id, event);
             }
         });
         
-        // Convert map back to array and sort by timestamp
-        return Array.from(eventMap.values()).sort((a, b) => {
-            const timeA = new Date(a.timestamp || 0).getTime();
-            const timeB = new Date(b.timestamp || 0).getTime();
-            return timeA - timeB;
-        });
-    }, [historyEvents, realtimeEvents]);
+        // Sort by timestamp
+        return Array.from(eventMap.values()).sort((a, b) => 
+            new Date(a.timestamp || 0).getTime() - new Date(b.timestamp || 0).getTime()
+        );
+    }, [isActiveRun, historyEvents, realtimeEvents]);
 
     // Process events using custom hook
     const { accumulatedMessages, toolCallMap, messageOrder } = useChatEvents(events);

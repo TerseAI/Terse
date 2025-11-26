@@ -150,28 +150,106 @@ export class ChannelAgent<T extends Session, TConfig extends ConfigInstance> {
             const io = getRealtimeSocket();
             const userRoom = `user:${streamingParams.userId}`;
             
+            // Accumulate TextDelta events by step_id
+            const accumulatedDeltas = new Map<string, { text: string; firstTimestamp: string; eventId?: string }>();
+            let lastTextDeltaStepId: string | null = null;
+            
             try {
                 for await (const modelEvent of toEventStream(result, undefined, this.toolToIntegrationMap)) {
-                    // Store event in database and get the ID
-                    const eventId = await storeChatEvent(streamingParams.runId, modelEvent);
+                    const timestamp = new Date().toISOString();
                     
-                    // Emit event via Socket.IO with timestamp and ID
-                    if (io) {
-                        const runHistoryModelEvent: RunHistoryModelEvent = {
-                            ...modelEvent,
-                            id: eventId,
-                            timestamp: new Date().toISOString(),
+                    // Handle TextDelta accumulation
+                    if (modelEvent.type === 'TextDelta') {
+                        const { step_id, delta } = modelEvent;
+                        
+                        // If we've moved to a new step_id, store the previous accumulated message
+                        if (lastTextDeltaStepId && lastTextDeltaStepId !== step_id && accumulatedDeltas.has(lastTextDeltaStepId)) {
+                            const accumulated = accumulatedDeltas.get(lastTextDeltaStepId)!;
+                            const finalEvent = {
+                                type: 'TextDelta' as const,
+                                step_id: lastTextDeltaStepId,
+                                delta: accumulated.text,
+                            };
+                            const eventId = await storeChatEvent(streamingParams.runId, finalEvent);
+                            accumulated.eventId = eventId;
+                        }
+                        
+                        // Accumulate the delta
+                        if (!accumulatedDeltas.has(step_id)) {
+                            accumulatedDeltas.set(step_id, { text: delta, firstTimestamp: timestamp });
+                        } else {
+                            const accumulated = accumulatedDeltas.get(step_id)!;
+                            accumulated.text += delta;
+                        }
+                        lastTextDeltaStepId = step_id;
+                        
+                        // Always emit the delta via Socket.IO for real-time display
+                        if (io) {
+                            const runHistoryModelEvent: RunHistoryModelEvent = {
+                                ...modelEvent,
+                                id: accumulatedDeltas.get(step_id)?.eventId || '',
+                                timestamp,
+                            };
+                            const payload: RunHistoryModelSocketEvent = {
+                                runId: streamingParams.runId,
+                                channelId: streamingParams.channelId,
+                                runHistoryModelEvent,
+                            };
+                            io.to(userRoom).emit('channel:chat:event', payload);
+                        }
+                    } else {
+                        // For non-TextDelta events, store immediately
+                        const eventId = await storeChatEvent(streamingParams.runId, modelEvent);
+                        
+                        // Emit event via Socket.IO with timestamp and ID
+                        if (io) {
+                            const runHistoryModelEvent: RunHistoryModelEvent = {
+                                ...modelEvent,
+                                id: eventId,
+                                timestamp,
+                            };
+                            const payload: RunHistoryModelSocketEvent = {
+                                runId: streamingParams.runId,
+                                channelId: streamingParams.channelId,
+                                runHistoryModelEvent,
+                            };
+                            io.to(userRoom).emit('channel:chat:event', payload);
+                        }
+                    }
+                }
+                
+                // Store any remaining accumulated TextDelta events
+                if (lastTextDeltaStepId && accumulatedDeltas.has(lastTextDeltaStepId)) {
+                    const accumulated = accumulatedDeltas.get(lastTextDeltaStepId)!;
+                    if (!accumulated.eventId) {
+                        const finalEvent = {
+                            type: 'TextDelta' as const,
+                            step_id: lastTextDeltaStepId,
+                            delta: accumulated.text,
                         };
-                        const payload: RunHistoryModelSocketEvent = {
-                            runId: streamingParams.runId,
-                            channelId: streamingParams.channelId,
-                            runHistoryModelEvent,
-                        };
-                        io.to(userRoom).emit('channel:chat:event', payload);
+                        await storeChatEvent(streamingParams.runId, finalEvent);
                     }
                 }
             } catch (error) {
                 console.error('Error streaming channel agent events:', error);
+                
+                // Even on error, try to store any accumulated TextDelta events
+                if (lastTextDeltaStepId && accumulatedDeltas.has(lastTextDeltaStepId)) {
+                    const accumulated = accumulatedDeltas.get(lastTextDeltaStepId)!;
+                    if (!accumulated.eventId) {
+                        try {
+                            const finalEvent = {
+                                type: 'TextDelta' as const,
+                                step_id: lastTextDeltaStepId,
+                                delta: accumulated.text,
+                            };
+                            await storeChatEvent(streamingParams.runId, finalEvent);
+                        } catch (storeError) {
+                            console.error('Error storing accumulated TextDelta on error:', storeError);
+                        }
+                    }
+                }
+                
                 // Continue with normal flow even if streaming fails
             }
         } else {
