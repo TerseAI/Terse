@@ -6,7 +6,7 @@ import { db } from "../../prismaClient";
 import { NotionConfig } from "../../shared/Configs";
 import { OutputConfigType } from "@prisma/client";
 import { notionQueryDatabaseTool, notionModifyPageTool, notionGetSchemaTool } from "./tools";
-import { IntegrationType } from "../../shared/Integrations";
+import { RunHistoryAction } from "../../shared/RunHistoryTypes";
 
 export interface NotionDatabaseSession extends Session {
     notionIntegration: NotionIntegration; // Top level integration record

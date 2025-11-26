@@ -87,14 +87,21 @@ IMPORTANT:
                     page_id: validPageId,
                     properties: properties as Record<string, any>,
                 });
-                // Construct Notion page URL: https://www.notion.so/{pageId} (dashes removed)
-                const pageIdWithoutDashes = response.id.replace(/-/g, '');
-                const pageUrl = `https://www.notion.so/${pageIdWithoutDashes}`;
+                // Report action (no DB writes here)
+                const databaseName = runContext.context.notionConfig.database_name || 'Notion database';
+                runContext.context.runActions = runContext.context.runActions || [];
+                runContext.context.runActions.push({
+                    action: 'Updated page',
+                    integration: IntegrationType.NOTION,
+                    target: databaseName,
+                    details: 'Updated page in database',
+                    url: 'url' in response ? (response as any).url : undefined,
+                });
                 return {
                     success: true,
                     action: 'updated',
                     page_id: response.id,
-                    url: pageUrl,
+                    url: 'url' in response ? response.url : undefined
                 };
             } else {
                 // Create new page
@@ -106,14 +113,21 @@ IMPORTANT:
                     properties: properties as Record<string, any>,
                 });
                 console.log(chalk.green("Notion database modified successfully"));
-                // Construct Notion page URL: https://www.notion.so/{pageId} (dashes removed)
-                const pageIdWithoutDashes = response.id.replace(/-/g, '');
-                const pageUrl = `https://www.notion.so/${pageIdWithoutDashes}`;
+                // Report action (no DB writes here)
+                const databaseName = runContext.context.notionConfig.database_name || 'Notion database';
+                runContext.context.runActions = runContext.context.runActions || [];
+                runContext.context.runActions.push({
+                    action: 'Created page',
+                    integration: IntegrationType.NOTION,
+                    target: databaseName,
+                    details: 'Created new page in database',
+                    url: 'url' in response ? (response as any).url : undefined,
+                });
                 return {
                     success: true,
                     action: 'created',
                     page_id: response.id,
-                    url: pageUrl,
+                    url: 'url' in response ? response.url : undefined
                 };
             }
         } catch (error: any) {
