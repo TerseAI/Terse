@@ -3,7 +3,7 @@ import { Request, Response } from "express";
 import { db } from "../prismaClient";
 import { User, GithubRepository, UserGithubRepository } from "../types/prisma";
 import Owner from "../theOwner/Owner";
-import { GithubAppUnifiedEventRequest, GithubAppInstallationDeletedRequest, GithubUserRepository, GithubAppInstallationRepository } from "../routes/GithubTypes";
+import { GithubAppUnifiedEventRequest, GithubAppInstallationDeletedRequest, GithubUserRepository, GithubAppInstallationRepository, GithubAppInstallation } from "../routes/GithubTypes";
 import { search } from "../searchClient";
 import { Session } from "../server";
 import { ActivityOverview } from "../agent/agents/Analyzer";
@@ -310,21 +310,37 @@ export async function processRepository(
     }
 }
 
-export async function resolveUserForGithubInstallation(installationId: number, github_username: string): Promise<User | null> {
+// Given an installation and username, resolve a specific user
+async function resolveUserForGithubInstallation(installationId: number, username: string): Promise<User | null> {
+    const users = await resolveUsersForGithubInstallation(installationId);
+    return users.find(user => user.github_username === username) || null;
+}
+
+// Given an installation, we need to fetch all users that are associated with that installation.
+// This doesn't guarantee that they have an active input config, but it's a good start.
+// This is super inefficient, but it's a good start. We need to optimize this.
+export async function resolveUsersForGithubInstallation(installationId: number): Promise<User[]> {
     return db().$transaction(async (tx) => {
-        // check if installation is already associated with a user - This should be most common case.
-        let installation = await tx.user_github_installation.findFirst({ where: { installation_id: installationId } });
-        if (installation && installation.user_id != null) {
-            return tx.users.findUnique({ where: { id: installation.user_id } });
-        }
+        // Get all of our github app users. 
+        const githubAppUsers = await tx.github_app_tokens.findMany();
 
-        // check if we can match via github_username
-        let user = await tx.users.findFirst({ where: { github_username: github_username } });
-        if (user) {
-            return user;
-        }
-
-        return null;
+        // for each github App user, get their installations they have access to. Return a Map<user_id, installations>
+        const installationResults = await Promise.all(githubAppUsers.map(async (user) => {
+            const installations = await getAppInstallationsForUser(user.access_token);
+            return { userId: user.id, installations: installations.installations };
+        }));
+        
+        // Find users who have access to the specific installation
+        const userIds = installationResults
+            .filter(result => result.installations.some(inst => inst.id === installationId))
+            .map(result => result.userId);
+        
+        // Fetch and return the User objects
+        const users = await tx.users.findMany({
+            where: { id: { in: userIds } }
+        });
+        
+        return users;
     });
 }
 
