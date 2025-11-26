@@ -321,8 +321,27 @@ export async function processRepository(
 
 // Given an installation and username, resolve a specific user
 async function resolveUserForGithubInstallation(installationId: number, username: string): Promise<User | null> {
-    const users = await resolveUsersForGithubInstallation(installationId);
-    return users.find(user => user.github_username === username) || null;
+    const users_from_installation: User[] = await resolveUsersForGithubInstallation(installationId);
+
+    let user = users_from_installation.find(user => user.github_username === username) || null;
+    if (user) {
+        return user;
+    }
+
+    const app_keys_from_username = await db().github_app_tokens.findMany({ 
+        where: { github_username: username }
+    });
+    const user_id = app_keys_from_username.find(key => key.github_username === username)?.user_id;
+
+    if (user_id) {
+        const matched_user = await db().users.findUnique({ where: { id: user_id } });
+        await db().users.update({ where: { id: user_id }, data: { github_username: username } });
+        if (matched_user) {
+            return matched_user;
+        }
+    }
+
+    return null;
 }
 
 // Given an installation, we need to fetch all users that are associated with that installation.
