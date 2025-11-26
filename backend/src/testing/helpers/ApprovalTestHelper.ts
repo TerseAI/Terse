@@ -1,6 +1,6 @@
 import * as readline from 'readline';
 import chalk from 'chalk';
-import { ApprovalResult } from '../../agent/ChannelAgent/ChannelAgent';
+import { ApprovalResult, SessionWithTracking } from '../../agent/ChannelAgent/ChannelAgent';
 import { ChannelAgentFactory } from '../../agent/ChannelAgentFactory';
 import { NotionDatabaseSession } from '../../outputs/notion/NotionDatabaseOutput';
 import { Agent, AgentOutputType, RunToolApprovalItem } from '@openai/agents';
@@ -48,7 +48,7 @@ export async function resumeApprovalFlow(state: PendingApprovalState | null): Pr
     await channelAgent.initializeAgent();
 
     // Call resume on the ChannelAgent
-    const resumed: ApprovalResult<NotionDatabaseSession, Agent<NotionDatabaseSession, AgentOutputType>> = await channelAgent.resume(
+    const resumed: ApprovalResult<SessionWithTracking<NotionDatabaseSession>, Agent<SessionWithTracking<NotionDatabaseSession>, AgentOutputType>> = await channelAgent.resume(
       state.serializedState,
       'approve',
       interruption

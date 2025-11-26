@@ -18,15 +18,14 @@ import { ChangedItem, ChangeEventType } from '../../shared/ModelEvents';
 
 
 
-export interface SessionWithTracking extends Session {
+export type SessionWithTracking<T extends Session> = T & {
     trackChange(type: EntityType, id: string | number, eventType: ChangeEventType): void;
     getAndClearChangedItems(): ChangedItem[];
     getChangedItems(): ChangedItem[];
 }
 
 
-
-export type ApprovalResult<T extends SessionWithTracking, AgentType extends Agent<T, AgentOutputType>> =
+export type ApprovalResult<T extends Session, AgentType extends Agent<T, AgentOutputType>> =
     | {
         status: 'completed';
         result: RunResult<T, AgentType>;
@@ -39,7 +38,7 @@ export type ApprovalResult<T extends SessionWithTracking, AgentType extends Agen
 
 export type Decision = 'approve' | 'reject';
 
-export class ChannelAgent<T extends SessionWithTracking, TConfig extends ConfigInstance> {
+export class ChannelAgent<T extends Session, TConfig extends ConfigInstance> {
     private history: AgentInputItem[] = [];
     private session: T;
     private inputEvent: InputEvent | null = null;
@@ -47,8 +46,8 @@ export class ChannelAgent<T extends SessionWithTracking, TConfig extends ConfigI
     private channelInputs: ChannelInput[];
     private channelOutput: ChannelOutput;
     private output: Output<T, TConfig>;
-    private agent?: Agent<T, AgentOutputType>;
-    private tools: Tool<T>[] = [];
+    private agent?: Agent<SessionWithTracking<T>, AgentOutputType>;
+    private tools: Tool<SessionWithTracking<T>>[] = [];
 
     private toolToIntegrationMap: Map<string, string> = new Map();
 
@@ -77,6 +76,28 @@ export class ChannelAgent<T extends SessionWithTracking, TConfig extends ConfigI
         return 'gpt-5';
     }
 
+
+    trackChange(type: EntityType, id: string | number, eventType: ChangeEventType): void {
+        // no-op
+    }
+
+    getAndClearChangedItems(): ChangedItem[] {
+        return [];
+    }
+
+    getChangedItems(): ChangedItem[] {
+        return [];
+    }
+
+    getToolContext(): SessionWithTracking<T> {
+        return {
+            ...this.session,
+            trackChange: this.trackChange,
+            getAndClearChangedItems: this.getAndClearChangedItems,
+            getChangedItems: this.getChangedItems,
+        }
+    }
+
     async initializeAgent(): Promise<void> {
         // Get output-specific system instructions
         const outputInstructions = this.output.getSystemInstructions(this.session);
@@ -84,7 +105,7 @@ export class ChannelAgent<T extends SessionWithTracking, TConfig extends ConfigI
             ? `${systemPrompt}\n\n${outputInstructions}`
             : systemPrompt;
 
-        const agent = new Agent<T, AgentOutputType>({
+        const agent = new Agent<SessionWithTracking<T>, AgentOutputType>({
             name: 'Living Document Automator',
             instructions: fullSystemPrompt,
             model: this.chooseChannelAgentModel(),
@@ -98,7 +119,7 @@ export class ChannelAgent<T extends SessionWithTracking, TConfig extends ConfigI
         this.inputEvent = event;
     }
 
-    async run(streamingParams?: RunHistoryStreamingParams): Promise<ApprovalResult<T, Agent<T, AgentOutputType>>> {
+    async run(streamingParams?: RunHistoryStreamingParams): Promise<ApprovalResult<SessionWithTracking<T>, Agent<SessionWithTracking<T>, AgentOutputType>>> {
         console.log("Running Channel Agent");
         await this.initializeAgent();
 
@@ -153,7 +174,7 @@ export class ChannelAgent<T extends SessionWithTracking, TConfig extends ConfigI
         });
 
         const result = await run(this.agent, this.history, {
-            context: this.session as T,
+            context: this.getToolContext(),
             stream: true,
         });
 
@@ -302,7 +323,7 @@ export class ChannelAgent<T extends SessionWithTracking, TConfig extends ConfigI
         serializedState: string,
         decision: Decision,
         interruption: RunToolApprovalItem,
-    ): Promise<ApprovalResult<T, Agent<T, AgentOutputType>>> {
+    ): Promise<ApprovalResult<SessionWithTracking<T>, Agent<SessionWithTracking<T>, AgentOutputType>>> {
         await this.initializeAgent();
 
         if (!this.agent) {
@@ -310,7 +331,7 @@ export class ChannelAgent<T extends SessionWithTracking, TConfig extends ConfigI
         }
 
         // Deserialize the saved state
-        const state: RunState<T, Agent<T, AgentOutputType>> = await RunState.fromString(this.agent, serializedState);
+        const state: RunState<SessionWithTracking<T>, Agent<SessionWithTracking<T>, AgentOutputType>> = await RunState.fromString(this.agent, serializedState);
 
         // Apply the user's decision
         if (decision === 'approve') {
