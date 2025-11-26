@@ -153,7 +153,7 @@ function InputCardsLayout({
     );
 }
 
-const InputCard = forwardRef<HTMLDivElement, {
+export const InputCard = forwardRef<HTMLDivElement, {
     input: TransientChannelInput,
     inputs: TransientChannelInput[],
     setInputs: (inputs: TransientChannelInput[]) => void, 
