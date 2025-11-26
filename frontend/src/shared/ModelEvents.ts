@@ -3,6 +3,7 @@ import { EntityType } from "./Entities";
 export enum  ChangeEventType {
     CREATED = 'CREATED',
     UPDATED = 'UPDATED',
+    ACTION_EXECUTED = 'ACTION_EXECUTED',
 }
 
 export type ChangedItem = { type_name: EntityType, id: string, change_event_type: ChangeEventType };

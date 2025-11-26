@@ -72,6 +72,7 @@ import {
   getSlackChannels,
   getSlackIntegrations,
 } from "./routes/slack";
+import { TicketManager } from "./ticketing/TicketIntegration";
 import { User } from "./types/prisma";
 import {
   figmaOAuthCallback,
@@ -82,11 +83,10 @@ import { getConfluenceIntegrations, getConfluenceResources } from "./routes/conf
 import { getActiveIntegrations, getAllIntegrations, getIntegrationInstallationDetails } from "./routes/integrations";
 import { initializeRealtimeSocket } from "./realtimeSocket";
 import { RunHistoryAction } from "./shared/RunHistoryTypes";
-import { EntityType } from "./shared/Entities";
-import { ChangeEventType } from "./shared/ModelEvents";
 
 export type Session = {
   user: User;
+  ticketManager?: TicketManager;
   isUserInitiated: boolean; // true if the user has initiated the session, false if the session was initiated by the system
   teamId?: string;
   currentUser?: TicketUser;

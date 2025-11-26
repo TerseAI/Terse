@@ -47,6 +47,7 @@ export async function markRunSkipped(runId: string, reason: string): Promise<voi
 export async function appendRunAction(
     runId: string,
     action: RunHistoryAction,
+    stepId?: string,
 ): Promise<void> {
     await db().run_history_actions.create({
         data: {
@@ -56,6 +57,7 @@ export async function appendRunAction(
             target: action.target,
             details: action.details,
             url: action.url ?? null,
+            step_id: stepId ?? action.step_id ?? null,
         },
     });
 }
