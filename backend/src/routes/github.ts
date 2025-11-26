@@ -212,6 +212,13 @@ export async function getGithubRepositoriesForIntegration(req: Request, res: Res
         return;
     }
 
+    // get installation id from query params
+    const installationId = req.query.installation_id as string;
+    if (!installationId) {
+        res.status(400).json({ message: 'Installation ID is required' });
+        return;
+    }
+
     const user = req.session.user;
     const accessToken = await db().github_app_tokens.findFirst({ where: { user_id: user.id } });
     if (!accessToken) {
@@ -219,15 +226,17 @@ export async function getGithubRepositoriesForIntegration(req: Request, res: Res
         return;
     }
 
-    let repositories: GithubAppInstallationRepository[] = [];
     const installations = await getAppInstallationsForUser(accessToken.access_token);
-    for (const installation of installations.installations) {
-        const installationRepositories = await getAppInstallationRepositories(accessToken.access_token, installation.id);
-        repositories.push(...installationRepositories);
+    const targetInstallation = installations.installations.find(installation => installation.id === Number(installationId));
+    if (!targetInstallation) {
+        res.status(404).json({ message: 'Installation not found' });
+        return;
     }
 
+    const installationRepositories: GithubAppInstallationRepository[] = await getAppInstallationRepositories(accessToken.access_token, targetInstallation.id);
+
     const result: GetGithubRepositoriesForIntegrationResponse = {
-        repositories: repositories.map(r => ({
+        repositories: installationRepositories.map(r => ({
             id: r.id,
             name: r.name,
             owner: r.owner.login
@@ -323,7 +332,7 @@ export async function resolveUsersForGithubInstallation(installationId: number):
     return db().$transaction(async (tx) => {
         // Get all of our github app users. 
         const githubAppUsers = await tx.github_app_tokens.findMany();
-        
+
         // for each github App user, get their installations they have access to. Return a Map<user_id, installations>
         const installationResults = await Promise.all(githubAppUsers.map(async (user) => {
             const installations = await getAppInstallationsForUser(user.access_token);
