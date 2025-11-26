@@ -91,11 +91,21 @@ The schema information returned by this tool should be used to properly format p
             schema[propertyName] = buildPropertySchema(propertyName, propertyConfig);
         }
 
+        // Push run action to track the API call
+        const databaseName = runContext.context.notionConfig.database_name || 'Unknown Database';
+        runContext.context.runActions = runContext.context.runActions || [];
+        runContext.context.runActions.push({
+            action: 'Retrieved schema',
+            integration: IntegrationType.NOTION,
+            target: databaseName,
+            details: `Retrieved schema with ${Object.keys(schema).length} properties`,
+        });
+
         console.log("Notion get schema tool response: ", { schema, property_count: Object.keys(schema).length });
 
         return {
             data_source_id: runContext.context.notionConfig.database_id,
-            database_name: runContext.context.notionConfig.database_name || 'Unknown Database',
+            database_name: databaseName,
             schema: schema,
             property_count: Object.keys(schema).length,
         };

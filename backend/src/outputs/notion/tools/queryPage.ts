@@ -271,6 +271,17 @@ This tool returns the current state of the page including all properties, metada
             // Continue even if blocks fail to fetch
         }
 
+        // Push run action to track the API calls
+        const pageName = runContext.context.notionPageConfig.page_name || 'Notion page';
+        runContext.context.runActions = runContext.context.runActions || [];
+        runContext.context.runActions.push({
+            action: 'Retrieved page',
+            integration: IntegrationType.NOTION,
+            target: pageName,
+            details: `Retrieved page with ${blocks.length} ${blocks.length === 1 ? 'block' : 'blocks'}`,
+            url: isFullPage(pageInfo) && 'url' in pageInfo ? pageInfo.url : undefined,
+        });
+
         // Extract comprehensive metadata
         const metadata: any = {
             page_id: pageInfo.id,
@@ -302,7 +313,6 @@ This tool returns the current state of the page including all properties, metada
 
         return {
             ...metadata,
-            url: metadata.url, // Explicitly include url at top level
             properties: properties,
             properties_raw: isFullPage(pageInfo) ? pageInfo.properties : undefined, // Include raw properties for reference
             blocks: blocks,

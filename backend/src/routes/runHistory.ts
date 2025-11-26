@@ -49,20 +49,23 @@ export async function getRunHistory(req: Request, res: Response) {
         { decision_reason: { contains: params.q, mode: "insensitive" } },
       ];
     }
-
+    type RunHistoryRecordWithActions = Prisma.run_history_recordsGetPayload<{
+      include: { actions: true };
+    }>;
 
     const [total, rows] = await prisma.$transaction([
       prisma.run_history_records.count({ where }),
       prisma.run_history_records.findMany({
         where,
         orderBy: { timestamp: "desc" },
+        include: { actions: true },
         skip,
         take,
       }),
     ]);
 
     // Transform Prisma rows (snake_case) to API format (camelCase)
-    const items: RunHistoryRecord[] = rows.map((runRecord) => ({
+    const items: RunHistoryRecord[] = rows.map((runRecord: RunHistoryRecordWithActions) => ({
       id: runRecord.id,
       channelId: runRecord.automation_id, // Database column is automation_id, but API uses channelId
       timestamp: runRecord.timestamp.toISOString(),
@@ -79,6 +82,13 @@ export async function getRunHistory(req: Request, res: Response) {
         action: runRecord.decision_action,
         reasoning: runRecord.decision_reason,
       },
+      actions: runRecord.actions.map((action) => ({
+        action: action.action,
+        integration: convertRunHistoryIntegrationToIntegrationType(action.integration),
+        target: action.target,
+        details: action.details,
+        url: action.url ?? undefined,
+      })),
       status: runRecord.status as RunHistoryStatus,
     }));
 
