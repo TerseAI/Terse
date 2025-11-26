@@ -48,8 +48,8 @@ export async function appendRunAction(
     runId: string,
     action: RunHistoryAction,
     stepId?: string,
-): Promise<void> {
-    await db().run_history_actions.create({
+): Promise<string> {
+    const result = await db().run_history_actions.create({
         data: {
             run_history_record_id: runId,
             action: action.action,
@@ -60,6 +60,7 @@ export async function appendRunAction(
             step_id: stepId ?? action.step_id ?? null,
         },
     });
+    return result.id;
 }
 
 export async function markRunProcessed(runId: string, reason?: string): Promise<void> {

@@ -3,7 +3,7 @@ import { Session } from '../../server';
 import { systemPrompt } from './SystemPrompt';
 import { InputEvent } from '../../integrations/abstract/InputEvent';
 import { Output } from '../../outputs/abstract/Output';
-import { ChannelInput, ChannelOutput, ChannelPrompt } from '../../types/prisma';
+import { ChannelInput, ChannelOutput, ChannelPrompt, ChannelWithRelations } from '../../types/prisma';
 import { ConfigInstance } from '../../shared/Configs';
 import { settings } from '../../config/settings';
 import { formatChannelInputsForAgent, formatChannelOutputForAgent } from './formatContext';
@@ -12,16 +12,15 @@ import { toEventStream } from '../streaming';
 import { convertOutputConfigTypeToIntegrationType } from '../../utility/typeConverters';
 import { storeChatEvent } from './runHistory';
 import { getRealtimeSocket } from '../../realtimeSocket';
-import type { RunHistoryModelEvent, RunHistoryModelSocketEvent, RunHistoryStreamingParams } from '../../shared/RunHistoryTypes';
+import type { RunHistoryAction, RunHistoryModelEvent, RunHistoryModelSocketEvent, RunHistoryStreamingParams } from '../../shared/RunHistoryTypes';
 import { EntityType } from '../../shared/Entities';
 import { ChangedItem, ChangeEventType } from '../../shared/ModelEvents';
+import { persistRunAction } from './EventProcessor';
 
 
 
 export type SessionWithTracking<T extends Session> = T & {
-    trackChange(type: EntityType, id: string | number, eventType: ChangeEventType): void;
-    getAndClearChangedItems(): ChangedItem[];
-    getChangedItems(): ChangedItem[];
+    trackAction(action: RunHistoryAction): void;
 }
 
 
@@ -42,24 +41,28 @@ export class ChannelAgent<T extends Session, TConfig extends ConfigInstance> {
     private history: AgentInputItem[] = [];
     private session: T;
     private inputEvent: InputEvent | null = null;
+    private channel: ChannelWithRelations;
     private channelPrompt: ChannelPrompt;
     private channelInputs: ChannelInput[];
     private channelOutput: ChannelOutput;
     private output: Output<T, TConfig>;
     private agent?: Agent<SessionWithTracking<T>, AgentOutputType>;
     private tools: Tool<SessionWithTracking<T>>[] = [];
-
+    private runId: string;  
     private toolToIntegrationMap: Map<string, string> = new Map();
+    private changedItems: ChangedItem[] = [];
 
-    constructor(session: T, output: Output<T, TConfig>, channelPrompt: ChannelPrompt, channelInputs: ChannelInput[], channelOutput: ChannelOutput) {
+    constructor(session: T, output: Output<T, TConfig>, channel: ChannelWithRelations, runId: string) {
         this.history = [];
         this.session = session;
         this.output = output;
-        this.channelPrompt = channelPrompt;
-        this.channelInputs = channelInputs;
-        this.channelOutput = channelOutput;
+        this.channel = channel;
+        this.channelPrompt = channel.prompt as ChannelPrompt;
+        this.channelInputs = channel.inputs as ChannelInput[];
+        this.channelOutput = channel.output as ChannelOutput;
         this.tools = output.toolbox.map(entry => entry.tool);
-
+        this.runId = runId;
+        this.changedItems = [];
         // Build tool-to-integration mapping
         const integrationType = convertOutputConfigTypeToIntegrationType(output.integration);
         const integrationString = integrationType; // IntegrationType enum values are strings
@@ -76,25 +79,21 @@ export class ChannelAgent<T extends Session, TConfig extends ConfigInstance> {
         return 'gpt-5';
     }
 
-
-    trackChange(type: EntityType, id: string | number, eventType: ChangeEventType): void {
-        // no-op
+    async trackAction(action: RunHistoryAction): Promise<void> {
+        const result = await persistRunAction(this.runId, this.channel, this.session, action);
+        if (result) {
+            this.changedItems.push({
+                type_name: EntityType.RUN_HISTORY_ACTION,
+                id: result,
+                change_event_type: ChangeEventType.ACTION_EXECUTED
+            });
+        }
     }
-
-    getAndClearChangedItems(): ChangedItem[] {
-        return [];
-    }
-
-    getChangedItems(): ChangedItem[] {
-        return [];
-    }
-
+    
     getToolContext(): SessionWithTracking<T> {
         return {
             ...this.session,
-            trackChange: this.trackChange,
-            getAndClearChangedItems: this.getAndClearChangedItems,
-            getChangedItems: this.getChangedItems,
+            trackAction: this.trackAction,
         }
     }
 

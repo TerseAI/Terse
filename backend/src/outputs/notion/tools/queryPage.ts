@@ -4,6 +4,7 @@ import { Client } from '@notionhq/client';
 import { NotionPageSession } from "../NotionPageOutput";
 import { GetPageResponse, PageObjectResponse } from "@notionhq/client/build/src/api-endpoints";
 import { IntegrationType } from "../../../shared/Integrations";
+import { SessionWithTracking } from "../../../agent/ChannelAgent/ChannelAgent";
 
 // Helper function to extract readable values from Notion page property objects
 function extractPagePropertyValue(property: any): any {
@@ -232,7 +233,7 @@ This tool returns the current state of the page including all properties, metada
     parameters: z.object({
         // No parameters needed - returns complete page information
     }),
-    execute: async ({ }, runContext?: RunContext<NotionPageSession>) => {
+    execute: async ({ }, runContext?: RunContext<SessionWithTracking<NotionPageSession>>) => {
         console.log("Executing notion_query_page tool");
         if (!runContext?.context) {
             throw new Error("No context provided");
@@ -273,8 +274,7 @@ This tool returns the current state of the page including all properties, metada
 
         // Push run action to track the API calls
         const pageName = runContext.context.notionPageConfig.page_name || 'Notion page';
-        runContext.context.runActions = runContext.context.runActions || [];
-        runContext.context.runActions.push({
+        runContext.context.trackAction({
             action: 'Retrieved page',
             integration: IntegrationType.NOTION,
             target: pageName,
