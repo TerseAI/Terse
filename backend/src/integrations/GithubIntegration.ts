@@ -5,7 +5,7 @@ import { EventProcessor } from "../agent/ChannelAgent/EventProcessor";
 import { InputEvent } from "./abstract/InputEvent";
 import { GithubIntegration, GithubIntegrationMetadata, IntegrationType } from "../shared/Integrations";
 import { GithubAppInstallationRepository, GithubAppInstallationRepositoryResponse, GithubAppInstallationResponse, GithubAppUnifiedEventRequest } from "../routes/GithubTypes";
-import { resolveUserForGithubInstallation } from "../routes/github";
+import { resolveUsersForGithubInstallation } from "../routes/github";
 import { User } from "../types/prisma";
 import { ChannelInputWithConfigs } from "../types/prisma";
 import { RunHistoryTrigger } from "../shared/RunHistoryTypes";
@@ -36,16 +36,18 @@ export class GithubIntegrationManager implements Integration<GithubIntegration, 
     }
 
     async processWebhookEvent(event: GithubAppUnifiedEventRequest): Promise<void> {
-        const user: User | null = await resolveUserForGithubInstallation(event.installationId, event.username);
+        const users: User[] = await resolveUsersForGithubInstallation(event.installationId);
 
-        if (!user) {
-            console.log(chalk.yellow(`⚠️  No user found for GitHub event from ${event.username}`));
+        if (users.length === 0) {
+            console.log(chalk.yellow(`⚠️  No users found for GitHub event from ${event.installationId}`));
             return;
         }
-
-        const githubEvent = new GithubEvent(event);
-        const eventProcessor = new EventProcessor(githubEvent, user);
-        await eventProcessor.process();
+        
+        for (const user of users) {
+            const githubEvent = new GithubEvent(event);
+            const eventProcessor = new EventProcessor(githubEvent, user);
+            await eventProcessor.process();
+        }
     }
 
     async getInstallationUrl(userId: string): Promise<OAuthInstallationDetails> {
@@ -326,13 +328,18 @@ export async function exchangeCodeForAccessToken(code: string, redirectUri?: str
 }
 
 export async function getAppInstallationsForUser(oAuthToken: string): Promise<GithubAppInstallationResponse> {
-    const resp: AxiosResponse<GithubAppInstallationResponse> = await axios.get('https://api.github.com/user/installations', {
-        headers: {
-            Authorization: `Bearer ${oAuthToken}`,
-            Accept: 'application/vnd.github+json',
-        },
-    });
-    return resp.data;
+    try {
+        const resp: AxiosResponse<GithubAppInstallationResponse> = await axios.get('https://api.github.com/user/installations', {
+            headers: {
+                Authorization: `Bearer ${oAuthToken}`,
+                Accept: 'application/vnd.github+json',
+            },
+        });
+        return resp.data;
+    } catch (error) {
+        console.error('Error getting app installations for user:', error);
+        return { total_count: 0, installations: [] };
+    }
 }
 
 export async function getAppInstallationRepositories(oAuthToken: string, installationId: number): Promise<GithubAppInstallationRepository[]> {
