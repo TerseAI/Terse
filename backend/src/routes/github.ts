@@ -323,22 +323,24 @@ export async function resolveUsersForGithubInstallation(installationId: number):
     return db().$transaction(async (tx) => {
         // Get all of our github app users. 
         const githubAppUsers = await tx.github_app_tokens.findMany();
-
+        
         // for each github App user, get their installations they have access to. Return a Map<user_id, installations>
         const installationResults = await Promise.all(githubAppUsers.map(async (user) => {
             const installations = await getAppInstallationsForUser(user.access_token);
-            return { userId: user.id, installations: installations.installations };
+            return { userId: user.user_id, installations: installations.installations };
         }));
-        
+
         // Find users who have access to the specific installation
         const userIds = installationResults
             .filter(result => result.installations.some(inst => inst.id === installationId))
             .map(result => result.userId);
-        
+
         // Fetch and return the User objects
         const users = await tx.users.findMany({
             where: { id: { in: userIds } }
         });
+
+        console.log(chalk.green('Found ' + users.length + ' users for event from installation: ' + installationId));
         
         return users;
     });
