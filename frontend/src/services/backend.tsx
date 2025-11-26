@@ -1,5 +1,4 @@
 import axios from 'axios';
-import { ModelEvent, ModelRequest } from "../shared/ModelEvents";
 import type { RunHistoryModelEvent } from "../shared/RunHistoryTypes";
 import {
     Channel,

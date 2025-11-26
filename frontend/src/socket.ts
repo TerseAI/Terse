@@ -2,7 +2,7 @@ import { io, Socket } from 'socket.io-client';
 import { mutate } from 'swr';
 import { BackendProvider } from './services/backend';
 import type { RunHistoryModelSocketEvent } from './shared/RunHistoryTypes';
-import { ModelEvent, ModelRequest } from './shared/ModelEvents';
+import { ModelRequest } from './shared/ModelEvents';
 
 let socket: Socket | null = null;
 
