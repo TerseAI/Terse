@@ -305,6 +305,17 @@ EXAMPLES:
             };
         }).filter(Boolean);
 
+        // Push run action to track the API call
+        const databaseName = runContext.context.notionConfig.database_name || 'Unknown Database';
+        const filterDescription = filter ? 'with filters' : 'without filters';
+        runContext.context.runActions = runContext.context.runActions || [];
+        runContext.context.runActions.push({
+            action: 'Queried database',
+            integration: IntegrationType.NOTION,
+            target: databaseName,
+            details: `Queried database ${filterDescription} and retrieved ${pages.length} ${pages.length === 1 ? 'page' : 'pages'}`,
+        });
+
         console.log("Notion query database tool response: ", { 
             pages_count: pages.length, 
             has_more: response.has_more,
