@@ -81,14 +81,12 @@ export default function RunHistoryChatDrawer({
     // Only fetch chat history when drawer is open
     const isActiveRun = status === 'in_progress';
     const { events: realtimeEvents } = useChannelChatEvents(isOpen && isActiveRun ? runId : null);
-    const { events: historyEvents, isLoading, startTimestamp, endTimestamp } = useChatHistory(isOpen ? runId : null);
+    const { events: historyEvents, isLoading, startTimestamp, endTimestamp, mutate: mutateChatHistory } = useChatHistory(isOpen ? runId : null);
     
     // Merge events based on run status
     const events: Array<RunHistoryModelEvent> = useMemo(() => {
         // Completed runs: API is source of truth (simple case)
-        if (!isActiveRun) {
-            return historyEvents;
-        }
+        mutateChatHistory();
         
         // Active runs: merge API (stored) + websocket (live)
         // Handles page refresh - API has history, websocket has new events
