@@ -100,9 +100,7 @@ The schema information returned by this tool should be used to properly format p
             target: databaseName,
             details: `Retrieved schema with ${Object.keys(schema).length} properties`,
         });
-
-        console.log("Notion get schema tool response: ", { schema, property_count: Object.keys(schema).length });
-
+        
         return {
             data_source_id: runContext.context.notionConfig.database_id,
             database_name: databaseName,
