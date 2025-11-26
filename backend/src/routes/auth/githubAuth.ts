@@ -113,13 +113,11 @@ export async function githubCallback(req: Request, res: Response) {
             },
             update: { 
                 access_token: githubAccessToken, 
-                refresh_token: refreshToken, 
             },
             create: { 
                 user_id: user.id, 
                 github_username: githubUsername, 
                 access_token: githubAccessToken, 
-                refresh_token: refreshToken, 
             }
         });
 
