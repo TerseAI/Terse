@@ -148,27 +148,16 @@ export enum RawModelStreamEventType {
 
 /**
  * Extracts URL from tool output.
- * Each tool should return a `url` field at the top level of its output if a URL is available.
- * Handles both JSON string outputs and object outputs.
+ * Tool outputs are wrapped in a structure like { type: 'text', text: '...' } where
+ * the text property contains a JSON string with a url field at the top level.
  */
 function extractUrlFromToolOutput(toolName: string, output: any, integration: string): string | undefined {
   try {
-    let parsedOutput: any = output;
-    
-    // If output is a string, try to parse it as JSON
-    if (typeof output === 'string') {
-      try {
-        parsedOutput = JSON.parse(output);
-      } catch (parseError) {
-        // If parsing fails, it's not JSON, return undefined
-        return undefined;
-      }
-    }
-    
-    // Check if parsed output has a url field at the top level
-    if (parsedOutput && typeof parsedOutput === 'object' && parsedOutput !== null) {
-      if ('url' in parsedOutput && typeof parsedOutput.url === 'string') {
-        return parsedOutput.url;
+    // Check if output has a text property containing JSON
+    if (output && typeof output === 'object' && output !== null && 'text' in output && typeof output.text === 'string') {
+      const parsedText = JSON.parse(output.text);
+      if (parsedText && typeof parsedText === 'object' && parsedText !== null && 'url' in parsedText && typeof parsedText.url === 'string') {
+        return parsedText.url;
       }
     }
     
