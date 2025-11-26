@@ -122,11 +122,6 @@ export enum RawModelStreamEventType {
         // Get integration from mapping or use unknown as fallback
         const integration = toolToIntegrationMap?.get(item.name) || "unknown";
         
-        // Extract URL from tool output
-        let url: string | undefined;
-        if (item.output) {
-          url = extractUrlFromToolOutput(item.name, item.output, integration);
-        }
         
         yield {
           type: "ToolCallComplete",
@@ -135,7 +130,6 @@ export enum RawModelStreamEventType {
           step_id: item.callId,
           changed_items: changedItems,
           integration: integration,
-          url: url,
         };
       }
     }
@@ -145,25 +139,3 @@ export enum RawModelStreamEventType {
       type: "NaturalStop",
     };
   }
-
-/**
- * Extracts URL from tool output.
- * Tool outputs are wrapped in a structure like { type: 'text', text: '...' } where
- * the text property contains a JSON string with a url field at the top level.
- */
-function extractUrlFromToolOutput(toolName: string, output: any, integration: string): string | undefined {
-  try {
-    // Check if output has a text property containing JSON
-    if (output && typeof output === 'object' && output !== null && 'text' in output && typeof output.text === 'string') {
-      const parsedText = JSON.parse(output.text);
-      if (parsedText && typeof parsedText === 'object' && parsedText !== null && 'url' in parsedText && typeof parsedText.url === 'string') {
-        return parsedText.url;
-      }
-    }
-    
-    return undefined;
-  } catch (error) {
-    // If extraction fails, return undefined
-    return undefined;
-  }
-}

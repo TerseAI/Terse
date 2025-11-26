@@ -379,7 +379,6 @@ export class JiraAdapter implements TicketManager {
             team: { id: issue.fields.project.id, name: issue.fields.project.name, key: issue.fields.project.key },
             createdAt: issue.fields.created,
             updatedAt: issue.fields.updated,
-            url: url,
         };
     }
 }
