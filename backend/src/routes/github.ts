@@ -56,59 +56,63 @@ export async function processSetUpURLGithubInstallation(req: Request, res: Respo
 
 export async function processsGithubAppInstallationWebhook(req: Request, res: Response) {
     const body: GithubAppInstallationCallbackRequest = req.body as GithubAppInstallationCallbackRequest;
-
     console.log('githubAppInstallationCallback', body);
+    
+    let user: User | null = await resolveUserForGithubInstallation(body.installationId, body.username);
+    if (user) {
+        emitCacheInvalidationWithKey(user.id, 'integrations');
+    }
+
+    // Leaving old code in in case of emergency.
 
     // Check if the user is registered with us, no problem if not. Will make a placeholder user.
-    let user: User | null = await resolveUserForGithubInstallation(body.installationId, body.username);
-    if (!user) {
-        user = await db().users.create({
-            data: {
-                github_username: body.username,
-                is_placeholder: true,
-                email: body.email || `${body.username}@username.ai`,
-                display_name: body.name || body.username
-            }
-        });
+    // let user: User | null = await resolveUserForGithubInstallation(body.installationId, body.username);
+    // if (!user) {
+    //     user = await db().users.create({
+    //         data: {
+    //             github_username: body.username,
+    //             is_placeholder: true,
+    //             email: body.email || `${body.username}@username.ai`,
+    //             display_name: body.name || body.username
+    //         }
+    //     });
 
-        console.log(chalk.green('Placeholder user created:'), user);
-    }
+    //     console.log(chalk.green('Placeholder user created:'), user);
+    // }
 
-    // Update the user_github_installation record with the user_id and account_name
-    const updateData: { user_id: string; account_name?: string | null } = {
-        user_id: user.id
-    };
-    if (body.accountName !== undefined) {
-        updateData.account_name = body.accountName;
-    }
+    // // Update the user_github_installation record with the user_id and account_name
+    // const updateData: { user_id: string; account_name?: string | null } = {
+    //     user_id: user.id
+    // };
+    // if (body.accountName !== undefined) {
+    //     updateData.account_name = body.accountName;
+    // }
 
-    const createData: { user_id: string; installation_id: number; account_name?: string | null } = {
-        user_id: user.id,
-        installation_id: body.installationId
-    };
-    if (body.accountName !== undefined) {
-        createData.account_name = body.accountName;
-    }
+    // const createData: { user_id: string; installation_id: number; account_name?: string | null } = {
+    //     user_id: user.id,
+    //     installation_id: body.installationId
+    // };
+    // if (body.accountName !== undefined) {
+    //     createData.account_name = body.accountName;
+    // }
 
-    await db().user_github_installation.upsert({
-        where: { installation_id: body.installationId },
-        update: updateData,
-        create: createData
-    });
+    // await db().user_github_installation.upsert({
+    //     where: { installation_id: body.installationId },
+    //     update: updateData,
+    //     create: createData
+    // });
 
-    // Process each repository in the array
-    const processedRepositories = await Promise.all(
-        body.repositories.map(repositoryData =>
-            processRepository(repositoryData, user, body.installationId)
-        )
-    );
+    // // Process each repository in the array
+    // const processedRepositories = await Promise.all(
+    //     body.repositories.map(repositoryData =>
+    //         processRepository(repositoryData, user, body.installationId)
+    //     )
+    // );
 
-    res.status(200).json({
-        message: 'Repository installation callback processed',
-        processedRepositories
-    });
-
-    emitCacheInvalidationWithKey(user.id, 'integrations');
+    // res.status(200).json({
+    //     message: 'Repository installation callback processed',
+    //     processedRepositories
+    // });
 }
 
 export async function githubAppInstallationDeleted(req: Request, res: Response) {
@@ -335,8 +339,8 @@ async function resolveUserForGithubInstallation(installationId: number, username
 
     if (user_id) {
         const matched_user = await db().users.findUnique({ where: { id: user_id } });
-        await db().users.update({ where: { id: user_id }, data: { github_username: username } });
         if (matched_user) {
+            await db().users.update({ where: { id: user_id }, data: { github_username: username } });
             return matched_user;
         }
     }
