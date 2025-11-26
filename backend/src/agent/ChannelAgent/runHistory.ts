@@ -1,5 +1,5 @@
 import { db } from "../../prismaClient";
-import type { RunHistoryStatus, RunHistoryTrigger } from "../../shared/RunHistoryTypes";
+import type { RunHistoryAction, RunHistoryStatus, RunHistoryTrigger } from "../../shared/RunHistoryTypes";
 import { convertIntegrationTypeToRunHistoryIntegration } from "../../utility/typeConverters";
 import { ModelEvent } from "../../shared/ModelEvents";
 
@@ -40,6 +40,22 @@ export async function markRunSkipped(runId: string, reason: string): Promise<voi
             decision_action: "skipped",
             decision_reason: reason,
             status: "skipped",
+        },
+    });
+}
+
+export async function appendRunAction(
+    runId: string,
+    action: RunHistoryAction,
+): Promise<void> {
+    await db().run_history_actions.create({
+        data: {
+            run_history_record_id: runId,
+            action: action.action,
+            integration: convertIntegrationTypeToRunHistoryIntegration(action.integration),
+            target: action.target,
+            details: action.details,
+            url: action.url ?? null,
         },
     });
 }
