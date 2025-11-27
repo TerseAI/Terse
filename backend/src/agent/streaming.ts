@@ -5,6 +5,7 @@ import { IAgentSession } from "./agents/AgentSession";
 import { Output } from "../outputs/abstract/Output";
 import { ConfigInstance } from "../shared/Configs";
 import { IntegrationType } from "../shared/Integrations";
+import { ChannelAgent, SessionWithTracking } from "./ChannelAgent/ChannelAgent";
 
 // Enums for event types
 export enum RawModelStreamEventType {
@@ -116,12 +117,18 @@ export enum RawModelStreamEventType {
       ) {
         const toolCallCompleteEvent = event as ToolCallCompleteEvent;
         const item = toolCallCompleteEvent.item.rawItem;            
-        // Get the changed items for this tool call, or use empty array if no session provided
-        const changedItems = agentSession?.getAndClearChangedItems() || [];
+        
+        // Flush pending actions with the step_id now that the tool has completed
+        const actionChangedItems = await agentSession?.flushPendingActions?.(item.callId) || [];
+        
+        // Get any other changed items for this tool call
+        const otherChangedItems = agentSession?.getAndClearChangedItems() || [];
+        
+        // Combine all changed items
+        const changedItems = [...actionChangedItems, ...otherChangedItems];
         
         // Get integration from mapping or use unknown as fallback
         const integration = toolToIntegrationMap?.get(item.name) || "unknown";
-        
         
         yield {
           type: "ToolCallComplete",
@@ -139,3 +146,85 @@ export enum RawModelStreamEventType {
       type: "NaturalStop",
     };
   }
+
+
+    /**
+   * Converts stream events to ModelEvent types
+   * Works with any agent output type (AgentOutputType or Zod schemas)
+   * @param result - The streamed run result from the agent
+   * @param agentSession - Optional agent session for tracking changed items. If not provided, changed_items will be empty.
+   * @param toolToIntegrationMap - Map from tool name to integration type string. Used to annotate tool calls with their integration.
+   */
+    export async function* toChannelAgentEventStream<T extends Session = Session, TConfig extends ConfigInstance = ConfigInstance>(
+      result: StreamedRunResult<SessionWithTracking<T>, Agent<SessionWithTracking<T>, any>>,
+      channelAgent: ChannelAgent<T, TConfig>,
+      toolToIntegrationMap?: Map<string, string>
+    ): AsyncGenerator<ModelEvent, void, unknown> {
+      for await (const event of result as AsyncIterable<RawModelStreamEvent | ToolCallCompleteEvent | ToolCalledEvent>) {          
+        // TextDelta: output_text_delta
+        if (
+          event.type === "raw_model_stream_event" &&
+          event.data?.type === RawModelStreamEventType.OutputTextDelta &&
+          typeof event.data.delta === "string"
+        ) {
+          yield {
+            type: "TextDelta",
+            delta: event.data.delta,
+            step_id: event.data.providerData?.item_id || event.data.providerData?.step_id || "unknown"
+          };
+        }
+  
+        // ToolCalled - this is the actual tool call event
+        if (
+          event.type === "run_item_stream_event" &&
+          event.name === "tool_called"
+        ) {
+          const toolCalledEvent = event as ToolCalledEvent;
+          const item = toolCalledEvent.item.rawItem;
+          
+          // Get integration from mapping or use unknown as fallback
+          const integration = toolToIntegrationMap?.get(item.name) || "unknown";
+          
+          // Send ToolCall event with the actual parameters
+          yield {
+            type: "ToolCall",
+            summary: item.name,
+            step_id: item.callId,
+            parameters: item.arguments,
+            integration: integration
+          };
+        }
+  
+        // ToolCallComplete - this is the actual completion event
+        if (
+          event.type === "run_item_stream_event" &&
+          event.name === "tool_output"
+        ) {
+          const toolCallCompleteEvent = event as ToolCallCompleteEvent;
+          const item = toolCallCompleteEvent.item.rawItem;            
+          
+          // Flush pending actions with the step_id now that the tool has completed
+          const actionChangedItems = await channelAgent.flushPendingActions?.(item.callId) || [];
+        
+    
+          
+          // Get integration from mapping or use unknown as fallback
+          const integration = toolToIntegrationMap?.get(item.name) || "unknown";
+          
+          yield {
+            type: "ToolCallComplete",
+            tool_name: item.name,
+            status: item.status,
+            step_id: item.callId,
+            changed_items: actionChangedItems,
+            integration: integration,
+          };
+        }
+      }
+      
+      // Send NaturalStop when stream completes
+      yield {
+        type: "NaturalStop",
+      };
+    }
+  
