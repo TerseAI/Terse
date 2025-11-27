@@ -17,4 +17,5 @@ export interface IAgentSession<T extends Session> {
     getChangedItems(): ChangedItem[];
     getContext(): T;
     getAgent(): Agent<T, AgentOutputType> | undefined;
+    flushPendingActions?(stepId: string): Promise<ChangedItem[]>;
   }

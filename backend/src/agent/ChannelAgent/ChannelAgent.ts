@@ -8,7 +8,7 @@ import { ConfigInstance } from '../../shared/Configs';
 import { settings } from '../../config/settings';
 import { formatChannelInputsForAgent, formatChannelOutputForAgent } from './formatContext';
 import { UserFormatter } from '../../utility/UserFormatter';
-import { toEventStream } from '../streaming';
+import { toChannelAgentEventStream, toEventStream } from '../streaming';
 import { convertOutputConfigTypeToIntegrationType } from '../../utility/typeConverters';
 import { storeChatEvent } from './runHistory';
 import { getRealtimeSocket } from '../../realtimeSocket';
@@ -50,7 +50,7 @@ export class ChannelAgent<T extends Session, TConfig extends ConfigInstance> {
     private tools: Tool<SessionWithTracking<T>>[] = [];
     private runId: string;  
     private toolToIntegrationMap: Map<string, string> = new Map();
-    private changedItems: ChangedItem[] = [];
+    private pendingActions: RunHistoryAction[] = [];
 
     constructor(session: T, output: Output<T, TConfig>, channel: ChannelWithRelations, runId: string) {
         this.history = [];
@@ -62,7 +62,6 @@ export class ChannelAgent<T extends Session, TConfig extends ConfigInstance> {
         this.channelOutput = channel.output as ChannelOutput;
         this.tools = output.toolbox.map(entry => entry.tool);
         this.runId = runId;
-        this.changedItems = [];
         // Build tool-to-integration mapping
         const integrationType = convertOutputConfigTypeToIntegrationType(output.integration);
         const integrationString = integrationType; // IntegrationType enum values are strings
@@ -79,21 +78,43 @@ export class ChannelAgent<T extends Session, TConfig extends ConfigInstance> {
         return 'gpt-5';
     }
 
-    async trackAction(action: RunHistoryAction): Promise<void> {
-        const result = await persistRunAction(this.runId, this.channel, this.session, action);
-        if (result) {
-            this.changedItems.push({
-                type_name: EntityType.RUN_HISTORY_ACTION,
-                id: result,
-                change_event_type: ChangeEventType.ACTION_EXECUTED
+    /**
+     * Queue an action to be persisted when we receive the step_id from ToolCallComplete.
+     * Actions are not persisted immediately - they wait until flushPendingActions is called.
+     */
+    queueAction(action: RunHistoryAction): void {
+        this.pendingActions.push(action);
+    }
+
+    /**
+     * Flush all pending actions, associating them with the given step_id.
+     * Called when ToolCallComplete event is received in the streaming layer.
+     */
+    async flushPendingActions(stepId: string): Promise<ChangedItem[]> {
+        const changedItems: ChangedItem[] = [];
+        
+        for (const action of this.pendingActions) {
+            const result = await persistRunAction(this.runId, this.channel, this.session, {
+                ...action,
+                step_id: stepId,
             });
+            if (result) {
+                changedItems.push({
+                    type_name: EntityType.RUN_HISTORY_ACTION,
+                    id: result,
+                    change_event_type: ChangeEventType.ACTION_EXECUTED
+                });
+            }
         }
+        
+        this.pendingActions = [];
+        return changedItems;
     }
     
     getToolContext(): SessionWithTracking<T> {
         return {
             ...this.session,
-            trackAction: this.trackAction,
+            trackAction: (action: RunHistoryAction) => this.queueAction(action),
         }
     }
 
@@ -187,7 +208,7 @@ export class ChannelAgent<T extends Session, TConfig extends ConfigInstance> {
             let lastTextDeltaStepId: string | null = null;
 
             try {
-                for await (const modelEvent of toEventStream(result, undefined, this.toolToIntegrationMap)) {
+                for await (const modelEvent of toChannelAgentEventStream(result, this, this.toolToIntegrationMap)) {
                     const timestamp = new Date().toISOString();
 
                     // Handle TextDelta accumulation
