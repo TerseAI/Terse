@@ -31,7 +31,7 @@ export function NotionResourceSelector({
     } = useNotionResources(integrationId, resourceType);
 
     const [isExplicitlyRefreshing, setIsExplicitlyRefreshing] = useState(false);
-    
+
     // Only show spinner when explicitly refreshing (user clicked button) AND currently validating
     const isRefreshing = isExplicitlyRefreshing && isValidating;
 
@@ -77,9 +77,11 @@ export function NotionResourceSelector({
     return (
         <div className="space-y-2">
             <div className="flex items-center justify-between">
-                <label className="text-xs font-medium text-muted-foreground">
-                    Select Page or Database
-                </label>
+                {resources.length > 0 && (
+                    <div className="text-xs text-muted-foreground">
+                        {resources.length} page{resources.length !== 1 ? 's' : ''} or database{resources.length !== 1 ? 's' : ''} available
+                    </div>
+                )}
                 <RefreshButton
                     onClick={handleRefresh}
                     isRefreshing={isRefreshing}
@@ -87,11 +89,6 @@ export function NotionResourceSelector({
                 />
             </div>
             <NotionResourceCombobox resources={resources} selectedResourceId={selectedResourceId || ''} onSelect={onSelect} />
-            {resources.length > 0 && (
-                <div className="text-xs text-muted-foreground">
-                    {resources.length} page{resources.length !== 1 ? 's' : ''} or database{resources.length !== 1 ? 's' : ''} available
-                </div>
-            )}
         </div>
     );
 }

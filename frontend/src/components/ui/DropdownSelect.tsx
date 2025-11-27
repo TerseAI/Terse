@@ -1,6 +1,7 @@
 import {
     DropdownMenu,
     DropdownMenuContent,
+    DropdownMenuItem,
     DropdownMenuRadioGroup,
     DropdownMenuRadioItem,
     DropdownMenuTrigger,
@@ -17,9 +18,13 @@ type DropdownSelectProps = {
     statusOptions: StatusOption[];
     selectedOption: StatusOption;
     setSelected: (value: string) => void;
+    additionalAction?: {
+        label: string;
+        onClick: () => void;
+    };
 }
 
-const DropdownSelect = ({ statusOptions, selectedOption, setSelected }: DropdownSelectProps) => {
+const DropdownSelect = ({ statusOptions, selectedOption, setSelected, additionalAction }: DropdownSelectProps) => {
     return (
         <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -38,6 +43,11 @@ const DropdownSelect = ({ statusOptions, selectedOption, setSelected }: Dropdown
                             {option.label}
                         </DropdownMenuRadioItem>
                     ))}
+                    {additionalAction && (
+                        <DropdownMenuItem onClick={additionalAction.onClick}>
+                            {additionalAction.label}
+                        </DropdownMenuItem>
+                    )}
                 </DropdownMenuRadioGroup>
             </DropdownMenuContent>
         </DropdownMenu>

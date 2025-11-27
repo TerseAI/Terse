@@ -9,6 +9,7 @@ import { InputConfigSelectorProps } from './types';
 import { useNotionIntegrations } from '@/hooks/api/useNotionIntegrations';
 import { useOAuthConnection } from '@/hooks/useOAuthConnection';
 import { useIntegrationId } from '@/hooks/useIntegrationId';
+import { IconForConfigType } from '../../pages/Channels/components/Integration';
 
 export function NotionIntegration({
     input,
@@ -84,25 +85,20 @@ export function NotionIntegration({
     // Dialog variant: full view
     return (
         <div className="flex flex-col gap-3">
-            <div className="flex flex-col gap-1.5">
-                <label className="font-medium">
-                    {isDatabaseConfig ? 'Notion Database' : 'Notion Page'}
-                </label>
+            <div className="flex flex-row gap-1.5 items-center">
+                <div className="w-15 h-15">
+                    <IconForConfigType type={ConfigType.NOTION_DATABASE}/>
+                </div>
                 <DropdownSelect
                     statusOptions={connectionSelections}
                     selectedOption={selectedOption}
                     setSelected={onSelect}
+                    additionalAction={{
+                        label: 'Connect Another Notion',
+                        onClick: connectOAuth
+                    }}
                 />
             </div>
-
-            <Button
-                onClick={connectOAuth}
-                disabled={isOAuthConnecting}
-                variant="outline"
-            >
-                <Plus className="w-4 h-4" />
-                {isOAuthConnecting ? 'Connecting...' : "Connect Another Notion"}
-            </Button>
 
             {/* Notion-specific resource selector */}
             {selectedIntegrationId && (
