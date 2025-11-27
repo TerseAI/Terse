@@ -1,14 +1,11 @@
 import { Button } from "@/components/ui/button";
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import EditableTextField from '../../../components/ui/EditableTextField';
-import { OutputCard, OutputSection } from "../OutputSection";
 import { ChannelUpdate, TransientChannelInput, TransientChannelOutput } from "@/shared/types";
 import { toast } from "sonner";
 import { getDefaultChannelName, toChannelInput, toChannelOutput } from "@/utility/ChannelUtils";
 import { useChannelCount } from "@/hooks/api/useChannelCount";
-import { Conn, SVGFlowArrows } from "../components/FlowArrow";
-import { PromptSection } from "../PromptSection";
 import { useChannelMutations } from "@/hooks/api/useChannels";
 import { type KeyedMutator } from 'swr';
 import { Channel, ChannelInput, ChannelOutput, ChannelPrompt } from "@/shared/types";
@@ -19,8 +16,9 @@ import { ConfigInstance, ConfigType } from "../../../shared/Configs";
 import { v4 as uuidv4 } from 'uuid';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../../../components/ui/dialog";
 import { InputConfigSelectorProps, IntegrationSelector } from "../../../components/IntegrationSelector";
-import { CrossIcon, PlusIcon, XIcon } from "lucide-react";
+import { AlertTriangleIcon, PlusIcon, XIcon } from "lucide-react";
 import { cn } from "../../../lib/utils";
+import { Card, CardContent } from "../../../components/ui/card";
 
 export type ChannelSetupTabProps = {
     channelId: string | null;
@@ -237,7 +235,7 @@ export default function ChannelSetupTab({
     const channelOutput = toChannelOutput(output)
 
     return (
-        <div className="grid grid-flow-row place-items-center gap-4">
+        <div className="grid grid-flow-row place-items-center gap-8">
             <div className="flex justify-between items-center w-full">
                 <EditableTextField value={name || defaultName || ''} onSave={(value) => setName(value)} />
                 <SaveChannelButton
@@ -251,21 +249,21 @@ export default function ChannelSetupTab({
                     mutate={mutate}
                 />
             </div>
-            <h1>{name}</h1>
 
-            <div className="flex flex-row gap-4">
+            <div className="flex flex-row gap-4 min-w-md max-w-md">
                 <InputLayout inputs={inputs} setInputs={setInputs} />
             </div>
 
-            <div className="min-w-100">
+            <div className="min-w-md max-w-md">
+                <h2 className="text-lg mb-2">Instructions</h2>
                 <Textarea value={prompt?.text} onChange={(e) => setPrompt({ ...prompt, text: e.target.value })} className="min-h-100" />
             </div>
 
-            {/* <div>
-                {output && (
-                    <OutputCard output={output} handleRemove={() => setOutput(undefined)} setOutput={(output) => setOutput(output)} />
-                )}
-            </div> */}
+            <div className="min-w-md max-w-md">
+                <h2 className="text-lg mb-2">Output</h2>
+
+                <OutputLayout output={output} setOutput={setOutput} />
+            </div>
         </div>
     )
 }
@@ -286,21 +284,25 @@ function InputLayout({ inputs, setInputs }: { inputs: TransientChannelInput[], s
     };
 
     return (
-        <div className="flex flex-row gap-2 items-center">
-            {inputs.map((input) => (
-                <Input key={input.id} input={input} inputs={inputs} setInputs={setInputs} handleRemove={handleRemove} />
-            ))}
-            <Button variant="outline" onClick={() => setShowAddModal(true)}>
-                <PlusIcon className={cn("size-4", inputs.length > 0 ? "text-primary" : "text-muted-foreground")} />
-            </Button>
-            <AddInputModal
-                isOpen={showAddModal}
-                onClose={() => setShowAddModal(false)}
-                onSelectIntegration={handleSelectPlatform}
-            />
+        <div className="flex flex-col gap-2">
+            <h2 className="text-lg mb-2">Event Sources</h2>
+            <div className="flex flex-row gap-2 items-stretch">
+                {inputs.map((input) => (
+                    <Input key={input.id} input={input} inputs={inputs} setInputs={setInputs} handleRemove={handleRemove} />
+                ))}
+                <Button variant="outline" onClick={() => setShowAddModal(true)} className="h-auto aspect-square">
+                    <PlusIcon className={cn("size-4", inputs.length > 0 ? "text-primary" : "text-muted-foreground")} />
+                </Button>
+                <AddInputModal
+                    isOpen={showAddModal}
+                    onClose={() => setShowAddModal(false)}
+                    onSelectIntegration={handleSelectPlatform}
+                />
+            </div>
         </div>
     )
 }
+
 function Input({ input, inputs, setInputs, handleRemove }: { input: TransientChannelInput, inputs: TransientChannelInput[], setInputs: (inputs: TransientChannelInput[]) => void, handleRemove: (id: string) => void }) {
     const isPlaceholder = input.config === undefined;
     const needsConfiguration = !input.config || !input.config.isComplete();
@@ -311,15 +313,29 @@ function Input({ input, inputs, setInputs, handleRemove }: { input: TransientCha
         setConfig: (config: ConfigInstance) => setInputs(inputs.map(i => i.id === input.id ? { ...i, config, configType: config.configType } : i)),
         variant: "card"
     };
-    
-    return (
-        <>
+
+    let cardContent;
+    if (isPlaceholder) {
+        cardContent = (
+            <div className="flex flex-row justify-between items-center gap-1 p-2 border border-yellow-500 rounded-md cursor-pointer" onClick={() => setShowDetailsDialog(true)}>
+                <ConfigTitle configType={input.configType} iconSize="md" />
+                <AlertTriangleIcon className="size-4 text-yellow-500" />
+            </div>
+        );
+    } else {
+        cardContent = (
             <div className="flex flex-row justify-between items-center gap-1 p-2 border rounded-md cursor-pointer" onClick={() => setShowDetailsDialog(true)}>
                 <ConfigTitle configType={input.configType} iconSize="md" />
-                <Button variant="ghost" size="icon-sm" onClick={() => handleRemove(input.id)} className="hover:text-destructive">
+                <Button variant="ghost" size="icon-sm" onClick={(e) => { e.stopPropagation(); handleRemove(input.id); }} className="hover:text-destructive">
                     <XIcon />
                 </Button>
             </div>
+        );
+    }
+
+    return (
+        <>
+            {cardContent}
 
             <Dialog open={showDetailsDialog} onOpenChange={setShowDetailsDialog}>
                 <DialogContent>
@@ -330,5 +346,29 @@ function Input({ input, inputs, setInputs, handleRemove }: { input: TransientCha
                 </DialogContent>
             </Dialog>
         </>
+    )
+}
+
+function OutputLayout({ output, setOutput }: { output: TransientChannelOutput | undefined, setOutput: (output: TransientChannelOutput | undefined) => void }) {
+    if (!output || !output.config) {
+        return (
+            <div className="flex flex-col gap-2">
+                <h2 className="text-lg mb-2">Output</h2>
+            </div>
+        )
+    }
+
+    const selectorProps: InputConfigSelectorProps = {
+        input: output,
+        setConfig: (config: ConfigInstance) => setOutput({ ...output, config: config, configType: config.configType }),
+        variant: "card"
+    };
+
+    return (
+        <Card className="flex flex-row gap-2">
+            <CardContent>
+                <IntegrationSelector {...selectorProps} variant="dialog" />
+            </CardContent>
+        </Card>
     )
 }
