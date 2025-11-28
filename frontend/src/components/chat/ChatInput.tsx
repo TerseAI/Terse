@@ -1,7 +1,7 @@
 import GlowingTextField, { Size } from "./GlowingTextField";
 import { useEffect, useRef } from "react";
 
-function ChatInput({ sendMessage, input, setInput, placeholders }: { sendMessage: (message: string) => void, input: string, setInput: (input: string) => void, placeholders: string[] }) {
+function ChatInput({ sendMessage, input, setInput, placeholders, disabled = false }: { sendMessage: (message: string) => void, input: string, setInput: (input: string) => void, placeholders: string[], disabled?: boolean }) {
     const prevSelectedRef = useRef<number | null>(null);
 
     // Track focus override based on state transitions
@@ -31,7 +31,9 @@ function ChatInput({ sendMessage, input, setInput, placeholders }: { sendMessage
     const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
         if (e.key === 'Enter' && !e.shiftKey) {            
             e.preventDefault();
-            sanitizeAndSendMessage(input);
+            if (!disabled) {
+                sanitizeAndSendMessage(input);
+            }
         }
     };
 
@@ -62,7 +64,7 @@ function ChatInput({ sendMessage, input, setInput, placeholders }: { sendMessage
         <div className="p-4">
             <div className="grid grid-cols-[1fr_auto] gap-2">
                 <GlowingTextField
-                    isLoading={false}
+                    isLoading={disabled}
                     onInputChange={(e) => setInput(e.target.value)}
                     onKeyDown={handleKeyDown}
                     inputValue={input}
@@ -73,8 +75,9 @@ function ChatInput({ sendMessage, input, setInput, placeholders }: { sendMessage
                     focusOverride={focusOverride}
                 />
                 <button
-                    className="px-4 py-2 bg-[theme(--accent-primary)] text-white rounded-lg"
+                    className="px-4 py-2 bg-[theme(--accent-primary)] text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
                     onClick={() => sanitizeAndSendMessage(input)}
+                    disabled={disabled}
                 >
                     Send
                 </button>

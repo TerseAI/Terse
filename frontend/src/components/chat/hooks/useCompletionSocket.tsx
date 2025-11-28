@@ -47,11 +47,9 @@ export function useCompletionSocket(options: UseCompletionSocketOptions) {
                     onDeltaRef.current(message);
                     break;
                 case 'ToolCall':
-                    console.log('Socket has just sent ToolCall', message);
                     onToolCallRef.current(message);
                     break;
                 case 'ToolCallComplete':
-                    console.log('Socket has just sent ToolCallComplete', message);
                     onToolCallCompleteRef.current(message);
                     break;
                 case 'Failure':

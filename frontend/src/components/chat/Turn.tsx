@@ -156,8 +156,6 @@ function ToolActionsList({ actionIds, isFailure }: { actionIds: string[], isFail
 
     if (!actions || actions.length === 0) return null;
 
-    console.log('🔍 actions:', actions);
-
     return (
         <div className="mt-2 space-y-2">
             {actions.map((action, index) => (
