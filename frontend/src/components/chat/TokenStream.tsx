@@ -107,7 +107,7 @@ function TokenStream({ text, disableAnimation = false }: { text: string, disable
     // Show formatted version
     if (showFormatted && finalText) {
         return (
-            <div className="text-[theme(--text-primary)] text-md leading-relaxed whitespace-pre-wrap text-wrap-pretty">
+            <div className="text-foreground text-md leading-relaxed whitespace-pre-wrap text-wrap-pretty">
                 {processMarkdown(finalText)}
             </div>
         );
@@ -115,11 +115,11 @@ function TokenStream({ text, disableAnimation = false }: { text: string, disable
 
     // Show streaming tokens
     return (
-        <div className="text-[theme(--text-primary)] text-md leading-relaxed whitespace-pre-wrap text-wrap-pretty">
+        <div className="text-foreground text-md leading-relaxed whitespace-pre-wrap text-wrap-pretty">
             {tokens.map((token) => (
                 <span
                     key={token.id}
-                    className="opacity-0 animate-fade-in"
+                    className="animate-in fade-in-0 duration-150"
                 >
                     {token.value}
                 </span>

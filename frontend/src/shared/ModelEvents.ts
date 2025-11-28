@@ -8,11 +8,11 @@ export enum  ChangeEventType {
 
 export type ChangedItem = { type_name: EntityType, id: string, change_event_type: ChangeEventType };
 
-export type Failure = { error: string, };
+export type Failure = { error: string, step_id: string };
 
 export type FunctionCall = { function_name: string, result: string, step_id: string, };
 
-export type ModelEvent = { "type": "ToolApprovalRequest" } & ToolApprovalRequest | { "type": "ToolCall" } & ToolCall | { "type": "ToolCallComplete" } & ToolCallComplete | { "type": "TextDelta" } & TextDelta | { "type": "Failure" } & Failure | { "type": "NaturalStop" } | { "type": "FilterResult" } & FilterResult;
+export type ModelEvent = { "type": "ToolApprovalRequest" } & ToolApprovalRequest | { "type": "ToolCall" } & ToolCall | { "type": "ToolCallComplete" } & ToolCallComplete | { "type": "TextDelta" } & TextDelta | { "type": "Failure" } & Failure | { "type": "NaturalStop", step_id: string } | { "type": "FilterResult" } & FilterResult;
 
 export type ModelRequest = { "type": "SendModelRequest" } & SendModelRequest | { "type": "ToolApprovalResponse" } & ToolApprovalResponse;
 
@@ -28,4 +28,4 @@ export type ToolCall = { summary: string, step_id: string, parameters: string, i
 
 export type ToolCallComplete = { tool_name: string, status: string, step_id: string, changed_items: ChangedItem[], integration: string, url?: string, result?: string };
 
-export type FilterResult = { isRelevant: boolean, reason: string, confidence: number };
+export type FilterResult = { isRelevant: boolean, reason: string, confidence: number, step_id: string };

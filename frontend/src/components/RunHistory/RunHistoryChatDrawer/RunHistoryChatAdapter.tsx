@@ -28,7 +28,8 @@ type RunHistoryChatAdapterProps = {
 export default function RunHistoryChatAdapter({ runId, status, children }: RunHistoryChatAdapterProps) {
     // Fetch History (API)
     const { events: historyEvents, isLoading, startTimestamp, endTimestamp, status: apiStatus, mutate: mutateChatHistory } = useChatHistory(runId);
-    
+
+    console.log('historyEvents:', historyEvents);
     // Use API status if available, otherwise fall back to prop status
     const currentStatus = (apiStatus as RunHistoryStatus) || status;
     const isActiveRun = currentStatus === 'in_progress';
@@ -37,28 +38,29 @@ export default function RunHistoryChatAdapter({ runId, status, children }: RunHi
     // Pass null if not active to skip subscription
     const { events: realtimeEvents } = useChannelChatEvents(isActiveRun ? runId : null);
 
+    // step id, represents a grouping of data.
     // Merge Events
     const events: (ModelEvent & { isHistorical?: boolean })[] = useMemo(() => {
-        // Trigger revalidation of history occasionally if needed, but useChatHistory handles it via SWR
-        // We call mutate to ensure freshness on mount/update if logical
-        mutateChatHistory();
-        
+        const historicalEventMap = new Map<string, RunHistoryModelEvent & { isHistorical?: boolean }>();
         const eventMap = new Map<string, RunHistoryModelEvent & { isHistorical?: boolean }>();
         
         // Add history events first (base truth) and tag them
         historyEvents.forEach(event => {
-            if (event.id) {
-                eventMap.set(event.id, { ...event, isHistorical: true });
+            if (event.step_id) {
+                historicalEventMap.set(event.step_id, { ...event, isHistorical: true });
+                eventMap.set(event.step_id, { ...event, isHistorical: true });
             }
         });
+
+        // ok so we have 
         
         // Add realtime events (updates/new events)
         realtimeEvents.forEach(event => {
-            // Only add if not present or if you want to overwrite (usually socket is newer)
-            if (event.id) {
-                // Realtime events are NOT historical
-                eventMap.set(event.id, event);
+            const isAlreadyInHistory = historicalEventMap.has(event.step_id);
+            if (isAlreadyInHistory) {
+                return;
             }
+            eventMap.set(event.id, { ...event, isHistorical: false });
         });
         
         // Sort by timestamp

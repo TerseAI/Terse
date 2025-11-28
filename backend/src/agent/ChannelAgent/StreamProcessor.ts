@@ -2,6 +2,7 @@ import { Server } from 'socket.io';
 import { ModelEvent } from '../../shared/ModelEvents';
 import { storeChatEvent } from './runHistory';
 import type { RunHistoryModelEvent, RunHistoryModelSocketEvent, RunHistoryStreamingParams } from '../../shared/RunHistoryTypes';
+import { randomString } from '../../utility/strings';
 
 export class TextDeltaAggregator {
     private accumulatedDeltas = new Map<string, AccumulatedDelta>();
@@ -163,7 +164,7 @@ async function handleTextDeltaEvent(
 ): Promise<void> {
     await aggregator.handleStepTransition(event.step_id);
     aggregator.accumulate(event, timestamp);
-    const eventId = aggregator.getEventId(event.step_id) || '';
+    const eventId = aggregator.getEventId(event.step_id) || randomString(15);
     emitter.emitTextDelta(event, timestamp, eventId);
 }
 

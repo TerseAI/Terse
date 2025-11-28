@@ -8,6 +8,7 @@ import { z } from "zod";
 import type { RunHistoryStreamingParams, RunHistoryModelEvent, RunHistoryModelSocketEvent } from '../../shared/RunHistoryTypes';
 import { storeChatEvent } from './runHistory';
 import { getRealtimeSocket } from '../../realtimeSocket';
+import { randomString } from '../../utility/strings';
 
 export interface EventFilterResult {
     isRelevant: boolean;
@@ -169,6 +170,7 @@ export async function filterEvent<T extends Session>(
                 isRelevant: parsed.isRelevant,
                 reason: parsed.reason,
                 confidence: parsed.confidence,
+                step_id: randomString(15),
             };
             const filterEventId = await storeChatEvent(streamingParams.runId, filterResultEvent);
             
