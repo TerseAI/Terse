@@ -17,6 +17,7 @@ interface ChatLayoutProps {
     setInput: (input: string) => void;
     placeholders?: string[];
     EmptyContentPlaceholder?: React.ReactNode;
+    initialScrollToBottom?: boolean;
 }
 
 export function ChatLayout({
@@ -28,9 +29,11 @@ export function ChatLayout({
     setInput,
     placeholders = ["Type a message..."],
     EmptyContentPlaceholder,
+    initialScrollToBottom = false,
 }: ChatLayoutProps) {
     const [showScrollIndicator, setShowScrollIndicator] = useState(false);
     const scrollContainerRef = useRef<HTMLDivElement>(null);
+    const hasInitialScrolled = useRef(false);
 
     const checkScrollPosition = useCallback(() => {
         const container = scrollContainerRef.current;
@@ -64,6 +67,17 @@ export function ChatLayout({
     useEffect(() => {
         checkScrollPosition();
     }, [turns, checkScrollPosition]);
+
+    // Scroll to bottom on initial load when initialScrollToBottom is enabled
+    useEffect(() => {
+        if (initialScrollToBottom && turns.length > 0 && !hasInitialScrolled.current) {
+            hasInitialScrolled.current = true;
+            // Use requestAnimationFrame to ensure DOM is ready, then scroll instantly
+            requestAnimationFrame(() => {
+                messagesEndRef.current?.scrollIntoView({ behavior: 'instant' });
+            });
+        }
+    }, [initialScrollToBottom, turns, messagesEndRef]);
 
     const scrollToBottom = useCallback(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
