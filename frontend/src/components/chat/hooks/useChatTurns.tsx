@@ -176,7 +176,7 @@ export function useChatTurns({ onScrollToBottom }: UseChatTurnsOptions = {}) {
         }
     };
 
-    const handleToolCallComplete = ({ step_id, result }: ToolCallComplete) => {
+    const handleToolCallComplete = ({ step_id, result, changed_items }: ToolCallComplete) => {
         console.log('🔧 handleToolCallComplete called with step_id:', step_id);
         
         // Remove from pending approvals if it was there
@@ -200,6 +200,9 @@ export function useChatTurns({ onScrollToBottom }: UseChatTurnsOptions = {}) {
                     toolCall.isWaitingForUserInput = false;
                     if (result) {
                         toolCall.result = result;
+                    }
+                    if (changed_items) {
+                        toolCall.changed_items = changed_items;
                     }
                     break;
                 }

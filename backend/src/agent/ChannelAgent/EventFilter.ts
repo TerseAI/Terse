@@ -3,7 +3,7 @@ import { InputEvent } from "../../integrations/abstract/InputEvent";
 import { ChannelPrompt } from "../../types/prisma";
 import { Session } from "../../server";
 import { ModelEvent } from '../../shared/ModelEvents';
-import { toEventStream } from '../streaming';
+import { transformAgentStreamToModelEvents } from '../streaming';
 import { z } from "zod";
 import type { RunHistoryStreamingParams, RunHistoryModelEvent, RunHistoryModelSocketEvent } from '../../shared/RunHistoryTypes';
 import { storeChatEvent } from './runHistory';
@@ -123,7 +123,7 @@ export async function filterEvent<T extends Session>(
             const userRoom = `user:${streamingParams.userId}`;
             
             try {
-                for await (const modelEvent of toEventStream(result)) {
+                for await (const modelEvent of transformAgentStreamToModelEvents(result)) {
                     // Skip TextDelta events from filter agent - we'll store the structured FilterResult instead
                     if (modelEvent.type === 'TextDelta') {
                         continue;

@@ -88,6 +88,7 @@ export async function getRunHistory(req: Request, res: Response) {
         target: action.target,
         details: action.details,
         url: action.url ?? undefined,
+        step_id: action.step_id ?? undefined,
       })),
       status: runRecord.status as RunHistoryStatus,
     }));
@@ -221,5 +222,50 @@ export async function getChatHistory(req: Request, res: Response) {
   } catch (err) {
     console.error("Failed to fetch chat history", err);
     res.status(500).json({ error: "Failed to fetch chat history" });
+  }
+}
+
+/**
+ * Get run history actions by IDs
+ * Route: GET /api/run-history/actions?ids=id1,id2
+ */
+export async function getRunHistoryActions(req: Request, res: Response) {
+  try {
+    const prisma: PrismaClient = db();
+
+    // Get IDs from query params
+    const idsParam = (req.query.ids as string | undefined)?.trim();
+    if (!idsParam) {
+      return res.status(400).json({ error: "ids query parameter is required" });
+    }
+
+    const ids = idsParam.split(',').map(id => id.trim()).filter(Boolean);
+    
+    if (ids.length === 0) {
+      return res.json([]);
+    }
+
+    // Fetch actions by IDs
+    const actions = await prisma.run_history_actions.findMany({
+      where: {
+        id: { in: ids }
+      }
+    });
+
+    // Transform to API format
+    const result = actions.map(action => ({
+      id: action.id,
+      action: action.action,
+      integration: convertRunHistoryIntegrationToIntegrationType(action.integration),
+      target: action.target,
+      details: action.details,
+      url: action.url ?? undefined,
+      step_id: action.step_id ?? undefined,
+    }));
+
+    res.json(result);
+  } catch (err) {
+    console.error("Failed to fetch run history actions", err);
+    res.status(500).json({ error: "Failed to fetch run history actions" });
   }
 }

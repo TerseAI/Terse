@@ -1,5 +1,5 @@
 import axios from 'axios';
-import type { RunHistoryModelEvent } from "../shared/RunHistoryTypes";
+import type { RunHistoryModelEvent, RunHistoryActionWithId } from "../shared/RunHistoryTypes";
 import {
     Channel,
     ChannelInput, 
@@ -252,6 +252,11 @@ interface BackendService {
      * Fetch chat history for a specific run
      */
     getChatHistory(runId: string): Promise<{ events: Array<RunHistoryModelEvent>; startTimestamp?: string; endTimestamp?: string; status?: string }>;
+
+    /**
+     * Fetch run history actions by IDs
+     */
+    getRunHistoryActions(ids: string[]): Promise<RunHistoryActionWithId[]>;
 }
 
 export const BackendProvider: BackendService = {
@@ -689,6 +694,18 @@ export const BackendProvider: BackendService = {
             .then(r => r.data)
             .catch(error => {
                 console.error('Error fetching chat history:', error);
+                throw error;
+            });
+    },
+
+    getRunHistoryActions: (ids) => {
+        const usp = new URLSearchParams();
+        usp.append('ids', ids.join(','));
+        const url = `${backendBaseUrl}/run-history/actions?${usp.toString()}`;
+        return axios.get<RunHistoryActionWithId[]>(url, { withCredentials: true })
+            .then(r => r.data)
+            .catch(error => {
+                console.error('Error fetching run history actions:', error);
                 throw error;
             });
     },
