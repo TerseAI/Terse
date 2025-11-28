@@ -42,7 +42,7 @@ function TurnView({ role, text, function_calls, isFailure = false, isGenerating 
     // Expanded state - show all steps with status
     return (
         <div className={`flex rounded-lg ${isUser ? 'justify-end animate-fade-in' : 'justify-start'}`}>
-            <div className="space-y-2 max-w-[80%]">
+            <div className="space-y-2 max-w-[90%]">
                 {filter_result && (
                     <FilterResultView filterResult={filter_result} />
                 )}
