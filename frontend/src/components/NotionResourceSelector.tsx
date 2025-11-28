@@ -125,7 +125,7 @@ function NotionResourceCombobox({
                     className="w-full justify-between"
                 >
                     {selectedResource
-                        ? `${label} - ${selectedResource.title}`
+                        ? <span className="flex items-center gap-2">{icon} {selectedResource.title}</span>
                         : `Select ${label}...`}
                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                 </Button>

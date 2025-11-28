@@ -204,7 +204,7 @@ function InputLayout({ inputs, setInputs }: { inputs: TransientChannelInput[], s
     return (
         <div className="flex flex-col gap-2">
             <h2 className="text-lg mb-2">Event Sources</h2>
-            <div className="flex flex-row gap-2 items-stretch">
+            <div className="flex flex-row flex-wrap gap-2 items-stretch">
                 {inputs.map((input) => (
                     <Input key={input.id} input={input} inputs={inputs} setInputs={setInputs} handleRemove={handleRemove} />
                 ))}
@@ -238,6 +238,9 @@ function Input({ input, inputs, setInputs, handleRemove }: { input: TransientCha
             <div className="flex flex-row justify-between items-center gap-1 p-2 border border-yellow-500 rounded-md cursor-pointer" onClick={() => setShowDetailsDialog(true)}>
                 <ConfigTitle configType={input.configType} iconSize="md" />
                 <AlertTriangleIcon className="size-4 text-yellow-500" />
+                <Button variant="ghost" size="icon-sm" onClick={(e) => { e.stopPropagation(); handleRemove(input.id); }} className="hover:text-destructive">
+                    <XIcon />
+                </Button>
             </div>
         );
     } else {
