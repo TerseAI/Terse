@@ -42,25 +42,27 @@ function TurnView({ role, text, function_calls, isFailure = false, isGenerating 
     // Expanded state - show all steps with status
     return (
         <div className={`flex rounded-lg ${isUser ? 'justify-end animate-fade-in' : 'justify-start'}`}>
-            <div className="space-y-1 max-w-[80%]">
+            <div className="space-y-2 max-w-[80%]">
                 {filter_result && (
                     <FilterResultView filterResult={filter_result} />
                 )}
 
-                <div className="text-[#F1F1F1] text-md py-2 rounded-8xl">
-                    <div className={`prose prose-invert ${isUser ? 'bg-stone-900/80 rounded-lg p-3' : ''}`}>
-                        {isFailure && (
-                            <svg className="w-4 h-4 text-red-500 inline-block mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                            </svg>
-                        )}
-                        {isUser ? (
-                            <span>{text}</span>
-                        ) : (
-                            <TokenStream text={text} disableAnimation={disableAnimation} />
-                        )}
+                {(text || isFailure) && (
+                    <div className="text-[#F1F1F1] text-md py-2 rounded-8xl">
+                        <div className={`prose prose-invert ${isUser ? 'bg-stone-900/80 rounded-lg p-3' : ''}`}>
+                            {isFailure && (
+                                <svg className="w-4 h-4 text-red-500 inline-block mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            )}
+                            {isUser ? (
+                                <span>{text}</span>
+                            ) : (
+                                <TokenStream text={text} disableAnimation={disableAnimation} />
+                            )}
+                        </div>
                     </div>
-                </div>
+                )}
                 {function_calls.map((call, index) => (
                     <div key={index} className="space-y-2">
                         <div className="flex items-center gap-2">
@@ -343,7 +345,7 @@ function FilterResultView({ filterResult }: { filterResult: { isRelevant: boolea
     const circumference = 2 * Math.PI * radius;
 
     return (
-        <div className="mb-4 select-text">
+        <div className="select-text">
             <div className="flex items-start justify-between gap-2">
                 <div className="flex-1">
                     <div className="rounded-lg border border-white/10 bg-stone-900/50 p-4">

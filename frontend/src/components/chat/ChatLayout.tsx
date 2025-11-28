@@ -87,7 +87,7 @@ export function ChatLayout({
         <div className={`h-full w-full backdrop-blur-sm shadow-lg transition-opacity duration-300 opacity-100 rounded-lg flex flex-col relative`}>
             <div 
                 ref={scrollContainerRef}
-                className="flex-1 overflow-y-auto p-4 space-y-1"
+                className="flex-1 overflow-y-auto p-4 space-y-4"
             >
                 {turns.map((turn, index) => (
                     <TurnView key={index} {...turn} />
