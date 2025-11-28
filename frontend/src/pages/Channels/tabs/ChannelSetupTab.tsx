@@ -192,7 +192,12 @@ export default function ChannelSetupTab({
                 </div>
 
                 <div className="min-w-md max-w-md flex flex-col h-full">
-                    <h2 className="text-lg mb-2">Instructions</h2>
+                    <div className="flex flex-row gap-2 items-center mb-2">
+                        <h2 className="text-lg">Instructions</h2>
+                        {(!prompt?.text || prompt.text.trim() === '') && (
+                            <AlertTriangleIcon className="size-4 text-yellow-500" />
+                        )}
+                    </div>
                     <Textarea value={prompt?.text} onChange={(e) => setPrompt({ ...prompt, text: e.target.value })} className="flex-1" placeholder={instructionsPlaceholder} />
                 </div>
             </div>
@@ -217,7 +222,12 @@ function InputLayout({ inputs, setInputs }: { inputs: TransientChannelInput[], s
 
     return (
         <div className="flex flex-col gap-2">
-            <h2 className="text-lg mb-2">Event Sources</h2>
+            <div className="flex flex-row gap-2 items-center mb-2">
+                <h2 className="text-lg">Event Sources</h2>
+                {inputs.length === 0 && (
+                    <AlertTriangleIcon className="size-4 text-yellow-500" />
+                )}
+            </div>
             <div className="flex flex-row flex-wrap gap-2 items-stretch">
                 {inputs.map((input) => (
                     <Input key={input.id} input={input} inputs={inputs} setInputs={setInputs} handleRemove={handleRemove} />
