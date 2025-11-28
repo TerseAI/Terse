@@ -13,6 +13,7 @@ type ChatProps = {
     subscribeToEvents?: ChatEventSubscription | null;
     sendMessage: (message: ModelRequest) => void;
     onUserMessage?: (message: string) => void;
+    initialScrollToBottom?: boolean;
 };
 
 function Chat({ 
@@ -21,7 +22,8 @@ function Chat({
     turns: externalTurns, 
     subscribeToEvents,
     sendMessage,
-    onUserMessage 
+    onUserMessage,
+    initialScrollToBottom = false,
 }: ChatProps) {
     if (externalTurns) {
         const { input, setInput, sendMessage: sendUserMessage } = useChatInput({
@@ -52,6 +54,7 @@ function Chat({
                 setInput={setInput}
                 placeholders={["Type a message..."]}
                 EmptyContentPlaceholder={EmptyContentPlaceholder}
+                initialScrollToBottom={initialScrollToBottom}
             />
         );
     }

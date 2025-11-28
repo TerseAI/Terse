@@ -102,6 +102,7 @@ export default function RunHistoryChatDrawer({
                                                             ? <div className="p-4 text-center text-muted-foreground">Loading history...</div> 
                                                             : <div className="p-4 text-center text-muted-foreground">No events found</div>
                                                     }
+                                                    initialScrollToBottom={true}
                                                 />
                                             </div>
                                             {!isActiveRun && (
