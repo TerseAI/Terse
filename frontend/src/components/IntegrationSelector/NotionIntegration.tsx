@@ -84,7 +84,7 @@ export function NotionIntegration({
     if (variant === 'card') {
         const isComplete = currentConfig?.isComplete();
         if (!isComplete) {
-            const needsDatabase = !isPageConfig && !currentConfig?.databaseId;
+            const needsDatabase = !isPageConfig && !(currentConfig as NotionConfig)?.databaseId;
             const needsPage = isPageConfig && !(currentConfig as NotionPageConfig)?.pageId;
             if (needsDatabase) {
                 return (
