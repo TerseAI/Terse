@@ -196,7 +196,6 @@ app.get("/stats", authMiddleware, async (req, res) => {
 
 // MARK: RUN HISTORY
 
-// IMPORTANT: Specific routes must come before parametrized routes
 app.get("/run-history/actions", authMiddleware, async (req, res) => {
   getRunHistoryActions(req, res);
 });
