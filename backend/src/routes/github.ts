@@ -3,15 +3,14 @@ import { Request, Response } from "express";
 import { db } from "../prismaClient";
 import { User, GithubRepository, UserGithubRepository } from "../types/prisma";
 import Owner from "../theOwner/Owner";
-import { Commit, GithubAppUnifiedEventRequest, GithubAppInstallationDeletedRequest } from "../routes/GithubTypes";
+import { GithubAppUnifiedEventRequest, GithubAppInstallationDeletedRequest, GithubUserRepository, GithubAppInstallationRepository, GithubAppInstallation } from "../routes/GithubTypes";
 import { search } from "../searchClient";
 import { Session } from "../server";
 import { ActivityOverview } from "../agent/agents/Analyzer";
 import { TicketEventType } from "@prisma/client";
 import { githubApp } from "../config/settings";
-import { urls } from "../config/settings";
 import { Repository, GithubAppInstallationCallbackRequest, GetGithubRepositoriesForIntegrationResponse } from "../shared/types";
-import { GithubIntegrationManager } from "../integrations/GithubIntegration";
+import { getAppInstallationRepositories, getAppInstallationsForUser, GithubIntegrationManager } from "../integrations/GithubIntegration";
 import { emitCacheInvalidationWithKey } from "../realtimeSocket";
 
 // MARK: - Route Handlers
@@ -32,10 +31,6 @@ export async function getGithubIntegrations(req: Request, res: Response) {
     }
 }
 
-
-/**
- * Get GitHub App installation URL
- */
 export async function getInstallationUrl(req: Request, res: Response) {
     try {
         const appName = githubApp.appName;
@@ -53,78 +48,73 @@ export async function getInstallationUrl(req: Request, res: Response) {
     }
 }
 
-/**
- * Handle GitHub App installation callback from setup URL
- */
 export async function processSetUpURLGithubInstallation(req: Request, res: Response) {
     console.log('processSetUpURLGithubInstallation', req.query);
     const integration = new GithubIntegrationManager();
     await integration.processInstallationCallback(req, res);
 }
 
-/**
- * Handle GitHub App installation webhook callback
- */
 export async function processsGithubAppInstallationWebhook(req: Request, res: Response) {
     const body: GithubAppInstallationCallbackRequest = req.body as GithubAppInstallationCallbackRequest;
-
     console.log('githubAppInstallationCallback', body);
+    
+    let user: User | null = await resolveUserForGithubInstallation(body.installationId, body.username);
+    if (user) {
+        emitCacheInvalidationWithKey(user.id, 'integrations');
+    }
+
+    // Leaving old code in in case of emergency.
 
     // Check if the user is registered with us, no problem if not. Will make a placeholder user.
-    let user: User | null = await resolveUserForGithubInstallation(body.installationId, body.username);
-    if (!user) {
-        user = await db().users.create({
-            data: {
-                github_username: body.username,
-                is_placeholder: true,
-                email: body.email || `${body.username}@username.ai`,
-                display_name: body.name || body.username
-            }
-        });
+    // let user: User | null = await resolveUserForGithubInstallation(body.installationId, body.username);
+    // if (!user) {
+    //     user = await db().users.create({
+    //         data: {
+    //             github_username: body.username,
+    //             is_placeholder: true,
+    //             email: body.email || `${body.username}@username.ai`,
+    //             display_name: body.name || body.username
+    //         }
+    //     });
 
-        console.log(chalk.green('Placeholder user created:'), user);
-    }
+    //     console.log(chalk.green('Placeholder user created:'), user);
+    // }
 
-    // Update the user_github_installation record with the user_id and account_name
-    const updateData: { user_id: string; account_name?: string | null } = {
-        user_id: user.id
-    };
-    if (body.accountName !== undefined) {
-        updateData.account_name = body.accountName;
-    }
-    
-    const createData: { user_id: string; installation_id: number; account_name?: string | null } = {
-        user_id: user.id,
-        installation_id: body.installationId
-    };
-    if (body.accountName !== undefined) {
-        createData.account_name = body.accountName;
-    }
-    
-    await db().user_github_installation.upsert({
-        where: { installation_id: body.installationId },
-        update: updateData,
-        create: createData
-    });
+    // // Update the user_github_installation record with the user_id and account_name
+    // const updateData: { user_id: string; account_name?: string | null } = {
+    //     user_id: user.id
+    // };
+    // if (body.accountName !== undefined) {
+    //     updateData.account_name = body.accountName;
+    // }
 
-    // Process each repository in the array
-    const processedRepositories = await Promise.all(
-        body.repositories.map(repositoryData =>
-            processRepository(repositoryData, user, body.installationId)
-        )
-    );
+    // const createData: { user_id: string; installation_id: number; account_name?: string | null } = {
+    //     user_id: user.id,
+    //     installation_id: body.installationId
+    // };
+    // if (body.accountName !== undefined) {
+    //     createData.account_name = body.accountName;
+    // }
 
-    res.status(200).json({
-        message: 'Repository installation callback processed',
-        processedRepositories
-    });
+    // await db().user_github_installation.upsert({
+    //     where: { installation_id: body.installationId },
+    //     update: updateData,
+    //     create: createData
+    // });
 
-    emitCacheInvalidationWithKey(user.id, 'integrations');
+    // // Process each repository in the array
+    // const processedRepositories = await Promise.all(
+    //     body.repositories.map(repositoryData =>
+    //         processRepository(repositoryData, user, body.installationId)
+    //     )
+    // );
+
+    // res.status(200).json({
+    //     message: 'Repository installation callback processed',
+    //     processedRepositories
+    // });
 }
 
-/**
- * Handle GitHub App installation deleted webhook
- */
 export async function githubAppInstallationDeleted(req: Request, res: Response) {
     console.log('githubAppInstallationDeleted', req.body);
     const body: GithubAppInstallationDeletedRequest = req.body as GithubAppInstallationDeletedRequest;
@@ -202,7 +192,7 @@ export async function githubAppUnifiedEvent(req: Request, res: Response) {
 
         // init an Owner with isolated session
         const owner: Owner = new Owner(search(), session)
-        
+
         // handle the unified event with proper error handling
         const summary = await owner.handleUnifiedGitHubEvent(body);
         if (!summary) {
@@ -212,7 +202,7 @@ export async function githubAppUnifiedEvent(req: Request, res: Response) {
 
         console.log(chalk.green('Saving activity event for changed items:'), summary);
         await saveActivityEvent(repository, body, summary, user.id);
-        
+
         res.status(200).json({ message: 'GitHub event received and processed' });
     } catch (error) {
         console.error(chalk.red('Error processing GitHub event:'), error);
@@ -220,87 +210,69 @@ export async function githubAppUnifiedEvent(req: Request, res: Response) {
     }
 }
 
-/**
- * Get repositories for a GitHub integration by installation_id
- */
 export async function getGithubRepositoriesForIntegration(req: Request, res: Response) {
     if (!req.session?.user) {
         res.status(401).json({ message: 'Unauthorized' });
         return;
     }
 
-    const user = req.session.user;
-    const installationId = req.query.installation_id as string | undefined;
-
+    // get installation id from query params
+    const installationId = req.query.installation_id as string;
     if (!installationId) {
-        res.status(400).json({ message: 'installation_id is required' });
+        res.status(400).json({ message: 'Installation ID is required' });
         return;
     }
 
-    const installationIdNumber = parseInt(installationId);
-    if (isNaN(installationIdNumber)) {
-        res.status(400).json({ message: 'installation_id must be a number' });
+    const user = req.session.user;
+    const accessToken = await db().github_app_tokens.findFirst({ where: { user_id: user.id } });
+    if (!accessToken) {
+        res.status(401).json({ message: 'Unauthorized' });
         return;
     }
 
-    // Verify the installation belongs to the user
-    const installation = await db().user_github_installation.findFirst({
-        where: {
-            installation_id: installationIdNumber,
-            user_id: user.id
-        }
-    });
-
-    if (!installation) {
-        res.status(404).json({ message: 'Installation not found or does not belong to user' });
+    const installations = await getAppInstallationsForUser(accessToken.access_token);
+    const targetInstallation = installations.installations.find(installation => installation.id === Number(installationId));
+    if (!targetInstallation) {
+        res.status(404).json({ message: 'Installation not found' });
         return;
     }
 
-    // Get repositories for this installation
-    const repositories = await db().github_repositories.findMany({
-        where: { installation_id: installationIdNumber }
-    });
+    const installationRepositories: GithubAppInstallationRepository[] = await getAppInstallationRepositories(accessToken.access_token, targetInstallation.id);
 
     const result: GetGithubRepositoriesForIntegrationResponse = {
-        repositories: repositories.map(r => ({
-            id: r.repository_id,
+        repositories: installationRepositories.map(r => ({
+            id: r.id,
             name: r.name,
-            owner: r.owner
+            owner: r.owner.login
         }))
-    };
-    
+    };    
     res.status(200).json(result);
 }
 
-// MARK: - Helper Functions
-
-/**
- * Process a repository and associate it with a user
- */
 export async function processRepository(
-    repositoryData: Repository, 
-    user: User, 
+    repositoryData: Repository,
+    user: User,
     installationId: number
 ): Promise<{ name: string; status: string; error?: string }> {
     console.log(chalk.blue('Processing repository:'), repositoryData);
 
     // Check if repository already exists
-    let repository: GithubRepository | null = await db().github_repositories.findFirst({ 
-        where: { 
-            name: repositoryData.name, 
-            owner: repositoryData.owner, 
+    let repository: GithubRepository | null = await db().github_repositories.findFirst({
+        where: {
+            name: repositoryData.name,
+            owner: repositoryData.owner,
             repository_id: Number(repositoryData.id),
-            installation_id: installationId 
-        } 
+            installation_id: installationId
+        }
     });
 
     // Check if this user <-> repository is already associated
     if (repository) {
-        const userRepository = await db().user_github_repositories.findFirst({ 
-            where: { 
-                user_id: user.id, 
-                github_repository_id: repository.id 
-            } 
+        const userRepository = await db().user_github_repositories.findFirst({
+            where: {
+                user_id: user.id,
+                github_repository_id: repository.id
+            }
         });
 
         if (userRepository) {
@@ -331,51 +303,89 @@ export async function processRepository(
             }
         });
 
+        // associate the user with the installation
+        await db().user_github_installation.upsert({
+            where: { installation_id: installationId },
+            update: { user_id: user.id },
+            create: { user_id: user.id, installation_id: installationId }
+        });
+
         console.log(chalk.green('User associated with repository:'), repositoryData.name);
         return { name: repositoryData.name, status: 'associated' };
 
     } catch (error) {
         console.error(chalk.red('Error processing repository:'), repositoryData.name, error);
-        return { 
-            name: repositoryData.name, 
-            status: 'error', 
-            error: error instanceof Error ? error.message : 'Unknown error' 
+        return {
+            name: repositoryData.name,
+            status: 'error',
+            error: error instanceof Error ? error.message : 'Unknown error'
         };
     }
 }
 
-/**
- * Resolve user for GitHub installation
- */
-export async function resolveUserForGithubInstallation(installationId: number, github_username: string): Promise<User | null> {
+// Given an installation and username, resolve a specific user
+async function resolveUserForGithubInstallation(installationId: number, username: string): Promise<User | null> {
+    const users_from_installation: User[] = await resolveUsersForGithubInstallation(installationId);
+
+    let user = users_from_installation.find(user => user.github_username === username) || null;
+    if (user) {
+        return user;
+    }
+
+    const app_keys_from_username = await db().github_app_tokens.findMany({ 
+        where: { github_username: username }
+    });
+    const user_id = app_keys_from_username.find(key => key.github_username === username)?.user_id;
+
+    if (user_id) {
+        const matched_user = await db().users.findUnique({ where: { id: user_id } });
+        if (matched_user) {
+            await db().users.update({ where: { id: user_id }, data: { github_username: username } });
+            return matched_user;
+        }
+    }
+
+    return null;
+}
+
+// Given an installation, we need to fetch all users that are associated with that installation.
+// This doesn't guarantee that they have an active input config, but it's a good start.
+// This is super inefficient, but it's a good start. We need to optimize this.
+export async function resolveUsersForGithubInstallation(installationId: number): Promise<User[]> {
     return db().$transaction(async (tx) => {
-        // check if installation is already associated with a user - This should be most common case.
-        let installation = await tx.user_github_installation.findFirst({ where: { installation_id: installationId } });
-        if (installation && installation.user_id != null) {
-            return tx.users.findUnique({ where: { id: installation.user_id } });
-        }
+        // Get all of our github app users. 
+        const githubAppUsers = await tx.github_app_tokens.findMany();
 
-        // check if we can match via github_username
-        let user = await tx.users.findFirst({ where: { github_username: github_username } });
-        if (user) {
-            return user;
-        }
+        // for each github App user, get their installations they have access to. Return a Map<user_id, installations>
+        const installationResults = await Promise.all(githubAppUsers.map(async (user) => {
+            const installations = await getAppInstallationsForUser(user.access_token);
+            return { userId: user.user_id, installations: installations.installations };
+        }));
 
-        return null;
+        // Find users who have access to the specific installation
+        const userIds = installationResults
+            .filter(result => result.installations.some(inst => inst.id === installationId))
+            .map(result => result.userId);
+
+        // Fetch and return the User objects
+        const users = await tx.users.findMany({
+            where: { id: { in: userIds } }
+        });
+
+        console.log(chalk.green('Found ' + users.length + ' users for event from installation: ' + installationId));
+        
+        return users;
     });
 }
 
-/**
- * Resolve user GitHub relation and create repository if needed
- */
 async function resolveUserGithubRelation(user: User, username: string, repositoryName: string, installationId: number): Promise<GithubRepository> {
     // Use a transaction to prevent race conditions when multiple events arrive simultaneously
     return await db().$transaction(async (tx) => {
         // check if the repository is in our DB
-        let repository: GithubRepository | null = await tx.github_repositories.findFirst({ 
-            where: { name: repositoryName, installation_id: installationId } 
+        let repository: GithubRepository | null = await tx.github_repositories.findFirst({
+            where: { name: repositoryName, installation_id: installationId }
         });
-        
+
         if (!repository) {
             console.log(chalk.yellow('Drift detected. This repository is not in our DB but it is a registered repository in the github app. Creating it...'));
             repository = await tx.github_repositories.create({
@@ -388,10 +398,10 @@ async function resolveUserGithubRelation(user: User, username: string, repositor
         }
 
         // Make sure the user is associated with the repository
-        let relation: UserGithubRepository | null = await tx.user_github_repositories.findFirst({ 
-            where: { user_id: user.id, github_repository_id: repository.id } 
+        let relation: UserGithubRepository | null = await tx.user_github_repositories.findFirst({
+            where: { user_id: user.id, github_repository_id: repository.id }
         });
-        
+
         if (!relation) {
             await tx.user_github_repositories.create({
                 data: {
@@ -428,13 +438,13 @@ async function saveActivityEvent(repository: GithubRepository, event: GithubAppU
         });
 
         // save sub activity commit associations
-        for (const subActivityCommitAssociation of subActivityOverview.sub_activity_commit_associations) {  
+        for (const subActivityCommitAssociation of subActivityOverview.sub_activity_commit_associations) {
             await db().sub_activity_commit_associations.create({
                 data: {
                     sub_activity_event_id: subActivityEvent.id,
                     commit_sha: subActivityCommitAssociation.sha,
                     commit_message: subActivityCommitAssociation.message,
-                    commit_url: subActivityCommitAssociation.url,   
+                    commit_url: subActivityCommitAssociation.url,
                 }
             });
         }
