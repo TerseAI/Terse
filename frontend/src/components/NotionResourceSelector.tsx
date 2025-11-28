@@ -78,7 +78,7 @@ export function NotionResourceSelector({
     }
 
     return (
-        <div className="space-y-2">
+        <div className="space-y-2 min-w-0 overflow-hidden">
             <div className="flex items-center justify-between">
                 {resources.length > 0 && (
                     <div className="text-xs text-muted-foreground">
@@ -125,7 +125,10 @@ function NotionResourceCombobox({
                     className="w-full justify-between"
                 >
                     {selectedResource
-                        ? <span className="flex items-center gap-2">{icon} {selectedResource.title}</span>
+                        ? <span className="flex items-center gap-2 min-w-0 overflow-hidden">
+                            {icon}
+                            <span className="truncate">{selectedResource.title}</span>
+                          </span>
                         : `Select ${label}...`}
                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                 </Button>
@@ -149,11 +152,14 @@ function NotionResourceCombobox({
                                     >
                                         <Check
                                             className={cn(
-                                                "mr-2 h-4 w-4",
+                                                "mr-2 h-4 w-4 shrink-0",
                                                 isSelected ? "opacity-100" : "opacity-0"
                                             )}
                                         />
-                                        <span className="flex items-center gap-2">{icon} {resource.title}</span>
+                                        <span className="flex items-center gap-2 min-w-0 overflow-hidden">
+                                            <span className="shrink-0">{icon}</span>
+                                            <span className="truncate">{resource.title}</span>
+                                        </span>
                                     </CommandItem>
                                 );
                             })}

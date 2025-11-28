@@ -21,6 +21,7 @@ import { cn } from "../../../lib/utils";
 import { Card, CardContent } from "../../../components/ui/card";
 import { AddOutputModal } from "../components/AddOutputModal";
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "../../../components/ui/empty";
+import { Badge } from "../../../components/ui/badge";
 
 export type ChannelSetupTabProps = {
     channelId: string | null;
@@ -131,6 +132,19 @@ function SaveChannelButton({
     )
 }
 
+const instructionsPlaceholder = `Describe what you want the AI to do with incoming events from your sources.
+
+For example:
+- "Monitor all new GitHub issues and create Linear tickets for bugs, adding appropriate labels and priority"
+- "Watch for Notion database updates and post summaries to Slack with key changes highlighted"
+- "Track customer feedback from multiple channels and synthesize weekly reports"
+
+Be specific about:
+• What information to extract or focus on
+• How to format or structure the output
+• Any rules for filtering or prioritizing events
+• The tone or style for generated content`;
+
 export default function ChannelSetupTab({
     channelId,
     name,
@@ -166,20 +180,20 @@ export default function ChannelSetupTab({
                 />
             </div>
 
-            <div className="flex flex-row gap-12">
-                <div className="flex flex-col gap-4 justify-between">
+            <div className="flex flex-row gap-12 h-full">
+                <div className="flex flex-col gap-4 justify-between h-full">
                     <div className="flex flex-row gap-4 min-w-md max-w-md">
                         <InputLayout inputs={inputs} setInputs={setInputs} />
                     </div>
 
-                    <div className="min-w-md max-w-md">
+                    <div className="min-w-md max-w-md overflow-hidden">
                         <OutputLayout output={output} setOutput={setOutput} />
                     </div>
                 </div>
 
-                <div className="min-w-md max-w-md">
+                <div className="min-w-md max-w-md flex flex-col h-full">
                     <h2 className="text-lg mb-2">Instructions</h2>
-                    <Textarea value={prompt?.text} onChange={(e) => setPrompt({ ...prompt, text: e.target.value })} className="min-h-100" />
+                    <Textarea value={prompt?.text} onChange={(e) => setPrompt({ ...prompt, text: e.target.value })} className="flex-1" placeholder={instructionsPlaceholder} />
                 </div>
             </div>
         </div >
@@ -235,21 +249,31 @@ function Input({ input, inputs, setInputs, handleRemove }: { input: TransientCha
     let cardContent;
     if (isPlaceholder) {
         cardContent = (
-            <div className="flex flex-row justify-between items-center gap-1 p-2 border border-yellow-500 rounded-md cursor-pointer" onClick={() => setShowDetailsDialog(true)}>
-                <ConfigTitle configType={input.configType} iconSize="md" />
-                <AlertTriangleIcon className="size-4 text-yellow-500" />
-                <Button variant="ghost" size="icon-sm" onClick={(e) => { e.stopPropagation(); handleRemove(input.id); }} className="hover:text-destructive">
-                    <XIcon />
-                </Button>
+            <div className="p-2 border rounded-md cursor-pointer" onClick={() => setShowDetailsDialog(true)}>
+                <div className="flex flex-row justify-between items-center gap-1">
+                    <ConfigTitle configType={input.configType} iconSize="md" />
+                    <Button variant="ghost" size="icon-sm" onClick={(e) => { e.stopPropagation(); handleRemove(input.id); }} className="hover:text-destructive">
+                        <XIcon />
+                    </Button>
+                </div>
+                <Badge variant="outline" className="border-yellow-500 text-yellow-600 dark:text-yellow-500">
+                    <AlertTriangleIcon className="size-4 text-yellow-500" />
+                    Needs Configuration
+                </Badge>
             </div>
         );
     } else {
         cardContent = (
-            <div className="flex flex-row justify-between items-center gap-1 p-2 border rounded-md cursor-pointer" onClick={() => setShowDetailsDialog(true)}>
-                <ConfigTitle configType={input.configType} iconSize="md" />
-                <Button variant="ghost" size="icon-sm" onClick={(e) => { e.stopPropagation(); handleRemove(input.id); }} className="hover:text-destructive">
-                    <XIcon />
-                </Button>
+            <div className="p-2 border rounded-md cursor-pointer" onClick={() => setShowDetailsDialog(true)}>
+                <div className="flex flex-row justify-between items-center gap-1">
+                    <ConfigTitle configType={input.configType} iconSize="md" />
+                    <Button variant="ghost" size="icon-sm" onClick={(e) => { e.stopPropagation(); handleRemove(input.id); }} className="hover:text-destructive">
+                        <XIcon />
+                    </Button>
+                </div>
+                <Badge variant="outline">
+                    <IntegrationSelector {...selectorProps} variant="card" />
+                </Badge>
             </div>
         );
     }
@@ -293,7 +317,6 @@ function OutputLayout({ output, setOutput }: { output: TransientChannelOutput | 
     let cardContent;
     if (!output) {
         cardContent = (
-            <div className="flex flex-col gap-2">
                 <Empty>
                     <EmptyHeader>
                         <EmptyMedia variant="icon">
@@ -311,7 +334,6 @@ function OutputLayout({ output, setOutput }: { output: TransientChannelOutput | 
                         </Button>
                     </EmptyContent>
                 </Empty>
-            </div>
         )
     } else {
         cardContent = (
@@ -319,10 +341,27 @@ function OutputLayout({ output, setOutput }: { output: TransientChannelOutput | 
         );
     }
 
+    let headerContent;
+    if (needsConfiguration && output) {
+        headerContent = (
+            <div className="flex flex-row gap-2">
+                <h2 className="text-lg">Output</h2>
+                <Badge variant="outline" className="border-yellow-500 text-yellow-600 dark:text-yellow-500">
+                    <AlertTriangleIcon className="size-4 text-yellow-500" />
+                    Needs Configuration
+                </Badge>
+            </div>
+        );
+    } else {
+        headerContent = (
+            <h2 className="text-lg">Output</h2>
+        );
+    }
+
     return (
         <>
             <div className="flex flex-row justify-between items-center mb-4">
-                <h2 className="text-lg">{needsConfiguration ? "Configure Output" : "Output"}</h2>
+                {headerContent}
                 {output && (
                     <Button variant="outline" size="sm" onClick={() => setShowAddModal(true)}>
                         Change output
@@ -330,8 +369,8 @@ function OutputLayout({ output, setOutput }: { output: TransientChannelOutput | 
                 )}
             </div>
             <div className="flex flex-row gap-2">
-                <Card className="flex flex-row gap-2 w-full">
-                    <CardContent>
+                <Card className="flex flex-row gap-2 w-full min-w-0 overflow-hidden">
+                    <CardContent className="min-w-0 overflow-hidden">
                         {cardContent}
                     </CardContent>
                 </Card>
