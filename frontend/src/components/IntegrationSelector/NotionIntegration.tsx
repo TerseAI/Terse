@@ -85,7 +85,7 @@ export function NotionIntegration({
 
     // Dialog variant: full view
     return (
-        <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-3 min-w-0 overflow-hidden">
             <div className="flex flex-row gap-1.5 items-center">
                 <div className="w-15 h-15">
                     <IconForConfigType type={ConfigType.NOTION_DATABASE}/>
@@ -103,7 +103,7 @@ export function NotionIntegration({
 
             {/* Notion-specific resource selector */}
             {selectedIntegrationId && (
-                <div className="mt-3 pt-3 border-t border-border">
+                <div className="mt-3 pt-3 border-t border-border min-w-0 overflow-hidden">
                     <NotionResourceSelector
                         integrationId={selectedIntegrationId || ''}
                         resourceType={isPageConfig ? 'page' : 'database'}
