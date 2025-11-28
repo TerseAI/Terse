@@ -78,7 +78,7 @@ export function useRunHistoryTurns(events: (ModelEvent & { isHistorical?: boolea
                             name: e.summary,
                             isRunning: true,
                             parameters: e.parameters,
-                            isWaitingForUserInput: true
+                            isWaitingForUserInput: false
                         });
                     } else {
                         existingCall.parameters = e.parameters;
@@ -89,6 +89,7 @@ export function useRunHistoryTurns(events: (ModelEvent & { isHistorical?: boolea
                 case 'ToolCallComplete': {
                     const e = event as ToolCallComplete;
                     const step_id = e.step_id;
+                    let found = false;
                     // Find the call in any turn
                     for (const t of turns) {
                         const fc = t.function_calls.find(c => c.id === step_id);
@@ -99,8 +100,22 @@ export function useRunHistoryTurns(events: (ModelEvent & { isHistorical?: boolea
                             if (e.changed_items) {
                                 fc.changed_items = e.changed_items;
                             }
+                            found = true;
                             break;
                         }
+                    }
+                    if (!found) {
+                        // ToolCallComplete arrived without a preceding ToolCall (e.g., from historical events)
+                        // Create the function call directly in completed state
+                        const turn = getOrCreateTurn('assistant', step_id);
+                        turn.function_calls.push({
+                            id: step_id,
+                            name: e.tool_name,
+                            isRunning: false,
+                            result: e.result,
+                            changed_items: e.changed_items,
+                            isWaitingForUserInput: false
+                        });
                     }
                     break;
                 }
