@@ -38,6 +38,7 @@ model users {
   automations              automations[]
   pending_approvals        pending_approvals[]
   user_github_installation user_github_installation[]
+  github_app_tokens        github_app_tokens[]
 }
 
 model github_repositories {
@@ -77,6 +78,21 @@ model user_github_repositories {
   github_repository github_repositories @relation(fields: [github_repository_id], references: [id])
 
   @@unique([user_id, github_repository_id])
+}
+
+model github_app_tokens {
+  id              String   @id @default(cuid())
+  user_id         String
+  github_username String
+  access_token    String
+  refresh_token   String?
+  token_expiry    DateTime?
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
+
+  user users @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@unique([user_id, github_username])
 }
 
 // @deprecated - This table is deprecated. Use linear_integrations instead for OAuth-based connections.
