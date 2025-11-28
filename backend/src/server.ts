@@ -62,7 +62,7 @@ import {
   getNotionResources,
   getNotionIntegrations
 } from "./routes/notion";
-import { getRunHistory, getChatHistory } from "./routes/runHistory";
+import { getRunHistory, getChatHistory, getRunHistoryActions } from "./routes/runHistory";
 import { getStats } from "./routes/stats";
 import { User as TicketUser } from "./shared/TicketSystem";
 import {
@@ -195,6 +195,11 @@ app.get("/stats", authMiddleware, async (req, res) => {
 });
 
 // MARK: RUN HISTORY
+
+// IMPORTANT: Specific routes must come before parametrized routes
+app.get("/run-history/actions", authMiddleware, async (req, res) => {
+  getRunHistoryActions(req, res);
+});
 
 app.get("/run-history/:channelId", authMiddleware, async (req, res) => {
   getRunHistory(req, res);

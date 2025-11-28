@@ -96,6 +96,9 @@ export function useRunHistoryTurns(events: (ModelEvent & { isHistorical?: boolea
                             fc.isRunning = false;
                             fc.result = e.result;
                             fc.isWaitingForUserInput = false;
+                            if (e.changed_items) {
+                                fc.changed_items = e.changed_items;
+                            }
                             break;
                         }
                     }

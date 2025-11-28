@@ -19,6 +19,10 @@ export type RunHistoryAction = {
    step_id?: string;
 }
 
+export type RunHistoryActionWithId = RunHistoryAction & {
+    id: string;
+};
+
 export type RunHistoryTrigger = {
     // What event occurred to trigger the run (free-text, e.g. "email received", "database row created")
     event: string;

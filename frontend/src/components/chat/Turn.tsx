@@ -4,6 +4,11 @@ import { HandThumbUpIcon as HandThumbUpFilledIcon, HandThumbDownIcon as HandThum
 import { useState } from "react";
 import TokenStream from "./TokenStream";
 
+import { ChangedItem } from "../../shared/ModelEvents";
+import { useRunHistoryActions } from "../../hooks/useRunHistoryActions";
+import RunHistoryActionItem from "../RunHistory/RunHistoryActionItem";
+import { EntityType } from "../../shared/Entities";
+
 interface Turn {
     role: 'user' | 'assistant';
     text: string;
@@ -28,12 +33,12 @@ interface FunctionCallEvent {
     isWaitingForUserInput?: boolean;
     parameters?: string;
     result?: string;
+    changed_items?: ChangedItem[];
 }
 
 function TurnView({ role, text, function_calls, isFailure = false, isGenerating = false, filter_result, disableAnimation = false }: Turn) {
     const isUser = role === 'user';
     const isAssistantFinishedGenerating = !isGenerating && role === 'assistant' && text.length > 0;
-
     // Expanded state - show all steps with status
     return (
         <div className={`flex rounded-lg ${isUser ? 'justify-end animate-fade-in' : 'justify-start'}`}>
@@ -102,6 +107,7 @@ function TurnView({ role, text, function_calls, isFailure = false, isGenerating 
                                 }}
                             />
                         )}
+                        <ToolActionsDisplay changedItems={call.changed_items} isFailure={isFailure} />
                     </div>
                 ))}
 
@@ -121,6 +127,53 @@ export type { Turn, FunctionCallEvent };
 export { TurnView };
 
 // Helpers
+
+function ToolActionsDisplay({ changedItems, isFailure }: { changedItems?: ChangedItem[], isFailure?: boolean }) {
+    if (!changedItems || changedItems.length === 0) return null;
+
+    const actionIds = changedItems
+        .filter(item => item.type_name === EntityType.RUN_HISTORY_ACTION)
+        .map(item => item.id);
+
+    if (actionIds.length === 0) return null;
+
+    return <ToolActionsList actionIds={actionIds} isFailure={isFailure} />;
+}
+
+function ToolActionsList({ actionIds, isFailure }: { actionIds: string[], isFailure?: boolean }) {
+    const { actions } = useRunHistoryActions(actionIds);
+    const [expandedActions, setExpandedActions] = useState<Set<string>>(new Set());
+
+    const toggleAction = (actionKey: string) => {
+        const newExpanded = new Set(expandedActions);
+        if (newExpanded.has(actionKey)) {
+            newExpanded.delete(actionKey);
+        } else {
+            newExpanded.add(actionKey);
+        }
+        setExpandedActions(newExpanded);
+    };
+
+    if (!actions || actions.length === 0) return null;
+
+    console.log('🔍 actions:', actions);
+
+    return (
+        <div className="mt-2 space-y-2">
+            {actions.map((action, index) => (
+                <RunHistoryActionItem
+                    key={action.id}
+                    runId={action.id} 
+                    index={index}
+                    action={action}
+                    runStatus={isFailure ? "failed" : "success"}
+                    isExpanded={expandedActions.has(`${action.id}-action-${index}`)}
+                    onToggle={toggleAction}
+                />
+            ))}
+        </div>
+    );
+}
 
 function CopyButton({ text }: { text: string }) {
     const [copied, setCopied] = useState(false);
