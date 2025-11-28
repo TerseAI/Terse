@@ -741,6 +741,17 @@ enum RunHistoryIntegration {
   confluence
 }
 
+// Chat event types for run history (matches shared/ModelEvents.ts ModelEvent types)
+enum RunHistoryChatEventType {
+  TextDelta
+  ToolCall
+  ToolCallComplete
+  ToolApprovalRequest
+  NaturalStop
+  Failure
+  FilterResult
+}
+
 // Run History tables
 model run_history_records {
   id                  String                   @id @default(cuid())
@@ -813,7 +824,7 @@ model pending_approvals {
 model run_history_chat_events {
   id                    String   @id @default(cuid())
   run_history_record_id String
-  event_type            String   // TextDelta, ToolCall, ToolCallComplete, ToolApprovalRequest, NaturalStop, Failure (kept for querying/filtering)
+  event_type            RunHistoryChatEventType
   event_json            Json     // Full ModelEvent stored as JSON for easy deserialization
   timestamp             DateTime  @default(now())
   created_at            DateTime  @default(now())

@@ -99,20 +99,20 @@ function GlowingTextField({ isLoading, onInputChange, onKeyDown, inputValue, pla
                         transition-all
                         duration-400
                         p-1
-                        bg-[theme(background-elevated)]
+                        bg-card
                     "
             >
                 <TextareaAutosize
                     ref={textareaRef}
                     className={`
                             w-full 
-                            text-[theme(text-primary)]
+                            text-foreground
                             ${getFontSize()} 
                             resize-none 
                             ${compact ? 'p-2.5' : 'p-4'} 
                             leading-normal 
                             placeholder:italic
-                            placeholder:text-[theme(text-secondary)] 
+                            placeholder:text-muted-foreground 
                             rounded-lg
                             transition-all 
                             duration-300

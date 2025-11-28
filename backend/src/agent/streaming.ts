@@ -1,6 +1,7 @@
 import { Agent, StreamedRunResult } from "@openai/agents";
 import { ModelEvent, ChangedItem } from "../shared/ModelEvents";
 import { Session } from "../server";
+import { randomString } from "../utility/strings";
 
 
 export async function* transformAgentStreamToModelEvents<T extends Session>(
@@ -51,7 +52,7 @@ export function tryExtractTextDelta(event: AgentStreamEvent): ModelEvent | null 
         return {
             type: "TextDelta",
             delta: event.data.delta,
-            step_id: event.data.providerData?.item_id || event.data.providerData?.step_id || "unknown"
+            step_id: event.data.providerData?.item_id || event.data.providerData?.step_id || "unknown",
         };
     }
     return null;
@@ -106,7 +107,8 @@ export function createToolCallCompleteEvent(
 }
 
 export function createNaturalStopEvent(): ModelEvent {
-    return { type: "NaturalStop" };
+    // generate a random step_id
+    return { type: "NaturalStop", step_id: randomString(15) };
 }
 
 export enum RawModelStreamEventType {

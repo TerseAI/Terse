@@ -118,16 +118,16 @@ export function ChatLayout({
                         className="absolute bottom-20 left-1/2 -translate-x-1/2 z-10 
                             flex items-center justify-center
                             w-10 h-10 rounded-full
-                            bg-[theme(--bg-secondary)] backdrop-blur-md
-                            border border-[theme(--border-primary)]
+                            bg-secondary backdrop-blur-md
+                            border border-border
                             shadow-lg shadow-black/20
-                            hover:bg-[theme(--bg-tertiary)] 
+                            hover:bg-accent 
                             hover:scale-105
                             transition-all duration-200 ease-out
                             cursor-pointer"
                         aria-label="Scroll to bottom"
                     >
-                        <ChevronDown className="w-5 h-5 text-[theme(--text-secondary)]" />
+                        <ChevronDown className="w-5 h-5 text-muted-foreground" />
                     </motion.button>
                 )}
             </AnimatePresence>

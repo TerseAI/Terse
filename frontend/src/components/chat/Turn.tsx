@@ -41,7 +41,7 @@ function TurnView({ role, text, function_calls, isFailure = false, isGenerating 
     const isAssistantFinishedGenerating = !isGenerating && role === 'assistant' && text.length > 0;
     // Expanded state - show all steps with status
     return (
-        <div className={`flex rounded-lg ${isUser ? 'justify-end animate-fade-in' : 'justify-start'}`}>
+        <div className={`flex rounded-lg ${isUser ? 'justify-end animate-in fade-in-0' : 'justify-start'}`}>
             <div className="space-y-2 max-w-[90%]">
                 {filter_result && (
                     <FilterResultView filterResult={filter_result} />
@@ -67,7 +67,7 @@ function TurnView({ role, text, function_calls, isFailure = false, isGenerating 
                     <div key={index} className="space-y-2">
                         <div className="flex items-center gap-2">
                             {call.isWaitingForApproval ? (
-                                <ClockIcon className="w-4 h-4 text-[theme(--accent-secondary)] flex-shrink-0" />
+                                <ClockIcon className="w-4 h-4 text-primary flex-shrink-0" />
                             ) : call.isRejected ? (
                                 <XMarkIcon className="w-4 h-4 text-red-500 flex-shrink-0" />
                             ) : call.isWaitingForUserInput ? (
@@ -75,7 +75,7 @@ function TurnView({ role, text, function_calls, isFailure = false, isGenerating 
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                                 </svg>
                             ) : !call.isRunning ? (
-                                <svg className="w-4 h-4 text-[theme(--accent-secondary)] flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <svg className="w-4 h-4 text-primary flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                                 </svg>
                             ) : (
@@ -93,7 +93,7 @@ function TurnView({ role, text, function_calls, isFailure = false, isGenerating 
                                     <span className="text-blue-500 ml-1">(waiting for your input)</span>
                                 )}
                                 {call.result && !call.isWaitingForUserInput && (
-                                    <span className="text-[theme(text-secondary)] ml-2 font-mono bg-[theme(background-primary)] px-2 py-0.5 rounded text-xs">
+                                    <span className="text-muted-foreground ml-2 font-mono bg-background px-2 py-0.5 rounded text-xs">
                                         → {call.result}
                                     </span>
                                 )}
@@ -278,13 +278,13 @@ function ToolResultInput({ toolName, parameters, onSubmit }: { stepId: string; t
     // Show collapsed view if submitted
     if (submitted) {
         return (
-            <div className="bg-[theme(background-elevated)] rounded-lg p-3 mt-2 border border-green-500/20">
-                <div className="text-sm text-[theme(text-secondary)] mb-2">
-                    Result provided for <span className="font-medium text-[theme(text-primary)]">{toolName}</span>:
+            <div className="bg-card rounded-lg p-3 mt-2 border border-green-500/20">
+                <div className="text-sm text-muted-foreground mb-2">
+                    Result provided for <span className="font-medium text-foreground">{toolName}</span>:
                 </div>
                 <div className="flex items-center gap-2">
                     <CheckIcon className="w-4 h-4 text-green-500 flex-shrink-0" />
-                    <span className="text-sm text-[theme(text-primary)] font-mono bg-[theme(background-primary)] px-2 py-1 rounded">
+                    <span className="text-sm text-foreground font-mono bg-background px-2 py-1 rounded">
                         {submittedValue}
                     </span>
                 </div>
@@ -294,15 +294,15 @@ function ToolResultInput({ toolName, parameters, onSubmit }: { stepId: string; t
 
     // Show input form if not submitted yet
     return (
-        <div className="bg-[theme(background-elevated)] rounded-lg p-3 mt-2">
-            <div className="text-sm text-[theme(text-secondary)] mb-2">
-                Please provide the result for <span className="font-medium text-[theme(text-primary)]">{toolName}</span>:
+        <div className="bg-card rounded-lg p-3 mt-2">
+            <div className="text-sm text-muted-foreground mb-2">
+                Please provide the result for <span className="font-medium text-foreground">{toolName}</span>:
             </div>
 
             {parameters && (
-                <div className="mb-3 p-2 bg-[theme(background-primary)] rounded border border-[theme(border-secondary)]">
-                    <div className="text-xs text-[theme(text-secondary)] mb-1">Parameters:</div>
-                    <pre className="text-xs text-[theme(text-primary)] whitespace-pre-wrap font-mono">
+                <div className="mb-3 p-2 bg-background rounded border border-border">
+                    <div className="text-xs text-muted-foreground mb-1">Parameters:</div>
+                    <pre className="text-xs text-foreground whitespace-pre-wrap font-mono">
                         {typeof parsedParams === 'object' ? JSON.stringify(parsedParams, null, 2) : parsedParams}
                     </pre>
                 </div>
@@ -314,13 +314,13 @@ function ToolResultInput({ toolName, parameters, onSubmit }: { stepId: string; t
                     value={result}
                     onChange={(e) => setResult(e.target.value)}
                     placeholder="Enter tool result..."
-                    className="w-full text-[theme(text-primary)] text-sm resize-none p-2.5 leading-normal placeholder:italic placeholder:text-[theme(text-secondary)] rounded-lg transition-all duration-300 focus:outline-none bg-[theme(background-elevated)]"
+                    className="w-full text-foreground text-sm resize-none p-2.5 leading-normal placeholder:italic placeholder:text-muted-foreground rounded-lg transition-all duration-300 focus:outline-none bg-card"
                     autoFocus
                 />
                 <button
                     type="submit"
                     disabled={!result.trim()}
-                    className="px-4 py-2 bg-[theme(--accent-primary)] text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200 flex items-center gap-1"
+                    className="px-4 py-2 bg-primary text-primary-foreground rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200 flex items-center gap-1"
                 >
                     <PaperAirplaneIcon className="w-4 h-4" />
                     Send

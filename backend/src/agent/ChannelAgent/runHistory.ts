@@ -2,6 +2,7 @@ import { db } from "../../prismaClient";
 import type { RunHistoryAction, RunHistoryStatus, RunHistoryTrigger } from "../../shared/RunHistoryTypes";
 import { convertIntegrationTypeToRunHistoryIntegration } from "../../utility/typeConverters";
 import { ModelEvent } from "../../shared/ModelEvents";
+import type { RunHistoryChatEventType } from "@prisma/client";
 
 export type RunTrigger = RunHistoryTrigger;
 
@@ -110,11 +111,10 @@ export async function storeChatEvent(runId: string, event: ModelEvent): Promise<
     const prisma = db();
     
     // Store the full event as JSON for easy deserialization
-    // Keep event_type for querying/filtering purposes
     const created = await prisma.run_history_chat_events.create({
         data: {
             run_history_record_id: runId,
-            event_type: event.type,
+            event_type: event.type as RunHistoryChatEventType,
             event_json: event as any, // Store full ModelEvent as JSON
             timestamp: new Date(),
         },
