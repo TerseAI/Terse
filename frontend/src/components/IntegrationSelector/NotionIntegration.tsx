@@ -81,6 +81,8 @@ export function NotionIntegration({
         );
     }
 
+    const selectedResourceId = isPageConfig ? (currentConfig as NotionPageConfig)?.pageId : (currentConfig as NotionConfig)?.databaseId;
+
     // Dialog variant: full view
     return (
         <div className="flex flex-col gap-3">
@@ -105,11 +107,7 @@ export function NotionIntegration({
                     <NotionResourceSelector
                         integrationId={selectedIntegrationId || ''}
                         resourceType={isPageConfig ? 'page' : 'database'}
-                        selectedResourceId={
-                            isPageConfig 
-                                ? (currentConfig as NotionPageConfig)?.pageId 
-                                : (currentConfig as NotionConfig)?.databaseId
-                        }
+                        selectedResourceId={selectedResourceId}
                         onSelect={(resourceId: string, resourceName: string, resourceType: NotionResourceType) => {
                             if (resourceType === 'database') {
                                 const updatedConfig = new NotionConfig(
