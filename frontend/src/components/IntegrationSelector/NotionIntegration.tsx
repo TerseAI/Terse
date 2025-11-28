@@ -1,4 +1,4 @@
-import { Plus } from 'lucide-react';
+import { Plus, AlertTriangleIcon } from 'lucide-react';
 import { Button } from '../ui/button';
 import DropdownSelect from '../ui/DropdownSelect';
 import { NotionResourceSelector } from '../NotionResourceSelector';
@@ -42,6 +42,14 @@ export function NotionIntegration({
     }
 
     if (integrations.length === 0) {
+        if (variant === 'card') {
+            return (
+                <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                    <AlertTriangleIcon className="size-3 text-yellow-500" />
+                    Connect Notion
+                </div>
+            );
+        }
         return (
             <div className="max-w-xs flex flex-col gap-3 p-4 rounded-lg border border-dashed border-input bg-card">
                 <div className="text-sm text-muted-foreground">
@@ -74,6 +82,33 @@ export function NotionIntegration({
 
     // Card variant: compact view
     if (variant === 'card') {
+        const isComplete = currentConfig?.isComplete();
+        if (!isComplete) {
+            const needsDatabase = !isPageConfig && !currentConfig?.databaseId;
+            const needsPage = isPageConfig && !(currentConfig as NotionPageConfig)?.pageId;
+            if (needsDatabase) {
+                return (
+                    <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                        <AlertTriangleIcon className="size-3 text-yellow-500" />
+                        Select database
+                    </div>
+                );
+            }
+            if (needsPage) {
+                return (
+                    <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                        <AlertTriangleIcon className="size-3 text-yellow-500" />
+                        Select page
+                    </div>
+                );
+            }
+            return (
+                <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                    <AlertTriangleIcon className="size-3 text-yellow-500" />
+                    Select workspace
+                </div>
+            );
+        }
         return (
             <div className="text-sm">
                 {selectedOption ? selectedOption.label : 'No connection selected'}
@@ -104,6 +139,11 @@ export function NotionIntegration({
             {/* Notion-specific resource selector */}
             {selectedIntegrationId && (
                 <div className="mt-3 pt-3 border-t border-border min-w-0 overflow-hidden">
+                    {!selectedResourceId && (
+                        <p className="text-sm text-muted-foreground mb-3">
+                            Select a {isPageConfig ? 'page' : 'database'} to continue
+                        </p>
+                    )}
                     <NotionResourceSelector
                         integrationId={selectedIntegrationId || ''}
                         resourceType={isPageConfig ? 'page' : 'database'}
