@@ -18,7 +18,6 @@ export function useInitialMessage({ sendMessage, message, enabled = true, isConn
             // Add a small delay to ensure the socket is fully ready
             const timer = setTimeout(() => {
                 if (!hasSentRef.current) {
-                    console.log("✅ Connection ready, sending initial message");
                     try {
                         sendMessage(message);
                         hasSentRef.current = true; // Mark as sent to prevent re-sending

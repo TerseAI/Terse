@@ -52,14 +52,11 @@ export function useChatTurns({ onScrollToBottom }: UseChatTurnsOptions = {}) {
     };
 
     const handleToolCall = ({ summary, step_id, parameters }: ToolCall) => {
-        console.log('🛠️ handleToolCall called with step_id:', step_id, 'name:', summary);
-
         setTurns(prev => {
             // Find the turn with the matching step_id
             const existingTurnIndex = prev.findIndex(turn => turn.step_id === step_id);
             
             if (existingTurnIndex === -1) {
-                console.log('🆕 Creating new turn for tool call:', step_id);
                 return [...prev, { 
                     role: 'assistant', 
                     text: "", 
@@ -74,7 +71,6 @@ export function useChatTurns({ onScrollToBottom }: UseChatTurnsOptions = {}) {
             // Check if this tool call already exists
             const existingCallIndex = existingTurn.function_calls.findIndex(call => call.id === step_id && call.name === summary);
             if (existingCallIndex !== -1) {
-                console.log('🔄 Updating existing tool call with new parameters:', step_id);
                 // Update existing tool call with new parameters
                 const updatedTurn = {
                     ...existingTurn,
@@ -91,8 +87,6 @@ export function useChatTurns({ onScrollToBottom }: UseChatTurnsOptions = {}) {
                     ...prev.slice(existingTurnIndex + 1)
                 ];
             }
-
-            console.log('➕ Adding tool call to existing turn:', step_id);
             
             // Create new turn with added tool call (immutable update)
             const updatedTurn = {
@@ -177,24 +171,16 @@ export function useChatTurns({ onScrollToBottom }: UseChatTurnsOptions = {}) {
     };
 
     const handleToolCallComplete = ({ step_id, result, changed_items }: ToolCallComplete) => {
-        console.log('🔧 handleToolCallComplete called with step_id:', step_id);
-        
         // Remove from pending approvals if it was there
         pendingApprovalsRef.current.delete(step_id);
         
         setTurns(prev => {
-            console.log('🔍 Searching through turns for step_id:', step_id);
-            console.log('📋 Current turns:', prev.map(turn => ({
-                step_id: turn.step_id,
-                function_calls: turn.function_calls.map(call => ({ id: call.id, name: call.name, isRunning: call.isRunning }))
-            })));
             
             const updated = [...prev];
             // Search through all turns to find the tool call
             for (const turn of updated) {
                 const toolCall = turn.function_calls.find(call => call.id === step_id);
                 if (toolCall) {
-                    console.log('✅ Found tool call to mark complete:', toolCall.name, result);
                     toolCall.isRunning = false;
                     toolCall.isWaitingForApproval = false;
                     toolCall.isWaitingForUserInput = false;

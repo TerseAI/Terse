@@ -61,8 +61,6 @@ export default function RunHistoryChatDrawer({
         }
     };
 
-    const isActiveRun = status === 'in_progress';
-
     return (
         <Drawer open={isOpen} onOpenChange={onOpenChange} direction="right" shouldScaleBackground={isActuallyInitialOpen}>
             <DrawerContent className={cn(
@@ -72,46 +70,52 @@ export default function RunHistoryChatDrawer({
                     : "!w-full sm:!w-[600px] md:!w-[700px] lg:!w-[800px] !max-w-[100vw] h-full",
                 !isActuallyInitialOpen && "[&[data-state=open]]:!animate-none [&[data-state=closed]]:!animate-none [&+*]:!animate-none"
             )}>
-                <RunHistoryChatDrawerHeader
-                    trigger={trigger}
-                    status={status}
-                    filtered={filtered}
-                    runs={runs}
-                    currentRunIndex={currentRunIndex}
-                    onNavigate={onNavigate}
-                    isFullscreen={isFullscreen}
-                    onFullscreenChange={handleFullscreenChange}
-                />
-                <div className={cn(
-                    "flex-1 overflow-hidden min-h-0 bg-background",
-                    isFullscreen && "mx-auto w-full"
-                )}>
-                    {isOpen && (
-                        <RunHistoryChatAdapter runId={runId} status={status}>
-                            {({ turns, isLoading, startTimestamp, endTimestamp, subscribeToEvents, sendMessage }) => (
-                                <div className="flex flex-col h-full relative">
-                                    <div className="flex-1 min-h-0">
-                                        <Chat 
-                                            turns={turns} 
-                                            subscribeToEvents={subscribeToEvents}
-                                            sendMessage={sendMessage}
-                                            EmptyContentPlaceholder={
-                                                isLoading 
-                                                    ? <div className="p-4 text-center text-muted-foreground">Loading history...</div> 
-                                                    : <div className="p-4 text-center text-muted-foreground">No events found</div>
-                                            }
-                                        />
-                                    </div>
-                                    {!isActiveRun && (
-                                        <div className="flex-shrink-0 border-t bg-background p-2">
-                                             <RunTimestamps startTimestamp={startTimestamp} endTimestamp={endTimestamp} />
+                {isOpen && (
+                    <RunHistoryChatAdapter runId={runId} status={status}>
+                        {({ turns, isLoading, startTimestamp, endTimestamp, subscribeToEvents, sendMessage, currentStatus }) => {
+                            const isActiveRun = currentStatus === 'in_progress';
+                            const isFiltered = currentStatus === 'skipped';
+                            return (
+                                <>
+                                    <RunHistoryChatDrawerHeader
+                                        trigger={trigger}
+                                        status={currentStatus}
+                                        filtered={isFiltered || filtered}
+                                        runs={runs}
+                                        currentRunIndex={currentRunIndex}
+                                        onNavigate={onNavigate}
+                                        isFullscreen={isFullscreen}
+                                        onFullscreenChange={handleFullscreenChange}
+                                    />
+                                    <div className={cn(
+                                        "flex-1 overflow-hidden min-h-0 bg-background",
+                                        isFullscreen && "mx-auto w-full"
+                                    )}>
+                                        <div className="flex flex-col h-full relative">
+                                            <div className="flex-1 min-h-0">
+                                                <Chat 
+                                                    turns={turns} 
+                                                    subscribeToEvents={subscribeToEvents}
+                                                    sendMessage={sendMessage}
+                                                    EmptyContentPlaceholder={
+                                                        isLoading 
+                                                            ? <div className="p-4 text-center text-muted-foreground">Loading history...</div> 
+                                                            : <div className="p-4 text-center text-muted-foreground">No events found</div>
+                                                    }
+                                                />
+                                            </div>
+                                            {!isActiveRun && (
+                                                <div className="flex-shrink-0 border-t bg-background p-2">
+                                                    <RunTimestamps startTimestamp={startTimestamp} endTimestamp={endTimestamp} />
+                                                </div>
+                                            )}
                                         </div>
-                                    )}
-                                </div>
-                            )}
-                        </RunHistoryChatAdapter>
-                    )}
-                </div>
+                                    </div>
+                                </>
+                            );
+                        }}
+                    </RunHistoryChatAdapter>
+                )}
             </DrawerContent>
         </Drawer>
     );

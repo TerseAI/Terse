@@ -1,4 +1,4 @@
-import { useRef, useEffect } from "react";
+import { useRef } from "react";
 import { ChatLayout } from "./ChatLayout";
 import { useChat } from "./hooks/useChat";
 import { Turn } from "./Turn";
@@ -24,33 +24,28 @@ function Chat({
     onUserMessage 
 }: ChatProps) {
     if (externalTurns) {
-        // "Controlled" / History Mode
         const { input, setInput, sendMessage: sendUserMessage } = useChatInput({
             sendMessage,
             onUserMessage
         });
 
         const messagesEndRef = useRef<HTMLDivElement>(null);
-        const scrollContainerRef = useRef<HTMLDivElement>(null);
-
-        // Scroll to bottom when turns are loaded or change
-        useEffect(() => {
-            if (externalTurns.length > 0 && scrollContainerRef.current) {
-                // Use requestAnimationFrame to ensure DOM is fully rendered
-                requestAnimationFrame(() => {
-                    if (scrollContainerRef.current) {
-                        scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight;
-                    }
-                });
-            }
-        }, [externalTurns.length]);
+        const lastTurn = externalTurns[externalTurns.length - 1];
+        
+        // Only show loading if we have an active subscription (run is in progress)
+        // and the last turn indicates we're waiting for a response
+        const isPendingAssistantResponse = externalTurns.length > 0 && 
+            subscribeToEvents != null && 
+            (
+                lastTurn?.role === 'user' ||
+                (lastTurn?.role === 'assistant' && lastTurn?.isGenerating === true)
+            );
 
         return (
             <ChatLayout
                 turns={externalTurns}
-                isPendingAssistantResponse={false}
+                isPendingAssistantResponse={isPendingAssistantResponse}
                 messagesEndRef={messagesEndRef}
-                scrollContainerRef={scrollContainerRef}
                 onSendMessage={sendUserMessage}
                 onSendModelRequest={() => {}}
                 input={input}

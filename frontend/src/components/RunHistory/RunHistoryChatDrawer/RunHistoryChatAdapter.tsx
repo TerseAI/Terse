@@ -21,14 +21,17 @@ type RunHistoryChatAdapterProps = {
         endTimestamp?: string;
         subscribeToEvents?: ChatEventSubscription | null;
         sendMessage: (message: ModelRequest) => void;
+        currentStatus: RunHistoryStatus;
     }) => React.ReactNode;
 };
 
 export default function RunHistoryChatAdapter({ runId, status, children }: RunHistoryChatAdapterProps) {
-    const isActiveRun = status === 'in_progress';
-    
     // Fetch History (API)
-    const { events: historyEvents, isLoading, startTimestamp, endTimestamp, mutate: mutateChatHistory } = useChatHistory(runId);
+    const { events: historyEvents, isLoading, startTimestamp, endTimestamp, status: apiStatus, mutate: mutateChatHistory } = useChatHistory(runId);
+    
+    // Use API status if available, otherwise fall back to prop status
+    const currentStatus = (apiStatus as RunHistoryStatus) || status;
+    const isActiveRun = currentStatus === 'in_progress';
     
     // Subscribe to Realtime Events (Socket)
     // Pass null if not active to skip subscription
@@ -85,7 +88,7 @@ export default function RunHistoryChatAdapter({ runId, status, children }: RunHi
     };
 
     if (children) {
-        return <>{children({ turns, isLoading, runId, startTimestamp, endTimestamp, subscribeToEvents, sendMessage })}</>;
+        return <>{children({ turns, isLoading, runId, startTimestamp, endTimestamp, subscribeToEvents, sendMessage, currentStatus })}</>;
     }
 
     return (

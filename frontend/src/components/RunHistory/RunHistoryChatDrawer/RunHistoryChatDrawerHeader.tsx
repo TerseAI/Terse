@@ -1,4 +1,3 @@
-import { DrawerHeader, DrawerTitle, DrawerDescription } from '@/components/ui/drawer';
 import { IconForIntegration } from '@/pages/Channels/components/Integration';
 import { RunHistoryStatus, RunHistoryTrigger } from '@/shared/RunHistoryTypes';
 import { ExternalLink, ChevronLeft, ChevronRight, Maximize2, Minimize2 } from 'lucide-react';
@@ -47,20 +46,20 @@ export default function RunHistoryChatDrawerHeader({
     };
 
     return (
-        <DrawerHeader className="shrink-0 pr-4">
-            <div className="flex items-start justify-between gap-4 mb-2">
+        <div className="shrink-0 p-4 pr-4 border-b">
+            <div className="flex items-start gap-3 w-full">
                 <div className="flex items-start gap-2 flex-1 min-w-0">
                     <div className="w-4 h-4 flex-shrink-0 mt-0.5">
                         <IconForIntegration integration={trigger.integration} />
                     </div>
                     <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
-                            <DrawerTitle 
+                            <span 
                                 className="text-base font-semibold truncate"
                                 title={trigger.title || trigger.source}
                             >
                                 {trigger.title || trigger.source}
-                            </DrawerTitle>
+                            </span>
                             {trigger.url && (
                                 <a
                                     href={trigger.url}
@@ -74,9 +73,9 @@ export default function RunHistoryChatDrawerHeader({
                             )}
                         </div>
                         {trigger.subheader && (
-                            <DrawerDescription className="mt-1">
+                            <p className="mt-1 text-sm text-muted-foreground truncate">
                                 {trigger.subheader}
-                            </DrawerDescription>
+                            </p>
                         )}
                     </div>
                 </div>
@@ -121,7 +120,7 @@ export default function RunHistoryChatDrawerHeader({
                     </Button>
                 </div>
             </div>
-        </DrawerHeader>
+        </div>
     );
 }
 

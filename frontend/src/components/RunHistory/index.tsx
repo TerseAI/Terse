@@ -1,9 +1,9 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import RunHistoryEmptyState from "./RunHistoryEmptyState"
 import RunHistoryToolBar from "./RunHistoryToolBar";
 import RunHistoryItem from "./RunHistoryItem";
 import RunHistoryLoadingState from "./RunHistoryLoadingState";
-import { RunHistoryStatus } from "../../shared/RunHistoryTypes";
+import { RunHistoryStatus, RunHistoryRecord } from "../../shared/RunHistoryTypes";
 import { useRunHistory } from "../../hooks/api/useRunHistory";
 
 // Remote data source only; no local mock
@@ -27,6 +27,9 @@ export default function RunHistory({ channelId }: RunHistoryProps) {
     const [openDrawerRunId, setOpenDrawerRunId] = useState<string | null>(null);
     const [isDrawerFullscreen, setIsDrawerFullscreen] = useState(false);
     const [isInitialDrawerOpen, setIsInitialDrawerOpen] = useState(true);
+    
+    // Keep a reference to the currently viewed run so it doesn't disappear if filtered out
+    const pinnedRunRef = useRef<RunHistoryRecord | null>(null);
 
     const { runs: remoteRuns, total, isLoading } = useRunHistory({
         channelId,
@@ -37,7 +40,52 @@ export default function RunHistory({ channelId }: RunHistoryProps) {
         selectedStatuses,
     });
 
-    const filteredRuns = useMemo(() => remoteRuns, [remoteRuns]);
+    // Update the pinned run reference when we have a new run with the open drawer ID
+    useEffect(() => {
+        if (openDrawerRunId) {
+            const currentRun = remoteRuns.find(r => r.id === openDrawerRunId);
+            if (currentRun) {
+                // Update the pinned run with fresh data
+                pinnedRunRef.current = currentRun;
+            }
+        } else {
+            // Clear the pinned run when drawer is closed
+            pinnedRunRef.current = null;
+        }
+    }, [openDrawerRunId, remoteRuns]);
+
+    // Include the pinned run in the list if it's not already there
+    const filteredRuns = useMemo(() => {
+        if (!openDrawerRunId || !pinnedRunRef.current) {
+            return remoteRuns;
+        }
+        
+        const pinnedRun = pinnedRunRef.current;
+        const isInList = remoteRuns.some(r => r.id === pinnedRun.id);
+        
+        if (isInList) {
+            return remoteRuns;
+        }
+        
+        // Pinned run is not in the list (was filtered out), add it back at the appropriate position
+        // Insert based on timestamp to maintain order
+        const runsWithPinned = [...remoteRuns];
+        const pinnedTimestamp = new Date(pinnedRun.timestamp).getTime();
+        
+        // Find the right position (runs are typically sorted by timestamp desc)
+        let insertIndex = runsWithPinned.findIndex(r => 
+            new Date(r.timestamp).getTime() < pinnedTimestamp
+        );
+        
+        if (insertIndex === -1) {
+            // Pinned run is oldest, add at the end
+            runsWithPinned.push(pinnedRun);
+        } else {
+            runsWithPinned.splice(insertIndex, 0, pinnedRun);
+        }
+        
+        return runsWithPinned;
+    }, [remoteRuns, openDrawerRunId]);
 
     const totalPages = Math.ceil(total / runsPerPage) || 1;
     const startIndex = (currentPage - 1) * runsPerPage;
