@@ -11,9 +11,15 @@ type EditableTextProps = {
 };
 
 function EditableText({ value, onSave, onChange, className = "", placeholder = "Click to edit" }: EditableTextProps) {
+    console.log('EditableText', value);
     const [isEditing, setIsEditing] = useState(false);
     const [text, setText] = useState(value);
     const textAreaRef = useRef<HTMLTextAreaElement>(null);
+
+    // Sync internal state with value prop
+    useEffect(() => {
+        setText(value);
+    }, [value]);
 
     useEffect(() => {
         if (isEditing && textAreaRef.current) {
