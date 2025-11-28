@@ -260,28 +260,27 @@ function Input({ input, inputs, setInputs, handleRemove }: { input: TransientCha
     if (isPlaceholder) {
         cardContent = (
             <div className="p-2 border rounded-md cursor-pointer" onClick={() => setShowDetailsDialog(true)}>
-                <div className="flex flex-row justify-between items-center gap-1">
+                <div className="flex flex-row justify-between items-center">
                     <ConfigTitle configType={input.configType} iconSize="md" />
                     <Button variant="ghost" size="icon-sm" onClick={(e) => { e.stopPropagation(); handleRemove(input.id); }} className="hover:text-destructive">
                         <XIcon />
                     </Button>
                 </div>
                 <Badge variant="outline" className="border-yellow-500 text-yellow-600 dark:text-yellow-500">
-                    <AlertTriangleIcon className="size-4 text-yellow-500" />
-                    Needs Configuration
+                    <IntegrationSelector {...selectorProps} variant="card" />
                 </Badge>
             </div>
         );
     } else {
         cardContent = (
             <div className="p-2 border rounded-md cursor-pointer" onClick={() => setShowDetailsDialog(true)}>
-                <div className="flex flex-row justify-between items-center gap-1">
+                <div className="flex flex-row justify-between pb-2">
                     <ConfigTitle configType={input.configType} iconSize="md" />
                     <Button variant="ghost" size="icon-sm" onClick={(e) => { e.stopPropagation(); handleRemove(input.id); }} className="hover:text-destructive">
                         <XIcon />
                     </Button>
                 </div>
-                <Badge variant="outline">
+                <Badge variant="outline" className="max-w-40 truncate">
                     <IntegrationSelector {...selectorProps} variant="card" />
                 </Badge>
             </div>
