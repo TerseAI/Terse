@@ -16,10 +16,11 @@ import { ConfigInstance, ConfigType } from "../../../shared/Configs";
 import { v4 as uuidv4 } from 'uuid';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../../../components/ui/dialog";
 import { InputConfigSelectorProps, IntegrationSelector } from "../../../components/IntegrationSelector";
-import { AlertTriangleIcon, PlusIcon, XIcon } from "lucide-react";
+import { AlertTriangleIcon, FileText, PlusIcon, XIcon } from "lucide-react";
 import { cn } from "../../../lib/utils";
 import { Card, CardContent } from "../../../components/ui/card";
 import { AddOutputModal } from "../components/AddOutputModal";
+import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "../../../components/ui/empty";
 
 export type ChannelSetupTabProps = {
     channelId: string | null;
@@ -175,13 +176,9 @@ export default function ChannelSetupTab({
             </div>
 
             <div className="min-w-md max-w-md">
-                <h2 className="text-lg mb-2">Output</h2>
-
-                <div className="flex flex-row gap-2 justify-center">
-                    <OutputLayout output={output} setOutput={setOutput} />
-                </div>
+                <OutputLayout output={output} setOutput={setOutput} />
             </div>
-        </div>
+        </div >
     )
 }
 
@@ -280,10 +277,6 @@ function OutputLayout({ output, setOutput }: { output: TransientChannelOutput | 
         setShowAddModal(false);
     };
 
-    const handleRemove = () => {
-        setOutput(undefined);
-    };
-
     const onSelect = (config: ConfigInstance) => {
         setOutput({ id: output?.id || uuidv4(), config: config, configType: config.configType });
     };
@@ -292,10 +285,23 @@ function OutputLayout({ output, setOutput }: { output: TransientChannelOutput | 
     if (!output) {
         cardContent = (
             <div className="flex flex-col gap-2">
-                <h2 className="text-lg mb-2">Output</h2>
-                <Button variant="outline" onClick={() => setShowAddModal(true)} className="h-auto aspect-square">
-                    <PlusIcon className="size-4" />
-                </Button>
+                <Empty>
+                    <EmptyHeader>
+                        <EmptyMedia variant="icon">
+                            <FileText className="text-destructive" />
+                        </EmptyMedia>
+                        <EmptyTitle>No output yet</EmptyTitle>
+                        <EmptyDescription>
+                            No output yet. Add an integration to get started.
+                        </EmptyDescription>
+                    </EmptyHeader>
+                    <EmptyContent>
+                        <Button onClick={() => setShowAddModal(true)}>
+                            <PlusIcon className="h-4 w-4" />
+                            Add Output
+                        </Button>
+                    </EmptyContent>
+                </Empty>
             </div>
         )
     } else {
@@ -306,11 +312,21 @@ function OutputLayout({ output, setOutput }: { output: TransientChannelOutput | 
 
     return (
         <>
-            <Card className="flex flex-row gap-2">
-                <CardContent>
-                    {cardContent}
-                </CardContent>
-            </Card>
+            <div className="flex flex-row justify-between items-center mb-4">
+                <h2 className="text-lg">Output</h2>
+                {output && (
+                    <Button variant="outline" size="sm" onClick={() => setShowAddModal(true)}>
+                        Change output
+                    </Button>
+                )}
+            </div>
+            <div className="flex flex-row gap-2 justify-center">
+                <Card className="flex flex-row gap-2">
+                    <CardContent>
+                        {cardContent}
+                    </CardContent>
+                </Card>
+            </div>
 
             <AddOutputModal
                 isOpen={showAddModal}
