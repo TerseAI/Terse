@@ -153,7 +153,7 @@ export default function ChannelSetupTab({
     return (
         <div className="grid grid-flow-row place-items-center gap-8">
             <div className="flex justify-between items-center w-full p-2">
-                <EditableTextField value={name || defaultName || ''} onSave={(value) => setName(value)} />
+                <EditableTextField value={name || ''} placeholder={defaultName} onSave={(value) => setName(value)} />
                 <SaveChannelButton
                     defaultName={defaultName}
                     channelId={channelId}
@@ -166,17 +166,21 @@ export default function ChannelSetupTab({
                 />
             </div>
 
-            <div className="flex flex-row gap-4 min-w-md max-w-md">
-                <InputLayout inputs={inputs} setInputs={setInputs} />
-            </div>
+            <div className="flex flex-row gap-12">
+                <div className="flex flex-col gap-4 justify-between">
+                    <div className="flex flex-row gap-4 min-w-md max-w-md">
+                        <InputLayout inputs={inputs} setInputs={setInputs} />
+                    </div>
 
-            <div className="min-w-md max-w-md">
-                <h2 className="text-lg mb-2">Instructions</h2>
-                <Textarea value={prompt?.text} onChange={(e) => setPrompt({ ...prompt, text: e.target.value })} className="min-h-100" />
-            </div>
+                    <div className="min-w-md max-w-md">
+                        <OutputLayout output={output} setOutput={setOutput} />
+                    </div>
+                </div>
 
-            <div className="min-w-md max-w-md">
-                <OutputLayout output={output} setOutput={setOutput} />
+                <div className="min-w-md max-w-md">
+                    <h2 className="text-lg mb-2">Instructions</h2>
+                    <Textarea value={prompt?.text} onChange={(e) => setPrompt({ ...prompt, text: e.target.value })} className="min-h-100" />
+                </div>
             </div>
         </div >
     )
@@ -281,6 +285,8 @@ function OutputLayout({ output, setOutput }: { output: TransientChannelOutput | 
         setOutput({ id: output?.id || uuidv4(), config: config, configType: config.configType });
     };
 
+    const needsConfiguration = !output || !output.config || !output.config.isComplete();
+
     let cardContent;
     if (!output) {
         cardContent = (
@@ -313,15 +319,15 @@ function OutputLayout({ output, setOutput }: { output: TransientChannelOutput | 
     return (
         <>
             <div className="flex flex-row justify-between items-center mb-4">
-                <h2 className="text-lg">Output</h2>
+                <h2 className="text-lg">{needsConfiguration ? "Configure Output" : "Output"}</h2>
                 {output && (
                     <Button variant="outline" size="sm" onClick={() => setShowAddModal(true)}>
                         Change output
                     </Button>
                 )}
             </div>
-            <div className="flex flex-row gap-2 justify-center">
-                <Card className="flex flex-row gap-2">
+            <div className="flex flex-row gap-2">
+                <Card className="flex flex-row gap-2 w-full">
                     <CardContent>
                         {cardContent}
                     </CardContent>
