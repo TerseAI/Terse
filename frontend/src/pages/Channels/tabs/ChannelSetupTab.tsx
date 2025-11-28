@@ -19,6 +19,7 @@ import { InputConfigSelectorProps, IntegrationSelector } from "../../../componen
 import { AlertTriangleIcon, PlusIcon, XIcon } from "lucide-react";
 import { cn } from "../../../lib/utils";
 import { Card, CardContent } from "../../../components/ui/card";
+import { AddOutputModal } from "../components/AddOutputModal";
 
 export type ChannelSetupTabProps = {
     channelId: string | null;
@@ -129,91 +130,6 @@ function SaveChannelButton({
     )
 }
 
-
-// function ChannelSetupTabOLD({
-//     channelId,
-//     name,
-//     setName,
-//     inputs,
-//     output,
-//     prompt,
-//     setInputs,
-//     setOutput,
-//     setPrompt,
-//     isActive,
-//     isLoading,
-//     mutate,
-// }: ChannelSetupTabProps) {
-//     const { totalCount } = useChannelCount();
-//     const defaultName = getDefaultChannelName(totalCount);
-
-//     const containerRef = useRef<HTMLDivElement>(null);
-//     const inputsSectionRef = useRef<Map<string, HTMLDivElement>>(new Map());
-//     const PromptSectionRef = useRef<HTMLDivElement>(null);
-//     const OutputSectionRef = useRef<HTMLDivElement>(null);
-
-//     const createMapElementRef = (mapRef: React.RefObject<Map<string, HTMLDivElement>>, inputId: string): React.RefObject<HTMLDivElement | null> => {
-//         return {
-//             get current() {
-//                 return mapRef.current?.get(inputId) || null;
-//             }
-//         } as React.RefObject<HTMLDivElement | null>;
-//     };
-
-//     const connections: Conn[] = []
-
-//     const channelInputs = inputs.map(toChannelInput).filter((i): i is ChannelInput => i !== null);
-//     const channelOutput = toChannelOutput(output)
-
-
-//     if (channelInputs.length > 0 && inputsSectionRef.current != null && inputsSectionRef.current.size > 0) {
-//         channelInputs.forEach((input) => {
-//             const inputCardRef = createMapElementRef(inputsSectionRef, input.id);
-//             connections.push({
-//                 id: `input-to-prompt-${input.config.integrationType}-${input.config.integrationId}`,
-//                 from: inputCardRef,
-//                 to: PromptSectionRef
-//             });
-//         });
-//     }
-//     if (prompt != null && PromptSectionRef.current != null && OutputSectionRef.current != null && output != null) {
-//         connections.push({ id: 'prompt-to-output', from: PromptSectionRef, to: OutputSectionRef });
-//     }
-
-//     return (
-//         <div className="flex flex-col h-full p-4 overflow-y-auto gap-6">
-
-//             <div className="flex justify-between items-center mb-10">
-//                 <div className="flex items-center gap-2">
-//                     <EditableTextField value={name || defaultName || ''} onSave={(value) => setName(value)} />
-//                 </div>
-//                 <SaveChannelButton
-//                     defaultName={defaultName}
-//                     channelId={channelId}
-//                     name={name}
-//                     inputs={channelInputs}
-//                     output={channelOutput}
-//                     prompt={prompt}
-//                     isActive={isActive}
-//                     mutate={mutate}
-//                 />
-//             </div>
-
-//             <div ref={containerRef} className="grid grid-flow-col place-items-center gap-3 relative">
-//                 <InputsSection ref={inputsSectionRef} inputs={inputs} setInputs={setInputs} isLoading={isLoading} />
-
-//                 <PromptSection ref={PromptSectionRef} prompt={prompt} setPrompt={setPrompt} />
-
-//                 <OutputSection ref={OutputSectionRef} output={output} setOutput={setOutput} isLoading={isLoading} />
-
-//                 {connections.length > 0 && (
-//                     <SVGFlowArrows containerRef={containerRef} connections={connections} />
-//                 )}
-//             </div>
-//         </div>
-//     )
-// }
-
 export default function ChannelSetupTab({
     channelId,
     name,
@@ -225,7 +141,6 @@ export default function ChannelSetupTab({
     setOutput,
     setPrompt,
     isActive,
-    isLoading,
     mutate,
 }: ChannelSetupTabProps) {
     const { totalCount } = useChannelCount();
@@ -262,7 +177,9 @@ export default function ChannelSetupTab({
             <div className="min-w-md max-w-md">
                 <h2 className="text-lg mb-2">Output</h2>
 
-                <OutputLayout output={output} setOutput={setOutput} />
+                <div className="flex flex-row gap-2 justify-center">
+                    <OutputLayout output={output} setOutput={setOutput} />
+                </div>
             </div>
         </div>
     )
@@ -350,25 +267,56 @@ function Input({ input, inputs, setInputs, handleRemove }: { input: TransientCha
 }
 
 function OutputLayout({ output, setOutput }: { output: TransientChannelOutput | undefined, setOutput: (output: TransientChannelOutput | undefined) => void }) {
-    if (!output || !output.config) {
-        return (
-            <div className="flex flex-col gap-2">
-                <h2 className="text-lg mb-2">Output</h2>
-            </div>
-        )
-    }
+    const [showAddModal, setShowAddModal] = useState(false);
 
-    const selectorProps: InputConfigSelectorProps = {
-        input: output,
-        setConfig: (config: ConfigInstance) => setOutput({ ...output, config: config, configType: config.configType }),
-        variant: "card"
+    const handleSelectPlatform = (configType: ConfigType) => {
+        // Clear all configs when switching platform (new integration type)
+        const newOutput: TransientChannelOutput = {
+            id: uuidv4(),
+            config: undefined,
+            configType: configType,
+        };
+        setOutput(newOutput);
+        setShowAddModal(false);
     };
 
+    const handleRemove = () => {
+        setOutput(undefined);
+    };
+
+    const onSelect = (config: ConfigInstance) => {
+        setOutput({ id: output?.id || uuidv4(), config: config, configType: config.configType });
+    };
+
+    let cardContent;
+    if (!output) {
+        cardContent = (
+            <div className="flex flex-col gap-2">
+                <h2 className="text-lg mb-2">Output</h2>
+                <Button variant="outline" onClick={() => setShowAddModal(true)} className="h-auto aspect-square">
+                    <PlusIcon className="size-4" />
+                </Button>
+            </div>
+        )
+    } else {
+        cardContent = (
+            <IntegrationSelector input={output} variant="dialog" setConfig={onSelect} />
+        );
+    }
+
     return (
-        <Card className="flex flex-row gap-2">
-            <CardContent>
-                <IntegrationSelector {...selectorProps} variant="dialog" />
-            </CardContent>
-        </Card>
+        <>
+            <Card className="flex flex-row gap-2">
+                <CardContent>
+                    {cardContent}
+                </CardContent>
+            </Card>
+
+            <AddOutputModal
+                isOpen={showAddModal}
+                onClose={() => setShowAddModal(false)}
+                onSelectIntegration={handleSelectPlatform}
+            />
+        </>
     )
 }
