@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useChatHistory } from '@/hooks/api/useChatHistory';
 import { useChannelChatEvents } from '@/hooks/useChannelChatEvents';
 import { useRunHistoryTurns } from '@/components/RunHistory/RunHistoryChatDrawer/hooks/useRunHistoryTurns';
