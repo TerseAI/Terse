@@ -1,4 +1,4 @@
-import { DatabaseIcon, FileIcon, Plus } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { Button } from '../ui/button';
 import DropdownSelect from '../ui/DropdownSelect';
 import { NotionResourceSelector } from '../NotionResourceSelector';
@@ -18,7 +18,6 @@ export function NotionIntegration({
 }: InputConfigSelectorProps) {
     const { integrations, isLoading } = useNotionIntegrations();
     const { connect: connectOAuth, isConnecting: isOAuthConnecting } = useOAuthConnection(IntegrationType.NOTION);
-    const isDatabaseConfig = input.configType === ConfigType.NOTION_DATABASE;
     const isPageConfig = input.configType === ConfigType.NOTION_PAGE;
     const currentConfig = input.config as NotionConfig | NotionPageConfig | undefined;
     const [selectedIntegrationId, setSelectedIntegrationId] = useIntegrationId(
