@@ -1,4 +1,4 @@
-import { Plus } from 'lucide-react';
+import { DatabaseIcon, FileIcon, Plus } from 'lucide-react';
 import { Button } from '../ui/button';
 import DropdownSelect from '../ui/DropdownSelect';
 import { NotionResourceSelector } from '../NotionResourceSelector';

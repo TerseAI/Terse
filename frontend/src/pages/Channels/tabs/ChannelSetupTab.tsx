@@ -236,7 +236,7 @@ export default function ChannelSetupTab({
 
     return (
         <div className="grid grid-flow-row place-items-center gap-8">
-            <div className="flex justify-between items-center w-full">
+            <div className="flex justify-between items-center w-full p-2">
                 <EditableTextField value={name || defaultName || ''} onSave={(value) => setName(value)} />
                 <SaveChannelButton
                     defaultName={defaultName}
