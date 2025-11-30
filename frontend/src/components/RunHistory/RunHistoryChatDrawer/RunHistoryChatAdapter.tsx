@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react';
+import { useMemo } from 'react';
 import { useChatHistory } from '@/hooks/api/useChatHistory';
 import { useChannelChatEvents } from '@/hooks/useChannelChatEvents';
 import { useRunHistoryTurns } from '@/components/RunHistory/RunHistoryChatDrawer/hooks/useRunHistoryTurns';
@@ -27,9 +27,8 @@ type RunHistoryChatAdapterProps = {
 
 export default function RunHistoryChatAdapter({ runId, status, children }: RunHistoryChatAdapterProps) {
     // Fetch History (API)
-    const { events: historyEvents, isLoading, startTimestamp, endTimestamp, status: apiStatus, mutate: mutateChatHistory } = useChatHistory(runId);
+    const { events: historyEvents, isLoading, startTimestamp, endTimestamp, status: apiStatus } = useChatHistory(runId);
 
-    console.log('historyEvents:', historyEvents);
     // Use API status if available, otherwise fall back to prop status
     const currentStatus = (apiStatus as RunHistoryStatus) || status;
     const isActiveRun = currentStatus === 'in_progress';
@@ -38,38 +37,69 @@ export default function RunHistoryChatAdapter({ runId, status, children }: RunHi
     // Pass null if not active to skip subscription
     const { events: realtimeEvents } = useChannelChatEvents(isActiveRun ? runId : null);
 
-    // step id, represents a grouping of data.
-    // Merge Events
+    // Merge Events: Combine historical (API) and realtime (socket) events
+    // Use event.id as the unique key since it's guaranteed to be unique
     const events: (ModelEvent & { isHistorical?: boolean })[] = useMemo(() => {
-        const historicalEventMap = new Map<string, RunHistoryModelEvent & { isHistorical?: boolean }>();
         const eventMap = new Map<string, RunHistoryModelEvent & { isHistorical?: boolean }>();
+        const historicalEventIds = new Set<string>();
+        const historicalEventKeys = new Set<string>(); // Compound key: step_id:type for events without IDs
         
         // Add history events first (base truth) and tag them
         historyEvents.forEach(event => {
+            // Use event.id as the primary key (unique database ID)
+            const key = event.id || `${event.step_id}:${event.type}` || Math.random().toString();
+            eventMap.set(key, { ...event, isHistorical: true });
+            
+            // Track IDs and compound keys for deduplication
+            if (event.id) {
+                historicalEventIds.add(event.id);
+            }
             if (event.step_id) {
-                historicalEventMap.set(event.step_id, { ...event, isHistorical: true });
-                eventMap.set(event.step_id, { ...event, isHistorical: true });
+                historicalEventKeys.add(`${event.step_id}:${event.type}`);
             }
         });
 
-        // ok so we have 
-        
         // Add realtime events (updates/new events)
+        // Skip events that are already in history
         realtimeEvents.forEach(event => {
-            const isAlreadyInHistory = historicalEventMap.has(event.step_id);
-            if (isAlreadyInHistory) {
+            // First check by event.id (most precise)
+            if (event.id && historicalEventIds.has(event.id)) {
                 return;
             }
-            eventMap.set(event.id, { ...event, isHistorical: false });
+            
+            // Then check by compound key (step_id:type) to avoid duplicates
+            // Multiple events can share step_id, but they should have different types
+            if (event.step_id) {
+                const compoundKey = `${event.step_id}:${event.type}`;
+                if (historicalEventKeys.has(compoundKey)) {
+                    return;
+                }
+            }
+            
+            // Use event.id as the key, or compound key if no ID
+            const key = event.id || `${event.step_id}:${event.type}` || Math.random().toString();
+            
+            // Only add if we don't already have this event
+            if (!eventMap.has(key)) {
+                eventMap.set(key, { ...event, isHistorical: false });
+            }
         });
         
-        // Sort by timestamp
-        const sorted = Array.from(eventMap.values()).sort((a, b) => 
-            new Date(a.timestamp || 0).getTime() - new Date(b.timestamp || 0).getTime()
-        );
+        // Sort by timestamp, then by id for deterministic ordering
+        const sorted = Array.from(eventMap.values()).sort((a, b) => {
+            const timeA = new Date(a.timestamp || 0).getTime();
+            const timeB = new Date(b.timestamp || 0).getTime();
+            if (timeA !== timeB) {
+                return timeA - timeB;
+            }
+            // If timestamps are equal, sort by id for deterministic ordering
+            const idA = a.id || '';
+            const idB = b.id || '';
+            return idA.localeCompare(idB);
+        });
         
         return sorted;
-    }, [historyEvents, realtimeEvents, mutateChatHistory]);
+    }, [historyEvents, realtimeEvents]);
 
     // Convert to Turns
     const turns = useRunHistoryTurns(events);
@@ -102,3 +132,4 @@ export default function RunHistoryChatAdapter({ runId, status, children }: RunHi
         />
     );
 }
+

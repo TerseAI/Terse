@@ -28,6 +28,11 @@ export function useRunHistoryTurns(events: (ModelEvent & { isHistorical?: boolea
             return newTurn;
         };
 
+        // Track which step_ids have been completed (have ToolCallComplete or NaturalStop)
+        const completedStepIds = new Set<string>();
+        // Track if we're processing only historical events
+        const allHistorical = events.length > 0 && events.every(e => e.isHistorical);
+
         events.forEach(event => {
             switch (event.type) {
                 case 'FilterResult': {
@@ -56,7 +61,11 @@ export function useRunHistoryTurns(events: (ModelEvent & { isHistorical?: boolea
                     
                     const turn = getOrCreateTurn('assistant', step_id);
                     turn.text = newText;
-                    turn.isGenerating = true;
+                    // For historical events, don't set isGenerating to true
+                    // We'll finalize it at the end based on completion status
+                    if (!event.isHistorical) {
+                        turn.isGenerating = true;
+                    }
                     if (event.isHistorical) {
                         turn.disableAnimation = true;
                     }
@@ -76,19 +85,25 @@ export function useRunHistoryTurns(events: (ModelEvent & { isHistorical?: boolea
                         turn.function_calls.push({
                             id: step_id,
                             name: e.summary,
-                            isRunning: true,
+                            // For historical events, start with isRunning: false
+                            // since we'll see ToolCallComplete soon
+                            isRunning: event.isHistorical ? false : true,
                             parameters: e.parameters,
                             isWaitingForUserInput: false
                         });
                     } else {
                         existingCall.parameters = e.parameters;
                     }
-                    turn.isGenerating = true;
+                    // For historical events, don't set isGenerating to true
+                    if (!event.isHistorical) {
+                        turn.isGenerating = true;
+                    }
                     break;
                 }
                 case 'ToolCallComplete': {
                     const e = event as ToolCallComplete;
                     const step_id = e.step_id;
+                    completedStepIds.add(step_id);
                     let found = false;
                     // Find the call in any turn
                     for (const t of turns) {
@@ -157,10 +172,44 @@ export function useRunHistoryTurns(events: (ModelEvent & { isHistorical?: boolea
                     if (lastTurn) {
                         lastTurn.isGenerating = false;
                     }
+                    // Track the step_id as completed if available
+                    if (lastTurn?.step_id) {
+                        completedStepIds.add(lastTurn.step_id);
+                    }
                     break;
                 }
             }
         });
+
+        // Finalize isGenerating state for historical events
+        // For historical events, all turns should have isGenerating: false unless they're waiting for approval
+        if (allHistorical) {
+            turns.forEach(turn => {
+                // Check if turn is waiting for approval - if so, keep it as generating
+                const hasWaitingApproval = turn.function_calls.some(fc => fc.isWaitingForApproval);
+                if (!hasWaitingApproval) {
+                    // All historical turns should be marked as not generating
+                    turn.isGenerating = false;
+                }
+            });
+        } else {
+            // For mixed historical/realtime events, finalize historical turns only
+            turns.forEach(turn => {
+                if (turn.disableAnimation) {
+                    // This is a historical turn - ensure it's not generating unless waiting for approval
+                    const hasWaitingApproval = turn.function_calls.some(fc => fc.isWaitingForApproval);
+                    if (!hasWaitingApproval) {
+                        // Check if this step is completed
+                        const isCompleted = completedStepIds.has(turn.step_id) || 
+                                          turn.function_calls.length === 0 ||
+                                          turn.function_calls.every(fc => !fc.isRunning);
+                        if (isCompleted) {
+                            turn.isGenerating = false;
+                        }
+                    }
+                }
+            });
+        }
 
         return turns;
     }, [events]);

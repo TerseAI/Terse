@@ -193,14 +193,15 @@ export async function getChatHistory(req: Request, res: Response) {
       return res.status(404).json({ error: "Run not found" });
     }
 
-    // Fetch all chat events for this run, ordered by timestamp
+    // Fetch all chat events for this run, ordered by timestamp then id for deterministic ordering
     const chatEvents = await prisma.run_history_chat_events.findMany({
       where: {
         run_history_record_id: runId,
       },
-      orderBy: {
-        timestamp: "asc",
-      },
+      orderBy: [
+        { timestamp: "asc" },
+        { id: "asc" }, // Secondary sort by id for deterministic ordering when timestamps are equal
+      ],
     });
 
     // Deserialize events directly from JSON, adding id and timestamp
