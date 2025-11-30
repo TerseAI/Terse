@@ -3,6 +3,7 @@ import { ModelEvent } from '../../shared/ModelEvents';
 import { storeChatEvent } from './runHistory';
 import type { RunHistoryModelEvent, RunHistoryModelSocketEvent, RunHistoryStreamingParams } from '../../shared/RunHistoryTypes';
 import { randomString } from '../../utility/strings';
+import { emitCacheInvalidationWithWildcard } from '../../realtimeSocket';
 
 export class TextDeltaAggregator {
     private accumulatedDeltas = new Map<string, AccumulatedDelta>();
@@ -39,7 +40,9 @@ export class TextDeltaAggregator {
             delta: accumulated.text,
         };
 
-        const eventId = await storeChatEvent(this.runId, finalEvent);
+        // Use the firstTimestamp (when the first delta occurred) to preserve event ordering
+        const timestamp = accumulated.firstTimestamp ? new Date(accumulated.firstTimestamp) : undefined;
+        const eventId = await storeChatEvent(this.runId, finalEvent, timestamp);
         accumulated.eventId = eventId;
         return eventId;
     }
@@ -141,15 +144,15 @@ export async function processModelEventStream(
             } else {
                 await handleNonTextDeltaEvent(event, timestamp, emitter);
             }
+            emitCacheInvalidationWithWildcard(options.userId, 'chatHistory', runId);
         }
-
         await aggregator.finalizeRemaining();
-
     } catch (error) {
         console.error('Error processing model event stream:', error);
         
         try {
             await aggregator.finalizeRemaining();
+            emitCacheInvalidationWithWildcard(options.userId, 'chatHistory', runId);
         } catch (finalizeError) {
             console.error('Error finalizing accumulated TextDelta on error:', finalizeError);
         }

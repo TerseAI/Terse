@@ -107,8 +107,13 @@ export async function markRunFailed(runId: string, errorMessage: string, stage?:
 /**
  * Stores a chat event in the database and returns the created event's ID
  */
-export async function storeChatEvent(runId: string, event: ModelEvent): Promise<string> {
+export async function storeChatEvent(runId: string, event: ModelEvent, timestamp?: Date | string): Promise<string> {
     const prisma = db();
+    
+    // Use provided timestamp or current time
+    const eventTimestamp = timestamp 
+        ? (typeof timestamp === 'string' ? new Date(timestamp) : timestamp)
+        : new Date();
     
     // Store the full event as JSON for easy deserialization
     const created = await prisma.run_history_chat_events.create({
@@ -116,7 +121,7 @@ export async function storeChatEvent(runId: string, event: ModelEvent): Promise<
             run_history_record_id: runId,
             event_type: event.type as RunHistoryChatEventType,
             event_json: event as any, // Store full ModelEvent as JSON
-            timestamp: new Date(),
+            timestamp: eventTimestamp,
         },
         select: { id: true },
     });
