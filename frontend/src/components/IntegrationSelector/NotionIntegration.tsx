@@ -121,19 +121,21 @@ export function NotionIntegration({
     // Dialog variant: full view
     return (
         <div className="flex flex-col gap-3 min-w-0 overflow-hidden">
-            <div className="flex flex-row gap-1.5 items-center">
-                <div className="w-15 h-15">
+            <div className="flex flex-row gap-2 items-center">
+                <div className="w-8 h-8 flex items-center justify-center shrink-0">
                     <IconForConfigType type={ConfigType.NOTION_DATABASE}/>
                 </div>
-                <DropdownSelect
-                    statusOptions={connectionSelections}
-                    selectedOption={selectedOption}
-                    setSelected={onSelect}
-                    additionalAction={{
-                        label: 'Connect Another Notion',
-                        onClick: connectOAuth
-                    }}
-                />
+                <div className="flex-1 min-w-0">
+                    <DropdownSelect
+                        statusOptions={connectionSelections}
+                        selectedOption={selectedOption}
+                        setSelected={onSelect}
+                        additionalAction={{
+                            label: 'Connect Another Notion',
+                            onClick: connectOAuth
+                        }}
+                    />
+                </div>
             </div>
 
             {/* Notion-specific resource selector */}
