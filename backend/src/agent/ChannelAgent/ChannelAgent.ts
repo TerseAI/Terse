@@ -46,9 +46,9 @@ export class ChannelAgent<T extends Session, TConfig extends ConfigInstance> {
     chooseChannelAgentModel(): string {
         const nodeEnv = settings.nodeEnv;
         if (nodeEnv === 'development') {
-            return 'gpt-5-mini';
+            return 'gpt-5-nano';
         }
-        return 'gpt-5';
+        return 'gpt-5-mini'; // Bring us down from 5 to 5 mini to save on credits
     }
 
     async initializeAgent(): Promise<void> {
