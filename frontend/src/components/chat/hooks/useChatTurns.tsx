@@ -26,9 +26,7 @@ export function useChatTurns({ onScrollToBottom, initialTurns }: UseChatTurnsOpt
     }, [initialTurns]);
 
     // Check if last turn is user. If so, we are waiting for an assistant response.
-    const isPendingAssistantResponse = (
-        turns.length > 0 && turns[turns.length - 1].role === 'user'
-    )
+    const isPendingAssistantResponse = turns.length > 0 && turns[turns.length - 1]?.isGenerating || false;
 
     const scrollToBottom = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -247,7 +245,7 @@ export function useChatTurns({ onScrollToBottom, initialTurns }: UseChatTurnsOpt
                 text: '',
                 function_calls: [],
                 step_id: 'filter',
-                isGenerating: false,
+                isGenerating: isRelevant ? true : false,
                 filter_result: {
                     isRelevant,
                     reason,

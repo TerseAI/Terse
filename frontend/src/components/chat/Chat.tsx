@@ -38,7 +38,7 @@ function Chat({
             onSendModelRequest={sendModelRequest}
             input={input}
             setInput={setInput}
-            placeholders={["Test out your use case!"]}
+            placeholders={["Chat with the AI assistant"]}
             EmptyContentPlaceholder={EmptyContentPlaceholder}
         />
     );

@@ -3,6 +3,7 @@ import TextareaAutosize from 'react-textarea-autosize';
 
 interface GlowingTextFieldProps {
     isLoading: boolean;
+    disabled: boolean;
     onInputChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void;
     onKeyDown: (e: React.KeyboardEvent<HTMLTextAreaElement>) => void;
     inputValue: string;
@@ -20,7 +21,7 @@ export enum Size {
     Large = 'large',
 }
 
-function GlowingTextField({ isLoading, onInputChange, onKeyDown, inputValue, placeholders = [], compact = false, size = Size.Medium, shouldAllowKeyboardShortcutForFocus = true, autoFocus = false, focusOverride = null }: GlowingTextFieldProps) {
+function GlowingTextField({ isLoading, disabled, onInputChange, onKeyDown, inputValue, placeholders = [], compact = false, size = Size.Medium, shouldAllowKeyboardShortcutForFocus = true, autoFocus = false, focusOverride = null }: GlowingTextFieldProps) {
     const [currentPlaceholder, setCurrentPlaceholder] = useState<string | undefined>(placeholders ? placeholders[0] : undefined);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -121,7 +122,7 @@ function GlowingTextField({ isLoading, onInputChange, onKeyDown, inputValue, pla
                     onChange={onInputChange}
                     onKeyDown={onKeyDown}
                     value={inputValue}
-                    disabled={isLoading}
+                    disabled={disabled}
                     placeholder={currentPlaceholder}
                     rows={compact ? 1 : undefined}
                     maxRows={compact ? 4 : undefined}
