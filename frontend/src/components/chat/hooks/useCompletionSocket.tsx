@@ -1,5 +1,5 @@
 import { useRef, useState, useEffect } from "react";
-import { type ToolCall, type ToolCallComplete, type TextDelta, type Failure, type ModelRequest } from "../../../shared/ModelEvents";
+import { type ToolCall, type ToolCallComplete, type TextDelta, type Failure, type ModelRequest, FilterResult } from "../../../shared/ModelEvents";
 import type { RunHistoryModelSocketEvent } from "../../../shared/RunHistoryTypes";
 
 export type ChatEventSubscription = (callback: (payload: RunHistoryModelSocketEvent) => void) => () => void;
@@ -12,17 +12,18 @@ export type UseCompletionSocketOptions = {
     onToolCallComplete: (toolCallComplete: ToolCallComplete) => void;
     onFailure: (failure: Failure) => void;
     onNaturalStop: () => void;
+    onFilterResult: (filterResult: FilterResult) => void;
 };
 
 export function useCompletionSocket(options: UseCompletionSocketOptions) {
-    const { subscribeToEvents, sendMessage, onDelta, onToolCall, onToolCallComplete, onFailure, onNaturalStop } = options;
+    const { subscribeToEvents, sendMessage, onDelta, onToolCall, onToolCallComplete, onFailure, onNaturalStop, onFilterResult } = options;
 
     const onDeltaRef = useRef(onDelta);
     const onToolCallRef = useRef(onToolCall);
     const onToolCallCompleteRef = useRef(onToolCallComplete);
     const onFailureRef = useRef(onFailure);
     const onNaturalStopRef = useRef(onNaturalStop);
-    
+    const onFilterResultRef = useRef(onFilterResult);
     // For now we assume connected, or we could expose socket connection state globally
     const [isConnected] = useState(true);
 
@@ -33,7 +34,8 @@ export function useCompletionSocket(options: UseCompletionSocketOptions) {
         onToolCallCompleteRef.current = onToolCallComplete;
         onFailureRef.current = onFailure;
         onNaturalStopRef.current = onNaturalStop;
-    }, [onDelta, onToolCall, onToolCallComplete, onFailure, onNaturalStop]);
+        onFilterResultRef.current = onFilterResult;
+    }, [onDelta, onToolCall, onToolCallComplete, onFailure, onNaturalStop, onFilterResult]);
 
     // Subscribe to events
     useEffect(() => {
@@ -41,7 +43,7 @@ export function useCompletionSocket(options: UseCompletionSocketOptions) {
 
         const unsubscribe = subscribeToEvents((payload) => {
             const message = payload.runHistoryModelEvent;
-            
+            console.log('message', message);
             switch (message.type) {
                 case 'TextDelta':
                     onDeltaRef.current(message);
@@ -57,6 +59,9 @@ export function useCompletionSocket(options: UseCompletionSocketOptions) {
                     break;
                 case 'NaturalStop':
                     onNaturalStopRef.current();
+                    break;
+                case 'FilterResult':
+                    onFilterResultRef.current(message);
                     break;
             }
         });

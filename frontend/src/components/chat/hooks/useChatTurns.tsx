@@ -1,20 +1,34 @@
 import { useState, useRef, useEffect } from 'react';
 import { type Turn } from '../Turn';
-import { type TextDelta, type ToolCall, type ToolCallComplete, type Failure } from '../../../shared/ModelEvents';
+import { type TextDelta, type ToolCall, type ToolCallComplete, type Failure, FilterResult } from '../../../shared/ModelEvents';
 
 interface UseChatTurnsOptions {
     onScrollToBottom?: () => void;
+    initialTurns?: Turn[] | undefined;
 }
 
-export function useChatTurns({ onScrollToBottom }: UseChatTurnsOptions = {}) {
-    const [turns, setTurns] = useState<Turn[]>([]);
+export function useChatTurns({ onScrollToBottom, initialTurns }: UseChatTurnsOptions = {}) {
+    const [turns, setTurns] = useState<Turn[]>(initialTurns || []);
     const stepBuffersRef = useRef<Map<string, string>>(new Map());
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const pendingApprovalsRef = useRef<Set<string>>(new Set());
     const queuedToolCallsRef = useRef<Array<{ summary: string; step_id: string; parameters: string }>>([]);
 
+    useEffect(() => {
+        if (initialTurns && initialTurns.length > 0) {
+            setTurns(prev => {
+                if (prev.length === 0) {
+                    return initialTurns;
+                }
+                return prev;
+            });
+        }
+    }, [initialTurns]);
+
     // Check if last turn is user. If so, we are waiting for an assistant response.
-    const isPendingAssistantResponse = turns.length > 0 && turns[turns.length - 1].role === 'user';
+    const isPendingAssistantResponse = (
+        turns.length > 0 && turns[turns.length - 1].role === 'user'
+    )
 
     const scrollToBottom = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -60,7 +74,7 @@ export function useChatTurns({ onScrollToBottom }: UseChatTurnsOptions = {}) {
                 return [...prev, { 
                     role: 'assistant', 
                     text: "", 
-                    function_calls: [{ id: step_id, name: summary, isRunning: false, isWaitingForApproval: false, isWaitingForUserInput: true, parameters }], 
+                    function_calls: [{ id: step_id, name: summary, isRunning: false, isWaitingForApproval: false, isWaitingForUserInput: false, parameters }], 
                     isGenerating: true, 
                     step_id
                 }];
@@ -91,7 +105,7 @@ export function useChatTurns({ onScrollToBottom }: UseChatTurnsOptions = {}) {
             // Create new turn with added tool call (immutable update)
             const updatedTurn = {
                 ...existingTurn,
-                function_calls: [...existingTurn.function_calls, { id: step_id, name: summary, isRunning: false, isWaitingForApproval: false, isWaitingForUserInput: true, parameters }],
+                function_calls: [...existingTurn.function_calls, { id: step_id, name: summary, isRunning: false, isWaitingForApproval: false, isWaitingForUserInput: false, parameters }],
                 isGenerating: true
             };
             
@@ -225,6 +239,24 @@ export function useChatTurns({ onScrollToBottom }: UseChatTurnsOptions = {}) {
         });
     };
 
+    const handleFilterResult = ({ isRelevant, reason, confidence }: FilterResult) => {
+        setTurns(prev => {
+            const updated = [...prev];
+            return [...updated, {
+                role: 'assistant',
+                text: '',
+                function_calls: [],
+                step_id: 'filter',
+                isGenerating: false,
+                filter_result: {
+                    isRelevant,
+                    reason,
+                    confidence
+                }
+            }];
+        });
+    };
+
     const addUserTurn = (message: string) => {
         const userTurn: Turn = { 
             role: 'user', 
@@ -253,6 +285,7 @@ export function useChatTurns({ onScrollToBottom }: UseChatTurnsOptions = {}) {
         handleToolCallComplete,
         handleFailure,
         handleNaturalStop,
+        handleFilterResult,
         addUserTurn,
         clearTurns,
         scrollToBottom,

@@ -1,13 +1,13 @@
 import { useCompletionSocket, type ChatEventSubscription } from './useCompletionSocket';
 import { useChatTurns } from './useChatTurns';
 import { useChatInput } from './useChatInput';
-import { useInitialMessage } from './useInitialMessage';
 import { type ModelRequest, type ToolCallComplete, type ToolCall } from '../../../shared/ModelEvents';
+import { Turn } from '../Turn';
 
 interface UseChatOptions {
     subscribeToEvents?: ChatEventSubscription | null;
     sendMessage: (message: ModelRequest) => void;
-    initialMessage?: string;
+    initialTurns?: Turn[];
     onUserMessage?: (message: string) => void;
     onToolCall?: (req: ToolCall) => void;
     onToolCallComplete?: (req: ToolCallComplete) => void;
@@ -16,7 +16,7 @@ interface UseChatOptions {
 export function useChat({
     subscribeToEvents,
     sendMessage: sendModelRequest,
-    initialMessage,
+    initialTurns,
     onUserMessage,
     onToolCall,
     onToolCallComplete,
@@ -31,9 +31,10 @@ export function useChat({
         handleFailure,
         handleNaturalStop,
         addUserTurn,
-    } = useChatTurns();
+        handleFilterResult,
+    } = useChatTurns({initialTurns});
 
-    const { sendMessage: sendSocketMessage, isConnected } = useCompletionSocket({
+    const { sendMessage: sendSocketMessage} = useCompletionSocket({
         subscribeToEvents,
         sendMessage: sendModelRequest,
         onDelta: handleDelta,
@@ -47,6 +48,7 @@ export function useChat({
         },
         onFailure: handleFailure,
         onNaturalStop: handleNaturalStop,
+        onFilterResult: handleFilterResult,
     });
 
     const { input, setInput, sendMessage } = useChatInput({
@@ -55,14 +57,6 @@ export function useChat({
             addUserTurn(message);
             onUserMessage?.(message);
         }
-    });
-
-    // Send initial message if provided
-    useInitialMessage({
-        sendMessage: sendSocketMessage,
-        message: { type: "SendModelRequest", user_message: initialMessage || "", timezone: Intl.DateTimeFormat().resolvedOptions().timeZone },
-        enabled: !!initialMessage && turns.length === 0,
-        isConnected
     });
 
     return {
