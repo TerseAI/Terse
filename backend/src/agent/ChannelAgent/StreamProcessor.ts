@@ -28,7 +28,7 @@ export class TextDeltaAggregator {
         return this.accumulatedDeltas.get(step_id)!;
     }
 
-    async finalizeStep(stepId: string): Promise<string | undefined> {
+    async finalizeStep(stepId: string, userId: string): Promise<string | undefined> {
         const accumulated = this.accumulatedDeltas.get(stepId);
         if (!accumulated || accumulated.eventId) {
             return accumulated?.eventId;
@@ -43,13 +43,14 @@ export class TextDeltaAggregator {
         // Use the firstTimestamp (when the first delta occurred) to preserve event ordering
         const timestamp = accumulated.firstTimestamp ? new Date(accumulated.firstTimestamp) : undefined;
         const eventId = await storeChatEvent(this.runId, finalEvent, timestamp);
+        emitCacheInvalidationWithWildcard(userId, 'chatHistory', this.runId);
         accumulated.eventId = eventId;
         return eventId;
     }
 
-    async finalizeRemaining(): Promise<void> {
+    async finalizeRemaining(userId: string): Promise<void> {
         if (this.lastStepId) {
-            await this.finalizeStep(this.lastStepId);
+            await this.finalizeStep(this.lastStepId, userId);
         }
     }
 
@@ -143,16 +144,16 @@ export async function processModelEventStream(
                 await handleTextDeltaEvent(event, timestamp, aggregator, emitter);
             } else {
                 await handleNonTextDeltaEvent(event, timestamp, emitter);
+                emitCacheInvalidationWithWildcard(options.userId, 'chatHistory', runId);
             }
-            emitCacheInvalidationWithWildcard(options.userId, 'chatHistory', runId);
+            
         }
-        await aggregator.finalizeRemaining();
+        await aggregator.finalizeRemaining(options.userId);
     } catch (error) {
         console.error('Error processing model event stream:', error);
         
         try {
-            await aggregator.finalizeRemaining();
-            emitCacheInvalidationWithWildcard(options.userId, 'chatHistory', runId);
+            await aggregator.finalizeRemaining(options.userId);
         } catch (finalizeError) {
             console.error('Error finalizing accumulated TextDelta on error:', finalizeError);
         }
