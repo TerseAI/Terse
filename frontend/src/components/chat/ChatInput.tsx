@@ -64,7 +64,8 @@ function ChatInput({ sendMessage, input, setInput, placeholders, disabled = fals
         <div className="p-4">
             <div className="grid grid-cols-[1fr_auto] gap-2">
                 <GlowingTextField
-                    isLoading={disabled}
+                    isLoading={false}
+                    disabled={disabled}
                     onInputChange={(e) => setInput(e.target.value)}
                     onKeyDown={handleKeyDown}
                     inputValue={input}

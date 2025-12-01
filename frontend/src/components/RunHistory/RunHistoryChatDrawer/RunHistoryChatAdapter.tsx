@@ -103,7 +103,7 @@ function convertRunHistoryEventsToTurns(events: ModelEvent[]): Turn[] {
                     text: '',
                     function_calls: [],
                     step_id: 'filter',
-                    isGenerating: false,
+                    isGenerating: true,
                     filter_result: {
                         isRelevant: e.isRelevant,
                         reason: e.reason,
