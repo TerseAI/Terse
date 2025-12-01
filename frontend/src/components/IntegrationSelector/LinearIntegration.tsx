@@ -1,4 +1,4 @@
-import { Plus } from 'lucide-react';
+import { Plus, AlertTriangleIcon } from 'lucide-react';
 import { Button } from '../ui/button';
 import DropdownSelect from '../ui/DropdownSelect';
 import { LinearIntegration as LinearIntegrationType, IntegrationType } from "@/shared/Integrations"
@@ -43,6 +43,14 @@ export function LinearIntegration({
     }
 
     if (integrations.length === 0) {
+        if (variant === 'card') {
+            return (
+                <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                    <AlertTriangleIcon className="size-3 text-yellow-500" />
+                    Connect Linear
+                </div>
+            );
+        }
         return (
             <div className="max-w-xs flex flex-col gap-3 p-4 rounded-lg border border-dashed border-input bg-card">
                 <div className="text-sm text-muted-foreground">
@@ -79,6 +87,15 @@ export function LinearIntegration({
 
     // Card variant: compact view
     if (variant === 'card') {
+        const isComplete = currentConfig?.isComplete();
+        if (!isComplete) {
+            return (
+                <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                    <AlertTriangleIcon className="size-3 text-yellow-500" />
+                    Select team
+                </div>
+            );
+        }
         return (
             <div className="text-sm">
                 {selectedOption ? selectedOption.label : 'No connection selected'}

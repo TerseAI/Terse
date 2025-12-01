@@ -60,7 +60,7 @@ export const OutputSection = forwardRef<HTMLDivElement, OutputSectionProps>(({ o
     );
 })
 
-function OutputCard({ 
+export function OutputCard({ 
     output, 
     handleRemove,
     setOutput
