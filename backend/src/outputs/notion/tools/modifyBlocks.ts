@@ -32,7 +32,6 @@ Example: "[{\"operation\": \"append\", \"blocks\": [{\"object\": \"block\", \"ty
     execute: async ({ operations_json }, runContext?: RunContext<NotionPageSession>) => {
         console.log(chalk.bgMagenta.white.bold('🛠️ Executing notion_modify_blocks tool'));
         console.log(chalk.cyan('  Operations JSON: '), chalk.greenBright(operations_json));
-
         // Parse the JSON string
         let operations: Array<{
             operation: 'append' | 'update' | 'delete';

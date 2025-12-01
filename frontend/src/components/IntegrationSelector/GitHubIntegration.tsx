@@ -1,4 +1,4 @@
-import { Plus } from 'lucide-react';
+import { Plus, AlertTriangleIcon } from 'lucide-react';
 import { Button } from '../ui/button';
 import DropdownSelect from '../ui/DropdownSelect';
 import { IntegrationType, GithubIntegration as GithubIntegrationType } from "@/shared/Integrations"
@@ -38,6 +38,14 @@ export function GitHubIntegration({
     }
 
     if (integrations.length === 0) {
+        if (variant === 'card') {
+            return (
+                <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                    <AlertTriangleIcon className="size-3 text-yellow-500" />
+                    Connect GitHub
+                </div>
+            );
+        }
         return (
             <div className="max-w-xs flex flex-col gap-3 p-4 rounded-lg border border-dashed border-input bg-card">
                 <div className="text-sm text-muted-foreground">
@@ -75,6 +83,15 @@ export function GitHubIntegration({
 
     // Card variant: compact view
     if (variant === 'card') {
+        const hasRepos = currentConfig?.repositoryIds && currentConfig.repositoryIds.length > 0;
+        if (!hasRepos) {
+            return (
+                <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                    <AlertTriangleIcon className="size-3 text-yellow-500" />
+                    Select repositories
+                </div>
+            );
+        }
         return (
             <div className="text-sm">
                 {selectedOption ? selectedOption.label : 'No connection selected'}
@@ -108,6 +125,11 @@ export function GitHubIntegration({
             {/* GitHub-specific repository selector */}
             {selectedIntegrationId && selectedIntegration && (
                 <div className="mt-3 pt-3 border-t border-border">
+                    {(!currentConfig?.repositoryIds || currentConfig.repositoryIds.length === 0) && (
+                        <p className="text-sm text-muted-foreground mb-3">
+                            Select repositories to monitor
+                        </p>
+                    )}
                     <GithubResourceSelector
                         installationId={selectedIntegration.installation_id}
                         selectedRepositoryIds={currentConfig?.repositoryIds || []}
