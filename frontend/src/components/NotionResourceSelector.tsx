@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { NotionResource, NotionResourceType } from "../shared/types";
-import { Check, ChevronsUpDown } from "lucide-react";
+import { Check, ChevronsUpDown, DatabaseIcon, FileIcon } from "lucide-react";
 import { Button } from "./ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "./ui/command";
@@ -30,8 +30,11 @@ export function NotionResourceSelector({
         mutate,
     } = useNotionResources(integrationId, resourceType);
 
+    const label = resourceType === 'database' ? 'database' : 'page';
+    const icon = resourceType === 'database' ? <DatabaseIcon /> : <FileIcon />;
+
     const [isExplicitlyRefreshing, setIsExplicitlyRefreshing] = useState(false);
-    
+
     // Only show spinner when explicitly refreshing (user clicked button) AND currently validating
     const isRefreshing = isExplicitlyRefreshing && isValidating;
 
@@ -45,7 +48,7 @@ export function NotionResourceSelector({
     if (isLoading) {
         return (
             <div className="text-sm text-muted-foreground">
-                Loading databases...
+                Loading {label}s...
             </div>
         );
     }
@@ -53,7 +56,7 @@ export function NotionResourceSelector({
     if (isError && error) {
         return (
             <div className="space-y-2">
-                <div className="text-sm text-destructive">{error instanceof Error ? error.message : (typeof error === 'string' ? error : 'Failed to load databases')}</div>
+                <div className="text-sm text-destructive">{error instanceof Error ? error.message : (typeof error === 'string' ? error : `Failed to load ${label}s`)}</div>
                 <Button
                     onClick={handleRefresh}
                     variant="link"
@@ -75,23 +78,20 @@ export function NotionResourceSelector({
     }
 
     return (
-        <div className="space-y-2">
+        <div className="space-y-2 min-w-0 overflow-hidden">
             <div className="flex items-center justify-between">
-                <label className="text-xs font-medium text-muted-foreground">
-                    Select Page or Database
-                </label>
+                {resources.length > 0 && (
+                    <div className="text-xs text-muted-foreground">
+                        {resources.length} {label}{resources.length !== 1 ? 's' : ''} available
+                    </div>
+                )}
                 <RefreshButton
                     onClick={handleRefresh}
                     isRefreshing={isRefreshing}
                     title="Refresh database list"
                 />
             </div>
-            <NotionResourceCombobox resources={resources} selectedResourceId={selectedResourceId || ''} onSelect={onSelect} />
-            {resources.length > 0 && (
-                <div className="text-xs text-muted-foreground">
-                    {resources.length} page{resources.length !== 1 ? 's' : ''} or database{resources.length !== 1 ? 's' : ''} available
-                </div>
-            )}
+            <NotionResourceCombobox resources={resources} selectedResourceId={selectedResourceId || ''} onSelect={onSelect} label={label} icon={icon} />
         </div>
     );
 }
@@ -101,11 +101,15 @@ interface NotionResourceComboboxProps {
     resources: NotionResource[];
     selectedResourceId: string;
     onSelect: (resourceId: string, resourceName: string, resourceType: NotionResourceType) => void;
+    label: string;
+    icon: React.ReactNode;
 }
 function NotionResourceCombobox({
     resources,
     selectedResourceId,
-    onSelect
+    onSelect,
+    label,
+    icon
 }: NotionResourceComboboxProps) {
     const [open, setOpen] = useState(false)
 
@@ -121,16 +125,19 @@ function NotionResourceCombobox({
                     className="w-full justify-between"
                 >
                     {selectedResource
-                        ? `${selectedResource.type === 'database' ? 'Database' : 'Page'} - ${selectedResource.title}`
-                        : "Select page or database..."}
+                        ? <span className="flex items-center gap-2 min-w-0 overflow-hidden">
+                            {icon}
+                            <span className="truncate">{selectedResource.title}</span>
+                          </span>
+                        : `Select ${label}...`}
                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                 </Button>
             </PopoverTrigger>
             <PopoverContent className="p-0" align="start">
                 <Command>
-                    <CommandInput placeholder="Search pages or databases..." />
+                    <CommandInput placeholder={`Search ${label}s...`} />
                     <CommandList>
-                        <CommandEmpty>No pages or databases found.</CommandEmpty>
+                        <CommandEmpty>No {label}s found.</CommandEmpty>
                         <CommandGroup>
                             {resources.map((resource) => {
                                 const isSelected = selectedResourceId === resource.id;
@@ -145,11 +152,14 @@ function NotionResourceCombobox({
                                     >
                                         <Check
                                             className={cn(
-                                                "mr-2 h-4 w-4",
+                                                "mr-2 h-4 w-4 shrink-0",
                                                 isSelected ? "opacity-100" : "opacity-0"
                                             )}
                                         />
-                                        <span>{resource.type === 'database' ? 'Database' : 'Page'} - {resource.title}</span>
+                                        <span className="flex items-center gap-2 min-w-0 overflow-hidden">
+                                            <span className="shrink-0">{icon}</span>
+                                            <span className="truncate">{resource.title}</span>
+                                        </span>
                                     </CommandItem>
                                 );
                             })}

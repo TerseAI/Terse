@@ -166,8 +166,8 @@ export class LinearIntegrationManager implements Integration<LinearIntegration, 
         authUrl.searchParams.append("response_type", "code");
         authUrl.searchParams.append("scope", "read,write");
         authUrl.searchParams.append("state", state);
-        authUrl.searchParams.append("actor", "app"); // Resources created as the application (for agents)
-        authUrl.searchParams.append("prompt", "consent"); // Always show consent screen
+        authUrl.searchParams.append("actor", "user"); 
+        authUrl.searchParams.append("prompt", "consent");
 
         return {
             oauthUrl: authUrl.toString()
