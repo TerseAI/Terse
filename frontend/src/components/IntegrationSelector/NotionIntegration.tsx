@@ -1,4 +1,4 @@
-import { Plus } from 'lucide-react';
+import { Plus, AlertTriangleIcon } from 'lucide-react';
 import { Button } from '../ui/button';
 import DropdownSelect from '../ui/DropdownSelect';
 import { NotionResourceSelector } from '../NotionResourceSelector';
@@ -9,6 +9,7 @@ import { InputConfigSelectorProps } from './types';
 import { useNotionIntegrations } from '@/hooks/api/useNotionIntegrations';
 import { useOAuthConnection } from '@/hooks/useOAuthConnection';
 import { useIntegrationId } from '@/hooks/useIntegrationId';
+import { IconForConfigType } from '../../pages/Channels/components/Integration';
 
 export function NotionIntegration({
     input,
@@ -17,7 +18,6 @@ export function NotionIntegration({
 }: InputConfigSelectorProps) {
     const { integrations, isLoading } = useNotionIntegrations();
     const { connect: connectOAuth, isConnecting: isOAuthConnecting } = useOAuthConnection(IntegrationType.NOTION);
-    const isDatabaseConfig = input.configType === ConfigType.NOTION_DATABASE;
     const isPageConfig = input.configType === ConfigType.NOTION_PAGE;
     const currentConfig = input.config as NotionConfig | NotionPageConfig | undefined;
     const [selectedIntegrationId, setSelectedIntegrationId] = useIntegrationId(
@@ -42,6 +42,14 @@ export function NotionIntegration({
     }
 
     if (integrations.length === 0) {
+        if (variant === 'card') {
+            return (
+                <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                    <AlertTriangleIcon className="size-3 text-yellow-500" />
+                    Connect Notion
+                </div>
+            );
+        }
         return (
             <div className="max-w-xs flex flex-col gap-3 p-4 rounded-lg border border-dashed border-input bg-card">
                 <div className="text-sm text-muted-foreground">
@@ -74,6 +82,33 @@ export function NotionIntegration({
 
     // Card variant: compact view
     if (variant === 'card') {
+        const isComplete = currentConfig?.isComplete();
+        if (!isComplete) {
+            const needsDatabase = !isPageConfig && !(currentConfig as NotionConfig)?.databaseId;
+            const needsPage = isPageConfig && !(currentConfig as NotionPageConfig)?.pageId;
+            if (needsDatabase) {
+                return (
+                    <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                        <AlertTriangleIcon className="size-3 text-yellow-500" />
+                        Select database
+                    </div>
+                );
+            }
+            if (needsPage) {
+                return (
+                    <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                        <AlertTriangleIcon className="size-3 text-yellow-500" />
+                        Select page
+                    </div>
+                );
+            }
+            return (
+                <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                    <AlertTriangleIcon className="size-3 text-yellow-500" />
+                    Select workspace
+                </div>
+            );
+        }
         return (
             <div className="text-sm">
                 {selectedOption ? selectedOption.label : 'No connection selected'}
@@ -81,40 +116,38 @@ export function NotionIntegration({
         );
     }
 
+    const selectedResourceId = isPageConfig ? (currentConfig as NotionPageConfig)?.pageId : (currentConfig as NotionConfig)?.databaseId;
+
     // Dialog variant: full view
     return (
-        <div className="flex flex-col gap-3">
-            <div className="flex flex-col gap-1.5">
-                <label className="font-medium">
-                    {isDatabaseConfig ? 'Notion Database' : 'Notion Page'}
-                </label>
+        <div className="flex flex-col gap-3 min-w-0 overflow-hidden">
+            <div className="flex flex-row gap-1.5 items-center">
+                <div className="w-15 h-15">
+                    <IconForConfigType type={ConfigType.NOTION_DATABASE}/>
+                </div>
                 <DropdownSelect
                     statusOptions={connectionSelections}
                     selectedOption={selectedOption}
                     setSelected={onSelect}
+                    additionalAction={{
+                        label: 'Connect Another Notion',
+                        onClick: connectOAuth
+                    }}
                 />
             </div>
 
-            <Button
-                onClick={connectOAuth}
-                disabled={isOAuthConnecting}
-                variant="outline"
-            >
-                <Plus className="w-4 h-4" />
-                {isOAuthConnecting ? 'Connecting...' : "Connect Another Notion"}
-            </Button>
-
             {/* Notion-specific resource selector */}
             {selectedIntegrationId && (
-                <div className="mt-3 pt-3 border-t border-border">
+                <div className="mt-3 pt-3 border-t border-border min-w-0 overflow-hidden">
+                    {!selectedResourceId && (
+                        <p className="text-sm text-muted-foreground mb-3">
+                            Select a {isPageConfig ? 'page' : 'database'} to continue
+                        </p>
+                    )}
                     <NotionResourceSelector
                         integrationId={selectedIntegrationId || ''}
                         resourceType={isPageConfig ? 'page' : 'database'}
-                        selectedResourceId={
-                            isPageConfig 
-                                ? (currentConfig as NotionPageConfig)?.pageId 
-                                : (currentConfig as NotionConfig)?.databaseId
-                        }
+                        selectedResourceId={selectedResourceId}
                         onSelect={(resourceId: string, resourceName: string, resourceType: NotionResourceType) => {
                             if (resourceType === 'database') {
                                 const updatedConfig = new NotionConfig(

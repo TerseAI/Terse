@@ -1,4 +1,4 @@
-import { Plus } from 'lucide-react';
+import { Plus, AlertTriangleIcon } from 'lucide-react';
 import { Button } from '../ui/button';
 import DropdownSelect from '../ui/DropdownSelect';
 import { AtlassianIntegration, IntegrationType } from "@/shared/Integrations"
@@ -37,6 +37,14 @@ export function ConfluenceIntegration({
     }
 
     if (integrations.length === 0) {
+        if (variant === 'card') {
+            return (
+                <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                    <AlertTriangleIcon className="size-3 text-yellow-500" />
+                    Connect Atlassian
+                </div>
+            );
+        }
         return (
             <div className="max-w-xs flex flex-col gap-3 p-4 rounded-lg border border-dashed border-input bg-card">
                 <div className="text-sm text-muted-foreground">
@@ -73,6 +81,15 @@ export function ConfluenceIntegration({
 
     // Card variant: compact view
     if (variant === 'card') {
+        const hasPage = currentConfig?.pageId;
+        if (!hasPage) {
+            return (
+                <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                    <AlertTriangleIcon className="size-3 text-yellow-500" />
+                    Select page
+                </div>
+            );
+        }
         return (
             <div className="text-sm">
                 {selectedOption ? selectedOption.label : 'No connection selected'}
@@ -106,6 +123,11 @@ export function ConfluenceIntegration({
             {/* Confluence-specific resource selector */}
             {selectedIntegrationId && (
                 <div className="mt-3 pt-3 border-t border-border">
+                    {!currentConfig?.pageId && (
+                        <p className="text-sm text-muted-foreground mb-3">
+                            Select a page to continue
+                        </p>
+                    )}
                     <ConfluenceResourceSelector
                         integrationId={selectedIntegrationId}
                         selectedResourceId={currentConfig?.pageId}

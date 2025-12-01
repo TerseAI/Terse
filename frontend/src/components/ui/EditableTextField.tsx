@@ -15,6 +15,11 @@ function EditableText({ value, onSave, onChange, className = "", placeholder = "
     const [text, setText] = useState(value);
     const textAreaRef = useRef<HTMLTextAreaElement>(null);
 
+    // Sync internal state with value prop
+    useEffect(() => {
+        setText(value);
+    }, [value]);
+
     useEffect(() => {
         if (isEditing && textAreaRef.current) {
             textAreaRef.current.focus();
