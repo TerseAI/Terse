@@ -72,7 +72,7 @@ export default function RunHistoryChatDrawer({
             )}>
                 {isOpen && (
                     <RunHistoryChatAdapter runId={runId} status={status}>
-                        {({ turns, isLoading, startTimestamp, endTimestamp, subscribeToEvents, sendMessage, currentStatus }) => {
+                        {({ initialTurns, isLoading, startTimestamp, endTimestamp, subscribeToEvents, sendMessage, currentStatus }) => {
                             const isActiveRun = currentStatus === 'in_progress';
                             const isFiltered = currentStatus === 'skipped';
                             return (
@@ -94,7 +94,7 @@ export default function RunHistoryChatDrawer({
                                         <div className="flex flex-col h-full relative">
                                             <div className="flex-1 min-h-0">
                                                 <Chat 
-                                                    turns={turns} 
+                                                    initialTurns={initialTurns} 
                                                     subscribeToEvents={subscribeToEvents}
                                                     sendMessage={sendMessage}
                                                     EmptyContentPlaceholder={

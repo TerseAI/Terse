@@ -1,10 +1,8 @@
 import { useMemo } from 'react';
 import { useChatHistory } from '@/hooks/api/useChatHistory';
-import { useChannelChatEvents } from '@/hooks/useChannelChatEvents';
-import { useRunHistoryTurns } from '@/components/RunHistory/RunHistoryChatDrawer/hooks/useRunHistoryTurns';
 import { Chat } from '@/components/chat/Chat';
-import { RunHistoryStatus, RunHistoryModelEvent } from '@/shared/RunHistoryTypes';
-import { ModelEvent, ModelRequest } from '@/shared/ModelEvents';
+import { RunHistoryStatus} from '@/shared/RunHistoryTypes';
+import { Failure, FilterResult, ModelEvent, ModelRequest, TextDelta, ToolCall, ToolCallComplete } from '@/shared/ModelEvents';
 import { Turn } from '@/components/chat/Turn';
 import { subscribeToChatEvents, sendChatMessage } from '@/socket';
 import { type ChatEventSubscription } from '@/components/chat/hooks/useCompletionSocket';
@@ -14,7 +12,7 @@ type RunHistoryChatAdapterProps = {
     runId: string;
     status: RunHistoryStatus;
     children?: (props: { 
-        turns: Turn[]; 
+        initialTurns: Turn[]; 
         isLoading: boolean; 
         runId: string;
         startTimestamp?: string;
@@ -25,84 +23,18 @@ type RunHistoryChatAdapterProps = {
     }) => React.ReactNode;
 };
 
-export default function RunHistoryChatAdapter({ runId, status, children }: RunHistoryChatAdapterProps) {
+export default function RunHistoryChatAdapter({ runId, status, children}: RunHistoryChatAdapterProps) {
     // Fetch History (API)
-    const { events: historyEvents, isLoading, startTimestamp, endTimestamp, status: apiStatus } = useChatHistory(runId);
+    const { events, isLoading, status: apiStatus, startTimestamp, endTimestamp } = useChatHistory(runId);
+
+    const historicalEvents = events.map((event) => ({...event, isHistorical: true}));
 
     // Use API status if available, otherwise fall back to prop status
     const currentStatus = (apiStatus as RunHistoryStatus) || status;
     const isActiveRun = currentStatus === 'in_progress';
-    
-    // Subscribe to Realtime Events (Socket)
-    // Pass null if not active to skip subscription
-    const { events: realtimeEvents } = useChannelChatEvents(isActiveRun ? runId : null);
-
-    // Merge Events: Combine historical (API) and realtime (socket) events
-    // Use event.id as the unique key since it's guaranteed to be unique
-    const events: (ModelEvent & { isHistorical?: boolean })[] = useMemo(() => {
-        const eventMap = new Map<string, RunHistoryModelEvent & { isHistorical?: boolean }>();
-        const historicalEventIds = new Set<string>();
-        const historicalEventKeys = new Set<string>(); // Compound key: step_id:type for events without IDs
-        
-        // Add history events first (base truth) and tag them
-        historyEvents.forEach(event => {
-            // Use event.id as the primary key (unique database ID)
-            const key = event.id || `${event.step_id}:${event.type}` || Math.random().toString();
-            eventMap.set(key, { ...event, isHistorical: true });
-            
-            // Track IDs and compound keys for deduplication
-            if (event.id) {
-                historicalEventIds.add(event.id);
-            }
-            if (event.step_id) {
-                historicalEventKeys.add(`${event.step_id}:${event.type}`);
-            }
-        });
-
-        // Add realtime events (updates/new events)
-        // Skip events that are already in history
-        realtimeEvents.forEach(event => {
-            // First check by event.id (most precise)
-            if (event.id && historicalEventIds.has(event.id)) {
-                return;
-            }
-            
-            // Then check by compound key (step_id:type) to avoid duplicates
-            // Multiple events can share step_id, but they should have different types
-            if (event.step_id) {
-                const compoundKey = `${event.step_id}:${event.type}`;
-                if (historicalEventKeys.has(compoundKey)) {
-                    return;
-                }
-            }
-            
-            // Use event.id as the key, or compound key if no ID
-            const key = event.id || `${event.step_id}:${event.type}` || Math.random().toString();
-            
-            // Only add if we don't already have this event
-            if (!eventMap.has(key)) {
-                eventMap.set(key, { ...event, isHistorical: false });
-            }
-        });
-        
-        // Sort by timestamp, then by id for deterministic ordering
-        const sorted = Array.from(eventMap.values()).sort((a, b) => {
-            const timeA = new Date(a.timestamp || 0).getTime();
-            const timeB = new Date(b.timestamp || 0).getTime();
-            if (timeA !== timeB) {
-                return timeA - timeB;
-            }
-            // If timestamps are equal, sort by id for deterministic ordering
-            const idA = a.id || '';
-            const idB = b.id || '';
-            return idA.localeCompare(idB);
-        });
-        
-        return sorted;
-    }, [historyEvents, realtimeEvents]);
 
     // Convert to Turns
-    const turns = useRunHistoryTurns(events);
+    const turns = convertRunHistoryEventsToTurns(historicalEvents);
 
     // Create subscription function for run history
     const subscribeToEvents: ChatEventSubscription | null = useMemo(() => {
@@ -120,16 +52,195 @@ export default function RunHistoryChatAdapter({ runId, status, children }: RunHi
     };
 
     if (children) {
-        return <>{children({ turns, isLoading, runId, startTimestamp, endTimestamp, subscribeToEvents, sendMessage, currentStatus })}</>;
+        return <>{children({ initialTurns: turns, isLoading, runId, startTimestamp, endTimestamp, subscribeToEvents, sendMessage, currentStatus })}</>;
     }
 
     return (
         <Chat 
-            turns={turns}
+            initialTurns={turns}
             subscribeToEvents={subscribeToEvents}
             sendMessage={sendMessage}
             EmptyContentPlaceholder={isLoading ? <div className="p-4 text-center text-muted-foreground">Loading history...</div> : <div className="p-4 text-center text-muted-foreground">No events found</div>}
         />
     );
 }
+
+
+function convertRunHistoryEventsToTurns(events: ModelEvent[]): Turn[] {
+    const turns: Turn[] = [];
+    const stepBuffers = new Map<string, string>();
+
+    // Helper to find or create the appropriate turn
+    const getOrCreateTurn = (role: 'assistant' | 'user', step_id: string): Turn => {
+        const lastTurn = turns[turns.length - 1];
+
+        // If last turn matches role and (for assistant) step_id, use it
+        if (lastTurn && lastTurn.role === role && (role === 'user' || lastTurn.step_id === step_id)) {
+            return lastTurn;
+        }
+
+        // Create new turn
+        const newTurn: Turn = {
+            role,
+            text: '',
+            function_calls: [],
+            step_id,
+            isGenerating: role === 'assistant'
+        };
+        turns.push(newTurn);
+        return newTurn;
+    };
+
+    // Track which step_ids have been completed (have ToolCallComplete or NaturalStop)
+    const completedStepIds = new Set<string>();
+
+    events.forEach(event => {
+        switch (event.type) {
+            case 'FilterResult': {
+                const e = event as FilterResult;
+                turns.push({
+                    role: 'assistant',
+                    text: '',
+                    function_calls: [],
+                    step_id: 'filter',
+                    isGenerating: false,
+                    filter_result: {
+                        isRelevant: e.isRelevant,
+                        reason: e.reason,
+                        confidence: e.confidence
+                    },
+                    disableAnimation: true
+                });
+                break;
+            }
+            case 'TextDelta': {
+                const e = event as TextDelta;
+                const step_id = e.step_id;
+                const existing = stepBuffers.get(step_id) ?? '';
+                const newText = existing + e.delta;
+                stepBuffers.set(step_id, newText);
+
+                const turn = getOrCreateTurn('assistant', step_id);
+                turn.text = newText;
+                // For historical events, don't set isGenerating to true
+                // We'll finalize it at the end based on completion status
+                    turn.isGenerating = true;
+                    turn.disableAnimation = true;
+                break;
+            }
+            case 'ToolCall': {
+                const e = event as ToolCall;
+                const step_id = e.step_id;
+                const turn = getOrCreateTurn('assistant', step_id);
+                    turn.disableAnimation = true;
+
+                const existingCall = turn.function_calls.find(c => c.id === step_id);
+                if (!existingCall) {
+                    turn.function_calls.push({
+                        id: step_id,
+                        name: e.summary,
+                        // For historical events, start with isRunning: false
+                        // since we'll see ToolCallComplete soon
+                        isRunning: false,
+                        parameters: e.parameters,
+                        isWaitingForUserInput: false
+                    });
+                } else {
+                    existingCall.parameters = e.parameters;
+                }
+                turn.isGenerating = true;
+                break;
+            }
+            case 'ToolCallComplete': {
+                const e = event as ToolCallComplete;
+                const step_id = e.step_id;
+                completedStepIds.add(step_id);
+                let found = false;
+                // Find the call in any turn
+                for (const t of turns) {
+                    const fc = t.function_calls.find(c => c.id === step_id);
+                    if (fc) {
+                        fc.isRunning = false;
+                        fc.result = e.result;
+                        fc.isWaitingForUserInput = false;
+                        if (e.changed_items) {
+                            fc.changed_items = e.changed_items;
+                        }
+                        found = true;
+                        break;
+                    }
+                }
+                if (!found) {
+                    // ToolCallComplete arrived without a preceding ToolCall (e.g., from historical events)
+                    // Create the function call directly in completed state
+                    const turn = getOrCreateTurn('assistant', step_id);
+                    turn.function_calls.push({
+                        id: step_id,
+                        name: e.tool_name,
+                        isRunning: false,
+                        result: e.result,
+                        changed_items: e.changed_items,
+                        isWaitingForUserInput: false
+                    });
+                }
+                break;
+            }
+            case 'ToolApprovalRequest': {
+                const e = event as any;
+                const step_id = e.step_id;
+                for (const t of turns) {
+                    const fc = t.function_calls.find(c => c.id === step_id);
+                    if (fc) {
+                        fc.isWaitingForApproval = true;
+                        fc.isRunning = false;
+                        break;
+                    }
+                }
+                break;
+            }
+            case 'Failure': {
+                const e = event as Failure;
+                const lastTurn = turns[turns.length - 1];
+                if (lastTurn && lastTurn.role === 'assistant') {
+                    lastTurn.isFailure = true;
+                    lastTurn.text += `\n\nError: ${e.error}`;
+                    lastTurn.isGenerating = false;
+                } else {
+                    turns.push({
+                        role: 'assistant',
+                        text: `Error: ${e.error}`,
+                        function_calls: [],
+                        step_id: 'failure',
+                        isFailure: true,
+                        isGenerating: false,
+                        disableAnimation: true
+                    });
+                }
+                break;
+            }
+            case 'NaturalStop': {
+                const lastTurn = turns[turns.length - 1];
+                if (lastTurn) {
+                    lastTurn.isGenerating = false;
+                }
+                // Track the step_id as completed if available
+                if (lastTurn?.step_id) {
+                    completedStepIds.add(lastTurn.step_id);
+                }
+                break;
+            }
+        }
+    });
+
+
+    turns.forEach(turn => {
+        const hasWaitingApproval = turn.function_calls.some(fc => fc.isWaitingForApproval);
+        if (!hasWaitingApproval) {
+            // All historical turns should be marked as not generating
+            turn.isGenerating = false;
+        }
+    });
+    return turns;
+}
+
 
