@@ -65,6 +65,8 @@ export class ChannelAgent<T extends Session, TConfig extends ConfigInstance> {
             stream: true,
         });
 
+        console.log('🔍 Result', result);
+
         await this.processStream(result, streamingParams);
 
         return this.buildResult(result);
