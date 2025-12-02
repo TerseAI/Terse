@@ -28,7 +28,7 @@ export class TextDeltaAggregator {
         return this.accumulatedDeltas.get(step_id)!;
     }
 
-    async finalizeStep(stepId: string, userId: string): Promise<string | undefined> {
+    async finalizeStep(stepId: string): Promise<string | undefined> {
         const accumulated = this.accumulatedDeltas.get(stepId);
         if (!accumulated || accumulated.eventId) {
             return accumulated?.eventId;
@@ -50,7 +50,7 @@ export class TextDeltaAggregator {
 
     async finalizeRemaining(userId: string): Promise<void> {
         if (this.lastStepId) {
-            await this.finalizeStep(this.lastStepId, userId);
+            await this.finalizeStep(this.lastStepId);
         }
     }
 
