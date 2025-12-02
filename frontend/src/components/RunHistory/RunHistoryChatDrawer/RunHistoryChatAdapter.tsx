@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useChatHistory } from '@/hooks/api/useChatHistory';
 import { Chat } from '@/components/chat/Chat';
 import { RunHistoryStatus} from '@/shared/RunHistoryTypes';
@@ -25,7 +25,7 @@ type RunHistoryChatAdapterProps = {
 
 export default function RunHistoryChatAdapter({ runId, status, children}: RunHistoryChatAdapterProps) {
     // Fetch History (API)
-    const { events, isLoading, startTimestamp, endTimestamp } = useChatHistory(runId);
+    const { events, isLoading, startTimestamp, endTimestamp} = useChatHistory(runId);
 
     const historicalEvents = events.map((event) => ({...event, isHistorical: true}));
 
@@ -47,7 +47,6 @@ export default function RunHistoryChatAdapter({ runId, status, children}: RunHis
 
     // Create send message function for run history
     const sendMessage = (message: ModelRequest) => {
-        console.log('Sending message', message, runId);
         sendChatMessage(runId, message);
     };
 

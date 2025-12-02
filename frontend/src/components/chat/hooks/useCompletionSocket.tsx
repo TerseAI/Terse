@@ -43,7 +43,6 @@ export function useCompletionSocket(options: UseCompletionSocketOptions) {
 
         const unsubscribe = subscribeToEvents((payload) => {
             const message = payload.runHistoryModelEvent;
-            console.log('message', message);
             switch (message.type) {
                 case 'TextDelta':
                     onDeltaRef.current(message);
