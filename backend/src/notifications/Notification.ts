@@ -1,23 +1,25 @@
-import { users } from "@prisma/client";
+import { RunHistoryAction } from "../shared/RunHistoryTypes";
+import { User, Channel } from "../types/prisma";
 
-export class NotificationManagerFactory {
-    private user: users;
-    constructor(user: users) {
+// export class NotificationManagerFactory {
+//     private user: User;
+//     constructor(user: User) {
+//         this.user = user;
+//     }
+
+//     createNotificationManager(): NotificationManager {
+//         return new NotificationManager();
+//     }
+// }
+
+export class NotificationManager {
+    private user: User;
+
+    constructor(user: User) {
         this.user = user;
     }
 
-    createNotificationManager(): NotificationManager {
-        return new NotificationManager();
+    notify(channel: Channel, runAction: RunHistoryAction) {
+        console.log(runAction);
     }
-}
-export class NotificationManager {
-    constructor() {}
-
-    notify(message: string) {
-        console.log(message);
-    }
-}
-
-interface NotificationChannel {
-
 }

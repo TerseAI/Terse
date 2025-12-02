@@ -99,6 +99,7 @@ The schema information returned by this tool should be used to properly format p
             integration: IntegrationType.NOTION,
             target: databaseName,
             details: `Retrieved schema with ${Object.keys(schema).length} properties`,
+            type: 'read',
         })
         
         return {

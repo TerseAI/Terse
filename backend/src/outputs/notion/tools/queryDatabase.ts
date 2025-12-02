@@ -314,6 +314,7 @@ EXAMPLES:
             integration: IntegrationType.NOTION,
             target: databaseName,
             details: `Queried database ${filterDescription} and retrieved ${pages.length} ${pages.length === 1 ? 'page' : 'pages'}`,
+            type: 'read',
         });
 
         console.log("Notion query database tool response: ", { 
