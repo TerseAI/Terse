@@ -1,4 +1,4 @@
-import { Eye, Home, MoreHorizontal, Plug, Zap } from "lucide-react"
+import { Bell, Eye, Home, MoreHorizontal, Plug, Zap } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
 import {
     Sidebar,
@@ -213,5 +213,10 @@ const SettingsItems: NavItem[] = [
         title: "Integrations",
         url: "/app/integrations",
         icon: Plug,
+    },
+    {
+        title: "Notifications",
+        url: "/app/notifications",
+        icon: Bell,
     },
 ]
