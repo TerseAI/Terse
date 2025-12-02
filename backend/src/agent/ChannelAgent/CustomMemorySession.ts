@@ -37,33 +37,7 @@ export class RunHistoryChatMemorySession implements Session {
       }
     })
     const rawEvents = items.map(item => item.raw_event_json as AgentInputItem);
-
-    // Filter out reasoning items that don't have a following message item
-    // Reasoning items must be followed by a message item (user/assistant/system) according to OpenAI API
-    const filteredEvents: AgentInputItem[] = [];
-    for (let i = 0; i < rawEvents.length; i++) {
-      const item = rawEvents[i];
-      const isReasoningItem = this.isReasoningItem(item);
-      
-      if (isReasoningItem) {
-        // Check if there's a following message item
-        const hasFollowingMessage = i < rawEvents.length - 1 && this.isMessageItem(rawEvents[i + 1]);
-        if (hasFollowingMessage) {
-          // Include the reasoning item - it has its required following message
-          filteredEvents.push(item);
-        } else {
-          // Skip this reasoning item as it doesn't have a required following item
-          console.log(chalk.yellow(`[ChannelAgent] Skipping reasoning item at index ${i} - no following message item`));
-        }
-      } else {
-        // Not a reasoning item, include it normally
-        filteredEvents.push(item);
-      }
-    }
-    
-    filteredEvents.forEach(item => {
-      console.log(chalk.blue.bold(`[ChannelAgent] getItems: ${JSON.stringify(item, null, 2)}`));
-    })
+    const filteredEvents = filterReasoningItems(rawEvents);
     return filteredEvents.map(cloneAgentItem);
   }
 
@@ -132,30 +106,81 @@ export class RunHistoryChatMemorySession implements Session {
       }
     })
   }
+}
 
-  private isReasoningItem(item: AgentInputItem): boolean {
-    // Reasoning items typically have a type property set to 'reasoning' or an id starting with 'rs_'
-    if (typeof item === 'object' && item !== null) {
-      const itemAny = item as any;
-      // Check for reasoning item indicators
-      if (itemAny.type === 'reasoning') {
-        return true;
-      }
-      if (itemAny.id && typeof itemAny.id === 'string' && itemAny.id.startsWith('rs_')) {
-        return true;
-      }
-    }
-    return false;
-  }
 
-  private isMessageItem(item: AgentInputItem): boolean {
-    // Message items have a 'role' property (user, assistant, system)
-    if (typeof item === 'object' && item !== null) {
-      const itemAny = item as any;
-      return itemAny.role === 'user' || itemAny.role === 'assistant' || itemAny.role === 'system';
+function filterReasoningItems(rawEvents: AgentInputItem[]): AgentInputItem[] {
+  const filteredEvents: AgentInputItem[] = [];
+  for (let i = 0; i < rawEvents.length; i++) {
+    const item = rawEvents[i];
+    const isReasoningItemVariable = isReasoningItem(item);
+
+    if (isReasoningItemVariable) {
+      // Check if there's a following message item
+      const hasFollowingMessage = i < rawEvents.length - 1 && isMessageItem(rawEvents[i + 1]);
+      if (hasFollowingMessage) {
+        // Include the reasoning item - it has its required following message
+        filteredEvents.push(item);
+      } else {
+        // Skip this reasoning item as it doesn't have a required following item
+        console.log(chalk.yellow(`[ChannelAgent] Skipping reasoning item at index ${i} - no following message item`));
+      }
+    } else {
+      // Not a reasoning item, include it normally
+      filteredEvents.push(item);
     }
-    return false;
   }
+  return filteredEvents;
+}
+
+
+function isReasoningItem(item: AgentInputItem): boolean {
+  // Reasoning items typically have a type property set to 'reasoning' or an id starting with 'rs_'
+  if (typeof item === 'object' && item !== null) {
+    const itemAny = item as any;
+    // Check for reasoning item indicators
+    if (itemAny.type === 'reasoning') {
+      return true;
+    }
+    if (itemAny.id && typeof itemAny.id === 'string' && itemAny.id.startsWith('rs_')) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function isMessageItem(item: AgentInputItem): boolean {
+  // Message items have a 'role' property (user, assistant, system)
+  if (typeof item === 'object' && item !== null) {
+    const itemAny = item as any;
+    return itemAny.role === 'user' || itemAny.role === 'assistant' || itemAny.role === 'system';
+  }
+  return false;
+}
+
+function isUserMessage(item: AgentInputItem): boolean {
+  return item.type === 'message' && item.role === 'user';
+}
+
+
+export function trimToLastTurns(items: AgentInputItem[], maxTurns: number): AgentInputItem[] {
+  if(items.length === 0) return items;
+  maxTurns = Math.max(1, maxTurns)
+
+  let userCount = 0;
+  let startIndex = 0;
+
+  for (let i = 0; i < items.length; i++) {
+    const item = items[i];
+    if (isUserMessage(item)) {
+      userCount++;
+    }
+    if (userCount >= maxTurns) {
+      startIndex = i;
+      break;
+    }
+  }
+  return items.slice(startIndex);
 }
 
 function cloneAgentItem<T extends AgentInputItem>(item: T): T {

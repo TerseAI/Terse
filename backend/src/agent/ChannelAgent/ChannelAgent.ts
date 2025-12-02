@@ -3,7 +3,7 @@ import { Session } from '../../server';
 import { systemPrompt } from './SystemPrompt';
 import { InputEvent } from '../../integrations/abstract/InputEvent';
 import { Output } from '../../outputs/abstract/Output';
-import { ChannelInput, ChannelOutput, ChannelPrompt, ChannelWithRelations } from '../../types/prisma';
+import { ChannelInput, ChannelOutput, ChannelWithRelations } from '../../types/prisma';
 import { ConfigInstance } from '../../shared/Configs';
 import { settings } from '../../config/settings';
 import { formatChannelInputsForAgent, formatChannelOutputForAgent } from './formatContext';
@@ -16,8 +16,7 @@ import { EntityType } from '../../shared/Entities';
 import { ChangedItem, ChangeEventType } from '../../shared/ModelEvents';
 import { persistRunAction } from './EventProcessor';
 import { processModelEventStream } from './StreamProcessor';
-import { RunHistoryChatMemorySession } from './CustomMemorySession';
-import chalk from 'chalk';
+import { RunHistoryChatMemorySession, trimToLastTurns } from './CustomMemorySession';
 
 
 export class ChannelAgent<T extends Session, TConfig extends ConfigInstance> {
@@ -80,10 +79,6 @@ export class ChannelAgent<T extends Session, TConfig extends ConfigInstance> {
         }
 
         this.history.push({ role: 'user', content: userMessage });
-
-        this.history.forEach((item) => {
-            console.log(chalk.blue.bold(`[ChannelAgent] userMessageRun: ${item}`));
-        })
 
         const result = await run(this.agent, this.history, {
             context: this.getToolContext(),
@@ -293,8 +288,8 @@ ${this.inputEvent!.formatForChannelAgent()}
  * they are trimmed.
  */
 const recentHistoryCallback = (history: AgentInputItem[], newItems: AgentInputItem[]): AgentInputItem[] => {
-    const recentHistory = history.slice(-100);
-    return [...recentHistory, ...newItems];
+    const trimmedHistory = trimToLastTurns(history, 10)
+    return [...trimmedHistory, ...newItems];
 }
 
 

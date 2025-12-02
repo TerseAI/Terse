@@ -17,10 +17,16 @@ export function useChatTurns({ onScrollToBottom, initialTurns }: UseChatTurnsOpt
     useEffect(() => {
         if (initialTurns && initialTurns.length > 0) {
             setTurns(prev => {
-                if (prev.length === 0) {
-                    return initialTurns;
-                }
-                return prev;
+                // Create a map of initialTurns by step_id for quick lookup
+                const initialTurnsMap = new Map<string, Turn>();
+                initialTurns.forEach(turn => {
+                    initialTurnsMap.set(turn.step_id, turn);
+                });
+
+                // Collect turns from existing that don't exist in initialTurns
+                const uniqueExistingTurns = prev.filter(turn => !initialTurnsMap.has(turn.step_id));
+
+                return [...initialTurns, ...uniqueExistingTurns];
             });
         }
     }, [initialTurns]);

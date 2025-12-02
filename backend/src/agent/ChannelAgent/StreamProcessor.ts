@@ -28,7 +28,7 @@ export class TextDeltaAggregator {
         return this.accumulatedDeltas.get(step_id)!;
     }
 
-    async finalizeStep(stepId: string): Promise<string | undefined> {
+    async commitStep(stepId: string): Promise<string | undefined> {
         const accumulated = this.accumulatedDeltas.get(stepId);
         if (!accumulated || accumulated.eventId) {
             return accumulated?.eventId;
@@ -40,16 +40,17 @@ export class TextDeltaAggregator {
             delta: accumulated.text,
         };
 
-        // Use the firstTimestamp (when the first delta occurred) to preserve event ordering
         const timestamp = accumulated.firstTimestamp ? new Date(accumulated.firstTimestamp) : undefined;
         const eventId = await storeChatEvent(this.runId, finalEvent, timestamp);
         accumulated.eventId = eventId;
+
+        this.accumulatedDeltas.delete(stepId);
         return eventId;
     }
 
-    async finalizeRemaining(userId: string): Promise<void> {
+    async commitLastTextDeltaStep(): Promise<void> {
         if (this.lastStepId) {
-            await this.finalizeStep(this.lastStepId);
+            await this.commitStep(this.lastStepId);
         }
     }
 
@@ -63,7 +64,7 @@ export class TextDeltaAggregator {
 
     async handleStepTransition(newStepId: string): Promise<void> {
         if (this.lastStepId && this.lastStepId !== newStepId) {
-            await this.finalizeStep(this.lastStepId);
+            await this.commitStep(this.lastStepId);
         }
     }
 }
@@ -142,19 +143,13 @@ export async function processModelEventStream(
             if (event.type === 'TextDelta') {
                 await handleTextDeltaEvent(event, timestamp, aggregator, emitter);
             } else {
-                await handleNonTextDeltaEvent(event, timestamp, emitter);
+                await handleNonTextDeltaEvent(event, timestamp, aggregator, emitter);
             }
-            
         }
-        await aggregator.finalizeRemaining(options.userId);
+        // Finalize any remaining steps at the end of the stream
+        await aggregator.commitLastTextDeltaStep();
     } catch (error) {
         console.error('Error processing model event stream:', error);
-        
-        try {
-            await aggregator.finalizeRemaining(options.userId);
-        } catch (finalizeError) {
-            console.error('Error finalizing accumulated TextDelta on error:', finalizeError);
-        }
     }
 }
 
@@ -173,8 +168,10 @@ async function handleTextDeltaEvent(
 async function handleNonTextDeltaEvent(
     event: ModelEvent,
     timestamp: string,
+    aggregator: TextDeltaAggregator,
     emitter: StreamEventEmitter
 ): Promise<void> {
+    await aggregator.commitLastTextDeltaStep();
     await emitter.storeAndEmit(event, timestamp);
 }
 
