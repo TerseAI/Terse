@@ -62,14 +62,6 @@ export const linearIntegrationsKey = (): readonly [string] => {
     return ['linearIntegrations'] as const;
 };
 
-export const linearTeamsKey = (integrationId: string | null | undefined): readonly [string, string] | null => {
-    if (!integrationId) {
-        return null;
-    }
-
-    return ['linearTeams', integrationId] as const;
-};
-
 export const notionIntegrationsKey = (): readonly [string] => {
     return ['notionIntegrations'] as const;
 };
