@@ -43,7 +43,6 @@ export class TextDeltaAggregator {
         // Use the firstTimestamp (when the first delta occurred) to preserve event ordering
         const timestamp = accumulated.firstTimestamp ? new Date(accumulated.firstTimestamp) : undefined;
         const eventId = await storeChatEvent(this.runId, finalEvent, timestamp);
-        //emitCacheInvalidationWithWildcard(userId, 'chatHistory', this.runId);
         accumulated.eventId = eventId;
         return eventId;
     }
@@ -144,7 +143,6 @@ export async function processModelEventStream(
                 await handleTextDeltaEvent(event, timestamp, aggregator, emitter);
             } else {
                 await handleNonTextDeltaEvent(event, timestamp, emitter);
-                //emitCacheInvalidationWithWildcard(options.userId, 'chatHistory', runId);
             }
             
         }

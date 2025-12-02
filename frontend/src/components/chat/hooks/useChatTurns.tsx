@@ -25,8 +25,12 @@ export function useChatTurns({ onScrollToBottom, initialTurns }: UseChatTurnsOpt
         }
     }, [initialTurns]);
 
-    // Check if last turn is user. If so, we are waiting for an assistant response.
-    const isPendingAssistantResponse = turns.length > 0 && turns[turns.length - 1]?.isGenerating || false;
+    const isPendingAssistantResponse = (
+        turns.length > 0 && (
+            turns[turns.length - 1]?.role === 'user' ||
+            turns[turns.length - 1]?.isGenerating
+        ) || false
+    );
 
     const scrollToBottom = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -67,46 +71,46 @@ export function useChatTurns({ onScrollToBottom, initialTurns }: UseChatTurnsOpt
         setTurns(prev => {
             // Find the turn with the matching step_id
             const existingTurnIndex = prev.findIndex(turn => turn.step_id === step_id);
-            
+
             if (existingTurnIndex === -1) {
-                return [...prev, { 
-                    role: 'assistant', 
-                    text: "", 
-                    function_calls: [{ id: step_id, name: summary, isRunning: false, isWaitingForApproval: false, isWaitingForUserInput: false, parameters }], 
-                    isGenerating: true, 
+                return [...prev, {
+                    role: 'assistant',
+                    text: "",
+                    function_calls: [{ id: step_id, name: summary, isRunning: false, isWaitingForApproval: false, isWaitingForUserInput: false, parameters }],
+                    isGenerating: true,
                     step_id
                 }];
             }
 
             const existingTurn = prev[existingTurnIndex];
-            
+
             // Check if this tool call already exists
             const existingCallIndex = existingTurn.function_calls.findIndex(call => call.id === step_id && call.name === summary);
             if (existingCallIndex !== -1) {
                 // Update existing tool call with new parameters
                 const updatedTurn = {
                     ...existingTurn,
-                    function_calls: existingTurn.function_calls.map((call, index) => 
-                        index === existingCallIndex 
+                    function_calls: existingTurn.function_calls.map((call, index) =>
+                        index === existingCallIndex
                             ? { ...call, parameters }
                             : call
                     )
                 };
-                
+
                 return [
                     ...prev.slice(0, existingTurnIndex),
                     updatedTurn,
                     ...prev.slice(existingTurnIndex + 1)
                 ];
             }
-            
+
             // Create new turn with added tool call (immutable update)
             const updatedTurn = {
                 ...existingTurn,
                 function_calls: [...existingTurn.function_calls, { id: step_id, name: summary, isRunning: false, isWaitingForApproval: false, isWaitingForUserInput: false, parameters }],
                 isGenerating: true
             };
-            
+
             // Create new turns array with updated turn (immutable update)
             return [
                 ...prev.slice(0, existingTurnIndex),
@@ -119,7 +123,7 @@ export function useChatTurns({ onScrollToBottom, initialTurns }: UseChatTurnsOpt
     const handleToolApprovalRequest = ({ step_id }: { step_id: string; name: string; arguments: string }) => {
         // Mark this tool call as waiting for approval
         pendingApprovalsRef.current.add(step_id);
-        
+
         setTurns(prev => {
             const updated = [...prev];
             // Find the tool call that needs approval
@@ -138,7 +142,7 @@ export function useChatTurns({ onScrollToBottom, initialTurns }: UseChatTurnsOpt
     const handleToolApprovalResponse = ({ step_id, approved }: { step_id: string; approved: boolean }) => {
         // Remove from pending approvals
         pendingApprovalsRef.current.delete(step_id);
-        
+
         if (approved) {
             // Mark as running again
             setTurns(prev => {
@@ -174,7 +178,7 @@ export function useChatTurns({ onScrollToBottom, initialTurns }: UseChatTurnsOpt
         if (pendingApprovalsRef.current.size === 0 && queuedToolCallsRef.current.length > 0) {
             const queuedCalls = [...queuedToolCallsRef.current];
             queuedToolCallsRef.current = [];
-            
+
             // Process each queued tool call
             queuedCalls.forEach(call => {
                 handleToolCall({ summary: call.summary, step_id: call.step_id, parameters: call.parameters, integration: 'unknown' });
@@ -185,9 +189,9 @@ export function useChatTurns({ onScrollToBottom, initialTurns }: UseChatTurnsOpt
     const handleToolCallComplete = ({ step_id, result, changed_items }: ToolCallComplete) => {
         // Remove from pending approvals if it was there
         pendingApprovalsRef.current.delete(step_id);
-        
+
         setTurns(prev => {
-            
+
             const updated = [...prev];
             // Search through all turns to find the tool call
             for (const turn of updated) {
@@ -256,11 +260,11 @@ export function useChatTurns({ onScrollToBottom, initialTurns }: UseChatTurnsOpt
     };
 
     const addUserTurn = (message: string) => {
-        const userTurn: Turn = { 
-            role: 'user', 
-            text: message, 
-            function_calls: [], 
-            step_id: 'user_turn' 
+        const userTurn: Turn = {
+            role: 'user',
+            text: message,
+            function_calls: [],
+            step_id: 'user_turn'
         };
         setTurns(prev => [...prev, userTurn]);
     };
