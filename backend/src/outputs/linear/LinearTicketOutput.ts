@@ -5,7 +5,7 @@ import { Session } from "../../server";
 import { Output, ToolboxEntry } from "../abstract/Output";
 import { db } from "../../prismaClient";
 import { OutputConfigType } from "@prisma/client";
-import { LinearConfig } from "../../shared/Configs";
+import { LinearOutputConfig } from "../../shared/Configs";
 import { linearSearchTicketTool } from "./tools/searchTicket";
 import { linearUpdateTicketTool } from "./tools/updateTicket";
 import { linearCreateTicketTool } from "./tools/createTicket";
@@ -15,7 +15,7 @@ export interface LinearTicketSession extends Session {
     linearConfig: ChannelLinearConfig; // Configuration for the Specific Linear Ticket
 }
 
-export class LinearTicketOutput extends Output<LinearTicketSession, LinearConfig> {
+export class LinearTicketOutput extends Output<LinearTicketSession, LinearOutputConfig> {
     constructor() {
         const toolbox: ToolboxEntry[] = [
             { tool: linearSearchTicketTool as Tool, isReadOnly: true },
@@ -49,14 +49,12 @@ export class LinearTicketOutput extends Output<LinearTicketSession, LinearConfig
         return { linearIntegration: integration, linearConfig: linearConfigRecord, user: user, isUserInitiated: true };
     }
 
-    async addOutputToChannel(tx: PrismaTransaction, channelOutputId: string, output: LinearConfig): Promise<void> {
+    async addOutputToChannel(tx: PrismaTransaction, channelOutputId: string, output: LinearOutputConfig): Promise<void> {
         await tx.automation_linear_configs.create({
             data: {
                 automation_output_id: channelOutputId,
                 team_id: output.teamId || null,
-                team_name: output.teamName || null,
-                project_id: output.projectId || null,
-                project_name: output.projectName || null,
+                team_name: output.teamName || null
             },
         });
     }

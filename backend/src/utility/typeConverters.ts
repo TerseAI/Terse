@@ -13,7 +13,8 @@ import {
     SlackConfig, 
     NotionConfig, 
     NotionPageConfig, 
-    LinearConfig, 
+    LinearInputConfig, 
+    LinearOutputConfig,
     GitHubConfig, 
     JiraConfig, 
     ConfluenceConfig,
@@ -153,12 +154,10 @@ export const convertPrismaConfigToConfigInstance = (channelInput: ChannelInputWi
     }
 
     if (channelInput.linear_config) {
-        return new LinearConfig(
+        return new LinearInputConfig(
             integrationId,
             channelInput.linear_config.team_id || undefined,
-            channelInput.linear_config.team_name || undefined,
-            channelInput.linear_config.project_id || undefined,
-            channelInput.linear_config.project_name || undefined
+            channelInput.linear_config.team_name || undefined
         );
     }
 
@@ -242,12 +241,10 @@ export const convertPrismaOutputConfigToConfigInstance = (channelOutput: Channel
     }
 
     if (channelOutput.linear_config) {
-        return new LinearConfig(
+        return new LinearOutputConfig(
             integrationId,
             channelOutput.linear_config.team_id || undefined,
-            channelOutput.linear_config.team_name || undefined,
-            channelOutput.linear_config.project_id || undefined,
-            channelOutput.linear_config.project_name || undefined
+            channelOutput.linear_config.team_name || undefined
         );
     }
 
@@ -279,7 +276,8 @@ export const convertConfigTypeToInputConfigType = (configType: ConfigType): Inpu
             return InputConfigType.NOTION_PAGE;
         case ConfigType.NOTION_DATABASE:
             return InputConfigType.NOTION_DATABASE;
-        case ConfigType.LINEAR:
+        case ConfigType.LINEAR_INPUT:
+        case ConfigType.LINEAR_OUTPUT:
             return InputConfigType.LINEAR;
         case ConfigType.GITHUB:
             return InputConfigType.GITHUB;
@@ -305,7 +303,7 @@ export const convertInputConfigTypeToConfigType = (inputConfigType: InputConfigT
         case InputConfigType.NOTION_DATABASE:
             return ConfigType.NOTION_DATABASE;
         case InputConfigType.LINEAR:
-            return ConfigType.LINEAR;
+            return ConfigType.LINEAR_INPUT;
         case InputConfigType.GITHUB:
             return ConfigType.GITHUB;
         case InputConfigType.JIRA:
@@ -329,7 +327,7 @@ export const convertConfigTypeToOutputConfigType = (configType: ConfigType): Out
             return OutputConfigType.NOTION_DATABASE;
         case ConfigType.CONFLUENCE:
             return OutputConfigType.CONFLUENCE;
-        case ConfigType.LINEAR:
+        case ConfigType.LINEAR_OUTPUT:
             return OutputConfigType.LINEAR_TICKET;
         default:
             throw new Error(`ConfigType ${configType} is not a valid output config type. Supported output config types are: NOTION_PAGE, NOTION_DATABASE, CONFLUENCE, LINEAR.`);

@@ -2,34 +2,29 @@ import { Plus, AlertTriangleIcon } from 'lucide-react';
 import { Button } from '../ui/button';
 import DropdownSelect from '../ui/DropdownSelect';
 import { LinearIntegration as LinearIntegrationType, IntegrationType } from "@/shared/Integrations"
-import { LinearConfig, ConfigType } from '../../shared/Configs';
+import { LinearInputConfig, ConfigType } from '../../shared/Configs';
 import { InputConfigSelectorProps } from './types';
 import { useLinearIntegrations } from '@/hooks/api/useLinearIntegrations';
 import { useOAuthConnection } from '@/hooks/useOAuthConnection';
 import { useIntegrationId } from '@/hooks/useIntegrationId';
 import { IconForConfigType } from '../../pages/Channels/components/Integration';
-import { LinearTeamSelector } from './LinearTeamSelector';
 
-export function LinearIntegration({
+export function LinearInputIntegration({
     input,
     variant,
-    setConfig,
-    isOutput = false
+    setConfig
 }: InputConfigSelectorProps) {
     const { integrations, isLoading } = useLinearIntegrations();
     const { connect: connectOAuth, isConnecting: isOAuthConnecting } = useOAuthConnection(IntegrationType.LINEAR);
-    const currentConfig = input.config as LinearConfig | undefined;
-    const [selectedIntegrationId] = useIntegrationId(currentConfig, ConfigType.LINEAR);
-    const teamRequired = isOutput;
+    const currentConfig = input.config as LinearInputConfig | undefined;
+    const [selectedIntegrationId] = useIntegrationId(currentConfig, ConfigType.LINEAR_INPUT);
 
     function onSelect(value: string) {
         const integration = integrations.find((integration: LinearIntegrationType) => integration.id === value);
         if (integration) {
             // Preserve existing team and project when switching integrations
-            const linearConfig = new LinearConfig(
+            const linearConfig = new LinearInputConfig(
                 integration.id,
-                currentConfig?.teamId,
-                currentConfig?.teamName,
                 currentConfig?.projectId,
                 currentConfig?.projectName
             );
@@ -79,10 +74,8 @@ export function LinearIntegration({
     let selectedOption = connectionSelections.find(option => option.value === currentConfig?.integrationId)
     if (!selectedIntegrationId && !selectedOption && connectionSelections.length == 1) {
         const defaultIntegration = connectionSelections[0];
-        setConfig(new LinearConfig(
+        setConfig(new LinearInputConfig(
             defaultIntegration.value,
-            currentConfig?.teamId,
-            currentConfig?.teamName,
             currentConfig?.projectId,
             currentConfig?.projectName
         ));
@@ -94,22 +87,13 @@ export function LinearIntegration({
     // Card variant: compact view
     if (variant === 'card') {
         const hasConfig = !!currentConfig && !!currentConfig.integrationId;
-        const needsTeam = teamRequired && !currentConfig?.teamId;
-        const isComplete = hasConfig && !needsTeam;
+        const isComplete = hasConfig;
         if (!isComplete) {
             if (!hasConfig) {
                 return (
                     <div className="flex items-center gap-1 text-xs text-muted-foreground">
                         <AlertTriangleIcon className="size-3 text-yellow-500" />
                         Configure
-                    </div>
-                );
-            }
-            if (needsTeam) {
-                return (
-                    <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                        <AlertTriangleIcon className="size-3 text-yellow-500" />
-                        Select team
                     </div>
                 );
             }
@@ -122,7 +106,7 @@ export function LinearIntegration({
         }
         return (
             <div className="text-sm">
-                {currentConfig?.teamName || selectedOption?.label || 'No connection selected'}
+                {selectedOption?.label || 'No connection selected'}
             </div>
         );
     }
@@ -132,7 +116,7 @@ export function LinearIntegration({
         <div className="flex flex-col gap-3 min-w-0 overflow-hidden">
             <div className="flex flex-row gap-2 items-center mb-2">
                 <div className="w-15 h-15">
-                    <IconForConfigType type={ConfigType.LINEAR}/>
+                    <IconForConfigType type={ConfigType.LINEAR_INPUT}/>
                 </div>
                 <DropdownSelect
                     statusOptions={connectionSelections}
@@ -144,32 +128,6 @@ export function LinearIntegration({
                     }}
                 />
             </div>
-
-            {/* Team selector - required for output, optional for input */}
-            {selectedIntegrationId && (
-                <div className="mt-3 pt-3 border-t border-border min-w-0 overflow-hidden">
-                    {!currentConfig?.teamId && (
-                        <p className="text-sm text-muted-foreground mb-3">
-                            {teamRequired ? 'Select a team to continue' : 'Select a team (optional)'}
-                        </p>
-                    )}
-                    <LinearTeamSelector
-                        integrationId={selectedIntegrationId}
-                        selectedTeamId={currentConfig?.teamId}
-                        onSelect={(teamId: string, teamName: string) => {
-                            const updatedConfig = new LinearConfig(
-                                selectedIntegrationId,
-                                teamId,
-                                teamName,
-                                currentConfig?.projectId,
-                                currentConfig?.projectName
-                            );
-                            setConfig(updatedConfig);
-                        }}
-                    />
-                </div>
-            )}
-
             <Button
                 onClick={connectOAuth}
                 disabled={isOAuthConnecting}

@@ -71,7 +71,7 @@ export function OutputCard({
     }
 
     // Output needs configuration if there's no config OR if the config is not complete
-    const needsConfiguration = !output.config || !output.config.isComplete(true);
+    const needsConfiguration = !output.config || !output.config.isComplete();
 
     return (
         <Card>
