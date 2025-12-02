@@ -163,23 +163,23 @@ function isUserMessage(item: AgentInputItem): boolean {
 
 
 export function trimToLastTurns(items: AgentInputItem[], maxTurns: number): AgentInputItem[] {
-  if(items.length === 0) return items;
-  maxTurns = Math.max(1, maxTurns)
+  if (items.length === 0) return items;
+  maxTurns = Math.max(1, maxTurns);
+  
+  let count = 0;
+  let startIdx = 0; 
 
-  let userCount = 0;
-  let startIndex = 0;
-
-  for (let i = 0; i < items.length; i++) {
-    const item = items[i];
-    if (isUserMessage(item)) {
-      userCount++;
-    }
-    if (userCount >= maxTurns) {
-      startIndex = i;
-      break;
+  for (let i = items.length - 1; i >= 0; i--) {
+    if (isUserMessage(items[i])) {
+      count++;
+      if (count === maxTurns) {
+        startIdx = i;
+        break;
+      }
     }
   }
-  return items.slice(startIndex);
+
+  return items.slice(startIdx);
 }
 
 function cloneAgentItem<T extends AgentInputItem>(item: T): T {
