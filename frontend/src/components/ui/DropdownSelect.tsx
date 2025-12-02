@@ -43,12 +43,12 @@ const DropdownSelect = ({ statusOptions, selectedOption, setSelected, additional
                             {option.label}
                         </DropdownMenuRadioItem>
                     ))}
-                    {additionalAction && (
-                        <DropdownMenuItem onClick={additionalAction.onClick}>
-                            {additionalAction.label}
-                        </DropdownMenuItem>
-                    )}
                 </DropdownMenuRadioGroup>
+                {additionalAction && (
+                    <DropdownMenuItem onClick={additionalAction.onClick}>
+                        {additionalAction.label}
+                    </DropdownMenuItem>
+                )}
             </DropdownMenuContent>
         </DropdownMenu>
     )

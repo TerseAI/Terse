@@ -133,7 +133,7 @@ export async function initializeRealtimeSocket(server: HttpServer): Promise<Serv
                 return;
             }
 
-            const channel: ChannelWithRelations = await prisma.automations.findUnique({
+            const channel: ChannelWithRelations | null = await prisma.automations.findUnique({
                 where: {
                     id: runRecord.automation.id,
                     user_id: userId
@@ -147,7 +147,12 @@ export async function initializeRealtimeSocket(server: HttpServer): Promise<Serv
                         include: getOutputConfigInclude()
                     }
                 }
-            }) as ChannelWithRelations;
+            }) as ChannelWithRelations | null;
+
+            if (!channel) {
+                console.error(chalk.red.bold(`[channel:chat:message] Channel not found for automation id: ${runRecord.automation.id}`));
+                return;
+            }
 
             const outputIntegration = channel.output;
             if (!outputIntegration) {

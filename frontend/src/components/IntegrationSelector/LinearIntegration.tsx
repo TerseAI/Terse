@@ -7,7 +7,6 @@ import { InputConfigSelectorProps } from './types';
 import { useLinearIntegrations } from '@/hooks/api/useLinearIntegrations';
 import { useOAuthConnection } from '@/hooks/useOAuthConnection';
 import { useIntegrationId } from '@/hooks/useIntegrationId';
-import { StatusOption } from '../ui/DropdownSelect';
 import { IconForConfigType } from '../../pages/Channels/components/Integration';
 import { LinearTeamSelector } from './LinearTeamSelector';
 
@@ -72,13 +71,13 @@ export function LinearIntegration({
         );
     }
 
-    const connectionSelections: StatusOption[] = integrations.map((integration: LinearIntegrationType) => ({
+    const connectionSelections = integrations.map((integration: LinearIntegrationType) => ({
         label: integration.workspaceName || 'Unknown Team',
         value: integration.id
     }));
 
-    let selectedOption: StatusOption | undefined = connectionSelections.find(option => option.value === selectedIntegrationId);
-    if (!selectedOption && connectionSelections.length == 1) {
+    let selectedOption = connectionSelections.find(option => option.value === currentConfig?.integrationId)
+    if (!selectedIntegrationId && !selectedOption && connectionSelections.length == 1) {
         const defaultIntegration = connectionSelections[0];
         setConfig(new LinearConfig(
             defaultIntegration.value,
@@ -139,6 +138,10 @@ export function LinearIntegration({
                     statusOptions={connectionSelections}
                     selectedOption={selectedOption}
                     setSelected={onSelect}
+                    additionalAction={{
+                        label: 'Connect Another Linear',
+                        onClick: connectOAuth
+                    }}
                 />
             </div>
 
