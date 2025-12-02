@@ -107,7 +107,7 @@ function InputCardsLayout({
                                 setInputs={setInputs} 
                                 handleRemove={handleRemove}
                                 ref={(el) => {
-                                    if (el && input.config?.isComplete(false)) {
+                                    if (el && input.config?.isComplete()) {
                                         inputRefs.current.set(input.id, el);
                                     } else {
                                         inputRefs.current.delete(input.id);
@@ -137,7 +137,7 @@ function InputCardsLayout({
                         setInputs={setInputs} 
                         handleRemove={handleRemove}
                         ref={(el) => {
-                            if (el && input.config?.isComplete(false)) {
+                            if (el && input.config?.isComplete()) {
                                 inputRefs.current.set(input.id, el);
                             } else {
                                 inputRefs.current.delete(input.id);
@@ -173,7 +173,7 @@ export const InputCard = forwardRef<HTMLDivElement, {
         isOutput: false
     };
     // Input needs configuration if there's no config OR if the config is not complete
-    const needsConfiguration = !input.config || !input.config.isComplete(false);
+    const needsConfiguration = !input.config || !input.config.isComplete();
     return (
         <>
             <Card ref={ref}>
