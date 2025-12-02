@@ -757,6 +757,18 @@ enum RunHistoryIntegration {
   confluence
 }
 
+// Chat event types for run history (matches shared/ModelEvents.ts ModelEvent types)
+enum RunHistoryChatEventType {
+  TextDelta
+  ToolCall
+  ToolCallComplete
+  ToolApprovalRequest
+  NaturalStop
+  Failure
+  FilterResult
+  UserMessage
+}
+
 // Run History tables
 model run_history_records {
   id                  String                   @id @default(cuid())
@@ -783,6 +795,8 @@ model run_history_records {
   automation       automations           @relation(fields: [automation_id], references: [id], onDelete: Cascade)
   actions          run_history_actions[]
   pending_approval pending_approvals?
+  chat_events      run_history_chat_events[]
+  raw_events       run_history_raw_events[]
 
   @@index([automation_id])
   @@index([status])
@@ -797,11 +811,13 @@ model run_history_actions {
   target                String
   details               String
   url                   String?
+  step_id               String?
   created_at            DateTime              @default(now())
 
   run_history_record run_history_records @relation(fields: [run_history_record_id], references: [id], onDelete: Cascade)
 
   @@index([run_history_record_id])
+  @@index([step_id])
 }
 
 // Pending approvals for tools that require human approval
@@ -819,5 +835,35 @@ model pending_approvals {
   run_history_record run_history_records @relation(fields: [run_history_record_id], references: [id], onDelete: Cascade)
 
   @@index([user_id])
+  @@index([created_at])
+}
+
+// Chat events from ChannelAgent streaming
+model run_history_chat_events {
+  id                    String   @id @default(cuid())
+  run_history_record_id String
+  event_type            RunHistoryChatEventType
+  event_json            Json     // Full ModelEvent stored as JSON for easy deserialization
+  timestamp             DateTime  @default(now())
+  created_at            DateTime  @default(now())
+
+  run_history_record run_history_records @relation(fields: [run_history_record_id], references: [id], onDelete: Cascade)
+
+  @@index([run_history_record_id])
+  @@index([timestamp])
+}
+
+// Raw AgentStreamEvent stored as JSON for easy loading into OpenAI agent history
+model run_history_raw_events {
+  id                    String   @id @default(cuid())
+  run_history_record_id String
+  raw_event_json        Json     // Raw AgentStreamEvent stored as JSON for easy loading into OpenAI agent history
+  sequence_order        Int      // Order of items within a session to preserve exact sequence
+  created_at            DateTime @default(now())
+
+  run_history_record run_history_records @relation(fields: [run_history_record_id], references: [id], onDelete: Cascade)
+
+  @@index([run_history_record_id])
+  @@index([run_history_record_id, sequence_order])
   @@index([created_at])
 }

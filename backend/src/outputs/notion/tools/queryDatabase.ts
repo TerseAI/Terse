@@ -1,8 +1,9 @@
 import { RunContext, tool } from "@openai/agents";
 import { z } from "zod";
 import { Client } from '@notionhq/client';
-import chalk from "chalk";
 import { NotionDatabaseSession } from "../NotionDatabaseOutput";
+import { IntegrationType } from "../../../shared/Integrations";
+import { SessionWithTracking } from "../../../agent/ChannelAgent/ChannelAgent";
 
 // Helper function to extract readable values from Notion property objects
 function extractPropertyValue(property: any): any {
@@ -228,7 +229,7 @@ EXAMPLES:
         start_cursor: z.string().nullable().optional().describe('Cursor from previous response to fetch next page. Use next_cursor from response when has_more is true.'),
         result_type: z.enum(['page', 'data_source']).nullable().optional().describe('Filter results to only pages or data sources. Only relevant for wiki databases.'),
     }),
-    execute: async ({ filter_properties, filter, sorts, page_size, start_cursor, result_type }, runContext?: RunContext<NotionDatabaseSession>) => {
+    execute: async ({ filter_properties, filter, sorts, page_size, start_cursor, result_type }, runContext?: RunContext<SessionWithTracking<NotionDatabaseSession>>) => {
         console.log("Executing notion_query_database tool with filters:", { filter_properties, filter, sorts, page_size, start_cursor });
         if (!runContext?.context) {
             throw new Error("No context provided");
@@ -304,6 +305,16 @@ EXAMPLES:
                 last_edited_time: page.last_edited_time,
             };
         }).filter(Boolean);
+
+        // Push run action to track the API call
+        const databaseName = runContext.context.notionConfig.database_name || 'Unknown Database';
+        const filterDescription = filter ? 'with filters' : 'without filters';
+        runContext.context.trackAction({
+            action: 'Queried database',
+            integration: IntegrationType.NOTION,
+            target: databaseName,
+            details: `Queried database ${filterDescription} and retrieved ${pages.length} ${pages.length === 1 ? 'page' : 'pages'}`,
+        });
 
         console.log("Notion query database tool response: ", { 
             pages_count: pages.length, 

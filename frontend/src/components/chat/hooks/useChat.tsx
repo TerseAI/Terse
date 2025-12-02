@@ -1,0 +1,71 @@
+import { useCompletionSocket, type ChatEventSubscription } from './useCompletionSocket';
+import { useChatTurns } from './useChatTurns';
+import { useChatInput } from './useChatInput';
+import { type ModelRequest, type ToolCallComplete, type ToolCall } from '../../../shared/ModelEvents';
+import { Turn } from '../Turn';
+
+interface UseChatOptions {
+    subscribeToEvents?: ChatEventSubscription | null;
+    sendMessage: (message: ModelRequest) => void;
+    initialTurns?: Turn[];
+    onUserMessage?: (message: string) => void;
+    onToolCall?: (req: ToolCall) => void;
+    onToolCallComplete?: (req: ToolCallComplete) => void;
+}
+
+export function useChat({
+    subscribeToEvents,
+    sendMessage: sendModelRequest,
+    initialTurns,
+    onUserMessage,
+    onToolCall,
+    onToolCallComplete,
+}: UseChatOptions) {
+    const {
+        turns,
+        isPendingAssistantResponse,
+        messagesEndRef,
+        handleDelta,
+        handleToolCall,
+        handleToolCallComplete,
+        handleFailure,
+        handleNaturalStop,
+        addUserTurn,
+        handleFilterResult,
+    } = useChatTurns({initialTurns});
+
+    const { sendMessage: sendSocketMessage} = useCompletionSocket({
+        subscribeToEvents,
+        sendMessage: sendModelRequest,
+        onDelta: handleDelta,
+        onToolCall: (req: ToolCall) => {
+            handleToolCall(req);
+            onToolCall?.(req);
+        },
+        onToolCallComplete: (req: ToolCallComplete) => {
+            handleToolCallComplete(req);
+            onToolCallComplete?.(req);
+        },
+        onFailure: handleFailure,
+        onNaturalStop: handleNaturalStop,
+        onFilterResult: handleFilterResult,
+    });
+
+    const { input, setInput, sendMessage } = useChatInput({
+        sendMessage: sendSocketMessage,
+        onUserMessage: (message: string) => {
+            addUserTurn(message);
+            onUserMessage?.(message);
+        }
+    });
+
+    return {
+        turns,
+        isPendingAssistantResponse,
+        messagesEndRef,
+        input,
+        setInput,
+        sendMessage,
+        sendModelRequest: sendSocketMessage,
+    };
+}

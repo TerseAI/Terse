@@ -1,9 +1,9 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import RunHistoryEmptyState from "./RunHistoryEmptyState"
 import RunHistoryToolBar from "./RunHistoryToolBar";
 import RunHistoryItem from "./RunHistoryItem";
 import RunHistoryLoadingState from "./RunHistoryLoadingState";
-import { RunHistoryStatus } from "../../shared/RunHistoryTypes";
+import { RunHistoryStatus, RunHistoryRecord } from "../../shared/RunHistoryTypes";
 import { useRunHistory } from "../../hooks/api/useRunHistory";
 
 // Remote data source only; no local mock
@@ -13,10 +13,6 @@ type RunHistoryProps = {
 };
 
 export default function RunHistory({ channelId }: RunHistoryProps) {
-    const [expandedRuns, setExpandedRuns] = useState<Set<string>>(new Set());
-    const [expandedDecisions, setExpandedDecisions] = useState<Set<string>>(new Set());
-    const [expandedIndividualActions, setExpandedIndividualActions] = useState<Set<string>>(new Set());
-
     const [currentPage, setCurrentPage] = useState(1);
     const [runsPerPage, setRunsPerPage] = useState(10);
 
@@ -28,6 +24,12 @@ export default function RunHistory({ channelId }: RunHistoryProps) {
         from: undefined,
         to: undefined
     });
+    const [openDrawerRunId, setOpenDrawerRunId] = useState<string | null>(null);
+    const [isDrawerFullscreen, setIsDrawerFullscreen] = useState(false);
+    const [isInitialDrawerOpen, setIsInitialDrawerOpen] = useState(true);
+    
+    // Keep a reference to the currently viewed run so it doesn't disappear if filtered out
+    const pinnedRunRef = useRef<RunHistoryRecord | null>(null);
 
     const { runs: remoteRuns, total, isLoading } = useRunHistory({
         channelId,
@@ -38,38 +40,56 @@ export default function RunHistory({ channelId }: RunHistoryProps) {
         selectedStatuses,
     });
 
-    const filteredRuns = useMemo(() => remoteRuns, [remoteRuns]);
+    // Update the pinned run reference when we have a new run with the open drawer ID
+    useEffect(() => {
+        if (openDrawerRunId) {
+            const currentRun = remoteRuns.find(r => r.id === openDrawerRunId);
+            if (currentRun) {
+                // Update the pinned run with fresh data
+                pinnedRunRef.current = currentRun;
+            }
+        } else {
+            // Clear the pinned run when drawer is closed
+            pinnedRunRef.current = null;
+        }
+    }, [openDrawerRunId, remoteRuns]);
+
+    // Include the pinned run in the list if it's not already there
+    const filteredRuns = useMemo(() => {
+        if (!openDrawerRunId || !pinnedRunRef.current) {
+            return remoteRuns;
+        }
+        
+        const pinnedRun = pinnedRunRef.current;
+        const isInList = remoteRuns.some(r => r.id === pinnedRun.id);
+        
+        if (isInList) {
+            return remoteRuns;
+        }
+        
+        // Pinned run is not in the list (was filtered out), add it back at the appropriate position
+        // Insert based on timestamp to maintain order
+        const runsWithPinned = [...remoteRuns];
+        const pinnedTimestamp = new Date(pinnedRun.timestamp).getTime();
+        
+        // Find the right position (runs are typically sorted by timestamp desc)
+        let insertIndex = runsWithPinned.findIndex(r => 
+            new Date(r.timestamp).getTime() < pinnedTimestamp
+        );
+        
+        if (insertIndex === -1) {
+            // Pinned run is oldest, add at the end
+            runsWithPinned.push(pinnedRun);
+        } else {
+            runsWithPinned.splice(insertIndex, 0, pinnedRun);
+        }
+        
+        return runsWithPinned;
+    }, [remoteRuns, openDrawerRunId]);
 
     const totalPages = Math.ceil(total / runsPerPage) || 1;
     const startIndex = (currentPage - 1) * runsPerPage;
     const paginatedRuns = filteredRuns; // server provides paginated items already
-
-    const toggleRun = (runId: string) => {
-        const next = new Set(expandedRuns);
-        next.has(runId) ? next.delete(runId) : next.add(runId);
-        setExpandedRuns(next);
-    };
-
-    const toggleDecision = (runId: string) => {
-        const next = new Set(expandedDecisions);
-        next.has(runId) ? next.delete(runId) : next.add(runId);
-        setExpandedDecisions(next);
-    };
-
-    const toggleIndividualAction = (actionKey: string) => {
-        const next = new Set(expandedIndividualActions);
-        next.has(actionKey) ? next.delete(actionKey) : next.add(actionKey);
-        setExpandedIndividualActions(next);
-    };
-
-    const toggleAllActionsForRun = (runId: string, actionCount: number) => {
-        const next = new Set(expandedIndividualActions);
-        const keys = Array.from({ length: actionCount }, (_, i) => `${runId}-action-${i}`);
-        const allExpanded = keys.every((k) => next.has(k));
-        if (allExpanded) keys.forEach((k) => next.delete(k));
-        else keys.forEach((k) => next.add(k));
-        setExpandedIndividualActions(next);
-    };
 
     const toggleStatus = (status: RunHistoryStatus) => {
         const next = new Set(selectedStatuses);
@@ -122,17 +142,29 @@ export default function RunHistory({ channelId }: RunHistoryProps) {
             ) : (
                 <div className="mb-6">
                     <div className="flex flex-col gap-3 overflow-x-auto md:overflow-visible pb-3 md:pb-0 max-w-full md:max-w-4xl lg:max-w-5xl xl:max-w-6xl mx-auto">
-                        {paginatedRuns.map((run) => (
+                        {paginatedRuns.map((run, index) => (
                             <RunHistoryItem
                                 key={run.id}
                                 run={run}
-                                isExpanded={expandedRuns.has(run.id)}
-                                onToggleRun={toggleRun}
-                                isDecisionExpanded={expandedDecisions.has(run.id)}
-                                onToggleDecision={toggleDecision}
-                                isActionExpanded={(key) => expandedIndividualActions.has(key)}
-                                onToggleAction={toggleIndividualAction}
-                                onToggleAllActionsForRun={toggleAllActionsForRun}
+                                runs={paginatedRuns}
+                                currentRunIndex={index}
+                                isDrawerOpen={openDrawerRunId === run.id}
+                                onDrawerOpenChange={(open) => {
+                                    if (open) {
+                                        setIsInitialDrawerOpen(true);
+                                        setOpenDrawerRunId(run.id);
+                                    } else {
+                                        setOpenDrawerRunId(null);
+                                        setIsDrawerFullscreen(false);
+                                    }
+                                }}
+                                onNavigateToRun={(newRunId) => {
+                                    setOpenDrawerRunId(newRunId);
+                                    setIsInitialDrawerOpen(false);
+                                }}
+                                isFullscreen={isDrawerFullscreen}
+                                onFullscreenChange={setIsDrawerFullscreen}
+                                isInitialOpen={isInitialDrawerOpen}
                             />
                         ))}
                     </div>

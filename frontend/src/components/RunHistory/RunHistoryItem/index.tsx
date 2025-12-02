@@ -1,50 +1,44 @@
 import { RunHistoryRecord } from "../../../shared/RunHistoryTypes";
-import RunHistoryActionItem from "../RunHistoryActionItem";
 import RunHistoryItemHeader from "./RunHistoryItemHeader";
-import RunHistoryItemDecision from "./RunHistoryItemDecision";
-import RunHistoryItemError from "./RunHistoryItemError";
-import {
-    Accordion,
-    AccordionContent,
-    AccordionItem,
-    AccordionTrigger,
-} from "@/components/ui/accordion";
+import RunHistoryChatDrawer from "../RunHistoryChatDrawer";
+import { Button } from "@/components/ui/button";
+import { MessageSquare } from "lucide-react";
+import RunHistoryStatusBadge from "../RunHistoryStatusBadge";
+import { formatTimestamp } from "@/utility/timeUtils";
 
 type Props = {
     run: RunHistoryRecord;
-    isExpanded: boolean;
-    onToggleRun: (runId: string) => void;
-    isDecisionExpanded: boolean;
-    onToggleDecision: (runId: string) => void;
-    isActionExpanded: (actionKey: string) => boolean;
-    onToggleAction: (actionKey: string) => void;
-    onToggleAllActionsForRun: (runId: string, actionCount: number) => void;
+    runs?: RunHistoryRecord[];
+    currentRunIndex?: number;
+    isDrawerOpen?: boolean;
+    onDrawerOpenChange?: (open: boolean) => void;
+    onNavigateToRun?: (runId: string) => void;
+    isFullscreen?: boolean;
+    onFullscreenChange?: (fullscreen: boolean) => void;
+    isInitialOpen?: boolean;
 };
 
-export default function RunHistoryItem({
-    run,
-    isExpanded,
-    onToggleRun,
-    isDecisionExpanded,
-    onToggleDecision,
-    isActionExpanded,
-    onToggleAction,
-    onToggleAllActionsForRun
+export default function RunHistoryItem({ 
+    run, 
+    runs, 
+    currentRunIndex, 
+    isDrawerOpen = false,
+    onDrawerOpenChange,
+    onNavigateToRun,
+    isFullscreen = false,
+    onFullscreenChange,
+    isInitialOpen = true,
 }: Props) {
-    const formatTimestamp = (timestamp: string) => {
-        const date = new Date(timestamp);
-        const now = new Date();
-        const diffMs = now.getTime() - date.getTime();
-        const minutes = Math.floor(diffMs / (1000 * 60));
-        const hours = Math.floor(diffMs / (1000 * 60 * 60));
-        if (minutes < 60) return `${minutes}m ago`;
-        if (hours < 24) return `${hours}h ago`;
-        return date.toLocaleDateString("en-US", {
-            month: "short",
-            day: "numeric",
-            hour: "2-digit",
-            minute: "2-digit"
-        });
+    const handleDrawerOpen = () => {
+        if (onDrawerOpenChange) {
+            onDrawerOpenChange(true);
+        }
+    };
+    
+    const handleDrawerClose = (open: boolean) => {
+        if (onDrawerOpenChange) {
+            onDrawerOpenChange(open);
+        }
     };
 
     const copyToClipboard = (text: string) => {
@@ -53,100 +47,45 @@ export default function RunHistoryItem({
         }
     };
 
-    const areAllActionsExpanded = (runId: string, actionCount: number) => {
-        if (!actionCount) return false;
-        const keys = Array.from({ length: actionCount }, (_, i) => `${runId}-action-${i}`);
-        return keys.every((k) => isActionExpanded(k));
-    };
-
-    const allActionsExpanded = !!run.actions && areAllActionsExpanded(run.id, run.actions.length);
-
-    // Check if this is a failed run
-    const isError = run.status === "failed";
-    // Extract error message, removing [FILTER_ERROR] or [AGENT_ERROR] prefix if present
-    const errorMessage = isError 
-        ? run.decision.reasoning.replace(/^\[(FILTER|AGENT)_ERROR\]\s*/, '')
-        : null;
-
     return (
         <div className="overflow-hidden bg-card border border-border rounded-lg md:mb-3 min-w-[640px] md:min-w-0 shrink-0 md:shrink">
-            <Accordion
-                type="single"
-                collapsible
-                onValueChange={() => {
-                    onToggleRun(run.id);
+            <div className="flex flex-col gap-3 px-4 py-3 md:flex-row md:items-center">
+                <RunHistoryItemHeader
+                    run={run}
+                    formattedTimestamp={formatTimestamp(run.timestamp)}
+                    onCopy={copyToClipboard}
+                />
+                <div className="flex items-center gap-3 md:ml-auto">
+                    <RunHistoryStatusBadge status={run.status} filtered={run.filtered} />
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleDrawerOpen}
+                        className="flex items-center gap-2"
+                        title="View chat"
+                    >
+                        <MessageSquare className="w-4 h-4" />
+                    </Button>
+                </div>
+            </div>
+            <RunHistoryChatDrawer
+                runId={run.id}
+                isOpen={isDrawerOpen}
+                onOpenChange={handleDrawerClose}
+                status={run.status}
+                trigger={run.trigger}
+                filtered={run.filtered}
+                runs={runs}
+                currentRunIndex={currentRunIndex}
+                onNavigate={(newRunId) => {
+                    if (onNavigateToRun) {
+                        onNavigateToRun(newRunId);
+                    }
                 }}
-            >
-                <AccordionItem value={run.id}>
-                    <AccordionTrigger className="hover:no-underline px-4"> 
-                        <RunHistoryItemHeader
-                            run={run}
-                            isExpanded={isExpanded}
-                            formattedTimestamp={formatTimestamp(run.timestamp)}
-                            onCopy={copyToClipboard}
-                        />
-                    </AccordionTrigger>
-                    <AccordionContent>
-                        {isError ? (
-                            <RunHistoryItemError
-                                errorMessage={errorMessage!}
-                                isExpanded={isDecisionExpanded}
-                                onToggle={() => onToggleDecision(run.id)}
-                            />
-                        ) : (
-                            <>
-                                <div className="text-foreground pl-8">
-                                    Agent Decision:
-                                </div>
-                                <div className="mt-3 pl-8">
-                                    <RunHistoryItemDecision
-                                        filtered={run.filtered}
-                                        reasoning={run.decision.reasoning}
-                                        isExpanded={isDecisionExpanded}
-                                        onToggle={() => onToggleDecision(run.id)}
-                                    />
-                                </div>
-                            </>
-                        )}
-
-                        {run.actions && run.actions.length > 0 && (
-                            <div className="mt-3 pl-8">
-                                <div className="flex items-center justify-between mb-3">
-                                    <div className="text-[theme(text-primary)]">
-                                        {run.status === "failed" ? "Error Details:" : `Actions Taken (${run.actions.length}):`}
-                                    </div>
-                                    {run.actions.length > 1 && (
-                                        <button
-                                            className="h-7 px-2 rounded-md text-sm text-muted-foreground hover:text-foreground hover:bg-accent/50 border border-transparent hover:border-border"
-                                            onClick={() => onToggleAllActionsForRun(run.id, run.actions!.length)}
-                                            type="button"
-                                        >
-                                            {allActionsExpanded ? "Collapse All" : "Expand All"}
-                                        </button>
-                                    )}
-                                </div>
-
-                                <div className="space-y-2">
-                                    {run.actions.map((action, idx) => {
-                                        const actionKey = `${run.id}-action-${idx}`;
-                                        return (
-                                            <RunHistoryActionItem
-                                                key={actionKey}
-                                                runId={run.id}
-                                                index={idx}
-                                                action={action}
-                                                runStatus={run.status}
-                                                isExpanded={isActionExpanded(actionKey)}
-                                                onToggle={onToggleAction}
-                                            />
-                                        );
-                                    })}
-                                </div>
-                            </div>
-                        )}
-                    </AccordionContent>
-                </AccordionItem>
-            </Accordion>
+                isFullscreen={isFullscreen}
+                onFullscreenChange={onFullscreenChange}
+                isInitialOpen={isInitialOpen}
+            />
         </div>
     );
 }

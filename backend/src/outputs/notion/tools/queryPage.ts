@@ -3,6 +3,8 @@ import { z } from "zod";
 import { Client } from '@notionhq/client';
 import { NotionPageSession } from "../NotionPageOutput";
 import { GetPageResponse, PageObjectResponse } from "@notionhq/client/build/src/api-endpoints";
+import { IntegrationType } from "../../../shared/Integrations";
+import { SessionWithTracking } from "../../../agent/ChannelAgent/ChannelAgent";
 
 // Helper function to extract readable values from Notion page property objects
 function extractPagePropertyValue(property: any): any {
@@ -231,7 +233,7 @@ This tool returns the current state of the page including all properties, metada
     parameters: z.object({
         // No parameters needed - returns complete page information
     }),
-    execute: async ({ }, runContext?: RunContext<NotionPageSession>) => {
+    execute: async ({ }, runContext?: RunContext<SessionWithTracking<NotionPageSession>>) => {
         console.log("Executing notion_query_page tool");
         if (!runContext?.context) {
             throw new Error("No context provided");
@@ -269,6 +271,16 @@ This tool returns the current state of the page including all properties, metada
             console.warn("Error fetching blocks:", error.message);
             // Continue even if blocks fail to fetch
         }
+
+        // Push run action to track the API calls
+        const pageName = runContext.context.notionPageConfig.page_name || 'Notion page';
+        runContext.context.trackAction({
+            action: 'Retrieved page',
+            integration: IntegrationType.NOTION,
+            target: pageName,
+            details: `Retrieved page with ${blocks.length} ${blocks.length === 1 ? 'block' : 'blocks'}`,
+            url: isFullPage(pageInfo) && 'url' in pageInfo ? pageInfo.url : undefined,
+        });
 
         // Extract comprehensive metadata
         const metadata: any = {

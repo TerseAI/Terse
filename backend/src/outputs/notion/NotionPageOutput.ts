@@ -1,4 +1,4 @@
-import { RunHistoryAction } from "../../shared/RunHistoryTypes";
+
 import { Tool } from "@openai/agents";
 import { ChannelNotionPageConfig, ChannelOutput, NotionIntegration, PrismaTransaction, User } from "../../types/prisma";
 import { Session } from "../../server";
@@ -11,8 +11,6 @@ import { notionQueryPageTool, notionModifyBlocksTool } from "./tools";
 export interface NotionPageSession extends Session {
     notionIntegration: NotionIntegration; // Top level integration record
     notionPageConfig: ChannelNotionPageConfig; // Configuration for the Specific Notion Page
-    // Collect actions here (report-only); DB writes happen after agent finishes
-    runActions?: RunHistoryAction[];
 }
 
 export class NotionPageOutput extends Output<NotionPageSession, NotionPageConfig> {
@@ -45,7 +43,7 @@ export class NotionPageOutput extends Output<NotionPageSession, NotionPageConfig
             throw new Error(`Notion page config for automation output ${channelOutputConfig.id} not found`);
         }
 
-        return { notionIntegration: integration, notionPageConfig: notionPageConfig, user: user, isUserInitiated: true, runActions: [] };
+        return { notionIntegration: integration, notionPageConfig: notionPageConfig, user: user, isUserInitiated: true };
     }
 
     async addOutputToChannel(tx: PrismaTransaction, channelOutputId: string, output: NotionPageConfig): Promise<void> {

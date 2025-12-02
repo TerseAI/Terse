@@ -3,6 +3,7 @@ import TextareaAutosize from 'react-textarea-autosize';
 
 interface GlowingTextFieldProps {
     isLoading: boolean;
+    disabled: boolean;
     onInputChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void;
     onKeyDown: (e: React.KeyboardEvent<HTMLTextAreaElement>) => void;
     inputValue: string;
@@ -20,9 +21,8 @@ export enum Size {
     Large = 'large',
 }
 
-function GlowingTextField({ isLoading, onInputChange, onKeyDown, inputValue, placeholders = [], compact = false, size = Size.Medium, shouldAllowKeyboardShortcutForFocus = true, autoFocus = false, focusOverride = null }: GlowingTextFieldProps) {
+function GlowingTextField({ isLoading, disabled, onInputChange, onKeyDown, inputValue, placeholders = [], compact = false, size = Size.Medium, shouldAllowKeyboardShortcutForFocus = true, autoFocus = false, focusOverride = null }: GlowingTextFieldProps) {
     const [currentPlaceholder, setCurrentPlaceholder] = useState<string | undefined>(placeholders ? placeholders[0] : undefined);
-    const [isFocused, setIsFocused] = useState(false);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
 
     // Handle focus override
@@ -87,52 +87,42 @@ function GlowingTextField({ isLoading, onInputChange, onKeyDown, inputValue, pla
             {isLoading && (
                 <div className="absolute inset-0 pointer-events-none overflow-visible">
                     <div className="absolute left-1/2 top-1/2 w-full h-full animate-rect-orbit overflow-visible">
-                        <div className={`absolute ${compact ? 'w-2.5 h-2.5' : 'w-3 h-3'} rounded-full bg-accent/60 blur-sm shadow-[0_0_10px_var(--color-accent)] -translate-x-1/2 -translate-y-1/2 overflow-visible`} />
+                        <div className={`absolute ${compact ? 'w-2.5 h-2.5' : 'w-3 h-3'} rounded-full bg-purple-500/60 blur-sm shadow-[0_0_10px_rgba(168,85,247,0.6)] -translate-x-1/2 -translate-y-1/2 overflow-visible`} />
                     </div>
                 </div>
             )}
 
             <div
-                className={`
+                className="
                         grid place-items-stretch
                         w-full
                         rounded-lg
                         transition-all
                         duration-400
                         p-1
-                        bg-background
-                        overflow-visible
-                    `}
-                style={isFocused ? {
-                    boxShadow: `
-                        0 0 20px -5px hsl(var(--accent)),
-                        0 0 30px -10px hsl(var(--accent))/0.5,
-                        0 0 40px -15px hsl(var(--accent))/0.25
-                    `
-                } : {}}
+                        bg-card
+                    "
             >
                 <TextareaAutosize
                     ref={textareaRef}
                     className={`
-                            w-full
+                            w-full 
                             text-foreground
-                            ${getFontSize()}
-                            resize-none
-                            ${compact ? 'p-2.5' : 'p-4'}
-                            leading-normal
+                            ${getFontSize()} 
+                            resize-none 
+                            ${compact ? 'p-2.5' : 'p-4'} 
+                            leading-normal 
                             placeholder:italic
-                            placeholder:text-muted-foreground
+                            placeholder:text-muted-foreground 
                             rounded-lg
-                            transition-all
+                            transition-all 
                             duration-300
                             focus:outline-none
                         `}
                     onChange={onInputChange}
                     onKeyDown={onKeyDown}
-                    onFocus={() => setIsFocused(true)}
-                    onBlur={() => setIsFocused(false)}
                     value={inputValue}
-                    disabled={isLoading}
+                    disabled={disabled}
                     placeholder={currentPlaceholder}
                     rows={compact ? 1 : undefined}
                     maxRows={compact ? 4 : undefined}

@@ -72,9 +72,8 @@ export class ChannelAgentFactory {
       const channelAgent = new ChannelAgent<NotionDatabaseSession, NotionConfig>(
         session,
         notionOutput,
-        channel.prompt!,
-        channel.inputs,
-        outputIntegration
+        channel,
+        "123"
       );
 
       return channelAgent;

@@ -4,22 +4,6 @@ import { db } from "../prismaClient";
 import { JiraWebhookPayload } from "../utility/JiraWebhookPayload";
 import { AtlassianIntegrationManager } from "../integrations/AtlassianIntegration";
 
-export async function getJiraIntegrations(req: Request, res: Response) {
-    if (!req.session?.user) {
-        res.status(401).json({ error: 'Unauthorized' });
-        return;
-    }
-
-    try {
-        const manager = new AtlassianIntegrationManager();
-        const integrations = await manager.getInstancesForUser(req.session.user.id);
-        res.status(200).json(integrations);
-    } catch (error) {
-        console.error('Error fetching Jira integrations:', error);
-        res.status(500).json({ error: 'Failed to fetch Jira integrations' });
-    }
-}
-
 export async function getAtlassianIntegrations(req: Request, res: Response) {
     if (!req.session?.user) {
         res.status(401).json({ error: 'Unauthorized' });

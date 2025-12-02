@@ -4,7 +4,7 @@ import { run, RunState, RunToolApprovalItem, StreamedRunResult } from "@openai/a
 import { Request, Response } from "express";
 import { Jwt } from "../utility/jwt";
 import { AgentSession } from "./agents/Agent";
-import { toEventStream } from "./streaming";
+import { transformAgentStreamToModelEvents } from "./streaming";
 import type { Session } from "../server";
 import { ModelEvent, ModelRequest, SendModelRequest } from "../shared/ModelEvents";
 import chalk from "chalk";
@@ -108,21 +108,23 @@ export class AgentSocketServer {
     };
 
     private async streamResultWithInterruptions(ws: WebSocket, agent: IAgentSession<any>, result: StreamedRunResult<any, any>) {
-        let eventStream = await toEventStream(result, agent);
-
+        const eventStream = transformAgentStreamToModelEvents(result, {
+            onToolCallComplete: (callId) => agent.flushPendingActions?.(callId) || Promise.resolve([]),
+        });
+        
         for await (const event of eventStream) {
             this.sendMessage(ws, event);
         }
 
         if (result.interruptions && result.interruptions.length > 0) {
             const interruption: RunToolApprovalItem = result.interruptions[0] as RunToolApprovalItem;
-            console.log(chalk.yellow.bold("🔌 Interruption, requesting approval"), interruption.rawItem.name);
+            console.log(chalk.yellow.bold("🔌 Interruption, requesting approval"), interruption.name);
             this.pending.set(ws, { state: result.state, interruption });
             this.sendMessage(ws, {
                 type: 'ToolApprovalRequest',
                 step_id: (interruption.rawItem as any).callId,
-                name: interruption.rawItem.name,
-                arguments: interruption.rawItem.arguments
+                name: interruption.name,
+                arguments: interruption.arguments
             } as ModelEvent);
             return;
         }
@@ -130,8 +132,8 @@ export class AgentSocketServer {
         console.log(chalk.yellow.bold("🔌 Result final output"), result.finalOutput);
 
         agent.setHistory(result.history);
-
-        this.sendMessage(ws, { type: 'NaturalStop' });
+        
+        // NaturalStop is already sent by toEventStream
     }
 
     private async sendMessage(ws: WebSocket, message: ModelEvent) {
