@@ -44,7 +44,6 @@ export class RunHistoryChatMemorySession implements Session {
   async addItems(items: AgentInputItem[]): Promise<void> {
     if (items.length === 0) return;
     const prisma = db()
-    console.log('Adding items to memory session', items);
 
     // Get the current max sequence_order for this session to continue from there
     const maxSequence = await prisma.run_history_raw_events.findFirst({
