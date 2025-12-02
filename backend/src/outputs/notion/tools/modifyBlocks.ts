@@ -5,6 +5,7 @@ import chalk from "chalk";
 import { IntegrationType } from "../../../shared/Integrations";
 import { NotionPageSession } from "../NotionPageOutput";
 import { getBlockTypeName, describeBlocks } from "../../../utility/notion";
+import { SessionWithTracking } from "../../../agent/ChannelAgent/ChannelAgent";
 
 export const notionModifyBlocksTool = tool({
     name: 'notion_modify_blocks',
@@ -29,7 +30,7 @@ Examples:
 
 Example: "[{\"operation\": \"append\", \"blocks\": [{\"object\": \"block\", \"type\": \"paragraph\", \"paragraph\": {\"rich_text\": [{\"type\": \"text\", \"text\": {\"content\": \"New content\"}}]}}]}]"`),
     }),
-    execute: async ({ operations_json }, runContext?: RunContext<NotionPageSession>) => {
+    execute: async ({ operations_json }, runContext?: RunContext<SessionWithTracking<NotionPageSession>>) => {
         console.log(chalk.bgMagenta.white.bold('🛠️ Executing notion_modify_blocks tool'));
         console.log(chalk.cyan('  Operations JSON: '), chalk.greenBright(operations_json));
         // Parse the JSON string
@@ -98,8 +99,7 @@ Example: "[{\"operation\": \"append\", \"blocks\": [{\"object\": \"block\", \"ty
                     // Report action
                     const blockDescription = describeBlocks(op.blocks);
                     const pageName = runContext.context.notionPageConfig.page_name || 'Notion page';
-                    runContext.context.runActions = runContext.context.runActions || [];
-                    runContext.context.runActions.push({
+                    runContext.context.trackAction({
                         action: 'Added content',
                         integration: IntegrationType.NOTION,
                         target: pageName,
@@ -140,8 +140,7 @@ Example: "[{\"operation\": \"append\", \"blocks\": [{\"object\": \"block\", \"ty
                     // Report action
                     const pageName = runContext.context.notionPageConfig.page_name || 'Notion page';
                     const blockType = getBlockTypeName(op.block);
-                    runContext.context.runActions = runContext.context.runActions || [];
-                    runContext.context.runActions.push({
+                    runContext.context.trackAction({
                         action: 'Updated content',
                         integration: IntegrationType.NOTION,
                         target: pageName,
@@ -172,8 +171,7 @@ Example: "[{\"operation\": \"append\", \"blocks\": [{\"object\": \"block\", \"ty
 
                     // Report action
                     const pageName = runContext.context.notionPageConfig.page_name || 'Notion page';
-                    runContext.context.runActions = runContext.context.runActions || [];
-                    runContext.context.runActions.push({
+                    runContext.context.trackAction({
                         action: 'Removed content',
                         integration: IntegrationType.NOTION,
                         target: pageName,

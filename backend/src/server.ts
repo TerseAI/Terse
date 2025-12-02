@@ -33,7 +33,6 @@ import {
   getInstallationUrl,
   githubAppUnifiedEvent,
   githubAppInstallationDeleted,
-  processSetUpURLGithubInstallation,
   processsGithubAppInstallationWebhook,
   getGithubRepositoriesForIntegration,
   getGithubIntegrations,
@@ -61,7 +60,7 @@ import {
   getNotionResources,
   getNotionIntegrations
 } from "./routes/notion";
-import { getRunHistory } from "./routes/runHistory";
+import { getRunHistory, getChatHistory, getRunHistoryActions } from "./routes/runHistory";
 import { getStats } from "./routes/stats";
 import { User as TicketUser } from "./shared/TicketSystem";
 import {
@@ -81,7 +80,6 @@ import {
 import { getConfluenceIntegrations, getConfluenceResources } from "./routes/confluence";
 import { getActiveIntegrations, getAllIntegrations, getIntegrationInstallationDetails } from "./routes/integrations";
 import { initializeRealtimeSocket } from "./realtimeSocket";
-import { RunHistoryAction } from "./shared/RunHistoryTypes";
 
 export type Session = {
   user: User;
@@ -89,7 +87,6 @@ export type Session = {
   isUserInitiated: boolean; // true if the user has initiated the session, false if the session was initiated by the system
   teamId?: string;
   currentUser?: TicketUser;
-  runActions?: RunHistoryAction[];
 };
 
 const app = express();
@@ -192,8 +189,16 @@ app.get("/stats", authMiddleware, async (req, res) => {
 
 // MARK: RUN HISTORY
 
+app.get("/run-history/actions", authMiddleware, async (req, res) => {
+  getRunHistoryActions(req, res);
+});
+
 app.get("/run-history/:channelId", authMiddleware, async (req, res) => {
   getRunHistory(req, res);
+});
+
+app.get("/run-history/:runId/chat", authMiddleware, async (req, res) => {
+  getChatHistory(req, res);
 });
 
 // MARK: SESSION

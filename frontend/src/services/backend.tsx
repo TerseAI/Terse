@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { ModelEvent, ModelRequest } from "../shared/ModelEvents";
+import type { RunHistoryModelEvent, RunHistoryActionWithId } from "../shared/RunHistoryTypes";
 import {
     Channel,
     ChannelInput, 
@@ -214,21 +214,6 @@ interface BackendService {
     requestSessionSocketToken(): Promise<string>;
 
     /**
-     * Creates a completion socket
-     */
-    connectToCompletionSocket({
-        onMessageReceived,
-        onOpen,
-        onClose,
-        onError
-    }: {
-        onMessageReceived: (modelEvent: ModelEvent) => void,
-        onOpen: () => void,
-        onClose: () => void,
-        onError: (error: Event) => void
-    }): Promise<Connection>;
-
-    /**
      * Gets all channels for the user with pagination
      */
     getUserChannels(page?: number, limit?: number, isActive?: boolean, search?: string): Promise<ChannelsResponse>;
@@ -262,6 +247,16 @@ interface BackendService {
      * Fetch run history for a specific channel with filters and pagination
      */
     getRunHistory(channelId: string, params: GetRunHistoryParams): Promise<GetRunHistoryResponse>;
+
+    /**
+     * Fetch chat history for a specific run
+     */
+    getChatHistory(runId: string): Promise<{ events: Array<RunHistoryModelEvent>; startTimestamp?: string; endTimestamp?: string; status?: string }>;
+
+    /**
+     * Fetch run history actions by IDs
+     */
+    getRunHistoryActions(ids: string[]): Promise<RunHistoryActionWithId[]>;
 }
 
 export const BackendProvider: BackendService = {
@@ -590,14 +585,6 @@ export const BackendProvider: BackendService = {
             });
     },
 
-    connectToCompletionSocket: async ({ onMessageReceived, onOpen, onClose, onError }: { onMessageReceived: (modelEvent: ModelEvent) => void, onOpen: () => void, onClose: () => void, onError: (error: Event) => void }) => {
-        const token = await BackendProvider.requestSessionSocketToken();
-        const link = `${import.meta.env.VITE_WS_BASE}/session?token=${token}`;
-        console.log('Connecting to completion socket', link);
-        const socket = new WebSocket(link);
-        return new Connection(socket, onOpen, onClose, onError, onMessageReceived);
-    },
-
     getUserChannels: (page = 1, limit = 10, isActive?: boolean, search?: string) => {
         const params = new URLSearchParams();
         params.append('page', page.toString());
@@ -699,48 +686,27 @@ export const BackendProvider: BackendService = {
                 console.error('Error fetching run history:', error);
                 throw error;
             });
-    }
-}
+    },
 
-export class Connection {
-    socket: WebSocket;
-    onOpen: () => void;
-    onClose: () => void;
-    onError: (error: Event) => void;
-    onMessageReceived: (modelEvent: ModelEvent) => void;
+    getChatHistory: (runId) => {
+        const url = `${backendBaseUrl}/run-history/${encodeURIComponent(runId)}/chat`;
+        return axios.get<{ events: Array<RunHistoryModelEvent>; startTimestamp?: string; endTimestamp?: string; status?: string }>(url, { withCredentials: true })
+            .then(r => r.data)
+            .catch(error => {
+                console.error('Error fetching chat history:', error);
+                throw error;
+            });
+    },
 
-    constructor(socket: WebSocket, onOpen: () => void, onClose: () => void, onError: (error: Event) => void, onMessageReceived: (modelEvent: ModelEvent) => void) {
-        this.socket = socket;
-        this.onOpen = onOpen;
-        this.onClose = onClose;
-        this.onError = onError;
-        this.onMessageReceived = onMessageReceived;
-        this.socket.onopen = () => {
-            this.onOpen();
-        }
-        this.socket.onclose = () => {
-            this.onClose();
-        }
-        this.socket.onerror = (event) => {
-            this.onError(event);
-        }
-        this.socket.onmessage = (event) => {
-            const parsed = JSON.parse(event.data) as ModelEvent;
-            this.onMessageReceived(parsed);
-        }
-    }
-
-    sendMessage(message: ModelRequest) {
-        console.log("Sending message", message);
-        if (this.socket.readyState === WebSocket.OPEN) {
-            this.socket.send(JSON.stringify(message));
-        } else {
-            console.error("Socket is not open, readyState:", this.socket.readyState);
-            throw new Error("Socket is not open");
-        }
-    }
-
-    isReady(): boolean {
-        return this.socket.readyState === WebSocket.OPEN;
-    }
+    getRunHistoryActions: (ids) => {
+        const usp = new URLSearchParams();
+        usp.append('ids', ids.join(','));
+        const url = `${backendBaseUrl}/run-history/actions?${usp.toString()}`;
+        return axios.get<RunHistoryActionWithId[]>(url, { withCredentials: true })
+            .then(r => r.data)
+            .catch(error => {
+                console.error('Error fetching run history actions:', error);
+                throw error;
+            });
+    },
 }

@@ -5,12 +5,13 @@ import { InputEvent } from '../../integrations/abstract/InputEvent';
 import { OutputFactory } from '../../outputs/abstract/OutputFactory';
 import { ChannelAgent } from './ChannelAgent';
 import { filterEvent } from './EventFilter';
-import { appendRunAction, createRunRecord, finalizeRunStatus, markRunFailed, markRunProcessed, markRunSkipped, FailureStage } from './runHistory';
+import { createRunRecord, finalizeRunStatus, markRunFailed, markRunProcessed, markRunSkipped, appendRunAction } from './runHistory';
 import { ApprovalResult } from './ChannelAgent';
 import { Agent, AgentOutputType, RunResult } from '@openai/agents';
 import { Session } from '../../server';
 import { emitCacheInvalidationWithKey, emitCacheInvalidationWithWildcard } from '../../realtimeSocket';
 import { getInputConfigInclude, getOutputConfigInclude } from '../../utility/prismaIncludes';
+import { RunHistoryAction } from '../../shared/RunHistoryTypes';
 
 // The job of this class is to take an Input Event, and check if it's a match for an Channel.
 // It will then create a Session, and summon the Channel Agent with the create user data.
@@ -146,11 +147,18 @@ export class EventProcessor {
         // Filter the event using AI to see if it's relevant to this channel
         let filterResult;
         try {
-            filterResult = await filterEvent<Session>(
+            const filterResponse = await filterEvent<Session>(
                 this.inputEvent,
                 channel.prompt,
-                session
+                session,
+                {
+                    runId,
+                    userId: this.user.id,
+                    channelId: channel.id,
+                }
             );
+            
+            filterResult = filterResponse.result;
         } catch (error) {
             // Log the error and update run history
             const errorMessage = error instanceof Error ? error.message : 'Unknown error';
@@ -174,6 +182,8 @@ export class EventProcessor {
             console.log(chalk.gray(`Event is not relevant to channel "${channel.name}": ${filterResult.reason}`));
             try {
                 await markRunSkipped(runId, filterResult.reason);
+                // Emit cache invalidation to update UI
+                emitCacheInvalidationWithWildcard(this.user.id, 'runHistory', channel.id);
             } catch (e) {
                 console.error(chalk.yellow('Failed to mark run skipped'), e);
             }
@@ -189,14 +199,18 @@ export class EventProcessor {
         console.log(chalk.green(`Event is relevant to channel "${channel.name}"`));
 
         // Create channel agent with the session and output
-        const channelAgent = new ChannelAgent(session, output, channel.prompt, channel.inputs, outputIntegration);
+        const channelAgent = new ChannelAgent(session, output, channel, runId);
         await channelAgent.initializeAgent();
         channelAgent.setInputEvent(this.inputEvent);
 
-        // Run the channel agent
+        // Run the channel agent with streaming parameters
         let result: ApprovalResult<Session, Agent<Session, AgentOutputType>>;
         try {
-            result = await channelAgent.run() as ApprovalResult<Session, Agent<Session, AgentOutputType>>;
+            result = await channelAgent.run({
+                runId,
+                userId: this.user.id,
+                channelId: channel.id,
+            }) as unknown as ApprovalResult<Session, Agent<Session, AgentOutputType>>;
         } catch (error) {
             // Log the error and update run history
             const errorMessage = error instanceof Error ? error.message : 'Unknown error';
@@ -230,18 +244,6 @@ async function persistRunResult<T extends Session>(
     channel: Channel,
     approvalResult?: ApprovalResult<T, Agent<T, AgentOutputType>> | null
 ): Promise<ProcessorResult<T>> {
-    if (session.runActions) {
-        for (const action of session.runActions) {
-            try {
-                await appendRunAction(runId, action);
-                emitCacheInvalidationWithWildcard(session.user.id, 'runHistory', channel.id);
-                emitCacheInvalidationWithKey(session.user.id, 'recentActions');
-            } catch (e) {
-                console.error(chalk.yellow('Failed to append run action'), e);
-            }
-        };
-    }
-
     // Finalize run status
     const hasFinalOutput = Boolean(result.finalOutput);
     try {
@@ -259,4 +261,21 @@ async function persistRunResult<T extends Session>(
         channel,
         approvalResult
     );
+}
+
+export async function persistRunAction<T extends Session>(
+    runId: string,
+    channel: Channel,
+    session: T,
+    action: RunHistoryAction,
+): Promise<string | undefined> {
+    try {
+        const actionId = await appendRunAction(runId, action);
+        emitCacheInvalidationWithWildcard(session.user.id, 'runHistory', channel.id);
+        emitCacheInvalidationWithKey(session.user.id, 'recentActions');
+        return actionId;
+    } catch (e) {
+        console.error(chalk.yellow('Failed to append run action'), e);
+    }
+    return undefined;
 }

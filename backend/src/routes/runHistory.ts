@@ -3,8 +3,8 @@ import { Prisma } from "@prisma/client";
 import { db, PrismaClient } from "../prismaClient";
 import type { GetRunHistoryParams, GetRunHistoryResponse, RunHistoryRecord, RunHistoryStatus } from "../shared/RunHistoryTypes";
 import { parsePageParams } from "../utility/pagination";
-import { IntegrationType } from "../shared/Integrations";
 import { convertRunHistoryIntegrationToIntegrationType } from "../utility/typeConverters";
+import { ModelEvent } from "../shared/ModelEvents";
 
 // Valid status values for validation
 const VALID_STATUSES: RunHistoryStatus[] = ["success", "failed", "skipped", "in_progress"];
@@ -49,7 +49,6 @@ export async function getRunHistory(req: Request, res: Response) {
         { decision_reason: { contains: params.q, mode: "insensitive" } },
       ];
     }
-
     type RunHistoryRecordWithActions = Prisma.run_history_recordsGetPayload<{
       include: { actions: true };
     }>;
@@ -89,6 +88,7 @@ export async function getRunHistory(req: Request, res: Response) {
         target: action.target,
         details: action.details,
         url: action.url ?? undefined,
+        step_id: action.step_id ?? undefined,
       })),
       status: runRecord.status as RunHistoryStatus,
     }));
@@ -163,4 +163,110 @@ function parseGetRunHistoryParams(query: Request["query"]): GetRunHistoryParams 
   }
 
   return params;
+}
+
+/**
+ * Get chat history for a specific run
+ * Route: GET /api/run-history/:runId/chat
+ */
+export async function getChatHistory(req: Request, res: Response) {
+  try {
+    const prisma: PrismaClient = db();
+
+    // req.params contains URL path parameters
+    const runId = (req.params.runId as string | undefined)?.trim();
+    if (!runId) {
+      return res.status(400).json({ error: "runId is required" });
+    }
+
+    // Fetch the run record to get start/end timestamps
+    const runRecord = await prisma.run_history_records.findUnique({
+      where: { id: runId },
+      select: {
+        timestamp: true,
+        updated_at: true,
+        status: true,
+      },
+    });
+
+    if (!runRecord) {
+      return res.status(404).json({ error: "Run not found" });
+    }
+
+    // Fetch all chat events for this run, ordered by timestamp then id for deterministic ordering
+    const chatEvents = await prisma.run_history_chat_events.findMany({
+      where: {
+        run_history_record_id: runId,
+      },
+      orderBy: [
+        { timestamp: "asc" },
+        { id: "asc" }, // Secondary sort by id for deterministic ordering when timestamps are equal
+      ],
+    });
+
+    // Deserialize events directly from JSON, adding id and timestamp
+    const events = chatEvents.map((event) => {
+      const modelEvent = event.event_json as ModelEvent;
+      return {
+        ...modelEvent,
+        id: event.id,
+        timestamp: event.timestamp.toISOString(),
+      };
+    });
+
+    res.json({ 
+      events,
+      startTimestamp: runRecord.timestamp.toISOString(),
+      endTimestamp: runRecord.updated_at.toISOString(),
+      status: runRecord.status,
+    });
+  } catch (err) {
+    console.error("Failed to fetch chat history", err);
+    res.status(500).json({ error: "Failed to fetch chat history" });
+  }
+}
+
+/**
+ * Get run history actions by IDs
+ * Route: GET /api/run-history/actions?ids=id1,id2
+ */
+export async function getRunHistoryActions(req: Request, res: Response) {
+  try {
+    const prisma: PrismaClient = db();
+
+    // Get IDs from query params
+    const idsParam = (req.query.ids as string | undefined)?.trim();
+    if (!idsParam) {
+      return res.status(400).json({ error: "ids query parameter is required" });
+    }
+
+    const ids = idsParam.split(',').map(id => id.trim()).filter(Boolean);
+    
+    if (ids.length === 0) {
+      return res.json([]);
+    }
+
+    // Fetch actions by IDs
+    const actions = await prisma.run_history_actions.findMany({
+      where: {
+        id: { in: ids }
+      }
+    });
+
+    // Transform to API format
+    const result = actions.map(action => ({
+      id: action.id,
+      action: action.action,
+      integration: convertRunHistoryIntegrationToIntegrationType(action.integration),
+      target: action.target,
+      details: action.details,
+      url: action.url ?? undefined,
+      step_id: action.step_id ?? undefined,
+    }));
+
+    res.json(result);
+  } catch (err) {
+    console.error("Failed to fetch run history actions", err);
+    res.status(500).json({ error: "Failed to fetch run history actions" });
+  }
 }

@@ -1,6 +1,8 @@
 import { io, Socket } from 'socket.io-client';
 import { mutate } from 'swr';
 import { BackendProvider } from './services/backend';
+import type { RunHistoryModelSocketEvent } from './shared/RunHistoryTypes';
+import { ModelRequest } from './shared/ModelEvents';
 
 let socket: Socket | null = null;
 
@@ -62,9 +64,65 @@ export async function initializeSocket() {
     });
 }
 
+// Chat event subscription management
+type ChatEventCallback = (payload: RunHistoryModelSocketEvent) => void;
+
+const chatEventCallbacks = new Map<string, Set<ChatEventCallback>>();
+let chatEventListenerSetUp = false;
+
+function setupChatEventListener() {
+    if (!socket || chatEventListenerSetUp) {
+        return;
+    }
+
+    socket.on('channel:chat:event', (payload: RunHistoryModelSocketEvent) => {
+        const callbacks = chatEventCallbacks.get(payload.runId);
+        if (callbacks) {
+            callbacks.forEach((cb) => cb(payload));
+        }
+    });
+
+    chatEventListenerSetUp = true;
+}
+
+export function subscribeToChatEvents(runId: string, callback: ChatEventCallback): () => void {
+    if (!socket) {
+        console.warn('Socket not initialized, cannot subscribe to chat events');
+        return () => {};
+    }
+
+    // Set up the listener if not already done
+    setupChatEventListener();
+
+    if (!chatEventCallbacks.has(runId)) {
+        chatEventCallbacks.set(runId, new Set());
+    }
+
+    chatEventCallbacks.get(runId)!.add(callback);
+
+    // Return unsubscribe function
+    return () => {
+        const callbacks = chatEventCallbacks.get(runId);
+        if (callbacks) {
+            callbacks.delete(callback);
+            if (callbacks.size === 0) {
+                chatEventCallbacks.delete(runId);
+            }
+        }
+    };
+}
+
 export function disconnectSocket() {
     if (socket) {
         socket.disconnect();
         socket = null;
     }
+}
+
+export function sendChatMessage(runId: string | null, message: ModelRequest): void {
+    if (!socket || !socket.connected) {
+        console.warn('Socket not connected, cannot send message');
+        return;
+    }
+    socket.emit('channel:chat:message', { runId, message });
 }

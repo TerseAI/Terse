@@ -4,6 +4,7 @@ import { Client } from '@notionhq/client';
 import chalk from "chalk";
 import { IntegrationType } from "../../../shared/Integrations";
 import { NotionDatabaseSession } from "../NotionDatabaseOutput";
+import { SessionWithTracking } from "../../../agent/ChannelAgent/ChannelAgent";
 
 export const notionModifyPageTool = tool({
     name: 'notion_modify_page',
@@ -52,7 +53,7 @@ IMPORTANT:
     needsApproval: async (_context, { page_id, properties_json }) => {
         return false; // DISABLE UNTIL HUMAN IN THE LOOP IS IMPLEMENTED
     },
-    execute: async ({ page_id, properties_json }, runContext?: RunContext<NotionDatabaseSession>) => {
+    execute: async ({ page_id, properties_json }, runContext?: RunContext<SessionWithTracking<NotionDatabaseSession>>) => {
         console.log(chalk.bgMagenta.white.bold('🛠️ Executing notion_modify_page tool'));
         console.log(chalk.cyan('  Page ID: '), chalk.yellow(page_id ?? '(new page)'));
         console.log(chalk.cyan('  Properties JSON: '), chalk.greenBright(properties_json));
@@ -89,8 +90,7 @@ IMPORTANT:
                 });
                 // Report action (no DB writes here)
                 const databaseName = runContext.context.notionConfig.database_name || 'Notion database';
-                runContext.context.runActions = runContext.context.runActions || [];
-                runContext.context.runActions.push({
+                runContext.context.trackAction({
                     action: 'Updated page',
                     integration: IntegrationType.NOTION,
                     target: databaseName,
@@ -115,8 +115,7 @@ IMPORTANT:
                 console.log(chalk.green("Notion database modified successfully"));
                 // Report action (no DB writes here)
                 const databaseName = runContext.context.notionConfig.database_name || 'Notion database';
-                runContext.context.runActions = runContext.context.runActions || [];
-                runContext.context.runActions.push({
+                runContext.context.trackAction({
                     action: 'Created page',
                     integration: IntegrationType.NOTION,
                     target: databaseName,
