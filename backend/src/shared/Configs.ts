@@ -255,6 +255,8 @@ export class LinearConfig implements ConfigInstance {
 
     constructor(
         public integrationId: string,
+        public teamId?: string,
+        public teamName?: string,
         public projectId?: string,
         public projectName?: string,
     ) {
@@ -262,11 +264,17 @@ export class LinearConfig implements ConfigInstance {
 
     isComplete(): boolean {
         // Linear only requires integrationId (base check handled in isInputComplete)
+        // Team validation is handled in the UI based on input vs output context
         return true;
     }
 
     formatForAgent(): string {
         const parts = [`Type: Linear`, `Integration ID: ${this.integrationId}`];
+        if (this.teamName) {
+            parts.push(`Team: ${this.teamName}`);
+        } else if (this.teamId) {
+            parts.push(`Team ID: ${this.teamId}`);
+        }
         if (this.projectName) {
             parts.push(`Project: ${this.projectName}`);
         } else if (this.projectId) {

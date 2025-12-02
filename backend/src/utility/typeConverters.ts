@@ -155,6 +155,8 @@ export const convertPrismaConfigToConfigInstance = (channelInput: ChannelInputWi
     if (channelInput.linear_config) {
         return new LinearConfig(
             integrationId,
+            channelInput.linear_config.team_id || undefined,
+            channelInput.linear_config.team_name || undefined,
             channelInput.linear_config.project_id || undefined,
             channelInput.linear_config.project_name || undefined
         );
@@ -239,11 +241,22 @@ export const convertPrismaOutputConfigToConfigInstance = (channelOutput: Channel
         );
     }
 
+    if (channelOutput.linear_config) {
+        return new LinearConfig(
+            integrationId,
+            channelOutput.linear_config.team_id || undefined,
+            channelOutput.linear_config.team_name || undefined,
+            channelOutput.linear_config.project_id || undefined,
+            channelOutput.linear_config.project_name || undefined
+        );
+    }
+
     // Type guard to ensure we implement conversion here
     switch (channelOutput.config_type) {
         case OutputConfigType.NOTION_PAGE:
         case OutputConfigType.NOTION_DATABASE:
         case OutputConfigType.CONFLUENCE:
+        case OutputConfigType.LINEAR_TICKET:
             break;
         default:
             throw channelOutput.config_type satisfies never;
@@ -316,6 +329,8 @@ export const convertConfigTypeToOutputConfigType = (configType: ConfigType): Out
             return OutputConfigType.NOTION_DATABASE;
         case ConfigType.CONFLUENCE:
             return OutputConfigType.CONFLUENCE;
+        case ConfigType.LINEAR:
+            return OutputConfigType.LINEAR_TICKET;
         default:
             throw new Error(`ConfigType ${configType} is not a valid output config type. Only NOTION_PAGE, NOTION_DATABASE, and CONFLUENCE are supported.`);
     }
@@ -332,6 +347,8 @@ export const convertOutputConfigTypeToIntegrationType = (outputConfigType: Outpu
             return IntegrationType.NOTION;
         case OutputConfigType.CONFLUENCE:
             return IntegrationType.ATLASSIAN;
+        case OutputConfigType.LINEAR_TICKET:
+            return IntegrationType.LINEAR;
         default:
             throw outputConfigType satisfies never;
     }

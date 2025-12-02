@@ -71,7 +71,7 @@ export function OutputCard({
     }
 
     // Output needs configuration if there's no config OR if the config is not complete
-    const needsConfiguration = !output.config || !output.config.isComplete();
+    const needsConfiguration = !output.config || !output.config.isComplete(true);
 
     return (
         <Card>
@@ -87,7 +87,7 @@ export function OutputCard({
                 </CardTitle>
             </CardHeader>
             <CardContent className="max-w-xs">
-                <IntegrationSelector input={output} variant="dialog" setConfig={onSelect} />
+                <IntegrationSelector input={output} variant="dialog" setConfig={onSelect} isOutput={true} />
             </CardContent>
             <CardFooter>
                 <Button variant="destructive" onClick={handleRemove}>

@@ -67,8 +67,8 @@ function SaveChannelButton({
     // Each integration reports its own completeness
     const isComplete =
         inputs.length > 0 &&
-        inputs.every(i => i.config != null && i.config.isComplete()) &&
-        !!output && output.config.isComplete() &&
+        inputs.every(i => i.config != null && i.config.isComplete(false)) &&
+        !!output && output.config.isComplete(true) &&
         !!prompt?.text; // Ensure prompt is not empty
 
     const isEditMode = !!channelId;
@@ -247,13 +247,14 @@ function InputLayout({ inputs, setInputs }: { inputs: TransientChannelInput[], s
 
 function Input({ input, inputs, setInputs, handleRemove }: { input: TransientChannelInput, inputs: TransientChannelInput[], setInputs: (inputs: TransientChannelInput[]) => void, handleRemove: (id: string) => void }) {
     const isPlaceholder = input.config === undefined;
-    const needsConfiguration = !input.config || !input.config.isComplete();
+    const needsConfiguration = !input.config || !input.config.isComplete(false);
     const [showDetailsDialog, setShowDetailsDialog] = useState(false);
 
     const selectorProps: InputConfigSelectorProps = {
         input: input,
         setConfig: (config: ConfigInstance) => setInputs(inputs.map(i => i.id === input.id ? { ...i, config, configType: config.configType } : i)),
-        variant: "card"
+        variant: "card",
+        isOutput: false
     };
 
     let cardContent;
@@ -321,7 +322,7 @@ function OutputLayout({ output, setOutput }: { output: TransientChannelOutput | 
         setOutput({ id: output?.id || uuidv4(), config: config, configType: config.configType });
     };
 
-    const needsConfiguration = !output || !output.config || !output.config.isComplete();
+    const needsConfiguration = !output || !output.config || !output.config.isComplete(true);
 
     let cardContent;
     if (!output) {
@@ -346,7 +347,7 @@ function OutputLayout({ output, setOutput }: { output: TransientChannelOutput | 
         )
     } else {
         cardContent = (
-            <IntegrationSelector input={output} variant="dialog" setConfig={onSelect} />
+            <IntegrationSelector input={output} variant="dialog" setConfig={onSelect} isOutput={true} />
         );
     }
 

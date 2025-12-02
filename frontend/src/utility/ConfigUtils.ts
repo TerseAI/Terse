@@ -59,6 +59,8 @@ export function deserializeConfig(jsonConfig: any): ConfigInstance {
         case ConfigType.LINEAR:
             return new LinearConfig(
                 integrationId,
+                jsonConfig.teamId,
+                jsonConfig.teamName,
                 jsonConfig.projectId,
                 jsonConfig.projectName
             );

@@ -22,6 +22,7 @@ import {
   automation_notion_configs,
   automation_notion_page_configs,
   automation_confluence_configs,
+  automation_linear_configs,
   PrismaClient
 } from '@prisma/client';
 
@@ -118,6 +119,9 @@ export type ChannelNotionPageConfig = automation_notion_page_configs; // Alias f
 export type AutomationConfluenceConfig = automation_confluence_configs;
 export type ChannelConfluenceConfig = automation_confluence_configs; // Alias for rebranding
 
+export type AutomationLinearConfig = automation_linear_configs;
+export type ChannelLinearConfig = automation_linear_configs; // Alias for rebranding
+
 export type AutomationWithInputRelations = Prisma.automationsGetPayload<{
   include: {
     inputs: { 
@@ -192,5 +196,6 @@ export {
   notion_integrations,
   automation_notion_configs,
   automation_notion_page_configs,
-  automation_confluence_configs
+  automation_confluence_configs,
+  automation_linear_configs
 }; 
