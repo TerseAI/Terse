@@ -33,7 +33,6 @@ import {
   getInstallationUrl,
   githubAppUnifiedEvent,
   githubAppInstallationDeleted,
-  processSetUpURLGithubInstallation,
   processsGithubAppInstallationWebhook,
   getGithubRepositoriesForIntegration,
   getGithubIntegrations,
@@ -81,7 +80,6 @@ import {
 import { getConfluenceIntegrations, getConfluenceResources } from "./routes/confluence";
 import { getActiveIntegrations, getAllIntegrations, getIntegrationInstallationDetails } from "./routes/integrations";
 import { initializeRealtimeSocket } from "./realtimeSocket";
-import { RunHistoryAction } from "./shared/RunHistoryTypes";
 
 export type Session = {
   user: User;
