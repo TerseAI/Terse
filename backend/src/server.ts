@@ -413,7 +413,7 @@ app.get("/integrations/active", authMiddleware, async (req, res) => {
 app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
   console.error("❌ Express Error Handler:", err);
   console.error("Stack:", err.stack);
-  res.json({
+  res.status(500).json({
     error: "Internal server error" 
   });
 });
