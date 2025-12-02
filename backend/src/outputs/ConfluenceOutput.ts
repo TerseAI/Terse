@@ -260,6 +260,7 @@ To find the correct position, first call confluence_query_page to see the page c
                 integration: IntegrationType.ATLASSIAN,
                 target: pageName,
                 details: commentPreview,
+                type: 'create',
             });
 
             return {

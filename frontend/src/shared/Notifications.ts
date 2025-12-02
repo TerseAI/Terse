@@ -16,6 +16,4 @@ export interface EmailNotificationChannel extends NotificationChannel {
 export interface SlackNotificationChannel extends NotificationChannel {
     integrationId: string;
     type: NotificationChannelType.SLACK;
-    slackChannelId: string;
-    slackTeamId: string;
 }

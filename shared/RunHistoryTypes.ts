@@ -3,6 +3,7 @@ import type { ModelEvent } from "./ModelEvents";
 
 export type RunHistoryStatus = "success" | "failed" | "skipped" | "in_progress";
 export type RunHistoryDecisionAction = "processed" | "skipped";
+export type RunHistoryActionType = "create" | "update" | "delete" | "read";
 
 export type RunHistoryAction = {
    // What action was taken (free-text, e.g. "create database entry", "send notification")
@@ -17,6 +18,8 @@ export type RunHistoryAction = {
    url?: string; 
    // The step_id of the tool call that generated this action
    step_id?: string;
+   // The type of action that was taken
+   type: RunHistoryActionType;
 }
 
 export type RunHistoryActionWithId = RunHistoryAction & {

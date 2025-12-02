@@ -96,6 +96,7 @@ IMPORTANT:
                     target: databaseName,
                     details: 'Updated page in database',
                     url: 'url' in response ? (response as any).url : undefined,
+                    type: 'update',
                 });
                 return {
                     success: true,
@@ -121,6 +122,7 @@ IMPORTANT:
                     target: databaseName,
                     details: 'Created new page in database',
                     url: 'url' in response ? (response as any).url : undefined,
+                    type: 'create',
                 });
                 return {
                     success: true,
