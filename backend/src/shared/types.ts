@@ -1,5 +1,6 @@
 import { Project, Ticket } from "./TicketSystem";
 import { ConfigInstance, ConfigType } from "./Configs";
+import { RunHistoryActionType } from "./RunHistoryTypes";
 
 export type User = {
   id: string;
@@ -396,6 +397,7 @@ export interface RecentAction {
   url?: string;
   timestamp: string; // ISO date string
   channelName: string;
+  type: RunHistoryActionType;
 }
 
 export interface StatsResponse {
