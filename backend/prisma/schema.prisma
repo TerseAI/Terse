@@ -766,6 +766,7 @@ enum RunHistoryChatEventType {
   NaturalStop
   Failure
   FilterResult
+  UserMessage
 }
 
 // Run History tables

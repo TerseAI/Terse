@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { useChatHistory } from '@/hooks/api/useChatHistory';
 import { Chat } from '@/components/chat/Chat';
 import { RunHistoryStatus} from '@/shared/RunHistoryTypes';
-import { Failure, FilterResult, ModelEvent, ModelRequest, TextDelta, ToolCall, ToolCallComplete } from '@/shared/ModelEvents';
+import { Failure, FilterResult, ModelEvent, ModelRequest, TextDelta, ToolCall, ToolCallComplete, UserMessage } from '@/shared/ModelEvents';
 import { Turn } from '@/components/chat/Turn';
 import { subscribeToChatEvents, sendChatMessage } from '@/socket';
 import { type ChatEventSubscription } from '@/components/chat/hooks/useCompletionSocket';
@@ -25,12 +25,12 @@ type RunHistoryChatAdapterProps = {
 
 export default function RunHistoryChatAdapter({ runId, status, children}: RunHistoryChatAdapterProps) {
     // Fetch History (API)
-    const { events, isLoading, status: apiStatus, startTimestamp, endTimestamp } = useChatHistory(runId);
+    const { events, isLoading, startTimestamp, endTimestamp } = useChatHistory(runId);
 
     const historicalEvents = events.map((event) => ({...event, isHistorical: true}));
 
     // Use API status if available, otherwise fall back to prop status
-    const currentStatus = (apiStatus as RunHistoryStatus) || status;
+    const currentStatus = status;
     const isActiveRun = currentStatus === 'in_progress';
 
     // Convert to Turns
@@ -96,6 +96,18 @@ function convertRunHistoryEventsToTurns(events: ModelEvent[]): Turn[] {
 
     events.forEach(event => {
         switch (event.type) {
+            case 'UserMessage': {
+                const e = event as UserMessage;
+                turns.push({
+                    role: 'user',
+                    text: e.message,
+                    function_calls: [],
+                    step_id: 'user',
+                    isGenerating: false,
+                    disableAnimation: true
+                });
+                break;
+            }
             case 'FilterResult': {
                 const e = event as FilterResult;
                 turns.push({

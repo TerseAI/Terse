@@ -5,13 +5,14 @@ import { createAdapter } from "@socket.io/redis-adapter";
 import { Jwt } from "./utility/jwt";
 import chalk from "chalk";
 import { urls, nodeEnv, optional } from "./config/settings";
-import { SendModelRequest } from "./shared/ModelEvents";
+import { SendModelRequest, ModelEvent } from "./shared/ModelEvents";
 import { db } from "./prismaClient";
 import { ChannelAgent } from "./agent/ChannelAgent/ChannelAgent";
 import { ChannelWithRelations } from "./types/prisma";
 import { getInputConfigInclude, getOutputConfigInclude } from './utility/prismaIncludes';
 import { OutputFactory } from "./outputs/abstract/OutputFactory";
 import { Session } from "./server";
+import { storeChatEvent, markRunFailed, finalizeRunStatus } from "./agent/ChannelAgent/runHistory";
 
 // Extended Socket type with userId property
 interface AuthenticatedSocket extends Socket {
@@ -188,13 +189,56 @@ export async function initializeRealtimeSocket(server: HttpServer): Promise<Serv
 
             const userMessage = message.user_message;
 
+            // Ensure run status is 'in_progress' so streaming works
+            if (runRecord.status !== 'in_progress') {
+                await prisma.run_history_records.update({
+                    where: { id: runId },
+                    data: { status: 'in_progress' },
+                });
+            }
+            const userMessageEvent: ModelEvent = {
+                type: 'UserMessage',
+                message: userMessage,
+            };
+            await storeChatEvent(runId, userMessageEvent);
+            emitCacheInvalidationWithWildcard(user.id, 'runHistory', channel.id);
+            emitCacheInvalidationWithWildcard(user.id, 'chatHistory', runId);
+
+
             const channelAgent = new ChannelAgent(session, output, channel, runId);
             await channelAgent.initializeAgent();
-            await channelAgent.userMessageRun(userMessage, {
-                runId,
-                userId: userId,
-                channelId: channel.id,
-            });
+            
+            let result;
+            try {
+                result = await channelAgent.userMessageRun(userMessage, {
+                    runId,
+                    userId: userId,
+                    channelId: channel.id,
+                });
+            } catch (error) {
+                // Log the error and update run history
+                const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+                console.error(chalk.red.bold(`[channel:chat:message] Error running channel agent: ${errorMessage}`), error);
+                
+                try {
+                    await markRunFailed(runId, errorMessage, 'agent');
+                    emitCacheInvalidationWithWildcard(userId, 'runHistory', channel.id);
+                } catch (e) {
+                    console.error(chalk.yellow('Failed to mark run as failed'), e);
+                }
+                return;
+            }
+
+            // Finalize run status based on result, just like in EventProcessor
+            if (result.status === 'completed') {
+                const hasFinalOutput = Boolean(result.result?.finalOutput);
+                try {
+                    await finalizeRunStatus(runId, hasFinalOutput ? 'success' : 'failed');
+                    emitCacheInvalidationWithWildcard(userId, 'runHistory', channel.id);
+                } catch (e) {
+                    console.error(chalk.yellow('Failed to finalize run status'), e);
+                }
+            }
         });
 
         // presence: mark online (60s TTL), refresh every 25s (only if Redis is available)
