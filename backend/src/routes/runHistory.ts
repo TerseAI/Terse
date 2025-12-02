@@ -89,6 +89,7 @@ export async function getRunHistory(req: Request, res: Response) {
         details: action.details,
         url: action.url ?? undefined,
         step_id: action.step_id ?? undefined,
+        type: action.type,
       })),
       status: runRecord.status as RunHistoryStatus,
     }));

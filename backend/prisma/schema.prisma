@@ -792,7 +792,7 @@ model run_history_records {
   created_at          DateTime                 @default(now())
   updated_at          DateTime                 @updatedAt
 
-  automation       automations           @relation(fields: [automation_id], references: [id], onDelete: Cascade)
+  automation       automations               @relation(fields: [automation_id], references: [id], onDelete: Cascade)
   actions          run_history_actions[]
   pending_approval pending_approvals?
   chat_events      run_history_chat_events[]
@@ -812,12 +812,20 @@ model run_history_actions {
   details               String
   url                   String?
   step_id               String?
+  type                  RunHistoryActionType
   created_at            DateTime              @default(now())
 
   run_history_record run_history_records @relation(fields: [run_history_record_id], references: [id], onDelete: Cascade)
 
   @@index([run_history_record_id])
   @@index([step_id])
+}
+
+enum RunHistoryActionType {
+  create
+  update
+  delete
+  read
 }
 
 // Pending approvals for tools that require human approval
@@ -840,12 +848,12 @@ model pending_approvals {
 
 // Chat events from ChannelAgent streaming
 model run_history_chat_events {
-  id                    String   @id @default(cuid())
+  id                    String                  @id @default(cuid())
   run_history_record_id String
   event_type            RunHistoryChatEventType
-  event_json            Json     // Full ModelEvent stored as JSON for easy deserialization
-  timestamp             DateTime  @default(now())
-  created_at            DateTime  @default(now())
+  event_json            Json // Full ModelEvent stored as JSON for easy deserialization
+  timestamp             DateTime                @default(now())
+  created_at            DateTime                @default(now())
 
   run_history_record run_history_records @relation(fields: [run_history_record_id], references: [id], onDelete: Cascade)
 
@@ -857,8 +865,8 @@ model run_history_chat_events {
 model run_history_raw_events {
   id                    String   @id @default(cuid())
   run_history_record_id String
-  raw_event_json        Json     // Raw AgentStreamEvent stored as JSON for easy loading into OpenAI agent history
-  sequence_order        Int      // Order of items within a session to preserve exact sequence
+  raw_event_json        Json // Raw AgentStreamEvent stored as JSON for easy loading into OpenAI agent history
+  sequence_order        Int // Order of items within a session to preserve exact sequence
   created_at            DateTime @default(now())
 
   run_history_record run_history_records @relation(fields: [run_history_record_id], references: [id], onDelete: Cascade)
@@ -867,3 +875,18 @@ model run_history_raw_events {
   @@index([run_history_record_id, sequence_order])
   @@index([created_at])
 }
+
+// MARK: - Notifications
+
+// model slack_notification_channels {
+//   id              String   @id @default(cuid())
+//   user_id         String
+//   integration_id  String
+//   created_at      DateTime @default(now())
+//   updated_at      DateTime @updatedAt
+
+//   user              users              @relation(fields: [user_id], references: [id], onDelete: Cascade)
+//   slack_integration slack_integrations @relation(fields: [integration_id], references: [id], onDelete: Cascade)
+
+//   @@unique([user_id, integration_id])
+// }
