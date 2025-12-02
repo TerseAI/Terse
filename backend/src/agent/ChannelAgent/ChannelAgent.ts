@@ -16,6 +16,8 @@ import { EntityType } from '../../shared/Entities';
 import { ChangedItem, ChangeEventType } from '../../shared/ModelEvents';
 import { persistRunAction } from './EventProcessor';
 import { processModelEventStream } from './StreamProcessor';
+import { RunHistoryChatMemorySession } from './CustomMemorySession';
+import chalk from 'chalk';
 
 
 export class ChannelAgent<T extends Session, TConfig extends ConfigInstance> {
@@ -23,27 +25,25 @@ export class ChannelAgent<T extends Session, TConfig extends ConfigInstance> {
     private session: T;
     private inputEvent: InputEvent | null = null;
     private channel: ChannelWithRelations;
-    private channelPrompt: ChannelPrompt;
-    private channelInputs: ChannelInput[];
-    private channelOutput: ChannelOutput;
     private output: Output<T, TConfig>;
     private agent?: Agent<SessionWithTracking<T>, AgentOutputType>;
     private tools: Tool<SessionWithTracking<T>>[] = [];
     private runId: string;
     private toolToIntegrationMap: Map<string, string> = new Map();
     private pendingActions: RunHistoryAction[] = [];
+    private memorySession: RunHistoryChatMemorySession;
 
     constructor(session: T, output: Output<T, TConfig>, channel: ChannelWithRelations, runId: string) {
         this.history = [];
         this.session = session;
         this.output = output;
         this.channel = channel;
-        this.channelPrompt = channel.prompt as ChannelPrompt;
-        this.channelInputs = channel.inputs as ChannelInput[];
-        this.channelOutput = channel.output as ChannelOutput;
         this.tools = output.toolbox.map(entry => entry.tool);
         this.runId = runId;
         this.buildToolIntegrationMap();
+        this.memorySession = new RunHistoryChatMemorySession({
+            sessionId: runId,
+        });
     }
 
     async run(streamingParams?: RunHistoryStreamingParams): Promise<ApprovalResult<SessionWithTracking<T>, Agent<SessionWithTracking<T>, AgentOutputType>>> {
@@ -63,11 +63,39 @@ export class ChannelAgent<T extends Session, TConfig extends ConfigInstance> {
         const result = await run(this.agent, this.history, {
             context: this.getToolContext(),
             stream: true,
+            session: this.memorySession,
+            sessionInputCallback: recentHistoryCallback, 
         });
 
         await this.processStream(result, streamingParams);
 
         return this.buildResult(result);
+    }
+
+    async userMessageRun(userMessage: string, streamingParams?: RunHistoryStreamingParams): Promise<ApprovalResult<SessionWithTracking<T>, Agent<SessionWithTracking<T>, AgentOutputType>>> {
+        await this.initializeAgent();
+
+        if (!this.agent) {
+            throw new Error("Agent not initialized. Call initializeAgent() before run()");
+        }
+
+        this.history.push({ role: 'user', content: userMessage });
+
+        this.history.forEach((item) => {
+            console.log(chalk.blue.bold(`[ChannelAgent] userMessageRun: ${item}`));
+        })
+
+        const result = await run(this.agent, this.history, {
+            context: this.getToolContext(),
+            stream: true,
+            session: this.memorySession,
+            sessionInputCallback: recentHistoryCallback,
+        });
+
+        await this.processStream(result, streamingParams);
+
+        return this.buildResult(result);
+        
     }
 
     async resume(
@@ -173,15 +201,15 @@ ${UserFormatter.formatForAgent(this.session.user)}
 </USER_CONTEXT>
 
 <USER_INSTRUCTIONS>
-${this.channelPrompt.content || 'No instructions provided'}
+${this.channel.prompt?.content || 'No instructions provided'}
 </USER_INSTRUCTIONS>
 
 <CHANNEL_INPUTS>
-${formatChannelInputsForAgent(this.channelInputs)}
+${formatChannelInputsForAgent(this.channel.inputs as ChannelInput[])}
 </CHANNEL_INPUTS>
 
 <OUTPUT_DESTINATION>
-${formatChannelOutputForAgent(this.channelOutput)}
+${formatChannelOutputForAgent(this.channel.output as ChannelOutput)}
 </OUTPUT_DESTINATION>
 
 <EVENT>
@@ -259,6 +287,16 @@ ${this.inputEvent!.formatForChannelAgent()}
         };
     }
 }
+
+/**
+ * Controls how many messages are stored in the memory session before
+ * they are trimmed.
+ */
+const recentHistoryCallback = (history: AgentInputItem[], newItems: AgentInputItem[]): AgentInputItem[] => {
+    const recentHistory = history.slice(-100);
+    return [...recentHistory, ...newItems];
+}
+
 
 export type SessionWithTracking<T extends Session> = T & {
     trackAction(action: RunHistoryAction): void;
