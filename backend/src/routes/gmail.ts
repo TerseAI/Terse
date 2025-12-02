@@ -125,13 +125,14 @@ export async function handleGmailWebhook(req: Request, res: Response) {
   res.status(200).send('OK');
 
   const gmailIntegration = new GmailIntegrationManager();
-  gmailIntegration.processWebhookEvent({
-    emailAddress: webhookData.emailAddress,
-    historyId: webhookData.historyId,
-  }).catch((error) => {
-    console.error('Error processing Gmail webhook (async):', error);
-    // Error is logged but doesn't crash the server since we already acknowledged
-  });
+  try {
+    await gmailIntegration.processWebhookEvent({
+      emailAddress: webhookData.emailAddress,
+      historyId: webhookData.historyId,
+    })
+  } catch (error) {
+    console.error('Error processing Gmail webhook:', error);
+  }
 }
 
 
