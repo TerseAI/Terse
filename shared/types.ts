@@ -185,6 +185,10 @@ export interface FigmaCommentImageUrls {
   fullFrame?: string;      // Full frame/page image
 }
 
+/**
+ * Figma positioning data structures
+ * Represents the position and type of a comment in a Figma file
+ */
 export type FigmaVectorData = {
   x: number;
   y: number;
