@@ -332,7 +332,7 @@ export const convertConfigTypeToOutputConfigType = (configType: ConfigType): Out
         case ConfigType.LINEAR:
             return OutputConfigType.LINEAR_TICKET;
         default:
-            throw new Error(`ConfigType ${configType} is not a valid output config type. Only NOTION_PAGE, NOTION_DATABASE, and CONFLUENCE are supported.`);
+            throw new Error(`ConfigType ${configType} is not a valid output config type. Supported output config types are: NOTION_PAGE, NOTION_DATABASE, CONFLUENCE, LINEAR.`);
     }
 }
 
