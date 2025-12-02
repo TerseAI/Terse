@@ -112,7 +112,7 @@ export interface ConfigInstance {
     integrationId: string;
     integrationType: IntegrationType;
     configType: ConfigType;
-    isComplete(isOutput?: boolean): boolean;
+    isComplete(_isOutput?: boolean): boolean;
     formatForAgent(): string;
 }
 
@@ -262,16 +262,12 @@ export class LinearConfig implements ConfigInstance {
     ) {
     }
 
-    isComplete(isOutput?: boolean): boolean {
-        // Linear requires integrationId
-        if (!this.integrationId) {
-            return false;
+    isComplete(_isOutput?: boolean): boolean {
+        // Linear requires teamId when used as an output config
+        if (_isOutput) {
+            return !!this.teamId;
         }
-        // If this is for output, teamId is required
-        if (isOutput && !this.teamId) {
-            return false;
-        }
-        // For input, teamId is optional
+        // Linear only requires integrationId for input (base check handled in isInputComplete)
         return true;
     }
 

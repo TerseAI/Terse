@@ -112,7 +112,7 @@ export interface ConfigInstance {
     integrationId: string;
     integrationType: IntegrationType;
     configType: ConfigType;
-    isComplete(): boolean;
+    isComplete(_isOutput?: boolean): boolean;
     formatForAgent(): string;
 }
 
@@ -125,7 +125,7 @@ export class GmailConfig implements ConfigInstance {
     ) {
     }
 
-    isComplete(): boolean {
+    isComplete(_isOutput?: boolean): boolean {
         // Gmail only requires integrationId (base check handled in isInputComplete)
         return true;
     }
@@ -147,7 +147,7 @@ export class FigmaConfig implements ConfigInstance {
     ) {
     }
 
-    isComplete(): boolean {
+    isComplete(_isOutput?: boolean): boolean {
         // Figma requires both fileKey and teamId
         return !!(this.fileKey && this.teamId);
     }
@@ -176,7 +176,7 @@ export class SlackConfig implements ConfigInstance {
     ) {
     }
 
-    isComplete(): boolean {
+    isComplete(_isOutput?: boolean): boolean {
         // Slack is complete if either channelId is set OR listenToUserDms is true
         return !!(this.channelId || this.listenToUserDms);
     }
@@ -206,7 +206,7 @@ export class NotionConfig implements ConfigInstance {
     ) {
     }
 
-    isComplete(): boolean {
+    isComplete(_isOutput?: boolean): boolean {
         // Notion requires databaseId
         return !!this.databaseId;
     }
@@ -233,7 +233,7 @@ export class NotionPageConfig implements ConfigInstance {
     ) {
     }
 
-    isComplete(): boolean {
+    isComplete(_isOutput?: boolean): boolean {
         // Notion Page requires pageId
         return !!this.pageId;
     }
@@ -255,18 +255,29 @@ export class LinearConfig implements ConfigInstance {
 
     constructor(
         public integrationId: string,
+        public teamId?: string,
+        public teamName?: string,
         public projectId?: string,
         public projectName?: string,
     ) {
     }
 
-    isComplete(): boolean {
-        // Linear only requires integrationId (base check handled in isInputComplete)
+    isComplete(_isOutput?: boolean): boolean {
+        // Linear requires teamId when used as an output config
+        if (_isOutput) {
+            return !!this.teamId;
+        }
+        // Linear only requires integrationId for input (base check handled in isInputComplete)
         return true;
     }
 
     formatForAgent(): string {
         const parts = [`Type: Linear`, `Integration ID: ${this.integrationId}`];
+        if (this.teamName) {
+            parts.push(`Team: ${this.teamName}`);
+        } else if (this.teamId) {
+            parts.push(`Team ID: ${this.teamId}`);
+        }
         if (this.projectName) {
             parts.push(`Project: ${this.projectName}`);
         } else if (this.projectId) {
@@ -286,7 +297,7 @@ export class GitHubConfig implements ConfigInstance {
     ) {
     }
 
-    isComplete(): boolean {
+    isComplete(_isOutput?: boolean): boolean {
         // GitHub only requires integrationId (base check handled in isInputComplete)
         return true;
     }
@@ -311,7 +322,7 @@ export class JiraConfig implements ConfigInstance {
     ) {
     }
 
-    isComplete(): boolean {
+    isComplete(_isOutput?: boolean): boolean {
         // Jira only requires integrationId (base check handled in isInputComplete)
         return true;
     }
@@ -340,7 +351,7 @@ export class ConfluenceConfig implements ConfigInstance {
     ) {
     }
 
-    isComplete(): boolean {
+    isComplete(_isOutput?: boolean): boolean {
         // Confluence only requires integrationId (base check handled in isInputComplete)
         return true;
     }
