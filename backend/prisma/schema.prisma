@@ -795,6 +795,7 @@ model run_history_records {
   actions          run_history_actions[]
   pending_approval pending_approvals?
   chat_events      run_history_chat_events[]
+  raw_events       run_history_raw_events[]
 
   @@index([automation_id])
   @@index([status])
@@ -849,4 +850,19 @@ model run_history_chat_events {
 
   @@index([run_history_record_id])
   @@index([timestamp])
+}
+
+// Raw AgentStreamEvent stored as JSON for easy loading into OpenAI agent history
+model run_history_raw_events {
+  id                    String   @id @default(cuid())
+  run_history_record_id String
+  raw_event_json        Json     // Raw AgentStreamEvent stored as JSON for easy loading into OpenAI agent history
+  sequence_order        Int      // Order of items within a session to preserve exact sequence
+  created_at            DateTime @default(now())
+
+  run_history_record run_history_records @relation(fields: [run_history_record_id], references: [id], onDelete: Cascade)
+
+  @@index([run_history_record_id])
+  @@index([run_history_record_id, sequence_order])
+  @@index([created_at])
 }

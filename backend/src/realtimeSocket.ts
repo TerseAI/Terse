@@ -5,7 +5,13 @@ import { createAdapter } from "@socket.io/redis-adapter";
 import { Jwt } from "./utility/jwt";
 import chalk from "chalk";
 import { urls, nodeEnv, optional } from "./config/settings";
-import { ModelRequest } from "./shared/ModelEvents";
+import { SendModelRequest } from "./shared/ModelEvents";
+import { db } from "./prismaClient";
+import { ChannelAgent } from "./agent/ChannelAgent/ChannelAgent";
+import { ChannelWithRelations } from "./types/prisma";
+import { getInputConfigInclude, getOutputConfigInclude } from './utility/prismaIncludes';
+import { OutputFactory } from "./outputs/abstract/OutputFactory";
+import { Session } from "./server";
 
 // Extended Socket type with userId property
 interface AuthenticatedSocket extends Socket {
@@ -105,15 +111,90 @@ export async function initializeRealtimeSocket(server: HttpServer): Promise<Serv
         socket.join(room);
 
         // Listen for channel chat messages
-        socket.on("channel:chat:message", async (payload: { runId: string | null; message: ModelRequest }) => {
+        socket.on("channel:chat:message", async (payload: { runId: string | null; message: SendModelRequest }) => {
             const { runId, message } = payload;
             console.log(chalk.blue.bold(`[channel:chat:message] Received message for runId: ${runId}`), message, userId);
+            if (!runId) {
+                console.error(chalk.red.bold(`[channel:chat:message] No runId provided for message: ${message}`));
+                return;
+            }
+            const prisma = db();
+            const runRecord = await prisma.run_history_records.findUnique({
+                where: {
+                    id: runId
+                },
+                include: {
+                    automation: true
+                }
+            });
+            if (!runRecord || !runRecord.automation || runRecord.automation.user_id !== userId) {
+                console.error(chalk.red.bold(`[channel:chat:message] Run record not found for runId: ${runId} or user does not have access to this run`));
+                return;
+            }
+
+            const channel: ChannelWithRelations = await prisma.automations.findUnique({
+                where: {
+                    id: runRecord.automation.id,
+                    user_id: userId
+                },
+                include: {
+                    prompt: true,
+                    inputs: {
+                        include: getInputConfigInclude()
+                    },
+                    output: {
+                        include: getOutputConfigInclude()
+                    }
+                }
+            }) as ChannelWithRelations;
+
+            const outputIntegration = channel.output;
+            if (!outputIntegration) {
+                console.error(chalk.red.bold(`[channel:chat:message] No output integration found for channel: ${channel.id}`));
+                return;
+            }
+
+            // Use OutputFactory to create output based on config type (no hardcoded Notion logic)
+            const output = OutputFactory.createOutput(outputIntegration.config_type);
+            if (!output) {
+                console.error(chalk.red.bold(`[channel:chat:message] Output type ${outputIntegration.config_type} is not supported for channel: ${channel.id}`));
+                return;
+            }
+
+            const user = await prisma.users.findUnique({
+                where: {
+                    id: userId
+                }
+            });
+            if(!user) {
+                console.error(chalk.red.bold(`[channel:chat:message] User not found for userId: ${userId}`));
+                return;
+            }
             
-            // TODO: Implement message processing logic here
-            // This could involve:
-            // 1. Getting the run record to find the channelId
-            // 2. Creating/continuing a ChannelAgent for that channel
-            // 3. Processing the message and streaming the response back
+
+            // Use output's config-aware session creation (no hardcoded config extraction)
+            // Each output type knows how to fetch its own integration and extract its config
+            let session: Session;
+            try {
+                session = await output.createSessionFromConfig(
+                    outputIntegration.integration_id,
+                    outputIntegration,
+                    user
+                );
+            } catch (error) {
+                console.error(chalk.red.bold(`[channel:chat:message] Failed to create session: ${error}`));
+                return;
+            }
+
+            const userMessage = message.user_message;
+
+            const channelAgent = new ChannelAgent(session, output, channel, runId);
+            await channelAgent.initializeAgent();
+            await channelAgent.userMessageRun(userMessage, {
+                runId,
+                userId: userId,
+                channelId: channel.id,
+            });
         });
 
         // presence: mark online (60s TTL), refresh every 25s (only if Redis is available)
