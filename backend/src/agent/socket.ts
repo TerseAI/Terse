@@ -118,13 +118,13 @@ export class AgentSocketServer {
 
         if (result.interruptions && result.interruptions.length > 0) {
             const interruption: RunToolApprovalItem = result.interruptions[0] as RunToolApprovalItem;
-            console.log(chalk.yellow.bold("🔌 Interruption, requesting approval"), interruption.rawItem.name);
+            console.log(chalk.yellow.bold("🔌 Interruption, requesting approval"), interruption.name);
             this.pending.set(ws, { state: result.state, interruption });
             this.sendMessage(ws, {
                 type: 'ToolApprovalRequest',
                 step_id: (interruption.rawItem as any).callId,
-                name: interruption.rawItem.name,
-                arguments: interruption.rawItem.arguments
+                name: interruption.name,
+                arguments: interruption.arguments
             } as ModelEvent);
             return;
         }
