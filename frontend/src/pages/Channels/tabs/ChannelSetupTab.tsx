@@ -347,7 +347,7 @@ function OutputLayout({ output, setOutput }: { output: TransientChannelOutput | 
         )
     } else {
         cardContent = (
-            <IntegrationSelector input={output} variant="dialog" setConfig={onSelect} isOutput={true} />
+            <IntegrationSelector input={output} variant="dialog" setConfig={onSelect} />
         );
     }
 
