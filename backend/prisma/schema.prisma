@@ -578,6 +578,8 @@ model automation_linear_configs {
   automation_input_id  String? @unique // FK to automation_inputs (mutually exclusive with output_id)
   automation_output_id String? @unique // FK to automation_outputs (unique constraint)
 
+  team_id   String? // Team ID (required for output, optional for input)
+  team_name String? // Team display name (for UI, optional)
   project_id   String? // Project ID (optional - scopes to specific project)
   project_name String? // Project display name (for UI, optional)
 
@@ -588,6 +590,7 @@ model automation_linear_configs {
   automation_output automation_outputs? @relation(fields: [automation_output_id], references: [id], onDelete: Cascade)
 
   @@index([project_id])
+  @@index([team_id])
 }
 
 // Jira Configuration
@@ -729,6 +732,7 @@ enum OutputConfigType {
   NOTION_PAGE
   NOTION_DATABASE
   CONFLUENCE
+  LINEAR_TICKET
 }
 
 // Run History enums to mirror backend/shared RunHistoryTypes

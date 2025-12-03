@@ -4,6 +4,9 @@ import crypto from "crypto";
 import { LinearWebhookPayload } from "../utility/LinearWebhookPayload";
 import { LinearIntegrationManager } from "../integrations/LinearIntegration";
 import { settings } from "../config/settings";
+import { db } from "../prismaClient";
+import { LinearTeam } from "../shared/types";
+import { LinearAdapter } from "../ticketing/linear";
 
 
 /**
@@ -94,5 +97,54 @@ export async function getLinearIntegrations(req: Request, res: Response) {
     } catch (error) {
         console.error('Error fetching Linear integrations:', error);
         res.status(500).json({ error: 'Failed to fetch Linear integrations' });
+    }
+}
+
+export async function getLinearTeams(req: Request, res: Response) {
+    const user = req.session?.user;
+    if (!user) {
+        return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const integrationId = req.query.integrationId as string;
+    if (!integrationId) {
+        return res.status(400).json({ error: "integrationId is required" });
+    }
+
+    try {
+        // Verify user owns this integration
+        const integration = await db().linear_integrations.findFirst({
+            where: {
+                id: integrationId,
+                user_id: user.id,
+            },
+        });
+
+        if (!integration) {
+            return res.status(404).json({ error: "Linear integration not found" });
+        }
+
+        // Get valid access token (handles refresh automatically)
+        const manager = new LinearIntegrationManager();
+        const accessToken = await manager.getAccessToken(integrationId);
+        if (!accessToken) {
+            return res.status(400).json({ error: "Could not get valid access token" });
+        }
+
+        // Fetch teams from Linear API
+        const adapter = new LinearAdapter(accessToken);
+        const teams = await adapter.getTeams();
+
+        const teamsResponse: LinearTeam[] = teams.map(team => ({
+            id: team.id,
+            name: team.name,
+            key: team.key,
+        }));
+
+        res.status(200).json(teamsResponse);
+    } catch (error: unknown) {
+        console.error('Error fetching Linear teams:', error);
+        const errorMessage = error instanceof Error ? error.message : 'Failed to fetch Linear teams';
+        res.status(500).json({ error: errorMessage });
     }
 }
