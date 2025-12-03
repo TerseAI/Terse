@@ -1,6 +1,7 @@
 export interface NotificationDestination {
-    id: number;
+    id: string;
     type: NotificationDestinationType;
+    isActive?: boolean;
 }
 
 export enum NotificationDestinationType {
@@ -14,6 +15,8 @@ export interface EmailNotificationDestination extends NotificationDestination {
 }
 
 export interface SlackNotificationDestination extends NotificationDestination {
-    integrationId: string;
     type: NotificationDestinationType.SLACK;
+    integrationId: string;
+    slackChannelId?: string;
+    slackChannelName?: string;
 }
