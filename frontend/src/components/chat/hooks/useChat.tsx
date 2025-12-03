@@ -30,7 +30,6 @@ export function useChat({
         handleToolCallComplete,
         handleFailure,
         handleNaturalStop,
-        addUserTurn,
         handleFilterResult,
     } = useChatTurns({initialTurns});
 
