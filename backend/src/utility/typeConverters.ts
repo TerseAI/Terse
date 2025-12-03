@@ -3,7 +3,6 @@ import {
     InputConfigType, 
     IntegrationType as PrismaIntegrationType, 
     OutputConfigType,
-    RunHistoryIntegration,
 } from "@prisma/client";
 import { ChannelInputWithConfigs, ChannelOutputWithConfigs } from "../types/prisma";
 import { 
@@ -36,6 +35,8 @@ export const convertIntegrationTypeToPrismaIntegrationType = (integrationType: I
             return PrismaIntegrationType.NOTION;
         case IntegrationType.FIGMA:
             return PrismaIntegrationType.FIGMA;
+        case IntegrationType.TERSE:
+            return PrismaIntegrationType.TERSE;
         default:
             throw integrationType satisfies never;
     }
@@ -61,52 +62,65 @@ export const convertPrismaIntegrationTypeToIntegrationType = (prismaIntegrationT
             return IntegrationType.NOTION;
         case PrismaIntegrationType.FIGMA:
             return IntegrationType.FIGMA;
+        case PrismaIntegrationType.TERSE:
+            return IntegrationType.TERSE;
         default:
             throw prismaIntegrationType satisfies never;
     }
 }
 
-export const convertIntegrationTypeToRunHistoryIntegration = (integrationType: IntegrationType): RunHistoryIntegration => {
+// Convert IntegrationType to Prisma IntegrationType (for run history)
+// Note: ATLASSIAN maps to CONFLUENCE in Prisma for run history
+export const convertIntegrationTypeToPrismaIntegrationTypeForRunHistory = (integrationType: IntegrationType): PrismaIntegrationType => {
     switch (integrationType) {
         case IntegrationType.GITHUB:
-            return RunHistoryIntegration.github;
+            return PrismaIntegrationType.GITHUB;
         case IntegrationType.GMAIL:
-            return RunHistoryIntegration.gmail;
+            return PrismaIntegrationType.GMAIL;
         case IntegrationType.LINEAR:
-            return RunHistoryIntegration.linear;
+            return PrismaIntegrationType.LINEAR;
         case IntegrationType.ATLASSIAN:
-            return RunHistoryIntegration.confluence; // ATLASSIAN maps to confluence in run history
+            // For run history, ATLASSIAN maps to CONFLUENCE by default
+            // If we need to distinguish JIRA vs CONFLUENCE, we'd need more context
+            return PrismaIntegrationType.CONFLUENCE;
         case IntegrationType.SLACK:
-            return RunHistoryIntegration.slack;
+            return PrismaIntegrationType.SLACK;
         case IntegrationType.NOTION:
-            return RunHistoryIntegration.notion;
+            return PrismaIntegrationType.NOTION;
         case IntegrationType.FIGMA:
-            return RunHistoryIntegration.figma;
+            return PrismaIntegrationType.FIGMA;
+        case IntegrationType.TERSE:
+            return PrismaIntegrationType.TERSE;
         default:
             throw integrationType satisfies never;
     }
 }
 
-export const convertRunHistoryIntegrationToIntegrationType = (runHistoryIntegration: RunHistoryIntegration): IntegrationType => {
-    switch (runHistoryIntegration) {
-        case RunHistoryIntegration.github:
+// Convert Prisma IntegrationType to shared IntegrationType (from run history)
+export const convertPrismaIntegrationTypeToIntegrationTypeFromRunHistory = (prismaIntegrationType: PrismaIntegrationType): IntegrationType => {
+    switch (prismaIntegrationType) {
+        case PrismaIntegrationType.GITHUB:
             return IntegrationType.GITHUB;
-        case RunHistoryIntegration.gmail:
+        case PrismaIntegrationType.GMAIL:
             return IntegrationType.GMAIL;
-        case RunHistoryIntegration.linear:
+        case PrismaIntegrationType.LINEAR:
             return IntegrationType.LINEAR;
-        case RunHistoryIntegration.confluence:
-        case RunHistoryIntegration.jira:
+        case PrismaIntegrationType.CONFLUENCE:
+        case PrismaIntegrationType.JIRA:
             // Both map to ATLASSIAN in shared enum
             return IntegrationType.ATLASSIAN;
-        case RunHistoryIntegration.slack:
+        case PrismaIntegrationType.SLACK:
             return IntegrationType.SLACK;
-        case RunHistoryIntegration.notion:
+        case PrismaIntegrationType.NOTION:
+        case PrismaIntegrationType.NOTION_PAGE:
+            // Both map to NOTION in shared enum
             return IntegrationType.NOTION;
-        case RunHistoryIntegration.figma:
+        case PrismaIntegrationType.FIGMA:
             return IntegrationType.FIGMA;
+        case PrismaIntegrationType.TERSE:
+            return IntegrationType.TERSE;
         default:
-            throw runHistoryIntegration satisfies never;
+            throw prismaIntegrationType satisfies never;
     }
 }
 

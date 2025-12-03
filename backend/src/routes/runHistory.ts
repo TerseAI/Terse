@@ -3,8 +3,9 @@ import { Prisma } from "@prisma/client";
 import { db, PrismaClient } from "../prismaClient";
 import type { GetRunHistoryParams, GetRunHistoryResponse, RunHistoryRecord, RunHistoryStatus } from "../shared/RunHistoryTypes";
 import { parsePageParams } from "../utility/pagination";
-import { convertRunHistoryIntegrationToIntegrationType } from "../utility/typeConverters";
+import { convertPrismaIntegrationTypeToIntegrationTypeFromRunHistory } from "../utility/typeConverters";
 import { ModelEvent } from "../shared/ModelEvents";
+import { IntegrationType } from "../shared/Integrations";
 
 // Valid status values for validation
 const VALID_STATUSES: RunHistoryStatus[] = ["success", "failed", "skipped", "in_progress"];
@@ -71,7 +72,7 @@ export async function getRunHistory(req: Request, res: Response) {
       timestamp: runRecord.timestamp.toISOString(),
       trigger: {
         event: runRecord.event,
-        integration: convertRunHistoryIntegrationToIntegrationType(runRecord.trigger_integration),
+        integration: convertPrismaIntegrationTypeToIntegrationTypeFromRunHistory(runRecord.trigger_integration),
         source: runRecord.trigger_source,
         title: runRecord.trigger_title ?? undefined,
         subheader: runRecord.trigger_subheader ?? undefined,
@@ -84,7 +85,7 @@ export async function getRunHistory(req: Request, res: Response) {
       },
       actions: runRecord.actions.map((action) => ({
         action: action.action,
-        integration: convertRunHistoryIntegrationToIntegrationType(action.integration),
+        integration: convertPrismaIntegrationTypeToIntegrationTypeFromRunHistory(action.integration),
         target: action.target,
         details: action.details,
         url: action.url ?? undefined,
@@ -257,7 +258,7 @@ export async function getRunHistoryActions(req: Request, res: Response) {
     const result = actions.map(action => ({
       id: action.id,
       action: action.action,
-      integration: convertRunHistoryIntegrationToIntegrationType(action.integration),
+      integration: convertPrismaIntegrationTypeToIntegrationTypeFromRunHistory(action.integration),
       target: action.target,
       details: action.details,
       url: action.url ?? undefined,

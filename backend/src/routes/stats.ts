@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import { db } from "../prismaClient";
 import { StatsResponse, DayOfWeek, RecentAction } from "../shared/types";
-import { convertRunHistoryIntegrationToIntegrationType } from "../utility/typeConverters";
+import { convertPrismaIntegrationTypeToIntegrationTypeFromRunHistory } from "../utility/typeConverters";
 
 // Stats configuration constants
 const CHART_TIME_WINDOW_DAYS = 7; // Number of days for the daily events chart
@@ -201,7 +201,7 @@ export async function getStats(req: Request, res: Response) {
 
     const recentActions: RecentAction[] = recentActionsData.map((action) => ({
         action: action.action,
-        integration: convertRunHistoryIntegrationToIntegrationType(action.integration) as string,
+        integration: convertPrismaIntegrationTypeToIntegrationTypeFromRunHistory(action.integration),
         target: action.target,
         details: action.details,
         url: action.url ?? undefined,

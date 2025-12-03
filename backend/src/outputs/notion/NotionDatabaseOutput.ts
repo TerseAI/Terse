@@ -6,7 +6,7 @@ import { db } from "../../prismaClient";
 import { NotionConfig } from "../../shared/Configs";
 import { OutputConfigType } from "@prisma/client";
 import { notionQueryDatabaseTool, notionModifyPageTool, notionGetSchemaTool } from "./tools";
-import { RunHistoryAction } from "../../shared/RunHistoryTypes";
+import { IntegrationType } from "../../shared/Integrations";
 
 export interface NotionDatabaseSession extends Session {
     notionIntegration: NotionIntegration; // Top level integration record
@@ -16,9 +16,9 @@ export interface NotionDatabaseSession extends Session {
 export class NotionDatabaseOutput extends Output<NotionDatabaseSession, NotionConfig> {
     constructor() {
         const toolbox: ToolboxEntry[] = [
-            { tool: notionGetSchemaTool as Tool, isReadOnly: true },
-            { tool: notionQueryDatabaseTool as Tool, isReadOnly: true },
-            { tool: notionModifyPageTool as Tool, isReadOnly: false },
+            { tool: notionGetSchemaTool as Tool, isReadOnly: true, integration: IntegrationType.NOTION },
+            { tool: notionQueryDatabaseTool as Tool, isReadOnly: true, integration: IntegrationType.NOTION },
+            { tool: notionModifyPageTool as Tool, isReadOnly: false, integration: IntegrationType.NOTION },
         ];
         super(OutputConfigType.NOTION_DATABASE, toolbox);
     }
