@@ -8,10 +8,13 @@ import { useState } from "react"
 import { useOAuthConnection } from "../../hooks/useOAuthConnection"
 import { IntegrationType } from "../../shared/Integrations"
 import { useOAuthSuccessListener } from "../../hooks/useOAuthSuccessListener"
-import { SlackChannelSelector } from "../SlackChannelSelector"
 import { BackendProvider } from "../../services/backend"
 import { CreateNotificationDestinationRequest, NotificationDestinationType } from "../../shared/Notifications"
 import { toast } from "sonner"
+import { useSlackChannels } from "../../hooks/api/useSlackChannels"
+import { Checkbox } from "@/components/ui/checkbox"
+import { SlackChannel } from "../../shared/types"
+import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "../ui/select"
 
 export function AddNotificationDestination() {
     return (
@@ -54,6 +57,7 @@ function SelectSlackDestination({ onSuccess }: SelectSlackDestinationProps) {
     const { connect: connectOAuth } = useOAuthConnection(IntegrationType.SLACK);
     const [isConnecting, setIsConnecting] = useState(false);
     const [selectedChannelId, setSelectedChannelId] = useState<string | undefined>(undefined);
+    const [selectedChannelName, setSelectedChannelName] = useState<string | undefined>(undefined);
     const [listenToUserDms, setListenToUserDms] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
     const [validationError, setValidationError] = useState<string | null>(null);
@@ -77,6 +81,7 @@ function SelectSlackDestination({ onSuccess }: SelectSlackDestinationProps) {
                 type: NotificationDestinationType.SLACK,
                 integrationId: selectedIntegrationId,
                 slackChannelId: selectedChannelId,
+                slackChannelName: selectedChannelName,
             };
             await BackendProvider.createNotificationDestination(payload);
             mutate();
@@ -140,20 +145,7 @@ function SelectSlackDestination({ onSuccess }: SelectSlackDestinationProps) {
                 />
             </div>
             {selectedIntegrationId && (
-                <div className="mt-3 pt-3 border-t border-border">
-                    <SlackChannelSelector
-                        integrationId={selectedIntegrationId}
-                        selectedChannelId={selectedChannelId}
-                        listenToUserDms={listenToUserDms}
-                        onSelect={(channelId, channelName) => {
-                            setSelectedChannelId(channelId);
-                            setValidationError(null);
-                        }}
-                        onListenToUserDmsChange={(listenToUserDms) => {
-                            setListenToUserDms(listenToUserDms);
-                        }}
-                    />
-                </div>
+                <SelectSlackDestinationForm integrationId={selectedIntegrationId} />
             )}
 
             {validationError && (
@@ -162,5 +154,106 @@ function SelectSlackDestination({ onSuccess }: SelectSlackDestinationProps) {
 
             <Button onClick={saveDestination} disabled={isSaving}>{isSaving ? 'Saving...' : 'Save'}</Button>
         </div>
+    )
+}
+
+function SelectSlackDestinationForm({ integrationId }: { integrationId: string }) {
+    const [sendAsDirectMessage, setSendAsDirectMessage] = useState(false);
+    const [selectedChannelId, setSelectedChannelId] = useState<string | undefined>(undefined);
+    const {
+        channels,
+        isLoading,
+    } = useSlackChannels(integrationId);
+
+    if (isLoading) {
+        return (
+            <div className="flex flex-col gap-2">
+                <Skeleton className="h-10 w-full" />
+            </div>
+        );
+    }
+
+    const selectedChannelName = selectedChannelId 
+        ? channels.find(ch => ch.id === selectedChannelId)?.name 
+        : undefined;
+
+    const handleClearSelection = () => {
+        setSelectedChannelId(undefined);
+        setSendAsDirectMessage(false);
+    };
+
+    // Show selected channel with option to change
+    if (selectedChannelId) {
+        return (
+            <div className="flex flex-row gap-2 items-center">
+                <p>in the channel:</p>
+                <span className="font-medium">#{selectedChannelName}</span>
+                <Button variant="link" className="p-0 h-auto text-muted-foreground" onClick={handleClearSelection}>
+                    (change)
+                </Button>
+            </div>
+        );
+    }
+
+    // Show DM selection with option to change
+    if (sendAsDirectMessage) {
+        return (
+            <div className="flex flex-row gap-2 items-center">
+                <p>as a</p>
+                <span className="font-medium">direct message</span>
+                <Button variant="link" className="p-0 h-auto text-muted-foreground" onClick={handleClearSelection}>
+                    (change)
+                </Button>
+            </div>
+        );
+    }
+
+    // Show both options when nothing is selected
+    return (
+        <div className="flex flex-col gap-4">
+            <div className="flex flex-row gap-2 items-center">
+                <p>in the channel:</p>
+                <ChannelSelector channels={channels} selectedChannelId={selectedChannelId} onChannelSelect={setSelectedChannelId} />
+            </div>
+
+            <div className="flex flex-row gap-2 items-center">
+                <p>or</p>
+                <Checkbox 
+                    checked={sendAsDirectMessage} 
+                    onCheckedChange={(checked) => setSendAsDirectMessage(checked === 'indeterminate' ? false : checked)} 
+                />
+                <span className="text-sm text-foreground">Send as direct message</span>
+            </div>
+        </div>
+    );
+}
+
+function ChannelSelector({ channels, selectedChannelId, onChannelSelect }: { channels: SlackChannel[], selectedChannelId: string | undefined, onChannelSelect: (channelId: string) => void }) {
+    const publicChannels = channels.filter(ch => !ch.isPrivate && !ch.isArchived);
+    const privateChannels = channels.filter(ch => ch.isPrivate && !ch.isArchived);
+    return (
+        <Select value={selectedChannelId} onValueChange={onChannelSelect}>
+            <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Select a channel" />
+            </SelectTrigger>
+            <SelectContent>
+                <SelectGroup>
+                    <SelectLabel>Public Channels</SelectLabel>
+                    {publicChannels.map((channel) => (
+                        <SelectItem key={channel.id} value={channel.id}>
+                            #{channel.name}
+                        </SelectItem>
+                    ))}
+                </SelectGroup>
+                <SelectGroup>
+                    <SelectLabel>Private Channels</SelectLabel>
+                    {privateChannels.map((channel) => (
+                        <SelectItem key={channel.id} value={channel.id}>
+                            #{channel.name}
+                        </SelectItem>
+                    ))}
+                </SelectGroup>
+            </SelectContent>
+        </Select>
     )
 }

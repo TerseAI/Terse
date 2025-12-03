@@ -193,7 +193,7 @@ export function SlackChannelSelector({
                 value={selectedChannelId || ''}
                 onChange={(e) => handleChannelSelect(e.target.value)}
                 disabled={listenToUserDms}
-                className="w-full px-3 py-2 text-sm border border-[theme(border)] rounded-lg bg-[theme(background)] text-[theme(text-primary)] focus:outline-none focus:ring-2 focus:ring-[theme(--color-accent)] disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full px-3 py-2 text-sm border border-border rounded-lg bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed"
             >
                 {!selectedChannelId && (
                     <option value="">-- Select a channel --</option>
@@ -218,7 +218,7 @@ export function SlackChannelSelector({
                 )}
             </select>
             {channels.length > 0 && (
-                <div className="text-xs text-[theme(text-secondary)]">
+                <div className="text-xs text-foreground-muted">
                     {channels.length} channel{channels.length !== 1 ? 's' : ''} available
                 </div>
             )}
@@ -230,7 +230,7 @@ export function SlackChannelSelector({
                     type="checkbox"
                     checked={listenToUserDms}
                     onChange={(e) => handleListenToUserDmsChange(e.target.checked)}
-                    className="w-4 h-4 rounded border-[theme(border)] text-[theme(--color-accent)] focus:ring-2 focus:ring-[theme(--color-accent)] cursor-pointer"
+                    className="w-4 h-4 rounded border-border text-primary focus:ring-2 focus:ring-primary cursor-pointer"
                 />
                 <span className="text-sm text-[theme(text-primary)]">
                     Monitor all private direct messages
