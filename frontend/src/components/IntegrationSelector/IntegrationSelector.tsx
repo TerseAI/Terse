@@ -4,10 +4,11 @@ import { NotionIntegration } from './NotionIntegration';
 import { SlackIntegration } from './SlackIntegration';
 import { GitHubIntegration } from './GitHubIntegration';
 import { FigmaIntegration } from './FigmaIntegration';
-import { LinearIntegration } from './LinearIntegration';
 import { ConfluenceIntegration } from './ConfluenceIntegration';
 import { JiraIntegration } from './JiraIntegration';
 import { ConfigType } from "@/shared/Configs";
+import { LinearInputIntegration } from './LinearInputIntegration';
+import { LinearOutputIntegration } from './LinearOutputIntegration';
 
 export function IntegrationSelector(props: InputConfigSelectorProps) {
     switch (props.input.config?.configType || props.input.configType) {
@@ -51,9 +52,17 @@ export function IntegrationSelector(props: InputConfigSelectorProps) {
                 />
             );
 
-        case ConfigType.LINEAR:
+        case ConfigType.LINEAR_INPUT:
             return (
-                <LinearIntegration
+                <LinearInputIntegration
+                    input={props.input}
+                    variant={props.variant}
+                    setConfig={props.setConfig}
+                />
+            );
+        case ConfigType.LINEAR_OUTPUT:
+            return (
+                <LinearOutputIntegration
                     input={props.input}
                     variant={props.variant}
                     setConfig={props.setConfig}

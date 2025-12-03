@@ -42,6 +42,14 @@ export const jiraResourcesKey = (integrationId: string | null | undefined): read
     return ['jiraResources', integrationId] as const;
 };
 
+export const linearTeamsKey = (integrationId: string | null | undefined): readonly [string, string] | null => {
+    if (!integrationId) {
+        return null;
+    }
+
+    return ['linearTeams', integrationId] as const;
+};
+
 export const gmailIntegrationsKey = (): readonly [string] => {
     return ['gmailIntegrations'] as const;
 };

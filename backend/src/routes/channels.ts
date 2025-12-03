@@ -5,7 +5,7 @@ import { parsePageParams } from "../utility/pagination";
 import chalk from "chalk";
 import { ChannelWithInputRelations, PrismaTransaction, ChannelWithRelations } from "../types/prisma";
 import { IntegrationType } from "../shared/Integrations";
-import { convertConfigTypeToInputConfigType, convertConfigTypeToOutputConfigType, convertPrismaConfigToConfigInstance } from "../utility/typeConverters";
+import { convertConfigTypeToInputConfigType, convertConfigTypeToOutputConfigType, convertPrismaConfigToConfigInstance, convertPrismaOutputConfigToConfigInstance } from "../utility/typeConverters";
 import { ConfigInstance } from "../shared/Configs";
 import { getInputConfigInclude, getOutputConfigInclude } from "../utility/prismaIncludes";
 import { INPUT_REGISTRY } from "../inputs/InputRegistry";
@@ -577,7 +577,7 @@ function transformChannelToFrontendFormat(channel: ChannelWithRelations): Channe
         })),
         output: {
             id: channel.output.id,
-            config: convertPrismaConfigToConfigInstance(channel.output),
+            config: convertPrismaOutputConfigToConfigInstance(channel.output),
         }
     };
 }

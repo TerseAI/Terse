@@ -53,6 +53,7 @@ import {
 import {
   linearOAuthCallback,
   getLinearIntegrations,
+  getLinearTeams,
   handleLinearWebhook,
 } from "./routes/linear";
 import {
@@ -335,6 +336,10 @@ app.post("/linear/webhook", async (req, res) => {
 
 app.get("/linear/integrations", authMiddleware, async (req, res) => {
   getLinearIntegrations(req, res);
+});
+
+app.get("/linear/teams", authMiddleware, async (req, res) => {
+  getLinearTeams(req, res);
 });
 
 app.post("/webhooks/jira/:accountId", async (req, res) => {
