@@ -1,8 +1,6 @@
 import { PlusIcon } from "lucide-react"
 import { Button } from "../ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "../ui/dialog"
-import { Input } from "../ui/input"
-import { Label } from "../ui/label"
 import { useSlackIntegrations } from "../../hooks/api/useSlackIntegrations"
 import { Skeleton } from "../ui/skeleton"
 import DropdownSelect, { StatusOption } from "../ui/DropdownSelect"
@@ -33,12 +31,6 @@ function AddNotificationDestinationDialog() {
                     <DialogTitle>Add Notification Destination</DialogTitle>
                     <DialogDescription>Add a notification channel to be notified when a background agent makes a change.</DialogDescription>
 
-                    <div className="grid gap-4 py-4">
-                        <div className="flex flex-col gap-2">
-                            <Label>Name</Label>
-                            <Input type="text" placeholder="Name" />
-                        </div>
-                    </div>
                     <SelectSlackIntegration />
                 </DialogHeader>
             </DialogContent>
@@ -78,14 +70,25 @@ function SelectSlackIntegration() {
         value: integration.id,
     }));
 
+
     let selectedOption = options.find(option => option.value === selectedIntegrationId);
+    if (!selectedIntegrationId && !selectedOption && options.length == 1) {
+        const defaultIntegration = options[0];
+        setSelectedIntegrationId(defaultIntegration.value);
+        selectedOption = defaultIntegration;
+    }
 
     return (
-        <div>
+        <div className="flex flex-row gap-2 items-center">
+            <p>Send notifications to:</p>
             <DropdownSelect
                 statusOptions={options}
                 selectedOption={selectedOption}
                 setSelected={setSelectedIntegrationId}
+                additionalAction={{
+                    label: 'Connect Another Slack Workspace',
+                    onClick: connectOAuth
+                }}
             />
         </div>
     )
