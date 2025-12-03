@@ -32,13 +32,14 @@ model users {
   gmail_integrations       gmail_integrations[]
   notion_integrations      notion_integrations[]
   figma_integrations       figma_integrations[]
-  activity_events          activity_events[]
-  ticket_activity_events   ticket_activity_events[]
-  project_activity_events  project_activity_events[]
-  automations              automations[]
-  pending_approvals        pending_approvals[]
-  user_github_installation user_github_installation[]
-  github_app_tokens        github_app_tokens[]
+  activity_events              activity_events[]
+  ticket_activity_events       ticket_activity_events[]
+  project_activity_events      project_activity_events[]
+  automations                  automations[]
+  pending_approvals            pending_approvals[]
+  user_github_installation     user_github_installation[]
+  github_app_tokens            github_app_tokens[]
+  notification_destinations    user_notification_destinations[]
 }
 
 model github_repositories {
@@ -164,8 +165,9 @@ model slack_integrations {
   created_at      DateTime @default(now())
   updated_at      DateTime @updatedAt
 
-  user_slack_integrations user_slack_integrations[]
-  processed_slack_events  processed_slack_events[]
+  user_slack_integrations      user_slack_integrations[]
+  processed_slack_events       processed_slack_events[]
+  user_notification_destinations user_notification_destinations[]
 }
 
 // @deprecated - This table is deprecated. Use atlassian_integrations instead for OAuth-based connections.
@@ -449,6 +451,7 @@ model automations {
   inputs              automation_inputs[]
   output              automation_outputs?
   run_history_records run_history_records[]
+  notification_settings automation_notification_settings?
 
   @@index([user_id])
   @@index([is_active])
@@ -878,15 +881,42 @@ model run_history_raw_events {
 
 // MARK: - Notifications
 
-// model slack_notification_channels {
-//   id              String   @id @default(cuid())
-//   user_id         String
-//   integration_id  String
-//   created_at      DateTime @default(now())
-//   updated_at      DateTime @updatedAt
+model automation_notification_settings {
+  id            String                 @id @default(cuid())
+  automation_id String                 @unique
+  enabled       Boolean                @default(true)
+  action_types  RunHistoryActionType[]
+  created_at    DateTime               @default(now())
+  updated_at    DateTime               @updatedAt
 
-//   user              users              @relation(fields: [user_id], references: [id], onDelete: Cascade)
-//   slack_integration slack_integrations @relation(fields: [integration_id], references: [id], onDelete: Cascade)
+  automation automations @relation(fields: [automation_id], references: [id], onDelete: Cascade)
+}
 
-//   @@unique([user_id, integration_id])
-// }
+model user_notification_destinations {
+  id               String                      @id @default(cuid())
+  user_id          String
+  destination_type NotificationDestinationType
+
+  // Slack-specific fields (uses existing slack_integrations for credentials)
+  slack_integration_id String?
+  slack_channel_id     String?
+  slack_channel_name   String?
+
+  // Email-specific fields
+  email_address String?
+
+  is_active  Boolean  @default(true)
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  user              users               @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  slack_integration slack_integrations? @relation(fields: [slack_integration_id], references: [id], onDelete: SetNull)
+
+  @@index([user_id])
+  @@index([destination_type])
+}
+
+enum NotificationDestinationType {
+  SLACK
+  EMAIL
+}
