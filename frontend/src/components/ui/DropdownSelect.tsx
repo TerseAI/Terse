@@ -22,12 +22,13 @@ type DropdownSelectProps = {
         label: string;
         onClick: () => void;
     };
+    modal?: boolean; // Set to false when used inside a Dialog to prevent focus issues 
 }
 
-const DropdownSelect = ({ statusOptions, selectedOption, setSelected, additionalAction }: DropdownSelectProps) => {
+const DropdownSelect = ({ statusOptions, selectedOption, setSelected, additionalAction, modal }: DropdownSelectProps) => {
     const selectedOptionValue = selectedOption?.label ?? "select an option";
     return (
-        <DropdownMenu>
+        <DropdownMenu modal={modal}>
             <DropdownMenuTrigger asChild>
                 <Button variant="outline">
                     <span className="block truncate">{selectedOptionValue}</span>
