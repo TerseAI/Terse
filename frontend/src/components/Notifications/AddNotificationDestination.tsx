@@ -9,7 +9,8 @@ import { useOAuthConnection } from "../../hooks/useOAuthConnection"
 import { IntegrationType } from "../../shared/Integrations"
 import { useOAuthSuccessListener } from "../../hooks/useOAuthSuccessListener"
 import { SlackChannelSelector } from "../SlackChannelSelector"
-import { SlackConfig } from "../../shared/Configs"
+import { BackendProvider } from "../../services/backend"
+import { NotificationDestinationType } from "../../shared/Notifications"
 
 export function AddNotificationDestination() {
     return (
@@ -33,20 +34,31 @@ function AddNotificationDestinationDialog() {
                     <DialogTitle>Add Notification Destination</DialogTitle>
                     <DialogDescription>Add a notification channel to be notified when a background agent makes a change.</DialogDescription>
 
-                    <SelectSlackIntegration />
+                    <SelectSlackDestination />
                 </DialogHeader>
             </DialogContent>
         </Dialog>
     )
 }
 
-function SelectSlackIntegration() {
+function SelectSlackDestination() {
     const { integrations, isLoading, mutate } = useSlackIntegrations();
     const [selectedIntegrationId, setSelectedIntegrationId] = useState<string | undefined>(undefined);
     const { connect: connectOAuth } = useOAuthConnection(IntegrationType.SLACK);
     const [isConnecting, setIsConnecting] = useState(false);
     const [selectedChannelId, setSelectedChannelId] = useState<string | undefined>(undefined);
     const [listenToUserDms, setListenToUserDms] = useState(false);
+    const [isSaving, setIsSaving] = useState(false);
+
+    async function saveDestination() {
+        setIsSaving(true);
+        await BackendProvider.createNotificationDestination({
+            type: NotificationDestinationType.SLACK,
+            integrationId: selectedIntegrationId!,
+            slackChannelId: selectedChannelId,
+        });
+        mutate();
+    }
 
     useOAuthSuccessListener(mutate, () => {
         setIsConnecting(false);
@@ -83,7 +95,7 @@ function SelectSlackIntegration() {
     }
 
     return (
-        <div className="flex flex-col gap-2">
+        <div className="flex flex-col gap-4">
             <div className="flex flex-row gap-2 items-center">
                 <p>Send notifications to:</p>
                 <DropdownSelect
@@ -112,6 +124,8 @@ function SelectSlackIntegration() {
                     />
                 </div>
             )}
+
+            <Button onClick={saveDestination} disabled={isSaving}>{isSaving ? 'Saving...' : 'Save'}</Button>
         </div>
     )
 }

@@ -20,3 +20,10 @@ export interface SlackNotificationDestination extends NotificationDestination {
     slackChannelId?: string;
     slackChannelName?: string;
 }
+
+export interface CreateSlackNotificationDestinationRequest {
+    type: NotificationDestinationType.SLACK;
+    integrationId: string;
+    slackChannelId?: string;
+    slackChannelName?: string;
+}

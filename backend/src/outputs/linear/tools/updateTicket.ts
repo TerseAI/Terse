@@ -6,6 +6,7 @@ import { IntegrationType } from "../../../shared/Integrations";
 import { LinearTicketSession } from "../LinearTicketOutput";
 import { SessionWithTracking } from "../../../agent/ChannelAgent/ChannelAgent";
 import type { IssueUpdateInput } from "@linear/sdk/dist/_generated_documents";
+import { RunHistoryActionType } from "@prisma/client";
 
 export const linearUpdateTicketTool = tool({
     name: 'linear_update_ticket',
@@ -161,6 +162,7 @@ COMMON UPDATE OPERATIONS:
                 target: updatedIssue.identifier || issueId,
                 details: `Updated fields: ${updateSummary}`,
                 url: updatedIssue.url,
+                type: RunHistoryActionType.update,
             });
 
             return {
