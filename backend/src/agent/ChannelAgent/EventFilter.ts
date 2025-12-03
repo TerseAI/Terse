@@ -89,7 +89,11 @@ export async function filterEvent<T extends Session>(
         const agent = new Agent<T, typeof filterOutputSchema>({
             name: 'Channel Event Filter',
             instructions: FILTER_SYSTEM_PROMPT,
-            model: 'gpt-5-mini',
+            model: 'gpt-4o-mini',
+            modelSettings: {
+                temperature: 0.3,
+                maxTokens: 200
+            },
             tools: [], // No tools - filter should not make tool calls
             outputType: filterOutputSchema,
         });
@@ -211,11 +215,28 @@ ${userInstructions}
 ${eventContent}
 </INCOMING_EVENT>
 
+<ROLE>
+You are an event relevance analyzer. Your job is to determine if an incoming event is relevant to a user's automation instructions.
+
+You are responsible for protecting the main Updater agent from spam and noise. 
+
+The way the main system works is we listen for events from a set of inputs, then send them to a model with a custom user prompt. Then we have an output that we update based on the event.
+</ROLE>
+
 <TASK>
 Decide if the INCOMING_EVENT is relevant to the USER_CHANNEL_INSTRUCTIONS for routing to the Living Document Updater agent.
 
-- If the decision depends on knowing the current document state, treat the event as relevant.
-- Otherwise, decide based on the textual content alone.
+You will only be given:
+1. An event (email, GitHub commit, Slack message, etc.)
+2. User instructions describing what they want to automate
+
+Your task is to decide if this event should trigger the automation based on whether it matches the user's intent.
+
+Guidelines:
+- Be strict but not overly restrictive - only mark as relevant if the event clearly relates to the user's instructions
+- Consider the context and intent of both the event and the instructions
+- If the event is completely unrelated or spam-like, mark it as not relevant with high confidence
+- If unsure, err on the side of caution with lower confidence
 </TASK>
 
 <OUTPUT_REQUIREMENTS>

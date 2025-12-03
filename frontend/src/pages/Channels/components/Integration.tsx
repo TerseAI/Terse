@@ -15,7 +15,8 @@ export function IconForConfigType({ type }: { type: ConfigType }) {
     switch (type) {
         case ConfigType.GITHUB:
             return <GithubIcon />;
-        case ConfigType.LINEAR:
+        case ConfigType.LINEAR_INPUT:
+        case ConfigType.LINEAR_OUTPUT:
             return <LinearIcon />;
         case ConfigType.SLACK:
             return <SlackIcon />;

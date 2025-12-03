@@ -1,4 +1,4 @@
-import { ConfigInstance, ConfigType, GmailConfig, FigmaConfig, SlackConfig, NotionConfig, NotionPageConfig, LinearConfig, GitHubConfig, JiraConfig, ConfluenceConfig } from '@/shared/Configs';
+import { ConfigInstance, ConfigType, GmailConfig, FigmaConfig, SlackConfig, NotionConfig, NotionPageConfig, LinearInputConfig, LinearOutputConfig, GitHubConfig, JiraConfig, ConfluenceConfig } from '@/shared/Configs';
 
 /**
  * Converts a plain JSON config object (from backend) back into a ConfigInstance class.
@@ -56,13 +56,18 @@ export function deserializeConfig(jsonConfig: any): ConfigInstance {
                 jsonConfig.pageName
             );
 
-        case ConfigType.LINEAR:
-            return new LinearConfig(
+        case ConfigType.LINEAR_INPUT:
+            return new LinearInputConfig(
                 integrationId,
                 jsonConfig.projectId,
                 jsonConfig.projectName
             );
-
+        case ConfigType.LINEAR_OUTPUT:
+            return new LinearOutputConfig(
+                integrationId,
+                jsonConfig.teamId,
+                jsonConfig.teamName
+            );
         case ConfigType.GITHUB:
             return new GitHubConfig(
                 integrationId,

@@ -2,7 +2,7 @@ import bodyParser from "body-parser";
 import cookieParser from "cookie-parser";
 import cors from "cors";
 import "dotenv/config";
-import express from "express";
+import express, { Request, Response, NextFunction } from "express";
 import { createServer } from "http";
 // Import settings early to validate environment variables at startup
 import "./config/settings";
@@ -53,6 +53,7 @@ import {
 import {
   linearOAuthCallback,
   getLinearIntegrations,
+  getLinearTeams,
   handleLinearWebhook,
 } from "./routes/linear";
 import {
@@ -343,6 +344,10 @@ app.get("/linear/integrations", authMiddleware, async (req, res) => {
   getLinearIntegrations(req, res);
 });
 
+app.get("/linear/teams", authMiddleware, async (req, res) => {
+  getLinearTeams(req, res);
+});
+
 app.post("/webhooks/jira/:accountId", async (req, res) => {
   // Use the new webhook handler which verifies authenticity and processes the event
   handleJiraWebhook(req, res);
@@ -428,6 +433,28 @@ app.put("/notification-destinations/:id", authMiddleware, async (req, res) => {
 
 app.delete("/notification-destinations/:id", authMiddleware, async (req, res) => {
   deleteNotificationDestination(req, res);
+});
+
+/**
+ * Express error handling middleware - MUST be last, after all routes
+ * This catches errors from async route handlers
+ */
+app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
+  console.error("❌ Express Error Handler:", err);
+  console.error("Stack:", err.stack);
+  res.status(500).json({
+    error: "Internal server error"
+  });
+});
+
+// Global unhandled rejection handler - safety net for fire-and-forget promises
+// This catches any promises that reject without a .catch() handler
+process.on("unhandledRejection", (reason: unknown, promise: Promise<unknown>) => {
+  console.error("❌ Unhandled Promise Rejection (safety net):", reason);
+  if (reason instanceof Error) {
+    console.error("Stack:", reason.stack);
+  }
+  // Log but don't crash - this is a safety net for promises we might have missed
 });
 
 server.listen(3001, () => {
