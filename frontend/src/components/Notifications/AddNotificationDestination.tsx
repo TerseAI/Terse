@@ -8,6 +8,8 @@ import { useState } from "react"
 import { useOAuthConnection } from "../../hooks/useOAuthConnection"
 import { IntegrationType } from "../../shared/Integrations"
 import { useOAuthSuccessListener } from "../../hooks/useOAuthSuccessListener"
+import { SlackChannelSelector } from "../SlackChannelSelector"
+import { SlackConfig } from "../../shared/Configs"
 
 export function AddNotificationDestination() {
     return (
@@ -43,6 +45,8 @@ function SelectSlackIntegration() {
     const [selectedIntegrationId, setSelectedIntegrationId] = useState<string | undefined>(undefined);
     const { connect: connectOAuth } = useOAuthConnection(IntegrationType.SLACK);
     const [isConnecting, setIsConnecting] = useState(false);
+    const [selectedChannelId, setSelectedChannelId] = useState<string | undefined>(undefined);
+    const [listenToUserDms, setListenToUserDms] = useState(false);
 
     useOAuthSuccessListener(mutate, () => {
         setIsConnecting(false);
@@ -79,18 +83,35 @@ function SelectSlackIntegration() {
     }
 
     return (
-        <div className="flex flex-row gap-2 items-center">
-            <p>Send notifications to:</p>
-            <DropdownSelect
-                statusOptions={options}
-                selectedOption={selectedOption}
-                setSelected={setSelectedIntegrationId}
-                additionalAction={{
-                    label: 'Connect Another Slack Workspace',
-                    onClick: connectOAuth
-                }}
-                modal={false}
-            />
+        <div className="flex flex-col gap-2">
+            <div className="flex flex-row gap-2 items-center">
+                <p>Send notifications to:</p>
+                <DropdownSelect
+                    statusOptions={options}
+                    selectedOption={selectedOption}
+                    setSelected={setSelectedIntegrationId}
+                    additionalAction={{
+                        label: 'Connect Another Slack Workspace',
+                        onClick: connectOAuth
+                    }}
+                    modal={false}
+                />
+            </div>
+            {selectedIntegrationId && (
+                <div className="mt-3 pt-3 border-t border-border">
+                    <SlackChannelSelector
+                        integrationId={selectedIntegrationId}
+                        selectedChannelId={selectedChannelId}
+                        listenToUserDms={listenToUserDms}
+                        onSelect={(channelId, channelName) => {
+                            setSelectedChannelId(channelId);
+                        }}
+                        onListenToUserDmsChange={(listenToUserDms) => {
+                            setListenToUserDms(listenToUserDms);
+                        }}
+                    />
+                </div>
+            )}
         </div>
     )
 }
