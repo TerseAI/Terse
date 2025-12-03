@@ -254,7 +254,6 @@ function Input({ input, inputs, setInputs, handleRemove }: { input: TransientCha
         input: input,
         setConfig: (config: ConfigInstance) => setInputs(inputs.map(i => i.id === input.id ? { ...i, config, configType: config.configType } : i)),
         variant: "card",
-        isOutput: false
     };
 
     let cardContent;
