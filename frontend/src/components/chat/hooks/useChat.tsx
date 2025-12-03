@@ -54,7 +54,6 @@ export function useChat({
     const { input, setInput, sendMessage } = useChatInput({
         sendMessage: sendSocketMessage,
         onUserMessage: (message: string) => {
-            addUserTurn(message);
             onUserMessage?.(message);
         }
     });
