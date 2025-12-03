@@ -89,7 +89,11 @@ export async function filterEvent<T extends Session>(
         const agent = new Agent<T, typeof filterOutputSchema>({
             name: 'Channel Event Filter',
             instructions: FILTER_SYSTEM_PROMPT,
-            model: 'gpt-5-mini',
+            model: 'gpt-4o-mini',
+            modelSettings: {
+                temperature: 0.3,
+                maxTokens: 200
+            },
             tools: [], // No tools - filter should not make tool calls
             outputType: filterOutputSchema,
         });
