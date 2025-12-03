@@ -17,6 +17,7 @@ import { ChangedItem, ChangeEventType } from '../../shared/ModelEvents';
 import { persistRunAction } from './EventProcessor';
 import { processModelEventStream } from './StreamProcessor';
 import { RunHistoryChatMemorySession, trimToLastTurns } from './CustomMemorySession';
+import { NotificationManager } from '../../notifications/Notification';
 
 
 export class ChannelAgent<T extends Session, TConfig extends ConfigInstance> {
@@ -125,6 +126,7 @@ export class ChannelAgent<T extends Session, TConfig extends ConfigInstance> {
     }
 
     async flushPendingActions(stepId: string): Promise<ChangedItem[]> {
+        const notificationManager = new NotificationManager(this.session.user, this.channel);
         const changedItems: ChangedItem[] = [];
 
         for (const action of this.pendingActions) {
@@ -139,6 +141,7 @@ export class ChannelAgent<T extends Session, TConfig extends ConfigInstance> {
                     change_event_type: ChangeEventType.ACTION_EXECUTED
                 });
             }
+            await notificationManager.notify(action);
         }
 
         this.pendingActions = [];

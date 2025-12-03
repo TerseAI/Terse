@@ -22,7 +22,9 @@ import {
   automation_notion_configs,
   automation_notion_page_configs,
   automation_confluence_configs,
-  PrismaClient
+  PrismaClient,
+  user_notification_destinations,
+  automation_notification_settings
 } from '@prisma/client';
 
 
@@ -65,6 +67,9 @@ export type GmailIntegration = gmail_integrations;
 // Keep old names for database compatibility, but export as Channel types
 export type Automation = automations;
 export type Channel = automations; // Alias for rebranding
+
+export type UserNotificationDestination = user_notification_destinations;
+export type AutomationNotificationSettings = automation_notification_settings;
 
 export type AutomationPrompt = automation_prompts;
 export type ChannelPrompt = automation_prompts; // Alias for rebranding
@@ -186,11 +191,13 @@ export {
   sub_activity_commit_associations,
   gmail_integrations,
   automations,
-  automation_prompts,
+  automation_prompts, 
+  automation_notification_settings,
   automation_inputs,
   automation_outputs,
   notion_integrations,
   automation_notion_configs,
   automation_notion_page_configs,
-  automation_confluence_configs
+  automation_confluence_configs,
+  user_notification_destinations
 }; 
