@@ -24,7 +24,7 @@ import {
   automation_confluence_configs,
   PrismaClient,
   user_notification_destinations,
-  automation_notification_settings
+  automation_notification_settings,
   automation_linear_configs,
 } from '@prisma/client';
 
@@ -203,6 +203,6 @@ export {
   automation_notion_configs,
   automation_notion_page_configs,
   automation_confluence_configs,
-  user_notification_destinations
+  user_notification_destinations,
   automation_linear_configs
 }; 

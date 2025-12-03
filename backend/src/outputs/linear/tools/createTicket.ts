@@ -6,6 +6,7 @@ import { IntegrationType } from "../../../shared/Integrations";
 import { LinearTicketSession } from "../LinearTicketOutput";
 import { SessionWithTracking } from "../../../agent/ChannelAgent/ChannelAgent";
 import type { IssueCreateInput } from "@linear/sdk/dist/_generated_documents";
+import { RunHistoryActionType } from "@prisma/client";
 
 export const linearCreateTicketTool = tool({
     name: 'linear_create_ticket',
@@ -157,6 +158,7 @@ BEFORE USING THIS TOOL:
                 target: createdIssue.identifier,
                 details: `Created issue: ${title}`,
                 url: createdIssue.url,
+                type: RunHistoryActionType.create,
             });
 
             return {
