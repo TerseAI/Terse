@@ -1,19 +1,19 @@
-export interface NotificationChannel {
+export interface NotificationDestination {
     id: number;
-    type: NotificationChannelType;
+    type: NotificationDestinationType;
 }
 
-export enum NotificationChannelType {
+export enum NotificationDestinationType {
     EMAIL = "email",
     SLACK = "slack",
 }
 
-export interface EmailNotificationChannel extends NotificationChannel {
-    type: NotificationChannelType.EMAIL;
+export interface EmailNotificationDestination extends NotificationDestination {
+    type: NotificationDestinationType.EMAIL;
     email: string;
 }
 
-export interface SlackNotificationChannel extends NotificationChannel {
+export interface SlackNotificationDestination extends NotificationDestination {
     integrationId: string;
-    type: NotificationChannelType.SLACK;
+    type: NotificationDestinationType.SLACK;
 }
