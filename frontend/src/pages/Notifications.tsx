@@ -1,11 +1,22 @@
 import { Inbox, PlusIcon } from "lucide-react";
-import { GmailIcon, SlackIcon } from "@/components/icons/IntegrationIcons";
-import { Card, CardHeader, CardTitle } from "../components/ui/card"
 import { Button } from "../components/ui/button";
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "../components/ui/empty";
-import { NotificationChannel, NotificationChannelType } from "@/shared/Notifications";
+import { NotificationDestination } from "../shared/Notifications";
+import { NotificationDestinationItem } from "../components/Notifications/NotificationDestination";
+import { useNotificationDestinations } from "../hooks/api/useNotificationDestinations";
+import { Skeleton } from "../components/ui/skeleton";
 
 function NotificationsPage() {
+    const { notificationDestinations, isError, isValidating } = useNotificationDestinations();
+
+    if (isValidating) {
+        return <LoadingNotificationChannelList />;
+    }
+
+    if (isError || notificationDestinations == undefined) {
+        return <ErrorNotificationChannelList />;
+    }
+
     return (
         <div className="flex flex-col h-full p-4">
             <div className="flex flex-row justify-between items-center">
@@ -16,33 +27,13 @@ function NotificationsPage() {
                 </Button>
             </div>
 
-            <NotificationChannelList />
+            <NotificationChannelList notificationDestinations={notificationDestinations} />
         </div>
     )
 }
 
-function NotificationChannelIcon({ type }: { type: NotificationChannelType }) {
-    switch (type) {
-        case NotificationChannelType.EMAIL:
-            return <div className="w-5 h-5"><GmailIcon /></div>
-        case NotificationChannelType.SLACK:
-            return <div className="w-5 h-5"><SlackIcon /></div>
-    }
-}
-
-const mockNotificationChannels: NotificationChannel[] = [
-    {
-        id: 1,
-        type: NotificationChannelType.EMAIL,
-    },
-    {
-        id: 2,
-        type: NotificationChannelType.SLACK,
-    },
-]
-
-function NotificationChannelList() {
-    if (mockNotificationChannels.length == 0) {
+function NotificationChannelList({ notificationDestinations }: { notificationDestinations: NotificationDestination[] }) {
+    if (notificationDestinations.length == 0) {
         return (
             <div className="flex flex-col gap-4">
                 <Empty>
@@ -63,23 +54,26 @@ function NotificationChannelList() {
     }
     return (
         <div className="flex flex-col gap-4">
-            {mockNotificationChannels.map((channel) => (
-                <NotificationChannelItem key={channel.id} channel={channel} />
+            {notificationDestinations.map((channel) => (
+                <NotificationDestinationItem key={channel.id} />
             ))}
         </div>
     )
 }
 
-function NotificationChannelItem({ channel }: { channel: NotificationChannel }) {
+function LoadingNotificationChannelList() {
     return (
-        <Card>
-            <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                    <NotificationChannelIcon type={channel.type} />
-                    {channel.type === NotificationChannelType.EMAIL ? "Email" : "Slack"}
-                </CardTitle>
-            </CardHeader>
-        </Card>
+        <div className="flex flex-col gap-4">
+            <Skeleton className="h-10 w-full" />
+        </div>
+    )
+}
+
+function ErrorNotificationChannelList() {
+    return (
+        <div className="flex flex-col gap-4">
+            <p>Error loading notification channels</p>
+        </div>
     )
 }
 
