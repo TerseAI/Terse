@@ -169,7 +169,7 @@ export const InputCard = forwardRef<HTMLDivElement, {
     const selectorProps: InputConfigSelectorProps = {
         input: input,
         setConfig: (config: ConfigInstance) => setInputs(inputs.map(i => i.id === input.id ? { ...i, config, configType: config.configType } : i)),
-        variant: "card"
+        variant: "card",
     };
     // Input needs configuration if there's no config OR if the config is not complete
     const needsConfiguration = !input.config || !input.config.isComplete();

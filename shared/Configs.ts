@@ -6,7 +6,8 @@ export enum ConfigType {
     SLACK = 'slack',
     NOTION_PAGE = 'notion_page',
     NOTION_DATABASE = 'notion_database',
-    LINEAR = 'linear',
+    LINEAR_INPUT = 'linear_input',
+    LINEAR_OUTPUT = 'linear_output',
     GITHUB = 'github',
     JIRA = 'jira',
     CONFLUENCE = 'confluence',
@@ -62,11 +63,20 @@ export const NotionPageConfigMetadata = {
     isOutput: true,
 } as const satisfies ConfigDetails;
 
-export const LinearConfigMetadata = {
-    configType: ConfigType.LINEAR,
+export const LinearInputConfigMetadata = {
+    configType: ConfigType.LINEAR_INPUT,
     name: 'Linear',
-    description: 'Monitor and update Linear issues',
+    description: 'Monitor Linear issues',
     isInput: true,
+    isOutput: false,
+} as const satisfies ConfigDetails;
+
+
+export const LinearOutputConfigMetadata = {
+    configType: ConfigType.LINEAR_OUTPUT,
+    name: 'Linear',
+    description: 'Update Linear issues',
+    isInput: false,
     isOutput: true,
 } as const satisfies ConfigDetails;
 
@@ -102,7 +112,8 @@ export const CONFIG_DETAILS: ConfigDetailsMap = {
     [ConfigType.SLACK]: SlackConfigMetadata,
     [ConfigType.NOTION_DATABASE]: NotionDatabaseConfigMetadata,
     [ConfigType.NOTION_PAGE]: NotionPageConfigMetadata,
-    [ConfigType.LINEAR]: LinearConfigMetadata,
+    [ConfigType.LINEAR_INPUT]: LinearInputConfigMetadata,
+    [ConfigType.LINEAR_OUTPUT]: LinearOutputConfigMetadata,
     [ConfigType.GITHUB]: GitHubConfigMetadata,
     [ConfigType.JIRA]: JiraConfigMetadata,
     [ConfigType.CONFLUENCE]: ConfluenceConfigMetadata,
@@ -249,9 +260,9 @@ export class NotionPageConfig implements ConfigInstance {
     }
 };
 
-export class LinearConfig implements ConfigInstance {
+export class LinearInputConfig implements ConfigInstance {
     integrationType: IntegrationType = IntegrationType.LINEAR;
-    configType: ConfigType = ConfigType.LINEAR;
+    configType: ConfigType = ConfigType.LINEAR_INPUT;
 
     constructor(
         public integrationId: string,
@@ -261,7 +272,6 @@ export class LinearConfig implements ConfigInstance {
     }
 
     isComplete(): boolean {
-        // Linear only requires integrationId (base check handled in isInputComplete)
         return true;
     }
 
@@ -274,7 +284,35 @@ export class LinearConfig implements ConfigInstance {
         }
         return parts.join('\n');
     }
-};
+}
+
+export class LinearOutputConfig implements ConfigInstance {
+    integrationType: IntegrationType = IntegrationType.LINEAR;
+    configType: ConfigType = ConfigType.LINEAR_OUTPUT;
+
+    constructor(
+        public integrationId: string,
+        public teamId?: string,
+        public teamName?: string,
+    ) {
+    }
+
+    isComplete(): boolean {
+        return !!this.teamId;
+    }
+
+    formatForAgent(): string {
+        const parts = [`Type: Linear`, `Integration ID: ${this.integrationId}`];
+        if (this.teamName) {
+            parts.push(`Team: ${this.teamName}`);
+        } else if (this.teamId) {
+            parts.push(`Team ID: ${this.teamId}`);
+        }
+        return parts.join('\n');
+    }
+}
+
+
 
 export class GitHubConfig implements ConfigInstance {
     integrationType: IntegrationType = IntegrationType.GITHUB;
@@ -368,7 +406,8 @@ export type ConfigMetadataMap = EnsureExhaustiveMetadata<{
     [ConfigType.SLACK]: typeof SlackConfig;
     [ConfigType.NOTION_PAGE]: typeof NotionPageConfig;
     [ConfigType.NOTION_DATABASE]: typeof NotionConfig;
-    [ConfigType.LINEAR]: typeof LinearConfig;
+    [ConfigType.LINEAR_INPUT]: typeof LinearInputConfig;
+    [ConfigType.LINEAR_OUTPUT]: typeof LinearOutputConfig;
     [ConfigType.GITHUB]: typeof GitHubConfig;
     [ConfigType.JIRA]: typeof JiraConfig;
     [ConfigType.CONFLUENCE]: typeof ConfluenceConfig;
@@ -380,7 +419,8 @@ export const CONFIG_METADATA: ConfigMetadataMap = {
     [ConfigType.SLACK]: SlackConfig,
     [ConfigType.NOTION_PAGE]: NotionPageConfig,
     [ConfigType.NOTION_DATABASE]: NotionConfig,
-    [ConfigType.LINEAR]: LinearConfig,
+    [ConfigType.LINEAR_INPUT]: LinearInputConfig,
+    [ConfigType.LINEAR_OUTPUT]: LinearOutputConfig,
     [ConfigType.GITHUB]: GitHubConfig,
     [ConfigType.JIRA]: JiraConfig,
     [ConfigType.CONFLUENCE]: ConfluenceConfig,

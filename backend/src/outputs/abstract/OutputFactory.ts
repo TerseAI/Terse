@@ -5,6 +5,7 @@ import { NotionPageOutput } from "../notion/NotionPageOutput";
 import { Session } from "../../server";
 import { ConfluenceOutput } from "../ConfluenceOutput";
 import { ConfigInstance } from "../../shared/Configs";
+import { LinearTicketOutput } from "../linear/LinearTicketOutput";
 
 /**
  * Factory for creating Output instances based on IntegrationType.
@@ -15,7 +16,8 @@ export class OutputFactory {
     public static readonly OUTPUT_REGISTRY: Map<OutputConfigType, () => Output<Session, ConfigInstance>> = new Map<OutputConfigType, () => Output<Session, ConfigInstance>>([
         [OutputConfigType.NOTION_DATABASE, () => new NotionDatabaseOutput()],
         [OutputConfigType.NOTION_PAGE, () => new NotionPageOutput()],
-        [OutputConfigType.CONFLUENCE, () => new ConfluenceOutput()]
+        [OutputConfigType.CONFLUENCE, () => new ConfluenceOutput()],
+        [OutputConfigType.LINEAR_TICKET, () => new LinearTicketOutput()]
     ]);
 
     /**

@@ -12,6 +12,7 @@ import {
     OAuthInstallationDetails, 
     JiraCredentialsValidationResponse, 
     JiraResourcesResponse,
+    LinearTeam,
     NotionResourcesResponse, 
     RecentChannel,
     SlackChannelsResponse,
@@ -154,6 +155,11 @@ interface BackendService {
      * Gets Jira resources (projects) for a specific integration
      */
     getJiraResources(integrationId: string): Promise<JiraResourcesResponse>;
+
+    /**
+     * Gets Linear teams for a specific integration
+     */
+    getLinearTeams(integrationId: string): Promise<LinearTeam[]>;
 
     /**
      * Gets all Gmail integrations for the current user
@@ -494,6 +500,15 @@ export const BackendProvider: BackendService = {
             .then(response => response.data)
             .catch(error => {
                 console.error('Error fetching Jira resources:', error);
+                throw error;
+            });
+    },
+
+    getLinearTeams: (integrationId: string) => {
+        return axios.get<LinearTeam[]>(`${backendBaseUrl}/linear/teams?integrationId=${encodeURIComponent(integrationId)}`, { withCredentials: true })
+            .then(response => response.data)
+            .catch(error => {
+                console.error('Error fetching Linear teams:', error);
                 throw error;
             });
     },
