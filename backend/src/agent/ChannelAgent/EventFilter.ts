@@ -22,10 +22,18 @@ const filterOutputSchema = z.object({
     confidence: z.number(),
 });
 
-const FILTER_SYSTEM_PROMPT = `
+function buildFilterSystemPrompt(currentTimeUtc: string): string {
+    return `
 You are EVENT_FILTER, a strict but fair event relevance analyzer.
 
 Your PURPOSE is to decide whether a single incoming event should be forwarded to the Living Document Updater agent for processing.
+
+=====================
+0. CURRENT TIME
+=====================
+The current time in UTC is: ${currentTimeUtc}
+
+Use this information to understand temporal context when evaluating event relevance.
 
 =====================
 1. CAPABILITIES & LIMITS
@@ -72,6 +80,7 @@ You MUST return a JSON object that matches this schema EXACTLY:
 
 You may provide additional context and analysis in your text response, but you MUST include the structured JSON output.
 `;
+}
 
 /**
  * Filters a single event to determine if it's relevant to the channel based on user instructions
@@ -86,9 +95,12 @@ export async function filterEvent<T extends Session>(
     streamingParams?: RunHistoryStreamingParams
 ): Promise<{ result: EventFilterResult; stream: StreamedRunResult<T, Agent<T, any>> }> {
     try {
+        const currentTimeUtc = new Date().toISOString();
+        const systemPrompt = buildFilterSystemPrompt(currentTimeUtc);
+        
         const agent = new Agent<T, typeof filterOutputSchema>({
             name: 'Channel Event Filter',
-            instructions: FILTER_SYSTEM_PROMPT,
+            instructions: systemPrompt,
             model: 'gpt-4o-mini',
             modelSettings: {
                 temperature: 0.3,

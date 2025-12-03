@@ -2,6 +2,7 @@ import { Agent, StreamedRunResult } from "@openai/agents";
 import { ModelEvent, ChangedItem } from "../shared/ModelEvents";
 import { Session } from "../server";
 import { randomString } from "../utility/strings";
+import { IntegrationType } from "../shared/Integrations";
 
 
 export async function* transformAgentStreamToModelEvents<T extends Session>(
@@ -64,15 +65,35 @@ export function tryExtractToolCall(
 ): ModelEvent | null {
     if (event.type === "run_item_stream_event" && event.name === "tool_called") {
         const item = (event as ToolCalledEvent).item.rawItem;
-        const integration = toolToIntegrationMap?.get(item.name) || "unknown";
         
-        return {
-            type: "ToolCall",
-            summary: item.name,
-            step_id: item.callId,
-            parameters: item.arguments,
-            integration
-        };
+        // Handle hosted tool calls
+        if (item.type === "hosted_tool_call") {
+            const integration = IntegrationType.TERSE
+            const parameters = item.providerData?.action 
+                ? JSON.stringify(item.providerData.action)
+                : JSON.stringify(item.providerData || {});
+            
+            return {
+                type: "ToolCall",
+                summary: item.name,
+                step_id: item.id || item.callId || "unknown",
+                parameters,
+                integration
+            };
+        }
+        
+        // Handle regular function calls
+        if (item.type === "function_call") {
+            const integration = toolToIntegrationMap?.get(item.name) || "unknown";
+            
+            return {
+                type: "ToolCall",
+                summary: item.name,
+                step_id: item.callId || "unknown",
+                parameters: item.arguments || "{}",
+                integration
+            };
+        }
     }
     return null;
 }
@@ -80,11 +101,24 @@ export function tryExtractToolCall(
 export function tryExtractToolCallCompleteData(event: AgentStreamEvent): ToolCallCompleteData | null {
     if (event.type === "run_item_stream_event" && event.name === "tool_output") {
         const item = (event as ToolCallCompleteEvent).item.rawItem;
-        return {
-            name: item.name,
-            callId: item.callId,
-            status: item.status,
-        };
+        
+        // Handle hosted tool calls
+        if (item.type === "hosted_tool_call" || (item as any).type === "hosted_tool_call_result") {
+            return {
+                name: item.name,
+                callId: (item as any).id || item.callId || "unknown",
+                status: item.status || "unknown",
+            };
+        }
+        
+        // Handle regular function call results
+        if (item.type === "function_call_result") {
+            return {
+                name: item.name,
+                callId: item.callId || "unknown",
+                status: item.status || "unknown",
+            };
+        }
     }
     return null;
 }
@@ -136,13 +170,13 @@ export type ToolCalledEvent = {
     item: {
         type: "tool_call_item";
         rawItem: {
-            providerData: any;
-            id: string;
-            type: "function_call";
-            callId: string;
+            providerData?: any;
+            id?: string;
+            type: "function_call" | "hosted_tool_call";
+            callId?: string;
             name: string;
-            status: string;
-            arguments: string;
+            status?: string;
+            arguments?: string;
         };
         agent: any;
     };
@@ -154,14 +188,15 @@ export type ToolCallCompleteEvent = {
     item: {
         type: "tool_call_output_item";
         rawItem: {
-            type: "function_call_result";
+            type: "function_call_result" | "hosted_tool_call" | "hosted_tool_call_result";
             name: string;
-            callId: string;
+            callId?: string;
+            id?: string;
             status: string;
-            output: any;
+            output?: any;
         };
         agent: any;
-        output: any;
+        output?: any;
     };
 };
 
