@@ -30,7 +30,6 @@ export function useChat({
         handleToolCallComplete,
         handleFailure,
         handleNaturalStop,
-        addUserTurn,
         handleFilterResult,
     } = useChatTurns({initialTurns});
 
@@ -54,7 +53,6 @@ export function useChat({
     const { input, setInput, sendMessage } = useChatInput({
         sendMessage: sendSocketMessage,
         onUserMessage: (message: string) => {
-            addUserTurn(message);
             onUserMessage?.(message);
         }
     });
