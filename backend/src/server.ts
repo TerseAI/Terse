@@ -80,6 +80,12 @@ import {
 import { getConfluenceIntegrations, getConfluenceResources } from "./routes/confluence";
 import { getActiveIntegrations, getAllIntegrations, getIntegrationInstallationDetails } from "./routes/integrations";
 import { initializeRealtimeSocket } from "./realtimeSocket";
+import {
+  createNotificationDestination,
+  deleteNotificationDestination,
+  getNotificationDestinations,
+  updateNotificationDestination,
+} from "./routes/notificationDestinations";
 
 export type Session = {
   user: User;
@@ -405,6 +411,25 @@ app.get("/integrations", authMiddleware, async (req, res) => {
 app.get("/integrations/active", authMiddleware, async (req, res) => {
   getActiveIntegrations(req, res);
 });
+
+// MARK: NOTIFICATION DESTINATIONS
+
+app.get("/notification-destinations", authMiddleware, async (req, res) => {
+  getNotificationDestinations(req, res);
+});
+
+app.post("/notification-destinations", authMiddleware, async (req, res) => {
+  createNotificationDestination(req, res);
+});
+
+app.put("/notification-destinations/:id", authMiddleware, async (req, res) => {
+  updateNotificationDestination(req, res);
+});
+
+app.delete("/notification-destinations/:id", authMiddleware, async (req, res) => {
+  deleteNotificationDestination(req, res);
+});
+
 server.listen(3001, () => {
   console.log("🚀 Express backend running on http://localhost:3001");
   console.log("📝 Logging is enabled - all console.log statements should appear");
