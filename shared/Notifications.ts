@@ -21,9 +21,11 @@ export interface SlackNotificationDestination extends NotificationDestination {
     slackChannelName?: string;
 }
 
-export interface CreateSlackNotificationDestinationRequest {
-    type: NotificationDestinationType.SLACK;
-    integrationId: string;
+export interface CreateNotificationDestinationRequest {
+    type: NotificationDestinationType;
+    email?: string;
+    integrationId?: string;
     slackChannelId?: string;
     slackChannelName?: string;
+    isActive?: boolean;
 }
