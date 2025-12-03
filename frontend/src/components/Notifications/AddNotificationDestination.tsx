@@ -10,7 +10,8 @@ import { IntegrationType } from "../../shared/Integrations"
 import { useOAuthSuccessListener } from "../../hooks/useOAuthSuccessListener"
 import { SlackChannelSelector } from "../SlackChannelSelector"
 import { BackendProvider } from "../../services/backend"
-import { NotificationDestinationType } from "../../shared/Notifications"
+import { CreateNotificationDestinationRequest, NotificationDestinationType } from "../../shared/Notifications"
+import { toast } from "sonner"
 
 export function AddNotificationDestination() {
     return (
@@ -21,9 +22,11 @@ export function AddNotificationDestination() {
 }
 
 function AddNotificationDestinationDialog() {
+    const [open, setOpen] = useState(false);
+
     return (
-        <Dialog>
-            <DialogTrigger>
+        <Dialog open={open} onOpenChange={setOpen}>
+            <DialogTrigger asChild>
                 <Button variant="outline">
                     <PlusIcon />
                     Add Notification Channel
@@ -34,14 +37,18 @@ function AddNotificationDestinationDialog() {
                     <DialogTitle>Add Notification Destination</DialogTitle>
                     <DialogDescription>Add a notification channel to be notified when a background agent makes a change.</DialogDescription>
 
-                    <SelectSlackDestination />
+                    <SelectSlackDestination onSuccess={() => setOpen(false)} />
                 </DialogHeader>
             </DialogContent>
         </Dialog>
     )
 }
 
-function SelectSlackDestination() {
+interface SelectSlackDestinationProps {
+    onSuccess?: () => void;
+}
+
+function SelectSlackDestination({ onSuccess }: SelectSlackDestinationProps) {
     const { integrations, isLoading, mutate } = useSlackIntegrations();
     const [selectedIntegrationId, setSelectedIntegrationId] = useState<string | undefined>(undefined);
     const { connect: connectOAuth } = useOAuthConnection(IntegrationType.SLACK);
@@ -49,15 +56,38 @@ function SelectSlackDestination() {
     const [selectedChannelId, setSelectedChannelId] = useState<string | undefined>(undefined);
     const [listenToUserDms, setListenToUserDms] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
+    const [validationError, setValidationError] = useState<string | null>(null);
 
     async function saveDestination() {
+        setValidationError(null);
+
+        if (!selectedIntegrationId) {
+            setValidationError("Please select a Slack workspace");
+            return;
+        }
+
+        if (!selectedChannelId) {
+            setValidationError("Please select a channel to receive notifications");
+            return;
+        }
+
         setIsSaving(true);
-        await BackendProvider.createNotificationDestination({
-            type: NotificationDestinationType.SLACK,
-            integrationId: selectedIntegrationId!,
-            slackChannelId: selectedChannelId,
-        });
-        mutate();
+        try {
+            const payload: CreateNotificationDestinationRequest = {
+                type: NotificationDestinationType.SLACK,
+                integrationId: selectedIntegrationId,
+                slackChannelId: selectedChannelId,
+            };
+            await BackendProvider.createNotificationDestination(payload);
+            mutate();
+            toast.success("Notification destination added successfully");
+            onSuccess?.();
+        } catch (error) {
+            console.error("Failed to save notification destination:", error);
+            toast.error("Failed to add notification destination. Please try again.");
+        } finally {
+            setIsSaving(false);
+        }
     }
 
     useOAuthSuccessListener(mutate, () => {
@@ -117,12 +147,17 @@ function SelectSlackDestination() {
                         listenToUserDms={listenToUserDms}
                         onSelect={(channelId, channelName) => {
                             setSelectedChannelId(channelId);
+                            setValidationError(null);
                         }}
                         onListenToUserDmsChange={(listenToUserDms) => {
                             setListenToUserDms(listenToUserDms);
                         }}
                     />
                 </div>
+            )}
+
+            {validationError && (
+                <p className="text-sm text-destructive">{validationError}</p>
             )}
 
             <Button onClick={saveDestination} disabled={isSaving}>{isSaving ? 'Saving...' : 'Save'}</Button>

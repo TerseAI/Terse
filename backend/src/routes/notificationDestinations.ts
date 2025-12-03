@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import { db } from "../prismaClient";
 import { NotificationDestinationType } from "@prisma/client";
+import { CreateNotificationDestinationRequest } from "../shared/Notifications";
 
 // GET /notification-destinations - List all notification destinations for the user
 export async function getNotificationDestinations(req: Request, res: Response) {
@@ -37,7 +38,7 @@ export async function createNotificationDestination(req: Request, res: Response)
     }
 
     const userId = req.session.user.id;
-    const { type, email, integrationId, slackChannelId, slackChannelName } = req.body;
+    const { type, email, integrationId, slackChannelId, slackChannelName }: CreateNotificationDestinationRequest = req.body;
 
     // Validate request
     if (!type) {
