@@ -89,6 +89,7 @@ function SelectSlackIntegration() {
                     label: 'Connect Another Slack Workspace',
                     onClick: connectOAuth
                 }}
+                modal={false}
             />
         </div>
     )
