@@ -16,7 +16,7 @@ export type StatusOption = {
 
 type DropdownSelectProps = {
     statusOptions: StatusOption[];
-    selectedOption: StatusOption;
+    selectedOption?: StatusOption;
     setSelected: (value: string) => void;
     additionalAction?: {
         label: string;
@@ -25,17 +25,18 @@ type DropdownSelectProps = {
 }
 
 const DropdownSelect = ({ statusOptions, selectedOption, setSelected, additionalAction }: DropdownSelectProps) => {
+    const selectedOptionValue = selectedOption?.label ?? "select an option";
     return (
         <DropdownMenu>
             <DropdownMenuTrigger asChild>
                 <Button variant="outline">
-                    <span className="block truncate">{selectedOption.label}</span>
+                    <span className="block truncate">{selectedOptionValue}</span>
                     <ChevronDown className="h-4 w-4 ml-2 text-muted-foreground shrink-0" />
                 </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent className="max-h-60" align="start">
                 <DropdownMenuRadioGroup
-                    value={selectedOption.value}
+                    value={selectedOption?.value}
                     onValueChange={setSelected}
                 >
                     {statusOptions.map((option, idx) => (
