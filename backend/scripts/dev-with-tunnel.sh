@@ -46,9 +46,15 @@ while [ -z "$TUNNEL_URL" ] && [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
     
     # Try to extract URL from log file
     # Cloudflared outputs URLs like: https://xxxx-xx-xx-xx-xx.trycloudflare.com
-    # It can appear in multiple formats in the output
+    # Use strings to handle any binary characters in the log file
     if [ -f /tmp/cloudflared.log ]; then
-        TUNNEL_URL=$(grep -oE 'https://[a-zA-Z0-9-]+\.trycloudflare\.com' /tmp/cloudflared.log 2>/dev/null | head -n 1)
+        # First try to find URL after "Your quick Tunnel has been created" message
+        TUNNEL_URL=$(strings /tmp/cloudflared.log 2>/dev/null | grep -A 1 "Your quick Tunnel has been created" | grep -oE 'https://[a-zA-Z0-9-]+\.trycloudflare\.com' | head -n 1)
+        
+        # Fallback: try to find any URL in the log
+        if [ -z "$TUNNEL_URL" ]; then
+            TUNNEL_URL=$(strings /tmp/cloudflared.log 2>/dev/null | grep -oE 'https://[a-zA-Z0-9-]+\.trycloudflare\.com' | head -n 1)
+        fi
     fi
 done
 
