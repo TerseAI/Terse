@@ -87,7 +87,7 @@ export function OutputCard({
                 </CardTitle>
             </CardHeader>
             <CardContent className="max-w-xs">
-                <IntegrationSelector input={output} variant="dialog" setConfig={onSelect} isOutput={true} />
+                <IntegrationSelector input={output} variant="dialog" setConfig={onSelect} />
             </CardContent>
             <CardFooter>
                 <Button variant="destructive" onClick={handleRemove}>
