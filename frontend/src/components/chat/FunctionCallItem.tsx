@@ -147,7 +147,7 @@ export default function FunctionCallItem({ call, isFailure = false, index }: Fun
     const callKey = `function-call-${call.id}-${index}`;
 
     return (
-        <div className="space-y-2 w-full">
+        <div className="space-y-2 w-[500px]">
             <Accordion
                 type="single"
                 collapsible
@@ -197,7 +197,7 @@ export default function FunctionCallItem({ call, isFailure = false, index }: Fun
                         <AccordionContent>
                             <div className="pt-2 pl-4 pr-4 space-y-2 w-full">
                                 {call.parameters && (
-                                    <div className="w-full">
+                                    <div>
                                         <ToolCallParameters parameters={call.parameters} />
                                     </div>
                                 )}

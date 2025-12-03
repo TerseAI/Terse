@@ -147,10 +147,8 @@ export class ChannelAgent<T extends Session, TConfig extends ConfigInstance> {
 
     private buildToolIntegrationMap(): void {   
         this.output.toolbox.forEach(entry => {
-            console.log(entry.tool)
             this.toolToIntegrationMap.set(entry.tool.name, entry.integration);
         });
-        console.log("Tool integration map:", this.toolToIntegrationMap);
     }
 
     private chooseModel(): string {
