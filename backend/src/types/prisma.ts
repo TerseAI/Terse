@@ -23,7 +23,8 @@ import {
   automation_notion_page_configs,
   automation_confluence_configs,
   automation_linear_configs,
-  PrismaClient
+  PrismaClient,
+  directive_records
 } from '@prisma/client';
 
 
@@ -72,6 +73,8 @@ export type ChannelPrompt = automation_prompts; // Alias for rebranding
 
 export type AutomationInput = automation_inputs;
 export type ChannelInput = automation_inputs; // Alias for rebranding
+
+export type DirectiveRecord = directive_records;
 
 // Extended type for ChannelInput with all config relations included
 export type AutomationInputWithConfigs = Prisma.automation_inputsGetPayload<{
