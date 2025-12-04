@@ -1,4 +1,5 @@
-import { ChatLayout } from "./ChatLayout";
+import { forwardRef } from "react";
+import { ChatLayout, type ChatLayoutHandle } from "./ChatLayout";
 import { useChat } from "./hooks/useChat";
 import { Turn } from "./Turn";
 import { type ChatEventSubscription } from "./hooks/useCompletionSocket";
@@ -10,17 +11,18 @@ type ChatProps = {
     subscribeToEvents?: ChatEventSubscription | null;
     sendMessage: (message: ModelRequest) => void;
     onUserMessage?: (message: string) => void;
-    initialScrollToBottom?: boolean;
 };
 
-function Chat({ 
+export type ChatHandle = ChatLayoutHandle;
+
+const Chat = forwardRef<ChatHandle, ChatProps>(function Chat({ 
     initialTurns,
     EmptyContentPlaceholder,  
     subscribeToEvents,
     sendMessage,
     onUserMessage
-}: ChatProps) {
-    const { turns, isPendingAssistantResponse, messagesEndRef, input, setInput, sendMessage: sendUserMessage, sendModelRequest } = useChat({
+}, ref) {
+    const { turns, isPendingAssistantResponse, input, setInput, sendMessage: sendUserMessage, sendModelRequest } = useChat({
         subscribeToEvents,
         sendMessage,
         initialTurns,
@@ -31,9 +33,9 @@ function Chat({
 
     return (
         <ChatLayout
+            ref={ref}
             turns={turns}
             isPendingAssistantResponse={isPendingAssistantResponse}
-            messagesEndRef={messagesEndRef}
             onSendMessage={sendUserMessage}
             onSendModelRequest={sendModelRequest}
             input={input}
@@ -42,6 +44,6 @@ function Chat({
             EmptyContentPlaceholder={EmptyContentPlaceholder}
         />
     );
-}
+});
 
 export { Chat }

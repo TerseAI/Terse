@@ -9,7 +9,6 @@ import { settings } from '../../config/settings';
 import { formatChannelInputsForAgent, formatChannelOutputForAgent } from './formatContext';
 import { UserFormatter } from '../../utility/UserFormatter';
 import { transformAgentStreamToModelEvents } from '../streaming';
-import { convertOutputConfigTypeToIntegrationType } from '../../utility/typeConverters';
 import { getRealtimeSocket } from '../../realtimeSocket';
 import type { RunHistoryAction, RunHistoryStreamingParams } from '../../shared/RunHistoryTypes';
 import { EntityType } from '../../shared/Entities';
@@ -17,6 +16,7 @@ import { ChangedItem, ChangeEventType } from '../../shared/ModelEvents';
 import { persistRunAction } from './EventProcessor';
 import { processModelEventStream } from './StreamProcessor';
 import { RunHistoryChatMemorySession, trimToLastTurns } from './CustomMemorySession';
+import { IntegrationType } from '../../shared/Integrations';
 
 
 export class ChannelAgent<T extends Session, TConfig extends ConfigInstance> {
@@ -28,7 +28,7 @@ export class ChannelAgent<T extends Session, TConfig extends ConfigInstance> {
     private agent?: Agent<SessionWithTracking<T>, AgentOutputType>;
     private tools: Tool<SessionWithTracking<T>>[] = [];
     private runId: string;
-    private toolToIntegrationMap: Map<string, string> = new Map();
+    private toolToIntegrationMap: Map<string, IntegrationType> = new Map();
     private pendingActions: RunHistoryAction[] = [];
     private memorySession: RunHistoryChatMemorySession;
 
@@ -145,10 +145,9 @@ export class ChannelAgent<T extends Session, TConfig extends ConfigInstance> {
         return changedItems;
     }
 
-    private buildToolIntegrationMap(): void {
-        const integrationType = convertOutputConfigTypeToIntegrationType(this.output.integration);
+    private buildToolIntegrationMap(): void {   
         this.output.toolbox.forEach(entry => {
-            this.toolToIntegrationMap.set(entry.tool.name, integrationType);
+            this.toolToIntegrationMap.set(entry.tool.name, entry.integration);
         });
     }
 
@@ -157,10 +156,12 @@ export class ChannelAgent<T extends Session, TConfig extends ConfigInstance> {
     }
 
     async initializeAgent(): Promise<void> {
+        const currentTimeUtc = new Date().toISOString();
+        const baseSystemPrompt = systemPrompt(currentTimeUtc);
         const outputInstructions = this.output.getSystemInstructions(this.session);
         const fullSystemPrompt = outputInstructions
-            ? `${systemPrompt}\n\n${outputInstructions}`
-            : systemPrompt;
+            ? `${baseSystemPrompt}\n\n${outputInstructions}`
+            : baseSystemPrompt;
 
         this.agent = new Agent<SessionWithTracking<T>, AgentOutputType>({
             name: 'Living Document Automator',

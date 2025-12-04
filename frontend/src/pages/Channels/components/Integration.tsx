@@ -42,6 +42,10 @@ export function IconForIntegration({ integration }: { integration: IntegrationTy
             return <FigmaIcon />;
         case IntegrationType.ATLASSIAN:
             return <JiraConfluenceIcon />;
+        case IntegrationType.TERSE:
+            return <TerseIcon />;
+        default:
+            throw integration satisfies never;
     }
 }
 
@@ -102,5 +106,11 @@ function JiraConfluenceIcon() {
             <img src="/jira.svg" alt="Jira" className="w-full h-full object-contain" />
             <img src="/confluence.svg" alt="Confluence" className="w-full h-full object-contain" />
         </div>
+    );
+}
+
+function TerseIcon() {
+    return (
+        <img src="/terse.png" alt="Terse" className="w-full h-full object-contain" />
     );
 }

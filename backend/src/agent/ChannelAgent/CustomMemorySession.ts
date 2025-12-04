@@ -117,7 +117,8 @@ function filterReasoningItems(rawEvents: AgentInputItem[]): AgentInputItem[] {
     if (isReasoningItemVariable) {
       // Check if there's a following message item
       const hasFollowingMessage = i < rawEvents.length - 1 && isMessageItem(rawEvents[i + 1]);
-      if (hasFollowingMessage) {
+      const hasFollowingWebSearchCall = i < rawEvents.length - 1 && isWebSearchCallItem(rawEvents[i + 1]);
+      if (hasFollowingMessage || hasFollowingWebSearchCall) {
         // Include the reasoning item - it has its required following message
         filteredEvents.push(item);
       } else {
@@ -153,6 +154,20 @@ function isMessageItem(item: AgentInputItem): boolean {
   if (typeof item === 'object' && item !== null) {
     const itemAny = item as any;
     return itemAny.role === 'user' || itemAny.role === 'assistant' || itemAny.role === 'system';
+  }
+  return false;
+}
+
+function isWebSearchCallItem(item: AgentInputItem): boolean {
+  // Web search call items have type 'web_search_call' or id starting with 'ws_'
+  if (typeof item === 'object' && item !== null) {
+    const itemAny = item as any;
+    if (itemAny.type === 'web_search_call') {
+      return true;
+    }
+    if (itemAny.id && typeof itemAny.id === 'string' && itemAny.id.startsWith('ws_')) {
+      return true;
+    }
   }
   return false;
 }

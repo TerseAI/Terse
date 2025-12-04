@@ -1,13 +1,10 @@
-import Spin, { Size } from "../loading/Spin";
-import { HandThumbUpIcon, HandThumbDownIcon, CheckIcon, DocumentDuplicateIcon, ClockIcon, XMarkIcon, PaperAirplaneIcon, CheckCircleIcon, XCircleIcon } from '@heroicons/react/24/outline';
+import { HandThumbUpIcon, HandThumbDownIcon, CheckIcon, DocumentDuplicateIcon, CheckCircleIcon, XCircleIcon } from '@heroicons/react/24/outline';
 import { HandThumbUpIcon as HandThumbUpFilledIcon, HandThumbDownIcon as HandThumbDownFilledIcon } from '@heroicons/react/24/solid';
 import { useState } from "react";
 import TokenStream from "./TokenStream";
 
 import { ChangedItem } from "../../shared/ModelEvents";
-import { useRunHistoryActions } from "../../hooks/useRunHistoryActions";
-import RunHistoryActionItem from "../RunHistory/RunHistoryActionItem";
-import { EntityType } from "../../shared/Entities";
+import FunctionCallItem from "./FunctionCallItem";
 
 interface Turn {
     role: 'user' | 'assistant';
@@ -64,53 +61,12 @@ function TurnView({ role, text, function_calls, isFailure = false, isGenerating 
                     </div>
                 )}
                 {function_calls.map((call, index) => (
-                    <div key={index} className="space-y-2">
-                        <div className="flex items-center gap-2">
-                            {call.isWaitingForApproval ? (
-                                <ClockIcon className="w-4 h-4 text-primary flex-shrink-0" />
-                            ) : call.isRejected ? (
-                                <XMarkIcon className="w-4 h-4 text-red-500 flex-shrink-0" />
-                            ) : call.isWaitingForUserInput ? (
-                                <svg className="w-4 h-4 text-blue-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-                                </svg>
-                            ) : !call.isRunning ? (
-                                <svg className="w-4 h-4 text-primary flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                                </svg>
-                            ) : (
-                                <Spin size={Size.Tiny} />
-                            )}
-                            <div className="text-sm">
-                                {call.name}
-                                {call.isWaitingForApproval && (
-                                    <span className="text-yellow-500 ml-1">(waiting for approval)</span>
-                                )}
-                                {call.isRejected && (
-                                    <span className="text-red-500 ml-1">(rejected)</span>
-                                )}
-                                {call.isWaitingForUserInput && (
-                                    <span className="text-blue-500 ml-1">(waiting for your input)</span>
-                                )}
-                                {call.result && !call.isWaitingForUserInput && (
-                                    <span className="text-muted-foreground ml-2 font-mono bg-background px-2 py-0.5 rounded text-xs">
-                                        → {call.result}
-                                    </span>
-                                )}
-                            </div>
-                        </div>
-                        {call.isWaitingForUserInput && (
-                            <ToolResultInput
-                                stepId={call.id}
-                                toolName={call.name}
-                                parameters={call.parameters}
-                                onSubmit={(result) => {
-                                    console.log('🔍 Tool result submitted:', result);
-                                }}
-                            />
-                        )}
-                        <ToolActionsDisplay changedItems={call.changed_items} isFailure={isFailure} />
-                    </div>
+                    <FunctionCallItem
+                        key={index}
+                        call={call}
+                        isFailure={isFailure}
+                        index={index}
+                    />
                 ))}
 
                 {isAssistantFinishedGenerating && (
@@ -129,51 +85,6 @@ export type { Turn, FunctionCallEvent };
 export { TurnView };
 
 // Helpers
-
-function ToolActionsDisplay({ changedItems, isFailure }: { changedItems?: ChangedItem[], isFailure?: boolean }) {
-    if (!changedItems || changedItems.length === 0) return null;
-
-    const actionIds = changedItems
-        .filter(item => item.type_name === EntityType.RUN_HISTORY_ACTION)
-        .map(item => item.id);
-
-    if (actionIds.length === 0) return null;
-
-    return <ToolActionsList actionIds={actionIds} isFailure={isFailure} />;
-}
-
-function ToolActionsList({ actionIds, isFailure }: { actionIds: string[], isFailure?: boolean }) {
-    const { actions } = useRunHistoryActions(actionIds);
-    const [expandedActions, setExpandedActions] = useState<Set<string>>(new Set());
-
-    const toggleAction = (actionKey: string) => {
-        const newExpanded = new Set(expandedActions);
-        if (newExpanded.has(actionKey)) {
-            newExpanded.delete(actionKey);
-        } else {
-            newExpanded.add(actionKey);
-        }
-        setExpandedActions(newExpanded);
-    };
-
-    if (!actions || actions.length === 0) return null;
-
-    return (
-        <div className="mt-2 space-y-2">
-            {actions.map((action, index) => (
-                <RunHistoryActionItem
-                    key={action.id}
-                    runId={action.id} 
-                    index={index}
-                    action={action}
-                    runStatus={isFailure ? "failed" : "success"}
-                    isExpanded={expandedActions.has(`${action.id}-action-${index}`)}
-                    onToggle={toggleAction}
-                />
-            ))}
-        </div>
-    );
-}
 
 function CopyButton({ text }: { text: string }) {
     const [copied, setCopied] = useState(false);
@@ -248,98 +159,17 @@ function FeedbackButtons({ }: {}) {
     );
 }
 
-function ToolResultInput({ toolName, parameters, onSubmit }: { stepId: string; toolName: string; parameters?: string; onSubmit: (result: string) => void }) {
-    const [result, setResult] = useState('');
-    const [submitted, setSubmitted] = useState(false);
-    const [submittedValue, setSubmittedValue] = useState('');
-
-    const handleSubmit = (e: React.FormEvent) => {
-        console.log('🔍 Tool result input submitted:', result);
-        e.preventDefault();
-        if (result.trim()) {
-            setSubmittedValue(result.trim());
-            setSubmitted(true);
-            onSubmit(result.trim());
-            setResult('');
-        }
-    };
-
-    // Parse parameters if they exist
-    let parsedParams = null;
-    if (parameters) {
-        try {
-            parsedParams = JSON.parse(parameters);
-        } catch (e) {
-            // If parsing fails, treat as plain text
-            parsedParams = parameters;
-        }
-    }
-
-    // Show collapsed view if submitted
-    if (submitted) {
-        return (
-            <div className="bg-card rounded-lg p-3 mt-2 border border-green-500/20">
-                <div className="text-sm text-muted-foreground mb-2">
-                    Result provided for <span className="font-medium text-foreground">{toolName}</span>:
-                </div>
-                <div className="flex items-center gap-2">
-                    <CheckIcon className="w-4 h-4 text-green-500 flex-shrink-0" />
-                    <span className="text-sm text-foreground font-mono bg-background px-2 py-1 rounded">
-                        {submittedValue}
-                    </span>
-                </div>
-            </div>
-        );
-    }
-
-    // Show input form if not submitted yet
-    return (
-        <div className="bg-card rounded-lg p-3 mt-2">
-            <div className="text-sm text-muted-foreground mb-2">
-                Please provide the result for <span className="font-medium text-foreground">{toolName}</span>:
-            </div>
-
-            {parameters && (
-                <div className="mb-3 p-2 bg-background rounded border border-border">
-                    <div className="text-xs text-muted-foreground mb-1">Parameters:</div>
-                    <pre className="text-xs text-foreground whitespace-pre-wrap font-mono">
-                        {typeof parsedParams === 'object' ? JSON.stringify(parsedParams, null, 2) : parsedParams}
-                    </pre>
-                </div>
-            )}
-
-            <form onSubmit={handleSubmit} className="grid grid-cols-[1fr_auto] gap-2">
-                <input
-                    type="text"
-                    value={result}
-                    onChange={(e) => setResult(e.target.value)}
-                    placeholder="Enter tool result..."
-                    className="w-full text-foreground text-sm resize-none p-2.5 leading-normal placeholder:italic placeholder:text-muted-foreground rounded-lg transition-all duration-300 focus:outline-none bg-card"
-                    autoFocus
-                />
-                <button
-                    type="submit"
-                    disabled={!result.trim()}
-                    className="px-4 py-2 bg-primary text-primary-foreground rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200 flex items-center gap-1"
-                >
-                    <PaperAirplaneIcon className="w-4 h-4" />
-                    Send
-                </button>
-            </form>
-        </div>
-    );
-}
 
 function FilterResultView({ filterResult }: { filterResult: { isRelevant: boolean; reason: string; confidence: number; } }) {
     const { isRelevant, reason, confidence } = filterResult;
-    
+
     // Determine confidence color for the progress circle
     const getConfidenceColor = (conf: number) => {
         if (conf >= 0.8) return 'text-emerald-600 dark:text-emerald-400';
         if (conf >= 0.5) return 'text-yellow-600 dark:text-yellow-400';
         return 'text-orange-600 dark:text-orange-400';
     };
-    
+
     // Calculate circle circumference for stroke-dasharray
     const radius = 6;
     const circumference = 2 * Math.PI * radius;
@@ -360,7 +190,7 @@ function FilterResultView({ filterResult }: { filterResult: { isRelevant: boolea
                                     <div className="text-sm font-semibold text-[#F1F1F1]">
                                         {isRelevant ? 'Event Approved' : 'Event Filtered Out'}
                                     </div>
-                                    <div 
+                                    <div
                                         className="relative w-4 h-4 flex-shrink-0"
                                         title={`Confidence: ${Math.round(confidence * 100)}%`}
                                     >
