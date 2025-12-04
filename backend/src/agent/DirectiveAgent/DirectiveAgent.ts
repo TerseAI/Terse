@@ -1,6 +1,6 @@
 import { Agent, run } from "@openai/agents";
 import { z } from "zod";
-import { RunHistoryChatMemorySession } from "../CustomMemorySession";
+import { identityHistoryCallback, RunHistoryChatMemorySession } from "../CustomMemorySession";
 import { db } from "../../prismaClient";
 import { EventEmitterTaskQueue } from "../../tasks/abstract/eventEmitterTasks";
 import { Task } from "../../tasks/abstract/tasks";
@@ -90,11 +90,9 @@ Return a JSON object with:
 
 Do not include explanations or any extra fields. Only output the JSON object.`,
   model: "gpt-5-nano",
-  modelSettings: { temperature: 0 },
   outputType: DirectiveClassification,
 });
 
-// --- Functions ---
 
 async function classifyDirective(
   runHistoryId: string,
@@ -105,7 +103,7 @@ async function classifyDirective(
     skipSave: true,
   });
 
-  const result = await run(directiveAgent, [{ role: 'user', content: message }], { session });
+  const result = await run(directiveAgent, [{ role: 'user', content: message }], { session, sessionInputCallback: identityHistoryCallback });
 
   return result.finalOutput ?? { isDirective: false, directiveDescription: '' };
 }
@@ -136,7 +134,9 @@ directiveTaskQueue.addListener({
   taskName: DIRECTIVE_TASK_NAME,
   onTask: async (task: DirectiveTask) => {
     try {
+      console.log(`[Directive] Classifying message: "${task.message.slice(0, 100)}${task.message.length > 100 ? '...' : ''}"`);
       const directive = await classifyDirective(task.runHistoryId, task.message);
+      console.log(`[Directive] Result: isDirective=${directive.isDirective}${directive.isDirective ? `, description="${directive.directiveDescription}"` : ''}`);
       if (directive.isDirective) {
         await persistDirective(
           task.automationId,
@@ -144,9 +144,10 @@ directiveTaskQueue.addListener({
           task.runHistoryChatEventId,
           directive.directiveDescription
         );
+        console.log(`[Directive] Persisted directive for automation ${task.automationId}`);
       }
     } catch (error) {
-      console.error(`Failed to process directive task:`, error);
+      console.error(`[Directive] Failed to process directive task:`, error);
     }
   }
 });

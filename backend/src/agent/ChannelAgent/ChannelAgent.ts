@@ -15,7 +15,7 @@ import { EntityType } from '../../shared/Entities';
 import { ChangedItem, ChangeEventType } from '../../shared/ModelEvents';
 import { persistRunAction } from './EventProcessor';
 import { processModelEventStream } from './StreamProcessor';
-import { RunHistoryChatMemorySession, trimToLastTurns } from '../CustomMemorySession';
+import { recentHistoryCallback, RunHistoryChatMemorySession, trimToLastTurns } from '../CustomMemorySession';
 import { IntegrationType } from '../../shared/Integrations';
 import { db } from '../../prismaClient';
 import { InputImageContent, InputTextContent } from 'openai/resources/conversations/conversations.mjs';
@@ -299,19 +299,16 @@ ${this.inputEvent!.formatForChannelAgent()}
     }
 }
 
-/**
- * Controls how many messages are stored in the memory session before
- * they are trimmed.
- */
-const recentHistoryCallback = (history: AgentInputItem[], newItems: AgentInputItem[]): AgentInputItem[] => {
-    const trimmedHistory = trimToLastTurns(history, 10)
-    return [...trimmedHistory, ...newItems];
-}
-
 async function getChannelDirectives(channelId: string): Promise<DirectiveRecord[]> {
     const prisma = db();
     const directives = await prisma.directive_records.findMany({
-        where: { automation_id: channelId },
+        where: { 
+            automation_id: channelId,
+            is_active: true,
+        },
+        orderBy: {
+            created_at: 'asc',
+        },
     });
     return directives;
 }
