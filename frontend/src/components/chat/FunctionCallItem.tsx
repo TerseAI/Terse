@@ -147,7 +147,7 @@ export default function FunctionCallItem({ call, isFailure = false, index }: Fun
     const callKey = `function-call-${call.id}-${index}`;
 
     return (
-        <div className="space-y-2 w-[500px]">
+        <div className="space-y-2 w-full max-w-lg">
             <Accordion
                 type="single"
                 collapsible
