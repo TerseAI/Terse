@@ -7,8 +7,7 @@ import { RunHistoryStatus, RunHistoryTrigger, RunHistoryRecord } from '@/shared/
 import { cn } from '@/lib/utils';
 import RunHistoryChatDrawerHeader from './RunHistoryChatDrawerHeader';
 import RunHistoryChatAdapter from './RunHistoryChatAdapter';
-import { Chat } from '@/components/chat/Chat';
-import RunTimestamps from './RunTimestamps';
+import { Chat, type ChatHandle } from '@/components/chat/Chat';
 
 type Props = {
     runId: string;
@@ -41,6 +40,7 @@ export default function RunHistoryChatDrawer({
 }: Props) {
     const [internalFullscreen, setInternalFullscreen] = useState(false);
     const prevRunIdRef = useRef<string | null>(null);
+    const chatRef = useRef<ChatHandle>(null);
     
     const isFullscreen = onFullscreenChange ? externalIsFullscreen : internalFullscreen;
     const isActuallyInitialOpen = isInitialOpen && (prevRunIdRef.current === null || prevRunIdRef.current !== runId);
@@ -48,6 +48,11 @@ export default function RunHistoryChatDrawer({
     useEffect(() => {
         if (isOpen) {
             prevRunIdRef.current = runId;
+            // Scroll to bottom when drawer opens (with small delay for content to render)
+            const timeoutId = setTimeout(() => {
+                chatRef.current?.scrollToBottom();
+            }, 100);
+            return () => clearTimeout(timeoutId);
         } else {
             prevRunIdRef.current = null;
         }
@@ -72,8 +77,7 @@ export default function RunHistoryChatDrawer({
             )}>
                 {isOpen && (
                     <RunHistoryChatAdapter runId={runId} status={status}>
-                        {({ initialTurns, isLoading, startTimestamp, endTimestamp, subscribeToEvents, sendMessage, currentStatus }) => {
-                            const isActiveRun = currentStatus === 'in_progress';
+                        {({ initialTurns, isLoading, subscribeToEvents, sendMessage, currentStatus }) => {
                             const isFiltered = currentStatus === 'skipped';
                             return (
                                 <>
@@ -94,6 +98,7 @@ export default function RunHistoryChatDrawer({
                                         <div className="flex flex-col h-full relative">
                                             <div className="flex-1 min-h-0">
                                                 <Chat 
+                                                    ref={chatRef}
                                                     initialTurns={initialTurns} 
                                                     subscribeToEvents={subscribeToEvents}
                                                     sendMessage={sendMessage}
@@ -102,14 +107,8 @@ export default function RunHistoryChatDrawer({
                                                             ? <div className="p-4 text-center text-muted-foreground">Loading history...</div> 
                                                             : <div className="p-4 text-center text-muted-foreground">No events found</div>
                                                     }
-                                                    initialScrollToBottom={true}
                                                 />
                                             </div>
-                                            {!isActiveRun && (
-                                                <div className="flex-shrink-0 border-t bg-background p-2">
-                                                    <RunTimestamps startTimestamp={startTimestamp} endTimestamp={endTimestamp} />
-                                                </div>
-                                            )}
                                         </div>
                                     </div>
                                 </>
