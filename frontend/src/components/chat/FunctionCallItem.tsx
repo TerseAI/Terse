@@ -209,7 +209,6 @@ export default function FunctionCallItem({ call, isFailure = false, index }: Fun
             </Accordion>
             {call.isWaitingForUserInput && (
                 <ToolResultInput
-                    stepId={call.id}
                     toolName={call.name}
                     parameters={call.parameters}
                     onSubmit={(result) => {
