@@ -1,5 +1,3 @@
-
-
 const ToolTypes = {
     SEARCH: 'search',
     OPEN_PAGE: 'open_page',
