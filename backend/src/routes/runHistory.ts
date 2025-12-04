@@ -5,8 +5,6 @@ import type { GetRunHistoryParams, GetRunHistoryResponse, RunHistoryRecord, RunH
 import { parsePageParams } from "../utility/pagination";
 import { convertPrismaIntegrationTypeToIntegrationTypeFromRunHistory } from "../utility/typeConverters";
 import { ModelEvent } from "../shared/ModelEvents";
-import { IntegrationType } from "../shared/Integrations";
-
 // Valid status values for validation
 const VALID_STATUSES: RunHistoryStatus[] = ["success", "failed", "skipped", "in_progress"];
 
