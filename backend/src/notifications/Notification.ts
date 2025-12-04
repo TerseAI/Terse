@@ -25,6 +25,11 @@ export class NotificationManager {
             return;
         }
 
+        if (!notificationSettings.enabled) {
+            console.log(`Notifications disabled for automation ${this.channel.name}. Skipping`);
+            return;
+        }
+
         const notificationDestinations: UserNotificationDestination | null = await db().user_notification_destinations.findFirst({
             where: {
                 user_id: this.user.id,
