@@ -15,7 +15,7 @@ import { EntityType } from '../../shared/Entities';
 import { ChangedItem, ChangeEventType } from '../../shared/ModelEvents';
 import { persistRunAction } from './EventProcessor';
 import { processModelEventStream } from './StreamProcessor';
-import { recentHistoryCallback, RunHistoryChatMemorySession, trimToLastTurns } from '../CustomMemorySession';
+import { recentHistoryCallback, RunHistoryChatMemorySession } from '../CustomMemorySession';
 import { IntegrationType } from '../../shared/Integrations';
 import { db } from '../../prismaClient';
 import { InputImageContent, InputTextContent } from 'openai/resources/conversations/conversations.mjs';
