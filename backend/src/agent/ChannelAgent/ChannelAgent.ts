@@ -3,7 +3,7 @@ import { Session } from '../../server';
 import { systemPrompt } from './SystemPrompt';
 import { InputEvent } from '../../integrations/abstract/InputEvent';
 import { Output } from '../../outputs/abstract/Output';
-import { ChannelInput, ChannelOutput, ChannelWithRelations } from '../../types/prisma';
+import { ChannelInput, ChannelOutput, ChannelWithRelations, DirectiveRecord } from '../../types/prisma';
 import { ConfigInstance } from '../../shared/Configs';
 import { settings } from '../../config/settings';
 import { formatChannelInputsForAgent, formatChannelOutputForAgent } from './formatContext';
@@ -17,6 +17,8 @@ import { persistRunAction } from './EventProcessor';
 import { processModelEventStream } from './StreamProcessor';
 import { RunHistoryChatMemorySession, trimToLastTurns } from '../CustomMemorySession';
 import { IntegrationType } from '../../shared/Integrations';
+import { db } from '../../prismaClient';
+import { InputImageContent, InputTextContent } from 'openai/resources/conversations/conversations.mjs';
 
 
 export class ChannelAgent<T extends Session, TConfig extends ConfigInstance> {
@@ -57,7 +59,9 @@ export class ChannelAgent<T extends Session, TConfig extends ConfigInstance> {
         }
 
         const userMessage = this.buildUserMessage();
-        this.history.push({ role: 'user', content: userMessage });
+        const userHistory = await this.buildUserHistory(userMessage);
+        this.history = userHistory;
+
 
         const result = await run(this.agent, this.history, {
             context: this.getToolContext(),
@@ -91,6 +95,17 @@ export class ChannelAgent<T extends Session, TConfig extends ConfigInstance> {
 
         return this.buildResult(result);
         
+    }
+
+    async buildUserHistory(userMessage: (InputTextContent | InputImageContent)[]): Promise<AgentInputItem[]> {
+        const channelDirectives = await getChannelDirectives(this.channel.id)
+        const channelDirectivesContent = channelDirectives.map(directive => ({ role: 'user' as const, content: directive.directive_description }));
+        const history: AgentInputItem[] = [
+            ...this.history, 
+            ...channelDirectivesContent,
+            { role: 'user' as const, content: userMessage },
+        ]
+        return history;
     }
 
     async resume(
@@ -178,16 +193,16 @@ export class ChannelAgent<T extends Session, TConfig extends ConfigInstance> {
         };
     }
 
-    private buildUserMessage(): any[] {
+    private buildUserMessage(): (InputTextContent | InputImageContent)[] {
         const textContent = this.buildTextContent();
-        const content: any[] = [{ type: 'input_text', text: textContent }];
+        const content: (InputTextContent | InputImageContent)[] = [{ type: 'input_text', text: textContent }];
 
         const imageUrls = this.inputEvent!.getImageUrls();
         for (const imageUrl of imageUrls) {
-            content.push({ type: 'input_image', image: imageUrl });
+            content.push({ type: 'input_image', image_url: imageUrl, detail: 'auto' });
         }
 
-        return content;
+        return content; 
     }
 
     private buildTextContent(): string {
@@ -291,6 +306,14 @@ ${this.inputEvent!.formatForChannelAgent()}
 const recentHistoryCallback = (history: AgentInputItem[], newItems: AgentInputItem[]): AgentInputItem[] => {
     const trimmedHistory = trimToLastTurns(history, 10)
     return [...trimmedHistory, ...newItems];
+}
+
+async function getChannelDirectives(channelId: string): Promise<DirectiveRecord[]> {
+    const prisma = db();
+    const directives = await prisma.directive_records.findMany({
+        where: { automation_id: channelId },
+    });
+    return directives;
 }
 
 
