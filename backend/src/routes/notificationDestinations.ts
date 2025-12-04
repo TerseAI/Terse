@@ -2,6 +2,8 @@ import { Request, Response } from "express";
 import { db } from "../prismaClient";
 import { NotificationDestinationType } from "@prisma/client";
 import { CreateNotificationDestinationRequest } from "../shared/Notifications";
+import { emitCacheInvalidationWithKey } from "../realtimeSocket";
+import { notificationDestinationsKey } from "../shared/InvalidationKeys";
 
 // GET /notification-destinations - List all notification destinations for the user
 export async function getNotificationDestinations(req: Request, res: Response) {
@@ -65,9 +67,7 @@ export async function createNotificationDestination(req: Request, res: Response)
             const slackIntegration = await prisma.user_slack_integrations.findFirst({
                 where: {
                     user_id: userId,
-                    slack_integration: {
-                        id: integrationId
-                    }
+                    id: integrationId
                 }
             });
 

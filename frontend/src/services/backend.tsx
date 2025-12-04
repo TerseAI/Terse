@@ -32,7 +32,7 @@ import {
 import { User } from "../types/User";
 import { GetRunHistoryParams, GetRunHistoryResponse } from '../shared/RunHistoryTypes';
 import { deserializeConfig } from '../utility/ConfigUtils';
-import { CreateSlackNotificationDestinationRequest, NotificationDestination } from '../shared/Notifications';
+import { CreateNotificationDestinationRequest, NotificationDestination } from '../shared/Notifications';
 
 const backendBaseUrl = '/api';
 
@@ -273,7 +273,7 @@ interface BackendService {
     /**
      * Creates a new notification destination
      */
-    createNotificationDestination(destination: CreateSlackNotificationDestinationRequest): Promise<NotificationDestination>;
+    createNotificationDestination(destination: CreateNotificationDestinationRequest): Promise<NotificationDestination>;
 
     /**
      * Updates an existing notification destination
@@ -755,7 +755,7 @@ export const BackendProvider: BackendService = {
             });
     },
 
-    createNotificationDestination: (destination: CreateSlackNotificationDestinationRequest) => {
+    createNotificationDestination: (destination: CreateNotificationDestinationRequest) => {
         return axios.post<NotificationDestination>(`${backendBaseUrl}/notification-destinations`, destination, { withCredentials: true })
             .then(response => response.data)
             .catch(error => {
