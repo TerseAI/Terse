@@ -43,7 +43,7 @@ function IntegrationCard({ integration, isActive = true }: { integration: Integr
             );
         case IntegrationType.TERSE:
             return (
-                null
+                null;
             )
         default:
             // Exhaustive check: TypeScript will error if any IntegrationType case is missing
