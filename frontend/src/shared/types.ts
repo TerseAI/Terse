@@ -1,5 +1,6 @@
 import { Project, Ticket } from "./TicketSystem";
 import { ConfigInstance, ConfigType } from "./Configs";
+import { IntegrationType } from "./Integrations";
 
 export type User = {
   id: string;
@@ -386,7 +387,7 @@ export interface DailyEventCount {
 
 export interface RecentAction {
   action: string;
-  integration: string; // IntegrationType as string
+  integration: IntegrationType; // IntegrationType as string
   target: string;
   details: string;
   url?: string;

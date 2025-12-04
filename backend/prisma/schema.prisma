@@ -714,6 +714,7 @@ enum IntegrationType {
   NOTION
   NOTION_PAGE
   FIGMA
+  TERSE
 }
 
 enum InputConfigType {
@@ -749,17 +750,6 @@ enum RunHistoryDecisionAction {
   skipped
 }
 
-// Integration values for Run History (matches backend/src/shared/RunHistoryTypes.ts)
-enum RunHistoryIntegration {
-  jira
-  linear
-  slack
-  github
-  notion
-  gmail
-  figma
-  confluence
-}
 
 // Chat event types for run history (matches shared/ModelEvents.ts ModelEvent types)
 enum RunHistoryChatEventType {
@@ -781,7 +771,7 @@ model run_history_records {
   timestamp           DateTime                 @default(now())
   // Trigger details (denormalized onto the record for fast reads)
   event               String
-  trigger_integration RunHistoryIntegration
+  trigger_integration IntegrationType
   trigger_source      String
   trigger_title       String?
   trigger_subheader   String?
@@ -811,7 +801,7 @@ model run_history_actions {
   id                    String                @id @default(cuid())
   run_history_record_id String
   action                String
-  integration           RunHistoryIntegration
+  integration           IntegrationType
   target                String
   details               String
   url                   String?

@@ -41,6 +41,8 @@ function IntegrationCard({ integration, isActive = true }: { integration: Integr
             return (
                 <FigmaIntegrationCard className={cardClassName} isActive={isActive} />
             );
+        case IntegrationType.TERSE:
+            return null
         default:
             // Exhaustive check: TypeScript will error if any IntegrationType case is missing
             throw integration satisfies never;

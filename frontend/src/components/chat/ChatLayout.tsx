@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, forwardRef, useImperativeHandle } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronDown } from 'lucide-react';
 import { AwaitingResponseAnimation } from './AwaitingResponseAnimation';
@@ -9,101 +9,112 @@ import { type ModelRequest } from '../../shared/ModelEvents';
 interface ChatLayoutProps {
     turns: Turn[];
     isPendingAssistantResponse: boolean;
-    messagesEndRef: React.RefObject<HTMLDivElement | null>;
-    scrollContainerRef?: React.RefObject<HTMLDivElement | null>;
     onSendMessage: (message: string) => void;
     onSendModelRequest?: (request: ModelRequest) => void;
     input: string;
     setInput: (input: string) => void;
     placeholders?: string[];
     EmptyContentPlaceholder?: React.ReactNode;
-    initialScrollToBottom?: boolean;
 }
 
-export function ChatLayout({
+export interface ChatLayoutHandle {
+    scrollToBottom: () => void;
+}
+
+export const ChatLayout = forwardRef<ChatLayoutHandle, ChatLayoutProps>(function ChatLayout({
     turns,
     isPendingAssistantResponse,
-    messagesEndRef,
     onSendMessage,
     input,
     setInput,
     placeholders = ["Type a message..."],
     EmptyContentPlaceholder,
-    initialScrollToBottom = false,
-}: ChatLayoutProps) {
+}, ref) {
     const [showScrollIndicator, setShowScrollIndicator] = useState(false);
     const scrollContainerRef = useRef<HTMLDivElement>(null);
-    const hasInitialScrolled = useRef(false);
+    const messagesEndRef = useRef<HTMLDivElement>(null);
+    const contentRef = useRef<HTMLDivElement>(null);
+    const isNearBottomRef = useRef(true);
 
-    const checkScrollPosition = useCallback(() => {
+    // Check if user is near the bottom and update state accordingly
+    const checkScrollPosition = () => {
         const container = scrollContainerRef.current;
         if (!container) return;
 
         const threshold = 100;
-        const isNotAtBottom = container.scrollHeight - container.scrollTop > container.clientHeight + threshold;
-        setShowScrollIndicator(isNotAtBottom);
-    }, []);
+        const distanceFromBottom = container.scrollHeight - container.scrollTop - container.clientHeight;
+        const isNearBottom = distanceFromBottom <= threshold;
+        
+        isNearBottomRef.current = isNearBottom;
+        setShowScrollIndicator(!isNearBottom);
+    };
 
+    // Set up scroll listener
     useEffect(() => {
         const container = scrollContainerRef.current;
         if (!container) return;
 
-        // Check initial position
         checkScrollPosition();
-
         container.addEventListener('scroll', checkScrollPosition);
-        
-        // Also check on resize
-        const resizeObserver = new ResizeObserver(checkScrollPosition);
-        resizeObserver.observe(container);
 
         return () => {
             container.removeEventListener('scroll', checkScrollPosition);
+        };
+    }, []);
+
+    // Watch content height changes - this handles token streaming animation
+    useEffect(() => {
+        const content = contentRef.current;
+        if (!content) return;
+
+        const resizeObserver = new ResizeObserver(() => {
+            if (isNearBottomRef.current) {
+                messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
+            }
+            checkScrollPosition();
+        });
+
+        resizeObserver.observe(content);
+
+        return () => {
             resizeObserver.disconnect();
         };
-    }, [checkScrollPosition]);
+    }, []);
 
-    // Re-check when turns change (new messages)
-    useEffect(() => {
-        checkScrollPosition();
-    }, [turns, checkScrollPosition]);
-
-    // Scroll to bottom on initial load when initialScrollToBottom is enabled
-    useEffect(() => {
-        if (initialScrollToBottom && turns.length > 0 && !hasInitialScrolled.current) {
-            hasInitialScrolled.current = true;
-            // Use requestAnimationFrame to ensure DOM is ready, then scroll instantly
-            requestAnimationFrame(() => {
-                messagesEndRef.current?.scrollIntoView({ behavior: 'instant' });
-            });
+    // Expose scrollToBottom to parent via ref (instant scroll for programmatic calls)
+    useImperativeHandle(ref, () => ({
+        scrollToBottom: () => {
+            messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
         }
-    }, [initialScrollToBottom, turns, messagesEndRef]);
+    }));
 
-    const scrollToBottom = useCallback(() => {
+    // Smooth scroll for button click
+    const handleScrollButtonClick = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }, [messagesEndRef]);
+    };
 
     return (
         <div className={`h-full w-full backdrop-blur-sm shadow-lg transition-opacity duration-300 opacity-100 rounded-lg flex flex-col relative`}>
             <div 
                 ref={scrollContainerRef}
-                className="flex-1 overflow-y-auto p-4 space-y-4"
+                className="flex-1 overflow-y-auto p-4"
             >
-                {turns.map((turn, index) => (
-                    <TurnView key={index} {...turn} />
-                ))}
+                <div ref={contentRef} className="space-y-4">
+                    {turns.map((turn, index) => (
+                        <TurnView key={index} {...turn} />
+                    ))}
 
-                {isPendingAssistantResponse && (
-                    <AwaitingResponseAnimation />
-                )}
+                    {isPendingAssistantResponse && (
+                        <AwaitingResponseAnimation />
+                    )}
 
-                {turns.length === 0 && (
-                    EmptyContentPlaceholder
-                )}
-                
-                
-                {/* This is a hack to scroll to the bottom of the messages when a new message is added. */}
-                <div ref={messagesEndRef} className="h-1" />
+                    {turns.length === 0 && (
+                        EmptyContentPlaceholder
+                    )}
+                    
+                    {/* Scroll anchor element */}
+                    <div ref={messagesEndRef} className="h-1" />
+                </div>
             </div>
 
             {/* Scroll down indicator */}
@@ -114,7 +125,7 @@ export function ChatLayout({
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: 10 }}
                         transition={{ duration: 0.2 }}
-                        onClick={scrollToBottom}
+                        onClick={handleScrollButtonClick}
                         className="absolute bottom-20 left-1/2 -translate-x-1/2 z-10 
                             flex items-center justify-center
                             w-10 h-10 rounded-full
@@ -143,4 +154,4 @@ export function ChatLayout({
             </div>
         </div>
     );
-} 
+});
