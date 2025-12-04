@@ -209,3 +209,13 @@ export function trimToLastTurns(items: AgentInputItem[], maxTurns: number): Agen
 function cloneAgentItem<T extends AgentInputItem>(item: T): T {
   return structuredClone(item);
 }
+
+
+export const recentHistoryCallback = (history: AgentInputItem[], newItems: AgentInputItem[]): AgentInputItem[] => {
+  const trimmedHistory = trimToLastTurns(history, 10)
+  return [...trimmedHistory, ...newItems];
+}
+
+export const identityHistoryCallback = (history: AgentInputItem[], newItems: AgentInputItem[]): AgentInputItem[] => {
+  return [...history, ...newItems];
+}

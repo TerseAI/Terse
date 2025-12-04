@@ -871,6 +871,7 @@ model directive_records {
   run_history_record_id     String
   run_history_chat_event_id String
   directive_description     String
+  is_active                 Boolean  @default(true)
   created_at                DateTime @default(now())
 
   automation             automations             @relation(fields: [automation_id], references: [id], onDelete: Cascade)
@@ -880,4 +881,5 @@ model directive_records {
   @@index([automation_id])
   @@index([run_history_record_id])
   @@index([run_history_chat_event_id])
+  @@index([is_active])
 }
