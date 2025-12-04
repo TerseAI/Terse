@@ -60,7 +60,7 @@ function ToolActionsList({ actionIds, isFailure }: { actionIds: string[], isFail
     );
 }
 
-function ToolResultInput({ toolName, parameters, onSubmit }: { stepId: string; toolName: string; parameters?: string; onSubmit: (result: string) => void }) {
+function ToolResultInput({ toolName, parameters, onSubmit }: { toolName: string; parameters?: string; onSubmit: (result: string) => void }) {
     const [result, setResult] = useState('');
     const [submitted, setSubmitted] = useState(false);
     const [submittedValue, setSubmittedValue] = useState('');
