@@ -253,7 +253,7 @@ function Input({ input, inputs, setInputs, handleRemove }: { input: TransientCha
     const selectorProps: InputConfigSelectorProps = {
         input: input,
         setConfig: (config: ConfigInstance) => setInputs(inputs.map(i => i.id === input.id ? { ...i, config, configType: config.configType } : i)),
-        variant: "card"
+        variant: "card",
     };
 
     let cardContent;
