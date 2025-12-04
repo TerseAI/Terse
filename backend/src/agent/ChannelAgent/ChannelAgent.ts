@@ -60,10 +60,9 @@ export class ChannelAgent<T extends Session, TConfig extends ConfigInstance> {
 
         const userMessage = this.buildUserMessage();
         const userHistory = await this.buildUserHistory(userMessage);
-        this.history = userHistory;
 
 
-        const result = await run(this.agent, this.history, {
+        const result = await run(this.agent, userHistory, {
             context: this.getToolContext(),
             stream: true,
             session: this.memorySession,
