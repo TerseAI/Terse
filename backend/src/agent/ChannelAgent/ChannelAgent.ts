@@ -15,7 +15,7 @@ import { EntityType } from '../../shared/Entities';
 import { ChangedItem, ChangeEventType } from '../../shared/ModelEvents';
 import { persistRunAction } from './EventProcessor';
 import { processModelEventStream } from './StreamProcessor';
-import { RunHistoryChatMemorySession, trimToLastTurns } from './CustomMemorySession';
+import { RunHistoryChatMemorySession, trimToLastTurns } from '../CustomMemorySession';
 import { IntegrationType } from '../../shared/Integrations';
 
 
