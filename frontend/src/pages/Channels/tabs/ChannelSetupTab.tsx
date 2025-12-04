@@ -22,6 +22,7 @@ import { Card, CardContent } from "../../../components/ui/card";
 import { AddOutputModal } from "../components/AddOutputModal";
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "../../../components/ui/empty";
 import { Badge } from "../../../components/ui/badge";
+import ChannelNotificationSettings from "../ChannelNotificationSettings";
 
 export type ChannelSetupTabProps = {
     channelId: string | null;
@@ -201,6 +202,8 @@ export default function ChannelSetupTab({
                     <Textarea value={prompt?.text} onChange={(e) => setPrompt({ ...prompt, text: e.target.value })} className="flex-1" placeholder={instructionsPlaceholder} />
                 </div>
             </div>
+
+            <ChannelNotificationSettings channelId={channelId} />
         </div >
     )
 }
