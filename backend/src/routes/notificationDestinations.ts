@@ -127,9 +127,7 @@ export async function updateNotificationDestination(req: Request, res: Response)
             const slackIntegration = await prisma.user_slack_integrations.findFirst({
                 where: {
                     user_id: userId,
-                    slack_integration: {
-                        id: integrationId
-                    }
+                    id: integrationId
                 }
             });
 

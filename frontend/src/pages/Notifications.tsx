@@ -20,7 +20,7 @@ function NotificationsPage() {
     return (
         <div className="flex flex-col h-full p-4">
             <div className="flex flex-row justify-between items-center">
-                <h3 className="text-xl font-bold text-foreground mb-4">Notification Channels</h3>
+                <h3 className="text-xl font-bold text-foreground mb-4">Notification Destinations</h3>
                 <AddNotificationDestination />
             </div>
 
@@ -38,8 +38,8 @@ function NotificationChannelList({ notificationDestinations }: { notificationDes
                         <EmptyMedia variant="icon">
                             <Bell className="text-primary" />
                         </EmptyMedia>
-                        <EmptyTitle>No notification channels found</EmptyTitle>
-                        <EmptyDescription>Add a notification channel to be notified when a background agent makes a change.</EmptyDescription>
+                        <EmptyTitle>No notification destinations found</EmptyTitle>
+                        <EmptyDescription>Add a notification destination to be notified when a background agent makes a change.</EmptyDescription>
                         <AddNotificationDestination />
                     </EmptyHeader>
                 </Empty>
