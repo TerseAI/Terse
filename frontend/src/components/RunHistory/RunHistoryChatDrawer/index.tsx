@@ -51,7 +51,7 @@ export default function RunHistoryChatDrawer({
             // Scroll to bottom when drawer opens (with small delay for content to render)
             const timeoutId = setTimeout(() => {
                 chatRef.current?.scrollToBottom();
-            }, 100);
+            }, 300);
             return () => clearTimeout(timeoutId);
         } else {
             prevRunIdRef.current = null;
