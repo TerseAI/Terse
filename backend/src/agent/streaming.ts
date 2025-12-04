@@ -128,7 +128,7 @@ export function createToolCallCompleteEvent(
     changedItems: ChangedItem[],
     toolToIntegrationMap?: Map<string, string>
 ): ModelEvent {
-    const integration = toolToIntegrationMap?.get(data.name) || "terse";
+    const integration = toolToIntegrationMap?.get(data.name) || IntegrationType.TERSE;
     
     return {
         type: "ToolCallComplete",
