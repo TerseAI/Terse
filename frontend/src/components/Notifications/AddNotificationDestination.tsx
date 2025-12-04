@@ -15,6 +15,9 @@ import { useSlackChannels } from "../../hooks/api/useSlackChannels"
 import { Checkbox } from "@/components/ui/checkbox"
 import { SlackChannel } from "../../shared/types"
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "../ui/select"
+import { formatMPIMChannelName } from "../SlackChannelSelector"
+import { mutate } from "swr"
+import { notificationDestinationsKey } from "../../shared/InvalidationKeys"
 
 export function AddNotificationDestination() {
     return (
@@ -52,13 +55,12 @@ interface SelectSlackDestinationProps {
 }
 
 function SelectSlackDestination({ onSuccess }: SelectSlackDestinationProps) {
-    const { integrations, isLoading, mutate } = useSlackIntegrations();
+    const { integrations, isLoading } = useSlackIntegrations();
     const [selectedIntegrationId, setSelectedIntegrationId] = useState<string | undefined>(undefined);
     const { connect: connectOAuth } = useOAuthConnection(IntegrationType.SLACK);
     const [isConnecting, setIsConnecting] = useState(false);
     const [selectedChannelId, setSelectedChannelId] = useState<string | undefined>(undefined);
     const [selectedChannelName, setSelectedChannelName] = useState<string | undefined>(undefined);
-    const [listenToUserDms, setListenToUserDms] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
     const [validationError, setValidationError] = useState<string | null>(null);
 
@@ -84,7 +86,7 @@ function SelectSlackDestination({ onSuccess }: SelectSlackDestinationProps) {
                 slackChannelName: selectedChannelName,
             };
             await BackendProvider.createNotificationDestination(payload);
-            mutate();
+            mutate(notificationDestinationsKey());
             toast.success("Notification destination added successfully");
             onSuccess?.();
         } catch (error) {
@@ -145,7 +147,10 @@ function SelectSlackDestination({ onSuccess }: SelectSlackDestinationProps) {
                 />
             </div>
             {selectedIntegrationId && (
-                <SelectSlackDestinationForm integrationId={selectedIntegrationId} />
+                <SelectSlackDestinationForm integrationId={selectedIntegrationId} onSelectChannel={(channelId, channelName) => {
+                    setSelectedChannelId(channelId);
+                    setSelectedChannelName(channelName);
+                }} />
             )}
 
             {validationError && (
@@ -157,7 +162,7 @@ function SelectSlackDestination({ onSuccess }: SelectSlackDestinationProps) {
     )
 }
 
-function SelectSlackDestinationForm({ integrationId }: { integrationId: string }) {
+function SelectSlackDestinationForm({ integrationId, onSelectChannel }: { integrationId: string, onSelectChannel: (channelId: string, channelName: string) => void }) {
     const [sendAsDirectMessage, setSendAsDirectMessage] = useState(false);
     const [selectedChannelId, setSelectedChannelId] = useState<string | undefined>(undefined);
     const {
@@ -182,12 +187,17 @@ function SelectSlackDestinationForm({ integrationId }: { integrationId: string }
         setSendAsDirectMessage(false);
     };
 
+    const handleSelectChannel = (channelId: string, channelName: string) => {
+        setSelectedChannelId(channelId);
+        onSelectChannel(channelId, channelName);
+    };
+
     // Show selected channel with option to change
     if (selectedChannelId) {
         return (
             <div className="flex flex-row gap-2 items-center">
                 <p>in the channel:</p>
-                <span className="font-medium">#{selectedChannelName}</span>
+                <span className="font-medium">{formatMPIMChannelName(selectedChannelName || '')}</span>
                 <Button variant="link" className="p-0 h-auto text-muted-foreground" onClick={handleClearSelection}>
                     (change)
                 </Button>
@@ -213,7 +223,7 @@ function SelectSlackDestinationForm({ integrationId }: { integrationId: string }
         <div className="flex flex-col gap-4">
             <div className="flex flex-row gap-2 items-center">
                 <p>in the channel:</p>
-                <ChannelSelector channels={channels} selectedChannelId={selectedChannelId} onChannelSelect={setSelectedChannelId} />
+                <ChannelSelector channels={channels} selectedChannelId={selectedChannelId} onChannelSelect={handleSelectChannel} />
             </div>
 
             <div className="flex flex-row gap-2 items-center">
@@ -228,11 +238,12 @@ function SelectSlackDestinationForm({ integrationId }: { integrationId: string }
     );
 }
 
-function ChannelSelector({ channels, selectedChannelId, onChannelSelect }: { channels: SlackChannel[], selectedChannelId: string | undefined, onChannelSelect: (channelId: string) => void }) {
+function ChannelSelector({ channels, selectedChannelId, onChannelSelect }: { channels: SlackChannel[], selectedChannelId: string | undefined, onChannelSelect: (channelId: string, channelName: string) => void }) {
     const publicChannels = channels.filter(ch => !ch.isPrivate && !ch.isArchived);
     const privateChannels = channels.filter(ch => ch.isPrivate && !ch.isArchived);
+
     return (
-        <Select value={selectedChannelId} onValueChange={onChannelSelect}>
+        <Select value={selectedChannelId} onValueChange={(value) => onChannelSelect(value, channels.find(ch => ch.id === value)?.name || '')}>
             <SelectTrigger className="w-[180px]">
                 <SelectValue placeholder="Select a channel" />
             </SelectTrigger>
@@ -249,7 +260,7 @@ function ChannelSelector({ channels, selectedChannelId, onChannelSelect }: { cha
                     <SelectLabel>Private Channels</SelectLabel>
                     {privateChannels.map((channel) => (
                         <SelectItem key={channel.id} value={channel.id}>
-                            #{channel.name}
+                            🔒 {channel.isMPIM ? formatMPIMChannelName(channel.name) : `#${channel.name}`}
                         </SelectItem>
                     ))}
                 </SelectGroup>

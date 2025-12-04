@@ -1,20 +1,31 @@
 import { useState } from "react";
 import { Button } from "../ui/button";
-import { NotificationDestinationType } from "../../shared/Notifications";
+import { EmailNotificationDestination, NotificationDestination, NotificationDestinationType, SlackNotificationDestination } from "../../shared/Notifications";
 import { GmailIcon, SlackIcon } from "../icons/IntegrationIcons";
 import { Input } from "../ui/input";
+import { formatMPIMChannelName } from "../SlackChannelSelector";
+import { BackendProvider } from "../../services/backend";
+import { mutate } from "swr";
+import { notificationDestinationsKey } from "../../shared/InvalidationKeys";
 
-export function NotificationDestinationItem() {
+export function NotificationDestinationItem({ destination }: { destination: NotificationDestination }) {
     const [isEditing, setIsEditing] = useState(false);
 
     if (isEditing) {
         return <EditNotificationDestination setIsEditing={setIsEditing} />;
     }
 
+    async function deleteDestination() {
+        await BackendProvider.deleteNotificationDestination(destination);
+        mutate(notificationDestinationsKey());
+    }
+
     return (
         <div>
-            <h1>Notification Destination</h1>
+            <NotificationDestinationIcon type={destination.type} />
+            <NotificationDestinationName destination={destination} />
             <Button onClick={() => setIsEditing(true)}>Edit</Button>
+            <Button variant="destructive" onClick={deleteDestination}>Delete</Button>
         </div>
     )
 }
@@ -49,4 +60,16 @@ function NotificationDestinationIcon({ type }: { type: NotificationDestinationTy
         case NotificationDestinationType.SLACK:
             return <div className="w-5 h-5"><SlackIcon /></div>
     }
+}
+
+function NotificationDestinationName({ destination }: { destination: NotificationDestination }) {
+    const emailDestination = destination as EmailNotificationDestination;
+    const slackDestination = destination as SlackNotificationDestination;
+    if (emailDestination.email) {
+        return <span>{emailDestination.email}</span>
+    }
+    if (slackDestination.slackChannelName) {
+        return <span>{formatMPIMChannelName(slackDestination.slackChannelName)}</span>
+    }
+    return <span>Unknown destination</span> 
 }

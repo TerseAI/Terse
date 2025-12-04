@@ -149,6 +149,7 @@ model user_slack_integrations {
 
   user              users              @relation(fields: [user_id], references: [id], onDelete: Cascade)
   slack_integration slack_integrations @relation(fields: [slack_team_id], references: [team_id], onDelete: Cascade)
+  user_notification_destinations user_notification_destinations[]
 
   @@unique([user_id, slack_team_id])
 }
@@ -167,7 +168,6 @@ model slack_integrations {
 
   user_slack_integrations        user_slack_integrations[]
   processed_slack_events         processed_slack_events[]
-  user_notification_destinations user_notification_destinations[]
 }
 
 // @deprecated - This table is deprecated. Use atlassian_integrations instead for OAuth-based connections.
@@ -914,7 +914,7 @@ model user_notification_destinations {
   updated_at DateTime @updatedAt
 
   user              users               @relation(fields: [user_id], references: [id], onDelete: Cascade)
-  slack_integration slack_integrations? @relation(fields: [slack_integration_id], references: [id], onDelete: SetNull)
+  slack_integration user_slack_integrations? @relation(fields: [slack_integration_id], references: [id], onDelete: SetNull)
 
   @@index([user_id])
   @@index([destination_type])

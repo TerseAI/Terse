@@ -49,7 +49,7 @@ function NotificationChannelList({ notificationDestinations }: { notificationDes
     return (
         <div className="flex flex-col gap-4">
             {notificationDestinations.map((channel) => (
-                <NotificationDestinationItem key={channel.id} />
+                <NotificationDestinationItem key={channel.id} destination={channel} />
             ))}
         </div>
     )
