@@ -1,7 +1,8 @@
 import { NotificationDestinationType } from "@prisma/client";
 import { db } from "../prismaClient";
 import { RunHistoryAction } from "../shared/RunHistoryTypes";
-import { User, Channel, UserNotificationDestination, AutomationNotificationSettings, SlackIntegration } from "../types/prisma";
+import { User, Channel, UserNotificationDestination, AutomationNotificationSettings } from "../types/prisma";
+import { formatNotificationMessage, sendSlackMessage } from "../utility/slack";
 
 export class NotificationManager {
     private user: User;
@@ -48,7 +49,7 @@ export class NotificationManager {
 
         switch (notificationDestinations.destination_type) {
             case NotificationDestinationType.SLACK:
-                await notifySlack(notificationDestinations, runAction);
+                await notifySlack(notificationDestinations, runAction, this.channel);
                 break;
             case NotificationDestinationType.EMAIL:
                 await notifyEmail(notificationDestinations, runAction);
@@ -57,25 +58,24 @@ export class NotificationManager {
     }
 }
 
-async function notifySlack(notificationDestinations: UserNotificationDestination, runAction: RunHistoryAction) {
-    console.log(`Notifying Slack for user ${notificationDestinations.user_id} with action ${runAction}`);
-    if (!notificationDestinations.slack_integration_id) {
-        console.log(`No Slack integration ID found for user ${notificationDestinations.user_id}. Skippin. (This should never happen)`);
+async function notifySlack(notificationDestination: UserNotificationDestination, runAction: RunHistoryAction, channel: Channel) {
+    if (!notificationDestination.slack_integration_id) {
+        console.log(`[notifySlack] No Slack integration ID found. Skipping.`);
         return;
     }
 
-    const slackIntegration: SlackIntegration | null = await db().slack_integrations.findFirst({
-        where: {
-            id: notificationDestinations.slack_integration_id,
-        },
-    });
-
-    if (!slackIntegration) {
-        console.log(`No Slack integration found for user ${notificationDestinations.user_id}. Skipping. (This should never happen)`);
+    if (!notificationDestination.slack_channel_id) {
+        console.log(`[notifySlack] No Slack channel ID configured. Skipping.`);
         return;
     }
 
-    console.log(`Notifying Slack for user ${notificationDestinations.user_id} with action ${runAction.action} to integration ${slackIntegration.app_id}`);
+    const message = formatNotificationMessage(runAction, { channelName: channel.name });
+    
+    await sendSlackMessage(
+        notificationDestination.slack_integration_id,
+        notificationDestination.slack_channel_id,
+        message
+    );
 }
 
 async function notifyEmail(notificationDestinations: UserNotificationDestination, runAction: RunHistoryAction) {
