@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import EditableTextField from '../../../components/ui/EditableTextField';
-import { ChannelUpdate, TransientChannelInput, TransientChannelOutput } from "@/shared/types";
+import { ChannelNotificationSettings as ChannelNotificationSettingsType, ChannelUpdate, TransientChannelInput, TransientChannelOutput } from "@/shared/types";
 import { toast } from "sonner";
 import { getDefaultChannelName, toChannelInput, toChannelOutput } from "@/utility/ChannelUtils";
 import { useChannelCount } from "@/hooks/api/useChannelCount";
@@ -36,6 +36,8 @@ export type ChannelSetupTabProps = {
     setPrompt: (prompt: ChannelPrompt | undefined) => void;
     isActive: boolean;
     setIsActive: (isActive: boolean) => void;
+    notificationSettings: ChannelNotificationSettingsType;
+    setNotificationSettings: (settings: ChannelNotificationSettingsType) => void;
     isLoading: boolean;
     mutate: KeyedMutator<Channel>;
 };
@@ -48,6 +50,7 @@ function SaveChannelButton({
     output,
     prompt,
     isActive,
+    notificationSettings,
     mutate
 }: {
     defaultName: string;
@@ -57,6 +60,7 @@ function SaveChannelButton({
     output: ChannelOutput | undefined;
     prompt: ChannelPrompt | undefined;
     isActive: boolean;
+    notificationSettings: ChannelNotificationSettingsType;
     mutate: KeyedMutator<Channel>;
 }) {
     const navigate = useNavigate();
@@ -84,7 +88,8 @@ function SaveChannelButton({
                 inputs,
                 output,
                 prompt,
-                isActive
+                isActive,
+                notificationSettings
             };
 
             if (isEditMode) {
@@ -157,6 +162,8 @@ export default function ChannelSetupTab({
     setOutput,
     setPrompt,
     isActive,
+    notificationSettings,
+    setNotificationSettings,
     mutate,
 }: ChannelSetupTabProps) {
     const { totalCount } = useChannelCount();
@@ -177,6 +184,7 @@ export default function ChannelSetupTab({
                     output={channelOutput}
                     prompt={prompt}
                     isActive={isActive}
+                    notificationSettings={notificationSettings}
                     mutate={mutate}
                 />
             </div>
@@ -203,7 +211,7 @@ export default function ChannelSetupTab({
                 </div>
             </div>
 
-            <ChannelNotificationSettings channelId={channelId} />
+            <ChannelNotificationSettings settings={notificationSettings} onChange={setNotificationSettings} />
         </div >
     )
 }

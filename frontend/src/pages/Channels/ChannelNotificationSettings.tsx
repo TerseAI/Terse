@@ -1,70 +1,52 @@
 import { Switch } from "../../components/ui/switch";
-import { useNotificationDestinations } from "../../hooks/api/useNotificationDestinations";
 import { useState } from "react";
-import { NotificationDestination, NotificationDestinationType, SlackNotificationDestination } from "../../shared/Notifications";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../components/ui/select";
-import { Skeleton } from "../../components/ui/skeleton";
-import { formatMPIMChannelName } from "../../components/SlackChannelSelector";
 import { RunHistoryActionType } from "../../shared/RunHistoryTypes";
+import { ChannelNotificationSettings as ChannelNotificationSettingsType } from "../../shared/types";
 import { Popover, PopoverContent, PopoverTrigger } from "../../components/ui/popover";
 import { Button } from "../../components/ui/button";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "../../components/ui/command";
 import { Check, ChevronsUpDown, X, Plus, Pencil, Trash2, Eye } from "lucide-react";
 import { cn } from "../../lib/utils";
 import { Badge } from "../../components/ui/badge";
+import { Label } from "../../components/ui/label";
 
-function ChannelNotificationSettings({ channelId }: { channelId: string | null }) {
-    const [isActive, setIsActive] = useState(false);
-    const [selectedDestination, setSelectedDestination] = useState<NotificationDestination | null>(null);
-    const [selectedEventTypes, setSelectedEventTypes] = useState<RunHistoryActionType[]>([]);
-    
-    if (!channelId) {
-        return null;
-    }
+export type ChannelNotificationSettingsProps = {
+    settings: ChannelNotificationSettingsType;
+    onChange: (settings: ChannelNotificationSettingsType) => void;
+};
 
-    const onSelect = (destination: NotificationDestination) => {
-        setSelectedDestination(destination);
-        console.log(destination);
-    }
-    const onSelectEventTypes = (eventTypes: RunHistoryActionType[]) => {
-        setSelectedEventTypes(eventTypes);
-        console.log(eventTypes);
-    }
+function ChannelNotificationSettings({ settings, onChange }: ChannelNotificationSettingsProps) {
+    const handleToggleEnabled = (enabled: boolean) => {
+        onChange({ ...settings, enabled });
+    };
+
+    const handleSelectEventTypes = (actionTypes: RunHistoryActionType[]) => {
+        onChange({ ...settings, actionTypes });
+    };
 
     return (
-        <div className="flex flex-col gap-2">
-            <Switch checked={isActive} onCheckedChange={setIsActive} />
-            {isActive && (
+        <div className="flex flex-col gap-4 p-4 border rounded-lg">
+            <div className="flex items-center justify-between">
+                <div className="flex flex-col gap-1">
+                    <Label htmlFor="notifications-toggle" className="text-base font-medium">Notifications</Label>
+                    <p className="text-sm text-muted-foreground">Get notified when this channel takes actions</p>
+                </div>
+                <Switch 
+                    id="notifications-toggle"
+                    checked={settings.enabled} 
+                    onCheckedChange={handleToggleEnabled} 
+                />
+            </div>
+            {settings.enabled && (
                 <div className="flex flex-col gap-2">
-                    <h2 className="text-lg">Notification Destinations</h2>
-                    <SelectNotificationDestinations selectedDestination={selectedDestination} onSelect={onSelect} />
-                    <SelectEventTypes selectedEventTypes={selectedEventTypes} onSelect={onSelectEventTypes} />
+                    <Label className="text-sm font-medium">Notify for these action types</Label>
+                    <SelectEventTypes 
+                        selectedEventTypes={settings.actionTypes} 
+                        onSelect={handleSelectEventTypes} 
+                    />
                 </div>
             )}
         </div>
-    )
-}
-
-function SelectNotificationDestinations({ selectedDestination, onSelect }: { selectedDestination: NotificationDestination | null, onSelect: (destination: NotificationDestination) => void }) {
-    const { notificationDestinations, isValidating } = useNotificationDestinations();
-
-    if (isValidating) {
-        return <Skeleton className="w-full h-10" />;
-    }
-
-    const slackDestinations = notificationDestinations?.filter((destination) => destination.type === NotificationDestinationType.SLACK) as SlackNotificationDestination[];
-
-    return (
-        <Select value={selectedDestination?.id} onValueChange={(value) => onSelect(notificationDestinations?.find((destination) => destination.id === value) as NotificationDestination)}>
-            <SelectTrigger>
-                <SelectValue placeholder="Select a notification destination" />
-            </SelectTrigger>
-            <SelectContent>
-                {slackDestinations?.map((destination) => (
-                    <SelectItem key={destination.id} value={destination.id}>{`#${formatMPIMChannelName(destination.slackChannelName || '')}`}</SelectItem>
-                ))}
-            </SelectContent>
-        </Select>
     )
 }
 
@@ -91,7 +73,7 @@ function SelectEventTypes({ selectedEventTypes, onSelect }: { selectedEventTypes
         onSelect(selectedEventTypes.filter(type => type !== eventType));
     };
 
-    const selectedOptions = EVENT_TYPE_OPTIONS.filter(option => 
+    const selectedOptions = EVENT_TYPE_OPTIONS.filter(option =>
         selectedEventTypes.includes(option.value)
     );
 
