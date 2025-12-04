@@ -323,6 +323,12 @@ export type Channel = {
     prompt: ChannelPrompt;
     inputs: ChannelInput[];
     output: ChannelOutput;
+    notificationSettings?: ChannelNotificationSettings;
+};
+
+export type ChannelNotificationSettings = {
+    enabled: boolean;
+    actionTypes: RunHistoryActionType[];
 };
 
 export type ChannelUpdate = {
@@ -331,6 +337,7 @@ export type ChannelUpdate = {
     output?: ChannelOutput;
     prompt?: ChannelPrompt;
     isActive?: boolean;
+    notificationSettings?: ChannelNotificationSettings;
 };
 
 export type ChannelsResponse = {
