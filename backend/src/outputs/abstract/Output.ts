@@ -1,4 +1,4 @@
-// MARK: - Output Integratoins
+// MARK: - Output Integrations
 
 import { Tool, webSearchTool } from "@openai/agents";
 import { Session } from "../../server";
