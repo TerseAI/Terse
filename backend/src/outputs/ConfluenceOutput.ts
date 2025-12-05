@@ -23,8 +23,8 @@ export interface ConfluenceSession extends Session {
 export class ConfluenceOutput extends Output<ConfluenceSession, ConfluenceConfig> {
     constructor() {
         const toolbox: ToolboxEntry[] = [
-            { tool: confluenceQueryPageTool as Tool, isReadOnly: true },
-            { tool: confluenceAddCommentTool as Tool, isReadOnly: false },
+            { tool: confluenceQueryPageTool as Tool, isReadOnly: true, integration: IntegrationType.ATLASSIAN },
+            { tool: confluenceAddCommentTool as Tool, isReadOnly: false, integration: IntegrationType.ATLASSIAN },
         ];
         super(OutputConfigType.CONFLUENCE, toolbox);
     }

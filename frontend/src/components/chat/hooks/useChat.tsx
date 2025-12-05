@@ -24,7 +24,6 @@ export function useChat({
     const {
         turns,
         isPendingAssistantResponse,
-        messagesEndRef,
         handleDelta,
         handleToolCall,
         handleToolCallComplete,
@@ -60,7 +59,6 @@ export function useChat({
     return {
         turns,
         isPendingAssistantResponse,
-        messagesEndRef,
         input,
         setInput,
         sendMessage,

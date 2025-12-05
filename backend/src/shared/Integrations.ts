@@ -7,6 +7,7 @@ export enum IntegrationType {
     SLACK = 'slack',
     NOTION = 'notion',
     FIGMA = 'figma',
+    TERSE = 'terse',
 }
 
 // MARK: Integration Metadata
@@ -75,6 +76,14 @@ export const GithubIntegrationMetadata = {
     isOutput: false,
 } as const satisfies IntegrationDetails;
 
+export const TerseIntegrationMetadata = {
+    type: IntegrationType.TERSE,
+    name: 'Terse',
+    description: 'Platform tools',
+    isInput: false,
+    isOutput: false,
+} as const satisfies IntegrationDetails;
+
 export type IntegrationMetadataMap = Record<IntegrationType, IntegrationDetails>; // Allow indexing with any IntegrationType
 
 export const INTEGRATION_METADATA: IntegrationMetadataMap = {
@@ -85,6 +94,7 @@ export const INTEGRATION_METADATA: IntegrationMetadataMap = {
     [IntegrationType.SLACK]: SlackIntegrationMetadata,
     [IntegrationType.GITHUB]: GithubIntegrationMetadata,
     [IntegrationType.FIGMA]: FigmaIntegrationMetadata,
+    [IntegrationType.TERSE]: TerseIntegrationMetadata,
 } as const satisfies IntegrationMetadataMap;
 
 // MARK: Integration Details

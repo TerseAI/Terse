@@ -9,6 +9,7 @@ import { LinearOutputConfig } from "../../shared/Configs";
 import { linearSearchTicketTool } from "./tools/searchTicket";
 import { linearUpdateTicketTool } from "./tools/updateTicket";
 import { linearCreateTicketTool } from "./tools/createTicket";
+import { IntegrationType } from "../../shared/Integrations";
 
 export interface LinearTicketSession extends Session {
     linearIntegration: LinearIntegration; // Top level integration record
@@ -18,9 +19,9 @@ export interface LinearTicketSession extends Session {
 export class LinearTicketOutput extends Output<LinearTicketSession, LinearOutputConfig> {
     constructor() {
         const toolbox: ToolboxEntry[] = [
-            { tool: linearSearchTicketTool as Tool, isReadOnly: true },
-            { tool: linearCreateTicketTool as Tool, isReadOnly: false },
-            { tool: linearUpdateTicketTool as Tool, isReadOnly: false },
+            { tool: linearSearchTicketTool as Tool, isReadOnly: true, integration: IntegrationType.LINEAR },
+            { tool: linearCreateTicketTool as Tool, isReadOnly: false, integration: IntegrationType.LINEAR },
+            { tool: linearUpdateTicketTool as Tool, isReadOnly: false, integration: IntegrationType.LINEAR },
         ];
         super(OutputConfigType.LINEAR_TICKET, toolbox);
     }
