@@ -23,7 +23,7 @@ export function useStats() {
     const timezone = getUserTimezone()
     
     const { data, error, isLoading, mutate } = useSWR<StatsResponse>(
-        statsKey(),
+        statsKey(timezone),
         () => BackendProvider.getStats(timezone),
         {
             revalidateOnFocus: false,
