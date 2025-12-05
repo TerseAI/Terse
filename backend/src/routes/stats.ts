@@ -1,4 +1,5 @@
 import { Request, Response } from "express";
+import { DateTime } from "luxon";
 import { db } from "../prismaClient";
 import { StatsResponse, DayOfWeek, RecentAction } from "../shared/types";
 import { convertPrismaIntegrationTypeToIntegrationTypeFromRunHistory } from "../utility/typeConverters";
@@ -17,12 +18,7 @@ interface DailyEventRow {
 
 // Validate timezone string is a valid IANA timezone
 function isValidTimezone(tz: string): boolean {
-    try {
-        Intl.DateTimeFormat(undefined, { timeZone: tz });
-        return true;
-    } catch {
-        return false;
-    }
+    return DateTime.now().setZone(tz).isValid;
 }
 
 export async function getStats(req: Request, res: Response) {
@@ -63,10 +59,13 @@ export async function getStats(req: Request, res: Response) {
         previousPeriodStart.setHours(0, 0, 0, 0);
     }
 
-    // Calculate chart start date for daily events
-    const chartStartDate = new Date(now);
-    chartStartDate.setDate(chartStartDate.getDate() - CHART_TIME_WINDOW_DAYS);
-    chartStartDate.setHours(0, 0, 0, 0);
+    // Calculate chart start date for daily events in the user's timezone
+    // Use Luxon to correctly calculate midnight N days ago in the user's timezone
+    const chartStartDate = DateTime.now()
+        .setZone(timezone)
+        .minus({ days: CHART_TIME_WINDOW_DAYS })
+        .startOf('day')
+        .toJSDate();
 
     // Run ALL queries in parallel for maximum performance
     const [
@@ -167,30 +166,21 @@ export async function getStats(req: Request, res: Response) {
         eventsByDateStr.set(dateStr, Number(row.count));
     }
 
-    // Build daily events array with all days in the chart window
-    // Calculate dates in the user's timezone using Intl.DateTimeFormat
+    // Build daily events array with all days in the chart window using Luxon
     const dailyEvents: Array<{ date: DayOfWeek; events: number }> = [];
-    const dateFormatter = new Intl.DateTimeFormat('en-CA', { 
-        timeZone: timezone, 
-        year: 'numeric', 
-        month: '2-digit', 
-        day: '2-digit' 
-    }); // en-CA gives YYYY-MM-DD format
     
     for (let i = 0; i < CHART_TIME_WINDOW_DAYS; i++) {
-        const date = new Date(now);
-        date.setDate(date.getDate() - (CHART_TIME_WINDOW_DAYS - 1 - i));
+        const dt = DateTime.now()
+            .setZone(timezone)
+            .minus({ days: CHART_TIME_WINDOW_DAYS - 1 - i })
+            .startOf('day');
         
-        // Format date in user's timezone to get correct YYYY-MM-DD and day of week
-        const dateStr = dateFormatter.format(date);
+        // Get YYYY-MM-DD format for lookup
+        const dateStr = dt.toFormat('yyyy-MM-dd');
         
-        // Get day of week in user's timezone
-        const dayOfWeekFormatter = new Intl.DateTimeFormat('en-US', { 
-            timeZone: timezone, 
-            weekday: 'short' 
-        });
-        const dayAbbrev = dayOfWeekFormatter.format(date);
-        const dayName = dayNames[['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].indexOf(dayAbbrev)];
+        // Get day of week (1=Monday, 7=Sunday in Luxon, but we need 0=Sunday index)
+        const dayIndex = dt.weekday === 7 ? 0 : dt.weekday; // Convert Luxon weekday to JS weekday
+        const dayName = dayNames[dayIndex];
         
         dailyEvents.push({
             date: dayName,
