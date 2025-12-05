@@ -13,8 +13,6 @@ function Home() {
     const { channels: recentChannelsData, isLoading: isLoadingChannels } = useRecentChannels(3);
     const { stats, isLoading: isLoadingStats } = useStats();
 
-    console.log(stats);
-
     const metrics = transformStatsToMetrics(stats);
 
     const recentChannels = recentChannelsData.map(channel => ({
