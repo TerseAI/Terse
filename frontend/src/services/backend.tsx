@@ -146,9 +146,9 @@ interface BackendService {
     deleteJiraApiKey(): Promise<void>;
 
     /**
-     * Gets the Confluence resources
+     * Searches Confluence pages by title (search is optional, empty returns all)
      */
-    getConfluenceResources(integrationId: string): Promise<ConfluenceResourcesResponse>;
+    getConfluenceResources(integrationId: string, search?: string): Promise<ConfluenceResourcesResponse>;
 
     /**
      * Gets Jira resources (projects) for a specific integration
@@ -205,9 +205,11 @@ interface BackendService {
     deleteNotionIntegration(): Promise<void>;
 
     /**
-     * Gets available databases for a Notion integration
+     * Searches Notion pages and databases by title
+     * @param search - optional search term, empty returns all
+     * @param type - optional filter: "page" or "database"
      */
-    getNotionResources(integrationId: string): Promise<NotionResourcesResponse>;
+    getNotionResources(integrationId: string, search?: string, type?: 'page' | 'database'): Promise<NotionResourcesResponse>;
 
     /**
      * Gets available channels for a Slack integration
@@ -465,11 +467,15 @@ export const BackendProvider: BackendService = {
             });
     },
 
-    getConfluenceResources: (integrationId: string) => {
-        return axios.get<ConfluenceResourcesResponse>(`${backendBaseUrl}/confluence/resources?integrationId=${encodeURIComponent(integrationId)}`, { withCredentials: true })
+    getConfluenceResources: (integrationId: string, search?: string) => {
+        const params = new URLSearchParams({ integrationId });
+        if (search) {
+            params.append('search', search);
+        }
+        return axios.get<ConfluenceResourcesResponse>(`${backendBaseUrl}/confluence/resources?${params.toString()}`, { withCredentials: true })
             .then(response => response.data)
             .catch(error => {
-                console.error('Error fetching Confluence resources:', error);
+                console.error('Error searching Confluence resources:', error);
                 throw error;
             });
     },
@@ -573,11 +579,18 @@ export const BackendProvider: BackendService = {
             });
     },
 
-    getNotionResources: (integrationId: string) => {
-        return axios.get<NotionResourcesResponse>(`${backendBaseUrl}/notion/resources?integrationId=${encodeURIComponent(integrationId)}`, { withCredentials: true })
+    getNotionResources: (integrationId: string, search?: string, type?: 'page' | 'database') => {
+        const params = new URLSearchParams({ integrationId });
+        if (search) {
+            params.append('search', search);
+        }
+        if (type) {
+            params.append('type', type);
+        }
+        return axios.get<NotionResourcesResponse>(`${backendBaseUrl}/notion/resources?${params.toString()}`, { withCredentials: true })
             .then(response => response.data)
             .catch(error => {
-                console.error('Error fetching Notion databases:', error);
+                console.error('Error searching Notion resources:', error);
                 throw error;
             });
     },

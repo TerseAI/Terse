@@ -117,6 +117,7 @@ export function NotionIntegration({
     }
 
     const selectedResourceId = isPageConfig ? (currentConfig as NotionPageConfig)?.pageId : (currentConfig as NotionConfig)?.databaseId;
+    const selectedResourceName = isPageConfig ? (currentConfig as NotionPageConfig)?.pageName : (currentConfig as NotionConfig)?.databaseName;
 
     // Dialog variant: full view
     return (
@@ -150,6 +151,7 @@ export function NotionIntegration({
                         integrationId={selectedIntegrationId || ''}
                         resourceType={isPageConfig ? 'page' : 'database'}
                         selectedResourceId={selectedResourceId}
+                        selectedResourceName={selectedResourceName}
                         onSelect={(resourceId: string, resourceName: string, resourceType: NotionResourceType) => {
                             if (resourceType === 'database') {
                                 const updatedConfig = new NotionConfig(

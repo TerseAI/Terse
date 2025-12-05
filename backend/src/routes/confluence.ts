@@ -33,6 +33,9 @@ export async function getConfluenceResources(req: Request, res: Response) {
         return res.status(400).json({ success: false, error: 'integrationId is required' });
     }
 
+    // Search term is optional - empty returns all pages
+    const search = (req.query.search as string) || "";
+
     // Check OAuth integrations first
     const oauthIntegration = await db().atlassian_integrations.findFirst({
         where: {
@@ -60,97 +63,47 @@ export async function getConfluenceResources(req: Request, res: Response) {
     }
 
     try {
-        // Use Confluence REST API v2 with cursor-based pagination
-        const apiBaseUrl = `https://api.atlassian.com/ex/confluence/${cloudId}/wiki/api/v2`;
-        const allResources: ConfluencePage[] = [];
-        const limit = 100;
-        let cursor: string | undefined = undefined;
-        let hasMore = true;
+        // Use Confluence Search API with CQL query
+        const searchUrl = `https://api.atlassian.com/ex/confluence/${cloudId}/wiki/rest/api/search`;
+        // If search term provided, filter by title; otherwise return all pages
+        const cql = search ? `type=page AND title ~ "${search}"` : `type=page`;
+        const params = new URLSearchParams({
+            cql,
+            limit: '100',
+        });
 
-        while (hasMore) {
-            const params = new URLSearchParams({
-                limit: limit.toString(),
-            });
-            if (cursor) {
-                params.append('cursor', cursor);
-            }
+        const searchResponse = await fetch(`${searchUrl}?${params.toString()}`, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${accessToken}`,
+                'Accept': 'application/json',
+            },
+        });
 
-            const pagesUrl = `${apiBaseUrl}/pages?${params.toString()}`;
-            const pagesResponse = await fetch(pagesUrl, {
-                method: 'GET',
-                headers: {
-                    'Authorization': `Bearer ${accessToken}`,
-                    'Accept': 'application/json',
-                },
-            });
-
-            if (!pagesResponse.ok) {
-                const errorText = await pagesResponse.text();
-                console.error(chalk.red('Confluence API error:'), pagesResponse.status, errorText);
-                throw new Error(`Confluence API error: ${pagesResponse.status} ${pagesResponse.statusText} - ${errorText}`);
-            }
-
-            const pagesData = await pagesResponse.json() as ConfluencePagesV2Response;
-            const resources = mapV2PagesToConfluencePages(pagesData.results || []);
-
-            allResources.push(...resources);
-
-            // Check for next page using _links.next or Link header
-            const nextLink = pagesData._links?.next;
-            if (nextLink) {
-                // _links.next might be relative or absolute URL
-                try {
-                    const nextUrl = nextLink.startsWith('http') 
-                        ? new URL(nextLink)
-                        : new URL(nextLink, `${apiBaseUrl}/`);
-                    cursor = nextUrl.searchParams.get('cursor') || undefined;
-                    hasMore = !!cursor;
-                } catch (error) {
-                    // If URL parsing fails, try extracting cursor from query string directly
-                    const cursorMatch = nextLink.match(/[?&]cursor=([^&]+)/);
-                    cursor = cursorMatch ? cursorMatch[1] : undefined;
-                    hasMore = !!cursor;
-                }
-            } else {
-                // Also check Link header as fallback
-                const linkHeader = pagesResponse.headers.get('Link');
-                if (linkHeader) {
-                    const nextMatch = linkHeader.match(/<([^>]+)>;\s*rel="next"/);
-                    if (nextMatch) {
-                        try {
-                            const nextUrl = nextMatch[1].startsWith('http')
-                                ? new URL(nextMatch[1])
-                                : new URL(nextMatch[1], `${apiBaseUrl}/`);
-                            cursor = nextUrl.searchParams.get('cursor') || undefined;
-                            hasMore = !!cursor;
-                        } catch (error) {
-                            const cursorMatch = nextMatch[1].match(/[?&]cursor=([^&]+)/);
-                            cursor = cursorMatch ? cursorMatch[1] : undefined;
-                            hasMore = !!cursor;
-                        }
-                    } else {
-                        hasMore = false;
-                    }
-                } else {
-                    hasMore = false;
-                }
-            }
+        if (!searchResponse.ok) {
+            const errorText = await searchResponse.text();
+            console.error(chalk.red('Confluence Search API error:'), searchResponse.status, errorText);
+            throw new Error(`Confluence Search API error: ${searchResponse.status} ${searchResponse.statusText} - ${errorText}`);
         }
 
-        // Get the first space ID if available (for backward compatibility)
-        const firstSpaceId = allResources.length > 0 ? allResources[0].spaceId : '';
+        const searchData = await searchResponse.json() as ConfluenceSearchResponse;
+        let resources = mapSearchResultsToConfluencePages(searchData.results || []);
+        
+        // Only sort alphabetically when no search term - otherwise preserve platform's relevance ranking
+        if (!search) {
+            resources = resources.sort((a, b) => a.title.localeCompare(b.title, undefined, { sensitivity: 'base' }));
+        }
 
         return res.status(200).json({
             success: true,
-            resources: allResources,
-            spaceId: firstSpaceId,
-            total: allResources.length,
+            resources,
+            total: resources.length,
         });
     } catch (error: any) {
-        console.error(chalk.red('Error fetching Confluence resources:'), error);
+        console.error(chalk.red('Error searching Confluence resources:'), error);
         return res.status(500).json({
             success: false,
-            error: error.message || 'Failed to fetch Confluence resources',
+            error: error.message || 'Failed to search Confluence resources',
         });
     }
 }
@@ -158,46 +111,39 @@ export async function getConfluenceResources(req: Request, res: Response) {
 // MARK: - Helpers
 
 /**
- * Maps Confluence REST API v2 pages to ConfluencePage objects, validating required fields.
- * Pages missing required fields are filtered out with warnings logged.
- * Note: API v2 doesn't include spaceName, so we use spaceId as spaceName for now.
+ * Maps Confluence Search API results to ConfluencePage objects.
+ * Search results contain content objects with different structure than v2 API.
  */
-function mapV2PagesToConfluencePages(pages: ConfluencePageV2[]): ConfluencePage[] {
-    return pages
-        .map((page) => {
-            // Check for required fields and log warnings if missing
-            const missingFields: string[] = [];
-            
-            if (!page.id) {
-                missingFields.push('page id');
-            }
-            if (!page.title) {
-                missingFields.push('page title');
-            }
-            if (!page.spaceId) {
-                missingFields.push('space id');
-            }
-            if (!page.version?.number) {
-                missingFields.push('version number');
-            }
-            
-            if (missingFields.length > 0) {
-                console.log(chalk.yellow(`⚠️  Warning: Missing fields for page "${page.title || page.id || 'unknown'}": ${missingFields.join(', ')}`));
-            }
-            
-            // Only include pages that have all required fields
-            if (!page.id || !page.title || !page.spaceId || !page.version?.number) {
+function mapSearchResultsToConfluencePages(results: ConfluenceSearchResult[]): ConfluencePage[] {
+    return results
+        .map((result) => {
+            const content = result.content;
+            if (!content || content.type !== 'page') {
                 return null;
             }
+
+            // Check for required fields
+            const missingFields: string[] = [];
+            if (!content.id) missingFields.push('page id');
+            if (!content.title) missingFields.push('page title');
             
+            if (missingFields.length > 0) {
+                console.log(chalk.yellow(`⚠️  Warning: Missing fields for search result "${content.title || content.id || 'unknown'}": ${missingFields.join(', ')}`));
+                return null;
+            }
+
+            // Extract space info from the content
+            const spaceKey = content.space?.key || '';
+            const spaceName = content.space?.name || spaceKey;
+
             return {
-                id: page.id,
-                title: page.title,
-                spaceId: page.spaceId,
-                spaceName: page.spaceId, // API v2 doesn't provide spaceName, use spaceId as fallback
-                url: page._links?.webui,
-                status: page.status || 'current',
-                version: page.version.number,
+                id: content.id,
+                title: content.title,
+                spaceId: spaceKey,
+                spaceName: spaceName,
+                url: content._links?.webui || '',
+                status: content.status || 'current',
+                version: content.version?.number || 1,
             } as ConfluencePage;
         })
         .filter((page): page is ConfluencePage => page !== null);
@@ -205,39 +151,34 @@ function mapV2PagesToConfluencePages(pages: ConfluencePageV2[]): ConfluencePage[
 
 // MARK: - Types
 
-interface ConfluencePageV2 {
-    id: string;
-    status?: string;
-    title: string;
-    spaceId: string;
-    parentId?: string;
-    parentType?: string;
-    position?: number;
-    authorId?: string;
-    ownerId?: string;
-    lastOwnerId?: string;
-    subtype?: string;
-    createdAt?: string;
-    version?: {
-        createdAt?: string;
-        message?: string;
-        number: number;
-        minorEdit?: boolean;
-        authorId?: string;
+interface ConfluenceSearchResult {
+    content?: {
+        id: string;
+        type: string;
+        status?: string;
+        title: string;
+        space?: {
+            key: string;
+            name: string;
+        };
+        version?: {
+            number: number;
+        };
+        _links?: {
+            webui?: string;
+        };
     };
-    body?: {
-        storage?: any;
-        atlas_doc_format?: any;
-    };
-    _links?: {
-        webui?: string;
-        editui?: string;
-        tinyui?: string;
-    };
+    title?: string;
+    excerpt?: string;
+    url?: string;
 }
 
-interface ConfluencePagesV2Response {
-    results: ConfluencePageV2[];
+interface ConfluenceSearchResponse {
+    results: ConfluenceSearchResult[];
+    start?: number;
+    limit?: number;
+    size?: number;
+    totalSize?: number;
     _links?: {
         next?: string;
         self?: string;

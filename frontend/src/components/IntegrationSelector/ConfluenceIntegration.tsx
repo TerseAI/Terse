@@ -131,6 +131,7 @@ export function ConfluenceIntegration({
                     <ConfluenceResourceSelector
                         integrationId={selectedIntegrationId}
                         selectedResourceId={currentConfig?.pageId}
+                        selectedResourceName={currentConfig?.pageName}
                         onSelect={(resourceId, resourceTitle, spaceId, spaceName) => {
                             const updatedConfig = new ConfluenceConfig(
                                 selectedIntegrationId,
