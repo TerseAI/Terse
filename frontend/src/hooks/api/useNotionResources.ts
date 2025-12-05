@@ -6,8 +6,6 @@ import { notionResourcesKey } from "@/shared/InvalidationKeys";
 type UseNotionResourcesReturn = {
     resources: NotionResource[];
     response: NotionResourcesResponse | undefined;
-    selectedResourceId: string | null | undefined;
-    selectedResourceType: NotionResourcesResponse['selectedResourceType'] | undefined;
     isLoading: boolean;
     isError: boolean;
     error: unknown;
@@ -15,10 +13,20 @@ type UseNotionResourcesReturn = {
     mutate: KeyedMutator<NotionResourcesResponse>;
 };
 
-export function useNotionResources(integrationId: string | null | undefined, resourceType?: NotionResourceType): UseNotionResourcesReturn {
+export function useNotionResources(
+    integrationId: string | null | undefined,
+    search: string | null | undefined,
+    resourceType?: NotionResourceType
+): UseNotionResourcesReturn {
+    const shouldFetch = Boolean(integrationId);
+    
+    // Include search and type in key so SWR refetches when they change
+    const baseKey = notionResourcesKey(integrationId);
+    const swrKey = shouldFetch && baseKey ? [...baseKey, search ?? '', resourceType ?? ''] : null;
+    
     const { data, error, isLoading, isValidating, mutate } = useSWR<NotionResourcesResponse>(
-        notionResourcesKey(integrationId),
-        integrationId ? () => BackendProvider.getNotionResources(integrationId) : null,
+        swrKey,
+        shouldFetch ? () => BackendProvider.getNotionResources(integrationId!, search ?? undefined, resourceType) : null,
         {
             keepPreviousData: true,
             revalidateOnFocus: false,
@@ -26,14 +34,11 @@ export function useNotionResources(integrationId: string | null | undefined, res
         },
     );
 
-    const loading = Boolean(integrationId) && (isLoading || (!data && !error));
-    const resources = resourceType ? data?.resources.filter((resource) => resource.type === resourceType) ?? [] : data?.resources ?? [];
+    const loading = shouldFetch && (isLoading || (!data && !error));
 
     return {
-        resources: resources,
+        resources: data?.resources ?? [],
         response: data,
-        selectedResourceId: data?.selectedResourceId,
-        selectedResourceType: data?.selectedResourceType,
         isLoading: loading,
         isError: Boolean(error),
         error,
@@ -41,5 +46,3 @@ export function useNotionResources(integrationId: string | null | undefined, res
         mutate,
     };
 }
-
-
