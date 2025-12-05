@@ -173,7 +173,7 @@ export async function getStats(req: Request, res: Response) {
         });
     }
 
-    // 5. Recent Actions (last 10)
+    // 5. Recent Actions (last 10 write actions only)
     const recentActionsData = await prisma.run_history_actions.findMany({
         where: {
             run_history_record: {
@@ -181,6 +181,7 @@ export async function getStats(req: Request, res: Response) {
                     user_id: userId,
                 },
             },
+            is_read_only: false, // Only show write actions
         },
         include: {
             run_history_record: {
