@@ -3,10 +3,19 @@ import { BackendProvider } from '@/services/backend';
 import type { ConfluenceResourcesResponse, UseConfluenceResourcesReturn } from '@/shared/types';
 import { confluenceResourcesKey } from "@/shared/InvalidationKeys";
 
-export function useConfluenceResources(integrationId: string | null | undefined): UseConfluenceResourcesReturn<KeyedMutator<ConfluenceResourcesResponse>> {
+export function useConfluenceResources(
+    integrationId: string | null | undefined,
+    search: string | null | undefined
+): UseConfluenceResourcesReturn<KeyedMutator<ConfluenceResourcesResponse>> {
+    const shouldFetch = Boolean(integrationId);
+    
+    // Include search in key so SWR refetches when search changes
+    const baseKey = confluenceResourcesKey(integrationId);
+    const swrKey = shouldFetch && baseKey ? [...baseKey, search ?? ''] : null;
+    
     const { data, error, isLoading, isValidating, mutate } = useSWR<ConfluenceResourcesResponse>(
-        confluenceResourcesKey(integrationId),
-        integrationId ? () => BackendProvider.getConfluenceResources(integrationId) : null,
+        swrKey,
+        shouldFetch ? () => BackendProvider.getConfluenceResources(integrationId!, search ?? undefined) : null,
         {
             keepPreviousData: true,
             revalidateOnFocus: false,
@@ -14,7 +23,7 @@ export function useConfluenceResources(integrationId: string | null | undefined)
         },
     );
 
-    const loading = Boolean(integrationId) && (isLoading || (!data && !error));
+    const loading = shouldFetch && (isLoading || (!data && !error));
 
     return {
         resources: data?.resources ?? [],
@@ -26,4 +35,3 @@ export function useConfluenceResources(integrationId: string | null | undefined)
         mutate,
     };
 }
-
