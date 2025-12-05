@@ -92,22 +92,24 @@ export async function getStats(req: Request, res: Response) {
                 timestamp: { gte: previousPeriodStart, lte: previousPeriodEnd },
             },
         }),
-        // 3. Current period actions count
+        // 3. Current period actions count (write operations only)
         prisma.run_history_actions.count({
             where: {
                 run_history_record: {
                     automation: { user_id: userId },
                     timestamp: { gte: currentPeriodStart },
                 },
+                is_read_only: false,
             },
         }),
-        // 4. Previous period actions count
+        // 4. Previous period actions count (write operations only)
         prisma.run_history_actions.count({
             where: {
                 run_history_record: {
                     automation: { user_id: userId },
                     timestamp: { gte: previousPeriodStart, lte: previousPeriodEnd },
                 },
+                is_read_only: false,
             },
         }),
         // 5. Current channels count
