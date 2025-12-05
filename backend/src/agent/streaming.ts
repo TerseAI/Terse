@@ -33,7 +33,7 @@ export async function* transformAgentStreamToModelEvents<T extends Session>(
         const toolCompleteData = tryExtractToolCallCompleteData(event);
         if (toolCompleteData) {
             const changedItems = onToolCallComplete 
-                ? await onToolCallComplete(toolCompleteData.callId)
+                ? await onToolCallComplete(toolCompleteData.callId, toolCompleteData.name)
                 : [];
             
             yield createToolCallCompleteEvent(toolCompleteData, changedItems, toolToIntegrationMap);
@@ -202,7 +202,7 @@ export type ToolCallCompleteEvent = {
 
 export type AgentStreamEvent = RawModelStreamEvent | ToolCalledEvent | ToolCallCompleteEvent;
 
-export type ToolCallCompleteHandler = (callId: string) => Promise<ChangedItem[]>;
+export type ToolCallCompleteHandler = (callId: string, toolName: string) => Promise<ChangedItem[]>;
 
 export type ToolCallCompleteData = {
     name: string;

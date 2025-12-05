@@ -807,6 +807,7 @@ model run_history_actions {
   details               String
   url                   String?
   step_id               String?
+  is_read_only          Boolean               @default(true)
   created_at            DateTime              @default(now())
 
   run_history_record run_history_records @relation(fields: [run_history_record_id], references: [id], onDelete: Cascade)
@@ -814,6 +815,7 @@ model run_history_actions {
   @@index([run_history_record_id])
   @@index([step_id])
   @@index([created_at]) // Index for recent actions ORDER BY created_at DESC
+  @@index([is_read_only])
 }
 
 // Pending approvals for tools that require human approval

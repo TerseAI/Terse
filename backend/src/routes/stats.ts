@@ -135,6 +135,7 @@ export async function getStats(req: Request, res: Response) {
                 run_history_record: {
                     automation: { user_id: userId },
                 },
+                is_read_only: false,
             },
             include: {
                 run_history_record: {
