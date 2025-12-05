@@ -30,7 +30,7 @@ export const notionOAuthCallback = async (req: Request, res: Response) => {
   await integration.processInstallationCallback(req, res);
 };
 
-// Fetch available databases for a Notion connection
+// Search Notion pages and databases by title
 export const getNotionResources = async (req: Request, res: Response) => {
   const user = req.session?.user;
   if (!user) {
@@ -41,6 +41,12 @@ export const getNotionResources = async (req: Request, res: Response) => {
   if (!integrationId) {
     return res.status(400).json({ error: "integrationId is required" });
   }
+
+  // Search term is optional - empty string returns all accessible resources
+  const search = (req.query.search as string) || "";
+  
+  // Type filter is optional - "page" or "database", if not provided returns both
+  const typeFilter = req.query.type as string | undefined;
 
   try {
     // Verify user owns this integration
@@ -62,48 +68,55 @@ export const getNotionResources = async (req: Request, res: Response) => {
       return res.status(400).json({ error: "Could not get valid access token" });
     }
 
-    // Fetch databases from Notion API
+    // Build search options
     const notionClient = new Client({ auth: accessToken });
-    const databasesResponse = await notionClient.search({
-      filter: { property: "object", value: "data_source" },
+    const searchOptions: Parameters<typeof notionClient.search>[0] = {
+      query: search,
       page_size: 100,
-    });
+    };
+    
+    // Add filter if type is specified
+    if (typeFilter === 'page') {
+      searchOptions.filter = { property: "object", value: "page" };
+    } else if (typeFilter === 'database') {
+      searchOptions.filter = { property: "object", value: "data_source" };
+    }
 
-    const pagesResponse: SearchResponse = await notionClient.search({
-      filter: { property: "object", value: "page" },
-      page_size: 100,
-    });
+    const searchResponse: SearchResponse = await notionClient.search(searchOptions);
 
-    const databases: NotionResource[] = databasesResponse.results.map(
-      (db: any) => ({
-        id: db.id,
-        title: db.title?.[0]?.plain_text || "Untitled Database",
-        url: db.url,
-        type: 'database',
+    console.log("searchResponse", searchResponse);
+
+    const resources: NotionResource[] = searchResponse.results
+      .map((result: any) => {
+        if (result.object === 'data_source') {
+          return {
+            id: result.id,
+            title: result.title?.[0]?.plain_text || "Untitled Database",
+            url: result.url,
+            type: 'database' as const,
+          };
+        } else if (result.object === 'page') {
+          return {
+            id: result.id,
+            title: extractPageTitle(result),
+            url: 'url' in result ? result.url : '',
+            type: 'page' as const,
+          };
+        }
+        return null;
       })
-    );
-
-    const pages: NotionResource[] = pagesResponse.results
-      .filter((page): page is PageObjectResponse | PartialPageObjectResponse => page.object === 'page')
-      .map((page: PageObjectResponse | PartialPageObjectResponse) => ({
-        id: page.id,
-        title: extractPageTitle(page),
-        url: 'url' in page ? page.url : '',
-        type: 'page' as const,
-      }));
-    const resources: NotionResource[] = [...databases, ...pages];
+      .filter((resource): resource is NotionResource => resource !== null)
+      .sort((a, b) => a.title.localeCompare(b.title, undefined, { sensitivity: 'base' }));
 
     const response: NotionResourcesResponse = {
       resources,
-      selectedResourceId: resources[0].id, // Just choose the first?
-      selectedResourceType: resources[0].type,
     };
 
     res.status(200).json(response);
   } catch (error: any) {
-    console.error(chalk.red("Error fetching Notion databases:"), error);
+    console.error(chalk.red("Error searching Notion resources:"), error);
     res.status(500).json({
-      error: "Failed to fetch databases",
+      error: "Failed to search resources",
       details: error.message
     });
   }

@@ -1,13 +1,10 @@
-import { FileText, Database, BookOpen } from "lucide-react";
-import { NotionResource } from "@/shared/types";
+import { BookOpen } from "lucide-react";
 import { Card, CardContent } from "../ui/card";
 import { IntegrationType } from "@/shared/Integrations"
 import { IntegrationCardHeader } from "./helpers/IntegrationCardHeader";
 import { IntegrationCardFooter } from "./helpers/IntegrationCardFooter";
 import { IntegrationItem } from "./helpers/IntegrationItem";
 import { useOAuthConnection } from "@/hooks/useOAuthConnection";
-import { CountDisplay } from "./helpers/CountDisplay";
-import { useNotionResources } from "@/hooks/api/useNotionResources";
 import { useNotionIntegrations } from "@/hooks/api/useNotionIntegrations";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "../ui/skeleton";
@@ -15,8 +12,6 @@ import { Skeleton } from "../ui/skeleton";
 function NotionIntegrationCard({ className, isActive = true }: { className?: string; isActive?: boolean }) {
     const { connect, isConnecting } = useOAuthConnection(IntegrationType.NOTION);
     const { integrations, isLoading: integrationsLoading } = useNotionIntegrations();
-    const firstIntegrationId = integrations[0]?.id;
-    const { resources, isLoading: resourcesLoading } = useNotionResources(firstIntegrationId || null);
 
     return (
         <Card className={cn(className)}>
@@ -24,8 +19,7 @@ function NotionIntegrationCard({ className, isActive = true }: { className?: str
             <CardContent>
                 <NotionCardContent 
                     integrations={integrations} 
-                    resources={resources} 
-                    isLoading={integrationsLoading || resourcesLoading} 
+                    isLoading={integrationsLoading} 
                 />
             </CardContent>
             <IntegrationCardFooter connect={connect} isConnecting={isConnecting} />
@@ -33,7 +27,7 @@ function NotionIntegrationCard({ className, isActive = true }: { className?: str
     )
 }
 
-function NotionCardContent({ integrations, resources, isLoading }: { integrations: Array<{ id: string; workspaceName?: string }>, resources: NotionResource[], isLoading: boolean }) {
+function NotionCardContent({ integrations, isLoading }: { integrations: Array<{ id: string; workspaceName?: string }>, isLoading: boolean }) {
     if (isLoading && integrations.length === 0) {
         return (
             <div className="space-y-3">
@@ -53,9 +47,6 @@ function NotionCardContent({ integrations, resources, isLoading }: { integration
         );
     }
 
-    const numberOfPages = resources.filter(resource => resource.type === 'page').length;
-    const numberOfDatabases = resources.filter(resource => resource.type === 'database').length;
-
     return (
         <div className="space-y-2">
             {integrations.map((integration) => (
@@ -64,15 +55,8 @@ function NotionCardContent({ integrations, resources, isLoading }: { integration
                     icon={<BookOpen className="w-4 h-4" />}
                     title={integration.workspaceName || 'Unknown Workspace'}
                     description={
-                        <span className="flex items-center gap-4">
-                            <span className="flex items-center gap-1">
-                                <FileText className="size-3" />
-                                <PagesCount numberOfPages={numberOfPages} isLoading={isLoading} />
-                            </span>
-                            <span className="flex items-center gap-1">
-                                <Database className="size-3" />
-                                <DatabaseCount numberOfDatabases={numberOfDatabases} isLoading={isLoading} />
-                            </span>
+                        <span className="text-xs text-muted-foreground">
+                            Search to find pages and databases
                         </span>
                     }
                 />
@@ -80,27 +64,5 @@ function NotionCardContent({ integrations, resources, isLoading }: { integration
         </div>
     );
 }
-
-function DatabaseCount({ numberOfDatabases, isLoading }: { numberOfDatabases: number, isLoading: boolean }) {
-    return (
-        <CountDisplay 
-            count={numberOfDatabases} 
-            singular="database" 
-            isLoading={isLoading} 
-        />
-    )
-}
-
-function PagesCount({ numberOfPages, isLoading }: { numberOfPages: number, isLoading: boolean }) {
-    return (
-        <CountDisplay 
-            count={numberOfPages} 
-            singular="page" 
-            isLoading={isLoading} 
-        />
-    )
-}
-
-
 
 export default NotionIntegrationCard;

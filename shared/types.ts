@@ -75,8 +75,6 @@ export type NotionResource = {
 
 export type NotionResourcesResponse = {
   resources: NotionResource[];
-  selectedResourceId: string | null;
-  selectedResourceType: NotionResourceType;
 };
 
 export type SlackChannel = {
