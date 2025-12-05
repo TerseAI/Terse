@@ -4,25 +4,16 @@ import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts";
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "../../../components/ui/empty";
 import { BarChart3, Clock } from "lucide-react";
 import { DailyEventCount } from "../../../shared/types";
+import { DateTime } from "luxon";
 
 interface DailyEventsChartProps {
     eventsPerDay: DailyEventCount[];
     timezone?: string;
 }
 
-// Format timezone for display using Intl.DisplayNames if available, with fallback
 function formatTimezone(tz: string): string {
-    if (typeof Intl !== "undefined" && typeof Intl.DisplayNames === "function") {
-        try {
-            const displayNames = new Intl.DisplayNames([navigator.language || "en"], { type: "timezone" });
-            const displayName = displayNames.of(tz);
-            if (displayName) return displayName;
-        } catch {
-            // Fallback below
-        }
-    }
-    // Fallback: replace underscores with spaces
-    return tz.replace(/_/g, ' ');
+    const dt = DateTime.now().setZone(tz);
+    return dt.isValid && dt.offsetNameLong ? dt.offsetNameLong : tz
 }
 
 export function DailyEventsChart({ eventsPerDay, timezone }: DailyEventsChartProps) {

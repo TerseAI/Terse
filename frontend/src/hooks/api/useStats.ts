@@ -21,8 +21,7 @@ function getUserTimezone(): string {
 }
 
 export function useStats() {
-    // Memoize timezone to avoid unnecessary re-renders
-    const timezone = useMemo(() => getUserTimezone(), []);
+    const timezone = getUserTimezone()
     
     const { data, error, isLoading, mutate } = useSWR<StatsResponse>(
         statsKey(),

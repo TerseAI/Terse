@@ -120,13 +120,14 @@ export async function getStats(req: Request, res: Response) {
         }),
         // 7. Daily events aggregation using raw SQL for performance
         // Use AT TIME ZONE to group events by the user's local date
+        // GROUP BY 1 refers to the first SELECT column (event_date) to avoid parameter duplication issues
         prisma.$queryRaw<DailyEventRow[]>`
             SELECT DATE(rhr.timestamp AT TIME ZONE 'UTC' AT TIME ZONE ${timezone}) as event_date, COUNT(*) as count
             FROM run_history_records rhr
             INNER JOIN automations a ON rhr.automation_id = a.id
             WHERE a.user_id = ${userId} AND rhr.timestamp >= ${chartStartDate}
-            GROUP BY DATE(rhr.timestamp AT TIME ZONE 'UTC' AT TIME ZONE ${timezone})
-            ORDER BY event_date
+            GROUP BY 1
+            ORDER BY 1
         `,
         // 8. Recent actions (last 10)
         prisma.run_history_actions.findMany({
