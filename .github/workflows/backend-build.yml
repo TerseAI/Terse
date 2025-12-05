@@ -3,6 +3,7 @@ on:
   pull_request:
     paths:
       - 'backend/**'
+      - 'shared/**'
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -13,7 +14,7 @@ jobs:
           version: 10
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22.19.0'
           cache: 'pnpm'
           cache-dependency-path: backend/pnpm-lock.yaml
       - run: cd backend && pnpm install --frozen-lockfile
