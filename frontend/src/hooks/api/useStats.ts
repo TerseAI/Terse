@@ -1,5 +1,4 @@
 import useSWR, { KeyedMutator } from 'swr';
-import { useMemo } from 'react';
 import { BackendProvider } from '@/services/backend';
 import { statsKey } from '@/shared/InvalidationKeys';
 import { StatsResponse } from '@/shared/types';
