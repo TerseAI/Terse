@@ -159,8 +159,10 @@ export const getSlackChannels = async (req: Request, res: Response) => {
 
     const slackIntegration = userSlackIntegration.slack_integration;
 
-    // Fetch channels from Slack API
-    const client = new WebClient(userSlackIntegration.authed_user_access_token, {
+    // Fetch channels from Slack API using the BOT token
+    // This ensures we only show channels where the bot is a member and can post
+    // Using the user token would show channels the user can see but the bot cannot post to
+    const client = new WebClient(slackIntegration.access_token, {
       logLevel: LogLevel.ERROR,
     });
 
