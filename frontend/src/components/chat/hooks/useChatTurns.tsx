@@ -3,14 +3,12 @@ import { type Turn } from '../Turn';
 import { type TextDelta, type ToolCall, type ToolCallComplete, type Failure, FilterResult } from '../../../shared/ModelEvents';
 
 interface UseChatTurnsOptions {
-    onScrollToBottom?: () => void;
     initialTurns?: Turn[] | undefined;
 }
 
-export function useChatTurns({ onScrollToBottom, initialTurns }: UseChatTurnsOptions = {}) {
+export function useChatTurns({ initialTurns }: UseChatTurnsOptions = {}) {
     const [turns, setTurns] = useState<Turn[]>(initialTurns || []);
     const stepBuffersRef = useRef<Map<string, string>>(new Map());
-    const messagesEndRef = useRef<HTMLDivElement>(null);
     const pendingApprovalsRef = useRef<Set<string>>(new Set());
     const queuedToolCallsRef = useRef<Array<{ summary: string; step_id: string; parameters: string }>>([]);
 
@@ -38,15 +36,6 @@ export function useChatTurns({ onScrollToBottom, initialTurns }: UseChatTurnsOpt
         ) || false
     );
 
-    const scrollToBottom = () => {
-        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-        onScrollToBottom?.();
-    };
-
-    useEffect(() => {
-        scrollToBottom();
-    }, [turns]);
-
     const handleDelta = ({ delta, step_id }: TextDelta) => {
         // Merge delta into buffer
         const existing = stepBuffersRef.current.get(step_id) ?? '';
@@ -66,7 +55,6 @@ export function useChatTurns({ onScrollToBottom, initialTurns }: UseChatTurnsOpt
                     step_id,
                 }];
             }
-
             last.text = newText;
             last.isGenerating = true;
             return updated;
@@ -266,13 +254,16 @@ export function useChatTurns({ onScrollToBottom, initialTurns }: UseChatTurnsOpt
     };
 
     const addUserTurn = (message: string) => {
+        
         const userTurn: Turn = {
             role: 'user',
             text: message,
             function_calls: [],
             step_id: 'user_turn'
         };
-        setTurns(prev => [...prev, userTurn]);
+        setTurns(prev => {
+            return [...prev, userTurn];
+        });
     };
 
     const clearTurns = () => {
@@ -285,7 +276,6 @@ export function useChatTurns({ onScrollToBottom, initialTurns }: UseChatTurnsOpt
     return {
         turns,
         isPendingAssistantResponse,
-        messagesEndRef,
         handleDelta,
         handleToolCall,
         handleToolApprovalRequest,
@@ -296,6 +286,5 @@ export function useChatTurns({ onScrollToBottom, initialTurns }: UseChatTurnsOpt
         handleFilterResult,
         addUserTurn,
         clearTurns,
-        scrollToBottom,
     };
 } 

@@ -9,6 +9,7 @@ import {
     FigmaIcon,
     JiraIcon,
     JiraConfluenceIcon,
+    TerseIcon,
 } from "@/components/icons/IntegrationIcons";
 
 export function IconForConfigType({ type }: { type: ConfigType }) {
@@ -52,5 +53,9 @@ export function IconForIntegration({ integration }: { integration: IntegrationTy
             return <FigmaIcon />;
         case IntegrationType.ATLASSIAN:
             return <JiraConfluenceIcon />;
+        case IntegrationType.TERSE:
+            return <TerseIcon />;
+        default:
+            throw integration satisfies never;
     }
 }

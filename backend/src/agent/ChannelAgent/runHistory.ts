@@ -1,6 +1,6 @@
 import { db } from "../../prismaClient";
 import type { RunHistoryAction, RunHistoryStatus, RunHistoryTrigger } from "../../shared/RunHistoryTypes";
-import { convertIntegrationTypeToRunHistoryIntegration } from "../../utility/typeConverters";
+import { convertIntegrationTypeToPrismaIntegrationTypeForRunHistory } from "../../utility/typeConverters";
 import { ModelEvent } from "../../shared/ModelEvents";
 import type { RunHistoryChatEventType } from "@prisma/client";
 
@@ -16,7 +16,7 @@ export async function createRunRecord(params: {
         data: {
             automation_id: channelId, // Database column is still automation_id
             event: trigger.event,
-            trigger_integration: convertIntegrationTypeToRunHistoryIntegration(trigger.integration),
+            trigger_integration: convertIntegrationTypeToPrismaIntegrationTypeForRunHistory(trigger.integration),
             trigger_source: trigger.source,
             trigger_title: trigger.title ?? null,
             trigger_subheader: trigger.subheader ?? null,
@@ -54,7 +54,7 @@ export async function appendRunAction(
         data: {
             run_history_record_id: runId,
             action: action.action,
-            integration: convertIntegrationTypeToRunHistoryIntegration(action.integration),
+            integration: convertIntegrationTypeToPrismaIntegrationTypeForRunHistory(action.integration),
             target: action.target,
             details: action.details,
             url: action.url ?? null,

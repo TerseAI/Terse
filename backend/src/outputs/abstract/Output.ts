@@ -1,6 +1,6 @@
-// MARK: - Output Integratoins
+// MARK: - Output Integrations
 
-import { Tool } from "@openai/agents";
+import { Tool, webSearchTool } from "@openai/agents";
 import { Session } from "../../server";
 import { ChannelOutput, PrismaTransaction, User } from "../../types/prisma";
 import { OutputConfigType } from "@prisma/client";
@@ -12,7 +12,23 @@ import { IntegrationType } from "../../shared/Integrations";
 export interface ToolboxEntry {
     tool: Tool;
     isReadOnly: boolean;
+    integration: IntegrationType;
 }
+
+
+/**
+ * Built in tools that are always available to the output.
+ */
+export const defaultToolbox: readonly ToolboxEntry[] = [
+    {
+        tool: webSearchTool({
+            searchContextSize: 'medium'
+        }),
+        isReadOnly: true,
+        integration: IntegrationType.TERSE
+    }
+]
+
 
 export abstract class Output<T extends Session, TConfig extends ConfigInstance> {
     integration: OutputConfigType;
@@ -20,7 +36,7 @@ export abstract class Output<T extends Session, TConfig extends ConfigInstance> 
 
     constructor(integration: OutputConfigType, toolbox: readonly ToolboxEntry[]) {
         this.integration = integration;
-        this.toolbox = toolbox;
+        this.toolbox = [...defaultToolbox, ...toolbox] 
     }
 
     abstract createSessionFromConfig(
