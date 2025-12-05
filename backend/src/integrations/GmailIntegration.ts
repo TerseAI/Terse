@@ -6,6 +6,7 @@ import { OAuthInstallationDetails } from "../shared/types";
 import { GmailIntegration, GmailIntegrationMetadata, IntegrationType } from "../shared/Integrations";
 import chalk from "chalk";
 import { gmail_v1, google } from "googleapis";
+import { OAuth2Client } from "google-auth-library";
 import { gmail as gmailConfig, urls, OAUTH_TOKEN_REFRESH_THRESHOLD_MS } from "../config/settings";
 import { EventProcessor } from "../agent/ChannelAgent/EventProcessor";
 import { InputConfigType } from "@prisma/client";
@@ -510,7 +511,7 @@ export class GmailEvent extends InputEvent {
 
 
 // Create OAuth2 client
-export function getOAuth2Client() {
+export function getOAuth2Client(): OAuth2Client {
     return new google.auth.OAuth2(
         gmailConfig.clientId,
         gmailConfig.clientSecret,
