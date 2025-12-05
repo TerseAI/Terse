@@ -14,8 +14,8 @@ export class NotificationManager {
     }
 
     async notify(runAction: RunHistoryAction) {
-         // Get the notification settings for the automation
-         const notificationSettings: AutomationNotificationSettings | null = await db().automation_notification_settings.findFirst({
+        // Get the notification settings for the automation
+        const notificationSettings: AutomationNotificationSettings | null = await db().automation_notification_settings.findFirst({
             where: {
                 automation_id: this.channel.id,
             },
@@ -70,7 +70,7 @@ async function notifySlack(notificationDestination: UserNotificationDestination,
     }
 
     const message = formatNotificationMessage(runAction, { channelName: channel.name });
-    
+
     await sendSlackMessage(
         notificationDestination.slack_integration_id,
         notificationDestination.slack_channel_id,
