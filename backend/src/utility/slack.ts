@@ -31,6 +31,8 @@ export async function sendSlackMessage(
 
     const botToken = userSlackIntegration.slack_integration.access_token;
     const client = new WebClient(botToken, { logLevel: LogLevel.ERROR });
+    console.log(`[sendSlackMessage] Sending message to channel ${channelId} with bot token ${botToken}`);
+    console.log(`[sendSlackMessage] Message: ${JSON.stringify(message)}`);
 
     try {
         await client.chat.postMessage({
