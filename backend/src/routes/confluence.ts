@@ -87,8 +87,12 @@ export async function getConfluenceResources(req: Request, res: Response) {
         }
 
         const searchData = await searchResponse.json() as ConfluenceSearchResponse;
-        const resources = mapSearchResultsToConfluencePages(searchData.results || [])
-            .sort((a, b) => a.title.localeCompare(b.title, undefined, { sensitivity: 'base' }));
+        let resources = mapSearchResultsToConfluencePages(searchData.results || []);
+        
+        // Only sort alphabetically when no search term - otherwise preserve platform's relevance ranking
+        if (!search) {
+            resources = resources.sort((a, b) => a.title.localeCompare(b.title, undefined, { sensitivity: 'base' }));
+        }
 
         return res.status(200).json({
             success: true,

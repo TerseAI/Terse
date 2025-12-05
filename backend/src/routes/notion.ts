@@ -84,9 +84,7 @@ export const getNotionResources = async (req: Request, res: Response) => {
 
     const searchResponse: SearchResponse = await notionClient.search(searchOptions);
 
-    console.log("searchResponse", searchResponse);
-
-    const resources: NotionResource[] = searchResponse.results
+    let resources: NotionResource[] = searchResponse.results
       .map((result: any) => {
         if (result.object === 'data_source') {
           return {
@@ -105,8 +103,12 @@ export const getNotionResources = async (req: Request, res: Response) => {
         }
         return null;
       })
-      .filter((resource): resource is NotionResource => resource !== null)
-      .sort((a, b) => a.title.localeCompare(b.title, undefined, { sensitivity: 'base' }));
+      .filter((resource): resource is NotionResource => resource !== null);
+    
+    // Only sort alphabetically when no search term - otherwise preserve platform's relevance ranking
+    if (!search) {
+      resources = resources.sort((a, b) => a.title.localeCompare(b.title, undefined, { sensitivity: 'base' }));
+    }
 
     const response: NotionResourcesResponse = {
       resources,
