@@ -1,4 +1,5 @@
 import useSWR, { KeyedMutator } from 'swr';
+import { useMemo } from 'react';
 import { BackendProvider } from '@/services/backend';
 import { statsKey } from '@/shared/InvalidationKeys';
 import { StatsResponse } from '@/shared/types';
@@ -10,10 +11,22 @@ export type UseStatsReturn = {
     mutate: KeyedMutator<StatsResponse>;
 };
 
+// Get the user's timezone, with fallback to UTC
+function getUserTimezone(): string {
+    try {
+        return Intl.DateTimeFormat().resolvedOptions().timeZone;
+    } catch {
+        return 'UTC';
+    }
+}
+
 export function useStats() {
+    // Memoize timezone to avoid unnecessary re-renders
+    const timezone = useMemo(() => getUserTimezone(), []);
+    
     const { data, error, isLoading, mutate } = useSWR<StatsResponse>(
         statsKey(),
-        () => BackendProvider.getStats(),
+        () => BackendProvider.getStats(timezone),
         {
             revalidateOnFocus: false,
             revalidateOnReconnect: true,

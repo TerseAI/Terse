@@ -795,6 +795,7 @@ model run_history_records {
   @@index([automation_id])
   @@index([status])
   @@index([timestamp])
+  @@index([automation_id, timestamp]) // Composite index for user filtering + time range queries
 }
 
 model run_history_actions {
@@ -812,6 +813,7 @@ model run_history_actions {
 
   @@index([run_history_record_id])
   @@index([step_id])
+  @@index([created_at]) // Index for recent actions ORDER BY created_at DESC
 }
 
 // Pending approvals for tools that require human approval

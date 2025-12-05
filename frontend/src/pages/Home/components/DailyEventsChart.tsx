@@ -1,15 +1,21 @@
-import { Card, CardContent, CardHeader, CardTitle } from "../../../components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../../../components/ui/card";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "../../../components/ui/chart";
 import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts";
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "../../../components/ui/empty";
-import { BarChart3 } from "lucide-react";
+import { BarChart3, Clock } from "lucide-react";
 import { DailyEventCount } from "../../../shared/types";
 
 interface DailyEventsChartProps {
     eventsPerDay: DailyEventCount[];
+    timezone?: string;
 }
 
-export function DailyEventsChart({ eventsPerDay }: DailyEventsChartProps) {
+// Format timezone for display (e.g., "America/New_York" -> "America/New York")
+function formatTimezone(tz: string): string {
+    return tz.replace(/_/g, ' ');
+}
+
+export function DailyEventsChart({ eventsPerDay, timezone }: DailyEventsChartProps) {
     const chartConfig = {
         events: {
             label: "Events",
@@ -23,6 +29,12 @@ export function DailyEventsChart({ eventsPerDay }: DailyEventsChartProps) {
             <Card>
                 <CardHeader>
                     <CardTitle>Daily Events</CardTitle>
+                    {timezone && (
+                        <CardDescription className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                            <Clock className="h-3 w-3" />
+                            Times shown in {formatTimezone(timezone)}
+                        </CardDescription>
+                    )}
                 </CardHeader>
                 <CardContent className="-ml-6">
                     {eventsPerDay.length > 0 ? (

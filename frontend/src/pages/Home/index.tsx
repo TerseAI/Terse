@@ -24,6 +24,7 @@ function Home() {
     }));
 
     const eventsPerDay = stats?.dailyEvents || [];
+    const timezone = stats?.timezone;
 
     const recentActions: (RunHistoryAction & { timestamp: string; channelName: string })[] = stats?.recentActions
         ? stats.recentActions.map((action) => ({
@@ -42,7 +43,7 @@ function Home() {
             <StatsMetricsSection isLoading={isLoadingStats} metrics={metrics} />
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <DailyEventsChart eventsPerDay={eventsPerDay} />
+                <DailyEventsChart eventsPerDay={eventsPerDay} timezone={timezone} />
                 <RecentActionsSection recentActions={recentActions} />
             </div>
 

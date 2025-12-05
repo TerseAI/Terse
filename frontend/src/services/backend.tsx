@@ -92,8 +92,9 @@ interface BackendService {
 
     /**
      * Gets statistics for the homepage dashboard
+     * @param timezone - Optional IANA timezone string (e.g., "America/New_York")
      */
-    getStats(): Promise<StatsResponse>;
+    getStats(timezone?: string): Promise<StatsResponse>;
 
     /**
      * Returns the installation details for a given integration type
@@ -361,8 +362,9 @@ export const BackendProvider: BackendService = {
             });
     },
 
-    getStats: () => {
-        return axios.get(`${backendBaseUrl}/stats`, { withCredentials: true })
+    getStats: (timezone?: string) => {
+        const params = timezone ? { tz: timezone } : {};
+        return axios.get(`${backendBaseUrl}/stats`, { withCredentials: true, params })
             .then(response => response.data)
             .catch(error => {
                 console.error('Error getting stats:', error);
