@@ -30,7 +30,7 @@ export function NotionIntegration({
         if (integrations.length > 0 && !selectedIntegrationId) {
             setSelectedIntegrationId(integrations[0].id);
         }
-    }, [integrations, selectedIntegrationId, setSelectedIntegrationId]);
+    }, [integrations, selectedIntegrationId]);
 
     if (isLoading) {
         return (
