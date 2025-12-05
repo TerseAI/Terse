@@ -16,11 +16,8 @@ import { ChangedItem, ChangeEventType } from '../../shared/ModelEvents';
 import { persistRunAction } from './EventProcessor';
 import { processModelEventStream } from './StreamProcessor';
 import { RunHistoryChatMemorySession, trimToLastTurns } from './CustomMemorySession';
-<<<<<<< HEAD
 import { NotificationManager } from '../../notifications/Notification';
-=======
 import { IntegrationType } from '../../shared/Integrations';
->>>>>>> c9c78ab5b5b40995296f6f16aaf3f6815ef73f0d
 
 
 export class ChannelAgent<T extends Session, TConfig extends ConfigInstance> {
