@@ -22,14 +22,15 @@ type DropdownSelectProps = {
         label: string;
         onClick: () => void;
     };
+    placeholder?: string;
 }
 
-const DropdownSelect = ({ statusOptions, selectedOption, setSelected, additionalAction }: DropdownSelectProps) => {
+const DropdownSelect = ({ statusOptions, selectedOption, setSelected, additionalAction, placeholder = 'Select an option' }: DropdownSelectProps) => {
     return (
         <DropdownMenu>
             <DropdownMenuTrigger asChild>
                 <Button variant="outline">
-                    <span className="block truncate">{selectedOption?.label ?? 'No connection selected'}</span>
+                    <span className="block truncate">{selectedOption?.label ?? placeholder}</span>
                     <ChevronDown className="h-4 w-4 ml-2 text-muted-foreground shrink-0" />
                 </Button>
             </DropdownMenuTrigger>

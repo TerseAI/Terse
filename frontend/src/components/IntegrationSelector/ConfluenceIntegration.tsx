@@ -108,6 +108,7 @@ export function ConfluenceIntegration({
                     statusOptions={connectionSelections}
                     selectedOption={selectedOption}
                     setSelected={onSelect}
+                    placeholder="No connection selected"
                 />
             </div>
 
