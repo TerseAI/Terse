@@ -45,6 +45,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           display_name: me.display_name,
           github_username: me.github_username,
         });
+        posthog.setPersonPropertiesForFlags({
+          email: me.email,
+        });
       } catch (error) {
         console.error("Error fetching user:", error);
       } finally {
@@ -63,6 +66,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         display_name: me.display_name,
         github_username: me.github_username,
       });
+      posthog.setPersonPropertiesForFlags({
+        email: me.email,
+      });
       posthog.capture(PosthogEvents.USER_SIGNED_IN, {
         email: me.email,
       });
@@ -80,6 +86,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       email: me.email,
       display_name: me.display_name,
       github_username: me.github_username,
+    });
+    posthog.setPersonPropertiesForFlags({
+      email: me.email,
     });
 
     setUser(me);
