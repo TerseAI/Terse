@@ -10,8 +10,18 @@ interface DailyEventsChartProps {
     timezone?: string;
 }
 
-// Format timezone for display (e.g., "America/New_York" -> "America/New York")
+// Format timezone for display using Intl.DisplayNames if available, with fallback
 function formatTimezone(tz: string): string {
+    if (typeof Intl !== "undefined" && typeof Intl.DisplayNames === "function") {
+        try {
+            const displayNames = new Intl.DisplayNames([navigator.language || "en"], { type: "timezone" });
+            const displayName = displayNames.of(tz);
+            if (displayName) return displayName;
+        } catch {
+            // Fallback below
+        }
+    }
+    // Fallback: replace underscores with spaces
     return tz.replace(/_/g, ' ');
 }
 
