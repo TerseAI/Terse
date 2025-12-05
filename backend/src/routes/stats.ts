@@ -61,9 +61,10 @@ export async function getStats(req: Request, res: Response) {
 
     // Calculate chart start date for daily events in the user's timezone
     // Use Luxon to correctly calculate midnight N days ago in the user's timezone
+    // We use CHART_TIME_WINDOW_DAYS - 1 because the display shows today + (N-1) previous days
     const chartStartDate = DateTime.now()
         .setZone(timezone)
-        .minus({ days: CHART_TIME_WINDOW_DAYS })
+        .minus({ days: CHART_TIME_WINDOW_DAYS - 1 })
         .startOf('day')
         .toJSDate();
 
