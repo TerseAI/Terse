@@ -17,6 +17,8 @@ export type RunHistoryAction = {
    url?: string; 
    // The step_id of the tool call that generated this action
    step_id?: string;
+   // Whether this action was from a read-only tool (e.g., query) vs a write tool (e.g., create/update)
+   isReadOnly?: boolean;
 }
 
 export type RunHistoryActionWithId = RunHistoryAction & {
