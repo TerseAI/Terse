@@ -1,6 +1,7 @@
 import chalk from 'chalk';
 import { db } from '../prismaClient';
 import { ChannelAgent } from './ChannelAgent/ChannelAgent';
+import { RunContext } from './ChannelAgent/SystemPromptBuilder';
 import { NotionDatabaseOutput, NotionDatabaseSession } from '../outputs/notion/NotionDatabaseOutput';
 import { ChannelWithRelations, User } from '../types/prisma';
 import { NotionConfig } from '../shared/Configs';
@@ -13,6 +14,7 @@ import { getInputConfigInclude, getOutputConfigInclude } from '../utility/prisma
 export class ChannelAgentFactory {
   static async createFromChannelId(
     channelId: string,
+    runId?: string,
     isUserInitiated: boolean = true
   ): Promise<ChannelAgent<NotionDatabaseSession, NotionConfig>> {
     try {
@@ -69,11 +71,12 @@ export class ChannelAgentFactory {
       );
 
       // Create fresh ChannelAgent
+      const runContext: RunContext = { runId: runId ?? '' };
       const channelAgent = new ChannelAgent<NotionDatabaseSession, NotionConfig>(
         session,
         notionOutput,
         channel,
-        "123"
+        runContext
       );
 
       return channelAgent;
