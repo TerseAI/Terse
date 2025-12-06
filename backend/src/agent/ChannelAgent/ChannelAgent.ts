@@ -1,6 +1,6 @@
 import { Agent, AgentInputItem, run, AgentOutputType, Tool, RunResult, RunState, RunToolApprovalItem } from '@openai/agents';
 import { Session } from '../../server';
-import { systemPrompt } from './SystemPrompt';
+import { SystemPromptBuilder, RunContext, SystemPromptBuilderDependencies } from './SystemPromptBuilder';
 import { InputEvent } from '../../integrations/abstract/InputEvent';
 import { Output } from '../../outputs/abstract/Output';
 import { ChannelInput, ChannelOutput, ChannelWithRelations } from '../../types/prisma';
@@ -27,21 +27,26 @@ export class ChannelAgent<T extends Session, TConfig extends ConfigInstance> {
     private output: Output<T, TConfig>;
     private agent?: Agent<SessionWithTracking<T>, AgentOutputType>;
     private tools: Tool<SessionWithTracking<T>>[] = [];
-    private runId: string;
+    private runContext: RunContext;
     private toolToIntegrationMap: Map<string, IntegrationType> = new Map();
     private pendingActions: RunHistoryAction[] = [];
     private memorySession: RunHistoryChatMemorySession;
 
-    constructor(session: T, output: Output<T, TConfig>, channel: ChannelWithRelations, runId: string) {
+    constructor(
+        session: T, 
+        output: Output<T, TConfig>, 
+        channel: ChannelWithRelations, 
+        runContext: RunContext
+    ) {
         this.history = [];
         this.session = session;
         this.output = output;
         this.channel = channel;
         this.tools = output.toolbox.map(entry => entry.tool);
-        this.runId = runId;
+        this.runContext = runContext;
         this.buildToolIntegrationMap();
         this.memorySession = new RunHistoryChatMemorySession({
-            sessionId: runId,
+            sessionId: runContext.runId,
         });
     }
 
@@ -128,7 +133,7 @@ export class ChannelAgent<T extends Session, TConfig extends ConfigInstance> {
         const changedItems: ChangedItem[] = [];
 
         for (const action of this.pendingActions) {
-            const actionId = await persistRunAction(this.runId, this.channel, this.session, {
+            const actionId = await persistRunAction(this.runContext.runId, this.channel, this.session, {
                 ...action,
                 step_id: stepId,
             });
@@ -156,12 +161,15 @@ export class ChannelAgent<T extends Session, TConfig extends ConfigInstance> {
     }
 
     async initializeAgent(): Promise<void> {
-        const currentTimeUtc = new Date().toISOString();
-        const baseSystemPrompt = systemPrompt(currentTimeUtc);
-        const outputInstructions = this.output.getSystemInstructions(this.session);
-        const fullSystemPrompt = outputInstructions
-            ? `${baseSystemPrompt}\n\n${outputInstructions}`
-            : baseSystemPrompt;
+        const deps: SystemPromptBuilderDependencies<T, TConfig> = {
+            session: this.session,
+            channel: this.channel,
+            output: this.output,
+        };
+
+        const fullSystemPrompt = await new SystemPromptBuilder(deps, this.runContext)
+            .withStandardSections()
+            .build();
 
         this.agent = new Agent<SessionWithTracking<T>, AgentOutputType>({
             name: 'Living Document Automator',
