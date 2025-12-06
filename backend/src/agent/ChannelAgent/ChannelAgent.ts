@@ -30,7 +30,7 @@ export class ChannelAgent<T extends Session, TConfig extends ConfigInstance> {
     private agent?: Agent<SessionWithTracking<T>, AgentOutputType>;
     private tools: Tool<SessionWithTracking<T>>[] = [];
     private runId: string;
-    private toolToIntegrationMap: Map<string, IntegrationType> = new Map();
+    private toolMetadataMap: Map<string, ToolMetadata> = new Map();
     private pendingActions: RunHistoryAction[] = [];
     private memorySession: RunHistoryChatMemorySession;
 
@@ -41,7 +41,7 @@ export class ChannelAgent<T extends Session, TConfig extends ConfigInstance> {
         this.channel = channel;
         this.tools = output.toolbox.map(entry => entry.tool);
         this.runId = runId;
-        this.buildToolIntegrationMap();
+        this.buildToolMetadataMap();
         this.memorySession = new RunHistoryChatMemorySession({
             sessionId: runId,
         });
@@ -138,13 +138,16 @@ export class ChannelAgent<T extends Session, TConfig extends ConfigInstance> {
         this.pendingActions.push(action);
     }
 
-    async flushPendingActions(stepId: string): Promise<ChangedItem[]> {
+    async flushPendingActions(stepId: string, toolName: string): Promise<ChangedItem[]> {
         const changedItems: ChangedItem[] = [];
+        const toolMetadata = this.toolMetadataMap.get(toolName);
+        const isReadOnly = toolMetadata?.isReadOnly ?? true;
 
         for (const action of this.pendingActions) {
             const actionId = await persistRunAction(this.runId, this.channel, this.session, {
                 ...action,
                 step_id: stepId,
+                isReadOnly,
             });
             if (actionId) {
                 changedItems.push({
@@ -159,14 +162,17 @@ export class ChannelAgent<T extends Session, TConfig extends ConfigInstance> {
         return changedItems;
     }
 
-    private buildToolIntegrationMap(): void {   
+    private buildToolMetadataMap(): void {   
         this.output.toolbox.forEach(entry => {
-            this.toolToIntegrationMap.set(entry.tool.name, entry.integration);
+            this.toolMetadataMap.set(entry.tool.name, {
+                integration: entry.integration,
+                isReadOnly: entry.isReadOnly,
+            });
         });
     }
 
     private chooseModel(): string {
-        return settings.nodeEnv === 'development' ? 'gpt-5-nano' : 'gpt-5-mini';
+        return settings.nodeEnv === 'development' ? 'gpt-5-nano' : 'gpt-5';
     }
 
     async initializeAgent(): Promise<void> {
@@ -252,8 +258,8 @@ ${this.inputEvent!.formatForChannelAgent()}
         const io = getRealtimeSocket();
 
         const eventStream = transformAgentStreamToModelEvents(result, {
-            toolToIntegrationMap: this.toolToIntegrationMap,
-            onToolCallComplete: (callId) => this.flushPendingActions(callId),
+            toolToIntegrationMap: this.getToolToIntegrationMap(),
+            onToolCallComplete: (callId, toolName) => this.flushPendingActions(callId, toolName),
         });
 
         await processModelEventStream(eventStream, {
@@ -262,6 +268,14 @@ ${this.inputEvent!.formatForChannelAgent()}
             channelId: streamingParams.channelId!,
             io,
         });
+    }
+
+    private getToolToIntegrationMap(): Map<string, IntegrationType> {
+        const map = new Map<string, IntegrationType>();
+        this.toolMetadataMap.forEach((metadata, toolName) => {
+            map.set(toolName, metadata.integration);
+        });
+        return map;
     }
 
     private async processWithLogging(result: any): Promise<void> {
@@ -322,3 +336,8 @@ export type ApprovalResult<T extends Session, AgentType extends Agent<T, AgentOu
     | { status: 'awaiting_approval'; state: RunState<T, AgentType>; interruptions: RunToolApprovalItem[] };
 
 export type Decision = 'approve' | 'reject';
+
+type ToolMetadata = {
+    integration: IntegrationType;
+    isReadOnly: boolean;
+};

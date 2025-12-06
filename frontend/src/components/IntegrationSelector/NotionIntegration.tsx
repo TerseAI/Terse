@@ -10,6 +10,7 @@ import { useNotionIntegrations } from '@/hooks/api/useNotionIntegrations';
 import { useOAuthConnection } from '@/hooks/useOAuthConnection';
 import { useIntegrationId } from '@/hooks/useIntegrationId';
 import { IconForConfigType } from '../../pages/Channels/components/Integration';
+import { useEffect } from 'react';
 
 export function NotionIntegration({
     input,
@@ -25,12 +26,11 @@ export function NotionIntegration({
         [ConfigType.NOTION_DATABASE, ConfigType.NOTION_PAGE]
     );
 
-    function onSelect(value: string) {
-        const integration = integrations.find((integration: NotionIntegrationType) => integration.id === value);
-        if (integration) {
-            setSelectedIntegrationId(integration.id);
+    useEffect(() => {
+        if (integrations.length > 0 && !selectedIntegrationId) {
+            setSelectedIntegrationId(integrations[0].id);
         }
-    }
+    }, [integrations, selectedIntegrationId]);
 
     if (isLoading) {
         return (
@@ -70,15 +70,7 @@ export function NotionIntegration({
         label: integration.workspaceName || 'Unknown Workspace',
         value: integration.id
     }));
-
-    let selectedOption = connectionSelections.find(option => option.value === currentConfig?.integrationId)
-    if (!selectedIntegrationId && !selectedOption && connectionSelections.length == 1) {
-        const defaultIntegration = connectionSelections[0];
-        setSelectedIntegrationId(defaultIntegration.value);
-        selectedOption = defaultIntegration
-    } else if (!selectedOption) {
-        selectedOption = connectionSelections[0];
-    }
+    const selectedIntegration = connectionSelections.find(c => c.value === selectedIntegrationId) ?? null;
 
     // Card variant: compact view
     if (variant === 'card') {
@@ -111,12 +103,13 @@ export function NotionIntegration({
         }
         return (
             <div className="text-sm">
-                {selectedOption ? selectedOption.label : 'No connection selected'}
+                {selectedIntegration ? selectedIntegration.label : 'No connection selected'}
             </div>
         );
     }
 
     const selectedResourceId = isPageConfig ? (currentConfig as NotionPageConfig)?.pageId : (currentConfig as NotionConfig)?.databaseId;
+    const selectedResourceName = isPageConfig ? (currentConfig as NotionPageConfig)?.pageName : (currentConfig as NotionConfig)?.databaseName;
 
     // Dialog variant: full view
     return (
@@ -128,8 +121,8 @@ export function NotionIntegration({
                 <div className="flex-1 min-w-0">
                     <DropdownSelect
                         statusOptions={connectionSelections}
-                        selectedOption={selectedOption}
-                        setSelected={onSelect}
+                        selectedOption={selectedIntegration}
+                        setSelected={setSelectedIntegrationId}
                         additionalAction={{
                             label: 'Connect Another Notion',
                             onClick: connectOAuth
@@ -150,6 +143,7 @@ export function NotionIntegration({
                         integrationId={selectedIntegrationId || ''}
                         resourceType={isPageConfig ? 'page' : 'database'}
                         selectedResourceId={selectedResourceId}
+                        selectedResourceName={selectedResourceName}
                         onSelect={(resourceId: string, resourceName: string, resourceType: NotionResourceType) => {
                             if (resourceType === 'database') {
                                 const updatedConfig = new NotionConfig(

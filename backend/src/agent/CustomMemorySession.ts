@@ -1,4 +1,4 @@
-import type { AgentInputItem, Session } from '@openai/agents-core/';
+import type { AgentInputItem, Session } from '@openai/agents-core';
 import { db } from '../prismaClient';
 import chalk from 'chalk';
 

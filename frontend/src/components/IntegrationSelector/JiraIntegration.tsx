@@ -145,6 +145,7 @@ export function JiraIntegration({
                     statusOptions={connectionSelections}
                     selectedOption={selectedOption}
                     setSelected={onSelectIntegration}
+                    placeholder="No connection selected"
                 />
             </div>
 
