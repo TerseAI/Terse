@@ -1,4 +1,5 @@
 import { Request, Response } from "express";
+import { DateTime } from "luxon";
 import { db } from "../prismaClient";
 import { StatsResponse, DayOfWeek, RecentAction } from "../shared/types";
 import { convertPrismaIntegrationTypeToIntegrationTypeFromRunHistory } from "../utility/typeConverters";
@@ -7,6 +8,18 @@ import { convertPrismaIntegrationTypeToIntegrationTypeFromRunHistory } from "../
 const CHART_TIME_WINDOW_DAYS = 7; // Number of days for the daily events chart
 const METRICS_USE_MONTHLY = true; // If true, metrics use monthly periods; if false, use METRICS_TIME_WINDOW_DAYS
 const METRICS_TIME_WINDOW_DAYS = 30; // Number of days for metrics when METRICS_USE_MONTHLY is false
+const DEFAULT_TIMEZONE = "UTC";
+
+// Type for raw SQL daily events aggregation result
+interface DailyEventRow {
+    event_date: Date;
+    count: bigint;
+}
+
+// Validate timezone string is a valid IANA timezone
+function isValidTimezone(tz: string): boolean {
+    return DateTime.now().setZone(tz).isValid;
+}
 
 export async function getStats(req: Request, res: Response) {
     const user = req.session?.user;
@@ -16,6 +29,12 @@ export async function getStats(req: Request, res: Response) {
 
     const prisma = db();
     const userId = user.id;
+
+    // Get user's timezone from query param, validate it, or fall back to UTC
+    const requestedTimezone = req.query.tz as string | undefined;
+    const timezone = requestedTimezone && isValidTimezone(requestedTimezone) 
+        ? requestedTimezone 
+        : DEFAULT_TIMEZONE;
 
     // Calculate date ranges for comparison
     const now = new Date();
@@ -40,165 +59,141 @@ export async function getStats(req: Request, res: Response) {
         previousPeriodStart.setHours(0, 0, 0, 0);
     }
 
-    // 1. Total Events Processed
-    // Count run_history_records for user's channels (this is the source of truth for processed events)
-    const [currentTotalEvents, previousTotalEvents] = await Promise.all([
+    // Calculate chart start date for daily events in the user's timezone
+    // Use Luxon to correctly calculate midnight N days ago in the user's timezone
+    // We use CHART_TIME_WINDOW_DAYS - 1 because the display shows today + (N-1) previous days
+    const chartStartDate = DateTime.now()
+        .setZone(timezone)
+        .minus({ days: CHART_TIME_WINDOW_DAYS - 1 })
+        .startOf('day')
+        .toJSDate();
+
+    // Run ALL queries in parallel for maximum performance
+    const [
+        currentTotalEvents,
+        previousTotalEvents,
+        currentActionsCount,
+        previousActionsCount,
+        currentChannelsCount,
+        previousChannelsCount,
+        dailyEventsData,
+        recentActionsData,
+    ] = await Promise.all([
+        // 1. Current period total events
         prisma.run_history_records.count({
             where: {
-                automation: {
-                    user_id: userId,
-                },
-                timestamp: {
-                    gte: currentPeriodStart,
-                },
+                automation: { user_id: userId },
+                timestamp: { gte: currentPeriodStart },
             },
         }),
+        // 2. Previous period total events
         prisma.run_history_records.count({
             where: {
-                automation: {
-                    user_id: userId,
+                automation: { user_id: userId },
+                timestamp: { gte: previousPeriodStart, lte: previousPeriodEnd },
+            },
+        }),
+        // 3. Current period actions count (write operations only)
+        prisma.run_history_actions.count({
+            where: {
+                run_history_record: {
+                    automation: { user_id: userId },
+                    timestamp: { gte: currentPeriodStart },
                 },
-                timestamp: {
-                    gte: previousPeriodStart,
-                    lte: previousPeriodEnd,
+                is_read_only: false,
+            },
+        }),
+        // 4. Previous period actions count (write operations only)
+        prisma.run_history_actions.count({
+            where: {
+                run_history_record: {
+                    automation: { user_id: userId },
+                    timestamp: { gte: previousPeriodStart, lte: previousPeriodEnd },
+                },
+                is_read_only: false,
+            },
+        }),
+        // 5. Current channels count
+        prisma.automations.count({
+            where: { user_id: userId },
+        }),
+        // 6. Previous period channels count
+        prisma.automations.count({
+            where: { user_id: userId, created_at: { lte: previousPeriodEnd } },
+        }),
+        // 7. Daily events aggregation using raw SQL for performance
+        // Use AT TIME ZONE to group events by the user's local date
+        // GROUP BY 1 refers to the first SELECT column (event_date) to avoid parameter duplication issues
+        prisma.$queryRaw<DailyEventRow[]>`
+            SELECT DATE(rhr.timestamp AT TIME ZONE 'UTC' AT TIME ZONE ${timezone}) as event_date, COUNT(*) as count
+            FROM run_history_records rhr
+            INNER JOIN automations a ON rhr.automation_id = a.id
+            WHERE a.user_id = ${userId} AND rhr.timestamp >= ${chartStartDate}
+            GROUP BY 1
+            ORDER BY 1
+        `,
+        // 8. Recent actions (last 10)
+        prisma.run_history_actions.findMany({
+            where: {
+                run_history_record: {
+                    automation: { user_id: userId },
+                },
+                is_read_only: false,
+            },
+            include: {
+                run_history_record: {
+                    include: {
+                        automation: { select: { name: true } },
+                    },
                 },
             },
+            orderBy: { created_at: "desc" },
+            take: 10,
         }),
     ]);
 
+    // Calculate metric changes
     const totalEventsChange = calculatePercentageChange(previousTotalEvents, currentTotalEvents);
-
-    // 2. Actions Taken
-    // Count actions from run_history_actions for user's channels
-    const [currentActionsCount, previousActionsCount] = await Promise.all([
-        prisma.run_history_actions.count({
-            where: {
-                run_history_record: {
-                    automation: {
-                        user_id: userId,
-                    },
-                    timestamp: {
-                        gte: currentPeriodStart,
-                    },
-                },
-            },
-        }),
-        prisma.run_history_actions.count({
-            where: {
-                run_history_record: {
-                    automation: {
-                        user_id: userId,
-                    },
-                    timestamp: {
-                        gte: previousPeriodStart,
-                        lte: previousPeriodEnd,
-                    },
-                },
-            },
-        }),
-    ]);
-
     const actionsTakenChange = calculatePercentageChange(previousActionsCount, currentActionsCount);
-
-    // 3. Number of Channels
-    // Count user's channels
-    const [currentChannelsCount, previousChannelsCount] = await Promise.all([
-        prisma.automations.count({
-            where: {
-                user_id: userId,
-            },
-        }),
-        prisma.automations.count({
-            where: {
-                user_id: userId,
-                created_at: { lte: previousPeriodEnd },
-            },
-        }),
-    ]);
-
     const channelsChange = currentChannelsCount - previousChannelsCount;
     const channelsChangeString = channelsChange >= 0 ? `+${channelsChange}` : `${channelsChange}`;
 
-    // 4. Daily Events (chart time window)
-    const chartStartDate = new Date(now);
-    chartStartDate.setDate(chartStartDate.getDate() - CHART_TIME_WINDOW_DAYS);
-    chartStartDate.setHours(0, 0, 0, 0);
-
-    // Get all run history records for the chart time window
-    const recentRecords = await prisma.run_history_records.findMany({
-        where: {
-            automation: {
-                user_id: userId,
-            },
-            timestamp: {
-                gte: chartStartDate,
-            },
-        },
-        select: {
-            timestamp: true,
-        },
-    });
-
-    // Group by day and count events
+    // Convert daily events SQL result to the expected format
     const dayNames: DayOfWeek[] = [DayOfWeek.Sun, DayOfWeek.Mon, DayOfWeek.Tue, DayOfWeek.Wed, DayOfWeek.Thu, DayOfWeek.Fri, DayOfWeek.Sat];
-    const eventsByDay = new Map<DayOfWeek, number>();
-
-    // Initialize all days in the chart time window with 0
-    for (let i = 0; i < CHART_TIME_WINDOW_DAYS; i++) {
-        const date = new Date(now);
-        date.setDate(date.getDate() - (CHART_TIME_WINDOW_DAYS - 1 - i));
-        date.setHours(0, 0, 0, 0);
-        const dayName = dayNames[date.getDay()];
-        eventsByDay.set(dayName, 0);
+    
+    // Create a map from date string to count for quick lookup
+    // The event_date from SQL is already in the user's timezone
+    const eventsByDateStr = new Map<string, number>();
+    for (const row of dailyEventsData) {
+        // PostgreSQL DATE type comes as a Date object at midnight UTC
+        // Extract just the YYYY-MM-DD part
+        const dateStr = row.event_date.toISOString().split('T')[0];
+        eventsByDateStr.set(dateStr, Number(row.count));
     }
 
-    // Count events per day
-    for (const record of recentRecords) {
-        const recordDate = new Date(record.timestamp);
-        recordDate.setHours(0, 0, 0, 0);
-        const dayName = dayNames[recordDate.getDay()];
-        const currentCount = eventsByDay.get(dayName) || 0;
-        eventsByDay.set(dayName, currentCount + 1);
-    }
-
-    // Convert to array format, ensuring we have all days in the chart time window in order
+    // Build daily events array with all days in the chart window using Luxon
     const dailyEvents: Array<{ date: DayOfWeek; events: number }> = [];
+    
     for (let i = 0; i < CHART_TIME_WINDOW_DAYS; i++) {
-        const date = new Date(now);
-        date.setDate(date.getDate() - (CHART_TIME_WINDOW_DAYS - 1 - i));
-        const dayName = dayNames[date.getDay()];
+        const dt = DateTime.now()
+            .setZone(timezone)
+            .minus({ days: CHART_TIME_WINDOW_DAYS - 1 - i })
+            .startOf('day');
+        
+        // Get YYYY-MM-DD format for lookup
+        const dateStr = dt.toFormat('yyyy-MM-dd');
+        
+        // Get day of week (1=Monday, 7=Sunday in Luxon, but we need 0=Sunday index)
+        const dayIndex = dt.weekday === 7 ? 0 : dt.weekday; // Convert Luxon weekday to JS weekday
+        const dayName = dayNames[dayIndex];
+        
         dailyEvents.push({
             date: dayName,
-            events: eventsByDay.get(dayName) || 0,
+            events: eventsByDateStr.get(dateStr) || 0,
         });
     }
 
-    // 5. Recent Actions (last 10)
-    const recentActionsData = await prisma.run_history_actions.findMany({
-        where: {
-            run_history_record: {
-                automation: {
-                    user_id: userId,
-                },
-            },
-        },
-        include: {
-            run_history_record: {
-                include: {
-                    automation: {
-                        select: {
-                            name: true,
-                        },
-                    },
-                },
-            },
-        },
-        orderBy: {
-            created_at: "desc",
-        },
-        take: 10,
-    });
-
+    // Transform recent actions data
     const recentActions: RecentAction[] = recentActionsData.map((action) => ({
         action: action.action,
         integration: convertPrismaIntegrationTypeToIntegrationTypeFromRunHistory(action.integration),
@@ -219,6 +214,7 @@ export async function getStats(req: Request, res: Response) {
         numberOfChannelsChange: channelsChangeString,
         dailyEvents,
         recentActions,
+        timezone,
     };
 
     res.json(response);

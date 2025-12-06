@@ -135,6 +135,12 @@ export async function getUserChannels(req: Request, res: Response) {
     }
 }
 
+// Type for raw SQL last event timestamp result
+interface LastEventRow {
+    automation_id: string;
+    last_timestamp: Date;
+}
+
 // GET /channels/recent - Get recently modified channels with last event processed time
 export async function getRecentChannels(req: Request, res: Response) {
     if (!req.session?.user) {
@@ -148,41 +154,43 @@ export async function getRecentChannels(req: Request, res: Response) {
     try {
         const prisma = db();
 
-        // Get recently modified channels ordered by updated_at
-        const channels: (ChannelWithRelations & { run_history_records: { timestamp: Date }[] })[] = await prisma.automations.findMany({
-            where: {
-                user_id: userId,
-            },
-            include: {
-                prompt: true,
-                inputs: {
-                    include: getInputConfigInclude()
+        // Run channels query and last event timestamps query in parallel
+        const [channels, lastEventRows] = await Promise.all([
+            // Query 1: Get recently modified channels (without run_history_records)
+            prisma.automations.findMany({
+                where: {
+                    user_id: userId,
                 },
-                output: {
-                    include: getOutputConfigInclude()
+                include: {
+                    prompt: true,
+                    inputs: {
+                        include: getInputConfigInclude()
+                    },
+                    output: {
+                        include: getOutputConfigInclude()
+                    },
                 },
-                run_history_records: {
-                    orderBy: { timestamp: 'desc' },
-                    take: 1,
-                    select: {
-                        timestamp: true
-                    }
-                }
-            },
-            orderBy: { updated_at: 'desc' },
-            take: limit
-        });
+                orderBy: { updated_at: 'desc' },
+                take: limit
+            }) as Promise<ChannelWithRelations[]>,
+            
+            // Query 2: Get last event timestamps using raw SQL with MAX() aggregation
+            // This is more efficient than correlated subqueries
+            prisma.$queryRaw<LastEventRow[]>`
+                SELECT rhr.automation_id, MAX(rhr.timestamp) as last_timestamp
+                FROM run_history_records rhr
+                INNER JOIN automations a ON rhr.automation_id = a.id
+                WHERE a.user_id = ${userId}
+                GROUP BY rhr.automation_id
+            `
+        ]);
 
-        // Get the last event processed time for each channel
+        // Build a map from automation_id to last timestamp
         const lastEventMap = new Map<string, Date>();
-
-        for (const channel of channels) {
-            // run_history_records is an array (even with take: 1), so get the first element
-            const lastEvent = channel.run_history_records[0];
-            if (lastEvent) {
-                lastEventMap.set(channel.id, lastEvent.timestamp);
-            }
+        for (const row of lastEventRows) {
+            lastEventMap.set(row.automation_id, row.last_timestamp);
         }
+
         // Transform the data to match frontend format with timestamps
         const response = channels.map(channel => {
             const lastEventTimestamp = lastEventMap.get(channel.id);

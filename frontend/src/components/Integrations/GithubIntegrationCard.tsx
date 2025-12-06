@@ -78,6 +78,7 @@ function GithubIntegrationCard({ className, isActive = true }: { className?: str
                                     statusOptions={connectionSelections}
                                     selectedOption={selectedOption}
                                     setSelected={handleInstallationChange}
+                                    placeholder="No connection selected"
                                 />
                             </div>
                             <GithubCardContent 

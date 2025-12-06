@@ -60,6 +60,7 @@ export async function appendRunAction(
             url: action.url ?? null,
             step_id: stepId ?? action.step_id ?? null,
             type: action.type,  
+            is_read_only: action.isReadOnly ?? true,
         },
     });
     return result.id;
