@@ -76,9 +76,10 @@ The footer consists of two blocks:
 1. **Divider block** - to visually separate the footer from main content
 2. **Heading 3 block** - with the following format:
 
-\`Updated by Terse • Last sync: Dec 6, 2025 • Based on 7 events\`
+\`Updated by Terse 🫶 • Last sync: Dec 6, 2025 • Based on 7 events\`
 
 Where:
+- "Terse" should be a clickable link to https://useterse.ai
 - The date should be formatted as "Mon D, YYYY" (e.g., "Dec 6, 2025")
 - The event count should reflect the actual number of events processed
 
@@ -89,7 +90,11 @@ Where:
   { 
     "type": "heading_3", 
     "heading_3": { 
-      "rich_text": [{ "type": "text", "text": { "content": "Updated by Terse • Last sync: Dec 6, 2025 • Based on 7 events" } }] 
+      "rich_text": [
+        { "type": "text", "text": { "content": "Updated by " } },
+        { "type": "text", "text": { "content": "Terse", "link": { "url": "https://useterse.ai" } } },
+        { "type": "text", "text": { "content": " 🫶 • Last sync: Dec 6, 2025 • Based on 7 events" } }
+      ] 
     } 
   }
 ]
