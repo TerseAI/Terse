@@ -224,7 +224,22 @@ EXAMPLES:
 - Simple: "{\\"property\\": \\"Task completed\\", \\"checkbox\\": {\\"equals\\": true}}"
 - Compound: "{\\"and\\": [{\\"property\\": \\"Done\\", \\"checkbox\\": {\\"equals\\": true}}, {\\"or\\": [{\\"property\\": \\"Tags\\", \\"multi_select\\": {\\"contains\\": \\"A\\"}}, {\\"property\\": \\"Tags\\", \\"multi_select\\": {\\"contains\\": \\"B\\"}}]}]}"
 - Timestamp: "{\\"timestamp\\": \\"created_time\\", \\"created_time\\": {\\"on_or_after\\": \\"2023-02-08\\"}}"`),
-        sorts: z.array(sortSchema).nullable().optional().describe('Array of sort objects. Each sort specifies a property or timestamp and direction. Earlier sorts take precedence.'),
+        sorts: z.array(sortSchema).nullable().optional().describe(`Array of sort objects. Earlier sorts take precedence. Each sort must use ONE of two formats:
+
+1. PROPERTY VALUE SORT - Sort by any database property:
+   { "property": "Property Name", "direction": "ascending" | "descending" }
+   Example: { "property": "Name", "direction": "ascending" }
+
+2. ENTRY TIMESTAMP SORT - Sort by entry creation or edit time:
+   { "timestamp": "created_time" | "last_edited_time", "direction": "ascending" | "descending" }
+   Example: { "timestamp": "last_edited_time", "direction": "descending" }
+
+NESTED SORT EXAMPLE (multiple sorts):
+[
+  { "property": "Category", "direction": "ascending" },
+  { "property": "Name", "direction": "ascending" }
+]
+First sorts by Category, then by Name within each category.`),
         page_size: z.number().int().min(1).max(100).nullable().optional().describe('Number of results per page (1-100). Default returns all results. Use pagination for large databases.'),
         start_cursor: z.string().nullable().optional().describe('Cursor from previous response to fetch next page. Use next_cursor from response when has_more is true.'),
         result_type: z.enum(['page', 'data_source']).nullable().optional().describe('Filter results to only pages or data sources. Only relevant for wiki databases.'),

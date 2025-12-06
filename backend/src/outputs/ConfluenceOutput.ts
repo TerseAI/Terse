@@ -80,6 +80,10 @@ export class ConfluenceOutput extends Output<ConfluenceSession, ConfluenceConfig
             },
         });
     }
+
+    getSystemInstructions(_session: ConfluenceSession): string {
+        return CONFLUENCE_FOOTER_INSTRUCTIONS;
+    }
 }
 
 // MARK: - Tools
@@ -689,3 +693,54 @@ function stripHtmlTags(html: string): string {
     text = text.replace(/&#x([0-9a-fA-F]+);/g, (_, hex) => String.fromCharCode(parseInt(hex, 16)));
     return text;
 }
+
+// MARK: - Footer Instructions
+
+const CONFLUENCE_FOOTER_INSTRUCTIONS = `
+## TERSE FOOTER REQUIREMENT
+
+You MUST always ensure a **Terse Footer** exists at the very bottom of the Confluence page after any update. This footer provides transparency about when and how the page was last updated by Terse.
+
+**IMPORTANT**: If the user provides custom footer formatting instructions in their USER_INSTRUCTIONS, use their format instead of the default format below. User instructions take precedence.
+
+### Default Footer Content
+The footer must include:
+1. **Last Updated**: A human-readable timestamp of when this update was made (use the current time from the CURRENT TIME section)
+2. **Events Processed**: The number of events that contributed to this update's context
+3. **Status**: The outcome of the update - use "✓ Success" if changes were made successfully, "⊘ No changes needed" if no updates were required, or "✗ Failed" if something went wrong
+
+### Confluence Storage Format
+Use this exact XHTML structure for the footer (adapt the values accordingly):
+
+\`\`\`xml
+<hr/>
+<ac:structured-macro ac:name="info" ac:schema-version="1">
+  <ac:rich-text-body>
+    <p><strong>Terse Automation Footer</strong></p>
+    <table>
+      <tbody>
+        <tr>
+          <td><strong>Last Updated</strong></td>
+          <td>December 6, 2024 at 3:45 PM UTC</td>
+        </tr>
+        <tr>
+          <td><strong>Events Processed</strong></td>
+          <td>12 events</td>
+        </tr>
+        <tr>
+          <td><strong>Status</strong></td>
+          <td>✓ Success</td>
+        </tr>
+      </tbody>
+    </table>
+  </ac:rich-text-body>
+</ac:structured-macro>
+\`\`\`
+
+### Important Rules
+- If a Terse footer already exists (or a user's custom format footer), UPDATE it with the new values rather than creating a duplicate
+- The footer must ALWAYS be at the very end of the page content
+- Use the info macro (blue background) for visual distinction (unless user specifies otherwise)
+- Format the timestamp in a human-friendly way (e.g., "December 6, 2024 at 3:45 PM UTC")
+- Count all events you received in the context for the "Events Processed" field
+`.trim();
