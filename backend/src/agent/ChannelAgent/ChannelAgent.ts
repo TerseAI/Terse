@@ -35,7 +35,6 @@ export class ChannelAgent<T extends Session, TConfig extends ConfigInstance> {
     private memorySession: RunHistoryChatMemorySession;
 
     constructor(session: T, output: Output<T, TConfig>, channel: ChannelWithRelations, runId: string) {
-        this.history = [];
         this.session = session;
         this.output = output;
         this.channel = channel;
@@ -81,9 +80,9 @@ export class ChannelAgent<T extends Session, TConfig extends ConfigInstance> {
             throw new Error("Agent not initialized. Call initializeAgent() before run()");
         }
 
-        this.history.push({ role: 'user', content: userMessage });
+        const userHistory = await this.buildUserHistory(userMessage);
 
-        const result = await run(this.agent, this.history, {
+        const result = await run(this.agent, userHistory, {
             context: this.getToolContext(),
             stream: true,
             session: this.memorySession,
@@ -96,11 +95,10 @@ export class ChannelAgent<T extends Session, TConfig extends ConfigInstance> {
         
     }
 
-    async buildUserHistory(userMessage: (InputTextContent | InputImageContent)[]): Promise<AgentInputItem[]> {
+    async buildUserHistory(userMessage: string | (InputTextContent | InputImageContent)[]): Promise<AgentInputItem[]> {
         const channelDirectives = await getChannelDirectives(this.channel.id)
         const channelDirectivesContent = channelDirectives.map(directive => ({ role: 'user' as const, content: directive.directive_description }));
         const history: AgentInputItem[] = [
-            ...this.history, 
             ...channelDirectivesContent,
             { role: 'user' as const, content: userMessage },
         ]
