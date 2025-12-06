@@ -1,0 +1,23 @@
+name: Backend Build Check
+on:
+  pull_request:
+    paths:
+      - 'backend/**'
+      - 'shared/**'
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.19.0'
+          cache: 'pnpm'
+          cache-dependency-path: backend/pnpm-lock.yaml
+      - run: cd backend && pnpm install --frozen-lockfile
+      - run: cd backend && pnpm exec prisma generate
+      - run: cd backend && pnpm run build
+

@@ -122,6 +122,7 @@ export function LinearInputIntegration({
                     statusOptions={connectionSelections}
                     selectedOption={selectedOption}
                     setSelected={onSelect}
+                    placeholder="No connection selected"
                     additionalAction={{
                         label: 'Connect Another Linear',
                         onClick: connectOAuth

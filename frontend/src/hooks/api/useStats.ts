@@ -10,10 +10,21 @@ export type UseStatsReturn = {
     mutate: KeyedMutator<StatsResponse>;
 };
 
+// Get the user's timezone, with fallback to UTC
+function getUserTimezone(): string {
+    try {
+        return Intl.DateTimeFormat().resolvedOptions().timeZone;
+    } catch {
+        return 'UTC';
+    }
+}
+
 export function useStats() {
+    const timezone = getUserTimezone()
+    
     const { data, error, isLoading, mutate } = useSWR<StatsResponse>(
-        statsKey(),
-        () => BackendProvider.getStats(),
+        statsKey(timezone),
+        () => BackendProvider.getStats(timezone),
         {
             revalidateOnFocus: false,
             revalidateOnReconnect: true,
