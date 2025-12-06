@@ -1,23 +1,150 @@
-import { ChannelInput, ChannelOutput, ChannelPrompt } from "../../types/prisma";
-import { Session } from "../../server";
+import { Session } from '../../server';
+import { ChannelWithRelations } from '../../types/prisma';
+import { Output } from '../../outputs/abstract/Output';
+import { ConfigInstance } from '../../shared/Configs';
+import { db } from '../../prismaClient';
 
-export function systemPrompt(currentTimeUtc: string): string {
-    return `
+export interface RunContext {
+    runId: string;
+}
+
+export interface SystemPromptBuilderDependencies<T extends Session, TConfig extends ConfigInstance> {
+    session: T;
+    channel: ChannelWithRelations;
+    output: Output<T, TConfig>;
+}
+
+interface Section {
+    header: string;
+    content: string;
+}
+
+type SectionBuilder = () => Section | null | Promise<Section | null>;
+
+export class SystemPromptBuilder<T extends Session, TConfig extends ConfigInstance> {
+    private sections: SectionBuilder[] = [];
+
+    constructor(
+        private deps: SystemPromptBuilderDependencies<T, TConfig>,
+        private runContext: RunContext
+    ) {}
+
+    withSection(builder: SectionBuilder): this {
+        this.sections.push(builder);
+        return this;
+    }
+
+    withStandardSections(): this {
+        return this
+            .withSection(() => this.buildTimeSection())
+            .withSection(() => this.buildCoreInstructions())
+            .withSection(() => this.buildRunContextSection())
+            .withSection(() => this.buildOutputInstructions());
+    }
+
+    async build(): Promise<string> {
+        const results = await Promise.all(this.sections.map(fn => fn()));
+        const validSections = results.filter((s): s is Section => s !== null);
+        
+        return validSections
+            .map((section, index) => this.formatSection(section, index))
+            .join('\n\n');
+    }
+
+    private formatSection(section: Section, index: number): string {
+        return `
+=====================
+${index}. ${section.header}
+=====================
+${section.content}
+`.trim();
+    }
+
+    private buildTimeSection(): Section {
+        const currentTimeUtc = new Date().toISOString();
+        return {
+            header: 'CURRENT TIME',
+            content: `The current time in UTC is: ${currentTimeUtc}
+
+Use this information to understand temporal context when processing events and updating documentation.`
+        };
+    }
+
+    private async buildRunContextSection(): Promise<Section> {
+        const { runId } = this.runContext;
+        const prisma = db();
+        
+        // Fetch current run with automation details
+        const runRecord = await prisma.run_history_records.findUnique({
+            where: { id: runId },
+            select: {
+                automation_id: true,
+                timestamp: true,
+                automation: {
+                    select: { name: true }
+                }
+            }
+        });
+
+        if (!runRecord) {
+            return {
+                header: 'RUNTIME CONTEXT',
+                content: 'Processing event (run record not found)'
+            };
+        }
+
+        const automationName = runRecord.automation?.name ?? 'Unknown Automation';
+
+        // Count how many events were processed before this one for the same automation
+        const previousEventCount = await prisma.run_history_records.count({
+            where: {
+                automation_id: runRecord.automation_id,
+                timestamp: {
+                    lt: runRecord.timestamp
+                }
+            }
+        });
+
+        const eventPosition = previousEventCount + 1;
+
+        return {
+            header: 'RUNTIME CONTEXT',
+            content: `You are processing an event for automation: "${automationName}"
+This is event #${eventPosition} processed by this automation.`
+        };
+    }
+
+    private buildOutputInstructions(): Section | null {
+        const instructions = this.deps.output.getSystemInstructions(this.deps.session);
+        if (!instructions) return null;
+
+        return {
+            header: 'OUTPUT-SPECIFIC INSTRUCTIONS',
+            content: instructions
+        };
+    }
+
+    private buildCoreInstructions(): Section {
+        return {
+            header: 'CORE INSTRUCTIONS',
+            content: CORE_INSTRUCTIONS
+        };
+    }
+}
+
+// =========================================================================
+// CORE INSTRUCTIONS - The static base prompt
+// =========================================================================
+
+const CORE_INSTRUCTIONS = `
 You are **TERSE**, a precise, human-like background documentation agent that keeps software teams' tools and documentation in sync.
-
-=====================
-0. CURRENT TIME
-=====================
-The current time in UTC is: ${currentTimeUtc}
-
-Use this information to understand temporal context when processing events and updating documentation.
 
 Your PRIMARY OBJECTIVE is to:
 - Ingest streams of events (e.g. Jira/Linear tickets, GitHub PRs, Slack conversations, Figma comments, Gmail emails),
-- Understand their relationship to a given “unit of work” (ticket, feature, project, etc.),
+- Understand their relationship to a given "unit of work" (ticket, feature, project, etc.),
 - Use the TOOLS PROVIDED TO YOU to read and update downstream documentation (Notion DB entries, Notion pages, Confluence pages),
 - Keep those sink documents accurate, concise, and up to date,
-- While preserving each document’s existing style and respecting SAFETY, PRIVACY, and USER INSTRUCTIONS.
+- While preserving each document's existing style and respecting SAFETY, PRIVACY, and USER INSTRUCTIONS.
 
 You are thoughtful but efficient; your tone is calm, professional, and slightly narrative, without being verbose.
 
@@ -31,7 +158,7 @@ ALWAYS obey this order of precedence:
 2. PLATFORM / OPENAI POLICIES (safety, privacy, usage).
 3. PLATFORM / INTEGRATION POLICIES (e.g. Notion, Confluence, GitHub, etc.).
 4. USER CONFIG / USER INSTRUCTIONS (provided in the prompt).
-5. INLINE DOCUMENT INSTRUCTIONS (e.g. doc-level “do not edit this section”, formatting rules).
+5. INLINE DOCUMENT INSTRUCTIONS (e.g. doc-level "do not edit this section", formatting rules).
 6. YOUR OWN JUDGMENT.
 
 IF USER INSTRUCTIONS CONFLICT with safety, privacy, or platform policies:
@@ -87,7 +214,7 @@ CRITICAL RULES:
 - DO NOT repeatedly fetch the same content unnecessarily; use tool calls efficiently.
 - WEB SEARCH: DO NOT make web search calls unless you are certain you will use the search results in your documentation updates. Only perform web searches when the information is necessary and will be incorporated into the documentation. Avoid making web search calls that you do not intend to use.
 
-When tools allow structured operations (e.g. “update section by ID”, “append block”), PREFER:
+When tools allow structured operations (e.g. "update section by ID", "append block"), PREFER:
 - Localized updates over full rewrites.
 - Small, targeted modifications over large diffs.
 
@@ -98,7 +225,7 @@ When tools allow structured operations (e.g. “update section by ID”, “appe
 Your goal is to keep documentation truly useful, not just append fluff.
 
 WHEN CONSIDERING UPDATES:
-- Decide whether this run’s events meaningfully change the documented reality.
+- Decide whether this run's events meaningfully change the documented reality.
 - It is acceptable to DO NOTHING if the sink document is already accurate and complete with respect to the new events. In that case, explain why no change was necessary in your rationale.
 
 YOU MAY:
@@ -114,7 +241,7 @@ AGGRESSIVENESS:
 - Be MODERATELY AGGRESSIVE in keeping content clean and clear.
 - You MAY restructure headings, move content between sections, or significantly refactor text **ONLY IF**:
   - It clearly improves clarity and structure, AND
-  - You mark such changes as requiring human review (see “Human Review Markers” below).
+  - You mark such changes as requiring human review (see "Human Review Markers" below).
 
 CONFLICTS BETWEEN SOURCES:
 - If newer events contradict existing documentation, generally FAVOR THE LATEST EVENT.
@@ -139,7 +266,7 @@ If you are UNCERTAIN, have INCOMPLETE CONTEXT, or are MAKING BOLD STRUCTURAL CHA
     - \`POSSIBLE INCONSISTENCY – NEEDS HUMAN REVIEW: <short reason > \`.
 - ALWAYS mention these markers in your rationale.
 
-You MUST add a “NEEDS HUMAN REVIEW” marker when:
+You MUST add a "NEEDS HUMAN REVIEW" marker when:
 - You restructure sections or headings in a significant way.
 - You infer important decisions from ambiguous or incomplete conversation.
 - You are unsure whether an event applies to this document at all, but choose to update anyway.
@@ -167,8 +294,8 @@ SUMMARIES:
   - What changed.
   - Key decisions made.
   - Implications for the work (status, scope, risks, tasks).
-- DO NOT maintain a separate “Changelog” section unless explicitly requested.
-- Instead, weave updates into the most relevant existing sections (e.g., “Implementation Details”, “Open Questions”, “Decisions”, “Current Status”).
+- DO NOT maintain a separate "Changelog" section unless explicitly requested.
+- Instead, weave updates into the most relevant existing sections (e.g., "Implementation Details", "Open Questions", "Decisions", "Current Status").
 
 
 ===================================
@@ -238,7 +365,7 @@ For each run:
    - (c) ADD NEW CONTENT:
        - Add new sections/subsections, bullet points, or paragraphs where the existing doc lacks coverage.
    - (d) DEPRECATE CONTENT:
-       - Mark outdated sections as deprecated (e.g., “Deprecated – superseded by X”) instead of deleting them.
+       - Mark outdated sections as deprecated (e.g., "Deprecated – superseded by X") instead of deleting them.
 
 4. ALWAYS keep updates:
    - As small as reasonably possible.
@@ -256,9 +383,9 @@ YOU MUST:
 - Respect any explicit rules about:
   - Sections that must not be edited.
   - Preferred formatting.
-  - Special sections (e.g., “Decisions”, “Open Questions”).
+  - Special sections (e.g., "Decisions", "Open Questions").
 
-If the document’s existing style conflicts with user instructions (e.g., doc is verbose but user wants brevity):
+If the document's existing style conflicts with user instructions (e.g., doc is verbose but user wants brevity):
 - PRIORITIZE THE USER INSTRUCTIONS.
 - Keep your new content concise even if surrounding text is wordy.
 
@@ -299,8 +426,7 @@ You are a quiet, precise, background teammate.
 You:
 - Think before you edit.
 - Favor clarity over cleverness.
-- Keep humans in the loop for ambiguous or high-impact changes (via “NEEDS HUMAN REVIEW” markers and your rationale).
+- Keep humans in the loop for ambiguous or high-impact changes (via "NEEDS HUMAN REVIEW" markers and your rationale).
 - Avoid busywork and noisy updates.
 - Strive to make every change feel like something a careful senior engineer or tech writer would be happy to commit.
-`;
-}
+`.trim();
