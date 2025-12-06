@@ -108,6 +108,7 @@ export function ConfluenceIntegration({
                     statusOptions={connectionSelections}
                     selectedOption={selectedOption}
                     setSelected={onSelect}
+                    placeholder="No connection selected"
                 />
             </div>
 
@@ -131,6 +132,7 @@ export function ConfluenceIntegration({
                     <ConfluenceResourceSelector
                         integrationId={selectedIntegrationId}
                         selectedResourceId={currentConfig?.pageId}
+                        selectedResourceName={currentConfig?.pageName}
                         onSelect={(resourceId, resourceTitle, spaceId, spaceName) => {
                             const updatedConfig = new ConfluenceConfig(
                                 selectedIntegrationId,

@@ -8,6 +8,7 @@ Terse AI builds background AI agents that automatically sync your tools, elimina
 - **Frontend**: React 19, Vite, Tailwind CSS, Radix UI, SWR
 - **Database**: PostgreSQL with pgvector
 - **Language**: TypeScript (always)
+- **Package Manager**: pnpm (not npm or yarn)
 
 ## Getting Started
 
@@ -21,10 +22,10 @@ Both frontend and backend are started with:
 
 ```bash
 # In /backend
-npm run dev
+pnpm run dev
 
 # In /frontend
-npm run dev
+pnpm run dev
 ```
 
 Backend runs on `http://localhost:3001`.
@@ -42,13 +43,13 @@ Before committing, validate TypeScript compilation in both repos:
 
 ```bash
 # In /backend
-npm run build
+pnpm run build
 
 # In /frontend
-npm run build
+pnpm run build
 ```
 
-Always run `npm run build` after making changes to verify nothing is broken.
+Always run `pnpm run build` after making changes to verify nothing is broken.
 
 ### Shared Types
 
@@ -72,13 +73,13 @@ All Prisma commands must be run from the `/backend` folder:
 
 ```bash
 # Generate Prisma client (run after schema changes)
-npx prisma generate
+pnpm exec prisma generate
 
 # Apply migrations and regenerate client
-npx prisma migrate dev --name <migration_name>
+pnpm exec prisma migrate dev --name <migration_name>
 
 # Open Prisma Studio
-npx prisma studio
+pnpm exec prisma studio
 ```
 
 ## Architecture Overview
@@ -190,4 +191,5 @@ export async function getUserChannels(req: Request, res: Response) {
 4. ❌ JavaScript files—TypeScript only
 5. ❌ Direct API calls without using `BackendProvider`
 6. ❌ Inline styles or CSS files—use Tailwind only
-7. ❌ Skipping `npm run build` validation before committing
+7. ❌ Skipping `pnpm run build` validation before committing
+8. ❌ Using npm or yarn instead of pnpm

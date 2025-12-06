@@ -109,6 +109,6 @@ export const recentChannelsKey = (limit?: number): readonly [string, number] | r
     return ['recentChannels'] as const;
 };
 
-export const statsKey = (): readonly [string] => {
-    return ['stats'] as const;
+export const statsKey = (timezone: string): readonly [string, string] => {
+    return ['stats', timezone] as const;
 };
