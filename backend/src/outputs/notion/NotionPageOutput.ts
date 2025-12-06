@@ -56,4 +56,53 @@ export class NotionPageOutput extends Output<NotionPageSession, NotionPageConfig
             },
         });
     }
+
+    getSystemInstructions(_session: NotionPageSession): string {
+        return NOTION_PAGE_FOOTER_INSTRUCTIONS;
+    }
 }
+
+// MARK: - Footer Instructions
+
+const NOTION_PAGE_FOOTER_INSTRUCTIONS = `
+## TERSE FOOTER REQUIREMENT
+
+You MUST always ensure a **Terse Footer** exists at the very bottom of the Notion page after any update. This footer provides transparency about when and how the page was last updated by Terse.
+
+**IMPORTANT**: If the user provides custom footer formatting instructions in their USER_INSTRUCTIONS, use their format instead of the default format below. User instructions take precedence.
+
+### Default Footer Format
+The footer consists of two blocks:
+1. **Divider block** - to visually separate the footer from main content
+2. **Heading 3 block** - with the following format:
+
+\`Updated by Terse 🫶 • Last sync: Dec 6, 2025 • Based on 7 events\`
+
+Where:
+- "Terse" should be a clickable link to https://useterse.ai
+- The date should be formatted as "Mon D, YYYY" (e.g., "Dec 6, 2025")
+- The event count should reflect the actual number of events processed
+
+### Example using the modify blocks tool:
+\`\`\`json
+[
+  { "type": "divider", "divider": {} },
+  { 
+    "type": "heading_3", 
+    "heading_3": { 
+      "rich_text": [
+        { "type": "text", "text": { "content": "Updated by " } },
+        { "type": "text", "text": { "content": "Terse", "link": { "url": "https://useterse.ai" } } },
+        { "type": "text", "text": { "content": " 🫶 • Last sync: Dec 6, 2025 • Based on 7 events" } }
+      ] 
+    } 
+  }
+]
+\`\`\`
+
+### Important Rules
+- If a Terse footer already exists (identified by text starting with "Updated by Terse" or matching user's custom format), UPDATE it with the new values rather than creating a duplicate
+- The footer must ALWAYS be at the very end of the page content
+- Use the bullet separator (•) between each metadata item (unless user specifies otherwise)
+- Count all events you received in the context for the event count
+`.trim();
