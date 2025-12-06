@@ -8,6 +8,7 @@ import { urls, nodeEnv, optional } from "./config/settings";
 import { SendModelRequest, ModelEvent } from "./shared/ModelEvents";
 import { db } from "./prismaClient";
 import { ChannelAgent } from "./agent/ChannelAgent/ChannelAgent";
+import { RunContext } from "./agent/ChannelAgent/SystemPromptBuilder";
 import { ChannelWithRelations } from "./types/prisma";
 import { getInputConfigInclude, getOutputConfigInclude } from './utility/prismaIncludes';
 import { OutputFactory } from "./outputs/abstract/OutputFactory";
@@ -211,7 +212,8 @@ export async function initializeRealtimeSocket(server: HttpServer): Promise<Serv
             emitCacheInvalidationWithWildcard(user.id, 'chatHistory', runId);
 
 
-            const channelAgent = new ChannelAgent(session, output, channel, runId);
+            const runContext: RunContext = { runId };
+            const channelAgent = new ChannelAgent(session, output, channel, runContext);
             await channelAgent.initializeAgent();
             
             let result;

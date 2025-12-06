@@ -12,6 +12,7 @@ import { Session } from '../../server';
 import { emitCacheInvalidationWithKey, emitCacheInvalidationWithWildcard } from '../../realtimeSocket';
 import { getInputConfigInclude, getOutputConfigInclude } from '../../utility/prismaIncludes';
 import { RunHistoryAction } from '../../shared/RunHistoryTypes';
+import { RunContext } from './SystemPromptBuilder';
 
 // The job of this class is to take an Input Event, and check if it's a match for an Channel.
 // It will then create a Session, and summon the Channel Agent with the create user data.
@@ -199,7 +200,8 @@ export class EventProcessor {
         console.log(chalk.green(`Event is relevant to channel "${channel.name}"`));
 
         // Create channel agent with the session and output
-        const channelAgent = new ChannelAgent(session, output, channel, runId);
+        const runContext: RunContext = { runId };
+        const channelAgent = new ChannelAgent(session, output, channel, runContext);
         await channelAgent.initializeAgent();
         channelAgent.setInputEvent(this.inputEvent);
 
