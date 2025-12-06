@@ -105,6 +105,7 @@ export function FigmaIntegration({
                     statusOptions={connectionSelections}
                     selectedOption={selectedOption}
                     setSelected={onSelect}
+                    placeholder="No connection selected"
                 />
             </div>
 
