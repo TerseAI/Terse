@@ -39,6 +39,7 @@ export class SystemPromptBuilder<T extends Session, TConfig extends ConfigInstan
             .withSection(() => this.buildTimeSection())
             .withSection(() => this.buildCoreInstructions())
             .withSection(() => this.buildRunContextSection())
+            .withSection(() => this.buildDirectivesSection())
             .withSection(() => this.buildOutputInstructions());
     }
 
@@ -128,6 +129,37 @@ This is event #${eventPosition} processed by this automation.`
         return {
             header: 'CORE INSTRUCTIONS',
             content: CORE_INSTRUCTIONS
+        };
+    }
+
+    private async buildDirectivesSection(): Promise<Section | null> {
+        const prisma = db();
+        const directives = await (prisma as any).directive_records.findMany({
+            where: {
+                automation_id: this.deps.channel.id,
+                is_active: true,
+            },
+            orderBy: {
+                created_at: 'asc',
+            },
+            select: {
+                directive_description: true,
+            },
+        }) as { directive_description: string }[];
+
+        if (directives.length === 0) return null;
+
+        const directivesList = directives
+            .map((d: { directive_description: string }, i: number) => `${i + 1}. ${d.directive_description}`)
+            .join('\n');
+
+        return {
+            header: 'USER DIRECTIVES',
+            content: `The user has established the following standing directives for this automation. These are rules, preferences, or policies that apply to all interactions:
+
+${directivesList}
+
+Follow these directives in addition to the USER INSTRUCTIONS provided in each message. If a directive conflicts with a specific request in a message, the message takes precedence for that interaction only.`
         };
     }
 }
