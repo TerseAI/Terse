@@ -37,6 +37,8 @@ function SlackIntegrationCard({ className, isActive = true }: { className?: stri
             
             if (installationDetails?.oauthUrl) {
                 window.open(installationDetails.oauthUrl, 'oauth-popup', 'width=600,height=700');
+                // Return to previous page after opening OAuth popup
+                setShowConnectionOptions(false);
             } else {
                 console.error('OAuth URL not available for this integration type');
             }

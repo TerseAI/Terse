@@ -97,7 +97,7 @@ export const INTEGRATION_METADATA: IntegrationMetadataMap = {
     [IntegrationType.TERSE]: TerseIntegrationMetadata,
 } as const satisfies IntegrationMetadataMap;
 
-
+// MARK: Integration Details
 export interface IntegrationInstance {
     id: string;
  }

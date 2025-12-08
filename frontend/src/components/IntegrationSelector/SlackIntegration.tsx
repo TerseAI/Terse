@@ -22,7 +22,7 @@ export function SlackIntegration({
 
     // Connection options
     const [showConnectionOptions, setShowConnectionOptions] = useState(false);
-    const [isBotUser, setIsBotUser] = useState(false);
+    const [isBotUser, setIsBotUser] = useState(true);
     const [isOAuthConnecting, setIsOAuthConnecting] = useState(false);
 
 
@@ -54,6 +54,8 @@ export function SlackIntegration({
             
             if (installationDetails?.oauthUrl) {
                 window.open(installationDetails.oauthUrl, 'oauth-popup', 'width=600,height=700');
+                // Return to previous page after opening OAuth popup
+                setShowConnectionOptions(false);
             } else {
                 console.error('OAuth URL not available for this integration type');
             }

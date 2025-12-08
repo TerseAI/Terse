@@ -120,7 +120,7 @@ export class SlackIntegrationManager implements Integration<SlackIntegration, Sl
         const client_id = slackConfig.clientId;
         const redirect_uri = slackConfig.oauthCallbackUrl;
         const isBotUser = options.isBotUser;
-        const scope = "channels:history,channels:manage,groups:history,groups:write,im:history,im:write,mpim:history,mpim:write,channels:read,groups:read,mpim:read,im:read";
+        const scope = "channels:history,channels:manage,groups:history,groups:write,im:history,im:write,mpim:history,mpim:write,channels:read,groups:read,mpim:read,im:read,users:read";
         const user_scope = isBotUser ? "" : "channels:history,channels:read,groups:history,groups:read,im:history,im:read,mpim:history,mpim:read,users:read,channels:write,groups:write,mpim:write,im:write";
         // create JWT and attach to url as state, including isBotUser
         const jwtToken = jwt.sign(
@@ -568,7 +568,6 @@ async function handleSlackMessage(event: SlackMessageEvent, teamId: string, auth
             return;
         }
 
-
         // Get the Slack integration
         const slackIntegration = await db().slack_integrations.findFirst({
             where: {
@@ -765,13 +764,6 @@ export function isValidSlackSig(req: Request) {
     const ts = req.headers['x-slack-request-timestamp'] as string;
     const sig = req.headers['x-slack-signature'] as string;
 
-    console.log('=== Slack Signature Debug ===');
-    console.log('Timestamp:', ts);
-    console.log('Signature:', sig);
-    console.log('Body type:', Buffer.isBuffer(req.body) ? 'Buffer' : typeof req.body);
-    console.log('Has SLACK_SIGNING_SECRET:', !!slackConfig.signingSecret);
-    console.log('Has SLACK_CLIENT_SECRET:', !!slackConfig.clientSecret);
-
     if (!ts || !sig) {
         console.log('Missing timestamp or signature headers');
         return false;
@@ -786,11 +778,8 @@ export function isValidSlackSig(req: Request) {
 
     // Convert buffer to string for signature validation
     const body = Buffer.isBuffer(req.body) ? req.body.toString() : req.body;
-    console.log('Body string length:', typeof body === 'string' ? body.length : 'not a string');
-    console.log('Body preview:', typeof body === 'string' ? body.substring(0, 100) : 'body is not string');
 
     const baseString = `v0:${ts}:${body}`;
-    console.log('Base string:', baseString);
 
     const hmac = crypto
         .createHmac('sha256', signingSecret)
@@ -798,13 +787,9 @@ export function isValidSlackSig(req: Request) {
         .digest('hex');
 
     const expectedSig = `v0=${hmac}`;
-    console.log('Expected signature:', expectedSig);
-    console.log('Received signature:', sig);
 
     const isValid = sig === expectedSig;
-    console.log('Signatures match:', isValid);
-    console.log('=== End Debug ===');
-
+    
     return isValid;
 }
 

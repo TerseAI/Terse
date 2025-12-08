@@ -81,21 +81,14 @@ const getToken = (integration: UserSlackIntegrationWithUser) => {
  * Validates signature, parses JSON, handles URL verification, and processes events
  */
 export async function handleSlackWebhook(req: Request, res: Response): Promise<void> {
-    console.log(chalk.cyan('🔵 [SLACK WEBHOOK] handleSlackWebhook called'));
-    console.log(chalk.cyan('🔵 [SLACK WEBHOOK] Request method:', req.method));
-    console.log(chalk.cyan('🔵 [SLACK WEBHOOK] Request path:', req.path));
-    
     // Validate Slack signature
     const isValid = isValidSlackSig(req);
-    console.log(chalk.cyan('🔵 [SLACK WEBHOOK] Signature valid:', isValid));
     
     if (!isValid) {
         console.log(chalk.red('❌ [SLACK WEBHOOK] Invalid signature - returning 400'));
         res.sendStatus(400);
         return;
     }
-    
-    console.log(chalk.green('✅ [SLACK WEBHOOK] Signature validated - parsing body'));
 
     // Parse JSON from raw body (req.body is a Buffer from express.raw())
     // Express.raw() gives us a Buffer, which we convert to string and parse as JSON
@@ -108,8 +101,6 @@ export async function handleSlackWebhook(req: Request, res: Response): Promise<v
         res.sendStatus(400);
         return;
     }
-
-    console.log(chalk.green('Slack event received', JSON.stringify(body, null, 2)));
 
     // Handle URL verification challenge (must respond immediately)
     if (body.type === 'url_verification') {
@@ -240,10 +231,6 @@ export const getSlackChannels = async (req: Request, res: Response) => {
       channels,
       selectedChannelId: null, // We don't store a default channel at the connection level
     };
-
-    console.log(
-      chalk.blue(`📋 Found ${channels.length} Slack channels for integration ${integrationId}`)
-    );
 
     res.status(200).json(response);
   } catch (error: any) {
