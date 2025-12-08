@@ -1,10 +1,10 @@
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Spinner } from "@/components/ui/spinner";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Step2SurveyProps } from "./types";
+import { LoadingAnimation } from "./LoadingAnimation";
 
 export function Step2Survey({
     questions,
@@ -23,10 +23,18 @@ export function Step2Survey({
             <div className="space-y-6">
                 <div>
                     <h3 className="text-lg font-semibold mb-4">Answer clarifying questions</h3>
-                    <div className="text-center py-8">
-                        <Spinner className="mx-auto mb-2" />
-                        <p className="text-muted-foreground">Generating questions...</p>
-                    </div>
+                    <LoadingAnimation />
+                </div>
+            </div>
+        );
+    }
+
+    if (isLoading) {
+        return (
+            <div className="space-y-6">
+                <div>
+                    <h3 className="text-lg font-semibold mb-4">Answer clarifying questions</h3>
+                    <LoadingAnimation />
                 </div>
             </div>
         );
@@ -149,7 +157,6 @@ export function Step2Survey({
                 >
                     {isLoading ? (
                         <>
-                            <Spinner className="mr-2" />
                             Generating...
                         </>
                     ) : (

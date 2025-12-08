@@ -23,6 +23,9 @@ import { AddOutputModal } from "../components/AddOutputModal";
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "../../../components/ui/empty";
 import { Badge } from "../../../components/ui/badge";
 import { PromptBuilderModal } from "../../../components/PromptBuilder/PromptBuilderModal";
+import { Switch } from "../../../components/ui/switch";
+import { Label } from "../../../components/ui/label";
+import ReactMarkdown from "react-markdown";
 
 export type ChannelSetupTabProps = {
     channelId: string | null;
@@ -162,6 +165,7 @@ export default function ChannelSetupTab({
     const { totalCount } = useChannelCount();
     const defaultName = getDefaultChannelName(totalCount);
     const [showPromptBuilder, setShowPromptBuilder] = useState(false);
+    const [showMarkdown, setShowMarkdown] = useState(false);
 
     const channelInputs = inputs.map(toChannelInput).filter((i): i is ChannelInput => i !== null);
     const channelOutput = toChannelOutput(output)
@@ -201,24 +205,47 @@ export default function ChannelSetupTab({
                                 <AlertTriangleIcon className="size-4 text-yellow-500" />
                             )}
                         </div>
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setShowPromptBuilder(true)}
-                        >
-                            <Sparkles className="h-4 w-4 mr-2" />
-                            Open Prompt Builder
-                        </Button>
+                        <div className="flex flex-row gap-2 items-center">
+                            <div className="flex items-center gap-2">
+                                <Switch
+                                    id="markdown-toggle"
+                                    checked={showMarkdown}
+                                    onCheckedChange={setShowMarkdown}
+                                    disabled={!prompt?.text || prompt.text.trim() === ''}
+                                />
+                                <Label htmlFor="markdown-toggle" className="text-sm text-muted-foreground cursor-pointer">
+                                    Markdown
+                                </Label>
+                            </div>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setShowPromptBuilder(true)}
+                            >
+                                <Sparkles className="h-4 w-4 mr-2" />
+                                Open Prompt Builder
+                            </Button>
+                        </div>
                     </div>
                     <div className="relative flex-1">
-                        <Textarea 
-                            value={prompt?.text || ''} 
-                            onChange={(e) => {
-                                setPrompt({ ...prompt, text: e.target.value });
-                            }}
-                            className="flex-1 h-full" 
-                            placeholder={instructionsPlaceholder} 
-                        />
+                        {showMarkdown && prompt?.text ? (
+                            <div className="flex-1 h-full overflow-auto p-3 border rounded-md bg-background">
+                                <div className="prose prose-sm dark:prose-invert max-w-none">
+                                    <ReactMarkdown>
+                                        {prompt.text}
+                                    </ReactMarkdown>
+                                </div>
+                            </div>
+                        ) : (
+                            <Textarea 
+                                value={prompt?.text || ''} 
+                                onChange={(e) => {
+                                    setPrompt({ ...prompt, text: e.target.value });
+                                }}
+                                className="flex-1 h-full" 
+                                placeholder={instructionsPlaceholder} 
+                            />
+                        )}
                     </div>
                     <PromptBuilderModal
                         isOpen={showPromptBuilder}

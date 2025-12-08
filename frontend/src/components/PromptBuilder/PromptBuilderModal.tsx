@@ -79,6 +79,7 @@ export function PromptBuilderModal({
 
             const request: GenerateSurveyPromptRequest = {
                 description: description.trim(),
+                questions,
                 answers,
                 writeInAnswers,
                 existingPrompt,
@@ -164,12 +165,10 @@ export function PromptBuilderModal({
         <Dialog open={isOpen} onOpenChange={onClose}>
             <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
-                    <DialogTitle className="flex items-center justify-between gap-4">
-                        <div className="flex items-center gap-2">
-                            <Sparkles className="h-5 w-5" />
-                            Prompt Builder
-                        </div>
-                        <span className="text-sm font-normal text-muted-foreground whitespace-nowrap">
+                    <DialogTitle className="flex items-center gap-2">
+                        <Sparkles className="h-5 w-5" />
+                        Prompt Builder
+                        <span className="text-sm font-normal text-muted-foreground">
                             Step {step} of 3
                         </span>
                     </DialogTitle>

@@ -1,8 +1,8 @@
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Spinner } from "@/components/ui/spinner";
 import { Step1DescriptionProps } from "./types";
+import { LoadingAnimation } from "./LoadingAnimation";
 
 export function Step1Description({
     description,
@@ -10,6 +10,10 @@ export function Step1Description({
     isLoading,
     onContinue
 }: Step1DescriptionProps) {
+    if (isLoading) {
+        return <LoadingAnimation />;
+    }
+
     return (
         <div className="space-y-4">
             <div>
@@ -28,14 +32,7 @@ export function Step1Description({
                         disabled={!description.trim() || isLoading}
                         className="self-start"
                     >
-                        {isLoading ? (
-                            <>
-                                <Spinner className="mr-2" />
-                                Generating...
-                            </>
-                        ) : (
-                            'Continue'
-                        )}
+                        Continue
                     </Button>
                 </div>
             </div>

@@ -33,6 +33,7 @@ export interface GenerateSurveyQuestionsResponse {
 
 export interface GenerateSurveyPromptRequest {
   description: string;
+  questions: SurveyQuestion[]; // The questions that were asked
   answers: Record<string, string | string[]>; // question index -> answer(s) - string for single choice, string[] for multiple choice
   writeInAnswers?: Record<string, string>; // question index -> write-in text answer
   existingPrompt?: string;

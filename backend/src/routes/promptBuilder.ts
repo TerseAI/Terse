@@ -42,10 +42,14 @@ export async function generatePromptRoute(req: Request, res: Response) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
 
-    const { description, answers, writeInAnswers, existingPrompt, inputConfigs, outputConfig } = req.body as GenerateSurveyPromptRequest;
+    const { description, questions, answers, writeInAnswers, existingPrompt, inputConfigs, outputConfig } = req.body as GenerateSurveyPromptRequest;
 
     if (!description || typeof description !== 'string' || description.trim() === '') {
       return res.status(400).json({ error: 'Description is required' });
+    }
+
+    if (!questions || !Array.isArray(questions) || questions.length === 0) {
+      return res.status(400).json({ error: 'Questions are required' });
     }
 
     if (!answers || typeof answers !== 'object') {
@@ -54,6 +58,7 @@ export async function generatePromptRoute(req: Request, res: Response) {
 
     const request: GenerateSurveyPromptRequest = {
       description: description.trim(),
+      questions,
       answers,
       writeInAnswers,
       existingPrompt,

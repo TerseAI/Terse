@@ -1,8 +1,8 @@
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
 import { Copy, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 import { Step3ReviewProps } from "./types";
+import ReactMarkdown from "react-markdown";
 
 export function Step3Review({
     generatedPrompt,
@@ -23,11 +23,13 @@ export function Step3Review({
             <div>
                 <h3 className="text-lg font-semibold mb-4">Review your prompt</h3>
                 <div className="space-y-2">
-                    <Textarea
-                        value={generatedPrompt}
-                        readOnly
-                        className="min-h-[300px] font-mono text-sm"
-                    />
+                    <div className="min-h-[300px] p-3 border rounded-md bg-background overflow-auto">
+                        <div className="prose prose-sm dark:prose-invert max-w-none">
+                            <ReactMarkdown>
+                                {generatedPrompt}
+                            </ReactMarkdown>
+                        </div>
+                    </div>
                     <div className="flex justify-end">
                         <Button variant="outline" onClick={handleCopy} size="sm">
                             <Copy className="h-4 w-4 mr-2" />

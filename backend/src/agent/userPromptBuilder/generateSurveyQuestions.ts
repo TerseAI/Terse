@@ -1,7 +1,7 @@
 import OpenAI from 'openai';
 import { openai as openaiConfig } from '../../config/settings';
-import { GenerateSurveyQuestionsRequest, SurveyQuestion, SurveyQuestionType } from '../../../shared/PromptBuilderTypes';
-import { ConfigType } from '../../../shared/Configs';
+import { GenerateSurveyQuestionsRequest, SurveyQuestion, SurveyQuestionType } from '../../shared/PromptBuilderTypes';
+import { ConfigType } from '../../shared/Configs';
 
 const openai = new OpenAI({ apiKey: openaiConfig.apiKey });
 
