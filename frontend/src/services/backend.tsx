@@ -266,6 +266,16 @@ interface BackendService {
      * Fetch run history actions by IDs
      */
     getRunHistoryActions(ids: string[]): Promise<RunHistoryActionWithId[]>;
+
+    /**
+     * Generates clarifying questions for prompt builder
+     */
+    generatePromptBuilderQuestions(description: string, existingPrompt?: string, inputConfigs?: Array<{ type: string; details?: any }>, outputConfig?: { type: string; details?: any }): Promise<{ questions: Array<{ question: string; type: 'single' | 'multiple'; allowWriteIn?: boolean; options: { a: string; b: string; c: string; d: string; e: string } }> }>;
+
+    /**
+     * Generates a prompt based on description and answers
+     */
+    generatePromptBuilderPrompt(description: string, answers: Record<string, string | string[]>, writeInAnswers?: Record<string, string>, existingPrompt?: string, inputConfigs?: Array<{ type: string; details?: any }>, outputConfig?: { type: string; details?: any }): Promise<{ prompt: string }>;
 }
 
 export const BackendProvider: BackendService = {
@@ -736,6 +746,32 @@ export const BackendProvider: BackendService = {
             .then(r => r.data)
             .catch(error => {
                 console.error('Error fetching run history actions:', error);
+                throw error;
+            });
+    },
+
+    generatePromptBuilderQuestions: (description, existingPrompt, inputConfigs, outputConfig) => {
+        return axios.post<{ questions: Array<{ question: string; type: 'single' | 'multiple'; allowWriteIn?: boolean; options: { a: string; b: string; c: string; d: string; e: string } }> }>(
+            `${backendBaseUrl}/prompt-builder/generate-questions`,
+            { description, existingPrompt, inputConfigs, outputConfig },
+            { withCredentials: true }
+        )
+            .then(response => response.data)
+            .catch(error => {
+                console.error('Error generating questions:', error);
+                throw error;
+            });
+    },
+
+    generatePromptBuilderPrompt: (description, answers, writeInAnswers, existingPrompt, inputConfigs, outputConfig) => {
+        return axios.post<{ prompt: string }>(
+            `${backendBaseUrl}/prompt-builder/generate-prompt`,
+            { description, answers, writeInAnswers, existingPrompt, inputConfigs, outputConfig },
+            { withCredentials: true }
+        )
+            .then(response => response.data)
+            .catch(error => {
+                console.error('Error generating prompt:', error);
                 throw error;
             });
     },
