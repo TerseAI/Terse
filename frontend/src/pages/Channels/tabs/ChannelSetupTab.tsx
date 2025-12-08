@@ -9,7 +9,6 @@ import { useChannelCount } from "@/hooks/api/useChannelCount";
 import { useChannelMutations } from "@/hooks/api/useChannels";
 import { type KeyedMutator } from 'swr';
 import { Channel, ChannelInput, ChannelOutput, ChannelPrompt } from "@/shared/types";
-import { Textarea } from "../../../components/ui/textarea";
 import { ConfigTitle } from "../components/ConfigTitle";
 import { AddInputModal } from "../components/AddInputModal";
 import { ConfigInstance, ConfigType } from "../../../shared/Configs";
@@ -22,6 +21,7 @@ import { Card, CardContent } from "../../../components/ui/card";
 import { AddOutputModal } from "../components/AddOutputModal";
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "../../../components/ui/empty";
 import { Badge } from "../../../components/ui/badge";
+import { InstructionsEditor } from "../components/InstructionsEditor";
 
 export type ChannelSetupTabProps = {
     channelId: string | null;
@@ -132,19 +132,6 @@ function SaveChannelButton({
     )
 }
 
-const instructionsPlaceholder = `Describe what you want the AI to do with incoming events from your sources.
-
-For example:
-- "Monitor all new GitHub issues and create Linear tickets for bugs, adding appropriate labels and priority"
-- "Watch for Notion database updates and post summaries to Slack with key changes highlighted"
-- "Track customer feedback from multiple channels and synthesize weekly reports"
-
-Be specific about:
-• What information to extract or focus on
-• How to format or structure the output
-• Any rules for filtering or prioritizing events
-• The tone or style for generated content`;
-
 export default function ChannelSetupTab({
     channelId,
     name,
@@ -191,15 +178,7 @@ export default function ChannelSetupTab({
                     </div>
                 </div>
 
-                <div className="min-w-md max-w-md flex flex-col h-full">
-                    <div className="flex flex-row gap-2 items-center mb-2">
-                        <h2 className="text-lg">Instructions</h2>
-                        {(!prompt?.text || prompt.text.trim() === '') && (
-                            <AlertTriangleIcon className="size-4 text-yellow-500" />
-                        )}
-                    </div>
-                    <Textarea value={prompt?.text} onChange={(e) => setPrompt({ ...prompt, text: e.target.value })} className="flex-1" placeholder={instructionsPlaceholder} />
-                </div>
+                <InstructionsEditor prompt={prompt} setPrompt={setPrompt} />
             </div>
         </div >
     )
