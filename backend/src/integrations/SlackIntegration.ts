@@ -611,7 +611,7 @@ async function handleSlackMessage(event: SlackMessageEvent, teamId: string, auth
 
                 if (membersRes.ok && membersRes.members && membersRes.members.length > 0) {
                     const channelMemberIds = membersRes.members
-                    return channelMemberIds.includes(integration.authed_user_id)
+                    return channelMemberIds.includes(integration.authed_user_id) || channelMemberIds.includes(integration.slack_integration.bot_user_id)
                 } else {
                     const errorMsg = membersRes.error || (membersRes.members?.length === 0 ? 'no members' : 'unknown error');
                     console.log(chalk.yellow(`⚠ Could not get members - ${errorMsg}`));
