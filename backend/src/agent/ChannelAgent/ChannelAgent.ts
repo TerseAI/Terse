@@ -15,8 +15,9 @@ import { EntityType } from '../../shared/Entities';
 import { ChangedItem, ChangeEventType } from '../../shared/ModelEvents';
 import { persistRunAction } from './EventProcessor';
 import { processModelEventStream } from './StreamProcessor';
-import { RunHistoryChatMemorySession, trimToLastTurns } from './CustomMemorySession';
+import { recentHistoryCallback, RunHistoryChatMemorySession } from '../CustomMemorySession';
 import { IntegrationType } from '../../shared/Integrations';
+import { InputImageContent, InputTextContent } from 'openai/resources/conversations/conversations.mjs';
 
 
 export class ChannelAgent<T extends Session, TConfig extends ConfigInstance> {
@@ -62,9 +63,10 @@ export class ChannelAgent<T extends Session, TConfig extends ConfigInstance> {
         }
 
         const userMessage = this.buildUserMessage();
-        this.history.push({ role: 'user', content: userMessage });
+        const userHistory = this.buildUserHistory(userMessage);
 
-        const result = await run(this.agent, this.history, {
+
+        const result = await run(this.agent, userHistory, {
             context: this.getToolContext(),
             stream: true,
             session: this.memorySession,
@@ -83,9 +85,9 @@ export class ChannelAgent<T extends Session, TConfig extends ConfigInstance> {
             throw new Error("Agent not initialized. Call initializeAgent() before run()");
         }
 
-        this.history.push({ role: 'user', content: userMessage });
+        const userHistory = this.buildUserHistory(userMessage);
 
-        const result = await run(this.agent, this.history, {
+        const result = await run(this.agent, userHistory, {
             context: this.getToolContext(),
             stream: true,
             session: this.memorySession,
@@ -95,7 +97,12 @@ export class ChannelAgent<T extends Session, TConfig extends ConfigInstance> {
         await this.processStream(result, streamingParams);
 
         return this.buildResult(result);
-        
+    }
+
+    private buildUserHistory(userMessage: string | (InputTextContent | InputImageContent)[]): AgentInputItem[] {
+        // Directives are now included in the system prompt via SystemPromptBuilder.buildDirectivesSection()
+        // to avoid accumulating duplicate directive entries in session history on each conversation turn.
+        return [{ role: 'user' as const, content: userMessage }];
     }
 
     async resume(
@@ -192,16 +199,16 @@ export class ChannelAgent<T extends Session, TConfig extends ConfigInstance> {
         };
     }
 
-    private buildUserMessage(): any[] {
+    private buildUserMessage(): (InputTextContent | InputImageContent)[] {
         const textContent = this.buildTextContent();
-        const content: any[] = [{ type: 'input_text', text: textContent }];
+        const content: (InputTextContent | InputImageContent)[] = [{ type: 'input_text', text: textContent }];
 
         const imageUrls = this.inputEvent!.getImageUrls();
         for (const imageUrl of imageUrls) {
-            content.push({ type: 'input_image', image: imageUrl });
+            content.push({ type: 'input_image', image_url: imageUrl, detail: 'auto' });
         }
 
-        return content;
+        return content; 
     }
 
     private buildTextContent(): string {
@@ -305,16 +312,6 @@ ${this.inputEvent!.formatForChannelAgent()}
         };
     }
 }
-
-/**
- * Controls how many messages are stored in the memory session before
- * they are trimmed.
- */
-const recentHistoryCallback = (history: AgentInputItem[], newItems: AgentInputItem[]): AgentInputItem[] => {
-    const trimmedHistory = trimToLastTurns(history, 10)
-    return [...trimmedHistory, ...newItems];
-}
-
 
 export type SessionWithTracking<T extends Session> = T & {
     trackAction(action: RunHistoryAction): void;
