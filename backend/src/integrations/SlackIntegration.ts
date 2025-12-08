@@ -254,13 +254,15 @@ export class SlackIntegrationManager implements Integration<SlackIntegration, Sl
                 const tokenType = authed_user?.token_type || 'user';
 
                 const isUserType = tokenType === 'user';
+                const actualIsBotUser = isUserType && authed_user.access_token 
+                    ? false
+                    : true;
+
                 const updatePayload = isUserType && authed_user.access_token ? {
                     authed_user_id: authed_user.id,
                     authed_user_access_token: authed_user.access_token,
-                    is_bot_user: !isUserType, // false for user token, true for bot token
                 } : {
                     authed_user_id: authed_user.id,
-                    is_bot_user: isBotUser, // Use the isBotUser from JWT state
                 } 
 
                 const createData = isUserType && authed_user.access_token
@@ -275,7 +277,7 @@ export class SlackIntegrationManager implements Integration<SlackIntegration, Sl
                         user_id: user.id,
                         slack_team_id: slackIntegration.team_id,
                         authed_user_id: authed_user.id,
-                        is_bot_user: isBotUser, // Use the isBotUser from JWT state
+                        is_bot_user: actualIsBotUser, // Use the actual determined value
                     };
 
                 await tx.user_slack_integrations.upsert({
@@ -283,7 +285,7 @@ export class SlackIntegrationManager implements Integration<SlackIntegration, Sl
                         user_id_slack_team_id_is_bot_user: {
                             user_id: user.id,
                             slack_team_id: slackIntegration.team_id,
-                            is_bot_user: isBotUser,
+                            is_bot_user: actualIsBotUser, // Use the actual determined value, not JWT state
                         }
                     },
                     update: {

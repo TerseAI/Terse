@@ -256,8 +256,6 @@ function Input({ input, inputs, setInputs, handleRemove }: { input: TransientCha
         variant: "card",
     };
 
-    console.log("INPUT", input)
-
     let cardContent;
     if (isPlaceholder) {
         cardContent = (
