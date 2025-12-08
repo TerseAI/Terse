@@ -134,7 +134,7 @@ This is event #${eventPosition} processed by this automation.`
 
     private async buildDirectivesSection(): Promise<Section | null> {
         const prisma = db();
-        const directives = await (prisma as any).directive_records.findMany({
+        const directives = await prisma.directive_records.findMany({
             where: {
                 automation_id: this.deps.channel.id,
                 is_active: true,
