@@ -11,7 +11,7 @@ import { StatusOption } from '../ui/DropdownSelect';
 import { ConfigType } from '../../shared/Configs';
 import { useState } from 'react';
 import { SlackConnectionOptions } from '../Integrations/helpers/SlackConnectionOptions';
-import { BackendProvider } from '@/services/backend';
+import { useOAuthConnection } from '@/hooks/useOAuthConnection';
 
 export function SlackIntegration({
     input,
@@ -23,11 +23,20 @@ export function SlackIntegration({
     // Connection options
     const [showConnectionOptions, setShowConnectionOptions] = useState(false);
     const [isBotUser, setIsBotUser] = useState(true);
-    const [isOAuthConnecting, setIsOAuthConnecting] = useState(false);
-
 
     const currentConfig = input.config as SlackConfig | undefined;
     const [selectedIntegrationId, setSelectedIntegrationId] = useIntegrationId(currentConfig, ConfigType.SLACK);
+
+    const { connect: connectOAuth, isConnecting: isOAuthConnecting } = useOAuthConnection<IntegrationType.SLACK>(
+        IntegrationType.SLACK,
+        { isBotUser }
+    );
+
+    const handleConnect = async () => {
+        await connectOAuth();
+        // Return to previous page after opening OAuth popup
+        setShowConnectionOptions(false);
+    };
 
     function onSelect(value: string) {
         const integration = integrations.find((integration: SlackIntegrationType) => integration.id === value);
@@ -47,25 +56,6 @@ export function SlackIntegration({
         setShowConnectionOptions(true);
     }
 
-    const connectOAuth = async () => {
-        setIsOAuthConnecting(true);
-        try {
-            const installationDetails = await BackendProvider.getIntegrationInstallationDetails(IntegrationType.SLACK, { isBotUser });
-            
-            if (installationDetails?.oauthUrl) {
-                window.open(installationDetails.oauthUrl, 'oauth-popup', 'width=600,height=700');
-                // Return to previous page after opening OAuth popup
-                setShowConnectionOptions(false);
-            } else {
-                console.error('OAuth URL not available for this integration type');
-            }
-        } catch (error) {
-            console.error('Error initiating OAuth:', error);
-        } finally {
-            setIsOAuthConnecting(false);
-        }
-    };
-
     if (isLoading) {
         return (
             <div className="max-w-xs flex items-center gap-2 text-sm text-muted-foreground">
@@ -81,7 +71,7 @@ export function SlackIntegration({
                 isBotUser={isBotUser}
                 setIsBotUser={setIsBotUser}
                 onBack={() => setShowConnectionOptions(false)}
-                onConnect={connectOAuth}
+                onConnect={handleConnect}
                 isConnecting={isOAuthConnecting}
             />
         );
@@ -139,7 +129,6 @@ export function SlackIntegration({
             );
         }
 
-        console.log(selectedOption.label)
         return (
             <div className="text-sm">
                 {selectedOption ? selectedOption.label : 'No connection selected'}
