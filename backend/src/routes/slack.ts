@@ -182,7 +182,6 @@ export const getSlackChannels = async (req: Request, res: Response) => {
     const channels: SlackChannel[] = [];
 
     if (publicChannels.ok && publicChannels.channels) {
-      console.log(publicChannels.channels);
       for (const channel of publicChannels.channels) {
         if (channel.id && channel.name && (!isBotUser || channel.is_member)) {
           channels.push({
