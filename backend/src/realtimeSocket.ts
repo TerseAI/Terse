@@ -14,6 +14,7 @@ import { getInputConfigInclude, getOutputConfigInclude } from './utility/prismaI
 import { OutputFactory } from "./outputs/abstract/OutputFactory";
 import { Session } from "./server";
 import { storeChatEvent, markRunFailed, finalizeRunStatus } from "./agent/ChannelAgent/runHistory";
+import { DirectiveTask, directiveTaskQueue } from "./agent/DirectiveAgent/DirectiveAgent";
 
 // Extended Socket type with userId property
 interface AuthenticatedSocket extends Socket {
@@ -206,7 +207,7 @@ export async function initializeRealtimeSocket(server: HttpServer): Promise<Serv
                 type: 'UserMessage',
                 message: userMessage,
             };
-            await storeChatEvent(runId, userMessageEvent);
+            const userMessageEventId = await storeChatEvent(runId, userMessageEvent);
             emitCacheInvalidationWithWildcard(user.id, 'runHistory', channel.id);
             emitCacheInvalidationWithWildcard(user.id, 'chatHistory', runId);
 
@@ -246,6 +247,14 @@ export async function initializeRealtimeSocket(server: HttpServer): Promise<Serv
                     console.error(chalk.yellow('Failed to finalize run status'), e);
                 }
             }
+
+            directiveTaskQueue.emit(new DirectiveTask(
+                channel.id,
+                runId,
+                userMessageEventId,
+                userMessage
+            ));
+
         });
 
         // presence: mark online (60s TTL), refresh every 25s (only if Redis is available)

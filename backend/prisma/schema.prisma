@@ -449,6 +449,7 @@ model automations {
   inputs              automation_inputs[]
   output              automation_outputs?
   run_history_records run_history_records[]
+  directiveRecords    directive_records[]
 
   @@index([user_id])
   @@index([is_active])
@@ -578,8 +579,8 @@ model automation_linear_configs {
   automation_input_id  String? @unique // FK to automation_inputs (mutually exclusive with output_id)
   automation_output_id String? @unique // FK to automation_outputs (unique constraint)
 
-  team_id   String? // Team ID (required for output, optional for input)
-  team_name String? // Team display name (for UI, optional)
+  team_id      String? // Team ID (required for output, optional for input)
+  team_name    String? // Team display name (for UI, optional)
   project_id   String? // Project ID (optional - scopes to specific project)
   project_name String? // Project display name (for UI, optional)
 
@@ -786,11 +787,12 @@ model run_history_records {
   created_at          DateTime                 @default(now())
   updated_at          DateTime                 @updatedAt
 
-  automation       automations           @relation(fields: [automation_id], references: [id], onDelete: Cascade)
+  automation       automations               @relation(fields: [automation_id], references: [id], onDelete: Cascade)
   actions          run_history_actions[]
   pending_approval pending_approvals?
   chat_events      run_history_chat_events[]
   raw_events       run_history_raw_events[]
+  directiveRecords directive_records[]
 
   @@index([automation_id])
   @@index([status])
@@ -838,14 +840,15 @@ model pending_approvals {
 
 // Chat events from ChannelAgent streaming
 model run_history_chat_events {
-  id                    String   @id @default(cuid())
+  id                    String                  @id @default(cuid())
   run_history_record_id String
   event_type            RunHistoryChatEventType
-  event_json            Json     // Full ModelEvent stored as JSON for easy deserialization
-  timestamp             DateTime  @default(now())
-  created_at            DateTime  @default(now())
+  event_json            Json // Full ModelEvent stored as JSON for easy deserialization
+  timestamp             DateTime                @default(now())
+  created_at            DateTime                @default(now())
 
   run_history_record run_history_records @relation(fields: [run_history_record_id], references: [id], onDelete: Cascade)
+  directiveRecords   directive_records[]
 
   @@index([run_history_record_id])
   @@index([timestamp])
@@ -855,8 +858,8 @@ model run_history_chat_events {
 model run_history_raw_events {
   id                    String   @id @default(cuid())
   run_history_record_id String
-  raw_event_json        Json     // Raw AgentStreamEvent stored as JSON for easy loading into OpenAI agent history
-  sequence_order        Int      // Order of items within a session to preserve exact sequence
+  raw_event_json        Json // Raw AgentStreamEvent stored as JSON for easy loading into OpenAI agent history
+  sequence_order        Int // Order of items within a session to preserve exact sequence
   created_at            DateTime @default(now())
 
   run_history_record run_history_records @relation(fields: [run_history_record_id], references: [id], onDelete: Cascade)
@@ -864,4 +867,23 @@ model run_history_raw_events {
   @@index([run_history_record_id])
   @@index([run_history_record_id, sequence_order])
   @@index([created_at])
+}
+
+model directive_records {
+  id                        String   @id @default(cuid())
+  automation_id             String
+  run_history_record_id     String
+  run_history_chat_event_id String
+  directive_description     String
+  is_active                 Boolean  @default(true)
+  created_at                DateTime @default(now())
+
+  automation             automations             @relation(fields: [automation_id], references: [id], onDelete: Cascade)
+  run_history_record     run_history_records     @relation(fields: [run_history_record_id], references: [id], onDelete: Cascade)
+  run_history_chat_event run_history_chat_events @relation(fields: [run_history_chat_event_id], references: [id], onDelete: Cascade)
+
+  @@index([automation_id])
+  @@index([run_history_record_id])
+  @@index([run_history_chat_event_id])
+  @@index([is_active])
 }
