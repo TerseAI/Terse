@@ -16,7 +16,7 @@ import { InputConfigType } from "@prisma/client";
 import axios, { AxiosResponse } from "axios";
 import { GithubAppUser } from "../routes/GithubTypes";
 
-export class GithubIntegrationManager implements Integration<GithubIntegration, GithubAppUnifiedEventRequest, typeof GithubIntegrationMetadata>, OAuthIntegrationInstallation {
+export class GithubIntegrationManager implements Integration<GithubIntegration, GithubAppUnifiedEventRequest, typeof GithubIntegrationMetadata>, OAuthIntegrationInstallation<IntegrationType.GITHUB> {
     constructor() { }
     integrationType: IntegrationType = IntegrationType.GITHUB;
 

@@ -16,7 +16,7 @@ export function LinearOutputIntegration({
     setConfig
 }: InputConfigSelectorProps) {
     const { integrations, isLoading } = useLinearIntegrations();
-    const { connect: connectOAuth, isConnecting: isOAuthConnecting } = useOAuthConnection(IntegrationType.LINEAR);
+    const { connect: connectOAuth, isConnecting: isOAuthConnecting } = useOAuthConnection<IntegrationType.LINEAR>(IntegrationType.LINEAR, {});
     const currentConfig = input.config as LinearOutputConfig | undefined;
     const [selectedIntegrationId] = useIntegrationId(currentConfig, ConfigType.LINEAR_OUTPUT);
 

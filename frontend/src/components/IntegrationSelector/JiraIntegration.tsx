@@ -25,7 +25,7 @@ export function JiraIntegration({
     setConfig
 }: InputConfigSelectorProps) {
     const { integrations, isLoading } = useJiraIntegrations();
-    const { connect: connectOAuth, isConnecting: isOAuthConnecting } = useOAuthConnection(IntegrationType.ATLASSIAN);
+    const { connect: connectOAuth, isConnecting: isOAuthConnecting } = useOAuthConnection<IntegrationType.ATLASSIAN>(IntegrationType.ATLASSIAN, {});
     const currentConfig = input.config as JiraConfig | undefined;
     const [selectedIntegrationId] = useIntegrationId(currentConfig, ConfigType.JIRA);
 

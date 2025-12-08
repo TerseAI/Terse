@@ -10,7 +10,7 @@ import { Skeleton } from "../ui/skeleton";
 import { Mail } from "lucide-react";
 
 function GmailIntegrationCard({ className, isActive = true }: { className?: string; isActive?: boolean }) {
-    const { connect, isConnecting } = useOAuthConnection(IntegrationType.GMAIL);
+    const { connect, isConnecting } = useOAuthConnection<IntegrationType.GMAIL>(IntegrationType.GMAIL, {});
     const { integrations, isLoading } = useGmailIntegrations(); 
 
     return (

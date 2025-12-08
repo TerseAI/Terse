@@ -5,7 +5,7 @@ import {
     isOAuthIntegrationInstallation
 } from "../integrations/abstract/Integration";
 import { OAuthInstallationDetails } from "../shared/types";
-import { IntegrationDetails, IntegrationInstance, IntegrationType, IntegrationWithStatus } from "../shared/Integrations";
+import { InstallationOptionsFor, IntegrationDetails, IntegrationInstance, IntegrationType, IntegrationWithStatus } from "../shared/Integrations";
 
 
 export const getIntegrationInstallationDetails = async (req: Request, res: Response) => {
@@ -21,8 +21,12 @@ export const getIntegrationInstallationDetails = async (req: Request, res: Respo
             return;
         }
 
+        const options = req.query.options 
+            ? JSON.parse(decodeURIComponent(req.query.options as string))
+            : undefined;
+
         const userId = req.session.user.id;
-        const installationDetails = await getInstallationInformation(integrationType as IntegrationType, userId);
+        const installationDetails = await getInstallationInformation(integrationType as IntegrationType, userId, options);
         res.json(installationDetails);
     } catch (error: any) {
         console.error('Error getting installation details:', error);
@@ -30,14 +34,14 @@ export const getIntegrationInstallationDetails = async (req: Request, res: Respo
     }
 }
 
-const getInstallationInformation = async (integration: IntegrationType, userId: string): Promise<OAuthInstallationDetails> => {
+const getInstallationInformation = async (integration: IntegrationType, userId: string, options: InstallationOptionsFor<IntegrationType>): Promise<OAuthInstallationDetails> => {
     const integrationInstance = INTEGRATION_REGISTRY.find(instance => instance.integrationType === integration);
     if (!integrationInstance) {
         throw new Error(`Integration ${integration} not found`);
     }
     
-    if (isOAuthIntegrationInstallation(integrationInstance)) {
-        return await integrationInstance.getInstallationUrl(userId);
+    if (isOAuthIntegrationInstallation<typeof integration>(integrationInstance)) {
+        return await integrationInstance.getInstallationUrl(userId, options);
     }
     
     throw new Error(`Integration ${integration} does not support installation`);

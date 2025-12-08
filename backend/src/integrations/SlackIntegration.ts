@@ -1,5 +1,5 @@
 import { SlackChannelType, OAuthInstallationDetails } from "../shared/types";
-import { SlackIntegration, SlackIntegrationMetadata } from "../shared/Integrations";
+import { SlackInstallationOptions, SlackIntegration, SlackIntegrationMetadata } from "../shared/Integrations";
 import { Integration, OAuthIntegrationInstallation } from "./abstract/Integration";
 import { Request, Response } from "express";
 import { slack as slackConfig, jwt as jwtConfig, urls } from '../config/settings';
@@ -17,7 +17,7 @@ import { Jwt } from "../utility/jwt";
 import { IntegrationType } from "../shared/Integrations";
 import { InputConfigType } from "@prisma/client";
 
-export class SlackIntegrationManager implements Integration<SlackIntegration, SlackMessageEvent, typeof SlackIntegrationMetadata>, OAuthIntegrationInstallation {
+export class SlackIntegrationManager implements Integration<SlackIntegration, SlackMessageEvent, typeof SlackIntegrationMetadata>, OAuthIntegrationInstallation<IntegrationType.SLACK> {
     constructor() { }
     integrationType: IntegrationType = IntegrationType.SLACK;
 
@@ -114,13 +114,12 @@ export class SlackIntegrationManager implements Integration<SlackIntegration, Sl
         }
     }
 
-    async getInstallationUrl(userId: string): Promise<OAuthInstallationDetails> {
+    async getInstallationUrl(userId: string, options: SlackInstallationOptions): Promise<OAuthInstallationDetails> {
         const client_id = slackConfig.clientId;
         const redirect_uri = slackConfig.oauthCallbackUrl;
-
+        const isBotUser = options.isBotUser;
         const scope = "channels:history,channels:manage,groups:history,groups:write,im:history,im:write,mpim:history,mpim:write";
-        const user_scope = "channels:history,channels:read,groups:history,groups:read,im:history,im:read,mpim:history,mpim:read,users:read,channels:write,groups:write,mpim:write,im:write"
-
+        const user_scope = isBotUser ? "" : "channels:history,channels:read,groups:history,groups:read,im:history,im:read,mpim:history,mpim:read,users:read,channels:write,groups:write,mpim:write,im:write";
         // create JWT and attach to url as state
         const jwtToken = jwt.sign(
             { userId: userId },

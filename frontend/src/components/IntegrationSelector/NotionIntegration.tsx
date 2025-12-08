@@ -18,7 +18,7 @@ export function NotionIntegration({
     setConfig
 }: InputConfigSelectorProps) {
     const { integrations, isLoading } = useNotionIntegrations();
-    const { connect: connectOAuth, isConnecting: isOAuthConnecting } = useOAuthConnection(IntegrationType.NOTION);
+    const { connect: connectOAuth, isConnecting: isOAuthConnecting } = useOAuthConnection<IntegrationType.NOTION>(IntegrationType.NOTION, {});
     const isPageConfig = input.configType === ConfigType.NOTION_PAGE;
     const currentConfig = input.config as NotionConfig | NotionPageConfig | undefined;
     const [selectedIntegrationId, setSelectedIntegrationId] = useIntegrationId(

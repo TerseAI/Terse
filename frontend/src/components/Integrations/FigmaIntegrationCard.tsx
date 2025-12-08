@@ -10,7 +10,7 @@ import { Skeleton } from "../ui/skeleton";
 import { Palette } from "lucide-react";
 
 function FigmaIntegrationCard({ className, isActive = true }: { className?: string; isActive?: boolean }) {
-    const { connect, isConnecting } = useOAuthConnection(IntegrationType.FIGMA);
+    const { connect, isConnecting } = useOAuthConnection<IntegrationType.FIGMA>(IntegrationType.FIGMA, {});
     const { integrations, isLoading } = useFigmaIntegrations(); 
 
     return (

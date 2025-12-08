@@ -13,7 +13,8 @@ import { cn } from "@/lib/utils";
 import { Skeleton } from "../ui/skeleton";
 
 function SlackIntegrationCard({ className, isActive = true }: { className?: string; isActive?: boolean }) {
-    const { connect, isConnecting } = useOAuthConnection(IntegrationType.SLACK);
+    // TODO: Make sure this doesn't break anything hardcoding a value like this. seems suss
+    const { connect, isConnecting } = useOAuthConnection<IntegrationType.SLACK>(IntegrationType.SLACK, { isBotUser: true });
     const { integrations, isLoading: integrationsLoading } = useSlackIntegrations();
     const firstIntegrationId = integrations[0]?.id;
     const { channels, isLoading: channelsLoading } = useSlackChannels(firstIntegrationId || null);

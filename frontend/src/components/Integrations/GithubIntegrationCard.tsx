@@ -23,7 +23,7 @@ import DropdownSelect from "../ui/DropdownSelect";
 const REPOSITORY_DISPLAY_THRESHOLD = 3;
 
 function GithubIntegrationCard({ className, isActive = true }: { className?: string; isActive?: boolean }) {
-    const { connect, isConnecting } = useOAuthConnection(IntegrationType.GITHUB);
+    const { connect, isConnecting } = useOAuthConnection<IntegrationType.GITHUB>(IntegrationType.GITHUB, {});
     const { integrations, isLoading: isLoadingIntegrations } = useGithubIntegrations();
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [selectedInstallationId, setSelectedInstallationId] = useState<number | null>(null);
