@@ -167,8 +167,8 @@ export default function ChannelSetupTab({
                 />
             </div>
 
-            <div className="flex flex-row gap-12 h-full">
-                <div className="flex flex-col gap-4 justify-between h-full">
+            <div className="flex flex-row gap-12 relative">
+                <div className="flex flex-col gap-4 justify-between">
                     <div className="flex flex-row gap-4 min-w-md max-w-md">
                         <InputLayout inputs={inputs} setInputs={setInputs} />
                     </div>
@@ -178,7 +178,11 @@ export default function ChannelSetupTab({
                     </div>
                 </div>
 
-                <InstructionsEditor prompt={prompt} setPrompt={setPrompt} />
+                <div className="relative min-w-md max-w-md">
+                    <div className="absolute inset-0">
+                        <InstructionsEditor prompt={prompt} setPrompt={setPrompt} />
+                    </div>
+                </div>
             </div>
         </div >
     )

@@ -33,8 +33,8 @@ export function InstructionsEditor({ prompt, setPrompt }: InstructionsEditorProp
     const isEmpty = !prompt?.text || prompt.text.trim() === '';
 
     return (
-        <div className="min-w-md max-w-md flex flex-col h-full">
-            <div className="flex flex-row gap-2 items-center justify-between mb-2">
+        <div className="flex flex-col h-full w-full overflow-hidden">
+            <div className="flex flex-row gap-2 items-center justify-between mb-2 shrink-0">
                 <div className="flex flex-row gap-2 items-center">
                     <h2 className="text-lg">Instructions</h2>
                     {isEmpty && (
@@ -53,7 +53,7 @@ export function InstructionsEditor({ prompt, setPrompt }: InstructionsEditorProp
             <Textarea
                 value={prompt?.text}
                 onChange={(e) => setPrompt({ ...prompt, text: e.target.value })}
-                className="flex-1 min-h-0 resize-none"
+                className="flex-1 min-h-0 resize-none overflow-auto"
                 placeholder={instructionsPlaceholder}
             />
 
