@@ -5,31 +5,75 @@ import { SlackChannel } from "@/shared/types";
 import { IntegrationCardHeader } from "./helpers/IntegrationCardHeader";
 import { IntegrationCardFooter } from "./helpers/IntegrationCardFooter";
 import { IntegrationItem } from "./helpers/IntegrationItem";
-import { useOAuthConnection } from "@/hooks/useOAuthConnection";
 import { CountDisplay } from "./helpers/CountDisplay";
 import { useSlackChannels } from "@/hooks/api/useSlackChannels";
 import { useSlackIntegrations } from "@/hooks/api/useSlackIntegrations";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "../ui/skeleton";
+import { useState } from "react";
+import { SlackConnectionOptions } from "./helpers/SlackConnectionOptions";
+import { BackendProvider } from "@/services/backend";
 
 function SlackIntegrationCard({ className, isActive = true }: { className?: string; isActive?: boolean }) {
-    // TODO: Make sure this doesn't break anything hardcoding a value like this. seems suss
-    const { connect, isConnecting } = useOAuthConnection<IntegrationType.SLACK>(IntegrationType.SLACK, { isBotUser: true });
+    const [showConnectionOptions, setShowConnectionOptions] = useState(false);
+    const [isBotUser, setIsBotUser] = useState(true);
+    const [isConnecting, setIsConnecting] = useState(false);
     const { integrations, isLoading: integrationsLoading } = useSlackIntegrations();
     const firstIntegrationId = integrations[0]?.id;
     const { channels, isLoading: channelsLoading } = useSlackChannels(firstIntegrationId || null);
+
+    const handleConnectClick = () => {
+        setShowConnectionOptions(true);
+    };
+
+    const handleBack = () => {
+        setShowConnectionOptions(false);
+    };
+
+    const connect = async () => {
+        setIsConnecting(true);
+        try {
+            const installationDetails = await BackendProvider.getIntegrationInstallationDetails(IntegrationType.SLACK, { isBotUser });
+            
+            if (installationDetails?.oauthUrl) {
+                window.open(installationDetails.oauthUrl, 'oauth-popup', 'width=600,height=700');
+            } else {
+                console.error('OAuth URL not available for this integration type');
+            }
+        } catch (error) {
+            console.error('Error initiating OAuth:', error);
+        } finally {
+            setIsConnecting(false);
+        }
+    }
 
     return (
         <Card className={cn(className)}>
             <IntegrationCardHeader integration={IntegrationType.SLACK} isActive={isActive} />
             <CardContent>
-                <SlackCardContent 
-                    integrations={integrations}
-                    channels={channels} 
-                    isLoading={integrationsLoading || channelsLoading} 
-                />
+                {showConnectionOptions ? (
+                    <SlackConnectionOptions
+                        isBotUser={isBotUser}
+                        setIsBotUser={setIsBotUser}
+                        onBack={handleBack}
+                        onConnect={connect}
+                        isConnecting={isConnecting}
+                    />
+                ) : (
+                    <SlackCardContent 
+                        integrations={integrations}
+                        channels={channels} 
+                        isLoading={integrationsLoading || channelsLoading} 
+                    />
+                )}
             </CardContent>
-            <IntegrationCardFooter connect={connect} isConnecting={isConnecting} />
+            {!showConnectionOptions && (
+                <IntegrationCardFooter 
+                    connect={handleConnectClick} 
+                    isConnecting={isConnecting} 
+                    buttonText="Connect Another Slack"
+                />
+            )}
         </Card>
     )
 }
@@ -39,7 +83,7 @@ function SlackCardContent({
     channels, 
     isLoading 
 }: { 
-    integrations: Array<{ id: string; teamId?: string; teamName?: string }>;
+    integrations: Array<{ id: string; teamId?: string; teamName?: string; isBotUser?: boolean }>;
     channels: SlackChannel[];
     isLoading: boolean;
 }) {
@@ -71,7 +115,7 @@ function SlackCardContent({
                 <IntegrationItem
                     key={integration.id}
                     icon={<MessageSquare className="w-4 h-4" />}
-                    title={integration.teamName || 'Unknown Workspace'}
+                    title={`${integration.teamName || 'Unknown Workspace'}${integration.isBotUser === false ? ' - User' : ' - Bot'}`}
                     description={
                         <span className="flex items-center gap-2">
                             <Hash className="size-3" />

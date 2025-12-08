@@ -1,5 +1,5 @@
-import { useEffect, useMemo} from "react";
-import { SlackChannel} from "../shared/types";
+import { useEffect, useMemo } from "react";
+import { SlackChannel } from "../shared/types";
 import { RefreshButton } from "./RefreshButton";
 import { useSlackChannels } from "@/hooks/api/useSlackChannels";
 import { capitalize } from "../lib/utils";
@@ -8,6 +8,7 @@ interface SlackChannelSelectorProps {
     integrationId: string;
     selectedChannelId?: string;
     listenToUserDms?: boolean;
+    showListenToDMsOption?: boolean; // Only show DM option for user tokens
     onSelect: (channelId: string, channelName?: string) => void;
     onListenToUserDmsChange?: (listenToUserDms: boolean) => void;
 }
@@ -16,6 +17,7 @@ export function SlackChannelSelector({
     integrationId,
     selectedChannelId,
     listenToUserDms = false,
+    showListenToDMsOption = false,
     onSelect,
     onListenToUserDmsChange
 }: SlackChannelSelectorProps) {
@@ -77,6 +79,13 @@ export function SlackChannelSelector({
         
         return formattedNames.join(', ') + suffix;
     };
+
+    // Clear listenToUserDms if it's enabled but the option is not available (switched to bot token)
+    useEffect(() => {
+        if (!showListenToDMsOption && listenToUserDms && onListenToUserDmsChange) {
+            onListenToUserDmsChange(false);
+        }
+    }, [showListenToDMsOption, listenToUserDms, onListenToUserDmsChange]);
 
     useEffect(() => {
         if (!integrationId || isLoading || channels.length === 0 || listenToUserDms) {
@@ -224,18 +233,20 @@ export function SlackChannelSelector({
             )}
             </>}
 
-            {/* Listen to user DMs checkbox */}
-            <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                    type="checkbox"
-                    checked={listenToUserDms}
-                    onChange={(e) => handleListenToUserDmsChange(e.target.checked)}
-                    className="w-4 h-4 rounded border-[theme(border)] text-[theme(--color-accent)] focus:ring-2 focus:ring-[theme(--color-accent)] cursor-pointer"
-                />
-                <span className="text-sm text-[theme(text-primary)]">
-                    Monitor all private direct messages
-                </span>
-            </label>
+            {/* Listen to user DMs checkbox - only show for user tokens */}
+            {showListenToDMsOption && (
+                <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                        type="checkbox"
+                        checked={listenToUserDms}
+                        onChange={(e) => handleListenToUserDmsChange(e.target.checked)}
+                        className="w-4 h-4 rounded border-[theme(border)] text-[theme(--color-accent)] focus:ring-2 focus:ring-[theme(--color-accent)] cursor-pointer"
+                    />
+                    <span className="text-sm text-[theme(text-primary)]">
+                        Monitor all private direct messages
+                    </span>
+                </label>
+            )}
         </div>
     );
 }

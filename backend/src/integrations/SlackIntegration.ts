@@ -34,6 +34,7 @@ export class SlackIntegrationManager implements Integration<SlackIntegration, Sl
             id: usi.id,
             teamId: usi.slack_integration.team_id,
             teamName: usi.slack_integration.team_name,
+            isBotUser: usi.is_bot_user,
         }));
     }
 
@@ -47,6 +48,7 @@ export class SlackIntegrationManager implements Integration<SlackIntegration, Sl
             id: usi.id,
             teamId: usi.slack_integration.team_id,
             teamName: usi.slack_integration.team_name,
+            isBotUser: usi.is_bot_user,
         }));
     }
 
@@ -118,11 +120,11 @@ export class SlackIntegrationManager implements Integration<SlackIntegration, Sl
         const client_id = slackConfig.clientId;
         const redirect_uri = slackConfig.oauthCallbackUrl;
         const isBotUser = options.isBotUser;
-        const scope = "channels:history,channels:manage,groups:history,groups:write,im:history,im:write,mpim:history,mpim:write";
+        const scope = "channels:history,channels:manage,groups:history,groups:write,im:history,im:write,mpim:history,mpim:write,channels:read,groups:read,mpim:read,im:read";
         const user_scope = isBotUser ? "" : "channels:history,channels:read,groups:history,groups:read,im:history,im:read,mpim:history,mpim:read,users:read,channels:write,groups:write,mpim:write,im:write";
-        // create JWT and attach to url as state
+        // create JWT and attach to url as state, including isBotUser
         const jwtToken = jwt.sign(
-            { userId: userId },
+            { userId: userId, isBotUser: isBotUser },
             jwtConfig.secret,
             { expiresIn: "7d" }
         );
@@ -165,6 +167,17 @@ export class SlackIntegrationManager implements Integration<SlackIntegration, Sl
             res.redirect(`${frontendUrl}/oauth/error`);
             return;
         }
+
+        // Decode the JWT to get isBotUser from the state
+        let decoded: { userId: string; isBotUser?: boolean };
+        try {
+            decoded = jwt.verify(state, jwtConfig.secret) as { userId: string; isBotUser?: boolean };
+        } catch (error) {
+            console.error("Error decoding JWT state:", error);
+            res.redirect(`${frontendUrl}/oauth/error`);
+            return;
+        }
+        const isBotUser = decoded.isBotUser ?? true; // Default to true for backward compatibility
 
         const client_id = slackConfig.clientId;
         const client_secret = slackConfig.clientSecret;
@@ -238,23 +251,45 @@ export class SlackIntegrationManager implements Integration<SlackIntegration, Sl
                     throw new Error('Failed to open chat');
                 }
 
-                await tx.user_slack_integrations.upsert({
-                    where: {
-                        user_id_slack_team_id: {
-                            user_id: user.id,
-                            slack_team_id: slackIntegration.team_id,
-                        }
-                    },
-                    update: {
-                        authed_user_id: authed_user.id,
-                        authed_user_access_token: authed_user.access_token,
-                    },
-                    create: {
+                const tokenType = authed_user?.token_type || 'user';
+
+                const isUserType = tokenType === 'user';
+                const updatePayload = isUserType && authed_user.access_token ? {
+                    authed_user_id: authed_user.id,
+                    authed_user_access_token: authed_user.access_token,
+                    is_bot_user: !isUserType, // false for user token, true for bot token
+                } : {
+                    authed_user_id: authed_user.id,
+                    is_bot_user: isBotUser, // Use the isBotUser from JWT state
+                } 
+
+                const createData = isUserType && authed_user.access_token
+                    ? {
                         user_id: user.id,
                         slack_team_id: slackIntegration.team_id,
                         authed_user_id: authed_user.id,
                         authed_user_access_token: authed_user.access_token,
+                        is_bot_user: false, // User token
                     }
+                    : {
+                        user_id: user.id,
+                        slack_team_id: slackIntegration.team_id,
+                        authed_user_id: authed_user.id,
+                        is_bot_user: isBotUser, // Use the isBotUser from JWT state
+                    };
+
+                await tx.user_slack_integrations.upsert({
+                    where: {
+                        user_id_slack_team_id_is_bot_user: {
+                            user_id: user.id,
+                            slack_team_id: slackIntegration.team_id,
+                            is_bot_user: isBotUser,
+                        }
+                    },
+                    update: {
+                        ...updatePayload,
+                    },
+                    create: createData,
                 });
             });
 
@@ -551,20 +586,23 @@ async function handleSlackMessage(event: SlackMessageEvent, teamId: string, auth
                 slack_team_id: teamId
             },
             include: {
-                user: true
+                user: true,
+                slack_integration: true
             }
         });
 
         const channelType = messageEvent.channel_type;
         const isPublicChannel = channelType === SlackChannelType.CHANNEL;
-        const isPrivateChannel = channelType === SlackChannelType.GROUP;
-        const isDM = channelType === SlackChannelType.IM || channelType === SlackChannelType.MPIM;
 
+        const getToken = (integration: UserSlackIntegrationWithUser) => {
+            return integration.authed_user_access_token || integration.slack_integration.access_token;
+        }
 
         const isInChannel = async (integration: UserSlackIntegrationWithUser) => {
             try {
                 // Use bot token to get channel members
-                const botClient = new WebClient(integration.authed_user_access_token, {
+                const token = getToken(integration);
+                const botClient = new WebClient(token, {
                     logLevel: LogLevel.INFO
                 });
 
@@ -609,7 +647,7 @@ async function handleSlackMessage(event: SlackMessageEvent, teamId: string, auth
             return;
         }
 
-        const authedUserAccessToken = filteredWorkspaceUserIntegrations[0].authed_user_access_token;
+        const authedUserAccessToken = getToken(filteredWorkspaceUserIntegrations[0]);
         if (!authedUserAccessToken) {
             console.log(chalk.yellow('No authed user access token found for user'));
             return;
@@ -993,7 +1031,7 @@ interface SlackOAuthResponse {
     };
     authed_user: {
         id: string;
-        access_token: string;
-        token_type: string;
+        access_token?: string;
+        token_type?: string;
     };
 }

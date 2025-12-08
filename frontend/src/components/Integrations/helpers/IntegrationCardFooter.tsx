@@ -4,9 +4,10 @@ import { Button } from "../../ui/button";
 interface IntegrationCardFooterProps {
     connect?: () => void;
     isConnecting?: boolean;
+    buttonText?: string;
 }
 
-export function IntegrationCardFooter({ connect, isConnecting = false }: IntegrationCardFooterProps) {
+export function IntegrationCardFooter({ connect, isConnecting = false, buttonText = "Manage Connection" }: IntegrationCardFooterProps) {
     return (
         <CardFooter>
             <Button 
@@ -14,7 +15,7 @@ export function IntegrationCardFooter({ connect, isConnecting = false }: Integra
                 disabled={isConnecting || !connect}
                 onClick={connect || undefined}
             >
-                Manage Connection
+                {buttonText}
             </Button>
         </CardFooter>
     );

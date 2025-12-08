@@ -97,7 +97,7 @@ export const INTEGRATION_METADATA: IntegrationMetadataMap = {
     [IntegrationType.TERSE]: TerseIntegrationMetadata,
 } as const satisfies IntegrationMetadataMap;
 
-// MARK: Integration Details
+
 export interface IntegrationInstance {
     id: string;
  }
@@ -128,6 +128,7 @@ export interface SlackIntegration extends IntegrationInstance {
     id: string;
     teamId?: string;
     teamName?: string;
+    isBotUser?: boolean;
 };
 
 export interface GmailIntegration extends IntegrationInstance {

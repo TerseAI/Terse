@@ -3,7 +3,7 @@ import { db } from "../prismaClient";
 import { SlackChannelsResponse, SlackChannel } from "../shared/types";
 import { WebClient, LogLevel } from "@slack/web-api";
 import chalk from "chalk";
-import { User } from "../types/prisma";
+import { User, UserSlackIntegrationWithUser } from "../types/prisma";
 import { SlackIntegrationManager, isValidSlackSig, SlackMessageEvent } from '../integrations/SlackIntegration';
 
 // MARK: - Route Handlers
@@ -69,6 +69,11 @@ export async function getCurrentSlackIntegration(req: Request, res: Response) {
 export async function slackOAuthCallback(req: Request, res: Response) {
     const integration = new SlackIntegrationManager();
     await integration.processInstallationCallback(req, res);
+}
+
+
+const getToken = (integration: UserSlackIntegrationWithUser) => {
+    return integration.authed_user_access_token || integration.slack_integration.access_token;
 }
 
 /**
@@ -148,6 +153,7 @@ export const getSlackChannels = async (req: Request, res: Response) => {
       },
       include: {
         slack_integration: true,
+        user: true,
       },
     });
 
@@ -157,10 +163,12 @@ export const getSlackChannels = async (req: Request, res: Response) => {
       return res.status(404).json({ error: "Slack integration not found" });
     }
 
-    const slackIntegration = userSlackIntegration.slack_integration;
+    const token = getToken(userSlackIntegration);
+    const isBotUser = userSlackIntegration.is_bot_user;
+
 
     // Fetch channels from Slack API
-    const client = new WebClient(userSlackIntegration.authed_user_access_token, {
+    const client = new WebClient(token, {
       logLevel: LogLevel.ERROR,
     });
 
@@ -183,8 +191,9 @@ export const getSlackChannels = async (req: Request, res: Response) => {
     const channels: SlackChannel[] = [];
 
     if (publicChannels.ok && publicChannels.channels) {
+      console.log(publicChannels.channels);
       for (const channel of publicChannels.channels) {
-        if (channel.id && channel.name) {
+        if (channel.id && channel.name && (!isBotUser || channel.is_member)) {
           channels.push({
             id: channel.id,
             name: channel.name,

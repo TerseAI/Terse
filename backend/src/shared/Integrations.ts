@@ -128,6 +128,7 @@ export interface SlackIntegration extends IntegrationInstance {
     id: string;
     teamId?: string;
     teamName?: string;
+    isBotUser?: boolean;
 };
 
 export interface GmailIntegration extends IntegrationInstance {
