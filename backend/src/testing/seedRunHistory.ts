@@ -80,7 +80,6 @@ export async function seedRunHistory(channelId: string): Promise<void> {
           target: a.target,
           details: a.details,
           url: a.url || null,
-          type: a.type,
         },
       });
     }
