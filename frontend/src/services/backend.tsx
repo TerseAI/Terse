@@ -18,6 +18,7 @@ import {
     SlackChannelsResponse,
     StatsResponse, 
 } from "../shared/types";
+import { GenerateSurveyQuestionsRequest, GenerateSurveyQuestionsResponse, GenerateSurveyPromptRequest, GenerateSurveyPromptResponse } from "../shared/PromptBuilderTypes";
 import { 
     IntegrationType,
     IntegrationWithStatus,
@@ -270,12 +271,12 @@ interface BackendService {
     /**
      * Generates clarifying questions for prompt builder
      */
-    generatePromptBuilderQuestions(description: string, existingPrompt?: string, inputConfigs?: Array<{ type: string; details?: any }>, outputConfig?: { type: string; details?: any }): Promise<{ questions: Array<{ question: string; type: 'single' | 'multiple'; allowWriteIn?: boolean; options: { a: string; b: string; c: string; d: string; e: string } }> }>;
+    generatePromptBuilderQuestions(request: GenerateSurveyQuestionsRequest): Promise<GenerateSurveyQuestionsResponse>;
 
     /**
      * Generates a prompt based on description and answers
      */
-    generatePromptBuilderPrompt(description: string, answers: Record<string, string | string[]>, writeInAnswers?: Record<string, string>, existingPrompt?: string, inputConfigs?: Array<{ type: string; details?: any }>, outputConfig?: { type: string; details?: any }): Promise<{ prompt: string }>;
+    generatePromptBuilderPrompt(request: GenerateSurveyPromptRequest): Promise<GenerateSurveyPromptResponse>;
 }
 
 export const BackendProvider: BackendService = {
@@ -750,10 +751,10 @@ export const BackendProvider: BackendService = {
             });
     },
 
-    generatePromptBuilderQuestions: (description, existingPrompt, inputConfigs, outputConfig) => {
-        return axios.post<{ questions: Array<{ question: string; type: 'single' | 'multiple'; allowWriteIn?: boolean; options: { a: string; b: string; c: string; d: string; e: string } }> }>(
+    generatePromptBuilderQuestions: (request: GenerateSurveyQuestionsRequest) => {
+        return axios.post<GenerateSurveyQuestionsResponse>(
             `${backendBaseUrl}/prompt-builder/generate-questions`,
-            { description, existingPrompt, inputConfigs, outputConfig },
+            request,
             { withCredentials: true }
         )
             .then(response => response.data)
@@ -763,10 +764,10 @@ export const BackendProvider: BackendService = {
             });
     },
 
-    generatePromptBuilderPrompt: (description, answers, writeInAnswers, existingPrompt, inputConfigs, outputConfig) => {
-        return axios.post<{ prompt: string }>(
+    generatePromptBuilderPrompt: (request: GenerateSurveyPromptRequest) => {
+        return axios.post<GenerateSurveyPromptResponse>(
             `${backendBaseUrl}/prompt-builder/generate-prompt`,
-            { description, answers, writeInAnswers, existingPrompt, inputConfigs, outputConfig },
+            request,
             { withCredentials: true }
         )
             .then(response => response.data)

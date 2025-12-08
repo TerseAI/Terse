@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import EditableTextField from '../../../components/ui/EditableTextField';
 import { ChannelUpdate, TransientChannelInput, TransientChannelOutput } from "@/shared/types";
@@ -16,15 +16,13 @@ import { ConfigInstance, ConfigType } from "../../../shared/Configs";
 import { v4 as uuidv4 } from 'uuid';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../../../components/ui/dialog";
 import { InputConfigSelectorProps, IntegrationSelector } from "../../../components/IntegrationSelector";
-import { AlertTriangleIcon, FileText, PlusIcon, Sparkles, XIcon, Copy, RotateCcw, ChevronLeft, ChevronRight } from "lucide-react";
+import { AlertTriangleIcon, FileText, PlusIcon, Sparkles, XIcon } from "lucide-react";
 import { cn } from "../../../lib/utils";
 import { Card, CardContent } from "../../../components/ui/card";
 import { AddOutputModal } from "../components/AddOutputModal";
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "../../../components/ui/empty";
 import { Badge } from "../../../components/ui/badge";
-import { BackendProvider } from "../../../services/backend";
-import { Spinner } from "../../../components/ui/spinner";
-import { Label } from "../../../components/ui/label";
+import { PromptBuilderModal } from "../../../components/PromptBuilder/PromptBuilderModal";
 
 export type ChannelSetupTabProps = {
     channelId: string | null;
@@ -164,13 +162,6 @@ export default function ChannelSetupTab({
     const { totalCount } = useChannelCount();
     const defaultName = getDefaultChannelName(totalCount);
     const [showPromptBuilder, setShowPromptBuilder] = useState(false);
-    const isEmpty = !prompt?.text || prompt.text.trim() === '';
-    const [showOverlay, setShowOverlay] = useState(isEmpty);
-
-    // Sync overlay state when prompt changes externally
-    useEffect(() => {
-        setShowOverlay(isEmpty);
-    }, [isEmpty]);
 
     const channelInputs = inputs.map(toChannelInput).filter((i): i is ChannelInput => i !== null);
     const channelOutput = toChannelOutput(output)
@@ -203,53 +194,31 @@ export default function ChannelSetupTab({
                 </div>
 
                 <div className="min-w-md max-w-md flex flex-col h-full">
-                    <div className="flex flex-row gap-2 items-center mb-2">
-                        <h2 className="text-lg">Instructions</h2>
-                        {(!prompt?.text || prompt.text.trim() === '') && (
-                            <AlertTriangleIcon className="size-4 text-yellow-500" />
-                        )}
+                    <div className="flex flex-row gap-2 items-center justify-between mb-2">
+                        <div className="flex flex-row gap-2 items-center">
+                            <h2 className="text-lg">Instructions</h2>
+                            {(!prompt?.text || prompt.text.trim() === '') && (
+                                <AlertTriangleIcon className="size-4 text-yellow-500" />
+                            )}
+                        </div>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setShowPromptBuilder(true)}
+                        >
+                            <Sparkles className="h-4 w-4 mr-2" />
+                            Open Prompt Builder
+                        </Button>
                     </div>
                     <div className="relative flex-1">
                         <Textarea 
                             value={prompt?.text || ''} 
                             onChange={(e) => {
                                 setPrompt({ ...prompt, text: e.target.value });
-                                if (e.target.value.trim() !== '') {
-                                    setShowOverlay(false);
-                                } else {
-                                    setShowOverlay(true);
-                                }
-                            }}
-                            onFocus={() => {
-                                if (prompt?.text && prompt.text.trim() !== '') {
-                                    setShowOverlay(false);
-                                }
                             }}
                             className="flex-1 h-full" 
                             placeholder={instructionsPlaceholder} 
                         />
-                        {(!prompt?.text || prompt.text.trim() === '') && showOverlay && (
-                            <div 
-                                className="absolute inset-0 bg-background/30 backdrop-blur-[1px] flex items-center justify-center rounded-md border border-border/50"
-                                onClick={(e) => {
-                                    // Don't close overlay if clicking the button
-                                    if ((e.target as HTMLElement).closest('button')) {
-                                        return;
-                                    }
-                                    setShowOverlay(false);
-                                }}
-                            >
-                                <Button
-                                    variant="default"
-                                    size="lg"
-                                    onClick={() => setShowPromptBuilder(true)}
-                                    className="shadow-lg"
-                                >
-                                    <Sparkles className="h-4 w-4 mr-2" />
-                                    Open Prompt Builder
-                                </Button>
-                            </div>
-                        )}
                     </div>
                     <PromptBuilderModal
                         isOpen={showPromptBuilder}
@@ -454,414 +423,4 @@ function OutputLayout({ output, setOutput }: { output: TransientChannelOutput | 
             />
         </>
     )
-}
-
-type Question = {
-    question: string;
-    type: 'single' | 'multiple';
-    allowWriteIn?: boolean;
-    options: {
-        a: string;
-        b: string;
-        c: string;
-        d: string;
-        e: string;
-    };
-};
-
-function PromptBuilderModal({ 
-    isOpen, 
-    onClose,
-    inputs,
-    output,
-    existingPrompt,
-    onPromptGenerated
-}: { 
-    isOpen: boolean; 
-    onClose: () => void;
-    inputs: ChannelInput[];
-    output: ChannelOutput | undefined;
-    existingPrompt?: string;
-    onPromptGenerated?: (prompt: string) => void;
-}) {
-    const [step, setStep] = useState<1 | 2 | 3>(1);
-    const [description, setDescription] = useState('');
-    const [questions, setQuestions] = useState<Question[]>([]);
-    const [answers, setAnswers] = useState<Record<number, string | string[]>>({});
-    const [writeInAnswers, setWriteInAnswers] = useState<Record<number, string>>({});
-    const [generatedPrompt, setGeneratedPrompt] = useState('');
-    const [isLoadingQuestions, setIsLoadingQuestions] = useState(false);
-    const [isLoadingPrompt, setIsLoadingPrompt] = useState(false);
-    const [error, setError] = useState<string | null>(null);
-    const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
-
-    const handleStep1Continue = async () => {
-        if (!description.trim()) return;
-        
-        setIsLoadingQuestions(true);
-        setError(null);
-        
-        try {
-            // Prepare input/output configs for context
-            const inputConfigs = inputs.map(input => ({
-                type: input.config.configType,
-                details: input.config.formatForAgent ? input.config.formatForAgent() : undefined
-            }));
-            
-            const outputConfig = output ? {
-                type: output.config.configType,
-                details: output.config.formatForAgent ? output.config.formatForAgent() : undefined
-            } : undefined;
-
-            const response = await BackendProvider.generatePromptBuilderQuestions(
-                description,
-                existingPrompt,
-                inputConfigs,
-                outputConfig
-            );
-            
-            setQuestions(response.questions);
-            setAnswers({});
-            setCurrentQuestionIndex(0);
-            setStep(2);
-        } catch (err: any) {
-            setError(err.message || 'Failed to generate questions. Please try again.');
-        } finally {
-            setIsLoadingQuestions(false);
-        }
-    };
-
-    const handleStep2Continue = async () => {
-        setIsLoadingPrompt(true);
-        setError(null);
-        
-        try {
-            // Prepare input/output configs for context
-            const inputConfigs = inputs.map(input => ({
-                type: input.config.configType,
-                details: input.config.formatForAgent ? input.config.formatForAgent() : undefined
-            }));
-            
-            const outputConfig = output ? {
-                type: output.config.configType,
-                details: output.config.formatForAgent ? output.config.formatForAgent() : undefined
-            } : undefined;
-
-            const response = await BackendProvider.generatePromptBuilderPrompt(
-                description,
-                answers,
-                writeInAnswers,
-                existingPrompt,
-                inputConfigs,
-                outputConfig
-            );
-            
-            setGeneratedPrompt(response.prompt);
-            setStep(3);
-        } catch (err: any) {
-            setError(err.message || 'Failed to generate prompt. Please try again.');
-        } finally {
-            setIsLoadingPrompt(false);
-        }
-    };
-
-    const handleRestart = () => {
-        setStep(1);
-        setDescription('');
-        setQuestions([]);
-        setAnswers({});
-        setWriteInAnswers({});
-        setGeneratedPrompt('');
-        setError(null);
-        setCurrentQuestionIndex(0);
-    };
-
-    const handleCopy = async () => {
-        try {
-            await navigator.clipboard.writeText(generatedPrompt);
-            toast.success('Prompt copied to clipboard!');
-        } catch (err) {
-            toast.error('Failed to copy prompt');
-        }
-    };
-
-    const handleAnswerChange = (questionIndex: number, answer: string, questionType: 'single' | 'multiple') => {
-        if (questionType === 'single') {
-            setAnswers(prev => ({ ...prev, [questionIndex]: answer }));
-        } else {
-            // Multiple choice - toggle the answer
-            setAnswers(prev => {
-                const current = prev[questionIndex];
-                const currentArray = Array.isArray(current) ? current : (current ? [current] : []);
-                
-                if (answer === 'e') {
-                    // If selecting 'e', clear all other selections
-                    return { ...prev, [questionIndex]: ['e'] };
-                }
-                
-                // Remove 'e' if it was selected and we're selecting something else
-                let newArray = currentArray.filter(a => a !== 'e');
-                
-                if (newArray.includes(answer)) {
-                    // Deselect if already selected
-                    newArray = newArray.filter(a => a !== answer);
-                } else {
-                    // Select if not already selected
-                    newArray.push(answer);
-                }
-                
-                // If nothing selected, return empty array
-                return { ...prev, [questionIndex]: newArray.length > 0 ? newArray : [] };
-            });
-        }
-    };
-
-    // Reset state when modal closes
-    useEffect(() => {
-        if (!isOpen) {
-            handleRestart();
-        }
-    }, [isOpen]);
-
-    return (
-        <Dialog open={isOpen} onOpenChange={onClose}>
-            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-                <DialogHeader>
-                    <DialogTitle className="flex items-center gap-2">
-                        <Sparkles className="h-5 w-5" />
-                        Prompt Builder
-                        <span className="text-sm font-normal text-muted-foreground ml-auto">
-                            Step {step} of 3
-                        </span>
-                    </DialogTitle>
-                </DialogHeader>
-
-                {error && (
-                    <div className="bg-destructive/10 text-destructive p-3 rounded-md text-sm">
-                        {error}
-                    </div>
-                )}
-
-                <div className="py-4">
-                    {/* Step 1: High-Level Description */}
-                    {step === 1 && (
-                        <div className="space-y-4">
-                            <div>
-                                <Label className="text-sm font-medium mb-2 block">
-                                    Describe at a high level what you are looking for
-                                </Label>
-                                <div className="flex gap-2">
-                                    <Textarea
-                                        value={description}
-                                        onChange={(e) => setDescription(e.target.value)}
-                                        placeholder="e.g., Monitor all new GitHub issues and create Linear tickets for bugs, adding appropriate labels and priority"
-                                        className="flex-1 min-h-[100px]"
-                                    />
-                                    <Button
-                                        onClick={handleStep1Continue}
-                                        disabled={!description.trim() || isLoadingQuestions}
-                                        className="self-start"
-                                    >
-                                        {isLoadingQuestions ? (
-                                            <>
-                                                <Spinner className="mr-2" />
-                                                Generating...
-                                            </>
-                                        ) : (
-                                            'Continue'
-                                        )}
-                                    </Button>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Step 2: Answer Clarifying Questions */}
-                    {step === 2 && (
-                        <div className="space-y-6">
-                            <div>
-                                <h3 className="text-lg font-semibold mb-4">Answer clarifying questions</h3>
-                                {questions.length === 0 ? (
-                                    <div className="text-center py-8">
-                                        <Spinner className="mx-auto mb-2" />
-                                        <p className="text-muted-foreground">Generating questions...</p>
-                                    </div>
-                                ) : (
-                                    <div className="mt-2">
-                                        {/* Question Progress Indicator */}
-                                        <div className="flex items-center justify-between mb-4">
-                                            <span className="text-sm text-muted-foreground">
-                                                Question {currentQuestionIndex + 1} of {questions.length}
-                                            </span>
-                                            <div className="flex gap-1">
-                                                {questions.map((_, idx) => (
-                                                    <div
-                                                        key={idx}
-                                                        className={cn(
-                                                            "h-2 w-2 rounded-full transition-colors",
-                                                            idx === currentQuestionIndex
-                                                                ? "bg-primary"
-                                                                : "bg-muted"
-                                                        )}
-                                                    />
-                                                ))}
-                                            </div>
-                                        </div>
-
-                                        {/* Carousel Container */}
-                                        <div className="relative">
-                                            {questions.map((q, index) => {
-                                                if (index !== currentQuestionIndex) return null;
-                                                
-                                                const isMultiple = q.type === 'multiple';
-                                                const currentAnswer = answers[index];
-                                                const selectedAnswers = isMultiple 
-                                                    ? (Array.isArray(currentAnswer) ? currentAnswer : [])
-                                                    : (typeof currentAnswer === 'string' ? currentAnswer : null);
-                                                const writeInValue = writeInAnswers[index] || '';
-                                                
-                                                return (
-                                                    <div key={index} className="space-y-3">
-                                                        <Label className="text-sm font-medium">
-                                                            {index + 1}. {q.question}
-                                                            {isMultiple && (
-                                                                <span className="text-xs text-muted-foreground ml-2">(Select all that apply)</span>
-                                                            )}
-                                                        </Label>
-                                                        <div className="space-y-2 pl-4">
-                                                            {(['a', 'b', 'c', 'd', 'e'] as const).map((option) => {
-                                                                const isChecked = isMultiple
-                                                                    ? Array.isArray(selectedAnswers) && selectedAnswers.includes(option)
-                                                                    : selectedAnswers === option;
-                                                                
-                                                                return (
-                                                                    <label
-                                                                        key={option}
-                                                                        className="flex items-center space-x-2 cursor-pointer hover:bg-accent p-2 rounded-md"
-                                                                    >
-                                                                        <input
-                                                                            type={isMultiple ? "checkbox" : "radio"}
-                                                                            name={`question-${index}`}
-                                                                            value={option}
-                                                                            checked={isChecked}
-                                                                            onChange={() => handleAnswerChange(index, option, q.type)}
-                                                                            className="w-4 h-4"
-                                                                        />
-                                                                        <span className="text-sm">
-                                                                            <span className="font-medium">{option.toUpperCase()})</span> {q.options[option]}
-                                                                        </span>
-                                                                    </label>
-                                                                );
-                                                            })}
-                                                        </div>
-                                                        {q.allowWriteIn && (
-                                                            <div className="pl-4 mt-3">
-                                                                <Label className="text-sm font-medium mb-2 block">
-                                                                    Or provide your own answer:
-                                                                </Label>
-                                                                <Textarea
-                                                                    value={writeInValue}
-                                                                    onChange={(e) => {
-                                                                        setWriteInAnswers(prev => ({
-                                                                            ...prev,
-                                                                            [index]: e.target.value
-                                                                        }));
-                                                                    }}
-                                                                    placeholder="Type your custom answer here..."
-                                                                    className="min-h-[80px]"
-                                                                />
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                );
-                                            })}
-
-                                            {/* Navigation Buttons */}
-                                            <div className="flex items-center justify-between mt-6">
-                                                <Button
-                                                    variant="outline"
-                                                    onClick={() => setCurrentQuestionIndex(prev => Math.max(0, prev - 1))}
-                                                    disabled={currentQuestionIndex === 0}
-                                                    className="flex items-center gap-2"
-                                                >
-                                                    <ChevronLeft className="h-4 w-4" />
-                                                    Previous
-                                                </Button>
-                                                <Button
-                                                    variant="outline"
-                                                    onClick={() => setCurrentQuestionIndex(prev => Math.min(questions.length - 1, prev + 1))}
-                                                    disabled={currentQuestionIndex === questions.length - 1}
-                                                    className="flex items-center gap-2"
-                                                >
-                                                    Next
-                                                    <ChevronRight className="h-4 w-4" />
-                                                </Button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-                            <div className="flex justify-end gap-2">
-                                <Button variant="outline" onClick={() => setStep(1)}>
-                                    Back
-                                </Button>
-                                <Button
-                                    onClick={handleStep2Continue}
-                                    disabled={isLoadingPrompt || questions.length === 0}
-                                >
-                                    {isLoadingPrompt ? (
-                                        <>
-                                            <Spinner className="mr-2" />
-                                            Generating...
-                                        </>
-                                    ) : (
-                                        'Continue'
-                                    )}
-                                </Button>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Step 3: Review Your Prompt */}
-                    {step === 3 && (
-                        <div className="space-y-4">
-                            <div>
-                                <h3 className="text-lg font-semibold mb-4">Review your prompt</h3>
-                                <div className="space-y-2">
-                                    <Textarea
-                                        value={generatedPrompt}
-                                        readOnly
-                                        className="min-h-[300px] font-mono text-sm"
-                                    />
-                                    <div className="flex justify-end">
-                                        <Button variant="outline" onClick={handleCopy} size="sm">
-                                            <Copy className="h-4 w-4 mr-2" />
-                                            Copy
-                                        </Button>
-                                    </div>
-                                </div>
-                                <p className="text-sm text-muted-foreground mt-2">
-                                    Click "Done" to use this prompt in the Instructions field.
-                                </p>
-                            </div>
-                            <div className="flex justify-end gap-2">
-                                <Button variant="outline" onClick={handleRestart}>
-                                    <RotateCcw className="h-4 w-4 mr-2" />
-                                    Restart
-                                </Button>
-                                <Button onClick={() => {
-                                    if (generatedPrompt && onPromptGenerated) {
-                                        onPromptGenerated(generatedPrompt);
-                                    }
-                                    onClose();
-                                }}>
-                                    Done
-                                </Button>
-                            </div>
-                        </div>
-                    )}
-                </div>
-            </DialogContent>
-        </Dialog>
-    );
 }
