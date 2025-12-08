@@ -53,9 +53,9 @@ export async function seedRunHistory(channelId: string): Promise<void> {
     const decisionAction = filtered ? 'skipped' : (template.decision.action as any);
     const decisionReason = filtered ? 'Filtered by rule' : template.decision.reason;
 
-    const rec = await (prisma as any).run_history_records.create({
+    const rec = await prisma.run_history_records.create({
       data: {
-        channel_id: channelId,
+        automation_id: channelId,
         timestamp,
         event: template.trigger.event,
         trigger_integration: template.trigger.integration as any,
@@ -72,7 +72,7 @@ export async function seedRunHistory(channelId: string): Promise<void> {
 
     const actions = filtered ? [] : template.actions;
     for (const a of actions) {
-      await (prisma as any).run_history_actions.create({
+      await prisma.run_history_actions.create({
         data: {
           run_history_record_id: rec.id,
           action: a.action,
@@ -80,6 +80,7 @@ export async function seedRunHistory(channelId: string): Promise<void> {
           target: a.target,
           details: a.details,
           url: a.url || null,
+          type: a.type,
         },
       });
     }
@@ -88,8 +89,8 @@ export async function seedRunHistory(channelId: string): Promise<void> {
 
 export async function clearRunHistory(channelId: string): Promise<void> {
   // Find all run history record ids for this channel
-  const records: Array<{ id: string }> = await (prisma as any).run_history_records.findMany({
-    where: { channel_id: channelId },
+  const records: Array<{ id: string }> = await prisma.run_history_records.findMany({
+    where: { automation_id: channelId },
     select: { id: true },
   });
 
@@ -98,12 +99,12 @@ export async function clearRunHistory(channelId: string): Promise<void> {
   const recordIds = records.map(r => r.id);
 
   // Delete actions first (FK)
-  await (prisma as any).run_history_actions.deleteMany({
+  await prisma.run_history_actions.deleteMany({
     where: { run_history_record_id: { in: recordIds } },
   });
 
   // Then delete the records
-  await (prisma as any).run_history_records.deleteMany({
+  await prisma.run_history_records.deleteMany({
     where: { id: { in: recordIds } },
   });
 }
