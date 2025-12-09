@@ -1,11 +1,11 @@
-import { WebClient, LogLevel } from "@slack/web-api";
+import { WebClient, LogLevel, KnownBlock } from "@slack/web-api";
 import { db } from "../prismaClient";
 import { RunHistoryAction } from "../shared/RunHistoryTypes";
 import { InitializeSlackWebClient } from "../integrations/SlackIntegration";
 
 export interface SlackMessage {
     text: string;
-    blocks?: any[];
+    blocks?: KnownBlock[];
 }
 
 export interface NotificationContext {
@@ -79,7 +79,7 @@ export function formatNotificationMessage(runAction: RunHistoryAction, context: 
 
     const text = `${context.channelName} - ${actionEmoji} ${runAction.action} - ${runAction.target}`;
     
-    const blocks: any[] = [
+    const blocks: KnownBlock[] = [
         {
             type: 'section',
             text: {
