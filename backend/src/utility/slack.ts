@@ -1,7 +1,7 @@
 import { WebClient, LogLevel, KnownBlock } from "@slack/web-api";
 import { db } from "../prismaClient";
 import { RunHistoryAction } from "../shared/RunHistoryTypes";
-import { InitializeSlackWebClient } from "../integrations/SlackIntegration";
+import { initializeSlackWebClient } from "../integrations/SlackIntegration";
 
 export interface SlackMessage {
     text: string;
@@ -31,7 +31,7 @@ export async function sendSlackMessage(
         return false;
     }
 
-    const client: WebClient = InitializeSlackWebClient(userSlackIntegration);
+    const client: WebClient = initializeSlackWebClient(userSlackIntegration);
     console.log(`[sendSlackMessage] Message: ${JSON.stringify(message)}`);
 
     try {

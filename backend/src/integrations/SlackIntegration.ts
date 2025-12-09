@@ -593,7 +593,7 @@ async function handleSlackMessage(event: SlackMessageEvent, teamId: string, auth
 
         const isInChannel = async (integration: UserSlackIntegrationWithUser) => {
             try {
-                const botClient = InitializeSlackWebClient(integration);
+                const botClient = initializeSlackWebClient(integration);
 
                 let membersRes: ConversationsMembersResponse | undefined;
                 try {
@@ -642,7 +642,7 @@ async function handleSlackMessage(event: SlackMessageEvent, teamId: string, auth
             return;
         }
 
-        const client: WebClient = InitializeSlackWebClient(filteredWorkspaceUserIntegrations[0]);
+        const client: WebClient = initializeSlackWebClient(filteredWorkspaceUserIntegrations[0]);
 
         console.log(chalk.blue(`📡 Fetching additional Slack data for channel ${messageEvent.channel}, user ${messageEvent.user}, message ${messageEvent.ts}`));
 
@@ -780,14 +780,11 @@ export function isValidSlackSig(req: Request) {
     return isValid;
 }
 
-export const InitializeSlackWebClient = (integration: UserSlackIntegrationWithUser) => {
+export function initializeSlackWebClient(integration: UserSlackIntegrationWithUser): WebClient {
     const token = integration.authed_user_access_token || integration.slack_integration.access_token;
-     // Use bot token to get channel members
-     const botClient = new WebClient(token, {
+     return new WebClient(token, {
          logLevel: LogLevel.INFO
      });
-
-     return botClient;
 }
 
 
