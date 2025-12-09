@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { Spinner } from "@/components/ui/spinner";
 
 const loadingMessages = [
     "Analyzing your requirements...",
