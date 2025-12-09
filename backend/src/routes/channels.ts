@@ -106,7 +106,8 @@ export async function getUserChannels(req: Request, res: Response) {
                 },
                 output: {
                     include: getOutputConfigInclude()
-                }
+                },
+                notification_settings: true
             },
             orderBy: { created_at: 'desc' },
             skip,
@@ -219,7 +220,7 @@ export async function getUserChannel(req: Request, res: Response) {
     const channelId = req.params.id;
 
     try {
-        const channel = await db().automations.findFirst({
+        const channel: ChannelWithRelations | null = await db().automations.findFirst({
             where: {
                 id: channelId,
                 user_id: userId
@@ -600,7 +601,7 @@ export async function deleteChannel(req: Request, res: Response) {
 }
 
 // Helper function to transform ChannelWithRelations to frontend Channel format
-function transformChannelToFrontendFormat(channel: ChannelWithRelations & { notification_settings?: { enabled: boolean; action_types: string[] } | null }): Channel {
+function transformChannelToFrontendFormat(channel: ChannelWithRelations): Channel {
     if (!channel.output) {
         throw new Error(`Channel output not found for channel ${channel.id}`);
     }
