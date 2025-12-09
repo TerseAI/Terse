@@ -71,30 +71,21 @@ export async function getSlackClient(userSlackIntegrationId: string): Promise<We
 
 export function formatNotificationMessage(runAction: RunHistoryAction, context: NotificationContext): SlackMessage {
     const actionEmoji = {
-        create: '✨',
-        update: '📝',
-        delete: '🗑️',
-        read: '👁️',
+        create: '➕',
+        update: '🔄',
+        delete: '➖',
+        read: '🔍',
     }[runAction.type] || '🔔';
 
-    const text = `${actionEmoji} ${runAction.action} - ${context.channelName}`;
+    const text = `${context.channelName} - ${actionEmoji} ${runAction.action} - ${runAction.target}`;
     
     const blocks: any[] = [
         {
             type: 'section',
             text: {
                 type: 'mrkdwn',
-                text: `${actionEmoji} *${runAction.action}*`,
+                text: `*${runAction.action}* - ${actionEmoji} ${runAction.target}`,
             },
-        },
-        {
-            type: 'context',
-            elements: [
-                {
-                    type: 'mrkdwn',
-                    text: `Channel: *${context.channelName}* | Target: ${runAction.target}`,
-                },
-            ],
         },
     ];
 
