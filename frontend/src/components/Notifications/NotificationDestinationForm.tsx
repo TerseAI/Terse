@@ -4,7 +4,7 @@ import { Skeleton } from "../ui/skeleton"
 import DropdownSelect, { StatusOption } from "../ui/DropdownSelect"
 import { useState, useEffect } from "react"
 import { useOAuthConnection } from "../../hooks/useOAuthConnection"
-import { IntegrationType } from "../../shared/Integrations"
+import { IntegrationType, SlackIntegration } from "../../shared/Integrations"
 import { useOAuthSuccessListener } from "../../hooks/useOAuthSuccessListener"
 import { BackendProvider } from "../../services/backend"
 import { CreateNotificationDestinationRequest, NotificationDestinationType, SlackNotificationDestination, NotificationDestination } from "../../shared/Notifications"
@@ -119,7 +119,7 @@ export function NotificationDestinationForm({ existingDestination, onSuccess, on
     }
 
     const options: StatusOption[] = integrations.map((integration) => ({
-        label: integration.teamName || 'Unknown Workspace',
+        label: formatIntegrationLabel(integration),
         value: integration.id,
     }));
 
@@ -149,7 +149,8 @@ export function NotificationDestinationForm({ existingDestination, onSuccess, on
             </div>
             {selectedIntegrationId && (
                 <SelectSlackChannelForm 
-                    integrationId={selectedIntegrationId} 
+                    integrationId={selectedIntegrationId}
+                    isBotUser={selectedSlackIntegration?.isBotUser}
                     initialChannelId={selectedChannelId}
                     initialChannelName={selectedChannelName}
                     onSelectChannel={(channelId, channelName) => {
@@ -177,12 +178,13 @@ export function NotificationDestinationForm({ existingDestination, onSuccess, on
 
 interface SelectSlackChannelFormProps {
     integrationId: string;
+    isBotUser?: boolean;
     initialChannelId?: string;
     initialChannelName?: string;
     onSelectChannel: (channelId: string, channelName: string) => void;
 }
 
-function SelectSlackChannelForm({ integrationId, initialChannelId, initialChannelName, onSelectChannel }: SelectSlackChannelFormProps) {
+function SelectSlackChannelForm({ integrationId, isBotUser, initialChannelId, initialChannelName, onSelectChannel }: SelectSlackChannelFormProps) {
     const [sendAsDirectMessage, setSendAsDirectMessage] = useState(false);
     const [selectedChannelId, setSelectedChannelId] = useState<string | undefined>(initialChannelId);
     const [selectedChannelName, setSelectedChannelName] = useState<string | undefined>(initialChannelName);
@@ -201,6 +203,20 @@ function SelectSlackChannelForm({ integrationId, initialChannelId, initialChanne
         return (
             <div className="flex flex-col gap-2">
                 <Skeleton className="h-10 w-full" />
+            </div>
+        );
+    }
+
+    // Handle case where bot integration has no channels granted
+    if (isBotUser && channels.length === 0) {
+        return (
+            <div className="flex flex-col gap-2 p-3 bg-muted/50 rounded-md border border-border">
+                <p className="text-sm text-muted-foreground">
+                    No channels available. To send notifications, you need to invite the Terse bot to at least one channel.
+                </p>
+                <p className="text-sm text-muted-foreground">
+                    In Slack, go to a channel and type <code className="px-1.5 py-0.5 bg-muted rounded text-foreground">/invite @Terse</code> to add the bot.
+                </p>
             </div>
         );
     }
@@ -297,3 +313,7 @@ function ChannelSelector({ channels, selectedChannelId, onChannelSelect }: { cha
     )
 }
 
+function formatIntegrationLabel(integration: SlackIntegration) {
+    const isBotUser = integration.isBotUser === true;
+    return `${integration.teamName || 'Unknown Workspace'}${isBotUser ? ' - Bot' : ' - User'}`;
+}
