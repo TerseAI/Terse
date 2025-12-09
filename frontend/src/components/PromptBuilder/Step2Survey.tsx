@@ -42,11 +42,12 @@ export function Step2Survey({
 
     const currentQuestion = questions[currentQuestionIndex];
     const isMultiple = currentQuestion.type === 'multiple';
-    const currentAnswer = answers[currentQuestionIndex];
+    const questionKey = String(currentQuestionIndex);
+    const currentAnswer = answers[questionKey];
     const selectedAnswers = isMultiple 
         ? (Array.isArray(currentAnswer) ? currentAnswer : [])
         : (typeof currentAnswer === 'string' ? currentAnswer : null);
-    const writeInValue = writeInAnswers[currentQuestionIndex] || '';
+    const writeInValue = writeInAnswers[questionKey] || '';
 
     return (
         <div className="space-y-6">

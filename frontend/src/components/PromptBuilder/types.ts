@@ -1,5 +1,5 @@
 import { ChannelInput, ChannelOutput } from "@/shared/types";
-import { SurveyQuestion } from "@/shared/PromptBuilderTypes";
+import { SurveyQuestion, SurveyAnswers, SurveyWriteInAnswers } from "@/shared/PromptBuilderTypes";
 
 export interface PromptBuilderModalProps {
     isOpen: boolean;
@@ -19,8 +19,8 @@ export interface Step1DescriptionProps {
 
 export interface Step2SurveyProps {
     questions: SurveyQuestion[];
-    answers: Record<number, string | string[]>;
-    writeInAnswers: Record<number, string>;
+    answers: SurveyAnswers;
+    writeInAnswers: SurveyWriteInAnswers;
     currentQuestionIndex: number;
     setCurrentQuestionIndex: (index: number) => void;
     onAnswerChange: (questionIndex: number, answer: string, questionType: 'single' | 'multiple') => void;

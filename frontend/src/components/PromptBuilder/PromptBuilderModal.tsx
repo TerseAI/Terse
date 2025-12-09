@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Sparkles } from "lucide-react";
 import { BackendProvider } from "@/services/backend";
-import { SurveyQuestion, GenerateSurveyQuestionsRequest, GenerateSurveyPromptRequest, SurveyConfigContext } from "@/shared/PromptBuilderTypes";
+import { SurveyQuestion, GenerateSurveyQuestionsRequest, GenerateSurveyPromptRequest, SurveyConfigContext, SurveyAnswers, SurveyWriteInAnswers } from "@/shared/PromptBuilderTypes";
 import { PromptBuilderModalProps } from "./types";
 import { Step1Description } from "./Step1Description";
 import { Step2Survey } from "./Step2Survey";
@@ -19,8 +19,8 @@ export function PromptBuilderModal({
     const [step, setStep] = useState<1 | 2 | 3>(1);
     const [description, setDescription] = useState('');
     const [questions, setQuestions] = useState<SurveyQuestion[]>([]);
-    const [answers, setAnswers] = useState<Record<number, string | string[]>>({});
-    const [writeInAnswers, setWriteInAnswers] = useState<Record<number, string>>({});
+    const [answers, setAnswers] = useState<SurveyAnswers>({});
+    const [writeInAnswers, setWriteInAnswers] = useState<SurveyWriteInAnswers>({});
     const [generatedPrompt, setGeneratedPrompt] = useState('');
     const [isLoadingQuestions, setIsLoadingQuestions] = useState(false);
     const [isLoadingPrompt, setIsLoadingPrompt] = useState(false);
@@ -108,32 +108,27 @@ export function PromptBuilderModal({
     };
 
     const handleAnswerChange = (questionIndex: number, answer: string, questionType: 'single' | 'multiple') => {
+        const key = String(questionIndex);
         if (questionType === 'single') {
-            setAnswers(prev => ({ ...prev, [questionIndex]: answer }));
+            setAnswers(prev => ({ ...prev, [key]: answer }));
         } else {
-            // Multiple choice - toggle the answer
             setAnswers(prev => {
-                const current = prev[questionIndex];
+                const current = prev[key];
                 const currentArray = Array.isArray(current) ? current : (current ? [current] : []);
                 
                 if (answer === 'e') {
-                    // If selecting 'e', clear all other selections
-                    return { ...prev, [questionIndex]: ['e'] };
+                    return { ...prev, [key]: ['e'] };
                 }
                 
-                // Remove 'e' if it was selected and we're selecting something else
                 let newArray = currentArray.filter(a => a !== 'e');
                 
                 if (newArray.includes(answer)) {
-                    // Deselect if already selected
                     newArray = newArray.filter(a => a !== answer);
                 } else {
-                    // Select if not already selected
                     newArray.push(answer);
                 }
                 
-                // If nothing selected, return empty array
-                return { ...prev, [questionIndex]: newArray.length > 0 ? newArray : [] };
+                return { ...prev, [key]: newArray.length > 0 ? newArray : [] };
             });
         }
     };
@@ -141,7 +136,7 @@ export function PromptBuilderModal({
     const handleWriteInChange = (questionIndex: number, value: string) => {
         setWriteInAnswers(prev => ({
             ...prev,
-            [questionIndex]: value
+            [String(questionIndex)]: value
         }));
     };
 

@@ -128,11 +128,10 @@ Generate clarifying questions to help refine this automation prompt.`;
     // Validate and ensure max 3 questions
     questions = questions.slice(0, 3);
     
-    // Ensure all questions have the required structure
     questions = questions.map(q => ({
       question: q.question || '',
-      type: (q.type === 'multiple' ? 'multiple' : 'single') as SurveyQuestionType, // Default to 'single' if not specified
-      allowWriteIn: q.allowWriteIn === true, // Default to false if not specified
+      type: (q.type === 'multiple' ? 'multiple' : 'single') as SurveyQuestionType,
+      allowWriteIn: q.allowWriteIn === true,
       options: {
         a: q.options?.a || '',
         b: q.options?.b || '',

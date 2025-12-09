@@ -19,6 +19,9 @@ export interface SurveyConfigContext {
   type: ConfigType;
 }
 
+export type SurveyAnswers = Record<string, string | string[]>;
+export type SurveyWriteInAnswers = Record<string, string>;
+
 export interface GenerateSurveyQuestionsRequest {
   description: string;
   existingPrompt?: string;
@@ -32,9 +35,9 @@ export interface GenerateSurveyQuestionsResponse {
 
 export interface GenerateSurveyPromptRequest {
   description: string;
-  questions: SurveyQuestion[]; // The questions that were asked
-  answers: Record<string, string | string[]>; // question index -> answer(s) - string for single choice, string[] for multiple choice
-  writeInAnswers?: Record<string, string>; // question index -> write-in text answer
+  questions: SurveyQuestion[];
+  answers: SurveyAnswers;
+  writeInAnswers?: SurveyWriteInAnswers;
   existingPrompt?: string;
   inputConfigs?: SurveyConfigContext[];
   outputConfig?: SurveyConfigContext;

@@ -1,8 +1,5 @@
-import { SurveyConfigContext, SurveyQuestion } from '../../shared/PromptBuilderTypes';
+import { SurveyConfigContext, SurveyQuestion, GenerateSurveyPromptRequest } from '../../shared/PromptBuilderTypes';
 
-/**
- * Formats the input and output config context into a readable string for prompts
- */
 export function formatConfigContext(
     inputConfigs?: SurveyConfigContext[],
     outputConfig?: SurveyConfigContext
@@ -23,13 +20,10 @@ export function formatConfigContext(
     return context || 'No integrations configured yet.';
 }
 
-/**
- * Formats survey answers into a readable string for prompts
- */
 export function formatSurveyAnswers(
     questions: SurveyQuestion[],
-    answers: Record<string, string | string[]>,
-    writeInAnswers?: Record<string, string>
+    answers: GenerateSurveyPromptRequest['answers'],
+    writeInAnswers?: GenerateSurveyPromptRequest['writeInAnswers']
 ): string {
     // Format answers for the prompt with full question and option context
     const answersText = Object.entries(answers)

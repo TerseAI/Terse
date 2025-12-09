@@ -50,24 +50,24 @@ ${allAnswersText ? `User's answers to clarifying questions:\n${allAnswersText}` 
 Generate a comprehensive prompt based on this information. Remember: keep it under 800 words and be concise.`;
 
     const completion = await openai.chat.completions.create({
-            model: 'gpt-5-mini',
-            messages: [
-                { role: 'system', content: systemPrompt },
-                { role: 'user', content: userPrompt }
-            ],
-            max_completion_tokens: 4000
-        });
+        model: 'gpt-5-mini',
+        messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: userPrompt }
+        ],
+        max_completion_tokens: 4000
+    });
 
-        const prompt = completion.choices?.[0]?.message?.content?.trim();
-        if (!prompt) {
-            console.error('No prompt in response:', {
-                choices: completion.choices,
-                finishReason: completion.choices?.[0]?.finish_reason,
-                message: completion.choices?.[0]?.message,
-                fullResponse: JSON.stringify(completion, null, 2)
-            });
-            throw new Error(`No prompt returned from OpenAI. Finish reason: ${completion.choices?.[0]?.finish_reason || 'unknown'}`);
-        }
+    const prompt = completion.choices?.[0]?.message?.content?.trim();
+    if (!prompt) {
+        console.error('No prompt in response:', {
+            choices: completion.choices,
+            finishReason: completion.choices?.[0]?.finish_reason,
+            message: completion.choices?.[0]?.message,
+            fullResponse: JSON.stringify(completion, null, 2)
+        });
+        throw new Error(`No prompt returned from OpenAI. Finish reason: ${completion.choices?.[0]?.finish_reason || 'unknown'}`);
+    }
 
         return prompt;
     } catch (err: any) {
