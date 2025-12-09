@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Sparkles } from "lucide-react";
 import { BackendProvider } from "@/services/backend";
@@ -124,7 +124,7 @@ export function PromptBuilderModal({
         if (questions.length > 0 && areAllQuestionsAnswered() && !completedSteps.has(2)) {
             setCompletedSteps(prev => new Set([...prev, 2]));
         }
-    }, [questions.length, areAllQuestionsAnswered, completedSteps]);
+    }, [questions.length, completedSteps]);
 
 
     const handleRestart = () => {
