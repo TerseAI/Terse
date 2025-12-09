@@ -9,6 +9,8 @@ import type { RunHistoryStreamingParams, RunHistoryModelEvent, RunHistoryModelSo
 import { storeChatEvent } from './runHistory';
 import { getRealtimeSocket } from '../../realtimeSocket';
 import { randomString } from '../../utility/strings';
+import { settings } from '../../config/settings';
+import { runnerFactory } from '../runner';
 
 export interface EventFilterResult {
     isRelevant: boolean;
@@ -124,11 +126,11 @@ export async function filterEvent<T extends Session>(
                 ]
             }
         ];
-
-        const result = await run(agent, history, {
-            context: session,
-            stream: true,
-        });
+        const runner = runnerFactory({
+            runHistoryId: streamingParams?.runId || '',
+            env: settings.nodeEnv,
+        })
+        const result = await runner.run(agent, history);
 
         if (result.interruptions && result.interruptions.length > 0) {
             throw new Error('Filter agent requested tool approval, which is not supported for event filtering.');

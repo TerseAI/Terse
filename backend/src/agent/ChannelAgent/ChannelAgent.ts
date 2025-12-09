@@ -1,4 +1,4 @@
-import { Agent, AgentInputItem, run, AgentOutputType, Tool, RunResult, RunState, RunToolApprovalItem } from '@openai/agents';
+import { Agent, AgentInputItem, AgentOutputType, Tool, RunResult, RunState, RunToolApprovalItem, Runner, run } from '@openai/agents';
 import { Session } from '../../server';
 import { SystemPromptBuilder, RunContext, SystemPromptBuilderDependencies } from './SystemPromptBuilder';
 import { InputEvent } from '../../integrations/abstract/InputEvent';
@@ -18,6 +18,7 @@ import { processModelEventStream } from './StreamProcessor';
 import { recentHistoryCallback, RunHistoryChatMemorySession } from '../CustomMemorySession';
 import { IntegrationType } from '../../shared/Integrations';
 import { InputImageContent, InputTextContent } from 'openai/resources/conversations/conversations.mjs';
+import { runnerFactory } from '../runner';
 
 
 export class ChannelAgent<T extends Session, TConfig extends ConfigInstance> {
@@ -65,12 +66,20 @@ export class ChannelAgent<T extends Session, TConfig extends ConfigInstance> {
         const userMessage = this.buildUserMessage();
         const userHistory = this.buildUserHistory(userMessage);
 
-
-        const result = await run(this.agent, userHistory, {
-            context: this.getToolContext(),
-            stream: true,
-            session: this.memorySession,
-            sessionInputCallback: recentHistoryCallback, 
+        const runner = runnerFactory({
+            channelId: this.channel.id,
+            runId: this.runContext.runId,
+            userId: this.session.user.id,
+            env: settings.nodeEnv,
+        })
+        const result = await runner.run(
+            this.agent,
+            userHistory,
+            {
+                context: this.getToolContext(),
+                stream: true,
+                session: this.memorySession,
+            sessionInputCallback: recentHistoryCallback
         });
 
         await this.processStream(result, streamingParams);
@@ -124,7 +133,13 @@ export class ChannelAgent<T extends Session, TConfig extends ConfigInstance> {
             state.reject(interruption);
         }
 
-        const result = await run(this.agent, state);
+        const result = await run(this.agent, state, {
+            extra_body: {
+                metadata: {
+                    run_history_id: this.runContext.runId,
+                },
+            },
+        });
         return this.buildResult(result);
     }
 
@@ -188,7 +203,7 @@ export class ChannelAgent<T extends Session, TConfig extends ConfigInstance> {
             name: 'Living Document Automator',
             instructions: fullSystemPrompt,
             model: this.chooseModel(),
-            tools: this.tools
+            tools: this.tools,
         });
     }
 

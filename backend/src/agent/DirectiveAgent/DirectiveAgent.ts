@@ -4,17 +4,19 @@ import { identityHistoryCallback, RunHistoryChatMemorySession } from "../CustomM
 import { db } from "../../prismaClient";
 import { EventEmitterTaskQueue } from "../../tasks/abstract/eventEmitterTasks";
 import { Task } from "../../tasks/abstract/tasks";
+import { runnerFactory } from "../runner";
+import { settings } from "../../config/settings";
 
 const DIRECTIVE_TASK_NAME = "DIRECTIVE_TASK" as const;
 
 export class DirectiveTask implements Task {
   readonly taskName = DIRECTIVE_TASK_NAME;
-
   constructor(
     public automationId: string,
     public runHistoryId: string,
     public runHistoryChatEventId: string,
-    public message: string
+    public userId: string,
+    public message: string,
   ) {}
 }
 
@@ -95,15 +97,24 @@ Do not include explanations or any extra fields. Only output the JSON object.`,
 
 
 async function classifyDirective(
-  runHistoryId: string,
-  message: string
+  task: DirectiveTask
 ): Promise<DirectiveClassificationType> {
   const session = new RunHistoryChatMemorySession({
-    sessionId: runHistoryId,
+    sessionId: task.runHistoryId,
     skipSave: true,
   });
 
-  const result = await run(directiveAgent, [{ role: 'user', content: message }], { session, sessionInputCallback: identityHistoryCallback });
+  const runner = runnerFactory({
+    runId: task.runHistoryId,
+    userId: task.userId,
+    channelId: task.automationId,
+    env: settings.nodeEnv,
+})
+
+  const result = await runner.run(directiveAgent, [{ role: 'user', content: task.message }], { 
+    session, 
+    sessionInputCallback: identityHistoryCallback,
+  });
 
   return result.finalOutput ?? { isDirective: false, directiveDescription: '' };
 }
@@ -135,7 +146,7 @@ directiveTaskQueue.addListener({
   onTask: async (task: DirectiveTask) => {
     try {
       console.log(`[Directive] Classifying message: "${task.message.slice(0, 100)}${task.message.length > 100 ? '...' : ''}"`);
-      const directive = await classifyDirective(task.runHistoryId, task.message);
+      const directive = await classifyDirective(task);
       console.log(`[Directive] Result: isDirective=${directive.isDirective}${directive.isDirective ? `, description="${directive.directiveDescription}"` : ''}`);
       if (directive.isDirective) {
         await persistDirective(

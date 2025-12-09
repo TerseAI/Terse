@@ -151,7 +151,6 @@ export class EventProcessor {
             const filterResponse = await filterEvent<Session>(
                 this.inputEvent,
                 channel.prompt,
-                session,
                 {
                     runId,
                     userId: this.user.id,
