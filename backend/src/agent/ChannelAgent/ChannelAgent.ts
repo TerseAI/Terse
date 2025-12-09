@@ -133,13 +133,7 @@ export class ChannelAgent<T extends Session, TConfig extends ConfigInstance> {
             state.reject(interruption);
         }
 
-        const result = await run(this.agent, state, {
-            extra_body: {
-                metadata: {
-                    run_history_id: this.runContext.runId,
-                },
-            },
-        });
+        const result = await run(this.agent, state);
         return this.buildResult(result);
     }
 

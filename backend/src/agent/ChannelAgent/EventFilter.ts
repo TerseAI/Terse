@@ -90,17 +90,16 @@ You may provide additional context and analysis in your text response, but you M
  * 
  * If streamingParams are provided, automatically handles storing events and emitting them via Socket.IO
  */
-export async function filterEvent<T extends Session>(
+export async function filterEvent(
     event: InputEvent,
     channelPrompt: ChannelPrompt,
-    session: T,
     streamingParams?: RunHistoryStreamingParams
-): Promise<{ result: EventFilterResult; stream: StreamedRunResult<T, Agent<T, any>> }> {
+): Promise<{ result: EventFilterResult; stream: StreamedRunResult<Session, Agent<Session, any>> }> {
     try {
         const currentTimeUtc = new Date().toISOString();
         const systemPrompt = buildFilterSystemPrompt(currentTimeUtc);
         
-        const agent = new Agent<T, typeof filterOutputSchema>({
+        const agent = new Agent<Session, typeof filterOutputSchema>({
             name: 'Channel Event Filter',
             instructions: systemPrompt,
             model: 'gpt-4o-mini',
@@ -127,10 +126,15 @@ export async function filterEvent<T extends Session>(
             }
         ];
         const runner = runnerFactory({
-            runHistoryId: streamingParams?.runId || '',
+            channelId: streamingParams?.channelId || '',
+            runId: streamingParams?.runId || '',
+            userId: streamingParams?.userId || '',
             env: settings.nodeEnv,
         })
-        const result = await runner.run(agent, history);
+        const result = await runner.run(agent, history, {
+            stream: true,
+            context: undefined as any, // Filter agent doesn't need session context
+        });
 
         if (result.interruptions && result.interruptions.length > 0) {
             throw new Error('Filter agent requested tool approval, which is not supported for event filtering.');

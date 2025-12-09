@@ -148,7 +148,7 @@ export class EventProcessor {
         // Filter the event using AI to see if it's relevant to this channel
         let filterResult;
         try {
-            const filterResponse = await filterEvent<Session>(
+            const filterResponse = await filterEvent(
                 this.inputEvent,
                 channel.prompt,
                 {
