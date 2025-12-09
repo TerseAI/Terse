@@ -42,7 +42,7 @@ export function PromptBuilderModal({
     };
 
     // Check if all questions are answered
-    const areAllQuestionsAnswered = useCallback(() => {
+    const areAllQuestionsAnswered = () => {
         if (questions.length === 0) return false;
         return questions.every((_, idx) => {
             const key = String(idx);
@@ -53,9 +53,9 @@ export function PromptBuilderModal({
             const hasWriteIn = writeIn !== undefined && writeIn !== null && writeIn.trim() !== '';
             return hasAnswer || hasWriteIn;
         });
-    }, [questions, answers, writeInAnswers]);
+    }
 
-    const handleGenerateQuestions = useCallback(async () => {
+    const handleGenerateQuestions = async () => {
         if (!description.trim() || questions.length > 0) return;
         
         setIsLoadingQuestions(true);
@@ -86,9 +86,9 @@ export function PromptBuilderModal({
         } finally {
             setIsLoadingQuestions(false);
         }
-    }, [description, existingPrompt, inputs, output, questions.length]);
+    }
 
-    const handleGeneratePrompt = useCallback(async () => {
+    const handleGeneratePrompt = async () => {
         if (generatedPrompt || questions.length === 0) return;
 
         setIsLoadingPrompt(true);
@@ -117,7 +117,7 @@ export function PromptBuilderModal({
         } finally {
             setIsLoadingPrompt(false);
         }
-    }, [description, questions, answers, writeInAnswers, existingPrompt, inputs, output, generatedPrompt]);
+    }
 
     // Update completed steps when answers change
     useEffect(() => {
