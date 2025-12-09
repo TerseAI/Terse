@@ -17,7 +17,6 @@ export interface SurveyQuestion {
 
 export interface SurveyConfigContext {
   type: ConfigType;
-  details?: string;
 }
 
 export interface GenerateSurveyQuestionsRequest {

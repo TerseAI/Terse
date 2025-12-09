@@ -29,13 +29,11 @@ export function PromptBuilderModal({
 
     const prepareConfigContext = (): { inputConfigs?: SurveyConfigContext[]; outputConfig?: SurveyConfigContext } => {
         const inputConfigs: SurveyConfigContext[] = inputs.map(input => ({
-            type: input.config.configType,
-            details: input.config.formatForAgent ? input.config.formatForAgent() : undefined
+            type: input.config.configType
         }));
         
         const outputConfig: SurveyConfigContext | undefined = output ? {
-            type: output.config.configType,
-            details: output.config.formatForAgent ? output.config.formatForAgent() : undefined
+            type: output.config.configType
         } : undefined;
 
         return { inputConfigs, outputConfig };

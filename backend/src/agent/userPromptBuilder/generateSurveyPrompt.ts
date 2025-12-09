@@ -1,34 +1,9 @@
 import OpenAI from 'openai';
 import { openai as openaiConfig } from '../../config/settings';
 import { GenerateSurveyPromptRequest } from '../../shared/PromptBuilderTypes';
-import { ConfigType } from '../../shared/Configs';
+import { formatConfigContext, formatSurveyAnswers } from './promptBuilderHelpers';
 
 const openai = new OpenAI({ apiKey: openaiConfig.apiKey });
-
-function formatConfigContext(inputConfigs?: Array<{ type: ConfigType; details?: string }>, outputConfig?: { type: ConfigType; details?: string }): string {
-    let context = '';
-
-    if (inputConfigs && inputConfigs.length > 0) {
-        context += 'Input Sources:\n';
-        inputConfigs.forEach((config, idx) => {
-            context += `  ${idx + 1}. ${config.type}`;
-            if (config.details) {
-                context += ` (${config.details})`;
-            }
-            context += '\n';
-        });
-    }
-
-    if (outputConfig) {
-        context += `Output Destination: ${outputConfig.type}`;
-        if (outputConfig.details) {
-            context += ` (${outputConfig.details})`;
-        }
-        context += '\n';
-    }
-
-    return context || 'No integrations configured yet.';
-}
 
 export async function generateSurveyPrompt(request: GenerateSurveyPromptRequest): Promise<string> {
   try {
@@ -37,58 +12,9 @@ export async function generateSurveyPrompt(request: GenerateSurveyPromptRequest)
     }
 
     const configContext = formatConfigContext(request.inputConfigs, request.outputConfig);
-    
-    // Format answers for the prompt with full question and option context
-    const answersText = Object.entries(request.answers)
-      .map(([questionIdx, answer]) => {
-        const question = request.questions[parseInt(questionIdx)];
-        if (!question) return null;
+    const allAnswersText = formatSurveyAnswers(request.questions, request.answers, request.writeInAnswers);
 
-                if (Array.isArray(answer)) {
-                    if (answer.length === 0 || answer.includes('e')) return null; // Skip if empty or includes skip
-                    // Map answer letters to actual option text
-                    const selectedOptions = answer
-                        .filter(a => a !== 'e')
-                        .map(letter => `${letter.toUpperCase()}) ${question.options[letter as keyof typeof question.options]}`)
-                        .join(', ');
-                    const writeIn = request.writeInAnswers?.[questionIdx];
-                    return `Q: ${question.question}\nA: ${selectedOptions}${writeIn ? ` (Write-in: ${writeIn})` : ''}`;
-                } else {
-                    if (answer === 'e') return null; // Skip skipped questions
-                    // Map answer letter to actual option text
-                    const selectedOption = `${answer.toUpperCase()}) ${question.options[answer as keyof typeof question.options]}`;
-                    const writeIn = request.writeInAnswers?.[questionIdx];
-                    return `Q: ${question.question}\nA: ${selectedOption}${writeIn ? ` (Write-in: ${writeIn})` : ''}`;
-                }
-            })
-            .filter(Boolean)
-            .join('\n\n');
-
-        // Include write-in only answers (when user only provided write-in, no option selected)
-        const writeInOnlyText = Object.entries(request.writeInAnswers || {})
-            .filter(([questionIdx]) => {
-                const answer = request.answers[questionIdx];
-                // Only include if no option was selected (or only 'e' was selected)
-                if (Array.isArray(answer)) {
-                    return answer.length === 0 || (answer.length === 1 && answer[0] === 'e');
-                }
-                return !answer || answer === 'e';
-            })
-            .map(([questionIdx, writeIn]) => {
-                if (writeIn && typeof writeIn === 'string' && writeIn.trim()) {
-                    const question = request.questions[parseInt(questionIdx)];
-                    if (question) {
-                        return `Q: ${question.question}\nA: (Write-in): ${writeIn}`;
-                    }
-                }
-                return null;
-            })
-            .filter(Boolean)
-            .join('\n\n');
-
-        const allAnswersText = [answersText, writeInOnlyText].filter(Boolean).join('\n');
-
-        const systemPrompt = `You are an expert at creating detailed, effective prompts for AI automation agents.
+    const systemPrompt = `You are an expert at creating detailed, effective prompts for AI automation agents.
 
 Your task is to generate a comprehensive prompt that instructs an AI agent on how to process events from input sources and generate appropriate outputs.
 
@@ -116,14 +42,14 @@ Guidelines for the prompt:
 
 The prompt should be ready to use directly in an automation system. The prompt itself should be formatted in markdown for readability, but the instructions within the prompt should specify what output format the agent should generate (which may or may not be markdown depending on the use case).`;
 
-        const userPrompt = `User's initial description:
+    const userPrompt = `User's initial description:
 ${request.description}
 
 ${allAnswersText ? `User's answers to clarifying questions:\n${allAnswersText}` : 'User skipped all clarifying questions.'}
 
 Generate a comprehensive prompt based on this information. Remember: keep it under 800 words and be concise.`;
 
-        const completion = await openai.chat.completions.create({
+    const completion = await openai.chat.completions.create({
             model: 'gpt-5-mini',
             messages: [
                 { role: 'system', content: systemPrompt },

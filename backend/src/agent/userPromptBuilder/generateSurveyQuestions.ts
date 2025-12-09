@@ -1,34 +1,9 @@
 import OpenAI from 'openai';
 import { openai as openaiConfig } from '../../config/settings';
 import { GenerateSurveyQuestionsRequest, SurveyQuestion, SurveyQuestionType } from '../../shared/PromptBuilderTypes';
-import { ConfigType } from '../../shared/Configs';
+import { formatConfigContext } from './promptBuilderHelpers';
 
 const openai = new OpenAI({ apiKey: openaiConfig.apiKey });
-
-function formatConfigContext(inputConfigs?: Array<{ type: ConfigType; details?: string }>, outputConfig?: { type: ConfigType; details?: string }): string {
-  let context = '';
-  
-  if (inputConfigs && inputConfigs.length > 0) {
-    context += 'Input Sources:\n';
-    inputConfigs.forEach((config, idx) => {
-      context += `  ${idx + 1}. ${config.type}`;
-      if (config.details) {
-        context += ` (${config.details})`;
-      }
-      context += '\n';
-    });
-  }
-  
-  if (outputConfig) {
-    context += `Output Destination: ${outputConfig.type}`;
-    if (outputConfig.details) {
-      context += ` (${outputConfig.details})`;
-    }
-    context += '\n';
-  }
-  
-  return context || 'No integrations configured yet.';
-}
 
 export async function generateSurveyQuestions(request: GenerateSurveyQuestionsRequest): Promise<SurveyQuestion[]> {
   try {
