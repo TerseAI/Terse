@@ -60,7 +60,6 @@ export function Step2Survey({
                                                 <Checkbox
                                                     id={optionId}
                                                     checked={isChecked}
-                                                    onCheckedChange={() => onAnswerChange(idx, option, question.type)}
                                                 />
                                                 <Label htmlFor={optionId} className="text-sm cursor-pointer">
                                                     <span className="font-medium">{option.toUpperCase()})</span> {question.options[option]}
