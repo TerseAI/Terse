@@ -34,7 +34,7 @@ export function NotificationDestinationForm({ existingDestination, onSuccess, on
     const [selectedIntegrationId, setSelectedIntegrationId] = useState<string | undefined>(slackDestination?.integrationId);
     const [selectedChannelId, setSelectedChannelId] = useState<string | undefined>(slackDestination?.slackChannelId);
     const [selectedChannelName, setSelectedChannelName] = useState<string | undefined>(slackDestination?.slackChannelName);
-    const { connect: connectOAuth } = useOAuthConnection(IntegrationType.SLACK);
+    const { connect: connectOAuth } = useOAuthConnection<IntegrationType.SLACK>(IntegrationType.SLACK, { isBotUser: true });
     const [isConnecting, setIsConnecting] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
     const [validationError, setValidationError] = useState<string | null>(null);
@@ -120,7 +120,7 @@ export function NotificationDestinationForm({ existingDestination, onSuccess, on
         value: integration.id,
     }));
 
-    const selectedOption = options.find(option => option.value === selectedIntegrationId);
+    const selectedOption = options.find(option => option.value === selectedIntegrationId) || options[0];;
 
     return (
         <div className="flex flex-col gap-4">
