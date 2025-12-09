@@ -29,6 +29,7 @@ import {
     FigmaIntegration,
     GithubIntegration,
     NotionIntegration,
+    InstallationOptionsFor,
 } from "../shared/Integrations";
 import { User } from "../types/User";
 import { GetRunHistoryParams, GetRunHistoryResponse } from '../shared/RunHistoryTypes';
@@ -100,7 +101,7 @@ interface BackendService {
     /**
      * Returns the installation details for a given integration type
      */
-    getIntegrationInstallationDetails(integrationType: IntegrationType): Promise<OAuthInstallationDetails>;
+    getIntegrationInstallationDetails<T extends IntegrationType>(integrationType: T, options?: InstallationOptionsFor<T>): Promise<OAuthInstallationDetails>;
 
     /**
      * Returns all integrations with their active status for the current user
@@ -385,8 +386,14 @@ export const BackendProvider: BackendService = {
             });
     },
 
-    getIntegrationInstallationDetails: (integrationType: IntegrationType) => {
-        return axios.get(`${backendBaseUrl}/integrations/${integrationType}/installation-details`, { withCredentials: true })
+    getIntegrationInstallationDetails: <T extends IntegrationType> (integrationType: T, options?: InstallationOptionsFor<T>) => {
+        const params = new URLSearchParams();
+        if(options) {
+            params.append('options', JSON.stringify(options));
+        }
+        const queryString = params.toString();
+        const url = `${backendBaseUrl}/integrations/${integrationType}/installation-details${queryString ? `?${queryString}` : ''}`;
+        return axios.get(url, { withCredentials: true })
             .then(response => response.data)
             .catch(error => {
                 console.error('Error getting integration installation details:', error);

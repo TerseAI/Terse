@@ -6,10 +6,12 @@ import { IntegrationType, SlackIntegration as SlackIntegrationType } from "@/sha
 import { SlackConfig } from '../../shared/Configs';
 import { InputConfigSelectorProps } from './types';
 import { useSlackIntegrations } from '@/hooks/api/useSlackIntegrations';
-import { useOAuthConnection } from '@/hooks/useOAuthConnection';
 import { useIntegrationId } from '@/hooks/useIntegrationId';
 import { StatusOption } from '../ui/DropdownSelect';
 import { ConfigType } from '../../shared/Configs';
+import { useState } from 'react';
+import { SlackConnectionOptions } from '../Integrations/helpers/SlackConnectionOptions';
+import { useOAuthConnection } from '@/hooks/useOAuthConnection';
 
 export function SlackIntegration({
     input,
@@ -17,15 +19,41 @@ export function SlackIntegration({
     setConfig
 }: InputConfigSelectorProps) {
     const { integrations, isLoading } = useSlackIntegrations();
-    const { connect: connectOAuth, isConnecting: isOAuthConnecting } = useOAuthConnection(IntegrationType.SLACK);
+
+    // Connection options
+    const [showConnectionOptions, setShowConnectionOptions] = useState(false);
+    const [isBotUser, setIsBotUser] = useState(true);
+
     const currentConfig = input.config as SlackConfig | undefined;
     const [selectedIntegrationId, setSelectedIntegrationId] = useIntegrationId(currentConfig, ConfigType.SLACK);
+
+    const { connect: connectOAuth, isConnecting: isOAuthConnecting } = useOAuthConnection<IntegrationType.SLACK>(
+        IntegrationType.SLACK,
+        { isBotUser }
+    );
+
+    const handleConnect = async () => {
+        await connectOAuth();
+        // Return to previous page after opening OAuth popup
+        setShowConnectionOptions(false);
+    };
 
     function onSelect(value: string) {
         const integration = integrations.find((integration: SlackIntegrationType) => integration.id === value);
         if (integration) {
             setSelectedIntegrationId(integration.id);
+            const updatedConfig = new SlackConfig(
+                integration.id,
+                currentConfig?.channelId,
+                currentConfig?.channelName,
+                currentConfig?.listenToUserDms ?? false
+            );
+            setConfig(updatedConfig);
         }
+    }
+
+    function onClickConnect() {
+        setShowConnectionOptions(true);
     }
 
     if (isLoading) {
@@ -36,6 +64,19 @@ export function SlackIntegration({
             </div>
         );
     }
+
+    if (showConnectionOptions) {
+        return (
+            <SlackConnectionOptions
+                isBotUser={isBotUser}
+                setIsBotUser={setIsBotUser}
+                onBack={() => setShowConnectionOptions(false)}
+                onConnect={handleConnect}
+                isConnecting={isOAuthConnecting}
+            />
+        );
+    }
+
 
     if (integrations.length === 0) {
         if (variant === 'card') {
@@ -52,7 +93,7 @@ export function SlackIntegration({
                     No Slack accounts connected
                 </div>
                 <Button
-                    onClick={connectOAuth}
+                    onClick={onClickConnect}
                     disabled={isOAuthConnecting}
                 >
                     <Plus className="w-4 h-4" />
@@ -63,7 +104,7 @@ export function SlackIntegration({
     }
 
     const connectionSelections: StatusOption[] = integrations.map((integration: SlackIntegrationType) => ({
-        label: integration.teamName || 'Unknown Workspace',
+        label: `${integration.teamName || 'Unknown Workspace'}${integration.isBotUser === false ? ' - User' : ' - Bot'}`,
         value: integration.id
     }));
 
@@ -87,6 +128,7 @@ export function SlackIntegration({
                 </div>
             );
         }
+
         return (
             <div className="text-sm">
                 {selectedOption ? selectedOption.label : 'No connection selected'}
@@ -110,7 +152,7 @@ export function SlackIntegration({
             </div>
 
             <Button
-                onClick={connectOAuth}
+                onClick={onClickConnect}
                 disabled={isOAuthConnecting}
                 variant="outline"
             >
@@ -119,39 +161,45 @@ export function SlackIntegration({
             </Button>
 
             {/* Slack-specific channel selector */}
-            {selectedIntegrationId && (
-                <div className="mt-3 pt-3 border-t border-border">
-                    {!currentConfig?.isComplete() && (
-                        <p className="text-sm text-muted-foreground mb-3">
-                            Select a channel or enable DM listening
-                        </p>
-                    )}
-                    <SlackChannelSelector
-                        integrationId={selectedIntegrationId}
-                        selectedChannelId={currentConfig?.channelId}
-                        listenToUserDms={currentConfig?.listenToUserDms}
-                        onSelect={(channelId, channelName) => {
-                            const hasChannel = channelId && channelId.trim() !== '';
-                            const updatedConfig = new SlackConfig(
-                                selectedIntegrationId,
-                                hasChannel ? channelId : undefined,
-                                hasChannel ? channelName : undefined,
-                                hasChannel ? false : currentConfig?.listenToUserDms
-                            );
-                            setConfig(updatedConfig);
-                        }}
-                        onListenToUserDmsChange={(listenToUserDms) => {
-                            const updatedConfig = new SlackConfig(
-                                selectedIntegrationId,
-                                listenToUserDms ? undefined : currentConfig?.channelId,
-                                listenToUserDms ? undefined : currentConfig?.channelName,
-                                listenToUserDms
-                            );
-                            setConfig(updatedConfig);
-                        }}
-                    />
-                </div>
-            )}
+            {selectedIntegrationId && (() => {
+                const selectedIntegration = integrations.find((integration: SlackIntegrationType) => integration.id === selectedIntegrationId);
+                const isBotUser = selectedIntegration?.isBotUser ?? true; // Default to true (bot) if not specified
+                
+                return (
+                    <div className="mt-3 pt-3 border-t border-border">
+                        {!currentConfig?.isComplete() && (
+                            <p className="text-sm text-muted-foreground mb-3">
+                                Select a channel or enable DM listening
+                            </p>
+                        )}
+                        <SlackChannelSelector
+                            integrationId={selectedIntegrationId}
+                            selectedChannelId={currentConfig?.channelId}
+                            listenToUserDms={currentConfig?.listenToUserDms}
+                            showListenToDMsOption={!isBotUser}
+                            onSelect={(channelId, channelName) => {
+                                const hasChannel = channelId && channelId.trim() !== '';
+                                const updatedConfig = new SlackConfig(
+                                    selectedIntegrationId,
+                                    hasChannel ? channelId : undefined,
+                                    hasChannel ? channelName : undefined,
+                                    hasChannel ? false : currentConfig?.listenToUserDms
+                                );
+                                setConfig(updatedConfig);
+                            }}
+                            onListenToUserDmsChange={(listenToUserDms) => {
+                                const updatedConfig = new SlackConfig(
+                                    selectedIntegrationId,
+                                    listenToUserDms ? undefined : currentConfig?.channelId,
+                                    listenToUserDms ? undefined : currentConfig?.channelName,
+                                    listenToUserDms
+                                );
+                                setConfig(updatedConfig);
+                            }}
+                        />
+                    </div>
+                );
+            })()}
         </div>
     );
 }

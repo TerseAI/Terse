@@ -49,6 +49,7 @@ export type UserSlackIntegration = user_slack_integrations;
 export type UserSlackIntegrationWithUser = Prisma.user_slack_integrationsGetPayload<{
   include: {
     user: true;
+    slack_integration: true;
   };
 }>;
 
