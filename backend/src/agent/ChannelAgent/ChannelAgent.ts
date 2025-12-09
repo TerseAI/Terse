@@ -19,6 +19,7 @@ import { recentHistoryCallback, RunHistoryChatMemorySession } from '../CustomMem
 import { IntegrationType } from '../../shared/Integrations';
 import { InputImageContent, InputTextContent } from 'openai/resources/conversations/conversations.mjs';
 import { runnerFactory } from '../runner';
+import { NotificationManager } from '../../notifications/Notification';
 
 
 export class ChannelAgent<T extends Session, TConfig extends ConfigInstance> {
@@ -146,6 +147,7 @@ export class ChannelAgent<T extends Session, TConfig extends ConfigInstance> {
     }
 
     async flushPendingActions(stepId: string, toolName: string): Promise<ChangedItem[]> {
+        const notificationManager = new NotificationManager(this.session.user, this.channel);
         const changedItems: ChangedItem[] = [];
         const toolMetadata = this.toolMetadataMap.get(toolName);
         const isReadOnly = toolMetadata?.isReadOnly ?? true;
@@ -163,6 +165,7 @@ export class ChannelAgent<T extends Session, TConfig extends ConfigInstance> {
                     change_event_type: ChangeEventType.ACTION_EXECUTED
                 });
             }
+            await notificationManager.notify(action);
         }
 
         this.pendingActions = [];

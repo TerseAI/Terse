@@ -104,6 +104,7 @@ Example: "[{\"operation\": \"append\", \"blocks\": [{\"object\": \"block\", \"ty
                         integration: IntegrationType.NOTION,
                         target: pageName,
                         details: `Added ${response.results.length} ${response.results.length === 1 ? 'item' : 'items'}: ${blockDescription}`,
+                        type: 'create',
                     });
                 } else if (op.operation === 'update') {
                     if (!op.block_id) {
@@ -145,6 +146,7 @@ Example: "[{\"operation\": \"append\", \"blocks\": [{\"object\": \"block\", \"ty
                         integration: IntegrationType.NOTION,
                         target: pageName,
                         details: `Updated ${blockType}`,
+                        type: 'update',
                     });
                 } else if (op.operation === 'delete') {
                     if (!op.block_id) {
@@ -176,6 +178,7 @@ Example: "[{\"operation\": \"append\", \"blocks\": [{\"object\": \"block\", \"ty
                         integration: IntegrationType.NOTION,
                         target: pageName,
                         details: 'Removed content block',
+                        type: 'delete',
                     });
                 } else {
                     results.push({

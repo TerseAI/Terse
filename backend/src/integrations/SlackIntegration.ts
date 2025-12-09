@@ -7,7 +7,7 @@ import crypto from 'crypto';
 import chalk from "chalk";
 import { EventProcessor } from "../agent/ChannelAgent/EventProcessor";
 import { db } from "../prismaClient";
-import { LogLevel, WebClient } from "@slack/web-api";
+import { LogLevel, WebClient, ConversationsMembersResponse } from "@slack/web-api";
 import { RunHistoryTrigger } from "../shared/RunHistoryTypes";
 import { ChannelInputWithConfigs, UserSlackIntegration, UserSlackIntegrationWithUser } from "../types/prisma";
 import { InputEvent } from "./abstract/InputEvent";
@@ -120,8 +120,8 @@ export class SlackIntegrationManager implements Integration<SlackIntegration, Sl
         const client_id = slackConfig.clientId;
         const redirect_uri = slackConfig.oauthCallbackUrl;
         const isBotUser = options.isBotUser;
-        const scope = "channels:history,channels:manage,groups:history,groups:write,im:history,im:write,mpim:history,mpim:write,channels:read,groups:read,mpim:read,im:read,users:read";
-        const user_scope = isBotUser ? "" : "channels:history,channels:read,groups:history,groups:read,im:history,im:read,mpim:history,mpim:read,users:read,channels:write,groups:write,mpim:write,im:write";
+        const scope = "channels:history,channels:manage,groups:history,groups:write,im:history,im:write,mpim:history,mpim:write,channels:read,groups:read,mpim:read,im:read,users:read,chat:write";
+        const user_scope = isBotUser ? "" : "channels:history,channels:read,groups:history,groups:read,im:history,im:read,mpim:history,mpim:read,users:read,channels:write,groups:write,mpim:write,im:write,chat:write";
         // create JWT and attach to url as state, including isBotUser
         const jwtToken = jwt.sign(
             { userId: userId, isBotUser: isBotUser },
@@ -259,7 +259,7 @@ export class SlackIntegrationManager implements Integration<SlackIntegration, Sl
                     authed_user_access_token: authed_user.access_token,
                 } : {
                     authed_user_id: authed_user.id,
-                } 
+                }
 
                 const createData = isUserType && authed_user.access_token
                     ? {
@@ -281,7 +281,7 @@ export class SlackIntegrationManager implements Integration<SlackIntegration, Sl
                         user_id_slack_team_id_is_bot_user: {
                             user_id: user.id,
                             slack_team_id: slackIntegration.team_id,
-                            is_bot_user: !isUserType, 
+                            is_bot_user: !isUserType,
                         }
                     },
                     update: {
@@ -591,21 +591,19 @@ async function handleSlackMessage(event: SlackMessageEvent, teamId: string, auth
         const channelType = messageEvent.channel_type;
         const isPublicChannel = channelType === SlackChannelType.CHANNEL;
 
-        const getToken = (integration: UserSlackIntegrationWithUser) => {
-            return integration.authed_user_access_token || integration.slack_integration.access_token;
-        }
-
         const isInChannel = async (integration: UserSlackIntegrationWithUser) => {
             try {
-                // Use bot token to get channel members
-                const token = getToken(integration);
-                const botClient = new WebClient(token, {
-                    logLevel: LogLevel.INFO
-                });
+                const botClient = initializeSlackWebClient(integration);
 
-                const membersRes = await botClient.conversations.members({
-                    channel: messageEvent.channel!
-                });
+                let membersRes: ConversationsMembersResponse | undefined;
+                try {
+                    membersRes = await botClient.conversations.members({
+                        channel: messageEvent.channel!
+                    });
+                } catch (error) {
+                    console.error(chalk.red(`Error getting members:`), error);
+                    return false;
+                }
 
                 if (membersRes.ok && membersRes.members && membersRes.members.length > 0) {
                     const channelMemberIds = membersRes.members
@@ -644,16 +642,7 @@ async function handleSlackMessage(event: SlackMessageEvent, teamId: string, auth
             return;
         }
 
-        const authedUserAccessToken = getToken(filteredWorkspaceUserIntegrations[0]);
-        if (!authedUserAccessToken) {
-            console.log(chalk.yellow('No authed user access token found for user'));
-            return;
-        }
-
-        // Initialize Slack WebClient to fetch additional data
-        const client = new WebClient(authedUserAccessToken, {
-            logLevel: LogLevel.INFO
-        });
+        const client: WebClient = initializeSlackWebClient(filteredWorkspaceUserIntegrations[0]);
 
         console.log(chalk.blue(`📡 Fetching additional Slack data for channel ${messageEvent.channel}, user ${messageEvent.user}, message ${messageEvent.ts}`));
 
@@ -787,8 +776,15 @@ export function isValidSlackSig(req: Request) {
     const expectedSig = `v0=${hmac}`;
 
     const isValid = sig === expectedSig;
-    
+
     return isValid;
+}
+
+export function initializeSlackWebClient(integration: UserSlackIntegrationWithUser): WebClient {
+    const token = integration.authed_user_access_token || integration.slack_integration.access_token;
+     return new WebClient(token, {
+         logLevel: LogLevel.INFO
+     });
 }
 
 

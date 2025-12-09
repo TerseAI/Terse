@@ -22,8 +22,10 @@ import {
   automation_notion_configs,
   automation_notion_page_configs,
   automation_confluence_configs,
-  automation_linear_configs,
   PrismaClient,
+  user_notification_destinations,
+  automation_notification_settings,
+  automation_linear_configs,
   directive_records
 } from '@prisma/client';
 
@@ -69,6 +71,9 @@ export type GmailIntegration = gmail_integrations;
 export type Automation = automations;
 export type Channel = automations; // Alias for rebranding
 
+export type UserNotificationDestination = user_notification_destinations;
+export type AutomationNotificationSettings = automation_notification_settings;
+
 export type AutomationPrompt = automation_prompts;
 export type ChannelPrompt = automation_prompts; // Alias for rebranding
 
@@ -76,6 +81,8 @@ export type AutomationInput = automation_inputs;
 export type ChannelInput = automation_inputs; // Alias for rebranding
 
 export type DirectiveRecord = directive_records;
+
+export type ChannelNotificationSettings = automation_notification_settings;
 
 // Extended type for ChannelInput with all config relations included
 export type AutomationInputWithConfigs = Prisma.automation_inputsGetPayload<{
@@ -171,8 +178,15 @@ export type AutomationWithPromptRelations = Prisma.automationsGetPayload<{
 }>;
 export type ChannelWithPromptRelations = AutomationWithPromptRelations; // Alias for rebranding
 
+export type AutomationWithNotificationSettingsRelations = Prisma.automationsGetPayload<{
+  include: {
+    notification_settings: true;
+  }
+}>;
+export type ChannelWithNotificationSettingsRelations = AutomationWithNotificationSettingsRelations; // Alias for rebranding
+
 export type AutomationWithRelations = AutomationWithInputRelations & AutomationWithOutputRelations & AutomationWithPromptRelations;
-export type ChannelWithRelations = ChannelWithInputRelations & ChannelWithOutputRelations & ChannelWithPromptRelations; // Alias for rebranding
+export type ChannelWithRelations = ChannelWithInputRelations & ChannelWithOutputRelations & ChannelWithPromptRelations;
 
 // Extract the transaction type from PrismaClient
 export type PrismaTransaction = Parameters<Parameters<PrismaClient['$transaction']>[0]>[0];
@@ -194,12 +208,14 @@ export {
   sub_activity_commit_associations,
   gmail_integrations,
   automations,
-  automation_prompts,
+  automation_prompts, 
+  automation_notification_settings,
   automation_inputs,
   automation_outputs,
   notion_integrations,
   automation_notion_configs,
   automation_notion_page_configs,
   automation_confluence_configs,
+  user_notification_destinations,
   automation_linear_configs
 }; 

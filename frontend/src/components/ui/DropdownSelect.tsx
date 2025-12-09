@@ -23,11 +23,12 @@ type DropdownSelectProps = {
         onClick: () => void;
     };
     placeholder?: string;
+    modal?: boolean;
 }
 
-const DropdownSelect = ({ statusOptions, selectedOption, setSelected, additionalAction, placeholder = 'Select an option' }: DropdownSelectProps) => {
+const DropdownSelect = ({ statusOptions, selectedOption, setSelected, additionalAction, placeholder = 'Select an option', modal = true }: DropdownSelectProps) => {
     return (
-        <DropdownMenu>
+        <DropdownMenu modal={modal}>
             <DropdownMenuTrigger asChild>
                 <Button variant="outline">
                     <span className="block truncate">{selectedOption?.label ?? placeholder}</span>

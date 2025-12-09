@@ -280,6 +280,7 @@ This tool returns the current state of the page including all properties, metada
             target: pageName,
             details: `Retrieved page with ${blocks.length} ${blocks.length === 1 ? 'block' : 'blocks'}`,
             url: isFullPage(pageInfo) && 'url' in pageInfo ? pageInfo.url : undefined,
+            type: 'read',
         });
 
         // Extract comprehensive metadata
