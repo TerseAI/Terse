@@ -18,6 +18,7 @@ import { processModelEventStream } from './StreamProcessor';
 import { recentHistoryCallback, RunHistoryChatMemorySession } from '../CustomMemorySession';
 import { IntegrationType } from '../../shared/Integrations';
 import { InputImageContent, InputTextContent } from 'openai/resources/conversations/conversations.mjs';
+import { NotificationManager } from '../../notifications/Notification';
 
 
 export class ChannelAgent<T extends Session, TConfig extends ConfigInstance> {
