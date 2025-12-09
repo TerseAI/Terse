@@ -10,7 +10,7 @@ import { cn } from "../../lib/utils";
 import { Badge } from "../../components/ui/badge";
 import { Label } from "../../components/ui/label";
 import { useNotificationDestinations } from "../../hooks/api/useNotificationDestinations";
-import { Link } from "react-router-dom";
+import { AddNotificationDestination } from "../../components/Notifications/AddNotificationDestination";
 
 export type ChannelNotificationSettingsProps = {
     settings: ChannelNotificationSettingsType;
@@ -50,15 +50,21 @@ function ChannelNotificationSettings({ settings, onChange }: ChannelNotification
                 />
             </div>
             {showNoDestinationsWarning && (
-                <div className="flex items-center gap-2 p-3 rounded-md bg-yellow-500/10 border border-yellow-500/20">
-                    <AlertTriangle className="size-4 text-yellow-500 shrink-0" />
-                    <p className="text-sm text-yellow-600 dark:text-yellow-500">
-                        No notification destinations configured.{" "}
-                        <Link to="/app/notifications" className="underline font-medium hover:text-yellow-700 dark:hover:text-yellow-400">
-                            Add a destination
-                        </Link>
-                        {" "}to receive notifications.
-                    </p>
+                <div className="flex items-center justify-between gap-2 p-3 rounded-md bg-yellow-500/10 border border-yellow-500/20">
+                    <div className="flex items-center gap-2">
+                        <AlertTriangle className="size-4 text-yellow-500 shrink-0" />
+                        <p className="text-sm text-yellow-600 dark:text-yellow-500">
+                            No notification destinations configured.
+                        </p>
+                    </div>
+                    <AddNotificationDestination 
+                        trigger={
+                            <Button variant="outline" size="sm">
+                                <Plus className="size-4" />
+                                Add
+                            </Button>
+                        }
+                    />
                 </div>
             )}
             {settings.enabled && (
