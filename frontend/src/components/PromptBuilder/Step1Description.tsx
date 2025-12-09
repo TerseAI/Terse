@@ -20,17 +20,16 @@ export function Step1Description({
                 <Label className="text-sm font-medium mb-2 block">
                     Describe at a high level what you are looking for
                 </Label>
-                <div className="flex gap-2">
-                    <Textarea
-                        value={description}
-                        onChange={(e) => setDescription(e.target.value)}
-                        placeholder="e.g., Monitor all new GitHub issues and create Linear tickets for bugs, adding appropriate labels and priority"
-                        className="flex-1 min-h-[100px]"
-                    />
+                <Textarea
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    placeholder="e.g., Monitor all new GitHub issues and create Linear tickets for bugs, adding appropriate labels and priority"
+                    className="w-full min-h-[100px] resize-none"
+                />
+                <div className="flex justify-end mt-4">
                     <Button
                         onClick={onContinue}
                         disabled={!description.trim() || isLoading}
-                        className="self-start"
                     >
                         Continue
                     </Button>

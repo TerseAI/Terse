@@ -3,9 +3,11 @@ import { Copy, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 import { Step3ReviewProps } from "./types";
 import ReactMarkdown from "react-markdown";
+import { LoadingAnimation } from "./LoadingAnimation";
 
 export function Step3Review({
     generatedPrompt,
+    isLoading,
     onRestart,
     onDone
 }: Step3ReviewProps) {
@@ -17,6 +19,15 @@ export function Step3Review({
             toast.error('Failed to copy prompt');
         }
     };
+
+    if (isLoading) {
+        return (
+            <div className="space-y-4">
+                <h3 className="text-lg font-semibold mb-4">Generating your prompt</h3>
+                <LoadingAnimation />
+            </div>
+        );
+    }
 
     return (
         <div className="space-y-4">

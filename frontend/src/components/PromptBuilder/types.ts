@@ -32,6 +32,7 @@ export interface Step2SurveyProps {
 
 export interface Step3ReviewProps {
     generatedPrompt: string;
+    isLoading: boolean;
     onRestart: () => void;
     onDone: () => void;
 }

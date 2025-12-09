@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Sparkles } from "lucide-react";
 import { BackendProvider } from "@/services/backend";
@@ -7,6 +7,7 @@ import { PromptBuilderModalProps } from "./types";
 import { Step1Description } from "./Step1Description";
 import { Step2Survey } from "./Step2Survey";
 import { Step3Review } from "./Step3Review";
+import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious, type CarouselApi } from "@/components/ui/carousel";
 
 export function PromptBuilderModal({
     isOpen,
@@ -16,7 +17,6 @@ export function PromptBuilderModal({
     existingPrompt,
     onPromptGenerated
 }: PromptBuilderModalProps) {
-    const [step, setStep] = useState<1 | 2 | 3>(1);
     const [description, setDescription] = useState('');
     const [questions, setQuestions] = useState<SurveyQuestion[]>([]);
     const [answers, setAnswers] = useState<SurveyAnswers>({});
@@ -25,7 +25,8 @@ export function PromptBuilderModal({
     const [isLoadingQuestions, setIsLoadingQuestions] = useState(false);
     const [isLoadingPrompt, setIsLoadingPrompt] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+    const [carouselApi, setCarouselApi] = useState<CarouselApi>();
+    const [currentIndex, setCurrentIndex] = useState(0);
 
     const prepareConfigContext = (): { inputConfigs?: SurveyConfigContext[]; outputConfig?: SurveyConfigContext } => {
         const inputConfigs: SurveyConfigContext[] = inputs.map(input => ({
@@ -39,8 +40,23 @@ export function PromptBuilderModal({
         return { inputConfigs, outputConfig };
     };
 
-    const handleStep1Continue = async () => {
-        if (!description.trim()) return;
+    // Carousel indices: Step 1 = 0, Questions = 1 to N, Review = N+1
+    const step1Index = 0;
+    const firstQuestionIndex = 1;
+    const reviewIndex = 1 + questions.length;
+
+    // Get current step based on carousel index
+    const getCurrentStep = (index: number): 1 | 2 | 3 => {
+        if (index === step1Index) return 1;
+        if (index >= firstQuestionIndex && index < reviewIndex) return 2;
+        return 3;
+    };
+
+    const currentStep = getCurrentStep(currentIndex);
+    const currentQuestionIndex = currentIndex - firstQuestionIndex;
+
+    const handleGenerateQuestions = useCallback(async () => {
+        if (!description.trim() || questions.length > 0) return;
         
         setIsLoadingQuestions(true);
         setError(null);
@@ -59,16 +75,26 @@ export function PromptBuilderModal({
             
             setQuestions(response.questions);
             setAnswers({});
-            setCurrentQuestionIndex(0);
-            setStep(2);
+            
+            // Automatically navigate to first question after questions are generated
+            if (carouselApi && response.questions.length > 0) {
+                // Wait a bit for the carousel to update with new items
+                setTimeout(() => {
+                    if (carouselApi) {
+                        carouselApi.scrollTo(firstQuestionIndex);
+                    }
+                }, 100);
+            }
         } catch (err: any) {
             setError(err.message || 'Failed to generate questions. Please try again.');
         } finally {
             setIsLoadingQuestions(false);
         }
-    };
+    }, [description, existingPrompt, inputs, output, questions.length, carouselApi, firstQuestionIndex]);
 
-    const handleStep2Continue = async () => {
+    const handleGeneratePrompt = useCallback(async () => {
+        if (generatedPrompt || questions.length === 0) return;
+
         setIsLoadingPrompt(true);
         setError(null);
         
@@ -88,23 +114,76 @@ export function PromptBuilderModal({
             const response = await BackendProvider.generatePromptBuilderPrompt(request);
             
             setGeneratedPrompt(response.prompt);
-            setStep(3);
         } catch (err: any) {
             setError(err.message || 'Failed to generate prompt. Please try again.');
+            // Go back to last question on error
+            if (carouselApi && questions.length > 0) {
+                const lastQuestionIndex = questions.length;
+                carouselApi.scrollTo(lastQuestionIndex);
+            }
         } finally {
             setIsLoadingPrompt(false);
         }
-    };
+    }, [description, questions, answers, writeInAnswers, existingPrompt, inputs, output, generatedPrompt, carouselApi]);
+
+    // Handle carousel navigation
+    useEffect(() => {
+        if (!carouselApi) return;
+
+        setCurrentIndex(carouselApi.selectedScrollSnap());
+
+        const handleSelect = () => {
+            // Prevent navigation when loading
+            if (isLoadingQuestions || isLoadingPrompt) {
+                // Revert to previous position
+                setTimeout(() => {
+                    if (carouselApi) {
+                        carouselApi.scrollTo(currentIndex);
+                    }
+                }, 0);
+                return;
+            }
+
+            const newIndex = carouselApi.selectedScrollSnap();
+            const prevIndex = carouselApi.previousScrollSnap();
+            
+            // Prevent navigation from Step 1 to Step 2 - must use Continue button
+            if (prevIndex === step1Index && newIndex === firstQuestionIndex && questions.length === 0) {
+                // Revert to Step 1
+                setTimeout(() => {
+                    if (carouselApi) {
+                        carouselApi.scrollTo(step1Index);
+                    }
+                }, 0);
+                return;
+            }
+            
+            setCurrentIndex(newIndex);
+            
+            // Auto-generate prompt when moving from last question to review
+            const currentReviewIndex = 1 + questions.length;
+            if (newIndex === currentReviewIndex && questions.length > 0 && !generatedPrompt && !isLoadingPrompt) {
+                handleGeneratePrompt();
+            }
+        };
+
+        carouselApi.on("select", handleSelect);
+        return () => {
+            carouselApi.off("select", handleSelect);
+        };
+    }, [carouselApi, description, questions.length, generatedPrompt, isLoadingQuestions, isLoadingPrompt, handleGenerateQuestions, handleGeneratePrompt, firstQuestionIndex, step1Index, currentIndex]);
+
 
     const handleRestart = () => {
-        setStep(1);
         setDescription('');
         setQuestions([]);
         setAnswers({});
         setWriteInAnswers({});
         setGeneratedPrompt('');
         setError(null);
-        setCurrentQuestionIndex(0);
+        if (carouselApi) {
+            carouselApi.scrollTo(step1Index);
+        }
     };
 
     const handleAnswerChange = (questionIndex: number, answer: string, questionType: 'single' | 'multiple') => {
@@ -151,8 +230,13 @@ export function PromptBuilderModal({
     useEffect(() => {
         if (!isOpen) {
             handleRestart();
+        } else {
+            // Reset to first step when opening
+            if (carouselApi) {
+                carouselApi.scrollTo(step1Index);
+            }
         }
-    }, [isOpen]);
+    }, [isOpen, carouselApi]);
 
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
@@ -162,7 +246,9 @@ export function PromptBuilderModal({
                         <Sparkles className="h-5 w-5" />
                         Prompt Builder
                         <span className="text-sm font-normal text-muted-foreground">
-                            Step {step} of 3
+                            {currentStep === 1 && "Step 1 of 3"}
+                            {currentStep === 2 && `Question ${currentQuestionIndex + 1} of ${questions.length}`}
+                            {currentStep === 3 && "Step 3 of 3"}
                         </span>
                     </DialogTitle>
                 </DialogHeader>
@@ -173,38 +259,78 @@ export function PromptBuilderModal({
                     </div>
                 )}
 
-                <div className="py-4">
-                    {step === 1 && (
-                        <Step1Description
-                            description={description}
-                            setDescription={setDescription}
-                            isLoading={isLoadingQuestions}
-                            onContinue={handleStep1Continue}
-                        />
-                    )}
+                <div className="py-4 relative">
+                    <Carousel
+                        setApi={setCarouselApi}
+                        opts={{
+                            align: "start",
+                            skipSnaps: false,
+                        }}
+                        className="w-full"
+                    >
+                        <CarouselContent>
+                            {/* Step 1: Description */}
+                            <CarouselItem>
+                                <Step1Description
+                                    description={description}
+                                    setDescription={setDescription}
+                                    isLoading={isLoadingQuestions}
+                                    onContinue={handleGenerateQuestions}
+                                />
+                            </CarouselItem>
 
-                    {step === 2 && (
+                            {/* Step 2: Survey Questions */}
+                            {questions.map((question, idx) => {
+                                const questionKey = String(idx);
+                                const currentAnswer = answers[questionKey];
+                                const isMultiple = question.type === 'multiple';
+                                const selectedAnswers = isMultiple 
+                                    ? (Array.isArray(currentAnswer) ? currentAnswer : [])
+                                    : (typeof currentAnswer === 'string' ? currentAnswer : undefined);
+                                const radioValue = isMultiple ? undefined : (typeof currentAnswer === 'string' ? currentAnswer : undefined);
+                                const writeInValue = writeInAnswers[questionKey] || '';
+
+                                return (
+                                    <CarouselItem key={idx}>
                         <Step2Survey
-                            questions={questions}
-                            answers={answers}
-                            writeInAnswers={writeInAnswers}
-                            currentQuestionIndex={currentQuestionIndex}
-                            setCurrentQuestionIndex={setCurrentQuestionIndex}
+                                            question={question}
+                                            questionIndex={idx}
+                                            totalQuestions={questions.length}
+                                            selectedAnswers={selectedAnswers}
+                                            radioValue={radioValue}
+                                            writeInValue={writeInValue}
                             onAnswerChange={handleAnswerChange}
                             onWriteInChange={handleWriteInChange}
-                            isLoading={isLoadingPrompt}
-                            onBack={() => setStep(1)}
-                            onContinue={handleStep2Continue}
                         />
-                    )}
+                                    </CarouselItem>
+                                );
+                            })}
 
-                    {step === 3 && (
+                            {/* Step 3: Review */}
+                            <CarouselItem>
                         <Step3Review
                             generatedPrompt={generatedPrompt}
+                                    isLoading={isLoadingPrompt}
                             onRestart={handleRestart}
                             onDone={handleDone}
                         />
-                    )}
+                            </CarouselItem>
+                        </CarouselContent>
+                        {currentStep !== 1 && (
+                            <CarouselPrevious 
+                                className="left-2" 
+                                disabled={isLoadingQuestions || isLoadingPrompt}
+                            />
+                        )}
+                        <CarouselNext 
+                            className="right-2" 
+                            disabled={
+                                currentStep === 1 || 
+                                isLoadingQuestions || 
+                                isLoadingPrompt
+                            }
+                        />
+                    </Carousel>
                 </div>
             </DialogContent>
         </Dialog>

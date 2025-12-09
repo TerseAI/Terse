@@ -1,103 +1,44 @@
-import { useState, useEffect } from "react";
-import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious, type CarouselApi } from "@/components/ui/carousel";
-import { Step2SurveyProps } from "./types";
-import { LoadingAnimation } from "./LoadingAnimation";
+import { SurveyQuestion } from "@/shared/PromptBuilderTypes";
+
+interface Step2SurveyProps {
+    question: SurveyQuestion;
+    questionIndex: number;
+    totalQuestions: number;
+    selectedAnswers: string | string[] | undefined;
+    radioValue: string | undefined;
+    writeInValue: string;
+    onAnswerChange: (questionIndex: number, answer: string, questionType: 'single' | 'multiple') => void;
+    onWriteInChange: (questionIndex: number, value: string) => void;
+}
 
 export function Step2Survey({
-    questions,
-    answers,
-    writeInAnswers,
-    currentQuestionIndex,
-    setCurrentQuestionIndex,
+    question,
+    questionIndex,
+    totalQuestions,
+    selectedAnswers,
+    radioValue,
+    writeInValue,
     onAnswerChange,
-    onWriteInChange,
-    isLoading,
-    onBack,
-    onContinue
+    onWriteInChange
 }: Step2SurveyProps) {
-    if (questions.length === 0) {
-        return (
-            <div className="space-y-6">
-                <div>
-                    <h3 className="text-lg font-semibold mb-4">Answer clarifying questions</h3>
-                    <LoadingAnimation />
-                </div>
-            </div>
-        );
-    }
-
-    if (isLoading) {
-        return (
-            <div className="space-y-6">
-                <div>
-                    <h3 className="text-lg font-semibold mb-4">Answer clarifying questions</h3>
-                    <LoadingAnimation />
-                </div>
-            </div>
-        );
-    }
-
-    const [api, setApi] = useState<CarouselApi>();
-    const [current, setCurrent] = useState(0);
-
-    useEffect(() => {
-        if (!api) {
-            return;
-        }
-
-        setCurrent(api.selectedScrollSnap() + 1);
-
-        api.on("select", () => {
-            setCurrent(api.selectedScrollSnap() + 1);
-            setCurrentQuestionIndex(api.selectedScrollSnap());
-        });
-    }, [api, setCurrentQuestionIndex]);
-
-    useEffect(() => {
-        if (api && currentQuestionIndex !== api.selectedScrollSnap()) {
-            api.scrollTo(currentQuestionIndex);
-        }
-    }, [api, currentQuestionIndex]);
+    const isMultiple = question.type === 'multiple';
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-4">
             <div>
-                <h3 className="text-lg font-semibold mb-4">Answer clarifying questions</h3>
-                <div className="mt-2">
-                    <div className="flex items-center justify-between mb-4">
-                        <span className="text-sm text-muted-foreground">
-                            Question {current} of {questions.length}
-                        </span>
+                <h3 className="text-lg font-semibold mb-2">Answer clarifying questions</h3>
+                <p className="text-sm text-muted-foreground mb-4">
+                    Question {questionIndex + 1} of {totalQuestions}
+                </p>
                     </div>
 
-                    <Carousel
-                        setApi={setApi}
-                        opts={{
-                            align: "start",
-                        }}
-                        className="w-full"
-                    >
-                        <CarouselContent>
-                            {questions.map((question, idx) => {
-                                const questionKey = String(idx);
-                                const currentAnswer = answers[questionKey];
-                                const isMultiple = question.type === 'multiple';
-                                const selectedAnswers = isMultiple 
-                                    ? (Array.isArray(currentAnswer) ? currentAnswer : [])
-                                    : (typeof currentAnswer === 'string' ? currentAnswer : undefined);
-                                const radioValue = isMultiple ? undefined : (typeof currentAnswer === 'string' ? currentAnswer : undefined);
-                                const writeInValue = writeInAnswers[questionKey] || '';
-
-                                return (
-                                    <CarouselItem key={idx}>
                                         <div className="space-y-3">
                                             <Label className="text-sm font-medium">
-                                                {idx + 1}. {question.question}
+                    {question.question}
                                                 {isMultiple && (
                                                     <span className="text-xs text-muted-foreground ml-2">(Select all that apply)</span>
                                                 )}
@@ -106,18 +47,18 @@ export function Step2Survey({
                                                 {isMultiple ? (
                                                     (['a', 'b', 'c', 'd', 'e'] as const).map((option) => {
                                                         const isChecked = Array.isArray(selectedAnswers) && selectedAnswers.includes(option);
-                                                        const optionId = `question-${idx}-${option}`;
+                            const optionId = `question-${questionIndex}-${option}`;
                                                         
                                                         return (
                                                             <div
                                                                 key={option}
                                                                 className="flex items-center gap-3 hover:bg-accent p-2 rounded-md cursor-pointer"
-                                                                onClick={() => onAnswerChange(idx, option, question.type)}
+                                    onClick={() => onAnswerChange(questionIndex, option, question.type)}
                                                             >
                                                                 <Checkbox
                                                                     id={optionId}
                                                                     checked={isChecked}
-                                                                    onCheckedChange={() => onAnswerChange(idx, option, question.type)}
+                                        onCheckedChange={() => onAnswerChange(questionIndex, option, question.type)}
                                                                 />
                                                                 <Label htmlFor={optionId} className="text-sm cursor-pointer">
                                                                     <span className="font-medium">{option.toUpperCase()})</span> {question.options[option]}
@@ -128,10 +69,10 @@ export function Step2Survey({
                                                 ) : (
                                                     <RadioGroup
                                                         value={radioValue}
-                                                        onValueChange={(value: string) => onAnswerChange(idx, value, question.type)}
+                            onValueChange={(value: string) => onAnswerChange(questionIndex, value, question.type)}
                                                     >
                                                         {(['a', 'b', 'c', 'd', 'e'] as const).map((option) => {
-                                                            const optionId = `question-${idx}-${option}`;
+                                const optionId = `question-${questionIndex}-${option}`;
                                                             return (
                                                                 <div
                                                                     key={option}
@@ -154,38 +95,12 @@ export function Step2Survey({
                                                     </Label>
                                                     <Textarea
                                                         value={writeInValue}
-                                                        onChange={(e) => onWriteInChange(idx, e.target.value)}
+                                                        onChange={(e) => onWriteInChange(questionIndex, e.target.value)}
                                                         placeholder="Type your custom answer here..."
-                                                        className="min-h-[80px]"
+                                                        className="min-h-[80px] resize-none"
                                                     />
                                                 </div>
                                             )}
-                                        </div>
-                                    </CarouselItem>
-                                );
-                            })}
-                        </CarouselContent>
-                        <CarouselPrevious />
-                        <CarouselNext />
-                    </Carousel>
-                </div>
-            </div>
-            <div className="flex justify-end gap-2">
-                <Button variant="outline" onClick={onBack}>
-                    Back
-                </Button>
-                <Button
-                    onClick={onContinue}
-                    disabled={isLoading || questions.length === 0}
-                >
-                    {isLoading ? (
-                        <>
-                            Generating...
-                        </>
-                    ) : (
-                        'Continue'
-                    )}
-                </Button>
             </div>
         </div>
     );
