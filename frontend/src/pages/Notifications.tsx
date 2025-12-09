@@ -19,8 +19,11 @@ function NotificationsPage() {
 
     return (
         <div className="flex flex-col h-full p-4">
-            <div className="flex flex-row justify-between items-center">
-                <h3 className="text-xl font-bold text-foreground mb-4">Notification Destinations</h3>
+            <div className="flex flex-row justify-between items-center mb-4">
+                <h3 className="text-xl font-bold text-foreground">Notification Destinations</h3>
+                {notificationDestinations.length > 0 && (
+                    <AddNotificationDestination />
+                )}
             </div>
 
             <NotificationChannelList notificationDestinations={notificationDestinations} />
