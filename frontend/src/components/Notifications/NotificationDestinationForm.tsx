@@ -3,7 +3,6 @@ import { useSlackIntegrations } from "../../hooks/api/useSlackIntegrations"
 import { Skeleton } from "../ui/skeleton"
 import DropdownSelect, { StatusOption } from "../ui/DropdownSelect"
 import { useState, useEffect } from "react"
-import { useOAuthConnection } from "../../hooks/useOAuthConnection"
 import { IntegrationType, SlackIntegration } from "../../shared/Integrations"
 import { useOAuthSuccessListener } from "../../hooks/useOAuthSuccessListener"
 import { BackendProvider } from "../../services/backend"
@@ -16,6 +15,7 @@ import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrig
 import { formatMPIMChannelName } from "../SlackChannelSelector"
 import { mutate } from "swr"
 import { notificationDestinationsKey } from "../../shared/InvalidationKeys"
+import { SlackConnectionOptions } from "../Integrations/helpers/SlackConnectionOptions"
 
 export interface NotificationDestinationFormProps {
     existingDestination?: NotificationDestination;
@@ -37,9 +37,10 @@ export function NotificationDestinationForm({ existingDestination, onSuccess, on
     const [isConnecting, setIsConnecting] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
     const [validationError, setValidationError] = useState<string | null>(null);
+    const [showConnectionOptions, setShowConnectionOptions] = useState(false);
+    const [isBotUser, setIsBotUser] = useState(true);
 
     const selectedSlackIntegration = integrations.find(integration => integration.id === selectedIntegrationId);
-    const { connect: connectOAuth } = useOAuthConnection<IntegrationType.SLACK>(IntegrationType.SLACK, { isBotUser: selectedSlackIntegration?.isBotUser ?? true });
 
 
     const isEditMode = !!existingDestination;
@@ -50,6 +51,24 @@ export function NotificationDestinationForm({ existingDestination, onSuccess, on
             setSelectedIntegrationId(integrations[0].id);
         }
     }, [integrations, isEditMode, selectedIntegrationId]);
+
+    const connectSlack = async () => {
+        setIsConnecting(true);
+        try {
+            const installationDetails = await BackendProvider.getIntegrationInstallationDetails(IntegrationType.SLACK, { isBotUser });
+            
+            if (installationDetails?.oauthUrl) {
+                window.open(installationDetails.oauthUrl, 'oauth-popup', 'width=600,height=700');
+                setShowConnectionOptions(false);
+            } else {
+                console.error('OAuth URL not available for this integration type');
+            }
+        } catch (error) {
+            console.error('Error initiating OAuth:', error);
+        } finally {
+            setIsConnecting(false);
+        }
+    };
 
     async function saveDestination() {
         setValidationError(null);
@@ -109,12 +128,21 @@ export function NotificationDestinationForm({ existingDestination, onSuccess, on
         );
     }
 
+    if (showConnectionOptions) {
+        return (
+            <SlackConnectionOptions
+                isBotUser={isBotUser}
+                setIsBotUser={setIsBotUser}
+                onBack={() => setShowConnectionOptions(false)}
+                onConnect={connectSlack}
+                isConnecting={isConnecting}
+            />
+        );
+    }
+
     if (integrations.length === 0) {
         return (
-            <div>No Slack integrations found. <Button variant="link" onClick={() => {
-                setIsConnecting(true);
-                connectOAuth();
-            }}>{isConnecting ? 'Connecting...' : 'Connect a Slack integration'}</Button></div>
+            <div>No Slack integrations found. <Button variant="link" onClick={() => setShowConnectionOptions(true)}>Connect a Slack integration</Button></div>
         );
     }
 
@@ -123,7 +151,7 @@ export function NotificationDestinationForm({ existingDestination, onSuccess, on
         value: integration.id,
     }));
 
-    const selectedOption = options.find(option => option.value === selectedIntegrationId) || options[0];;
+    const selectedOption = options.find(option => option.value === selectedIntegrationId) || options[0];
 
     return (
         <div className="flex flex-col gap-4">
@@ -142,7 +170,7 @@ export function NotificationDestinationForm({ existingDestination, onSuccess, on
                     }}
                     additionalAction={{
                         label: 'Connect Another Slack Workspace',
-                        onClick: connectOAuth
+                        onClick: () => setShowConnectionOptions(true)
                     }}
                     modal={false}
                 />

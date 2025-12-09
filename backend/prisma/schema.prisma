@@ -911,7 +911,7 @@ model user_notification_destinations {
   updated_at DateTime @updatedAt
 
   user              users                    @relation(fields: [user_id], references: [id], onDelete: Cascade)
-  slack_integration user_slack_integrations? @relation(fields: [slack_integration_id], references: [id], onDelete: SetNull)
+  slack_integration user_slack_integrations? @relation(fields: [slack_integration_id], references: [id], onDelete: Cascade)
 
   @@index([user_id])
   @@index([destination_type])
