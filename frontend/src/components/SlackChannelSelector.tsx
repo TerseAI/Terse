@@ -3,6 +3,7 @@ import { SlackChannel } from "../shared/types";
 import { RefreshButton } from "./RefreshButton";
 import { useSlackChannels } from "@/hooks/api/useSlackChannels";
 import { capitalize } from "../lib/utils";
+import { Checkbox } from "./ui/checkbox";
 
 interface SlackChannelSelectorProps {
     integrationId: string;
@@ -236,11 +237,9 @@ export function SlackChannelSelector({
             {/* Listen to user DMs checkbox - only show for user tokens */}
             {showListenToDMsOption && (
                 <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                        type="checkbox"
+                    <Checkbox
                         checked={listenToUserDms}
-                        onChange={(e) => handleListenToUserDmsChange(e.target.checked)}
-                        className="w-4 h-4 rounded border-[theme(border)] text-[theme(--color-accent)] focus:ring-2 focus:ring-[theme(--color-accent)] cursor-pointer"
+                        onCheckedChange={(checked) => handleListenToUserDmsChange(checked === true)}
                     />
                     <span className="text-sm text-[theme(text-primary)]">
                         Monitor all private direct messages

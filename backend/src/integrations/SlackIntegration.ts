@@ -9,7 +9,7 @@ import { EventProcessor } from "../agent/ChannelAgent/EventProcessor";
 import { db } from "../prismaClient";
 import { LogLevel, WebClient } from "@slack/web-api";
 import { RunHistoryTrigger } from "../shared/RunHistoryTypes";
-import { ChannelInputWithConfigs, UserSlackIntegrationWithUser } from "../types/prisma";
+import { ChannelInputWithConfigs, UserSlackIntegration, UserSlackIntegrationWithUser } from "../types/prisma";
 import { InputEvent } from "./abstract/InputEvent";
 import jwt from "jsonwebtoken";
 import axios from "axios";
@@ -251,14 +251,10 @@ export class SlackIntegrationManager implements Integration<SlackIntegration, Sl
                     throw new Error('Failed to open chat');
                 }
 
-                const tokenType = authed_user?.token_type || 'user';
+                const tokenType = authed_user?.token_type
+                const isUserType = tokenType === AuthedUserTokenType.user;
 
-                const isUserType = tokenType === 'user';
-                const actualIsBotUser = isUserType && authed_user.access_token 
-                    ? false
-                    : true;
-
-                const updatePayload = isUserType && authed_user.access_token ? {
+                const updatePayload: Partial<UserSlackIntegration> = isUserType ? {
                     authed_user_id: authed_user.id,
                     authed_user_access_token: authed_user.access_token,
                 } : {
@@ -271,13 +267,13 @@ export class SlackIntegrationManager implements Integration<SlackIntegration, Sl
                         slack_team_id: slackIntegration.team_id,
                         authed_user_id: authed_user.id,
                         authed_user_access_token: authed_user.access_token,
-                        is_bot_user: false, // User token
+                        is_bot_user: false
                     }
                     : {
                         user_id: user.id,
                         slack_team_id: slackIntegration.team_id,
                         authed_user_id: authed_user.id,
-                        is_bot_user: actualIsBotUser, // Use the actual determined value
+                        is_bot_user: true
                     };
 
                 await tx.user_slack_integrations.upsert({
@@ -285,7 +281,7 @@ export class SlackIntegrationManager implements Integration<SlackIntegration, Sl
                         user_id_slack_team_id_is_bot_user: {
                             user_id: user.id,
                             slack_team_id: slackIntegration.team_id,
-                            is_bot_user: actualIsBotUser, // Use the actual determined value, not JWT state
+                            is_bot_user: !isUserType, 
                         }
                     },
                     update: {
@@ -999,6 +995,10 @@ interface SlackAuthorizations {
     is_enterprise_install: boolean;
 }
 
+enum AuthedUserTokenType {
+    user = 'user',
+}
+
 /**
  * Slack OAuth response interface
  */
@@ -1019,6 +1019,6 @@ interface SlackOAuthResponse {
     authed_user: {
         id: string;
         access_token?: string;
-        token_type?: string;
+        token_type?: AuthedUserTokenType;
     };
 }

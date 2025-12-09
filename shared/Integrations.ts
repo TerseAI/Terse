@@ -109,8 +109,9 @@ export interface SlackInstallationOptions {
 
 export type NoInstallationOptions = Record<string, never>;
 
+type EnsureExhaustiveInstallationOptions<T extends Record<IntegrationType, NoInstallationOptions | SlackInstallationOptions>> = T;
 
-export type IntegrationInstallationOptions = {
+export type IntegrationInstallationOptions = EnsureExhaustiveInstallationOptions<{
     [IntegrationType.SLACK]: SlackInstallationOptions;
     [IntegrationType.GMAIL]: NoInstallationOptions;
     [IntegrationType.NOTION]: NoInstallationOptions;
@@ -119,7 +120,7 @@ export type IntegrationInstallationOptions = {
     [IntegrationType.GITHUB]: NoInstallationOptions;
     [IntegrationType.FIGMA]: NoInstallationOptions;
     [IntegrationType.TERSE]: NoInstallationOptions;
-} 
+}> 
 
 export type InstallationOptionsFor<T extends IntegrationType> = IntegrationInstallationOptions[T];
 
