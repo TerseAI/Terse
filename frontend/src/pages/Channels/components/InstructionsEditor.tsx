@@ -12,6 +12,7 @@ import { ChannelInput, ChannelOutput, ChannelPrompt } from "@/shared/types";
 import { PromptBuilderModal } from "../../../components/PromptBuilder/PromptBuilderModal";
 import { Switch } from "../../../components/ui/switch";
 import { Label } from "../../../components/ui/label";
+import ReactMarkdown from "react-markdown";
 
 const instructionsPlaceholder = `Describe what you want the AI to do with incoming events from your sources.
 
@@ -79,12 +80,22 @@ export function InstructionsEditor({ prompt, setPrompt, channelInputs, channelOu
                     <Maximize2Icon className="size-4" />
                 </Button>
             </div>
-            <Textarea
-                value={prompt?.text}
-                onChange={(e) => setPrompt({ ...prompt, text: e.target.value })}
-                className="flex-1 min-h-0 resize-none overflow-auto"
-                placeholder={instructionsPlaceholder}
-            />
+            {showMarkdown && prompt?.text ? (
+                <div className="flex-1 min-h-0 overflow-auto p-3 border rounded-md bg-background">
+                    <div className="react-markdown prose prose-sm dark:prose-invert max-w-none">
+                        <ReactMarkdown>
+                            {prompt.text}
+                        </ReactMarkdown>
+                    </div>
+                </div>
+            ) : (
+                <Textarea
+                    value={prompt?.text}
+                    onChange={(e) => setPrompt({ ...prompt, text: e.target.value })}
+                    className="flex-1 min-h-0 resize-none overflow-auto"
+                    placeholder={instructionsPlaceholder}
+                />
+            )}
 
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                 <DialogContent className="sm:max-w-2xl h-[80vh] flex flex-col">
@@ -96,12 +107,22 @@ export function InstructionsEditor({ prompt, setPrompt, channelInputs, channelOu
                             )}
                         </DialogTitle>
                     </DialogHeader>
-                    <Textarea
-                        value={prompt?.text}
-                        onChange={(e) => setPrompt({ ...prompt, text: e.target.value })}
-                        className="flex-1 min-h-0 resize-none"
-                        placeholder={instructionsPlaceholder}
-                    />
+                    {showMarkdown && prompt?.text ? (
+                        <div className="flex-1 min-h-0 overflow-auto p-3 border rounded-md bg-background">
+                            <div className="react-markdown prose prose-sm dark:prose-invert max-w-none">
+                                <ReactMarkdown>
+                                    {prompt.text}
+                                </ReactMarkdown>
+                            </div>
+                        </div>
+                    ) : (
+                        <Textarea
+                            value={prompt?.text}
+                            onChange={(e) => setPrompt({ ...prompt, text: e.target.value })}
+                            className="flex-1 min-h-0 resize-none"
+                            placeholder={instructionsPlaceholder}
+                        />
+                    )}
                 </DialogContent>
             </Dialog>
             <PromptBuilderModal

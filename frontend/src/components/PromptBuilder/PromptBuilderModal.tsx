@@ -7,7 +7,8 @@ import { PromptBuilderModalProps } from "./types";
 import { Step1Description } from "./Step1Description";
 import { Step2Survey } from "./Step2Survey";
 import { Step3Review } from "./Step3Review";
-import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious, type CarouselApi } from "@/components/ui/carousel";
+import Stepper, { Step } from "@/components/Stepper";
+
 
 export function PromptBuilderModal({
     isOpen,
@@ -25,8 +26,8 @@ export function PromptBuilderModal({
     const [isLoadingQuestions, setIsLoadingQuestions] = useState(false);
     const [isLoadingPrompt, setIsLoadingPrompt] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const [carouselApi, setCarouselApi] = useState<CarouselApi>();
-    const [currentIndex, setCurrentIndex] = useState(0);
+    const [currentStep, setCurrentStep] = useState(1);
+    const [completedSteps, setCompletedSteps] = useState<Set<1 | 2 | 3>>(new Set());
 
     const prepareConfigContext = (): { inputConfigs?: SurveyConfigContext[]; outputConfig?: SurveyConfigContext } => {
         const inputConfigs: SurveyConfigContext[] = inputs.map(input => ({
@@ -40,20 +41,19 @@ export function PromptBuilderModal({
         return { inputConfigs, outputConfig };
     };
 
-    // Carousel indices: Step 1 = 0, Questions = 1 to N, Review = N+1
-    const step1Index = 0;
-    const firstQuestionIndex = 1;
-    const reviewIndex = 1 + questions.length;
-
-    // Get current step based on carousel index
-    const getCurrentStep = (index: number): 1 | 2 | 3 => {
-        if (index === step1Index) return 1;
-        if (index >= firstQuestionIndex && index < reviewIndex) return 2;
-        return 3;
-    };
-
-    const currentStep = getCurrentStep(currentIndex);
-    const currentQuestionIndex = currentIndex - firstQuestionIndex;
+    // Check if all questions are answered
+    const areAllQuestionsAnswered = useCallback(() => {
+        if (questions.length === 0) return false;
+        return questions.every((_, idx) => {
+            const key = String(idx);
+            const answer = answers[key];
+            const writeIn = writeInAnswers[key];
+            const hasAnswer = answer !== undefined && answer !== null && answer !== '' && 
+                             (Array.isArray(answer) ? answer.length > 0 : true);
+            const hasWriteIn = writeIn !== undefined && writeIn !== null && writeIn.trim() !== '';
+            return hasAnswer || hasWriteIn;
+        });
+    }, [questions, answers, writeInAnswers]);
 
     const handleGenerateQuestions = useCallback(async () => {
         if (!description.trim() || questions.length > 0) return;
@@ -75,22 +75,18 @@ export function PromptBuilderModal({
             
             setQuestions(response.questions);
             setAnswers({});
+            setCompletedSteps(prev => new Set([...prev, 1]));
             
-            // Automatically navigate to first question after questions are generated
-            if (carouselApi && response.questions.length > 0) {
-                // Wait a bit for the carousel to update with new items
-                setTimeout(() => {
-                    if (carouselApi) {
-                        carouselApi.scrollTo(firstQuestionIndex);
-                    }
-                }, 100);
+            // Automatically navigate to step 2 after questions are generated
+            if (response.questions.length > 0) {
+                setCurrentStep(2);
             }
         } catch (err: any) {
             setError(err.message || 'Failed to generate questions. Please try again.');
         } finally {
             setIsLoadingQuestions(false);
         }
-    }, [description, existingPrompt, inputs, output, questions.length, carouselApi, firstQuestionIndex]);
+    }, [description, existingPrompt, inputs, output, questions.length]);
 
     const handleGeneratePrompt = useCallback(async () => {
         if (generatedPrompt || questions.length === 0) return;
@@ -114,64 +110,21 @@ export function PromptBuilderModal({
             const response = await BackendProvider.generatePromptBuilderPrompt(request);
             
             setGeneratedPrompt(response.prompt);
+            setCompletedSteps(prev => new Set([...prev, 2, 3]));
+            setCurrentStep(3);
         } catch (err: any) {
             setError(err.message || 'Failed to generate prompt. Please try again.');
-            // Go back to last question on error
-            if (carouselApi && questions.length > 0) {
-                const lastQuestionIndex = questions.length;
-                carouselApi.scrollTo(lastQuestionIndex);
-            }
         } finally {
             setIsLoadingPrompt(false);
         }
-    }, [description, questions, answers, writeInAnswers, existingPrompt, inputs, output, generatedPrompt, carouselApi]);
+    }, [description, questions, answers, writeInAnswers, existingPrompt, inputs, output, generatedPrompt]);
 
-    // Handle carousel navigation
+    // Update completed steps when answers change
     useEffect(() => {
-        if (!carouselApi) return;
-
-        setCurrentIndex(carouselApi.selectedScrollSnap());
-
-        const handleSelect = () => {
-            // Prevent navigation when loading
-            if (isLoadingQuestions || isLoadingPrompt) {
-                // Revert to previous position
-                setTimeout(() => {
-                    if (carouselApi) {
-                        carouselApi.scrollTo(currentIndex);
-                    }
-                }, 0);
-                return;
-            }
-
-            const newIndex = carouselApi.selectedScrollSnap();
-            const prevIndex = carouselApi.previousScrollSnap();
-            
-            // Prevent navigation from Step 1 to Step 2 - must use Continue button
-            if (prevIndex === step1Index && newIndex === firstQuestionIndex && questions.length === 0) {
-                // Revert to Step 1
-                setTimeout(() => {
-                    if (carouselApi) {
-                        carouselApi.scrollTo(step1Index);
-                    }
-                }, 0);
-                return;
-            }
-            
-            setCurrentIndex(newIndex);
-            
-            // Auto-generate prompt when moving from last question to review
-            const currentReviewIndex = 1 + questions.length;
-            if (newIndex === currentReviewIndex && questions.length > 0 && !generatedPrompt && !isLoadingPrompt) {
-                handleGeneratePrompt();
-            }
-        };
-
-        carouselApi.on("select", handleSelect);
-        return () => {
-            carouselApi.off("select", handleSelect);
-        };
-    }, [carouselApi, description, questions.length, generatedPrompt, isLoadingQuestions, isLoadingPrompt, handleGenerateQuestions, handleGeneratePrompt, firstQuestionIndex, step1Index, currentIndex]);
+        if (questions.length > 0 && areAllQuestionsAnswered() && !completedSteps.has(2)) {
+            setCompletedSteps(prev => new Set([...prev, 2]));
+        }
+    }, [questions.length, areAllQuestionsAnswered, completedSteps]);
 
 
     const handleRestart = () => {
@@ -181,9 +134,31 @@ export function PromptBuilderModal({
         setWriteInAnswers({});
         setGeneratedPrompt('');
         setError(null);
-        if (carouselApi) {
-            carouselApi.scrollTo(step1Index);
+        setCurrentStep(1);
+        setCompletedSteps(new Set());
+    };
+
+    const canProceedToStep = (step: number): boolean => {
+        if (step === 1) return true;
+        if (step === 2) return completedSteps.has(1);
+        if (step === 3) return completedSteps.has(2);
+        return false;
+    };
+
+    const handleStepChange = (step: number) => {
+        setCurrentStep(step);
+    };
+
+    const handleStep2Continue = async () => {
+        if (areAllQuestionsAnswered()) {
+            await handleGeneratePrompt();
+            // Step will advance automatically via handleStepperStepChange after prompt is generated
         }
+    };
+
+    const handleStep1Continue = async () => {
+        await handleGenerateQuestions();
+        // Step will advance automatically via handleStepperStepChange after questions are generated
     };
 
     const handleAnswerChange = (questionIndex: number, answer: string, questionType: 'single' | 'multiple') => {
@@ -232,11 +207,18 @@ export function PromptBuilderModal({
             handleRestart();
         } else {
             // Reset to first step when opening
-            if (carouselApi) {
-                carouselApi.scrollTo(step1Index);
-            }
+            setCurrentStep(1);
+            setCompletedSteps(new Set());
         }
-    }, [isOpen, carouselApi]);
+    }, [isOpen]);
+
+    // Prevent Stepper navigation if step is not completed
+    const handleStepperStepChange = (step: number) => {
+        if (!canProceedToStep(step)) {
+            return; // Prevent navigation
+        }
+        handleStepChange(step);
+    };
 
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
@@ -246,92 +228,76 @@ export function PromptBuilderModal({
                         <Sparkles className="h-5 w-5" />
                         Prompt Builder
                         <span className="text-sm font-normal text-muted-foreground">
-                            {currentStep === 1 && "Step 1 of 3"}
-                            {currentStep === 2 && `Question ${currentQuestionIndex + 1} of ${questions.length}`}
-                            {currentStep === 3 && "Step 3 of 3"}
+                            Step {currentStep} of 3
                         </span>
                     </DialogTitle>
                 </DialogHeader>
 
                 {error && (
-                    <div className="bg-destructive/10 text-destructive p-3 rounded-md text-sm">
+                    <div className="bg-destructive/10 text-destructive p-3 rounded-md text-sm mb-4">
                         {error}
                     </div>
                 )}
 
-                <div className="py-4 relative">
-                    <Carousel
-                        setApi={setCarouselApi}
-                        opts={{
-                            align: "start",
-                            skipSnaps: false,
-                        }}
-                        className="w-full"
-                    >
-                        <CarouselContent>
-                            {/* Step 1: Description */}
-                            <CarouselItem>
-                                <Step1Description
-                                    description={description}
-                                    setDescription={setDescription}
-                                    isLoading={isLoadingQuestions}
-                                    onContinue={handleGenerateQuestions}
-                                />
-                            </CarouselItem>
-
-                            {/* Step 2: Survey Questions */}
-                            {questions.map((question, idx) => {
-                                const questionKey = String(idx);
-                                const currentAnswer = answers[questionKey];
-                                const isMultiple = question.type === 'multiple';
-                                const selectedAnswers = isMultiple 
-                                    ? (Array.isArray(currentAnswer) ? currentAnswer : [])
-                                    : (typeof currentAnswer === 'string' ? currentAnswer : undefined);
-                                const radioValue = isMultiple ? undefined : (typeof currentAnswer === 'string' ? currentAnswer : undefined);
-                                const writeInValue = writeInAnswers[questionKey] || '';
-
-                                return (
-                                    <CarouselItem key={idx}>
+                <Stepper
+                    key={currentStep} // Force re-render when step changes programmatically
+                    initialStep={currentStep}
+                    onStepChange={handleStepperStepChange}
+                    onFinalStepCompleted={() => {}}
+                    backButtonText="Previous"
+                    nextButtonText="Next"
+                    disableStepIndicators={false}
+                    stepCircleContainerClassName="!max-w-none !border-none !shadow-none"
+                    stepContainerClassName="!p-8"
+                    contentClassName="!min-h-[200px]"
+                    footerClassName="!pb-4"
+                    nextButtonProps={{
+                        disabled: 
+                            (currentStep === 1 && (!description.trim() || isLoadingQuestions)) ||
+                            (currentStep === 2 && (!areAllQuestionsAnswered() || isLoadingPrompt)) ||
+                            isLoadingQuestions || isLoadingPrompt,
+                        onClick: async (e: React.MouseEvent) => {
+                            e.preventDefault();
+                            if (currentStep === 1) {
+                                await handleStep1Continue();
+                            } else if (currentStep === 2) {
+                                await handleStep2Continue();
+                            }
+                        }
+                    }}
+                    backButtonProps={{
+                        disabled: isLoadingQuestions || isLoadingPrompt
+                    }}
+                >
+                    <Step>
+                        <Step1Description
+                            description={description}
+                            setDescription={setDescription}
+                            isLoading={isLoadingQuestions}
+                        />
+                    </Step>
+                    <Step>
                         <Step2Survey
-                                            question={question}
-                                            questionIndex={idx}
-                                            totalQuestions={questions.length}
-                                            selectedAnswers={selectedAnswers}
-                                            radioValue={radioValue}
-                                            writeInValue={writeInValue}
+                            questions={questions}
+                            answers={answers}
+                            writeInAnswers={writeInAnswers}
                             onAnswerChange={handleAnswerChange}
                             onWriteInChange={handleWriteInChange}
+                            isLoading={isLoadingPrompt}
+                            allQuestionsAnswered={areAllQuestionsAnswered()}
+                            onBack={() => handleStepChange(1)}
+                            onContinue={handleStep2Continue}
                         />
-                                    </CarouselItem>
-                                );
-                            })}
-
-                            {/* Step 3: Review */}
-                            <CarouselItem>
+                    </Step>
+                    <Step>
                         <Step3Review
                             generatedPrompt={generatedPrompt}
-                                    isLoading={isLoadingPrompt}
+                            isLoading={isLoadingPrompt}
                             onRestart={handleRestart}
                             onDone={handleDone}
                         />
-                            </CarouselItem>
-                        </CarouselContent>
-                        {currentStep !== 1 && (
-                            <CarouselPrevious 
-                                className="left-2" 
-                                disabled={isLoadingQuestions || isLoadingPrompt}
-                            />
-                        )}
-                        <CarouselNext 
-                            className="right-2" 
-                            disabled={
-                                currentStep === 1 || 
-                                isLoadingQuestions || 
-                                isLoadingPrompt
-                            }
-                        />
-                    </Carousel>
-                </div>
+                    </Step>
+                </Stepper>
             </DialogContent>
         </Dialog>
     );

@@ -14,18 +14,16 @@ export interface Step1DescriptionProps {
     description: string;
     setDescription: (description: string) => void;
     isLoading: boolean;
-    onContinue: () => void;
 }
 
 export interface Step2SurveyProps {
     questions: SurveyQuestion[];
     answers: SurveyAnswers;
     writeInAnswers: SurveyWriteInAnswers;
-    currentQuestionIndex: number;
-    setCurrentQuestionIndex: (index: number) => void;
     onAnswerChange: (questionIndex: number, answer: string, questionType: 'single' | 'multiple') => void;
     onWriteInChange: (questionIndex: number, value: string) => void;
     isLoading: boolean;
+    allQuestionsAnswered: boolean;
     onBack: () => void;
     onContinue: () => void;
 }
