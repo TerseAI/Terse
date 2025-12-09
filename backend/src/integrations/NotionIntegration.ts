@@ -6,14 +6,10 @@ import { ChannelInputWithConfigs } from "../types/prisma";
 import jwt from "jsonwebtoken";
 import { notion as notionConfig, jwt as jwtSettings, urls } from "../config/settings";
 import { Request, Response } from "express";
-import { Client } from "@notionhq/client";
 import chalk from "chalk";
-import { NotionResource } from "../shared/types";
-import { PageObjectResponse, PartialPageObjectResponse, SearchResponse } from "@notionhq/client/build/src/api-endpoints";
-import { extractPageTitle } from "../utility/notion";
 import { IntegrationType } from "../shared/Integrations";
 
-export class NotionIntegrationManager implements Integration<NotionIntegration, never, typeof NotionIntegrationMetadata>, OAuthIntegrationInstallation {
+export class NotionIntegrationManager implements Integration<NotionIntegration, never, typeof NotionIntegrationMetadata>, OAuthIntegrationInstallation<IntegrationType.NOTION> {
     constructor() { }
     integrationType: IntegrationType = IntegrationType.NOTION;
 

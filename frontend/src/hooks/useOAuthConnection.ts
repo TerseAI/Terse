@@ -1,14 +1,14 @@
 import { useState } from 'react';
-import { IntegrationType } from "@/shared/Integrations"
+import { InstallationOptionsFor, IntegrationType } from "@/shared/Integrations"
 import { BackendProvider } from '../services/backend';
 
-export function useOAuthConnection(integrationType: IntegrationType) {
+export function useOAuthConnection<T extends IntegrationType>(integrationType: T, options: InstallationOptionsFor<T>) {
     const [isConnecting, setIsConnecting] = useState(false);
 
     const connect = async () => {
         setIsConnecting(true);
         try {
-            const installationDetails = await BackendProvider.getIntegrationInstallationDetails(integrationType);
+            const installationDetails = await BackendProvider.getIntegrationInstallationDetails(integrationType, options);
             
             if (installationDetails?.oauthUrl) {
                 window.open(installationDetails.oauthUrl, 'oauth-popup', 'width=600,height=700');

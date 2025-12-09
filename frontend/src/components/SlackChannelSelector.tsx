@@ -1,13 +1,15 @@
-import { useEffect, useMemo} from "react";
-import { SlackChannel} from "../shared/types";
+import { useEffect, useMemo } from "react";
+import { SlackChannel } from "../shared/types";
 import { RefreshButton } from "./RefreshButton";
 import { useSlackChannels } from "@/hooks/api/useSlackChannels";
 import { capitalize } from "../lib/utils";
+import { Checkbox } from "./ui/checkbox";
 
 interface SlackChannelSelectorProps {
     integrationId: string;
     selectedChannelId?: string;
     listenToUserDms?: boolean;
+    showListenToDMsOption?: boolean; // Only show DM option for user tokens
     onSelect: (channelId: string, channelName?: string) => void;
     onListenToUserDmsChange?: (listenToUserDms: boolean) => void;
 }
@@ -16,6 +18,7 @@ export function SlackChannelSelector({
     integrationId,
     selectedChannelId,
     listenToUserDms = false,
+    showListenToDMsOption = false,
     onSelect,
     onListenToUserDmsChange
 }: SlackChannelSelectorProps) {
@@ -43,6 +46,51 @@ export function SlackChannelSelector({
         return 'Failed to load channels';
     }, [error, isError]);
 
+<<<<<<< HEAD
+=======
+    // Format MPIM channel names from "mpdm-olivier--thomas--zapier-1" to "Olivier, Thomas, Zapier..."
+    const formatMPIMChannelName = (name: string): string => {
+        if (!name.startsWith('mpdm-')) {
+            return name;
+        }
+        
+        // Remove "mpdm-" prefix and split by double hyphens (--)
+        const namePart = name.slice(5);
+        const parts = namePart.split('--');
+        
+        // Remove number suffix from the last part if it exists (e.g., "zapier-1" -> "zapier")
+        if (parts.length > 0) {
+            const lastPart = parts[parts.length - 1];
+            // Check if last part ends with a number suffix (e.g., "-1", "-2")
+            const numberSuffixMatch = lastPart.match(/^(.+)-\d+$/);
+            if (numberSuffixMatch) {
+                parts[parts.length - 1] = numberSuffixMatch[1];
+            }
+        }
+        
+        // Store the total number of name parts before slicing
+        const totalNames = parts.length;
+        
+        // Take first 3 names (or all if less than 3)
+        const names = parts.slice(0, 3);
+        
+        // Capitalize first letter of each name and join with commas
+        const formattedNames = names.map(capitalize);
+        
+        // Add "..." if there are more than 3 names
+        const suffix = totalNames > 3 ? '...' : '';
+        
+        return formattedNames.join(', ') + suffix;
+    };
+
+    // Clear listenToUserDms if it's enabled but the option is not available (switched to bot token)
+    useEffect(() => {
+        if (!showListenToDMsOption && listenToUserDms && onListenToUserDmsChange) {
+            onListenToUserDmsChange(false);
+        }
+    }, [showListenToDMsOption, listenToUserDms, onListenToUserDmsChange]);
+
+>>>>>>> a395c68ae09aaf8c704062395161955750556072
     useEffect(() => {
         if (!integrationId || isLoading || channels.length === 0 || listenToUserDms) {
             return;
@@ -189,6 +237,7 @@ export function SlackChannelSelector({
             )}
             </>}
 
+<<<<<<< HEAD
             {/* Listen to user DMs checkbox */}
             <label className="flex items-center gap-2 cursor-pointer">
                 <input
@@ -201,6 +250,20 @@ export function SlackChannelSelector({
                     Monitor all private direct messages
                 </span>
             </label>
+=======
+            {/* Listen to user DMs checkbox - only show for user tokens */}
+            {showListenToDMsOption && (
+                <label className="flex items-center gap-2 cursor-pointer">
+                    <Checkbox
+                        checked={listenToUserDms}
+                        onCheckedChange={(checked) => handleListenToUserDmsChange(checked === true)}
+                    />
+                    <span className="text-sm text-[theme(text-primary)]">
+                        Monitor all private direct messages
+                    </span>
+                </label>
+            )}
+>>>>>>> a395c68ae09aaf8c704062395161955750556072
         </div>
     );
 }

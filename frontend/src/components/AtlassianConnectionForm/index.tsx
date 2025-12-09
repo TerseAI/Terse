@@ -10,10 +10,9 @@ interface AtlassianConnectionFormWrapperProps extends AtlassianConnectionFormPro
 }
 
 export function AtlassianConnectionForm({ 
-    onCancel, 
-    integrationType 
+    onCancel
 }: AtlassianConnectionFormWrapperProps) {
-    const { connect, isConnecting } = useOAuthConnection(integrationType);
+    const { connect, isConnecting } = useOAuthConnection<IntegrationType.ATLASSIAN>(IntegrationType.ATLASSIAN, {});
 
     return (
         <Card>

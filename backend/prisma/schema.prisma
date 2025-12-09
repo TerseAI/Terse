@@ -143,7 +143,8 @@ model user_slack_integrations {
   user_id                  String
   slack_team_id            String
   authed_user_id           String
-  authed_user_access_token String
+  authed_user_access_token String?
+  is_bot_user              Boolean  @default(true) // true for bot token, false for user token
   created_at               DateTime @default(now())
   updated_at               DateTime @updatedAt
 
@@ -151,7 +152,7 @@ model user_slack_integrations {
   slack_integration              slack_integrations               @relation(fields: [slack_team_id], references: [team_id], onDelete: Cascade)
   user_notification_destinations user_notification_destinations[]
 
-  @@unique([user_id, slack_team_id])
+  @@unique([user_id, slack_team_id, is_bot_user])
 }
 
 model slack_integrations {
@@ -451,6 +452,7 @@ model automations {
   inputs                automation_inputs[]
   output                automation_outputs?
   run_history_records   run_history_records[]
+  directiveRecords      directive_records[]
   notification_settings automation_notification_settings?
 
   @@index([user_id])
@@ -793,6 +795,7 @@ model run_history_records {
   pending_approval pending_approvals?
   chat_events      run_history_chat_events[]
   raw_events       run_history_raw_events[]
+  directiveRecords directive_records[]
 
   @@index([automation_id])
   @@index([status])
@@ -810,8 +813,8 @@ model run_history_actions {
   url                   String?
   step_id               String?
   type                  RunHistoryActionType
-  is_read_only          Boolean               @default(true)
-  created_at            DateTime              @default(now())
+  is_read_only          Boolean              @default(true)
+  created_at            DateTime             @default(now())
 
   run_history_record run_history_records @relation(fields: [run_history_record_id], references: [id], onDelete: Cascade)
 
@@ -856,6 +859,7 @@ model run_history_chat_events {
   created_at            DateTime                @default(now())
 
   run_history_record run_history_records @relation(fields: [run_history_record_id], references: [id], onDelete: Cascade)
+  directiveRecords   directive_records[]
 
   @@index([run_history_record_id])
   @@index([timestamp])
@@ -916,4 +920,23 @@ model user_notification_destinations {
 enum NotificationDestinationType {
   SLACK
   EMAIL
+}
+
+model directive_records {
+  id                        String   @id @default(cuid())
+  automation_id             String
+  run_history_record_id     String
+  run_history_chat_event_id String
+  directive_description     String
+  is_active                 Boolean  @default(true)
+  created_at                DateTime @default(now())
+
+  automation             automations             @relation(fields: [automation_id], references: [id], onDelete: Cascade)
+  run_history_record     run_history_records     @relation(fields: [run_history_record_id], references: [id], onDelete: Cascade)
+  run_history_chat_event run_history_chat_events @relation(fields: [run_history_chat_event_id], references: [id], onDelete: Cascade)
+
+  @@index([automation_id])
+  @@index([run_history_record_id])
+  @@index([run_history_chat_event_id])
+  @@index([is_active])
 }

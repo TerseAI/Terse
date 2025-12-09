@@ -3,7 +3,7 @@ import { db } from "../prismaClient";
 import { SlackChannelsResponse, SlackChannel } from "../shared/types";
 import { WebClient, LogLevel } from "@slack/web-api";
 import chalk from "chalk";
-import { User } from "../types/prisma";
+import { User, UserSlackIntegrationWithUser } from "../types/prisma";
 import { SlackIntegrationManager, isValidSlackSig, SlackMessageEvent } from '../integrations/SlackIntegration';
 
 // MARK: - Route Handlers
@@ -71,26 +71,24 @@ export async function slackOAuthCallback(req: Request, res: Response) {
     await integration.processInstallationCallback(req, res);
 }
 
+
+const getToken = (integration: UserSlackIntegrationWithUser) => {
+    return integration.authed_user_access_token || integration.slack_integration.access_token;
+}
+
 /**
  * Handle incoming Slack webhook events
  * Validates signature, parses JSON, handles URL verification, and processes events
  */
 export async function handleSlackWebhook(req: Request, res: Response): Promise<void> {
-    console.log(chalk.cyan('🔵 [SLACK WEBHOOK] handleSlackWebhook called'));
-    console.log(chalk.cyan('🔵 [SLACK WEBHOOK] Request method:', req.method));
-    console.log(chalk.cyan('🔵 [SLACK WEBHOOK] Request path:', req.path));
-    
     // Validate Slack signature
     const isValid = isValidSlackSig(req);
-    console.log(chalk.cyan('🔵 [SLACK WEBHOOK] Signature valid:', isValid));
     
     if (!isValid) {
         console.log(chalk.red('❌ [SLACK WEBHOOK] Invalid signature - returning 400'));
         res.sendStatus(400);
         return;
     }
-    
-    console.log(chalk.green('✅ [SLACK WEBHOOK] Signature validated - parsing body'));
 
     // Parse JSON from raw body (req.body is a Buffer from express.raw())
     // Express.raw() gives us a Buffer, which we convert to string and parse as JSON
@@ -103,8 +101,6 @@ export async function handleSlackWebhook(req: Request, res: Response): Promise<v
         res.sendStatus(400);
         return;
     }
-
-    console.log(chalk.green('Slack event received', JSON.stringify(body, null, 2)));
 
     // Handle URL verification challenge (must respond immediately)
     if (body.type === 'url_verification') {
@@ -148,6 +144,7 @@ export const getSlackChannels = async (req: Request, res: Response) => {
       },
       include: {
         slack_integration: true,
+        user: true,
       },
     });
 
@@ -157,12 +154,12 @@ export const getSlackChannels = async (req: Request, res: Response) => {
       return res.status(404).json({ error: "Slack integration not found" });
     }
 
-    const slackIntegration = userSlackIntegration.slack_integration;
+    const token = getToken(userSlackIntegration);
+    const isBotUser = userSlackIntegration.is_bot_user;
 
-    // Fetch channels from Slack API using the BOT token
-    // This ensures we only show channels where the bot is a member and can post
-    // Using the user token would show channels the user can see but the bot cannot post to
-    const client = new WebClient(slackIntegration.access_token, {
+
+    // Fetch channels from Slack API
+    const client = new WebClient(token, {
       logLevel: LogLevel.ERROR,
     });
 
@@ -186,7 +183,7 @@ export const getSlackChannels = async (req: Request, res: Response) => {
 
     if (publicChannels.ok && publicChannels.channels) {
       for (const channel of publicChannels.channels) {
-        if (channel.id && channel.name) {
+        if (channel.id && channel.name && (!isBotUser || channel.is_member)) {
           channels.push({
             id: channel.id,
             name: channel.name,
@@ -233,10 +230,6 @@ export const getSlackChannels = async (req: Request, res: Response) => {
       channels,
       selectedChannelId: null, // We don't store a default channel at the connection level
     };
-
-    console.log(
-      chalk.blue(`📋 Found ${channels.length} Slack channels for integration ${integrationId}`)
-    );
 
     res.status(200).json(response);
   } catch (error: any) {

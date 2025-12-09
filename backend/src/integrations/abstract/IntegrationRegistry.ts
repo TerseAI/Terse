@@ -6,10 +6,10 @@ import { LinearIntegrationManager } from "../LinearIntegration";
 import { NotionIntegrationManager } from "../NotionIntegration";
 import { SlackIntegrationManager } from "../SlackIntegration";
 import { Integration, OAuthIntegrationInstallation } from "./Integration";
-import { IntegrationInstance, IntegrationDetails } from "../../shared/Integrations";
+import { IntegrationInstance, IntegrationDetails, IntegrationType } from "../../shared/Integrations";
 
 
-type IntegrationWithInstallation = Integration<IntegrationInstance, any, IntegrationDetails> & (OAuthIntegrationInstallation);
+type IntegrationWithInstallation = Integration<IntegrationInstance, any, IntegrationDetails> & (OAuthIntegrationInstallation<IntegrationType>);
 
 
 export const INTEGRATION_REGISTRY: Array<IntegrationWithInstallation> = [
@@ -17,7 +17,6 @@ export const INTEGRATION_REGISTRY: Array<IntegrationWithInstallation> = [
     new FigmaIntegrationManager(),
     new GithubIntegrationManager(),
     new GmailIntegrationManager(),
-    //new JiraIntegrationManager(),
     new LinearIntegrationManager(),
     new NotionIntegrationManager(),
     new SlackIntegrationManager(),

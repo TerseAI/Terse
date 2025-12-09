@@ -16,7 +16,7 @@ export function ConfluenceIntegration({
     setConfig
 }: InputConfigSelectorProps) {
     const { integrations, isLoading } = useAtlassianIntegrations();
-    const { connect: connectOAuth, isConnecting: isOAuthConnecting } = useOAuthConnection(IntegrationType.ATLASSIAN);
+    const { connect: connectOAuth, isConnecting: isOAuthConnecting } = useOAuthConnection<IntegrationType.ATLASSIAN>(IntegrationType.ATLASSIAN, {});
     const currentConfig = input.config as ConfluenceConfig | undefined;
     const [selectedIntegrationId, setSelectedIntegrationId] = useIntegrationId(currentConfig, ConfigType.CONFLUENCE);
 
