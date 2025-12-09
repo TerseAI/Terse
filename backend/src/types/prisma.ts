@@ -26,6 +26,7 @@ import {
   user_notification_destinations,
   automation_notification_settings,
   automation_linear_configs,
+  directive_records
 } from '@prisma/client';
 
 
@@ -50,6 +51,7 @@ export type UserSlackIntegration = user_slack_integrations;
 export type UserSlackIntegrationWithUser = Prisma.user_slack_integrationsGetPayload<{
   include: {
     user: true;
+    slack_integration: true;
   };
 }>;
 
@@ -77,6 +79,8 @@ export type ChannelPrompt = automation_prompts; // Alias for rebranding
 
 export type AutomationInput = automation_inputs;
 export type ChannelInput = automation_inputs; // Alias for rebranding
+
+export type DirectiveRecord = directive_records;
 
 // Extended type for ChannelInput with all config relations included
 export type AutomationInputWithConfigs = Prisma.automation_inputsGetPayload<{

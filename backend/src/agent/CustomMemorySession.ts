@@ -1,6 +1,12 @@
 import type { AgentInputItem, Session } from '@openai/agents-core';
-import { db } from '../../prismaClient';
+import { db } from '../prismaClient';
 import chalk from 'chalk';
+
+
+interface RunHistoryChatMemorySessionOptions {
+  sessionId: string;
+  skipSave?: boolean;
+}
 
 /**
  * Inspired by the CustomMemorySession in the OpenAI agents library
@@ -8,13 +14,13 @@ import chalk from 'chalk';
  */
 export class RunHistoryChatMemorySession implements Session {
   private readonly sessionId: string;
+  private readonly skipSave: boolean;
 
   constructor(
-    options: {
-      sessionId: string;
-    },
+      options: RunHistoryChatMemorySessionOptions
   ) {
     this.sessionId = options.sessionId
+    this.skipSave = options.skipSave ?? false;
   }
 
   async getSessionId(): Promise<string> {
@@ -42,6 +48,7 @@ export class RunHistoryChatMemorySession implements Session {
   }
 
   async addItems(items: AgentInputItem[]): Promise<void> {
+    if (this.skipSave) return;
     if (items.length === 0) return;
     const prisma = db()
 
@@ -74,6 +81,7 @@ export class RunHistoryChatMemorySession implements Session {
   }
 
   async popItem(): Promise<AgentInputItem | undefined> {
+    if (this.skipSave) return undefined;
     const prisma = db()
     const lastEvent = await prisma.run_history_raw_events.findFirst({
       where: {
@@ -98,6 +106,7 @@ export class RunHistoryChatMemorySession implements Session {
   }
 
   async clearSession(): Promise<void> {
+    if (this.skipSave) return;
     const prisma = db()
     await prisma.run_history_raw_events.deleteMany({
       where: {
@@ -199,4 +208,14 @@ export function trimToLastTurns(items: AgentInputItem[], maxTurns: number): Agen
 
 function cloneAgentItem<T extends AgentInputItem>(item: T): T {
   return structuredClone(item);
+}
+
+
+export const recentHistoryCallback = (history: AgentInputItem[], newItems: AgentInputItem[]): AgentInputItem[] => {
+  const trimmedHistory = trimToLastTurns(history, 10)
+  return [...trimmedHistory, ...newItems];
+}
+
+export const identityHistoryCallback = (history: AgentInputItem[], newItems: AgentInputItem[]): AgentInputItem[] => {
+  return [...history, ...newItems];
 }

@@ -17,7 +17,7 @@ export function GitHubIntegration({
     setConfig
 }: InputConfigSelectorProps) {
     const { integrations, isLoading } = useGithubIntegrations();
-    const { connect: connectOAuth, isConnecting: isOAuthConnecting } = useOAuthConnection(IntegrationType.GITHUB);
+    const { connect: connectOAuth, isConnecting: isOAuthConnecting } = useOAuthConnection<IntegrationType.GITHUB>(IntegrationType.GITHUB, {});
     const currentConfig = input.config as GitHubConfig | undefined;
     const [selectedIntegrationId, setSelectedIntegrationId] = useIntegrationId(currentConfig, ConfigType.GITHUB);
 

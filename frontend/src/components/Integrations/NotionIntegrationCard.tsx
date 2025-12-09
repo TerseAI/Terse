@@ -10,7 +10,7 @@ import { cn } from "@/lib/utils";
 import { Skeleton } from "../ui/skeleton";
 
 function NotionIntegrationCard({ className, isActive = true }: { className?: string; isActive?: boolean }) {
-    const { connect, isConnecting } = useOAuthConnection(IntegrationType.NOTION);
+    const { connect, isConnecting } = useOAuthConnection<IntegrationType.NOTION>(IntegrationType.NOTION, {});
     const { integrations, isLoading: integrationsLoading } = useNotionIntegrations();
 
     return (
