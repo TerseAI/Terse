@@ -7,7 +7,7 @@ import crypto from 'crypto';
 import chalk from "chalk";
 import { EventProcessor } from "../agent/ChannelAgent/EventProcessor";
 import { db } from "../prismaClient";
-import { LogLevel, WebClient } from "@slack/web-api";
+import { LogLevel, WebClient, ConversationsMembersResponse } from "@slack/web-api";
 import { RunHistoryTrigger } from "../shared/RunHistoryTypes";
 import { ChannelInputWithConfigs, UserSlackIntegration, UserSlackIntegrationWithUser } from "../types/prisma";
 import { InputEvent } from "./abstract/InputEvent";
@@ -595,7 +595,7 @@ async function handleSlackMessage(event: SlackMessageEvent, teamId: string, auth
             try {
                 const botClient = InitializeSlackWebClient(integration);
 
-                let membersRes: { ok: boolean; members?: string[]; error?: string } | undefined;
+                let membersRes: ConversationsMembersResponse | undefined;
                 try {
                     membersRes = await botClient.conversations.members({
                         channel: messageEvent.channel!
