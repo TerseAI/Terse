@@ -31,7 +31,7 @@ interface InstructionsEditorProps {
     prompt: ChannelPrompt | undefined;
     setPrompt: (prompt: ChannelPrompt | undefined) => void;
     channelInputs: ChannelInput[];
-    channelOutput: ChannelOutput;
+    channelOutput: ChannelOutput | undefined;
 }
 
 export function InstructionsEditor({ prompt, setPrompt, channelInputs, channelOutput }: InstructionsEditorProps) {
