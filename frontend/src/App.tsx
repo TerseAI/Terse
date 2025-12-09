@@ -20,6 +20,7 @@ import IntegrationPage from "./pages/IntegrationPage";
 import BreadCrumb from "./components/BreadCrumb";
 import { initializeSocket, disconnectSocket } from "./socket";
 import { useFeatureFlag } from "./hooks/useFeatureFlag";
+import NotificationsPage from "./pages/Notifications";
 
 function App() {
   const hasBirdsEyeFlag = useFeatureFlag('Birds-eye-view-homepage');
@@ -37,6 +38,7 @@ function App() {
               <Route path="channels/new" element={<ChannelDetail />} />
               <Route path="channels/:id" element={<ChannelDetail />} />
               <Route path="integrations" element={<IntegrationPage />} />
+              <Route path="notifications" element={<NotificationsPage />} />
             </Route>
             <Route path="/changelog" element={<LandingPageChangelog />} />
             <Route path="/oauth/success" element={<OAuthSuccess />} />

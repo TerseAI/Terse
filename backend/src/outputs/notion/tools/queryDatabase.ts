@@ -329,6 +329,7 @@ First sorts by Category, then by Name within each category.`),
             integration: IntegrationType.NOTION,
             target: databaseName,
             details: `Queried database ${filterDescription} and retrieved ${pages.length} ${pages.length === 1 ? 'page' : 'pages'}`,
+            type: 'read',
         });
 
         console.log("Notion query database tool response: ", { 

@@ -70,6 +70,7 @@ import {
   slackOAuthCallback,
   getSlackChannels,
   getSlackIntegrations,
+  handleSlackInteraction,
 } from "./routes/slack";
 import { TicketManager } from "./ticketing/TicketIntegration";
 import { User } from "./types/prisma";
@@ -82,6 +83,12 @@ import { getConfluenceIntegrations, getConfluenceResources } from "./routes/conf
 import { getActiveIntegrations, getAllIntegrations, getIntegrationInstallationDetails } from "./routes/integrations";
 import { initializeRealtimeSocket } from "./realtimeSocket";
 import { generateQuestionsRoute, generatePromptRoute } from "./routes/promptBuilder";
+import {
+  createNotificationDestination,
+  deleteNotificationDestination,
+  getNotificationDestinations,
+  updateNotificationDestination,
+} from "./routes/notificationDestinations";
 
 export type Session = {
   user: User;
@@ -368,6 +375,10 @@ app.post("/slack/events", async (req, res) => {
   await handleSlackWebhook(req, res);
 });
 
+app.post("/slack/interactions", async (req, res) => {
+  await handleSlackInteraction(req, res);
+});
+
 app.get("/slack/channels", authMiddleware, async (req, res) => {
   getSlackChannels(req, res);
 });
@@ -420,6 +431,24 @@ app.get("/integrations", authMiddleware, async (req, res) => {
 
 app.get("/integrations/active", authMiddleware, async (req, res) => {
   getActiveIntegrations(req, res);
+});
+
+// MARK: NOTIFICATION DESTINATIONS
+
+app.get("/notification-destinations", authMiddleware, async (req, res) => {
+  getNotificationDestinations(req, res);
+});
+
+app.post("/notification-destinations", authMiddleware, async (req, res) => {
+  createNotificationDestination(req, res);
+});
+
+app.put("/notification-destinations/:id", authMiddleware, async (req, res) => {
+  updateNotificationDestination(req, res);
+});
+
+app.delete("/notification-destinations/:id", authMiddleware, async (req, res) => {
+  deleteNotificationDestination(req, res);
 });
 
 /**

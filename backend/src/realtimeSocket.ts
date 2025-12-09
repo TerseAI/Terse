@@ -252,7 +252,8 @@ export async function initializeRealtimeSocket(server: HttpServer): Promise<Serv
                 channel.id,
                 runId,
                 userMessageEventId,
-                userMessage
+                userId,
+                userMessage,
             ));
 
         });

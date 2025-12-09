@@ -6,6 +6,7 @@ import { IntegrationType } from "../../../shared/Integrations";
 import { LinearTicketSession } from "../LinearTicketOutput";
 import { SessionWithTracking } from "../../../agent/ChannelAgent/ChannelAgent";
 import type { IssueFilter, SearchIssuesQueryVariables, PaginationOrderBy as PaginationOrderByType } from "@linear/sdk/dist/_generated_documents";
+import { RunHistoryActionType } from "@prisma/client";
 
 
 export const linearSearchTicketTool = tool({
@@ -95,6 +96,7 @@ Use this tool to find existing Linear issues before creating new ones or to look
                 integration: IntegrationType.LINEAR,
                 target: 'Linear workspace',
                 details: `Found ${results.length} issue(s) matching "${issueDescription}"${hasNextPage ? ' (more available)' : ''}`,
+                type: RunHistoryActionType.read,
             });
 
             return {

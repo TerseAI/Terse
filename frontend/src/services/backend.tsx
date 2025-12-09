@@ -34,6 +34,7 @@ import {
 import { User } from "../types/User";
 import { GetRunHistoryParams, GetRunHistoryResponse } from '../shared/RunHistoryTypes';
 import { deserializeConfig } from '../utility/ConfigUtils';
+import { CreateNotificationDestinationRequest, NotificationDestination } from '../shared/Notifications';
 
 const backendBaseUrl = '/api';
 
@@ -278,6 +279,26 @@ interface BackendService {
      * Generates a prompt based on description and answers
      */
     generatePromptBuilderPrompt(request: GenerateSurveyPromptRequest): Promise<GenerateSurveyPromptResponse>;
+
+    /**
+     * Gets all notification destinations for the current user
+     */
+    getNotificationDestinations(): Promise<NotificationDestination[]>;
+
+    /**
+     * Creates a new notification destination
+     */
+    createNotificationDestination(destination: CreateNotificationDestinationRequest): Promise<NotificationDestination>;
+
+    /**
+     * Updates an existing notification destination
+     */
+    updateNotificationDestination(destination: NotificationDestination): Promise<NotificationDestination>;
+
+    /**
+     * Deletes a notification destination
+     */
+    deleteNotificationDestination(destination: NotificationDestination): Promise<void>;
 }
 
 export const BackendProvider: BackendService = {
@@ -769,6 +790,15 @@ export const BackendProvider: BackendService = {
                 console.error('Error generating questions:', error);
                 throw error;
             });
+        },
+
+    getNotificationDestinations: () => {
+        return axios.get<NotificationDestination[]>(`${backendBaseUrl}/notification-destinations`, { withCredentials: true })
+            .then(response => response.data)
+            .catch(error => {
+                console.error('Error getting notification destinations:', error);
+                throw error;
+            });
     },
 
     generatePromptBuilderPrompt: (request: GenerateSurveyPromptRequest) => {
@@ -780,6 +810,33 @@ export const BackendProvider: BackendService = {
             .then(response => response.data)
             .catch(error => {
                 console.error('Error generating prompt:', error);
+                throw error;
+            });
+    },
+
+    createNotificationDestination: (destination: CreateNotificationDestinationRequest) => {
+        return axios.post<NotificationDestination>(`${backendBaseUrl}/notification-destinations`, destination, { withCredentials: true })
+            .then(response => response.data)
+            .catch(error => {
+                console.error('Error creating notification destination:', error);
+                throw error;
+            });
+    },
+    
+    updateNotificationDestination: (destination: NotificationDestination) => {
+        return axios.put<NotificationDestination>(`${backendBaseUrl}/notification-destinations/${destination.id}`, destination, { withCredentials: true })
+            .then(response => response.data)
+            .catch(error => {
+                console.error('Error updating notification destination:', error);
+                throw error;
+            });
+    },
+
+    deleteNotificationDestination: (destination: NotificationDestination) => {
+        return axios.delete<void>(`${backendBaseUrl}/notification-destinations/${destination.id}`, { withCredentials: true })
+            .then(response => response.data)
+            .catch(error => {
+                console.error('Error deleting notification destination:', error);
                 throw error;
             });
     },
