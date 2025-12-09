@@ -18,7 +18,7 @@ import { Request, Response } from "express";
 // OAuth2 scopes for Gmail
 const SCOPES = ["https://www.googleapis.com/auth/gmail.readonly"];
 
-export class GmailIntegrationManager implements Integration<GmailIntegration, GmailWebhookEvent, typeof GmailIntegrationMetadata>, OAuthIntegrationInstallation {
+export class GmailIntegrationManager implements Integration<GmailIntegration, GmailWebhookEvent, typeof GmailIntegrationMetadata>, OAuthIntegrationInstallation<IntegrationType.GMAIL> {
     constructor() { }
     integrationType: IntegrationType = IntegrationType.GMAIL;
 

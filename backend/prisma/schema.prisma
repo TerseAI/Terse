@@ -142,14 +142,15 @@ model user_slack_integrations {
   user_id                  String
   slack_team_id            String
   authed_user_id           String
-  authed_user_access_token String
+  authed_user_access_token String?
+  is_bot_user              Boolean  @default(true) // true for bot token, false for user token
   created_at               DateTime @default(now())
   updated_at               DateTime @updatedAt
 
   user              users              @relation(fields: [user_id], references: [id], onDelete: Cascade)
   slack_integration slack_integrations @relation(fields: [slack_team_id], references: [team_id], onDelete: Cascade)
 
-  @@unique([user_id, slack_team_id])
+  @@unique([user_id, slack_team_id, is_bot_user])
 }
 
 model slack_integrations {

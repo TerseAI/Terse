@@ -103,10 +103,33 @@ export interface IntegrationInstance {
  }
 
 
+export interface SlackInstallationOptions {
+    isBotUser: boolean;
+}
+
+export type NoInstallationOptions = Record<string, never>;
+
+type EnsureExhaustiveInstallationOptions<T extends Record<IntegrationType, NoInstallationOptions | SlackInstallationOptions>> = T;
+
+export type IntegrationInstallationOptions = EnsureExhaustiveInstallationOptions<{
+    [IntegrationType.SLACK]: SlackInstallationOptions;
+    [IntegrationType.GMAIL]: NoInstallationOptions;
+    [IntegrationType.NOTION]: NoInstallationOptions;
+    [IntegrationType.LINEAR]: NoInstallationOptions;
+    [IntegrationType.ATLASSIAN]: NoInstallationOptions;
+    [IntegrationType.GITHUB]: NoInstallationOptions;
+    [IntegrationType.FIGMA]: NoInstallationOptions;
+    [IntegrationType.TERSE]: NoInstallationOptions;
+}> 
+
+export type InstallationOptionsFor<T extends IntegrationType> = IntegrationInstallationOptions[T];
+
+
 export interface SlackIntegration extends IntegrationInstance {
     id: string;
     teamId?: string;
     teamName?: string;
+    isBotUser?: boolean;
 };
 
 export interface GmailIntegration extends IntegrationInstance {

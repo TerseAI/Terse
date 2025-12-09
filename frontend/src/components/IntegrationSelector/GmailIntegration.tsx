@@ -15,7 +15,7 @@ export function GmailIntegration({
     setConfig
 }: InputConfigSelectorProps) {
     const { integrations, isLoading } = useGmailIntegrations();
-    const { connect: connectOAuth, isConnecting: isOAuthConnecting } = useOAuthConnection(IntegrationType.GMAIL);
+    const { connect: connectOAuth, isConnecting: isOAuthConnecting } = useOAuthConnection<IntegrationType.GMAIL>(IntegrationType.GMAIL, {});
     const currentConfig = input.config as GmailConfig | undefined;
     const [selectedIntegrationId] = useIntegrationId(currentConfig, ConfigType.GMAIL);
 
