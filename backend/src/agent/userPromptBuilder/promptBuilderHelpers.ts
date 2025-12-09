@@ -1,4 +1,4 @@
-import { SurveyConfigContext, SurveyQuestion, GenerateSurveyPromptRequest } from '../../shared/PromptBuilderTypes';
+import { SurveyConfigContext, SurveyQuestion, GenerateSurveyPromptRequest, SKIP_OPTION } from '../../shared/PromptBuilderTypes';
 
 export function formatConfigContext(
     inputConfigs?: SurveyConfigContext[],
@@ -32,16 +32,15 @@ export function formatSurveyAnswers(
             if (!question) return null;
 
             if (Array.isArray(answer)) {
-                if (answer.length === 0 || answer.includes('e')) return null; // Skip if empty or includes skip
-                // Map answer letters to actual option text
+                if (answer.length === 0 || answer.includes(SKIP_OPTION)) return null;
                 const selectedOptions = answer
-                    .filter(a => a !== 'e')
+                    .filter(a => a !== SKIP_OPTION)
                     .map(letter => `${letter.toUpperCase()}) ${question.options[letter as keyof typeof question.options]}`)
                     .join(', ');
                 const writeIn = writeInAnswers?.[questionIdx];
                 return `Q: ${question.question}\nA: ${selectedOptions}${writeIn ? ` (Write-in: ${writeIn})` : ''}`;
             } else {
-                if (answer === 'e') return null; // Skip skipped questions
+                if (answer === SKIP_OPTION) return null;
                 // Map answer letter to actual option text
                 const selectedOption = `${answer.toUpperCase()}) ${question.options[answer as keyof typeof question.options]}`;
                 const writeIn = writeInAnswers?.[questionIdx];
@@ -55,11 +54,10 @@ export function formatSurveyAnswers(
     const writeInOnlyText = Object.entries(writeInAnswers || {})
         .filter(([questionIdx]) => {
             const answer = answers[questionIdx];
-            // Only include if no option was selected (or only 'e' was selected)
             if (Array.isArray(answer)) {
-                return answer.length === 0 || (answer.length === 1 && answer[0] === 'e');
+                return answer.length === 0 || (answer.length === 1 && answer[0] === SKIP_OPTION);
             }
-            return !answer || answer === 'e';
+            return !answer || answer === SKIP_OPTION;
         })
         .map(([questionIdx, writeIn]) => {
             if (writeIn && typeof writeIn === 'string' && writeIn.trim()) {

@@ -1,5 +1,7 @@
 import { ConfigType } from './Configs';
 
+export const SKIP_OPTION = 'e' as const;
+
 export type SurveyQuestionType = 'single' | 'multiple';
 
 export interface SurveyQuestion {

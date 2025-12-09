@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Sparkles } from "lucide-react";
 import { BackendProvider } from "@/services/backend";
-import { SurveyQuestion, GenerateSurveyQuestionsRequest, GenerateSurveyPromptRequest, SurveyConfigContext, SurveyAnswers, SurveyWriteInAnswers } from "@/shared/PromptBuilderTypes";
+import { SurveyQuestion, GenerateSurveyQuestionsRequest, GenerateSurveyPromptRequest, SurveyConfigContext, SurveyAnswers, SurveyWriteInAnswers, SKIP_OPTION } from "@/shared/PromptBuilderTypes";
 import { PromptBuilderModalProps } from "./types";
 import { Step1Description } from "./Step1Description";
 import { Step2Survey } from "./Step2Survey";
@@ -116,11 +116,11 @@ export function PromptBuilderModal({
                 const current = prev[key];
                 const currentArray = Array.isArray(current) ? current : (current ? [current] : []);
                 
-                if (answer === 'e') {
-                    return { ...prev, [key]: ['e'] };
+                if (answer === SKIP_OPTION) {
+                    return { ...prev, [key]: [SKIP_OPTION] };
                 }
                 
-                let newArray = currentArray.filter(a => a !== 'e');
+                let newArray = currentArray.filter(a => a !== SKIP_OPTION);
                 
                 if (newArray.includes(answer)) {
                     newArray = newArray.filter(a => a !== answer);
