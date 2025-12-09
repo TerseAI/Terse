@@ -176,7 +176,7 @@ export default function ChannelSetupTab({
                 />
             </div>
 
-            <div className="flex flex-row gap-12 relative">
+            <div className="flex flex-row gap-12">
                 <div className="flex flex-col gap-4 justify-between">
                     <div className="flex flex-row gap-4 min-w-md max-w-md">
                         <InputLayout inputs={inputs} setInputs={setInputs} />
@@ -194,8 +194,13 @@ export default function ChannelSetupTab({
                 </div>
             </div>
 
-            <ChannelNotificationSettings settings={notificationSettings} onChange={setNotificationSettings} />
-        </div >
+            <div className="flex flex-row gap-12">
+            <div className="min-w-md max-w-md"></div>
+                <div className="min-w-md max-w-md">
+                    <ChannelNotificationSettings settings={notificationSettings} onChange={setNotificationSettings} />
+                </div>
+            </div>
+        </div>
     )
 }
 
@@ -320,23 +325,23 @@ function OutputLayout({ output, setOutput }: { output: TransientChannelOutput | 
     let cardContent;
     if (!output) {
         cardContent = (
-                <Empty>
-                    <EmptyHeader>
-                        <EmptyMedia variant="icon">
-                            <FileText className="text-destructive" />
-                        </EmptyMedia>
-                        <EmptyTitle>No output yet</EmptyTitle>
-                        <EmptyDescription>
-                            No output yet. Add an integration to get started.
-                        </EmptyDescription>
-                    </EmptyHeader>
-                    <EmptyContent>
-                        <Button onClick={() => setShowAddModal(true)}>
-                            <PlusIcon className="h-4 w-4" />
-                            Add Output
-                        </Button>
-                    </EmptyContent>
-                </Empty>
+            <Empty>
+                <EmptyHeader>
+                    <EmptyMedia variant="icon">
+                        <FileText className="text-destructive" />
+                    </EmptyMedia>
+                    <EmptyTitle>No output yet</EmptyTitle>
+                    <EmptyDescription>
+                        No output yet. Add an integration to get started.
+                    </EmptyDescription>
+                </EmptyHeader>
+                <EmptyContent>
+                    <Button onClick={() => setShowAddModal(true)}>
+                        <PlusIcon className="h-4 w-4" />
+                        Add Output
+                    </Button>
+                </EmptyContent>
+            </Empty>
         )
     } else {
         cardContent = (
