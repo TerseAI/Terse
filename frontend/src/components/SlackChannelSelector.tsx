@@ -46,41 +46,6 @@ export function SlackChannelSelector({
         return 'Failed to load channels';
     }, [error, isError]);
 
-    // Format MPIM channel names from "mpdm-olivier--thomas--zapier-1" to "Olivier, Thomas, Zapier..."
-    const formatMPIMChannelName = (name: string): string => {
-        if (!name.startsWith('mpdm-')) {
-            return name;
-        }
-        
-        // Remove "mpdm-" prefix and split by double hyphens (--)
-        const namePart = name.slice(5);
-        const parts = namePart.split('--');
-        
-        // Remove number suffix from the last part if it exists (e.g., "zapier-1" -> "zapier")
-        if (parts.length > 0) {
-            const lastPart = parts[parts.length - 1];
-            // Check if last part ends with a number suffix (e.g., "-1", "-2")
-            const numberSuffixMatch = lastPart.match(/^(.+)-\d+$/);
-            if (numberSuffixMatch) {
-                parts[parts.length - 1] = numberSuffixMatch[1];
-            }
-        }
-        
-        // Store the total number of name parts before slicing
-        const totalNames = parts.length;
-        
-        // Take first 3 names (or all if less than 3)
-        const names = parts.slice(0, 3);
-        
-        // Capitalize first letter of each name and join with commas
-        const formattedNames = names.map(capitalize);
-        
-        // Add "..." if there are more than 3 names
-        const suffix = totalNames > 3 ? '...' : '';
-        
-        return formattedNames.join(', ') + suffix;
-    };
-
     // Clear listenToUserDms if it's enabled but the option is not available (switched to bot token)
     useEffect(() => {
         if (!showListenToDMsOption && listenToUserDms && onListenToUserDmsChange) {
@@ -203,7 +168,7 @@ export function SlackChannelSelector({
                 value={selectedChannelId || ''}
                 onChange={(e) => handleChannelSelect(e.target.value)}
                 disabled={listenToUserDms}
-                className="w-full px-3 py-2 text-sm border border-[theme(border)] rounded-lg bg-[theme(background)] text-[theme(text-primary)] focus:outline-none focus:ring-2 focus:ring-[theme(--color-accent)] disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full px-3 py-2 text-sm border border-border rounded-lg bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed"
             >
                 {!selectedChannelId && (
                     <option value="">-- Select a channel --</option>
@@ -228,7 +193,7 @@ export function SlackChannelSelector({
                 )}
             </select>
             {channels.length > 0 && (
-                <div className="text-xs text-[theme(text-secondary)]">
+                <div className="text-xs text-foreground-muted">
                     {channels.length} channel{channels.length !== 1 ? 's' : ''} available
                 </div>
             )}
@@ -250,3 +215,39 @@ export function SlackChannelSelector({
     );
 }
 
+
+
+// Format MPIM channel names from "mpdm-olivier--thomas--zapier-1" to "Olivier, Thomas, Zapier..."
+export const formatMPIMChannelName = (name: string): string => {
+    if (!name.startsWith('mpdm-')) {
+        return name;
+    }
+    
+    // Remove "mpdm-" prefix and split by double hyphens (--)
+    const namePart = name.slice(5);
+    const parts = namePart.split('--');
+    
+    // Remove number suffix from the last part if it exists (e.g., "zapier-1" -> "zapier")
+    if (parts.length > 0) {
+        const lastPart = parts[parts.length - 1];
+        // Check if last part ends with a number suffix (e.g., "-1", "-2")
+        const numberSuffixMatch = lastPart.match(/^(.+)-\d+$/);
+        if (numberSuffixMatch) {
+            parts[parts.length - 1] = numberSuffixMatch[1];
+        }
+    }
+    
+    // Store the total number of name parts before slicing
+    const totalNames = parts.length;
+    
+    // Take first 3 names (or all if less than 3)
+    const names = parts.slice(0, 3);
+    
+    // Capitalize first letter of each name and join with commas
+    const formattedNames = names.map(capitalize);
+    
+    // Add "..." if there are more than 3 names
+    const suffix = totalNames > 3 ? '...' : '';
+    
+    return formattedNames.join(', ') + suffix;
+};

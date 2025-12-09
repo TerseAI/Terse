@@ -202,6 +202,7 @@ export async function getStats(req: Request, res: Response) {
         url: action.url ?? undefined,
         timestamp: action.run_history_record.timestamp.toISOString(),
         channelName: action.run_history_record.automation.name,
+        type: action.type,
     }));
 
     const response: StatsResponse = {

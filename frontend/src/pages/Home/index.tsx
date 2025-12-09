@@ -28,14 +28,15 @@ function Home() {
 
     const recentActions: (RunHistoryAction & { timestamp: string; channelName: string })[] = stats?.recentActions
         ? stats.recentActions.map((action) => ({
-              action: action.action,
-              integration: action.integration as IntegrationType,
-              target: action.target,
-              details: action.details,
-              url: action.url,
-              timestamp: formatRelativeTime(action.timestamp),
-              channelName: action.channelName,
-          }))
+            action: action.action,
+            integration: action.integration as IntegrationType,
+            target: action.target,
+            details: action.details,
+            url: action.url,
+            timestamp: formatRelativeTime(action.timestamp),
+            channelName: action.channelName,
+            type: action.type,
+        }))
         : [];
 
     return (
@@ -47,9 +48,9 @@ function Home() {
                 <RecentActionsSection recentActions={recentActions} />
             </div>
 
-            <RecentChannelsSection 
-                isLoading={isLoadingChannels} 
-                channels={recentChannels} 
+            <RecentChannelsSection
+                isLoading={isLoadingChannels}
+                channels={recentChannels}
             />
         </div>
     );

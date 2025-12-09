@@ -1,9 +1,9 @@
 import { Request, Response } from "express";
 import { db } from "../prismaClient";
-import { Channel, ChannelInput, ChannelsResponse, ChannelUpdate } from "../shared/types";
+import { Channel, ChannelInput, ChannelsResponse, ChannelNotificationSettings, ChannelUpdate } from "../shared/types";
 import { parsePageParams } from "../utility/pagination";
 import chalk from "chalk";
-import { ChannelWithInputRelations, PrismaTransaction, ChannelWithRelations } from "../types/prisma";
+import { ChannelWithInputRelations, PrismaTransaction, ChannelWithRelations, ChannelWithNotificationSettingsRelations } from "../types/prisma";
 import { IntegrationType } from "../shared/Integrations";
 import { convertConfigTypeToInputConfigType, convertConfigTypeToOutputConfigType, convertPrismaConfigToConfigInstance, convertPrismaOutputConfigToConfigInstance } from "../utility/typeConverters";
 import { ConfigInstance } from "../shared/Configs";
@@ -47,6 +47,25 @@ async function validateUserOwnsIntegration(userId: string, integrationType: Inte
     return instances.some(instance => instance.id === integrationId);
 }
 
+async function upsertNotificationSettings(
+    tx: PrismaTransaction,
+    automationId: string,
+    settings: ChannelNotificationSettings
+): Promise<void> {
+    await tx.automation_notification_settings.upsert({
+        where: { automation_id: automationId },
+        update: {
+            enabled: settings.enabled,
+            action_types: settings.actionTypes,
+        },
+        create: {
+            automation_id: automationId,
+            enabled: settings.enabled,
+            action_types: settings.actionTypes,
+        },
+    });
+}
+
 // GET /channels - List all channels with pagination
 export async function getUserChannels(req: Request, res: Response) {
     if (!req.session?.user) {
@@ -87,7 +106,8 @@ export async function getUserChannels(req: Request, res: Response) {
                 },
                 output: {
                     include: getOutputConfigInclude()
-                }
+                },
+                notification_settings: true
             },
             orderBy: { created_at: 'desc' },
             skip,
@@ -200,7 +220,7 @@ export async function getUserChannel(req: Request, res: Response) {
     const channelId = req.params.id;
 
     try {
-        const channel: ChannelWithRelations | null = await db().automations.findFirst({
+        const channel: ChannelWithRelations & ChannelWithNotificationSettingsRelations | null = await db().automations.findFirst({
             where: {
                 id: channelId,
                 user_id: userId
@@ -212,7 +232,8 @@ export async function getUserChannel(req: Request, res: Response) {
                 },
                 output: {
                     include: getOutputConfigInclude()
-                }
+                },
+                notification_settings: true
             }
         });
 
@@ -239,9 +260,10 @@ export async function createChannel(req: Request, res: Response) {
     }
 
     const userId = req.session.user.id;
-    const { name, inputs, output, prompt, isActive = true } = req.body as ChannelUpdate;
+    const { name, inputs, output, prompt, isActive = true, notificationSettings } = req.body as ChannelUpdate;
     console.log(chalk.green("Output from frontend:"), chalk.yellow(JSON.stringify(output, null, 2)));
     console.log(chalk.blue("Inputs from frontend:"), chalk.yellow(JSON.stringify(inputs, null, 2)));
+    console.log(chalk.magenta("Notification settings from frontend:"), chalk.yellow(JSON.stringify(notificationSettings, null, 2)));
 
     // Validate request
     if (!name || !inputs || inputs.length === 0 || !output || !prompt?.text) {
@@ -332,6 +354,11 @@ export async function createChannel(req: Request, res: Response) {
             // Create config record if provided
             await createOutputConfig(tx, newOutput.id, output.config);
 
+            // Create notification settings if provided
+            if (notificationSettings) {
+                await upsertNotificationSettings(tx, newChannel.id, notificationSettings);
+            }
+
             return newChannel;
         });
 
@@ -370,7 +397,7 @@ export async function updateChannel(req: Request, res: Response) {
 
     const userId = req.session.user.id;
     const channelId = req.params.id;
-    const { name, inputs, output, prompt, isActive } = req.body as Partial<ChannelUpdate>;
+    const { name, inputs, output, prompt, isActive, notificationSettings } = req.body as Partial<ChannelUpdate>;
 
     try {
         const prisma = db();
@@ -491,6 +518,11 @@ export async function updateChannel(req: Request, res: Response) {
                 // Create config record if provided
                 await createOutputConfig(tx, newOutput.id, output.config);
             }
+
+            // Update notification settings if provided
+            if (notificationSettings) {
+                await upsertNotificationSettings(tx, channelId, notificationSettings);
+            }
         });
 
         const channelWithInputRelations: ChannelWithInputRelations | null = await prisma.automations.findFirst({
@@ -569,7 +601,7 @@ export async function deleteChannel(req: Request, res: Response) {
 }
 
 // Helper function to transform ChannelWithRelations to frontend Channel format
-function transformChannelToFrontendFormat(channel: ChannelWithRelations): Channel {
+function transformChannelToFrontendFormat(channel: ChannelWithRelations & Partial<ChannelWithNotificationSettingsRelations>): Channel {
     if (!channel.output) {
         throw new Error(`Channel output not found for channel ${channel.id}`);
     }
@@ -586,7 +618,11 @@ function transformChannelToFrontendFormat(channel: ChannelWithRelations): Channe
         output: {
             id: channel.output.id,
             config: convertPrismaOutputConfigToConfigInstance(channel.output),
-        }
+        },
+        notificationSettings: channel.notification_settings ? {
+            enabled: channel.notification_settings.enabled,
+            actionTypes: channel.notification_settings.action_types as any[], // RunHistoryActionType[]
+        } : undefined,
     };
 }
 

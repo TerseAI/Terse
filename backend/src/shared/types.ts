@@ -1,5 +1,6 @@
 import { Project, Ticket } from "./TicketSystem";
 import { ConfigInstance, ConfigType } from "./Configs";
+import { RunHistoryActionType } from "./RunHistoryTypes";
 import { IntegrationType } from "./Integrations";
 
 export type User = {
@@ -184,6 +185,10 @@ export interface FigmaCommentImageUrls {
   fullFrame?: string;      // Full frame/page image
 }
 
+/**
+ * Figma positioning data structures
+ * Represents the position and type of a comment in a Figma file
+ */
 export type FigmaVectorData = {
   x: number;
   y: number;
@@ -317,6 +322,12 @@ export type Channel = {
     prompt: ChannelPrompt;
     inputs: ChannelInput[];
     output: ChannelOutput;
+    notificationSettings?: ChannelNotificationSettings;
+};
+
+export type ChannelNotificationSettings = {
+    enabled: boolean;
+    actionTypes: RunHistoryActionType[];
 };
 
 export type ChannelUpdate = {
@@ -325,6 +336,7 @@ export type ChannelUpdate = {
     output?: ChannelOutput;
     prompt?: ChannelPrompt;
     isActive?: boolean;
+    notificationSettings?: ChannelNotificationSettings;
 };
 
 export type ChannelsResponse = {
@@ -391,6 +403,7 @@ export interface RecentAction {
   url?: string;
   timestamp: string; // ISO date string
   channelName: string;
+  type: RunHistoryActionType;
 }
 
 export interface StatsResponse {

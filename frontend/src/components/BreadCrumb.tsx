@@ -14,6 +14,7 @@ const routeLabels: Record<string, string> = {
     "channels": "Channels",
     "new": "New Channel",
     "integrations": "Integrations",
+    "notifications": "Notifications",
 };
 
 function BreadCrumb() {

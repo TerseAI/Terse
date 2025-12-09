@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import EditableTextField from '../../../components/ui/EditableTextField';
-import { ChannelUpdate, TransientChannelInput, TransientChannelOutput } from "@/shared/types";
+import { ChannelNotificationSettings as ChannelNotificationSettingsType, ChannelUpdate, TransientChannelInput, TransientChannelOutput } from "@/shared/types";
 import { toast } from "sonner";
 import { getDefaultChannelName, toChannelInput, toChannelOutput } from "@/utility/ChannelUtils";
 import { useChannelCount } from "@/hooks/api/useChannelCount";
@@ -21,6 +21,7 @@ import { Card, CardContent } from "../../../components/ui/card";
 import { AddOutputModal } from "../components/AddOutputModal";
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "../../../components/ui/empty";
 import { Badge } from "../../../components/ui/badge";
+import ChannelNotificationSettings from "../ChannelNotificationSettings";
 import { InstructionsEditor } from "../components/InstructionsEditor";
 
 export type ChannelSetupTabProps = {
@@ -35,6 +36,8 @@ export type ChannelSetupTabProps = {
     setPrompt: (prompt: ChannelPrompt | undefined) => void;
     isActive: boolean;
     setIsActive: (isActive: boolean) => void;
+    notificationSettings: ChannelNotificationSettingsType;
+    setNotificationSettings: (settings: ChannelNotificationSettingsType) => void;
     isLoading: boolean;
     mutate: KeyedMutator<Channel>;
 };
@@ -47,6 +50,7 @@ function SaveChannelButton({
     output,
     prompt,
     isActive,
+    notificationSettings,
     mutate
 }: {
     defaultName: string;
@@ -56,6 +60,7 @@ function SaveChannelButton({
     output: ChannelOutput | undefined;
     prompt: ChannelPrompt | undefined;
     isActive: boolean;
+    notificationSettings: ChannelNotificationSettingsType;
     mutate: KeyedMutator<Channel>;
 }) {
     const navigate = useNavigate();
@@ -83,7 +88,8 @@ function SaveChannelButton({
                 inputs,
                 output,
                 prompt,
-                isActive
+                isActive,
+                notificationSettings
             };
 
             if (isEditMode) {
@@ -143,6 +149,8 @@ export default function ChannelSetupTab({
     setOutput,
     setPrompt,
     isActive,
+    notificationSettings,
+    setNotificationSettings,
     mutate,
 }: ChannelSetupTabProps) {
     const { totalCount } = useChannelCount();
@@ -163,11 +171,12 @@ export default function ChannelSetupTab({
                     output={channelOutput}
                     prompt={prompt}
                     isActive={isActive}
+                    notificationSettings={notificationSettings}
                     mutate={mutate}
                 />
             </div>
 
-            <div className="flex flex-row gap-12 relative">
+            <div className="flex flex-row gap-12">
                 <div className="flex flex-col gap-4 justify-between">
                     <div className="flex flex-row gap-4 min-w-md max-w-md">
                         <InputLayout inputs={inputs} setInputs={setInputs} />
@@ -184,7 +193,14 @@ export default function ChannelSetupTab({
                     </div>
                 </div>
             </div>
-        </div >
+
+            <div className="flex flex-row gap-12">
+            <div className="min-w-md max-w-md"></div>
+                <div className="min-w-md max-w-md">
+                    <ChannelNotificationSettings settings={notificationSettings} onChange={setNotificationSettings} />
+                </div>
+            </div>
+        </div>
     )
 }
 
@@ -309,23 +325,23 @@ function OutputLayout({ output, setOutput }: { output: TransientChannelOutput | 
     let cardContent;
     if (!output) {
         cardContent = (
-                <Empty>
-                    <EmptyHeader>
-                        <EmptyMedia variant="icon">
-                            <FileText className="text-destructive" />
-                        </EmptyMedia>
-                        <EmptyTitle>No output yet</EmptyTitle>
-                        <EmptyDescription>
-                            No output yet. Add an integration to get started.
-                        </EmptyDescription>
-                    </EmptyHeader>
-                    <EmptyContent>
-                        <Button onClick={() => setShowAddModal(true)}>
-                            <PlusIcon className="h-4 w-4" />
-                            Add Output
-                        </Button>
-                    </EmptyContent>
-                </Empty>
+            <Empty>
+                <EmptyHeader>
+                    <EmptyMedia variant="icon">
+                        <FileText className="text-destructive" />
+                    </EmptyMedia>
+                    <EmptyTitle>No output yet</EmptyTitle>
+                    <EmptyDescription>
+                        No output yet. Add an integration to get started.
+                    </EmptyDescription>
+                </EmptyHeader>
+                <EmptyContent>
+                    <Button onClick={() => setShowAddModal(true)}>
+                        <PlusIcon className="h-4 w-4" />
+                        Add Output
+                    </Button>
+                </EmptyContent>
+            </Empty>
         )
     } else {
         cardContent = (

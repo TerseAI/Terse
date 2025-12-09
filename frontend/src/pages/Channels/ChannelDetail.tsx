@@ -5,7 +5,7 @@ import ChannelSetupTab, { ChannelSetupTabProps } from "./tabs/ChannelSetupTab";
 import ChannelRunHistoryTab from "./tabs/ChannelRunHistoryTab";
 import { useEffect, useState} from "react";
 import { useChannel } from "../../hooks/api/useChannels";
-import { ChannelPrompt, TransientChannelInput, TransientChannelOutput } from "../../shared/types";
+import { ChannelNotificationSettings, ChannelPrompt, TransientChannelInput, TransientChannelOutput } from "../../shared/types";
 import { toTransientChannelInput, toTransientChannelOutput } from "../../utility/ChannelUtils";
 
 function ChannelDetail() {
@@ -24,6 +24,10 @@ function ChannelDetail() {
     const [output, setOutput] = useState<TransientChannelOutput | undefined>(undefined);
     const [prompt, setPrompt] = useState<ChannelPrompt | undefined>(undefined);
     const [isActive, setIsActive] = useState<boolean>(true);
+    const [notificationSettings, setNotificationSettings] = useState<ChannelNotificationSettings>({
+        enabled: false,
+        actionTypes: [],
+    });
 
     // Sync local state with fetched data - convert from ChannelInput/Output to Transient types
     useEffect(() => {
@@ -33,6 +37,7 @@ function ChannelDetail() {
             setOutput(channel.output ? toTransientChannelOutput(channel.output) : undefined);
             setPrompt(channel.prompt);
             setIsActive(channel.isActive);
+            setNotificationSettings(channel.notificationSettings ?? { enabled: false, actionTypes: [] });
         } else if (!channelId) {
             // Reset to blank state for new channel
             setName(null);
@@ -40,6 +45,7 @@ function ChannelDetail() {
             setOutput(undefined);
             setPrompt(undefined);
             setIsActive(true);
+            setNotificationSettings({ enabled: false, actionTypes: [] });
         }
     }, [channel, channelId]);
 
@@ -70,6 +76,8 @@ function ChannelDetail() {
         setPrompt,
         isActive,
         setIsActive,
+        notificationSettings,
+        setNotificationSettings,
         isLoading: isFetching,
         mutate,
     }
