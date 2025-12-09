@@ -1,6 +1,7 @@
 import { WebClient, LogLevel } from "@slack/web-api";
 import { db } from "../prismaClient";
 import { RunHistoryAction } from "../shared/RunHistoryTypes";
+import { InitializeSlackWebClient } from "../integrations/SlackIntegration";
 
 export interface SlackMessage {
     text: string;
@@ -21,6 +22,7 @@ export async function sendSlackMessage(
         },
         include: {
             slack_integration: true,
+            user: true,
         },
     });
 
@@ -29,9 +31,7 @@ export async function sendSlackMessage(
         return false;
     }
 
-    const botToken = userSlackIntegration.slack_integration.access_token;
-    const client = new WebClient(botToken, { logLevel: LogLevel.ERROR });
-    console.log(`[sendSlackMessage] Sending message to channel ${channelId} with bot token ${botToken}`);
+    const client: WebClient = InitializeSlackWebClient(userSlackIntegration);
     console.log(`[sendSlackMessage] Message: ${JSON.stringify(message)}`);
 
     try {
