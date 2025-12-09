@@ -92,6 +92,8 @@ export async function generateSurveyPrompt(request: GenerateSurveyPromptRequest)
 
 Your task is to generate a comprehensive prompt that instructs an AI agent on how to process events from input sources and generate appropriate outputs.
 
+CRITICAL: The generated prompt MUST be no longer than 800 words. Be concise and focused. Prioritize clarity and actionability over verbosity.
+
 IMPORTANT: Do not include any integration IDs, database IDs, channel IDs, project IDs, team IDs, or other technical identifiers in the generated prompt. Only use human-readable information like channel names, project names, database names, etc.
 
 Context:
@@ -102,44 +104,32 @@ ${request.existingPrompt ? `- Existing Prompt (for reference): ${request.existin
 
 Guidelines for the prompt:
 1. Be specific about what information to extract or focus on
-2. Clearly describe how to format or structure the output
+2. Clearly describe how to format or structure the output (the output format should be appropriate for the destination - it may be markdown, plain text, structured data, etc.)
 3. Include rules for filtering or prioritizing events
 4. Specify the tone or style for generated content
 5. Consider the configured input and output integrations
 6. Make the prompt actionable and clear
-7. Include examples where helpful
-8. Be concise but comprehensive
+7. Include brief examples where helpful (but keep them concise)
+8. Be concise but comprehensive - aim for 600-800 words maximum
 9. Never include technical IDs - only use human-readable names and descriptions
+10. Format the prompt itself using markdown syntax (headers, lists, emphasis, etc.) for better readability - note that this refers to the formatting of the prompt instructions, not necessarily the output format that the agent should generate
 
-The prompt should be ready to use directly in an automation system.`;
+The prompt should be ready to use directly in an automation system. The prompt itself should be formatted in markdown for readability, but the instructions within the prompt should specify what output format the agent should generate (which may or may not be markdown depending on the use case).`;
 
         const userPrompt = `User's initial description:
 ${request.description}
 
 ${allAnswersText ? `User's answers to clarifying questions:\n${allAnswersText}` : 'User skipped all clarifying questions.'}
 
-Generate a comprehensive prompt based on this information.`;
+Generate a comprehensive prompt based on this information. Remember: keep it under 800 words and be concise.`;
 
         const completion = await openai.chat.completions.create({
-            model: 'gpt-5.1',
+            model: 'gpt-5-mini',
             messages: [
                 { role: 'system', content: systemPrompt },
                 { role: 'user', content: userPrompt }
             ],
-            temperature: 0.7,
-            max_completion_tokens: 5000
-        });
-
-        console.log('OpenAI completion response:', {
-            hasChoices: !!completion.choices,
-            choicesLength: completion.choices?.length,
-            firstChoice: completion.choices?.[0] ? {
-                hasMessage: !!completion.choices[0].message,
-                hasContent: !!completion.choices[0].message?.content,
-                contentLength: completion.choices[0].message?.content?.length,
-                finishReason: completion.choices[0].finish_reason,
-                contentPreview: completion.choices[0].message?.content?.substring(0, 100)
-            } : null
+            max_completion_tokens: 4000
         });
 
         const prompt = completion.choices?.[0]?.message?.content?.trim();

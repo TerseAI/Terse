@@ -230,7 +230,7 @@ export default function ChannelSetupTab({
                     <div className="relative flex-1">
                         {showMarkdown && prompt?.text ? (
                             <div className="flex-1 h-full overflow-auto p-3 border rounded-md bg-background">
-                                <div className="prose prose-sm dark:prose-invert max-w-none">
+                                <div className="react-markdown">
                                     <ReactMarkdown>
                                         {prompt.text}
                                     </ReactMarkdown>

@@ -24,7 +24,7 @@ export function Step3Review({
                 <h3 className="text-lg font-semibold mb-4">Review your prompt</h3>
                 <div className="space-y-2">
                     <div className="min-h-[300px] p-3 border rounded-md bg-background overflow-auto">
-                        <div className="prose prose-sm dark:prose-invert max-w-none">
+                        <div className="react-markdown">
                             <ReactMarkdown>
                                 {generatedPrompt}
                             </ReactMarkdown>
