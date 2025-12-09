@@ -20,7 +20,7 @@ const OAUTH_TOKEN_REFRESH_THRESHOLD_MS = 1000 * 60 * 30; // 30 minutes (expires 
 
 // MARK: - Integration Manager
 
-export class AtlassianIntegrationManager implements Integration<AtlassianIntegration, JiraWebhookPayload, typeof AtlassianIntegrationMetadata>, OAuthIntegrationInstallation {
+export class AtlassianIntegrationManager implements Integration<AtlassianIntegration, JiraWebhookPayload, typeof AtlassianIntegrationMetadata>, OAuthIntegrationInstallation<IntegrationType.ATLASSIAN> {
     integrationType: IntegrationType = IntegrationType.ATLASSIAN;
     constructor() { }
 

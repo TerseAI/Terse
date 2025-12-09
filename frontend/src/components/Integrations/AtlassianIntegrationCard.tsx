@@ -10,7 +10,7 @@ import { Skeleton } from "../ui/skeleton";
 import { Globe, Mail } from "lucide-react";
 
 function AtlassianIntegrationCard({ className, isActive = true }: { className?: string; isActive?: boolean }) {
-    const { connect, isConnecting } = useOAuthConnection(IntegrationType.ATLASSIAN);
+    const { connect, isConnecting } = useOAuthConnection<IntegrationType.ATLASSIAN>(IntegrationType.ATLASSIAN, {});
     const { integrations, isLoading } = useAtlassianIntegrations(); 
 
     return (

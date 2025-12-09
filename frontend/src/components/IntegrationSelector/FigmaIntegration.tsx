@@ -17,7 +17,7 @@ export function FigmaIntegration({
     setConfig
 }: InputConfigSelectorProps) {
     const { integrations, isLoading } = useFigmaIntegrations();
-    const { connect: connectOAuth, isConnecting: isOAuthConnecting } = useOAuthConnection(IntegrationType.FIGMA);
+    const { connect: connectOAuth, isConnecting: isOAuthConnecting } = useOAuthConnection<IntegrationType.FIGMA>(IntegrationType.FIGMA, {});
     const currentConfig = input.config as FigmaConfig | undefined;
     const [selectedIntegrationId, setSelectedIntegrationId] = useIntegrationId(currentConfig, ConfigType.FIGMA);
 
