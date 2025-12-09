@@ -70,6 +70,7 @@ import {
   slackOAuthCallback,
   getSlackChannels,
   getSlackIntegrations,
+  handleSlackInteraction,
 } from "./routes/slack";
 import { TicketManager } from "./ticketing/TicketIntegration";
 import { User } from "./types/prisma";
@@ -371,6 +372,10 @@ app.use("/slack/events", express.raw({ type: "application/json" }));
 
 app.post("/slack/events", async (req, res) => {
   await handleSlackWebhook(req, res);
+});
+
+app.post("/slack/interactions", async (req, res) => {
+  await handleSlackInteraction(req, res);
 });
 
 app.get("/slack/channels", authMiddleware, async (req, res) => {
