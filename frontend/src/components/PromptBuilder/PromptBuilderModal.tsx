@@ -262,6 +262,8 @@ export function PromptBuilderModal({
                                 await handleStep1Continue();
                             } else if (currentStep === 2) {
                                 await handleStep2Continue();
+                            } else if (currentStep === 3) {
+                                handleDone();
                             }
                         }
                     }}
