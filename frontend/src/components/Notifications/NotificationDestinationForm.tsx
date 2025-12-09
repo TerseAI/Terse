@@ -34,10 +34,13 @@ export function NotificationDestinationForm({ existingDestination, onSuccess, on
     const [selectedIntegrationId, setSelectedIntegrationId] = useState<string | undefined>(slackDestination?.integrationId);
     const [selectedChannelId, setSelectedChannelId] = useState<string | undefined>(slackDestination?.slackChannelId);
     const [selectedChannelName, setSelectedChannelName] = useState<string | undefined>(slackDestination?.slackChannelName);
-    const { connect: connectOAuth } = useOAuthConnection<IntegrationType.SLACK>(IntegrationType.SLACK, { isBotUser: true });
     const [isConnecting, setIsConnecting] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
     const [validationError, setValidationError] = useState<string | null>(null);
+
+    const selectedSlackIntegration = integrations.find(integration => integration.id === selectedIntegrationId);
+    const { connect: connectOAuth } = useOAuthConnection<IntegrationType.SLACK>(IntegrationType.SLACK, { isBotUser: selectedSlackIntegration?.isBotUser ?? true });
+
 
     const isEditMode = !!existingDestination;
 
