@@ -82,6 +82,8 @@ export type ChannelInput = automation_inputs; // Alias for rebranding
 
 export type DirectiveRecord = directive_records;
 
+export type ChannelNotificationSettings = automation_notification_settings;
+
 // Extended type for ChannelInput with all config relations included
 export type AutomationInputWithConfigs = Prisma.automation_inputsGetPayload<{
   include: {
@@ -176,8 +178,15 @@ export type AutomationWithPromptRelations = Prisma.automationsGetPayload<{
 }>;
 export type ChannelWithPromptRelations = AutomationWithPromptRelations; // Alias for rebranding
 
+export type AutomationWithNotificationSettingsRelations = Prisma.automationsGetPayload<{
+  include: {
+    notification_settings: true;
+  }
+}>;
+export type ChannelWithNotificationSettingsRelations = AutomationWithNotificationSettingsRelations; // Alias for rebranding
+
 export type AutomationWithRelations = AutomationWithInputRelations & AutomationWithOutputRelations & AutomationWithPromptRelations;
-export type ChannelWithRelations = ChannelWithInputRelations & ChannelWithOutputRelations & ChannelWithPromptRelations; // Alias for rebranding
+export type ChannelWithRelations = ChannelWithInputRelations & ChannelWithOutputRelations & ChannelWithPromptRelations & ChannelWithNotificationSettingsRelations;
 
 // Extract the transaction type from PrismaClient
 export type PrismaTransaction = Parameters<Parameters<PrismaClient['$transaction']>[0]>[0];

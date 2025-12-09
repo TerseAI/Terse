@@ -1,9 +1,15 @@
 import { Request, Response } from "express";
 import { db } from "../prismaClient";
 import { NotificationDestinationType } from "@prisma/client";
-import { CreateNotificationDestinationRequest } from "../shared/Notifications";
+import { 
+    CreateNotificationDestinationRequest, 
+    EmailNotificationDestination, 
+    SlackNotificationDestination,
+    NotificationDestinationType as SharedNotificationDestinationType 
+} from "../shared/Notifications";
 import { emitCacheInvalidationWithKey } from "../realtimeSocket";
 import { notificationDestinationsKey } from "../shared/InvalidationKeys";
+import { UserNotificationDestination } from "../types/prisma";
 
 // GET /notification-destinations - List all notification destinations for the user
 export async function getNotificationDestinations(req: Request, res: Response) {
@@ -194,32 +200,22 @@ export async function deleteNotificationDestination(req: Request, res: Response)
 }
 
 // Helper function to transform database model to frontend format
-function transformDestinationToFrontendFormat(destination: {
-    id: string;
-    destination_type: NotificationDestinationType;
-    email_address: string | null;
-    slack_integration_id: string | null;
-    slack_channel_id: string | null;
-    slack_channel_name: string | null;
-    is_active: boolean;
-}) {
-    const base = {
-        id: destination.id,
-        type: destination.destination_type === NotificationDestinationType.EMAIL ? 'email' : 'slack',
-        isActive: destination.is_active,
-    };
-
+function transformDestinationToFrontendFormat(destination: UserNotificationDestination): EmailNotificationDestination | SlackNotificationDestination {
     if (destination.destination_type === NotificationDestinationType.EMAIL) {
         return {
-            ...base,
-            email: destination.email_address,
+            id: destination.id,
+            type: SharedNotificationDestinationType.EMAIL,
+            isActive: destination.is_active,
+            email: destination.email_address ?? '',
         };
     } else {
         return {
-            ...base,
-            integrationId: destination.slack_integration_id,
-            slackChannelId: destination.slack_channel_id,
-            slackChannelName: destination.slack_channel_name,
+            id: destination.id,
+            type: SharedNotificationDestinationType.SLACK,
+            isActive: destination.is_active,
+            integrationId: destination.slack_integration_id ?? '',
+            slackChannelId: destination.slack_channel_id ?? undefined,
+            slackChannelName: destination.slack_channel_name ?? undefined,
         };
     }
 }
