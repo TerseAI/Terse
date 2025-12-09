@@ -222,7 +222,7 @@ export function PromptBuilderModal({
 
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
-            <DialogContent className="w-[75%] max-w-none sm:max-w-none max-h-[90vh] overflow-y-auto">
+            <DialogContent className="w-[50%] max-w-none sm:max-w-none max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2">
                         <Sparkles className="h-5 w-5" />
@@ -239,7 +239,8 @@ export function PromptBuilderModal({
                     </div>
                 )}
 
-                <Stepper
+                <div>
+                    <Stepper
                     key={currentStep} // Force re-render when step changes programmatically
                     initialStep={currentStep}
                     onStepChange={handleStepperStepChange}
@@ -249,7 +250,6 @@ export function PromptBuilderModal({
                     disableStepIndicators={false}
                     stepCircleContainerClassName="!max-w-none !border-none !shadow-none"
                     stepContainerClassName="!p-8"
-                    contentClassName="!min-h-[200px]"
                     footerClassName="!pb-4"
                     nextButtonProps={{
                         disabled: 
@@ -297,7 +297,8 @@ export function PromptBuilderModal({
                             onDone={handleDone}
                         />
                     </Step>
-                </Stepper>
+                    </Stepper>
+                </div>
             </DialogContent>
         </Dialog>
     );
