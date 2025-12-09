@@ -3,7 +3,7 @@ import { db } from "../prismaClient";
 import { Channel, ChannelInput, ChannelsResponse, ChannelNotificationSettings, ChannelUpdate } from "../shared/types";
 import { parsePageParams } from "../utility/pagination";
 import chalk from "chalk";
-import { ChannelWithInputRelations, PrismaTransaction, ChannelWithRelations } from "../types/prisma";
+import { ChannelWithInputRelations, PrismaTransaction, ChannelWithRelations, ChannelWithNotificationSettingsRelations } from "../types/prisma";
 import { IntegrationType } from "../shared/Integrations";
 import { convertConfigTypeToInputConfigType, convertConfigTypeToOutputConfigType, convertPrismaConfigToConfigInstance, convertPrismaOutputConfigToConfigInstance } from "../utility/typeConverters";
 import { ConfigInstance } from "../shared/Configs";
@@ -220,7 +220,7 @@ export async function getUserChannel(req: Request, res: Response) {
     const channelId = req.params.id;
 
     try {
-        const channel: ChannelWithRelations | null = await db().automations.findFirst({
+        const channel: ChannelWithRelations & ChannelWithNotificationSettingsRelations | null = await db().automations.findFirst({
             where: {
                 id: channelId,
                 user_id: userId
@@ -601,7 +601,7 @@ export async function deleteChannel(req: Request, res: Response) {
 }
 
 // Helper function to transform ChannelWithRelations to frontend Channel format
-function transformChannelToFrontendFormat(channel: ChannelWithRelations): Channel {
+function transformChannelToFrontendFormat(channel: ChannelWithRelations & Partial<ChannelWithNotificationSettingsRelations>): Channel {
     if (!channel.output) {
         throw new Error(`Channel output not found for channel ${channel.id}`);
     }
