@@ -1,27 +1,27 @@
 import { PlusIcon } from "lucide-react"
 import { Button } from "../ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "../ui/dialog"
-import { useState } from "react"
+import { ReactNode, useState } from "react"
 import { NotificationDestinationForm } from "./NotificationDestinationForm"
 
-export function AddNotificationDestination() {
-    return (
-        <div>
-            <AddNotificationDestinationDialog />
-        </div>
-    )
+interface AddNotificationDestinationProps {
+    trigger?: ReactNode;
 }
 
-function AddNotificationDestinationDialog() {
+export function AddNotificationDestination({ trigger }: AddNotificationDestinationProps) {
     const [open, setOpen] = useState(false);
+
+    const defaultTrigger = (
+        <Button variant="outline">
+            <PlusIcon />
+            Add Notification Channel
+        </Button>
+    );
 
     return (
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
-                <Button variant="outline">
-                    <PlusIcon />
-                    Add Notification Channel
-                </Button>
+                {trigger ?? defaultTrigger}
             </DialogTrigger>
             <DialogContent>
                 <DialogHeader>
