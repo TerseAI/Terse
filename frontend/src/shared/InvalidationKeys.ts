@@ -2,6 +2,8 @@ import { GetRunHistoryParams } from "./RunHistoryTypes";
 
 export const integrationsKey = (): readonly [string] => ['integrations'];
 
+export const notificationDestinationsKey = (): readonly [string] => ['notificationDestinations'];
+
 export const slackChannelsKey = (integrationId: string | null | undefined): readonly [string, string] | null => {
     if (!integrationId) {
         return null;

@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, RunHistoryActionType } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
@@ -80,6 +80,7 @@ export async function seedRunHistory(channelId: string): Promise<void> {
           target: a.target,
           details: a.details,
           url: a.url || null,
+          type: RunHistoryActionType.create
         },
       });
     }

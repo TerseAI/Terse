@@ -23,22 +23,23 @@ model users {
   updated_at      DateTime @updatedAt
   is_placeholder  Boolean  @default(false)
 
-  user_github_repositories user_github_repositories[]
-  linear_api_keys          linear_api_keys[] // @deprecated - Use linear_integrations instead
-  linear_integrations      linear_integrations[]
-  user_slack_integrations  user_slack_integrations[]
-  jira_api_keys            jira_api_keys[] // @deprecated - Use atlassian_integrations instead
-  atlassian_integrations   atlassian_integrations[]
-  gmail_integrations       gmail_integrations[]
-  notion_integrations      notion_integrations[]
-  figma_integrations       figma_integrations[]
-  activity_events          activity_events[]
-  ticket_activity_events   ticket_activity_events[]
-  project_activity_events  project_activity_events[]
-  automations              automations[]
-  pending_approvals        pending_approvals[]
-  user_github_installation user_github_installation[]
-  github_app_tokens        github_app_tokens[]
+  user_github_repositories  user_github_repositories[]
+  linear_api_keys           linear_api_keys[] // @deprecated - Use linear_integrations instead
+  linear_integrations       linear_integrations[]
+  user_slack_integrations   user_slack_integrations[]
+  jira_api_keys             jira_api_keys[] // @deprecated - Use atlassian_integrations instead
+  atlassian_integrations    atlassian_integrations[]
+  gmail_integrations        gmail_integrations[]
+  notion_integrations       notion_integrations[]
+  figma_integrations        figma_integrations[]
+  activity_events           activity_events[]
+  ticket_activity_events    ticket_activity_events[]
+  project_activity_events   project_activity_events[]
+  automations               automations[]
+  pending_approvals         pending_approvals[]
+  user_github_installation  user_github_installation[]
+  github_app_tokens         github_app_tokens[]
+  notification_destinations user_notification_destinations[]
 }
 
 model github_repositories {
@@ -147,8 +148,9 @@ model user_slack_integrations {
   created_at               DateTime @default(now())
   updated_at               DateTime @updatedAt
 
-  user              users              @relation(fields: [user_id], references: [id], onDelete: Cascade)
-  slack_integration slack_integrations @relation(fields: [slack_team_id], references: [team_id], onDelete: Cascade)
+  user                           users                            @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  slack_integration              slack_integrations               @relation(fields: [slack_team_id], references: [team_id], onDelete: Cascade)
+  user_notification_destinations user_notification_destinations[]
 
   @@unique([user_id, slack_team_id, is_bot_user])
 }
@@ -445,12 +447,13 @@ model automations {
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
 
-  user                users                 @relation(fields: [user_id], references: [id], onDelete: Cascade)
-  prompt              automation_prompts?
-  inputs              automation_inputs[]
-  output              automation_outputs?
-  run_history_records run_history_records[]
-  directiveRecords    directive_records[]
+  user                  users                             @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  prompt                automation_prompts?
+  inputs                automation_inputs[]
+  output                automation_outputs?
+  run_history_records   run_history_records[]
+  directiveRecords      directive_records[]
+  notification_settings automation_notification_settings?
 
   @@index([user_id])
   @@index([is_active])
@@ -752,7 +755,6 @@ enum RunHistoryDecisionAction {
   skipped
 }
 
-
 // Chat event types for run history (matches shared/ModelEvents.ts ModelEvent types)
 enum RunHistoryChatEventType {
   TextDelta
@@ -802,7 +804,7 @@ model run_history_records {
 }
 
 model run_history_actions {
-  id                    String                @id @default(cuid())
+  id                    String               @id @default(cuid())
   run_history_record_id String
   action                String
   integration           IntegrationType
@@ -810,8 +812,9 @@ model run_history_actions {
   details               String
   url                   String?
   step_id               String?
-  is_read_only          Boolean               @default(true)
-  created_at            DateTime              @default(now())
+  type                  RunHistoryActionType
+  is_read_only          Boolean              @default(true)
+  created_at            DateTime             @default(now())
 
   run_history_record run_history_records @relation(fields: [run_history_record_id], references: [id], onDelete: Cascade)
 
@@ -819,6 +822,13 @@ model run_history_actions {
   @@index([step_id])
   @@index([created_at]) // Index for recent actions ORDER BY created_at DESC
   @@index([is_read_only])
+}
+
+enum RunHistoryActionType {
+  create
+  update
+  delete
+  read
 }
 
 // Pending approvals for tools that require human approval
@@ -868,6 +878,48 @@ model run_history_raw_events {
   @@index([run_history_record_id])
   @@index([run_history_record_id, sequence_order])
   @@index([created_at])
+}
+
+// MARK: - Notifications
+
+model automation_notification_settings {
+  id            String                 @id @default(cuid())
+  automation_id String                 @unique
+  enabled       Boolean                @default(true)
+  action_types  RunHistoryActionType[]
+  created_at    DateTime               @default(now())
+  updated_at    DateTime               @updatedAt
+
+  automation automations @relation(fields: [automation_id], references: [id], onDelete: Cascade)
+}
+
+model user_notification_destinations {
+  id               String                      @id @default(cuid())
+  user_id          String
+  destination_type NotificationDestinationType
+
+  // Slack-specific fields (uses existing slack_integrations for credentials)
+  slack_integration_id String?
+  slack_channel_id     String?
+  slack_channel_name   String?
+
+  // Email-specific fields
+  email_address String?
+
+  is_active  Boolean  @default(true)
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  user              users                    @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  slack_integration user_slack_integrations? @relation(fields: [slack_integration_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id])
+  @@index([destination_type])
+}
+
+enum NotificationDestinationType {
+  SLACK
+  EMAIL
 }
 
 model directive_records {

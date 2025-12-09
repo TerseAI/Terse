@@ -1,0 +1,28 @@
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "../ui/dialog"
+import { NotificationDestination } from "../../shared/Notifications"
+import { NotificationDestinationForm } from "./NotificationDestinationForm"
+
+interface EditNotificationDestinationProps {
+    destination: NotificationDestination;
+    open: boolean;
+    onOpenChange: (open: boolean) => void;
+}
+
+export function EditNotificationDestinationDialog({ destination, open, onOpenChange }: EditNotificationDestinationProps) {
+    return (
+        <Dialog open={open} onOpenChange={onOpenChange}>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Edit Notification Destination</DialogTitle>
+                    <DialogDescription>Update where you receive notifications when a background agent makes a change.</DialogDescription>
+                </DialogHeader>
+                <NotificationDestinationForm 
+                    existingDestination={destination}
+                    onSuccess={() => onOpenChange(false)} 
+                    onCancel={() => onOpenChange(false)}
+                />
+            </DialogContent>
+        </Dialog>
+    )
+}
+
