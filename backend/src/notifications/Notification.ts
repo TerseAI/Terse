@@ -78,6 +78,7 @@ async function notifySlack(notificationDestination: UserNotificationDestination,
     );
 }
 
+// Not supported yet, just wanted to make sure this was built with mulitple notification destinations in mind
 async function notifyEmail(notificationDestinations: UserNotificationDestination, runAction: RunHistoryAction) {
     console.log(`Notifying Email for user ${notificationDestinations.user_id} with action ${runAction}`);
 }
