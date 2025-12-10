@@ -201,9 +201,8 @@ export class EventProcessor {
         // Create channel agent with the session and output
         const runContext: RunContext = { runId };
         const channelAgent = new ChannelAgent(session, output, channel, runContext);
-        await channelAgent.initializeAgent();
         channelAgent.setInputEvent(this.inputEvent);
-
+        
         // Run the channel agent with streaming parameters
         let result: ApprovalResult<Session, Agent<Session, AgentOutputType>>;
         try {

@@ -1,6 +1,12 @@
 import { Session } from '../server';
+import { RunHistoryMemory } from '../../rag/runHistoryRag/indexer';
+import { extractConversationContent } from '../../rag/runHistoryRag/conversationExtractor';
 
-export async function systemPrompt(session: Session): Promise<string> {
+export async function systemPrompt(
+    session: Session,
+    currentInput?: string,
+    channelId?: string
+): Promise<string> {
     const user_id = session.user.id;
     const current_date = new Date().toISOString().split('T')[0];
     const current_user = session.currentUser;
@@ -10,6 +16,47 @@ export async function systemPrompt(session: Session): Promise<string> {
     }
 
     let current_user_context = await session.ticketManager.getUserContext();
+
+    // Get similar past input events if we have a current input
+    let similarEventsSection = '';
+    if (currentInput && currentInput.trim()) {
+        try {
+            const runHistoryMemory = new RunHistoryMemory();
+            const similarEvents = await runHistoryMemory.findSimilarInputEvents(
+                currentInput,
+                channelId,
+                5 // Get top 5 similar events
+            );
+
+            if (similarEvents.length > 0) {
+                // Extract content from the events for display
+                const eventContents = similarEvents.map(event => {
+                    const rawEvent = typeof event.raw_event_json === 'string' 
+                        ? JSON.parse(event.raw_event_json) 
+                        : event.raw_event_json;
+                    const content = extractConversationContent(rawEvent);
+                    const eventChannelId = event.run_history_record?.automation?.id || channelId || 'N/A';
+                    const date = event.created_at.toISOString().split('T')[0];
+                    return { content, channelId: eventChannelId, date };
+                });
+
+                similarEventsSection = `
+
+SIMILAR PAST INPUT EVENTS:
+Here are similar past input events that may provide context for how similar requests were handled:
+
+${eventContents.map((event, index) => `
+${index + 1}. ${event.content}
+   (Channel: ${event.channelId}, Date: ${event.date})
+`).join('\n')}
+
+Use these examples as reference for understanding the user's intent and how similar requests were processed in the past.`;
+            }
+        } catch (error) {
+            console.error('Error fetching similar past input events:', error);
+            // Continue without similar events if there's an error
+        }
+    }
 
     return `Your job is to help the user accomplish their Ticket Tracking tasks.
 
@@ -62,6 +109,7 @@ Make sure to fill out the user id and organization id with the correct values pr
 the user id is ${user_id}
 
 The current date is ${current_date}
+${similarEventsSection}
 
 `;
 }

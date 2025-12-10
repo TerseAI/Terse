@@ -35,9 +35,28 @@ export class AgentSession implements IAgentSession<SessionWithTracking> {
     const ticketSystemType = this.session.ticketManager?.type || TicketSystemType.Linear;
     const toolBoxType = ticketSystemType === TicketSystemType.Jira ? ToolBoxType.jira : ToolBoxType.linear;
     console.log('🔧 Tool box type', toolBoxType);
+    
+    // Extract the current user input from the history (last user message)
+    let currentInput: string | undefined;
+    if (this.history.length > 0) {
+      const lastItem = this.history[this.history.length - 1];
+      const lastItemAny = lastItem as any;
+      if (lastItemAny.role === 'user') {
+        if (typeof lastItemAny.content === 'string') {
+          currentInput = lastItemAny.content;
+        } else if (Array.isArray(lastItemAny.content)) {
+          // Handle array content (multimodal)
+          currentInput = lastItemAny.content
+            .filter((part: any) => part.type === 'text')
+            .map((part: any) => part.text || '')
+            .join(' ');
+        }
+      }
+    }
+    
     const agent = new Agent<SessionWithTracking, AgentOutputType>({
       name: 'LLM ticket manager',
-      instructions: await systemPrompt(this.session),
+      instructions: await systemPrompt(this.session, currentInput),
       model: 'gpt-4o',
       tools: this.toolBox.getTools(toolBoxType) as Tool<SessionWithTracking>[]
     });

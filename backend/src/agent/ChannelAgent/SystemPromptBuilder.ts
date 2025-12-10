@@ -3,6 +3,9 @@ import { ChannelWithRelations } from '../../types/prisma';
 import { Output } from '../../outputs/abstract/Output';
 import { ConfigInstance } from '../../shared/Configs';
 import { db } from '../../prismaClient';
+import { InputEvent } from '../../integrations/abstract/InputEvent';
+import { RunHistoryMemory } from '../../rag/runHistoryRag/indexer';
+import { extractConversationContent } from '../../rag/runHistoryRag/conversationExtractor';
 
 export interface RunContext {
     runId: string;
@@ -41,6 +44,10 @@ export class SystemPromptBuilder<T extends Session, TConfig extends ConfigInstan
             .withSection(() => this.buildRunContextSection())
             .withSection(() => this.buildDirectivesSection())
             .withSection(() => this.buildOutputInstructions());
+    }
+
+    withSimilarEventsSection(inputEvent: InputEvent): this {
+        return this.withSection(() => this.buildSimilarEventsSection(inputEvent));
     }
 
     async build(): Promise<string> {
@@ -161,6 +168,60 @@ ${directivesList}
 
 Follow these directives in addition to the USER INSTRUCTIONS provided in each message. If a directive conflicts with a specific request in a message, the message takes precedence for that interaction only.`
         };
+    }
+
+    private async buildSimilarEventsSection(inputEvent: InputEvent): Promise<Section | null> {
+        try {
+            // Extract searchable content from the current input event
+            const currentEventContent = inputEvent.formatForChannelAgent();
+            
+            if (!currentEventContent || !currentEventContent.trim()) {
+                return null;
+            }
+
+            const channelId = this.deps.channel.id;
+            const runHistoryMemory = new RunHistoryMemory();
+            
+            // Find similar past input events (top 5)
+            const similarEvents = await runHistoryMemory.findSimilarInputEvents(
+                currentEventContent,
+                channelId,
+                5
+            );
+
+            if (similarEvents.length === 0) {
+                return null;
+            }
+
+            // Extract content from the events for display
+            const eventContents = similarEvents.map(event => {
+                const rawEvent = typeof event.raw_event_json === 'string' 
+                    ? JSON.parse(event.raw_event_json) 
+                    : event.raw_event_json;
+                const content = extractConversationContent(rawEvent);
+                const eventChannelId = event.run_history_record?.automation?.id || channelId || 'N/A';
+                const date = event.created_at.toISOString().split('T')[0];
+                return { content, channelId: eventChannelId, date };
+            });
+
+            const similarEventsList = eventContents.map((event, index) => `
+${index + 1}. ${event.content}
+   (Channel: ${event.channelId}, Date: ${event.date})
+`).join('\n');
+
+            return {
+                header: 'SIMILAR PAST INPUT EVENTS',
+                content: `Here are similar past input events that may provide context for how similar requests were handled:
+
+${similarEventsList}
+
+Use these examples as reference for understanding the user's intent and how similar requests were processed in the past.`
+            };
+        } catch (error) {
+            console.error('Error fetching similar past input events:', error);
+            // Return null to continue without similar events if there's an error
+            return null;
+        }
     }
 }
 
