@@ -148,14 +148,17 @@ export const getSlackChannels = async (req: Request, res: Response) => {
       },
     });
 
-    console.log(chalk.cyan('🔵 [SLACK CHANNELS] userSlackIntegration:'), JSON.stringify(userSlackIntegration, null, 2));
-
     if (!userSlackIntegration || !userSlackIntegration.slack_integration) {
       return res.status(404).json({ error: "Slack integration not found" });
     }
 
     const token = getToken(userSlackIntegration);
     const isBotUser = userSlackIntegration.is_bot_user;
+    const teamName = userSlackIntegration.slack_integration.team_name;
+    const authedUserId = userSlackIntegration.authed_user_id;
+    const teamId = userSlackIntegration.slack_team_id;
+
+    console.log(chalk.cyan(`🔵 [SLACK CHANNELS] integration: team="${teamName}", user_id="${authedUserId}", team_id="${teamId}"`));
 
     // Fetch channels from Slack API
     const client = new WebClient(token, {
