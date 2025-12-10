@@ -1,4 +1,4 @@
-import { Bell, Eye, Home, MoreHorizontal, Plug, Zap } from "lucide-react"
+import { Bell, Eye, Home, Plus, Plug, Zap } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
 import {
     Sidebar,
@@ -7,7 +7,6 @@ import {
     SidebarGroupContent,
     SidebarGroupLabel,
     SidebarMenu,
-    SidebarMenuAction,
     SidebarMenuButton,
     SidebarMenuItem,
     SidebarMenuSkeleton,
@@ -16,8 +15,8 @@ import {
     SidebarMenuSubItem,
 } from "@/components/ui/sidebar"
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "../ui/dropdown-menu";
 import { Channel } from "@/shared/types";
+import { Button } from "@/components/ui/button";
 import { AppSidebarHeader } from "./SidebarHeader";
 import { AppSidebarFooter } from "./SidebarFooter";
 import { useChannels } from "@/hooks/api/useChannels";
@@ -69,9 +68,6 @@ function ApplicationNavigation({ channels, loading }: ApplicationNavigationProps
                             <span>{item.title}</span>
                         </Link>
                     </SidebarMenuButton>
-                    {item.title === "Channels" &&
-                        <ChannelDropdownMenu />
-                    }
                     {item.title === "Channels" && (
                         <ChannelsList channels={channels} loading={loading} />
                     )}
@@ -105,6 +101,8 @@ interface ChannelsListProps {
     loading: boolean;
 }
 function ChannelsList({ channels, loading }: ChannelsListProps) {
+    const navigate = useNavigate();
+
     if (loading) {
         return (
             <SidebarMenuSub>
@@ -126,25 +124,22 @@ function ChannelsList({ channels, loading }: ChannelsListProps) {
             {channels.map((channel) => (
                 <ChannelListItem key={channel.id} channel={channel} />
             ))}
+            <SidebarMenuSub>
+                <SidebarMenuSubItem>
+                    <SidebarMenuSubButton asChild>
+                        <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            className="gap-1 text-xs text-muted-foreground"
+                            onClick={() => navigate('/app/channels/new')}
+                        >
+                            <Plus className="size-3 !text-muted-foreground hover:!text-foreground" color="currentColor"/>
+                            Add Channel
+                        </Button>
+                    </SidebarMenuSubButton>
+                </SidebarMenuSubItem>
+            </SidebarMenuSub>
         </>
-    )
-}
-
-function ChannelDropdownMenu() {
-    const navigate = useNavigate();
-    return (
-        <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-                <SidebarMenuAction>
-                    <MoreHorizontal />
-                </SidebarMenuAction>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent side="right" align="start">
-                <DropdownMenuItem>
-                    <span onClick={() => navigate('/app/channels/new')}>New Channel</span>
-                </DropdownMenuItem>
-            </DropdownMenuContent>
-        </DropdownMenu>
     )
 }
 
