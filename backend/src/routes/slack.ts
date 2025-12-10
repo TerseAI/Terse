@@ -148,7 +148,7 @@ export const getSlackChannels = async (req: Request, res: Response) => {
       },
     });
 
-    console.log(chalk.cyan('🔵 [SLACK CHANNELS] userSlackIntegration:', userSlackIntegration));
+    console.log(chalk.cyan('🔵 [SLACK CHANNELS] userSlackIntegration:'), JSON.stringify(userSlackIntegration, null, 2));
 
     if (!userSlackIntegration || !userSlackIntegration.slack_integration) {
       return res.status(404).json({ error: "Slack integration not found" });
@@ -156,7 +156,6 @@ export const getSlackChannels = async (req: Request, res: Response) => {
 
     const token = getToken(userSlackIntegration);
     const isBotUser = userSlackIntegration.is_bot_user;
-
 
     // Fetch channels from Slack API
     const client = new WebClient(token, {
@@ -178,6 +177,13 @@ export const getSlackChannels = async (req: Request, res: Response) => {
         exclude_archived: true,
       }),
     ]);
+
+    const formatChannelSummary = (channels: SlackChannel[] | undefined, type: string) => 
+      channels?.map(c => c.name).join(', ') || 'none';
+    
+    console.log(chalk.cyan(`🔵 [SLACK CHANNELS] public: ${publicChannels.channels?.length || 0} (${formatChannelSummary(publicChannels.channels as SlackChannel[], 'public')})`));
+    console.log(chalk.cyan(`🔵 [SLACK CHANNELS] private: ${privateChannels.channels?.length || 0} (${formatChannelSummary(privateChannels.channels as SlackChannel[], 'private')})`));
+    console.log(chalk.cyan(`🔵 [SLACK CHANNELS] mpim: ${mpimChannels.channels?.length || 0} (${formatChannelSummary(mpimChannels.channels as SlackChannel[], 'mpim')})`));
 
     const channels: SlackChannel[] = [];
 
