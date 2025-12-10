@@ -82,6 +82,7 @@ import {
 import { getConfluenceIntegrations, getConfluenceResources } from "./routes/confluence";
 import { getActiveIntegrations, getAllIntegrations, getIntegrationInstallationDetails } from "./routes/integrations";
 import { initializeRealtimeSocket } from "./realtimeSocket";
+import { generateQuestionsRoute, generatePromptRoute } from "./routes/promptBuilder";
 import {
   createNotificationDestination,
   deleteNotificationDestination,
@@ -406,6 +407,16 @@ app.patch("/channels/:id", authMiddleware, async (req, res) => {
 
 app.delete("/channels/:id", authMiddleware, async (req, res) => {
   deleteChannel(req, res);
+});
+
+// MARK: PROMPT BUILDER
+
+app.post("/prompt-builder/generate-questions", authMiddleware, async (req, res) => {
+  generateQuestionsRoute(req, res);
+});
+
+app.post("/prompt-builder/generate-prompt", authMiddleware, async (req, res) => {
+  generatePromptRoute(req, res);
 });
 
 // MARK: INTEGRATIONS
