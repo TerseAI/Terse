@@ -5,10 +5,12 @@ import { ChannelNotificationSettings as ChannelNotificationSettingsType } from "
 import { Popover, PopoverContent, PopoverTrigger } from "../../components/ui/popover";
 import { Button } from "../../components/ui/button";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "../../components/ui/command";
-import { Check, ChevronsUpDown, X, Plus, Pencil, Trash2, Eye } from "lucide-react";
+import { Check, ChevronsUpDown, X, Plus, Pencil, Trash2, Eye, AlertTriangle } from "lucide-react";
 import { cn } from "../../lib/utils";
 import { Badge } from "../../components/ui/badge";
 import { Label } from "../../components/ui/label";
+import { useNotificationDestinations } from "../../hooks/api/useNotificationDestinations";
+import { AddNotificationDestination } from "../../components/Notifications/AddNotificationDestination";
 
 export type ChannelNotificationSettingsProps = {
     settings: ChannelNotificationSettingsType;
@@ -16,6 +18,9 @@ export type ChannelNotificationSettingsProps = {
 };
 
 function ChannelNotificationSettings({ settings, onChange }: ChannelNotificationSettingsProps) {
+    const { notificationDestinations, isValidating } = useNotificationDestinations();
+    const hasNoDestinations = !isValidating && (!notificationDestinations || notificationDestinations.length === 0);
+
     const handleToggleEnabled = (enabled: boolean) => {
         onChange({ ...settings, enabled });
     };
@@ -24,11 +29,18 @@ function ChannelNotificationSettings({ settings, onChange }: ChannelNotification
         onChange({ ...settings, actionTypes });
     };
 
+    const showNoDestinationsWarning = settings.enabled && hasNoDestinations;
+
     return (
         <div className="flex flex-col gap-4 p-4 border rounded-lg">
             <div className="flex items-center justify-between">
                 <div className="flex flex-col gap-1">
-                    <Label htmlFor="notifications-toggle" className="text-base font-medium">Notifications</Label>
+                    <div className="flex items-center gap-2">
+                        <Label htmlFor="notifications-toggle" className="text-base font-medium">Notifications</Label>
+                        {showNoDestinationsWarning && (
+                            <AlertTriangle className="size-4 text-yellow-500" />
+                        )}
+                    </div>
                     <p className="text-sm text-muted-foreground">Get notified when this channel takes actions</p>
                 </div>
                 <Switch 
@@ -37,6 +49,24 @@ function ChannelNotificationSettings({ settings, onChange }: ChannelNotification
                     onCheckedChange={handleToggleEnabled} 
                 />
             </div>
+            {showNoDestinationsWarning && (
+                <div className="flex items-center justify-between gap-2 p-3 rounded-md bg-yellow-500/10 border border-yellow-500/20">
+                    <div className="flex items-center gap-2">
+                        <AlertTriangle className="size-4 text-yellow-500 shrink-0" />
+                        <p className="text-sm text-yellow-600 dark:text-yellow-500">
+                            No notification destinations configured.
+                        </p>
+                    </div>
+                    <AddNotificationDestination 
+                        trigger={
+                            <Button variant="outline" size="sm">
+                                <Plus className="size-4" />
+                                Add
+                            </Button>
+                        }
+                    />
+                </div>
+            )}
             {settings.enabled && (
                 <div className="flex flex-col gap-2">
                     <Label className="text-sm font-medium">Notify for these action types</Label>

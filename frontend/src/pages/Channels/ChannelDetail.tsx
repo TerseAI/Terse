@@ -13,7 +13,7 @@ function ChannelDetail() {
     const [searchParams, setSearchParams] = useSearchParams();
 
     // Only pass channelId if it's not "new"
-    const channelId = id && id !== 'new' ? id : null;
+    const channelId: string | null = id && id !== 'new' ? id : null;
 
     // Fetch channel data using useSWR
     const { channel, isLoading: isFetching, mutate } = useChannel(channelId);
@@ -31,21 +31,21 @@ function ChannelDetail() {
 
     // Sync local state with fetched data - convert from ChannelInput/Output to Transient types
     useEffect(() => {
-        if (channel) {
-            setName(channel.name);
-            setInputs(channel.inputs.map(toTransientChannelInput));
-            setOutput(channel.output ? toTransientChannelOutput(channel.output) : undefined);
-            setPrompt(channel.prompt);
-            setIsActive(channel.isActive);
-            setNotificationSettings(channel.notificationSettings ?? { enabled: false, actionTypes: [] });
-        } else if (!channelId) {
-            // Reset to blank state for new channel
+        if (!channelId) {
+            // Reset to blank state for new channel - check this FIRST to avoid stale cache
             setName(null);
             setInputs([]);
             setOutput(undefined);
             setPrompt(undefined);
             setIsActive(true);
             setNotificationSettings({ enabled: false, actionTypes: [] });
+        } else if (channel) {
+            setName(channel.name);
+            setInputs(channel.inputs.map(toTransientChannelInput));
+            setOutput(channel.output ? toTransientChannelOutput(channel.output) : undefined);
+            setPrompt(channel.prompt);
+            setIsActive(channel.isActive);
+            setNotificationSettings(channel.notificationSettings ?? { enabled: false, actionTypes: [] });
         }
     }, [channel, channelId]);
 

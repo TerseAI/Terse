@@ -38,7 +38,8 @@ export function InstructionsEditor({ prompt, setPrompt, channelInputs, channelOu
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [showPromptBuilder, setShowPromptBuilder] = useState(false);
     const [showMarkdown, setShowMarkdown] = useState(false);
-    const isEmpty = !prompt?.text || prompt.text.trim() === '';
+    const text: string = prompt?.text ?? '';
+    const isEmpty = text.trim() === '';
 
     return (
         <div className="flex flex-col h-full w-full overflow-hidden">
@@ -90,7 +91,7 @@ export function InstructionsEditor({ prompt, setPrompt, channelInputs, channelOu
                 </div>
             ) : (
                 <Textarea
-                    value={prompt?.text}
+                    value={text}
                     onChange={(e) => setPrompt({ ...prompt, text: e.target.value })}
                     className="flex-1 min-h-0 resize-none overflow-auto"
                     placeholder={instructionsPlaceholder}
@@ -117,7 +118,7 @@ export function InstructionsEditor({ prompt, setPrompt, channelInputs, channelOu
                         </div>
                     ) : (
                         <Textarea
-                            value={prompt?.text}
+                            value={text}
                             onChange={(e) => setPrompt({ ...prompt, text: e.target.value })}
                             className="flex-1 min-h-0 resize-none"
                             placeholder={instructionsPlaceholder}
