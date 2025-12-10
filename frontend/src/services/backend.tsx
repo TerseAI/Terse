@@ -18,6 +18,7 @@ import {
     SlackChannelsResponse,
     StatsResponse, 
 } from "../shared/types";
+import { GenerateSurveyQuestionsRequest, GenerateSurveyQuestionsResponse, GenerateSurveyPromptRequest, GenerateSurveyPromptResponse } from "../shared/PromptBuilderTypes";
 import { 
     IntegrationType,
     IntegrationWithStatus,
@@ -268,6 +269,16 @@ interface BackendService {
      * Fetch run history actions by IDs
      */
     getRunHistoryActions(ids: string[]): Promise<RunHistoryActionWithId[]>;
+
+    /**
+     * Generates clarifying questions for prompt builder
+     */
+    generatePromptBuilderQuestions(request: GenerateSurveyQuestionsRequest): Promise<GenerateSurveyQuestionsResponse>;
+
+    /**
+     * Generates a prompt based on description and answers
+     */
+    generatePromptBuilderPrompt(request: GenerateSurveyPromptRequest): Promise<GenerateSurveyPromptResponse>;
 
     /**
      * Gets all notification destinations for the current user
@@ -768,11 +779,37 @@ export const BackendProvider: BackendService = {
             });
     },
 
+    generatePromptBuilderQuestions: (request: GenerateSurveyQuestionsRequest) => {
+        return axios.post<GenerateSurveyQuestionsResponse>(
+            `${backendBaseUrl}/prompt-builder/generate-questions`,
+            request,
+            { withCredentials: true }
+        )
+            .then(response => response.data)
+            .catch(error => {
+                console.error('Error generating questions:', error);
+                throw error;
+            });
+        },
+
     getNotificationDestinations: () => {
         return axios.get<NotificationDestination[]>(`${backendBaseUrl}/notification-destinations`, { withCredentials: true })
             .then(response => response.data)
             .catch(error => {
                 console.error('Error getting notification destinations:', error);
+                throw error;
+            });
+    },
+
+    generatePromptBuilderPrompt: (request: GenerateSurveyPromptRequest) => {
+        return axios.post<GenerateSurveyPromptResponse>(
+            `${backendBaseUrl}/prompt-builder/generate-prompt`,
+            request,
+            { withCredentials: true }
+        )
+            .then(response => response.data)
+            .catch(error => {
+                console.error('Error generating prompt:', error);
                 throw error;
             });
     },
