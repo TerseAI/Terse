@@ -78,9 +78,8 @@ STEP 1: UNDERSTAND THE SCHEMA FIRST
   - Updating records
 - This schema information is essential for constructing correct queries and updates
 
-STEP 3: CHECK FOR EXISTING RECORDS
-- After understanding the schema, use the \`notion_query_database\`
-tool to search for existing records
+STEP 2: CHECK FOR EXISTING RECORDS
+- After understanding the schema, use the \`notion_query_database\` tool to search for existing records
 - Use the schema information to construct appropriate filters based on:
   - Title or name fields
   - Unique identifiers (IDs, ticket numbers, etc.)
@@ -92,7 +91,7 @@ tool to search for existing records
   - Use "starts_with" if you need records that begin with specific text
   - Avoid "equals" unless you need an exact match (rare)
 
-STEP 4: CREATE OR UPDATE
+STEP 3: CREATE OR UPDATE
 - If a matching record is found:
   - DO NOT create a duplicate entry
   - Update the existing record using \`notion_modify_page\` tool
