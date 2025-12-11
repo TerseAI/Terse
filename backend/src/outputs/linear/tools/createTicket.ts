@@ -7,6 +7,7 @@ import { LinearTicketSession } from "../LinearTicketOutput";
 import { SessionWithTracking } from "../../../agent/ChannelAgent/ChannelAgent";
 import type { IssueCreateInput } from "@linear/sdk/dist/_generated_documents";
 import { RunHistoryActionType } from "@prisma/client";
+import { formatError } from "../../../tools/errors";
 
 export const linearCreateTicketTool = tool({
     name: 'linear_create_ticket',
@@ -174,6 +175,7 @@ BEFORE USING THIS TOOL:
                 hint: 'Check that the teamId is valid, the access token has the necessary permissions, and all provided IDs (stateId, assigneeId, etc.) are valid',
             };
         }
-    }
+    },
+    errorFunction: formatError
 });
 

@@ -180,7 +180,7 @@ export function useChatTurns({ initialTurns }: UseChatTurnsOptions = {}) {
         }
     };
 
-    const handleToolCallComplete = ({ step_id, result, changed_items }: ToolCallComplete) => {
+    const handleToolCallComplete = ({ step_id, result, changed_items, error_context }: ToolCallComplete) => {
         // Remove from pending approvals if it was there
         pendingApprovalsRef.current.delete(step_id);
 
@@ -196,6 +196,10 @@ export function useChatTurns({ initialTurns }: UseChatTurnsOptions = {}) {
                     toolCall.isWaitingForUserInput = false;
                     if (result) {
                         toolCall.result = result;
+                    }
+                    if (error_context) {
+                        toolCall.isFailure = true;
+                        toolCall.error_context = error_context;
                     }
                     if (changed_items) {
                         toolCall.changed_items = changed_items;

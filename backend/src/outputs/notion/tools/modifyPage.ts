@@ -5,6 +5,7 @@ import chalk from "chalk";
 import { IntegrationType } from "../../../shared/Integrations";
 import { NotionDatabaseSession } from "../NotionDatabaseOutput";
 import { SessionWithTracking } from "../../../agent/ChannelAgent/ChannelAgent";
+import { formatError } from "../../../tools/errors";
 
 export const notionModifyPageTool = tool({
     name: 'notion_modify_page',
@@ -138,6 +139,7 @@ IMPORTANT:
                 hint: 'Check that property names match the database schema and values are in correct Notion API format'
             };
         }
-    }
+    },
+    errorFunction: formatError
 });
 

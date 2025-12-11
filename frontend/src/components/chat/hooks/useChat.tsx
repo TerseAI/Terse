@@ -41,6 +41,7 @@ export function useChat({
             onToolCall?.(req);
         },
         onToolCallComplete: (req: ToolCallComplete) => {
+            console.log(JSON.stringify({reqToolCallComplete: req}, null, 2))
             handleToolCallComplete(req);
             onToolCallComplete?.(req);
         },

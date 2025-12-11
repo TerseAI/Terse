@@ -6,6 +6,10 @@ export enum  ChangeEventType {
     ACTION_EXECUTED = 'ACTION_EXECUTED',
 }
 
+export type SharedErrorContext = {
+    error: Error | unknown;
+  }
+
 export type ChangedItem = { type_name: EntityType, id: string, change_event_type: ChangeEventType };
 
 export type Failure = { error: string, step_id: string };
@@ -26,7 +30,7 @@ export type TextDelta = { delta: string, step_id: string, };
 
 export type ToolCall = { summary: string, step_id: string, parameters: string, integration: string, };
 
-export type ToolCallComplete = { tool_name: string, status: string, step_id: string, changed_items: ChangedItem[], integration: string, url?: string, result?: string };
+export type ToolCallComplete = { tool_name: string, status: string, step_id: string, changed_items: ChangedItem[], integration: string, url?: string, result?: string, error_context?: SharedErrorContext };
 
 export type FilterResult = { isRelevant: boolean, reason: string, confidence: number, step_id: string };
 

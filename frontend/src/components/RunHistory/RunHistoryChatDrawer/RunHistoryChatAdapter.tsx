@@ -27,6 +27,10 @@ export default function RunHistoryChatAdapter({ runId, status, children}: RunHis
     // Fetch History (API)
     const { events, isLoading, startTimestamp, endTimestamp} = useChatHistory(runId);
 
+    events.forEach(event => {
+        console.log({event})
+    })
+
     const historicalEvents = events.map((event) => ({...event, isHistorical: true}));
 
     // Use API status if available, otherwise fall back to prop status

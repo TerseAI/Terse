@@ -6,6 +6,7 @@ import { IntegrationType } from "../../../shared/Integrations";
 import { NotionPageSession } from "../NotionPageOutput";
 import { getBlockTypeName, describeBlocks } from "../../../utility/notion";
 import { SessionWithTracking } from "../../../agent/ChannelAgent/ChannelAgent";
+import { formatError } from "../../../tools/errors";
 
 export const notionModifyBlocksTool = tool({
     name: 'notion_modify_blocks',
@@ -206,6 +207,7 @@ Example: "[{\"operation\": \"append\", \"blocks\": [{\"object\": \"block\", \"ty
             successful_count: results.filter((r: any) => r.success).length,
             failed_count: results.filter((r: any) => !r.success).length,
         };
-    }
+    },
+    errorFunction: formatError
 });
 

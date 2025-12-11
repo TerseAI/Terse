@@ -1,8 +1,9 @@
-import { Agent, StreamedRunResult } from "@openai/agents";
+import { Agent, StreamedRunResult, RunStreamEvent, RunToolCallOutputItem } from "@openai/agents";
 import { ModelEvent, ChangedItem } from "../shared/ModelEvents";
 import { Session } from "../server";
 import { randomString } from "../utility/strings";
 import { IntegrationType } from "../shared/Integrations";
+import { detectSerializedError, ErrorContext, parseSerializedError } from "../tools/errors";
 
 
 export async function* transformAgentStreamToModelEvents<T extends Session>(
@@ -14,7 +15,7 @@ export async function* transformAgentStreamToModelEvents<T extends Session>(
 ): AsyncGenerator<ModelEvent, void, unknown> {
     const { toolToIntegrationMap, onToolCallComplete } = options;
 
-    for await (const event of result as AsyncIterable<AgentStreamEvent>) {
+    for await (const event of result as AsyncIterable<RunStreamEvent>) {
         // Try TextDelta
         const textDelta = tryExtractTextDelta(event);
         if (textDelta) {
@@ -44,7 +45,7 @@ export async function* transformAgentStreamToModelEvents<T extends Session>(
     yield createNaturalStopEvent();
 }
 
-export function tryExtractTextDelta(event: AgentStreamEvent): ModelEvent | null {
+export function tryExtractTextDelta(event: RunStreamEvent): ModelEvent | null {
     if (
         event.type === "raw_model_stream_event" &&
         event.data?.type === RawModelStreamEventType.OutputTextDelta &&
@@ -60,7 +61,7 @@ export function tryExtractTextDelta(event: AgentStreamEvent): ModelEvent | null 
 }
 
 export function tryExtractToolCall(
-    event: AgentStreamEvent,
+    event: RunStreamEvent,
     toolToIntegrationMap?: Map<string, string>
 ): ModelEvent | null {
     if (event.type === "run_item_stream_event" && event.name === "tool_called") {
@@ -98,25 +99,87 @@ export function tryExtractToolCall(
     return null;
 }
 
-export function tryExtractToolCallCompleteData(event: AgentStreamEvent): ToolCallCompleteData | null {
-    if (event.type === "run_item_stream_event" && event.name === "tool_output") {
-        const item = (event as ToolCallCompleteEvent).item.rawItem;
-        
-        // Handle hosted tool calls
-        if (item.type === "hosted_tool_call" || (item as any).type === "hosted_tool_call_result") {
+/**
+ * Extracts the output string from a tool output item, handling various formats.
+ * Supports OpenAI Agents SDK format: {type: "text", text: "..."}
+ * 
+ * @param rawItem - The raw item from the tool output event
+ * @param item - The top-level item from the tool output event
+ * @returns The extracted output string, or null if not found
+ */
+function extractOutputString(rawItem: any, item: RunToolCallOutputItem): string | null {
+    const topLevelOutput = (item as any).output;
+    let actualOutput = rawItem.output ?? topLevelOutput;
+
+    // Handle OpenAI Agents SDK output format: {type: "text", text: "..."}
+    if (actualOutput && typeof actualOutput === "object" && "text" in actualOutput && typeof actualOutput.text === "string") {
+        actualOutput = actualOutput.text;
+    }
+
+    return typeof actualOutput === "string" ? actualOutput : null;
+}
+
+/**
+ * Extracts error context from tool output, checking for serialized errors and status-based failures.
+ * 
+ * @param outputString - The output string from the tool
+ * @param status - The status of the tool call
+ * @returns ErrorContext if an error is detected, undefined otherwise
+ */
+function extractErrorContext(outputString: string | null, status: string | undefined): ErrorContext | undefined {
+    if (!outputString) {
+        // Check if status indicates failure even without output
+        if (status === "incomplete" || status === "failed") {
             return {
-                name: item.name,
-                callId: (item as any).id || item.callId || "unknown",
-                status: item.status || "unknown",
+                context: {} as any,
+                error: `Tool failed with status: ${status}`
+            };
+        }
+        return undefined;
+    }
+
+    // Check for serialized error format
+    if (detectSerializedError(outputString)) {
+        return parseSerializedError(outputString);
+    }
+
+    // Check if status indicates failure but output is not in serialized format
+    if (status === "incomplete" || status === "failed") {
+        return {
+            context: {} as any,
+            error: outputString
+        };
+    }
+
+    return undefined;
+}
+
+export function tryExtractToolCallCompleteData(event: RunStreamEvent): ToolCallCompleteData | null {
+    if (event.type === "run_item_stream_event" && event.name === "tool_output") {
+        const item = event.item as RunToolCallOutputItem;
+        const rawItem = item.rawItem;
+
+        const outputString = extractOutputString(rawItem, item);
+        const status = (rawItem as any).status as string | undefined;
+        const errorContext = extractErrorContext(outputString, status);
+        
+        // Handle function call results (including hosted tool calls)
+        if (rawItem.type === "function_call_result") {
+            return {
+                name: rawItem.name || "unknown",
+                callId: rawItem.callId || "unknown",
+                status: status || "unknown",
+                errorContext: errorContext
             };
         }
         
-        // Handle regular function call results
-        if (item.type === "function_call_result") {
+        // Handle hosted tool calls (check via type assertion as it's not in the union type)
+        if ((rawItem as any).type === "hosted_tool_call_result" || (rawItem as any).type === "hosted_tool_call") {
             return {
-                name: item.name,
-                callId: item.callId || "unknown",
-                status: item.status || "unknown",
+                name: (rawItem as any).name || "unknown",
+                callId: (rawItem as any).id || (rawItem as any).callId || "unknown",
+                status: status || "unknown",
+                errorContext: errorContext
             };
         }
     }
@@ -130,14 +193,18 @@ export function createToolCallCompleteEvent(
 ): ModelEvent {
     const integration = toolToIntegrationMap?.get(data.name) || IntegrationType.TERSE;
     
-    return {
+    const event: ModelEvent = {
         type: "ToolCallComplete",
         tool_name: data.name,
         status: data.status,
         step_id: data.callId,
-        changed_items: changedItems,
+        changed_items: changedItems,    
         integration,
+        // Only include error_context if it exists (don't set to undefined)
+        ...(data.errorContext ? { error_context: {error: data.errorContext.error} } : {}),
     };
+    
+    return event;
 }
 
 export function createNaturalStopEvent(): ModelEvent {
@@ -175,7 +242,7 @@ export type ToolCalledEvent = {
             type: "function_call" | "hosted_tool_call";
             callId?: string;
             name: string;
-            status?: string;
+            status?: "in_progress" | "completed" | "incomplete";
             arguments?: string;
         };
         agent: any;
@@ -192,7 +259,7 @@ export type ToolCallCompleteEvent = {
             name: string;
             callId?: string;
             id?: string;
-            status: string;
+            status: "in_progress" | "completed" | "incomplete";
             output?: any;
         };
         agent: any;
@@ -208,4 +275,5 @@ export type ToolCallCompleteData = {
     name: string;
     callId: string;
     status: string;
+    errorContext?: ErrorContext;
 };

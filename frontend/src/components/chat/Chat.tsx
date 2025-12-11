@@ -30,6 +30,7 @@ const Chat = forwardRef<ChatHandle, ChatProps>(function Chat({
         onToolCall: () => {},
         onToolCallComplete: () => {},
     });
+    console.log({turns})
 
     return (
         <ChatLayout

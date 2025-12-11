@@ -3,7 +3,7 @@ import { HandThumbUpIcon as HandThumbUpFilledIcon, HandThumbDownIcon as HandThum
 import { useState } from "react";
 import TokenStream from "./TokenStream";
 
-import { ChangedItem } from "../../shared/ModelEvents";
+import { ChangedItem, SharedErrorContext } from "../../shared/ModelEvents";
 import FunctionCallItem from "./FunctionCallItem";
 
 interface Turn {
@@ -28,9 +28,11 @@ interface FunctionCallEvent {
     isWaitingForApproval?: boolean;
     isRejected?: boolean;
     isWaitingForUserInput?: boolean;
+    isFailure?: boolean;
     parameters?: string;
     result?: string;
     changed_items?: ChangedItem[];
+    error_context?: SharedErrorContext;
 }
 
 function TurnView({ role, text, function_calls, isFailure = false, isGenerating = false, filter_result, disableAnimation = false }: Turn) {
@@ -64,7 +66,7 @@ function TurnView({ role, text, function_calls, isFailure = false, isGenerating 
                     <FunctionCallItem
                         key={index}
                         call={call}
-                        isFailure={isFailure}
+                        isTurnFailure={isFailure}
                         index={index}
                     />
                 ))}

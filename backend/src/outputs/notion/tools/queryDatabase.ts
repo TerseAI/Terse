@@ -4,6 +4,7 @@ import { Client } from '@notionhq/client';
 import { NotionDatabaseSession } from "../NotionDatabaseOutput";
 import { IntegrationType } from "../../../shared/Integrations";
 import { SessionWithTracking } from "../../../agent/ChannelAgent/ChannelAgent";
+import { formatError } from "../../../tools/errors";
 
 // Helper function to extract readable values from Notion property objects
 function extractPropertyValue(property: any): any {
@@ -344,6 +345,7 @@ First sorts by Category, then by Name within each category.`),
             has_more: response.has_more || false,
             next_cursor: response.next_cursor || null,
         };
-    }
+    },
+    errorFunction: formatError
 });
 
