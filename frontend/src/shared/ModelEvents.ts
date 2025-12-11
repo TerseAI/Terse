@@ -16,7 +16,7 @@ export type Failure = { error: string, step_id: string };
 
 export type FunctionCall = { function_name: string, result: string, step_id: string, };
 
-export type ModelEvent = { "type": "ToolApprovalRequest" } & ToolApprovalRequest | { "type": "ToolCall" } & ToolCall | { "type": "ToolCallComplete" } & ToolCallComplete | { "type": "TextDelta" } & TextDelta | { "type": "Failure" } & Failure | { "type": "NaturalStop", step_id: string } | { "type": "FilterResult" } & FilterResult | { "type": "UserMessage" } & UserMessage;
+export type ModelEvent = { "type": "ToolApprovalRequest" } & ToolApprovalRequest | { "type": "ToolCall" } & ToolCall | { "type": "ToolCallComplete" } & ToolCallComplete | { "type": "TextDelta" } & TextDelta | { "type": "Failure" } & Failure | { "type": "NaturalStop", step_id: string } | { "type": "FilterResult" } & FilterResult | { "type": "UserMessage" } & UserMessage | { "type": "Thinking", step_id: string };
 
 export type ModelRequest = { "type": "SendModelRequest" } & SendModelRequest | { "type": "ToolApprovalResponse" } & ToolApprovalResponse;
 

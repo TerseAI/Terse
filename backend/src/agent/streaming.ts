@@ -16,12 +16,22 @@ export async function* transformAgentStreamToModelEvents<T extends Session>(
     const { toolToIntegrationMap, onToolCallComplete } = options;
 
     for await (const event of result as AsyncIterable<RunStreamEvent>) {
+        // Try Thinking (reasoning start) - check early so users see activity immediately
+        const thinkingEvent = tryExtractThinking(event);
+        if (thinkingEvent) {
+            yield thinkingEvent;
+            continue;
+        }
+
         // Try TextDelta
         const textDelta = tryExtractTextDelta(event);
         if (textDelta) {
             yield textDelta;
             continue;
         }
+
+        const currentTimestamp = new Date().toISOString();
+        console.log(`[${event.type}] [${(event as any)?.name || "unknown"}]: ${currentTimestamp} - ${JSON.stringify(event).substring(0, 400)}`)
 
         // Try ToolCall
         const toolCall = tryExtractToolCall(event, toolToIntegrationMap);
@@ -45,16 +55,36 @@ export async function* transformAgentStreamToModelEvents<T extends Session>(
     yield createNaturalStopEvent();
 }
 
-export function tryExtractTextDelta(event: RunStreamEvent): ModelEvent | null {
+export function tryExtractThinking(event: RunStreamEvent): ModelEvent | null {
+    // Check for reasoning/thinking start events
     if (
         event.type === "raw_model_stream_event" &&
-        event.data?.type === RawModelStreamEventType.OutputTextDelta &&
-        typeof event.data.delta === "string"
+        (event as any).data?.type === "model" &&
+        (event as any).data?.event?.type === "response.output_item.added" &&
+        (event as any).data?.event?.item?.type === "reasoning"
     ) {
+        const item = (event as any).data.event.item;
+        return {
+            type: "Thinking",
+            step_id: item.id || "unknown",
+        };
+    }
+    return null;
+}
+
+export function tryExtractTextDelta(event: RunStreamEvent): ModelEvent | null {
+    // Check for the nested OpenAI SDK event structure
+    if (
+        event.type === "raw_model_stream_event" &&
+        (event as any).data?.type === "model" &&
+        (event as any).data?.event?.type === "response.output_text.delta" &&
+        typeof (event as any).data?.event?.delta === "string"
+    ) {
+        const eventData = (event as any).data.event;
         return {
             type: "TextDelta",
-            delta: event.data.delta,
-            step_id: event.data.providerData?.item_id || event.data.providerData?.step_id || "unknown",
+            delta: eventData.delta,
+            step_id: eventData.item_id || "unknown",
         };
     }
     return null;
@@ -211,13 +241,17 @@ export enum RawModelStreamEventType {
 export type RawModelStreamEvent = {
     type: "raw_model_stream_event";
     data: {
-        type: RawModelStreamEventType;
+        type: RawModelStreamEventType | "model";
         delta?: string;
         providerData?: { item_id?: string; step_id?: string };
         event?: {
-            type: "response.output_text.delta";
-            delta: string;
-            item_id: string;
+            type: "response.output_text.delta" | "response.created" | "response.in_progress" | "response.output_item.added" | "response.content_part.added" | "response.output_text.done" | "response.content_part.done" | "response.output_item.done" | "response.completed" | string;
+            delta?: string;
+            item_id?: string;
+            sequence_number?: number;
+            output_index?: number;
+            content_index?: number;
+            [key: string]: any;
         };
     };
 };
