@@ -30,7 +30,7 @@ export type TextDelta = { delta: string, step_id: string, };
 
 export type ToolCall = { summary: string, step_id: string, parameters: string, integration: string, };
 
-export type ToolCallComplete = { tool_name: string, status: string, step_id: string, changed_items: ChangedItem[], integration: string, url?: string, result?: string, error_context?: SharedErrorContext };
+export type ToolCallComplete = { tool_name: string, status: string, step_id: string, changed_items: ChangedItem[], integration: string, url?: string, result?: string, errorContext?: SharedErrorContext };
 
 export type FilterResult = { isRelevant: boolean, reason: string, confidence: number, step_id: string };
 

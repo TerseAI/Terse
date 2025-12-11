@@ -32,7 +32,7 @@ interface FunctionCallEvent {
     parameters?: string;
     result?: string;
     changed_items?: ChangedItem[];
-    error_context?: SharedErrorContext;
+    errorContext?: SharedErrorContext;
 }
 
 function TurnView({ role, text, function_calls, isFailure = false, isGenerating = false, filter_result, disableAnimation = false }: Turn) {

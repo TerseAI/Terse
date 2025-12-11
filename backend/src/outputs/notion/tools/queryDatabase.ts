@@ -303,6 +303,12 @@ First sorts by Category, then by Name within each category.`),
         // Fetch pages using data source query with filters
         const response = await notion.dataSources.query(queryParams);
 
+        // Retrieve data source info to get the database URL
+        const dataSourceInfo = await notion.dataSources.retrieve({
+            data_source_id: runContext.context.notionConfig.database_id,
+        });
+        const databaseUrl = 'url' in dataSourceInfo ? dataSourceInfo.url : undefined;
+
         // Convert to readable format
         const pages = response.results.map((page: any) => {
             if (!page.properties) return null;
@@ -330,6 +336,7 @@ First sorts by Category, then by Name within each category.`),
             integration: IntegrationType.NOTION,
             target: databaseName,
             details: `Queried database ${filterDescription} and retrieved ${pages.length} ${pages.length === 1 ? 'page' : 'pages'}`,
+            url: databaseUrl,
             type: 'read',
         });
 

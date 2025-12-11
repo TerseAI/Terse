@@ -1,4 +1,4 @@
-import { Agent, StreamedRunResult, RunStreamEvent, RunToolCallOutputItem } from "@openai/agents";
+import { Agent, StreamedRunResult, RunStreamEvent, RunToolCallOutputItem, FunctionCallResultItem } from "@openai/agents";
 import { ModelEvent, ChangedItem } from "../shared/ModelEvents";
 import { Session } from "../server";
 import { randomString } from "../utility/strings";
@@ -101,11 +101,6 @@ export function tryExtractToolCall(
 
 /**
  * Extracts the output string from a tool output item, handling various formats.
- * Supports OpenAI Agents SDK format: {type: "text", text: "..."}
- * 
- * @param rawItem - The raw item from the tool output event
- * @param item - The top-level item from the tool output event
- * @returns The extracted output string, or null if not found
  */
 function extractOutputString(rawItem: any, item: RunToolCallOutputItem): string | null {
     const topLevelOutput = (item as any).output;
@@ -121,10 +116,6 @@ function extractOutputString(rawItem: any, item: RunToolCallOutputItem): string 
 
 /**
  * Extracts error context from tool output, checking for serialized errors and status-based failures.
- * 
- * @param outputString - The output string from the tool
- * @param status - The status of the tool call
- * @returns ErrorContext if an error is detected, undefined otherwise
  */
 function extractErrorContext(outputString: string | null, status: string | undefined): ErrorContext | undefined {
     if (!outputString) {
@@ -157,10 +148,10 @@ function extractErrorContext(outputString: string | null, status: string | undef
 export function tryExtractToolCallCompleteData(event: RunStreamEvent): ToolCallCompleteData | null {
     if (event.type === "run_item_stream_event" && event.name === "tool_output") {
         const item = event.item as RunToolCallOutputItem;
-        const rawItem = item.rawItem;
+        const rawItem = item.rawItem as FunctionCallResultItem
 
         const outputString = extractOutputString(rawItem, item);
-        const status = (rawItem as any).status as string | undefined;
+        const status = rawItem.status as string | undefined;
         const errorContext = extractErrorContext(outputString, status);
         
         // Handle function call results (including hosted tool calls)
@@ -174,10 +165,10 @@ export function tryExtractToolCallCompleteData(event: RunStreamEvent): ToolCallC
         }
         
         // Handle hosted tool calls (check via type assertion as it's not in the union type)
-        if ((rawItem as any).type === "hosted_tool_call_result" || (rawItem as any).type === "hosted_tool_call") {
+        if (rawItem.type === "hosted_tool_call_result" || rawItem.type === "hosted_tool_call") {
             return {
-                name: (rawItem as any).name || "unknown",
-                callId: (rawItem as any).id || (rawItem as any).callId || "unknown",
+                name: rawItem.name || "unknown",
+                callId: rawItem.id || rawItem.callId || "unknown",
                 status: status || "unknown",
                 errorContext: errorContext
             };
@@ -200,8 +191,8 @@ export function createToolCallCompleteEvent(
         step_id: data.callId,
         changed_items: changedItems,    
         integration,
-        // Only include error_context if it exists (don't set to undefined)
-        ...(data.errorContext ? { error_context: {error: data.errorContext.error} } : {}),
+        // Only include errorContext if it exists (don't set to undefined)
+        ...(data.errorContext ? { errorContext: {error: data.errorContext.error} } : {}),
     };
     
     return event;

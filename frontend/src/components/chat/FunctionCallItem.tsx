@@ -112,11 +112,11 @@ function ToolResultInput({ toolName, parameters, onSubmit }: { toolName: string;
                 Please provide the result for <span className="font-medium text-foreground">{toolName}</span>:
             </div>
 
-            {parameters && (
+            {parameters && parsedParams && typeof parsedParams === 'object' && Object.keys(parsedParams).length > 0 && (
                 <div className="mb-3 p-2 bg-background rounded border border-border">
                     <div className="text-xs text-muted-foreground mb-1">Parameters:</div>
                     <pre className="text-xs text-foreground whitespace-pre-wrap font-mono">
-                        {typeof parsedParams === 'object' ? JSON.stringify(parsedParams, null, 2) : parsedParams}
+                        {JSON.stringify(parsedParams, null, 2)}
                     </pre>
                 </div>
             )}
@@ -204,11 +204,11 @@ export default function FunctionCallItem({ call, isTurnFailure = false, index }:
                                         <ToolCallParameters parameters={call.parameters} />
                                     </div>
                                 )}
-                                {call.error_context && (
+                                {call.errorContext && (
                                     <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-3">
                                         <div className="text-sm font-semibold text-red-500 mb-1">Error:</div>
                                         <div className="text-sm text-red-400 font-mono whitespace-pre-wrap">
-                                            {String(call.error_context.error)}
+                                            {String(call.errorContext.error)}
                                         </div>
                                     </div>
                                 )}

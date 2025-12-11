@@ -27,10 +27,6 @@ export default function RunHistoryChatAdapter({ runId, status, children}: RunHis
     // Fetch History (API)
     const { events, isLoading, startTimestamp, endTimestamp} = useChatHistory(runId);
 
-    events.forEach(event => {
-        console.log({event})
-    })
-
     const historicalEvents = events.map((event) => ({...event, isHistorical: true}));
 
     // Use API status if available, otherwise fall back to prop status
@@ -176,8 +172,15 @@ function convertRunHistoryEventsToTurns(events: ModelEvent[]): Turn[] {
                     const fc = t.function_calls.find(c => c.id === step_id);
                     if (fc) {
                         fc.isRunning = false;
-                        fc.result = e.result;
+                        fc.isWaitingForApproval = false;
                         fc.isWaitingForUserInput = false;
+                        if (e.result) {
+                            fc.result = e.result;
+                        }
+                        if (e.errorContext) {
+                            fc.isFailure = true;
+                            fc.errorContext = e.errorContext;
+                        }
                         if (e.changed_items) {
                             fc.changed_items = e.changed_items;
                         }
@@ -195,6 +198,8 @@ function convertRunHistoryEventsToTurns(events: ModelEvent[]): Turn[] {
                         isRunning: false,
                         result: e.result,
                         changed_items: e.changed_items,
+                        errorContext: e.errorContext,
+                        isFailure: !!e.errorContext,
                         isWaitingForUserInput: false
                     });
                 }
