@@ -30,11 +30,20 @@ Operations:
 - update: Update an existing block by block_id
 - delete: Delete (archive) a block by block_id
 
+Moving blocks within a page:
+To move a block to a different position on the page, you need to:
+1. First, retrieve the block content you want to move (using the notion_query_page tool)
+2. Create a new block with the same content using the "append" operation at the desired position (specify parent_block_id if moving within a parent block)
+3. Delete the original block using the "delete" operation with its block_id
+
+This two-step process (copy + append, then delete) is necessary because the Notion API doesn't support direct block movement.
+
 Examples:
 - Append paragraph: {"operation": "append", "blocks": [{"object": "block", "type": "paragraph", "paragraph": {"rich_text": [{"type": "text", "text": {"content": "Hello world"}}]}}]}
 - Append heading: {"operation": "append", "blocks": [{"object": "block", "type": "heading_1", "heading_1": {"rich_text": [{"type": "text", "text": {"content": "Title"}}]}}]}
 - Update block: {"operation": "update", "block_id": "abc123", "block": {"paragraph": {"rich_text": [{"type": "text", "text": {"content": "Updated text"}}]}}}
-- Delete block: {"operation": "delete", "block_id": "abc123"}`,
+- Delete block: {"operation": "delete", "block_id": "abc123"}
+- Move block: First append the block at new position, then delete the original block_id`,
     parameters: z.object({
         operations_json: z.string().describe(`JSON string with an array of operations. Each operation should have:
 - operation: "append" | "update" | "delete"

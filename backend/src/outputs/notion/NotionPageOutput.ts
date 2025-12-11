@@ -105,4 +105,5 @@ Where:
 - The footer must ALWAYS be at the very end of the page content
 - Use the bullet separator (•) between each metadata item (unless user specifies otherwise)
 - Count all events you received in the context for the event count
+- You must not create any content below the footer. If there is content below the footer, you must move it above the footer.
 `.trim();
