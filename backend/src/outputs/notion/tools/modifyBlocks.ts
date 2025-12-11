@@ -8,6 +8,19 @@ import { getBlockTypeName, describeBlocks } from "../../../utility/notion";
 import { SessionWithTracking } from "../../../agent/ChannelAgent/ChannelAgent";
 import { formatError } from "../../../tools/errors";
 
+/**
+ * Constructs a Notion deep link URL to a specific block.
+ * Strips hyphens from the block ID as required by Notion's URL format.
+ */
+function getBlockDeepLinkUrl(pageUrl: string | undefined, blockId: string | undefined): string | undefined {
+    if (!pageUrl || !blockId) {
+        return undefined;
+    }
+    // Notion block IDs in URLs must have hyphens removed
+    const blockIdWithoutHyphens = blockId.replace(/-/g, '');
+    return `${pageUrl}?source=copy_link#${blockIdWithoutHyphens}`;
+}
+
 export const notionModifyBlocksTool = tool({
     name: 'notion_modify_blocks',
     description: `Add, update, or delete blocks in the page content. Use this to modify the page content (paragraphs, headings, lists, etc.). 
@@ -68,6 +81,17 @@ Example: "[{\"operation\": \"append\", \"blocks\": [{\"object\": \"block\", \"ty
         });
 
         const pageId = runContext.context.notionPageConfig.page_id as string;
+        
+        // Fetch page URL once for constructing block deep links
+        let pageUrl: string | undefined;
+        try {
+            const pageResponse = await notion.pages.retrieve({ page_id: pageId });
+            pageUrl = 'url' in pageResponse ? pageResponse.url : undefined;
+        } catch (error) {
+            // If we can't fetch the page URL, we'll just skip adding URLs to trackAction
+            console.warn('Could not fetch page URL for deep linking:', error);
+        }
+
         const results: any[] = [];
         let hasErrors = false;
 
@@ -100,12 +124,16 @@ Example: "[{\"operation\": \"append\", \"blocks\": [{\"object\": \"block\", \"ty
                     // Report action
                     const blockDescription = describeBlocks(op.blocks);
                     const pageName = runContext.context.notionPageConfig.page_name || 'Notion page';
+                    // Use first block ID for deep linking (if multiple blocks, link to first one)
+                    const firstBlockId = response.results.length > 0 ? response.results[0].id : undefined;
+                    const blockUrl = getBlockDeepLinkUrl(pageUrl, firstBlockId);
                     runContext.context.trackAction({
                         action: 'Added content',
                         integration: IntegrationType.NOTION,
                         target: pageName,
                         details: `Added ${response.results.length} ${response.results.length === 1 ? 'item' : 'items'}: ${blockDescription}`,
                         type: 'create',
+                        url: blockUrl,
                     });
                 } else if (op.operation === 'update') {
                     if (!op.block_id) {
@@ -142,12 +170,14 @@ Example: "[{\"operation\": \"append\", \"blocks\": [{\"object\": \"block\", \"ty
                     // Report action
                     const pageName = runContext.context.notionPageConfig.page_name || 'Notion page';
                     const blockType = getBlockTypeName(op.block);
+                    const blockUrl = getBlockDeepLinkUrl(pageUrl, response.id);
                     runContext.context.trackAction({
                         action: 'Updated content',
                         integration: IntegrationType.NOTION,
                         target: pageName,
                         details: `Updated ${blockType}`,
                         type: 'update',
+                        url: blockUrl,
                     });
                 } else if (op.operation === 'delete') {
                     if (!op.block_id) {
@@ -174,12 +204,14 @@ Example: "[{\"operation\": \"append\", \"blocks\": [{\"object\": \"block\", \"ty
 
                     // Report action
                     const pageName = runContext.context.notionPageConfig.page_name || 'Notion page';
+                    const blockUrl = getBlockDeepLinkUrl(pageUrl, response.id);
                     runContext.context.trackAction({
                         action: 'Removed content',
                         integration: IntegrationType.NOTION,
                         target: pageName,
                         details: 'Removed content block',
                         type: 'delete',
+                        url: blockUrl,
                     });
                 } else {
                     results.push({
