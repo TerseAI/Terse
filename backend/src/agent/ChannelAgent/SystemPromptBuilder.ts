@@ -31,7 +31,7 @@ export class SystemPromptBuilder<T extends Session, TConfig extends ConfigInstan
     constructor(
         private deps: SystemPromptBuilderDependencies<T, TConfig>,
         private runContext: RunContext
-    ) {}
+    ) { }
 
     withSection(builder: SectionBuilder): this {
         this.sections.push(builder);
@@ -54,7 +54,7 @@ export class SystemPromptBuilder<T extends Session, TConfig extends ConfigInstan
     async build(): Promise<string> {
         const results = await Promise.all(this.sections.map(fn => fn()));
         const validSections = results.filter((s): s is Section => s !== null);
-        
+
         return validSections
             .map((section, index) => this.formatSection(section, index))
             .join('\n\n');
@@ -82,7 +82,7 @@ Use this information to understand temporal context when processing events and u
     private async buildRunContextSection(): Promise<Section> {
         const { runId } = this.runContext;
         const prisma = db();
-        
+
         // Fetch current run with automation details
         const runRecord = await prisma.run_history_records.findUnique({
             where: { id: runId },
@@ -175,14 +175,14 @@ Follow these directives in addition to the USER INSTRUCTIONS provided in each me
         try {
             // Extract searchable content from the current input event
             const currentEventContent = inputEvent.formatForChannelAgent();
-            
+
             if (!currentEventContent || !currentEventContent.trim()) {
                 return null;
             }
 
             const channelId = this.deps.channel.id;
             const runHistoryMemory = new RunHistoryMemory();
-            
+
             // Find similar past input events (top 5)
             const similarEvents = await runHistoryMemory.findSimilarInputEvents(
                 currentEventContent,
@@ -196,7 +196,7 @@ Follow these directives in addition to the USER INSTRUCTIONS provided in each me
 
             // Extract content from the events for display
             const eventContents = similarEvents.map(event => {
-                const rawEvent: AgentInputItem = typeof event.raw_event_json === 'string' 
+                const rawEvent: AgentInputItem = typeof event.raw_event_json === 'string'
                     ? JSON.parse(event.raw_event_json) as AgentInputItem
                     : event.raw_event_json as AgentInputItem;
                 const content = extractConversationContent(rawEvent);
