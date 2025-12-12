@@ -46,7 +46,8 @@ export function SlackIntegration({
                 integration.id,
                 currentConfig?.channelId,
                 currentConfig?.channelName,
-                currentConfig?.listenToUserDms ?? false
+                currentConfig?.listenToUserDms ?? false,
+                currentConfig?.userIds
             );
             setConfig(updatedConfig);
         }
@@ -175,15 +176,18 @@ export function SlackIntegration({
                         <SlackConfigurationSelector
                             integrationId={selectedIntegrationId}
                             selectedChannelId={currentConfig?.channelId ?? ''}
+                            selectedUserIds={currentConfig?.userIds ?? []}
                             listenToUserDms={currentConfig?.listenToUserDms}
                             showListenToDMsOption={!isBotUser}
-                            onSelect={(channelId, channelName) => {
+                            showUserFilter={!isBotUser}
+                            onSelectChannel={(channelId, channelName) => {
                                 const hasChannel = channelId && channelId.trim() !== '';
                                 const updatedConfig = new SlackConfig(
                                     selectedIntegrationId,
                                     hasChannel ? channelId : undefined,
                                     hasChannel ? channelName : undefined,
-                                    hasChannel ? false : currentConfig?.listenToUserDms
+                                    hasChannel ? false : currentConfig?.listenToUserDms,
+                                    currentConfig?.userIds
                                 );
                                 setConfig(updatedConfig);
                             }}
@@ -192,7 +196,18 @@ export function SlackIntegration({
                                     selectedIntegrationId,
                                     listenToUserDms ? undefined : currentConfig?.channelId,
                                     listenToUserDms ? undefined : currentConfig?.channelName,
-                                    listenToUserDms
+                                    listenToUserDms,
+                                    listenToUserDms ? currentConfig?.userIds : undefined
+                                );
+                                setConfig(updatedConfig);
+                            }}
+                            onSelectUsers={(userIds) => {
+                                const updatedConfig = new SlackConfig(
+                                    selectedIntegrationId,
+                                    currentConfig?.channelId,
+                                    currentConfig?.channelName,
+                                    currentConfig?.listenToUserDms,
+                                    userIds
                                 );
                                 setConfig(updatedConfig);
                             }}

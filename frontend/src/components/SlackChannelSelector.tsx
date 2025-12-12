@@ -1,11 +1,20 @@
-import { useEffect, useState } from "react";
-import { SlackChannel, SlackUserResponse } from "../shared/types";
+import { useEffect } from "react";
+import { SlackChannel } from "../shared/types";
 import { RefreshButton } from "./RefreshButton";
 import { useSlackChannels } from "@/hooks/api/useSlackChannels";
 import { capitalize } from "../lib/utils";
-import { Checkbox } from "./ui/checkbox";
 import { useSlackUsers } from "../hooks/api/useSlackUsers";
 import { MultiSelect } from "./MultiSelect";
+import {
+    Select,
+    SelectContent,
+    SelectGroup,
+    SelectItem,
+    SelectLabel,
+    SelectSeparator,
+    SelectTrigger,
+    SelectValue,
+} from "./ui/select";
 
 interface SlackChannelSelectorProps {
     integrationId: string;
@@ -13,9 +22,10 @@ interface SlackChannelSelectorProps {
     listenToUserDms?: boolean;
     selectedUserIds?: string[];
     showListenToDMsOption?: boolean; // Only show DM option for user tokens
-    onSelect: (channelId: string, channelName?: string) => void;
-    onListenToUserDmsChange?: (listenToUserDms: boolean) => void;
-    onSelectUsers?: (userIds: string[]) => void;
+    showUserFilter?: boolean; // Only show user filter for user tokens
+    onSelectChannel: (channelId: string, channelName?: string) => void;
+    onListenToUserDmsChange: (listenToUserDms: boolean) => void;
+    onSelectUsers: (userIds: string[]) => void;
 }
 
 export function SlackConfigurationSelector({
@@ -24,7 +34,8 @@ export function SlackConfigurationSelector({
     listenToUserDms = false,
     selectedUserIds = [],
     showListenToDMsOption = false,
-    onSelect,
+    showUserFilter = false,
+    onSelectChannel: onSelect,
     onListenToUserDmsChange,
     onSelectUsers
 }: SlackChannelSelectorProps) {
@@ -45,10 +56,9 @@ export function SlackConfigurationSelector({
         error: usersError,
         isValidating: usersIsValidating,
         mutate: usersMutate,    
-    } = useSlackUsers(listenToUserDms ? integrationId : null);
+    } = useSlackUsers(showUserFilter ? integrationId : null);
 
-    const isRefreshing = isValidating && !isLoading && !usersIsValidating && !usersLoading;
-    const errorMessage = isError ? error || 'Failed to load channels' : usersIsError ? usersError || 'Failed to load users' : null;
+    const errorMessage = isError ? error || 'Failed to load channels' : (showUserFilter && usersIsError) ? usersError || 'Failed to load users' : null;
 
     // Clear listenToUserDms if it's enabled but the option is not available (switched to bot token)
     useEffect(() => {
@@ -89,29 +99,33 @@ export function SlackConfigurationSelector({
         }
     }, [channels, defaultChannelId, integrationId, isLoading, listenToUserDms, onSelect, selectedChannelId]);
 
-    const handleRefresh = () => {
+    const handleChannelsRefresh = () => {
         void mutate();
-        if (listenToUserDms) {
-            void usersMutate();
-        }
     };
 
-    const handleListenToUserDmsChange = (checked: boolean) => {
-        if (checked) {
-            // Clear channel selection when enabling DMs
-            onSelect('', undefined);
-        }
-        onListenToUserDmsChange?.(checked);
+    const handleUsersRefresh = () => {
+        void usersMutate();
     };
 
-    const handleChannelSelect = (channelId: string) => {
-        if (!channelId) {
+
+    const handleChannelSelect = (value: string) => {
+        if (!value) {
             // If clearing selection, just call onSelect with empty values
             onSelect('', undefined);
             return;
         }
         
-        const selectedChannel = channels.find(ch => ch.id === channelId);
+        // Special value for DMs
+        if (value === '__LISTEN_TO_DMS__') {
+            // Clear channel selection when enabling DMs
+            onSelect('', undefined);
+            if (onListenToUserDmsChange) {
+                onListenToUserDmsChange(true);
+            }
+            return;
+        }
+        
+        const selectedChannel = channels.find(ch => ch.id === value);
         if (selectedChannel) {
             // Clear listenToUserDms when selecting a channel
             if (listenToUserDms && onListenToUserDmsChange) {
@@ -120,11 +134,19 @@ export function SlackConfigurationSelector({
             onSelect(selectedChannel.id, selectedChannel.name);
         }
     };
+    
+    // Get the current select value (channel ID or special DM value)
+    const getSelectValue = () => {
+        if (listenToUserDms) {
+            return '__LISTEN_TO_DMS__';
+        }
+        return selectedChannelId || '';
+    };
 
-    if (isLoading || (listenToUserDms && usersLoading)) {
+    if (isLoading || (showUserFilter && usersLoading)) {
         return (
             <div className="text-sm text-[theme(text-secondary)]">
-                {listenToUserDms ? 'Loading users...' : 'Loading channels...'}
+                Loading...
             </div>
         );
     }
@@ -134,7 +156,7 @@ export function SlackConfigurationSelector({
             <div className="space-y-2">
                 <div className="text-sm text-red-600">{String(errorMessage)}</div>
                 <RefreshButton
-                    onClick={handleRefresh}
+                    onClick={handleChannelsRefresh}
                     isRefreshing={false}
                     label="Try again"
                     variant="link"
@@ -153,7 +175,7 @@ export function SlackConfigurationSelector({
         );
     }
 
-    if (listenToUserDms && users.length === 0) {
+    if (showUserFilter && listenToUserDms && users.length === 0) {
         return (
             <div className="text-sm text-[theme(text-secondary)]">
                 No users found. Unable to load users from this Slack workspace.
@@ -166,76 +188,73 @@ export function SlackConfigurationSelector({
 
     return (
         <div className="space-y-2">
-            {!listenToUserDms &&
-            <>
             <div className="flex items-center justify-between">
                 <label className="text-xs font-medium text-[theme(text-secondary)]">
-                    Select Channel
+                    Select Channel or DMs
                 </label>
                 <RefreshButton
-                    onClick={handleRefresh}
-                    isRefreshing={isRefreshing}
+                    onClick={handleChannelsRefresh}
+                    isRefreshing={isValidating && !isLoading}
                     title="Refresh channel list"
                 />
             </div>
             
-            <select
-                value={selectedChannelId || ''}
-                onChange={(e) => handleChannelSelect(e.target.value)}
-                disabled={listenToUserDms}
-                className="w-full px-3 py-2 text-sm border border-border rounded-lg bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50 disabled:cursor-not-allowed"
+            <Select
+                value={getSelectValue()}
+                onValueChange={handleChannelSelect}
             >
-                {!selectedChannelId && (
-                    <option value="">-- Select a channel --</option>
-                )}
-                {publicChannels.length > 0 && (
-                    <optgroup label="Public Channels">
-                        {publicChannels.map((channel) => (
-                            <option key={channel.id} value={channel.id}>
-                                #{channel.name}
-                            </option>
-                        ))}
-                    </optgroup>
-                )}
-                {privateChannels.length > 0 && (
-                    <optgroup label="Private Channels">
-                        {privateChannels.map((channel) => (
-                            <option key={channel.id} value={channel.id}>
-                                {channel.isPrivate ? '🔒 ' : ''}{channel.isMPIM ? formatMPIMChannelName(channel.name) : channel.name}
-                            </option>
-                        ))}
-                    </optgroup>
-                )}
-            </select>
+                <SelectTrigger className="w-full">
+                    <SelectValue placeholder="-- Select a channel or DMs --" />
+                </SelectTrigger>
+                <SelectContent>
+                    {publicChannels.length > 0 && (
+                        <SelectGroup>
+                            <SelectLabel>Public Channels</SelectLabel>
+                            {publicChannels.map((channel) => (
+                                <SelectItem key={channel.id} value={channel.id}>
+                                    #{channel.name}
+                                </SelectItem>
+                            ))}
+                        </SelectGroup>
+                    )}
+                    {privateChannels.length > 0 && (
+                        <SelectGroup>
+                            <SelectLabel>Private Channels</SelectLabel>
+                            {privateChannels.map((channel) => (
+                                <SelectItem key={channel.id} value={channel.id}>
+                                    {channel.isPrivate ? '🔒 ' : ''}{channel.isMPIM ? formatMPIMChannelName(channel.name) : channel.name}
+                                </SelectItem>
+                            ))}
+                        </SelectGroup>
+                    )}
+                    {showListenToDMsOption && (
+                        <>
+                            <SelectSeparator />
+                            <SelectGroup>
+                                <SelectLabel>Direct Messages</SelectLabel>
+                                <SelectItem value="__LISTEN_TO_DMS__">
+                                    Monitor private direct messages
+                                </SelectItem>
+                            </SelectGroup>
+                        </>
+                    )}
+                </SelectContent>
+            </Select>
             {channels.length > 0 && (
                 <div className="text-xs text-foreground-muted">
                     {channels.length} channel{channels.length !== 1 ? 's' : ''} available
                 </div>
             )}
-            </>}
 
-            {/* Listen to user DMs checkbox - only show for user tokens */}
-            {showListenToDMsOption && (
-                <label className="flex items-center gap-2 cursor-pointer">
-                    <Checkbox
-                        checked={listenToUserDms}
-                        onCheckedChange={(checked) => handleListenToUserDmsChange(checked === true)}
-                    />
-                    <span className="text-sm text-[theme(text-primary)]">
-                        Monitor private direct messages
-                    </span>
-                </label>
-            )}
-
-            {/* User selector when listening to DMs */}
-            {listenToUserDms && (
+            {/* User selector - show for both channels and DMs, but only for user tokens */}
+            {showUserFilter && (selectedChannelId || listenToUserDms) && (
                 <div className="space-y-2">
                     <div className="flex items-center justify-between">
                         <label className="text-xs font-medium text-[theme(text-secondary)]">
-                            Select Users to Monitor
+                            Filter by Users (Optional)
                         </label>
                         <RefreshButton
-                            onClick={handleRefresh}
+                            onClick={handleUsersRefresh}
                             isRefreshing={usersIsValidating && !usersLoading}
                             title="Refresh user list"
                         />
@@ -246,8 +265,10 @@ export function SlackConfigurationSelector({
                             label: user.name,
                         }))}
                         selectedIds={selectedUserIds}
-                        onSelect={(ids) => onSelectUsers?.(ids as string[])}
-                        placeholder="Select users..."
+                        onSelect={(ids) => {
+                            onSelectUsers?.(ids as string[])
+                        }}
+                        placeholder="Select users (optional)..."
                         searchPlaceholder="Search users..."
                         emptyMessage="No users found."
                         displayText={(count, selected) =>
