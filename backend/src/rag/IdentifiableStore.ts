@@ -1,6 +1,7 @@
 import { db } from "../prismaClient";
 import { Identifiable } from "./Hydrator";
-import { getHydrator } from "./HydratorRegistry";
+import { requireHydrator } from "./HydratorRegistry";
+import { requireHydratorType, HydratorType } from "../types/rag";
 
 export class IdentifiableStore {
     async store(ref: Identifiable): Promise<void> {
@@ -30,31 +31,27 @@ export class IdentifiableStore {
     }
 
     async hydrate(ref: Identifiable): Promise<Identifiable> {
-        const hydrator = getHydrator(ref.entityType);
-        if (!hydrator) {
-            throw new Error(`No hydrator registered for entityType: ${ref.entityType}`);
-        }
+        const hydratorType = requireHydratorType(ref.entityType);
+        const hydrator = requireHydrator(hydratorType);
         return hydrator.hydrate(ref);
     }
 
     async hydrateAll(refs: Identifiable[]): Promise<Identifiable[]> {
         if (refs.length === 0) return [];
 
-        // Group refs by entityType
-        const grouped = new Map<string, Identifiable[]>();
+        // Group refs by entityType (validated)
+        const grouped = new Map<HydratorType, Identifiable[]>();
         for (const ref of refs) {
-            const existing = grouped.get(ref.entityType) ?? [];
+            const hydratorType = requireHydratorType(ref.entityType);
+            const existing = grouped.get(hydratorType) ?? [];
             existing.push(ref);
-            grouped.set(ref.entityType, existing);
+            grouped.set(hydratorType, existing);
         }
 
         // Hydrate each group in parallel
         const results = await Promise.all(
-            Array.from(grouped.entries()).map(async ([entityType, typeRefs]) => {
-                const hydrator = getHydrator(entityType);
-                if (!hydrator) {
-                    throw new Error(`No hydrator registered for entityType: ${entityType}`);
-                }
+            Array.from(grouped.entries()).map(async ([hydratorType, typeRefs]) => {
+                const hydrator = requireHydrator(hydratorType);
                 return hydrator.hydrateBulk(typeRefs);
             })
         );
@@ -62,12 +59,12 @@ export class IdentifiableStore {
         return results.flat();
     }
 
-    async loadAndHydrate(entityType: string): Promise<Identifiable[]> {
+    async loadAndHydrate(entityType: HydratorType): Promise<Identifiable[]> {
         const refs = await db().identifiable_refs.findMany({
             where: { entity_type: entityType }
         });
 
-        const identifiables: Identifiable[] = refs.map((r: { entity_type: string; entity_id: string }) => ({
+        const identifiables: Identifiable[] = refs.map(r => ({
             entityType: r.entity_type,
             entityId: r.entity_id
         }));
