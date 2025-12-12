@@ -80,7 +80,7 @@ export class TurboPufferSearch<
 
             // Hydrate all groups in parallel for better performance
             const hydrationPromises = Array.from(groupedByType.entries()).map(async ([entityType, items]) => {
-                const hydrator = getHydrator(entityType);
+                const hydrator = getHydrator<T>(entityType);
                 if (!hydrator) {
                     console.warn(`No hydrator found for entityType: ${entityType}. Skipping ${items.length} items.`);
                     return [];
