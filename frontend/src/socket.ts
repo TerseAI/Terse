@@ -49,7 +49,6 @@ export async function initializeSocket() {
     // tag: prefix to match against the first element of tuple keys (e.g., 'runHistory' matches ['runHistory', ...])
     // id: optional second element to match (e.g., automationId for runHistory queries)
     socket.on('invalidate', (payload: { key?: string; id?: string }) => {
-        console.log('Invalidation Request received:', payload);
         const { key, id } = payload || {};
         if (key && id) {
             console.log('Invalidating key and id:', [key, id]);
