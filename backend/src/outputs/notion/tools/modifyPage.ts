@@ -5,6 +5,7 @@ import chalk from "chalk";
 import { IntegrationType } from "../../../shared/Integrations";
 import { NotionDatabaseSession } from "../NotionDatabaseOutput";
 import { SessionWithTracking } from "../../../agent/ChannelAgent/ChannelAgent";
+import { formatError } from "../../../tools/errors";
 
 export const notionModifyPageTool = tool({
     name: 'notion_modify_page',
@@ -63,11 +64,7 @@ IMPORTANT:
         try {
             properties = JSON.parse(properties_json);
         } catch (error) {
-            return {
-                success: false,
-                error: 'Invalid JSON in properties_json parameter',
-                hint: 'Ensure properties_json is a valid JSON string'
-            };
+            throw new Error('Invalid JSON in properties_json parameter. Ensure properties_json is a valid JSON string');
         }
 
         if (!runContext?.context) {
@@ -90,19 +87,20 @@ IMPORTANT:
                 });
                 // Report action (no DB writes here)
                 const databaseName = runContext.context.notionConfig.database_name || 'Notion database';
+                const pageUrl = 'url' in response ? response.url : undefined;
                 runContext.context.trackAction({
                     action: 'Updated page',
                     integration: IntegrationType.NOTION,
                     target: databaseName,
                     details: 'Updated page in database',
-                    url: 'url' in response ? (response as any).url : undefined,
+                    url: pageUrl,
                     type: 'update',
                 });
                 return {
                     success: true,
                     action: 'updated',
                     page_id: response.id,
-                    url: 'url' in response ? response.url : undefined
+                    url: pageUrl
                 };
             } else {
                 // Create new page
@@ -116,28 +114,28 @@ IMPORTANT:
                 console.log(chalk.green("Notion database modified successfully"));
                 // Report action (no DB writes here)
                 const databaseName = runContext.context.notionConfig.database_name || 'Notion database';
+                const pageUrl = 'url' in response ? response.url : undefined;
                 runContext.context.trackAction({
                     action: 'Created page',
                     integration: IntegrationType.NOTION,
                     target: databaseName,
                     details: 'Created new page in database',
-                    url: 'url' in response ? (response as any).url : undefined,
+                    url: pageUrl,
                     type: 'create',
                 });
                 return {
                     success: true,
                     action: 'created',
                     page_id: response.id,
-                    url: 'url' in response ? response.url : undefined
+                    url: pageUrl
                 };
             }
         } catch (error: any) {
-            return {
-                success: false,
-                error: error.message,
-                hint: 'Check that property names match the database schema and values are in correct Notion API format'
-            };
+            const errorMessage = error.message || 'Unknown error occurred';
+            const hint = 'Check that property names match the database schema and values are in correct Notion API format';
+            throw new Error(`${errorMessage}. ${hint}`);
         }
-    }
+    },
+    errorFunction: formatError
 });
 

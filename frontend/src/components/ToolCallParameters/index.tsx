@@ -18,6 +18,11 @@ const ToolCallParameters = ({ parameters }: ToolCallParametersProps) => {
         return <div>Invalid JSON</div>;
     }
 
+    // Don't display if parameters are empty ({} or empty object)
+    if (parsedParameters && typeof parsedParameters === 'object' && Object.keys(parsedParameters).length === 0) {
+        return null;
+    }
+
     switch (parsedParameters?.type) {
         case ToolTypes.SEARCH:
             return <SearchParameters {...parsedParameters} />;

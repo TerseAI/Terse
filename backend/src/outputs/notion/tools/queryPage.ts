@@ -5,6 +5,7 @@ import { NotionPageSession } from "../NotionPageOutput";
 import { GetPageResponse, PageObjectResponse } from "@notionhq/client/build/src/api-endpoints";
 import { IntegrationType } from "../../../shared/Integrations";
 import { SessionWithTracking } from "../../../agent/ChannelAgent/ChannelAgent";
+import { formatError } from "../../../tools/errors";
 
 // Helper function to extract readable values from Notion page property objects
 function extractPagePropertyValue(property: any): any {
@@ -319,6 +320,7 @@ This tool returns the current state of the page including all properties, metada
             blocks: blocks,
             blocks_count: blocks.length,
         };
-    }
+    },
+    errorFunction: formatError
 });
 
