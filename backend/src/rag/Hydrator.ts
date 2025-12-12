@@ -1,17 +1,26 @@
 import { HydratorType } from "../types/rag";
-import { SearchItem } from "./searchTypes";
 
 /**
- * Interface for hydrating SearchItems into fully typed objects.
- * Each hydrator is responsible for a specific entityType.
+ * Base interface for any object that can be identified by entityType + entityId.
+ * Similar to Swift's Identifiable protocol.
  */
-export interface Hydrator<T> {
-    entityType: HydratorType;
-    hydrate(entityReference: EntityReference): Promise<T>;
-    hydrateBulk(entityReferences: EntityReference[]): Promise<T[]>;
-}
-
-export interface EntityReference {
+export interface Identifiable {
     entityType: string;
     entityId: string;
+}
+
+/**
+ * Utility type to make any type Identifiable.
+ * Use this to enrich types that don't natively have entityType/entityId.
+ */
+export type WithIdentity<T> = T & Identifiable;
+
+/**
+ * Interface for hydrating Identifiable references into fully typed objects.
+ * Each hydrator is responsible for a specific entityType.
+ */
+export interface Hydrator<T extends Identifiable> {
+    entityType: HydratorType;
+    hydrate(ref: Identifiable): Promise<T>;
+    hydrateBulk(refs: Identifiable[]): Promise<T[]>;
 }

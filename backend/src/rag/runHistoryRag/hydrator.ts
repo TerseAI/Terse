@@ -1,16 +1,16 @@
-import { Hydrator } from "../Hydrator";
+import { Hydrator, Identifiable, WithIdentity } from "../Hydrator";
 import { db } from "../../prismaClient";
 import { RunHistoryRawEventWithRelations } from "../../types/prisma";
 import { HydratorType } from "../../types/rag";
-import { RunHistoryMetadata } from "./indexer";
-import { SearchItem } from "../searchTypes";
 
-export class RunHistoryRawEventHydrator implements Hydrator<RunHistoryRawEventWithRelations> {
+export type IdentifiableRunHistoryRawEvent = WithIdentity<RunHistoryRawEventWithRelations>;
+
+export class RunHistoryRawEventHydrator implements Hydrator<IdentifiableRunHistoryRawEvent> {
     entityType = HydratorType.RUN_HISTORY_RAW_EVENT;
 
-    async hydrate(searchItem: SearchItem<RunHistoryMetadata>): Promise<RunHistoryRawEventWithRelations> {
+    async hydrate(ref: Identifiable): Promise<IdentifiableRunHistoryRawEvent> {
         const event = await db().run_history_raw_events.findUnique({
-            where: { id: searchItem.entityId },
+            where: { id: ref.entityId },
             include: {
                 run_history_record: {
                     include: {
@@ -21,14 +21,18 @@ export class RunHistoryRawEventHydrator implements Hydrator<RunHistoryRawEventWi
         });
         
         if (!event) {
-            throw new Error(`Run history raw event not found: ${searchItem.entityId}`);
+            throw new Error(`Run history raw event not found: ${ref.entityId}`);
         }
 
-        return event as RunHistoryRawEventWithRelations;
+        return {
+            ...event,
+            entityType: this.entityType,
+            entityId: event.id
+        };
     }
 
-    async hydrateBulk(searchItems: SearchItem<RunHistoryMetadata>[]): Promise<RunHistoryRawEventWithRelations[]> {
-        const ids = searchItems.map(item => item.entityId);
+    async hydrateBulk(refs: Identifiable[]): Promise<IdentifiableRunHistoryRawEvent[]> {
+        const ids = refs.map(ref => ref.entityId);
         
         const events = await db().run_history_raw_events.findMany({
             where: { id: { in: ids } },
@@ -44,13 +48,17 @@ export class RunHistoryRawEventHydrator implements Hydrator<RunHistoryRawEventWi
         // Create a map for O(1) lookup
         const eventMap = new Map(events.map(e => [e.id, e]));
 
-        // Return in the same order as searchItems, handling missing events
-        return searchItems.map(item => {    
-            const event = eventMap.get(item.entityId);
+        // Return in the same order as refs, handling missing events
+        return refs.map(ref => {    
+            const event = eventMap.get(ref.entityId);
             if (!event) {
-                throw new Error(`Run history raw event not found: ${item.entityId}`);
+                throw new Error(`Run history raw event not found: ${ref.entityId}`);
             }
-            return event as RunHistoryRawEventWithRelations;
+            return {
+                ...event,
+                entityType: this.entityType,
+                entityId: event.id
+            };
         });
     }
 }
