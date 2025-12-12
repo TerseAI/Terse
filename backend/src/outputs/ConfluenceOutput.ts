@@ -1,4 +1,3 @@
-import { RunHistoryAction } from "../shared/RunHistoryTypes";
 import { AtlassianIntegration, IntegrationType } from "../shared/Integrations";
 import { ChannelOutput, User, ChannelConfluenceConfig, PrismaTransaction } from "../types/prisma";
 import { Session } from "../server";
@@ -10,6 +9,7 @@ import chalk from "chalk";
 import { OutputConfigType } from "@prisma/client";
 import { ConfluenceConfig } from "../shared/Configs";
 import { SessionWithTracking } from "../agent/ChannelAgent/ChannelAgent";
+import { formatError } from "../tools/errors";
 
 // MARK: - Exports
 
@@ -136,7 +136,8 @@ This tool returns the current state of the Confluence page including all metadat
             console.error("Error fetching Confluence page:", errorMessage);
             throw new Error(`Failed to fetch Confluence page: ${errorMessage}`);
         }
-    }
+    },
+    errorFunction: formatError
 });
 
 const confluenceAddCommentTool = tool({
@@ -283,7 +284,8 @@ To find the correct position, first call confluence_query_page to see the page c
             console.error("Error adding Confluence inline comment:", errorMessage);
             throw new Error(`Failed to add Confluence inline comment: ${errorMessage}`);
         }
-    }
+    },
+    errorFunction: formatError
 });
 
 // MARK: - Types

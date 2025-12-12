@@ -3,7 +3,7 @@ import { HandThumbUpIcon as HandThumbUpFilledIcon, HandThumbDownIcon as HandThum
 import { useState } from "react";
 import TokenStream from "./TokenStream";
 
-import { ChangedItem } from "../../shared/ModelEvents";
+import { ChangedItem, SharedErrorContext } from "../../shared/ModelEvents";
 import FunctionCallItem from "./FunctionCallItem";
 
 interface Turn {
@@ -13,6 +13,7 @@ interface Turn {
     step_id: string;
     isFailure?: boolean;
     isGenerating?: boolean;
+    isThinking?: boolean;
     filter_result?: {
         isRelevant: boolean;
         reason: string;
@@ -28,12 +29,14 @@ interface FunctionCallEvent {
     isWaitingForApproval?: boolean;
     isRejected?: boolean;
     isWaitingForUserInput?: boolean;
+    isFailure?: boolean;
     parameters?: string;
     result?: string;
     changed_items?: ChangedItem[];
+    errorContext?: SharedErrorContext;
 }
 
-function TurnView({ role, text, function_calls, isFailure = false, isGenerating = false, filter_result, disableAnimation = false }: Turn) {
+function TurnView({ role, text, function_calls, isFailure = false, isGenerating = false, isThinking = false, filter_result, disableAnimation = false }: Turn) {
     const isUser = role === 'user';
     const isAssistantFinishedGenerating = !isGenerating && role === 'assistant' && text.length > 0;
     // Expanded state - show all steps with status
@@ -42,6 +45,20 @@ function TurnView({ role, text, function_calls, isFailure = false, isGenerating 
             <div className="space-y-2 max-w-[90%]">
                 {filter_result && (
                     <FilterResultView filterResult={filter_result} />
+                )}
+
+                {isThinking && (
+                    <div className="text-[#F1F1F1] text-md py-2 rounded-8xl">
+                        <div className="prose prose-invert">
+                            <div className="flex items-center gap-2 text-gray-400 italic">
+                                <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                                <span>Thinking...</span>
+                            </div>
+                        </div>
+                    </div>
                 )}
 
                 {(text || isFailure) && (
@@ -64,7 +81,7 @@ function TurnView({ role, text, function_calls, isFailure = false, isGenerating 
                     <FunctionCallItem
                         key={index}
                         call={call}
-                        isFailure={isFailure}
+                        isTurnFailure={isFailure}
                         index={index}
                     />
                 ))}

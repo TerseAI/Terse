@@ -765,6 +765,7 @@ enum RunHistoryChatEventType {
   Failure
   FilterResult
   UserMessage
+  Thinking
 }
 
 // Run History tables

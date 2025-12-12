@@ -2,7 +2,6 @@ import { Agent, AgentInputItem, run, StreamedRunResult, AgentOutputType } from '
 import { InputEvent } from "../../integrations/abstract/InputEvent";
 import { ChannelPrompt } from "../../types/prisma";
 import { Session } from "../../server";
-import { ModelEvent } from '../../shared/ModelEvents';
 import { transformAgentStreamToModelEvents } from '../streaming';
 import { z } from "zod";
 import type { RunHistoryStreamingParams, RunHistoryModelEvent, RunHistoryModelSocketEvent } from '../../shared/RunHistoryTypes';
