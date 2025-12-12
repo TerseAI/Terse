@@ -41,37 +41,22 @@ function extractPropertyValue(property: any): any {
     }
 }
 
-
-
-const sortSchema = z.object({
-    property: z.string().nullable().optional(),
-    timestamp: z.enum(['created_time', 'last_edited_time']).nullable().optional(),
-    direction: z.enum(['ascending', 'descending']),
-}).refine(
-    (data) => (data.property !== undefined && data.property !== null) !== (data.timestamp !== undefined && data.timestamp !== null),
-    {
-        message: "Either 'property' or 'timestamp' must be provided, but not both",
-    }
-);
-
 export const notionQueryDatabaseTool = tool({
     name: 'notion_query_database',
-    description: `Query a Notion data source (database) to retrieve pages that match specific criteria. This tool efficiently filters, sorts, and paginates results at the database layer for optimal performance.
+    description: `Query a Notion data source (database) to retrieve pages that match specific criteria.
 
 WHEN TO USE THIS TOOL:
 - Verify if the database contains any existing records and avoid creating duplicates.
 - When you need to find specific pages matching certain criteria (e.g., status, date ranges, property values)
 - When you need to retrieve a subset of pages rather than all pages in the database
-- When you need sorted results (e.g., newest first, alphabetical order)
 - When working with large databases and need pagination to retrieve results in batches
 - When you only need specific properties from pages (use filter_properties for efficiency)
 
 WHAT THIS TOOL DOES:
 1. Filters pages at the Notion API level (not client-side) for maximum efficiency
 2. Supports complex filtering with AND/OR logic, property filters, and timestamp filters
-3. Supports sorting by properties or timestamps (created_time, last_edited_time)
-4. Supports pagination - use start_cursor from previous responses to get next page
-5. Supports filter_properties to only fetch needed fields, reducing response size and improving speed
+3. Supports pagination - use start_cursor from previous responses to get next page
+4. Supports filter_properties to only fetch needed fields, reducing response size and improving speed
 
 FILTERING:
 - Property filters: Filter by any database property (title, number, date, select, status, checkbox, etc.)
@@ -88,11 +73,6 @@ FILTER_PROPERTIES:
 - Specify only the properties you need to reduce response size and improve performance
 - Especially important for databases with many properties or complex formulas/rollups
 - You can fetch additional properties later using Retrieve page property item API
-
-SORTING:
-- Sort by any property or by created_time/last_edited_time
-- Multiple sorts are supported (earlier sorts take precedence)
-- Useful for getting newest items, alphabetical lists, or priority-ordered results
 
 NOTE: This tool does NOT return the database schema. Use notion_get_schema if you need schema information.`,
     parameters: z.object({
@@ -224,28 +204,12 @@ EXAMPLES:
 - Simple: "{\\"property\\": \\"Task completed\\", \\"checkbox\\": {\\"equals\\": true}}"
 - Compound: "{\\"and\\": [{\\"property\\": \\"Done\\", \\"checkbox\\": {\\"equals\\": true}}, {\\"or\\": [{\\"property\\": \\"Tags\\", \\"multi_select\\": {\\"contains\\": \\"A\\"}}, {\\"property\\": \\"Tags\\", \\"multi_select\\": {\\"contains\\": \\"B\\"}}]}]}"
 - Timestamp: "{\\"timestamp\\": \\"created_time\\", \\"created_time\\": {\\"on_or_after\\": \\"2023-02-08\\"}}"`),
-        sorts: z.array(sortSchema).nullable().optional().describe(`Array of sort objects. Earlier sorts take precedence. Each sort must use ONE of two formats:
-
-1. PROPERTY VALUE SORT - Sort by any database property:
-   { "property": "Property Name", "direction": "ascending" | "descending" }
-   Example: { "property": "Name", "direction": "ascending" }
-
-2. ENTRY TIMESTAMP SORT - Sort by entry creation or edit time:
-   { "timestamp": "created_time" | "last_edited_time", "direction": "ascending" | "descending" }
-   Example: { "timestamp": "last_edited_time", "direction": "descending" }
-
-NESTED SORT EXAMPLE (multiple sorts):
-[
-  { "property": "Category", "direction": "ascending" },
-  { "property": "Name", "direction": "ascending" }
-]
-First sorts by Category, then by Name within each category.`),
         page_size: z.number().int().min(1).max(100).nullable().optional().describe('Number of results per page (1-100). Default returns all results. Use pagination for large databases.'),
         start_cursor: z.string().nullable().optional().describe('Cursor from previous response to fetch next page. Use next_cursor from response when has_more is true.'),
         result_type: z.enum(['page', 'data_source']).nullable().optional().describe('Filter results to only pages or data sources. Only relevant for wiki databases.'),
     }),
-    execute: async ({ filter_properties, filter, sorts, page_size, start_cursor, result_type }, runContext?: RunContext<SessionWithTracking<NotionDatabaseSession>>) => {
-        console.log("Executing notion_query_database tool with filters:", { filter_properties, filter, sorts, page_size, start_cursor });
+    execute: async ({ filter_properties, filter, page_size, start_cursor, result_type }, runContext?: RunContext<SessionWithTracking<NotionDatabaseSession>>) => {
+        console.log("Executing notion_query_database tool with filters:", { filter_properties, filter, page_size, start_cursor });
         if (!runContext?.context) {
             throw new Error("No context provided");
         }
@@ -281,10 +245,6 @@ First sorts by Category, then by Name within each category.`),
             }
             // Filter is validated by Notion API at runtime, so we can safely pass it through
             queryParams.filter = parsedFilter;
-        }
-
-        if (sorts && sorts.length > 0) {
-            queryParams.sorts = sorts;
         }
         
         if (page_size) {
