@@ -58,10 +58,16 @@ export class TurboPufferSearch<
                 return [];
             }
             
-            // Convert TurboPuffer rows to SearchItems and group by entityType in one pass
+            // Convert TurboPuffer rows to SearchItems with their distance scores
+            // TurboPuffer provides $dist (distance score) - lower distance = higher similarity
+            // Create a map from entityId to distance for O(1) lookup
+            const distanceMap = new Map<string, number>();
             const groupedByType = new Map<string, SearchItem<M>[]>();
+            
             for (const row of rows) {
                 const entityType = (row.entityType as string) ?? '';
+                const distance = (row.$dist as number) ?? Infinity; // Use Infinity as fallback if $dist missing
+                
                 const searchItem: SearchItem<M> = {
                     id: row.id as string,
                     entityType: row.entityType as string,
@@ -69,6 +75,8 @@ export class TurboPufferSearch<
                     content: '', // Not needed for hydration
                     metadata: {} as M // Not needed for hydration
                 };
+
+                distanceMap.set(searchItem.entityId, distance);
 
                 const group = groupedByType.get(entityType);
                 if (group) {
@@ -87,7 +95,12 @@ export class TurboPufferSearch<
                 }
 
                 try {
-                    return await hydrator.hydrateBulk(items);
+                    const hydrated = await hydrator.hydrateBulk(items);
+                    // Map hydrated results back to their distance scores
+                    return hydrated.map(h => ({
+                        hydrated: h,
+                        distance: distanceMap.get(h.entityId) ?? Infinity
+                    }));
                 } catch (error) {
                     console.error(`Error hydrating items of type ${entityType}:`, error);
                     throw new SearchError(`Failed to hydrate ${entityType} items`, error as Error);
@@ -95,7 +108,14 @@ export class TurboPufferSearch<
             });
 
             const hydratedGroups = await Promise.all(hydrationPromises);
-            return hydratedGroups.flat();
+            const allHydratedWithScores = hydratedGroups.flat();
+            
+            // Sort by distance (ascending - lower distance = higher similarity)
+            // This preserves TurboPuffer's ranking order
+            allHydratedWithScores.sort((a, b) => a.distance - b.distance);
+            
+            // Extract just the hydrated items in sorted order
+            return allHydratedWithScores.map(result => result.hydrated);
         } catch (error) {
             if (error instanceof SearchError || error instanceof EmbeddingError) {
                 throw error;
