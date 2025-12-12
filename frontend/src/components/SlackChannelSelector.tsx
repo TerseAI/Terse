@@ -175,14 +175,6 @@ export function SlackConfigurationSelector({
         );
     }
 
-    if (showUserFilter && listenToUserDms && users.length === 0) {
-        return (
-            <div className="text-sm text-[theme(text-secondary)]">
-                No users found. Unable to load users from this Slack workspace.
-            </div>
-        );
-    }
-
     const publicChannels = channels.filter(ch => !ch.isPrivate && !ch.isArchived);
     const privateChannels = channels.filter(ch => ch.isPrivate && !ch.isArchived);
 

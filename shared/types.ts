@@ -426,4 +426,3 @@ export interface StatsResponse {
   recentActions: RecentAction[]; // Recent actions (last 10)
   timezone: string; // Timezone used for daily events grouping (e.g., "America/New_York" or "UTC")
 }
-
