@@ -195,11 +195,6 @@ export class ChannelAgent<T extends Session, TConfig extends ConfigInstance> {
         const builder = new SystemPromptBuilder(deps, this.runContext)
             .withStandardSections();
 
-        // Add similar events section if input event is available
-        if (this.inputEvent) {
-            builder.withSimilarEventsSection(this.inputEvent);
-        }
-
         const fullSystemPrompt = await builder.build();
 
         this.agent = new Agent<SessionWithTracking<T>, AgentOutputType>({
