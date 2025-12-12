@@ -1,26 +1,32 @@
-import { useEffect, useMemo } from "react";
-import { SlackChannel } from "../shared/types";
+import { useEffect, useState } from "react";
+import { SlackChannel, SlackUserResponse } from "../shared/types";
 import { RefreshButton } from "./RefreshButton";
 import { useSlackChannels } from "@/hooks/api/useSlackChannels";
 import { capitalize } from "../lib/utils";
 import { Checkbox } from "./ui/checkbox";
+import { useSlackUsers } from "../hooks/api/useSlackUsers";
+import { MultiSelect } from "./MultiSelect";
 
 interface SlackChannelSelectorProps {
     integrationId: string;
-    selectedChannelId?: string;
+    selectedChannelId: string;
     listenToUserDms?: boolean;
+    selectedUserIds?: string[];
     showListenToDMsOption?: boolean; // Only show DM option for user tokens
     onSelect: (channelId: string, channelName?: string) => void;
     onListenToUserDmsChange?: (listenToUserDms: boolean) => void;
+    onSelectUsers?: (userIds: string[]) => void;
 }
 
-export function SlackChannelSelector({
+export function SlackConfigurationSelector({
     integrationId,
     selectedChannelId,
     listenToUserDms = false,
+    selectedUserIds = [],
     showListenToDMsOption = false,
     onSelect,
-    onListenToUserDmsChange
+    onListenToUserDmsChange,
+    onSelectUsers
 }: SlackChannelSelectorProps) {
     const {
         channels,
@@ -32,19 +38,17 @@ export function SlackChannelSelector({
         mutate,
     } = useSlackChannels(integrationId);
 
-    const isRefreshing = isValidating && !isLoading;
-    const errorMessage = useMemo(() => {
-        if (!isError) {
-            return null;
-        }
-        if (error instanceof Error) {
-            return error.message;
-        }
-        if (typeof error === 'string') {
-            return error;
-        }
-        return 'Failed to load channels';
-    }, [error, isError]);
+    const {
+        users,
+        isLoading: usersLoading,
+        isError: usersIsError,
+        error: usersError,
+        isValidating: usersIsValidating,
+        mutate: usersMutate,    
+    } = useSlackUsers(listenToUserDms ? integrationId : null);
+
+    const isRefreshing = isValidating && !isLoading && !usersIsValidating && !usersLoading;
+    const errorMessage = isError ? error || 'Failed to load channels' : usersIsError ? usersError || 'Failed to load users' : null;
 
     // Clear listenToUserDms if it's enabled but the option is not available (switched to bot token)
     useEffect(() => {
@@ -87,6 +91,9 @@ export function SlackChannelSelector({
 
     const handleRefresh = () => {
         void mutate();
+        if (listenToUserDms) {
+            void usersMutate();
+        }
     };
 
     const handleListenToUserDmsChange = (checked: boolean) => {
@@ -114,10 +121,10 @@ export function SlackChannelSelector({
         }
     };
 
-    if (isLoading) {
+    if (isLoading || (listenToUserDms && usersLoading)) {
         return (
             <div className="text-sm text-[theme(text-secondary)]">
-                Loading channels...
+                {listenToUserDms ? 'Loading users...' : 'Loading channels...'}
             </div>
         );
     }
@@ -125,7 +132,7 @@ export function SlackChannelSelector({
     if (errorMessage) {
         return (
             <div className="space-y-2">
-                <div className="text-sm text-red-600">{errorMessage}</div>
+                <div className="text-sm text-red-600">{String(errorMessage)}</div>
                 <RefreshButton
                     onClick={handleRefresh}
                     isRefreshing={false}
@@ -138,10 +145,18 @@ export function SlackChannelSelector({
         );
     }
 
-    if (channels.length === 0) {
+    if (!listenToUserDms && channels.length === 0) {
         return (
             <div className="text-sm text-[theme(text-secondary)]">
                 No channels found. Make sure your Slack app has been added to the channels you want to use.
+            </div>
+        );
+    }
+
+    if (listenToUserDms && users.length === 0) {
+        return (
+            <div className="text-sm text-[theme(text-secondary)]">
+                No users found. Unable to load users from this Slack workspace.
             </div>
         );
     }
@@ -207,9 +222,51 @@ export function SlackChannelSelector({
                         onCheckedChange={(checked) => handleListenToUserDmsChange(checked === true)}
                     />
                     <span className="text-sm text-[theme(text-primary)]">
-                        Monitor all private direct messages
+                        Monitor private direct messages
                     </span>
                 </label>
+            )}
+
+            {/* User selector when listening to DMs */}
+            {listenToUserDms && (
+                <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                        <label className="text-xs font-medium text-[theme(text-secondary)]">
+                            Select Users to Monitor
+                        </label>
+                        <RefreshButton
+                            onClick={handleRefresh}
+                            isRefreshing={usersIsValidating && !usersLoading}
+                            title="Refresh user list"
+                        />
+                    </div>
+                    <MultiSelect
+                        options={users.map((user) => ({
+                            id: user.id,
+                            label: user.name,
+                        }))}
+                        selectedIds={selectedUserIds}
+                        onSelect={(ids) => onSelectUsers?.(ids as string[])}
+                        placeholder="Select users..."
+                        searchPlaceholder="Search users..."
+                        emptyMessage="No users found."
+                        displayText={(count, selected) =>
+                            count === 0
+                                ? "Select users..."
+                                : count === 1
+                                ? selected[0].label
+                                : `${count} users selected`
+                        }
+                    />
+                    {users.length > 0 && (
+                        <div className="text-xs text-foreground-muted">
+                            {selectedUserIds.length > 0 
+                                ? `${selectedUserIds.length} of ${users.length} user${users.length !== 1 ? 's' : ''} selected`
+                                : `${users.length} user${users.length !== 1 ? 's' : ''} available`
+                            }
+                        </div>
+                    )}
+                </div>
             )}
         </div>
     );

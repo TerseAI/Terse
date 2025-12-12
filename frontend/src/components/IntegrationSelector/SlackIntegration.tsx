@@ -1,7 +1,7 @@
 import { Plus, AlertTriangleIcon } from 'lucide-react';
 import { Button } from '../ui/button';
 import DropdownSelect from '../ui/DropdownSelect';
-import { SlackChannelSelector } from '../SlackChannelSelector';
+import { SlackConfigurationSelector } from '../SlackChannelSelector';
 import { IntegrationType, SlackIntegration as SlackIntegrationType } from "@/shared/Integrations"
 import { SlackConfig } from '../../shared/Configs';
 import { InputConfigSelectorProps } from './types';
@@ -172,9 +172,9 @@ export function SlackIntegration({
                                 Select a channel or enable DM listening
                             </p>
                         )}
-                        <SlackChannelSelector
+                        <SlackConfigurationSelector
                             integrationId={selectedIntegrationId}
-                            selectedChannelId={currentConfig?.channelId}
+                            selectedChannelId={currentConfig?.channelId ?? ''}
                             listenToUserDms={currentConfig?.listenToUserDms}
                             showListenToDMsOption={!isBotUser}
                             onSelect={(channelId, channelName) => {
