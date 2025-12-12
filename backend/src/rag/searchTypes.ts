@@ -1,4 +1,5 @@
 import { Filter } from "@turbopuffer/turbopuffer/resources/custom.mjs";
+import { EntityReference } from "./Hydrator";
 
 
 export interface Search<T, M> {
@@ -48,10 +49,8 @@ export class SearchError extends Error {
         this.name = 'SearchError';
     }
 }
-export interface SearchItem<M> {
+export interface SearchItem<M> extends EntityReference {
     id: string;
-    entityType: string; 
-    entityId: string; 
     content: string;
     metadata: M; 
 }

@@ -7,6 +7,11 @@ import { SearchItem } from "./searchTypes";
  */
 export interface Hydrator<T> {
     entityType: HydratorType;
-    hydrate(searchItem: SearchItem<any>): Promise<T>;
-    hydrateBulk(searchItems: SearchItem<any>[]): Promise<T[]>;
+    hydrate(entityReference: EntityReference): Promise<T>;
+    hydrateBulk(entityReferences: EntityReference[]): Promise<T[]>;
+}
+
+export interface EntityReference {
+    entityType: string;
+    entityId: string;
 }
