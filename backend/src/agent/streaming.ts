@@ -30,9 +30,6 @@ export async function* transformAgentStreamToModelEvents<T extends Session>(
             continue;
         }
 
-        const currentTimestamp = new Date().toISOString();
-        console.log(`[${event.type}] [${(event as any)?.name || "unknown"}]: ${currentTimestamp} - ${JSON.stringify(event).substring(0, 400)}`)
-
         // Try ToolCall
         const toolCall = tryExtractToolCall(event, toolToIntegrationMap);
         if (toolCall) {
