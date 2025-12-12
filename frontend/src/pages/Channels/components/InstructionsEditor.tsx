@@ -7,8 +7,12 @@ import {
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog";
-import { AlertTriangleIcon, Maximize2Icon } from "lucide-react";
-import { ChannelPrompt } from "@/shared/types";
+import { AlertTriangleIcon, Maximize2Icon, Sparkles } from "lucide-react";
+import { ChannelInput, ChannelOutput, ChannelPrompt } from "@/shared/types";
+import { PromptBuilderModal } from "../../../components/PromptBuilder/PromptBuilderModal";
+import { Switch } from "../../../components/ui/switch";
+import { Label } from "../../../components/ui/label";
+import ReactMarkdown from "react-markdown";
 
 const instructionsPlaceholder = `Describe what you want the AI to do with incoming events from your sources.
 
@@ -26,11 +30,16 @@ Be specific about:
 interface InstructionsEditorProps {
     prompt: ChannelPrompt | undefined;
     setPrompt: (prompt: ChannelPrompt | undefined) => void;
+    channelInputs: ChannelInput[];
+    channelOutput: ChannelOutput | undefined;
 }
 
-export function InstructionsEditor({ prompt, setPrompt }: InstructionsEditorProps) {
+export function InstructionsEditor({ prompt, setPrompt, channelInputs, channelOutput }: InstructionsEditorProps) {
     const [isDialogOpen, setIsDialogOpen] = useState(false);
-    const isEmpty = !prompt?.text || prompt.text.trim() === '';
+    const [showPromptBuilder, setShowPromptBuilder] = useState(false);
+    const [showMarkdown, setShowMarkdown] = useState(false);
+    const text: string = prompt?.text ?? '';
+    const isEmpty = text.trim() === '';
 
     return (
         <div className="flex flex-col h-full w-full overflow-hidden">
@@ -41,6 +50,28 @@ export function InstructionsEditor({ prompt, setPrompt }: InstructionsEditorProp
                         <AlertTriangleIcon className="size-4 text-yellow-500" />
                     )}
                 </div>
+                <div className="flex flex-row gap-2 items-center">
+                    <div className="flex items-center gap-2">
+                        <Switch
+                            id="markdown-toggle"
+                            checked={showMarkdown}
+                            onCheckedChange={setShowMarkdown}
+                            disabled={!prompt?.text || prompt.text.trim() === ''}
+                        />
+                        <Label htmlFor="markdown-toggle" className="text-sm text-muted-foreground cursor-pointer">
+                            Markdown
+                        </Label>
+                    </div>
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setShowPromptBuilder(true)}
+                    >
+                        <Sparkles className="h-4 w-4 mr-2" />
+                        Open Prompt Builder
+                    </Button>
+                </div>
+
                 <Button
                     variant="ghost"
                     size="icon-sm"
@@ -50,12 +81,22 @@ export function InstructionsEditor({ prompt, setPrompt }: InstructionsEditorProp
                     <Maximize2Icon className="size-4" />
                 </Button>
             </div>
-            <Textarea
-                value={prompt?.text}
-                onChange={(e) => setPrompt({ ...prompt, text: e.target.value })}
-                className="flex-1 min-h-0 resize-none overflow-auto"
-                placeholder={instructionsPlaceholder}
-            />
+            {showMarkdown && prompt?.text ? (
+                <div className="flex-1 min-h-0 overflow-auto p-3 border rounded-md bg-background">
+                    <div className="react-markdown prose prose-sm dark:prose-invert max-w-none">
+                        <ReactMarkdown>
+                            {prompt.text}
+                        </ReactMarkdown>
+                    </div>
+                </div>
+            ) : (
+                <Textarea
+                    value={text}
+                    onChange={(e) => setPrompt({ ...prompt, text: e.target.value })}
+                    className="flex-1 min-h-0 resize-none overflow-auto"
+                    placeholder={instructionsPlaceholder}
+                />
+            )}
 
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                 <DialogContent className="sm:max-w-2xl h-[80vh] flex flex-col">
@@ -67,14 +108,34 @@ export function InstructionsEditor({ prompt, setPrompt }: InstructionsEditorProp
                             )}
                         </DialogTitle>
                     </DialogHeader>
-                    <Textarea
-                        value={prompt?.text}
-                        onChange={(e) => setPrompt({ ...prompt, text: e.target.value })}
-                        className="flex-1 min-h-0 resize-none"
-                        placeholder={instructionsPlaceholder}
-                    />
+                    {showMarkdown && prompt?.text ? (
+                        <div className="flex-1 min-h-0 overflow-auto p-3 border rounded-md bg-background">
+                            <div className="react-markdown prose prose-sm dark:prose-invert max-w-none">
+                                <ReactMarkdown>
+                                    {prompt.text}
+                                </ReactMarkdown>
+                            </div>
+                        </div>
+                    ) : (
+                        <Textarea
+                            value={text}
+                            onChange={(e) => setPrompt({ ...prompt, text: e.target.value })}
+                            className="flex-1 min-h-0 resize-none"
+                            placeholder={instructionsPlaceholder}
+                        />
+                    )}
                 </DialogContent>
             </Dialog>
+            <PromptBuilderModal
+                isOpen={showPromptBuilder}
+                onClose={() => setShowPromptBuilder(false)}
+                inputs={channelInputs}
+                output={channelOutput}
+                existingPrompt={prompt?.text}
+                onPromptGenerated={(generatedPrompt) => {
+                    setPrompt({ ...prompt, text: generatedPrompt });
+                }}
+            />
         </div>
     );
 }

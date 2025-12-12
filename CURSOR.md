@@ -193,3 +193,6 @@ export async function getUserChannels(req: Request, res: Response) {
 6. ❌ Inline styles or CSS files—use Tailwind only
 7. ❌ Skipping `pnpm run build` validation before committing
 8. ❌ Using npm or yarn instead of pnpm
+9. ❌ Stray strings allowed UNLESS absolutely necessary (e.g., `const tokenType = authed_user?.token_type || 'user';` where `'user'` is outputted from an API and could be an enum type)
+10. ❌ Defining variables as `false` or `true` where you could just use a not operator (e.g., `const actualIsBotUser = isUserType && authed_user.access_token ? false : true;` should be `const actualIsBotUser = !(isUserType && authed_user.access_token);`)
+11. ❌ Non-exhaustive maps—when defining maps, ensure they're exhaustive using TypeScript's type system (see `shared/Configs.ts` lines 401-427 for an example with `ConfigMetadataMap`)

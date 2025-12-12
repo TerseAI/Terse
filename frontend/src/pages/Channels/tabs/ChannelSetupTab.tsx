@@ -189,7 +189,7 @@ export default function ChannelSetupTab({
 
                 <div className="relative min-w-md max-w-md">
                     <div className="absolute inset-0">
-                        <InstructionsEditor prompt={prompt} setPrompt={setPrompt} />
+                        <InstructionsEditor prompt={prompt} setPrompt={setPrompt} channelInputs={channelInputs} channelOutput={channelOutput} />
                     </div>
                 </div>
             </div>

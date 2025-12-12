@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import { db } from "../prismaClient";
 import { SlackChannelsResponse, SlackChannel } from "../shared/types";
 import { WebClient, LogLevel } from "@slack/web-api";
+import { Channel } from "@slack/web-api/dist/types/response/ConversationsListResponse";
 import chalk from "chalk";
 import { User, UserSlackIntegrationWithUser } from "../types/prisma";
 import { SlackIntegrationManager, isValidSlackSig, SlackMessageEvent } from '../integrations/SlackIntegration';
@@ -148,15 +149,17 @@ export const getSlackChannels = async (req: Request, res: Response) => {
       },
     });
 
-    console.log(chalk.cyan('🔵 [SLACK CHANNELS] userSlackIntegration:', userSlackIntegration));
-
     if (!userSlackIntegration || !userSlackIntegration.slack_integration) {
       return res.status(404).json({ error: "Slack integration not found" });
     }
 
     const token = getToken(userSlackIntegration);
     const isBotUser = userSlackIntegration.is_bot_user;
+    const teamName = userSlackIntegration.slack_integration.team_name;
+    const authedUserId = userSlackIntegration.authed_user_id;
+    const teamId = userSlackIntegration.slack_team_id;
 
+    console.log(chalk.cyan(`🔵 [SLACK CHANNELS] integration: team="${teamName}", user_id="${authedUserId}", team_id="${teamId}"`));
 
     // Fetch channels from Slack API
     const client = new WebClient(token, {
@@ -168,16 +171,26 @@ export const getSlackChannels = async (req: Request, res: Response) => {
       client.conversations.list({
         types: "public_channel",
         exclude_archived: true,
+        limit: 1000,
       }),
       client.conversations.list({
         types: "private_channel",
         exclude_archived: true,
+        limit: 1000,
       }),
       client.conversations.list({
         types: "mpim",
         exclude_archived: true,
+        limit: 1000,
       }),
     ]);
+
+    const formatChannelSummary = (channels: Channel[] | undefined, type: string) => 
+      channels?.map(c => `${c.name}(is_member=${c.is_member})`).join(', ') || 'none';
+    
+    console.log(chalk.cyan(`🔵 [SLACK CHANNELS] public: ${publicChannels.channels?.length || 0} (${formatChannelSummary(publicChannels.channels as Channel[], 'public')})`));
+    console.log(chalk.cyan(`🔵 [SLACK CHANNELS] private: ${privateChannels.channels?.length || 0} (${formatChannelSummary(privateChannels.channels as Channel[], 'private')})`));
+    console.log(chalk.cyan(`🔵 [SLACK CHANNELS] mpim: ${mpimChannels.channels?.length || 0} (${formatChannelSummary(mpimChannels.channels as Channel[], 'mpim')})`));
 
     const channels: SlackChannel[] = [];
 
