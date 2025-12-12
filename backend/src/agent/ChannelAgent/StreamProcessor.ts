@@ -115,7 +115,6 @@ export class StreamEventEmitter {
                 channelId: this.channelId,
                 runHistoryModelEvent,
             };
-
             this.io.to(this.userRoom).emit('channel:chat:event', payload);
         }
 

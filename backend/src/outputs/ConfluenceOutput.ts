@@ -1,4 +1,3 @@
-import { RunHistoryAction } from "../shared/RunHistoryTypes";
 import { AtlassianIntegration, IntegrationType } from "../shared/Integrations";
 import { ChannelOutput, User, ChannelConfluenceConfig, PrismaTransaction } from "../types/prisma";
 import { Session } from "../server";
@@ -10,6 +9,7 @@ import chalk from "chalk";
 import { OutputConfigType } from "@prisma/client";
 import { ConfluenceConfig } from "../shared/Configs";
 import { SessionWithTracking } from "../agent/ChannelAgent/ChannelAgent";
+import { formatError } from "../tools/errors";
 
 // MARK: - Exports
 
@@ -136,7 +136,8 @@ This tool returns the current state of the Confluence page including all metadat
             console.error("Error fetching Confluence page:", errorMessage);
             throw new Error(`Failed to fetch Confluence page: ${errorMessage}`);
         }
-    }
+    },
+    errorFunction: formatError
 });
 
 const confluenceAddCommentTool = tool({
@@ -283,7 +284,8 @@ To find the correct position, first call confluence_query_page to see the page c
             console.error("Error adding Confluence inline comment:", errorMessage);
             throw new Error(`Failed to add Confluence inline comment: ${errorMessage}`);
         }
-    }
+    },
+    errorFunction: formatError
 });
 
 // MARK: - Types
@@ -707,7 +709,7 @@ You MUST always ensure a **Terse Footer** exists at the very bottom of the Confl
 ### Default Footer Content
 The footer must include:
 1. **Last Updated**: A human-readable timestamp of when this update was made (use the current time from the CURRENT TIME section)
-2. **Events Processed**: The number of events that contributed to this update's context
+2. **Events Processed**: The total event position number from the RUNTIME CONTEXT section (e.g., "3 events" if RUNTIME CONTEXT says "This is event #3")
 3. **Status**: The outcome of the update - use "✓ Success" if changes were made successfully, "⊘ No changes needed" if no updates were required, or "✗ Failed" if something went wrong
 
 ### Confluence Storage Format
@@ -743,5 +745,5 @@ Use this exact XHTML structure for the footer (adapt the values accordingly):
 - The footer must ALWAYS be at the very end of the page content
 - Use the info macro (blue background) for visual distinction (unless user specifies otherwise)
 - Format the timestamp in a human-friendly way (e.g., "December 6, 2024 at 3:45 PM UTC")
-- Count all events you received in the context for the "Events Processed" field
+- **CRITICAL**: For the "Events Processed" field, use the event position number from the RUNTIME CONTEXT section (e.g., if it says "This is event #3 processed by this automation", use "3 events"). DO NOT count the individual events in the EVENT block - use the total event position from RUNTIME CONTEXT.
 `.trim();

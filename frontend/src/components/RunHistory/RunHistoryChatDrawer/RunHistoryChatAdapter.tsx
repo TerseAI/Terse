@@ -7,6 +7,7 @@ import { Turn } from '@/components/chat/Turn';
 import { subscribeToChatEvents, sendChatMessage } from '@/socket';
 import { type ChatEventSubscription } from '@/components/chat/hooks/useCompletionSocket';
 import type { RunHistoryModelSocketEvent } from '@/shared/RunHistoryTypes';
+import { filterOutThinkingOnlyTurns } from '@/components/chat/utils/turnUtils';
 
 type RunHistoryChatAdapterProps = {
     runId: string;
@@ -133,17 +134,16 @@ function convertRunHistoryEventsToTurns(events: ModelEvent[]): Turn[] {
 
                 const turn = getOrCreateTurn('assistant', step_id);
                 turn.text = newText;
-                // For historical events, don't set isGenerating to true
-                // We'll finalize it at the end based on completion status
-                    turn.isGenerating = true;
-                    turn.disableAnimation = true;
+                turn.isGenerating = true;
+                turn.disableAnimation = true;
                 break;
             }
             case 'ToolCall': {
                 const e = event as ToolCall;
                 const step_id = e.step_id;
+
                 const turn = getOrCreateTurn('assistant', step_id);
-                    turn.disableAnimation = true;
+                turn.disableAnimation = true;
 
                 const existingCall = turn.function_calls.find(c => c.id === step_id);
                 if (!existingCall) {
@@ -172,8 +172,15 @@ function convertRunHistoryEventsToTurns(events: ModelEvent[]): Turn[] {
                     const fc = t.function_calls.find(c => c.id === step_id);
                     if (fc) {
                         fc.isRunning = false;
-                        fc.result = e.result;
+                        fc.isWaitingForApproval = false;
                         fc.isWaitingForUserInput = false;
+                        if (e.result) {
+                            fc.result = e.result;
+                        }
+                        if (e.errorContext) {
+                            fc.isFailure = true;
+                            fc.errorContext = e.errorContext;
+                        }
                         if (e.changed_items) {
                             fc.changed_items = e.changed_items;
                         }
@@ -191,6 +198,8 @@ function convertRunHistoryEventsToTurns(events: ModelEvent[]): Turn[] {
                         isRunning: false,
                         result: e.result,
                         changed_items: e.changed_items,
+                        errorContext: e.errorContext,
+                        isFailure: !!e.errorContext,
                         isWaitingForUserInput: false
                     });
                 }
@@ -240,18 +249,30 @@ function convertRunHistoryEventsToTurns(events: ModelEvent[]): Turn[] {
                 }
                 break;
             }
+            case 'Thinking': {
+                const e = event as { type: 'Thinking'; step_id: string };
+                const step_id = e.step_id;
+                const turn = getOrCreateTurn('assistant', step_id);
+                turn.isThinking = true;
+                turn.isGenerating = true;
+                turn.disableAnimation = true;
+                break;
+            }
         }
     });
 
 
-    turns.forEach(turn => {
+    // Remove any thinking-only turns that weren't replaced by actual content
+    const finalTurns = filterOutThinkingOnlyTurns(turns);
+
+    finalTurns.forEach(turn => {
         const hasWaitingApproval = turn.function_calls.some(fc => fc.isWaitingForApproval);
         if (!hasWaitingApproval) {
             // All historical turns should be marked as not generating
             turn.isGenerating = false;
         }
     });
-    return turns;
+    return finalTurns;
 }
 
 

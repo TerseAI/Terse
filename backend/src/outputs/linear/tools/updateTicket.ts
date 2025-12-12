@@ -7,6 +7,7 @@ import { LinearTicketSession } from "../LinearTicketOutput";
 import { SessionWithTracking } from "../../../agent/ChannelAgent/ChannelAgent";
 import type { IssueUpdateInput } from "@linear/sdk/dist/_generated_documents";
 import { RunHistoryActionType } from "@prisma/client";
+import { formatError } from "../../../tools/errors";
 
 export const linearUpdateTicketTool = tool({
     name: 'linear_update_ticket',
@@ -179,6 +180,7 @@ COMMON UPDATE OPERATIONS:
                 hint: 'Check that the issue ID is valid, the access token has the necessary permissions, and all provided IDs (stateId, assigneeId, etc.) are valid',
             };
         }
-    }
+    },
+    errorFunction: formatError
 });
 

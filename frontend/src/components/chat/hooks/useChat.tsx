@@ -30,6 +30,7 @@ export function useChat({
         handleFailure,
         handleNaturalStop,
         handleFilterResult,
+        handleThinking,
     } = useChatTurns({initialTurns});
 
     const { sendMessage: sendSocketMessage} = useCompletionSocket({
@@ -47,6 +48,7 @@ export function useChat({
         onFailure: handleFailure,
         onNaturalStop: handleNaturalStop,
         onFilterResult: handleFilterResult,
+        onThinking: handleThinking,
     });
 
     const { input, setInput, sendMessage } = useChatInput({

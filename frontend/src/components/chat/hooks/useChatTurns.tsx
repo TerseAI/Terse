@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { type Turn } from '../Turn';
 import { type TextDelta, type ToolCall, type ToolCallComplete, type Failure, FilterResult } from '../../../shared/ModelEvents';
+import { filterOutThinkingOnlyTurns } from '../utils/turnUtils';
 
 interface UseChatTurnsOptions {
     initialTurns?: Turn[] | undefined;
@@ -72,7 +73,7 @@ export function useChatTurns({ initialTurns }: UseChatTurnsOptions = {}) {
                     text: "",
                     function_calls: [{ id: step_id, name: summary, isRunning: false, isWaitingForApproval: false, isWaitingForUserInput: false, parameters }],
                     isGenerating: true,
-                    step_id
+                    step_id,
                 }];
             }
 
@@ -180,7 +181,7 @@ export function useChatTurns({ initialTurns }: UseChatTurnsOptions = {}) {
         }
     };
 
-    const handleToolCallComplete = ({ step_id, result, changed_items }: ToolCallComplete) => {
+    const handleToolCallComplete = ({ step_id, result, changed_items, errorContext }: ToolCallComplete) => {
         // Remove from pending approvals if it was there
         pendingApprovalsRef.current.delete(step_id);
 
@@ -196,6 +197,10 @@ export function useChatTurns({ initialTurns }: UseChatTurnsOptions = {}) {
                     toolCall.isWaitingForUserInput = false;
                     if (result) {
                         toolCall.result = result;
+                    }
+                    if (errorContext) {
+                        toolCall.isFailure = true;
+                        toolCall.errorContext = errorContext;
                     }
                     if (changed_items) {
                         toolCall.changed_items = changed_items;
@@ -253,6 +258,25 @@ export function useChatTurns({ initialTurns }: UseChatTurnsOptions = {}) {
         });
     };
 
+    const handleThinking = (stepId: string) => {
+        setTurns(prev => {
+            const last = prev[prev.length - 1];
+            if (last && last.step_id === stepId && !last.text && last.function_calls.length === 0) {
+                // Update existing turn
+                return prev.map(t => t === last ? { ...t, isThinking: true, isGenerating: true } : t);
+            }
+            // Create new thinking turn
+            return [...prev, {
+                role: 'assistant',
+                text: '',
+                function_calls: [],
+                step_id: stepId,
+                isThinking: true,
+                isGenerating: true
+            }];
+        });
+    };
+
     const addUserTurn = (message: string) => {
         
         const userTurn: Turn = {
@@ -274,7 +298,7 @@ export function useChatTurns({ initialTurns }: UseChatTurnsOptions = {}) {
     };
 
     return {
-        turns,
+        turns: filterOutThinkingOnlyTurns(turns),
         isPendingAssistantResponse,
         handleDelta,
         handleToolCall,
@@ -284,6 +308,7 @@ export function useChatTurns({ initialTurns }: UseChatTurnsOptions = {}) {
         handleFailure,
         handleNaturalStop,
         handleFilterResult,
+        handleThinking,
         addUserTurn,
         clearTurns,
     };

@@ -8,14 +8,15 @@ import { useRunHistoryActions } from "../../hooks/useRunHistoryActions";
 import RunHistoryActionItem from "../RunHistory/RunHistoryActionItem";
 import { EntityType } from "../../shared/Entities";
 import { FunctionCallEvent } from "./Turn";
+import { ExclamationTriangleIcon } from "@heroicons/react/24/solid";
 
 interface FunctionCallItemProps {
     call: FunctionCallEvent;
-    isFailure?: boolean;
+    isTurnFailure?: boolean;
     index: number;
 }
 
-function ToolActionsDisplay({ changedItems, isFailure }: { changedItems?: ChangedItem[], isFailure?: boolean }) {
+function ToolActionsDisplay({ changedItems, isTurnFailure }: { changedItems?: ChangedItem[], isTurnFailure?: boolean }) {
     if (!changedItems || changedItems.length === 0) return null;
 
     const actionIds = changedItems
@@ -24,10 +25,10 @@ function ToolActionsDisplay({ changedItems, isFailure }: { changedItems?: Change
 
     if (actionIds.length === 0) return null;
 
-    return <ToolActionsList actionIds={actionIds} isFailure={isFailure} />;
+    return <ToolActionsList actionIds={actionIds} isTurnFailure={isTurnFailure} />;
 }
 
-function ToolActionsList({ actionIds, isFailure }: { actionIds: string[], isFailure?: boolean }) {
+function ToolActionsList({ actionIds, isTurnFailure }: { actionIds: string[], isTurnFailure?: boolean }) {
     const { actions } = useRunHistoryActions(actionIds);
     const [expandedActions, setExpandedActions] = useState<Set<string>>(new Set());
 
@@ -51,7 +52,7 @@ function ToolActionsList({ actionIds, isFailure }: { actionIds: string[], isFail
                     runId={action.id}
                     index={index}
                     action={action}
-                    runStatus={isFailure ? "failed" : "success"}
+                    runStatus={isTurnFailure ? "failed" : "success"}
                     isExpanded={expandedActions.has(`${action.id}-action-${index}`)}
                     onToggle={toggleAction}
                 />
@@ -111,11 +112,11 @@ function ToolResultInput({ toolName, parameters, onSubmit }: { toolName: string;
                 Please provide the result for <span className="font-medium text-foreground">{toolName}</span>:
             </div>
 
-            {parameters && (
+            {parameters && parsedParams && typeof parsedParams === 'object' && Object.keys(parsedParams).length > 0 && (
                 <div className="mb-3 p-2 bg-background rounded border border-border">
                     <div className="text-xs text-muted-foreground mb-1">Parameters:</div>
                     <pre className="text-xs text-foreground whitespace-pre-wrap font-mono">
-                        {typeof parsedParams === 'object' ? JSON.stringify(parsedParams, null, 2) : parsedParams}
+                        {JSON.stringify(parsedParams, null, 2)}
                     </pre>
                 </div>
             )}
@@ -142,7 +143,7 @@ function ToolResultInput({ toolName, parameters, onSubmit }: { toolName: string;
     );
 }
 
-export default function FunctionCallItem({ call, isFailure = false, index }: FunctionCallItemProps) {
+export default function FunctionCallItem({ call, isTurnFailure = false, index }: FunctionCallItemProps) {
     const [isExpanded, setIsExpanded] = useState(false);
     const callKey = `function-call-${call.id}-${index}`;
 
@@ -162,6 +163,8 @@ export default function FunctionCallItem({ call, isFailure = false, index }: Fun
                                     <ClockIcon className="w-4 h-4 text-primary flex-shrink-0" />
                                 ) : call.isRejected ? (
                                     <XMarkIcon className="w-4 h-4 text-red-500 flex-shrink-0" />
+                                ) : call.isFailure ? (
+                                    <ExclamationTriangleIcon className="w-4 h-4 text-red-500 flex-shrink-0" />
                                 ) : call.isWaitingForUserInput ? (
                                     <svg className="w-4 h-4 text-blue-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
@@ -201,7 +204,15 @@ export default function FunctionCallItem({ call, isFailure = false, index }: Fun
                                         <ToolCallParameters parameters={call.parameters} />
                                     </div>
                                 )}
-                                <ToolActionsDisplay changedItems={call.changed_items} isFailure={isFailure} />
+                                {call.errorContext && (
+                                    <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-3">
+                                        <div className="text-sm font-semibold text-red-500 mb-1">Error:</div>
+                                        <div className="text-sm text-red-400 font-mono whitespace-pre-wrap">
+                                            {String(call.errorContext.error)}
+                                        </div>
+                                    </div>
+                                )}
+                                <ToolActionsDisplay changedItems={call.changed_items} isTurnFailure={isTurnFailure} />
                             </div>
                         </AccordionContent>
                     </AccordionItem>
