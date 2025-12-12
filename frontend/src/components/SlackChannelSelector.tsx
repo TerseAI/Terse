@@ -167,7 +167,9 @@ export function SlackConfigurationSelector({
         );
     }
 
-    if (!listenToUserDms && channels.length === 0) {
+    // Only show "No channels found" if DM option is not available (bot tokens)
+    // For user tokens, we should still show the Select dropdown so users can enable DM listening
+    if (!listenToUserDms && channels.length === 0 && !showListenToDMsOption) {
         return (
             <div className="text-sm text-[theme(text-secondary)]">
                 No channels found. Make sure your Slack app has been added to the channels you want to use.
