@@ -81,24 +81,6 @@ export class RunHistoryChatMemorySession implements Session {
     await prisma.run_history_raw_events.createMany({
       data: eventRecords,
     });
-
-    const createdEventsWithRelations = await prisma.run_history_raw_events.findMany({
-      where: {
-        run_history_record_id: this.sessionId,
-        sequence_order: {
-          gte: startSequence + 1,
-          lte: startSequence + items.length
-        }
-      },
-      include: {
-        run_history_record: {
-          include: {
-            automation: true,
-          }
-        }
-      }
-    })
-    await persistLongTermMemory(createdEventsWithRelations)
   }
 
   async popItem(): Promise<AgentInputItem | undefined> {
@@ -241,6 +223,10 @@ export const identityHistoryCallback = (history: AgentInputItem[], newItems: Age
   return [...history, ...newItems];
 }
 
+/**
+ * Keeping around for now, but not using it. We will want to test this in depth before
+ * introducing this additional complexity.
+ */
 async function persistLongTermMemory(events: RunHistoryRawEventWithRelations[]): Promise<void> {
   const longTermMemory = new RunHistoryMemory(RAGNamespace.RUN_HISTORY_MEMORY)
   await longTermMemory.rememberBulk(events)

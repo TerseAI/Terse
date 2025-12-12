@@ -47,6 +47,9 @@ export class SystemPromptBuilder<T extends Session, TConfig extends ConfigInstan
             .withSection(() => this.buildOutputInstructions());
     }
 
+    /**
+     * Precursor support for RAG, keeping around if we want to use this again in the future.
+     */
     withSimilarEventsSection(inputEvent: InputEvent): this {
         return this.withSection(() => this.buildSimilarEventsSection(inputEvent));
     }
