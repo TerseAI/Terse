@@ -3,6 +3,10 @@ import { ChannelWithRelations } from '../../types/prisma';
 import { Output } from '../../outputs/abstract/Output';
 import { ConfigInstance } from '../../shared/Configs';
 import { db } from '../../prismaClient';
+import { InputEvent } from '../../integrations/abstract/InputEvent';
+import { RunHistoryMemory } from '../../rag/runHistoryRag/indexer';
+import { extractConversationContent } from '../../rag/runHistoryRag/conversationExtractor';
+import type { AgentInputItem } from '@openai/agents-core';
 
 export interface RunContext {
     runId: string;
@@ -27,7 +31,7 @@ export class SystemPromptBuilder<T extends Session, TConfig extends ConfigInstan
     constructor(
         private deps: SystemPromptBuilderDependencies<T, TConfig>,
         private runContext: RunContext
-    ) {}
+    ) { }
 
     withSection(builder: SectionBuilder): this {
         this.sections.push(builder);
@@ -43,10 +47,17 @@ export class SystemPromptBuilder<T extends Session, TConfig extends ConfigInstan
             .withSection(() => this.buildOutputInstructions());
     }
 
+    /**
+     * Precursor support for RAG, keeping around if we want to use this again in the future.
+     */
+    withSimilarEventsSection(inputEvent: InputEvent): this {
+        return this.withSection(() => this.buildSimilarEventsSection(inputEvent));
+    }
+
     async build(): Promise<string> {
         const results = await Promise.all(this.sections.map(fn => fn()));
         const validSections = results.filter((s): s is Section => s !== null);
-        
+
         return validSections
             .map((section, index) => this.formatSection(section, index))
             .join('\n\n');
@@ -74,7 +85,7 @@ Use this information to understand temporal context when processing events and u
     private async buildRunContextSection(): Promise<Section> {
         const { runId } = this.runContext;
         const prisma = db();
-        
+
         // Fetch current run with automation details
         const runRecord = await prisma.run_history_records.findUnique({
             where: { id: runId },
@@ -161,6 +172,60 @@ ${directivesList}
 
 Follow these directives in addition to the USER INSTRUCTIONS provided in each message. If a directive conflicts with a specific request in a message, the message takes precedence for that interaction only.`
         };
+    }
+
+    private async buildSimilarEventsSection(inputEvent: InputEvent): Promise<Section | null> {
+        try {
+            // Extract searchable content from the current input event
+            const currentEventContent = inputEvent.formatForChannelAgent();
+
+            if (!currentEventContent || !currentEventContent.trim()) {
+                return null;
+            }
+
+            const channelId = this.deps.channel.id;
+            const runHistoryMemory = new RunHistoryMemory();
+
+            // Find similar past input events (top 5)
+            const similarEvents = await runHistoryMemory.findSimilarInputEvents(
+                currentEventContent,
+                channelId,
+                5
+            );
+
+            if (similarEvents.length === 0) {
+                return null;
+            }
+
+            // Extract content from the events for display
+            const eventContents = similarEvents.map(event => {
+                const rawEvent: AgentInputItem = typeof event.raw_event_json === 'string'
+                    ? JSON.parse(event.raw_event_json) as AgentInputItem
+                    : event.raw_event_json as AgentInputItem;
+                const content = extractConversationContent(rawEvent);
+                const eventChannelId = event.run_history_record?.automation?.id || channelId || 'N/A';
+                const date = event.created_at.toISOString().split('T')[0];
+                return { content, channelId: eventChannelId, date };
+            });
+
+            const similarEventsList = eventContents.map((event, index) => `
+${index + 1}. ${event.content}
+   (Channel: ${event.channelId}, Date: ${event.date})
+`).join('\n');
+
+            return {
+                header: 'SIMILAR PAST INPUT EVENTS',
+                content: `Here are similar past input events that may provide context for how similar requests were handled:
+
+${similarEventsList}
+
+Use these examples as reference for understanding the user's intent and how similar requests were processed in the past.`
+            };
+        } catch (error) {
+            console.error('Error fetching similar past input events:', error);
+            // Return null to continue without similar events if there's an error
+            return null;
+        }
     }
 }
 
