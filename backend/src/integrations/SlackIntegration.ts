@@ -405,11 +405,11 @@ export class SlackEvent extends InputEvent {
 
         const isChannelOrGroup = (
             this.data.channelType === SlackChannelType.CHANNEL ||
-            this.data.channelType === SlackChannelType.GROUP
+            this.data.channelType === SlackChannelType.GROUP ||
+            this.data.channelType === SlackChannelType.MPIM
         )
         const isDM = (
-            this.data.channelType === SlackChannelType.IM ||
-            this.data.channelType === SlackChannelType.MPIM
+            this.data.channelType === SlackChannelType.IM
         )
 
         // Helper function to check if user matches filter (if userIds is specified)
