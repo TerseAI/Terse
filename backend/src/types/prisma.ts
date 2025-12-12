@@ -26,7 +26,8 @@ import {
   user_notification_destinations,
   automation_notification_settings,
   automation_linear_configs,
-  directive_records
+  directive_records,
+  run_history_raw_events
 } from '@prisma/client';
 
 
@@ -190,6 +191,20 @@ export type ChannelWithRelations = ChannelWithInputRelations & ChannelWithOutput
 
 // Extract the transaction type from PrismaClient
 export type PrismaTransaction = Parameters<Parameters<PrismaClient['$transaction']>[0]>[0];
+
+
+export type RunHistoryRawEvent = run_history_raw_events;
+
+// Extended type for RunHistoryRawEvent with runHistory and automation relations included
+export type RunHistoryRawEventWithRelations = Prisma.run_history_raw_eventsGetPayload<{
+  include: {
+    run_history_record: {
+      include: {
+        automation: true;
+      };
+    };
+  };
+}>;
 
 // Re-export the original types too
 export {
