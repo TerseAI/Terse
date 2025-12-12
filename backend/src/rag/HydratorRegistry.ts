@@ -1,13 +1,21 @@
-import { Hydrator, Identifiable, WithIdentity } from "./Hydrator";
+import { Hydrator, Identifiable } from "./Hydrator";
 import { RunHistoryRawEventHydrator } from "./runHistoryRag/hydrator";
+import { HydratorType, HydratorTypeMap } from "../types/rag";
 
-/**
- * Registry of hydrators for converting SearchItems to hydrated objects.
- * Follows the same pattern as INPUT_REGISTRY and INTEGRATION_REGISTRY.
- */
-export const HYDRATOR_REGISTRY: Hydrator<WithIdentity<any>>[] = [new RunHistoryRawEventHydrator()];
+export const HYDRATOR_REGISTRY: Hydrator<Identifiable>[] = [new RunHistoryRawEventHydrator()];
 
+export function getHydrator<K extends HydratorType>(
+    entityType: K
+): Hydrator<HydratorTypeMap[K]> | undefined {
+    return HYDRATOR_REGISTRY.find(h => h.entityType === entityType) as Hydrator<HydratorTypeMap[K]> | undefined;
+}
 
-export function getHydrator<T>(entityType: string): Hydrator<WithIdentity<T>> | undefined {
-    return HYDRATOR_REGISTRY.find(h => h.entityType === entityType);
+export function requireHydrator<K extends HydratorType>(
+    entityType: K
+): Hydrator<HydratorTypeMap[K]> {
+    const hydrator = getHydrator(entityType);
+    if (!hydrator) {
+        throw new Error(`No hydrator registered for entityType: ${entityType}`);
+    }
+    return hydrator;
 }
