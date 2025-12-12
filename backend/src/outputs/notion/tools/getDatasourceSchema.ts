@@ -4,6 +4,7 @@ import { Client } from '@notionhq/client';
 import { NotionDatabaseSession } from "../NotionDatabaseOutput";
 import { IntegrationType } from "../../../shared/Integrations";
 import { SessionWithTracking } from "../../../agent/ChannelAgent/ChannelAgent";
+import { formatError } from "../../../tools/errors";
 
 // Helper function to build property schema with format examples
 function buildPropertySchema(propertyName: string, propertyConfig: any): any {
@@ -94,11 +95,13 @@ The schema information returned by this tool should be used to properly format p
 
         // Push run action to track the API call
         const databaseName = runContext.context.notionConfig.database_name || 'Unknown Database';
+        const dataSourceUrl = 'url' in dataSourceInfo ? dataSourceInfo.url : undefined;
         runContext.context.trackAction({
             action: 'Retrieved schema',
             integration: IntegrationType.NOTION,
             target: databaseName,
             details: `Retrieved schema with ${Object.keys(schema).length} properties`,
+            url: dataSourceUrl,
             type: 'read',
         })
         
@@ -108,6 +111,7 @@ The schema information returned by this tool should be used to properly format p
             schema: schema,
             property_count: Object.keys(schema).length,
         };
-    }
+    },
+    errorFunction: formatError
 });
 

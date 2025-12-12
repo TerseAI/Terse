@@ -13,10 +13,11 @@ export type UseCompletionSocketOptions = {
     onFailure: (failure: Failure) => void;
     onNaturalStop: () => void;
     onFilterResult: (filterResult: FilterResult) => void;
+    onThinking: (stepId: string) => void;
 };
 
 export function useCompletionSocket(options: UseCompletionSocketOptions) {
-    const { subscribeToEvents, sendMessage, onDelta, onToolCall, onToolCallComplete, onFailure, onNaturalStop, onFilterResult } = options;
+    const { subscribeToEvents, sendMessage, onDelta, onToolCall, onToolCallComplete, onFailure, onNaturalStop, onFilterResult, onThinking } = options;
 
     const onDeltaRef = useRef(onDelta);
     const onToolCallRef = useRef(onToolCall);
@@ -24,6 +25,7 @@ export function useCompletionSocket(options: UseCompletionSocketOptions) {
     const onFailureRef = useRef(onFailure);
     const onNaturalStopRef = useRef(onNaturalStop);
     const onFilterResultRef = useRef(onFilterResult);
+    const onThinkingRef = useRef(onThinking);
     // For now we assume connected, or we could expose socket connection state globally
     const [isConnected] = useState(true);
 
@@ -35,7 +37,8 @@ export function useCompletionSocket(options: UseCompletionSocketOptions) {
         onFailureRef.current = onFailure;
         onNaturalStopRef.current = onNaturalStop;
         onFilterResultRef.current = onFilterResult;
-    }, [onDelta, onToolCall, onToolCallComplete, onFailure, onNaturalStop, onFilterResult]);
+        onThinkingRef.current = onThinking;
+    }, [onDelta, onToolCall, onToolCallComplete, onFailure, onNaturalStop, onFilterResult, onThinking]);
 
     // Subscribe to events
     useEffect(() => {
@@ -61,6 +64,9 @@ export function useCompletionSocket(options: UseCompletionSocketOptions) {
                     break;
                 case 'FilterResult':
                     onFilterResultRef.current(message);
+                    break;
+                case 'Thinking':
+                    onThinkingRef.current(message.step_id);
                     break;
             }
         });

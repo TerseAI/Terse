@@ -34,12 +34,14 @@ export class ChannelAgent<T extends Session, TConfig extends ConfigInstance> {
     private toolMetadataMap: Map<string, ToolMetadata> = new Map();
     private pendingActions: RunHistoryAction[] = [];
     private memorySession: RunHistoryChatMemorySession;
+    private maxTurns: number;
 
     constructor(
         session: T, 
         output: Output<T, TConfig>, 
         channel: ChannelWithRelations, 
-        runContext: RunContext
+        runContext: RunContext,
+        maxTurns: number = 50
     ) {
         this.history = [];
         this.session = session;
@@ -51,17 +53,21 @@ export class ChannelAgent<T extends Session, TConfig extends ConfigInstance> {
         this.memorySession = new RunHistoryChatMemorySession({
             sessionId: runContext.runId,
         });
+        if(!maxTurns || maxTurns < 1) {
+            throw new Error("Max turns must be greater than 0");
+        }
+        this.maxTurns = maxTurns;
     }
 
     async run(streamingParams?: RunHistoryStreamingParams): Promise<ApprovalResult<SessionWithTracking<T>, Agent<SessionWithTracking<T>, AgentOutputType>>> {
-        console.log("Running Channel Agent");
+        if (!this.inputEvent) {
+            throw new Error("No input event set. Call setInputEvent() before run()");
+        }
+
         await this.initializeAgent();
 
         if (!this.agent) {
             throw new Error("Agent not initialized. Call initializeAgent() before run()");
-        }
-        if (!this.inputEvent) {
-            throw new Error("No input event set. Call setInputEvent() before run()");
         }
 
         const userMessage = this.buildUserMessage();
@@ -80,7 +86,8 @@ export class ChannelAgent<T extends Session, TConfig extends ConfigInstance> {
                 context: this.getToolContext(),
                 stream: true,
                 session: this.memorySession,
-            sessionInputCallback: recentHistoryCallback
+            sessionInputCallback: recentHistoryCallback,
+            maxTurns: this.maxTurns
         });
 
         await this.processStream(result, streamingParams);
@@ -97,11 +104,18 @@ export class ChannelAgent<T extends Session, TConfig extends ConfigInstance> {
 
         const userHistory = this.buildUserHistory(userMessage);
 
-        const result = await run(this.agent, userHistory, {
+        const runner = runnerFactory({
+            channelId: this.channel.id,
+            runId: this.runContext.runId,
+            userId: this.session.user.id,
+            env: settings.nodeEnv,
+        })
+        const result = await runner.run(this.agent, userHistory, {
             context: this.getToolContext(),
             stream: true,
             session: this.memorySession,
             sessionInputCallback: recentHistoryCallback,
+            maxTurns: this.maxTurns
         });
 
         await this.processStream(result, streamingParams);
@@ -192,9 +206,10 @@ export class ChannelAgent<T extends Session, TConfig extends ConfigInstance> {
             output: this.output,
         };
 
-        const fullSystemPrompt = await new SystemPromptBuilder(deps, this.runContext)
-            .withStandardSections()
-            .build();
+        const builder = new SystemPromptBuilder(deps, this.runContext)
+            .withStandardSections();
+
+        const fullSystemPrompt = await builder.build();
 
         this.agent = new Agent<SessionWithTracking<T>, AgentOutputType>({
             name: 'Living Document Automator',

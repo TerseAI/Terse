@@ -7,6 +7,7 @@ import { LinearTicketSession } from "../LinearTicketOutput";
 import { SessionWithTracking } from "../../../agent/ChannelAgent/ChannelAgent";
 import type { IssueFilter, SearchIssuesQueryVariables, PaginationOrderBy as PaginationOrderByType } from "@linear/sdk/dist/_generated_documents";
 import { RunHistoryActionType } from "@prisma/client";
+import { formatError } from "../../../tools/errors";
 
 
 export const linearSearchTicketTool = tool({
@@ -119,6 +120,7 @@ Use this tool to find existing Linear issues before creating new ones or to look
                 hint: 'Check that the access token is valid and has the necessary permissions',
             };
         }
-    }
+    },
+    errorFunction: formatError
 });
 
