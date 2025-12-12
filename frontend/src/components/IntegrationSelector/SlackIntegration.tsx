@@ -197,7 +197,7 @@ export function SlackIntegration({
                                     listenToUserDms ? undefined : currentConfig?.channelId,
                                     listenToUserDms ? undefined : currentConfig?.channelName,
                                     listenToUserDms,
-                                    listenToUserDms ? currentConfig?.userIds : undefined
+                                    currentConfig?.userIds
                                 );
                                 setConfig(updatedConfig);
                             }}
