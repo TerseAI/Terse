@@ -60,14 +60,14 @@ export class ChannelAgent<T extends Session, TConfig extends ConfigInstance> {
     }
 
     async run(streamingParams?: RunHistoryStreamingParams): Promise<ApprovalResult<SessionWithTracking<T>, Agent<SessionWithTracking<T>, AgentOutputType>>> {
-        console.log("Running Channel Agent");
+        if (!this.inputEvent) {
+            throw new Error("No input event set. Call setInputEvent() before run()");
+        }
+
         await this.initializeAgent();
 
         if (!this.agent) {
             throw new Error("Agent not initialized. Call initializeAgent() before run()");
-        }
-        if (!this.inputEvent) {
-            throw new Error("No input event set. Call setInputEvent() before run()");
         }
 
         const userMessage = this.buildUserMessage();
@@ -206,9 +206,10 @@ export class ChannelAgent<T extends Session, TConfig extends ConfigInstance> {
             output: this.output,
         };
 
-        const fullSystemPrompt = await new SystemPromptBuilder(deps, this.runContext)
-            .withStandardSections()
-            .build();
+        const builder = new SystemPromptBuilder(deps, this.runContext)
+            .withStandardSections();
+
+        const fullSystemPrompt = await builder.build();
 
         this.agent = new Agent<SessionWithTracking<T>, AgentOutputType>({
             name: 'Living Document Automator',
