@@ -81,23 +81,6 @@ export class RunHistoryChatMemorySession implements Session {
     await prisma.run_history_raw_events.createMany({
       data: eventRecords,
     });
-
-    const createdEventsWithRelations = await prisma.run_history_raw_events.findMany({
-      where: {
-        run_history_record_id: this.sessionId,
-        sequence_order: {
-          gte: startSequence + 1,
-          lte: startSequence + items.length
-        }
-      },
-      include: {
-        run_history_record: {
-          include: {
-            automation: true,
-          }
-        }
-      }
-    })
   }
 
   async popItem(): Promise<AgentInputItem | undefined> {
