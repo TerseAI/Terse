@@ -243,7 +243,7 @@ export function SlackConfigurationSelector({
                 <div className="space-y-2">
                     <div className="flex items-center justify-between">
                         <label className="text-xs font-medium text-[theme(text-secondary)]">
-                            Filter by Users (Optional)
+                            Selecy Users (Optional)
                         </label>
                         <RefreshButton
                             onClick={handleUsersRefresh}
