@@ -1,57 +1,169 @@
-import type { AgentInputItem } from '@openai/agents-core';
+import type {
+    AgentInputItem,
+    UserMessageItem,
+    AssistantMessageItem,
+    SystemMessageItem,
+    FunctionCallItem,
+    FunctionCallResultItem,
+    ReasoningItem,
+} from '@openai/agents-core';
+
+// Type guard functions using the actual types from the library
+function isUserMessageItem(event: AgentInputItem): event is UserMessageItem {
+    return (
+        typeof event === 'object' &&
+        event !== null &&
+        'role' in event &&
+        event.role === 'user'
+    );
+}
+
+function isAssistantMessageItem(event: AgentInputItem): event is AssistantMessageItem {
+    return (
+        typeof event === 'object' &&
+        event !== null &&
+        'role' in event &&
+        event.role === 'assistant'
+    );
+}
+
+function isSystemMessageItem(event: AgentInputItem): event is SystemMessageItem {
+    return (
+        typeof event === 'object' &&
+        event !== null &&
+        'role' in event &&
+        event.role === 'system'
+    );
+}
+
+function isFunctionCallItem(event: AgentInputItem): event is FunctionCallItem {
+    return (
+        typeof event === 'object' &&
+        event !== null &&
+        'type' in event &&
+        event.type === 'function_call'
+    );
+}
+
+function isFunctionCallResultItem(event: AgentInputItem): event is FunctionCallResultItem {
+    return (
+        typeof event === 'object' &&
+        event !== null &&
+        'type' in event &&
+        event.type === 'function_call_result'
+    );
+}
+
+function isReasoningItem(event: AgentInputItem): event is ReasoningItem {
+    if (typeof event !== 'object' || event === null) return false;
+    
+    if ('type' in event && event.type === 'reasoning') return true;
+    
+    // Check for reasoning items by ID pattern (rs_ prefix)
+    if ('id' in event && typeof event.id === 'string' && event.id.startsWith('rs_')) {
+        return true;
+    }
+    
+    return false;
+}
+
+// Helper function to extract text from message content
+function extractTextFromMessageContent(
+    content: UserMessageItem['content'] | AssistantMessageItem['content'] | SystemMessageItem['content']
+): string {
+    if (typeof content === 'string') {
+        return content;
+    }
+    
+    if (Array.isArray(content)) {
+        return content
+            .filter((part): part is { type: 'input_text' | 'output_text'; text: string } => 
+                (part.type === 'input_text' || part.type === 'output_text') && 'text' in part
+            )
+            .map(part => part.text)
+            .join(' ');
+    }
+    
+    return '';
+}
+
+// Helper function to extract text from reasoning content
+function extractTextFromReasoningContent(content: ReasoningItem['content']): string {
+    return content
+        .filter((part): part is { type: 'input_text'; text: string } => 
+            part.type === 'input_text' && 'text' in part
+        )
+        .map(part => part.text)
+        .join(' ');
+}
+
+// Helper function to extract text from function call result output
+function extractTextFromFunctionResultOutput(
+    output: FunctionCallResultItem['output']
+): string {
+    if (typeof output === 'string') {
+        return output;
+    }
+    
+    if (typeof output === 'object' && output !== null) {
+        if ('type' in output && output.type === 'text' && 'text' in output) {
+            return output.text;
+        }
+        return JSON.stringify(output);
+    }
+    
+    return '';
+}
+
+// Helper function to extract role from event
+function extractRole(event: AgentInputItem): string {
+    if (isUserMessageItem(event)) return 'user';
+    if (isAssistantMessageItem(event)) return 'assistant';
+    if (isSystemMessageItem(event)) return 'system';
+    if (isFunctionCallItem(event)) return 'function_call';
+    if (isFunctionCallResultItem(event)) return 'function_result';
+    if (isReasoningItem(event)) return 'reasoning';
+    return 'unknown';
+}
 
 /**
  * Extracts searchable text content from AgentInputItem conversation events.
  * This preserves the semantic meaning of conversations for embedding.
  */
 export function extractConversationContent(event: AgentInputItem): string {
-    const eventAny = event as any;
-
-    // User/Assistant messages - extract the text content
-    if (eventAny.role === 'user' || eventAny.role === 'assistant') {
-        if (typeof eventAny.content === 'string') {
-            return eventAny.content;
-        }
-        
-        // Handle array content (multimodal - text and images)
-        if (Array.isArray(eventAny.content)) {
-            return eventAny.content
-                .filter((part: any) => part.type === 'text')
-                .map((part: any) => part.text || '')
-                .join(' ');
-        }
-        
-        // Fallback for structured content
-        if (typeof eventAny.content === 'object') {
-            return JSON.stringify(eventAny.content);
-        }
+    // Handle user messages
+    if (isUserMessageItem(event)) {
+        return extractTextFromMessageContent(event.content);
     }
 
-    // Tool/function calls - include function name and arguments for context
-    if (eventAny.type === 'function_call' || eventAny.function) {
-        const funcName = eventAny.function?.name || eventAny.name || '';
-        const args = eventAny.function?.arguments || eventAny.arguments || {};
+    // Handle assistant messages
+    if (isAssistantMessageItem(event)) {
+        return extractTextFromMessageContent(event.content);
+    }
+
+    // Handle system messages
+    if (isSystemMessageItem(event)) {
+        return extractTextFromMessageContent(event.content);
+    }
+
+    // Handle function calls
+    if (isFunctionCallItem(event)) {
+        const funcName = event.name || '';
+        const args = event.arguments || '';
         const argsStr = typeof args === 'string' ? args : JSON.stringify(args);
         return `Tool call: ${funcName} with arguments: ${argsStr}`;
     }
 
-    // Tool/function results - include the result for context
-    if (eventAny.type === 'function_result' || eventAny.role === 'tool') {
-        const result = eventAny.content || eventAny.result || '';
-        const resultStr = typeof result === 'string' ? result : JSON.stringify(result);
-        return `Tool result: ${resultStr}`;
+    // Handle function call results
+    if (isFunctionCallResultItem(event)) {
+        const output = extractTextFromFunctionResultOutput(event.output);
+        return output ? `Tool result: ${output}` : 'Tool result: (empty)';
     }
 
-    // Reasoning items
-    if (eventAny.type === 'reasoning' || eventAny.id?.startsWith('rs_')) {
-        return eventAny.content || eventAny.reasoning || '';
-    }
-
-    // System messages
-    if (eventAny.role === 'system') {
-        return typeof eventAny.content === 'string' 
-            ? eventAny.content 
-            : JSON.stringify(eventAny.content || {});
+    // Handle reasoning items
+    if (isReasoningItem(event)) {
+        const content = extractTextFromReasoningContent(event.content);
+        return content || '';
     }
 
     // Fallback: stringify the whole event
@@ -72,9 +184,9 @@ export function extractConversationWithContext(
     const contextEvents = events.slice(start, end);
     
     return contextEvents
-        .map((event, idx) => {
+        .map((event) => {
             const content = extractConversationContent(event);
-            const role = (event as any).role || 'unknown';
+            const role = extractRole(event);
             return `[${role}]: ${content}`;
         })
         .join('\n');

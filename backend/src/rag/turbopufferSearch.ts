@@ -38,31 +38,36 @@ export class TurboPufferSearch<
             topK
         } = options || {};
 
+        const finalIncludeAttributes = [
+            'entityType', 
+            'entityId', 
+            ...(includeAttributes || [])
+        ];
+
         try {
             const queryEmbedding = await this.embeddingClient.embed(query);
             const res = await this.namespace.query({
                 rank_by: [rankingColumn, rankingFunction, queryEmbedding],
                 top_k: topK,
                 filters,
-                include_attributes: includeAttributes,
+                include_attributes: finalIncludeAttributes,
             });
 
             const rows = res.rows ?? [];
             if (rows.length === 0) {
                 return [];
             }
-
+            
             // Convert TurboPuffer rows to SearchItems and group by entityType in one pass
-            const groupedByType = new Map<string, SearchItem<any>[]>();
+            const groupedByType = new Map<string, SearchItem<M>[]>();
             for (const row of rows) {
-                const attrs = (row.attributes ?? {}) as Record<string, any>;
-                const entityType = (attrs.entityType as string) ?? '';
-                const searchItem: SearchItem<any> = {
-                    id: String(row.id),
-                    entityType,
-                    entityId: (attrs.entityId as string) ?? '',
+                const entityType = (row.entityType as string) ?? '';
+                const searchItem: SearchItem<M> = {
+                    id: row.id as string,
+                    entityType: row.entityType as string,
+                    entityId: row.entityId as string,
                     content: '', // Not needed for hydration
-                    metadata: {}, // Not needed for hydration
+                    metadata: {} as M // Not needed for hydration
                 };
 
                 const group = groupedByType.get(entityType);

@@ -6,6 +6,7 @@ import { db } from '../../prismaClient';
 import { InputEvent } from '../../integrations/abstract/InputEvent';
 import { RunHistoryMemory } from '../../rag/runHistoryRag/indexer';
 import { extractConversationContent } from '../../rag/runHistoryRag/conversationExtractor';
+import type { AgentInputItem } from '@openai/agents-core';
 
 export interface RunContext {
     runId: string;
@@ -195,9 +196,9 @@ Follow these directives in addition to the USER INSTRUCTIONS provided in each me
 
             // Extract content from the events for display
             const eventContents = similarEvents.map(event => {
-                const rawEvent = typeof event.raw_event_json === 'string' 
-                    ? JSON.parse(event.raw_event_json) 
-                    : event.raw_event_json;
+                const rawEvent: AgentInputItem = typeof event.raw_event_json === 'string' 
+                    ? JSON.parse(event.raw_event_json) as AgentInputItem
+                    : event.raw_event_json as AgentInputItem;
                 const content = extractConversationContent(rawEvent);
                 const eventChannelId = event.run_history_record?.automation?.id || channelId || 'N/A';
                 const date = event.created_at.toISOString().split('T')[0];

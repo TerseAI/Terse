@@ -7,6 +7,7 @@ import { RunHistoryRawEventWithRelations } from '../../types/prisma';
 import { HydratorType, RAGNamespace } from '../../types/rag';
 import { Indexer } from '../indexer';
 import { Filter } from '@turbopuffer/turbopuffer/resources/index';
+import { AgentInputItem } from '@openai/agents-core';
 
 
 export interface RunHistoryMetadata {
@@ -36,15 +37,13 @@ export class RunHistoryMemory implements Indexer<RunHistoryRawEventWithRelations
         if (events.length === 0) return;
 
         const searchItems: SearchItem<RunHistoryMetadata>[] = events.map(event => {
-            const rawEvent = event.raw_event_json as any;
-            const conversationContent = extractConversationContent(rawEvent);
+            const conversationContent = prepareConversationContent(event.raw_event_json);
 
             // Extract channel_id from the automation relation
             const channelId = event.run_history_record?.automation?.id;
             if (!channelId) {
                 throw new Error(`Channel ID not found for run history raw event: ${event.id}`);
             }
-
             return {
                 id: event.id,
                 entityType: HydratorType.RUN_HISTORY_RAW_EVENT,
@@ -57,7 +56,7 @@ export class RunHistoryMemory implements Indexer<RunHistoryRawEventWithRelations
                     created_at: event.created_at.toISOString()
                 }
             };
-        });
+        })
 
         await this.search.bulkInsert(searchItems);
     }
@@ -79,4 +78,21 @@ export class RunHistoryMemory implements Indexer<RunHistoryRawEventWithRelations
 
         return results;
     }
+}
+
+const prepareConversationContent = (rawEvent: string | AgentInputItem | unknown): string => {
+    // Handle case where rawEvent is already an object
+    if (typeof rawEvent === 'object' && rawEvent !== null) {
+        return extractConversationContent(rawEvent as AgentInputItem);
+    }
+    
+    // Handle case where rawEvent is a string that needs parsing
+    if (typeof rawEvent === 'string') {
+        const event = JSON.parse(rawEvent) as AgentInputItem;
+        return extractConversationContent(event);
+    }
+    
+    // Fallback: stringify and parse if it's something else
+    const event = JSON.parse(JSON.stringify(rawEvent)) as AgentInputItem;
+    return extractConversationContent(event);
 }

@@ -1,6 +1,9 @@
 import type { AgentInputItem, Session } from '@openai/agents-core';
 import { db } from '../prismaClient';
 import chalk from 'chalk';
+import { RunHistoryRawEventWithRelations } from '../types/prisma';
+import { RunHistoryMemory } from '../rag/runHistoryRag/indexer';
+import { RAGNamespace } from '../types/rag';
 
 
 interface RunHistoryChatMemorySessionOptions {
@@ -76,8 +79,26 @@ export class RunHistoryChatMemorySession implements Session {
     });
 
     await prisma.run_history_raw_events.createMany({
-      data: eventRecords
+      data: eventRecords,
     });
+
+    const createdEventsWithRelations = await prisma.run_history_raw_events.findMany({
+      where: {
+        run_history_record_id: this.sessionId,
+        sequence_order: {
+          gte: startSequence + 1,
+          lte: startSequence + items.length
+        }
+      },
+      include: {
+        run_history_record: {
+          include: {
+            automation: true,
+          }
+        }
+      }
+    })
+    await persistLongTermMemory(createdEventsWithRelations)
   }
 
   async popItem(): Promise<AgentInputItem | undefined> {
@@ -218,4 +239,9 @@ export const recentHistoryCallback = (history: AgentInputItem[], newItems: Agent
 
 export const identityHistoryCallback = (history: AgentInputItem[], newItems: AgentInputItem[]): AgentInputItem[] => {
   return [...history, ...newItems];
+}
+
+async function persistLongTermMemory(events: RunHistoryRawEventWithRelations[]): Promise<void> {
+  const longTermMemory = new RunHistoryMemory(RAGNamespace.RUN_HISTORY_MEMORY)
+  await longTermMemory.rememberBulk(events)
 }
