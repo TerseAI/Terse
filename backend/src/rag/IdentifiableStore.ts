@@ -65,7 +65,7 @@ export class IdentifiableStore {
         });
 
         const identifiables: Identifiable[] = refs.map(r => ({
-            entityType: r.entity_type,
+            entityType: entityType,
             entityId: r.entity_id
         }));
 

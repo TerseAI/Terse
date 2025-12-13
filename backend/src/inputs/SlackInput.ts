@@ -2,8 +2,6 @@ import { SlackIntegrationManager } from "../integrations/SlackIntegration";
 import { ConfigType, SlackConfig } from "../shared/Configs";
 import { Input } from "./Input";
 import { PrismaTransaction } from "../types/prisma";
-import chalk from "chalk";
-
 
 export class SlackInput implements Input<SlackConfig> {
     integrationManager: SlackIntegrationManager;

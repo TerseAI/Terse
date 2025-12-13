@@ -16,6 +16,8 @@ import axios from "axios";
 import { Jwt } from "../utility/jwt";
 import { IntegrationType } from "../shared/Integrations";
 import { InputConfigType } from "@prisma/client";
+import { Identifiable } from "../rag/Hydrator";
+import { HydratorType } from "../types/rag";
 
 export class SlackIntegrationManager implements Integration<SlackIntegration, SlackMessageEvent, typeof SlackIntegrationMetadata>, OAuthIntegrationInstallation<IntegrationType.SLACK> {
     constructor() { }
@@ -363,13 +365,16 @@ export class SlackIntegrationManager implements Integration<SlackIntegration, Sl
 
 // MARK: - SLACK Event
 
-export class SlackEvent extends InputEvent {
+export class SlackEvent extends InputEvent implements Identifiable {
     readonly integrationType: IntegrationType = IntegrationType.SLACK;
     data: SlackEventData;
+    entityType: HydratorType = HydratorType.SLACK_MESSAGE_EVENT;
+    entityId: string;
 
     constructor(data: SlackEventData) {
         super();
         this.data = data;
+        this.entityId = data.permalink || '';
     }
 
     formatForChannelAgent(): string {

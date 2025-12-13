@@ -18,12 +18,12 @@ export interface RunHistoryMetadata {
 }
 
 export class RunHistoryMemory implements Indexer<RunHistoryRawEventWithRelations> {
-    private search: TurboPufferSearch<RunHistoryRawEventWithRelations, RunHistoryMetadata, RAGNamespace.RUN_HISTORY_MEMORY>;
+    private search: TurboPufferSearch<RunHistoryMetadata, RAGNamespace.RUN_HISTORY_MEMORY>;
     private embeddingProvider: EmbeddingSystem;
 
-    constructor(namespace: RAGNamespace = RAGNamespace.RUN_HISTORY_MEMORY) {
+    constructor(namespace: RAGNamespace.RUN_HISTORY_MEMORY = RAGNamespace.RUN_HISTORY_MEMORY) {
         this.embeddingProvider = new EmbeddingSystem(openai.apiKey);
-        this.search = new TurboPufferSearch<RunHistoryRawEventWithRelations, RunHistoryMetadata, RAGNamespace.RUN_HISTORY_MEMORY>(
+        this.search = new TurboPufferSearch<RunHistoryMetadata, RAGNamespace.RUN_HISTORY_MEMORY>(
             this.embeddingProvider, 
             namespace
         );

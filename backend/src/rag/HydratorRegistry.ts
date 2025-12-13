@@ -1,8 +1,28 @@
-import { Hydrator, Identifiable } from "./Hydrator";
-import { RunHistoryRawEventHydrator } from "./runHistoryRag/hydrator";
-import { HydratorType, HydratorTypeMap } from "../types/rag";
+import { CompositeHydrator, Hydrator, Identifiable } from "./Hydrator";
+import { RunHistoryRawEventHydrator, IdentifiableRunHistoryRawEvent } from "./runHistoryRag/hydrator";
+import { HydratorType, HydratorTypeMap, RAGNamespace, NamespaceToHydratorType } from "../types/rag";
 
-export const HYDRATOR_REGISTRY: Hydrator<Identifiable>[] = [new RunHistoryRawEventHydrator()];
+// Individual hydrator instances
+const runHistoryHydrator = new RunHistoryRawEventHydrator();
+
+// Pre-composed hydrators per namespace
+export const NAMESPACE_HYDRATORS = {
+    [RAGNamespace.RUN_HISTORY_MEMORY]: new CompositeHydrator(runHistoryHydrator),
+    // TODO: Add slackEventHydrator to EVENT_MEMORY when implemented:
+    // [RAGNamespace.EVENT_MEMORY]: new CompositeHydrator(runHistoryHydrator, slackEventHydrator),
+} as const;
+
+// Type helper: extract the composite hydrator type for a namespace
+export type NamespaceHydrator<N extends RAGNamespace> = typeof NAMESPACE_HYDRATORS[N];
+
+export function getHydratorForNamespace<N extends RAGNamespace>(
+    namespace: N
+): typeof NAMESPACE_HYDRATORS[N] {
+    return NAMESPACE_HYDRATORS[namespace];
+}
+
+// Legacy registry for backward compatibility
+export const HYDRATOR_REGISTRY: Hydrator<Identifiable>[] = [runHistoryHydrator];
 
 export function getHydrator<K extends HydratorType>(
     entityType: K
