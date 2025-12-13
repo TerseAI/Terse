@@ -454,6 +454,7 @@ model automations {
   run_history_records   run_history_records[]
   directiveRecords      directive_records[]
   notification_settings automation_notification_settings?
+  output_change_attributions output_change_attributions[]
 
   @@index([user_id])
   @@index([is_active])
@@ -944,10 +945,26 @@ model directive_records {
 
 model identifiable_refs {
   id          String   @id @default(cuid())
-  entity_type String   // Validated by app against HydratorType enum
+  entity_type String // Validated by app against HydratorType enum
   entity_id   String
   created_at  DateTime @default(now())
 
+  output_change_attributions output_change_attributions[]
+
   @@unique([entity_type, entity_id])
   @@index([entity_type])
+}
+
+model output_change_attributions {
+  id                    String   @id @default(cuid())
+  automation_id         String // Which automation caused the change
+  source_item_ref_id    String // Reference to identifiable_refs for the source item that caused the change
+  output_item_id        String
+  output_item_type      OutputConfigType
+  created_at            DateTime @default(now())
+
+  automation      automations      @relation(fields: [automation_id], references: [id], onDelete: Cascade)
+  source_item_ref identifiable_refs @relation(fields: [source_item_ref_id], references: [id], onDelete: Cascade)
+
+  @@index([source_item_ref_id, output_item_id])
 }
