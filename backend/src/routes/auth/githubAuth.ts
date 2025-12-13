@@ -8,9 +8,10 @@ import { findUserByEmail, findUserByGitHubUsername, createUser, updateUserGitHub
 import { githubApp } from "../../config/settings";
 import { GithubIntegrationManager, exchangeCodeForAccessToken, getGithubAppUser } from "../../integrations/GithubIntegration";
 import { db } from "../../prismaClient";
+import logger from "../../logger";
 
 export const githubAppAuthMiddleware = async (req: Request, res: Response, next: NextFunction) => {
-    console.log('githubAppAuthMiddleware route has been hit')
+    logger.debug('githubAppAuthMiddleware route has been hit');
     try {
         let token: string | null = null;
 
@@ -35,7 +36,7 @@ export const githubAppAuthMiddleware = async (req: Request, res: Response, next:
         }
         next();
     } catch (error) {
-        console.error('GitHub app auth middleware error:', error);
+        logger.error('GitHub app auth middleware error:', { error });
         res.status(401).json({ message: 'Unauthorized - Token verification failed' });
     }
 }
@@ -50,7 +51,7 @@ export function githubLoginURL(req: Request, res: Response) {
 export async function githubCallback(req: Request, res: Response) {
     const { code, state } = req.query as { code?: string; state?: string };
 
-    console.log(chalk.blue('🔗 Github OAuth callback received:'), chalk.cyan(JSON.stringify(req.query, null, 2)), chalk.yellow(JSON.stringify(req.body, null, 2)));
+    logger.info('Github OAuth callback received', { query: req.query, body: req.body });
 
     if (!code || !state) {
         return res.status(400).send('Invalid OAuth state');
@@ -94,7 +95,7 @@ export async function githubCallback(req: Request, res: Response) {
             await updateUserGitHubUsername(user.id, githubUsername);
             user = await findUserByEmail(email);
         } else {
-            console.log('Existing user', user)
+            logger.debug('Existing user', { userId: user.id, email: user.email, githubUsername: user.github_username });
         }
 
         if (!user) {
@@ -132,13 +133,13 @@ export async function githubCallback(req: Request, res: Response) {
             </script>
           `);
     } catch (error) {
-        console.error('GitHub OAuth error:', error);
+        logger.error('GitHub OAuth error:', { error });
         res.status(500).send('Authentication failed');
     }
 }
 
 export async function githubAppOAuth(req: Request, res: Response) {
-    console.log('githubAppOAuth route has been hit');
+    logger.debug('githubAppOAuth route has been hit');
 
     const state = crypto.randomBytes(16).toString('hex');
 
@@ -161,7 +162,7 @@ export async function githubAppOAuth(req: Request, res: Response) {
 }
 
 export async function githubAppCallbackIntegrate(req: Request, res: Response) {
-    console.log(chalk.blue('🔗 Github App OAuth callback received:'), chalk.cyan(JSON.stringify(req.query, null, 2)));
+    logger.info('Github App OAuth callback received', { query: req.query });
     const { code, state } = req.query as { code?: string; state?: string };
     if (!code || !state) {
         return res.status(400).send('Invalid OAuth state');

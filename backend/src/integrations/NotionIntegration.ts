@@ -8,6 +8,7 @@ import { notion as notionConfig, jwt as jwtSettings, urls } from "../config/sett
 import { Request, Response } from "express";
 import chalk from "chalk";
 import { IntegrationType } from "../shared/Integrations";
+import logger from "../logger";
 
 export class NotionIntegrationManager implements Integration<NotionIntegration, never, typeof NotionIntegrationMetadata>, OAuthIntegrationInstallation<IntegrationType.NOTION> {
     constructor() { }
@@ -77,7 +78,7 @@ export class NotionIntegrationManager implements Integration<NotionIntegration, 
         const { code, state, error } = req.query;
 
         if (error) {
-            console.error(chalk.red("Notion OAuth error:"), error);
+            logger.error("Notion OAuth error", { error: String(error) });
             res.redirect(`${urls.frontend}/oauth/error`);
             return;
         }
@@ -112,21 +113,14 @@ export class NotionIntegrationManager implements Integration<NotionIntegration, 
 
             if (!tokenResponse.ok) {
                 const errorText = await tokenResponse.text();
-                console.error(chalk.red("Notion token exchange failed:"), errorText);
+                logger.error("Notion token exchange failed", { error: errorText });
                 throw new Error(`Notion token exchange failed: ${errorText}`);
             }
 
             const tokenData = await tokenResponse.json();
             const { access_token, workspace_id, workspace_name } = tokenData;
 
-            console.log(
-                chalk.blue("🔑 Received Notion access token for user"),
-                chalk.yellow(decoded.userId)
-            );
-            console.log(
-                chalk.blue("🏢 Workspace:"),
-                chalk.yellow(workspace_name || workspace_id)
-            );
+            logger.info("🔑 Received Notion access token for user", { userId: decoded.userId, workspaceName: workspace_name || workspace_id });
 
             // Check if a connection for this workspace already exists
             const existing = await db().notion_integrations.findFirst({
@@ -154,21 +148,15 @@ export class NotionIntegrationManager implements Integration<NotionIntegration, 
                         integration_token: access_token,
                     },
                 });
-                console.log(
-                    chalk.green("✅ Updated Notion connection token"),
-                    chalk.yellow(`${workspace_name || "Workspace"}`)
-                );
+                logger.info("✅ Updated Notion connection token", { workspaceName: workspace_name || "Workspace", integrationId: existing.id, userId: decoded.userId });
             }
 
-            console.log(
-                chalk.green("✅ Notion OAuth completed for user"),
-                chalk.yellow(decoded.userId)
-            );
+            logger.info("✅ Notion OAuth completed for user", { userId: decoded.userId, workspaceName: workspace_name || workspace_id });
 
             // Redirect to success page which will auto-close the popup
             res.redirect(`${urls.frontend}/oauth/success`);
         } catch (error) {
-            console.error(chalk.red("Error in Notion OAuth callback:"), error);
+            logger.error("Error in Notion OAuth callback", { error: error instanceof Error ? error.message : String(error), stack: error instanceof Error ? error.stack : undefined });
             res.redirect(`${urls.frontend}/oauth/error`);
         }
     }
@@ -203,14 +191,14 @@ export class NotionIntegrationManager implements Integration<NotionIntegration, 
             });
 
             if (!integration) {
-                console.error(`Notion integration ${integrationId} not found`);
+                logger.error(`Notion integration ${integrationId} not found`, { integrationId });
                 return null;
             }
 
             // Notion tokens are long-lived and don't expire, so just return the token
             return integration.integration_token || null;
         } catch (error) {
-            console.error(`Error getting Notion access token for integration ${integrationId}:`, error);
+            logger.error(`Error getting Notion access token for integration ${integrationId}`, { error: error instanceof Error ? error.message : String(error), stack: error instanceof Error ? error.stack : undefined, integrationId });
             return null;
         }
     }

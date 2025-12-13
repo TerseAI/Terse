@@ -2,6 +2,7 @@ import { WebClient, LogLevel, KnownBlock } from "@slack/web-api";
 import { db } from "../prismaClient";
 import { RunHistoryAction } from "../shared/RunHistoryTypes";
 import { initializeSlackWebClient } from "../integrations/SlackIntegration";
+import logger from "../logger";
 
 export interface SlackMessage {
     text: string;
@@ -27,12 +28,12 @@ export async function sendSlackMessage(
     });
 
     if (!userSlackIntegration?.slack_integration) {
-        console.error(`[sendSlackMessage] No Slack integration found for ID: ${userSlackIntegrationId}`);
+        logger.error(`[sendSlackMessage] No Slack integration found for ID: ${userSlackIntegrationId}`, { userSlackIntegrationId });
         return false;
     }
 
     const client: WebClient = initializeSlackWebClient(userSlackIntegration);
-    console.log(`[sendSlackMessage] Message: ${JSON.stringify(message)}`);
+    logger.debug(`[sendSlackMessage] Message`, { message, channelId, userSlackIntegrationId });
 
     try {
         await client.chat.postMessage({
@@ -41,10 +42,10 @@ export async function sendSlackMessage(
             blocks: message.blocks,
         });
 
-        console.log(`[sendSlackMessage] Successfully sent message to channel ${channelId}`);
+        logger.info(`[sendSlackMessage] Successfully sent message to channel ${channelId}`, { channelId, userSlackIntegrationId });
         return true;
     } catch (error) {
-        console.error(`[sendSlackMessage] Failed to send message:`, error);
+        logger.error(`[sendSlackMessage] Failed to send message`, { error: error instanceof Error ? error.message : String(error), stack: error instanceof Error ? error.stack : undefined, channelId, userSlackIntegrationId });
         return false;
     }
 }
@@ -60,7 +61,7 @@ export async function getSlackClient(userSlackIntegrationId: string): Promise<We
     });
 
     if (!userSlackIntegration?.slack_integration) {
-        console.error(`[getSlackClient] No Slack integration found for ID: ${userSlackIntegrationId}`);
+        logger.error(`[getSlackClient] No Slack integration found for ID: ${userSlackIntegrationId}`, { userSlackIntegrationId });
         return null;
     }
 

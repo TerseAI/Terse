@@ -3,6 +3,7 @@ import { Request, Response } from "express";
 import type { ConfluencePage } from "../shared/types";
 import chalk from "chalk";
 import { AtlassianIntegrationManager } from "../integrations/AtlassianIntegration";
+import logger from "../logger";
 
 // MARK: - Route Handlers
 
@@ -17,7 +18,7 @@ export async function getConfluenceIntegrations(req: Request, res: Response) {
         const integrations = await manager.getInstancesForUser(req.session.user.id);
         res.status(200).json(integrations);
     } catch (error) {
-        console.error('Error fetching Confluence integrations:', error);
+        logger.error('Error fetching Confluence integrations:', { error });
         res.status(500).json({ error: 'Failed to fetch Confluence integrations' });
     }
 }
@@ -82,7 +83,7 @@ export async function getConfluenceResources(req: Request, res: Response) {
 
         if (!searchResponse.ok) {
             const errorText = await searchResponse.text();
-            console.error(chalk.red('Confluence Search API error:'), searchResponse.status, errorText);
+            logger.error('Confluence Search API error:', { status: searchResponse.status, errorText });
             throw new Error(`Confluence Search API error: ${searchResponse.status} ${searchResponse.statusText} - ${errorText}`);
         }
 
@@ -100,7 +101,7 @@ export async function getConfluenceResources(req: Request, res: Response) {
             total: resources.length,
         });
     } catch (error: any) {
-        console.error(chalk.red('Error searching Confluence resources:'), error);
+        logger.error('Error searching Confluence resources:', { error });
         return res.status(500).json({
             success: false,
             error: error.message || 'Failed to search Confluence resources',
@@ -128,7 +129,7 @@ function mapSearchResultsToConfluencePages(results: ConfluenceSearchResult[]): C
             if (!content.title) missingFields.push('page title');
             
             if (missingFields.length > 0) {
-                console.log(chalk.yellow(`⚠️  Warning: Missing fields for search result "${content.title || content.id || 'unknown'}": ${missingFields.join(', ')}`));
+                logger.warn(`Missing fields for search result "${content.title || content.id || 'unknown'}": ${missingFields.join(', ')}`);
                 return null;
             }
 

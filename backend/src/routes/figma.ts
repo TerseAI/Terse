@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import chalk from "chalk";
 import { FigmaIntegrationManager, FigmaWebhookEvent } from "../integrations/FigmaIntegration";
 import { FigmaEventTypes } from "../shared/types";
+import logger from "../logger";
 
 // MARK: - Route Handlers
 
@@ -16,7 +17,7 @@ export async function getFigmaIntegrations(req: Request, res: Response) {
       const integrations = await manager.getInstancesForUser(req.session.user.id);
       res.status(200).json(integrations);
   } catch (error) {
-      console.error('Error fetching Figma integrations:', error);
+      logger.error('Error fetching Figma integrations', { error: error instanceof Error ? error.message : String(error), stack: error instanceof Error ? error.stack : undefined, userId: req.session.user.id });
       res.status(500).json({ error: 'Failed to fetch Figma integrations' });
   }
 }
@@ -34,10 +35,7 @@ export const figmaOAuthCallback = async (req: Request, res: Response) => {
  * POST /webhooks/figma
  */
 export const handleFigmaWebhook = async (req: Request, res: Response) => {
-  console.log(
-    chalk.bgMagenta.white("Figma webhook received:"),
-    chalk.magentaBright(JSON.stringify(req.body, null, 2))
-  );
+  logger.debug("Figma webhook received", { eventType: req.body?.event_type, hasBody: !!req.body });
 
   try {
     const webhookEvent = req.body as FigmaWebhookEvent;
@@ -46,7 +44,7 @@ export const handleFigmaWebhook = async (req: Request, res: Response) => {
     const supportedEventTypes = Object.values(FigmaEventTypes);
 
     if (!supportedEventTypes.includes(eventType as FigmaEventTypes)) {
-      console.log(chalk.yellow(`⚠️  Ignoring unsupported event type ${eventType} or missing file_key`));
+      logger.warn(`⚠️  Ignoring unsupported event type ${eventType} or missing file_key`, { eventType });
       res.status(200).json({ received: true });
       return;
     }
@@ -57,9 +55,9 @@ export const handleFigmaWebhook = async (req: Request, res: Response) => {
     // Process the event asynchronously
     const figmaIntegrationManager = new FigmaIntegrationManager();
     figmaIntegrationManager.processWebhookEvent(webhookEvent).catch((error) => {
-      console.error(chalk.red('Error processing Figma webhook event:'), error);
+      logger.error('Error processing Figma webhook event', { error: error instanceof Error ? error.message : String(error), stack: error instanceof Error ? error.stack : undefined, eventType: webhookEvent.event_type });
     });
   } catch (error) {
-    console.error(chalk.red("Error in handleFigmaWebhook:"), error);
+    logger.error("Error in handleFigmaWebhook", { error: error instanceof Error ? error.message : String(error), stack: error instanceof Error ? error.stack : undefined });
   }
 };

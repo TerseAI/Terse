@@ -89,6 +89,7 @@ import {
   getNotificationDestinations,
   updateNotificationDestination,
 } from "./routes/notificationDestinations";
+import logger from "./logger";
 
 export type Session = {
   user: User;
@@ -103,9 +104,9 @@ const server = createServer(app);
 
 try {
   await initializeRealtimeSocket(server);
-  console.log("✅ Socket.IO server initialized");
+  logger.info("✅ Socket.IO server initialized");
 } catch (error) {
-  console.error("❌ Failed to initialize Socket.IO server:", error);
+  logger.error("❌ Failed to initialize Socket.IO server", { error: error instanceof Error ? error.message : String(error) });
   process.exit(1);
 }
 
@@ -118,8 +119,11 @@ app.use(
 
 // Request logging middleware - logs ALL incoming requests
 app.use((req, res, next) => {
-  console.log(`📥 [REQUEST] ${req.method} ${req.path}`);
-  console.log(`📥 [REQUEST] Headers present: ${Object.keys(req.headers).length} headers`);
+  logger.info(`📥 [REQUEST] ${req.method} ${req.path}`, { 
+    method: req.method, 
+    path: req.path,
+    headerCount: Object.keys(req.headers).length 
+  });
   next();
 });
 
@@ -456,8 +460,12 @@ app.delete("/notification-destinations/:id", authMiddleware, async (req, res) =>
  * This catches errors from async route handlers
  */
 app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
-  console.error("❌ Express Error Handler:", err);
-  console.error("Stack:", err.stack);
+  logger.error("❌ Express Error Handler", { 
+    error: err.message, 
+    stack: err.stack,
+    path: req.path,
+    method: req.method
+  });
   res.status(500).json({
     error: "Internal server error"
   });
@@ -466,17 +474,17 @@ app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
 // Global unhandled rejection handler - safety net for fire-and-forget promises
 // This catches any promises that reject without a .catch() handler
 process.on("unhandledRejection", (reason: unknown, promise: Promise<unknown>) => {
-  console.error("❌ Unhandled Promise Rejection (safety net):", reason);
-  if (reason instanceof Error) {
-    console.error("Stack:", reason.stack);
-  }
+  const errorMessage = reason instanceof Error ? reason.message : String(reason);
+  const stack = reason instanceof Error ? reason.stack : undefined;
+  logger.error("❌ Unhandled Promise Rejection (safety net)", { 
+    error: errorMessage,
+    stack
+  });
   // Log but don't crash - this is a safety net for promises we might have missed
 });
 
 server.listen(3001, () => {
-  console.log("🚀 Express backend running on http://localhost:3001");
-  console.log("📝 Logging is enabled - all console.log statements should appear");
-  console.log("📝 Testing log output...");
+  logger.info("🚀 Express backend running on http://localhost:3001");
 });
 
 // Graceful shutdown

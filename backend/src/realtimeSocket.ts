@@ -15,6 +15,7 @@ import { OutputFactory } from "./outputs/abstract/OutputFactory";
 import { Session } from "./server";
 import { storeChatEvent, markRunFailed, finalizeRunStatus } from "./agent/ChannelAgent/runHistory";
 import { DirectiveTask, directiveTaskQueue } from "./agent/DirectiveAgent/DirectiveAgent";
+import logger from "./logger";
 
 // Extended Socket type with userId property
 interface AuthenticatedSocket extends Socket {
@@ -26,7 +27,7 @@ let pub: ReturnType<typeof createClient> | null = null;
 let sub: ReturnType<typeof createClient> | null = null;
 
 export async function initializeRealtimeSocket(server: HttpServer): Promise<Server> {
-    console.log(chalk.blue.bold("Initializing realtime socket: ", server.address()?.toString()));
+    logger.info("Initializing realtime socket", { address: server.address()?.toString() });
     // Set up Socket.IO server
     io = new Server(server, {
         cors: {
@@ -34,7 +35,7 @@ export async function initializeRealtimeSocket(server: HttpServer): Promise<Serv
             credentials: true,
         },
     });
-    console.log(chalk.blue.bold("Socket.IO server initialized"));
+    logger.info("Socket.IO server initialized");
 
     // Set up Redis adapter for Socket.IO (OPTIONAL - only needed for multi-server deployments)
     // 
@@ -61,45 +62,46 @@ export async function initializeRealtimeSocket(server: HttpServer): Promise<Serv
             await pub.connect();
             await sub.connect();
             io.adapter(createAdapter(pub, sub));
-            console.log("✅ Redis adapter connected for Socket.IO");
+            logger.info("✅ Redis adapter connected for Socket.IO");
 
         } catch (error) {
-            console.warn(
-                "⚠️  Invalid REDIS_URL format - Socket.IO running in single-server mode (no Redis adapter)"
+            logger.warn(
+                "⚠️  Invalid REDIS_URL format - Socket.IO running in single-server mode (no Redis adapter)",
+                { error: error instanceof Error ? error.message : String(error) }
             );
-            console.warn("REDIS_URL should be in format: redis://host:port or rediss://host:port");
+            logger.warn("REDIS_URL should be in format: redis://host:port or rediss://host:port");
         }
     } else {
-        console.log(
+        logger.info(
             "ℹ️  REDIS_URL not set - Socket.IO using in-memory adapter (perfect for local dev and single-server deployments)"
         );
     }
 
     // Authentication middleware
     io.use(async (socket: Socket, next) => {
-        console.log(chalk.yellow.bold("Socket.IO connection attempt from:"), socket.handshake.address);
-        console.log(chalk.yellow.bold("Socket.IO handshake headers:"), {
+        logger.info("Socket.IO connection attempt", { address: socket.handshake.address });
+        logger.info("Socket.IO handshake headers", {
             origin: socket.handshake.headers.origin,
             referer: socket.handshake.headers.referer,
         });
         // Verify JWT token from auth
         const token = socket.handshake.auth?.token;
         if (!token) {
-            console.log(chalk.red.bold("Socket.IO auth failed: No token provided"));
+            logger.warn("Socket.IO auth failed: No token provided");
             return next(new Error("Authentication token required"));
         }
 
         try {
             const user = await new Jwt().verify(token);
             if (!user) {
-                console.log(chalk.red.bold("Socket.IO auth failed: Invalid token"));
+                logger.warn("Socket.IO auth failed: Invalid token");
                 return next(new Error("Invalid token"));
             }
-            console.log(chalk.blue.bold("User in socket authenticated"), user.id);
+            logger.info("User in socket authenticated", { userId: user.id });
             (socket as AuthenticatedSocket).userId = user.id;
             next();
         } catch (error) {
-            console.log(chalk.red.bold("Socket.IO auth failed:"), error);
+            logger.error("Socket.IO auth failed", { error: error instanceof Error ? error.message : String(error) });
             next(new Error("Authentication failed"));
         }
     });
@@ -109,16 +111,16 @@ export async function initializeRealtimeSocket(server: HttpServer): Promise<Serv
         const authenticatedSocket = socket as AuthenticatedSocket;
         const userId = authenticatedSocket.userId;
         const room = `user:${userId}`;
-        console.log(chalk.green.bold(`Socket.IO connection established for user ${userId}, room: ${room}`));
+        logger.info(`Socket.IO connection established for user ${userId}`, { userId, room });
 
         socket.join(room);
 
         // Listen for channel chat messages
         socket.on("channel:chat:message", async (payload: { runId: string | null; message: SendModelRequest }) => {
             const { runId, message } = payload;
-            console.log(chalk.blue.bold(`[channel:chat:message] Received message for runId: ${runId}`), message, userId);
+            logger.info(`[channel:chat:message] Received message for runId: ${runId}`, { runId, userId, message });
             if (!runId) {
-                console.error(chalk.red.bold(`[channel:chat:message] No runId provided for message: ${message}`));
+                logger.error(`[channel:chat:message] No runId provided for message`, { message, userId });
                 return;
             }
             const prisma = db();
@@ -131,7 +133,7 @@ export async function initializeRealtimeSocket(server: HttpServer): Promise<Serv
                 }
             });
             if (!runRecord || !runRecord.automation || runRecord.automation.user_id !== userId) {
-                console.error(chalk.red.bold(`[channel:chat:message] Run record not found for runId: ${runId} or user does not have access to this run`));
+                logger.error(`[channel:chat:message] Run record not found for runId: ${runId} or user does not have access to this run`, { runId, userId });
                 return;
             }
 
@@ -152,20 +154,20 @@ export async function initializeRealtimeSocket(server: HttpServer): Promise<Serv
             }) as ChannelWithRelations | null;
 
             if (!channel) {
-                console.error(chalk.red.bold(`[channel:chat:message] Channel not found for automation id: ${runRecord.automation.id}`));
+                logger.error(`[channel:chat:message] Channel not found for automation id: ${runRecord.automation.id}`, { automationId: runRecord.automation.id, userId });
                 return;
             }
 
             const outputIntegration = channel.output;
             if (!outputIntegration) {
-                console.error(chalk.red.bold(`[channel:chat:message] No output integration found for channel: ${channel.id}`));
+                logger.error(`[channel:chat:message] No output integration found for channel: ${channel.id}`, { channelId: channel.id, userId });
                 return;
             }
 
             // Use OutputFactory to create output based on config type (no hardcoded Notion logic)
             const output = OutputFactory.createOutput(outputIntegration.config_type);
             if (!output) {
-                console.error(chalk.red.bold(`[channel:chat:message] Output type ${outputIntegration.config_type} is not supported for channel: ${channel.id}`));
+                logger.error(`[channel:chat:message] Output type ${outputIntegration.config_type} is not supported for channel: ${channel.id}`, { configType: outputIntegration.config_type, channelId: channel.id, userId });
                 return;
             }
 
@@ -175,7 +177,7 @@ export async function initializeRealtimeSocket(server: HttpServer): Promise<Serv
                 }
             });
             if(!user) {
-                console.error(chalk.red.bold(`[channel:chat:message] User not found for userId: ${userId}`));
+                logger.error(`[channel:chat:message] User not found for userId: ${userId}`, { userId });
                 return;
             }
             
@@ -190,7 +192,7 @@ export async function initializeRealtimeSocket(server: HttpServer): Promise<Serv
                     user
                 );
             } catch (error) {
-                console.error(chalk.red.bold(`[channel:chat:message] Failed to create session: ${error}`));
+                logger.error(`[channel:chat:message] Failed to create session`, { error: error instanceof Error ? error.message : String(error), channelId: channel.id, userId });
                 return;
             }
 
@@ -226,13 +228,13 @@ export async function initializeRealtimeSocket(server: HttpServer): Promise<Serv
             } catch (error) {
                 // Log the error and update run history
                 const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-                console.error(chalk.red.bold(`[channel:chat:message] Error running channel agent: ${errorMessage}`), error);
+                logger.error(`[channel:chat:message] Error running channel agent: ${errorMessage}`, { error: errorMessage, stack: error instanceof Error ? error.stack : undefined, runId, channelId: channel.id, userId });
                 
                 try {
                     await markRunFailed(runId, errorMessage, 'agent');
                     emitCacheInvalidationWithWildcard(userId, 'runHistory', channel.id);
                 } catch (e) {
-                    console.error(chalk.yellow('Failed to mark run as failed'), e);
+                    logger.error('Failed to mark run as failed', { error: e instanceof Error ? e.message : String(e), runId });
                 }
                 return;
             }
@@ -244,7 +246,7 @@ export async function initializeRealtimeSocket(server: HttpServer): Promise<Serv
                     await finalizeRunStatus(runId, hasFinalOutput ? 'success' : 'failed');
                     emitCacheInvalidationWithWildcard(userId, 'runHistory', channel.id);
                 } catch (e) {
-                    console.error(chalk.yellow('Failed to finalize run status'), e);
+                    logger.error('Failed to finalize run status', { error: e instanceof Error ? e.message : String(e), runId });
                 }
             }
 
@@ -287,7 +289,7 @@ export function emitCacheInvalidationWithKey(
     key: string
 ) {
     if (!io) {
-        console.warn("Socket.IO server not initialized");
+        logger.warn("Socket.IO server not initialized");
         return;
     }
     io.to(`user:${userId}`).emit("invalidate", { key });
@@ -299,7 +301,7 @@ export function emitCacheInvalidationWithWildcard(
     id: string
 ) {
     if (!io) {
-        console.warn("Socket.IO server not initialized");
+        logger.warn("Socket.IO server not initialized");
         return;
     }
     // Send tag-based invalidation payload
@@ -316,7 +318,7 @@ function getSocketCorsOrigin(): boolean | string | string[] {
     if (urls.socketFrontend) {
         socketCorsOrigin = [urls.socketFrontend];
     } else if (isProd) {
-        console.error(
+        logger.error(
             "[Socket.IO] SOCKET_FRONTEND_URL (urls.socketFrontend) is not set in production. " +
             "Blocking all cross-origin Socket.IO connections for safety."
         );

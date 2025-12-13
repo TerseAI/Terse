@@ -5,6 +5,7 @@ import chalk from "chalk";
 import { findUserByEmail, createUser } from "../../types/user";
 import { google } from "googleapis";
 import { gmail, googleAuth } from "../../config/settings";
+import logger from "../../logger";
 
 // Google OAuth scopes for login (different from Gmail integration)
 const GOOGLE_LOGIN_SCOPES = [
@@ -36,7 +37,7 @@ export function googleLoginURL(req: Request, res: Response) {
 }
 
 export async function googleLogin(req: Request, res: Response) {
-    console.log('googleLogin route has been hit');
+    logger.debug('googleLogin route has been hit');
     const state = crypto.randomBytes(16).toString('hex');
     const oauth2Client = getGoogleAuthClient();
 
@@ -46,14 +47,14 @@ export async function googleLogin(req: Request, res: Response) {
         state: state
     });
 
-    console.log('Google auth URL', authUrl);
+    logger.debug('Google auth URL', { authUrl });
     res.redirect(authUrl);
 }
 
 export async function googleCallback(req: Request, res: Response) {
     const { code, state } = req.query as { code?: string; state?: string };
 
-    console.log(chalk.blue('🔗 Google OAuth callback received:'), chalk.cyan(JSON.stringify(req.query, null, 2)));
+    logger.info('Google OAuth callback received', { query: req.query });
 
     if (!code || !state) {
         return res.status(400).send('Invalid OAuth state');
@@ -87,7 +88,7 @@ export async function googleCallback(req: Request, res: Response) {
             // Create new user
             user = await createUser(name, email, null);
         } else {
-            console.log('Existing user', user)
+            logger.debug('Existing user', { userId: user.id, email: user.email });
         }
 
         if (!user) {
@@ -108,7 +109,7 @@ export async function googleCallback(req: Request, res: Response) {
             </script>
           `);
     } catch (error) {
-        console.error('Google OAuth error:', error);
+        logger.error('Google OAuth error:', { error });
         res.status(500).send('Authentication failed');
     }
 }

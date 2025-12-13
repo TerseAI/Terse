@@ -12,6 +12,7 @@ import { githubApp } from "../config/settings";
 import { Repository, GithubAppInstallationCallbackRequest, GetGithubRepositoriesForIntegrationResponse } from "../shared/types";
 import { getAppInstallationRepositories, getAppInstallationsForUser, GithubIntegrationManager } from "../integrations/GithubIntegration";
 import { emitCacheInvalidationWithKey } from "../realtimeSocket";
+import logger from "../logger";
 
 // MARK: - Route Handlers
 
@@ -26,7 +27,7 @@ export async function getGithubIntegrations(req: Request, res: Response) {
         const integrations = await manager.getInstancesForUser(req.session.user.id);
         res.status(200).json(integrations);
     } catch (error) {
-        console.error('Error fetching GitHub integrations:', error);
+        logger.error('Error fetching GitHub integrations', { error: error instanceof Error ? error.message : String(error), stack: error instanceof Error ? error.stack : undefined });
         res.status(500).json({ error: 'Failed to fetch GitHub integrations' });
     }
 }
@@ -43,75 +44,24 @@ export async function getInstallationUrl(req: Request, res: Response) {
             installationUrl
         });
     } catch (error) {
-        console.error('Error generating installation URL:', error);
+        logger.error('Error generating installation URL', { error: error instanceof Error ? error.message : String(error), stack: error instanceof Error ? error.stack : undefined });
         res.status(500).json({ message: 'Failed to generate installation URL' });
     }
 }
 
 export async function processsGithubAppInstallationWebhook(req: Request, res: Response) {
     const body: GithubAppInstallationCallbackRequest = req.body as GithubAppInstallationCallbackRequest;
-    console.log('githubAppInstallationCallback', body);
+    logger.debug('githubAppInstallationCallback', { installationId: body.installationId, username: body.username });
     
     let user: User | null = await resolveUserForGithubInstallation(body.installationId, body.username);
     if (user) {
         emitCacheInvalidationWithKey(user.id, 'integrations');
     }
-
-    // Leaving old code in in case of emergency.
-
-    // Check if the user is registered with us, no problem if not. Will make a placeholder user.
-    // let user: User | null = await resolveUserForGithubInstallation(body.installationId, body.username);
-    // if (!user) {
-    //     user = await db().users.create({
-    //         data: {
-    //             github_username: body.username,
-    //             is_placeholder: true,
-    //             email: body.email || `${body.username}@username.ai`,
-    //             display_name: body.name || body.username
-    //         }
-    //     });
-
-    //     console.log(chalk.green('Placeholder user created:'), user);
-    // }
-
-    // // Update the user_github_installation record with the user_id and account_name
-    // const updateData: { user_id: string; account_name?: string | null } = {
-    //     user_id: user.id
-    // };
-    // if (body.accountName !== undefined) {
-    //     updateData.account_name = body.accountName;
-    // }
-
-    // const createData: { user_id: string; installation_id: number; account_name?: string | null } = {
-    //     user_id: user.id,
-    //     installation_id: body.installationId
-    // };
-    // if (body.accountName !== undefined) {
-    //     createData.account_name = body.accountName;
-    // }
-
-    // await db().user_github_installation.upsert({
-    //     where: { installation_id: body.installationId },
-    //     update: updateData,
-    //     create: createData
-    // });
-
-    // // Process each repository in the array
-    // const processedRepositories = await Promise.all(
-    //     body.repositories.map(repositoryData =>
-    //         processRepository(repositoryData, user, body.installationId)
-    //     )
-    // );
-
-    // res.status(200).json({
-    //     message: 'Repository installation callback processed',
-    //     processedRepositories
-    // });
 }
 
 export async function githubAppInstallationDeleted(req: Request, res: Response) {
-    console.log('githubAppInstallationDeleted', req.body);
     const body: GithubAppInstallationDeletedRequest = req.body as GithubAppInstallationDeletedRequest;
+    logger.debug('githubAppInstallationDeleted', { installationId: body.installationId, username: body.username });
 
     await db().$transaction(async (tx) => {
         // find all repos for this installation
@@ -143,12 +93,12 @@ export async function githubAppUnifiedEvent(req: Request, res: Response) {
     const body: GithubAppUnifiedEventRequest = req.body as GithubAppUnifiedEventRequest;
 
     const { username, repositoryName, installationId } = body;
-    console.log(chalk.blue('githubAppUnifiedEvent'), body.eventType, body.repositoryName, body.username);
+    logger.info('githubAppUnifiedEvent', { eventType: body.eventType, repositoryName: body.repositoryName, username: body.username });
 
     // Process event through integration manager
     const githubIntegrationManager = new GithubIntegrationManager();
     await githubIntegrationManager.processWebhookEvent(body).catch((error) => {
-        console.error(chalk.red('Error processing GitHub event in integration manager:'), error);
+        logger.error('Error processing GitHub event in integration manager', { error: error instanceof Error ? error.message : String(error), stack: error instanceof Error ? error.stack : undefined, eventType: body.eventType, repositoryName, username });
     });
 
     try {
@@ -157,7 +107,7 @@ export async function githubAppUnifiedEvent(req: Request, res: Response) {
             let foundUser = await tx.users.findFirst({ where: { github_username: username } });
             if (!foundUser) {
                 const email = username + '@username.ai';
-                console.log(chalk.yellow('User not found, creating placeholder user with fake email ' + email));
+                logger.info('User not found, creating placeholder user with fake email', { email, githubUsername: username, displayName: body.sender.login });
                 foundUser = await tx.users.create({
                     data: {
                         github_username: username,
@@ -166,7 +116,7 @@ export async function githubAppUnifiedEvent(req: Request, res: Response) {
                         display_name: body.sender.login
                     }
                 });
-                console.log(chalk.green('Placeholder user created:'), foundUser);
+                logger.info('Placeholder user created', { userId: foundUser.id, githubUsername: foundUser.github_username, email: foundUser.email });
             }
             return foundUser;
         });
@@ -182,7 +132,7 @@ export async function githubAppUnifiedEvent(req: Request, res: Response) {
             ticketManager: undefined,
         }
 
-        console.log(chalk.blue('Processing event for user:', user.github_username, 'team:', session.teamId));
+        logger.debug('Processing event for user', { githubUsername: user.github_username, teamId: session.teamId, eventType: body.eventType, repositoryName });
 
         // init an Owner with isolated session
         const owner: Owner = new Owner(search(), session)
@@ -194,12 +144,12 @@ export async function githubAppUnifiedEvent(req: Request, res: Response) {
             return;
         }
 
-        console.log(chalk.green('Saving activity event for changed items:'), summary);
+        logger.info('Saving activity event for changed items', { summary, repositoryName, githubUsername: user.github_username });
         await saveActivityEvent(repository, body, summary, user.id);
 
         res.status(200).json({ message: 'GitHub event received and processed' });
     } catch (error) {
-        console.error(chalk.red('Error processing GitHub event:'), error);
+        logger.error('Error processing GitHub event', { error: error instanceof Error ? error.message : String(error), stack: error instanceof Error ? error.stack : undefined, eventType: body.eventType, repositoryName, username });
         res.status(500).json({ message: 'Error processing GitHub event', error: error instanceof Error ? error.message : 'Unknown error' });
     }
 }
@@ -248,7 +198,7 @@ export async function processRepository(
     user: User,
     installationId: number
 ): Promise<{ name: string; status: string; error?: string }> {
-    console.log(chalk.blue('Processing repository:'), repositoryData);
+    logger.debug('Processing repository', { repositoryName: repositoryData.name, owner: repositoryData.owner, installationId, userId: user.id });
 
     // Check if repository already exists
     let repository: GithubRepository | null = await db().github_repositories.findFirst({
@@ -270,7 +220,7 @@ export async function processRepository(
         });
 
         if (userRepository) {
-            console.log(chalk.yellow('User already associated with repository:'), repositoryData.name);
+            logger.debug('User already associated with repository', { repositoryName: repositoryData.name, userId: user.id });
             return { name: repositoryData.name, status: 'already_associated' };
         }
     }
@@ -286,7 +236,7 @@ export async function processRepository(
                     repository_id: Number(repositoryData.id),
                 }
             });
-            console.log(chalk.green('Repository created:'), repository);
+            logger.info('Repository created', { repositoryId: repository.id, repositoryName: repository.name, installationId });
         }
 
         // Associate the user with the repository
@@ -304,11 +254,11 @@ export async function processRepository(
             create: { user_id: user.id, installation_id: installationId }
         });
 
-        console.log(chalk.green('User associated with repository:'), repositoryData.name);
+        logger.info('User associated with repository', { repositoryName: repositoryData.name, userId: user.id, repositoryId: repository.id });
         return { name: repositoryData.name, status: 'associated' };
 
     } catch (error) {
-        console.error(chalk.red('Error processing repository:'), repositoryData.name, error);
+        logger.error('Error processing repository', { error: error instanceof Error ? error.message : String(error), stack: error instanceof Error ? error.stack : undefined, repositoryName: repositoryData.name, userId: user.id, installationId });
         return {
             name: repositoryData.name,
             status: 'error',
@@ -366,7 +316,7 @@ export async function resolveUsersForGithubInstallation(installationId: number):
             where: { id: { in: userIds } }
         });
 
-        console.log(chalk.green('Found ' + users.length + ' users for event from installation: ' + installationId));
+        logger.debug(`Found ${users.length} users for event from installation`, { installationId, userCount: users.length });
         
         return users;
     });
@@ -381,7 +331,7 @@ async function resolveUserGithubRelation(user: User, username: string, repositor
         });
 
         if (!repository) {
-            console.log(chalk.yellow('Drift detected. This repository is not in our DB but it is a registered repository in the github app. Creating it...'));
+            logger.warn('Drift detected. This repository is not in our DB but it is a registered repository in the github app. Creating it...', { repositoryName, installationId, username });
             repository = await tx.github_repositories.create({
                 data: {
                     name: repositoryName,

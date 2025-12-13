@@ -7,6 +7,7 @@ import { NotionPageSession } from "../NotionPageOutput";
 import { getBlockTypeName, describeBlocks } from "../../../utility/notion";
 import { SessionWithTracking } from "../../../agent/ChannelAgent/ChannelAgent";
 import { formatError } from "../../../tools/errors";
+import logger from "../../../logger";
 
 /**
  * Constructs a Notion deep link URL to a specific block.
@@ -54,8 +55,7 @@ Examples:
 Example: "[{\"operation\": \"append\", \"blocks\": [{\"object\": \"block\", \"type\": \"paragraph\", \"paragraph\": {\"rich_text\": [{\"type\": \"text\", \"text\": {\"content\": \"New content\"}}]}}]}]"`),
     }),
     execute: async ({ operations_json }, runContext?: RunContext<SessionWithTracking<NotionPageSession>>) => {
-        console.log(chalk.bgMagenta.white.bold('🛠️ Executing notion_modify_blocks tool'));
-        console.log(chalk.cyan('  Operations JSON: '), chalk.greenBright(operations_json));
+        logger.debug('🛠️ Executing notion_modify_blocks tool', { operationsJson: operations_json });
         // Parse the JSON string
         let operations: Array<{
             operation: 'append' | 'update' | 'delete';
@@ -98,7 +98,7 @@ Example: "[{\"operation\": \"append\", \"blocks\": [{\"object\": \"block\", \"ty
             pageUrl = 'url' in pageResponse ? pageResponse.url : undefined;
         } catch (error) {
             // If we can't fetch the page URL, we'll just skip adding URLs to trackAction
-            console.warn('Could not fetch page URL for deep linking:', error);
+            logger.warn('Could not fetch page URL for deep linking', { error: error instanceof Error ? error.message : String(error) });
         }
 
         const results: any[] = [];

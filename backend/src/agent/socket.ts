@@ -10,6 +10,7 @@ import { ModelEvent, ModelRequest, SendModelRequest } from "../shared/ModelEvent
 import chalk from "chalk";
 import { IAgentSession } from "./agents/AgentSession";
 import { getUserTicketManager } from "../types/user";
+import logger from "../logger";
 
 // invoke with
 // const agentSocketServer = new (server, "/session");
@@ -24,18 +25,17 @@ export class AgentSocketServer {
     }
 
     private handle = async (ws: WebSocket, req: Request) => {
-        console.log(chalk.blue.bold("🔌 Connection Request URL: "), JSON.stringify(req.url));
+        logger.info("🔌 Connection Request URL: ", {url: JSON.stringify(req.url)});
 
         // check if token is in url
         const url = new URL(req.url!, `http://${req.headers.host}`);
         const token = url.searchParams.get('token');
-        console.log(chalk.blue.bold("🔌 Token: "), token);
 
         const agentType = url.searchParams.get('type') || "chat";
-        console.log(chalk.blue.bold("🔌 Agent type: "), agentType);
+        logger.info("🔌 Agent type: ", {agentType});
 
         if (!token) {
-            console.error(chalk.red.bold('❌ No token found. Unable to authenticate user.'));
+            logger.error('❌ No token found. Unable to authenticate user.');
             ws.close(1008, "Unauthorized");
             return;
         }
@@ -43,12 +43,12 @@ export class AgentSocketServer {
         // Authenticate the user from cookies
         const session = await this.authenticateUser(token);
         if (!session) {
-            console.error(chalk.red.bold('❌ Invalid token. Unable to authenticate user. Closing connection.'));
+            logger.error('❌ Invalid token. Unable to authenticate user. Closing connection.');
             ws.close(1008, "Unauthorized");
             return;
         }
 
-        console.log(chalk.blue.bold("🔌 New WebSocket connection established: "), agentType);
+        logger.info("🔌 New WebSocket connection established: ", {agentType});
 
 
         // Keep per-socket state here
@@ -62,12 +62,12 @@ export class AgentSocketServer {
             try {
                 modelRequest = JSON.parse(raw.toString());
             } catch (error) {
-                console.error('Failed to parse WebSocket message:', error);
+                logger.error('Failed to parse WebSocket message', { error: error instanceof Error ? error.message : String(error) });
                 ws.send(JSON.stringify({ type: 'Failure', error: 'Invalid JSON format' }));
                 return;
             }
 
-            console.log(chalk.green.bold("🔌 Message received"), modelRequest);
+            logger.info("🔌 Message received", {modelRequest});
 
             if (modelRequest.type === "SendModelRequest") {
                 let sendModelRequest: SendModelRequest = modelRequest;
@@ -75,16 +75,16 @@ export class AgentSocketServer {
                 const result: StreamedRunResult<any, any> = await agent.run();
                 await this.streamResultWithInterruptions(ws, agent, result);
             } else if (modelRequest.type === "ToolApprovalResponse") {
-                console.log(chalk.yellow.bold("🔌 Tool approval response"), modelRequest);
+                logger.info("🔌 Tool approval response", {modelRequest});
                 const pending = this.pending.get(ws);
                 if (!pending) {
-                    console.error('No pending interruption to handle');
+                    logger.error('No pending interruption to handle');
                     return;
                 }
 
                 const { step_id, approved } = modelRequest;
                 if (step_id !== (pending.interruption.rawItem as any).callId) {
-                    console.error('Step id mismatch');
+                    logger.error('Step id mismatch', { step_id, callId: (pending.interruption.rawItem as any).callId });
                     return;
                 }
 
@@ -96,10 +96,10 @@ export class AgentSocketServer {
 
                 const resumed: StreamedRunResult<any, any> = await run(agent.getAgent(), pending.state, { stream: true });
                 this.pending.delete(ws);
-                console.log(chalk.yellow.bold("🔌 Resumed"));
+                logger.info("🔌 Resumed");
                 await this.streamResultWithInterruptions(ws, agent, resumed);
             } else {
-                console.error('Unknown request');
+                logger.error('Unknown request', { requestType: (modelRequest as any).type });
                 ws.send(JSON.stringify({ type: 'Failure', error: 'Unknown request' }));
             }
         });
@@ -118,7 +118,7 @@ export class AgentSocketServer {
 
         if (result.interruptions && result.interruptions.length > 0) {
             const interruption: RunToolApprovalItem = result.interruptions[0] as RunToolApprovalItem;
-            console.log(chalk.yellow.bold("🔌 Interruption, requesting approval"), interruption.name);
+            logger.info("🔌 Interruption, requesting approval", {interruptionName: interruption.name});
             this.pending.set(ws, { state: result.state, interruption });
             this.sendMessage(ws, {
                 type: 'ToolApprovalRequest',
@@ -129,7 +129,7 @@ export class AgentSocketServer {
             return;
         }
 
-        console.log(chalk.yellow.bold("🔌 Result final output"), result.finalOutput);
+        logger.info("🔌 Result final output", {finalOutput: result.finalOutput});
 
         agent.setHistory(result.history);
         
@@ -143,13 +143,13 @@ export class AgentSocketServer {
     private async authenticateUser(token: string): Promise<Session | null> {
         const user = await new Jwt().verify(token);
         if (!user) {
-            console.error(chalk.red.bold('❌ Invalid token. Unable to authenticate user.'));
+            logger.error('❌ Invalid token. Unable to authenticate user.');
             return null;
         }
 
         const ticketManager = await getUserTicketManager(user.id);
         if (!ticketManager) {
-            console.error(chalk.red.bold('❌ Unable to get ticket manager. Unable to authenticate user.'));
+            logger.error('❌ Unable to get ticket manager. Unable to authenticate user.', { userId: user.id });
             return null;
         }
 
@@ -174,7 +174,7 @@ export async function requestSessionSocketToken(req: Request, res: Response) {
         const token = await new Jwt().sign(user.id);
         res.json(token);
     } catch (error) {
-        console.error('Failed to request session socket token:', error);
+        logger.error('Failed to request session socket token', { error: error instanceof Error ? error.message : String(error) });
         res.status(500).json({ error: 'Failed to request session socket token' });
     }
 }

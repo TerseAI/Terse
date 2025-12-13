@@ -13,6 +13,7 @@ import { InputConfigType } from "@prisma/client";
 import { RunHistoryTrigger } from "../shared/RunHistoryTypes";
 import { InputEvent } from "./abstract/InputEvent";
 import { Request, Response } from "express";
+import logger from "../logger";
 
 
 // OAuth2 scopes for Gmail
@@ -64,7 +65,7 @@ export class GmailIntegrationManager implements Integration<GmailIntegration, Gm
 
     async processWebhookEvent(event: GmailWebhookEvent): Promise<void> {
         const { emailAddress, historyId } = event;
-        console.log(`Gmail notification for ${emailAddress}, historyId: ${historyId}`);
+        logger.info(`Gmail notification for ${emailAddress}, historyId: ${historyId}`, { emailAddress, historyId });
 
         try {
             // Step 1: Atomically claim this history ID update (CRITICAL SECTION - in transaction)
@@ -73,7 +74,7 @@ export class GmailIntegrationManager implements Integration<GmailIntegration, Gm
             });
 
             if (claims.length === 0) {
-                console.log(`Skipping webhook processing for ${emailAddress}`);
+                logger.debug(`Skipping webhook processing for ${emailAddress}`, { emailAddress, historyId });
                 return;
             }
 
@@ -86,7 +87,7 @@ export class GmailIntegrationManager implements Integration<GmailIntegration, Gm
                 const messageIds = await fetchNewMessageIds(integration, oldHistoryId);
 
                 if (messageIds.length === 0) {
-                    console.log(`No new messages to process for ${emailAddress}`);
+                    logger.debug(`No new messages to process for ${emailAddress}`, { emailAddress, integrationId: integration.id });
                     return;
                 }
 
@@ -112,7 +113,7 @@ export class GmailIntegrationManager implements Integration<GmailIntegration, Gm
                     );
 
                     if (!wasNewlyProcessed) {
-                        console.log(chalk.yellow(`Skipping already processed message ${messageId}`));
+                        logger.debug(`Skipping already processed message ${messageId}`, { messageId, integrationId: integration.id });
                         continue;
                     }
 
@@ -122,29 +123,18 @@ export class GmailIntegrationManager implements Integration<GmailIntegration, Gm
                         const emailTimestamp = parseInt(parsedEmail.internalDate, 10);
                         const emailDate = new Date(emailTimestamp);
 
-                        console.log("Recieved Webhook for email:")
-                        console.log("Email From: ", parsedEmail.from);
-                        console.log("Email to: ", parsedEmail.to);
-                        console.log("Email subject: ", parsedEmail.subject);
-                        console.log("Email date: ", emailDate.toISOString());
+                        logger.debug("Received Webhook for email", { from: parsedEmail.from, to: parsedEmail.to, subject: parsedEmail.subject, date: emailDate.toISOString(), messageId, integrationId: integration.id });
 
                         // Skip messages older than the last processed message date
                         if (lastProcessedDate && emailDate <= lastProcessedDate) {
-                            console.log(chalk.gray(`Skipping old message ${parsedEmail.id} from ${emailDate.toISOString()}`));
-                            console.log(chalk.gray(`  Subject: ${parsedEmail.subject}`));
-
+                            logger.debug(`Skipping old message ${parsedEmail.id} from ${emailDate.toISOString()}`, { messageId: parsedEmail.id, subject: parsedEmail.subject, emailDate: emailDate.toISOString(), lastProcessedDate: lastProcessedDate.toISOString(), integrationId: integration.id });
                             // Mark as processed (non-blocking)
                             await markMessageAsProcessed(integration.id, parsedEmail.id, parsedEmail.internalDate);
                             continue;
                         }
 
                         // Process email through automations (non-blocking)
-                        console.log(chalk.cyan('About to process email:'));
-                        console.log(chalk.cyan(`  Integration for user: ${user.email}`));
-                        console.log(chalk.cyan(`  Subject: ${parsedEmail.subject}`));
-                        console.log(chalk.cyan(`  From: ${parsedEmail.from}`));
-                        console.log(chalk.cyan(`  To: ${parsedEmail.to}`));
-                        console.log(chalk.cyan(`  Date: ${emailDate.toISOString()}`));
+                        logger.info('About to process email', { userEmail: user.email, subject: parsedEmail.subject, from: parsedEmail.from, to: parsedEmail.to, date: emailDate.toISOString(), integrationId: integration.id, messageId: parsedEmail.id });
 
                         const eventProcessor = new EventProcessor(new GmailEvent(parsedEmail, integration.id), user);
                         const results = await eventProcessor.process();
@@ -153,10 +143,10 @@ export class GmailIntegrationManager implements Integration<GmailIntegration, Gm
                         let hasSuccess = false;
                         for (const result of results) {
                             if (result.success) {
-                                console.log(chalk.green(`Email processed successfully by channel: ${result.channel?.name || 'unknown'}`));
+                                logger.info(`Email processed successfully by channel: ${result.channel?.name || 'unknown'}`, { channelName: result.channel?.name, integrationId: integration.id, messageId: parsedEmail.id });
                                 hasSuccess = true;
                             } else {
-                                console.log(chalk.gray(`Channel "${result.channel?.name || 'unknown'}" skipped: ${result.message}`));
+                                logger.debug(`Channel "${result.channel?.name || 'unknown'}" skipped: ${result.message}`, { channelName: result.channel?.name, message: result.message, integrationId: integration.id });
                             }
                         }
 
@@ -173,13 +163,13 @@ export class GmailIntegrationManager implements Integration<GmailIntegration, Gm
                         where: { id: integration.id },
                         data: { last_processed_message_date: mostRecentEmailDate },
                     });
-                    console.log(chalk.green(`Updated last processed message date to ${mostRecentEmailDate.toISOString()}`));
+                    logger.info(`Updated last processed message date to ${mostRecentEmailDate.toISOString()}`, { mostRecentEmailDate: mostRecentEmailDate.toISOString(), integrationId: integration.id });
                 }
 
-                console.log(`Successfully processed webhook for ${emailAddress}, historyId: ${historyId}`);
+                logger.info(`Successfully processed webhook for ${emailAddress}, historyId: ${historyId}`, { emailAddress, historyId, integrationId: integration.id });
             }
         } catch (error) {
-            console.error('Error processing Gmail webhook:', error);
+            logger.error('Error processing Gmail webhook', { error: error instanceof Error ? error.message : String(error), stack: error instanceof Error ? error.stack : undefined, emailAddress, historyId });
             // Re-throw to ensure it's logged by the caller
             throw error;
         }
@@ -210,7 +200,7 @@ export class GmailIntegrationManager implements Integration<GmailIntegration, Gm
     async processInstallationCallback(req: Request, res: Response): Promise<void> {
         const { code, state } = req.query as { code?: string; state?: string };
 
-        console.log("Gmail OAuth callback received");
+        logger.debug("Gmail OAuth callback received");
 
         if (!code || !state) {
             res.redirect(`${urls.frontend}/oauth/error`);
@@ -301,12 +291,12 @@ export class GmailIntegrationManager implements Integration<GmailIntegration, Gm
                 },
             });
 
-            console.log(`Gmail integration activated for ${emailAddress}`);
+            logger.info(`Gmail integration activated for ${emailAddress}`, { emailAddress, userId });
 
             // Redirect to success page which will auto-close the popup
             res.redirect(`${urls.frontend}/oauth/success`);
         } catch (error) {
-            console.error("Gmail OAuth error:", error);
+            logger.error("Gmail OAuth error", { error: error instanceof Error ? error.message : String(error), stack: error instanceof Error ? error.stack : undefined });
             res.redirect(`${urls.frontend}/oauth/error`);
         }
     }
@@ -332,7 +322,7 @@ export class GmailIntegrationManager implements Integration<GmailIntegration, Gm
             });
 
             if (!integration || !integration.is_active) {
-                console.log(`Gmail integration ${integrationId} not found or inactive`);
+                logger.warn(`Gmail integration ${integrationId} not found or inactive`, { integrationId });
                 return false;
             }
 
@@ -342,7 +332,7 @@ export class GmailIntegrationManager implements Integration<GmailIntegration, Gm
             // Use getAccessToken which internally handles token refresh via refreshAccessTokenIfNeeded
             const accessToken = await this.getAccessToken(integrationId);
             if (!accessToken) {
-                console.error(`Failed to get access token for Gmail integration ${integrationId}`);
+                logger.error(`Failed to get access token for Gmail integration ${integrationId}`, { integrationId });
                 return false;
             }
 
@@ -362,7 +352,7 @@ export class GmailIntegrationManager implements Integration<GmailIntegration, Gm
                 integration.watch_expiration <= new Date(now.getTime() + 24 * 60 * 60 * 1000);
 
             if (watchNeedsRefresh || tokenRefreshed) {
-                console.log(`Refreshing Gmail watch for integration ${integrationId}`);
+                logger.info(`Refreshing Gmail watch for integration ${integrationId}`, { integrationId, watchNeedsRefresh, tokenRefreshed });
 
                 // Set up OAuth client with current credentials
                 const oauth2Client = getOAuth2Client();
@@ -390,7 +380,7 @@ export class GmailIntegrationManager implements Integration<GmailIntegration, Gm
                 const expiration = watchResponse.data.expiration;
 
                 if (!historyId || !expiration) {
-                    console.error(`Failed to refresh watch for ${integrationId}: Missing historyId or expiration`);
+                    logger.error(`Failed to refresh watch for ${integrationId}: Missing historyId or expiration`, { integrationId });
                     // Don't fail the whole operation if watch refresh fails
                 } else {
                     // Update the database with new watch information
@@ -402,13 +392,13 @@ export class GmailIntegrationManager implements Integration<GmailIntegration, Gm
                         },
                     });
 
-                    console.log(`Successfully refreshed Gmail watch for ${integrationId}. New expiration: ${new Date(parseInt(expiration)).toISOString()}`);
+                    logger.info(`Successfully refreshed Gmail watch for ${integrationId}. New expiration: ${new Date(parseInt(expiration)).toISOString()}`, { integrationId, expiration: new Date(parseInt(expiration)).toISOString() });
                 }
             }
 
             return tokenRefreshed;
         } catch (error) {
-            console.error(`Error refreshing Gmail token for integration ${integrationId}:`, error);
+            logger.error(`Error refreshing Gmail token for integration ${integrationId}`, { error: error instanceof Error ? error.message : String(error), stack: error instanceof Error ? error.stack : undefined, integrationId });
             return false;
         }
     }
@@ -420,14 +410,14 @@ export class GmailIntegrationManager implements Integration<GmailIntegration, Gm
             });
 
             if (!integration || !integration.is_active) {
-                console.error(`Gmail integration ${integrationId} not found or inactive`);
+                logger.error(`Gmail integration ${integrationId} not found or inactive`, { integrationId });
                 return null;
             }
 
             // Use the existing helper function to ensure token is refreshed if needed
             return await refreshAccessTokenIfNeeded(integration);
         } catch (error) {
-            console.error(`Error getting Gmail access token for integration ${integrationId}:`, error);
+            logger.error(`Error getting Gmail access token for integration ${integrationId}`, { error: error instanceof Error ? error.message : String(error), stack: error instanceof Error ? error.stack : undefined, integrationId });
             return null;
         }
     }
@@ -472,14 +462,14 @@ export class GmailEvent extends InputEvent {
 
         // If the event is not in the INBOX, it doesn't match the channel input
         if (!this.data.labelIds.includes('INBOX')) {
-            console.log(chalk.gray(`Skipping email ${this.data.messageId} because it is not in the INBOX with label ids: ${this.data.labelIds}`));
+            logger.debug(`Skipping email ${this.data.messageId} because it is not in the INBOX with label ids: ${this.data.labelIds}`, { messageId: this.data.messageId, labelIds: this.data.labelIds });
             return false;
         }
 
         // If integrationId is set, it must match the automation's integration_id
         // This ensures automations are only triggered by emails from their configured integration
         if (this.integrationId && channelInput.integration_id !== this.integrationId) {
-            console.log(chalk.gray(`Skipping email ${this.data.messageId} - integration ID mismatch: event from ${this.integrationId}, channel expects ${channelInput.integration_id}`));
+            logger.debug(`Skipping email ${this.data.messageId} - integration ID mismatch: event from ${this.integrationId}, channel expects ${channelInput.integration_id}`, { messageId: this.data.messageId, eventIntegrationId: this.integrationId, channelIntegrationId: channelInput.integration_id });
             return false;
         }
 
@@ -527,37 +517,37 @@ async function refreshAccessTokenIfNeeded(
 ): Promise<string> {
     const now = new Date();
 
-    // Check if token is expired or will expire within the refresh threshold
-    if (
-        integration.token_expiry &&
-        integration.token_expiry <= new Date(now.getTime() + OAUTH_TOKEN_REFRESH_THRESHOLD_MS)
-    ) {
-        console.log("Access token expired or expiring soon, refreshing...");
+        // Check if token is expired or will expire within the refresh threshold
+        if (
+            integration.token_expiry &&
+            integration.token_expiry <= new Date(now.getTime() + OAUTH_TOKEN_REFRESH_THRESHOLD_MS)
+        ) {
+            logger.info("Access token expired or expiring soon, refreshing...", { integrationId: integration.id, tokenExpiry: integration.token_expiry });
 
-        const oauth2Client = getOAuth2Client();
-        oauth2Client.setCredentials({
-            refresh_token: integration.refresh_token,
-        });
+            const oauth2Client = getOAuth2Client();
+            oauth2Client.setCredentials({
+                refresh_token: integration.refresh_token,
+            });
 
-        const { credentials } = await oauth2Client.refreshAccessToken();
+            const { credentials } = await oauth2Client.refreshAccessToken();
 
-        const newTokenExpiry = credentials.expiry_date
-            ? new Date(credentials.expiry_date)
-            : new Date(Date.now() + 3600 * 1000);
+            const newTokenExpiry = credentials.expiry_date
+                ? new Date(credentials.expiry_date)
+                : new Date(Date.now() + 3600 * 1000);
 
-        // Update the database with new tokens
-        await db().gmail_integrations.update({
-            where: { id: integration.id },
-            data: {
-                access_token: credentials.access_token!,
-                token_expiry: newTokenExpiry,
-            },
-        });
+            // Update the database with new tokens
+            await db().gmail_integrations.update({
+                where: { id: integration.id },
+                data: {
+                    access_token: credentials.access_token!,
+                    token_expiry: newTokenExpiry,
+                },
+            });
 
-        console.log("Access token refreshed successfully");
+            logger.info("Access token refreshed successfully", { integrationId: integration.id, newTokenExpiry });
 
-        return credentials.access_token!;
-    }
+            return credentials.access_token!;
+        }
 
     return integration.access_token;
 }
@@ -573,7 +563,7 @@ async function claimHistoryIdUpdateInTransaction(
 ): Promise<ProcessedWebhookClaim[]> {
     const newHistoryIdString = newHistoryId.toString();
 
-    console.log("Getting Integrations associated with email:", emailAddress, "new history id:", newHistoryIdString);
+    logger.debug("Getting Integrations associated with email", { emailAddress, newHistoryId: newHistoryIdString });
     const integrations = await tx.gmail_integrations.findMany({
         where: {
             email: emailAddress,
@@ -582,7 +572,7 @@ async function claimHistoryIdUpdateInTransaction(
     });
 
     if (!integrations || integrations.length === 0) {
-        console.log('No active integrations found for email:', emailAddress);
+        logger.debug('No active integrations found for email', { emailAddress });
         return [{ shouldProcess: false, integration: null, user: null, oldHistoryId: null }];
     }
 
@@ -591,11 +581,7 @@ async function claimHistoryIdUpdateInTransaction(
             const oldHistoryId = integration.history_id;
             const currentHistoryId = parseInt(integration.history_id, 10);
             if (newHistoryId <= currentHistoryId) {
-                console.log(
-                    chalk.yellow(
-                        `Skipping webhook: historyId ${newHistoryId} is not newer than current ${currentHistoryId}`
-                    )
-                );
+                logger.debug(`Skipping webhook: historyId ${newHistoryId} is not newer than current ${currentHistoryId}`, { newHistoryId, currentHistoryId, integrationId: integration.id });
                 return { shouldProcess: false, integration: null, user: null, oldHistoryId: null };
             }
 
@@ -613,7 +599,7 @@ async function claimHistoryIdUpdateInTransaction(
             });
 
             if (!user) {
-                console.log('No user found for integration:', integration.user_id);
+                logger.warn('No user found for integration', { userId: integration.user_id, integrationId: integration.id });
                 return { shouldProcess: false, integration: null, user: null, oldHistoryId: null };
             }
 
@@ -675,7 +661,7 @@ async function fetchNewMessageIds(
 
     const gmail = google.gmail({ version: "v1", auth: oauth2Client });
 
-    console.log(`Fetching Gmail history from ${oldHistoryId}`);
+    logger.debug(`Fetching Gmail history from ${oldHistoryId}`, { oldHistoryId, integrationId: integration.id });
 
     const historyResponse = await gmail.users.history.list({
         userId: "me",
@@ -687,7 +673,7 @@ async function fetchNewMessageIds(
     const history = historyResponse.data.history || [];
 
     if (history.length === 0) {
-        console.log("No new messages in history");
+        logger.debug("No new messages in history", { oldHistoryId, integrationId: integration.id });
         return [];
     }
 
@@ -703,7 +689,7 @@ async function fetchNewMessageIds(
         }
     }
 
-    console.log(`Found ${messageIds.length} new messages`);
+    logger.debug(`Found ${messageIds.length} new messages`, { messageCount: messageIds.length, oldHistoryId, integrationId: integration.id });
 
     return messageIds;
 }
@@ -779,12 +765,10 @@ async function fetchAndParseEmail(
         error?.code === 404 ||
         error?.message?.includes("Requested entity was not found")
       ) {
-        console.log(
-          chalk.gray(`Message ${messageId} not found (likely deleted or moved)`)
-        );
+        logger.debug(`Message ${messageId} not found (likely deleted or moved)`, { messageId });
       } else {
         // Log other errors as actual errors
-        console.error(`Error fetching message ${messageId}:`, error);
+        logger.error(`Error fetching message ${messageId}`, { error: error instanceof Error ? error.message : String(error), stack: error instanceof Error ? error.stack : undefined, messageId });
       }
       return null;
     }

@@ -10,6 +10,7 @@ import { getRealtimeSocket } from '../../realtimeSocket';
 import { randomString } from '../../utility/strings';
 import { settings } from '../../config/settings';
 import { runnerFactory } from '../runner';
+import logger from '../../logger';
 
 export interface EventFilterResult {
     isRelevant: boolean;
@@ -170,7 +171,7 @@ export async function filterEvent(
                     }
                 }
             } catch (error) {
-                console.error('Error streaming filter events:', error);
+                logger.error('Error streaming filter events', { error: error instanceof Error ? error.message : String(error), stack: error instanceof Error ? error.stack : undefined, runId: streamingParams.runId, channelId: streamingParams.channelId });
                 // Continue with parsing even if streaming fails
             }
         }
@@ -211,8 +212,7 @@ export async function filterEvent(
                 io.to(userRoom).emit('channel:chat:event', payload);
             }
         }
-
-        console.log(`Event filter result for ${event.integrationType}:`, parsed);
+        logger.info(`Event filter result for ${event.integrationType}:`, {parsed});
         return { result: parsed, stream: result };
 
     } catch (error) {

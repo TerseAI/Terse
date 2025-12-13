@@ -22,6 +22,7 @@ import { FigmaIntegration, FigmaIntegrationMetadata, IntegrationType } from "../
 import jwt from "jsonwebtoken";
 import { figma as figmaConfig, jwt as jwtConfig, urls, OAUTH_TOKEN_REFRESH_THRESHOLD_MS } from "../config/settings";
 import { Request, Response } from "express";
+import logger from "../logger";
 
 export class FigmaIntegrationManager implements Integration<FigmaIntegration, FigmaWebhookEvent, typeof FigmaIntegrationMetadata>, OAuthIntegrationInstallation<IntegrationType.FIGMA> {
   constructor() { }
@@ -63,7 +64,7 @@ export class FigmaIntegrationManager implements Integration<FigmaIntegration, Fi
 
     const supportedEventTypes = Object.values(FigmaEventTypes);
     if (!supportedEventTypes.includes(eventType as FigmaEventTypes)) {
-      console.log(chalk.yellow(`⚠️  Ignoring unsupported event type ${eventType}`));
+      logger.warn(`⚠️  Ignoring unsupported event type ${eventType}`, { eventType });
       return;
     }
 
@@ -83,7 +84,7 @@ export class FigmaIntegrationManager implements Integration<FigmaIntegration, Fi
     });
 
     if (integrations.length === 0) {
-      console.log(chalk.yellow(`⚠️  No integrations found with matching passcode`));
+      logger.warn(`⚠️  No integrations found with matching passcode`, { passcode: receivedPasscode });
       return;
     }
 
@@ -121,7 +122,7 @@ export class FigmaIntegrationManager implements Integration<FigmaIntegration, Fi
     const { code, state, error } = req.query;
 
     if (error) {
-      console.error(chalk.red("Figma OAuth error:"), error);
+      logger.error("Figma OAuth error", { error: String(error) });
       res.redirect(`${urls.frontend}/oauth/error`);
       return;
     }
@@ -158,25 +159,16 @@ export class FigmaIntegrationManager implements Integration<FigmaIntegration, Fi
 
       if (!tokenResponse.ok) {
         const errorText = await tokenResponse.text();
-        console.error(chalk.red("Figma token exchange failed:"), errorText);
+        logger.error("Figma token exchange failed", { error: errorText });
         throw new Error(`Figma token exchange failed: ${errorText}`);
       }
 
       const tokenData = await tokenResponse.json();
       const { access_token, refresh_token, expires_in, user_id_string } = tokenData;
 
-      console.log(
-        chalk.blue("🔑 Received Figma access token for user"),
-        chalk.yellow(decoded.userId)
-      );
-      console.log(
-        chalk.blue("👤 Figma User ID:"),
-        chalk.yellow(user_id_string)
-      );
-      console.log(
-        chalk.blue("Expires in:"),
-        chalk.yellow(expires_in)
-      );
+      logger.info("🔑 Received Figma access token for user", { userId: decoded.userId });
+      logger.info("👤 Figma User ID", { userId: decoded.userId, figmaUserId: user_id_string });
+      logger.debug("Token expires in", { expiresIn: expires_in, userId: decoded.userId });
 
       // Calculate token expiry
       const tokenExpiry = new Date(Date.now() + (expires_in * 1000));
@@ -216,10 +208,7 @@ export class FigmaIntegrationManager implements Integration<FigmaIntegration, Fi
             token_expiry: tokenExpiry,
           },
         });
-        console.log(
-          chalk.green("✅ Created Figma connection for user"),
-          chalk.yellow(decoded.userId)
-        );
+        logger.info("✅ Created Figma connection for user", { userId: decoded.userId, figmaUserId: user_id_string, handle });
       } else {
         // Update existing connection with new token (in case it was revoked and re-authorized)
         await db().figma_integrations.update({
@@ -232,21 +221,15 @@ export class FigmaIntegrationManager implements Integration<FigmaIntegration, Fi
             token_expiry: tokenExpiry,
           },
         });
-        console.log(
-          chalk.green("✅ Updated Figma connection token for user"),
-          chalk.yellow(decoded.userId)
-        );
+        logger.info("✅ Updated Figma connection token for user", { userId: decoded.userId, figmaUserId: user_id_string, integrationId: existing.id });
       }
 
-      console.log(
-        chalk.green("✅ Figma OAuth completed for user"),
-        chalk.yellow(decoded.userId)
-      );
+      logger.info("✅ Figma OAuth completed for user", { userId: decoded.userId, figmaUserId: user_id_string });
 
       // Redirect to success page which will auto-close the popup
       res.redirect(`${urls.frontend}/oauth/success`);
     } catch (error) {
-      console.error(chalk.red("Error in Figma OAuth callback:"), error);
+      logger.error("Error in Figma OAuth callback", { error: error instanceof Error ? error.message : String(error), stack: error instanceof Error ? error.stack : undefined });
       res.redirect(`${urls.frontend}/oauth/error`);
     }
   }
@@ -258,14 +241,14 @@ export class FigmaIntegrationManager implements Integration<FigmaIntegration, Fi
   async setupChannelInput(integrationId: string, channelInput: ChannelInputWithConfigs): Promise<void> {
     // Check if figma_config exists at all
     if (!channelInput.figma_config) {
-      console.log(chalk.yellow(`⚠️  No Figma config found for input ${channelInput.id}. Skipping webhook setup.`));
+      logger.warn(`⚠️  No Figma config found for input ${channelInput.id}. Skipping webhook setup.`, { inputId: channelInput.id });
       return;
     }
 
     const fileKey = channelInput.figma_config.file_key;
 
     if (!fileKey) {
-      console.log(chalk.yellow(`⚠️  No file_key specified in Figma config for input ${channelInput.id}`));
+      logger.warn(`⚠️  No file_key specified in Figma config for input ${channelInput.id}`, { inputId: channelInput.id });
       return;
     }
 
@@ -275,7 +258,7 @@ export class FigmaIntegrationManager implements Integration<FigmaIntegration, Fi
     });
 
     if (!figmaIntegration) {
-      console.log(chalk.yellow(`⚠️  Figma integration not found: ${integrationId}`));
+      logger.warn(`⚠️  Figma integration not found: ${integrationId}`, { integrationId });
       return;
     }
 
@@ -313,9 +296,7 @@ export class FigmaIntegrationManager implements Integration<FigmaIntegration, Fi
 
         // In development, always delete and recreate webhooks
         if (isDevelopment && existingWebhook) {
-          console.log(
-            chalk.yellow(`🔄 Development mode: Deleting existing webhook ${existingWebhook.webhook_id} for team ${teamId}, event ${eventType}`)
-          );
+          logger.info(`🔄 Development mode: Deleting existing webhook ${existingWebhook.webhook_id} for team ${teamId}, event ${eventType}`, { webhookId: existingWebhook.webhook_id, teamId, eventType });
 
           // Delete webhook from Figma API
           try {
@@ -328,12 +309,12 @@ export class FigmaIntegrationManager implements Integration<FigmaIntegration, Fi
 
             if (!deleteResponse.ok && deleteResponse.status !== 404) {
               const errorText = await deleteResponse.text();
-              console.error(chalk.red(`Failed to delete existing Figma webhook ${existingWebhook.webhook_id}: ${errorText}`));
+              logger.error(`Failed to delete existing Figma webhook ${existingWebhook.webhook_id}`, { error: errorText, webhookId: existingWebhook.webhook_id, teamId });
             } else {
-              console.log(chalk.green(`✅ Deleted existing webhook ${existingWebhook.webhook_id}`));
+              logger.info(`✅ Deleted existing webhook ${existingWebhook.webhook_id}`, { webhookId: existingWebhook.webhook_id, teamId });
             }
           } catch (error) {
-            console.error(chalk.red(`❌ Error deleting existing webhook ${existingWebhook.webhook_id}:`), error);
+            logger.error(`❌ Error deleting existing webhook ${existingWebhook.webhook_id}`, { error: error instanceof Error ? error.message : String(error), stack: error instanceof Error ? error.stack : undefined, webhookId: existingWebhook.webhook_id, teamId });
           }
 
           // Delete webhook record from database
@@ -342,9 +323,7 @@ export class FigmaIntegrationManager implements Integration<FigmaIntegration, Fi
           });
         } else if (existingWebhook) {
           // In production, reuse existing webhook
-          console.log(
-            chalk.blue(`ℹ️  Team-level webhook already exists for team ${teamId}, event ${eventType}. Reusing existing webhook ${existingWebhook.webhook_id}`)
-          );
+          logger.info(`ℹ️  Team-level webhook already exists for team ${teamId}, event ${eventType}. Reusing existing webhook ${existingWebhook.webhook_id}`, { webhookId: existingWebhook.webhook_id, teamId, eventType });
           continue; // Webhook already exists, skip creation
         }
 
@@ -369,7 +348,7 @@ export class FigmaIntegrationManager implements Integration<FigmaIntegration, Fi
 
         if (!webhookResponse.ok) {
           const errorText = await webhookResponse.text();
-          console.error(chalk.red(`Failed to create Figma webhook for ${eventType}: ${errorText}`));
+          logger.error(`Failed to create Figma webhook for ${eventType}`, { error: errorText, eventType, teamId });
           throw new Error(`Failed to create Figma webhook for ${eventType}: ${errorText}`);
         }
 
@@ -392,12 +371,10 @@ export class FigmaIntegrationManager implements Integration<FigmaIntegration, Fi
           },
         });
 
-        console.log(
-          chalk.green(`✅ Created team-level Figma webhook ${webhookId} for team ${teamId}, event ${eventType}`)
-        );
+        logger.info(`✅ Created team-level Figma webhook ${webhookId} for team ${teamId}, event ${eventType}`, { webhookId, teamId, eventType });
       }
     } catch (error) {
-      console.error(chalk.red(`❌ Error creating Figma webhooks for team ${teamId}:`), error);
+      logger.error(`❌ Error creating Figma webhooks for team ${teamId}`, { error: error instanceof Error ? error.message : String(error), stack: error instanceof Error ? error.stack : undefined, teamId });
       throw error;
     }
   }
@@ -406,7 +383,7 @@ export class FigmaIntegrationManager implements Integration<FigmaIntegration, Fi
     const teamId = channelInput.figma_config?.team_id;
 
     if (!teamId) {
-      console.log(chalk.blue(`ℹ️  No team_id in config, skipping webhook cleanup for channel input ${channelInput.id}`));
+      logger.info(`ℹ️  No team_id in config, skipping webhook cleanup for channel input ${channelInput.id}`, { inputId: channelInput.id });
       return;
     }
 
@@ -416,7 +393,7 @@ export class FigmaIntegrationManager implements Integration<FigmaIntegration, Fi
     });
 
     if (!figmaIntegration) {
-      console.log(chalk.yellow(`⚠️  Figma integration not found: ${integrationId}`));
+      logger.warn(`⚠️  Figma integration not found: ${integrationId}`, { integrationId });
       return;
     }
 
@@ -442,9 +419,7 @@ export class FigmaIntegrationManager implements Integration<FigmaIntegration, Fi
     );
 
     if (otherTeamUsers.length > 0) {
-      console.log(
-        chalk.blue(`ℹ️  Team ${teamId} still in use by ${otherTeamUsers.length} other automation(s). Keeping team-level webhooks.`)
-      );
+      logger.info(`ℹ️  Team ${teamId} still in use by ${otherTeamUsers.length} other automation(s). Keeping team-level webhooks.`, { teamId, otherAutomationsCount: otherTeamUsers.length, integrationId });
       return; // Don't delete webhooks, other automations are using them
     }
 
@@ -457,14 +432,14 @@ export class FigmaIntegrationManager implements Integration<FigmaIntegration, Fi
     });
 
     if (webhooks.length === 0) {
-      console.log(chalk.blue(`ℹ️  No webhooks found for team ${teamId}`));
+      logger.info(`ℹ️  No webhooks found for team ${teamId}`, { teamId, integrationId });
       return;
     }
 
     // Get valid access token (handles refresh automatically)
     const accessToken = await this.getAccessToken(integrationId);
     if (!accessToken) {
-      console.log(chalk.yellow(`⚠️  Could not get valid access token, skipping webhook deletion`));
+      logger.warn(`⚠️  Could not get valid access token, skipping webhook deletion`, { integrationId, teamId });
       return;
     }
 
@@ -481,12 +456,12 @@ export class FigmaIntegrationManager implements Integration<FigmaIntegration, Fi
         if (!deleteResponse.ok && deleteResponse.status !== 404) {
           // 404 means webhook already deleted, which is fine
           const errorText = await deleteResponse.text();
-          console.error(chalk.red(`Failed to delete Figma webhook ${webhook.webhook_id} (${webhook.event_type}): ${errorText}`));
+          logger.error(`Failed to delete Figma webhook ${webhook.webhook_id} (${webhook.event_type})`, { error: errorText, webhookId: webhook.webhook_id, eventType: webhook.event_type, teamId });
         } else {
-          console.log(chalk.green(`✅ Deleted team-level Figma webhook ${webhook.webhook_id} (${webhook.event_type}) for team ${teamId}`));
+          logger.info(`✅ Deleted team-level Figma webhook ${webhook.webhook_id} (${webhook.event_type}) for team ${teamId}`, { webhookId: webhook.webhook_id, eventType: webhook.event_type, teamId });
         }
       } catch (error) {
-        console.error(chalk.red(`❌ Error deleting Figma webhook ${webhook.webhook_id}:`), error);
+        logger.error(`❌ Error deleting Figma webhook ${webhook.webhook_id}`, { error: error instanceof Error ? error.message : String(error), stack: error instanceof Error ? error.stack : undefined, webhookId: webhook.webhook_id, teamId });
         // Continue with database cleanup even if API call fails
       }
     }
@@ -499,7 +474,7 @@ export class FigmaIntegrationManager implements Integration<FigmaIntegration, Fi
       },
     });
 
-    console.log(chalk.blue(`📤 Team ${teamId} no longer monitored by any automations`));
+    logger.info(`📤 Team ${teamId} no longer monitored by any automations`, { teamId, integrationId });
   }
 
   async refreshToken(integrationId: string): Promise<boolean> {
@@ -509,7 +484,7 @@ export class FigmaIntegrationManager implements Integration<FigmaIntegration, Fi
       });
 
       if (!integration) {
-        console.log(`Figma integration ${integrationId} not found`);
+        logger.warn(`Figma integration ${integrationId} not found`, { integrationId });
         return false;
       }
 
@@ -546,7 +521,7 @@ export class FigmaIntegrationManager implements Integration<FigmaIntegration, Fi
       // Token was refreshed if expiry changed
       return updatedIntegration.token_expiry.getTime() !== originalTokenExpiry.getTime();
     } catch (error) {
-      console.error(`Error refreshing Figma token for integration ${integrationId}:`, error);
+      logger.error(`Error refreshing Figma token for integration ${integrationId}`, { error: error instanceof Error ? error.message : String(error), stack: error instanceof Error ? error.stack : undefined, integrationId });
       return false;
     }
   }
@@ -558,7 +533,7 @@ export class FigmaIntegrationManager implements Integration<FigmaIntegration, Fi
       });
 
       if (!integration) {
-        console.error(`Figma integration ${integrationId} not found`);
+        logger.error(`Figma integration ${integrationId} not found`, { integrationId });
         return null;
       }
 
@@ -568,10 +543,10 @@ export class FigmaIntegrationManager implements Integration<FigmaIntegration, Fi
         integration.token_expiry &&
         integration.token_expiry <= new Date(now.getTime() + OAUTH_TOKEN_REFRESH_THRESHOLD_MS)
       ) {
-        console.log(`Figma access token expiring soon for integration ${integrationId}, refreshing...`);
+        logger.info(`Figma access token expiring soon for integration ${integrationId}, refreshing...`, { integrationId });
 
         if (!integration.refresh_token) {
-          console.error(`No refresh token available for Figma integration ${integrationId}`);
+          logger.error(`No refresh token available for Figma integration ${integrationId}`, { integrationId });
           return integration.access_token; // Return existing token as fallback
         }
 
@@ -595,7 +570,7 @@ export class FigmaIntegrationManager implements Integration<FigmaIntegration, Fi
 
         if (!tokenResponse.ok) {
           const errorText = await tokenResponse.text();
-          console.error(`Figma token refresh failed for integration ${integrationId}:`, errorText);
+          logger.error(`Figma token refresh failed for integration ${integrationId}`, { error: errorText, integrationId });
           // Return existing token as fallback - it might still work
           return integration.access_token;
         }
@@ -604,7 +579,7 @@ export class FigmaIntegrationManager implements Integration<FigmaIntegration, Fi
         const { access_token, refresh_token, expires_in } = tokenData;
 
         if (!access_token) {
-          console.error(`No access token received from Figma refresh for integration ${integrationId}`);
+          logger.error(`No access token received from Figma refresh for integration ${integrationId}`, { integrationId });
           // Return existing token as fallback
           return integration.access_token;
         }
@@ -622,14 +597,14 @@ export class FigmaIntegrationManager implements Integration<FigmaIntegration, Fi
           },
         });
 
-        console.log(`Successfully refreshed Figma access token for integration ${integrationId}`);
+        logger.info(`Successfully refreshed Figma access token for integration ${integrationId}`, { integrationId });
         return access_token;
       }
 
       // Token is still valid
       return integration.access_token;
     } catch (error) {
-      console.error(`Error getting Figma access token for integration ${integrationId}:`, error);
+      logger.error(`Error getting Figma access token for integration ${integrationId}`, { error: error instanceof Error ? error.message : String(error), stack: error instanceof Error ? error.stack : undefined, integrationId });
       // Return null on error - caller should handle
       return null;
     }
@@ -649,17 +624,16 @@ export class FigmaIntegrationManager implements Integration<FigmaIntegration, Fi
     const commentId = webhookEvent.comment_id;
     const fileKey = webhookEvent.file_key;
     if (!commentId) {
-      console.log(chalk.yellow(`⚠️  FILE_COMMENT event missing comment_id`));
-      console.log(chalk.yellow(`Webhook event: ${JSON.stringify(webhookEvent, null, 2)}`));
+      logger.warn(`⚠️  FILE_COMMENT event missing comment_id`, { webhookEvent: JSON.stringify(webhookEvent, null, 2), integrationId: integration.id });
       return;
     }
     if (!fileKey) {
-      console.log(chalk.yellow(`⚠️  FILE_COMMENT event missing file_key`));
-      console.log(chalk.yellow(`Webhook event: ${JSON.stringify(webhookEvent, null, 2)}`));
+      logger.warn(`⚠️  FILE_COMMENT event missing file_key`, { webhookEvent: JSON.stringify(webhookEvent, null, 2), integrationId: integration.id });
       return;
     }
-    console.log(
-      chalk.blue(`📝 Processing FILE_COMMENT event for file ${fileKey}, comment ${commentId}`)
+    logger.info(
+      `📝 Processing FILE_COMMENT event for file ${fileKey}, comment ${commentId}`,
+      { fileKey, commentId, integrationId: integration.id }
     );
 
     // Process the comment once per integration, to prevent duplicate processing
@@ -674,7 +648,7 @@ export class FigmaIntegrationManager implements Integration<FigmaIntegration, Fi
     } catch (error: any) {
       // Race condition - comment already being processed
       if (error.code === 'P2002') {
-        console.log(chalk.blue(`ℹ️  Comment ${commentId} already being processed`));
+        logger.info(`ℹ️  Comment ${commentId} already being processed`, { commentId, fileKey, integrationId: integration.id });
         return;
       }
       throw error;
@@ -683,7 +657,7 @@ export class FigmaIntegrationManager implements Integration<FigmaIntegration, Fi
     // Get valid access token (handles refresh automatically)
     const accessToken = await this.getAccessToken(integration.id);
     if (!accessToken) {
-      console.log(chalk.yellow(`⚠️  Could not get valid access token for Figma integration ${integration.id}`));
+      logger.warn(`⚠️  Could not get valid access token for Figma integration ${integration.id}`, { integrationId: integration.id, fileKey, commentId });
       return;
     }
 
@@ -695,7 +669,7 @@ export class FigmaIntegrationManager implements Integration<FigmaIntegration, Fi
       commentId
     );
     if (!commentThreadData) {
-      console.log(chalk.yellow(`⚠️  Could not fetch comment ${commentId} from API`));
+      logger.warn(`⚠️  Could not fetch comment ${commentId} from API`, { commentId, fileKey, integrationId: integration.id });
       return;
     }
 
@@ -706,19 +680,16 @@ export class FigmaIntegrationManager implements Integration<FigmaIntegration, Fi
       thread
     );
 
-    console.log(
-      chalk.blue(`Client Meta (event comment): ${JSON.stringify(commentFromApi.client_meta, null, 2)}`)
-    );
+    logger.debug(`Client Meta (event comment)`, { clientMeta: JSON.stringify(commentFromApi.client_meta, null, 2), commentId, fileKey });
     if (positioningComment && positioningComment.id !== commentFromApi.id) {
-      console.log(
-        chalk.blue(
-          `Using comment ${positioningComment.id} client_meta for positioning: ${JSON.stringify(positioningComment.client_meta, null, 2)}`
-        )
+      logger.debug(
+        `Using comment ${positioningComment.id} client_meta for positioning`,
+        { positioningCommentId: positioningComment.id, clientMeta: JSON.stringify(positioningComment.client_meta, null, 2), commentId }
       );
     }
-    console.log(
-      chalk.blue(`📍 Positioning data for comment ${commentId}:`),
-      positioningData ? JSON.stringify(positioningData, null, 2) : 'null (empty client_meta)'
+    logger.debug(
+      `📍 Positioning data for comment ${commentId}`,
+      { positioningData: positioningData ? JSON.stringify(positioningData, null, 2) : 'null (empty client_meta)', commentId, fileKey }
     );
 
     // Map comment to design elements using positioning data
@@ -731,14 +702,14 @@ export class FigmaIntegrationManager implements Integration<FigmaIntegration, Fi
         positioningData,
         nodeId
       );
-      console.log(
-        chalk.blue(`🎯 Matched ${matchedNodeIds.length} node(s) for comment ${commentId}:`),
-        matchedNodeIds.length > 0 ? matchedNodeIds.join(', ') : 'none'
+      logger.debug(
+        `🎯 Matched ${matchedNodeIds.length} node(s) for comment ${commentId}`,
+        { matchedNodes: matchedNodeIds.length > 0 ? matchedNodeIds.join(', ') : 'none', nodeCount: matchedNodeIds.length, commentId, fileKey }
       );
     } catch (error) {
-      console.error(
-        chalk.red(`Error mapping comment ${commentId} to design elements:`),
-        error
+      logger.error(
+        `Error mapping comment ${commentId} to design elements`,
+        { error: error instanceof Error ? error.message : String(error), stack: error instanceof Error ? error.stack : undefined, commentId, fileKey }
       );
       // Continue with empty array if mapping fails
     }
@@ -755,16 +726,14 @@ export class FigmaIntegrationManager implements Integration<FigmaIntegration, Fi
         matchedNodeIds,
         positioningData
       );
-      console.log(
-        chalk.blue(`🖼️  Extracted images for comment ${commentId}:`),
-        Object.keys(imageUrls).length > 0
-          ? `${Object.keys(imageUrls).length} image(s) extracted`
-          : 'no images extracted'
+      logger.debug(
+        `🖼️  Extracted images for comment ${commentId}`,
+        { imageCount: Object.keys(imageUrls).length, hasImages: Object.keys(imageUrls).length > 0, commentId, fileKey }
       );
     } catch (error) {
-      console.error(
-        chalk.red(`Error extracting images for comment ${commentId}:`),
-        error
+      logger.error(
+        `Error extracting images for comment ${commentId}`,
+        { error: error instanceof Error ? error.message : String(error), stack: error instanceof Error ? error.stack : undefined, commentId, fileKey }
       );
       // Continue with empty object if image extraction fails
     }
@@ -781,7 +750,7 @@ export class FigmaIntegrationManager implements Integration<FigmaIntegration, Fi
 
     const fileMetadata = await fetchFileMetadata(accessToken, fileKey);
     if (!fileMetadata) {
-      console.log(chalk.yellow(`⚠️  Could not fetch file metadata for file ${fileKey}`));
+      logger.warn(`⚠️  Could not fetch file metadata for file ${fileKey}`, { fileKey, commentId, integrationId: integration.id });
       return;
     }
 
@@ -1057,21 +1026,18 @@ export async function fetchFileMetadata(
       const metadataData = await metadataResponse.json();
       // Extract the file property from the response
       const fileMetadata = metadataData.file || metadataData;
-      console.log(
-        chalk.green(`✅ Fetched file metadata for ${fileKey}:`),
-        fileMetadata?.name || 'unknown file'
-      );
+      logger.info(`✅ Fetched file metadata for ${fileKey}`, { fileKey, fileName: fileMetadata?.name || 'unknown file' });
       return fileMetadata;
     } else {
       const errorText = await metadataResponse.text();
-      console.error(
-        chalk.yellow(`Failed to fetch file metadata for ${fileKey}:`),
-        errorText
+      logger.error(
+        `Failed to fetch file metadata for ${fileKey}`,
+        { error: errorText, fileKey }
       );
       return null;
     }
   } catch (error) {
-    console.error(chalk.red("Error fetching file metadata:"), error);
+    logger.error("Error fetching file metadata", { error: error instanceof Error ? error.message : String(error), stack: error instanceof Error ? error.stack : undefined, fileKey });
     return null;
   }
 }
@@ -1211,7 +1177,7 @@ export async function mapCommentToDesignElements(
           }
         }
       } catch (error) {
-        console.error(chalk.yellow(`Error fetching file for file-level comment context:`), error);
+        logger.error(`Error fetching file for file-level comment context`, { error: error instanceof Error ? error.message : String(error), fileKey });
       }
 
       return matchedNodeIds;
@@ -1226,7 +1192,8 @@ export async function mapCommentToDesignElements(
     });
 
     if (!fileResponse.ok) {
-      console.error(chalk.yellow(`Failed to fetch file JSON for ${fileKey}:`), await fileResponse.text());
+      const errorText = await fileResponse.text();
+      logger.error(`Failed to fetch file JSON for ${fileKey}`, { error: errorText, fileKey });
       return matchedNodeIds; // Return existing node_id if we have it
     }
 
@@ -1336,7 +1303,7 @@ export async function mapCommentToDesignElements(
     });
 
   } catch (error) {
-    console.error(chalk.red("Error mapping comment to design elements:"), error);
+    logger.error("Error mapping comment to design elements", { error: error instanceof Error ? error.message : String(error), stack: error instanceof Error ? error.stack : undefined, fileKey });
     // Return existing node_id if we have it, even if mapping failed
   }
 
@@ -1408,14 +1375,14 @@ export async function extractCommentImages(
                   const imageData = await imageResponse.json();
                   if (imageData.images && imageData.images[targetNodeId]) {
                     imageUrls.fullFrame = imageData.images[targetNodeId];
-                    console.log(chalk.blue(`📄 Extracted full page image for file-level comment`));
+                    logger.debug(`📄 Extracted full page image for file-level comment`, { fileKey, targetNodeId });
                   }
                 }
               }
             }
           }
         } catch (error) {
-          console.error(chalk.yellow(`Error extracting file-level comment image:`), error);
+          logger.error(`Error extracting file-level comment image`, { error: error instanceof Error ? error.message : String(error), fileKey });
         }
       }
       return imageUrls;
@@ -1440,7 +1407,8 @@ export async function extractCommentImages(
           imageUrls.nodeImage = imageData.images[primaryNodeId];
         }
       } else {
-        console.error(chalk.yellow(`Failed to extract node image for ${primaryNodeId}:`), await imageResponse.text());
+        const errorText = await imageResponse.text();
+        logger.error(`Failed to extract node image for ${primaryNodeId}`, { error: errorText, fileKey, primaryNodeId });
       }
     }
 
@@ -1512,12 +1480,12 @@ export async function extractCommentImages(
         }
       }
     } catch (error) {
-      console.error(chalk.yellow(`Error extracting full frame image:`), error);
+      logger.error(`Error extracting full frame image`, { error: error instanceof Error ? error.message : String(error), fileKey });
       // Continue without full frame image
     }
 
   } catch (error) {
-    console.error(chalk.red("Error extracting comment images:"), error);
+    logger.error("Error extracting comment images", { error: error instanceof Error ? error.message : String(error), stack: error instanceof Error ? error.stack : undefined, fileKey });
     // Don't throw - image extraction is optional, continue without images
   }
 
@@ -1545,10 +1513,8 @@ export async function fetchFigmaCommentThreadFromApi(
     );
 
     if (!commentsResponse.ok) {
-      console.error(
-        chalk.yellow(`Failed to fetch comments for file ${fileKey}`),
-        await commentsResponse.text()
-      );
+      const errorText = await commentsResponse.text();
+      logger.error(`Failed to fetch comments for file ${fileKey}`, { error: errorText, fileKey });
       return null;
     }
 
@@ -1635,9 +1601,9 @@ export async function fetchFigmaCommentThreadFromApi(
       thread: threadList,
     };
   } catch (error) {
-    console.error(
-      chalk.yellow(`⚠️  Error fetching comment from API with file key ${fileKey}`),
-      error
+    logger.error(
+      `⚠️  Error fetching comment from API with file key ${fileKey}`,
+      { error: error instanceof Error ? error.message : String(error), stack: error instanceof Error ? error.stack : undefined, fileKey }
     );
     return null;
   }

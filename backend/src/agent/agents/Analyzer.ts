@@ -7,6 +7,7 @@ import { Commit } from "../../routes/GithubTypes";
 import { createActionSummaryTool, createCommitSummaryTool } from "../tools/ActionEventTools";
 import { Project, Ticket } from "../../shared/TicketSystem";
 import { ProjectActivityEvent, TicketActivityEvent } from "../../shared/types";
+import logger from "../../logger";
 
 export type ActivityOverview = {
     summary: string;
@@ -66,13 +67,13 @@ export class Analyzer {
     }
 
     async analyze(event: string) {
-        console.log(chalk.blue(`Analyzing event: ${event}`));
+        logger.info(`Analyzing event: ${event}`);
         this.history.push(user(event));
     }
 
     // There will be no follow up here. 
     async run(): Promise<RunResult<SessionWithTracking, Agent<SessionWithTracking, AgentOutputType>>> {
-        console.log(chalk.blue('Running analyzer'));
+        logger.info('Running analyzer');
         const agent = new Agent<SessionWithTracking, AgentOutputType>({
             name: 'Change Analyzer',
             instructions: await systemPrompt(this.session, this.commitContext),
@@ -146,10 +147,10 @@ export class Analyzer {
 
 const systemPrompt = async (session: Session, commitContext?: CommitContext | null) => {
     if (commitContext?.ticket) {
-        console.log(chalk.green("✓ Ticket context found"));
+        logger.info("✓ Ticket context found");
     }
     if (commitContext?.project) {
-        console.log(chalk.green("✓ Project context found"));
+        logger.info("✓ Project context found");
     }
 
     return `

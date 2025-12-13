@@ -10,6 +10,7 @@ import {
 import { emitCacheInvalidationWithKey } from "../realtimeSocket";
 import { notificationDestinationsKey } from "../shared/InvalidationKeys";
 import { UserNotificationDestination } from "../types/prisma";
+import logger from "../logger";
 
 // GET /notification-destinations - List all notification destinations for the user
 export async function getNotificationDestinations(req: Request, res: Response) {
@@ -33,7 +34,7 @@ export async function getNotificationDestinations(req: Request, res: Response) {
 
         res.status(200).json(response);
     } catch (error) {
-        console.error('Error fetching notification destinations:', error);
+        logger.error('Error fetching notification destinations', { error: error instanceof Error ? error.message : String(error), stack: error instanceof Error ? error.stack : undefined, userId });
         res.status(500).json({ error: 'Failed to fetch notification destinations' });
     }
 }
@@ -96,7 +97,7 @@ export async function createNotificationDestination(req: Request, res: Response)
 
         res.status(201).json(transformDestinationToFrontendFormat(destination));
     } catch (error) {
-        console.error('Error creating notification destination:', error);
+        logger.error('Error creating notification destination', { error: error instanceof Error ? error.message : String(error), stack: error instanceof Error ? error.stack : undefined, userId, type });
         res.status(500).json({ error: 'Failed to create notification destination' });
     }
 }
@@ -157,7 +158,7 @@ export async function updateNotificationDestination(req: Request, res: Response)
 
         res.status(200).json(transformDestinationToFrontendFormat(updatedDestination));
     } catch (error) {
-        console.error('Error updating notification destination:', error);
+        logger.error('Error updating notification destination', { error: error instanceof Error ? error.message : String(error), stack: error instanceof Error ? error.stack : undefined, userId, destinationId });
         res.status(500).json({ error: 'Failed to update notification destination' });
     }
 }
@@ -194,7 +195,7 @@ export async function deleteNotificationDestination(req: Request, res: Response)
 
         res.status(204).send();
     } catch (error) {
-        console.error('Error deleting notification destination:', error);
+        logger.error('Error deleting notification destination', { error: error instanceof Error ? error.message : String(error), stack: error instanceof Error ? error.stack : undefined, userId, destinationId });
         res.status(500).json({ error: 'Failed to delete notification destination' });
     }
 }

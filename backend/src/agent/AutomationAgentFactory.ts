@@ -1,5 +1,6 @@
 import chalk from 'chalk';
 import { db } from '../prismaClient';
+import logger from '../logger';
 import { ChannelAgent } from './ChannelAgent/ChannelAgent';
 import { RunContext } from './ChannelAgent/SystemPromptBuilder';
 import { NotionDatabaseOutput, NotionDatabaseSession } from '../outputs/notion/NotionDatabaseOutput';
@@ -81,7 +82,7 @@ export class ChannelAgentFactory {
 
       return channelAgent;
     } catch (error) {
-      console.error(chalk.red('Error creating channel agent:'), error);
+      logger.error('Error creating channel agent', { error: error instanceof Error ? error.message : String(error), stack: error instanceof Error ? error.stack : undefined, channelId, runId });
       throw error;
     }
   }

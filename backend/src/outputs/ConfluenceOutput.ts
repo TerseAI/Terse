@@ -10,6 +10,7 @@ import { OutputConfigType } from "@prisma/client";
 import { ConfluenceConfig } from "../shared/Configs";
 import { SessionWithTracking } from "../agent/ChannelAgent/ChannelAgent";
 import { formatError } from "../tools/errors";
+import logger from "../logger";
 
 // MARK: - Exports
 
@@ -97,7 +98,7 @@ This tool returns the current state of the Confluence page including all metadat
         // No parameters needed - returns complete page information from configuration
     }),
     execute: async ({ }, runContext?: RunContext<ConfluenceSession>) => {
-        console.log("Executing confluence_query_page tool");
+        logger.debug("Executing confluence_query_page tool");
         if (!runContext?.context) {
             throw new Error("No context provided");
         }
@@ -133,7 +134,7 @@ This tool returns the current state of the Confluence page including all metadat
             };
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : String(error);
-            console.error("Error fetching Confluence page:", errorMessage);
+            logger.error("Error fetching Confluence page", { error: errorMessage, pageId: runContext?.context?.confluenceConfig?.page_id });
             throw new Error(`Failed to fetch Confluence page: ${errorMessage}`);
         }
     },
@@ -154,8 +155,7 @@ To find the correct position, first call confluence_query_page to see the page c
         end_position: z.number().nullable().optional().describe('Optional: The end character position (offset) in the page storage format where the comment should be attached. Required if text_to_comment_on is not provided.'),
     }),
     execute: async ({ comment_text, text_to_comment_on, start_position, end_position }, runContext?: RunContext<SessionWithTracking<ConfluenceSession>>) => {
-        // Use chalk for highlighting the log output
-        console.log(chalk.bgBlue.white.bold("[Confluence Add Comment]"), chalk.yellow("Executing confluence_add_comment tool: "), chalk.cyan(comment_text), chalk.magenta(text_to_comment_on), chalk.green(start_position), chalk.green(end_position));
+        logger.debug("[Confluence Add Comment] Executing confluence_add_comment tool", { comment_text, text_to_comment_on, start_position, end_position });
         if (!runContext?.context) {
             throw new Error(chalk.red.bold("No context provided"));
         }
@@ -281,7 +281,7 @@ To find the correct position, first call confluence_query_page to see the page c
             };
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : String(error);
-            console.error("Error adding Confluence inline comment:", errorMessage);
+            logger.error("Error adding Confluence inline comment", { error: errorMessage, comment_text, text_to_comment_on, start_position, end_position });
             throw new Error(`Failed to add Confluence inline comment: ${errorMessage}`);
         }
     },
