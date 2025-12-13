@@ -2,8 +2,9 @@ import { Namespace } from "@turbopuffer/turbopuffer/resources/namespaces.mjs";
 import { settings } from "../config/settings";
 import { EmbeddingProvider, Search, SearchItem, SearchError, EmbeddingError, RankingFunction, DistanceMetric, SearchOptions } from "./searchTypes";
 import { Turbopuffer } from "@turbopuffer/turbopuffer";
-import { getHydrator } from "./HydratorRegistry";
-import { RAGNamespace, NamespaceToHydratorType } from "../types/rag";
+import { getHydratorForNamespace } from "./HydratorRegistry";
+import { RAGNamespace, NamespaceToHydratorType, requireHydratorType } from "../types/rag";
+import { Identifiable } from "./Hydrator";
 
 const tpuf = new Turbopuffer({
     apiKey: settings.turbopuffer.apiKey,
@@ -11,12 +12,12 @@ const tpuf = new Turbopuffer({
 });
 
 export class TurboPufferSearch<
-    T extends NamespaceToHydratorType[N],
     M,
     N extends RAGNamespace = RAGNamespace
-> implements Search<T, M> {
+> implements Search<NamespaceToHydratorType[N], M> {
     private readonly embeddingClient: EmbeddingProvider;
-    private readonly namespace: Namespace;
+    private readonly tpufNamespace: Namespace;
+    private readonly ragNamespace: N;
     private readonly distanceMetric: DistanceMetric;
 
     constructor(
@@ -25,11 +26,12 @@ export class TurboPufferSearch<
         distanceMetric: DistanceMetric = "cosine_distance"
     ) {
         this.embeddingClient = embeddingClient;
-        this.namespace = tpuf.namespace(namespace);
+        this.tpufNamespace = tpuf.namespace(namespace);
+        this.ragNamespace = namespace;
         this.distanceMetric = distanceMetric;
     }
 
-    async search(query: string, options?: SearchOptions): Promise<T[]> {
+    async search(query: string, options?: SearchOptions): Promise<NamespaceToHydratorType[N][]> {
         const {
             rankingColumn = "vector",
             rankingFunction = RankingFunction.ANN,
@@ -46,7 +48,7 @@ export class TurboPufferSearch<
 
         try {
             const queryEmbedding = await this.embeddingClient.embed(query);
-            const res = await this.namespace.query({
+            const res = await this.tpufNamespace.query({
                 rank_by: [rankingColumn, rankingFunction, queryEmbedding],
                 top_k: topK,
                 filters,
@@ -58,64 +60,31 @@ export class TurboPufferSearch<
                 return [];
             }
             
-            // Convert TurboPuffer rows to SearchItems with their distance scores
-            // TurboPuffer provides $dist (distance score) - lower distance = higher similarity
-            // Create a map from entityId to distance for O(1) lookup
+            // Build refs and track distances for sorting
             const distanceMap = new Map<string, number>();
-            const groupedByType = new Map<string, SearchItem<M>[]>();
-            
-            for (const row of rows) {
-                const entityType = (row.entityType as string) ?? '';
-                const distance = (row.$dist as number) ?? Infinity; // Use Infinity as fallback if $dist missing
+            const refs: Identifiable[] = rows.map(row => {
+                const entityId = row.entityId as string;
+                const distance = (row.$dist as number) ?? Infinity;
+                distanceMap.set(entityId, distance);
                 
-                const searchItem: SearchItem<M> = {
-                    id: row.id as string,
-                    entityType: row.entityType as string,
-                    entityId: row.entityId as string,
-                    content: '', // Not needed for hydration
-                    metadata: {} as M // Not needed for hydration
+                return {
+                    entityType: requireHydratorType(row.entityType as string),
+                    entityId
                 };
-
-                distanceMap.set(searchItem.entityId, distance);
-
-                const group = groupedByType.get(entityType);
-                if (group) {
-                    group.push(searchItem);
-                } else {
-                    groupedByType.set(entityType, [searchItem]);
-                }
-            }
-
-            // Hydrate all groups in parallel for better performance
-            const hydrationPromises = Array.from(groupedByType.entries()).map(async ([entityType, items]) => {
-                const hydrator = getHydrator<T>(entityType);
-                if (!hydrator) {
-                    console.warn(`No hydrator found for entityType: ${entityType}. Skipping ${items.length} items.`);
-                    return [];
-                }
-
-                try {
-                    const hydrated = await hydrator.hydrateBulk(items);
-                    // Map hydrated results back to their distance scores
-                    return hydrated.map(h => ({
-                        hydrated: h,
-                        distance: distanceMap.get(h.entityId) ?? Infinity
-                    }));
-                } catch (error) {
-                    console.error(`Error hydrating items of type ${entityType}:`, error);
-                    throw new SearchError(`Failed to hydrate ${entityType} items`, error as Error);
-                }
             });
 
-            const hydratedGroups = await Promise.all(hydrationPromises);
-            const allHydratedWithScores = hydratedGroups.flat();
+            // Use the pre-composed hydrator for this namespace
+            const hydrator = getHydratorForNamespace(this.ragNamespace);
+            const hydrated = await hydrator.hydrateBulk(refs);
             
             // Sort by distance (ascending - lower distance = higher similarity)
-            // This preserves TurboPuffer's ranking order
-            allHydratedWithScores.sort((a, b) => a.distance - b.distance);
+            const withScores = hydrated.map(h => ({
+                hydrated: h,
+                distance: distanceMap.get(h.entityId) ?? Infinity
+            }));
+            withScores.sort((a, b) => a.distance - b.distance);
             
-            // Extract just the hydrated items in sorted order
-            return allHydratedWithScores.map(result => result.hydrated);
+            return withScores.map(result => result.hydrated) as NamespaceToHydratorType[N][];
         } catch (error) {
             if (error instanceof SearchError || error instanceof EmbeddingError) {
                 throw error;
@@ -166,7 +135,7 @@ export class TurboPufferSearch<
                 ...item.metadata,
             }));
 
-            await this.namespace.write({
+            await this.tpufNamespace.write({
                 upsert_rows: upsertRows,
                 distance_metric: this.distanceMetric as any,
             });
@@ -182,7 +151,7 @@ export class TurboPufferSearch<
         try {
             // Note: TurboPuffer deletes by ID. If entityId is not the same as the TurboPuffer ID,
             // we may need to query first to find the ID. For now, assuming entityId is the ID.
-            await this.namespace.write({
+            await this.tpufNamespace.write({
                 deletes: [entityId],
             });
         } catch (error) {

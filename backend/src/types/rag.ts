@@ -1,8 +1,10 @@
 import { RunHistoryRawEventWithRelations } from './prisma';
 import { IdentifiableRunHistoryRawEvent } from '../rag/runHistoryRag/hydrator';
+import { SlackEvent } from '../integrations/SlackIntegration';
 
 export enum HydratorType {
-    RUN_HISTORY_RAW_EVENT = 'run_history_raw_event'
+    RUN_HISTORY_RAW_EVENT = 'run_history_raw_event',
+    SLACK_MESSAGE_EVENT = 'slack_message_event',
 }
 
 const HYDRATOR_TYPE_VALUES = new Set(Object.values(HydratorType));
@@ -25,17 +27,17 @@ export function requireHydratorType(value: string): HydratorType {
 
 export type HydratorTypeMap = {
     [HydratorType.RUN_HISTORY_RAW_EVENT]: IdentifiableRunHistoryRawEvent;
+    [HydratorType.SLACK_MESSAGE_EVENT]: SlackEvent;
 };
 
 export enum RAGNamespace {
-    RUN_HISTORY_MEMORY = 'run_history_memory'
+    RUN_HISTORY_MEMORY = 'run_history_memory',
 }
 
-/**
- * Type mapping from RAGNamespace to the corresponding hydrator return type.
- * This ensures type safety when using TurboPufferSearch with a specific namespace.
- */
+export type NamespaceToHydratorTypes = {
+    [RAGNamespace.RUN_HISTORY_MEMORY]: HydratorType.RUN_HISTORY_RAW_EVENT;
+};
+
 export type NamespaceToHydratorType = {
-    [RAGNamespace.RUN_HISTORY_MEMORY]: RunHistoryRawEventWithRelations;
-    // Add more mappings as new namespaces are added
+    [N in RAGNamespace]: HydratorTypeMap[NamespaceToHydratorTypes[N]];
 };
