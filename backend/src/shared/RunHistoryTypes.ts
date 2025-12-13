@@ -26,9 +26,9 @@ export type RunHistoryAction = {
    // Output item information for attribution tracking
    // Array because one action can modify multiple output items (e.g., appending multiple blocks)
    output_items?: Array<{
-      output_item_id: string;
-      output_item_type: ConfigType;
-   }>;
+    output_item_id: string;
+    output_item_type: ConfigType;
+ }>;
 }
 
 export type RunHistoryActionWithId = RunHistoryAction & {

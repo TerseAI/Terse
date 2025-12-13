@@ -606,7 +606,6 @@ async function handleSlackMessage(event: SlackMessageEvent, teamId: string, auth
                         channel: messageEvent.channel!
                     });
                 } catch (error) {
-                    console.error(chalk.red(`Error getting members:`), error);
                     return false;
                 }
 
