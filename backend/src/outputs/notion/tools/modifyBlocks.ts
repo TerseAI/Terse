@@ -6,7 +6,7 @@ import { IntegrationType } from "../../../shared/Integrations";
 import { NotionPageSession } from "../NotionPageOutput";
 import { getBlockTypeName, describeBlocks } from "../../../utility/notion";
 import { SessionWithTracking } from "../../../agent/ChannelAgent/ChannelAgent";
-import { formatError } from "../../../tools/errors";
+import { ConfigType } from "../../../shared/Configs";
 
 /**
  * Constructs a Notion deep link URL to a specific block.
@@ -93,6 +93,7 @@ Example delete: "{\"operation\": \"delete\", \"block_id\": \"abc123\"}"`),
         });
 
         const pageId = runContext.context.notionPageConfig.page_id as string;
+        const pageName = runContext.context.notionPageConfig.page_name || 'Notion page';
 
         try {
             if (op.operation === 'append') {
@@ -111,13 +112,17 @@ Example delete: "{\"operation\": \"delete\", \"block_id\": \"abc123\"}"`),
 
                 // Report action
                 const blockDescription = describeBlocks(op.blocks);
-                const pageName = runContext.context.notionPageConfig.page_name || 'Notion page';
+                const blockIds = response.results.map((b: any) => b.id);
                 runContext.context.trackAction({
                     action: 'Added content',
                     integration: IntegrationType.NOTION,
                     target: pageName,
                     details: `Added ${response.results.length} ${response.results.length === 1 ? 'item' : 'items'}: ${blockDescription}`,
                     type: 'create',
+                    output_items: blockIds.map(blockId => ({
+                        output_item_id: blockId,
+                        output_item_type: ConfigType.NOTION_PAGE
+                    }))
                 });
 
                 return {
@@ -147,7 +152,6 @@ Example delete: "{\"operation\": \"delete\", \"block_id\": \"abc123\"}"`),
                 });
 
                 // Report action
-                const pageName = runContext.context.notionPageConfig.page_name || 'Notion page';
                 const blockType = getBlockTypeName(op.block);
                 runContext.context.trackAction({
                     action: 'Updated content',
@@ -155,6 +159,10 @@ Example delete: "{\"operation\": \"delete\", \"block_id\": \"abc123\"}"`),
                     target: pageName,
                     details: `Updated ${blockType}`,
                     type: 'update',
+                    output_items: [{
+                        output_item_id: response.id,
+                        output_item_type: ConfigType.NOTION_PAGE
+                    }]
                 });
 
                 return {
@@ -177,13 +185,16 @@ Example delete: "{\"operation\": \"delete\", \"block_id\": \"abc123\"}"`),
                 });
 
                 // Report action
-                const pageName = runContext.context.notionPageConfig.page_name || 'Notion page';
                 runContext.context.trackAction({
                     action: 'Removed content',
                     integration: IntegrationType.NOTION,
                     target: pageName,
                     details: 'Removed content block',
                     type: 'delete',
+                    output_items: [{
+                        output_item_id: response.id,
+                        output_item_type: ConfigType.NOTION_PAGE
+                    }]
                 });
 
                 return {

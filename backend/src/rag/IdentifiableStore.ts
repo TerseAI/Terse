@@ -2,12 +2,13 @@ import { db } from "../prismaClient";
 import { Identifiable, HydrationContext } from "./Hydrator";
 import { requireHydrator } from "./HydratorRegistry";
 import { requireHydratorType, HydratorType } from "../types/rag";
+import { IdentifiableRef } from "../types/prisma";
 
 export class IdentifiableStore {
     constructor(private readonly ctx: HydrationContext) {}
 
-    async store(ref: Identifiable): Promise<void> {
-        await db().identifiable_refs.upsert({
+    async store(ref: Identifiable): Promise<IdentifiableRef> {
+        return await db().identifiable_refs.upsert({
             where: {
                 entity_type_entity_id: {
                     entity_type: ref.entityType,

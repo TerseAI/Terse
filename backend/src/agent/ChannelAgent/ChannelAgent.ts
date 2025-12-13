@@ -20,6 +20,7 @@ import { IntegrationType } from '../../shared/Integrations';
 import { InputImageContent, InputTextContent } from 'openai/resources/conversations/conversations.mjs';
 import { runnerFactory } from '../runner';
 import { NotificationManager } from '../../notifications/Notification';
+import { persistOutputAttributions } from './persistOutputAttributions';
 
 
 export class ChannelAgent<T extends Session, TConfig extends ConfigInstance> {
@@ -180,6 +181,19 @@ export class ChannelAgent<T extends Session, TConfig extends ConfigInstance> {
                 });
             }
             await notificationManager.notify(action);
+
+            // Persist output attributions if:
+            // 1. Input event is Identifiable
+            // 2. Action has output_items populated
+            // 3. Action is not read-only (track both write and read actions per user request)
+            const sourceItemRef = this.inputEvent?.getIdentifiableInfo();
+            if (sourceItemRef && action.output_items && action.output_items.length > 0 && !isReadOnly) {
+                await persistOutputAttributions(
+                    this.channel.id,
+                    sourceItemRef,
+                    action
+                );
+            }
         }
 
         this.pendingActions = [];
