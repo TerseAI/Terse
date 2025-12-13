@@ -1,5 +1,6 @@
 import { IntegrationType } from "./Integrations";
 import type { ModelEvent } from "./ModelEvents";
+import { ConfigType } from "./Configs";
 
 export type RunHistoryStatus = "success" | "failed" | "skipped" | "in_progress";
 export type RunHistoryDecisionAction = "processed" | "skipped";
@@ -22,6 +23,12 @@ export type RunHistoryAction = {
    type: RunHistoryActionType;
    // Whether this action was from a read-only tool (e.g., query) vs a write tool (e.g., create/update)
    isReadOnly?: boolean;
+   // Output item information for attribution tracking
+   // Array because one action can modify multiple output items (e.g., appending multiple blocks)
+   output_items?: Array<{
+      output_item_id: string;
+      output_item_type: ConfigType;
+   }>;
 }
 
 export type RunHistoryActionWithId = RunHistoryAction & {
