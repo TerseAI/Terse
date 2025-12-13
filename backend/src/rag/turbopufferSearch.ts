@@ -2,7 +2,8 @@ import { Namespace } from "@turbopuffer/turbopuffer/resources/namespaces.mjs";
 import { settings } from "../config/settings";
 import { EmbeddingProvider, Search, SearchItem, SearchError, EmbeddingError, RankingFunction, DistanceMetric, SearchOptions } from "./searchTypes";
 import { Turbopuffer } from "@turbopuffer/turbopuffer";
-import { getHydratorForNamespace } from "./HydratorRegistry";
+import { createNamespaceHydrator } from "./HydratorRegistry";
+import { HydrationContext } from "./Hydrator";
 import { RAGNamespace, NamespaceToHydratorType, requireHydratorType } from "../types/rag";
 import { Identifiable } from "./Hydrator";
 
@@ -19,16 +20,19 @@ export class TurboPufferSearch<
     private readonly tpufNamespace: Namespace;
     private readonly ragNamespace: N;
     private readonly distanceMetric: DistanceMetric;
+    private readonly hydrationContext: HydrationContext;
 
     constructor(
         embeddingClient: EmbeddingProvider, 
         namespace: N, 
+        userId: string,
         distanceMetric: DistanceMetric = "cosine_distance"
     ) {
         this.embeddingClient = embeddingClient;
         this.tpufNamespace = tpuf.namespace(namespace);
         this.ragNamespace = namespace;
         this.distanceMetric = distanceMetric;
+        this.hydrationContext = { userId };
     }
 
     async search(query: string, options?: SearchOptions): Promise<NamespaceToHydratorType[N][]> {
@@ -73,8 +77,8 @@ export class TurboPufferSearch<
                 };
             });
 
-            // Use the pre-composed hydrator for this namespace
-            const hydrator = getHydratorForNamespace(this.ragNamespace);
+            // Create hydrator with context for this namespace
+            const hydrator = createNamespaceHydrator(this.ragNamespace, this.hydrationContext);
             const hydrated = await hydrator.hydrateBulk(refs);
             
             // Sort by distance (ascending - lower distance = higher similarity)

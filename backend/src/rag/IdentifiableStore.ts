@@ -1,9 +1,11 @@
 import { db } from "../prismaClient";
-import { Identifiable } from "./Hydrator";
+import { Identifiable, HydrationContext } from "./Hydrator";
 import { requireHydrator } from "./HydratorRegistry";
 import { requireHydratorType, HydratorType } from "../types/rag";
 
 export class IdentifiableStore {
+    constructor(private readonly ctx: HydrationContext) {}
+
     async store(ref: Identifiable): Promise<void> {
         await db().identifiable_refs.upsert({
             where: {
@@ -32,7 +34,7 @@ export class IdentifiableStore {
 
     async hydrate(ref: Identifiable): Promise<Identifiable> {
         const hydratorType = requireHydratorType(ref.entityType);
-        const hydrator = requireHydrator(hydratorType);
+        const hydrator = requireHydrator(hydratorType, this.ctx);
         return hydrator.hydrate(ref);
     }
 
@@ -51,7 +53,7 @@ export class IdentifiableStore {
         // Hydrate each group in parallel
         const results = await Promise.all(
             Array.from(grouped.entries()).map(async ([hydratorType, typeRefs]) => {
-                const hydrator = requireHydrator(hydratorType);
+                const hydrator = requireHydrator(hydratorType, this.ctx);
                 return hydrator.hydrateBulk(typeRefs);
             })
         );

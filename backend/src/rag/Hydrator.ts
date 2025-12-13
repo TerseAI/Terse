@@ -9,10 +9,19 @@ export interface Identifiable {
 // Utility type to make any type Identifiable.
 export type WithIdentity<T> = T & Identifiable;
 
-export interface Hydrator<T extends Identifiable> {
-    entityType: HydratorType;
-    hydrate(ref: Identifiable): Promise<T>;
-    hydrateBulk(refs: Identifiable[]): Promise<T[]>;
+// Context passed to hydrators for API access, user-specific data, etc.
+export interface HydrationContext {
+    userId: string;
+}
+
+// Abstract base class that enforces constructor signature
+export abstract class Hydrator<T extends Identifiable> {
+    abstract readonly entityType: HydratorType;
+    
+    constructor(protected readonly ctx: HydrationContext) {}
+    
+    abstract hydrate(ref: Identifiable): Promise<T>;
+    abstract hydrateBulk(refs: Identifiable[]): Promise<T[]>;
 }
 
 // Extract the output type from a Hydrator
