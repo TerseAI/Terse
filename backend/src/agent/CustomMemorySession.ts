@@ -227,7 +227,7 @@ export const identityHistoryCallback = (history: AgentInputItem[], newItems: Age
  * Keeping around for now, but not using it. We will want to test this in depth before
  * introducing this additional complexity.
  */
-async function persistLongTermMemory(events: RunHistoryRawEventWithRelations[]): Promise<void> {
-  const longTermMemory = new RunHistoryMemory(RAGNamespace.RUN_HISTORY_MEMORY)
+async function persistLongTermMemory(events: RunHistoryRawEventWithRelations[], userId: string): Promise<void> {
+  const longTermMemory = new RunHistoryMemory(userId, RAGNamespace.RUN_HISTORY_MEMORY)
   await longTermMemory.rememberBulk(events)
 }
