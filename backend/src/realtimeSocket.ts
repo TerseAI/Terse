@@ -3,7 +3,6 @@ import { Server, Socket } from "socket.io";
 import { createClient } from "redis";
 import { createAdapter } from "@socket.io/redis-adapter";
 import { Jwt } from "./utility/jwt";
-import chalk from "chalk";
 import { urls, nodeEnv, optional } from "./config/settings";
 import { SendModelRequest, ModelEvent } from "./shared/ModelEvents";
 import { db } from "./prismaClient";
