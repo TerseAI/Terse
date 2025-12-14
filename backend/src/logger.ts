@@ -5,46 +5,64 @@ import { resourceFromAttributes } from '@opentelemetry/resources';
 import { settings } from './config/settings';
 import { logs, Logger as OpenTelemetryLogger } from '@opentelemetry/api-logs';
 
-const isDevelopment = settings.nodeEnv === 'development';
-const usePostHog = !isDevelopment || settings.posthog.enableInDevelopment;
+
+const config: LoggerConfig = {
+  isDevelopment: settings.nodeEnv === 'development',
+  usePostHog: !(settings.nodeEnv === 'development') || settings.posthog.enableInDevelopment,
+  posthog: {
+    url: 'https://us.i.posthog.com/i/v1/logs',
+    apiKey: settings.posthog.apiKey,
+    serviceName: settings.posthog.serviceName || 'terse-backend',
+  },
+  batchProcessor: {
+    maxQueueSize: 2048,
+    scheduledDelayMillis: 5000,
+    exportTimeoutMillis: 30000,
+  },
+  service: {
+    name: settings.posthog.serviceName || 'terse-backend',
+    version: process.env.npm_package_version || '1.0.0',
+    environment: settings.nodeEnv || 'development',
+  },
+};
 
 let sdk: NodeSDK | null = null;
 let logRecordProcessor: BatchLogRecordProcessor | null = null;
 
-// Lazy getter for OpenTelemetry logger - gets it when first needed
+
 function getOpenTelemetryLogger(): OpenTelemetryLogger | null {
-  if (!usePostHog) {
+  if (!config.usePostHog) {
     return null;
   }
   try {
-    return logs.getLogger(settings.posthog.serviceName || 'terse-backend');
+    return logs.getLogger(config.posthog.serviceName);
   } catch (error) {
     console.error('[Logger] Failed to get OpenTelemetry logger:', error);
     return null;
   }
 }
 
-if (usePostHog) {
+if (config.usePostHog) {
   try {
     const exporter = new OTLPLogExporter({
-      url: 'https://us.i.posthog.com/i/v1/logs',
+      url: config.posthog.url,
       headers: {
-        'Authorization': `Bearer ${settings.posthog.apiKey}`,
+        'Authorization': `Bearer ${config.posthog.apiKey}`,
         'Content-Type': 'application/json',
       },
     });
 
     logRecordProcessor = new BatchLogRecordProcessor(exporter, {
-      maxQueueSize: 2048,
-      scheduledDelayMillis: 5000,
-      exportTimeoutMillis: 30000,
+      maxQueueSize: config.batchProcessor.maxQueueSize,
+      scheduledDelayMillis: config.batchProcessor.scheduledDelayMillis,
+      exportTimeoutMillis: config.batchProcessor.exportTimeoutMillis,
     });
 
     sdk = new NodeSDK({
       resource: resourceFromAttributes({
-        'service.name': settings.posthog.serviceName || 'terse-backend',
-        'service.version': process.env.npm_package_version || '1.0.0',
-        'deployment.environment': settings.nodeEnv || 'development',
+        'service.name': config.service.name,
+        'service.version': config.service.version,
+        'deployment.environment': config.service.environment,
       }),
       logRecordProcessor: logRecordProcessor,
     });
@@ -55,6 +73,13 @@ if (usePostHog) {
     console.error('[Logger] Server cannot start without logging. Exiting...');
     process.exit(1);
   }
+}
+
+// Validate that PostHog is properly initialized if it's enabled
+if (config.usePostHog && (!sdk || !logRecordProcessor)) {
+  const errorMessage = '[Logger] PostHog logging is enabled but SDK or LogRecordProcessor is not initialized. Server cannot start.';
+  console.error(errorMessage);
+  throw new Error(errorMessage);
 }
 
 // Graceful shutdown handler to flush logs
@@ -76,13 +101,9 @@ const gracefulShutdown = async () => {
     }
   }
 };
-
 process.on('SIGTERM', gracefulShutdown);
 process.on('SIGINT', gracefulShutdown);
 process.on('beforeExit', gracefulShutdown);
-
-
-
 
 class Logger {
   private static instance: Logger;
@@ -213,7 +234,7 @@ class Logger {
 
   private log(severityText: string, message: string, attributes?: Record<string, any>): void {
     const processedAttributes = this.processAttributes(attributes);
-    if (usePostHog) {
+    if (config.usePostHog) {
       this.emitToPostHog(severityText, message, processedAttributes);
     } else {
       this.logToConsole(severityText, message, processedAttributes);
@@ -236,5 +257,27 @@ class Logger {
     this.log('error', message, attributes);
   }
 }
+
+
+interface LoggerConfig {
+  isDevelopment: boolean;
+  usePostHog: boolean;
+  posthog: {
+    url: string;
+    apiKey: string;
+    serviceName: string;
+  };
+  batchProcessor: {
+    maxQueueSize: number;
+    scheduledDelayMillis: number;
+    exportTimeoutMillis: number;
+  };
+  service: {
+    name: string;
+    version: string;
+    environment: string;
+  };
+}
+
 
 export default Logger.getInstance();
