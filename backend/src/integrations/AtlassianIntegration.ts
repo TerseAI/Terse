@@ -355,18 +355,18 @@ export class AtlassianIntegrationManager implements Integration<AtlassianIntegra
         });
 
         if (matchingIntegrations.length === 0) {
-            logger.info("⚠️  [JIRA INTEGRATION MANAGER] No integrations found for user email: ${userEmail || 'N/A'} or base URL: ${baseUrl || 'N/A'}");
+            logger.info(`⚠️  [JIRA INTEGRATION MANAGER] No integrations found for user email: ${userEmail || 'N/A'} or base URL: ${baseUrl || 'N/A'}`);
             return;
         }
 
-        logger.info("✅ [JIRA INTEGRATION MANAGER] Found ${matchingIntegrations.length} matching integration(s)");
+        logger.info(`✅ [JIRA INTEGRATION MANAGER] Found ${matchingIntegrations.length} matching integration(s)`);
 
         // Process event for each matching integration
         for (const integration of matchingIntegrations) {
             try {
                 const user = integration.user;
                 if (!user) {
-                    logger.info("⚠️  [JIRA INTEGRATION MANAGER] User not found for integration ${integration.id}");
+                    logger.info(`⚠️  [JIRA INTEGRATION MANAGER] User not found for integration ${integration.id}`);
                     continue;
                 }
 
@@ -377,10 +377,10 @@ export class AtlassianIntegrationManager implements Integration<AtlassianIntegra
                     if (event.issue?.id && integration.cloud_id && integration.access_token) {
                         // For now, we'll use the event as-is since it already contains rich information
                         // Future: Could fetch additional context using OAuth token
-                        logger.info("📊 [JIRA INTEGRATION MANAGER] Using webhook payload for issue ${event.issue.key}");
+                        logger.info(`📊 [JIRA INTEGRATION MANAGER] Using webhook payload for issue ${event.issue.key}`);
                     }
                 } catch (error) {
-                    logger.info("⚠️  [JIRA INTEGRATION MANAGER] Error enriching context: ${error}");
+                    logger.info(`⚠️  [JIRA INTEGRATION MANAGER] Error enriching context: ${error}`);
                     // Continue with original event if enrichment fails
                 }
 
