@@ -169,7 +169,7 @@ export class EventProcessor {
                 await markRunFailed(runId, errorMessage, 'filter');
                 emitCacheInvalidationWithWildcard(this.user.id, 'runHistory', channel.id);
             } catch (e) {
-                logger.error('Failed to mark run as failed', { error: e instanceof Error ? e.message : String(e), stack: e instanceof Error ? e.stack : undefined, runId, channelId: channel.id });
+                logger.error('Failed to mark run as failed', { error, runId, channelId: channel.id });
             }
             
             return new ProcessorResult(
@@ -186,7 +186,7 @@ export class EventProcessor {
                 // Emit cache invalidation to update UI
                 emitCacheInvalidationWithWildcard(this.user.id, 'runHistory', channel.id);
             } catch (e) {
-                logger.error('Failed to mark run skipped', { error: e instanceof Error ? e.message : String(e), stack: e instanceof Error ? e.stack : undefined, runId, channelId: channel.id });
+                logger.error('Failed to mark run skipped', { error: e, runId, channelId: channel.id });
             }
             return new ProcessorResult(false, `Not relevant: ${filterResult.reason}`, channel);
         }
@@ -194,7 +194,7 @@ export class EventProcessor {
         try {
             await markRunProcessed(runId, filterResult.reason);
         } catch (e) {
-            logger.error('Failed to mark run processed', { error: e instanceof Error ? e.message : String(e), stack: e instanceof Error ? e.stack : undefined, runId, channelId: channel.id });
+            logger.error('Failed to mark run processed', { error: e, runId, channelId: channel.id });
         }
 
         logger.info(`Event is relevant to channel "${channel.name}"`);
@@ -221,7 +221,7 @@ export class EventProcessor {
                 await markRunFailed(runId, errorMessage, 'agent');
                 emitCacheInvalidationWithWildcard(this.user.id, 'runHistory', channel.id);
             } catch (e) {
-                logger.error('Failed to mark run as failed', { error: e instanceof Error ? e.message : String(e), stack: e instanceof Error ? e.stack : undefined, runId, channelId: channel.id });
+                logger.error('Failed to mark run as failed', { error, runId, channelId: channel.id });
             }
             
             // Re-throw to be caught by outer try-catch
@@ -252,7 +252,7 @@ async function persistRunResult<T extends Session>(
         // Invalidate all run history queries for this channel when status changes
         emitCacheInvalidationWithWildcard(session.user.id, 'runHistory', channel.id);
     } catch (e) {
-        logger.error('Failed to finalize run status', { error: e instanceof Error ? e.message : String(e), stack: e instanceof Error ? e.stack : undefined, runId, channelId: channel.id });
+        logger.error('Failed to finalize run status', { error: e, runId, channelId: channel.id });
     }
 
     const finalOutput = typeof result.finalOutput === 'string' ? result.finalOutput : '';
@@ -276,7 +276,7 @@ export async function persistRunAction<T extends Session>(
         emitCacheInvalidationWithKey(session.user.id, 'recentActions');
         return actionId;
     } catch (e) {
-        logger.error('Failed to append run action', { error: e instanceof Error ? e.message : String(e), stack: e instanceof Error ? e.stack : undefined, runId, channelId: channel.id });
+        logger.error('Failed to append run action', { error: e, runId, channelId: channel.id });
     }
     return undefined;
 }
