@@ -19,7 +19,6 @@
     "test:processor": "tsx src/testing/testEventProcessor.ts",
     "test:processor:quick": "tsx src/testing/quickProcessorTest.ts",
     "test:seed-run-history": "tsx src/testing/seedRunHistory.ts",
-    "test:logger": "tsx src/testing/testLogger.ts",
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
     "db:studio": "prisma studio",
