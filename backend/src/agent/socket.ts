@@ -62,7 +62,7 @@ export class AgentSocketServer {
             try {
                 modelRequest = JSON.parse(raw.toString());
             } catch (error) {
-                logger.error('Failed to parse WebSocket message', { error: error instanceof Error ? error.message : String(error) });
+                logger.error('Failed to parse WebSocket message', { error });
                 ws.send(JSON.stringify({ type: 'Failure', error: 'Invalid JSON format' }));
                 return;
             }
@@ -174,7 +174,7 @@ export async function requestSessionSocketToken(req: Request, res: Response) {
         const token = await new Jwt().sign(user.id);
         res.json(token);
     } catch (error) {
-        logger.error('Failed to request session socket token', { error: error instanceof Error ? error.message : String(error) });
+        logger.error('Failed to request session socket token', { error });
         res.status(500).json({ error: 'Failed to request session socket token' });
     }
 }

@@ -17,7 +17,7 @@ export async function getFigmaIntegrations(req: Request, res: Response) {
       const integrations = await manager.getInstancesForUser(req.session.user.id);
       res.status(200).json(integrations);
   } catch (error) {
-      logger.error('Error fetching Figma integrations', { error: error instanceof Error ? error.message : String(error), stack: error instanceof Error ? error.stack : undefined, userId: req.session.user.id });
+      logger.error('Error fetching Figma integrations', { error, userId: req.session.user.id });
       res.status(500).json({ error: 'Failed to fetch Figma integrations' });
   }
 }
@@ -55,9 +55,9 @@ export const handleFigmaWebhook = async (req: Request, res: Response) => {
     // Process the event asynchronously
     const figmaIntegrationManager = new FigmaIntegrationManager();
     figmaIntegrationManager.processWebhookEvent(webhookEvent).catch((error) => {
-      logger.error('Error processing Figma webhook event', { error: error instanceof Error ? error.message : String(error), stack: error instanceof Error ? error.stack : undefined, eventType: webhookEvent.event_type });
+      logger.error('Error processing Figma webhook event', { error, eventType: webhookEvent.event_type });
     });
   } catch (error) {
-    logger.error("Error in handleFigmaWebhook", { error: error instanceof Error ? error.message : String(error), stack: error instanceof Error ? error.stack : undefined });
+    logger.error("Error in handleFigmaWebhook", { error });
   }
 };

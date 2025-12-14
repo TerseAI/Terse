@@ -169,7 +169,7 @@ export class GmailIntegrationManager implements Integration<GmailIntegration, Gm
                 logger.info(`Successfully processed webhook for ${emailAddress}, historyId: ${historyId}`, { emailAddress, historyId, integrationId: integration.id });
             }
         } catch (error) {
-            logger.error('Error processing Gmail webhook', { error: error instanceof Error ? error.message : String(error), stack: error instanceof Error ? error.stack : undefined, emailAddress, historyId });
+            logger.error('Error processing Gmail webhook', { error, emailAddress, historyId });
             // Re-throw to ensure it's logged by the caller
             throw error;
         }
@@ -296,7 +296,7 @@ export class GmailIntegrationManager implements Integration<GmailIntegration, Gm
             // Redirect to success page which will auto-close the popup
             res.redirect(`${urls.frontend}/oauth/success`);
         } catch (error) {
-            logger.error("Gmail OAuth error", { error: error instanceof Error ? error.message : String(error), stack: error instanceof Error ? error.stack : undefined });
+            logger.error("Gmail OAuth error", { error });
             res.redirect(`${urls.frontend}/oauth/error`);
         }
     }
@@ -398,7 +398,7 @@ export class GmailIntegrationManager implements Integration<GmailIntegration, Gm
 
             return tokenRefreshed;
         } catch (error) {
-            logger.error(`Error refreshing Gmail token for integration ${integrationId}`, { error: error instanceof Error ? error.message : String(error), stack: error instanceof Error ? error.stack : undefined, integrationId });
+            logger.error(`Error refreshing Gmail token for integration ${integrationId}`, { error, integrationId });
             return false;
         }
     }
@@ -417,7 +417,7 @@ export class GmailIntegrationManager implements Integration<GmailIntegration, Gm
             // Use the existing helper function to ensure token is refreshed if needed
             return await refreshAccessTokenIfNeeded(integration);
         } catch (error) {
-            logger.error(`Error getting Gmail access token for integration ${integrationId}`, { error: error instanceof Error ? error.message : String(error), stack: error instanceof Error ? error.stack : undefined, integrationId });
+            logger.error(`Error getting Gmail access token for integration ${integrationId}`, { error, integrationId });
             return null;
         }
     }
@@ -768,7 +768,7 @@ async function fetchAndParseEmail(
         logger.debug(`Message ${messageId} not found (likely deleted or moved)`, { messageId });
       } else {
         // Log other errors as actual errors
-        logger.error(`Error fetching message ${messageId}`, { error: error instanceof Error ? error.message : String(error), stack: error instanceof Error ? error.stack : undefined, messageId });
+        logger.error(`Error fetching message ${messageId}`, { error, messageId });
       }
       return null;
     }

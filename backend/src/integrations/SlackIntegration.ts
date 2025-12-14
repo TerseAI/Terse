@@ -104,7 +104,7 @@ export class SlackIntegrationManager implements Integration<SlackIntegration, Sl
                 case 'message':
                     // Process message asynchronously (fire and forget - errors are logged but don't affect Slack)
                     handleSlackMessage(event, team_id, authorizations as SlackAuthorizations[]).catch((error) => {
-                        logger.error('Error processing Slack message in background', { error: error instanceof Error ? error.message : String(error), stack: error instanceof Error ? error.stack : undefined });
+                        logger.error('Error processing Slack message in background', { error });
                     });
                     break;
             }
@@ -174,7 +174,7 @@ export class SlackIntegrationManager implements Integration<SlackIntegration, Sl
         try {
             decoded = jwt.verify(state, jwtConfig.secret) as { userId: string; isBotUser?: boolean };
         } catch (error) {
-            logger.error("Error decoding JWT state", { error: error instanceof Error ? error.message : String(error) });
+            logger.error("Error decoding JWT state", { error });
             res.redirect(`${frontendUrl}/oauth/error`);
             return;
         }
@@ -295,7 +295,7 @@ export class SlackIntegrationManager implements Integration<SlackIntegration, Sl
             logger.info("Slack OAuth completed successfully", { userId: user.id, teamId: team.id });
             res.redirect(`${frontendUrl}/oauth/success`);
         } catch (error) {
-            logger.error('Error exchanging code for access token', { error: error instanceof Error ? error.message : String(error), stack: error instanceof Error ? error.stack : undefined });
+            logger.error('Error exchanging code for access token', { error });
             res.redirect(`${frontendUrl}/oauth/error`);
         }
     }
@@ -312,7 +312,7 @@ export class SlackIntegrationManager implements Integration<SlackIntegration, Sl
 
             return channel;
         } catch (error) {
-            logger.error('Error opening chat', { error: error instanceof Error ? error.message : String(error), authedUserId });
+            logger.error('Error opening chat', { error, authedUserId });
             return null;
         }
     }
@@ -356,7 +356,7 @@ export class SlackIntegrationManager implements Integration<SlackIntegration, Sl
             // Slack tokens are long-lived and don't expire, so just return the token
             return userSlackIntegration.slack_integration.access_token || null;
         } catch (error) {
-            logger.error(`Error getting Slack access token for integration ${integrationId}`, { error: error instanceof Error ? error.message : String(error), integrationId });
+            logger.error(`Error getting Slack access token for integration ${integrationId}`, { error, integrationId });
             return null;
         }
     }
@@ -602,7 +602,7 @@ async function handleSlackMessage(event: SlackMessageEvent, teamId: string, auth
                         channel: messageEvent.channel!
                     });
                 } catch (error) {
-                    logger.error(`Error getting members`, { error: error instanceof Error ? error.message : String(error), channel: messageEvent.channel, teamId });
+                    logger.error(`Error getting members`, { error, channel: messageEvent.channel, teamId });
                     return false;
                 }
 
@@ -615,7 +615,7 @@ async function handleSlackMessage(event: SlackMessageEvent, teamId: string, auth
                     return false;
                 }
             } catch (error) {
-                logger.error(`Error getting members`, { error: error instanceof Error ? error.message : String(error), channel: messageEvent.channel, teamId });
+                logger.error(`Error getting members`, { error, channel: messageEvent.channel, teamId });
                 return false;
             }
         }
@@ -733,7 +733,7 @@ async function handleSlackMessage(event: SlackMessageEvent, teamId: string, auth
                     }
                 }
             } catch (error) {
-                logger.error(`Error processing automations for user ${userSlackIntegration.user.email}`, { error: error instanceof Error ? error.message : String(error), stack: error instanceof Error ? error.stack : undefined, userId: userSlackIntegration.user.id, email: userSlackIntegration.user.email });
+                logger.error(`Error processing automations for user ${userSlackIntegration.user.email}`, { error, userId: userSlackIntegration.user.id, email: userSlackIntegration.user.email });
                 // Continue processing other users even if one fails
             }
         }
@@ -741,7 +741,7 @@ async function handleSlackMessage(event: SlackMessageEvent, teamId: string, auth
         logger.info(`Slack message processed - ${totalMatches} total automation(s) matched across all workspace users`, { totalMatches, teamId, channel: messageEvent.channel });
 
     } catch (error) {
-        logger.error('Error handling Slack message', { error: error instanceof Error ? error.message : String(error), stack: error instanceof Error ? error.stack : undefined, teamId });
+        logger.error('Error handling Slack message', { error, teamId });
         // Note: We don't send error messages back to Slack anymore since this is now
         // event-driven automations, not interactive bot responses
     }

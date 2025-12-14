@@ -223,7 +223,7 @@ ${similarEventsList}
 Use these examples as reference for understanding the user's intent and how similar requests were processed in the past.`
             };
         } catch (error) {
-            logger.error('Error fetching similar past input events', { error: error instanceof Error ? error.message : String(error), stack: error instanceof Error ? error.stack : undefined, channelId: this.deps.channel.id, runId: this.runContext.runId });
+            logger.error('Error fetching similar past input events', { error, channelId: this.deps.channel.id, runId: this.runContext.runId });
             // Return null to continue without similar events if there's an error
             return null;
         }

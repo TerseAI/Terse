@@ -218,7 +218,7 @@ const createJiraTicketTool = tool({
             associatedCommits: associatedCommits || undefined,
         } as CreateTicketInput);
         } catch (error) {
-            logger.error('Jira Ticket Tool: Error creating ticket', { error: error instanceof Error ? error.message : String(error), stack: error instanceof Error ? error.stack : undefined, projectKey, title });
+            logger.error('Jira Ticket Tool: Error creating ticket', { error, projectKey, title });
             throw new Error('Error creating ticket');
         }
 

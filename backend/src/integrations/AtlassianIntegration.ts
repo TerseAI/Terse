@@ -220,7 +220,7 @@ export class AtlassianIntegrationManager implements Integration<AtlassianIntegra
                         try {
                             await this.deleteJiraWebhook(cloudId, access_token, existing.webhook_id);
                         } catch (error) {
-                            logger.warn("⚠️  Could not delete existing webhook, continuing with creation", { error: error instanceof Error ? error.message : String(error) });
+                            logger.warn("⚠️  Could not delete existing webhook, continuing with creation", { error });
                         }
                     }
 
@@ -228,7 +228,7 @@ export class AtlassianIntegrationManager implements Integration<AtlassianIntegra
                     webhookId = webhook.webhookId;
                     webhookSecret = webhook.webhookSecret;
                 } catch (error) {
-                    logger.error("⚠️  Failed to create webhook, continuing without it", { error: error instanceof Error ? error.message : String(error) });
+                    logger.error("⚠️  Failed to create webhook, continuing without it", { error });
                     // Continue with installation even if webhook creation fails
                 }
             } else {
@@ -273,7 +273,7 @@ export class AtlassianIntegrationManager implements Integration<AtlassianIntegra
             // Redirect to success page which will auto-close the popup
             res.redirect(`${urls.frontend}/oauth/success`);
         } catch (error) {
-            logger.error("Error in Atlassian OAuth callback", { error: error instanceof Error ? error.message : String(error), stack: error instanceof Error ? error.stack : undefined });
+            logger.error("Error in Atlassian OAuth callback", { error });
             res.redirect(`${urls.frontend}/oauth/error`);
         }
     }
@@ -336,7 +336,7 @@ export class AtlassianIntegrationManager implements Integration<AtlassianIntegra
                 // Extract base URL (e.g., https://company.atlassian.net from https://company.atlassian.net/rest/api/3/issue/123)
                 baseUrl = `${url.protocol}//${url.hostname}`;
             } catch (error) {
-                logger.warn("⚠️  Could not parse issue URL", { issueUrl, error: error instanceof Error ? error.message : String(error) });
+                logger.warn("⚠️  Could not parse issue URL", { issueUrl, error });
             }
         }
 
@@ -390,8 +390,7 @@ export class AtlassianIntegrationManager implements Integration<AtlassianIntegra
                 await eventProcessor.process();
             } catch (error) {
                 logger.error(`❌ [JIRA INTEGRATION MANAGER] Error processing event for integration ${integration.id}`, { 
-                    error: error instanceof Error ? error.message : String(error),
-                    stack: error instanceof Error ? error.stack : undefined,
+                    error,
                     integrationId: integration.id
                 });
                 // Continue processing other integrations even if one fails
@@ -423,7 +422,7 @@ export class AtlassianIntegrationManager implements Integration<AtlassianIntegra
                             integration.webhook_id
                         );
                     } catch (error) {
-                        logger.error("⚠️  Failed to delete webhook during integration deletion", { error: error instanceof Error ? error.message : String(error), integrationId });
+                        logger.error("⚠️  Failed to delete webhook during integration deletion", { error, integrationId });
                         // Continue with deletion even if webhook deletion fails
                     }
                 }
@@ -472,7 +471,7 @@ export class AtlassianIntegrationManager implements Integration<AtlassianIntegra
                                 integration.webhook_id
                             );
                         } catch (error) {
-                            logger.warn("⚠️  Could not delete existing webhook, continuing with creation", { error: error instanceof Error ? error.message : String(error), integrationId });
+                            logger.warn("⚠️  Could not delete existing webhook, continuing with creation", { error, integrationId });
                         }
                     }
                 }
@@ -553,8 +552,7 @@ export class AtlassianIntegrationManager implements Integration<AtlassianIntegra
             logger.info("✅ Created and registered webhook for integration", {integrationId, webhookId: webhook.webhookId});
         } catch (error) {
             logger.error(`❌ Error setting up webhook for integration ${integrationId}`, { 
-                error: error instanceof Error ? error.message : String(error),
-                stack: error instanceof Error ? error.stack : undefined,
+                error,
                 integrationId
             });
             // Don't throw - allow automation setup to continue even if webhook creation fails
@@ -606,7 +604,7 @@ export class AtlassianIntegrationManager implements Integration<AtlassianIntegra
             // Token was refreshed if expiry changed
             return updatedIntegration.token_expiry.getTime() !== originalTokenExpiry.getTime();
         } catch (error) {
-            logger.error(`Error refreshing Atlassian token for integration ${integrationId}`, { error: error instanceof Error ? error.message : String(error), integrationId });
+            logger.error(`Error refreshing Atlassian token for integration ${integrationId}`, { error, integrationId });
             return false;
         }
     }
@@ -683,7 +681,7 @@ export class AtlassianIntegrationManager implements Integration<AtlassianIntegra
                     integration.webhook_id
                 );
             } catch (error) {
-                logger.error(`⚠️  Failed to delete webhook from Jira, but clearing from database`, { error: error instanceof Error ? error.message : String(error), integrationId });
+                logger.error(`⚠️  Failed to delete webhook from Jira, but clearing from database`, { error, integrationId });
             }
 
             // Clear the webhook_id from the database
@@ -698,8 +696,7 @@ export class AtlassianIntegrationManager implements Integration<AtlassianIntegra
             logger.info("✅ Deleted webhook for integration", { integrationId });
         } catch (error) {
             logger.error(`❌ Error tearing down webhook for integration ${integrationId}`, { 
-                error: error instanceof Error ? error.message : String(error),
-                stack: error instanceof Error ? error.stack : undefined,
+                error,
                 integrationId
             });
             // Don't throw - allow automation teardown to continue even if webhook deletion fails
@@ -783,8 +780,7 @@ export class AtlassianIntegrationManager implements Integration<AtlassianIntegra
             return integration.access_token;
         } catch (error) {
             logger.error(`Error ensuring valid access token for integration ${integrationId}`, { 
-                error: error instanceof Error ? error.message : String(error),
-                stack: error instanceof Error ? error.stack : undefined,
+                error,
                 integrationId
             });
             // Return null on error - caller should handle

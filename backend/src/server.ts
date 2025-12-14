@@ -106,7 +106,7 @@ try {
   await initializeRealtimeSocket(server);
   logger.info("✅ Socket.IO server initialized");
 } catch (error) {
-  logger.error("❌ Failed to initialize Socket.IO server", { error: error instanceof Error ? error.message : String(error) });
+  logger.error("❌ Failed to initialize Socket.IO server", { error });
   process.exit(1);
 }
 

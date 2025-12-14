@@ -21,7 +21,7 @@ export async function getSlackIntegrations(req: Request, res: Response) {
     const integrations = await manager.getInstancesForUser(req.session.user.id);
     res.status(200).json(integrations);
   } catch (error) {
-    logger.error('Error fetching Slack integrations', { error: error instanceof Error ? error.message : String(error), userId: req.session?.user?.id });
+    logger.error('Error fetching Slack integrations', { error, userId: req.session?.user?.id });
     res.status(500).json({ error: 'Failed to fetch Slack integrations' });
   }
 }
@@ -99,7 +99,7 @@ export async function handleSlackWebhook(req: Request, res: Response): Promise<v
     const rawBody = req.body as Buffer;
     body = JSON.parse(rawBody.toString('utf8')) as unknown as SlackMessageEvent;
   } catch (error) {
-    logger.error('Failed to parse Slack event body', { error: error instanceof Error ? error.message : String(error) });
+    logger.error('Failed to parse Slack event body', { error });
     res.sendStatus(400);
     return;
   }
@@ -118,7 +118,7 @@ export async function handleSlackWebhook(req: Request, res: Response): Promise<v
   // Process the event asynchronously
   const slackIntegrationManager = new SlackIntegrationManager();
   slackIntegrationManager.processWebhookEvent(body).catch((error) => {
-    logger.error('Error processing Slack webhook event', { error: error instanceof Error ? error.message : String(error), stack: error instanceof Error ? error.stack : undefined });
+    logger.error('Error processing Slack webhook event', { error });
   });
 }
 
@@ -247,7 +247,7 @@ export const getSlackChannels = async (req: Request, res: Response) => {
 
     res.status(200).json(response);
   } catch (error: any) {
-    logger.error("Error fetching Slack channels", { error: error instanceof Error ? error.message : String(error), stack: error instanceof Error ? error.stack : undefined, integrationId, userId: user.id });
+    logger.error("Error fetching Slack channels", { error, integrationId, userId: user.id });
 
     // Check if this is an invalid_auth error from Slack
     const isInvalidAuth =
@@ -291,7 +291,7 @@ async function openChat(accessToken: string, authedUserId: string) {
 
     return channel;
   } catch (error) {
-    logger.error('Error opening chat', { error: error instanceof Error ? error.message : String(error), authedUserId });
+    logger.error('Error opening chat', { error, authedUserId });
     return null;
   }
 }

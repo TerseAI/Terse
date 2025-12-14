@@ -8,7 +8,7 @@ export function formatChannelInputForAgent(input: ChannelInput | ChannelInputWit
         return configInstance.formatForAgent();
     } catch (error) {
         // If conversion fails, return basic type info
-        logger.warn('Failed to convert channel input to ConfigInstance', { error: error instanceof Error ? error.message : String(error), configType: input.config_type, inputId: input.id });
+        logger.warn('Failed to convert channel input to ConfigInstance', { error, configType: input.config_type, inputId: input.id });
         return `Type: ${input.config_type}`;
     }
 }
@@ -18,7 +18,7 @@ export function formatChannelOutputForAgent(output: ChannelOutput | ChannelOutpu
         const configInstance = convertPrismaOutputConfigToConfigInstance(output as ChannelOutputWithConfigs);
         return configInstance.formatForAgent();
     } catch (error) {
-        logger.warn('Failed to convert channel output to ConfigInstance', { error: error instanceof Error ? error.message : String(error), configType: output.config_type, outputId: output.id });
+        logger.warn('Failed to convert channel output to ConfigInstance', { error, configType: output.config_type, outputId: output.id });
         return `Type: ${output.config_type}`;
     }
 }

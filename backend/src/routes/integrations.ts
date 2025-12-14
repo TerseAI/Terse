@@ -30,7 +30,7 @@ export const getIntegrationInstallationDetails = async (req: Request, res: Respo
         const installationDetails = await getInstallationInformation(integrationType as IntegrationType, userId, options);
         res.json(installationDetails);
     } catch (error: any) {
-        logger.error('Error getting installation details', { error: error instanceof Error ? error.message : String(error), stack: error instanceof Error ? error.stack : undefined, integrationType: req.params.integrationType, userId: req.session?.user?.id });
+        logger.error('Error getting installation details', { error, integrationType: req.params.integrationType, userId: req.session?.user?.id });
         res.status(500).json({ error: error.message || 'Failed to get installation details' });
     }
 }

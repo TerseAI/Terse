@@ -106,13 +106,13 @@ export class LinearIntegrationManager implements Integration<LinearIntegration, 
                                 // The event already has most data, but we can add any missing fields
                                 logger.debug(`📊 [LINEAR INTEGRATION MANAGER] Enriched issue context for ${event.data.id}`, { issueId: event.data.id, integrationId: integration.id });
                             } catch (error) {
-                                logger.warn(`⚠️  [LINEAR INTEGRATION MANAGER] Could not enrich issue context`, { error: error instanceof Error ? error.message : String(error), issueId: event.data.id, integrationId: integration.id });
+                                logger.warn(`⚠️  [LINEAR INTEGRATION MANAGER] Could not enrich issue context`, { error, issueId: event.data.id, integrationId: integration.id });
                                 // Continue with original event if enrichment fails
                             }
                         }
                     }
                 } catch (error) {
-                    logger.warn(`⚠️  [LINEAR INTEGRATION MANAGER] Error enriching context`, { error: error instanceof Error ? error.message : String(error), integrationId: integration.id });
+                    logger.warn(`⚠️  [LINEAR INTEGRATION MANAGER] Error enriching context`, { error, integrationId: integration.id });
                     // Continue with original event if enrichment fails
                 }
 
@@ -123,7 +123,7 @@ export class LinearIntegrationManager implements Integration<LinearIntegration, 
             } catch (error) {
                 logger.error(
                     `❌ [LINEAR INTEGRATION MANAGER] Error processing event for integration ${integration.id}`,
-                    { error: error instanceof Error ? error.message : String(error), stack: error instanceof Error ? error.stack : undefined, integrationId: integration.id, eventType: event.type, action: event.action }
+                    { error, integrationId: integration.id, eventType: event.type, action: event.action }
                 );
                 // Continue processing other integrations even if one fails
             }
@@ -259,7 +259,7 @@ export class LinearIntegrationManager implements Integration<LinearIntegration, 
             // Redirect to success page which will auto-close the popup
             res.redirect(`${urls.frontend}/oauth/success`);
         } catch (error) {
-            logger.error("Error in Linear OAuth callback", { error: error instanceof Error ? error.message : String(error), stack: error instanceof Error ? error.stack : undefined });
+            logger.error("Error in Linear OAuth callback", { error });
             res.redirect(`${urls.frontend}/oauth/error`);
         }
     }
@@ -322,7 +322,7 @@ export class LinearIntegrationManager implements Integration<LinearIntegration, 
             // Token was refreshed if expiry changed
             return updatedIntegration.token_expiry.getTime() !== originalTokenExpiry.getTime();
         } catch (error) {
-            logger.error(`Error refreshing Linear token for integration ${integrationId}`, { error: error instanceof Error ? error.message : String(error), stack: error instanceof Error ? error.stack : undefined, integrationId });
+            logger.error(`Error refreshing Linear token for integration ${integrationId}`, { error, integrationId });
             return false;
         }
     }
@@ -402,7 +402,7 @@ export class LinearIntegrationManager implements Integration<LinearIntegration, 
             // Token is still valid
             return integration.access_token;
         } catch (error) {
-            logger.error(`Error getting Linear access token for integration ${integrationId}`, { error: error instanceof Error ? error.message : String(error), stack: error instanceof Error ? error.stack : undefined, integrationId });
+            logger.error(`Error getting Linear access token for integration ${integrationId}`, { error, integrationId });
             // Return null on error - caller should handle
             return null;
         }

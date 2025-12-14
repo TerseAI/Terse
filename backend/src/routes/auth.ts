@@ -87,7 +87,7 @@ export async function me(req: Request, res: Response) {
     try {
         res.send(req.session?.user);
     } catch (error) {
-        logger.error('Failed to retrieve session user', { error: error instanceof Error ? error.message : String(error), stack: error instanceof Error ? error.stack : undefined });
+        logger.error('Failed to retrieve session user', { error });
         res.status(500).json({ message: 'Failed to fetch user information' });
     }
 }
@@ -121,7 +121,7 @@ export async function login(req: Request, res: Response) {
             user: user
         });
     } catch (error) {
-        logger.error('Login error', { error: error instanceof Error ? error.message : String(error), stack: error instanceof Error ? error.stack : undefined });
+        logger.error('Login error', { error });
         res.status(500).json({ message: 'Internal server error' });
     }
 }

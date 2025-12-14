@@ -171,7 +171,7 @@ export async function filterEvent(
                     }
                 }
             } catch (error) {
-                logger.error('Error streaming filter events', { error: error instanceof Error ? error.message : String(error), stack: error instanceof Error ? error.stack : undefined, runId: streamingParams.runId, channelId: streamingParams.channelId });
+                logger.error('Error streaming filter events', { error, runId: streamingParams.runId, channelId: streamingParams.channelId });
                 // Continue with parsing even if streaming fails
             }
         }

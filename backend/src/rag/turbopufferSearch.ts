@@ -103,7 +103,7 @@ export class TurboPufferSearch<
                         distance: distanceMap.get(h.entityId) ?? Infinity
                     }));
                 } catch (error) {
-                    logger.error(`Error hydrating items of type ${entityType}`, { error: error instanceof Error ? error.message : String(error), stack: error instanceof Error ? error.stack : undefined, entityType, itemCount: items.length });
+                    logger.error(`Error hydrating items of type ${entityType}`, { error, entityType, itemCount: items.length });
                     throw new SearchError(`Failed to hydrate ${entityType} items`, error as Error);
                 }
             });

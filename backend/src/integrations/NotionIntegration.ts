@@ -156,7 +156,7 @@ export class NotionIntegrationManager implements Integration<NotionIntegration, 
             // Redirect to success page which will auto-close the popup
             res.redirect(`${urls.frontend}/oauth/success`);
         } catch (error) {
-            logger.error("Error in Notion OAuth callback", { error: error instanceof Error ? error.message : String(error), stack: error instanceof Error ? error.stack : undefined });
+            logger.error("Error in Notion OAuth callback", { error });
             res.redirect(`${urls.frontend}/oauth/error`);
         }
     }
@@ -198,7 +198,7 @@ export class NotionIntegrationManager implements Integration<NotionIntegration, 
             // Notion tokens are long-lived and don't expire, so just return the token
             return integration.integration_token || null;
         } catch (error) {
-            logger.error(`Error getting Notion access token for integration ${integrationId}`, { error: error instanceof Error ? error.message : String(error), stack: error instanceof Error ? error.stack : undefined, integrationId });
+            logger.error(`Error getting Notion access token for integration ${integrationId}`, { error, integrationId });
             return null;
         }
     }

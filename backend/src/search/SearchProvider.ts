@@ -52,7 +52,7 @@ export class PostgreSQLSearch implements Search {
                 metadata: row.metadata || {}
             }));
         } catch (error) {
-            logger.error('Search database error', { error: error instanceof Error ? error.message : String(error), stack: error instanceof Error ? error.stack : undefined });
+            logger.error('Search database error', { error });
             throw new SearchError('Database error', error as Error);
         }
     }
@@ -91,7 +91,7 @@ export class PostgreSQLSearch implements Search {
                 ]
             );
         } catch (error) {
-            logger.error('Error inserting search content', { error: error instanceof Error ? error.message : String(error), stack: error instanceof Error ? error.stack : undefined, itemId: item.id, entityType: item.entityType, entityId: item.entityId });
+            logger.error('Error inserting search content', { error, itemId: item.id, entityType: item.entityType, entityId: item.entityId });
             throw new SearchError('Database error', error as Error);
         }
     }
@@ -174,7 +174,7 @@ export class PostgreSQLSearch implements Search {
             await client.query('COMMIT');
             logger.info(`✅ Successfully committed all search items`, { count: items.length });
         } catch (error) {
-            logger.error('❌ Transaction failed, rolling back', { error: error instanceof Error ? error.message : String(error), stack: error instanceof Error ? error.stack : undefined, itemCount: items.length });
+            logger.error('❌ Transaction failed, rolling back', { error, itemCount: items.length });
             await client.query('ROLLBACK');
             throw new SearchError('Database error', error as Error);
         } finally {

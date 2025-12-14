@@ -98,7 +98,7 @@ Example: "[{\"operation\": \"append\", \"blocks\": [{\"object\": \"block\", \"ty
             pageUrl = 'url' in pageResponse ? pageResponse.url : undefined;
         } catch (error) {
             // If we can't fetch the page URL, we'll just skip adding URLs to trackAction
-            logger.warn('Could not fetch page URL for deep linking', { error: error instanceof Error ? error.message : String(error) });
+            logger.warn('Could not fetch page URL for deep linking', { error });
         }
 
         const results: any[] = [];

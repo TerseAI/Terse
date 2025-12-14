@@ -229,7 +229,7 @@ export class FigmaIntegrationManager implements Integration<FigmaIntegration, Fi
       // Redirect to success page which will auto-close the popup
       res.redirect(`${urls.frontend}/oauth/success`);
     } catch (error) {
-      logger.error("Error in Figma OAuth callback", { error: error instanceof Error ? error.message : String(error), stack: error instanceof Error ? error.stack : undefined });
+      logger.error("Error in Figma OAuth callback", { error });
       res.redirect(`${urls.frontend}/oauth/error`);
     }
   }
@@ -314,7 +314,7 @@ export class FigmaIntegrationManager implements Integration<FigmaIntegration, Fi
               logger.info(`✅ Deleted existing webhook ${existingWebhook.webhook_id}`, { webhookId: existingWebhook.webhook_id, teamId });
             }
           } catch (error) {
-            logger.error(`❌ Error deleting existing webhook ${existingWebhook.webhook_id}`, { error: error instanceof Error ? error.message : String(error), stack: error instanceof Error ? error.stack : undefined, webhookId: existingWebhook.webhook_id, teamId });
+            logger.error(`❌ Error deleting existing webhook ${existingWebhook.webhook_id}`, { error, webhookId: existingWebhook.webhook_id, teamId });
           }
 
           // Delete webhook record from database
@@ -374,7 +374,7 @@ export class FigmaIntegrationManager implements Integration<FigmaIntegration, Fi
         logger.info(`✅ Created team-level Figma webhook ${webhookId} for team ${teamId}, event ${eventType}`, { webhookId, teamId, eventType });
       }
     } catch (error) {
-      logger.error(`❌ Error creating Figma webhooks for team ${teamId}`, { error: error instanceof Error ? error.message : String(error), stack: error instanceof Error ? error.stack : undefined, teamId });
+      logger.error(`❌ Error creating Figma webhooks for team ${teamId}`, { error, teamId });
       throw error;
     }
   }
@@ -461,7 +461,7 @@ export class FigmaIntegrationManager implements Integration<FigmaIntegration, Fi
           logger.info(`✅ Deleted team-level Figma webhook ${webhook.webhook_id} (${webhook.event_type}) for team ${teamId}`, { webhookId: webhook.webhook_id, eventType: webhook.event_type, teamId });
         }
       } catch (error) {
-        logger.error(`❌ Error deleting Figma webhook ${webhook.webhook_id}`, { error: error instanceof Error ? error.message : String(error), stack: error instanceof Error ? error.stack : undefined, webhookId: webhook.webhook_id, teamId });
+        logger.error(`❌ Error deleting Figma webhook ${webhook.webhook_id}`, { error, webhookId: webhook.webhook_id, teamId });
         // Continue with database cleanup even if API call fails
       }
     }
@@ -521,7 +521,7 @@ export class FigmaIntegrationManager implements Integration<FigmaIntegration, Fi
       // Token was refreshed if expiry changed
       return updatedIntegration.token_expiry.getTime() !== originalTokenExpiry.getTime();
     } catch (error) {
-      logger.error(`Error refreshing Figma token for integration ${integrationId}`, { error: error instanceof Error ? error.message : String(error), stack: error instanceof Error ? error.stack : undefined, integrationId });
+      logger.error(`Error refreshing Figma token for integration ${integrationId}`, { error, integrationId });
       return false;
     }
   }
@@ -604,7 +604,7 @@ export class FigmaIntegrationManager implements Integration<FigmaIntegration, Fi
       // Token is still valid
       return integration.access_token;
     } catch (error) {
-      logger.error(`Error getting Figma access token for integration ${integrationId}`, { error: error instanceof Error ? error.message : String(error), stack: error instanceof Error ? error.stack : undefined, integrationId });
+      logger.error(`Error getting Figma access token for integration ${integrationId}`, { error, integrationId });
       // Return null on error - caller should handle
       return null;
     }
@@ -709,7 +709,7 @@ export class FigmaIntegrationManager implements Integration<FigmaIntegration, Fi
     } catch (error) {
       logger.error(
         `Error mapping comment ${commentId} to design elements`,
-        { error: error instanceof Error ? error.message : String(error), stack: error instanceof Error ? error.stack : undefined, commentId, fileKey }
+        { error, commentId, fileKey }
       );
       // Continue with empty array if mapping fails
     }
@@ -733,7 +733,7 @@ export class FigmaIntegrationManager implements Integration<FigmaIntegration, Fi
     } catch (error) {
       logger.error(
         `Error extracting images for comment ${commentId}`,
-        { error: error instanceof Error ? error.message : String(error), stack: error instanceof Error ? error.stack : undefined, commentId, fileKey }
+        { error, commentId, fileKey }
       );
       // Continue with empty object if image extraction fails
     }
@@ -1037,7 +1037,7 @@ export async function fetchFileMetadata(
       return null;
     }
   } catch (error) {
-    logger.error("Error fetching file metadata", { error: error instanceof Error ? error.message : String(error), stack: error instanceof Error ? error.stack : undefined, fileKey });
+    logger.error("Error fetching file metadata", { error, fileKey });
     return null;
   }
 }
@@ -1177,7 +1177,7 @@ export async function mapCommentToDesignElements(
           }
         }
       } catch (error) {
-        logger.error(`Error fetching file for file-level comment context`, { error: error instanceof Error ? error.message : String(error), fileKey });
+        logger.error(`Error fetching file for file-level comment context`, { error, fileKey });
       }
 
       return matchedNodeIds;
@@ -1303,7 +1303,7 @@ export async function mapCommentToDesignElements(
     });
 
   } catch (error) {
-    logger.error("Error mapping comment to design elements", { error: error instanceof Error ? error.message : String(error), stack: error instanceof Error ? error.stack : undefined, fileKey });
+    logger.error("Error mapping comment to design elements", { error, fileKey });
     // Return existing node_id if we have it, even if mapping failed
   }
 
@@ -1382,7 +1382,7 @@ export async function extractCommentImages(
             }
           }
         } catch (error) {
-          logger.error(`Error extracting file-level comment image`, { error: error instanceof Error ? error.message : String(error), fileKey });
+          logger.error(`Error extracting file-level comment image`, { error, fileKey });
         }
       }
       return imageUrls;
@@ -1480,12 +1480,12 @@ export async function extractCommentImages(
         }
       }
     } catch (error) {
-      logger.error(`Error extracting full frame image`, { error: error instanceof Error ? error.message : String(error), fileKey });
+      logger.error(`Error extracting full frame image`, { error, fileKey });
       // Continue without full frame image
     }
 
   } catch (error) {
-    logger.error("Error extracting comment images", { error: error instanceof Error ? error.message : String(error), stack: error instanceof Error ? error.stack : undefined, fileKey });
+    logger.error("Error extracting comment images", { error, fileKey });
     // Don't throw - image extraction is optional, continue without images
   }
 
@@ -1603,7 +1603,7 @@ export async function fetchFigmaCommentThreadFromApi(
   } catch (error) {
     logger.error(
       `⚠️  Error fetching comment from API with file key ${fileKey}`,
-      { error: error instanceof Error ? error.message : String(error), stack: error instanceof Error ? error.stack : undefined, fileKey }
+      { error, fileKey }
     );
     return null;
   }

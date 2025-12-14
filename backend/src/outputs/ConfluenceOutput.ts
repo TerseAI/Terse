@@ -133,9 +133,8 @@ This tool returns the current state of the Confluence page including all metadat
                 descendants_count: descendants.length,
             };
         } catch (error) {
-            const errorMessage = error instanceof Error ? error.message : String(error);
-            logger.error("Error fetching Confluence page", { error: errorMessage, pageId: runContext?.context?.confluenceConfig?.page_id });
-            throw new Error(`Failed to fetch Confluence page: ${errorMessage}`);
+            logger.error("Error fetching Confluence page", { error, pageId: runContext?.context?.confluenceConfig?.page_id });
+            throw new Error(`Failed to fetch Confluence page: ${error instanceof Error ? error.message : String(error)}`);
         }
     },
     errorFunction: formatError
@@ -280,9 +279,8 @@ To find the correct position, first call confluence_query_page to see the page c
                 message: 'Inline comment added successfully to the page',
             };
         } catch (error) {
-            const errorMessage = error instanceof Error ? error.message : String(error);
-            logger.error("Error adding Confluence inline comment", { error: errorMessage, comment_text, text_to_comment_on, start_position, end_position });
-            throw new Error(`Failed to add Confluence inline comment: ${errorMessage}`);
+            logger.error("Error adding Confluence inline comment", { error, comment_text, text_to_comment_on, start_position, end_position });
+            throw new Error(`Failed to add Confluence inline comment: ${error instanceof Error ? error.message : String(error)}`);
         }
     },
     errorFunction: formatError

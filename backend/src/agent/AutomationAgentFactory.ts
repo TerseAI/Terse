@@ -82,7 +82,7 @@ export class ChannelAgentFactory {
 
       return channelAgent;
     } catch (error) {
-      logger.error('Error creating channel agent', { error: error instanceof Error ? error.message : String(error), stack: error instanceof Error ? error.stack : undefined, channelId, runId });
+      logger.error('Error creating channel agent', { error, channelId, runId });
       throw error;
     }
   }

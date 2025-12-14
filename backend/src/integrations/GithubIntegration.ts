@@ -166,7 +166,7 @@ export class GithubIntegrationManager implements Integration<GithubIntegration, 
             // Return null to indicate tokens must be generated via GitHub App flow
             return null;
         } catch (error) {
-            logger.error(`Error getting GitHub access token for installation ${integrationId}`, { error: error instanceof Error ? error.message : String(error), stack: error instanceof Error ? error.stack : undefined, integrationId });
+            logger.error(`Error getting GitHub access token for installation ${integrationId}`, { error, integrationId });
             return null;
         }
     }
@@ -376,7 +376,7 @@ export async function getAppInstallationsForUser(oAuthToken: string): Promise<Gi
         });
         return resp.data;
     } catch (error) {
-        logger.error('Error getting app installations for user', { error: error instanceof Error ? error.message : String(error), stack: error instanceof Error ? error.stack : undefined });
+        logger.error('Error getting app installations for user', { error });
         return { total_count: 0, installations: [] };
     }
 }

@@ -132,7 +132,7 @@ export async function getUserChannels(req: Request, res: Response) {
 
         res.status(200).json(response);
     } catch (error) {
-        logger.error('Error fetching channels', { error: error instanceof Error ? error.message : String(error), userId });
+        logger.error('Error fetching channels', { error, userId });
         res.status(500).json({ error: 'Failed to fetch channels' });
     }
 }
@@ -205,7 +205,7 @@ export async function getRecentChannels(req: Request, res: Response) {
 
         res.status(200).json(response);
     } catch (error) {
-        logger.error('Error fetching recent channels', { error: error instanceof Error ? error.message : String(error), userId });
+        logger.error('Error fetching recent channels', { error, userId });
         res.status(500).json({ error: 'Failed to fetch recent channels' });
     }
 }
@@ -248,7 +248,7 @@ export async function getUserChannel(req: Request, res: Response) {
 
         res.status(200).json(response);
     } catch (error) {
-        logger.error('Error fetching channel', { error: error instanceof Error ? error.message : String(error), userId, channelId });
+        logger.error('Error fetching channel', { error, userId, channelId });
         res.status(500).json({ error: 'Failed to fetch channel' });
     }
 }
@@ -384,7 +384,7 @@ export async function createChannel(req: Request, res: Response) {
 
         res.status(201).json({ success: true, id: channel.id });
     } catch (error) {
-        logger.error('Error creating channel', { error: error instanceof Error ? error.message : String(error), stack: error instanceof Error ? error.stack : undefined, userId });
+        logger.error('Error creating channel', { error, userId });
         res.status(500).json({ error: 'Failed to create channel', details: (error as Error).message });
     }
 }
@@ -547,7 +547,7 @@ export async function updateChannel(req: Request, res: Response) {
 
         res.status(200).json({ success: true, id: channelId });
     } catch (error) {
-        logger.error('Error updating channel', { error: error instanceof Error ? error.message : String(error), stack: error instanceof Error ? error.stack : undefined, userId, channelId });
+        logger.error('Error updating channel', { error, userId, channelId });
         res.status(500).json({ error: 'Failed to update channel', details: (error as Error).message });
     }
 }
@@ -596,7 +596,7 @@ export async function deleteChannel(req: Request, res: Response) {
 
         res.status(200).json({ success: true, message: 'Channel deleted successfully' });
     } catch (error) {
-        logger.error('Error deleting channel', { error: error instanceof Error ? error.message : String(error), stack: error instanceof Error ? error.stack : undefined, userId, channelId });
+        logger.error('Error deleting channel', { error, userId, channelId });
         res.status(500).json({ error: 'Failed to delete channel', details: (error as Error).message });
     }
 }
@@ -654,7 +654,7 @@ async function setupChannelInputs(channel: ChannelWithInputRelations): Promise<v
         } catch (error) {
             logger.error(
                 `❌ Error setting up ${input.config_type} input (ID: ${input.id})`,
-                { error: error instanceof Error ? error.message : String(error), stack: error instanceof Error ? error.stack : undefined, configType: input.config_type, inputId: input.id }
+                { error, configType: input.config_type, inputId: input.id }
             );
         }
     }
@@ -691,7 +691,7 @@ async function tearDownChannelInputs(channel: ChannelWithInputRelations): Promis
         } catch (error) {
             logger.error(
                 `❌ Error tearing down ${input.config_type}`,
-                { error: error instanceof Error ? error.message : String(error), stack: error instanceof Error ? error.stack : undefined, configType: input.config_type, inputId: input.id }
+                { error, configType: input.config_type, inputId: input.id }
             );
         }
     }

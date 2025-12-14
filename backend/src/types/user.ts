@@ -20,7 +20,7 @@ export async function login(
     logger.info("✅ Login successful", { email, userId: user.id });
     return user;
   } catch (error) {
-    logger.error("❌ Login error", { error: error instanceof Error ? error.message : String(error), stack: error instanceof Error ? error.stack : undefined, email });
+    logger.error("❌ Login error", { error, email });
     return null;
   }
 }

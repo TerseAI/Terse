@@ -66,7 +66,7 @@ export async function initializeRealtimeSocket(server: HttpServer): Promise<Serv
         } catch (error) {
             logger.warn(
                 "⚠️  Invalid REDIS_URL format - Socket.IO running in single-server mode (no Redis adapter)",
-                { error: error instanceof Error ? error.message : String(error) }
+                { error }
             );
             logger.warn("REDIS_URL should be in format: redis://host:port or rediss://host:port");
         }
@@ -100,7 +100,7 @@ export async function initializeRealtimeSocket(server: HttpServer): Promise<Serv
             (socket as AuthenticatedSocket).userId = user.id;
             next();
         } catch (error) {
-            logger.error("Socket.IO auth failed", { error: error instanceof Error ? error.message : String(error) });
+            logger.error("Socket.IO auth failed", { error });
             next(new Error("Authentication failed"));
         }
     });
@@ -191,7 +191,7 @@ export async function initializeRealtimeSocket(server: HttpServer): Promise<Serv
                     user
                 );
             } catch (error) {
-                logger.error(`[channel:chat:message] Failed to create session`, { error: error instanceof Error ? error.message : String(error), channelId: channel.id, userId });
+                logger.error(`[channel:chat:message] Failed to create session`, { error, channelId: channel.id, userId });
                 return;
             }
 
@@ -227,13 +227,13 @@ export async function initializeRealtimeSocket(server: HttpServer): Promise<Serv
             } catch (error) {
                 // Log the error and update run history
                 const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-                logger.error(`[channel:chat:message] Error running channel agent: ${errorMessage}`, { error: errorMessage, stack: error instanceof Error ? error.stack : undefined, runId, channelId: channel.id, userId });
+                logger.error(`[channel:chat:message] Error running channel agent: ${errorMessage}`, { error, runId, channelId: channel.id, userId });
                 
                 try {
                     await markRunFailed(runId, errorMessage, 'agent');
                     emitCacheInvalidationWithWildcard(userId, 'runHistory', channel.id);
                 } catch (e) {
-                    logger.error('Failed to mark run as failed', { error: e instanceof Error ? e.message : String(e), runId });
+                    logger.error('Failed to mark run as failed', { error: e, runId });
                 }
                 return;
             }
@@ -245,7 +245,7 @@ export async function initializeRealtimeSocket(server: HttpServer): Promise<Serv
                     await finalizeRunStatus(runId, hasFinalOutput ? 'success' : 'failed');
                     emitCacheInvalidationWithWildcard(userId, 'runHistory', channel.id);
                 } catch (e) {
-                    logger.error('Failed to finalize run status', { error: e instanceof Error ? e.message : String(e), runId });
+                    logger.error('Failed to finalize run status', { error: e, runId });
                 }
             }
 

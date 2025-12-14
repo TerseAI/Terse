@@ -149,7 +149,7 @@ export async function processModelEventStream(
         // Finalize any remaining steps at the end of the stream
         await aggregator.commitLastTextDeltaStep();
     } catch (error) {
-        logger.error('Error processing model event stream', { error: error instanceof Error ? error.message : String(error), stack: error instanceof Error ? error.stack : undefined, runId: options.runId, userId: options.userId, channelId: options.channelId });
+        logger.error('Error processing model event stream', { error, runId: options.runId, userId: options.userId, channelId: options.channelId });
     }
 }
 

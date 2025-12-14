@@ -52,6 +52,8 @@ if (usePostHog) {
     sdk.start();
   } catch (error) {
     console.error('[Logger] Failed to initialize PostHog logging:', error);
+    console.error('[Logger] Server cannot start without logging. Exiting...');
+    process.exit(1);
   }
 }
 
@@ -166,6 +168,39 @@ class Logger {
     return severityMap[severityText.toLowerCase()] || 9; // Default to INFO
   }
 
+  /**
+   * Processes attributes and automatically extracts error information if an 'error' field exists.
+   * If the error field contains an Error object, it extracts the message and stack trace.
+   * This allows callers to pass error objects directly without manual parsing.
+   */
+  private processAttributes(attributes?: Record<string, any>): Record<string, any> {
+    if (!attributes) {
+      return {};
+    }
+
+    const processed = { ...attributes };
+
+    // If there's an 'error' field, process it
+    if ('error' in processed) {
+      const error = processed.error;
+      
+      // If it's already a string (manually parsed), keep it as is
+      if (typeof error === 'string') {
+        // Check if stack was already provided separately
+        if (!('stack' in processed)) {
+          // No stack available if error is already a string
+          processed.stack = undefined;
+        }
+      } else {
+        // Process the error object
+        processed.error = error instanceof Error ? error.message : String(error);
+        processed.stack = error instanceof Error ? error.stack : undefined;
+      }
+    }
+
+    return processed;
+  }
+
   public async flush(): Promise<void> {
     if (logRecordProcessor) {
       try {
@@ -177,10 +212,11 @@ class Logger {
   }
 
   private log(severityText: string, message: string, attributes?: Record<string, any>): void {
+    const processedAttributes = this.processAttributes(attributes);
     if (usePostHog) {
-      this.emitToPostHog(severityText, message, attributes);
+      this.emitToPostHog(severityText, message, processedAttributes);
     } else {
-      this.logToConsole(severityText, message, attributes);
+      this.logToConsole(severityText, message, processedAttributes);
     }
   }
 

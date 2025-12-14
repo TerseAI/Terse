@@ -27,7 +27,7 @@ export async function getGithubIntegrations(req: Request, res: Response) {
         const integrations = await manager.getInstancesForUser(req.session.user.id);
         res.status(200).json(integrations);
     } catch (error) {
-        logger.error('Error fetching GitHub integrations', { error: error instanceof Error ? error.message : String(error), stack: error instanceof Error ? error.stack : undefined });
+        logger.error('Error fetching GitHub integrations', { error });
         res.status(500).json({ error: 'Failed to fetch GitHub integrations' });
     }
 }
@@ -44,7 +44,7 @@ export async function getInstallationUrl(req: Request, res: Response) {
             installationUrl
         });
     } catch (error) {
-        logger.error('Error generating installation URL', { error: error instanceof Error ? error.message : String(error), stack: error instanceof Error ? error.stack : undefined });
+        logger.error('Error generating installation URL', { error });
         res.status(500).json({ message: 'Failed to generate installation URL' });
     }
 }
@@ -98,7 +98,7 @@ export async function githubAppUnifiedEvent(req: Request, res: Response) {
     // Process event through integration manager
     const githubIntegrationManager = new GithubIntegrationManager();
     await githubIntegrationManager.processWebhookEvent(body).catch((error) => {
-        logger.error('Error processing GitHub event in integration manager', { error: error instanceof Error ? error.message : String(error), stack: error instanceof Error ? error.stack : undefined, eventType: body.eventType, repositoryName, username });
+        logger.error('Error processing GitHub event in integration manager', { error, eventType: body.eventType, repositoryName, username });
     });
 
     try {
@@ -149,7 +149,7 @@ export async function githubAppUnifiedEvent(req: Request, res: Response) {
 
         res.status(200).json({ message: 'GitHub event received and processed' });
     } catch (error) {
-        logger.error('Error processing GitHub event', { error: error instanceof Error ? error.message : String(error), stack: error instanceof Error ? error.stack : undefined, eventType: body.eventType, repositoryName, username });
+        logger.error('Error processing GitHub event', { error, eventType: body.eventType, repositoryName, username });
         res.status(500).json({ message: 'Error processing GitHub event', error: error instanceof Error ? error.message : 'Unknown error' });
     }
 }
@@ -258,7 +258,7 @@ export async function processRepository(
         return { name: repositoryData.name, status: 'associated' };
 
     } catch (error) {
-        logger.error('Error processing repository', { error: error instanceof Error ? error.message : String(error), stack: error instanceof Error ? error.stack : undefined, repositoryName: repositoryData.name, userId: user.id, installationId });
+        logger.error('Error processing repository', { error, repositoryName: repositoryData.name, userId: user.id, installationId });
         return {
             name: repositoryData.name,
             status: 'error',

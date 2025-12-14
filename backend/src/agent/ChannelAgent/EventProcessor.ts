@@ -88,7 +88,7 @@ export class EventProcessor {
                 const result = await this.processChannel(channel);
                 results.push(result);
             } catch (error) {
-                logger.error(`Error processing channel ${channel.id}`, { error: error instanceof Error ? error.message : String(error), stack: error instanceof Error ? error.stack : undefined, channelId: channel.id, channelName: channel.name });
+                logger.error(`Error processing channel ${channel.id}`, { error, channelId: channel.id, channelName: channel.name });
                 results.push(new ProcessorResult(
                     false,
                     `Error processing channel: ${error instanceof Error ? error.message : 'Unknown error'}`,
@@ -163,7 +163,7 @@ export class EventProcessor {
         } catch (error) {
             // Log the error and update run history
             const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-            logger.error(`Error filtering event for channel "${channel.name}"`, { error: errorMessage, stack: error instanceof Error ? error.stack : undefined, channelId: channel.id, channelName: channel.name, runId });
+            logger.error(`Error filtering event for channel "${channel.name}"`, { error, channelId: channel.id, channelName: channel.name, runId });
             
             try {
                 await markRunFailed(runId, errorMessage, 'filter');
@@ -215,7 +215,7 @@ export class EventProcessor {
         } catch (error) {
             // Log the error and update run history
             const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-            logger.error(`Error running channel agent for "${channel.name}"`, { error: errorMessage, stack: error instanceof Error ? error.stack : undefined, channelId: channel.id, channelName: channel.name, runId });
+            logger.error(`Error running channel agent for "${channel.name}"`, { error, channelId: channel.id, channelName: channel.name, runId });
             
             try {
                 await markRunFailed(runId, errorMessage, 'agent');

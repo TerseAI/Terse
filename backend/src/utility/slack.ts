@@ -45,7 +45,7 @@ export async function sendSlackMessage(
         logger.info(`[sendSlackMessage] Successfully sent message to channel ${channelId}`, { channelId, userSlackIntegrationId });
         return true;
     } catch (error) {
-        logger.error(`[sendSlackMessage] Failed to send message`, { error: error instanceof Error ? error.message : String(error), stack: error instanceof Error ? error.stack : undefined, channelId, userSlackIntegrationId });
+        logger.error(`[sendSlackMessage] Failed to send message`, { error, channelId, userSlackIntegrationId });
         return false;
     }
 }
