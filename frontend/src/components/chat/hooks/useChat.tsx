@@ -31,6 +31,8 @@ export function useChat({
         handleNaturalStop,
         handleFilterResult,
         handleThinking,
+        handleToolApprovalRequest,
+        handleToolApprovalResponse,
     } = useChatTurns({initialTurns});
 
     const { sendMessage: sendSocketMessage} = useCompletionSocket({
@@ -49,6 +51,7 @@ export function useChat({
         onNaturalStop: handleNaturalStop,
         onFilterResult: handleFilterResult,
         onThinking: handleThinking,
+        onToolApprovalRequest: handleToolApprovalRequest,
     });
 
     const { input, setInput, sendMessage } = useChatInput({
@@ -65,5 +68,6 @@ export function useChat({
         setInput,
         sendMessage,
         sendModelRequest: sendSocketMessage,
+        handleToolApprovalResponse,
     };
 }

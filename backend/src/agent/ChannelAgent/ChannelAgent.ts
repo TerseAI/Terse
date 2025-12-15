@@ -10,9 +10,9 @@ import { formatChannelInputsForAgent, formatChannelOutputForAgent } from './form
 import { UserFormatter } from '../../utility/UserFormatter';
 import { transformAgentStreamToModelEvents } from '../streaming';
 import { getRealtimeSocket } from '../../realtimeSocket';
-import type { RunHistoryAction, RunHistoryStreamingParams } from '../../shared/RunHistoryTypes';
+import type { RunHistoryAction, RunHistoryStreamingParams, RunHistoryModelEvent, RunHistoryModelSocketEvent } from '../../shared/RunHistoryTypes';
 import { EntityType } from '../../shared/Entities';
-import { ChangedItem, ChangeEventType } from '../../shared/ModelEvents';
+import { ChangedItem, ChangeEventType, ModelEvent } from '../../shared/ModelEvents';
 import { persistRunAction } from './EventProcessor';
 import { processModelEventStream } from './StreamProcessor';
 import { recentHistoryCallback, RunHistoryChatMemorySession } from '../CustomMemorySession';
@@ -20,6 +20,7 @@ import { IntegrationType } from '../../shared/Integrations';
 import { InputImageContent, InputTextContent } from 'openai/resources/conversations/conversations.mjs';
 import { runnerFactory } from '../runner';
 import { NotificationManager } from '../../notifications/Notification';
+import { storePendingApprovalState, getPendingApprovalState, clearPendingApprovalState, storeChatEvent } from './runHistory';
 
 
 export class ChannelAgent<T extends Session, TConfig extends ConfigInstance> {
@@ -35,6 +36,7 @@ export class ChannelAgent<T extends Session, TConfig extends ConfigInstance> {
     private pendingActions: RunHistoryAction[] = [];
     private memorySession: RunHistoryChatMemorySession;
     private maxTurns: number;
+    private notificationManager: NotificationManager;
 
     constructor(
         session: T, 
@@ -57,6 +59,7 @@ export class ChannelAgent<T extends Session, TConfig extends ConfigInstance> {
             throw new Error("Max turns must be greater than 0");
         }
         this.maxTurns = maxTurns;
+        this.notificationManager = new NotificationManager(session.user, channel);
     }
 
     async run(streamingParams?: RunHistoryStreamingParams): Promise<ApprovalResult<SessionWithTracking<T>, Agent<SessionWithTracking<T>, AgentOutputType>>> {
@@ -92,7 +95,7 @@ export class ChannelAgent<T extends Session, TConfig extends ConfigInstance> {
 
         await this.processStream(result, streamingParams);
 
-        return this.buildResult(result);
+        return await this.buildResult(result, streamingParams);
     }
 
     async userMessageRun(userMessage: string, streamingParams?: RunHistoryStreamingParams): Promise<ApprovalResult<SessionWithTracking<T>, Agent<SessionWithTracking<T>, AgentOutputType>>> {
@@ -120,7 +123,7 @@ export class ChannelAgent<T extends Session, TConfig extends ConfigInstance> {
 
         await this.processStream(result, streamingParams);
 
-        return this.buildResult(result);
+        return await this.buildResult(result, streamingParams);
     }
 
     private buildUserHistory(userMessage: string | (InputTextContent | InputImageContent)[]): AgentInputItem[] {
@@ -133,6 +136,7 @@ export class ChannelAgent<T extends Session, TConfig extends ConfigInstance> {
         serializedState: string,
         decision: Decision,
         interruption: RunToolApprovalItem,
+        streamingParams?: RunHistoryStreamingParams
     ): Promise<ApprovalResult<SessionWithTracking<T>, Agent<SessionWithTracking<T>, AgentOutputType>>> {
         await this.initializeAgent();
 
@@ -148,8 +152,92 @@ export class ChannelAgent<T extends Session, TConfig extends ConfigInstance> {
             state.reject(interruption);
         }
 
-        const result = await run(this.agent, state);
-        return this.buildResult(result);
+        const runner = runnerFactory({
+            channelId: this.channel.id,
+            runId: this.runContext.runId,
+            userId: this.session.user.id,
+            env: settings.nodeEnv,
+        });
+        const result = await runner.run(this.agent, state, {
+            context: this.getToolContext(),
+            stream: true,
+            session: this.memorySession,
+            sessionInputCallback: recentHistoryCallback,
+            maxTurns: this.maxTurns
+        });
+
+        await this.processStream(result, streamingParams);
+        return await this.buildResult(result, streamingParams);
+    }
+
+    async resumeFromPendingApproval(
+        decision: Decision,
+        stepId: string,
+        streamingParams?: RunHistoryStreamingParams
+    ): Promise<ApprovalResult<SessionWithTracking<T>, Agent<SessionWithTracking<T>, AgentOutputType>>> {
+        await this.initializeAgent();
+
+        if (!this.agent) {
+            throw new Error("Agent not initialized. Call initializeAgent() before resumeFromPendingApproval()");
+        }
+
+        // Retrieve pending approval state from database
+        const pendingState = await getPendingApprovalState(this.runContext.runId);
+        if (!pendingState) {
+            throw new Error(`No pending approval state found for run ${this.runContext.runId}`);
+        }
+
+        // Deserialize state
+        const state = await RunState.fromString(this.agent, pendingState.serializedState);
+
+        // Find the interruption matching the stepId
+        const interruption = pendingState.interruptions.find(
+            (int: any) => int.step_id === stepId
+        );
+        if (!interruption) {
+            throw new Error(`No interruption found for step_id ${stepId}`);
+        }
+
+        // Convert interruption metadata back to RunToolApprovalItem format
+        // We need to reconstruct this from the stored data
+        // For now, we'll need to find it in the state's interruptions
+        const stateInterruptions = (state as any).interruptions || [];
+        const matchingInterruption = stateInterruptions.find(
+            (int: RunToolApprovalItem) => (int.rawItem as any)?.callId === stepId || int.name === interruption.name
+        );
+
+        if (!matchingInterruption) {
+            throw new Error(`Could not find matching interruption in state for step_id ${stepId}`);
+        }
+
+        // Apply decision
+        if (decision === 'approve') {
+            state.approve(matchingInterruption);
+        } else {
+            state.reject(matchingInterruption);
+        }
+
+        // Clear pending approval state
+        await clearPendingApprovalState(this.runContext.runId);
+
+        // Resume execution
+        const runner = runnerFactory({
+            channelId: this.channel.id,
+            runId: this.runContext.runId,
+            userId: this.session.user.id,
+            env: settings.nodeEnv,
+        });
+        const result = await runner.run(this.agent, state, {
+            context: this.getToolContext(),
+            stream: true,
+            session: this.memorySession,
+            sessionInputCallback: recentHistoryCallback,
+            maxTurns: this.maxTurns
+        });
+
+        await this.processStream(result, streamingParams);
+
+        return await this.buildResult(result, streamingParams);
     }
 
     setInputEvent(event: InputEvent): void {
@@ -224,7 +312,7 @@ export class ChannelAgent<T extends Session, TConfig extends ConfigInstance> {
             ...this.session,
             trackAction: (action: RunHistoryAction) => this.queueAction(action),
             channel: {
-                requireApproval: this.channel.require_approval ?? false,
+                requireApproval: (this.channel as any).require_approval ?? false,
             },
         };
     }
@@ -325,16 +413,90 @@ ${this.inputEvent!.formatForChannelAgent()}
         }
     }
 
-    private buildResult(result: any): ApprovalResult<SessionWithTracking<T>, Agent<SessionWithTracking<T>, AgentOutputType>> {
+    private async buildResult(
+        result: any,
+        streamingParams?: RunHistoryStreamingParams
+    ): Promise<ApprovalResult<SessionWithTracking<T>, Agent<SessionWithTracking<T>, AgentOutputType>>> {
         const hasInterruptions = result.interruptions && result.interruptions.length > 0;
 
         if (hasInterruptions) {
+            // Serialize the state for storage
+            const serializedState = JSON.stringify(result.state);
+            
+            // Store interruptions metadata
+            const interruptionsMetadata = result.interruptions.map((interruption: RunToolApprovalItem) => ({
+                step_id: (interruption.rawItem as any).callId || interruption.name,
+                name: interruption.name,
+                arguments: interruption.arguments,
+            }));
+
+            // Store pending approval state in database
+            await storePendingApprovalState(
+                this.runContext.runId,
+                serializedState,
+                interruptionsMetadata
+            );
+
+                    // Emit ToolApprovalRequest events for each interruption
+                    if (streamingParams && this.shouldEnableStreaming(streamingParams)) {
+                        const io = getRealtimeSocket();
+                        for (const interruption of result.interruptions) {
+                            const stepId = (interruption.rawItem as any).callId || interruption.name;
+                            const approvalRequest: ModelEvent = {
+                                type: 'ToolApprovalRequest',
+                                step_id: stepId,
+                                name: interruption.name,
+                                arguments: interruption.arguments,
+                            };
+
+                            // Store and emit the approval request
+                            const eventId = await storeChatEvent(this.runContext.runId, approvalRequest);
+                            
+                            if (io) {
+                                const runHistoryModelEvent: RunHistoryModelEvent = {
+                                    ...approvalRequest,
+                                    id: eventId,
+                                    timestamp: new Date().toISOString(),
+                                };
+                                const payload: RunHistoryModelSocketEvent = {
+                                    runId: streamingParams.runId!,
+                                    channelId: streamingParams.channelId!,
+                                    runHistoryModelEvent,
+                                };
+                                io.to(`user:${streamingParams.userId}`).emit('channel:chat:event', payload);
+                            }
+
+                            // Send notification for approval request
+                            try {
+                                const toolMetadata = this.toolMetadataMap.get(interruption.name);
+                                const integration = toolMetadata?.integration || IntegrationType.TERSE;
+                                
+                                const approvalAction: RunHistoryAction = {
+                                    action: `Approval requested for ${interruption.name}`,
+                                    integration,
+                                    target: interruption.name,
+                                    details: `The bot is requesting approval to execute: ${interruption.name} with arguments: ${interruption.arguments}`,
+                                    step_id: stepId,
+                                    type: 'update', // Approval requests are typically for write operations
+                                    isReadOnly: false,
+                                };
+
+                                await this.notificationManager.notify(approvalAction);
+                            } catch (error) {
+                                console.error('Failed to send approval request notification:', error);
+                            }
+                        }
+                    }
+
             return {
                 status: 'awaiting_approval',
                 state: result.state,
                 interruptions: result.interruptions,
             };
         }
+
+        // Clear any pending approval state if run completed successfully
+        await clearPendingApprovalState(this.runContext.runId);
 
         return {
             status: 'completed',

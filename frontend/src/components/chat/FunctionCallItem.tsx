@@ -9,11 +9,14 @@ import RunHistoryActionItem from "../RunHistory/RunHistoryActionItem";
 import { EntityType } from "../../shared/Entities";
 import { FunctionCallEvent } from "./Turn";
 import { ExclamationTriangleIcon } from "@heroicons/react/24/solid";
+import { Button } from "../ui/button";
 
 interface FunctionCallItemProps {
     call: FunctionCallEvent;
     isTurnFailure?: boolean;
     index: number;
+    onApprove?: (stepId: string) => void;
+    onReject?: (stepId: string) => void;
 }
 
 function ToolActionsDisplay({ changedItems, isTurnFailure }: { changedItems?: ChangedItem[], isTurnFailure?: boolean }) {
@@ -143,9 +146,25 @@ function ToolResultInput({ toolName, parameters, onSubmit }: { toolName: string;
     );
 }
 
-export default function FunctionCallItem({ call, isTurnFailure = false, index }: FunctionCallItemProps) {
+export default function FunctionCallItem({ call, isTurnFailure = false, index, onApprove, onReject }: FunctionCallItemProps) {
     const [isExpanded, setIsExpanded] = useState(false);
     const callKey = `function-call-${call.id}-${index}`;
+
+    const handleApprove = () => {
+        if (!onApprove) {
+            console.error('No onApprove handler available');
+            return;
+        }
+        onApprove(call.id);
+    };
+
+    const handleReject = () => {
+        if (!onReject) {
+            console.error('No onReject handler available');
+            return;
+        }
+        onReject(call.id);
+    };
 
     return (
         <div className="space-y-2 w-full max-w-lg">
@@ -226,6 +245,40 @@ export default function FunctionCallItem({ call, isTurnFailure = false, index }:
                         console.log('🔍 Tool result submitted:', result);
                     }}
                 />
+            )}
+            {call.isWaitingForApproval && !call.isRejected && (
+                <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-3 mt-2">
+                    <div className="text-sm font-semibold text-yellow-500 mb-2">
+                        Approval Required
+                    </div>
+                    <div className="text-sm text-muted-foreground mb-3">
+                        The bot wants to execute: <span className="font-medium text-foreground">{call.name}</span>
+                    </div>
+                    <div className="flex gap-2">
+                        <Button
+                            onClick={handleApprove}
+                            size="sm"
+                            className="bg-green-600 hover:bg-green-700 text-white"
+                        >
+                            Approve
+                        </Button>
+                        <Button
+                            onClick={handleReject}
+                            size="sm"
+                            variant="destructive"
+                        >
+                            Reject
+                        </Button>
+                    </div>
+                </div>
+            )}
+            {call.isRejected && (
+                <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-3 mt-2">
+                    <div className="flex items-center gap-2 text-sm text-red-500">
+                        <XMarkIcon className="w-4 h-4" />
+                        <span>Rejected</span>
+                    </div>
+                </div>
             )}
         </div>
     );

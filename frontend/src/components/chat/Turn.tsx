@@ -20,6 +20,8 @@ interface Turn {
         confidence: number;
     };
     disableAnimation?: boolean;
+    onApprove?: (stepId: string) => void;
+    onReject?: (stepId: string) => void;
 }
 
 interface FunctionCallEvent {
@@ -36,7 +38,7 @@ interface FunctionCallEvent {
     errorContext?: SharedErrorContext;
 }
 
-function TurnView({ role, text, function_calls, isFailure = false, isGenerating = false, isThinking = false, filter_result, disableAnimation = false }: Turn) {
+function TurnView({ role, text, function_calls, isFailure = false, isGenerating = false, isThinking = false, filter_result, disableAnimation = false, onApprove, onReject }: Turn) {
     const isUser = role === 'user';
     const isAssistantFinishedGenerating = !isGenerating && role === 'assistant' && text.length > 0;
     // Expanded state - show all steps with status
@@ -83,6 +85,8 @@ function TurnView({ role, text, function_calls, isFailure = false, isGenerating 
                         call={call}
                         isTurnFailure={isFailure}
                         index={index}
+                        onApprove={onApprove}
+                        onReject={onReject}
                     />
                 ))}
 

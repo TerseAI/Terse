@@ -23,6 +23,8 @@ import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTi
 import { Badge } from "../../../components/ui/badge";
 import ChannelNotificationSettings from "../ChannelNotificationSettings";
 import { InstructionsEditor } from "../components/InstructionsEditor";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 
 export type ChannelSetupTabProps = {
     channelId: string | null;
@@ -36,6 +38,8 @@ export type ChannelSetupTabProps = {
     setPrompt: (prompt: ChannelPrompt | undefined) => void;
     isActive: boolean;
     setIsActive: (isActive: boolean) => void;
+    requireApproval: boolean;
+    setRequireApproval: (requireApproval: boolean) => void;
     notificationSettings: ChannelNotificationSettingsType;
     setNotificationSettings: (settings: ChannelNotificationSettingsType) => void;
     isLoading: boolean;
@@ -50,6 +54,7 @@ function SaveChannelButton({
     output,
     prompt,
     isActive,
+    requireApproval,
     notificationSettings,
     mutate
 }: {
@@ -60,6 +65,7 @@ function SaveChannelButton({
     output: ChannelOutput | undefined;
     prompt: ChannelPrompt | undefined;
     isActive: boolean;
+    requireApproval: boolean;
     notificationSettings: ChannelNotificationSettingsType;
     mutate: KeyedMutator<Channel>;
 }) {
@@ -89,6 +95,7 @@ function SaveChannelButton({
                 output,
                 prompt,
                 isActive,
+                requireApproval,
                 notificationSettings
             };
 
@@ -149,6 +156,8 @@ export default function ChannelSetupTab({
     setOutput,
     setPrompt,
     isActive,
+    requireApproval,
+    setRequireApproval,
     notificationSettings,
     setNotificationSettings,
     mutate,
@@ -171,6 +180,7 @@ export default function ChannelSetupTab({
                     output={channelOutput}
                     prompt={prompt}
                     isActive={isActive}
+                    requireApproval={requireApproval}
                     notificationSettings={notificationSettings}
                     mutate={mutate}
                 />
@@ -198,6 +208,24 @@ export default function ChannelSetupTab({
             <div className="min-w-md max-w-md"></div>
                 <div className="min-w-md max-w-md">
                     <ChannelNotificationSettings settings={notificationSettings} onChange={setNotificationSettings} />
+                    
+                    <div className="flex flex-col gap-2 p-4 border rounded-lg">
+                        <div className="flex items-center justify-between">
+                            <div className="flex flex-col gap-1">
+                                <Label htmlFor="require-approval" className="text-sm font-medium">
+                                    Require approval for edit actions
+                                </Label>
+                                <p className="text-xs text-muted-foreground">
+                                    When enabled, the bot will pause and request approval before executing write operations (create, update, delete).
+                                </p>
+                            </div>
+                            <Switch
+                                id="require-approval"
+                                checked={requireApproval}
+                                onCheckedChange={setRequireApproval}
+                            />
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>

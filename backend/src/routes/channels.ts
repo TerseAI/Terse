@@ -260,7 +260,7 @@ export async function createChannel(req: Request, res: Response) {
     }
 
     const userId = req.session.user.id;
-    const { name, inputs, output, prompt, isActive = true, notificationSettings } = req.body as ChannelUpdate;
+    const { name, inputs, output, prompt, isActive = true, requireApproval = false, notificationSettings } = req.body as ChannelUpdate;
     console.log(chalk.green("Output from frontend:"), chalk.yellow(JSON.stringify(output, null, 2)));
     console.log(chalk.blue("Inputs from frontend:"), chalk.yellow(JSON.stringify(inputs, null, 2)));
     console.log(chalk.magenta("Notification settings from frontend:"), chalk.yellow(JSON.stringify(notificationSettings, null, 2)));
@@ -281,7 +281,8 @@ export async function createChannel(req: Request, res: Response) {
                 data: {
                     user_id: userId,
                     name,
-                    is_active: isActive
+                    is_active: isActive,
+                    require_approval: requireApproval
                 }
             });
 
@@ -397,7 +398,7 @@ export async function updateChannel(req: Request, res: Response) {
 
     const userId = req.session.user.id;
     const channelId = req.params.id;
-    const { name, inputs, output, prompt, isActive, notificationSettings } = req.body as Partial<ChannelUpdate>;
+    const { name, inputs, output, prompt, isActive, requireApproval, notificationSettings } = req.body as Partial<ChannelUpdate>;
 
     try {
         const prisma = db();
@@ -418,12 +419,13 @@ export async function updateChannel(req: Request, res: Response) {
         // Update channel in transaction
         await prisma.$transaction(async (tx) => {
             // Update basic fields if provided
-            if (name !== undefined || isActive !== undefined) {
+            if (name !== undefined || isActive !== undefined || requireApproval !== undefined) {
                 await tx.automations.update({
                     where: { id: channelId },
                     data: {
                         ...(name !== undefined && { name }),
-                        ...(isActive !== undefined && { is_active: isActive })
+                        ...(isActive !== undefined && { is_active: isActive }),
+                        ...(requireApproval !== undefined && { require_approval: requireApproval })
                     }
                 });
             }
@@ -610,6 +612,7 @@ function transformChannelToFrontendFormat(channel: ChannelWithRelations & Partia
         id: channel.id,
         name: channel.name,
         isActive: channel.is_active,
+        requireApproval: (channel as any).require_approval ?? false,
         prompt: channel.prompt ? { text: channel.prompt.content } : { text: '' },
         inputs: channel.inputs.map(input => ({
             id: input.id,

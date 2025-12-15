@@ -5,10 +5,11 @@ import { createAdapter } from "@socket.io/redis-adapter";
 import { Jwt } from "./utility/jwt";
 import chalk from "chalk";
 import { urls, nodeEnv, optional } from "./config/settings";
-import { SendModelRequest, ModelEvent } from "./shared/ModelEvents";
+import { SendModelRequest, ModelEvent, ModelRequest, ToolApprovalResponse } from "./shared/ModelEvents";
 import { db } from "./prismaClient";
 import { ChannelAgent } from "./agent/ChannelAgent/ChannelAgent";
 import { RunContext } from "./agent/ChannelAgent/SystemPromptBuilder";
+import { finalizeRunStatus, markRunFailed } from "./agent/ChannelAgent/runHistory";
 import { ChannelWithRelations } from "./types/prisma";
 import { getInputConfigInclude, getOutputConfigInclude } from './utility/prismaIncludes';
 import { OutputFactory } from "./outputs/abstract/OutputFactory";
@@ -256,6 +257,128 @@ export async function initializeRealtimeSocket(server: HttpServer): Promise<Serv
                 userMessage,
             ));
 
+        });
+
+        // Listen for tool approval responses
+        socket.on("channel:chat:approval", async (payload: { runId: string; message: ToolApprovalResponse }) => {
+            const { runId, message } = payload;
+            console.log(chalk.blue.bold(`[channel:chat:approval] Received approval response for runId: ${runId}`), message, userId);
+
+            if (!runId) {
+                console.error(chalk.red.bold(`[channel:chat:approval] No runId provided`));
+                return;
+            }
+
+            const prisma = db();
+            const runRecord = await prisma.run_history_records.findUnique({
+                where: { id: runId },
+                include: { automation: true }
+            });
+
+            if (!runRecord || !runRecord.automation || runRecord.automation.user_id !== userId) {
+                console.error(chalk.red.bold(`[channel:chat:approval] Run record not found or user does not have access`));
+                return;
+            }
+
+            const channel: ChannelWithRelations | null = await prisma.automations.findUnique({
+                where: {
+                    id: runRecord.automation.id,
+                    user_id: userId
+                },
+                include: {
+                    prompt: true,
+                    inputs: {
+                        include: getInputConfigInclude()
+                    },
+                    output: {
+                        include: getOutputConfigInclude()
+                    }
+                }
+            }) as ChannelWithRelations | null;
+
+            if (!channel) {
+                console.error(chalk.red.bold(`[channel:chat:approval] Channel not found`));
+                return;
+            }
+
+            const outputIntegration = channel.output;
+            if (!outputIntegration) {
+                console.error(chalk.red.bold(`[channel:chat:approval] No output integration found`));
+                return;
+            }
+
+            const output = OutputFactory.createOutput(outputIntegration.config_type);
+            if (!output) {
+                console.error(chalk.red.bold(`[channel:chat:approval] Output type not supported`));
+                return;
+            }
+
+            const user = await prisma.users.findUnique({
+                where: { id: userId }
+            });
+
+            if (!user) {
+                console.error(chalk.red.bold(`[channel:chat:approval] User not found`));
+                return;
+            }
+
+            let session: Session;
+            try {
+                session = await output.createSessionFromConfig(
+                    outputIntegration.integration_id,
+                    outputIntegration,
+                    user
+                );
+            } catch (error) {
+                console.error(chalk.red.bold(`[channel:chat:approval] Failed to create session: ${error}`));
+                return;
+            }
+
+            // Ensure run status is 'in_progress' for streaming
+            if (runRecord.status !== 'in_progress') {
+                await prisma.run_history_records.update({
+                    where: { id: runId },
+                    data: { status: 'in_progress' },
+                });
+            }
+
+            const runContext: RunContext = { runId };
+            const channelAgent = new ChannelAgent(session, output, channel, runContext);
+            await channelAgent.initializeAgent();
+
+            try {
+                const decision: 'approve' | 'reject' = message.approved ? 'approve' : 'reject';
+                const result = await channelAgent.resumeFromPendingApproval(
+                    decision,
+                    message.step_id,
+                    {
+                        runId,
+                        userId: userId,
+                        channelId: channel.id,
+                    }
+                );
+
+                // Finalize run status based on result
+                if (result.status === 'completed') {
+                    const hasFinalOutput = Boolean(result.result?.finalOutput);
+                    try {
+                        await finalizeRunStatus(runId, hasFinalOutput ? 'success' : 'failed');
+                        emitCacheInvalidationWithWildcard(userId, 'runHistory', channel.id);
+                    } catch (e) {
+                        console.error(chalk.yellow('Failed to finalize run status'), e);
+                    }
+                }
+            } catch (error) {
+                const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+                console.error(chalk.red.bold(`[channel:chat:approval] Error resuming agent: ${errorMessage}`), error);
+
+                try {
+                    await markRunFailed(runId, errorMessage, 'agent');
+                    emitCacheInvalidationWithWildcard(userId, 'runHistory', channel.id);
+                } catch (e) {
+                    console.error(chalk.yellow('Failed to mark run as failed'), e);
+                }
+            }
         });
 
         // presence: mark online (60s TTL), refresh every 25s (only if Redis is available)

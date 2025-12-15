@@ -153,6 +153,10 @@ To find the correct position, first call confluence_query_page to see the page c
         start_position: z.number().nullable().optional().describe('Optional: The start character position (offset) in the page storage format where the comment should be attached. Required if text_to_comment_on is not provided.'),
         end_position: z.number().nullable().optional().describe('Optional: The end character position (offset) in the page storage format where the comment should be attached. Required if text_to_comment_on is not provided.'),
     }),
+    needsApproval: async (context) => {
+        // Only require approval if channel has requireApproval enabled
+        return context?.channel?.requireApproval ?? false;
+    },
     execute: async ({ comment_text, text_to_comment_on, start_position, end_position }, runContext?: RunContext<SessionWithTracking<ConfluenceSession>>) => {
         // Use chalk for highlighting the log output
         console.log(chalk.bgBlue.white.bold("[Confluence Add Comment]"), chalk.yellow("Executing confluence_add_comment tool: "), chalk.cyan(comment_text), chalk.magenta(text_to_comment_on), chalk.green(start_position), chalk.green(end_position));

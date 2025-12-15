@@ -24,6 +24,7 @@ function ChannelDetail() {
     const [output, setOutput] = useState<TransientChannelOutput | undefined>(undefined);
     const [prompt, setPrompt] = useState<ChannelPrompt | undefined>(undefined);
     const [isActive, setIsActive] = useState<boolean>(true);
+    const [requireApproval, setRequireApproval] = useState<boolean>(false);
     const [notificationSettings, setNotificationSettings] = useState<ChannelNotificationSettings>({
         enabled: false,
         actionTypes: [],
@@ -38,6 +39,7 @@ function ChannelDetail() {
             setOutput(undefined);
             setPrompt(undefined);
             setIsActive(true);
+            setRequireApproval(false);
             setNotificationSettings({ enabled: false, actionTypes: [] });
         } else if (channel) {
             setName(channel.name);
@@ -45,6 +47,7 @@ function ChannelDetail() {
             setOutput(channel.output ? toTransientChannelOutput(channel.output) : undefined);
             setPrompt(channel.prompt);
             setIsActive(channel.isActive);
+            setRequireApproval(channel.requireApproval ?? false);
             setNotificationSettings(channel.notificationSettings ?? { enabled: false, actionTypes: [] });
         }
     }, [channel, channelId]);
@@ -76,6 +79,8 @@ function ChannelDetail() {
         setPrompt,
         isActive,
         setIsActive,
+        requireApproval,
+        setRequireApproval,
         notificationSettings,
         setNotificationSettings,
         isLoading: isFetching,

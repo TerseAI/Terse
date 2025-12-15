@@ -131,3 +131,62 @@ export async function storeChatEvent(runId: string, event: ModelEvent, timestamp
     return created.id;
 }
 
+/**
+ * Stores pending approval state and interruptions in the database
+ */
+export async function storePendingApprovalState(
+    runId: string,
+    serializedState: string,
+    interruptions: any[]
+): Promise<void> {
+    const prisma = db();
+    await prisma.run_history_records.update({
+        where: { id: runId },
+        data: {
+            status: "awaiting_approval",
+            pending_approval_state: serializedState as any,
+            pending_approval_interruptions: interruptions as any,
+        },
+    });
+}
+
+/**
+ * Retrieves pending approval state from the database
+ */
+export async function getPendingApprovalState(runId: string): Promise<{
+    serializedState: string;
+    interruptions: any[];
+} | null> {
+    const prisma = db();
+    const record = await prisma.run_history_records.findUnique({
+        where: { id: runId },
+        select: {
+            pending_approval_state: true,
+            pending_approval_interruptions: true,
+        },
+    });
+
+    if (!record || !record.pending_approval_state) {
+        return null;
+    }
+
+    return {
+        serializedState: JSON.stringify(record.pending_approval_state),
+        interruptions: (record.pending_approval_interruptions as any) || [],
+    };
+}
+
+/**
+ * Clears pending approval state from the database
+ */
+export async function clearPendingApprovalState(runId: string): Promise<void> {
+    const prisma = db();
+    await prisma.run_history_records.update({
+        where: { id: runId },
+        data: {
+            pending_approval_state: null,
+            pending_approval_interruptions: null,
+        },
+    });
+}
+
