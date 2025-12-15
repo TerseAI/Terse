@@ -3,6 +3,7 @@ import { TicketManager } from "../ticketing/TicketIntegration";
 import { Search } from "./search";
 import { SearchItem } from "./SearchItem";
 import chalk from "chalk";
+import logger from "../logger";
 
 class Indexing {
     private search: Search;
@@ -16,15 +17,15 @@ class Indexing {
     async index() {
         const tickets = await this.ticketManager.getAllTickets();
         await this.indexTickets(tickets);
-        console.log(chalk.green('Indexed'), tickets.length, 'tickets');
+        logger.info('Indexed tickets', { count: tickets.length });
 
         const projects = await this.ticketManager.getAllProjects();
         await this.indexProjects(projects);
-        console.log(chalk.green('Indexed'), projects.length, 'projects');
+        logger.info('Indexed projects', { count: projects.length });
     }
 
     async indexTickets(tickets: Ticket[]) {
-        console.log(chalk.blue('Indexing'), tickets.length, 'tickets');
+        logger.info('Indexing tickets', { count: tickets.length });
         for (const ticket of tickets) {
             const searchItems: SearchItem[] = await this.ticketManager.searchItemsForTicket(ticket.id);
             await this.search.bulkInsert(searchItems);
@@ -32,7 +33,7 @@ class Indexing {
     }
 
     async indexProjects(projects: Project[]) {
-        console.log(chalk.blue('Indexing'), projects.length, 'projects');
+        logger.info('Indexing projects', { count: projects.length });
         for (const project of projects) {
             const searchItems: SearchItem[] = await this.ticketManager.searchItemsForProject(project.id);
             await this.search.bulkInsert(searchItems);

@@ -15,6 +15,7 @@ import { InputEvent } from "./abstract/InputEvent";
 import { InputConfigType } from "@prisma/client";
 import { RunHistoryTrigger } from "../shared/RunHistoryTypes";
 import { EventProcessor } from "../agent/ChannelAgent/EventProcessor";
+import logger from "../logger";
 
 export class LinearIntegrationManager implements Integration<LinearIntegration, LinearWebhookPayload, typeof LinearIntegrationMetadata>, OAuthIntegrationInstallation<IntegrationType.LINEAR> {
     constructor() { }
@@ -50,19 +51,14 @@ export class LinearIntegrationManager implements Integration<LinearIntegration, 
     }
 
     async processWebhookEvent(event: LinearWebhookPayload): Promise<void> {
-        console.log(
-            chalk.blue("📥 [LINEAR INTEGRATION MANAGER] Received webhook event:"),
-            chalk.cyan(`Type: ${event.type}, Action: ${event.action}, Organization: ${event.organizationId}`)
-        );
+        logger.debug("📥 [LINEAR INTEGRATION MANAGER] Received webhook event", { type: event.type, action: event.action, organizationId: event.organizationId });
 
         // Find all integrations that match this event based on workspace_id
         // We match by team name from the webhook payload, which should correspond to workspace_id
         const workspaceIdentifier = event.data?.team?.name || event.organizationId;
         
         if (!workspaceIdentifier) {
-            console.log(
-                chalk.yellow("⚠️  [LINEAR INTEGRATION MANAGER] No workspace identifier found in webhook payload")
-            );
+            logger.warn("⚠️  [LINEAR INTEGRATION MANAGER] No workspace identifier found in webhook payload", { eventType: event.type, action: event.action });
             return;
         }
 
@@ -76,24 +72,18 @@ export class LinearIntegrationManager implements Integration<LinearIntegration, 
         });
 
         if (matchingIntegrations.length === 0) {
-            console.log(
-                chalk.yellow(`⚠️  [LINEAR INTEGRATION MANAGER] No integrations found for workspace: ${workspaceIdentifier}`)
-            );
+            logger.warn(`⚠️  [LINEAR INTEGRATION MANAGER] No integrations found for workspace: ${workspaceIdentifier}`, { workspaceIdentifier, eventType: event.type });
             return;
         }
 
-        console.log(
-            chalk.green(`✅ [LINEAR INTEGRATION MANAGER] Found ${matchingIntegrations.length} matching integration(s)`)
-        );
+        logger.info(`✅ [LINEAR INTEGRATION MANAGER] Found ${matchingIntegrations.length} matching integration(s)`, { count: matchingIntegrations.length, workspaceIdentifier });
 
         // Process event for each matching integration
         for (const integration of matchingIntegrations) {
             try {
                 const user = integration.user;
                 if (!user) {
-                    console.log(
-                        chalk.yellow(`⚠️  [LINEAR INTEGRATION MANAGER] User not found for integration ${integration.id}`)
-                    );
+                    logger.warn(`⚠️  [LINEAR INTEGRATION MANAGER] User not found for integration ${integration.id}`, { integrationId: integration.id });
                     continue;
                 }
 
@@ -103,9 +93,7 @@ export class LinearIntegrationManager implements Integration<LinearIntegration, 
                     // Get valid access token (handles refresh automatically)
                     const accessToken = await this.getAccessToken(integration.id);
                     if (!accessToken) {
-                        console.log(
-                            chalk.yellow(`⚠️  [LINEAR INTEGRATION MANAGER] Could not get valid access token for integration ${integration.id}`)
-                        );
+                        logger.warn(`⚠️  [LINEAR INTEGRATION MANAGER] Could not get valid access token for integration ${integration.id}`, { integrationId: integration.id });
                         // Continue with original event if token cannot be obtained
                     } else {
                         const adapter = new LinearAdapter(accessToken);
@@ -116,21 +104,15 @@ export class LinearIntegrationManager implements Integration<LinearIntegration, 
                                 const issue = await adapter.findTicket(event.data.id);
                                 // Enrich the event with additional context from the API
                                 // The event already has most data, but we can add any missing fields
-                                console.log(
-                                    chalk.blue(`📊 [LINEAR INTEGRATION MANAGER] Enriched issue context for ${event.data.id}`)
-                                );
+                                logger.debug(`📊 [LINEAR INTEGRATION MANAGER] Enriched issue context for ${event.data.id}`, { issueId: event.data.id, integrationId: integration.id });
                             } catch (error) {
-                                console.log(
-                                    chalk.yellow(`⚠️  [LINEAR INTEGRATION MANAGER] Could not enrich issue context: ${error}`)
-                                );
+                                logger.warn(`⚠️  [LINEAR INTEGRATION MANAGER] Could not enrich issue context`, { error, issueId: event.data.id, integrationId: integration.id });
                                 // Continue with original event if enrichment fails
                             }
                         }
                     }
                 } catch (error) {
-                    console.log(
-                        chalk.yellow(`⚠️  [LINEAR INTEGRATION MANAGER] Error enriching context: ${error}`)
-                    );
+                    logger.warn(`⚠️  [LINEAR INTEGRATION MANAGER] Error enriching context`, { error, integrationId: integration.id });
                     // Continue with original event if enrichment fails
                 }
 
@@ -139,9 +121,9 @@ export class LinearIntegrationManager implements Integration<LinearIntegration, 
                 const eventProcessor = new EventProcessor(linearEvent, user);
                 await eventProcessor.process();
             } catch (error) {
-                console.error(
-                    chalk.red(`❌ [LINEAR INTEGRATION MANAGER] Error processing event for integration ${integration.id}:`),
-                    error
+                logger.error(
+                    `❌ [LINEAR INTEGRATION MANAGER] Error processing event for integration ${integration.id}`,
+                    { error, integrationId: integration.id, eventType: event.type, action: event.action }
                 );
                 // Continue processing other integrations even if one fails
             }
@@ -178,7 +160,7 @@ export class LinearIntegrationManager implements Integration<LinearIntegration, 
         const { code, state, error } = req.query;
 
         if (error) {
-            console.error(chalk.red("Linear OAuth error:"), error);
+            logger.error("Linear OAuth error", { error: String(error) });
             res.redirect(`${urls.frontend}/oauth/error`);
             return;
         }
@@ -213,7 +195,7 @@ export class LinearIntegrationManager implements Integration<LinearIntegration, 
 
             if (!tokenResponse.ok) {
                 const errorText = await tokenResponse.text();
-                console.error(chalk.red("Linear token exchange failed:"), errorText);
+                logger.error("Linear token exchange failed", { error: errorText });
                 throw new Error(`Linear token exchange failed: ${errorText}`);
             }
 
@@ -228,10 +210,7 @@ export class LinearIntegrationManager implements Integration<LinearIntegration, 
             const tokenExpiry = new Date(Date.now() + expires_in * 1000)
 
 
-            console.log(
-                chalk.blue("🔑 Received Linear access token for user"),
-                chalk.yellow(decoded.userId)
-            );
+            logger.info("🔑 Received Linear access token for user", { userId: decoded.userId });
 
             // Use the access token to get user and workspace info
             const adapter = new LinearAdapter(access_token);
@@ -239,10 +218,7 @@ export class LinearIntegrationManager implements Integration<LinearIntegration, 
             const linearUser = userContext.userInfo;
             const organization = userContext.organization;
 
-            console.log(
-                chalk.blue("🏢 Workspace:"),
-                chalk.yellow(organization.name)
-            );
+            logger.info("🏢 Workspace", { workspaceName: organization.name, userId: decoded.userId });
 
             // Check if a connection for this workspace already exists
             const existing = await db().linear_integrations.findFirst({
@@ -264,10 +240,7 @@ export class LinearIntegrationManager implements Integration<LinearIntegration, 
                         token_expiry: tokenExpiry,
                     },
                 });
-                console.log(
-                    chalk.green("✅ Created Linear OAuth connection:"),
-                    chalk.yellow(organization.name)
-                );
+                logger.info("✅ Created Linear OAuth connection", { workspaceName: organization.name, userId: decoded.userId });
             } else {
                 // Update existing connection with new token (in case it was revoked and re-authorized)
                 await db().linear_integrations.update({
@@ -278,21 +251,15 @@ export class LinearIntegrationManager implements Integration<LinearIntegration, 
                         token_expiry: tokenExpiry
                     },
                 });
-                console.log(
-                    chalk.green("✅ Updated Linear OAuth connection token"),
-                    chalk.yellow(organization.name)
-                );
+                logger.info("✅ Updated Linear OAuth connection token", { workspaceName: organization.name, integrationId: existing.id, userId: decoded.userId });
             }
 
-            console.log(
-                chalk.green("✅ Linear OAuth completed for user"),
-                chalk.yellow(decoded.userId)
-            );
+            logger.info("✅ Linear OAuth completed for user", { userId: decoded.userId, workspaceName: organization.name });
 
             // Redirect to success page which will auto-close the popup
             res.redirect(`${urls.frontend}/oauth/success`);
         } catch (error) {
-            console.error(chalk.red("Error in Linear OAuth callback:"), error);
+            logger.error("Error in Linear OAuth callback", { error });
             res.redirect(`${urls.frontend}/oauth/error`);
         }
     }
@@ -318,7 +285,7 @@ export class LinearIntegrationManager implements Integration<LinearIntegration, 
             });
 
             if (!integration) {
-                console.log(`Linear integration ${integrationId} not found`);
+                logger.warn(`Linear integration ${integrationId} not found`, { integrationId });
                 return false;
             }
 
@@ -355,7 +322,7 @@ export class LinearIntegrationManager implements Integration<LinearIntegration, 
             // Token was refreshed if expiry changed
             return updatedIntegration.token_expiry.getTime() !== originalTokenExpiry.getTime();
         } catch (error) {
-            console.error(`Error refreshing Linear token for integration ${integrationId}:`, error);
+            logger.error(`Error refreshing Linear token for integration ${integrationId}`, { error, integrationId });
             return false;
         }
     }
@@ -367,7 +334,7 @@ export class LinearIntegrationManager implements Integration<LinearIntegration, 
             });
 
             if (!integration) {
-                console.error(`Linear integration ${integrationId} not found`);
+                logger.error(`Linear integration ${integrationId} not found`, { integrationId });
                 return null;
             }
 
@@ -377,10 +344,10 @@ export class LinearIntegrationManager implements Integration<LinearIntegration, 
                 integration.token_expiry &&
                 integration.token_expiry <= new Date(now.getTime() + OAUTH_TOKEN_REFRESH_THRESHOLD_MS)
             ) {
-                console.log(`Linear access token expiring soon for integration ${integrationId}, refreshing...`);
+                logger.info(`Linear access token expiring soon for integration ${integrationId}, refreshing...`, { integrationId });
 
                 if (!integration.refresh_token) {
-                    console.error(`No refresh token available for Linear integration ${integrationId}`);
+                    logger.error(`No refresh token available for Linear integration ${integrationId}`, { integrationId });
                     return integration.access_token; // Return existing token as fallback
                 }
 
@@ -401,7 +368,7 @@ export class LinearIntegrationManager implements Integration<LinearIntegration, 
 
                 if (!tokenResponse.ok) {
                     const errorText = await tokenResponse.text();
-                    console.error(`Linear token refresh failed for integration ${integrationId}:`, errorText);
+                    logger.error(`Linear token refresh failed for integration ${integrationId}`, { error: errorText, integrationId });
                     // Return existing token as fallback - it might still work
                     return integration.access_token;
                 }
@@ -410,7 +377,7 @@ export class LinearIntegrationManager implements Integration<LinearIntegration, 
                 const { access_token, refresh_token, expires_in } = tokenData;
 
                 if (!access_token) {
-                    console.error(`No access token received from Linear refresh for integration ${integrationId}`);
+                    logger.error(`No access token received from Linear refresh for integration ${integrationId}`, { integrationId });
                     // Return existing token as fallback
                     return integration.access_token;
                 }
@@ -428,14 +395,14 @@ export class LinearIntegrationManager implements Integration<LinearIntegration, 
                     },
                 });
 
-                console.log(`Successfully refreshed Linear access token for integration ${integrationId}`);
+                logger.info(`Successfully refreshed Linear access token for integration ${integrationId}`, { integrationId });
                 return access_token;
             }
 
             // Token is still valid
             return integration.access_token;
         } catch (error) {
-            console.error(`Error getting Linear access token for integration ${integrationId}:`, error);
+            logger.error(`Error getting Linear access token for integration ${integrationId}`, { error, integrationId });
             // Return null on error - caller should handle
             return null;
         }
@@ -531,7 +498,7 @@ export class LinearEvent extends InputEvent {
     }
 
     matchesChannelInput(channelInput: ChannelInputWithConfigs): boolean {
-        console.log(chalk.cyan(`Checking if Linear event matches channel input: ${channelInput.config_type}`));
+        logger.debug(`Checking if Linear event matches channel input: ${channelInput.config_type}`, { configType: channelInput.config_type, eventType: this.data.type, action: this.data.action });
         // Check if integration type matches
         if (channelInput.config_type !== InputConfigType.LINEAR) {
             return false;

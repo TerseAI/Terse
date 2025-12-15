@@ -4,6 +4,7 @@ import chalk from 'chalk';
 import { RunHistoryRawEventWithRelations } from '../types/prisma';
 import { RunHistoryMemory } from '../rag/runHistoryRag/indexer';
 import { RAGNamespace } from '../types/rag';
+import logger from '../logger';
 
 
 interface RunHistoryChatMemorySessionOptions {
@@ -135,7 +136,7 @@ function filterReasoningItems(rawEvents: AgentInputItem[]): AgentInputItem[] {
         filteredEvents.push(item);
       } else {
         // Skip this reasoning item as it doesn't have a required following item
-        console.log(chalk.yellow(`[ChannelAgent] Skipping reasoning item at index ${i} - no following message item`));
+        logger.info(`[ChannelAgent] Skipping reasoning item at index ${i} - no following message item`);
       }
     } else {
       // Not a reasoning item, include it normally

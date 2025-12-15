@@ -6,6 +6,7 @@ import { IntegrationType } from "../../../shared/Integrations";
 import { NotionDatabaseSession } from "../NotionDatabaseOutput";
 import { SessionWithTracking } from "../../../agent/ChannelAgent/ChannelAgent";
 import { formatError } from "../../../tools/errors";
+import logger from "../../../logger";
 
 export const notionModifyPageTool = tool({
     name: 'notion_modify_page',
@@ -55,9 +56,7 @@ IMPORTANT:
         return false; // DISABLE UNTIL HUMAN IN THE LOOP IS IMPLEMENTED
     },
     execute: async ({ page_id, properties_json }, runContext?: RunContext<SessionWithTracking<NotionDatabaseSession>>) => {
-        console.log(chalk.bgMagenta.white.bold('🛠️ Executing notion_modify_page tool'));
-        console.log(chalk.cyan('  Page ID: '), chalk.yellow(page_id ?? '(new page)'));
-        console.log(chalk.cyan('  Properties JSON: '), chalk.greenBright(properties_json));
+        logger.debug('🛠️ Executing notion_modify_page tool', { pageId: page_id ?? '(new page)', propertiesJson: properties_json });
 
         // Parse the JSON string
         let properties: Record<string, any>;
@@ -111,7 +110,7 @@ IMPORTANT:
                     },
                     properties: properties as Record<string, any>,
                 });
-                console.log(chalk.green("Notion database modified successfully"));
+                logger.info("Notion database modified successfully", { pageId: page_id ?? '(new page)', databaseId: runContext.context.notionConfig.database_id });
                 // Report action (no DB writes here)
                 const databaseName = runContext.context.notionConfig.database_name || 'Notion database';
                 const pageUrl = 'url' in response ? response.url : undefined;

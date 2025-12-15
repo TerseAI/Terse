@@ -8,6 +8,7 @@ import { SessionWithTracking } from "../../../agent/ChannelAgent/ChannelAgent";
 import type { IssueCreateInput } from "@linear/sdk/dist/_generated_documents";
 import { RunHistoryActionType } from "@prisma/client";
 import { formatError } from "../../../tools/errors";
+import logger from "../../../logger";
 
 export const linearCreateTicketTool = tool({
     name: 'linear_create_ticket',
@@ -63,13 +64,7 @@ BEFORE USING THIS TOOL:
         estimate, 
         subscriberIds
     }, runContext?: RunContext<SessionWithTracking<LinearTicketSession>>) => {
-        console.log(chalk.bgMagenta.white.bold('🛠️ Executing linear_create_ticket tool'));
-        console.log(chalk.cyan('  Title: '), chalk.greenBright(title));
-        console.log(chalk.cyan('  Team ID (provided): '), chalk.greenBright(teamId || 'not provided'));
-        console.log(chalk.cyan('  Other fields: '), chalk.yellow(JSON.stringify({
-            description, stateId, assigneeId, priority, dueDate,
-            labelIds, projectId, projectMilestoneId, parentId, estimate, subscriberIds
-        }, null, 2)));
+        logger.debug('🛠️ Executing linear_create_ticket tool', { title, teamId: teamId || 'not provided', otherFields: { description, stateId, assigneeId, priority, dueDate, labelIds, projectId, projectMilestoneId, parentId, estimate, subscriberIds } });
 
         if (!runContext?.context) {
             throw new Error("No context provided");
@@ -167,8 +162,8 @@ BEFORE USING THIS TOOL:
                 issue: issueData,
             };
         } catch (error: unknown) {
-            console.error(chalk.red('❌ Error creating Linear issue:'), error);
-            const errorMessage = error instanceof Error ? error.message : 'Failed to create Linear issue';
+            const errorMessage = await formatError(runContext!, error);
+            logger.error('❌ Error creating Linear issue', { error: errorMessage, title, teamId });
             return {
                 success: false,
                 error: errorMessage,

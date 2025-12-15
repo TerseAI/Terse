@@ -5,6 +5,7 @@ import { GithubAppInstallationCallbackRequest } from "../../shared/types";
 import chalk from "chalk";
 import { processRepository } from "./githubApp";
 import { emitCacheInvalidationWithKey } from "../../realtimeSocket";
+import logger from "../../logger";
 
 export async function processsGithubAppInstallationWebhook(req: Request, res: Response) {
     const body: GithubAppInstallationCallbackRequest = req.body as GithubAppInstallationCallbackRequest;
@@ -21,7 +22,7 @@ export async function processsGithubAppInstallationWebhook(req: Request, res: Re
             }
         });
 
-        console.log(chalk.green('Placeholder user created:'), user);
+        logger.info('Placeholder user created', { userId: user.id, githubUsername: user.github_username, email: user.email });
     }
 
     // Update the user_github_installation record with the user_id
@@ -52,7 +53,7 @@ type GithubAppInstallationDeletedRequest = {
 }
 
 export async function githubAppInstallationDeleted(req: Request, res: Response) {
-    console.log('githubAppInstallationDeleted', req.body);
+    logger.info('githubAppInstallationDeleted', { body: req.body });
     const body: GithubAppInstallationDeletedRequest = req.body as GithubAppInstallationDeletedRequest;
 
     const commit = db().$transaction(async (tx) => {

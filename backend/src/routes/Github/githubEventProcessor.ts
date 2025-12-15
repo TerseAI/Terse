@@ -7,9 +7,10 @@ import { GithubEvent } from "../../integrations/GithubIntegration";
 import { db } from "../../prismaClient";
 import { Request, Response } from "express";
 import { GetGithubRepositoriesForIntegrationResponse } from "../../shared/types";
+import logger from "../../logger";
 
 export async function processGithubEvent(event: GithubAppUnifiedEventRequest) {
-    console.log(chalk.blue('processGithubEvent'), event);
+    logger.info('processGithubEvent', { event });
 
     const user: User | null = await resolveUserForGithubInstallation(event.installationId, event.username);
 
