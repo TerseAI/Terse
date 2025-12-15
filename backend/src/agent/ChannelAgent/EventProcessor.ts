@@ -158,20 +158,20 @@ export class EventProcessor {
                     channelId: channel.id,
                 }
             );
-            
+
             filterResult = filterResponse.result;
         } catch (error) {
             // Log the error and update run history
             const errorMessage = error instanceof Error ? error.message : 'Unknown error';
             logger.error(`Error filtering event for channel "${channel.name}"`, { error, channelId: channel.id, channelName: channel.name, runId });
-            
+
             try {
                 await markRunFailed(runId, errorMessage, 'filter');
                 emitCacheInvalidationWithWildcard(this.user.id, 'runHistory', channel.id);
             } catch (e) {
-                logger.error('Failed to mark run as failed', { error:e, runId, channelId: channel.id });
+                logger.error('Failed to mark run as failed', { error: e, runId, channelId: channel.id });
             }
-            
+
             return new ProcessorResult(
                 false,
                 `Error during filtering: ${errorMessage}`,
@@ -203,7 +203,7 @@ export class EventProcessor {
         const runContext: RunContext = { runId };
         const channelAgent = new ChannelAgent(session, output, channel, runContext);
         channelAgent.setInputEvent(this.inputEvent);
-        
+
         // Run the channel agent with streaming parameters
         let result: ApprovalResult<Session, Agent<Session, AgentOutputType>>;
         try {
@@ -216,20 +216,20 @@ export class EventProcessor {
             // Log the error and update run history
             const errorMessage = error instanceof Error ? error.message : 'Unknown error';
             logger.error(`Error running channel agent for "${channel.name}"`, { error, channelId: channel.id, channelName: channel.name, runId });
-            
+
             try {
                 await markRunFailed(runId, errorMessage, 'agent');
                 emitCacheInvalidationWithWildcard(this.user.id, 'runHistory', channel.id);
             } catch (e) {
                 logger.error('Failed to mark run as failed', { error, runId, channelId: channel.id });
             }
-            
+
             // Re-throw to be caught by outer try-catch
             throw error;
         }
 
         if (result.status === 'completed') {
-            logger.info(`Channel "${channel.name}" completed:`, {finalOutput: result.result.finalOutput});
+            logger.info(`Channel "${channel.name}" completed:`, { finalOutput: result.result.finalOutput });
             return persistRunResult(runId, result.result, session, channel, result);
         } else {
             logger.info(`Channel "${channel.name}" awaiting approval:`);
