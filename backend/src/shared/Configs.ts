@@ -184,6 +184,7 @@ export class SlackConfig implements ConfigInstance {
         public channelId?: string,
         public channelName?: string,
         public listenToUserDms: boolean = false,
+        public userIds?: string[],
     ) {
     }
 
@@ -202,6 +203,11 @@ export class SlackConfig implements ConfigInstance {
         if (this.listenToUserDms) {
             parts.push(`Listening to user DMs: Yes`);
         }
+
+        if (this.userIds) {
+            parts.push(`Users: ${this.userIds.join(', ')}`);
+        }
+
         return parts.join('\n');
     }
 };

@@ -1,12 +1,8 @@
 import { useState } from "react";
-import { Repository } from "../shared/types";
-import { Check, ChevronsUpDown, RefreshCw, X } from "lucide-react";
+import { RefreshCw } from "lucide-react";
 import { Button } from "./ui/button";
-import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "./ui/command";
-import { Badge } from "./ui/badge";
-import { cn } from "@/lib/utils";
 import { useGithubResources } from "@/hooks/api/useGithubResources";
+import { MultiSelect } from "./MultiSelect";
 
 interface GithubResourceSelectorProps {
     installationId: number | null | undefined;
@@ -90,129 +86,25 @@ export function GithubResourceSelector({
                     Refresh
                 </Button>
             </div>
-            <GithubResourceCombobox 
-                repositories={repositories} 
-                selectedRepositoryIds={selectedRepositoryIds} 
-                onSelect={onSelect} 
+            <MultiSelect
+                options={repositories.map((repo) => ({
+                    id: repo.id,
+                    label: `${repo.owner}/${repo.name}`,
+                }))}
+                selectedIds={selectedRepositoryIds}
+                onSelect={(ids) => onSelect(ids as number[])}
+                placeholder="Select repositories..."
+                searchPlaceholder="Search repositories..."
+                emptyMessage="No repositories found."
+                displayText={(count) =>
+                    count > 0
+                        ? `${count} repositor${count !== 1 ? 'ies' : 'y'} selected`
+                        : "Select repositories..."
+                }
             />
             {repositories.length > 0 && (
                 <div className="text-xs text-muted-foreground">
                     {repositories.length} repository{repositories.length !== 1 ? 'ies' : ''} available
-                </div>
-            )}
-        </div>
-    );
-}
-
-interface GithubResourceComboboxProps {
-    repositories: Repository[];
-    selectedRepositoryIds: number[];
-    onSelect: (repositoryIds: number[]) => void;
-}
-
-function GithubResourceCombobox({
-    repositories,
-    selectedRepositoryIds,
-    onSelect
-}: GithubResourceComboboxProps) {
-    const [open, setOpen] = useState(false);
-
-    const selectedRepositories = repositories.filter((repo) => 
-        selectedRepositoryIds.includes(repo.id)
-    );
-
-    const handleToggleRepository = (repositoryId: number) => {
-        const isSelected = selectedRepositoryIds.includes(repositoryId);
-        if (isSelected) {
-            onSelect(selectedRepositoryIds.filter(id => id !== repositoryId));
-        } else {
-            onSelect([...selectedRepositoryIds, repositoryId]);
-        }
-    };
-
-    const handleRemoveRepository = (repositoryId: number) => {
-        onSelect(selectedRepositoryIds.filter(id => id !== repositoryId));
-    };
-
-    return (
-        <div className="space-y-2">
-            <Popover open={open} onOpenChange={setOpen}>
-                <PopoverTrigger asChild>
-                    <Button
-                        variant="outline"
-                        role="combobox"
-                        aria-expanded={open}
-                        className="w-full justify-between"
-                    >
-                        <span className="truncate">
-                            {selectedRepositories.length > 0
-                                ? `${selectedRepositories.length} repositor${selectedRepositories.length !== 1 ? 'ies' : 'y'} selected`
-                                : "Select repositories..."}
-                        </span>
-                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                    </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-full p-0" align="start">
-                    <Command>
-                        <CommandInput placeholder="Search repositories..." />
-                        <CommandList>
-                            <CommandEmpty>No repositories found.</CommandEmpty>
-                            <CommandGroup>
-                                {repositories.map((repository) => {
-                                    const isSelected = selectedRepositoryIds.includes(repository.id);
-                                    return (
-                                        <CommandItem
-                                            key={repository.id}
-                                            value={`${repository.id}-${repository.owner}-${repository.name}`}
-                                            onSelect={() => {
-                                                handleToggleRepository(repository.id);
-                                            }}
-                                        >
-                                            <Check
-                                                className={cn(
-                                                    "mr-2 h-4 w-4",
-                                                    isSelected ? "opacity-100" : "opacity-0"
-                                                )}
-                                            />
-                                            <span className="truncate">
-                                                {repository.owner}/{repository.name}
-                                            </span>
-                                        </CommandItem>
-                                    );
-                                })}
-                            </CommandGroup>
-                        </CommandList>
-                    </Command>
-                </PopoverContent>
-            </Popover>
-            {selectedRepositories.length > 0 && (
-                <div className="flex flex-wrap gap-2">
-                    {selectedRepositories.map((repository) => (
-                        <Badge
-                            key={repository.id}
-                            variant="secondary"
-                            className="pr-1"
-                        >
-                            <span className="truncate max-w-[200px]">
-                                {repository.owner}/{repository.name}
-                            </span>
-                            <button
-                                onClick={() => handleRemoveRepository(repository.id)}
-                                className="ml-1 rounded-full hover:bg-secondary-foreground/20 p-0.5"
-                                onKeyDown={(e) => {
-                                    if (e.key === "Enter") {
-                                        handleRemoveRepository(repository.id);
-                                    }
-                                }}
-                                onMouseDown={(e) => {
-                                    e.preventDefault();
-                                    e.stopPropagation();
-                                }}
-                            >
-                                <X className="h-3 w-3" />
-                            </button>
-                        </Badge>
-                    ))}
                 </div>
             )}
         </div>

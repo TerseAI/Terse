@@ -71,6 +71,7 @@ import {
   getSlackChannels,
   getSlackIntegrations,
   handleSlackInteraction,
+  getSlackUsers,
 } from "./routes/slack";
 import { TicketManager } from "./ticketing/TicketIntegration";
 import { User } from "./types/prisma";
@@ -381,6 +382,10 @@ app.post("/slack/interactions", async (req, res) => {
 
 app.get("/slack/channels", authMiddleware, async (req, res) => {
   getSlackChannels(req, res);
+});
+
+app.get("/slack/users", authMiddleware, async (req, res) => {
+  getSlackUsers(req, res);
 });
 
 // MARK: CHANNELS
