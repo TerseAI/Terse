@@ -52,6 +52,7 @@ export function useChat({
         onFilterResult: handleFilterResult,
         onThinking: handleThinking,
         onToolApprovalRequest: handleToolApprovalRequest,
+        onToolApprovalResponse: handleToolApprovalResponse
     });
 
     const { input, setInput, sendMessage } = useChatInput({
