@@ -60,7 +60,6 @@ export default function RunHistoryChatAdapter({ runId, status, children}: RunHis
             initialTurns={turns}
             subscribeToEvents={subscribeToEvents}
             sendMessage={sendMessage}
-            runId={runId}
             EmptyContentPlaceholder={isLoading ? <div className="p-4 text-center text-muted-foreground">Loading history...</div> : <div className="p-4 text-center text-muted-foreground">No events found</div>}
         />
     );

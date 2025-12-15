@@ -1,10 +1,9 @@
-import { forwardRef, useCallback } from "react";
+import { forwardRef } from "react";
 import { ChatLayout, type ChatLayoutHandle } from "./ChatLayout";
 import { useChat } from "./hooks/useChat";
 import { Turn } from "./Turn";
 import { type ChatEventSubscription } from "./hooks/useCompletionSocket";
 import { type ModelRequest } from "../../shared/ModelEvents";
-import { sendToolApprovalResponse } from "../../socket";
 
 type ChatProps = {
     initialTurns?: Turn[];
@@ -12,7 +11,8 @@ type ChatProps = {
     subscribeToEvents?: ChatEventSubscription | null;
     sendMessage: (message: ModelRequest) => void;
     onUserMessage?: (message: string) => void;
-    runId?: string | null;
+    onHandleApprove?: (stepId: string) => void;
+    onHandleReject?: (stepId: string) => void;
 };
 
 export type ChatHandle = ChatLayoutHandle;
@@ -23,9 +23,10 @@ const Chat = forwardRef<ChatHandle, ChatProps>(function Chat({
     subscribeToEvents,
     sendMessage,
     onUserMessage,
-    runId
+    onHandleApprove,
+    onHandleReject,
 }, ref) {
-    const { turns, isPendingAssistantResponse, input, setInput, sendMessage: sendUserMessage, sendModelRequest, handleToolApprovalResponse } = useChat({
+    const { turns, isPendingAssistantResponse, input, setInput, sendMessage: sendUserMessage, sendModelRequest } = useChat({
         subscribeToEvents,
         sendMessage,
         initialTurns,
@@ -33,26 +34,6 @@ const Chat = forwardRef<ChatHandle, ChatProps>(function Chat({
         onToolCall: () => {},
         onToolCallComplete: () => {},
     });
-
-    const handleApprove = useCallback((stepId: string) => {
-        if (!runId) {
-            console.error('No runId available for approval');
-            return;
-        }
-        sendToolApprovalResponse(runId, stepId, true);
-        // Optimistically update UI
-        handleToolApprovalResponse({ step_id: stepId, approved: true });
-    }, [runId, handleToolApprovalResponse]);
-
-    const handleReject = useCallback((stepId: string) => {
-        if (!runId) {
-            console.error('No runId available for rejection');
-            return;
-        }
-        sendToolApprovalResponse(runId, stepId, false);
-        // Optimistically update UI
-        handleToolApprovalResponse({ step_id: stepId, approved: false });
-    }, [runId, handleToolApprovalResponse]);
 
     return (
         <ChatLayout
@@ -65,8 +46,8 @@ const Chat = forwardRef<ChatHandle, ChatProps>(function Chat({
             setInput={setInput}
             placeholders={["Chat with the AI assistant"]}
             EmptyContentPlaceholder={EmptyContentPlaceholder}
-            onApprove={handleApprove}
-            onReject={handleReject}
+            onApprove={onHandleApprove}
+            onReject={onHandleReject}
         />
     );
 });

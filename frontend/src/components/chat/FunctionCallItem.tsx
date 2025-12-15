@@ -258,7 +258,7 @@ export default function FunctionCallItem({ call, isTurnFailure = false, index, o
                         <Button
                             onClick={handleApprove}
                             size="sm"
-                            className="bg-green-600 hover:bg-green-700 text-white"
+                            variant="default"
                         >
                             Approve
                         </Button>

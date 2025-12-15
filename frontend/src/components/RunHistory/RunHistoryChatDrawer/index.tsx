@@ -8,6 +8,7 @@ import { cn } from '@/lib/utils';
 import RunHistoryChatDrawerHeader from './RunHistoryChatDrawerHeader';
 import RunHistoryChatAdapter from './RunHistoryChatAdapter';
 import { Chat, type ChatHandle } from '@/components/chat/Chat';
+import { sendToolApprovalResponse } from '@/socket';
 
 type Props = {
     runId: string;
@@ -79,6 +80,15 @@ export default function RunHistoryChatDrawer({
                     <RunHistoryChatAdapter runId={runId} status={status}>
                         {({ initialTurns, isLoading, subscribeToEvents, sendMessage, currentStatus }) => {
                             const isFiltered = currentStatus === 'skipped';
+                            
+                            const handleApprove = (stepId: string) => {
+                                sendToolApprovalResponse(runId, stepId, true);
+                            };
+                            
+                            const handleReject = (stepId: string) => {
+                                sendToolApprovalResponse(runId, stepId, false);
+                            };
+                            
                             return (
                                 <>
                                     <RunHistoryChatDrawerHeader
@@ -102,6 +112,8 @@ export default function RunHistoryChatDrawer({
                                                     initialTurns={initialTurns} 
                                                     subscribeToEvents={subscribeToEvents}
                                                     sendMessage={sendMessage}
+                                                    onHandleApprove={handleApprove}
+                                                    onHandleReject={handleReject}
                                                     EmptyContentPlaceholder={
                                                         isLoading 
                                                             ? <div className="p-4 text-center text-muted-foreground">Loading history...</div> 
