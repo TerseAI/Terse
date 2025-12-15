@@ -8,7 +8,6 @@ import { cn } from '@/lib/utils';
 import RunHistoryChatDrawerHeader from './RunHistoryChatDrawerHeader';
 import RunHistoryChatAdapter from './RunHistoryChatAdapter';
 import { Chat, type ChatHandle } from '@/components/chat/Chat';
-import { sendToolApprovalResponse } from '@/socket';
 
 type Props = {
     runId: string;
@@ -78,16 +77,8 @@ export default function RunHistoryChatDrawer({
             )}>
                 {isOpen && (
                     <RunHistoryChatAdapter runId={runId} status={status}>
-                        {({ initialTurns, isLoading, subscribeToEvents, sendMessage, currentStatus }) => {
+                        {({ initialTurns, isLoading, subscribeToEvents, sendMessage, handleApprove, handleReject, currentStatus }) => {
                             const isFiltered = currentStatus === 'skipped';
-                            
-                            const handleApprove = (stepId: string) => {
-                                sendToolApprovalResponse(runId, stepId, true);
-                            };
-                            
-                            const handleReject = (stepId: string) => {
-                                sendToolApprovalResponse(runId, stepId, false);
-                            };
                             
                             return (
                                 <>

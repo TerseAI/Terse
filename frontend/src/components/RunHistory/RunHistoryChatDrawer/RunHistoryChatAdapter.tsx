@@ -4,7 +4,7 @@ import { Chat } from '@/components/chat/Chat';
 import { RunHistoryStatus} from '@/shared/RunHistoryTypes';
 import { Failure, FilterResult, ModelEvent, ModelRequest, TextDelta, ToolCall, ToolCallComplete, UserMessage } from '@/shared/ModelEvents';
 import { Turn } from '@/components/chat/Turn';
-import { subscribeToChatEvents, sendChatMessage } from '@/socket';
+import { subscribeToChatEvents, sendChatMessage, sendToolApprovalResponse } from '@/socket';
 import { type ChatEventSubscription } from '@/components/chat/hooks/useCompletionSocket';
 import type { RunHistoryModelSocketEvent } from '@/shared/RunHistoryTypes';
 import { filterOutThinkingOnlyTurns } from '@/components/chat/utils/turnUtils';
@@ -20,6 +20,8 @@ type RunHistoryChatAdapterProps = {
         endTimestamp?: string;
         subscribeToEvents?: ChatEventSubscription | null;
         sendMessage: (message: ModelRequest) => void;
+        handleApprove: (stepId: string) => void;
+        handleReject: (stepId: string) => void;
         currentStatus: RunHistoryStatus;
     }) => React.ReactNode;
 };
@@ -51,8 +53,16 @@ export default function RunHistoryChatAdapter({ runId, status, children}: RunHis
         sendChatMessage(runId, message);
     };
 
+    const handleApprove = (stepId: string) => {
+        sendToolApprovalResponse(runId, stepId, true);
+    };
+    
+    const handleReject = (stepId: string) => {
+        sendToolApprovalResponse(runId, stepId, false);
+    };
+
     if (children) {
-        return <>{children({ initialTurns: turns, isLoading, runId, startTimestamp, endTimestamp, subscribeToEvents, sendMessage, currentStatus })}</>;
+        return <>{children({ initialTurns: turns, isLoading, runId, startTimestamp, endTimestamp, subscribeToEvents, sendMessage, currentStatus, handleApprove, handleReject })}</>;
     }
 
     return (
@@ -60,6 +70,8 @@ export default function RunHistoryChatAdapter({ runId, status, children}: RunHis
             initialTurns={turns}
             subscribeToEvents={subscribeToEvents}
             sendMessage={sendMessage}
+            onHandleApprove={handleApprove}
+            onHandleReject={handleReject}
             EmptyContentPlaceholder={isLoading ? <div className="p-4 text-center text-muted-foreground">Loading history...</div> : <div className="p-4 text-center text-muted-foreground">No events found</div>}
         />
     );
