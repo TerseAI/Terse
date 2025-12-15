@@ -6,6 +6,7 @@ import { EventEmitterTaskQueue } from "../../tasks/abstract/eventEmitterTasks";
 import { Task } from "../../tasks/abstract/tasks";
 import { runnerFactory } from "../runner";
 import { settings } from "../../config/settings";
+import logger from "../../logger";
 
 const DIRECTIVE_TASK_NAME = "DIRECTIVE_TASK" as const;
 
@@ -145,9 +146,9 @@ directiveTaskQueue.addListener({
   taskName: DIRECTIVE_TASK_NAME,
   onTask: async (task: DirectiveTask) => {
     try {
-      console.log(`[Directive] Classifying message: "${task.message.slice(0, 100)}${task.message.length > 100 ? '...' : ''}"`);
+      logger.info(`[Directive] Classifying message: "${task.message.slice(0, 100)}${task.message.length > 100 ? '...' : ''}"`);
       const directive = await classifyDirective(task);
-      console.log(`[Directive] Result: isDirective=${directive.isDirective}${directive.isDirective ? `, description="${directive.directiveDescription}"` : ''}`);
+      logger.info(`[Directive] Result: isDirective=${directive.isDirective}${directive.isDirective ? `, description="${directive.directiveDescription}"` : ''}`);
       if (directive.isDirective) {
         await persistDirective(
           task.automationId,
@@ -155,10 +156,10 @@ directiveTaskQueue.addListener({
           task.runHistoryChatEventId,
           directive.directiveDescription
         );
-        console.log(`[Directive] Persisted directive for automation ${task.automationId}`);
+        logger.info(`[Directive] Persisted directive for automation ${task.automationId}`);
       }
     } catch (error) {
-      console.error(`[Directive] Failed to process directive task:`, error);
+      logger.error(`[Directive] Failed to process directive task:`, { error });
     }
   }
 });

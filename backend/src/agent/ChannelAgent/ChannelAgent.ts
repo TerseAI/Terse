@@ -21,6 +21,7 @@ import { InputImageContent, InputTextContent } from 'openai/resources/conversati
 import { runnerFactory } from '../runner';
 import { NotificationManager } from '../../notifications/Notification';
 import { persistOutputAttributions } from './persistOutputAttributions';
+import logger from '../../logger';
 
 
 export class ChannelAgent<T extends Session, TConfig extends ConfigInstance> {
@@ -328,11 +329,11 @@ ${this.inputEvent!.formatForChannelAgent()}
 
     private logRawEvent(event: any): void {
         if (event.type === 'raw_model_stream_event') {
-            console.log(`${event.type} %o`, event.data);
+            logger.info(event.type, { data: event.data });
         } else if (event.type === 'agent_updated_stream_event') {
-            console.log(`${event.type} %s`, event.agent.name);
+            logger.info(event.type, { agentName: event.agent.name });
         } else if (event.type === 'run_item_stream_event') {
-            console.log(`${event.type} %o`, event.item);
+            logger.info(event.type, { item: event.item });
         }
     }
 

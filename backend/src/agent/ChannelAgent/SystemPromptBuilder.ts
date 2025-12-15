@@ -7,6 +7,7 @@ import { InputEvent } from '../../integrations/abstract/InputEvent';
 import { RunHistoryMemory } from '../../rag/runHistoryRag/indexer';
 import { extractConversationContent } from '../../rag/runHistoryRag/conversationExtractor';
 import type { AgentInputItem } from '@openai/agents-core';
+import logger from '../../logger';
 
 export interface RunContext {
     runId: string;
@@ -222,7 +223,7 @@ ${similarEventsList}
 Use these examples as reference for understanding the user's intent and how similar requests were processed in the past.`
             };
         } catch (error) {
-            console.error('Error fetching similar past input events:', error);
+            logger.error('Error fetching similar past input events', { error, channelId: this.deps.channel.id, runId: this.runContext.runId });
             // Return null to continue without similar events if there's an error
             return null;
         }

@@ -6,6 +6,7 @@ import { CreateTicketInput, Ticket, TicketSystemType, UserContext } from "../../
 import { SessionWithTracking } from "../agents/Analyzer";
 import { EntityType } from "../../shared/Entities";
 import { ChangeEventType } from "../../shared/ModelEvents";
+import logger from "../../logger";
 
 const searchJiraTicketTool = tool({
     name: 'Search Jira Ticket',
@@ -80,7 +81,7 @@ const searchJiraTicketTool = tool({
             limit: limit || undefined
         };
 
-        console.log('Jira Ticket Tool: Searching for tickets with JQL:', jql, 'and options:', options);
+        logger.info('Jira Ticket Tool: Searching for tickets with JQL', { jql, options });
         const tickets = await ticketManager.structuredSearch(jql, options);
         
         return {
@@ -116,7 +117,7 @@ const getJiraCurrentUserTool = tool({
             throw new Error("No ticket manager provided");
         }
 
-        console.log('Jira Ticket Tool: Getting current user');
+        logger.info('Jira Ticket Tool: Getting current user');
 
         let ticketManager = runContext.context.ticketManager;
 
@@ -139,7 +140,7 @@ const getJiraIssueTypesTool = tool({
             throw new Error("No ticket manager provided");
         }
 
-        console.log('Jira Ticket Tool: Getting issue types');
+        logger.info('Jira Ticket Tool: Getting issue types');
 
         let ticketManager = runContext.context.ticketManager;
 
@@ -195,11 +196,11 @@ const createJiraTicketTool = tool({
         const project = userContext.teams.find(team => team.key === projectKey);
         
         if (!project) {
-            console.error(chalk.red.bold(`❌ Project with key "${projectKey}" not found. Available projects:`, userContext.teams.map(t => t.key).join(', ')));
+            logger.error(`❌ Project with key "${projectKey}" not found`, { projectKey, availableProjects: userContext.teams.map(t => t.key) });
             throw new Error(`Project with key "${projectKey}" not found`);
         }
 
-        console.log('Jira Ticket Tool: Creating ticket in project:', projectKey);
+        logger.info('Jira Ticket Tool: Creating ticket in project', { projectKey });
 
         let ticket: Ticket;
         try {
@@ -217,7 +218,7 @@ const createJiraTicketTool = tool({
             associatedCommits: associatedCommits || undefined,
         } as CreateTicketInput);
         } catch (error) {
-            console.error('Jira Ticket Tool: Error creating ticket:', error);
+            logger.error('Jira Ticket Tool: Error creating ticket', { error, projectKey, title });
             throw new Error('Error creating ticket');
         }
 
@@ -256,13 +257,13 @@ const updateJiraTicketTool = tool({
 
         let ticketManager = runContext.context.ticketManager;
 
-        console.log('Jira Ticket Tool: Updating ticket:', id);
+        logger.info('Jira Ticket Tool: Updating ticket', { id });
 
         // Validate status if provided
         if (statusId) {
             const userContext: UserContext = await ticketManager.getUserContext();
             if (!userContext.ticketStates.some(s => s.id === statusId)) {
-                console.error(chalk.red.bold('❌ Invalid status ID. This will fail!'));
+                logger.error('❌ Invalid status ID. This will fail!', { statusId, ticketId: id, validStatuses: userContext.ticketStates.map(s => s.id) });
                 throw new Error("Invalid status ID. Please use a valid status from the user context.");
             }
         }
@@ -294,7 +295,7 @@ const findJiraIssueTool = tool({
         issueId: z.string().describe('The ID or key of the Jira issue to find (e.g., "PROJ-123")'),
     }),
     execute: async ({ issueId }: { issueId: string }, runContext?: RunContext<SessionWithTracking>) => {
-        console.log(chalk.cyan('\nFetching Jira issue with ID: ' + issueId));
+        logger.info('Jira Ticket Tool: Fetching Jira issue with ID: ' + issueId);
 
         if (!runContext?.context.ticketManager) {
             throw new Error("No ticket manager provided");
@@ -320,7 +321,7 @@ const commentOnJiraTicketTool = tool({
 
         let ticketManager = runContext.context.ticketManager;
 
-        console.log(chalk.cyan('\nCommenting on Jira ticket: ' + issueId));
+        logger.info('Jira Ticket Tool: Commenting on Jira ticket: ' + issueId);
 
         return await ticketManager.commentOnTicket(issueId, comment);
     },

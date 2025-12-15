@@ -1,11 +1,12 @@
 import { Request, Response } from "express";
 import { db } from "../prismaClient";
-import { SlackChannelsResponse, SlackChannel } from "../shared/types";
+import { SlackChannelsResponse, SlackChannel, SlackUsersResponse } from "../shared/types";
 import { WebClient, LogLevel } from "@slack/web-api";
-import { Channel } from "@slack/web-api/dist/types/response/ConversationsListResponse";
+import { Member as SlackUser } from "@slack/web-api/dist/types/response/UsersListResponse";
 import chalk from "chalk";
 import { User, UserSlackIntegrationWithUser } from "../types/prisma";
 import { SlackIntegrationManager, isValidSlackSig, SlackMessageEvent } from '../integrations/SlackIntegration';
+import logger from "../logger";
 
 // MARK: - Route Handlers
 
@@ -20,7 +21,7 @@ export async function getSlackIntegrations(req: Request, res: Response) {
     const integrations = await manager.getInstancesForUser(req.session.user.id);
     res.status(200).json(integrations);
   } catch (error) {
-    console.error('Error fetching Slack integrations:', error);
+    logger.error('Error fetching Slack integrations', { error, userId: req.session?.user?.id });
     res.status(500).json({ error: 'Failed to fetch Slack integrations' });
   }
 }
@@ -86,7 +87,7 @@ export async function handleSlackWebhook(req: Request, res: Response): Promise<v
   const isValid = isValidSlackSig(req);
 
   if (!isValid) {
-    console.log(chalk.red('❌ [SLACK WEBHOOK] Invalid signature - returning 400'));
+    logger.warn('❌ [SLACK WEBHOOK] Invalid signature - returning 400');
     res.sendStatus(400);
     return;
   }
@@ -98,7 +99,7 @@ export async function handleSlackWebhook(req: Request, res: Response): Promise<v
     const rawBody = req.body as Buffer;
     body = JSON.parse(rawBody.toString('utf8')) as unknown as SlackMessageEvent;
   } catch (error) {
-    console.error('Failed to parse Slack event body:', error);
+    logger.error('Failed to parse Slack event body', { error });
     res.sendStatus(400);
     return;
   }
@@ -117,7 +118,7 @@ export async function handleSlackWebhook(req: Request, res: Response): Promise<v
   // Process the event asynchronously
   const slackIntegrationManager = new SlackIntegrationManager();
   slackIntegrationManager.processWebhookEvent(body).catch((error) => {
-    console.error(chalk.red('Error processing Slack webhook event:'), error);
+    logger.error('Error processing Slack webhook event', { error });
   });
 }
 
@@ -159,7 +160,7 @@ export const getSlackChannels = async (req: Request, res: Response) => {
     const authedUserId = userSlackIntegration.authed_user_id;
     const teamId = userSlackIntegration.slack_team_id;
 
-    console.log(chalk.cyan(`🔵 [SLACK CHANNELS] integration: team="${teamName}", user_id="${authedUserId}", team_id="${teamId}"`));
+    logger.debug(`🔵 [SLACK CHANNELS] integration: team="${teamName}", user_id="${authedUserId}", team_id="${teamId}"`, { teamName, authedUserId, teamId, integrationId });
 
     // Fetch channels from Slack API
     const client = new WebClient(token, {
@@ -182,15 +183,8 @@ export const getSlackChannels = async (req: Request, res: Response) => {
         types: "mpim",
         exclude_archived: true,
         limit: 1000,
-      }),
+      })
     ]);
-
-    const formatChannelSummary = (channels: Channel[] | undefined, type: string) => 
-      channels?.map(c => `${c.name}(is_member=${c.is_member})`).join(', ') || 'none';
-    
-    console.log(chalk.cyan(`🔵 [SLACK CHANNELS] public: ${publicChannels.channels?.length || 0} (${formatChannelSummary(publicChannels.channels as Channel[], 'public')})`));
-    console.log(chalk.cyan(`🔵 [SLACK CHANNELS] private: ${privateChannels.channels?.length || 0} (${formatChannelSummary(privateChannels.channels as Channel[], 'private')})`));
-    console.log(chalk.cyan(`🔵 [SLACK CHANNELS] mpim: ${mpimChannels.channels?.length || 0} (${formatChannelSummary(mpimChannels.channels as Channel[], 'mpim')})`));
 
     const channels: SlackChannel[] = [];
 
@@ -246,7 +240,7 @@ export const getSlackChannels = async (req: Request, res: Response) => {
 
     res.status(200).json(response);
   } catch (error: any) {
-    console.error(chalk.red("Error fetching Slack channels:"), error);
+    logger.error("Error fetching Slack channels", { error, integrationId, userId: user.id });
 
     // Check if this is an invalid_auth error from Slack
     const isInvalidAuth =
@@ -267,6 +261,71 @@ export const getSlackChannels = async (req: Request, res: Response) => {
     });
   }
 };
+
+export const getSlackUsers = async (req: Request, res: Response) => {
+  const user = req.session?.user;
+  if (!user) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+
+  const integrationId = req.query.integrationId as string;
+  if (!integrationId) {
+    return res.status(400).json({ error: "integrationId is required" });
+  }
+
+  try {
+    // Verify user owns this integration
+    // For Slack, integrationId is user_slack_integrations.id
+    const userSlackIntegration = await db().user_slack_integrations.findFirst({
+      where: {
+        id: integrationId,
+        user_id: user.id,
+      },
+      include: {
+        slack_integration: true,
+        user: true,
+      },
+    });
+
+    if (!userSlackIntegration || !userSlackIntegration.slack_integration) {
+      return res.status(404).json({ error: "Slack integration not found" });
+    }
+
+    const token = getToken(userSlackIntegration);
+    const isBotUser = userSlackIntegration.is_bot_user;
+
+    if (isBotUser) {
+      return res.status(400).json({ error: "Bot user cannot fetch users" });
+    }
+
+    const client = new WebClient(token, {
+      logLevel: LogLevel.ERROR,
+    });
+    const users = await client.users.list({});
+    if (!users.ok) {
+      return res.status(500).json({ error: "Failed to fetch users" });
+    }
+    if (!users.members || users.members.length === 0) {
+      return res.status(200).json({ users: [] });
+    }
+
+    const response: SlackUsersResponse = {
+      users: users.members
+        ?.filter((member): member is SlackUser & { id: string; name: string } =>
+          Boolean(member.id && member.name) && !member.is_bot
+        )
+        .map(member => ({
+          id: member.id,
+          name: member.name,
+        })) || [],
+    };
+
+    res.status(200).json(response);
+  } catch (error: any) {
+    console.error(chalk.red("Error fetching Slack users:"), error);
+    res.status(500).json({ error: "Failed to fetch users" });
+  }
+}
 
 export async function handleSlackInteraction(req: Request, res: Response) {
   res.sendStatus(200);
@@ -290,7 +349,7 @@ async function openChat(accessToken: string, authedUserId: string) {
 
     return channel;
   } catch (error) {
-    console.error('Error opening chat:', error);
+    logger.error('Error opening chat', { error, authedUserId });
     return null;
   }
 }

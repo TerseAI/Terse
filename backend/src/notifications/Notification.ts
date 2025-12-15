@@ -3,6 +3,7 @@ import { db } from "../prismaClient";
 import { RunHistoryAction } from "../shared/RunHistoryTypes";
 import { User, Channel, UserNotificationDestination, AutomationNotificationSettings } from "../types/prisma";
 import { formatNotificationMessage, sendSlackMessage } from "../utility/slack";
+import logger from "../logger";
 
 export class NotificationManager {
     private user: User;
@@ -22,12 +23,12 @@ export class NotificationManager {
         });
 
         if (!notificationSettings) {
-            console.log(`No notification settings found for automation ${this.channel.name}. Skipping`);
+            logger.debug(`No notification settings found for automation ${this.channel.name}. Skipping`);
             return;
         }
 
         if (!notificationSettings.enabled) {
-            console.log(`Notifications disabled for automation ${this.channel.name}. Skipping`);
+            logger.debug(`Notifications disabled for automation ${this.channel.name}. Skipping`);
             return;
         }
 
@@ -38,12 +39,12 @@ export class NotificationManager {
         });
 
         if (!notificationDestinations) {
-            console.log(`No notification destinations found for user ${this.user.email}. Skipping`);
+            logger.debug(`No notification destinations found for user ${this.user.email}. Skipping`);
             return;
         }
 
         if (!notificationSettings.action_types.includes(runAction.type)) {
-            console.log(`Notification settings for automation ${this.channel.name} do not include action ${runAction.type}. Skipping`);
+            logger.debug(`Notification settings for automation ${this.channel.name} do not include action ${runAction.type}. Skipping`);
             return;
         }
 
@@ -60,12 +61,12 @@ export class NotificationManager {
 
 async function notifySlack(notificationDestination: UserNotificationDestination, runAction: RunHistoryAction, channel: Channel) {
     if (!notificationDestination.slack_integration_id) {
-        console.log(`[notifySlack] No Slack integration ID found. Skipping.`);
+        logger.debug(`[notifySlack] No Slack integration ID found. Skipping.`);
         return;
     }
 
     if (!notificationDestination.slack_channel_id) {
-        console.log(`[notifySlack] No Slack channel ID configured. Skipping.`);
+        logger.debug(`[notifySlack] No Slack channel ID configured. Skipping.`);
         return;
     }
 
@@ -80,5 +81,5 @@ async function notifySlack(notificationDestination: UserNotificationDestination,
 
 // Not supported yet, just wanted to make sure this was built with mulitple notification destinations in mind
 async function notifyEmail(notificationDestinations: UserNotificationDestination, runAction: RunHistoryAction) {
-    console.log(`Notifying Email for user ${notificationDestinations.user_id} with action ${runAction}`);
+    logger.info(`Notifying Email for user ${notificationDestinations.user_id} with action ${runAction}`);
 }

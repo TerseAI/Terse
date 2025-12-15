@@ -1,6 +1,7 @@
 import { RunContext, Tool, tool } from "@openai/agents";
 import { ActivityOverview, SessionWithTracking, SubActivityOverview } from "../agents/Analyzer";
 import { z } from "zod";
+import logger from "../../logger";
 
 export const createActionSummaryTool: Tool<SessionWithTracking> = tool({
     name: 'Create Action Event',
@@ -27,7 +28,7 @@ export const createActionSummaryTool: Tool<SessionWithTracking> = tool({
             throw new Error("No context provided");
         }
         if (!runContext.context.commitContext) {
-            console.warn("No commit context provided");
+            logger.warn("No commit context provided");
         }
 
         const topLevelSumary = summary;
@@ -35,13 +36,13 @@ export const createActionSummaryTool: Tool<SessionWithTracking> = tool({
         // go through each sub activity summary. Take the summary + Create an array of associated commits
         const subActivityOverviews: SubActivityOverview[] = [];
         for (const subActivitySummary of subActivitySummaries) {
-            console.log("Creating sub activity summary associated commits", subActivitySummary.associatedCommits);
+            logger.info("Creating sub activity summary associated commits", {associatedCommits: subActivitySummary.associatedCommits});
             const subActivityOverview: SubActivityOverview = {
                 summary: subActivitySummary.summary,
                 sub_activity_commit_associations: subActivitySummary.associatedCommits?.map(commitIndex => {
                     const commit = runContext.context.commitContext?.commits[commitIndex];
                     if (!commit) {
-                        console.warn(`Commit index ${commitIndex} not found in context`);
+                        logger.warn(`Commit index ${commitIndex} not found in context`, { commitIndex, commitCount: runContext.context.commitContext?.commits.length });
                         return null;
                     }
                     return {
@@ -88,7 +89,7 @@ export const createCommitSummaryTool = tool({
             throw new Error("No context provided");
         }
 
-        console.log("Creating commit summary", summary);
+        logger.info("Creating commit summary", {summary});
 
         return {
             summary: summary,

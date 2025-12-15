@@ -1,5 +1,6 @@
 import { ChannelInput, ChannelOutput, ChannelInputWithConfigs, ChannelOutputWithConfigs } from '../../types/prisma';
 import { convertPrismaConfigToConfigInstance, convertPrismaOutputConfigToConfigInstance } from '../../utility/typeConverters';
+import logger from '../../logger';
 
 export function formatChannelInputForAgent(input: ChannelInput | ChannelInputWithConfigs): string {
     try {
@@ -7,7 +8,7 @@ export function formatChannelInputForAgent(input: ChannelInput | ChannelInputWit
         return configInstance.formatForAgent();
     } catch (error) {
         // If conversion fails, return basic type info
-        console.warn('Failed to convert channel input to ConfigInstance:', error);
+        logger.warn('Failed to convert channel input to ConfigInstance', { error, configType: input.config_type, inputId: input.id });
         return `Type: ${input.config_type}`;
     }
 }
@@ -17,7 +18,7 @@ export function formatChannelOutputForAgent(output: ChannelOutput | ChannelOutpu
         const configInstance = convertPrismaOutputConfigToConfigInstance(output as ChannelOutputWithConfigs);
         return configInstance.formatForAgent();
     } catch (error) {
-        console.warn('Failed to convert channel output to ConfigInstance:', error);
+        logger.warn('Failed to convert channel output to ConfigInstance', { error, configType: output.config_type, outputId: output.id });
         return `Type: ${output.config_type}`;
     }
 }

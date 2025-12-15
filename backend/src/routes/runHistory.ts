@@ -5,6 +5,7 @@ import type { GetRunHistoryParams, GetRunHistoryResponse, RunHistoryRecord, RunH
 import { parsePageParams } from "../utility/pagination";
 import { convertPrismaIntegrationTypeToIntegrationTypeFromRunHistory } from "../utility/typeConverters";
 import { ModelEvent } from "../shared/ModelEvents";
+import logger from "../logger";
 // Valid status values for validation
 const VALID_STATUSES: RunHistoryStatus[] = ["success", "failed", "skipped", "in_progress"];
 
@@ -102,7 +103,7 @@ export async function getRunHistory(req: Request, res: Response) {
 
     res.json(response);
   } catch (err) {
-    console.error("Failed to fetch run history", err);
+    logger.error("Failed to fetch run history", { error: err instanceof Error ? err.message : String(err), stack: err instanceof Error ? err.stack : undefined, channelId: req.params.channelId });
     res.status(500).json({ error: "Failed to fetch run history" });
   }
 }
@@ -221,7 +222,7 @@ export async function getChatHistory(req: Request, res: Response) {
       status: runRecord.status,
     });
   } catch (err) {
-    console.error("Failed to fetch chat history", err);
+    logger.error("Failed to fetch chat history", { error: err instanceof Error ? err.message : String(err), stack: err instanceof Error ? err.stack : undefined, runId: req.params.runId });
     res.status(500).json({ error: "Failed to fetch chat history" });
   }
 }
@@ -266,7 +267,7 @@ export async function getRunHistoryActions(req: Request, res: Response) {
 
     res.json(result);
   } catch (err) {
-    console.error("Failed to fetch run history actions", err);
+    logger.error("Failed to fetch run history actions", { error: err instanceof Error ? err.message : String(err), stack: err instanceof Error ? err.stack : undefined, ids: req.query.ids });
     res.status(500).json({ error: "Failed to fetch run history actions" });
   }
 }

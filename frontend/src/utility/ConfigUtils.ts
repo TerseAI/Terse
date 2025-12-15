@@ -39,7 +39,8 @@ export function deserializeConfig(jsonConfig: any): ConfigInstance {
                 integrationId,
                 jsonConfig.channelId,
                 jsonConfig.channelName,
-                jsonConfig.listenToUserDms || false
+                jsonConfig.listenToUserDms || false,
+                jsonConfig.userIds || []
             );
 
         case ConfigType.NOTION_DATABASE:

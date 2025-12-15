@@ -3,6 +3,7 @@ import { INTEGRATION_REGISTRY } from "../integrations/abstract/IntegrationRegist
 import { isOAuthIntegrationInstallation } from "../integrations/abstract/Integration";
 import { IntegrationType } from "../shared/Integrations";
 import { cloudScheduler } from "../config/settings";
+import logger from "../logger";
 
 /**
  * Validate that the request comes from Google Cloud Scheduler
@@ -14,7 +15,7 @@ function validateCloudSchedulerRequest(req: Request): boolean {
   // Cloud Scheduler should send the secret token in the Authorization header
   // Format: "Bearer <token>" or just the token value
   if (!authHeader) {
-    console.log('Missing Authorization header');
+    logger.warn('Missing Authorization header');
     return false;
   }
 
@@ -25,7 +26,7 @@ function validateCloudSchedulerRequest(req: Request): boolean {
 
   // Validate against configured secret
   if (token !== cloudScheduler.secret) {
-    console.log('Invalid cron secret token');
+    logger.warn('Invalid cron secret token');
     return false;
   }
 
@@ -37,11 +38,11 @@ function validateCloudSchedulerRequest(req: Request): boolean {
  * This endpoint is triggered by Google Cloud Scheduler
  */
 export async function refreshAllTokens(req: Request, res: Response) {
-  console.log('Token refresh cron job triggered');
+  logger.info('Token refresh cron job triggered');
 
   // Validate request comes from Google Cloud Scheduler
   if (!validateCloudSchedulerRequest(req)) {
-    console.error('Unauthorized: Request did not pass Cloud Scheduler validation');
+    logger.error('Unauthorized: Request did not pass Cloud Scheduler validation');
     return res.status(401).json({ error: 'Unauthorized' });
   }
 
@@ -61,14 +62,14 @@ export async function refreshAllTokens(req: Request, res: Response) {
       }
 
       const integrationType = integrationManager.integrationType;
-      console.log(`Processing ${integrationType} integrations...`);
+      logger.info(`Processing ${integrationType} integrations...`);
 
       try {
         // Get all active integration instances using the interface method
         const integrations = await integrationManager.getAllActiveInstances();
 
         if (integrations.length === 0) {
-          console.log(`No ${integrationType} integrations found`);
+          logger.debug(`No ${integrationType} integrations found`);
           results.push({
             integrationType,
             total: 0,
@@ -79,7 +80,7 @@ export async function refreshAllTokens(req: Request, res: Response) {
           continue;
         }
 
-        console.log(`Found ${integrations.length} ${integrationType} integration(s) to refresh`);
+        logger.info(`Found ${integrations.length} ${integrationType} integration(s) to refresh`);
 
         // Refresh tokens for each integration
         let successCount = 0;
@@ -101,7 +102,7 @@ export async function refreshAllTokens(req: Request, res: Response) {
               integrationId: integration.id,
               error: error.message || 'Unknown error',
             });
-            console.error(`Failed to refresh token for ${integrationType} integration ${integration.id}:`, error);
+            logger.error(`Failed to refresh token for ${integrationType} integration ${integration.id}:`, { error });
           }
         }
 
@@ -113,9 +114,9 @@ export async function refreshAllTokens(req: Request, res: Response) {
           failures: failures.length > 0 ? failures : [],
         });
 
-        console.log(`${integrationType} token refresh completed: ${successCount} refreshed, ${failureCount} failed`);
+        logger.info(`${integrationType} token refresh completed: ${successCount} refreshed, ${failureCount} failed`);
       } catch (error) {
-        console.error(`Error processing ${integrationType} integrations:`, error);
+        logger.error(`Error processing ${integrationType} integrations:`, { error });
         results.push({
           integrationType,
           total: 0,
@@ -130,7 +131,7 @@ export async function refreshAllTokens(req: Request, res: Response) {
     const totalRefreshed = results.reduce((sum, r) => sum + r.refreshed, 0);
     const totalFailed = results.reduce((sum, r) => sum + r.failed, 0);
 
-    console.log(`Token refresh completed: ${totalRefreshed} refreshed, ${totalFailed} failed across ${totalIntegrations} total integrations`);
+    logger.info(`Token refresh completed: ${totalRefreshed} refreshed, ${totalFailed} failed across ${totalIntegrations} total integrations`);
 
     return res.json({
       message: 'Token refresh completed',
@@ -142,7 +143,7 @@ export async function refreshAllTokens(req: Request, res: Response) {
       results: results,
     });
   } catch (error) {
-    console.error('Error in token refresh cron job:', error);
+    logger.error('Error in token refresh cron job:', { error });
     return res.status(500).json({
       error: 'Internal server error',
       message: error instanceof Error ? error.message : 'Unknown error',

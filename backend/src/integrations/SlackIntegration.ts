@@ -18,6 +18,7 @@ import { IntegrationType } from "../shared/Integrations";
 import { InputConfigType } from "@prisma/client";
 import { Identifiable } from "../rag/Hydrator";
 import { HydratorType } from "../types/rag";
+import logger from "../logger";
 
 export class SlackIntegrationManager implements Integration<SlackIntegration, SlackMessageEvent, typeof SlackIntegrationMetadata>, OAuthIntegrationInstallation<IntegrationType.SLACK> {
     constructor() { }
@@ -77,11 +78,11 @@ export class SlackIntegrationManager implements Integration<SlackIntegration, Sl
                             event_id: event_id
                         }
                     });
-                    console.log(chalk.green(`✅ New event ${event_id} - processing...`));
+                    logger.info(`✅ New event ${event_id} - processing...`, { event_id });
                 } catch (error: any) {
                     // If unique constraint fails, this event was already processed
                     if (error.code === 'P2002') {
-                        console.log(chalk.yellow(`⚠️  Skipping already processed event ${event_id}`));
+                        logger.info(`⚠️  Skipping already processed event ${event_id}`, { event_id });
                         return; // Already acknowledged above
                     }
                     // Re-throw other errors
@@ -105,7 +106,7 @@ export class SlackIntegrationManager implements Integration<SlackIntegration, Sl
                 case 'message':
                     // Process message asynchronously (fire and forget - errors are logged but don't affect Slack)
                     handleSlackMessage(event, team_id, authorizations as SlackAuthorizations[]).catch((error) => {
-                        console.error(chalk.red('Error processing Slack message in background:'), error);
+                        logger.error('Error processing Slack message in background', { error });
                     });
                     break;
             }
@@ -146,7 +147,7 @@ export class SlackIntegrationManager implements Integration<SlackIntegration, Sl
 
         // Check if Slack returned an error (user denied access, etc.)
         if (req.query.error) {
-            console.error("Slack OAuth error:", req.query.error);
+            logger.error("Slack OAuth error", { error: String(req.query.error) });
             res.redirect(`${frontendUrl}/oauth/error`);
             return;
         }
@@ -156,7 +157,7 @@ export class SlackIntegrationManager implements Integration<SlackIntegration, Sl
         const state = req.query.state as string;
 
         if (!code || !state) {
-            console.error("Missing code or state in OAuth callback");
+            logger.error("Missing code or state in OAuth callback");
             res.redirect(`${frontendUrl}/oauth/error`);
             return;
         }
@@ -165,7 +166,7 @@ export class SlackIntegrationManager implements Integration<SlackIntegration, Sl
         const user = await jwtUtil.verify(state);
 
         if (!user) {
-            console.error("Invalid or expired state token");
+            logger.error("Invalid or expired state token");
             res.redirect(`${frontendUrl}/oauth/error`);
             return;
         }
@@ -175,7 +176,7 @@ export class SlackIntegrationManager implements Integration<SlackIntegration, Sl
         try {
             decoded = jwt.verify(state, jwtConfig.secret) as { userId: string; isBotUser?: boolean };
         } catch (error) {
-            console.error("Error decoding JWT state:", error);
+            logger.error("Error decoding JWT state", { error });
             res.redirect(`${frontendUrl}/oauth/error`);
             return;
         }
@@ -199,12 +200,12 @@ export class SlackIntegrationManager implements Integration<SlackIntegration, Sl
             }
             );
 
-            console.log("Slack OAuth response:", response.data);
+            logger.debug("Slack OAuth response", { data: response.data });
 
             const { access_token, authed_user, team } = response.data;
 
             if (!response.data.ok || !team || !team.id) {
-                console.error("Slack OAuth response not ok:", response.data);
+                logger.error("Slack OAuth response not ok", { data: response.data });
                 res.redirect(`${frontendUrl}/oauth/error`);
                 return;
             }
@@ -218,7 +219,7 @@ export class SlackIntegrationManager implements Integration<SlackIntegration, Sl
 
             await db().$transaction(async (tx) => {
                 if (slackIntegration) {
-                    console.log("Slack integration already exists, continuing with adding user relation");
+                    logger.info("Slack integration already exists, continuing with adding user relation", { teamId: team.id });
                     // Update existing integration with user_scope
                     await tx.slack_integrations.update({
                         where: {
@@ -233,7 +234,7 @@ export class SlackIntegrationManager implements Integration<SlackIntegration, Sl
                         }
                     });
                 } else {
-                    console.log(chalk.blue("Slack integration does not exist, creating it"));
+                    logger.info("Slack integration does not exist, creating it", { teamId: team.id, teamName: team.name });
                     slackIntegration = await tx.slack_integrations.create({
                         data: {
                             app_id: response.data.app_id,
@@ -243,13 +244,13 @@ export class SlackIntegrationManager implements Integration<SlackIntegration, Sl
                             access_token: access_token,
                         }
                     });
-                    console.log(chalk.green("Slack integration created"));
+                    logger.info("Slack integration created", { teamId: team.id, teamName: team.name });
                 }
 
                 const dmChannelId = await this.openChat(access_token, authed_user.id);
 
                 if (!dmChannelId || !dmChannelId.id) {
-                    console.error("Error opening chat");
+                    logger.error("Error opening chat", { authedUserId: authed_user.id });
                     throw new Error('Failed to open chat');
                 }
 
@@ -293,10 +294,10 @@ export class SlackIntegrationManager implements Integration<SlackIntegration, Sl
                 });
             });
 
-            console.log("Slack OAuth completed successfully");
+            logger.info("Slack OAuth completed successfully", { userId: user.id, teamId: team.id });
             res.redirect(`${frontendUrl}/oauth/success`);
         } catch (error) {
-            console.error('Error exchanging code for access token:', error);
+            logger.error('Error exchanging code for access token', { error });
             res.redirect(`${frontendUrl}/oauth/error`);
         }
     }
@@ -313,7 +314,7 @@ export class SlackIntegrationManager implements Integration<SlackIntegration, Sl
 
             return channel;
         } catch (error) {
-            console.error('Error opening chat:', error);
+            logger.error('Error opening chat', { error, authedUserId });
             return null;
         }
     }
@@ -350,14 +351,14 @@ export class SlackIntegrationManager implements Integration<SlackIntegration, Sl
             });
 
             if (!userSlackIntegration || !userSlackIntegration.slack_integration) {
-                console.error(`Slack integration ${integrationId} not found`);
+                logger.error(`Slack integration ${integrationId} not found`, { integrationId });
                 return null;
             }
 
             // Slack tokens are long-lived and don't expire, so just return the token
             return userSlackIntegration.slack_integration.access_token || null;
         } catch (error) {
-            console.error(`Error getting Slack access token for integration ${integrationId}:`, error);
+            logger.error(`Error getting Slack access token for integration ${integrationId}`, { error, integrationId });
             return null;
         }
     }
@@ -410,15 +411,22 @@ export class SlackEvent extends InputEvent implements Identifiable {
 
         const isChannelOrGroup = (
             this.data.channelType === SlackChannelType.CHANNEL ||
-            this.data.channelType === SlackChannelType.GROUP
-        )
-        const isDM = (
-            this.data.channelType === SlackChannelType.IM ||
+            this.data.channelType === SlackChannelType.GROUP ||
             this.data.channelType === SlackChannelType.MPIM
         )
+        const isDM = (
+            this.data.channelType === SlackChannelType.IM
+        )
 
-        const matchesChannelOrGroup = isChannelOrGroup && this.data.channelId === slackConfig.channel_id;
-        const matchesDM = isDM && slackConfig?.listen_to_user_dms
+        // Helper function to check if user matches filter (if userIds is specified)
+        const matchesUserFilter = !slackConfig.user_ids || slackConfig.user_ids.length === 0 || slackConfig.user_ids.includes(this.data.userId);
+        
+        const matchesChannelOrGroup = isChannelOrGroup && 
+            this.data.channelId === slackConfig.channel_id && 
+            matchesUserFilter;
+        const matchesDM = isDM && 
+            slackConfig?.listen_to_user_dms && 
+            matchesUserFilter;
         return (
             matchesChannelOrGroup || matchesDM
         )
@@ -443,7 +451,7 @@ export class SlackEvent extends InputEvent implements Identifiable {
 }
 
 async function markWorkspaceUninstalled(team_id: string) {
-    console.log(chalk.red('Workspace uninstalled. Deleting records from database...'));
+    logger.info('Workspace uninstalled. Deleting records from database...', { teamId: team_id });
     await db().user_slack_integrations.deleteMany({
         where: {
             slack_team_id: team_id
@@ -456,11 +464,11 @@ async function markWorkspaceUninstalled(team_id: string) {
         }
     });
 
-    console.log(chalk.green('Workspace uninstalled. Records deleted from database.'));
+    logger.info('Workspace uninstalled. Records deleted from database.', { teamId: team_id });
 }
 
 async function deactivateToken(token: string) {
-    console.log(chalk.red('Token deactivated'));
+    logger.warn('Token deactivated', { tokenLength: token.length });
 }
 
 
@@ -479,12 +487,12 @@ function processSlackApiResult<T>(
         return { success: true, data: data as T };
     } else if (result.status === 'rejected') {
         // Promise was rejected
-        console.warn(chalk.yellow(`⚠ ${errorPrefix}: ${result.reason}`));
+        logger.warn(`⚠ ${errorPrefix}: ${result.reason}`, { reason: String(result.reason) });
         return { success: false, error: String(result.reason) };
     } else if (result.status === 'fulfilled' && !result.value.ok) {
         // Fulfilled but API returned error
         const errorMsg = result.value.error || 'Unknown error';
-        console.warn(chalk.yellow(`⚠ ${errorPrefix}: ${errorMsg}`));
+        logger.warn(`⚠ ${errorPrefix}: ${errorMsg}`, { error: errorMsg });
         return { success: false, error: errorMsg };
     }
     return { success: false, error: 'Unknown state' };
@@ -509,7 +517,7 @@ function extractChannelName(
     if ('name' in channel && channel.name) {
         // Public/private channel
         const channelName = channel.name;
-        console.log(chalk.green(`✓ Fetched channel name: ${channelName}`));
+        logger.debug(`✓ Fetched channel name: ${channelName}`, { channelName, channelId: channel.id });
         return channelName;
     } else if ('is_im' in channel && channel.is_im) {
         // Direct message - try to get user info from the channel user ID
@@ -527,17 +535,17 @@ function extractChannelName(
         if (!channelName) {
             channelName = 'Direct Message';
         }
-        console.log(chalk.green(`✓ Identified channel as DM: ${channelName}`));
+        logger.debug(`✓ Identified channel as DM: ${channelName}`, { channelName, channelId: channel.id });
         return channelName;
     } else if ('is_group' in channel && channel.is_group) {
         // Group DM
         const channelName = 'name' in channel && channel.name ? channel.name : 'Group Message';
-        console.log(chalk.green(`✓ Identified channel as Group DM: ${channelName}`));
+        logger.debug(`✓ Identified channel as Group DM: ${channelName}`, { channelName, channelId: channel.id });
         return channelName;
     } else {
         // Fallback to channel ID
         const channelName = channel.id || defaultChannelId;
-        console.log(chalk.yellow(`⚠ Using channel ID as name: ${channelName}`));
+        logger.warn(`⚠ Using channel ID as name: ${channelName}`, { channelName, channelId: channel.id });
         return channelName;
     }
 }
@@ -555,19 +563,19 @@ function extractUserName(
     const user = userResult.data.user;
     // Prefer real_name, fallback to display_name, then name, then id
     const userName = user.real_name || user.profile?.display_name || user.profile?.real_name || user.name || user.id;
-    console.log(chalk.green(`✓ Fetched user name: ${userName}`));
+    logger.debug(`✓ Fetched user name: ${userName}`, { userName, userId: user.id });
     return userName;
 }
 
 
 async function handleSlackMessage(event: SlackMessageEvent, teamId: string, authorizations: SlackAuthorizations[]) {
     try {
-        console.log(chalk.blue('Processing Slack message event'), JSON.stringify(event, null, 2));
+        logger.debug('Processing Slack message event', { event: JSON.stringify(event, null, 2), teamId });
 
         // Extract the actual message event from the full payload
         const messageEvent = event.event;
         if (!messageEvent || messageEvent.type !== 'message') {
-            console.log(chalk.yellow('Event is not a message event'));
+            logger.debug('Event is not a message event', { eventType: messageEvent?.type, teamId });
             return;
         }
 
@@ -579,7 +587,7 @@ async function handleSlackMessage(event: SlackMessageEvent, teamId: string, auth
         });
 
         if (!slackIntegration) {
-            console.log(chalk.yellow('Slack integration not found'));
+            logger.warn('Slack integration not found', { teamId });
             return;
         }
 
@@ -606,6 +614,7 @@ async function handleSlackMessage(event: SlackMessageEvent, teamId: string, auth
                         channel: messageEvent.channel!
                     });
                 } catch (error) {
+                    logger.error(`Error getting members`, { error, channel: messageEvent.channel, teamId });
                     return false;
                 }
 
@@ -614,11 +623,11 @@ async function handleSlackMessage(event: SlackMessageEvent, teamId: string, auth
                     return channelMemberIds.includes(integration.authed_user_id) || channelMemberIds.includes(integration.slack_integration.bot_user_id)
                 } else {
                     const errorMsg = membersRes.error || (membersRes.members?.length === 0 ? 'no members' : 'unknown error');
-                    console.log(chalk.yellow(`⚠ Could not get members - ${errorMsg}`));
+                    logger.warn(`⚠ Could not get members - ${errorMsg}`, { error: errorMsg, channel: messageEvent.channel, teamId });
                     return false;
                 }
             } catch (error) {
-                console.error(chalk.red(`Error getting members:`), error);
+                logger.error(`Error getting members`, { error, channel: messageEvent.channel, teamId });
                 return false;
             }
         }
@@ -642,13 +651,13 @@ async function handleSlackMessage(event: SlackMessageEvent, teamId: string, auth
         }
 
         if (filteredWorkspaceUserIntegrations.length === 0) {
-            console.log(chalk.yellow('No users found with Slack integrations for this workspace'));
+            logger.info('No users found with Slack integrations for this workspace', { teamId });
             return;
         }
 
         const client: WebClient = initializeSlackWebClient(filteredWorkspaceUserIntegrations[0]);
 
-        console.log(chalk.blue(`📡 Fetching additional Slack data for channel ${messageEvent.channel}, user ${messageEvent.user}, message ${messageEvent.ts}`));
+        logger.debug(`📡 Fetching additional Slack data for channel ${messageEvent.channel}, user ${messageEvent.user}, message ${messageEvent.ts}`, { channel: messageEvent.channel, user: messageEvent.user, messageTs: messageEvent.ts, teamId });
 
         // Fetch all available data from Slack API in parallel
         const [channelInfo, userInfo, permalinkResult] = await Promise.allSettled([
@@ -695,7 +704,7 @@ async function handleSlackMessage(event: SlackMessageEvent, teamId: string, auth
         // Extract permalink
         const permalink = permalinkApiResult.success ? permalinkApiResult.data?.permalink : undefined;
         if (permalink) {
-            console.log(chalk.green(`✓ Fetched message permalink: ${permalink}`));
+            logger.debug(`✓ Fetched message permalink: ${permalink}`, { permalink, channel: messageEvent.channel, messageTs: messageEvent.ts });
         }
 
         // Build SlackEventData with all available information
@@ -726,25 +735,25 @@ async function handleSlackMessage(event: SlackMessageEvent, teamId: string, auth
                 // Log results for this user
                 if (results.length > 0 && results.some(r => r.success || r.channel !== null)) {
                     totalMatches += results.filter(r => r.success || r.channel !== null).length;
-                    console.log(chalk.green(`User ${userSlackIntegration.user.email}: ${results.length} automation(s) matched`));
+                    logger.info(`User ${userSlackIntegration.user.email}: ${results.length} automation(s) matched`, { userId: userSlackIntegration.user.id, email: userSlackIntegration.user.email, resultsCount: results.length, teamId });
                     for (const result of results) {
                         if (result.success) {
-                            console.log(chalk.green(`  ✓ Channel "${result.channel?.name}" processed successfully`));
+                            logger.debug(`  ✓ Channel "${result.channel?.name}" processed successfully`, { channelName: result.channel?.name, userId: userSlackIntegration.user.id });
                         } else if (result.channel) {
-                            console.log(chalk.yellow(`  ⚠ Channel "${result.channel?.name}": ${result.message}`));
+                            logger.warn(`  ⚠ Channel "${result.channel?.name}": ${result.message}`, { channelName: result.channel?.name, message: result.message, userId: userSlackIntegration.user.id });
                         }
                     }
                 }
             } catch (error) {
-                console.error(chalk.red(`Error processing automations for user ${userSlackIntegration.user.email}:`), error);
+                logger.error(`Error processing automations for user ${userSlackIntegration.user.email}`, { error, userId: userSlackIntegration.user.id, email: userSlackIntegration.user.email });
                 // Continue processing other users even if one fails
             }
         }
 
-        console.log(chalk.green(`Slack message processed - ${totalMatches} total automation(s) matched across all workspace users`));
+        logger.info(`Slack message processed - ${totalMatches} total automation(s) matched across all workspace users`, { totalMatches, teamId, channel: messageEvent.channel });
 
     } catch (error) {
-        console.error(chalk.red('Error handling Slack message:'), error);
+        logger.error('Error handling Slack message', { error, teamId });
         // Note: We don't send error messages back to Slack anymore since this is now
         // event-driven automations, not interactive bot responses
     }
@@ -756,14 +765,14 @@ export function isValidSlackSig(req: Request) {
     const sig = req.headers['x-slack-signature'] as string;
 
     if (!ts || !sig) {
-        console.log('Missing timestamp or signature headers');
+        logger.warn('Missing timestamp or signature headers');
         return false;
     }
 
     // Use SLACK_SIGNING_SECRET for signature verification (fallback to CLIENT_SECRET for backwards compatibility)
     const signingSecret = slackConfig.signingSecret || slackConfig.clientSecret;
     if (!signingSecret) {
-        console.log('No signing secret found - need SLACK_SIGNING_SECRET environment variable');
+        logger.warn('No signing secret found - need SLACK_SIGNING_SECRET environment variable');
         return false;
     }
 

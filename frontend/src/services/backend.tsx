@@ -16,7 +16,8 @@ import {
     NotionResourcesResponse, 
     RecentChannel,
     SlackChannelsResponse,
-    StatsResponse, 
+    StatsResponse,
+    SlackUsersResponse, 
 } from "../shared/types";
 import { GenerateSurveyQuestionsRequest, GenerateSurveyQuestionsResponse, GenerateSurveyPromptRequest, GenerateSurveyPromptResponse } from "../shared/PromptBuilderTypes";
 import { 
@@ -219,6 +220,11 @@ interface BackendService {
      * Gets available channels for a Slack integration
      */
     getSlackChannels(integrationId: string): Promise<SlackChannelsResponse>;
+
+    /**
+     * Gets available users for a Slack integration
+     */
+    getSlackUsers(integrationId: string): Promise<SlackUsersResponse>;
 
     /**
      * Requests a session socket token
@@ -641,6 +647,15 @@ export const BackendProvider: BackendService = {
             .then(response => response.data)
             .catch(error => {
                 console.error('Error fetching Slack channels:', error);
+                throw error;
+            });
+    },
+
+    getSlackUsers: (integrationId: string) => {
+        return axios.get<SlackUsersResponse>(`${backendBaseUrl}/slack/users?integrationId=${encodeURIComponent(integrationId)}`, { withCredentials: true })
+            .then(response => response.data)
+            .catch(error => {
+                console.error('Error fetching Slack users:', error);
                 throw error;
             });
     },

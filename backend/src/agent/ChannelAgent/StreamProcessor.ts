@@ -4,6 +4,7 @@ import { storeChatEvent } from './runHistory';
 import type { RunHistoryModelEvent, RunHistoryModelSocketEvent, RunHistoryStreamingParams } from '../../shared/RunHistoryTypes';
 import { randomString } from '../../utility/strings';
 import { emitCacheInvalidationWithWildcard } from '../../realtimeSocket';
+import logger from '../../logger';
 
 export class TextDeltaAggregator {
     private accumulatedDeltas = new Map<string, AccumulatedDelta>();
@@ -148,7 +149,7 @@ export async function processModelEventStream(
         // Finalize any remaining steps at the end of the stream
         await aggregator.commitLastTextDeltaStep();
     } catch (error) {
-        console.error('Error processing model event stream:', error);
+        logger.error('Error processing model event stream', { error, runId: options.runId, userId: options.userId, channelId: options.channelId });
     }
 }
 

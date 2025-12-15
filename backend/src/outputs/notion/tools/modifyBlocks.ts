@@ -7,6 +7,8 @@ import { NotionPageSession } from "../NotionPageOutput";
 import { getBlockTypeName, describeBlocks } from "../../../utility/notion";
 import { SessionWithTracking } from "../../../agent/ChannelAgent/ChannelAgent";
 import { ConfigType } from "../../../shared/Configs";
+import { formatError } from "../../../tools/errors";
+import logger from "../../../logger";
 
 /**
  * Constructs a Notion deep link URL to a specific block.

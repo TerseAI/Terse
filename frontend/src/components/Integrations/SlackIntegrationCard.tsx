@@ -64,7 +64,7 @@ function SlackIntegrationCard({ className, isActive = true }: { className?: stri
                 ) : (
                     <SlackCardContent 
                         integrations={integrations}
-                        channels={channels} 
+                        channels={channels}
                         isLoading={integrationsLoading || channelsLoading} 
                     />
                 )}
@@ -82,7 +82,7 @@ function SlackIntegrationCard({ className, isActive = true }: { className?: stri
 
 function SlackCardContent({ 
     integrations,
-    channels, 
+    channels,
     isLoading 
 }: { 
     integrations: Array<{ id: string; teamId?: string; teamName?: string; isBotUser?: boolean }>;

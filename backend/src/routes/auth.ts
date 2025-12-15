@@ -3,13 +3,14 @@ import { Jwt } from "../utility/jwt";
 import { login as loginUser } from "../types/user";
 import { Session } from "../server";
 import { nodeEnv, optional } from "../config/settings";
+import logger from "../logger";
 
 export const COOKIE_NAME = 'AUTH_JWT';
 
 export const authMiddleware = async (req: Request, res: Response, next: NextFunction) => {
     try {
         if (!req.cookies || !req.cookies[COOKIE_NAME]) {
-            console.log('Unauthorized - No cookie provided')
+            logger.debug('Unauthorized - No cookie provided');
             res.status(401).json({ message: 'Unauthorized' });
             return;
         }
@@ -18,7 +19,7 @@ export const authMiddleware = async (req: Request, res: Response, next: NextFunc
         const user = await new Jwt().verify(token);
 
         if (!user) {
-            console.log('Unauthorized - No user found')
+            logger.debug('Unauthorized - No user found');
             res.status(401).json({ message: 'Unauthorized' });
             return;
         }
@@ -47,8 +48,7 @@ export const authMiddleware = async (req: Request, res: Response, next: NextFunc
 }
 
 export async function setSession(req: Request, res: Response) {
-    console.log('setSession route has been hit')
-    console.log('req.body', req.body)
+    logger.debug('setSession route has been hit', { hasBody: !!req.body });
 
     const { token } = req.body;
 
@@ -60,12 +60,12 @@ export async function setSession(req: Request, res: Response) {
     // verify token
     const user = await new Jwt().verify(req.body.token);
     if (!user) {
-        console.log('Unauthorized - Invalid token')
+        logger.debug('Unauthorized - Invalid token');
         res.status(401).json({ message: 'Unauthorized - Invalid token' });
         return;
     }
 
-    console.log('User verified', user)
+    logger.debug('User verified', { userId: user.id, email: user.email });
 
     res.cookie(COOKIE_NAME, token, {
         httpOnly: true,
@@ -87,14 +87,13 @@ export async function me(req: Request, res: Response) {
     try {
         res.send(req.session?.user);
     } catch (error) {
-        console.error('Failed to retrieve session user:', error);
+        logger.error('Failed to retrieve session user', { error });
         res.status(500).json({ message: 'Failed to fetch user information' });
     }
 }
 
 export async function login(req: Request, res: Response) {
-    console.log('login route has been hit')
-    console.log('req.body', req.body)
+    logger.debug('login route has been hit', { hasBody: !!req.body, hasEmail: !!req.body?.email });
 
     try {
         const user = await loginUser(req.body.email, req.body.password);
@@ -115,20 +114,20 @@ export async function login(req: Request, res: Response) {
             domain: optional.cookieDomain || undefined // Allow setting custom domain
         });
 
-        console.log('Login successful for user:', user.email)
+        logger.info('Login successful for user', { userId: user.id, email: user.email });
 
         res.json({
             message: 'Login successful',
             user: user
         });
     } catch (error) {
-        console.error('Login error:', error);
+        logger.error('Login error', { error });
         res.status(500).json({ message: 'Internal server error' });
     }
 }
 
 export async function logout(req: Request, res: Response) {
-    console.log('logout route has been hit')
+    logger.debug('logout route has been hit', { userId: req.session?.user?.id });
     res.clearCookie(COOKIE_NAME);
     res.json({ message: 'Logout successful' });
 }

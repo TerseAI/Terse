@@ -13,6 +13,7 @@ import { emitCacheInvalidationWithKey, emitCacheInvalidationWithWildcard } from 
 import { getInputConfigInclude, getOutputConfigInclude } from '../../utility/prismaIncludes';
 import { RunHistoryAction } from '../../shared/RunHistoryTypes';
 import { RunContext } from './SystemPromptBuilder';
+import logger from '../../logger';
 
 // The job of this class is to take an Input Event, and check if it's a match for an Channel.
 // It will then create a Session, and summon the Channel Agent with the create user data.
@@ -41,7 +42,7 @@ export class EventProcessor {
     }
 
     async process(): Promise<ProcessorResult[]> {
-        console.log(chalk.gray(`Processing input event: ${this.inputEvent.debugLog()}`));
+        logger.info(`Processing input event: ${this.inputEvent.debugLog()}`);
 
         const results: ProcessorResult[] = [];
 
@@ -79,7 +80,7 @@ export class EventProcessor {
             return [new ProcessorResult(false, `No channels match this ${integrationType} event`, null)];
         }
 
-        console.log(chalk.cyan(`Found ${matchingChannels.length} matching channel(s) for ${integrationType} event`));
+        logger.info(`Found ${matchingChannels.length} matching channel(s) for ${integrationType} event`);
 
         // Process each matching channel
         for (const channel of matchingChannels) {
@@ -87,7 +88,7 @@ export class EventProcessor {
                 const result = await this.processChannel(channel);
                 results.push(result);
             } catch (error) {
-                console.error(chalk.red(`Error processing channel ${channel.id}:`), error);
+                logger.error(`Error processing channel ${channel.id}`, { error, channelId: channel.id, channelName: channel.name });
                 results.push(new ProcessorResult(
                     false,
                     `Error processing channel: ${error instanceof Error ? error.message : 'Unknown error'}`,
@@ -100,7 +101,7 @@ export class EventProcessor {
     }
 
     private async processChannel(channel: ChannelWithRelations): Promise<ProcessorResult> {
-        console.log(chalk.cyan(`Processing channel: ${channel.name} (${channel.id})`));
+        logger.info(`Processing channel: ${channel.name} (${channel.id})`);
 
         if (!channel.prompt) {
             return new ProcessorResult(false, "No prompt found for this channel", channel);
@@ -157,20 +158,20 @@ export class EventProcessor {
                     channelId: channel.id,
                 }
             );
-            
+
             filterResult = filterResponse.result;
         } catch (error) {
             // Log the error and update run history
             const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-            console.error(chalk.red(`Error filtering event for channel "${channel.name}":`), error);
-            
+            logger.error(`Error filtering event for channel "${channel.name}"`, { error, channelId: channel.id, channelName: channel.name, runId });
+
             try {
                 await markRunFailed(runId, errorMessage, 'filter');
                 emitCacheInvalidationWithWildcard(this.user.id, 'runHistory', channel.id);
             } catch (e) {
-                console.error(chalk.yellow('Failed to mark run as failed'), e);
+                logger.error('Failed to mark run as failed', { error: e, runId, channelId: channel.id });
             }
-            
+
             return new ProcessorResult(
                 false,
                 `Error during filtering: ${errorMessage}`,
@@ -179,13 +180,13 @@ export class EventProcessor {
         }
 
         if (!filterResult.isRelevant) {
-            console.log(chalk.gray(`Event is not relevant to channel "${channel.name}": ${filterResult.reason}`));
+            logger.info(`Event is not relevant to channel "${channel.name}": ${filterResult.reason}`);
             try {
                 await markRunSkipped(runId, filterResult.reason);
                 // Emit cache invalidation to update UI
                 emitCacheInvalidationWithWildcard(this.user.id, 'runHistory', channel.id);
             } catch (e) {
-                console.error(chalk.yellow('Failed to mark run skipped'), e);
+                logger.error('Failed to mark run skipped', { error: e, runId, channelId: channel.id });
             }
             return new ProcessorResult(false, `Not relevant: ${filterResult.reason}`, channel);
         }
@@ -193,16 +194,16 @@ export class EventProcessor {
         try {
             await markRunProcessed(runId, filterResult.reason);
         } catch (e) {
-            console.error(chalk.yellow('Failed to mark run processed'), e);
+            logger.error('Failed to mark run processed', { error: e, runId, channelId: channel.id });
         }
 
-        console.log(chalk.green(`Event is relevant to channel "${channel.name}"`));
+        logger.info(`Event is relevant to channel "${channel.name}"`);
 
         // Create channel agent with the session and output
         const runContext: RunContext = { runId };
         const channelAgent = new ChannelAgent(session, output, channel, runContext);
         channelAgent.setInputEvent(this.inputEvent);
-        
+
         // Run the channel agent with streaming parameters
         let result: ApprovalResult<Session, Agent<Session, AgentOutputType>>;
         try {
@@ -214,24 +215,24 @@ export class EventProcessor {
         } catch (error) {
             // Log the error and update run history
             const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-            console.error(chalk.red(`Error running channel agent for "${channel.name}":`), error);
-            
+            logger.error(`Error running channel agent for "${channel.name}"`, { error, channelId: channel.id, channelName: channel.name, runId });
+
             try {
                 await markRunFailed(runId, errorMessage, 'agent');
                 emitCacheInvalidationWithWildcard(this.user.id, 'runHistory', channel.id);
             } catch (e) {
-                console.error(chalk.yellow('Failed to mark run as failed'), e);
+                logger.error('Failed to mark run as failed', { error, runId, channelId: channel.id });
             }
-            
+
             // Re-throw to be caught by outer try-catch
             throw error;
         }
 
         if (result.status === 'completed') {
-            console.log(chalk.green(`Channel "${channel.name}" completed:`), result.result.finalOutput);
+            logger.info(`Channel "${channel.name}" completed:`, { finalOutput: result.result.finalOutput });
             return persistRunResult(runId, result.result, session, channel, result);
         } else {
-            console.log(chalk.yellow(`Channel "${channel.name}" awaiting approval:`));
+            logger.info(`Channel "${channel.name}" awaiting approval:`);
             return new ProcessorResult(false, "Channel awaiting approval", channel, result);
         }
     }
@@ -251,7 +252,7 @@ async function persistRunResult<T extends Session>(
         // Invalidate all run history queries for this channel when status changes
         emitCacheInvalidationWithWildcard(session.user.id, 'runHistory', channel.id);
     } catch (e) {
-        console.error(chalk.yellow('Failed to finalize run status'), e);
+        logger.error('Failed to finalize run status', { error: e, runId, channelId: channel.id });
     }
 
     const finalOutput = typeof result.finalOutput === 'string' ? result.finalOutput : '';
@@ -275,7 +276,7 @@ export async function persistRunAction<T extends Session>(
         emitCacheInvalidationWithKey(session.user.id, 'recentActions');
         return actionId;
     } catch (e) {
-        console.error(chalk.yellow('Failed to append run action'), e);
+        logger.error('Failed to append run action', { error: e, runId, channelId: channel.id });
     }
     return undefined;
 }
