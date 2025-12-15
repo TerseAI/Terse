@@ -5,6 +5,7 @@ import { NotionDatabaseSession } from "../NotionDatabaseOutput";
 import { IntegrationType } from "../../../shared/Integrations";
 import { SessionWithTracking } from "../../../agent/ChannelAgent/ChannelAgent";
 import { formatError } from "../../../tools/errors";
+import logger from "../../../logger";
 
 // Helper function to build property schema with format examples
 function buildPropertySchema(propertyName: string, propertyConfig: any): any {
@@ -72,7 +73,7 @@ The schema information returned by this tool should be used to properly format p
         // No parameters needed - uses the data_source_id (stored as database_id) from the session context
     }),
     execute: async ({ }, runContext?: RunContext<SessionWithTracking<NotionDatabaseSession>>) => {
-        console.log("Executing notion_get_schema tool");
+        logger.debug("Executing notion_get_schema tool");
         if (!runContext?.context) {
             throw new Error("No context provided");
         }

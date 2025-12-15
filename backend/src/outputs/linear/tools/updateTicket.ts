@@ -8,6 +8,7 @@ import { SessionWithTracking } from "../../../agent/ChannelAgent/ChannelAgent";
 import type { IssueUpdateInput } from "@linear/sdk/dist/_generated_documents";
 import { RunHistoryActionType } from "@prisma/client";
 import { formatError } from "../../../tools/errors";
+import logger from "../../../logger";
 
 export const linearUpdateTicketTool = tool({
     name: 'linear_update_ticket',
@@ -63,13 +64,7 @@ COMMON UPDATE OPERATIONS:
         subscriberIds, 
         trashed 
     }, runContext?: RunContext<SessionWithTracking<LinearTicketSession>>) => {
-        console.log(chalk.bgMagenta.white.bold('🛠️ Executing linear_update_ticket tool'));
-        console.log(chalk.cyan('  Issue ID: '), chalk.greenBright(issueId));
-        console.log(chalk.cyan('  Updates: '), chalk.yellow(JSON.stringify({
-            title, description, stateId, assigneeId, priority, dueDate,
-            labelIds, addedLabelIds, removedLabelIds, projectId, projectMilestoneId,
-            teamId, parentId, estimate, subscriberIds, trashed
-        }, null, 2)));
+        logger.debug('🛠️ Executing linear_update_ticket tool', { issueId, updates: { title, description, stateId, assigneeId, priority, dueDate, labelIds, addedLabelIds, removedLabelIds, projectId, projectMilestoneId, teamId, parentId, estimate, subscriberIds, trashed } });
 
         if (!runContext?.context) {
             throw new Error("No context provided");
@@ -172,8 +167,8 @@ COMMON UPDATE OPERATIONS:
                 updatedFields: Object.keys(updateInput),
             };
         } catch (error: unknown) {
-            console.error(chalk.red('❌ Error updating Linear issue:'), error);
-            const errorMessage = error instanceof Error ? error.message : 'Failed to update Linear issue';
+            const errorMessage = await formatError(runContext!, error);
+            logger.error('❌ Error updating Linear issue', { error: errorMessage, issueId });
             return {
                 success: false,
                 error: errorMessage,

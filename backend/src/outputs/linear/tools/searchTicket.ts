@@ -8,6 +8,7 @@ import { SessionWithTracking } from "../../../agent/ChannelAgent/ChannelAgent";
 import type { IssueFilter, SearchIssuesQueryVariables, PaginationOrderBy as PaginationOrderByType } from "@linear/sdk/dist/_generated_documents";
 import { RunHistoryActionType } from "@prisma/client";
 import { formatError } from "../../../tools/errors";
+import logger from "../../../logger";
 
 
 export const linearSearchTicketTool = tool({
@@ -22,10 +23,7 @@ Use this tool to find existing Linear issues before creating new ones or to look
         after: z.string().nullable().optional().describe('Cursor for pagination. Use the endCursor from the previous response to fetch the next page of results.'),
     }),
     execute: async ({ issueDescription, excludeDone = true, limit = 10, after }, runContext?: RunContext<SessionWithTracking<LinearTicketSession>>) => {
-        console.log(chalk.bgMagenta.white.bold('🛠️ Executing linear_search_ticket tool'));
-        console.log(chalk.cyan('  Issue Description: '), chalk.greenBright(issueDescription));
-        console.log(chalk.cyan('  Exclude Done: '), chalk.greenBright(excludeDone));
-        console.log(chalk.cyan('  Limit: '), chalk.greenBright(limit));
+        logger.debug('🛠️ Executing linear_search_ticket tool', { issueDescription, excludeDone, limit, after });
 
         if (!runContext?.context) {
             throw new Error("No context provided");
@@ -112,8 +110,8 @@ Use this tool to find existing Linear issues before creating new ones or to look
                 },
             };
         } catch (error: unknown) {
-            console.error(chalk.red('❌ Error searching Linear issues:'), error);
-            const errorMessage = error instanceof Error ? error.message : 'Failed to search Linear issues';
+            const errorMessage = await formatError(runContext!, error);
+            logger.error('❌ Error searching Linear issues', { error: errorMessage, issueDescription });
             return {
                 success: false,
                 error: errorMessage,

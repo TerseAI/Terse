@@ -18,6 +18,7 @@ export class SlackInput implements Input<SlackConfig> {
                 channel_id: input.channelId,
                 channel_name: input.channelName,
                 listen_to_user_dms: input.listenToUserDms,
+                user_ids: input.userIds,
             },
         });
     }

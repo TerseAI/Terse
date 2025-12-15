@@ -11,6 +11,7 @@ import { TicketEventType } from "@prisma/client";
 import { githubApp } from "../../config/settings";
 import { Repository } from "../../shared/types";
 import { processGithubEvent } from "./githubEventProcessor";
+import logger from "../../logger";
 
 // Get GitHub App installation URL
 export async function getInstallationUrl(req: Request, res: Response) {
@@ -25,7 +26,7 @@ export async function getInstallationUrl(req: Request, res: Response) {
             installationUrl
         });
     } catch (error) {
-        console.error('Error generating installation URL:', error);
+        logger.error('Error generating installation URL:', { error });
         res.status(500).json({ message: 'Failed to generate installation URL' });
     }
 }
@@ -35,7 +36,7 @@ export async function processRepository(
     user: User, 
     installationId: number
 ): Promise<{ name: string; status: string; error?: string }> {
-    console.log(chalk.blue('Processing repository:'), repositoryData);
+    logger.info('Processing repository', { repository: repositoryData });
 
     // Check if repository already exists
     let repository: GithubRepository | null = await db().github_repositories.findFirst({ 
@@ -57,7 +58,7 @@ export async function processRepository(
         });
 
         if (userRepository) {
-            console.log(chalk.yellow('User already associated with repository:'), repositoryData.name);
+            logger.debug('User already associated with repository', { repositoryName: repositoryData.name });
             return { name: repositoryData.name, status: 'already_associated' };
         }
     }
@@ -73,7 +74,7 @@ export async function processRepository(
                     repository_id: Number(repositoryData.id),
                 }
             });
-            console.log(chalk.green('Repository created:'), repository);
+            logger.info('Repository created', { repositoryId: repository.id, repositoryName: repository.name });
         }
 
         // Associate the user with the repository
@@ -84,11 +85,11 @@ export async function processRepository(
             }
         });
 
-        console.log(chalk.green('User associated with repository:'), repositoryData.name);
+        logger.info('User associated with repository', { repositoryName: repositoryData.name, userId: user.id });
         return { name: repositoryData.name, status: 'associated' };
 
     } catch (error) {
-        console.error(chalk.red('Error processing repository:'), repositoryData.name, error);
+        logger.error('Error processing repository', { repositoryName: repositoryData.name, error });
         return { 
             name: repositoryData.name, 
             status: 'error', 
@@ -120,7 +121,7 @@ type GithubAppRecievedCommitRequest = {
 export async function githubAppRecievedCommit(req: Request, res: Response) {
     const body = req.body as GithubAppRecievedCommitRequest;
 
-    console.log('githubAppRecievedCommit', body);
+    logger.info('githubAppRecievedCommit', { body });
 
     // get the repository
     const repository: GithubRepository | null = await db().github_repositories.findFirst({ where: { name: body.repositoryName, owner: body.username, installation_id: body.installationId } });
@@ -141,7 +142,7 @@ async function resolveUserGithubRelation(user: User, username: string, repositor
         });
         
         if (!repository) {
-            console.log(chalk.yellow('Drift detected. This repository is not in our DB but it is a registered repository in the github app. Creating it...'));
+            logger.warn('Drift detected. This repository is not in our DB but it is a registered repository in the github app. Creating it...', { repositoryName, installationId });
             repository = await tx.github_repositories.create({
                 data: {
                     name: repositoryName,
@@ -173,7 +174,7 @@ export async function githubAppUnifiedEvent(req: Request, res: Response) {
     const body: GithubAppUnifiedEventRequest = req.body as GithubAppUnifiedEventRequest;
 
     const { username, repositoryName, installationId } = body;
-    console.log(chalk.blue('githubAppUnifiedEvent'), body.eventType, body.repositoryName, body.username);
+    logger.info('githubAppUnifiedEvent', { eventType: body.eventType, repositoryName: body.repositoryName, username: body.username });
 
     /// Go run this on the new code... anything below here is legacy code for Merkle use case.
     const results = await processGithubEvent(body);
@@ -184,7 +185,7 @@ export async function githubAppUnifiedEvent(req: Request, res: Response) {
             let foundUser = await tx.users.findFirst({ where: { github_username: username } });
             if (!foundUser) {
                 const email = username + '@username.ai';
-                console.log(chalk.yellow('User not found, creating placeholder user with fake email ' + email));
+                logger.info('User not found, creating placeholder user with fake email', { email, githubUsername: username });
                 foundUser = await tx.users.create({
                     data: {
                         github_username: username,
@@ -193,7 +194,7 @@ export async function githubAppUnifiedEvent(req: Request, res: Response) {
                         display_name: body.sender.login
                     }
                 });
-                console.log(chalk.green('Placeholder user created:'), foundUser);
+                logger.info('Placeholder user created', { userId: foundUser.id, githubUsername: foundUser.github_username, email: foundUser.email });
             }
             return foundUser;
         });
@@ -209,7 +210,7 @@ export async function githubAppUnifiedEvent(req: Request, res: Response) {
             ticketManager: undefined,
         }
 
-        console.log(chalk.blue('Processing event for user:', user.github_username, 'team:', session.teamId));
+        logger.info('Processing event for user', { githubUsername: user.github_username, teamId: session.teamId });
 
         // init an Owner with isolated session
         const owner: Owner = new Owner(search(), session)
@@ -221,12 +222,12 @@ export async function githubAppUnifiedEvent(req: Request, res: Response) {
             return;
         }
 
-        console.log(chalk.green('Saving activity event for changed items:'), summary);
+        logger.info('Saving activity event for changed items', { summary });
         await saveActivityEvent(repository, body, summary, user.id);
         
         res.status(200).json({ message: 'GitHub event received and processed' });
     } catch (error) {
-        console.error(chalk.red('Error processing GitHub event:'), error);
+        logger.error('Error processing GitHub event', { error });
         res.status(500).json({ message: 'Error processing GitHub event', error: error instanceof Error ? error.message : 'Unknown error' });
     }
 }

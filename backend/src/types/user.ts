@@ -1,9 +1,10 @@
 import chalk from "chalk";
 import { db } from "../prismaClient";
+import logger from "../logger";
 import { TicketManager } from "../ticketing/TicketIntegration";
 import { JiraAdapter } from "../ticketing/jira";
 import { LinearAdapter } from "../ticketing/linear";
-import { JiraApiKey, AtlassianIntegration, LinearApiKey, User } from "./prisma";
+import { JiraApiKey, LinearApiKey, User } from "./prisma";
 
 export async function login(
   email: string,
@@ -12,17 +13,14 @@ export async function login(
   try {
     const user: User | null = await findUserByEmail(email);
     if (!user) {
-      console.log(
-        chalk.red("❌ User not found. Unable to login:"),
-        chalk.cyan(email)
-      );
+      logger.warn("❌ User not found. Unable to login", { email });
       return null;
     }
 
-    console.log(chalk.green("✅ Login successful:"), chalk.cyan(email));
+    logger.info("✅ Login successful", { email, userId: user.id });
     return user;
   } catch (error) {
-    console.error(chalk.red("❌ Login error:"), error);
+    logger.error("❌ Login error", { error, email });
     return null;
   }
 }
@@ -59,7 +57,7 @@ export async function createUser(
     },
   });
 
-  console.log(chalk.green("✅ New user created:"), chalk.cyan(user.email));
+  logger.info("✅ New user created", { email: user.email, userId: user.id, displayName: user.display_name, githubUsername: user.github_username });
 
   return user;
 }
@@ -87,11 +85,7 @@ export async function updateUserGitHubUsername(
     data: { github_username: githubUsername },
   });
 
-  console.log(
-    chalk.green("✅ Updated GitHub username for user:"),
-    chalk.cyan(user.email),
-    chalk.yellow(githubUsername)
-  );
+  logger.info("✅ Updated GitHub username for user", { email: user.email, userId: user.id, githubUsername });
 
   return user;
 }
@@ -114,10 +108,7 @@ export async function createPlaceholderUser(
     },
   });
 
-  console.log(
-    chalk.yellow("📝 Placeholder user created for import:"),
-    chalk.cyan(user.email)
-  );
+  logger.info("📝 Placeholder user created for import", { email: user.email, userId: user.id, displayName: user.display_name });
 
   return user;
 }
@@ -127,11 +118,7 @@ export async function getUserTicketManager(
 ): Promise<TicketManager | null> {
   const user = await findUserById(userId);
   if (!user) {
-    console.error(
-      chalk.red.bold(
-        "❌ User not found in database. Unable to authenticate user."
-      )
-    );
+    logger.error("❌ User not found in database. Unable to authenticate user.", { userId });
     return null;
   }
 
@@ -166,8 +153,6 @@ export async function getUserTicketManager(
     }
   }
 
-  console.error(
-    chalk.red.bold("❌ No valid ticketing credentials found for user.")
-  );
+  logger.warn("❌ No valid ticketing credentials found for user.", { userId: user.id, email: user.email });
   return null;
 }

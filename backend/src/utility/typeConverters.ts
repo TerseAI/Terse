@@ -147,7 +147,8 @@ export const convertPrismaConfigToConfigInstance = (channelInput: ChannelInputWi
             integrationId,
             channelInput.slack_config.channel_id || undefined,
             channelInput.slack_config.channel_name || undefined,
-            channelInput.slack_config.listen_to_user_dms || false
+            channelInput.slack_config.listen_to_user_dms || false,
+            channelInput.slack_config.user_ids || undefined
         );
     }
 

@@ -15,6 +15,7 @@ import { InputEvent } from "./abstract/InputEvent";
 import { InputConfigType } from "@prisma/client";
 import { RunHistoryTrigger } from "../shared/RunHistoryTypes";
 import { EventProcessor } from "../agent/ChannelAgent/EventProcessor";
+import logger from "../logger";
 
 const OAUTH_TOKEN_REFRESH_THRESHOLD_MS = 1000 * 60 * 30; // 30 minutes (expires access token after 1 hour)
 
@@ -65,8 +66,6 @@ export class AtlassianIntegrationManager implements Integration<AtlassianIntegra
         authUrl.searchParams.append("response_type", "code");
         authUrl.searchParams.append("prompt", "consent");
 
-        console.log(chalk.green("Atlassian OAuth URL:"), authUrl.toString());
-
         return {
             oauthUrl: authUrl.toString()
         };
@@ -76,7 +75,7 @@ export class AtlassianIntegrationManager implements Integration<AtlassianIntegra
         const { code, state, error } = req.query;
 
         if (error) {
-            console.error(chalk.red("Atlassian OAuth error:"), error);
+            logger.error("Atlassian OAuth error", { error: String(error) });
             res.redirect(`${urls.frontend}/oauth/error`);
             return;
         }
@@ -110,7 +109,7 @@ export class AtlassianIntegrationManager implements Integration<AtlassianIntegra
 
             if (!tokenResponse.ok) {
                 const errorText = await tokenResponse.text();
-                console.error(chalk.red("Atlassian token exchange failed:"), errorText);
+                logger.error("Atlassian token exchange failed", { error: errorText });
                 throw new Error(`Atlassian token exchange failed: ${errorText}`);
             }
 
@@ -124,11 +123,6 @@ export class AtlassianIntegrationManager implements Integration<AtlassianIntegra
             // Calculate token expiry
             const tokenExpiry = new Date(Date.now() + (expires_in || 3600) * 1000);
 
-            console.log(
-                chalk.blue("🔑 Received Atlassian access token for user"),
-                chalk.yellow(decoded.userId)
-            );
-
             // Get user info and accessible resources
             // First, get the user's accessible sites/resources
             const resourcesResponse = await fetch("https://api.atlassian.com/oauth/token/accessible-resources", {
@@ -141,14 +135,14 @@ export class AtlassianIntegrationManager implements Integration<AtlassianIntegra
 
             if (!resourcesResponse.ok) {
                 const errorText = await resourcesResponse.text();
-                console.error(chalk.red("Failed to get accessible resources:"), errorText);
+                logger.error("Failed to get accessible resources", { error: errorText });
                 throw new Error(`Failed to get accessible resources: ${errorText}`);
             }
 
             const resources = await resourcesResponse.json();
 
             if (!resources || resources.length === 0) {
-                console.error(chalk.red("No accessible resources found"));
+                logger.error("No accessible resources found");
                 res.redirect(`${urls.frontend}/oauth/error`);
                 return;
             }
@@ -191,7 +185,7 @@ export class AtlassianIntegrationManager implements Integration<AtlassianIntegra
             }
 
             if (!jiraUserEmail) {
-                console.warn(chalk.yellow("⚠️  Could not determine user email from Atlassian API"));
+                logger.warn("⚠️  Could not determine user email from Atlassian API");
             }
 
             // Extract site name from baseUrl
@@ -201,13 +195,7 @@ export class AtlassianIntegrationManager implements Integration<AtlassianIntegra
                 siteName = siteNameMatch[1];
             }
 
-            console.log(
-                chalk.blue("🏢 Atlassian site:"),
-                chalk.yellow(siteName),
-                chalk.blue("(cloudId:"),
-                chalk.yellow(cloudId),
-                chalk.blue(")")
-            );
+            logger.info("🏢 Atlassian site:", {siteName, cloudId});
 
             // Check if a connection for this base_url already exists
             const existing = await db().atlassian_integrations.findFirst({
@@ -232,7 +220,7 @@ export class AtlassianIntegrationManager implements Integration<AtlassianIntegra
                         try {
                             await this.deleteJiraWebhook(cloudId, access_token, existing.webhook_id);
                         } catch (error) {
-                            console.warn(chalk.yellow("⚠️  Could not delete existing webhook, continuing with creation"), error);
+                            logger.warn("⚠️  Could not delete existing webhook, continuing with creation", { error });
                         }
                     }
 
@@ -240,11 +228,11 @@ export class AtlassianIntegrationManager implements Integration<AtlassianIntegra
                     webhookId = webhook.webhookId;
                     webhookSecret = webhook.webhookSecret;
                 } catch (error) {
-                    console.error(chalk.red("⚠️  Failed to create webhook, continuing without it:"), error);
+                    logger.error("⚠️  Failed to create webhook, continuing without it", { error });
                     // Continue with installation even if webhook creation fails
                 }
             } else {
-                console.warn(chalk.yellow("⚠️  Could not determine accountId, skipping webhook creation"));
+                logger.warn("⚠️  Could not determine accountId, skipping webhook creation");
             }
 
             if (!existing) {
@@ -262,11 +250,7 @@ export class AtlassianIntegrationManager implements Integration<AtlassianIntegra
                         token_expiry: tokenExpiry,
                     },
                 });
-                console.log(
-                    chalk.green("✅ Created Atlassian OAuth connection:"),
-                    chalk.yellow(siteName),
-                    webhookId ? chalk.blue("with webhook") : chalk.yellow("(no webhook)")
-                );
+                logger.info("✅ Created Atlassian OAuth connection:", {siteName, webhookId: webhookId ? "with webhook" : "no webhook"});
             } else {
                 // Update existing connection with new token (in case it was revoked and re-authorized)
                 await db().atlassian_integrations.update({
@@ -281,22 +265,15 @@ export class AtlassianIntegrationManager implements Integration<AtlassianIntegra
                         webhook_secret: webhookSecret || existing.webhook_secret,
                     },
                 });
-                console.log(
-                    chalk.green("✅ Updated Atlassian OAuth connection token"),
-                    chalk.yellow(siteName),
-                    webhookId ? chalk.blue("with updated webhook") : ""
-                );
+                logger.info("✅ Updated Atlassian OAuth connection token:", {siteName, webhookId: webhookId ? "with webhook" : "no webhook"});
             }
 
-            console.log(
-                chalk.green("✅ Atlassian OAuth completed for user"),
-                chalk.yellow(decoded.userId)
-            );
+            logger.info("✅ Atlassian OAuth completed for user:", {userId: decoded.userId});
 
             // Redirect to success page which will auto-close the popup
             res.redirect(`${urls.frontend}/oauth/success`);
         } catch (error) {
-            console.error(chalk.red("Error in Atlassian OAuth callback:"), error);
+            logger.error("Error in Atlassian OAuth callback", { error });
             res.redirect(`${urls.frontend}/oauth/error`);
         }
     }
@@ -340,10 +317,6 @@ export class AtlassianIntegrationManager implements Integration<AtlassianIntegra
     }
 
     async processWebhookEvent(event: JiraWebhookPayload): Promise<void> {
-        console.log(
-            chalk.blue("📥 [JIRA INTEGRATION MANAGER] Received webhook event:"),
-            chalk.cyan(`Event: ${event.webhookEvent}, Issue: ${event.issue?.key || 'N/A'}`)
-        );
 
         // Extract base URL from the issue self URL or match by user email
         // The webhook payload includes user email, which we can use to match integrations
@@ -351,9 +324,7 @@ export class AtlassianIntegrationManager implements Integration<AtlassianIntegra
         const issueUrl = event.issue?.self;
 
         if (!userEmail && !issueUrl) {
-            console.log(
-                chalk.yellow("⚠️  [JIRA INTEGRATION MANAGER] No user email or issue URL found in webhook payload")
-            );
+            logger.info("⚠️  [JIRA INTEGRATION MANAGER] No user email or issue URL found in webhook payload");
             return;
         }
 
@@ -365,7 +336,7 @@ export class AtlassianIntegrationManager implements Integration<AtlassianIntegra
                 // Extract base URL (e.g., https://company.atlassian.net from https://company.atlassian.net/rest/api/3/issue/123)
                 baseUrl = `${url.protocol}//${url.hostname}`;
             } catch (error) {
-                console.warn(chalk.yellow("⚠️  Could not parse issue URL:"), issueUrl);
+                logger.warn("⚠️  Could not parse issue URL", { issueUrl, error });
             }
         }
 
@@ -384,24 +355,18 @@ export class AtlassianIntegrationManager implements Integration<AtlassianIntegra
         });
 
         if (matchingIntegrations.length === 0) {
-            console.log(
-                chalk.yellow(`⚠️  [JIRA INTEGRATION MANAGER] No integrations found for user email: ${userEmail || 'N/A'} or base URL: ${baseUrl || 'N/A'}`)
-            );
+            logger.info(`⚠️  [JIRA INTEGRATION MANAGER] No integrations found for user email: ${userEmail || 'N/A'} or base URL: ${baseUrl || 'N/A'}`);
             return;
         }
 
-        console.log(
-            chalk.green(`✅ [JIRA INTEGRATION MANAGER] Found ${matchingIntegrations.length} matching integration(s)`)
-        );
+        logger.info(`✅ [JIRA INTEGRATION MANAGER] Found ${matchingIntegrations.length} matching integration(s)`);
 
         // Process event for each matching integration
         for (const integration of matchingIntegrations) {
             try {
                 const user = integration.user;
                 if (!user) {
-                    console.log(
-                        chalk.yellow(`⚠️  [JIRA INTEGRATION MANAGER] User not found for integration ${integration.id}`)
-                    );
+                    logger.info(`⚠️  [JIRA INTEGRATION MANAGER] User not found for integration ${integration.id}`);
                     continue;
                 }
 
@@ -412,14 +377,10 @@ export class AtlassianIntegrationManager implements Integration<AtlassianIntegra
                     if (event.issue?.id && integration.cloud_id && integration.access_token) {
                         // For now, we'll use the event as-is since it already contains rich information
                         // Future: Could fetch additional context using OAuth token
-                        console.log(
-                            chalk.blue(`📊 [JIRA INTEGRATION MANAGER] Using webhook payload for issue ${event.issue.key}`)
-                        );
+                        logger.info(`📊 [JIRA INTEGRATION MANAGER] Using webhook payload for issue ${event.issue.key}`);
                     }
                 } catch (error) {
-                    console.log(
-                        chalk.yellow(`⚠️  [JIRA INTEGRATION MANAGER] Error enriching context: ${error}`)
-                    );
+                    logger.info(`⚠️  [JIRA INTEGRATION MANAGER] Error enriching context: ${error}`);
                     // Continue with original event if enrichment fails
                 }
 
@@ -428,10 +389,10 @@ export class AtlassianIntegrationManager implements Integration<AtlassianIntegra
                 const eventProcessor = new EventProcessor(jiraEvent, user);
                 await eventProcessor.process();
             } catch (error) {
-                console.error(
-                    chalk.red(`❌ [JIRA INTEGRATION MANAGER] Error processing event for integration ${integration.id}:`),
-                    error
-                );
+                logger.error(`❌ [JIRA INTEGRATION MANAGER] Error processing event for integration ${integration.id}`, { 
+                    error,
+                    integrationId: integration.id
+                });
                 // Continue processing other integrations even if one fails
             }
         }
@@ -445,7 +406,7 @@ export class AtlassianIntegrationManager implements Integration<AtlassianIntegra
             });
 
             if (!integration) {
-                console.warn(chalk.yellow("⚠️  Integration not found for deletion:"), integrationId);
+                logger.warn("⚠️  Integration not found for deletion", { integrationId });
                 return;
             }
 
@@ -461,7 +422,7 @@ export class AtlassianIntegrationManager implements Integration<AtlassianIntegra
                             integration.webhook_id
                         );
                     } catch (error) {
-                        console.error(chalk.red("⚠️  Failed to delete webhook during integration deletion:"), error);
+                        logger.error("⚠️  Failed to delete webhook during integration deletion", { error, integrationId });
                         // Continue with deletion even if webhook deletion fails
                     }
                 }
@@ -472,12 +433,9 @@ export class AtlassianIntegrationManager implements Integration<AtlassianIntegra
                 where: { id: integrationId },
             });
 
-            console.log(
-                chalk.green("✅ Deleted Atlassian integration:"),
-                chalk.cyan(integrationId)
-            );
+            logger.info("✅ [JIRA INTEGRATION MANAGER] Deleted Atlassian integration:", {integrationId});
         } catch (error) {
-            console.error(chalk.red("Error deleting Atlassian integration:"), error);
+            logger.error("Error deleting Atlassian integration:", {error});
             throw error;
         }
     }
@@ -490,7 +448,7 @@ export class AtlassianIntegrationManager implements Integration<AtlassianIntegra
             });
 
             if (!integration) {
-                console.warn(chalk.yellow(`⚠️  Integration ${integrationId} not found, skipping webhook setup`));
+                logger.warn(`⚠️  Integration ${integrationId} not found, skipping webhook setup`, { integrationId });
                 return;
             }
 
@@ -500,11 +458,7 @@ export class AtlassianIntegrationManager implements Integration<AtlassianIntegra
 
             // In development, always delete existing webhook and recreate to ensure URL is current
             if (isDevelopment && integration.webhook_id) {
-                console.log(
-                    chalk.blue("🔄 Development mode: recreating webhook for integration"),
-                    chalk.cyan(integrationId),
-                    chalk.blue("to ensure URL is current")
-                );
+                logger.info("🔄 Development mode: recreating webhook for integration", {integrationId});
 
                 if (integration.cloud_id) {
                     // Get valid access token before using it
@@ -517,47 +471,31 @@ export class AtlassianIntegrationManager implements Integration<AtlassianIntegra
                                 integration.webhook_id
                             );
                         } catch (error) {
-                            console.warn(
-                                chalk.yellow("⚠️  Could not delete existing webhook, continuing with creation"),
-                                error
-                            );
+                            logger.warn("⚠️  Could not delete existing webhook, continuing with creation", { error, integrationId });
                         }
                     }
                 }
             } else if (integration.webhook_id) {
                 // Not localhost and webhook exists - leave it as is
-                console.log(
-                    chalk.blue("✅ Webhook already exists for integration"),
-                    chalk.cyan(integrationId),
-                    chalk.blue("(webhook ID:"),
-                    chalk.yellow(integration.webhook_id),
-                    chalk.blue(")")
-                );
+                logger.info("✅ Webhook already exists for integration", {integrationId, webhookId: integration.webhook_id});
                 return;
             }
 
             // Webhook doesn't exist or we're on localhost and need to recreate it
             // First, get the accountId from the API
             if (!integration.cloud_id) {
-                console.warn(
-                    chalk.yellow(`⚠️  Integration ${integrationId} missing cloud_id, cannot create webhook`)
-                );
+                logger.warn("⚠️  Integration missing cloud_id, cannot create webhook", {integrationId});
                 return;
             }
 
             // Get valid access token before using it
             const accessToken = await this.getAccessToken(integrationId);
             if (!accessToken) {
-                console.warn(
-                    chalk.yellow(`⚠️  Could not get valid access token for integration ${integrationId}, cannot create webhook`)
-                );
+                logger.warn("⚠️  Could not get valid access token for integration", {integrationId});
                 return;
             }
 
-            console.log(
-                chalk.blue("🔧 Creating webhook for integration"),
-                chalk.cyan(integrationId)
-            );
+            logger.info("🔧 Creating webhook for integration", {integrationId});
 
             // Get user accountId from Jira API
             const userInfoResponse = await fetch(
@@ -591,9 +529,7 @@ export class AtlassianIntegrationManager implements Integration<AtlassianIntegra
             }
 
             if (!accountId) {
-                console.warn(
-                    chalk.yellow(`⚠️  Could not determine accountId for integration ${integrationId}, skipping webhook creation`)
-                );
+                logger.warn(`⚠️  Could not determine accountId for integration ${integrationId}, skipping webhook creation`, { integrationId });
                 return;
             }
 
@@ -613,18 +549,12 @@ export class AtlassianIntegrationManager implements Integration<AtlassianIntegra
                 },
             });
 
-            console.log(
-                chalk.green("✅ Created and registered webhook for integration"),
-                chalk.cyan(integrationId),
-                chalk.blue("(webhook ID:"),
-                chalk.yellow(webhook.webhookId),
-                chalk.blue(")")
-            );
+            logger.info("✅ Created and registered webhook for integration", {integrationId, webhookId: webhook.webhookId});
         } catch (error) {
-            console.error(
-                chalk.red(`❌ Error setting up webhook for integration ${integrationId}:`),
-                error
-            );
+            logger.error(`❌ Error setting up webhook for integration ${integrationId}`, { 
+                error,
+                integrationId
+            });
             // Don't throw - allow automation setup to continue even if webhook creation fails
         }
     }
@@ -636,7 +566,7 @@ export class AtlassianIntegrationManager implements Integration<AtlassianIntegra
             });
 
             if (!integration) {
-                console.log(`Atlassian integration ${integrationId} not found`);
+                logger.warn(`Atlassian integration ${integrationId} not found`, { integrationId });
                 return false;
             }
 
@@ -674,7 +604,7 @@ export class AtlassianIntegrationManager implements Integration<AtlassianIntegra
             // Token was refreshed if expiry changed
             return updatedIntegration.token_expiry.getTime() !== originalTokenExpiry.getTime();
         } catch (error) {
-            console.error(`Error refreshing Atlassian token for integration ${integrationId}:`, error);
+            logger.error(`Error refreshing Atlassian token for integration ${integrationId}`, { error, integrationId });
             return false;
         }
     }
@@ -708,27 +638,15 @@ export class AtlassianIntegrationManager implements Integration<AtlassianIntegra
 
             // If there are other automations using this integration, keep the webhook
             if (otherAutomations.length > 0) {
-                console.log(
-                    chalk.blue("ℹ️  Keeping webhook for integration"),
-                    chalk.cyan(integrationId),
-                    chalk.blue("(used by"),
-                    chalk.yellow(otherAutomations.length),
-                    chalk.blue("other automation(s))")
-                );
+                logger.info("ℹ️  Keeping webhook for integration", { integrationId, otherAutomationsCount: otherAutomations.length });
                 return;
             }
 
             // No other automations use this integration, safe to delete the webhook
-            console.log(
-                chalk.blue("🗑️  Deleting webhook for integration"),
-                chalk.cyan(integrationId),
-                chalk.blue("(no other automations depend on it)")
-            );
+            logger.info("🗑️  Deleting webhook for integration", { integrationId });
 
             if (!integration.cloud_id) {
-                console.warn(
-                    chalk.yellow(`⚠️  Integration ${integrationId} missing cloud_id, cannot delete webhook`)
-                );
+                logger.warn(`⚠️  Integration ${integrationId} missing cloud_id, cannot delete webhook`, { integrationId });
                 // Still clear the webhook_id from the database
                 await db().atlassian_integrations.update({
                     where: { id: integrationId },
@@ -743,9 +661,7 @@ export class AtlassianIntegrationManager implements Integration<AtlassianIntegra
             // Get valid access token before using it
             const accessToken = await this.getAccessToken(integrationId);
             if (!accessToken) {
-                console.warn(
-                    chalk.yellow(`⚠️  Could not get valid access token for integration ${integrationId}, cannot delete webhook`)
-                );
+                logger.warn(`⚠️  Could not get valid access token for integration ${integrationId}, cannot delete webhook`, { integrationId });
                 // Still clear the webhook_id from the database
                 await db().atlassian_integrations.update({
                     where: { id: integrationId },
@@ -765,10 +681,7 @@ export class AtlassianIntegrationManager implements Integration<AtlassianIntegra
                     integration.webhook_id
                 );
             } catch (error) {
-                console.error(
-                    chalk.red(`⚠️  Failed to delete webhook from Jira, but clearing from database:`),
-                    error
-                );
+                logger.error(`⚠️  Failed to delete webhook from Jira, but clearing from database`, { error, integrationId });
             }
 
             // Clear the webhook_id from the database
@@ -780,15 +693,12 @@ export class AtlassianIntegrationManager implements Integration<AtlassianIntegra
                 },
             });
 
-            console.log(
-                chalk.green("✅ Deleted webhook for integration"),
-                chalk.cyan(integrationId)
-            );
+            logger.info("✅ Deleted webhook for integration", { integrationId });
         } catch (error) {
-            console.error(
-                chalk.red(`❌ Error tearing down webhook for integration ${integrationId}:`),
-                error
-            );
+            logger.error(`❌ Error tearing down webhook for integration ${integrationId}`, { 
+                error,
+                integrationId
+            });
             // Don't throw - allow automation teardown to continue even if webhook deletion fails
         }
     }
@@ -802,7 +712,7 @@ export class AtlassianIntegrationManager implements Integration<AtlassianIntegra
             });
 
             if (!integration) {
-                console.error(`Atlassian integration ${integrationId} not found`);
+                logger.error(`Atlassian integration ${integrationId} not found`, { integrationId });
                 return null;
             }
 
@@ -812,10 +722,10 @@ export class AtlassianIntegrationManager implements Integration<AtlassianIntegra
                 integration.token_expiry &&
                 integration.token_expiry <= new Date(now.getTime() + OAUTH_TOKEN_REFRESH_THRESHOLD_MS)
             ) {
-                console.log(`Atlassian access token expiring soon for integration ${integrationId}, refreshing...`);
+                logger.info(`Atlassian access token expiring soon for integration ${integrationId}, refreshing...`, { integrationId });
 
                 if (!integration.refresh_token || integration.refresh_token === "") {
-                    console.error(`No refresh token available for Atlassian integration ${integrationId}`);
+                    logger.error(`No refresh token available for Atlassian integration ${integrationId}`, { integrationId });
                     return null;
                 }
 
@@ -835,7 +745,7 @@ export class AtlassianIntegrationManager implements Integration<AtlassianIntegra
 
                 if (!tokenResponse.ok) {
                     const errorText = await tokenResponse.text();
-                    console.error(`Atlassian token refresh failed for integration ${integrationId}:`, errorText);
+                    logger.error(`Atlassian token refresh failed for integration ${integrationId}`, { error: errorText, integrationId });
                     // Return existing token as fallback - it might still work
                     return integration.access_token;
                 }
@@ -844,7 +754,7 @@ export class AtlassianIntegrationManager implements Integration<AtlassianIntegra
                 const { access_token, refresh_token, expires_in } = tokenData;
 
                 if (!access_token) {
-                    console.error(`No access token received from Atlassian refresh for integration ${integrationId}`);
+                    logger.error(`No access token received from Atlassian refresh for integration ${integrationId}`, { integrationId });
                     // Return existing token as fallback
                     return integration.access_token;
                 }
@@ -862,14 +772,17 @@ export class AtlassianIntegrationManager implements Integration<AtlassianIntegra
                     },
                 });
 
-                console.log(`Successfully refreshed Atlassian access token for integration ${integrationId}`);
+                logger.info(`Successfully refreshed Atlassian access token for integration ${integrationId}`, { integrationId });
                 return access_token;
             }
 
             // Token is still valid
             return integration.access_token;
         } catch (error) {
-            console.error(`Error ensuring valid access token for integration ${integrationId}:`, error);
+            logger.error(`Error ensuring valid access token for integration ${integrationId}`, { 
+                error,
+                integrationId
+            });
             // Return null on error - caller should handle
             return null;
         }
@@ -930,7 +843,7 @@ export class AtlassianIntegrationManager implements Integration<AtlassianIntegra
 
         if (!webhookResponse.ok) {
             const errorText = await webhookResponse.text();
-            console.error(chalk.red("Failed to create Jira webhook:"), errorText);
+            logger.error("Failed to create Jira webhook", { error: errorText });
             throw new Error(`Failed to create Jira webhook: ${errorText}`);
         }
 
@@ -959,12 +872,7 @@ export class AtlassianIntegrationManager implements Integration<AtlassianIntegra
             throw new Error("Could not extract webhook ID from Jira API response");
         }
 
-        console.log(
-            chalk.green("✅ Created Jira webhook:"),
-            chalk.cyan(webhookId),
-            chalk.blue("with events:"),
-            chalk.yellow(webhookEvents.join(", "))
-        );
+        logger.info("✅ Created Jira webhook", { webhookId, events: webhookEvents.join(", ") });
 
         return { webhookId, webhookSecret };
     }
@@ -998,11 +906,11 @@ export class AtlassianIntegrationManager implements Integration<AtlassianIntegra
 
         if (!webhookResponse.ok && webhookResponse.status !== 404) {
             const errorText = await webhookResponse.text();
-            console.error(chalk.red("Failed to delete Jira webhook:"), errorText);
+            logger.error("Failed to delete Jira webhook", { error: errorText, webhookId });
             throw new Error(`Failed to delete Jira webhook: ${errorText}`);
         }
 
-        console.log(chalk.green("✅ Deleted Jira webhook:"), chalk.cyan(webhookId));
+        logger.info("✅ Deleted Jira webhook", { webhookId });
     }
 }
 
@@ -1121,7 +1029,7 @@ export class JiraEvent extends InputEvent {
     }
 
     matchesChannelInput(automationInput: ChannelInputWithConfigs): boolean {
-        console.log(chalk.cyan(`Checking if Jira event matches automation input: ${automationInput.config_type}`));
+        logger.debug(`Checking if Jira event matches automation input: ${automationInput.config_type}`, { configType: automationInput.config_type });
         // Check if integration type matches
         if (automationInput.config_type !== InputConfigType.JIRA) {
             return false;
