@@ -79,11 +79,7 @@ Example delete: "{\"operation\": \"delete\", \"block_id\": \"abc123\"}"`),
                 };
             }
         } catch (error) {
-            return {
-                success: false,
-                error: 'Invalid JSON in operation_json parameter',
-                hint: 'Ensure operation_json is a valid JSON string object'
-            };
+            throw new Error('Invalid JSON in operation_json parameter. Ensure operation_json is a valid JSON string');
         }
 
         if (!runContext?.context) {
