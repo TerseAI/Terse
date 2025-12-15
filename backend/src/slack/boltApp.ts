@@ -3,17 +3,15 @@ import ExpressReceiverModule from "@slack/bolt/dist/receivers/ExpressReceiver.js
 // ESM wraps CommonJS default exports, so we need to access .default
 import type ExpressReceiverType from "@slack/bolt/dist/receivers/ExpressReceiver";
 const ExpressReceiver = ((ExpressReceiverModule as any).default || ExpressReceiverModule) as typeof ExpressReceiverType;
+import type { BlockAction } from "@slack/bolt";
+import { ModelEvent } from "../shared/ModelEvents";
 import { settings } from "../config/settings";
 import { db } from "../prismaClient";
 import chalk from "chalk";
 import { SlackIntegrationManager, SlackMessageEvent } from "../integrations/SlackIntegration";
 import { updateSlackApprovalMessage } from "../utility/slack";
 import { generateApprovalSummary } from "../utility/approvalSummary";
-import { getInputConfigInclude, getOutputConfigInclude } from "../utility/prismaIncludes";
-import { OutputFactory } from "../outputs/abstract/OutputFactory";
-import { storeChatEvent, finalizeRunStatus, markRunFailed } from "../agent/ChannelAgent/runHistory";
-import { emitCacheInvalidationWithWildcard } from "../realtimeSocket";
-import { ChannelAgent } from "../agent/ChannelAgent/ChannelAgent";
+import { ApprovalService } from "../services/ApprovalService";
 
 /**
  * Creates and configures the Slack Bolt app with ExpressReceiver
@@ -67,12 +65,13 @@ export async function setupSlackBolt() {
   slack.message(async ({ event, body }) => {
     try {
       // Convert Bolt event to our SlackMessageEvent format
-      const messageEvent = event as any;
+      // Bolt's message event type is not exported, so we type it based on the structure
+      const messageEvent = event as { channel: string; user?: string; text?: string; ts?: string; thread_ts?: string; bot_id?: string; subtype?: string; channel_type?: string };
       const slackMessageEvent: SlackMessageEvent = {
         type: "event_callback",
         team_id: body.team_id || "",
         event_id: body.event_id,
-        authorizations: body.authorizations?.map((auth: any) => ({
+        authorizations: body.authorizations?.map((auth) => ({
           enterprise_id: auth.enterprise_id || null,
           team_id: auth.team_id || "",
           user_id: auth.user_id || "",
@@ -88,7 +87,7 @@ export async function setupSlackBolt() {
           thread_ts: messageEvent.thread_ts,
           bot_id: messageEvent.bot_id,
           subtype: messageEvent.subtype,
-          channel_type: messageEvent.channel_type,
+          channel_type: messageEvent.channel_type as any, // SlackChannelType - type guard needed for proper typing
         },
       };
       
@@ -111,8 +110,15 @@ export async function setupSlackBolt() {
     await ack();
     
     try {
-      const actionBody = body as any;
-      const actionId = (action as any).action_id as string;
+      // Type guard to ensure action has action_id property
+      // Bolt actions can be various types, but we need one with action_id
+      if (!('action_id' in action)) {
+        console.error(chalk.red(`[Slack Approval] Action does not have action_id`));
+        await respond({ text: "Error: Invalid action format", response_type: "ephemeral" });
+        return;
+      }
+      const actionWithId = action as { action_id: string };
+      const actionId = actionWithId.action_id;
       
       // Extract runId and stepId from action_id format: approval_{approve|reject}_{runId}__{stepId}
       // Using double underscore (__) as separator since both runId and stepId can contain single underscores
@@ -129,7 +135,7 @@ export async function setupSlackBolt() {
       console.log(chalk.blue(`[Slack Approval] Processing ${decision} for runId: ${runId}, stepId: ${stepId}`));
 
       // Find the approval message record
-      const approvalMessage = await (db() as any).approval_slack_messages.findFirst({
+      const approvalMessage = await db().approval_slack_messages.findFirst({
         where: {
           run_id: runId,
           step_id: stepId,
@@ -160,7 +166,7 @@ export async function setupSlackBolt() {
 
       const userId = userSlackIntegration.user_id;
 
-      // Verify the run belongs to this user
+      // Get channel info for updating message and generating summary
       const runRecord = await db().run_history_records.findUnique({
         where: { id: runId },
         include: { automation: true },
@@ -172,7 +178,6 @@ export async function setupSlackBolt() {
         return;
       }
 
-      // Get channel info for updating message
       const channel = await db().automations.findUnique({
         where: { id: runRecord.automation.id },
       });
@@ -183,8 +188,7 @@ export async function setupSlackBolt() {
         return;
       }
 
-      // Get tool name and arguments for generating summary
-      // Try to get it from the ToolApprovalRequest chat event first (most reliable)
+      // Get tool name and arguments for generating summary (Slack-specific UI logic)
       const prisma = db();
       const approvalEvent = await prisma.run_history_chat_events.findFirst({
         where: {
@@ -200,14 +204,13 @@ export async function setupSlackBolt() {
       let toolArguments: string | object = {};
       
       if (approvalEvent && approvalEvent.event_json) {
-        const eventData = approvalEvent.event_json as any;
-        if (eventData.name && eventData.step_id === stepId) {
+        const eventData = approvalEvent.event_json as ModelEvent;
+        if (eventData.type === 'ToolApprovalRequest' && eventData.step_id === stepId) {
           toolName = eventData.name;
           toolArguments = eventData.arguments || {};
         }
       }
 
-      // Fallback to run_history_actions if chat event not found
       if (toolName === "Tool") {
         const runAction = await prisma.run_history_actions.findFirst({
           where: {
@@ -216,7 +219,6 @@ export async function setupSlackBolt() {
           },
         });
         toolName = runAction?.target || "Tool";
-        // Try to extract arguments from details
         if (runAction?.details) {
           const detailsMatch = runAction.details.match(/with arguments: (.+)/);
           if (detailsMatch) {
@@ -229,7 +231,7 @@ export async function setupSlackBolt() {
         }
       }
 
-      // Generate human-readable summary
+      // Generate human-readable summary (Slack-specific UI logic)
       const summary = await generateApprovalSummary(
         runId,
         toolName,
@@ -238,7 +240,7 @@ export async function setupSlackBolt() {
         userId
       );
 
-      // Immediately update Slack message to show processing state
+      // Immediately update Slack message to show processing state (Slack-specific UI logic)
       await updateSlackApprovalMessage(
         approvalMessage.user_slack_integration_id,
         approvalMessage.slack_channel_id,
@@ -250,8 +252,8 @@ export async function setupSlackBolt() {
         runId
       );
 
-      // Update database record to processing status
-      await (db() as any).approval_slack_messages.update({
+      // Update database record to processing status (Slack-specific UI logic)
+      await db().approval_slack_messages.update({
         where: {
           id: approvalMessage.id,
         },
@@ -260,179 +262,43 @@ export async function setupSlackBolt() {
         },
       });
 
-      // Process approval directly (same logic as socket handler)
-      const approvalRunRecord = await prisma.run_history_records.findUnique({
-        where: { id: runId },
-        include: { automation: true },
+      // Use centralized approval service for core business logic
+      const result = await ApprovalService.processApproval({
+        runId,
+        stepId,
+        approved,
+        userId,
       });
 
-      if (!approvalRunRecord || !approvalRunRecord.automation || approvalRunRecord.automation.user_id !== userId) {
-        console.error(chalk.red(`[Slack Approval] User ${userId} does not have access to run ${runId}`));
-        await respond({ text: "Error: You don't have permission to approve this request", response_type: "ephemeral" });
-        return;
-      }
+      // Update Slack message based on result (Slack-specific UI logic)
+      const status = approved ? 'approved' : 'rejected';
+      await updateSlackApprovalMessage(
+        approvalMessage.user_slack_integration_id,
+        approvalMessage.slack_channel_id,
+        approvalMessage.slack_message_ts,
+        status,
+        summary,
+        channel.name,
+        channel.id,
+        runId
+      );
 
-      const channelWithRelations = await prisma.automations.findUnique({
+      // Update database record to final status (Slack-specific UI logic)
+      await db().approval_slack_messages.update({
         where: {
-          id: approvalRunRecord.automation.id,
-          user_id: userId,
+          id: approvalMessage.id,
         },
-        include: {
-          prompt: true,
-          inputs: {
-            include: getInputConfigInclude(),
-          },
-          output: {
-            include: getOutputConfigInclude(),
-          },
+        data: {
+          status: status,
         },
-      }) as any;
-
-      if (!channelWithRelations) {
-        console.error(chalk.red(`[Slack Approval] Channel not found`));
-        await respond({ text: "Error: Channel not found", response_type: "ephemeral" });
-        return;
-      }
-
-      const outputIntegration = channelWithRelations.output;
-      if (!outputIntegration) {
-        console.error(chalk.red(`[Slack Approval] No output integration found`));
-        await respond({ text: "Error: Output integration not found", response_type: "ephemeral" });
-        return;
-      }
-
-      const output = OutputFactory.createOutput(outputIntegration.config_type);
-      if (!output) {
-        console.error(chalk.red(`[Slack Approval] Output type not supported`));
-        await respond({ text: "Error: Output type not supported", response_type: "ephemeral" });
-        return;
-      }
-
-      const user = await prisma.users.findUnique({
-        where: { id: userId },
       });
 
-      if (!user) {
-        console.error(chalk.red(`[Slack Approval] User not found`));
-        await respond({ text: "Error: User not found", response_type: "ephemeral" });
-        return;
+      if (result.status === 'failed' && result.error) {
+        console.error(chalk.red(`[Slack Approval] Approval processing failed: ${result.error}`));
+      } else {
+        const decision = approved ? 'approve' : 'reject';
+        console.log(chalk.green(`[Slack Approval] Successfully processed ${decision} for runId: ${runId}, stepId: ${stepId}`));
       }
-
-      let session: any;
-      try {
-        session = await output.createSessionFromConfig(
-          outputIntegration.integration_id,
-          outputIntegration,
-          user
-        );
-      } catch (error) {
-        console.error(chalk.red(`[Slack Approval] Failed to create session: ${error}`));
-        await respond({ text: "Error: Failed to create session", response_type: "ephemeral" });
-        return;
-      }
-
-      // Ensure run status is 'in_progress' for streaming
-      if (approvalRunRecord.status !== 'in_progress') {
-        await prisma.run_history_records.update({
-          where: { id: runId },
-          data: { status: 'in_progress' },
-        });
-      }
-
-      const toolApprovalResponseEvent = {
-        type: 'ToolApprovalResponse',
-        step_id: stepId,
-        approved: approved,
-      };
-      await storeChatEvent(runId, toolApprovalResponseEvent as any);
-      emitCacheInvalidationWithWildcard(user.id, 'runHistory', channelWithRelations.id);
-      emitCacheInvalidationWithWildcard(user.id, 'chatHistory', runId);
-
-      const runContext = { runId };
-      const channelAgent = new ChannelAgent(session, output, channelWithRelations, runContext);
-      await channelAgent.initializeAgent();
-
-      try {
-        const decision: 'approve' | 'reject' = approved ? 'approve' : 'reject';
-        const result = await channelAgent.resumeFromPendingApproval(
-          decision,
-          stepId,
-          {
-            runId,
-            userId: userId,
-            channelId: channelWithRelations.id,
-          }
-        );
-
-        // Update Slack message to show final approval status
-        const status = approved ? 'approved' : 'rejected';
-
-        await updateSlackApprovalMessage(
-          approvalMessage.user_slack_integration_id,
-          approvalMessage.slack_channel_id,
-          approvalMessage.slack_message_ts,
-          status,
-          summary, // Use the same summary we generated earlier
-          channelWithRelations.name,
-          channelWithRelations.id,
-          runId
-        );
-
-        // Update database record to final status
-        await (db() as any).approval_slack_messages.update({
-          where: {
-            id: approvalMessage.id,
-          },
-          data: {
-            status: status,
-          },
-        });
-
-        // Finalize run status based on result
-        if (result.status === 'completed') {
-          const hasFinalOutput = Boolean(result.result?.finalOutput);
-          try {
-            await finalizeRunStatus(runId, hasFinalOutput ? 'success' : 'failed');
-            emitCacheInvalidationWithWildcard(userId, 'runHistory', channelWithRelations.id);
-          } catch (e) {
-            console.error(chalk.yellow('Failed to finalize run status'), e);
-          }
-        }
-      } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-        console.error(chalk.red.bold(`[Slack Approval] Error resuming agent: ${errorMessage}`), error);
-
-        try {
-          // Update Slack message to show error state
-          await updateSlackApprovalMessage(
-            approvalMessage.user_slack_integration_id,
-            approvalMessage.slack_channel_id,
-            approvalMessage.slack_message_ts,
-            approved ? 'approved' : 'rejected', // Still show the decision, but processing failed
-            summary, // Use the same summary we generated earlier
-            channelWithRelations.name,
-            channelWithRelations.id,
-            runId
-          );
-
-          // Update database record - keep the decision status even if processing had errors
-          await (db() as any).approval_slack_messages.update({
-            where: {
-              id: approvalMessage.id,
-            },
-            data: {
-              status: approved ? 'approved' : 'rejected',
-            },
-          });
-
-          await markRunFailed(runId, errorMessage, 'agent');
-          emitCacheInvalidationWithWildcard(userId, 'runHistory', channelWithRelations.id);
-        } catch (e) {
-          console.error(chalk.yellow('Failed to mark run as failed'), e);
-        }
-      }
-
-      console.log(chalk.green(`[Slack Approval] Successfully processed ${decision} for runId: ${runId}, stepId: ${stepId}`));
     } catch (error) {
       console.error(chalk.red(`[Slack Approval] Error processing approval:`, error));
       await respond({ text: "Error processing approval request", response_type: "ephemeral" });

@@ -440,13 +440,13 @@ model project_activity_events {
 
 // Automation tables
 model automations {
-  id              String   @id @default(cuid())
-  user_id         String
-  name            String
-  is_active       Boolean  @default(true)
-  require_approval Boolean @default(false)
-  created_at      DateTime @default(now())
-  updated_at      DateTime @updatedAt
+  id               String   @id @default(cuid())
+  user_id          String
+  name             String
+  is_active        Boolean  @default(true)
+  require_approval Boolean  @default(false)
+  created_at       DateTime @default(now())
+  updated_at       DateTime @updatedAt
 
   user                  users                             @relation(fields: [user_id], references: [id], onDelete: Cascade)
   prompt                automation_prompts?
@@ -531,7 +531,7 @@ model automation_slack_configs {
 
   channel_id         String? // Channel ID (required for outputs, optional for inputs)
   channel_name       String? // Channel display name (for UI, optional)
-  listen_to_user_dms Boolean @default(false) // This integration should include listening to user DMs
+  listen_to_user_dms Boolean  @default(false) // This integration should include listening to user DMs
   user_ids           String[] // User IDs to listen to
 
   created_at DateTime @default(now())
@@ -790,13 +790,9 @@ model run_history_records {
   decision_action     RunHistoryDecisionAction
   decision_reason     String
   // Run status
-  status                      RunHistoryStatus
-  // Pending approval state (serialized RunState for resumption)
-  pending_approval_state      Json?
-  // Pending approval interruptions metadata
-  pending_approval_interruptions Json?
-  created_at                  DateTime                 @default(now())
-  updated_at                  DateTime                 @updatedAt
+  status              RunHistoryStatus
+  created_at          DateTime                 @default(now())
+  updated_at          DateTime                 @updatedAt
 
   automation       automations               @relation(fields: [automation_id], references: [id], onDelete: Cascade)
   actions          run_history_actions[]
@@ -842,12 +838,15 @@ enum RunHistoryActionType {
 
 // Pending approvals for tools that require human approval
 // Status is tracked via run_history_record.status (awaiting_approval)
+// This table stores the serialized state and interruptions separately from run_history_records
+// for better data organization and compliance tracking (created_at timestamp)
 model pending_approvals {
   id                    String    @id @default(cuid())
   user_id               String
   run_history_record_id String    @unique
-  run_state_json        String    @db.Text // Serialized OpenAI RunState for resumption
-  created_at            DateTime  @default(now())
+  serialized_state      String    @db.Text // Serialized OpenAI RunState for resumption (JSON string)
+  interruptions         Json // Array of RunToolApprovalItem objects
+  created_at            DateTime  @default(now()) // Creation timestamp for compliance tracking
   updated_at            DateTime  @updatedAt
   approved_at           DateTime?
 
@@ -856,6 +855,7 @@ model pending_approvals {
 
   @@index([user_id])
   @@index([created_at])
+  @@index([run_history_record_id])
 }
 
 // Chat events from ChannelAgent streaming
@@ -938,7 +938,7 @@ model approval_slack_messages {
   slack_channel_id          String
   slack_message_ts          String
   user_slack_integration_id String
-  status                    String   // "pending", "approved", "rejected"
+  status                    String // "pending", "approved", "rejected"
   created_at                DateTime @default(now())
   updated_at                DateTime @updatedAt
 

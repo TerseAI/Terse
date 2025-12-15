@@ -2,6 +2,7 @@ import OpenAI from 'openai';
 import { RunHistoryChatMemorySession } from "../agent/CustomMemorySession";
 import { openai as openaiConfig } from "../config/settings";
 import chalk from "chalk";
+import { AgentInputItem } from '@openai/agents';
 
 const openai = new OpenAI({ apiKey: openaiConfig.apiKey });
 
@@ -72,21 +73,28 @@ export async function generateApprovalSummary(
     ];
 
     // Add conversation history (convert to OpenAI format)
+    // Type guard for items with role and content
+    const hasRoleAndContent = (item: AgentInputItem): item is AgentInputItem & { role: 'user' | 'assistant' | 'system'; content?: string | unknown[] } => {
+      return item !== null && typeof item === 'object' && 'role' in item;
+    };
+    
     for (const item of historyItems) {
-      if (item && typeof item === 'object' && 'role' in item) {
+      if (hasRoleAndContent(item)) {
         const role = item.role as 'user' | 'assistant' | 'system';
         if (role === 'user' || role === 'assistant') {
-          const content = (item as any).content;
+          const content = item.content;
           if (content) {
             if (typeof content === 'string') {
               messages.push({ role, content });
             } else if (Array.isArray(content)) {
               // Handle array content
-              const textContent = content.find((c: any) => 
-                typeof c === 'string' || (c && typeof c === 'object' && (c.type === 'text' || c.type === 'text_output'))
+              const textContent = content.find((c: unknown) => 
+                typeof c === 'string' || (c && typeof c === 'object' && 'type' in c && (c.type === 'text' || c.type === 'text_output'))
               );
               if (textContent) {
-                const text = typeof textContent === 'string' ? textContent : (textContent.text || textContent.content || '');
+                const text = typeof textContent === 'string' 
+                  ? textContent 
+                  : (textContent && typeof textContent === 'object' && ('text' in textContent ? String(textContent.text) : ('content' in textContent ? String(textContent.content) : '')));
                 if (text) {
                   messages.push({ role, content: text });
                 }

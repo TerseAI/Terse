@@ -1,4 +1,6 @@
 import { RunContext } from "@openai/agents";
+import { Session } from "../server";
+import { SessionWithTracking } from "../agent/ChannelAgent/ChannelAgent";
 
 // MARK: - Error Handling
 
@@ -44,7 +46,11 @@ export type ErrorContext = {
 
 // MARK: - Approval
 
-export async function needsApproval(context: RunContext<unknown>): Promise<boolean> {
-    return (context?.context as any)?.channel?.requireApproval ?? false;
+// needsApproval function that matches ToolApprovalFunction signature
+// The library expects RunContext<unknown>, but we know it's actually SessionWithTracking
+export async function needsApproval(context?: RunContext<unknown>): Promise<boolean> {
+    // Type guard: safely access channel.requireApproval from SessionWithTracking
+    const sessionWithTracking = context?.context as SessionWithTracking<Session> | undefined;
+    return sessionWithTracking?.channel?.requireApproval ?? false;
 }
 

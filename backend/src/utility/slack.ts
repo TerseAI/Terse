@@ -235,7 +235,7 @@ export async function sendSlackApprovalMessage(
 
         if (result.ok && result.ts) {
             // Store message metadata in database
-            await (db() as any).approval_slack_messages.create({
+            await db().approval_slack_messages.create({
                 data: {
                     run_id: runId,
                     step_id: stepId,

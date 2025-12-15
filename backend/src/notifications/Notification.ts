@@ -1,7 +1,7 @@
 import { NotificationDestinationType } from "@prisma/client";
 import { db } from "../prismaClient";
 import { RunHistoryAction } from "../shared/RunHistoryTypes";
-import { User, Channel, UserNotificationDestination, AutomationNotificationSettings } from "../types/prisma";
+import { User, Channel, UserNotificationDestination, AutomationNotificationSettings, RunHistoryActionType } from "../types/prisma";
 import { formatNotificationMessage, sendSlackMessage, sendSlackApprovalMessage } from "../utility/slack";
 import { generateApprovalSummary } from "../utility/approvalSummary";
 
@@ -43,8 +43,8 @@ export class NotificationManager {
             return;
         }
 
-        // Type assertion needed until Prisma migration is run
-        const actionType = runAction.type as any;
+        // Use RunHistoryActionType directly - cast needed if Prisma client enum doesn't match shared type
+        const actionType = runAction.type as RunHistoryActionType;
         if (!notificationSettings.action_types.includes(actionType)) {
             console.log(`Notification settings for automation ${this.channel.name} do not include action ${runAction.type}. Skipping`);
             return;

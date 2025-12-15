@@ -3,7 +3,7 @@ import { db } from "../prismaClient";
 import { Channel, ChannelInput, ChannelsResponse, ChannelNotificationSettings, ChannelUpdate } from "../shared/types";
 import { parsePageParams } from "../utility/pagination";
 import chalk from "chalk";
-import { ChannelWithInputRelations, PrismaTransaction, ChannelWithRelations, ChannelWithNotificationSettingsRelations } from "../types/prisma";
+import { ChannelWithInputRelations, PrismaTransaction, ChannelWithRelations, ChannelWithNotificationSettingsRelations, RunHistoryActionType } from "../types/prisma";
 import { IntegrationType } from "../shared/Integrations";
 import { convertConfigTypeToInputConfigType, convertConfigTypeToOutputConfigType, convertPrismaConfigToConfigInstance, convertPrismaOutputConfigToConfigInstance } from "../utility/typeConverters";
 import { ConfigInstance } from "../shared/Configs";
@@ -56,12 +56,12 @@ async function upsertNotificationSettings(
         where: { automation_id: automationId },
         update: {
             enabled: settings.enabled,
-            action_types: settings.actionTypes,
+            action_types: settings.actionTypes as RunHistoryActionType[],
         },
         create: {
             automation_id: automationId,
             enabled: settings.enabled,
-            action_types: settings.actionTypes,
+            action_types: settings.actionTypes as RunHistoryActionType[],
         },
     });
 }
@@ -612,7 +612,7 @@ function transformChannelToFrontendFormat(channel: ChannelWithRelations & Partia
         id: channel.id,
         name: channel.name,
         isActive: channel.is_active,
-        requireApproval: (channel as any).require_approval ?? false,
+        requireApproval: channel.require_approval ?? false,
         prompt: channel.prompt ? { text: channel.prompt.content } : { text: '' },
         inputs: channel.inputs.map(input => ({
             id: input.id,
@@ -624,7 +624,7 @@ function transformChannelToFrontendFormat(channel: ChannelWithRelations & Partia
         },
         notificationSettings: channel.notification_settings ? {
             enabled: channel.notification_settings.enabled,
-            actionTypes: channel.notification_settings.action_types as any[], // RunHistoryActionType[]
+            actionTypes: channel.notification_settings.action_types as RunHistoryActionType[],
         } : undefined,
     };
 }

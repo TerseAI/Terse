@@ -22,9 +22,8 @@ import { AddOutputModal } from "../components/AddOutputModal";
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "../../../components/ui/empty";
 import { Badge } from "../../../components/ui/badge";
 import ChannelNotificationSettings from "../ChannelNotificationSettings";
+import ChannelApprovalSettings from "../ChannelApprovalSettings";
 import { InstructionsEditor } from "../components/InstructionsEditor";
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
 
 export type ChannelSetupTabProps = {
     channelId: string | null;
@@ -207,26 +206,9 @@ export default function ChannelSetupTab({
 
             <div className="flex flex-row gap-12">
             <div className="min-w-md max-w-md"></div>
-                <div className="min-w-md max-w-md">
+                <div className="min-w-md max-w-md flex flex-col gap-4">
                     <ChannelNotificationSettings settings={notificationSettings} onChange={setNotificationSettings} />
-                    
-                    <div className="flex flex-col gap-2 p-4 border rounded-lg">
-                        <div className="flex items-center justify-between">
-                            <div className="flex flex-col gap-1">
-                                <Label htmlFor="require-approval" className="text-sm font-medium">
-                                    Require approval for edit actions
-                                </Label>
-                                <p className="text-xs text-muted-foreground">
-                                    When enabled, the bot will pause and request approval before executing write operations (create, update, delete).
-                                </p>
-                            </div>
-                            <Switch
-                                id="require-approval"
-                                checked={requireApproval}
-                                onCheckedChange={setRequireApproval}
-                            />
-                        </div>
-                    </div>
+                    <ChannelApprovalSettings requireApproval={requireApproval} onChange={setRequireApproval} />
                 </div>
             </div>
         </div>

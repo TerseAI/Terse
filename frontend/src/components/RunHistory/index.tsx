@@ -30,7 +30,7 @@ export default function RunHistory({ channelId }: RunHistoryProps) {
     // Get runId from URL params for deep linking
     const urlRunId = searchParams.get('runId');
     const [openDrawerRunId, setOpenDrawerRunId] = useState<string | null>(urlRunId || null);
-    const [isDrawerFullscreen, setIsDrawerFullscreen] = useState(!!urlRunId); // Fullscreen when opened via deep link
+    const [isDrawerFullscreen, setIsDrawerFullscreen] = useState(false); // Keep drawer partially open when opened via deep link (e.g., from Slack)
     const [isInitialDrawerOpen, setIsInitialDrawerOpen] = useState(!!urlRunId);
     
     // Keep a reference to the currently viewed run so it doesn't disappear if filtered out
@@ -51,7 +51,7 @@ export default function RunHistory({ channelId }: RunHistoryProps) {
         if (urlRunId && urlRunId !== openDrawerRunId) {
             setOpenDrawerRunId(urlRunId);
             setIsInitialDrawerOpen(true);
-            setIsDrawerFullscreen(true); // Open fullscreen when opened via deep link
+            setIsDrawerFullscreen(false); // Keep drawer partially open when opened via deep link (e.g., from Slack)
         } else if (!urlRunId && openDrawerRunId) {
             // If URL param is removed but drawer is still open, close it
             setOpenDrawerRunId(null);

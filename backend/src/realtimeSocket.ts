@@ -16,6 +16,7 @@ import { Session } from "./server";
 import { storeChatEvent, markRunFailed, finalizeRunStatus } from "./agent/ChannelAgent/runHistory";
 import { DirectiveTask, directiveTaskQueue } from "./agent/DirectiveAgent/DirectiveAgent";
 import { updateSlackApprovalMessage } from "./utility/slack";
+import { ApprovalService } from "./services/ApprovalService";
 
 // Extended Socket type with userId property
 interface AuthenticatedSocket extends Socket {
@@ -269,107 +270,20 @@ export async function initializeRealtimeSocket(server: HttpServer): Promise<Serv
                 return;
             }
 
-            const prisma = db();
-            const runRecord = await prisma.run_history_records.findUnique({
-                where: { id: runId },
-                include: { automation: true }
-            });
-
-            if (!runRecord || !runRecord.automation || runRecord.automation.user_id !== userId) {
-                console.error(chalk.red.bold(`[channel:chat:approval] Run record not found or user does not have access`));
-                return;
-            }
-
-            const channel: ChannelWithRelations | null = await prisma.automations.findUnique({
-                where: {
-                    id: runRecord.automation.id,
-                    user_id: userId
-                },
-                include: {
-                    prompt: true,
-                    inputs: {
-                        include: getInputConfigInclude()
-                    },
-                    output: {
-                        include: getOutputConfigInclude()
-                    }
-                }
-            }) as ChannelWithRelations | null;
-
-            if (!channel) {
-                console.error(chalk.red.bold(`[channel:chat:approval] Channel not found`));
-                return;
-            }
-
-            const outputIntegration = channel.output;
-            if (!outputIntegration) {
-                console.error(chalk.red.bold(`[channel:chat:approval] No output integration found`));
-                return;
-            }
-
-            const output = OutputFactory.createOutput(outputIntegration.config_type);
-            if (!output) {
-                console.error(chalk.red.bold(`[channel:chat:approval] Output type not supported`));
-                return;
-            }
-
-            const user = await prisma.users.findUnique({
-                where: { id: userId }
-            });
-
-            if (!user) {
-                console.error(chalk.red.bold(`[channel:chat:approval] User not found`));
-                return;
-            }
-
-            let session: Session;
-            try {
-                session = await output.createSessionFromConfig(
-                    outputIntegration.integration_id,
-                    outputIntegration,
-                    user
-                );
-            } catch (error) {
-                console.error(chalk.red.bold(`[channel:chat:approval] Failed to create session: ${error}`));
-                return;
-            }
-
-            // Ensure run status is 'in_progress' for streaming
-            if (runRecord.status !== 'in_progress') {
-                await prisma.run_history_records.update({
-                    where: { id: runId },
-                    data: { status: 'in_progress' },
-                });
-            }
-            const toolApprovalResponseEvent: ModelEvent = {
-                type: 'ToolApprovalResponse',
-                step_id: message.step_id,
+            // Use centralized approval service
+            const result = await ApprovalService.processApproval({
+                runId,
+                stepId: message.step_id,
                 approved: message.approved,
-            };
-            await storeChatEvent(runId, toolApprovalResponseEvent);
-            emitCacheInvalidationWithWildcard(user.id, 'runHistory', channel.id);
-            emitCacheInvalidationWithWildcard(user.id, 'chatHistory', runId);
+                userId,
+            });
 
-
-            const runContext: RunContext = { runId };
-            const channelAgent = new ChannelAgent(session, output, channel, runContext);
-            await channelAgent.initializeAgent();
-
-            try {
-                const decision: 'approve' | 'reject' = message.approved ? 'approve' : 'reject';
-                const result = await channelAgent.resumeFromPendingApproval(
-                    decision,
-                    message.step_id,
-                    {
-                        runId,
-                        userId: userId,
-                        channelId: channel.id,
-                    }
-                );
-
-                // Update Slack message if approval was processed from web app
+            // Update Slack message if approval was processed from web app
+            // This is interface-specific logic, so it stays here
+            if (result.status === 'completed' || result.status === 'failed') {
                 try {
-                    const approvalMessage = await (prisma as any).approval_slack_messages.findFirst({
+                    const prisma = db();
+                    const approvalMessage = await prisma.approval_slack_messages.findFirst({
                         where: {
                             run_id: runId,
                             step_id: message.step_id,
@@ -378,62 +292,55 @@ export async function initializeRealtimeSocket(server: HttpServer): Promise<Serv
                     });
 
                     if (approvalMessage) {
-                        // Get tool name from run history action
-                        const runAction = await prisma.run_history_actions.findFirst({
-                            where: {
-                                run_history_record_id: runId,
-                                step_id: message.step_id,
-                            },
+                        // Get channel name for Slack message update
+                        const runRecord = await prisma.run_history_records.findUnique({
+                            where: { id: runId },
+                            include: { automation: true },
                         });
 
-                        const toolName = runAction?.target || "Tool";
-                        const status = message.approved ? 'approved' : 'rejected';
+                        if (runRecord?.automation) {
+                            const channel = await prisma.automations.findUnique({
+                                where: { id: runRecord.automation.id },
+                            });
 
-                        await updateSlackApprovalMessage(
-                            approvalMessage.user_slack_integration_id,
-                            approvalMessage.slack_channel_id,
-                            approvalMessage.slack_message_ts,
-                            status,
-                            toolName,
-                            channel.name
-                        );
+                            if (channel) {
+                                // Get tool name from run history action
+                                const runAction = await prisma.run_history_actions.findFirst({
+                                    where: {
+                                        run_history_record_id: runId,
+                                        step_id: message.step_id,
+                                    },
+                                });
 
-                        // Update database record
-                        await (prisma as any).approval_slack_messages.update({
-                            where: {
-                                id: approvalMessage.id,
-                            },
-                            data: {
-                                status: status,
-                            },
-                        });
+                                const toolName = runAction?.target || "Tool";
+                                const status = message.approved ? 'approved' : 'rejected';
 
-                        console.log(chalk.green(`[channel:chat:approval] Updated Slack message for approval`));
+                                await updateSlackApprovalMessage(
+                                    approvalMessage.user_slack_integration_id,
+                                    approvalMessage.slack_channel_id,
+                                    approvalMessage.slack_message_ts,
+                                    status,
+                                    toolName,
+                                    channel.name
+                                );
+
+                                // Update database record
+                                await prisma.approval_slack_messages.update({
+                                    where: {
+                                        id: approvalMessage.id,
+                                    },
+                                    data: {
+                                        status: status,
+                                    },
+                                });
+
+                                console.log(chalk.green(`[channel:chat:approval] Updated Slack message for approval`));
+                            }
+                        }
                     }
                 } catch (error) {
                     console.error(chalk.yellow('Failed to update Slack approval message:'), error);
                     // Don't fail the approval if Slack update fails
-                }
-
-                // Finalize run status based on result
-                if (result.status === 'completed') {
-                    const hasFinalOutput = Boolean(result.result?.finalOutput);
-                    try {
-                        await finalizeRunStatus(runId, hasFinalOutput ? 'success' : 'failed');
-                        emitCacheInvalidationWithWildcard(userId, 'runHistory', channel.id);
-                    } catch (e) {
-                        console.error(chalk.yellow('Failed to finalize run status'), e);
-                    }
-                }
-            } catch (error) {
-                const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-                console.error(chalk.red.bold(`[channel:chat:approval] Error resuming agent: ${errorMessage}`), error);
-
-                try {
-                    await markRunFailed(runId, errorMessage, 'agent');
-                    emitCacheInvalidationWithWildcard(userId, 'runHistory', channel.id);
-                } catch (e) {
-                    console.error(chalk.yellow('Failed to mark run as failed'), e);
                 }
             }
         });

@@ -199,17 +199,31 @@ export class ChannelAgent<T extends Session, TConfig extends ConfigInstance> {
 
         // Find the interruption from the stored interruptions array
         // We stored the full interruption objects, so we can use them directly
-        const storedInterruption = pendingState.interruptions.find((int: any) => {
-            const callId = int.rawItem?.callId || (int.rawItem as any)?.callId;
+        // Helper to safely extract callId from interruption rawItem
+        const getInterruptionCallId = (int: RunToolApprovalItem): string | undefined => {
+            if (int.rawItem && typeof int.rawItem === 'object' && 'callId' in int.rawItem) {
+                return int.rawItem.callId as string | undefined;
+            }
+            return undefined;
+        };
+        
+        const storedInterruption = pendingState.interruptions.find((int) => {
+            const callId = getInterruptionCallId(int);
             return callId === stepId;
         });
 
         if (!storedInterruption) {
             // Log for debugging
             console.error(`[resumeFromPendingApproval] Could not find interruption for step_id: ${stepId}`);
-            console.error(`[resumeFromPendingApproval] Available stored interruptions:`, pendingState.interruptions.map((int: any) => ({
-                callId: int.rawItem?.callId || (int.rawItem as any)?.callId,
-                name: int.name || int.toolName
+            const getInterruptionCallId = (int: RunToolApprovalItem): string | undefined => {
+                if (int.rawItem && typeof int.rawItem === 'object' && 'callId' in int.rawItem) {
+                    return int.rawItem.callId as string | undefined;
+                }
+                return undefined;
+            };
+            console.error(`[resumeFromPendingApproval] Available stored interruptions:`, pendingState.interruptions.map((int) => ({
+                callId: getInterruptionCallId(int),
+                name: int.name
             })));
             throw new Error(`Could not find matching interruption for step_id ${stepId}`);
         }
@@ -227,10 +241,11 @@ export class ChannelAgent<T extends Session, TConfig extends ConfigInstance> {
             // This prevents the agent from blindly retrying the same tool call
             const rejectionMessage = user(`The tool call "${interruption.name}" was rejected. What should I do differently? Please ask me what changes you'd like me to make, or if you'd like me to skip this action entirely.`);
             // Access the state's history and add the rejection message
-            // The RunState from OpenAI agents SDK should have a history property
-            const stateHistory = (state as any).history;
-            if (stateHistory && Array.isArray(stateHistory)) {
-                stateHistory.push(rejectionMessage);
+            // The RunState from OpenAI agents SDK may have a history property (not in public types)
+            // Use type assertion to access it safely - state is RunState<unknown, Agent<SessionWithTracking<T>, ...>>
+            const stateWithHistory = state as unknown as { history?: AgentInputItem[] };
+            if (stateWithHistory.history && Array.isArray(stateWithHistory.history)) {
+                stateWithHistory.history.push(rejectionMessage);
                 console.log(chalk.yellow.bold("🔌 Added rejection message to state history"));
             } else {
                 // If history is not directly accessible, try alternative approach
@@ -347,7 +362,7 @@ export class ChannelAgent<T extends Session, TConfig extends ConfigInstance> {
             ...this.session,
             trackAction: (action: RunHistoryAction) => this.queueAction(action),
             channel: {
-                requireApproval: (this.channel as any).require_approval ?? false,
+                requireApproval: this.channel.require_approval ?? false,
             },
         };
     }
@@ -484,10 +499,20 @@ ${this.inputEvent!.formatForChannelAgent()}
                     if (streamingParams && this.shouldEnableStreaming(streamingParams)) {
                         const io = getRealtimeSocket();
                         for (const interruption of result.interruptions) {
-                            const stepId = (interruption.rawItem as any).callId || interruption.name;
+                            // Safely extract callId from interruption rawItem
+                            const getCallId = (int: RunToolApprovalItem): string => {
+                                if (int.rawItem && typeof int.rawItem === 'object' && 'callId' in int.rawItem) {
+                                    const callId = int.rawItem.callId;
+                                    if (typeof callId === 'string') {
+                                        return callId;
+                                    }
+                                }
+                                return int.name || 'unknown';
+                            };
+                            const stepId = getCallId(interruption);
                             const approvalRequest: ModelEvent = {
                                 type: 'ToolApprovalRequest',
-                                step_id: stepId,
+                                step_id: stepId || interruption.name,
                                 name: interruption.name,
                                 arguments: interruption.arguments,
                             };

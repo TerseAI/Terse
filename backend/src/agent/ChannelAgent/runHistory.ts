@@ -4,6 +4,8 @@ import { convertIntegrationTypeToPrismaIntegrationTypeForRunHistory } from "../.
 import { ModelEvent } from "../../shared/ModelEvents";
 import type { RunHistoryChatEventType } from "@prisma/client";
 import { Prisma } from "@prisma/client";
+import { RunToolApprovalItem } from "@openai/agents";
+import { RunHistoryActionType } from "../../types/prisma";
 
 export type RunTrigger = RunHistoryTrigger;
 
@@ -60,7 +62,7 @@ export async function appendRunAction(
             details: action.details,
             url: action.url ?? null,
             step_id: stepId ?? action.step_id ?? null,
-            type: action.type,  
+            type: action.type as RunHistoryActionType, // Cast needed: Prisma client may need regeneration to include "approval" enum value  
             is_read_only: action.isReadOnly ?? true,
         },
     });
@@ -131,7 +133,7 @@ export async function storeChatEvent(runId: string, event: ModelEvent, timestamp
         data: {
             run_history_record_id: runId,
             event_type: event.type as RunHistoryChatEventType,
-            event_json: event as any, // Store full ModelEvent as JSON
+            event_json: event as Prisma.InputJsonValue, // Store full ModelEvent as JSON
             timestamp: eventTimestamp,
         },
         select: { id: true },
@@ -146,18 +148,47 @@ export async function storeChatEvent(runId: string, event: ModelEvent, timestamp
 export async function storePendingApprovalState(
     runId: string,
     serializedState: string,
-    interruptions: any[]
+    interruptions: RunToolApprovalItem[]
 ): Promise<void> {
     const prisma = db();
-    // Parse the JSON string to ensure Prisma stores it as JSON object, not a string
-    // This ensures the $schemaVersion and other fields are preserved correctly
-    const stateObject = JSON.parse(serializedState);
+    
+    // Get user_id from run_history_record via automation
+    const runRecord = await prisma.run_history_records.findUnique({
+        where: { id: runId },
+        include: {
+            automation: {
+                select: {
+                    user_id: true,
+                },
+            },
+        },
+    });
+
+    if (!runRecord || !runRecord.automation) {
+        throw new Error(`Run record not found or automation not found for runId: ${runId}`);
+    }
+
+    // Upsert pending approval record (create or update if exists)
+    await prisma.pending_approvals.upsert({
+        where: { run_history_record_id: runId },
+        update: {
+            serialized_state: serializedState,
+            interruptions: interruptions as Prisma.InputJsonValue,
+            updated_at: new Date(),
+        },
+        create: {
+            user_id: runRecord.automation.user_id,
+            run_history_record_id: runId,
+            serialized_state: serializedState,
+            interruptions: interruptions as Prisma.InputJsonValue,
+        },
+    });
+
+    // Update run status to awaiting_approval
     await prisma.run_history_records.update({
         where: { id: runId },
         data: {
             status: "awaiting_approval",
-            pending_approval_state: stateObject as any,
-            pending_approval_interruptions: interruptions as any,
         },
     });
 }
@@ -167,29 +198,34 @@ export async function storePendingApprovalState(
  */
 export async function getPendingApprovalState(runId: string): Promise<{
     serializedState: string;
-    interruptions: any[];
+    interruptions: RunToolApprovalItem[];
 } | null> {
     const prisma = db();
-    const record = await prisma.run_history_records.findUnique({
-        where: { id: runId },
+    const pendingApproval = await prisma.pending_approvals.findUnique({
+        where: { run_history_record_id: runId },
         select: {
-            pending_approval_state: true,
-            pending_approval_interruptions: true,
+            serialized_state: true,
+            interruptions: true,
         },
     });
 
-    if (!record || !record.pending_approval_state) {
+    if (!pendingApproval) {
         return null;
     }
 
-    const stateValue = record.pending_approval_state;
-    const serializedState = typeof stateValue === 'string' 
-        ? stateValue 
-        : JSON.stringify(stateValue);
+    // serialized_state is stored as a string (Text field)
+    const serializedState = pendingApproval.serialized_state;
+
+    // Type guard: validate interruptions array structure
+    // Note: We store these as JSON, so we need to cast from Prisma.JsonValue
+    const interruptionsValue = pendingApproval.interruptions;
+    const interruptions: RunToolApprovalItem[] = Array.isArray(interruptionsValue) 
+        ? (interruptionsValue as unknown as RunToolApprovalItem[])
+        : [];
 
     return {
         serializedState,
-        interruptions: (record.pending_approval_interruptions as any) || [],
+        interruptions,
     };
 }
 
@@ -198,12 +234,9 @@ export async function getPendingApprovalState(runId: string): Promise<{
  */
 export async function clearPendingApprovalState(runId: string): Promise<void> {
     const prisma = db();
-    await prisma.run_history_records.update({
-        where: { id: runId },
-        data: {
-            pending_approval_state: Prisma.JsonNull,
-            pending_approval_interruptions: Prisma.JsonNull,
-        },
+    // Delete the pending approval record
+    await prisma.pending_approvals.deleteMany({
+        where: { run_history_record_id: runId },
     });
 }
 
