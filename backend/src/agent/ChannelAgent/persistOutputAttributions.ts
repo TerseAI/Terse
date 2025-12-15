@@ -34,3 +34,25 @@ export async function persistOutputAttributions(
     }
 }
 
+// If a certain block is deleted, we remove all Attribution records for that block
+export async function removeOutputAttributions(
+    automationId: string,
+    action: RunHistoryAction
+): Promise<void> {
+    try {
+        if (!action.output_items || action.output_items.length === 0) {
+            return;
+        }
+
+        const deleteResult = await db().output_change_attributions.deleteMany({
+            where: {
+                automation_id: automationId,
+                output_item_id: { in: action.output_items?.map(item => item.output_item_id) ?? [] },
+            },
+        });
+        
+        console.log(chalk.green(`Deleted ${deleteResult.count} output attribution(s) for automation ${automationId}`));
+    } catch (error) {
+        console.error(chalk.yellow('Failed to remove output attribution'), error);
+    }
+}

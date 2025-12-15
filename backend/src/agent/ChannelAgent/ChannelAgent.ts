@@ -20,8 +20,9 @@ import { IntegrationType } from '../../shared/Integrations';
 import { InputImageContent, InputTextContent } from 'openai/resources/conversations/conversations.mjs';
 import { runnerFactory } from '../runner';
 import { NotificationManager } from '../../notifications/Notification';
-import { persistOutputAttributions } from './persistOutputAttributions';
+import { persistOutputAttributions, removeOutputAttributions } from './persistOutputAttributions';
 import logger from '../../logger';
+import { RunHistoryActionType } from '@prisma/client';
 
 
 export class ChannelAgent<T extends Session, TConfig extends ConfigInstance> {
@@ -189,11 +190,18 @@ export class ChannelAgent<T extends Session, TConfig extends ConfigInstance> {
             // 3. Action is not read-only (track both write and read actions per user request)
             const sourceItemRef = this.inputEvent?.getIdentifiableInfo();
             if (sourceItemRef && action.output_items && action.output_items.length > 0 && !isReadOnly) {
-                await persistOutputAttributions(
-                    this.channel.id,
-                    sourceItemRef,
-                    action
-                );
+                if (action.type === RunHistoryActionType.delete) {
+                    await removeOutputAttributions(
+                        this.channel.id,
+                        action
+                    );
+                } else { // if we create or update, we persist
+                    await persistOutputAttributions(
+                        this.channel.id,
+                        sourceItemRef,
+                        action
+                    );
+                }
             }
         }
 
