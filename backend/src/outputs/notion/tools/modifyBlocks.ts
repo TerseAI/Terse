@@ -53,6 +53,10 @@ Examples:
 
 Example: "[{\"operation\": \"append\", \"blocks\": [{\"object\": \"block\", \"type\": \"paragraph\", \"paragraph\": {\"rich_text\": [{\"type\": \"text\", \"text\": {\"content\": \"New content\"}}]}}]}]"`),
     }),
+    needsApproval: async (context) => {
+        // Only require approval if channel has requireApproval enabled
+        return context?.channel?.requireApproval ?? false;
+    },
     execute: async ({ operations_json }, runContext?: RunContext<SessionWithTracking<NotionPageSession>>) => {
         console.log(chalk.bgMagenta.white.bold('🛠️ Executing notion_modify_blocks tool'));
         console.log(chalk.cyan('  Operations JSON: '), chalk.greenBright(operations_json));

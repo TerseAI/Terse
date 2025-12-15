@@ -223,6 +223,9 @@ export class ChannelAgent<T extends Session, TConfig extends ConfigInstance> {
         return {
             ...this.session,
             trackAction: (action: RunHistoryAction) => this.queueAction(action),
+            channel: {
+                requireApproval: this.channel.require_approval ?? false,
+            },
         };
     }
 
@@ -342,6 +345,9 @@ ${this.inputEvent!.formatForChannelAgent()}
 
 export type SessionWithTracking<T extends Session> = T & {
     trackAction(action: RunHistoryAction): void;
+    channel: {
+        requireApproval: boolean;
+    };
 }
 
 export type ApprovalResult<T extends Session, AgentType extends Agent<T, AgentOutputType>> =

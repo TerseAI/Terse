@@ -51,8 +51,9 @@ IMPORTANT:
         page_id: z.string().nullable().describe('The ID of the page to update (from notion_query_database). MUST be null (not empty string, not period) to create a new page. Only provide a valid page ID string to update an existing page.'),
         properties_json: z.string().describe('JSON string with property names as keys and Notion-formatted values. Example: "{\\"Name\\": {\\"title\\": [{\\"text\\": {\\"content\\": \\"New Item\\"}}]}, \\"Status\\": {\\"select\\": {\\"name\\": \\"In Progress\\"}}}"'),
     }),
-    needsApproval: async (_context, { page_id, properties_json }) => {
-        return false; // DISABLE UNTIL HUMAN IN THE LOOP IS IMPLEMENTED
+    needsApproval: async (context, { page_id, properties_json }) => {
+        // Only require approval if channel has requireApproval enabled
+        return context?.channel?.requireApproval ?? false;
     },
     execute: async ({ page_id, properties_json }, runContext?: RunContext<SessionWithTracking<NotionDatabaseSession>>) => {
         console.log(chalk.bgMagenta.white.bold('🛠️ Executing notion_modify_page tool'));

@@ -48,6 +48,10 @@ BEFORE USING THIS TOOL:
         estimate: z.number().nullable().optional().describe('The estimated complexity of the issue.'),
         subscriberIds: z.array(z.string()).nullable().optional().describe('The IDs of users subscribing to this ticket.'),
     }),
+    needsApproval: async (context) => {
+        // Only require approval if channel has requireApproval enabled
+        return context?.channel?.requireApproval ?? false;
+    },
     execute: async ({ 
         title, 
         teamId,

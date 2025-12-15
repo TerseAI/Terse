@@ -44,6 +44,10 @@ COMMON UPDATE OPERATIONS:
         subscriberIds: z.array(z.string()).nullable().optional().describe('The IDs of users subscribing to this ticket.'),
         trashed: z.boolean().nullable().optional().describe('Whether the issue has been trashed.'),
     }),
+    needsApproval: async (context) => {
+        // Only require approval if channel has requireApproval enabled
+        return context?.channel?.requireApproval ?? false;
+    },
     execute: async ({ 
         issueId, 
         title, 
