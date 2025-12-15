@@ -57,6 +57,8 @@ IMPORTANT:
         console.log(chalk.cyan('  Page ID: '), chalk.yellow(page_id ?? '(new page)'));
         console.log(chalk.cyan('  Properties JSON: '), chalk.greenBright(properties_json));
 
+        console.log(runContext);
+
         // Parse the JSON string
         let properties: Record<string, any>;
         try {

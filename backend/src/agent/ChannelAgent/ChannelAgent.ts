@@ -24,7 +24,6 @@ import { storePendingApprovalState, getPendingApprovalState, clearPendingApprova
 
 
 export class ChannelAgent<T extends Session, TConfig extends ConfigInstance> {
-    private history: AgentInputItem[] = [];
     private session: T;
     private inputEvent: InputEvent | null = null;
     private channel: ChannelWithRelations;
@@ -45,7 +44,6 @@ export class ChannelAgent<T extends Session, TConfig extends ConfigInstance> {
         runContext: RunContext,
         maxTurns: number = 50
     ) {
-        this.history = [];
         this.session = session;
         this.output = output;
         this.channel = channel;
@@ -234,7 +232,15 @@ export class ChannelAgent<T extends Session, TConfig extends ConfigInstance> {
             env: settings.nodeEnv,
         });
         const toolContext = this.getToolContext();
-        console.log('🔧 Tool context', toolContext);
+
+        // Bug in the SDK where functions are not serialized properly.
+        // This is a workaround to get the context to work.
+        const unifiedContext = {
+            ...toolContext,
+            ...state._context,
+        }
+        state._context.context = unifiedContext;
+
         const result = await runner.run(this.agent, state, {
             context: toolContext,
             stream: true,
