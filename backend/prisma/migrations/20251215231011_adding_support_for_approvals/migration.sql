@@ -1,8 +1,24 @@
+/*
+  Warnings:
+
+  - You are about to drop the column `run_state_json` on the `pending_approvals` table. All the data in the column will be lost.
+  - Added the required column `interruptions` to the `pending_approvals` table without a default value. This is not possible if the table is not empty.
+  - Added the required column `serialized_state` to the `pending_approvals` table without a default value. This is not possible if the table is not empty.
+
+*/
 -- AlterEnum
 ALTER TYPE "RunHistoryActionType" ADD VALUE 'approval';
 
 -- AlterEnum
 ALTER TYPE "RunHistoryChatEventType" ADD VALUE 'ToolApprovalResponse';
+
+-- AlterTable
+ALTER TABLE "automations" ADD COLUMN     "require_approval" BOOLEAN NOT NULL DEFAULT false;
+
+-- AlterTable
+ALTER TABLE "pending_approvals" DROP COLUMN "run_state_json",
+ADD COLUMN     "interruptions" JSONB NOT NULL,
+ADD COLUMN     "serialized_state" TEXT NOT NULL;
 
 -- CreateTable
 CREATE TABLE "approval_slack_messages" (
@@ -30,3 +46,6 @@ CREATE INDEX "approval_slack_messages_status_idx" ON "approval_slack_messages"("
 
 -- CreateIndex
 CREATE UNIQUE INDEX "approval_slack_messages_run_id_step_id_key" ON "approval_slack_messages"("run_id", "step_id");
+
+-- CreateIndex
+CREATE INDEX "pending_approvals_run_history_record_id_idx" ON "pending_approvals"("run_history_record_id");
