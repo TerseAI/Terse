@@ -169,7 +169,7 @@ export class EventProcessor {
                 await markRunFailed(runId, errorMessage, 'filter');
                 emitCacheInvalidationWithWildcard(this.user.id, 'runHistory', channel.id);
             } catch (e) {
-                logger.error('Failed to mark run as failed', { e, runId, channelId: channel.id });
+                logger.error('Failed to mark run as failed', { error:e, runId, channelId: channel.id });
             }
             
             return new ProcessorResult(
