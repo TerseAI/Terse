@@ -1,7 +1,7 @@
 import { IntegrationType } from "./Integrations";
 import type { ModelEvent } from "./ModelEvents";
 
-export type RunHistoryStatus = "success" | "failed" | "skipped" | "in_progress";
+export type RunHistoryStatus = "success" | "failed" | "skipped" | "in_progress" | "awaiting_approval";
 export type RunHistoryDecisionAction = "processed" | "skipped";
 export type RunHistoryActionType = "create" | "update" | "delete" | "read";
 

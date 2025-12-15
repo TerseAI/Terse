@@ -141,11 +141,14 @@ export async function storePendingApprovalState(
     interruptions: any[]
 ): Promise<void> {
     const prisma = db();
+    // Parse the JSON string to ensure Prisma stores it as JSON object, not a string
+    // This ensures the $schemaVersion and other fields are preserved correctly
+    const stateObject = JSON.parse(serializedState);
     await prisma.run_history_records.update({
         where: { id: runId },
         data: {
             status: "awaiting_approval",
-            pending_approval_state: serializedState as any,
+            pending_approval_state: stateObject as any,
             pending_approval_interruptions: interruptions as any,
         },
     });
@@ -171,8 +174,15 @@ export async function getPendingApprovalState(runId: string): Promise<{
         return null;
     }
 
+    // Prisma returns JSONB as a parsed object, so we need to stringify it
+    // Ensure it's a string for RunState.fromString()
+    const stateValue = record.pending_approval_state;
+    const serializedState = typeof stateValue === 'string' 
+        ? stateValue 
+        : JSON.stringify(stateValue);
+
     return {
-        serializedState: JSON.stringify(record.pending_approval_state),
+        serializedState,
         interruptions: (record.pending_approval_interruptions as any) || [],
     };
 }

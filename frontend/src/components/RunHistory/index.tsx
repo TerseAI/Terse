@@ -17,7 +17,7 @@ export default function RunHistory({ channelId }: RunHistoryProps) {
     const [runsPerPage, setRunsPerPage] = useState(10);
 
     const [selectedStatuses, setSelectedStatuses] = useState<Set<RunHistoryStatus>>(
-        new Set(["success", "failed", "in_progress"])
+        new Set(["success", "failed", "in_progress", "awaiting_approval"])
     );
     const [searchQuery, setSearchQuery] = useState("");
     const [dateRange, setDateRange] = useState<{ from: Date | undefined; to: Date | undefined }>({
@@ -131,11 +131,11 @@ export default function RunHistory({ channelId }: RunHistoryProps) {
                 <RunHistoryLoadingState />
             ) : filteredRuns.length === 0 ? (
                 <RunHistoryEmptyState
-                    hasActiveFilters={!!searchQuery || !!dateRange.from || !!dateRange.to || selectedStatuses.size < 4}
+                    hasActiveFilters={!!searchQuery || !!dateRange.from || !!dateRange.to || selectedStatuses.size < 5}
                     onClearAll={() => {
                         setSearchQuery("");
                         setDateRange({ from: undefined, to: undefined });
-                        setSelectedStatuses(new Set(["success", "failed", "skipped", "in_progress"]));
+                        setSelectedStatuses(new Set(["success", "failed", "skipped", "in_progress", "awaiting_approval"]));
                         setCurrentPage(1);
                     }}
                 />

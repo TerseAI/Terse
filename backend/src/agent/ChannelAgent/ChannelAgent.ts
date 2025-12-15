@@ -188,33 +188,39 @@ export class ChannelAgent<T extends Session, TConfig extends ConfigInstance> {
         }
 
         // Deserialize state
+        if (!pendingState.serializedState || typeof pendingState.serializedState !== 'string') {
+            throw new Error(`Invalid serialized state format for run ${this.runContext.runId}. Expected string, got ${typeof pendingState.serializedState}`);
+        }
+
+        // Deserialize the state first
         const state = await RunState.fromString(this.agent, pendingState.serializedState);
 
-        // Find the interruption matching the stepId
-        const interruption = pendingState.interruptions.find(
-            (int: any) => int.step_id === stepId
-        );
-        if (!interruption) {
-            throw new Error(`No interruption found for step_id ${stepId}`);
+        // Find the interruption from the stored interruptions array
+        // We stored the full interruption objects, so we can use them directly
+        const storedInterruption = pendingState.interruptions.find((int: any) => {
+            const callId = int.rawItem?.callId || (int.rawItem as any)?.callId;
+            return callId === stepId;
+        });
+
+        if (!storedInterruption) {
+            // Log for debugging
+            console.error(`[resumeFromPendingApproval] Could not find interruption for step_id: ${stepId}`);
+            console.error(`[resumeFromPendingApproval] Available stored interruptions:`, pendingState.interruptions.map((int: any) => ({
+                callId: int.rawItem?.callId || (int.rawItem as any)?.callId,
+                name: int.name || int.toolName
+            })));
+            throw new Error(`Could not find matching interruption for step_id ${stepId}`);
         }
 
-        // Convert interruption metadata back to RunToolApprovalItem format
-        // We need to reconstruct this from the stored data
-        // For now, we'll need to find it in the state's interruptions
-        const stateInterruptions = (state as any).interruptions || [];
-        const matchingInterruption = stateInterruptions.find(
-            (int: RunToolApprovalItem) => (int.rawItem as any)?.callId === stepId || int.name === interruption.name
-        );
+        // Use the stored interruption object directly (matching SDK pattern)
+        // The interruption object should be compatible with state.approve/reject
+        const interruption = storedInterruption as RunToolApprovalItem;
 
-        if (!matchingInterruption) {
-            throw new Error(`Could not find matching interruption in state for step_id ${stepId}`);
-        }
-
-        // Apply decision
+        // Apply decision using the stored interruption
         if (decision === 'approve') {
-            state.approve(matchingInterruption);
+            state.approve(interruption);
         } else {
-            state.reject(matchingInterruption);
+            state.reject(interruption);
         }
 
         // Clear pending approval state
@@ -227,8 +233,10 @@ export class ChannelAgent<T extends Session, TConfig extends ConfigInstance> {
             userId: this.session.user.id,
             env: settings.nodeEnv,
         });
+        const toolContext = this.getToolContext();
+        console.log('🔧 Tool context', toolContext);
         const result = await runner.run(this.agent, state, {
-            context: this.getToolContext(),
+            context: toolContext,
             stream: true,
             session: this.memorySession,
             sessionInputCallback: recentHistoryCallback,
@@ -423,18 +431,26 @@ ${this.inputEvent!.formatForChannelAgent()}
             // Serialize the state for storage
             const serializedState = JSON.stringify(result.state);
             
-            // Store interruptions metadata
-            const interruptionsMetadata = result.interruptions.map((interruption: RunToolApprovalItem) => ({
-                step_id: (interruption.rawItem as any).callId || interruption.name,
-                name: interruption.name,
-                arguments: interruption.arguments,
-            }));
+            // Store full interruption objects (not just metadata)
+            // This matches the SDK pattern where interruptions are stored separately
+            // and used directly with state.approve(interruption) or state.reject(interruption)
+            const interruptionsToStore = result.interruptions.map((interruption: RunToolApprovalItem) => {
+                // Store the full interruption object, including rawItem which contains callId
+                return {
+                    type: interruption.type || 'tool_approval_item',
+                    rawItem: interruption.rawItem,
+                    agent: interruption.agent,
+                    toolName: interruption.toolName || interruption.name,
+                    name: interruption.name,
+                    arguments: interruption.arguments,
+                };
+            });
 
             // Store pending approval state in database
             await storePendingApprovalState(
                 this.runContext.runId,
                 serializedState,
-                interruptionsMetadata
+                interruptionsToStore
             );
 
                     // Emit ToolApprovalRequest events for each interruption

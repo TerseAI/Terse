@@ -6,7 +6,7 @@ import { parsePageParams } from "../utility/pagination";
 import { convertPrismaIntegrationTypeToIntegrationTypeFromRunHistory } from "../utility/typeConverters";
 import { ModelEvent } from "../shared/ModelEvents";
 // Valid status values for validation
-const VALID_STATUSES: RunHistoryStatus[] = ["success", "failed", "skipped", "in_progress"];
+const VALID_STATUSES: RunHistoryStatus[] = ["success", "failed", "skipped", "in_progress", "awaiting_approval"];
 
 export async function getRunHistory(req: Request, res: Response) {
   try {
