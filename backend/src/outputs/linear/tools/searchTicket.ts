@@ -7,7 +7,7 @@ import { LinearTicketSession } from "../LinearTicketOutput";
 import { SessionWithTracking } from "../../../agent/ChannelAgent/ChannelAgent";
 import type { IssueFilter, SearchIssuesQueryVariables, PaginationOrderBy as PaginationOrderByType } from "@linear/sdk/dist/_generated_documents";
 import { RunHistoryActionType } from "@prisma/client";
-import { formatError } from "../../../tools/errors";
+import { formatError } from "../../../tools/toolUtils";
 
 
 export const linearSearchTicketTool = tool({

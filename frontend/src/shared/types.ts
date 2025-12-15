@@ -328,7 +328,7 @@ export type Channel = {
     id: string;
     name: string;
     isActive: boolean;
-    requireApproval?: boolean;
+    requireApproval: boolean;
     prompt: ChannelPrompt;
     inputs: ChannelInput[];
     output: ChannelOutput;
@@ -428,4 +428,3 @@ export interface StatsResponse {
   recentActions: RecentAction[]; // Recent actions (last 10)
   timezone: string; // Timezone used for daily events grouping (e.g., "America/New_York" or "UTC")
 }
-

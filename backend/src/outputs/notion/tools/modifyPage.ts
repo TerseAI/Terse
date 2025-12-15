@@ -5,7 +5,7 @@ import chalk from "chalk";
 import { IntegrationType } from "../../../shared/Integrations";
 import { NotionDatabaseSession } from "../NotionDatabaseOutput";
 import { SessionWithTracking } from "../../../agent/ChannelAgent/ChannelAgent";
-import { formatError } from "../../../tools/errors";
+import { formatError, needsApproval } from "../../../tools/toolUtils";
 
 export const notionModifyPageTool = tool({
     name: 'notion_modify_page',
@@ -51,10 +51,7 @@ IMPORTANT:
         page_id: z.string().nullable().describe('The ID of the page to update (from notion_query_database). MUST be null (not empty string, not period) to create a new page. Only provide a valid page ID string to update an existing page.'),
         properties_json: z.string().describe('JSON string with property names as keys and Notion-formatted values. Example: "{\\"Name\\": {\\"title\\": [{\\"text\\": {\\"content\\": \\"New Item\\"}}]}, \\"Status\\": {\\"select\\": {\\"name\\": \\"In Progress\\"}}}"'),
     }),
-    needsApproval: async (context, { page_id, properties_json }) => {
-        // Only require approval if channel has requireApproval enabled
-        return context?.channel?.requireApproval ?? false;
-    },
+    needsApproval,
     execute: async ({ page_id, properties_json }, runContext?: RunContext<SessionWithTracking<NotionDatabaseSession>>) => {
         console.log(chalk.bgMagenta.white.bold('🛠️ Executing notion_modify_page tool'));
         console.log(chalk.cyan('  Page ID: '), chalk.yellow(page_id ?? '(new page)'));

@@ -114,6 +114,7 @@ function SaveChannelButton({
                     output: channelData.output,
                     prompt: channelData.prompt || { text: '' },
                     isActive: channelData.isActive || true,
+                    requireApproval: channelData.requireApproval || false,
                 });
 
                 if (creation?.id) {

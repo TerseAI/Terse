@@ -3,7 +3,7 @@ import { ModelEvent, ChangedItem } from "../shared/ModelEvents";
 import { Session } from "../server";
 import { randomString } from "../utility/strings";
 import { IntegrationType } from "../shared/Integrations";
-import { detectSerializedError, ErrorContext, parseSerializedError } from "../tools/errors";
+import { detectSerializedError, ErrorContext, parseSerializedError } from "../tools/toolUtils";
 
 
 export async function* transformAgentStreamToModelEvents<T extends Session>(

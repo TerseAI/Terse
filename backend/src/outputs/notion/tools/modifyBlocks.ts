@@ -6,7 +6,7 @@ import { IntegrationType } from "../../../shared/Integrations";
 import { NotionPageSession } from "../NotionPageOutput";
 import { getBlockTypeName, describeBlocks } from "../../../utility/notion";
 import { SessionWithTracking } from "../../../agent/ChannelAgent/ChannelAgent";
-import { formatError } from "../../../tools/errors";
+import { formatError, needsApproval } from "../../../tools/toolUtils";
 
 /**
  * Constructs a Notion deep link URL to a specific block.
@@ -53,10 +53,7 @@ Examples:
 
 Example: "[{\"operation\": \"append\", \"blocks\": [{\"object\": \"block\", \"type\": \"paragraph\", \"paragraph\": {\"rich_text\": [{\"type\": \"text\", \"text\": {\"content\": \"New content\"}}]}}]}]"`),
     }),
-    needsApproval: async (context) => {
-        // Only require approval if channel has requireApproval enabled
-        return context?.channel?.requireApproval ?? false;
-    },
+    needsApproval,
     execute: async ({ operations_json }, runContext?: RunContext<SessionWithTracking<NotionPageSession>>) => {
         console.log(chalk.bgMagenta.white.bold('🛠️ Executing notion_modify_blocks tool'));
         console.log(chalk.cyan('  Operations JSON: '), chalk.greenBright(operations_json));

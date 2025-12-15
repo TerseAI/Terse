@@ -4,7 +4,7 @@ import { Client } from '@notionhq/client';
 import { NotionDatabaseSession } from "../NotionDatabaseOutput";
 import { IntegrationType } from "../../../shared/Integrations";
 import { SessionWithTracking } from "../../../agent/ChannelAgent/ChannelAgent";
-import { formatError } from "../../../tools/errors";
+import { formatError } from "../../../tools/toolUtils";
 
 // Helper function to extract readable values from Notion property objects
 function extractPropertyValue(property: any): any {

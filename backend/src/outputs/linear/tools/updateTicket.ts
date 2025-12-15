@@ -7,7 +7,7 @@ import { LinearTicketSession } from "../LinearTicketOutput";
 import { SessionWithTracking } from "../../../agent/ChannelAgent/ChannelAgent";
 import type { IssueUpdateInput } from "@linear/sdk/dist/_generated_documents";
 import { RunHistoryActionType } from "@prisma/client";
-import { formatError } from "../../../tools/errors";
+import { formatError, needsApproval } from "../../../tools/toolUtils";
 
 export const linearUpdateTicketTool = tool({
     name: 'linear_update_ticket',
@@ -44,10 +44,7 @@ COMMON UPDATE OPERATIONS:
         subscriberIds: z.array(z.string()).nullable().optional().describe('The IDs of users subscribing to this ticket.'),
         trashed: z.boolean().nullable().optional().describe('Whether the issue has been trashed.'),
     }),
-    needsApproval: async (context) => {
-        // Only require approval if channel has requireApproval enabled
-        return context?.channel?.requireApproval ?? false;
-    },
+    needsApproval,
     execute: async ({ 
         issueId, 
         title, 

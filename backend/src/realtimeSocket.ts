@@ -9,7 +9,6 @@ import { SendModelRequest, ModelEvent, ModelRequest, ToolApprovalResponse } from
 import { db } from "./prismaClient";
 import { ChannelAgent } from "./agent/ChannelAgent/ChannelAgent";
 import { RunContext } from "./agent/ChannelAgent/SystemPromptBuilder";
-import { finalizeRunStatus, markRunFailed } from "./agent/ChannelAgent/runHistory";
 import { ChannelWithRelations } from "./types/prisma";
 import { getInputConfigInclude, getOutputConfigInclude } from './utility/prismaIncludes';
 import { OutputFactory } from "./outputs/abstract/OutputFactory";

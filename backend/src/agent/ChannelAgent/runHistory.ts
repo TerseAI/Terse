@@ -3,6 +3,7 @@ import type { RunHistoryAction, RunHistoryStatus, RunHistoryTrigger } from "../.
 import { convertIntegrationTypeToPrismaIntegrationTypeForRunHistory } from "../../utility/typeConverters";
 import { ModelEvent } from "../../shared/ModelEvents";
 import type { RunHistoryChatEventType } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 
 export type RunTrigger = RunHistoryTrigger;
 
@@ -184,8 +185,8 @@ export async function clearPendingApprovalState(runId: string): Promise<void> {
     await prisma.run_history_records.update({
         where: { id: runId },
         data: {
-            pending_approval_state: null,
-            pending_approval_interruptions: null,
+            pending_approval_state: Prisma.JsonNull,
+            pending_approval_interruptions: Prisma.JsonNull,
         },
     });
 }

@@ -1,5 +1,6 @@
 import { RunContext } from "@openai/agents";
 
+// MARK: - Error Handling
 
 export async function formatError(context: RunContext, error: Error | unknown) : Promise<string> {
     return `[TERSE ERROR]:${JSON.stringify({context, error: error instanceof Error ? error.message : error})}`;
@@ -40,3 +41,17 @@ export type ErrorContext = {
     context: RunContext;
     error: string | unknown;
 }
+
+// MARK: - Approval
+
+/**
+ * Utility function to check if a tool needs approval based on the channel's requireApproval setting.
+ * This checks the context's channel configuration to determine if approval is required.
+ * 
+ * @param context - The RunContext from the tool execution
+ * @returns Promise that resolves to true if approval is required, false otherwise
+ */
+export async function needsApproval(context: RunContext<unknown>): Promise<boolean> {
+    return (context?.context as any)?.channel?.requireApproval ?? false;
+}
+
