@@ -837,6 +837,7 @@ enum RunHistoryActionType {
   update
   delete
   read
+  approval
 }
 
 // Pending approvals for tools that require human approval
@@ -928,6 +929,23 @@ model user_notification_destinations {
 enum NotificationDestinationType {
   SLACK
   EMAIL
+}
+
+model approval_slack_messages {
+  id                        String   @id @default(cuid())
+  run_id                    String
+  step_id                   String
+  slack_channel_id          String
+  slack_message_ts          String
+  user_slack_integration_id String
+  status                    String   // "pending", "approved", "rejected"
+  created_at                DateTime @default(now())
+  updated_at                DateTime @updatedAt
+
+  @@unique([run_id, step_id])
+  @@index([run_id])
+  @@index([step_id])
+  @@index([status])
 }
 
 model directive_records {

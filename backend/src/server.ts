@@ -65,12 +65,10 @@ import { getRunHistory, getChatHistory, getRunHistoryActions } from "./routes/ru
 import { getStats } from "./routes/stats";
 import { User as TicketUser } from "./shared/TicketSystem";
 import {
-  handleSlackWebhook,
   getCurrentSlackIntegration,
   slackOAuthCallback,
   getSlackChannels,
   getSlackIntegrations,
-  handleSlackInteraction,
   getSlackUsers,
 } from "./routes/slack";
 import { TicketManager } from "./ticketing/TicketIntegration";
@@ -90,6 +88,7 @@ import {
   getNotificationDestinations,
   updateNotificationDestination,
 } from "./routes/notificationDestinations";
+import { setupSlackBolt } from "./slack/boltApp";
 
 export type Session = {
   user: User;
@@ -110,6 +109,15 @@ try {
   process.exit(1);
 }
 
+// Initialize Slack Bolt app
+let slackReceiver: Awaited<ReturnType<typeof setupSlackBolt>> | null = null;
+try {
+  slackReceiver = await setupSlackBolt();
+} catch (error) {
+  console.error("❌ Failed to initialize Slack Bolt app:", error);
+  // Don't exit - Slack is optional
+}
+
 app.use(
   cors({
     origin: true,
@@ -123,6 +131,16 @@ app.use((req, res, next) => {
   console.log(`📥 [REQUEST] Headers present: ${Object.keys(req.headers).length} headers`);
   next();
 });
+
+/**
+ * CRITICAL: Mount Bolt router BEFORE any express.json()/urlencoded() middleware
+ * that would consume the body on the Slack route. Otherwise Slack request handling
+ * can hang/fail (common when "bolting on" to an existing Express app).
+ */
+if (slackReceiver?.receiver) {
+  app.use("/slack", slackReceiver.receiver.router);
+  console.log("✅ Slack Bolt router mounted at /slack");
+}
 
 // Parse JSON for all routes except Slack events and Linear webhook (which need raw body for signature verification)
 app.use((req, res, next) => {
@@ -370,15 +388,9 @@ app.get("/slack/oauth-callback", async (req, res) => {
   slackOAuthCallback(req, res);
 });
 
-app.use("/slack/events", express.raw({ type: "application/json" }));
-
-app.post("/slack/events", async (req, res) => {
-  await handleSlackWebhook(req, res);
-});
-
-app.post("/slack/interactions", async (req, res) => {
-  await handleSlackInteraction(req, res);
-});
+// Slack events and interactions are now handled by Bolt's ExpressReceiver
+// The receiver router is mounted at /slack, so Slack sends to /slack/events
+// Old handlers removed - Bolt handles both events and interactivity
 
 app.get("/slack/channels", authMiddleware, async (req, res) => {
   getSlackChannels(req, res);

@@ -1,7 +1,7 @@
 import { Switch } from "../../components/ui/switch";
 import { RunHistoryActionType } from "../../shared/RunHistoryTypes";
 import { ChannelNotificationSettings as ChannelNotificationSettingsType } from "../../shared/types";
-import { Plus, Pencil, Trash2, Eye, AlertTriangle } from "lucide-react";
+import { Plus, Pencil, Trash2, Eye, AlertTriangle, CheckCircle } from "lucide-react";
 import { Label } from "../../components/ui/label";
 import { Button } from "../../components/ui/button";
 import { useNotificationDestinations } from "../../hooks/api/useNotificationDestinations";
@@ -111,6 +111,7 @@ const EVENT_TYPE_OPTIONS: { value: RunHistoryActionType; label: string; icon: Re
     { value: "update", label: "Update", icon: <Pencil className="h-4 w-4" /> },
     { value: "delete", label: "Delete", icon: <Trash2 className="h-4 w-4" /> },
     { value: "read", label: "Read", icon: <Eye className="h-4 w-4" /> },
+    { value: "approval", label: "Approval", icon: <CheckCircle className="h-4 w-4" /> },
 ];
 
 export default ChannelNotificationSettings;

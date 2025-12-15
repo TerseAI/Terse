@@ -33,6 +33,7 @@
     "@openai/agents": "^0.3.3",
     "@openai/agents-core": "^0.3.4",
     "@prisma/client": "^6.19.0",
+    "@slack/bolt": "^4.6.0",
     "@slack/web-api": "^7.9.3",
     "@socket.io/redis-adapter": "^8.3.0",
     "@turbopuffer/turbopuffer": "^1.10.0",

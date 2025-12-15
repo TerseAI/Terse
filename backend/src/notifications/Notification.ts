@@ -2,7 +2,8 @@ import { NotificationDestinationType } from "@prisma/client";
 import { db } from "../prismaClient";
 import { RunHistoryAction } from "../shared/RunHistoryTypes";
 import { User, Channel, UserNotificationDestination, AutomationNotificationSettings } from "../types/prisma";
-import { formatNotificationMessage, sendSlackMessage } from "../utility/slack";
+import { formatNotificationMessage, sendSlackMessage, sendSlackApprovalMessage } from "../utility/slack";
+import { generateApprovalSummary } from "../utility/approvalSummary";
 
 export class NotificationManager {
     private user: User;
@@ -13,7 +14,7 @@ export class NotificationManager {
         this.channel = channel;
     }
 
-    async notify(runAction: RunHistoryAction) {
+    async notify(runAction: RunHistoryAction, runId?: string) {
         // Get the notification settings for the automation
         const notificationSettings: AutomationNotificationSettings | null = await db().automation_notification_settings.findFirst({
             where: {
@@ -42,8 +43,23 @@ export class NotificationManager {
             return;
         }
 
-        if (!notificationSettings.action_types.includes(runAction.type)) {
+        // Type assertion needed until Prisma migration is run
+        const actionType = runAction.type as any;
+        if (!notificationSettings.action_types.includes(actionType)) {
             console.log(`Notification settings for automation ${this.channel.name} do not include action ${runAction.type}. Skipping`);
+            return;
+        }
+
+        // Handle approval notifications specially
+        if (runAction.type === 'approval' && runId && runAction.step_id) {
+            switch (notificationDestinations.destination_type) {
+                case NotificationDestinationType.SLACK:
+                    await notifyApprovalRequest(notificationDestinations, runId, runAction, this.channel, this.user.id);
+                    break;
+                case NotificationDestinationType.EMAIL:
+                    await notifyEmail(notificationDestinations, runAction);
+                    break;
+            }
             return;
         }
 
@@ -75,6 +91,62 @@ async function notifySlack(notificationDestination: UserNotificationDestination,
         notificationDestination.slack_integration_id,
         notificationDestination.slack_channel_id,
         message
+    );
+}
+
+async function notifyApprovalRequest(
+    notificationDestination: UserNotificationDestination,
+    runId: string,
+    runAction: RunHistoryAction,
+    channel: Channel,
+    userId: string
+) {
+    if (!notificationDestination.slack_integration_id) {
+        console.log(`[notifyApprovalRequest] No Slack integration ID found. Skipping.`);
+        return;
+    }
+
+    if (!notificationDestination.slack_channel_id) {
+        console.log(`[notifyApprovalRequest] No Slack channel ID configured. Skipping.`);
+        return;
+    }
+
+    if (!runAction.step_id) {
+        console.log(`[notifyApprovalRequest] No step_id found in runAction. Skipping.`);
+        return;
+    }
+
+    // Extract tool name and arguments from the action details
+    // The details format is: "The bot is requesting approval to execute: {toolName} with arguments: {arguments}"
+    const detailsMatch = runAction.details.match(/execute: ([^ ]+) with arguments: (.+)/);
+    const toolName = detailsMatch ? detailsMatch[1] : runAction.target;
+    let toolArguments: string | object = detailsMatch ? detailsMatch[2] : runAction.details;
+    
+    // Try to parse tool arguments as JSON, fallback to string if it fails
+    try {
+        toolArguments = JSON.parse(toolArguments as string);
+    } catch {
+        // Keep as string if not valid JSON
+    }
+
+    // Generate human-readable summary using AI
+    const summary = await generateApprovalSummary(
+        runId,
+        toolName,
+        toolArguments,
+        channel.id,
+        userId
+    );
+
+    await sendSlackApprovalMessage(
+        notificationDestination.slack_integration_id,
+        notificationDestination.slack_channel_id,
+        runId,
+        runAction.step_id,
+        summary, // Use summary instead of toolName
+        '', // Empty string for toolArguments since we're using summary
+        channel.name,
+        channel.id
     );
 }
 

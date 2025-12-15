@@ -518,13 +518,13 @@ ${this.inputEvent!.formatForChannelAgent()}
                                     action: `Approval requested for ${interruption.name}`,
                                     integration,
                                     target: interruption.name,
-                                    details: `The bot is requesting approval to execute: ${interruption.name} with arguments: ${interruption.arguments}`,
+                                    details: `The bot is requesting approval to execute: ${interruption.name} with arguments: ${JSON.stringify(interruption.arguments)}`,
                                     step_id: stepId,
-                                    type: 'update', // Approval requests are typically for write operations
+                                    type: 'approval',
                                     isReadOnly: false,
                                 };
 
-                                await this.notificationManager.notify(approvalAction);
+                                await this.notificationManager.notify(approvalAction, this.runContext.runId);
                             } catch (error) {
                                 console.error('Failed to send approval request notification:', error);
                             }

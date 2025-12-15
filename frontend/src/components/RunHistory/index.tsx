@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import RunHistoryEmptyState from "./RunHistoryEmptyState"
 import RunHistoryToolBar from "./RunHistoryToolBar";
 import RunHistoryItem from "./RunHistoryItem";
@@ -13,6 +14,7 @@ type RunHistoryProps = {
 };
 
 export default function RunHistory({ channelId }: RunHistoryProps) {
+    const [searchParams, setSearchParams] = useSearchParams();
     const [currentPage, setCurrentPage] = useState(1);
     const [runsPerPage, setRunsPerPage] = useState(10);
 
@@ -24,9 +26,12 @@ export default function RunHistory({ channelId }: RunHistoryProps) {
         from: undefined,
         to: undefined
     });
-    const [openDrawerRunId, setOpenDrawerRunId] = useState<string | null>(null);
-    const [isDrawerFullscreen, setIsDrawerFullscreen] = useState(false);
-    const [isInitialDrawerOpen, setIsInitialDrawerOpen] = useState(true);
+    
+    // Get runId from URL params for deep linking
+    const urlRunId = searchParams.get('runId');
+    const [openDrawerRunId, setOpenDrawerRunId] = useState<string | null>(urlRunId || null);
+    const [isDrawerFullscreen, setIsDrawerFullscreen] = useState(!!urlRunId); // Fullscreen when opened via deep link
+    const [isInitialDrawerOpen, setIsInitialDrawerOpen] = useState(!!urlRunId);
     
     // Keep a reference to the currently viewed run so it doesn't disappear if filtered out
     const pinnedRunRef = useRef<RunHistoryRecord | null>(null);
@@ -39,6 +44,20 @@ export default function RunHistory({ channelId }: RunHistoryProps) {
         dateRange,
         selectedStatuses,
     });
+
+    // Handle URL parameter changes for deep linking
+    useEffect(() => {
+        const urlRunId = searchParams.get('runId');
+        if (urlRunId && urlRunId !== openDrawerRunId) {
+            setOpenDrawerRunId(urlRunId);
+            setIsInitialDrawerOpen(true);
+            setIsDrawerFullscreen(true); // Open fullscreen when opened via deep link
+        } else if (!urlRunId && openDrawerRunId) {
+            // If URL param is removed but drawer is still open, close it
+            setOpenDrawerRunId(null);
+            setIsDrawerFullscreen(false);
+        }
+    }, [searchParams, openDrawerRunId]);
 
     // Update the pinned run reference when we have a new run with the open drawer ID
     useEffect(() => {
@@ -153,14 +172,26 @@ export default function RunHistory({ channelId }: RunHistoryProps) {
                                     if (open) {
                                         setIsInitialDrawerOpen(true);
                                         setOpenDrawerRunId(run.id);
+                                        // Update URL to include runId for deep linking
+                                        const nextParams = new URLSearchParams(searchParams);
+                                        nextParams.set('runId', run.id);
+                                        setSearchParams(nextParams, { replace: true });
                                     } else {
                                         setOpenDrawerRunId(null);
                                         setIsDrawerFullscreen(false);
+                                        // Remove runId from URL when drawer closes
+                                        const nextParams = new URLSearchParams(searchParams);
+                                        nextParams.delete('runId');
+                                        setSearchParams(nextParams, { replace: true });
                                     }
                                 }}
                                 onNavigateToRun={(newRunId) => {
                                     setOpenDrawerRunId(newRunId);
                                     setIsInitialDrawerOpen(false);
+                                    // Update URL when navigating to a different run
+                                    const nextParams = new URLSearchParams(searchParams);
+                                    nextParams.set('runId', newRunId);
+                                    setSearchParams(nextParams, { replace: true });
                                 }}
                                 isFullscreen={isDrawerFullscreen}
                                 onFullscreenChange={setIsDrawerFullscreen}

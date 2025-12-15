@@ -15,6 +15,7 @@ import { OutputFactory } from "./outputs/abstract/OutputFactory";
 import { Session } from "./server";
 import { storeChatEvent, markRunFailed, finalizeRunStatus } from "./agent/ChannelAgent/runHistory";
 import { DirectiveTask, directiveTaskQueue } from "./agent/DirectiveAgent/DirectiveAgent";
+import { updateSlackApprovalMessage } from "./utility/slack";
 
 // Extended Socket type with userId property
 interface AuthenticatedSocket extends Socket {
@@ -365,6 +366,54 @@ export async function initializeRealtimeSocket(server: HttpServer): Promise<Serv
                         channelId: channel.id,
                     }
                 );
+
+                // Update Slack message if approval was processed from web app
+                try {
+                    const approvalMessage = await (prisma as any).approval_slack_messages.findFirst({
+                        where: {
+                            run_id: runId,
+                            step_id: message.step_id,
+                            status: 'pending',
+                        },
+                    });
+
+                    if (approvalMessage) {
+                        // Get tool name from run history action
+                        const runAction = await prisma.run_history_actions.findFirst({
+                            where: {
+                                run_history_record_id: runId,
+                                step_id: message.step_id,
+                            },
+                        });
+
+                        const toolName = runAction?.target || "Tool";
+                        const status = message.approved ? 'approved' : 'rejected';
+
+                        await updateSlackApprovalMessage(
+                            approvalMessage.user_slack_integration_id,
+                            approvalMessage.slack_channel_id,
+                            approvalMessage.slack_message_ts,
+                            status,
+                            toolName,
+                            channel.name
+                        );
+
+                        // Update database record
+                        await (prisma as any).approval_slack_messages.update({
+                            where: {
+                                id: approvalMessage.id,
+                            },
+                            data: {
+                                status: status,
+                            },
+                        });
+
+                        console.log(chalk.green(`[channel:chat:approval] Updated Slack message for approval`));
+                    }
+                } catch (error) {
+                    console.error(chalk.yellow('Failed to update Slack approval message:'), error);
+                    // Don't fail the approval if Slack update fails
+                }
 
                 // Finalize run status based on result
                 if (result.status === 'completed') {
