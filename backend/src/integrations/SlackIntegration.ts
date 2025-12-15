@@ -406,15 +406,22 @@ export class SlackEvent extends InputEvent {
 
         const isChannelOrGroup = (
             this.data.channelType === SlackChannelType.CHANNEL ||
-            this.data.channelType === SlackChannelType.GROUP
-        )
-        const isDM = (
-            this.data.channelType === SlackChannelType.IM ||
+            this.data.channelType === SlackChannelType.GROUP ||
             this.data.channelType === SlackChannelType.MPIM
         )
+        const isDM = (
+            this.data.channelType === SlackChannelType.IM
+        )
 
-        const matchesChannelOrGroup = isChannelOrGroup && this.data.channelId === slackConfig.channel_id;
-        const matchesDM = isDM && slackConfig?.listen_to_user_dms
+        // Helper function to check if user matches filter (if userIds is specified)
+        const matchesUserFilter = !slackConfig.user_ids || slackConfig.user_ids.length === 0 || slackConfig.user_ids.includes(this.data.userId);
+        
+        const matchesChannelOrGroup = isChannelOrGroup && 
+            this.data.channelId === slackConfig.channel_id && 
+            matchesUserFilter;
+        const matchesDM = isDM && 
+            slackConfig?.listen_to_user_dms && 
+            matchesUserFilter;
         return (
             matchesChannelOrGroup || matchesDM
         )

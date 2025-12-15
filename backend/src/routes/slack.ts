@@ -1,8 +1,8 @@
 import { Request, Response } from "express";
 import { db } from "../prismaClient";
-import { SlackChannelsResponse, SlackChannel } from "../shared/types";
+import { SlackChannelsResponse, SlackChannel, SlackUsersResponse } from "../shared/types";
 import { WebClient, LogLevel } from "@slack/web-api";
-import { Channel } from "@slack/web-api/dist/types/response/ConversationsListResponse";
+import { Member as SlackUser } from "@slack/web-api/dist/types/response/UsersListResponse";
 import chalk from "chalk";
 import { User, UserSlackIntegrationWithUser } from "../types/prisma";
 import { SlackIntegrationManager, isValidSlackSig, SlackMessageEvent } from '../integrations/SlackIntegration';
@@ -183,15 +183,8 @@ export const getSlackChannels = async (req: Request, res: Response) => {
         types: "mpim",
         exclude_archived: true,
         limit: 1000,
-      }),
+      })
     ]);
-
-    const formatChannelSummary = (channels: Channel[] | undefined, type: string) => 
-      channels?.map(c => `${c.name}(is_member=${c.is_member})`).join(', ') || 'none';
-    
-    logger.debug(`🔵 [SLACK CHANNELS] public: ${publicChannels.channels?.length || 0}`, { publicCount: publicChannels.channels?.length || 0, summary: formatChannelSummary(publicChannels.channels as Channel[], 'public'), integrationId });
-    logger.debug(`🔵 [SLACK CHANNELS] private: ${privateChannels.channels?.length || 0}`, { privateCount: privateChannels.channels?.length || 0, summary: formatChannelSummary(privateChannels.channels as Channel[], 'private'), integrationId });
-    logger.debug(`🔵 [SLACK CHANNELS] mpim: ${mpimChannels.channels?.length || 0}`, { mpimCount: mpimChannels.channels?.length || 0, summary: formatChannelSummary(mpimChannels.channels as Channel[], 'mpim'), integrationId });
 
     const channels: SlackChannel[] = [];
 
@@ -268,6 +261,71 @@ export const getSlackChannels = async (req: Request, res: Response) => {
     });
   }
 };
+
+export const getSlackUsers = async (req: Request, res: Response) => {
+  const user = req.session?.user;
+  if (!user) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+
+  const integrationId = req.query.integrationId as string;
+  if (!integrationId) {
+    return res.status(400).json({ error: "integrationId is required" });
+  }
+
+  try {
+    // Verify user owns this integration
+    // For Slack, integrationId is user_slack_integrations.id
+    const userSlackIntegration = await db().user_slack_integrations.findFirst({
+      where: {
+        id: integrationId,
+        user_id: user.id,
+      },
+      include: {
+        slack_integration: true,
+        user: true,
+      },
+    });
+
+    if (!userSlackIntegration || !userSlackIntegration.slack_integration) {
+      return res.status(404).json({ error: "Slack integration not found" });
+    }
+
+    const token = getToken(userSlackIntegration);
+    const isBotUser = userSlackIntegration.is_bot_user;
+
+    if (isBotUser) {
+      return res.status(400).json({ error: "Bot user cannot fetch users" });
+    }
+
+    const client = new WebClient(token, {
+      logLevel: LogLevel.ERROR,
+    });
+    const users = await client.users.list({});
+    if (!users.ok) {
+      return res.status(500).json({ error: "Failed to fetch users" });
+    }
+    if (!users.members || users.members.length === 0) {
+      return res.status(200).json({ users: [] });
+    }
+
+    const response: SlackUsersResponse = {
+      users: users.members
+        ?.filter((member): member is SlackUser & { id: string; name: string } =>
+          Boolean(member.id && member.name) && !member.is_bot
+        )
+        .map(member => ({
+          id: member.id,
+          name: member.name,
+        })) || [],
+    };
+
+    res.status(200).json(response);
+  } catch (error: any) {
+    console.error(chalk.red("Error fetching Slack users:"), error);
+    res.status(500).json({ error: "Failed to fetch users" });
+  }
+}
 
 export async function handleSlackInteraction(req: Request, res: Response) {
   res.sendStatus(200);
