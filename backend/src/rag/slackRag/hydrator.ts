@@ -53,8 +53,8 @@ export class SlackEventHydrator extends Hydrator<SlackEvent> {
 
         const { channelId, timestamp } = parsed;
 
-        // Find the user's Slack integration
-        const userSlackIntegration = await db().user_slack_integrations.findFirst({
+        // Find all Slack integrations for the user and prefer user token (is_bot_user = false) as it's more permissive
+        const userSlackIntegrations = await db().user_slack_integrations.findMany({
             where: { user_id: this.ctx.userId },
             include: { 
                 slack_integration: true,
@@ -62,12 +62,21 @@ export class SlackEventHydrator extends Hydrator<SlackEvent> {
             }
         });
 
-        if (!userSlackIntegration?.slack_integration) {
+        if (userSlackIntegrations.length === 0) {
             console.error(`No Slack integration found for user: ${this.ctx.userId}`);
             return null;
         }
 
-        const client = initializeSlackWebClient(userSlackIntegration as any);
+        // Prefer user token (is_bot_user = false) as it's more permissive, fall back to bot token if needed
+        const userSlackIntegration = userSlackIntegrations.find(usi => usi.is_bot_user === false) 
+            || userSlackIntegrations[0];
+
+        if (!userSlackIntegration?.slack_integration) {
+            console.error(`No valid Slack integration found for user: ${this.ctx.userId}`);
+            return null;
+        }
+
+        const client = initializeSlackWebClient(userSlackIntegration);
 
         try {
             // Fetch the specific message
@@ -85,8 +94,20 @@ export class SlackEventHydrator extends Hydrator<SlackEvent> {
             }
 
             // Get channel info
-            const channelInfo = await client.conversations.info({ channel: channelId });
-            const channelName = (channelInfo.channel as any)?.name;
+            let channelName: string | undefined;
+            try {
+                const channelInfo = await client.conversations.info({ channel: channelId });
+                channelName = (channelInfo.channel as any)?.name;
+            } catch (channelError: any) {
+                // Handle channel not found or access denied errors
+                const errorCode = channelError?.data?.error || channelError?.code;
+                if (errorCode === 'channel_not_found' || errorCode === 'not_in_channel' || errorCode === 'missing_scope') {
+                    console.error(`Channel not found or access denied for channelId: ${channelId} (permalink: ${permalink}). Error: ${errorCode}`);
+                } else {
+                    console.error(`Failed to fetch channel info for channelId: ${channelId}`, channelError);
+                }
+                // Continue without channel name
+            }
 
             // Get user info
             let userName: string | undefined;
@@ -112,8 +133,20 @@ export class SlackEventHydrator extends Hydrator<SlackEvent> {
             };
 
             return new SlackEvent(eventData);
-        } catch (error) {
-            console.error(`Failed to fetch Slack message: ${permalink}`, error);
+        } catch (error: any) {
+            // Handle specific Slack API errors
+            const errorCode = error?.data?.error || error?.code;
+            const errorMessage = error?.data?.error || error?.message || 'Unknown error';
+            
+            if (errorCode === 'channel_not_found') {
+                console.error(`Channel not found: ${channelId} (permalink: ${permalink})`);
+            } else if (errorCode === 'not_in_channel') {
+                console.error(`Not in channel: ${channelId} (permalink: ${permalink}). User may not have access to this channel.`);
+            } else if (errorCode === 'missing_scope') {
+                console.error(`Missing scope for channel: ${channelId} (permalink: ${permalink}). Required scopes may not be granted.`);
+            } else {
+                console.error(`Failed to fetch Slack message: ${permalink}`, error);
+            }
             return null;
         }
     }
