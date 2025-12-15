@@ -91,6 +91,15 @@ export type SlackChannelsResponse = {
   selectedChannelId: string | null;
 };
 
+export type SlackUserResponse = {
+  id: string;
+  name: string;
+};
+
+export type SlackUsersResponse = {
+  users: SlackUserResponse[];
+}
+
 /**
  * Slack channel type enum
  */
