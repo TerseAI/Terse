@@ -87,6 +87,14 @@ export async function finalizeRunStatus(runId: string, status: Extract<RunHistor
     });
 }
 
+export async function markRunInProgress(runId: string): Promise<void> {
+    const prisma = db();
+    await prisma.run_history_records.update({
+        where: { id: runId },
+        data: { status: "in_progress" },
+    });
+}
+
 export type FailureStage = 'filter' | 'agent';
 
 export async function markRunFailed(runId: string, errorMessage: string, stage?: FailureStage): Promise<void> {
@@ -174,8 +182,6 @@ export async function getPendingApprovalState(runId: string): Promise<{
         return null;
     }
 
-    // Prisma returns JSONB as a parsed object, so we need to stringify it
-    // Ensure it's a string for RunState.fromString()
     const stateValue = record.pending_approval_state;
     const serializedState = typeof stateValue === 'string' 
         ? stateValue 

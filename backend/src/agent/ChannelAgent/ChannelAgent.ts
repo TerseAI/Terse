@@ -20,7 +20,7 @@ import { IntegrationType } from '../../shared/Integrations';
 import { InputImageContent, InputTextContent } from 'openai/resources/conversations/conversations.mjs';
 import { runnerFactory } from '../runner';
 import { NotificationManager } from '../../notifications/Notification';
-import { storePendingApprovalState, getPendingApprovalState, clearPendingApprovalState, storeChatEvent } from './runHistory';
+import { storePendingApprovalState, getPendingApprovalState, clearPendingApprovalState, storeChatEvent, markRunInProgress } from './runHistory';
 
 
 export class ChannelAgent<T extends Session, TConfig extends ConfigInstance> {
@@ -150,6 +150,9 @@ export class ChannelAgent<T extends Session, TConfig extends ConfigInstance> {
             state.reject(interruption);
         }
 
+        // Move run back to in-progress now that we're resuming execution
+        await markRunInProgress(this.runContext.runId);
+
         const runner = runnerFactory({
             channelId: this.channel.id,
             runId: this.runContext.runId,
@@ -214,12 +217,19 @@ export class ChannelAgent<T extends Session, TConfig extends ConfigInstance> {
         // The interruption object should be compatible with state.approve/reject
         const interruption = storedInterruption as RunToolApprovalItem;
 
+        console.log('🔧 State', state._context);
+        console.log('🔧 Decision', decision);
+        console.log('🔧 Interruption', interruption);
+
         // Apply decision using the stored interruption
         if (decision === 'approve') {
             state.approve(interruption);
         } else {
             state.reject(interruption);
         }
+
+        // Move run back to in-progress now that we're resuming execution
+        await markRunInProgress(this.runContext.runId);
 
         // Clear pending approval state
         await clearPendingApprovalState(this.runContext.runId);
