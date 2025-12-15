@@ -4,6 +4,7 @@ import { EmbeddingProvider, Search, SearchItem, SearchError, EmbeddingError, Ran
 import { Turbopuffer } from "@turbopuffer/turbopuffer";
 import { getHydrator } from "./HydratorRegistry";
 import { RAGNamespace, NamespaceToHydratorType } from "../types/rag";
+import logger from "../logger";
 
 const tpuf = new Turbopuffer({
     apiKey: settings.turbopuffer.apiKey,
@@ -90,7 +91,7 @@ export class TurboPufferSearch<
             const hydrationPromises = Array.from(groupedByType.entries()).map(async ([entityType, items]) => {
                 const hydrator = getHydrator<T>(entityType);
                 if (!hydrator) {
-                    console.warn(`No hydrator found for entityType: ${entityType}. Skipping ${items.length} items.`);
+                    logger.warn(`No hydrator found for entityType: ${entityType}. Skipping ${items.length} items.`, { entityType, itemCount: items.length });
                     return [];
                 }
 
@@ -102,7 +103,7 @@ export class TurboPufferSearch<
                         distance: distanceMap.get(h.entityId) ?? Infinity
                     }));
                 } catch (error) {
-                    console.error(`Error hydrating items of type ${entityType}:`, error);
+                    logger.error(`Error hydrating items of type ${entityType}`, { error, entityType, itemCount: items.length });
                     throw new SearchError(`Failed to hydrate ${entityType} items`, error as Error);
                 }
             });

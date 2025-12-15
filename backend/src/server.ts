@@ -90,6 +90,7 @@ import {
   getNotificationDestinations,
   updateNotificationDestination,
 } from "./routes/notificationDestinations";
+import logger from "./logger";
 
 export type Session = {
   user: User;
@@ -104,9 +105,9 @@ const server = createServer(app);
 
 try {
   await initializeRealtimeSocket(server);
-  console.log("✅ Socket.IO server initialized");
+  logger.info("✅ Socket.IO server initialized");
 } catch (error) {
-  console.error("❌ Failed to initialize Socket.IO server:", error);
+  logger.error("❌ Failed to initialize Socket.IO server", { error });
   process.exit(1);
 }
 
@@ -117,10 +118,51 @@ app.use(
   })
 );
 
-// Request logging middleware - logs ALL incoming requests
-app.use((req, res, next) => {
-  console.log(`📥 [REQUEST] ${req.method} ${req.path}`);
-  console.log(`📥 [REQUEST] Headers present: ${Object.keys(req.headers).length} headers`);
+// Access logging middleware - comprehensive request/response logging
+app.use((req: Request, res: Response, next: NextFunction) => {
+  const startTime = Date.now();
+  const requestId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+  
+  // Capture request details
+  const requestInfo = {
+    requestId,
+    method: req.method,
+    path: req.path,
+    query: Object.keys(req.query).length > 0 ? req.query : undefined,
+    ip: req.ip || req.socket.remoteAddress || 'unknown',
+    userAgent: req.get('user-agent'),
+    contentType: req.get('content-type'),
+    contentLength: req.get('content-length') ? parseInt(req.get('content-length') || '0') : undefined,
+    userId: (req.session?.user as User)?.id,
+  };
+
+  // Log incoming request
+  logger.info(`📥 ${req.method} ${req.path}`, requestInfo);
+
+  // Capture response details
+  const originalSend = res.send;
+  res.send = function (body: any) {
+    const duration = Date.now() - startTime;
+    const responseInfo = {
+      requestId,
+      method: req.method,
+      path: req.path,
+      statusCode: res.statusCode,
+      duration: `${duration}ms`,
+      contentLength: res.get('content-length') ? parseInt(res.get('content-length') || '0') : undefined,
+      userId: (req.session?.user as User)?.id,
+    };
+
+    // Log response
+    if (res.statusCode >= 400) {
+      logger.warn(`📤 ${req.method} ${req.path} ${res.statusCode}`, responseInfo);
+    } else {
+      logger.info(`📤 ${req.method} ${req.path} ${res.statusCode}`, responseInfo);
+    }
+
+    return originalSend.call(this, body);
+  };
+
   next();
 });
 
@@ -461,8 +503,12 @@ app.delete("/notification-destinations/:id", authMiddleware, async (req, res) =>
  * This catches errors from async route handlers
  */
 app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
-  console.error("❌ Express Error Handler:", err);
-  console.error("Stack:", err.stack);
+  logger.error("❌ Express Error Handler", { 
+    error: err.message, 
+    stack: err.stack,
+    path: req.path,
+    method: req.method
+  });
   res.status(500).json({
     error: "Internal server error"
   });
@@ -471,17 +517,17 @@ app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
 // Global unhandled rejection handler - safety net for fire-and-forget promises
 // This catches any promises that reject without a .catch() handler
 process.on("unhandledRejection", (reason: unknown, promise: Promise<unknown>) => {
-  console.error("❌ Unhandled Promise Rejection (safety net):", reason);
-  if (reason instanceof Error) {
-    console.error("Stack:", reason.stack);
-  }
+  const errorMessage = reason instanceof Error ? reason.message : String(reason);
+  const stack = reason instanceof Error ? reason.stack : undefined;
+  logger.error("❌ Unhandled Promise Rejection (safety net)", { 
+    error: errorMessage,
+    stack
+  });
   // Log but don't crash - this is a safety net for promises we might have missed
 });
 
 server.listen(3001, () => {
-  console.log("🚀 Express backend running on http://localhost:3001");
-  console.log("📝 Logging is enabled - all console.log statements should appear");
-  console.log("📝 Testing log output...");
+  logger.info("🚀 Express backend running on http://localhost:3001");
 });
 
 // Graceful shutdown

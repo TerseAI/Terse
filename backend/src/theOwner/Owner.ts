@@ -4,6 +4,7 @@ import { ActivityOverview, Analyzer } from '../agent/agents/Analyzer';
 import chalk from 'chalk';
 import { Commit, GithubAppUnifiedEventRequest } from '../routes/GithubTypes';
 import { enrich, EnrichmentResult } from './Enrich';
+import logger from '../logger';
 
 class Owner {
     private searchSystem: Search;
@@ -16,12 +17,12 @@ class Owner {
 
     async handleUnifiedGitHubEvent(event: GithubAppUnifiedEventRequest): Promise<ActivityOverview | null> {
         const eventId = `${event.username}-${event.repositoryName}-${event.eventType}-${event.branch}-${Date.now()}`;
-        console.log(chalk.blue(`[${eventId}] The owner is handling a unified GitHub event`), event.eventType, event.repositoryName, event.username);
-        console.log(chalk.blue(`[${eventId}] Session user:`, this.session.user.github_username, 'Team ID:', this.session.teamId));
+        logger.info(`[${eventId}] The owner is handling a unified GitHub event`, { eventType: event.eventType, repositoryName: event.repositoryName, username: event.username, eventId });
+        logger.debug(`[${eventId}] Session user`, { githubUsername: this.session.user.github_username, teamId: this.session.teamId, userId: this.session.user.id, eventId });
         
         const analyzer = new Analyzer(this.session);
 
-        console.log(chalk.blue(`[${eventId}] Commits Shas`), event.commits.map(c => c.sha));
+        logger.debug(`[${eventId}] Commits Shas`, { commitShas: event.commits.map(c => c.sha), commitCount: event.commits.length, eventId });
 
         // Get the branch and attempt to enrich it
         let enrichmentResult: EnrichmentResult | null = null;
@@ -30,7 +31,7 @@ class Owner {
         }
 
         if (!enrichmentResult) {
-            console.warn(chalk.yellow.bold("✗ No enrichment result found. Unable to enrich activity event."));
+            logger.warn("✗ No enrichment result found. Unable to enrich activity event.", { eventId, branch: event.branch, commitCount: event.commits.length });
         }
 
         // Set commit context in the analyzer
@@ -55,8 +56,8 @@ class Owner {
 
         let finalSummary = analyzer.getAndClearFinalSummary();
 
-        console.log(chalk.blue(`[${eventId}] Final summary`), finalSummary);
-        console.log(chalk.green(`[${eventId}] Event processing completed successfully`));
+        logger.info(`[${eventId}] Final summary`, { eventId, hasSummary: !!finalSummary, summarySubActivities: finalSummary?.sub_activity_overviews?.length || 0 });
+        logger.info(`[${eventId}] Event processing completed successfully`, { eventId, repositoryName: event.repositoryName, eventType: event.eventType });
 
         return finalSummary;
     }

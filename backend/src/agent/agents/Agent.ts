@@ -7,6 +7,7 @@ import { EntityType } from '../../shared/Entities';
 import { ticketTools } from '../tools/ticketingTools';
 import { jiraTicketTools } from '../tools/jiraTicketingTools';
 import { TicketSystemType } from '../../shared/TicketSystem';
+import logger from '../../logger';
 // Enhanced session type with change tracking
 export type SessionWithTracking = Session & { 
   trackChange: (type: EntityType, id: string | number, eventType: ChangeEventType) => void 
@@ -34,7 +35,6 @@ export class AgentSession implements IAgentSession<SessionWithTracking> {
   async run(): Promise<StreamedRunResult<SessionWithTracking, Agent<SessionWithTracking, AgentOutputType>>> {
     const ticketSystemType = this.session.ticketManager?.type || TicketSystemType.Linear;
     const toolBoxType = ticketSystemType === TicketSystemType.Jira ? ToolBoxType.jira : ToolBoxType.linear;
-    console.log('🔧 Tool box type', toolBoxType);
     const agent = new Agent<SessionWithTracking, AgentOutputType>({
       name: 'LLM ticket manager',
       instructions: await systemPrompt(this.session),

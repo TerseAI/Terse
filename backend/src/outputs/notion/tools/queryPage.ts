@@ -6,6 +6,7 @@ import { GetPageResponse, PageObjectResponse } from "@notionhq/client/build/src/
 import { IntegrationType } from "../../../shared/Integrations";
 import { SessionWithTracking } from "../../../agent/ChannelAgent/ChannelAgent";
 import { formatError } from "../../../tools/errors";
+import logger from "../../../logger";
 
 // Helper function to extract readable values from Notion page property objects
 function extractPagePropertyValue(property: any): any {
@@ -235,7 +236,7 @@ This tool returns the current state of the page including all properties, metada
         // No parameters needed - returns complete page information
     }),
     execute: async ({ }, runContext?: RunContext<SessionWithTracking<NotionPageSession>>) => {
-        console.log("Executing notion_query_page tool");
+        logger.debug("Executing notion_query_page tool");
         if (!runContext?.context) {
             throw new Error("No context provided");
         }
@@ -269,7 +270,7 @@ This tool returns the current state of the page including all properties, metada
         try {
             blocks = await fetchAllBlocks(notion, pageId);
         } catch (error: any) {
-            console.warn("Error fetching blocks:", error.message);
+            logger.warn("Error fetching blocks", { error: error.message });
             // Continue even if blocks fail to fetch
         }
 

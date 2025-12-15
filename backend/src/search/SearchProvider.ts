@@ -1,5 +1,6 @@
 import chalk from 'chalk';
 import { Search, SearchError, EmbeddingError, EmbeddingProvider } from './search';
+import logger from '../logger';
 import { SearchItem, SearchResult, SearchOptions } from './SearchItem';
 import { Pool } from 'pg';
 import { toSql } from 'pgvector';
@@ -19,7 +20,7 @@ export class PostgreSQLSearch implements Search {
 
         const limit = Math.min(options.limit || 20, 100);
 
-        console.log(chalk.blue(`🔍 Search options: ${chalk.cyan(JSON.stringify(options, null, 2))}`));
+        logger.debug('🔍 Search options', { options });
 
         try {
             const results = await this.pool.query(
@@ -40,7 +41,7 @@ export class PostgreSQLSearch implements Search {
                 ]
             );
 
-            console.log(`results count: ${results.rows.length}`);
+            logger.debug(`Search results count`, { count: results.rows.length, query: query.substring(0, 100) });
 
             return results.rows.map(row => ({
                 id: row.id,
@@ -51,7 +52,7 @@ export class PostgreSQLSearch implements Search {
                 metadata: row.metadata || {}
             }));
         } catch (error) {
-            console.error('error:', error);
+            logger.error('Search database error', { error });
             throw new SearchError('Database error', error as Error);
         }
     }
@@ -90,7 +91,7 @@ export class PostgreSQLSearch implements Search {
                 ]
             );
         } catch (error) {
-            console.error('error inserting content:', error);
+            logger.error('Error inserting search content', { error, itemId: item.id, entityType: item.entityType, entityId: item.entityId });
             throw new SearchError('Database error', error as Error);
         }
     }
@@ -119,7 +120,7 @@ export class PostgreSQLSearch implements Search {
             embeddings.push(embedding);
         }
 
-        console.log(`inserting ${items.length} items`);
+        logger.info(`Bulk inserting search items`, { count: items.length });
 
         // Use proper parameterized queries for each item
         const client = await this.pool.connect();
@@ -130,7 +131,7 @@ export class PostgreSQLSearch implements Search {
                 const item = items[i];
                 const embeddingVector = toSql(embeddings[i]);
 
-                console.log(`inserting params. Content: ${item.content}, id: ${item.id}, type: ${item.entityType}, teamId: ${item.teamId}`);
+                logger.debug(`Inserting search item`, { itemId: item.id, entityType: item.entityType, entityId: item.entityId, teamId: item.teamId, contentLength: item.content?.length });
 
                 try {
                     await client.query(
@@ -152,11 +153,14 @@ export class PostgreSQLSearch implements Search {
                             item.metadata
                         ]
                     );
-                    console.log(`✅ Successfully inserted item ${i + 1}/${items.length}`);
+                    logger.debug(`✅ Successfully inserted search item`, { itemIndex: i + 1, totalItems: items.length, itemId: item.id });
                 } catch (insertError) {
-                    console.error(`❌ Failed to insert item ${i + 1}/${items.length}:`, insertError);
-                    console.error(`Item details:`, {
-                        id: item.id,
+                    logger.error(`❌ Failed to insert search item`, { 
+                        error: insertError instanceof Error ? insertError.message : String(insertError), 
+                        stack: insertError instanceof Error ? insertError.stack : undefined,
+                        itemIndex: i + 1, 
+                        totalItems: items.length,
+                        itemId: item.id,
                         teamId: item.teamId,
                         entityType: item.entityType,
                         entityId: item.entityId,
@@ -168,9 +172,9 @@ export class PostgreSQLSearch implements Search {
             }
 
             await client.query('COMMIT');
-            console.log(`✅ Successfully committed all ${items.length} items`);
+            logger.info(`✅ Successfully committed all search items`, { count: items.length });
         } catch (error) {
-            console.error('❌ Transaction failed, rolling back:', error);
+            logger.error('❌ Transaction failed, rolling back', { error, itemCount: items.length });
             await client.query('ROLLBACK');
             throw new SearchError('Database error', error as Error);
         } finally {

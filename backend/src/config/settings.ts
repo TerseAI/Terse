@@ -126,6 +126,13 @@ export const settings = {
     secret: requireEnv('CLOUD_SCHEDULER_SECRET'),
   },
 
+  // Posthog Logs
+  posthog: {
+    apiKey: requireEnv('POSTHOG_API_KEY'),
+    serviceName: optionalEnv('POSTHOG_SERVICE_NAME', 'terse-backend'),
+    enableInDevelopment: optionalEnv('POSTHOG_ENABLE_IN_DEV', 'false') === 'true',
+  },
+
   // Optional configuration
   optional: {
     redisUrl: optionalEnv('REDIS_URL'),
