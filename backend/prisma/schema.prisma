@@ -768,6 +768,7 @@ enum RunHistoryChatEventType {
   FilterResult
   UserMessage
   Thinking
+  ToolApprovalResponse
 }
 
 // Run History tables

@@ -1,4 +1,4 @@
-import { Agent, AgentInputItem, AgentOutputType, Tool, RunResult, RunState, RunToolApprovalItem, Runner, run } from '@openai/agents';
+import { Agent, AgentInputItem, AgentOutputType, Tool, RunResult, RunState, RunToolApprovalItem, Runner, run, user } from '@openai/agents';
 import { Session } from '../../server';
 import { SystemPromptBuilder, RunContext, SystemPromptBuilderDependencies } from './SystemPromptBuilder';
 import { InputEvent } from '../../integrations/abstract/InputEvent';
@@ -21,6 +21,7 @@ import { InputImageContent, InputTextContent } from 'openai/resources/conversati
 import { runnerFactory } from '../runner';
 import { NotificationManager } from '../../notifications/Notification';
 import { storePendingApprovalState, getPendingApprovalState, clearPendingApprovalState, storeChatEvent, markRunInProgress } from './runHistory';
+import chalk from 'chalk';
 
 
 export class ChannelAgent<T extends Session, TConfig extends ConfigInstance> {
@@ -216,16 +217,26 @@ export class ChannelAgent<T extends Session, TConfig extends ConfigInstance> {
         // Use the stored interruption object directly (matching SDK pattern)
         // The interruption object should be compatible with state.approve/reject
         const interruption = storedInterruption as RunToolApprovalItem;
-
-        console.log('🔧 State', state._context);
-        console.log('🔧 Decision', decision);
-        console.log('🔧 Interruption', interruption);
-
+        
         // Apply decision using the stored interruption
         if (decision === 'approve') {
             state.approve(interruption);
         } else {
             state.reject(interruption);
+            // After rejecting, add a user message to the state's history asking what to do differently
+            // This prevents the agent from blindly retrying the same tool call
+            const rejectionMessage = user(`The tool call "${interruption.name}" was rejected. What should I do differently? Please ask me what changes you'd like me to make, or if you'd like me to skip this action entirely.`);
+            // Access the state's history and add the rejection message
+            // The RunState from OpenAI agents SDK should have a history property
+            const stateHistory = (state as any).history;
+            if (stateHistory && Array.isArray(stateHistory)) {
+                stateHistory.push(rejectionMessage);
+                console.log(chalk.yellow.bold("🔌 Added rejection message to state history"));
+            } else {
+                // If history is not directly accessible, try alternative approach
+                // We'll rely on the system prompt instructions to guide the agent
+                console.warn(chalk.yellow('Could not access state.history directly. The system prompt should guide the agent to ask what to do differently.'));
+            }
         }
 
         // Move run back to in-progress now that we're resuming execution

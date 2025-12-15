@@ -30,6 +30,7 @@ interface FunctionCallEvent {
     isRunning: boolean;
     isWaitingForApproval?: boolean;
     isRejected?: boolean;
+    isApproved?: boolean;
     isWaitingForUserInput?: boolean;
     isFailure?: boolean;
     parameters?: string;

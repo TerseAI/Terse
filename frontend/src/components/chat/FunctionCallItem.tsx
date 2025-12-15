@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ClockIcon, XMarkIcon, PaperAirplaneIcon, CheckIcon } from '@heroicons/react/24/outline';
+import { ClockIcon, XMarkIcon, PaperAirplaneIcon, CheckIcon, NoSymbolIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
 import Spin, { Size } from "../loading/Spin";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "../ui/accordion";
 import ToolCallParameters from "../ToolCallParameters";
@@ -8,7 +8,6 @@ import { useRunHistoryActions } from "../../hooks/useRunHistoryActions";
 import RunHistoryActionItem from "../RunHistory/RunHistoryActionItem";
 import { EntityType } from "../../shared/Entities";
 import { FunctionCallEvent } from "./Turn";
-import { ExclamationTriangleIcon } from "@heroicons/react/24/solid";
 import { Button } from "../ui/button";
 
 interface FunctionCallItemProps {
@@ -181,19 +180,21 @@ export default function FunctionCallItem({ call, isTurnFailure = false, index, o
                                 {call.isWaitingForApproval ? (
                                     <ClockIcon className="w-4 h-4 text-primary flex-shrink-0" />
                                 ) : call.isRejected ? (
-                                    <XMarkIcon className="w-4 h-4 text-red-500 flex-shrink-0" />
+                                    <NoSymbolIcon className="w-4 h-4 text-orange-500 flex-shrink-0" />
                                 ) : call.isFailure ? (
-                                    <ExclamationTriangleIcon className="w-4 h-4 text-red-500 flex-shrink-0" />
+                                    <XMarkIcon className="w-4 h-4 text-red-500 flex-shrink-0" />
+                                ) : call.isApproved ? (
+                                    <CheckCircleIcon className="w-4 h-4 text-primary flex-shrink-0" />
                                 ) : call.isWaitingForUserInput ? (
                                     <svg className="w-4 h-4 text-blue-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                                     </svg>
-                                ) : !call.isRunning ? (
+                                ) : call.isRunning ? (
+                                    <Spin size={Size.Tiny} />
+                                ) : (
                                     <svg className="w-4 h-4 text-primary flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                                     </svg>
-                                ) : (
-                                    <Spin size={Size.Tiny} />
                                 )}
                                 <div className="text-sm flex-1 text-left min-w-0 overflow-hidden">
                                     <span className="truncate block">
@@ -201,8 +202,11 @@ export default function FunctionCallItem({ call, isTurnFailure = false, index, o
                                         {call.isWaitingForApproval && (
                                             <span className="text-yellow-500 ml-1">(waiting for approval)</span>
                                         )}
+                                        {call.isApproved && (
+                                            <span className="text-primary ml-1">(approved)</span>
+                                        )}
                                         {call.isRejected && (
-                                            <span className="text-red-500 ml-1">(rejected)</span>
+                                            <span className="text-orange-500 ml-1">(rejected)</span>
                                         )}
                                         {call.isWaitingForUserInput && (
                                             <span className="text-blue-500 ml-1">(waiting for your input)</span>
@@ -272,10 +276,18 @@ export default function FunctionCallItem({ call, isTurnFailure = false, index, o
                     </div>
                 </div>
             )}
+            {call.isApproved && !call.isRunning && (
+                <div className="bg-primary/10 border border-primary/20 rounded-lg p-3 mt-2">
+                    <div className="flex items-center gap-2 text-sm text-primary">
+                        <CheckCircleIcon className="w-4 h-4" />
+                        <span>Approved</span>
+                    </div>
+                </div>
+            )}
             {call.isRejected && (
-                <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-3 mt-2">
-                    <div className="flex items-center gap-2 text-sm text-red-500">
-                        <XMarkIcon className="w-4 h-4" />
+                <div className="bg-orange-500/10 border border-orange-500/20 rounded-lg p-3 mt-2">
+                    <div className="flex items-center gap-2 text-sm text-orange-500">
+                        <NoSymbolIcon className="w-4 h-4" />
                         <span>Rejected</span>
                     </div>
                 </div>

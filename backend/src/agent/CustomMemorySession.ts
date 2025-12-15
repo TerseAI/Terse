@@ -47,7 +47,8 @@ export class RunHistoryChatMemorySession implements Session {
     })
     const rawEvents = items.map(item => item.raw_event_json as AgentInputItem);
     const filteredEvents = filterReasoningItems(rawEvents);
-    return filteredEvents.map(cloneAgentItem);
+    const deduplicatedEvents = deduplicateItemsById(filteredEvents);
+    return deduplicatedEvents.map(cloneAgentItem);
   }
 
   async addItems(items: AgentInputItem[]): Promise<void> {
@@ -211,6 +212,48 @@ export function trimToLastTurns(items: AgentInputItem[], maxTurns: number): Agen
 
 function cloneAgentItem<T extends AgentInputItem>(item: T): T {
   return structuredClone(item);
+}
+
+/**
+ * Deduplicates items by their ID, keeping only the last occurrence of each ID.
+ * This prevents duplicate item errors when sending items to the OpenAI API.
+ */
+function deduplicateItemsById(items: AgentInputItem[]): AgentInputItem[] {
+  // Track the last index where each ID appears
+  const idToLastIndex = new Map<string, number>();
+  
+  for (let i = 0; i < items.length; i++) {
+    const itemAny = items[i] as any;
+    if (itemAny?.id && typeof itemAny.id === 'string') {
+      idToLastIndex.set(itemAny.id, i);
+    }
+  }
+  
+  // If no IDs found, no duplicates possible
+  if (idToLastIndex.size === 0) {
+    return items;
+  }
+  
+  // Filter to keep only items that are either:
+  // 1. The last occurrence of their ID, or
+  // 2. Don't have an ID
+  const result: AgentInputItem[] = [];
+  for (let i = 0; i < items.length; i++) {
+    const item = items[i];
+    const itemAny = item as any;
+    const id = itemAny?.id;
+    
+    if (!id || typeof id !== 'string') {
+      // Items without IDs are always included
+      result.push(item);
+    } else if (idToLastIndex.get(id) === i) {
+      // This is the last occurrence of this ID
+      result.push(item);
+    }
+    // Otherwise, skip this duplicate
+  }
+  
+  return result;
 }
 
 

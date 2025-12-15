@@ -340,6 +340,15 @@ export async function initializeRealtimeSocket(server: HttpServer): Promise<Serv
                     data: { status: 'in_progress' },
                 });
             }
+            const toolApprovalResponseEvent: ModelEvent = {
+                type: 'ToolApprovalResponse',
+                step_id: message.step_id,
+                approved: message.approved,
+            };
+            await storeChatEvent(runId, toolApprovalResponseEvent);
+            emitCacheInvalidationWithWildcard(user.id, 'runHistory', channel.id);
+            emitCacheInvalidationWithWildcard(user.id, 'chatHistory', runId);
+
 
             const runContext: RunContext = { runId };
             const channelAgent = new ChannelAgent(session, output, channel, runContext);

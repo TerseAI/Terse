@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { useChatHistory } from '@/hooks/api/useChatHistory';
 import { Chat } from '@/components/chat/Chat';
 import { RunHistoryStatus} from '@/shared/RunHistoryTypes';
-import { Failure, FilterResult, ModelEvent, ModelRequest, TextDelta, ToolCall, ToolCallComplete, UserMessage } from '@/shared/ModelEvents';
+import { Failure, FilterResult, ModelEvent, ModelRequest, TextDelta, ToolApprovalResponse, ToolCall, ToolCallComplete, UserMessage } from '@/shared/ModelEvents';
 import { Turn } from '@/components/chat/Turn';
 import { subscribeToChatEvents, sendChatMessage, sendToolApprovalResponse } from '@/socket';
 import { type ChatEventSubscription } from '@/components/chat/hooks/useCompletionSocket';
@@ -226,6 +226,22 @@ function convertRunHistoryEventsToTurns(events: ModelEvent[]): Turn[] {
                         fc.isWaitingForApproval = true;
                         fc.isRunning = false;
                         break;
+                    }
+                }
+                break;
+            }
+            case 'ToolApprovalResponse': {
+                const e = event as ToolApprovalResponse;
+                const step_id = e.step_id;
+                for (const t of turns) {
+                    const fc = t.function_calls.find(c => c.id === step_id);
+                    if (fc) {
+                        fc.isWaitingForApproval = false;
+                        if (e.approved) {
+                            fc.isApproved = true;
+                        } else {
+                            fc.isRejected = true;
+                        }
                     }
                 }
                 break;
