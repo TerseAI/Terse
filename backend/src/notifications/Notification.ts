@@ -1,4 +1,4 @@
-import { NotificationDestinationType } from "@prisma/client";
+import { NotificationDestinationType, RunHistoryActionType } from "@prisma/client";
 import { db } from "../prismaClient";
 import { RunHistoryAction } from "../shared/RunHistoryTypes";
 import { User, Channel, UserNotificationDestination, AutomationNotificationSettings, RunHistoryActionType } from "../types/prisma";
@@ -51,7 +51,7 @@ export class NotificationManager {
         }
 
         // Handle approval notifications specially
-        if (runAction.type === 'approval' && runId && runAction.step_id) {
+        if (runAction.type === RunHistoryActionType.approval && runId && runAction.step_id) {
             switch (notificationDestinations.destination_type) {
                 case NotificationDestinationType.SLACK:
                     await notifyApprovalRequest(notificationDestinations, runId, runAction, this.channel, this.user.id);

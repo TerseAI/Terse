@@ -62,7 +62,7 @@ export async function appendRunAction(
             details: action.details,
             url: action.url ?? null,
             step_id: stepId ?? action.step_id ?? null,
-            type: action.type as RunHistoryActionType, // Cast needed: Prisma client may need regeneration to include "approval" enum value  
+            type: action.type as RunHistoryActionType,
             is_read_only: action.isReadOnly ?? true,
         },
     });
@@ -101,12 +101,12 @@ export type FailureStage = 'filter' | 'agent';
 
 export async function markRunFailed(runId: string, errorMessage: string, stage?: FailureStage): Promise<void> {
     const prisma = db();
-    
+
     // Prefix error message with failure stage for easy identification
-    const prefixedMessage = stage 
+    const prefixedMessage = stage
         ? `[${stage.toUpperCase()}_ERROR] ${errorMessage}`
         : errorMessage;
-    
+
     await prisma.run_history_records.update({
         where: { id: runId },
         data: {
@@ -117,41 +117,35 @@ export async function markRunFailed(runId: string, errorMessage: string, stage?:
     });
 }
 
-/**
- * Stores a chat event in the database and returns the created event's ID
- */
 export async function storeChatEvent(runId: string, event: ModelEvent, timestamp?: Date | string): Promise<string> {
     const prisma = db();
-    
+
     // Use provided timestamp or current time
-    const eventTimestamp = timestamp 
+    const eventTimestamp = timestamp
         ? (typeof timestamp === 'string' ? new Date(timestamp) : timestamp)
         : new Date();
-    
+
     // Store the full event as JSON for easy deserialization
     const created = await prisma.run_history_chat_events.create({
         data: {
             run_history_record_id: runId,
             event_type: event.type as RunHistoryChatEventType,
-            event_json: event as Prisma.InputJsonValue, // Store full ModelEvent as JSON
+            event_json: event as Prisma.InputJsonValue,
             timestamp: eventTimestamp,
         },
         select: { id: true },
     });
-    
+
     return created.id;
 }
 
-/**
- * Stores pending approval state and interruptions in the database
- */
 export async function storePendingApprovalState(
     runId: string,
     serializedState: string,
     interruptions: RunToolApprovalItem[]
 ): Promise<void> {
     const prisma = db();
-    
+
     // Get user_id from run_history_record via automation
     const runRecord = await prisma.run_history_records.findUnique({
         where: { id: runId },
@@ -193,9 +187,6 @@ export async function storePendingApprovalState(
     });
 }
 
-/**
- * Retrieves pending approval state from the database
- */
 export async function getPendingApprovalState(runId: string): Promise<{
     serializedState: string;
     interruptions: RunToolApprovalItem[];
@@ -219,7 +210,7 @@ export async function getPendingApprovalState(runId: string): Promise<{
     // Type guard: validate interruptions array structure
     // Note: We store these as JSON, so we need to cast from Prisma.JsonValue
     const interruptionsValue = pendingApproval.interruptions;
-    const interruptions: RunToolApprovalItem[] = Array.isArray(interruptionsValue) 
+    const interruptions: RunToolApprovalItem[] = Array.isArray(interruptionsValue)
         ? (interruptionsValue as unknown as RunToolApprovalItem[])
         : [];
 
@@ -229,9 +220,6 @@ export async function getPendingApprovalState(runId: string): Promise<{
     };
 }
 
-/**
- * Clears pending approval state from the database
- */
 export async function clearPendingApprovalState(runId: string): Promise<void> {
     const prisma = db();
     // Delete the pending approval record
