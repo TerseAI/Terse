@@ -1,7 +1,7 @@
 import { NotificationDestinationType, RunHistoryActionType } from "@prisma/client";
 import { db } from "../prismaClient";
 import { RunHistoryAction } from "../shared/RunHistoryTypes";
-import { User, Channel, UserNotificationDestination, AutomationNotificationSettings, RunHistoryActionType } from "../types/prisma";
+import { User, Channel, UserNotificationDestination, AutomationNotificationSettings } from "../types/prisma";
 import { formatNotificationMessage, sendSlackMessage, sendSlackApprovalMessage } from "../utility/slack";
 import { generateApprovalSummary } from "../utility/approvalSummary";
 import logger from "../logger";

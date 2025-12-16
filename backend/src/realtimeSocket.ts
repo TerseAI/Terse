@@ -264,10 +264,10 @@ export async function initializeRealtimeSocket(server: HttpServer): Promise<Serv
         // Listen for tool approval responses
         socket.on("channel:chat:approval", async (payload: { runId: string; message: ToolApprovalResponse }) => {
             const { runId, message } = payload;
-            console.log(chalk.blue.bold(`[channel:chat:approval] Received approval response for runId: ${runId}`), message, userId);
+            logger.info(`[channel:chat:approval] Received approval response`, { message, userId, runId });
 
             if (!runId) {
-                console.error(chalk.red.bold(`[channel:chat:approval] No runId provided`));
+                logger.error(`[channel:chat:approval] No runId provided`);
                 return;
             }
 
@@ -335,12 +335,12 @@ export async function initializeRealtimeSocket(server: HttpServer): Promise<Serv
                                     },
                                 });
 
-                                console.log(chalk.green(`[channel:chat:approval] Updated Slack message for approval`));
+                                logger.info(`[channel:chat:approval] Updated Slack message for approval`);
                             }
                         }
                     }
                 } catch (error) {
-                    console.error(chalk.yellow('Failed to update Slack approval message:'), error);
+                    logger.error('Failed to update Slack approval message:', { error });
                     // Don't fail the approval if Slack update fails
                 }
             }

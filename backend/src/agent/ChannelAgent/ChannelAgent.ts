@@ -205,11 +205,11 @@ export class ChannelAgent<T extends Session, TConfig extends ConfigInstance> {
             const stateWithHistory = state as unknown as { history?: AgentInputItem[] };
             if (stateWithHistory.history && Array.isArray(stateWithHistory.history)) {
                 stateWithHistory.history.push(rejectionMessage);
-                console.log(chalk.yellow.bold("🔌 Added rejection message to state history"));
+                logger.info("[resumeFromPendingApproval] Added rejection message to state history");
             } else {
                 // If history is not directly accessible, try alternative approach
                 // We'll rely on the system prompt instructions to guide the agent
-                console.warn(chalk.yellow('Could not access state.history directly. The system prompt should guide the agent to ask what to do differently.'));
+                logger.warn('[resumeFromPendingApproval] Could not access state.history directly. The system prompt should guide the agent to ask what to do differently.');
             }
         }
 
