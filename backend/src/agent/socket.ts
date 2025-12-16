@@ -7,7 +7,6 @@ import { AgentSession } from "./agents/Agent";
 import { transformAgentStreamToModelEvents } from "./streaming";
 import type { Session } from "../server";
 import { ModelEvent, ModelRequest, SendModelRequest } from "../shared/ModelEvents";
-import chalk from "chalk";
 import { IAgentSession } from "./agents/AgentSession";
 import { getUserTicketManager } from "../types/user";
 import logger from "../logger";

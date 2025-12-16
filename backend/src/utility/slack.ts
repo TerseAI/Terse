@@ -128,8 +128,7 @@ export async function sendSlackApprovalMessage(
     channelId: string,
     runId: string,
     stepId: string,
-    summary: string, // Human-readable summary instead of toolName
-    toolArguments: string, // Kept for backward compatibility but may be empty if summary is used
+    summary: string,
     channelName: string,
     automationId?: string
 ): Promise<{ success: boolean; messageTs?: string }> {
@@ -144,7 +143,7 @@ export async function sendSlackApprovalMessage(
     });
 
     if (!userSlackIntegration?.slack_integration) {
-        console.error(`[sendSlackApprovalMessage] No Slack integration found for ID: ${userSlackIntegrationId}`);
+        logger.error(`[sendSlackApprovalMessage] No Slack integration found for ID: ${userSlackIntegrationId}`);
         return { success: false };
     }
 
@@ -179,11 +178,7 @@ export async function sendSlackApprovalMessage(
                 {
                     type: 'mrkdwn' as const,
                     text: `*Action:*\n${summary}`,
-                },
-                ...(toolArguments ? [{
-                    type: 'mrkdwn' as const,
-                    text: `*Technical Details:*\n\`\`\`${toolArguments.substring(0, 200)}${toolArguments.length > 200 ? '...' : ''}\`\`\``,
-                }] : []),
+                }
             ],
         },
         {
@@ -246,15 +241,14 @@ export async function sendSlackApprovalMessage(
                     status: 'pending',
                 },
             });
-
-            console.log(`[sendSlackApprovalMessage] Successfully sent approval message to channel ${channelId} with ts ${result.ts}`);
+            logger.info(`[sendSlackApprovalMessage] Successfully sent approval message to channel ${channelId} with ts ${result.ts}`);
             return { success: true, messageTs: result.ts };
         } else {
-            console.error(`[sendSlackApprovalMessage] Failed to send message: ${result.error}`);
+            logger.error(`[sendSlackApprovalMessage] Failed to send message: ${result.error}`);
             return { success: false };
         }
     } catch (error) {
-        console.error(`[sendSlackApprovalMessage] Failed to send message:`, error);
+        logger.error(`[sendSlackApprovalMessage] Failed to send message:`, { error });
         return { success: false };
     }
 }
@@ -280,7 +274,7 @@ export async function updateSlackApprovalMessage(
     });
 
     if (!userSlackIntegration?.slack_integration) {
-        console.error(`[updateSlackApprovalMessage] No Slack integration found for ID: ${userSlackIntegrationId}`);
+        logger.error(`[updateSlackApprovalMessage] No Slack integration found for ID: ${userSlackIntegrationId}`);
         return false;
     }
 
@@ -358,14 +352,14 @@ export async function updateSlackApprovalMessage(
         });
 
         if (result.ok) {
-            console.log(`[updateSlackApprovalMessage] Successfully updated approval message in channel ${channelId} to status: ${status}`);
+            logger.info(`[updateSlackApprovalMessage] Successfully updated approval message in channel ${channelId} to status: ${status}`);
             return true;
         } else {
-            console.error(`[updateSlackApprovalMessage] Failed to update message: ${result.error}`);
+            logger.error(`[updateSlackApprovalMessage] Failed to update message: ${result.error}`);
             return false;
         }
     } catch (error) {
-        console.error(`[updateSlackApprovalMessage] Failed to update message:`, error);
+        logger.error(`[updateSlackApprovalMessage] Failed to update message:`, { error });
         return false;
     }
 }

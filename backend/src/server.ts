@@ -115,7 +115,7 @@ let slackReceiver: Awaited<ReturnType<typeof setupSlackBolt>> | null = null;
 try {
   slackReceiver = await setupSlackBolt();
 } catch (error) {
-  console.error("❌ Failed to initialize Slack Bolt app:", error);
+  logger.error("❌ Failed to initialize Slack Bolt app:", { error });
   // Don't exit - Slack is optional
 }
 
@@ -181,7 +181,7 @@ app.use((req: Request, res: Response, next: NextFunction) => {
  */
 if (slackReceiver?.receiver) {
   app.use("/slack", slackReceiver.receiver.router);
-  console.log("✅ Slack Bolt router mounted at /slack");
+  logger.info("✅ Slack Bolt router mounted at /slack");
 }
 
 // Parse JSON for all routes except Slack events and Linear webhook (which need raw body for signature verification)

@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { generateSurveyQuestions } from '../agent/userPromptBuilder/generateSurveyQuestions';
 import { generateSurveyPrompt } from '../agent/userPromptBuilder/generateSurveyPrompt';
 import { GenerateSurveyQuestionsRequest, GenerateSurveyPromptRequest, GenerateSurveyQuestionsResponse, GenerateSurveyPromptResponse } from '../shared/PromptBuilderTypes';
+import logger from '../logger';
 
 export async function generateQuestionsRoute(req: Request, res: Response) {
   try {
@@ -25,7 +26,7 @@ export async function generateQuestionsRoute(req: Request, res: Response) {
 
     return res.json({ questions });
   } catch (error: any) {
-    console.error('Error generating questions:', error);
+    logger.error('Error generating questions:', { error });
     return res.status(500).json({ 
       error: 'Failed to generate questions',
       message: error.message 
@@ -66,7 +67,7 @@ export async function generatePromptRoute(req: Request, res: Response) {
 
     return res.json({ prompt });
   } catch (error: any) {
-    console.error('Error generating prompt:', error);
+    logger.error('Error generating prompt:', { error });
     return res.status(500).json({ 
       error: 'Failed to generate prompt',
       message: error.message 

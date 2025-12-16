@@ -173,17 +173,17 @@ export class ChannelAgent<T extends Session, TConfig extends ConfigInstance> {
 
         if (!storedInterruption) {
             // Log for debugging
-            console.error(`[resumeFromPendingApproval] Could not find interruption for step_id: ${stepId}`);
+            logger.error(`[resumeFromPendingApproval] Could not find interruption for step_id: ${stepId}`);
             const getInterruptionCallId = (int: RunToolApprovalItem): string | undefined => {
                 if (int.rawItem && typeof int.rawItem === 'object' && 'callId' in int.rawItem) {
                     return int.rawItem.callId as string | undefined;
                 }
                 return undefined;
             };
-            console.error(`[resumeFromPendingApproval] Available stored interruptions:`, pendingState.interruptions.map((int) => ({
+            logger.error(`[resumeFromPendingApproval] Available stored interruptions:`, { interruptions: pendingState.interruptions.map((int) => ({
                 callId: getInterruptionCallId(int),
                 name: int.name
-            })));
+            })) });
             throw new Error(`Could not find matching interruption for step_id ${stepId}`);
         }
 
@@ -196,20 +196,13 @@ export class ChannelAgent<T extends Session, TConfig extends ConfigInstance> {
             state.approve(interruption);
         } else {
             state.reject(interruption);
-            // After rejecting, add a user message to the state's history asking what to do differently
-            // This prevents the agent from blindly retrying the same tool call
             const rejectionMessage = user(`The tool call "${interruption.name}" was rejected. What should I do differently? Please ask me what changes you'd like me to make, or if you'd like me to skip this action entirely.`);
-            // Access the state's history and add the rejection message
-            // The RunState from OpenAI agents SDK may have a history property (not in public types)
-            // Use type assertion to access it safely - state is RunState<unknown, Agent<SessionWithTracking<T>, ...>>
             const stateWithHistory = state as unknown as { history?: AgentInputItem[] };
             if (stateWithHistory.history && Array.isArray(stateWithHistory.history)) {
                 stateWithHistory.history.push(rejectionMessage);
                 logger.info("[resumeFromPendingApproval] Added rejection message to state history");
             } else {
-                // If history is not directly accessible, try alternative approach
-                // We'll rely on the system prompt instructions to guide the agent
-                logger.warn('[resumeFromPendingApproval] Could not access state.history directly. The system prompt should guide the agent to ask what to do differently.');
+                logger.warn("[resumeFromPendingApproval] Could not access state.history directly.");
             }
         }
 
@@ -258,7 +251,6 @@ export class ChannelAgent<T extends Session, TConfig extends ConfigInstance> {
     }
 
     async flushPendingActions(stepId: string, toolName: string): Promise<ChangedItem[]> {
-        const notificationManager = new NotificationManager(this.session.user, this.channel);
         const changedItems: ChangedItem[] = [];
         const toolMetadata = this.toolMetadataMap.get(toolName);
         const isReadOnly = toolMetadata?.isReadOnly ?? true;
@@ -276,7 +268,7 @@ export class ChannelAgent<T extends Session, TConfig extends ConfigInstance> {
                     change_event_type: ChangeEventType.ACTION_EXECUTED
                 });
             }
-            await notificationManager.notify(action);
+            await this.notificationManager.notify(action);
         }
 
         this.pendingActions = [];
@@ -429,12 +421,7 @@ ${this.inputEvent!.formatForChannelAgent()}
         const hasInterruptions = result.interruptions && result.interruptions.length > 0;
 
         if (hasInterruptions) {
-            // Serialize the state for storage
             const serializedState = JSON.stringify(result.state);
-
-            // Store full interruption objects (not just metadata)
-            // This matches the SDK pattern where interruptions are stored separately
-            // and used directly with state.approve(interruption) or state.reject(interruption)
             const interruptionsToStore = result.interruptions.map((interruption: RunToolApprovalItem) => {
                 // Store the full interruption object, including rawItem which contains callId
                 return {
@@ -510,7 +497,7 @@ ${this.inputEvent!.formatForChannelAgent()}
 
                         await this.notificationManager.notify(approvalAction, this.runContext.runId);
                     } catch (error) {
-                        console.error('Failed to send approval request notification:', error);
+                        logger.error('Failed to send approval request notification:', { error });
                     }
                 }
             }

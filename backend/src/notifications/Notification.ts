@@ -3,7 +3,7 @@ import { db } from "../prismaClient";
 import { RunHistoryAction } from "../shared/RunHistoryTypes";
 import { User, Channel, UserNotificationDestination, AutomationNotificationSettings } from "../types/prisma";
 import { formatNotificationMessage, sendSlackMessage, sendSlackApprovalMessage } from "../utility/slack";
-import { generateApprovalSummary } from "../utility/approvalSummary";
+import { generateApprovalSummary } from "../agent/ApprovalSummaryAgent/ApprovalSummaryAgent";
 import logger from "../logger";
 
 export class NotificationManager {
@@ -101,40 +101,25 @@ async function notifyApprovalRequest(
     userId: string
 ) {
     if (!notificationDestination.slack_integration_id) {
-        console.log(`[notifyApprovalRequest] No Slack integration ID found. Skipping.`);
+        logger.debug(`[notifyApprovalRequest] No Slack integration ID found. Skipping.`);
         return;
     }
 
     if (!notificationDestination.slack_channel_id) {
-        console.log(`[notifyApprovalRequest] No Slack channel ID configured. Skipping.`);
+        logger.debug(`[notifyApprovalRequest] No Slack channel ID configured. Skipping.`);
         return;
     }
 
     if (!runAction.step_id) {
-        console.log(`[notifyApprovalRequest] No step_id found in runAction. Skipping.`);
+        logger.debug(`[notifyApprovalRequest] No step_id found in runAction. Skipping.`);
         return;
     }
 
-    // Extract tool name and arguments from the action details
-    // The details format is: "The bot is requesting approval to execute: {toolName} with arguments: {arguments}"
-    const detailsMatch = runAction.details.match(/execute: ([^ ]+) with arguments: (.+)/);
-    const toolName = detailsMatch ? detailsMatch[1] : runAction.target;
-    let toolArguments: string | object = detailsMatch ? detailsMatch[2] : runAction.details;
-    
-    // Try to parse tool arguments as JSON, fallback to string if it fails
-    try {
-        toolArguments = JSON.parse(toolArguments as string);
-    } catch {
-        // Keep as string if not valid JSON
-    }
-
-    // Generate human-readable summary using AI
-    const summary = await generateApprovalSummary(
+    const{ approvalSummary } = await generateApprovalSummary(
         runId,
-        toolName,
-        toolArguments,
+        userId,
         channel.id,
-        userId
+        runAction.step_id
     );
 
     await sendSlackApprovalMessage(
@@ -142,8 +127,7 @@ async function notifyApprovalRequest(
         notificationDestination.slack_channel_id,
         runId,
         runAction.step_id,
-        summary, // Use summary instead of toolName
-        '', // Empty string for toolArguments since we're using summary
+        approvalSummary,
         channel.name,
         channel.id
     );

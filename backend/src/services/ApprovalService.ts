@@ -7,7 +7,7 @@ import { storeChatEvent, markRunFailed, finalizeRunStatus, markRunInProgress } f
 import { ChannelAgent } from "../agent/ChannelAgent/ChannelAgent";
 import { ModelEvent } from "../shared/ModelEvents";
 import { emitCacheInvalidationWithWildcard } from "../realtimeSocket";
-import chalk from "chalk";
+import logger from "../logger";
 
 export type ApprovalRequest = {
     runId: string;
@@ -24,15 +24,8 @@ export type ApprovalResult = {
     error?: string;
 };
 
-/**
- * Centralized service for processing approval requests.
- * This handles the core business logic that is shared between
- * Slack and websocket interfaces.
- */
+
 export class ApprovalService {
-    /**
-     * Validates that the user has access to the run
-     */
     private static async validateUserAccess(runId: string, userId: string): Promise<{
         runRecord: { id: string; status: string; automation: { id: string; user_id: string } };
         channel: ChannelWithRelations;
@@ -71,9 +64,6 @@ export class ApprovalService {
         return { runRecord, channel };
     }
 
-    /**
-     * Creates the output and session for the channel
-     */
     private static async createOutputAndSession(
         channel: ChannelWithRelations,
         userId: string
@@ -112,15 +102,10 @@ export class ApprovalService {
         return { output, session };
     }
 
-    /**
-     * Processes an approval request and returns the result.
-     * This is the core business logic that both Slack and websocket use.
-     */
     static async processApproval(request: ApprovalRequest): Promise<ApprovalResult> {
         const { runId, stepId, approved, userId } = request;
-        
-        console.log(chalk.blue(`[ApprovalService] Processing approval for runId: ${runId}, stepId: ${stepId}, approved: ${approved}`));
 
+        logger.info(`[ApprovalService] Processing approval for runId: ${runId}, stepId: ${stepId}, approved: ${approved}`);
         try {
             // Validate user access and load channel
             const { runRecord, channel } = await this.validateUserAccess(runId, userId);
@@ -170,11 +155,9 @@ export class ApprovalService {
                     await finalizeRunStatus(runId, hasFinalOutput ? 'success' : 'failed');
                     emitCacheInvalidationWithWildcard(userId, 'runHistory', channel.id);
                 } catch (e) {
-                    console.error(chalk.yellow('Failed to finalize run status'), e);
+                    logger.error('Failed to finalize run status', { error: e });
                 }
-                
-                console.log(chalk.green(`[ApprovalService] Successfully processed approval for runId: ${runId}, stepId: ${stepId}`));
-                
+                logger.info(`[ApprovalService] Successfully processed approval for runId: ${runId}, stepId: ${stepId}`);
                 return {
                     status: 'completed' as const,
                     result: result.result,
@@ -182,7 +165,7 @@ export class ApprovalService {
             } else {
                 // If status is 'awaiting_approval', something went wrong - we should have completed
                 // This shouldn't happen after resuming from pending approval, but handle it gracefully
-                console.warn(chalk.yellow(`[ApprovalService] Unexpected awaiting_approval status after resuming approval for runId: ${runId}`));
+                logger.warn(`[ApprovalService] Unexpected awaiting_approval status after resuming approval for runId: ${runId}`);
                 return {
                     status: 'failed' as const,
                     error: 'Unexpected awaiting_approval status after resuming',
@@ -190,13 +173,13 @@ export class ApprovalService {
             }
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-            console.error(chalk.red.bold(`[ApprovalService] Error processing approval: ${errorMessage}`), error);
+            logger.error(`[ApprovalService] Error processing approval: ${errorMessage}`, { error });
 
             try {
                 await markRunFailed(runId, errorMessage, 'agent');
                 emitCacheInvalidationWithWildcard(userId, 'runHistory', runId);
             } catch (e) {
-                console.error(chalk.yellow('Failed to mark run as failed'), e);
+                logger.error('Failed to mark run as failed', { error: e });
             }
 
             return {
