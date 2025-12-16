@@ -29,7 +29,7 @@ import {
   directive_records,
   run_history_raw_events,
   approval_slack_messages,
-  $Enums
+  $Enums,
   output_change_attributions,
   identifiable_refs,
 } from '@prisma/client';
@@ -246,7 +246,7 @@ export {
   automation_confluence_configs,
   user_notification_destinations,
   automation_linear_configs,
-  approval_slack_messages
+  approval_slack_messages,
   output_change_attributions,
   identifiable_refs,
 }; 
