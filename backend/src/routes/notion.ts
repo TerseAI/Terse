@@ -6,6 +6,7 @@ import { NotionResource, NotionResourcesResponse } from "../shared/types";
 import { PageObjectResponse, PartialPageObjectResponse, SearchResponse } from "@notionhq/client/build/src/api-endpoints";
 import { extractPageTitle } from "../utility/notion";
 import { NotionIntegrationManager } from "../integrations/NotionIntegration";
+import logger from "../logger";
 
 export async function getNotionIntegrations(req: Request, res: Response) {
   if (!req.session?.user) {
@@ -18,11 +19,10 @@ export async function getNotionIntegrations(req: Request, res: Response) {
       const integrations = await manager.getInstancesForUser(req.session.user.id);
       res.status(200).json(integrations);
   } catch (error) {
-      console.error('Error fetching Notion integrations:', error);
+      logger.error('Error fetching Notion integrations');
       res.status(500).json({ error: 'Failed to fetch Notion integrations' });
   }
 }
-
 
 // OAuth Functions
 export const notionOAuthCallback = async (req: Request, res: Response) => {
@@ -116,7 +116,7 @@ export const getNotionResources = async (req: Request, res: Response) => {
 
     res.status(200).json(response);
   } catch (error: any) {
-    console.error(chalk.red("Error searching Notion resources:"), error);
+    logger.error("Error searching Notion resources:", error);
     res.status(500).json({
       error: "Failed to search resources",
       details: error.message
