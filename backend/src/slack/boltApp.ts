@@ -85,7 +85,7 @@ export async function setupSlackBolt() {
           channel_type: messageEvent.channel_type as any, // SlackChannelType - type guard needed for proper typing
         },
       };
-      
+
       // Process with existing webhook handler
       const slackIntegrationManager = new SlackIntegrationManager();
       await slackIntegrationManager.processWebhookEvent(slackMessageEvent);
@@ -97,7 +97,7 @@ export async function setupSlackBolt() {
   // Handle approve button clicks - process directly
   slack.action(/^approval_approve_(.+)__(.+)$/, async ({ ack, body, action, respond, client }) => {
     await ack();
-    
+
     try {
       // Type guard to ensure action has action_id property
       if (!('action_id' in action)) {
@@ -107,7 +107,7 @@ export async function setupSlackBolt() {
       }
       const actionWithId = action as { action_id: string };
       const actionId = actionWithId.action_id;
-      
+
       // Extract runId and stepId from action_id format: approval_approve_{runId}__{stepId}
       const match = actionId.match(/^approval_approve_(.+)__(.+)$/);
       if (!match) {
@@ -118,7 +118,7 @@ export async function setupSlackBolt() {
 
       const [, runId, stepId] = match;
       logger.info(`[Slack Approval] Processing approve for runId: ${runId}, stepId: ${stepId}`);
-      
+
       // Find the approval message record
       const approvalMessage = await db().approval_slack_messages.findFirst({
         where: {
@@ -195,7 +195,7 @@ export async function setupSlackBolt() {
   // Handle reject button clicks - open modal for rejection reason
   slack.action(/^approval_reject_(.+)__(.+)$/, async ({ ack, body, action, respond, client }) => {
     await ack();
-    
+
     try {
       // Type guard to ensure action has action_id property
       if (!('action_id' in action)) {
@@ -205,7 +205,7 @@ export async function setupSlackBolt() {
       }
       const actionWithId = action as { action_id: string };
       const actionId = actionWithId.action_id;
-      
+
       // Extract runId and stepId from action_id format: approval_reject_{runId}__{stepId}
       const match = actionId.match(/^approval_reject_(.+)__(.+)$/);
       if (!match) {
@@ -323,125 +323,140 @@ export async function setupSlackBolt() {
 
   // Handle rejection modal submission
   slack.view('rejection_modal_submit', async ({ ack, body, view, client }) => {
-    try {
-      // Extract rejection reason from the view
-      const rejectionReasonBlock = view.state.values.rejection_reason_block;
-      const rejectionReason = rejectionReasonBlock?.rejection_reason?.value;
+    // NOTE: Slack requires view submissions to be acknowledged within 3 seconds.
+    // Keep all DB/network work strictly after `ack()`.
 
-      if (!rejectionReason || rejectionReason.trim().length === 0) {
-        await ack({
-          response_action: 'errors',
-          errors: {
-            rejection_reason_block: 'Rejection reason is required',
-          },
-        });
-        return;
-      }
+    // Extract rejection reason from the view (no awaits)
+    const rejectionReasonBlock = view.state.values.rejection_reason_block;
+    const rejectionReason = rejectionReasonBlock?.rejection_reason?.value;
 
-      // Extract runId and stepId from private metadata
-      const privateMetadata = view.private_metadata;
-      let metadata: { runId: string; stepId: string };
-      try {
-        metadata = JSON.parse(privateMetadata);
-      } catch (error) {
-        logger.error('[Slack Approval] Failed to parse private metadata:', { error, privateMetadata });
-        await ack({
-          response_action: 'errors',
-          errors: {
-            rejection_reason_block: 'Invalid request data',
-          },
-        });
-        return;
-      }
-
-      const { runId, stepId } = metadata;
-      logger.info(`[Slack Approval] Processing rejection with reason for runId: ${runId}, stepId: ${stepId}`);
-
-      // Find the approval message record
-      const approvalMessage = await db().approval_slack_messages.findFirst({
-        where: {
-          run_id: runId,
-          step_id: stepId,
-        },
-      });
-
-      if (!approvalMessage) {
-        logger.error(`[Slack Approval] No approval message found for runId: ${runId}, stepId: ${stepId}`);
-        await ack({
-          response_action: 'errors',
-          errors: {
-            rejection_reason_block: 'Approval request not found',
-          },
-        });
-        return;
-      }
-
-      // Get user from slack integration
-      const userSlackIntegration = await db().user_slack_integrations.findUnique({
-        where: {
-          id: approvalMessage.user_slack_integration_id,
-        },
-        include: {
-          user: true,
-        },
-      });
-
-      if (!userSlackIntegration) {
-        logger.error('[Slack Approval] No user slack integration found');
-        await ack({
-          response_action: 'errors',
-          errors: {
-            rejection_reason_block: 'User integration not found',
-          },
-        });
-        return;
-      }
-
-      const userId = userSlackIntegration.user_id;
-
-      // Verify user has access
-      const runRecord = await db().run_history_records.findUnique({
-        where: { id: runId },
-        include: { automation: true },
-      });
-
-      if (!runRecord || !runRecord.automation || runRecord.automation.user_id !== userId) {
-        logger.error(`[Slack Approval] User ${userId} does not have access to run ${runId}`);
-        await ack({
-          response_action: 'errors',
-          errors: {
-            rejection_reason_block: 'You don\'t have permission to reject this request',
-          },
-        });
-        return;
-      }
-
-      // Acknowledge the view submission
-      await ack();
-
-      // Process the rejection with the reason
-      const result = await ApprovalService.processApproval({
-        runId,
-        stepId,
-        approved: false,
-        userId,
-        rejectionReason: rejectionReason.trim(),
-      });
-
-      if (result.status === 'failed' && result.error) {
-        logger.error(`[Slack Approval] Rejection processing failed: ${result.error}`);
-      } else {
-        logger.info(`[Slack Approval] Successfully processed rejection with reason for runId: ${runId}, stepId: ${stepId}`);
-      }
-    } catch (error) {
-      logger.error('[Slack Approval] Error processing rejection modal submission:', { error });
+    if (!rejectionReason || rejectionReason.trim().length === 0) {
       await ack({
         response_action: 'errors',
         errors: {
-          rejection_reason_block: 'Error processing rejection',
+          rejection_reason_block: 'Rejection reason is required',
         },
       });
+      return;
     }
+
+    // Extract runId and stepId from private metadata (no awaits)
+    const privateMetadata = view.private_metadata;
+    let metadata: { runId: string; stepId: string };
+    try {
+      metadata = JSON.parse(privateMetadata);
+    } catch (error) {
+      logger.error('[Slack Approval] Failed to parse private metadata:', { error, privateMetadata });
+      await ack({
+        response_action: 'errors',
+        errors: {
+          rejection_reason_block: 'Invalid request data',
+        },
+      });
+      return;
+    }
+
+    // Ack immediately, then continue processing asynchronously
+    await ack();
+
+    void (async () => {
+      const submitterSlackUserId = (body as any)?.user?.id as string | undefined;
+
+      const notifySubmitter = async (text: string, channelId?: string) => {
+        if (!submitterSlackUserId) return;
+
+        // Prefer ephemeral in the original channel if we have it; fall back to DM.
+        if (channelId) {
+          try {
+            await client.chat.postEphemeral({
+              channel: channelId,
+              user: submitterSlackUserId,
+              text,
+            });
+            return;
+          } catch (error) {
+            logger.error('[Slack Approval] Failed to post ephemeral message to submitter:', { error });
+          }
+        }
+
+        try {
+          const opened = await client.conversations.open({ users: submitterSlackUserId });
+          const dmChannelId = (opened as any)?.channel?.id as string | undefined;
+          if (!dmChannelId) return;
+          await client.chat.postMessage({ channel: dmChannelId, text });
+        } catch (error) {
+          logger.error('[Slack Approval] Failed to DM submitter:', { error });
+        }
+      };
+
+      try {
+        const { runId, stepId } = metadata;
+        logger.info(`[Slack Approval] Processing rejection with reason for runId: ${runId}, stepId: ${stepId}`);
+
+        // Find the approval message record
+        const approvalMessage = await db().approval_slack_messages.findFirst({
+          where: {
+            run_id: runId,
+            step_id: stepId,
+          },
+        });
+
+        if (!approvalMessage) {
+          logger.error(`[Slack Approval] No approval message found for runId: ${runId}, stepId: ${stepId}`);
+          await notifySubmitter('Error: Approval request not found');
+          return;
+        }
+
+        // Get user from slack integration
+        const userSlackIntegration = await db().user_slack_integrations.findUnique({
+          where: {
+            id: approvalMessage.user_slack_integration_id,
+          },
+          include: {
+            user: true,
+          },
+        });
+
+        if (!userSlackIntegration) {
+          logger.error('[Slack Approval] No user slack integration found');
+          await notifySubmitter('Error: User integration not found', approvalMessage.slack_channel_id);
+          return;
+        }
+
+        const userId = userSlackIntegration.user_id;
+
+        // Verify user has access
+        const runRecord = await db().run_history_records.findUnique({
+          where: { id: runId },
+          include: { automation: true },
+        });
+
+        if (!runRecord || !runRecord.automation || runRecord.automation.user_id !== userId) {
+          logger.error(`[Slack Approval] User ${userId} does not have access to run ${runId}`);
+          await notifySubmitter("Error: You don't have permission to reject this request", approvalMessage.slack_channel_id);
+          return;
+        }
+
+        // Process the rejection with the reason
+        const result = await ApprovalService.processApproval({
+          runId,
+          stepId,
+          approved: false,
+          userId,
+          rejectionReason: rejectionReason.trim(),
+        });
+
+        if (result.status === 'failed' && result.error) {
+          logger.error(`[Slack Approval] Rejection processing failed: ${result.error}`);
+          await notifySubmitter(`Error processing rejection: ${result.error}`, approvalMessage.slack_channel_id);
+        } else {
+          logger.info(`[Slack Approval] Successfully processed rejection with reason for runId: ${runId}, stepId: ${stepId}`);
+        }
+      } catch (error) {
+        logger.error('[Slack Approval] Error processing rejection modal submission:', { error });
+        await notifySubmitter('Error processing rejection. Please try again.');
+      }
+    })();
   });
 
   // Handle "View Run History" button clicks - just acknowledge the event

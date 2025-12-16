@@ -115,7 +115,7 @@ async function notifyApprovalRequest(
         return;
     }
 
-    const{ approvalSummary } = await generateApprovalSummary(
+    const { approvalSummary } = await generateApprovalSummary(
         runId,
         userId,
         channel.id,

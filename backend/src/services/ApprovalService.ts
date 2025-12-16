@@ -20,7 +20,9 @@ export type ApprovalRequest = {
 };
 
 export type ApprovalResult = {
-    status: 'completed' | 'failed';
+    // 'completed' means the run finished after applying this approval decision.
+    // 'awaiting_approval' means this approval decision was processed successfully, but the agent requested another approval (chained approvals).
+    status: 'completed' | 'awaiting_approval' | 'failed';
     result?: {
         finalOutput?: unknown;
     };
@@ -58,7 +60,7 @@ export class ApprovalService {
                     include: getOutputConfigInclude(),
                 },
             },
-        }) as ChannelWithRelations | null;
+        })
 
         if (!channel) {
             throw new Error(`Channel not found for automation id: ${runRecord.automation.id}`);
@@ -112,7 +114,7 @@ export class ApprovalService {
     private static async updateSlackNotification(
         runId: string,
         stepId: string,
-        status: 'processing' | 'approved' | 'rejected',
+        status: 'processing' | 'approved' | 'rejected' | 'failed',
         userId: string,
         channelId: string
     ): Promise<void> {
@@ -215,9 +217,14 @@ export class ApprovalService {
         const { runId, stepId, approved, userId, rejectionReason } = request;
 
         logger.info(`[ApprovalService] Processing approval for runId: ${runId}, stepId: ${stepId}, approved: ${approved}`);
+
+        // Keep minimal state outside the try so the catch can update Slack if we already flipped it to "processing".
+        let channelIdForSlack: string | null = null;
+        let slackMarkedProcessing = false;
         try {
             // Validate user access and load channel
             const { runRecord, channel } = await this.validateUserAccess(runId, userId);
+            channelIdForSlack = channel.id;
 
             // Store rejection reason in database if provided
             if (!approved && rejectionReason) {
@@ -248,6 +255,7 @@ export class ApprovalService {
 
             // Update Slack notification to processing state
             await this.updateSlackNotification(runId, stepId, 'processing', userId, channel.id);
+            slackMarkedProcessing = true;
 
             // Store the approval response event
             const toolApprovalResponseEvent: ModelEvent = {
@@ -276,6 +284,8 @@ export class ApprovalService {
                 rejectionReason
             );
 
+            const finalSlackStatus = approved ? 'approved' : 'rejected';
+
             // Finalize run status based on result
             if (result.status === 'completed') {
                 const hasFinalOutput = Boolean(result.result?.finalOutput);
@@ -287,34 +297,63 @@ export class ApprovalService {
                 }
 
                 // Update Slack notification to final approved/rejected state
-                const finalStatus = approved ? 'approved' : 'rejected';
-                await this.updateSlackNotification(runId, stepId, finalStatus, userId, channel.id);
+                await this.updateSlackNotification(runId, stepId, finalSlackStatus, userId, channel.id);
 
                 logger.info(`[ApprovalService] Successfully processed approval for runId: ${runId}, stepId: ${stepId}`);
                 return {
                     status: 'completed' as const,
                     result: result.result,
                 };
-            } else {
-                // If status is 'awaiting_approval', something went wrong - we should have completed
-                // This shouldn't happen after resuming from pending approval, but handle it gracefully
-                logger.warn(`[ApprovalService] Unexpected awaiting_approval status after resuming approval for runId: ${runId}`);
-                
-                // Update Slack notification to rejected state since it failed
-                await this.updateSlackNotification(runId, stepId, 'rejected', userId, channel.id);
-                
+            }
+
+            if (result.status === 'awaiting_approval') {
+                await this.updateSlackNotification(runId, stepId, finalSlackStatus, userId, channel.id);
+
+                emitCacheInvalidationWithWildcard(userId, 'runHistory', channel.id);
+                emitCacheInvalidationWithWildcard(userId, 'chatHistory', runId);
+
+                logger.info(
+                    `[ApprovalService] Processed approval decision; run is now awaiting another approval`,
+                    { runId, stepId, approved }
+                );
+
                 return {
-                    status: 'failed' as const,
-                    error: 'Unexpected awaiting_approval status after resuming',
+                    status: 'awaiting_approval' as const,
                 };
             }
+
+            // Defensive fallback: unknown status from ChannelAgent
+            logger.warn(`[ApprovalService] Unexpected agent status after resuming approval`, {
+                runId,
+                stepId,
+                status: (result as any)?.status,
+            });
+            await this.updateSlackNotification(runId, stepId, finalSlackStatus, userId, channel.id);
+            return {
+                status: 'failed' as const,
+                error: `Unexpected agent status after resuming: ${(result as any)?.status ?? 'unknown'}`,
+            };
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : 'Unknown error';
             logger.error(`[ApprovalService] Error processing approval: ${errorMessage}`, { error });
 
+            // If we've already told Slack we're "processing", make sure we also tell Slack we failed.
+            if (slackMarkedProcessing && channelIdForSlack) {
+                await this.updateSlackNotification(runId, stepId, 'failed', userId, channelIdForSlack);
+            }
+
             try {
                 await markRunFailed(runId, errorMessage, 'agent');
-                emitCacheInvalidationWithWildcard(userId, 'runHistory', runId);
+                // runHistory cache keys are scoped by channelId (not runId). chatHistory is scoped by runId.
+                if (channelIdForSlack) {
+                    emitCacheInvalidationWithWildcard(userId, 'runHistory', channelIdForSlack);
+                } else {
+                    logger.warn('[ApprovalService] Missing channel id; cannot invalidate runHistory cache', {
+                        userId,
+                        runId,
+                        stepId,
+                    });
+                }
             } catch (e) {
                 logger.error('Failed to mark run as failed', { error: e });
             }

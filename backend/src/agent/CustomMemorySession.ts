@@ -22,7 +22,7 @@ export class RunHistoryChatMemorySession implements Session {
   private readonly skipSave: boolean;
   private readonly filterIncompleteToolCalls: boolean;
   constructor(
-      options: RunHistoryChatMemorySessionOptions
+    options: RunHistoryChatMemorySessionOptions
   ) {
     this.sessionId = options.sessionId
     this.skipSave = options.skipSave ?? false;
@@ -197,9 +197,9 @@ function isUserMessage(item: AgentInputItem): boolean {
 export function trimToLastTurns(items: AgentInputItem[], maxTurns: number): AgentInputItem[] {
   if (items.length === 0) return items;
   maxTurns = Math.max(1, maxTurns);
-  
+
   let count = 0;
-  let startIdx = 0; 
+  let startIdx = 0;
 
   for (let i = items.length - 1; i >= 0; i--) {
     if (isUserMessage(items[i])) {
@@ -225,38 +225,29 @@ function cloneAgentItem<T extends AgentInputItem>(item: T): T {
 function deduplicateItemsById(items: AgentInputItem[]): AgentInputItem[] {
   // Track the last index where each ID appears
   const idToLastIndex = new Map<string, number>();
-  
+
   for (let i = 0; i < items.length; i++) {
-    const itemAny = items[i] as any;
+    const itemAny = items[i];
     if (itemAny?.id && typeof itemAny.id === 'string') {
       idToLastIndex.set(itemAny.id, i);
     }
   }
-  
+
   // If no IDs found, no duplicates possible
   if (idToLastIndex.size === 0) {
     return items;
   }
-  
+
   // Filter to keep only items that are either:
   // 1. The last occurrence of their ID, or
   // 2. Don't have an ID
-  const result: AgentInputItem[] = [];
-  for (let i = 0; i < items.length; i++) {
-    const item = items[i];
-    const itemAny = item as any;
-    const id = itemAny?.id;
-    
-    if (!id || typeof id !== 'string') {
-      // Items without IDs are always included
-      result.push(item);
-    } else if (idToLastIndex.get(id) === i) {
-      // This is the last occurrence of this ID
-      result.push(item);
-    }
-    // Otherwise, skip this duplicate
-  }
-  
+  const result: AgentInputItem[] = items.map((item, i) => {
+    const itemId = item?.id;
+    if (!itemId || typeof itemId !== 'string') return item;
+    if (idToLastIndex.get(itemId) === i) return item;
+    return undefined;
+  }).filter((item) => item !== undefined)
+
   return result;
 }
 
@@ -275,11 +266,11 @@ const filterToolCallEvents = (events: AgentInputItem[]): AgentInputItem[] => {
   const functionCallsByCallId = new Map<string, AgentInputItem>();
   // Track function_call_result events by callId
   const functionCallResultsByCallId = new Map<string, AgentInputItem>();
-  
+
   // First pass: collect all function_call and function_call_result events
   for (const event of events) {
     const eventAny = event as any;
-    
+
     if (eventAny?.type === 'function_call' && eventAny?.callId) {
       const callId = eventAny.callId;
       // Keep the last occurrence if there are duplicates
@@ -290,16 +281,16 @@ const filterToolCallEvents = (events: AgentInputItem[]): AgentInputItem[] => {
       functionCallResultsByCallId.set(callId, event);
     }
   }
-  
+
   // Second pass: filter events to only include:
   // 1. function_call events that have a matching function_call_result
   // 2. function_call_result events that have a matching function_call
   // 3. All other events (non-function-call events)
   const filteredEvents: AgentInputItem[] = [];
-  
+
   for (const event of events) {
     const eventAny = event as any;
-    
+
     if (eventAny?.type === 'function_call' && eventAny?.callId) {
       const callId = eventAny.callId;
       // Only include if there's a corresponding function_call_result
@@ -321,7 +312,7 @@ const filterToolCallEvents = (events: AgentInputItem[]): AgentInputItem[] => {
       filteredEvents.push(event);
     }
   }
-  
+
   return filteredEvents;
 }
 

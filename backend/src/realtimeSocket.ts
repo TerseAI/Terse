@@ -151,7 +151,7 @@ export async function initializeRealtimeSocket(server: HttpServer): Promise<Serv
                         include: getOutputConfigInclude()
                     }
                 }
-            }) as ChannelWithRelations | null;
+            })
 
             if (!channel) {
                 logger.error(`[channel:chat:message] Channel not found for automation id: ${runRecord.automation.id}`, { automationId: runRecord.automation.id, userId });

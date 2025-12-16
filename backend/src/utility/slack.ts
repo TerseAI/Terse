@@ -258,7 +258,7 @@ export async function updateSlackApprovalMessage(
     userSlackIntegrationId: string,
     channelId: string,
     messageTs: string,
-    status: 'approved' | 'rejected' | 'processing',
+    status: 'approved' | 'rejected' | 'processing' | 'failed',
     summary: string, // Human-readable summary instead of toolName
     channelName: string,
     automationId?: string,
@@ -288,6 +288,9 @@ export async function updateSlackApprovalMessage(
     if (status === 'processing') {
         statusEmoji = '⏳';
         statusText = 'Processing';
+    } else if (status === 'failed') {
+        statusEmoji = '⚠️';
+        statusText = 'Failed';
     } else if (status === 'approved') {
         statusEmoji = '✅';
         statusText = 'Approved';
@@ -322,7 +325,15 @@ export async function updateSlackApprovalMessage(
             type: 'section' as const,
             text: {
                 type: 'mrkdwn' as const,
-                text: `Approval request ${status === 'approved' ? 'approved' : status === 'rejected' ? 'rejected' : 'is being processed'}:\n*<${runHistoryLink || '#'}|${channelName} - ${statusText}>*`,
+                text: `Approval request ${
+                    status === 'approved'
+                        ? 'approved'
+                        : status === 'rejected'
+                            ? 'rejected'
+                            : status === 'failed'
+                                ? 'failed'
+                                : 'is being processed'
+                }:\n*<${runHistoryLink || '#'}|${channelName} - ${statusText}>*`,
             },
         },
         {
