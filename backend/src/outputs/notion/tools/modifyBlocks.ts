@@ -57,10 +57,7 @@ Example append: "{\"operation\": \"append\", \"blocks\": [{\"object\": \"block\"
 Example update: "{\"operation\": \"update\", \"block_id\": \"abc123\", \"block\": {\"paragraph\": {\"rich_text\": [{\"type\": \"text\", \"text\": {\"content\": \"Updated\"}}]}}}"
 Example delete: "{\"operation\": \"delete\", \"block_id\": \"abc123\"}"`),
     }),
-    execute: async ({ operation_json }, runContext?: RunContext<SessionWithTracking<NotionPageSession>>) => {
-        console.log(chalk.bgMagenta.white.bold('🛠️ Executing notion_modify_blocks tool'));
-        console.log(chalk.cyan('  Operation JSON: '), chalk.greenBright(operation_json));
-        
+    execute: async ({ operation_json }, runContext?: RunContext<SessionWithTracking<NotionPageSession>>) => {        
         // Parse the JSON string
         let op: {
             operation: 'append' | 'update' | 'delete';
@@ -72,6 +69,7 @@ Example delete: "{\"operation\": \"delete\", \"block_id\": \"abc123\"}"`),
         try {
             op = JSON.parse(operation_json);
             if (Array.isArray(op)) {
+                logger.error('operation_json is an array, not a single operation object. Not continuing');
                 return {
                     success: false,
                     error: 'operation_json must be a single operation object, not an array',
@@ -101,6 +99,8 @@ Example delete: "{\"operation\": \"delete\", \"block_id\": \"abc123\"}"`),
                         error: 'blocks array is required and must not be empty'
                     };
                 }
+
+                logger.info('Appending blocks to target block', { parent_block_id: op.parent_block_id, pageId, blocks: op.blocks.length });
 
                 const targetId = op.parent_block_id || pageId;
                 const response = await notion.blocks.children.append({
@@ -144,6 +144,8 @@ Example delete: "{\"operation\": \"delete\", \"block_id\": \"abc123\"}"`),
                     };
                 }
 
+                logger.info('Updating block', { block_id: op.block_id, block: op.block });
+
                 const response = await notion.blocks.update({
                     block_id: op.block_id,
                     ...op.block,
@@ -175,6 +177,8 @@ Example delete: "{\"operation\": \"delete\", \"block_id\": \"abc123\"}"`),
                         error: 'block_id is required for delete operation'
                     };
                 }
+
+                logger.info('Deleting block', { block_id: op.block_id });
 
                 // Delete by archiving
                 const response = await notion.blocks.update({
