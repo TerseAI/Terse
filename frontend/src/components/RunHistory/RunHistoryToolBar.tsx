@@ -59,10 +59,10 @@ export default function RunHistoryToolBar({
         <div className="mb-6 space-y-4 relative">
             <div className="mb-4 flex justify-between">
                 <div className="flex items-center gap-2 text-muted-foreground">
-                    Showing {filteredCount === 0 ? 0 : startIndex + 1}-{Math.min(startIndex + runsPerPage, filteredCount)} of {filteredCount} runs
+                    Showing {filteredCount === 0 ? 0 : startIndex + 1}-{Math.min(startIndex + runsPerPage, filteredCount)} of {filteredCount} events
                 </div>
                 <div className="flex items-center gap-2">
-                    <span className="text-muted-foreground text-sm">Runs per page:</span>
+                    <span className="text-muted-foreground text-sm">Events per page:</span>
                     <Select
                         value={String(runsPerPageValue)}
                         onValueChange={(value) => onRunsPerPageChange(Number(value))}
@@ -80,7 +80,7 @@ export default function RunHistoryToolBar({
             </div>
 
             <div className="flex items-center justify-between gap-4">
-                <SearchBar searchQuery={searchQuery} onSearchChange={onSearchChange} placeholder="Search runs..." />
+                <SearchBar searchQuery={searchQuery} onSearchChange={onSearchChange} placeholder="Search events..." />
 
                 <div className="flex items-center gap-4">
                     <DateRangePicker
