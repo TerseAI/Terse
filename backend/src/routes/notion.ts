@@ -24,7 +24,6 @@ export async function getNotionIntegrations(req: Request, res: Response) {
   }
 }
 
-
 // OAuth Functions
 export const notionOAuthCallback = async (req: Request, res: Response) => {
   const integration = new NotionIntegrationManager();

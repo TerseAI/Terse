@@ -185,7 +185,7 @@ Follow these directives in addition to the USER INSTRUCTIONS provided in each me
             }
 
             const channelId = this.deps.channel.id;
-            const runHistoryMemory = new RunHistoryMemory();
+            const runHistoryMemory = new RunHistoryMemory(this.deps.channel.user_id);
 
             // Find similar past input events (top 5)
             const similarEvents = await runHistoryMemory.findSimilarInputEvents(

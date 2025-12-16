@@ -30,6 +30,8 @@ import {
   run_history_raw_events,
   approval_slack_messages,
   $Enums
+  output_change_attributions,
+  identifiable_refs,
 } from '@prisma/client';
 
 
@@ -199,6 +201,10 @@ export type PrismaTransaction = Parameters<Parameters<PrismaClient['$transaction
 
 export type RunHistoryRawEvent = run_history_raw_events;
 
+export type OutputChangeAttribution = output_change_attributions;
+export type IdentifiableRef = identifiable_refs;
+
+
 // Extended type for RunHistoryRawEvent with runHistory and automation relations included
 export type RunHistoryRawEventWithRelations = Prisma.run_history_raw_eventsGetPayload<{
   include: {
@@ -241,4 +247,6 @@ export {
   user_notification_destinations,
   automation_linear_configs,
   approval_slack_messages
+  output_change_attributions,
+  identifiable_refs,
 }; 

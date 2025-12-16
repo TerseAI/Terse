@@ -1,6 +1,7 @@
 import { IntegrationType } from "../../shared/Integrations";
 import { ChannelInputWithConfigs } from "../../types/prisma";
 import { RunHistoryTrigger } from "../../shared/RunHistoryTypes";
+import { Identifiable } from "../../rag/Hydrator";
 
 export abstract class InputEvent {
     abstract readonly integrationType: IntegrationType;
@@ -36,5 +37,28 @@ export abstract class InputEvent {
      * @returns Array of image URL strings. Empty array if no images are available.
      */
     abstract getImageUrls(): string[];
+
+    /**
+     * Check if this InputEvent implements Identifiable.
+     * Only InputEvents that conform to Identifiable can be tracked for output change attributions.
+     * @returns true if this event implements Identifiable
+     */
+    isIdentifiable(): this is InputEvent & Identifiable {
+        return 'entityType' in this && 'entityId' in this;
+    }
+
+    /**
+     * Get the Identifiable info if this event implements it.
+     * @returns Identifiable info or null if not implemented
+     */
+    getIdentifiableInfo(): Identifiable | null {
+        if (this.isIdentifiable()) {
+            return {
+                entityType: this.entityType,
+                entityId: this.entityId
+            };
+        }
+        return null;
+    }
 }
 

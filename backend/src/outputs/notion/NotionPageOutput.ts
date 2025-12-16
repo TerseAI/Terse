@@ -6,7 +6,7 @@ import { Output, ToolboxEntry } from "../abstract/Output";
 import { db } from "../../prismaClient";
 import { OutputConfigType } from "@prisma/client";
 import { NotionPageConfig } from "../../shared/Configs";
-import { notionQueryPageTool, notionModifyBlocksTool } from "./tools";
+import { notionQueryPageTool, notionModifyBlocksTool, fetchRelatedEventsTool } from "./tools";
 import { IntegrationType } from "../../shared/Integrations";
 
 export interface NotionPageSession extends Session {
@@ -19,6 +19,7 @@ export class NotionPageOutput extends Output<NotionPageSession, NotionPageConfig
         const toolbox: ToolboxEntry[] = [
             { tool: notionQueryPageTool as Tool, isReadOnly: true, integration: IntegrationType.NOTION },
             { tool: notionModifyBlocksTool as Tool, isReadOnly: false, integration: IntegrationType.NOTION },
+            { tool: fetchRelatedEventsTool as Tool, isReadOnly: true, integration: IntegrationType.NOTION },
         ];
         super(OutputConfigType.NOTION_PAGE, toolbox);
     }
