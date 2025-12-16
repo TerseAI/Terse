@@ -24,7 +24,6 @@ import { persistOutputAttributions, removeOutputAttributions } from './persistOu
 import logger from '../../logger';
 import { RunHistoryActionType } from '@prisma/client';
 
-
 export class ChannelAgent<T extends Session, TConfig extends ConfigInstance> {
     private history: AgentInputItem[] = [];
     private session: T;

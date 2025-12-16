@@ -3,15 +3,8 @@ import { z } from "zod";
 import chalk from "chalk";
 import { SessionWithTracking } from "../../../agent/ChannelAgent/ChannelAgent";
 import { NotionPageSession } from "../NotionPageOutput";
-import { db } from "../../../prismaClient";
-import { requireHydrator } from "../../../rag/HydratorRegistry";
-import { HydratorType, HydratorTypeMap, requireHydratorType } from "../../../types/rag";
-import { Identifiable } from "../../../rag/Hydrator";
-
-/**
- * Union type of all possible hydrated events
- */
-type HydratedEvent = HydratorTypeMap[HydratorType];
+import { AttributionStore } from "../../../rag/AttributionStore";
+import logger from "../../../logger";
 
 /**
  * Fetches events that are related to a specific Notion block.
@@ -36,8 +29,7 @@ The tool returns the source events (e.g., Slack messages, emails) that led to th
         block_id: z.string().describe('The Notion block ID to fetch related events for'),
     }),
     execute: async ({ block_id }, runContext?: RunContext<SessionWithTracking<NotionPageSession>>) => {
-        console.log(chalk.bgCyan.white.bold('🔍 Fetching related events for block'));
-        console.log(chalk.cyan('  Block ID: '), chalk.greenBright(block_id));
+        logger.info('Fetching related events for block and user', { block_id, userId: runContext?.context?.user.display_name });
 
         if (!runContext?.context) {
             throw new Error("No context provided");
@@ -46,18 +38,12 @@ The tool returns the source events (e.g., Slack messages, emails) that led to th
         const userId = runContext.context.user.id;
 
         try {
-            // Query output_change_attributions to find source events for this block
-            const attributions = await db().output_change_attributions.findMany({
-                where: {
-                    output_item_id: block_id,
-                },
-                include: {
-                    source_item_ref: true,
-                },
-            });
+            // Use AttributionStore to fetch and hydrate related events
+            const attributionStore = new AttributionStore({ userId });
+            const hydratedEvents = await attributionStore.fetchAttributionsForOutputItem(block_id);
 
-            if (attributions.length === 0) {
-                console.log(chalk.yellow('  No related events found for this block'));
+            if (hydratedEvents.length === 0) {
+                logger.info('No related events found for this block', { block_id, userId: runContext?.context?.user.display_name });
                 return {
                     success: true,
                     events_count: 0,
@@ -65,43 +51,7 @@ The tool returns the source events (e.g., Slack messages, emails) that led to th
                 };
             }
 
-            console.log(chalk.cyan(`  Found ${attributions.length} attribution(s)`));
-
-            // Extract unique identifiable references (using included relation)
-            const identifiableRefs: Identifiable[] = attributions
-                .map(attr => {
-                    const identifiableRef = attr.source_item_ref;
-                    if (!identifiableRef) {
-                        return null;
-                    }
-                    return {
-                        entityType: requireHydratorType(identifiableRef.entity_type),
-                        entityId: identifiableRef.entity_id
-                    };
-                })
-                .filter((ref): ref is Identifiable => ref !== null);
-
-            // Group by entity type to hydrate efficiently
-            const groupedByType = identifiableRefs.reduce((acc, ref) => {
-                if (!acc[ref.entityType]) {
-                    acc[ref.entityType] = [];
-                }
-                acc[ref.entityType].push(ref);
-                return acc;
-            }, {} as Record<HydratorType, Identifiable[]>);
-
-            // Hydrate all events
-            const hydratedEvents: HydratedEvent[] = [];
-            for (const [entityType, refs] of Object.entries(groupedByType)) {
-                try {
-                    const hydrator = requireHydrator(requireHydratorType(entityType), { userId });
-                    const events = await hydrator.hydrateBulk(refs);
-                    hydratedEvents.push(...events);
-                } catch (error) {
-                    console.error(chalk.yellow(`  Failed to hydrate ${entityType}:`), error);
-                    // Continue with other types
-                }
-            }
+            logger.info('Found related events', { block_id, userId: runContext?.context?.user.display_name, events_count: hydratedEvents.length });
 
             const formattedEvents = hydratedEvents.map((event, index) => {
                 if ('formatForChannelAgent' in event && typeof event.formatForChannelAgent === 'function') {
@@ -113,7 +63,7 @@ The tool returns the source events (e.g., Slack messages, emails) that led to th
 
             const eventsText = formattedEvents.join('\n\n---\n\n');
 
-            console.log(chalk.green(`  ✓ Successfully fetched and formatted ${hydratedEvents.length} event(s)`));
+            logger.info('Successfully fetched and formatted events', { block_id, userId: runContext?.context?.user.display_name, events_count: hydratedEvents.length });
 
             return {
                 success: true,
@@ -123,7 +73,7 @@ The tool returns the source events (e.g., Slack messages, emails) that led to th
             };
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-            console.error(chalk.red('  ✗ Error fetching related events:'), error);
+            logger.error('Error fetching related events', { block_id, userId: runContext?.context?.user.display_name, error });
             return {
                 success: false,
                 error: errorMessage,
