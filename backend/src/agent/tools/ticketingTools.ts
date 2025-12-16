@@ -6,6 +6,7 @@ import { CreateTicketInput, TicketSystemType, UserContext } from "../../shared/T
 import { SessionWithTracking } from "../agents/Analyzer";
 import { EntityType } from "../../shared/Entities";
 import { ChangeEventType } from "../../shared/ModelEvents";
+import logger from "../../logger";
 
 const searchTicketTool = tool({
     name: 'Search Ticket',
@@ -90,7 +91,7 @@ const searchTicketTool = tool({
             includeRelations: includeRelations || undefined
         };
 
-        console.log('Ticket Tool: Searching for tickets with query and options:', query, options);
+        logger.info('Ticket Tool: Searching for tickets with query and options', { query, options });
         const tickets = await ticketManager.structuredSearch(query, options);
         
         return {
@@ -126,7 +127,7 @@ const getCurrentUserTool = tool({
             throw new Error("No ticket manager provided");
         }
 
-        console.log('Ticket Tool: Getting current user');
+        logger.info('Ticket Tool: Getting current user');
 
         let ticketManager = runContext.context.ticketManager;
 
@@ -179,11 +180,11 @@ const createTicketTool = tool({
 
         const teamId = runContext.context.teamId;
         if (!teamId && ticketManager.type === TicketSystemType.Linear) {
-            console.error(chalk.red.bold('❌ No team ID provided. Unable to create ticket.'));
+            logger.error('❌ No team ID provided. Unable to create ticket.', { ticketSystemType: ticketManager.type });
             throw new Error("No team ID provided");
         }
 
-        console.log('Ticket Tool: Created ticket');
+        logger.info('Ticket Tool: Created ticket');
 
         let ticket = await ticketManager.createTicket({
             title,
@@ -210,7 +211,7 @@ const createTicketTool = tool({
                 const commitAssociations = associatedCommits.map(index => {
                     const commit = commitContext.commits[index];
                     if (!commit) {
-                        console.warn(`Commit index ${index} not found in context`);
+                        logger.warn(`Commit index ${index} not found in context`, { index, commitCount: commitContext.commits.length });
                         return null;
                     }
                     
@@ -274,19 +275,18 @@ const updateTicketTool = tool({
         }
 
         const teamId = runContext.context.teamId;
+        let ticketManager = runContext.context.ticketManager;
         if (!teamId) {
-            console.error(chalk.red.bold('❌ No team ID provided. Unable to update ticket.'));
+            logger.error('❌ No team ID provided. Unable to update ticket.', { ticketId: id, ticketSystemType: ticketManager?.type });
             throw new Error("No team ID provided");
         }
 
-        let ticketManager = runContext.context.ticketManager;
-
-        console.log('Ticket Tool: Updated ticket');
+        logger.info('Ticket Tool: Updated ticket');
 
         // get valid states for the ticket system
         const userContext: UserContext = await ticketManager.getUserContext();
         if (!userContext.ticketStates.some(s => s.id === state)) {
-            console.error(chalk.red.bold('❌ Invalid state. This will fail!'));
+            logger.error('❌ Invalid state. This will fail!', { ticketId: id, state, validStates: userContext.ticketStates.map(s => s.id) });
             throw new Error("Invalid state. Please use a valid state from the user context.");
         }
 
@@ -314,7 +314,7 @@ const updateTicketTool = tool({
                 const commitAssociations = associatedCommits.map(index => {
                     const commit = commitContext.commits[index];
                     if (!commit) {
-                        console.warn(`Commit index ${index} not found in context`);
+                        logger.warn(`Commit index ${index} not found in context`, { index, commitCount: commitContext.commits.length });
                         return null;
                     }
                     
@@ -346,7 +346,7 @@ const findIssueTool = tool({
         issueId: z.string().describe('The ID of the issue to find'),
     }),
     execute: async ({ issueId }: { issueId: string }, runContext?: RunContext<SessionWithTracking>) => {
-        console.log(chalk.cyan('\nFetching issue with ID: ' + issueId));
+        logger.info('Ticket Tool: Fetching issue with ID: ' + issueId);
 
         if (!runContext?.context.ticketManager) {
             throw new Error("No ticket manager provided");
@@ -372,7 +372,7 @@ const commentOnTicketTool = tool({
 
         let ticketManager = runContext.context.ticketManager;
 
-        console.log(chalk.cyan('\nCommenting on ticket: ' + issueId));
+        logger.info('Ticket Tool: Commenting on ticket: ' + issueId);
 
         return await ticketManager.commentOnTicket(issueId, comment);
     },

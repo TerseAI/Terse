@@ -7,6 +7,7 @@ import { GmailIntegration} from "../types/prisma";
 import { gmail as gmailConfig, urls, cloudScheduler, OAUTH_TOKEN_REFRESH_THRESHOLD_MS } from "../config/settings";
 import { getOAuth2Client, GmailIntegrationManager, GmailWebhookEvent } from "../integrations/GmailIntegration";
 import { InputConfigType } from "@prisma/client";
+import logger from "../logger";
 
 // OAuth2 scopes for Gmail
 const SCOPES = ["https://www.googleapis.com/auth/gmail.readonly"];
@@ -23,7 +24,7 @@ export async function getGmailIntegrations(req: Request, res: Response) {
       const integrations = await manager.getInstancesForUser(req.session.user.id);
       res.status(200).json(integrations);
   } catch (error) {
-      console.error('Error fetching Gmail integrations:', error);
+      logger.error('Error fetching Gmail integrations:', { error });
       res.status(500).json({ error: 'Failed to fetch Gmail integrations' });
   }
 }
@@ -71,11 +72,11 @@ export async function deleteGmailIntegration(req: Request, res: Response) {
       // Stop the Gmail watch
       const gmail = google.gmail({ version: "v1", auth: oauth2Client });
       await gmail.users.stop({ userId: "me" });
-      console.log(`Gmail watch stopped for ${integration.email}`);
+      logger.info(`Gmail watch stopped for ${integration.email}`);
     } catch (stopError) {
       // Log but don't fail the deactivation if watch stop fails
       // (watch might already be expired or stopped)
-      console.warn("Error stopping Gmail watch:", stopError);
+      logger.warn("Error stopping Gmail watch:", { error: stopError });
     }
 
     // Clean up channel inputs/outputs that reference this Gmail integration
@@ -95,12 +96,12 @@ export async function deleteGmailIntegration(req: Request, res: Response) {
       data: { is_active: false },
     });
 
-    console.log(
+    logger.info(
       `Gmail integration deactivated for user ${req.session.user.id}`
     );
     res.json({ message: "Gmail integration disabled successfully" });
   } catch (error) {
-    console.error("Error disabling Gmail integration:", error);
+    logger.error("Error disabling Gmail integration:", { error });
     res.status(500).json({ error: "Failed to disable Gmail integration" });
   }
 }
@@ -110,10 +111,7 @@ export async function deleteGmailIntegration(req: Request, res: Response) {
  * Extracts data from request and immediately acknowledges, then processes asynchronously
  */
 export async function handleGmailWebhook(req: Request, res: Response) {
-  console.log(
-    chalk.bgMagenta.white("Gmail webhook received:"),
-    chalk.magentaBright(JSON.stringify(req.body, null, 2))
-  );
+  logger.info("Gmail webhook received", { body: req.body });
 
   // Extract and validate webhook data
   const webhookData = extractWebhookData(req);
@@ -131,7 +129,7 @@ export async function handleGmailWebhook(req: Request, res: Response) {
       historyId: webhookData.historyId,
     })
   } catch (error) {
-    console.error('Error processing Gmail webhook:', error);
+    logger.error('Error processing Gmail webhook:', { error });
   }
 }
 
@@ -156,7 +154,7 @@ function extractWebhookData(req: Request): { emailAddress: string; historyId: nu
       historyId: decoded.historyId,
     };
   } catch (error) {
-    console.error('Error decoding webhook data:', error);
+    logger.error('Error decoding webhook data:', { error });
     return null;
   }
 }

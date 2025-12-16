@@ -5,6 +5,7 @@ import { NotionDatabaseSession } from "../NotionDatabaseOutput";
 import { IntegrationType } from "../../../shared/Integrations";
 import { SessionWithTracking } from "../../../agent/ChannelAgent/ChannelAgent";
 import { formatError } from "../../../tools/toolUtils";
+import logger from "../../../logger";
 
 // Helper function to extract readable values from Notion property objects
 function extractPropertyValue(property: any): any {
@@ -210,7 +211,7 @@ EXAMPLES:
         result_type: z.enum(['page', 'data_source']).nullable().optional().describe('Filter results to only pages or data sources. Only relevant for wiki databases.'),
     }),
     execute: async ({ filter_properties, filter, page_size, start_cursor, result_type }, runContext?: RunContext<SessionWithTracking<NotionDatabaseSession>>) => {
-        console.log("Executing notion_query_database tool with filters:", { filter_properties, filter, page_size, start_cursor });
+        logger.debug("Executing notion_query_database tool with filters", { filter_properties, filter, page_size, start_cursor });
         if (!runContext?.context) {
             throw new Error("No context provided");
         }
@@ -300,7 +301,7 @@ EXAMPLES:
             type: 'read',
         });
 
-        console.log("Notion query database tool response: ", { 
+        logger.debug("Notion query database tool response", { 
             pages_count: pages.length, 
             has_more: response.has_more,
             next_cursor: response.next_cursor 

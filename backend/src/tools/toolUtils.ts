@@ -1,6 +1,7 @@
 import { RunContext } from "@openai/agents";
 import { Session } from "../server";
 import { SessionWithTracking } from "../agent/ChannelAgent/ChannelAgent";
+import logger from "../logger";
 
 // MARK: - Error Handling
 
@@ -29,8 +30,7 @@ export function parseSerializedError(error: string): ErrorContext {
         }
     } catch (parseError) {
         const errorPreview = error.length > 50 ? error.substring(0, 50) + "..." : error;
-        console.error("Failed to parse serialized error:", parseError);
-        console.error("Error string preview:", errorPreview);
+        logger.error("Failed to parse serialized error", { error: parseError instanceof Error ? parseError.message : String(parseError), stack: parseError instanceof Error ? parseError.stack : undefined, errorPreview });
         return {
             context: {} as RunContext,
             error: `Unable to parse error: ${parseError instanceof Error ? parseError.message : String(parseError)}`

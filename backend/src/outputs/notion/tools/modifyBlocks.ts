@@ -1,12 +1,12 @@
 import { RunContext, tool } from "@openai/agents";
 import { z } from "zod";
 import { Client } from '@notionhq/client';
-import chalk from "chalk";
 import { IntegrationType } from "../../../shared/Integrations";
 import { NotionPageSession } from "../NotionPageOutput";
 import { getBlockTypeName, describeBlocks } from "../../../utility/notion";
 import { SessionWithTracking } from "../../../agent/ChannelAgent/ChannelAgent";
 import { formatError, needsApproval } from "../../../tools/toolUtils";
+import logger from "../../../logger";
 
 /**
  * Constructs a Notion deep link URL to a specific block.
@@ -55,8 +55,7 @@ Example: "[{\"operation\": \"append\", \"blocks\": [{\"object\": \"block\", \"ty
     }),
     needsApproval,
     execute: async ({ operations_json }, runContext?: RunContext<SessionWithTracking<NotionPageSession>>) => {
-        console.log(chalk.bgMagenta.white.bold('🛠️ Executing notion_modify_blocks tool'));
-        console.log(chalk.cyan('  Operations JSON: '), chalk.greenBright(operations_json));
+        logger.debug('🛠️ Executing notion_modify_blocks tool', { operationsJson: operations_json });
         // Parse the JSON string
         let operations: Array<{
             operation: 'append' | 'update' | 'delete';
@@ -99,7 +98,7 @@ Example: "[{\"operation\": \"append\", \"blocks\": [{\"object\": \"block\", \"ty
             pageUrl = 'url' in pageResponse ? pageResponse.url : undefined;
         } catch (error) {
             // If we can't fetch the page URL, we'll just skip adding URLs to trackAction
-            console.warn('Could not fetch page URL for deep linking:', error);
+            logger.warn('Could not fetch page URL for deep linking', { error });
         }
 
         const results: any[] = [];

@@ -12,13 +12,14 @@ import { INPUT_REGISTRY } from "../inputs/InputRegistry";
 import { INTEGRATION_REGISTRY } from "../integrations/abstract/IntegrationRegistry";
 import { OutputFactory } from "../outputs/abstract/OutputFactory";
 import { emitCacheInvalidationWithKey } from "../realtimeSocket";
+import logger from "../logger";
 
 async function createInputConfig(
     tx: PrismaTransaction,
     inputId: string,
     config: ChannelInput
 ): Promise<void> {
-    console.log(chalk.cyan('🔵 [INPUT CONFIG] config:', JSON.stringify(config, null, 2)));
+    logger.debug('🔵 [INPUT CONFIG] config', { inputId, config: JSON.stringify(config, null, 2) });
     const input = INPUT_REGISTRY.find(input => input.configType === config.config.configType);
     if (!input) {
         throw new Error(`Input not found for integration type: ${config.config.configType}`);
@@ -131,7 +132,7 @@ export async function getUserChannels(req: Request, res: Response) {
 
         res.status(200).json(response);
     } catch (error) {
-        console.error('Error fetching channels:', error);
+        logger.error('Error fetching channels', { error, userId });
         res.status(500).json({ error: 'Failed to fetch channels' });
     }
 }
@@ -204,7 +205,7 @@ export async function getRecentChannels(req: Request, res: Response) {
 
         res.status(200).json(response);
     } catch (error) {
-        console.error('Error fetching recent channels:', error);
+        logger.error('Error fetching recent channels', { error, userId });
         res.status(500).json({ error: 'Failed to fetch recent channels' });
     }
 }
@@ -247,7 +248,7 @@ export async function getUserChannel(req: Request, res: Response) {
 
         res.status(200).json(response);
     } catch (error) {
-        console.error('Error fetching channel:', error);
+        logger.error('Error fetching channel', { error, userId, channelId });
         res.status(500).json({ error: 'Failed to fetch channel' });
     }
 }
@@ -261,9 +262,9 @@ export async function createChannel(req: Request, res: Response) {
 
     const userId = req.session.user.id;
     const { name, inputs, output, prompt, isActive = true, requireApproval = false, notificationSettings } = req.body as ChannelUpdate;
-    console.log(chalk.green("Output from frontend:"), chalk.yellow(JSON.stringify(output, null, 2)));
-    console.log(chalk.blue("Inputs from frontend:"), chalk.yellow(JSON.stringify(inputs, null, 2)));
-    console.log(chalk.magenta("Notification settings from frontend:"), chalk.yellow(JSON.stringify(notificationSettings, null, 2)));
+    logger.debug("Output from frontend", { output: JSON.stringify(output, null, 2), userId });
+    logger.debug("Inputs from frontend", { inputs: JSON.stringify(inputs, null, 2), userId });
+    logger.debug("Notification settings from frontend", { notificationSettings: JSON.stringify(notificationSettings, null, 2), userId });
 
     // Validate request
     if (!name || !inputs || inputs.length === 0 || !output || !prompt?.text) {
@@ -338,11 +339,11 @@ export async function createChannel(req: Request, res: Response) {
                 throw new Error(`Integration ${output.config.integrationType} not found or not owned by user`);
             }
 
-            console.log(chalk.green("Output integration ID:"), chalk.yellow(outputIntegrationId));
+            logger.debug("Output integration ID", { outputIntegrationId, userId });
 
-            console.log(chalk.green("Output integration type:"), chalk.yellow(outputIntegrationType));
+            logger.debug("Output integration type", { outputIntegrationType, userId });
 
-            console.log(chalk.green("Creating new output:"), chalk.yellow(JSON.stringify(output, null, 2)));
+            logger.debug("Creating new output", { output: JSON.stringify(output, null, 2), userId });
 
             const newOutput = await tx.automation_outputs.create({
                 data: {
@@ -384,7 +385,7 @@ export async function createChannel(req: Request, res: Response) {
 
         res.status(201).json({ success: true, id: channel.id });
     } catch (error) {
-        console.error('Error creating channel:', error);
+        logger.error('Error creating channel', { error, userId });
         res.status(500).json({ error: 'Failed to create channel', details: (error as Error).message });
     }
 }
@@ -548,7 +549,7 @@ export async function updateChannel(req: Request, res: Response) {
 
         res.status(200).json({ success: true, id: channelId });
     } catch (error) {
-        console.error('Error updating channel:', error);
+        logger.error('Error updating channel', { error, userId, channelId });
         res.status(500).json({ error: 'Failed to update channel', details: (error as Error).message });
     }
 }
@@ -597,7 +598,7 @@ export async function deleteChannel(req: Request, res: Response) {
 
         res.status(200).json({ success: true, message: 'Channel deleted successfully' });
     } catch (error) {
-        console.error('Error deleting channel:', error);
+        logger.error('Error deleting channel', { error, userId, channelId });
         res.status(500).json({ error: 'Failed to delete channel', details: (error as Error).message });
     }
 }
@@ -643,24 +644,20 @@ async function setupChannelInputs(channel: ChannelWithInputRelations): Promise<v
 
             if (integration) {
                 await integration.setupChannelInput(input.integration_id, input);
-                console.log(
-                    chalk.green(
-                        `✅ Setup completed for ${input.config_type} input (ID: ${input.id})`
-                    )
+                logger.info(
+                    `✅ Setup completed for ${input.config_type} input (ID: ${input.id})`,
+                    { configType: input.config_type, inputId: input.id, integrationId: input.integration_id }
                 );
             } else {
-                console.log(
-                    chalk.yellow(
-                        `⚠️  No integration found for ${integrationType} (config: ${input.config_type}). Skipping setup.`
-                    )
+                logger.warn(
+                    `⚠️  No integration found for ${integrationType} (config: ${input.config_type}). Skipping setup.`,
+                    { integrationType, configType: input.config_type, inputId: input.id }
                 );
             }
         } catch (error) {
-            console.error(
-                chalk.red(
-                    `❌ Error setting up ${input.config_type} input (ID: ${input.id}):`
-                ),
-                error
+            logger.error(
+                `❌ Error setting up ${input.config_type} input (ID: ${input.id})`,
+                { error, configType: input.config_type, inputId: input.id }
             );
         }
     }
@@ -684,24 +681,20 @@ async function tearDownChannelInputs(channel: ChannelWithInputRelations): Promis
 
             if (integration) {
                 await integration.teardownChannelInput(input.integration_id, input);
-                console.log(
-                    chalk.green(
-                        `✅ Teardown completed for ${input.config_type} input`
-                    )
+                logger.info(
+                    `✅ Teardown completed for ${input.config_type} input`,
+                    { configType: input.config_type, inputId: input.id, integrationId: input.integration_id }
                 );
             } else {
-                console.log(
-                    chalk.yellow(
-                        `⚠️  No integration found for ${integrationType} (config: ${input.config_type}). Skipping teardown.`
-                    )
+                logger.warn(
+                    `⚠️  No integration found for ${integrationType} (config: ${input.config_type}). Skipping teardown.`,
+                    { integrationType, configType: input.config_type, inputId: input.id }
                 );
             }
         } catch (error) {
-            console.error(
-                chalk.red(
-                    `❌ Error tearing down ${input.config_type}:`
-                ),
-                error
+            logger.error(
+                `❌ Error tearing down ${input.config_type}`,
+                { error, configType: input.config_type, inputId: input.id }
             );
         }
     }

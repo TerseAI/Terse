@@ -15,6 +15,7 @@ import { Request, Response } from "express";
 import { InputConfigType } from "@prisma/client";
 import axios, { AxiosResponse } from "axios";
 import { GithubAppUser } from "../routes/GithubTypes";
+import logger from "../logger";
 
 export class GithubIntegrationManager implements Integration<GithubIntegration, GithubAppUnifiedEventRequest, typeof GithubIntegrationMetadata>, OAuthIntegrationInstallation<IntegrationType.GITHUB> {
     constructor() { }
@@ -54,7 +55,7 @@ export class GithubIntegrationManager implements Integration<GithubIntegration, 
         const users: User[] = await resolveUsersForGithubInstallation(event.installationId);
 
         if (users.length === 0) {
-            console.log(chalk.yellow(`⚠️  No users found for GitHub event from ${event.installationId}`));
+            logger.warn(`⚠️  No users found for GitHub event from ${event.installationId}`, { installationId: event.installationId, eventType: event.eventType });
             return;
         }
         
@@ -80,12 +81,7 @@ export class GithubIntegrationManager implements Integration<GithubIntegration, 
     async processInstallationCallback(req: Request, res: Response): Promise<void> {
         const { installation_id, setup_action, state, code } = req.query as { installation_id: string; setup_action: string; state: string; code: string };
 
-        console.log(
-            chalk.bgBlue.white.bold("[GitHub Setup URL Installation]"),
-            chalk.cyan("installation_id:"), chalk.yellow(installation_id),
-            chalk.cyan("setup_action:"), chalk.yellow(setup_action),
-            chalk.cyan("state:"), chalk.yellow(state)
-        );
+        logger.info("[GitHub Setup URL Installation]", { installationId: installation_id, setupAction: setup_action, hasState: !!state });
 
         // extract user_id from state
         const user_id = Buffer.from(state as string, 'base64').toString('utf-8');
@@ -94,7 +90,7 @@ export class GithubIntegrationManager implements Integration<GithubIntegration, 
         });
 
         if (!user) {
-            console.error(chalk.red.bold("[GitHub Setup URL Installation]"), chalk.red("ERROR: User not found"));
+            logger.error("[GitHub Setup URL Installation] ERROR: User not found", { userId: user_id, installationId: installation_id });
             res.status(400).json({ message: 'User not found' });
             return;
         }
@@ -102,7 +98,7 @@ export class GithubIntegrationManager implements Integration<GithubIntegration, 
         // parse installation_id as number
         const installation_id_number = parseInt(installation_id as string);
         if (isNaN(installation_id_number)) {
-            console.error(chalk.red.bold("[GitHub Setup URL Installation]"), chalk.red("ERROR: Installation ID is not a number:"), installation_id);
+            logger.error("[GitHub Setup URL Installation] ERROR: Installation ID is not a number", { installationId: installation_id, userId: user_id });
             res.status(400).json({ message: 'Installation ID is not a number' });
             return;
         }
@@ -124,11 +120,7 @@ export class GithubIntegrationManager implements Integration<GithubIntegration, 
             create: { user_id: user_id, github_username: githubAppUser.name, access_token: authToken.access_token }
         });
 
-        console.log(
-            chalk.green("[GitHub Setup URL Installation]"),
-            chalk.cyan("Upsert completed for installation_id:"), chalk.yellow(installation_id_number),
-            chalk.cyan("user_id:"), chalk.yellow(user_id)
-        );
+        logger.info("[GitHub Setup URL Installation] Upsert completed", { installationId: installation_id_number, userId: user_id });
 
         res.redirect(`${urls.frontend}/oauth/success`);
     }
@@ -165,7 +157,7 @@ export class GithubIntegrationManager implements Integration<GithubIntegration, 
             });
 
             if (!installation) {
-                console.error(`GitHub installation ${integrationId} not found`);
+                logger.error(`GitHub installation ${integrationId} not found`, { integrationId });
                 return null;
             }
 
@@ -174,7 +166,7 @@ export class GithubIntegrationManager implements Integration<GithubIntegration, 
             // Return null to indicate tokens must be generated via GitHub App flow
             return null;
         } catch (error) {
-            console.error(`Error getting GitHub access token for installation ${integrationId}:`, error);
+            logger.error(`Error getting GitHub access token for installation ${integrationId}`, { error, integrationId });
             return null;
         }
     }
@@ -315,7 +307,7 @@ export class GithubEvent extends InputEvent {
 
         // Make sure the repository is in the list of repositories configured for the channel
         if (!githubConfig?.repository_ids.includes(this.data.repository.id)) {
-            console.log(chalk.red('GithubEvent matchesChannelInput'), 'repository not found in channel', this.data.repository.id, githubConfig?.repository_ids);
+            logger.debug('GithubEvent matchesChannelInput - repository not found in channel', { repositoryId: this.data.repository.id, repositoryIds: githubConfig?.repository_ids, channelInputId: channelInput.id });
             return false;
         }
 
@@ -350,7 +342,7 @@ export async function getGithubAppUser(githubAppAccessToken: string): Promise<Gi
         }
     );
 
-    console.log('Github App user:', resp.data);
+    logger.debug('Github App user retrieved', { userId: resp.data.id, login: resp.data.login });
     return resp.data;
 }
 
@@ -384,7 +376,7 @@ export async function getAppInstallationsForUser(oAuthToken: string): Promise<Gi
         });
         return resp.data;
     } catch (error) {
-        console.error('Error getting app installations for user:', error);
+        logger.error('Error getting app installations for user', { error });
         return { total_count: 0, installations: [] };
     }
 }

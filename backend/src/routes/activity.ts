@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import { db } from "../prismaClient";
 import { ActivityEvent } from "../shared/types";
 import { callOpenAISummary } from '../utility/openai';
+import logger from "../logger";
 
 interface PaginationQuery {
     cursor?: string; // ISO timestamp string
@@ -166,7 +167,7 @@ export async function getDailyActivitySummary(req: Request, res: Response) {
     const end = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())); // today at 00:00 UTC
     const start = new Date(end.getTime() - 24 * 60 * 60 * 1000); // yesterday at 00:00 UTC
 
-    console.log('Daily summary date range:', {
+    logger.debug('Daily summary date range:', {
         start: start.toISOString(),
         end: end.toISOString(),
         userId: user.id
@@ -193,18 +194,18 @@ export async function getDailyActivitySummary(req: Request, res: Response) {
     const params = [user.id, start.toISOString(), end.toISOString()];
 
     try {
-        console.log('Executing SQL query with params:', params);
+        logger.debug('Executing SQL query with params:', { params });
         const result = await db().$queryRawUnsafe<any[]>(sql, ...params);
-        console.log('Query result count:', result.length);
+        logger.debug('Query result count:', { count: result.length });
         
         const eventCount = result.length;
         let summary = '';
         
         if (eventCount === 0) {
             summary = 'No activity events were recorded yesterday.';
-            console.log('No events found for yesterday, using fallback summary');
+            logger.debug('No events found for yesterday, using fallback summary');
         } else {
-            console.log('Found events, generating AI summary for', eventCount, 'events');
+            logger.info('Found events, generating AI summary', { eventCount });
             // Format events into a prompt for OpenAI
             const prompt = result.map((row, i) => {
                 return `${i + 1}. [${row.event_type}] ${row.title} (${row.repository_name || 'Unknown repo'}) by ${row.github_username || 'Unknown user'} at ${row.created_at.toISOString()}`;
@@ -212,9 +213,9 @@ export async function getDailyActivitySummary(req: Request, res: Response) {
             
             try {
                 summary = await callOpenAISummary(`Summarize the following activity events for a daily team update.\n\n${prompt}`);
-                console.log('AI summary generated successfully');
+                logger.info('AI summary generated successfully');
             } catch (openaiError) {
-                console.error('OpenAI API error:', openaiError);
+                logger.error('OpenAI API error:', { error: openaiError });
                 summary = `Yesterday had ${eventCount} activity events, but there was an issue generating the summary.`;
             }
         }
@@ -225,10 +226,10 @@ export async function getDailyActivitySummary(req: Request, res: Response) {
             eventCount
         };
         
-        console.log('Returning daily summary response:', response);
+        logger.debug('Returning daily summary response:', { response });
         return res.json(response);
     } catch (err) {
-        console.error('Error fetching daily activity summary:', err);
+        logger.error('Error fetching daily activity summary:', { error: err });
         return res.status(500).json({ 
             error: 'Failed to fetch daily summary',
             details: err instanceof Error ? err.message : 'Unknown error'

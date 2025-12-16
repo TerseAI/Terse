@@ -6,6 +6,7 @@ import {
 } from "../integrations/abstract/Integration";
 import { OAuthInstallationDetails } from "../shared/types";
 import { InstallationOptionsFor, IntegrationDetails, IntegrationInstance, IntegrationType, IntegrationWithStatus } from "../shared/Integrations";
+import logger from "../logger";
 
 
 export const getIntegrationInstallationDetails = async (req: Request, res: Response) => {
@@ -29,7 +30,7 @@ export const getIntegrationInstallationDetails = async (req: Request, res: Respo
         const installationDetails = await getInstallationInformation(integrationType as IntegrationType, userId, options);
         res.json(installationDetails);
     } catch (error: any) {
-        console.error('Error getting installation details:', error);
+        logger.error('Error getting installation details', { error, integrationType: req.params.integrationType, userId: req.session?.user?.id });
         res.status(500).json({ error: error.message || 'Failed to get installation details' });
     }
 }

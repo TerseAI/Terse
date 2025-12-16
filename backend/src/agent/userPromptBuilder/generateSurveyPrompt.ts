@@ -2,6 +2,7 @@ import OpenAI from 'openai';
 import { openai as openaiConfig } from '../../config/settings';
 import { GenerateSurveyPromptRequest } from '../../shared/PromptBuilderTypes';
 import { formatConfigContext, formatSurveyAnswers } from './promptBuilderHelpers';
+import logger from '../../logger';
 
 const openai = new OpenAI({ apiKey: openaiConfig.apiKey });
 
@@ -60,11 +61,10 @@ Generate a comprehensive prompt based on this information. Remember: keep it und
 
     const prompt = completion.choices?.[0]?.message?.content?.trim();
     if (!prompt) {
-        console.error('No prompt in response:', {
-            choices: completion.choices,
+        logger.error('No prompt in response from OpenAI', { 
             finishReason: completion.choices?.[0]?.finish_reason,
-            message: completion.choices?.[0]?.message,
-            fullResponse: JSON.stringify(completion, null, 2)
+            hasChoices: !!completion.choices?.length,
+            choicesCount: completion.choices?.length || 0
         });
         throw new Error(`No prompt returned from OpenAI. Finish reason: ${completion.choices?.[0]?.finish_reason || 'unknown'}`);
     }
