@@ -102,7 +102,7 @@ export async function generateApprovalSummary(
 
     // Construct user prompt based on whether we found a ToolCall event or need to fallback to actions
     let userPrompt: string;
-    
+
     if (!toolCallEvent) {
         logger.warn(`[generateApprovalSummary] ToolCall event not found for stepId: ${stepId} in runId: ${runId}`);
         // Fallback: try to get action details from run_history_actions
@@ -155,6 +155,7 @@ Use the conversation history available in the session to understand the context 
     const session = new RunHistoryChatMemorySession({
         sessionId: runId,
         skipSave: true,
+        filterIncompleteToolCalls: true
     });
 
     const runner = runnerFactory({
@@ -180,22 +181,22 @@ function buildTriggerDescription(runRecord: {
     trigger_url: string | null;
 }): string {
     const parts: string[] = [];
-    
+
     parts.push(`Event: ${runRecord.event}`);
     parts.push(`Integration: ${runRecord.trigger_integration}`);
     parts.push(`Source: ${runRecord.trigger_source}`);
-    
+
     if (runRecord.trigger_title) {
         parts.push(`Title: ${runRecord.trigger_title}`);
     }
-    
+
     if (runRecord.trigger_subheader) {
         parts.push(`Subheader: ${runRecord.trigger_subheader}`);
     }
-    
+
     if (runRecord.trigger_url) {
         parts.push(`URL: ${runRecord.trigger_url}`);
     }
-    
+
     return parts.join('\n');
 }
