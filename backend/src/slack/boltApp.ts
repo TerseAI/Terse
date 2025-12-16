@@ -7,8 +7,6 @@ import { ModelEvent } from "../shared/ModelEvents";
 import { settings } from "../config/settings";
 import { db } from "../prismaClient";
 import { SlackIntegrationManager, SlackMessageEvent } from "../integrations/SlackIntegration";
-import { updateSlackApprovalMessage } from "../utility/slack";
-import { generateApprovalSummary } from "../agent/ApprovalSummaryAgent/ApprovalSummaryAgent";
 import { ApprovalService } from "../services/ApprovalService";
 import logger from "../logger";
 
@@ -177,81 +175,13 @@ export async function setupSlackBolt() {
         await respond({ text: "Error: Channel not found", response_type: "ephemeral" });
         return;
       }
-      
-      // Retrieve cached summary or generate if not available (for backward compatibility)
-      let approvalSummary: string;
-      if (approvalMessage.summary) {
-        approvalSummary = approvalMessage.summary;
-        logger.debug(`[Slack Approval] Using cached summary for runId: ${runId}, stepId: ${stepId}`);
-      } else {
-        // Fallback: generate summary if not cached (for existing records)
-        logger.debug(`[Slack Approval] Summary not cached, generating for runId: ${runId}, stepId: ${stepId}`);
-        const result = await generateApprovalSummary(
-          runId,
-          userId,
-          channel.id,
-          stepId
-        );
-        approvalSummary = result.approvalSummary;
-        
-        // Store the generated summary for future use
-        await db().approval_slack_messages.update({
-          where: { id: approvalMessage.id },
-          data: { summary: approvalSummary },
-        });
-      }
 
-      // Immediately update Slack message to show processing state (Slack-specific UI logic)
-      await updateSlackApprovalMessage(
-        approvalMessage.user_slack_integration_id,
-        approvalMessage.slack_channel_id,
-        approvalMessage.slack_message_ts,
-        'processing',
-        approvalSummary,
-        channel.name,
-        channel.id,
-        runId
-      );
-
-      // Update database record to processing status (Slack-specific UI logic)
-      await db().approval_slack_messages.update({
-        where: {
-          id: approvalMessage.id,
-        },
-        data: {
-          status: 'processing',
-        },
-      });
-
-      // Use centralized approval service for core business logic
+      // Use centralized approval service - it handles Slack notifications internally
       const result = await ApprovalService.processApproval({
         runId,
         stepId,
         approved,
         userId,
-      });
-
-      // Update Slack message based on result (Slack-specific UI logic)
-      const status = approved ? 'approved' : 'rejected';
-      await updateSlackApprovalMessage(
-        approvalMessage.user_slack_integration_id,
-        approvalMessage.slack_channel_id,
-        approvalMessage.slack_message_ts,
-        status,
-        approvalSummary,
-        channel.name,
-        channel.id,
-        runId
-      );
-
-      // Update database record to final status (Slack-specific UI logic)
-      await db().approval_slack_messages.update({
-        where: {
-          id: approvalMessage.id,
-        },
-        data: {
-          status: status,
-        },
       });
 
       if (result.status === 'failed' && result.error) {

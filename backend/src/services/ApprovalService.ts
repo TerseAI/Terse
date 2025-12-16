@@ -7,6 +7,8 @@ import { storeChatEvent, markRunFailed, finalizeRunStatus, markRunInProgress } f
 import { ChannelAgent } from "../agent/ChannelAgent/ChannelAgent";
 import { ModelEvent } from "../shared/ModelEvents";
 import { emitCacheInvalidationWithWildcard } from "../realtimeSocket";
+import { updateSlackApprovalMessage } from "../utility/slack";
+import { generateApprovalSummary } from "../agent/ApprovalSummaryAgent/ApprovalSummaryAgent";
 import logger from "../logger";
 
 export type ApprovalRequest = {
@@ -102,6 +104,111 @@ export class ApprovalService {
         return { output, session };
     }
 
+    /**
+     * Updates Slack notification for an approval request.
+     * Handles fetching approval message, cached summary, channel info, and updating both Slack message and database.
+     */
+    private static async updateSlackNotification(
+        runId: string,
+        stepId: string,
+        status: 'processing' | 'approved' | 'rejected',
+        userId: string,
+        channelId: string
+    ): Promise<void> {
+        const prisma = db();
+
+        try {
+            // Fetch the approval message record
+            const approvalMessage = await prisma.approval_slack_messages.findFirst({
+                where: {
+                    run_id: runId,
+                    step_id: stepId,
+                },
+            });
+
+            if (!approvalMessage) {
+                logger.debug(`[ApprovalService] No approval message found for runId: ${runId}, stepId: ${stepId}`);
+                return;
+            }
+
+            // Get cached summary or generate if missing
+            let approvalSummary: string;
+            if (approvalMessage.summary) {
+                approvalSummary = approvalMessage.summary;
+                logger.debug(`[ApprovalService] Using cached summary for runId: ${runId}, stepId: ${stepId}`);
+            } else {
+                // Fallback: generate summary if not cached (for existing records)
+                logger.debug(`[ApprovalService] Summary not cached, generating for runId: ${runId}, stepId: ${stepId}`);
+                
+                const result = await generateApprovalSummary(
+                    runId,
+                    userId,
+                    channelId,
+                    stepId
+                );
+                approvalSummary = result.approvalSummary;
+
+                // Store the generated summary for future use
+                await prisma.approval_slack_messages.update({
+                    where: { id: approvalMessage.id },
+                    data: { summary: approvalSummary },
+                });
+            }
+
+            // Get channel info for deep link
+            const runRecord = await prisma.run_history_records.findUnique({
+                where: { id: runId },
+                include: { automation: true },
+            });
+
+            if (!runRecord?.automation) {
+                logger.error(`[ApprovalService] Run record or automation not found for runId: ${runId}`);
+                return;
+            }
+
+            const channel = await prisma.automations.findUnique({
+                where: { id: runRecord.automation.id },
+            });
+
+            if (!channel) {
+                logger.error(`[ApprovalService] Channel not found for automation id: ${runRecord.automation.id}`);
+                return;
+            }
+
+            // Update Slack message
+            const updateSuccess = await updateSlackApprovalMessage(
+                approvalMessage.user_slack_integration_id,
+                approvalMessage.slack_channel_id,
+                approvalMessage.slack_message_ts,
+                status,
+                approvalSummary,
+                channel.name,
+                channel.id,
+                runId
+            );
+
+            if (!updateSuccess) {
+                logger.error(`[ApprovalService] Failed to update Slack message for runId: ${runId}, stepId: ${stepId}`);
+                return;
+            }
+
+            // Update database record status
+            await prisma.approval_slack_messages.update({
+                where: {
+                    id: approvalMessage.id,
+                },
+                data: {
+                    status: status,
+                },
+            });
+
+            logger.info(`[ApprovalService] Successfully updated Slack notification to status: ${status} for runId: ${runId}, stepId: ${stepId}`);
+        } catch (error) {
+            logger.error(`[ApprovalService] Error updating Slack notification:`, { error, runId, stepId, status });
+            // Don't throw - Slack notification failures shouldn't break approval processing
+        }
+    }
+
     static async processApproval(request: ApprovalRequest): Promise<ApprovalResult> {
         const { runId, stepId, approved, userId } = request;
 
@@ -121,6 +228,9 @@ export class ApprovalService {
             if (runRecord.status !== 'in_progress') {
                 await markRunInProgress(runId);
             }
+
+            // Update Slack notification to processing state
+            await this.updateSlackNotification(runId, stepId, 'processing', userId, channel.id);
 
             // Store the approval response event
             const toolApprovalResponseEvent: ModelEvent = {
@@ -157,6 +267,11 @@ export class ApprovalService {
                 } catch (e) {
                     logger.error('Failed to finalize run status', { error: e });
                 }
+
+                // Update Slack notification to final approved/rejected state
+                const finalStatus = approved ? 'approved' : 'rejected';
+                await this.updateSlackNotification(runId, stepId, finalStatus, userId, channel.id);
+
                 logger.info(`[ApprovalService] Successfully processed approval for runId: ${runId}, stepId: ${stepId}`);
                 return {
                     status: 'completed' as const,
@@ -166,6 +281,10 @@ export class ApprovalService {
                 // If status is 'awaiting_approval', something went wrong - we should have completed
                 // This shouldn't happen after resuming from pending approval, but handle it gracefully
                 logger.warn(`[ApprovalService] Unexpected awaiting_approval status after resuming approval for runId: ${runId}`);
+                
+                // Update Slack notification to rejected state since it failed
+                await this.updateSlackNotification(runId, stepId, 'rejected', userId, channel.id);
+                
                 return {
                     status: 'failed' as const,
                     error: 'Unexpected awaiting_approval status after resuming',

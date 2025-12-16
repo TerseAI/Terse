@@ -14,7 +14,6 @@ import { OutputFactory } from "./outputs/abstract/OutputFactory";
 import { Session } from "./server";
 import { storeChatEvent, markRunFailed, finalizeRunStatus } from "./agent/ChannelAgent/runHistory";
 import { DirectiveTask, directiveTaskQueue } from "./agent/DirectiveAgent/DirectiveAgent";
-import { updateSlackApprovalMessage } from "./utility/slack";
 import { ApprovalService } from "./services/ApprovalService";
 import logger from "./logger";
 
@@ -271,7 +270,7 @@ export async function initializeRealtimeSocket(server: HttpServer): Promise<Serv
                 return;
             }
 
-            // Use centralized approval service
+            // Use centralized approval service - it handles Slack notifications internally
             const result = await ApprovalService.processApproval({
                 runId,
                 stepId: message.step_id,
@@ -279,70 +278,10 @@ export async function initializeRealtimeSocket(server: HttpServer): Promise<Serv
                 userId,
             });
 
-            // Update Slack message if approval was processed from web app
-            // This is interface-specific logic, so it stays here
-            if (result.status === 'completed' || result.status === 'failed') {
-                try {
-                    const prisma = db();
-                    const approvalMessage = await prisma.approval_slack_messages.findFirst({
-                        where: {
-                            run_id: runId,
-                            step_id: message.step_id,
-                            status: 'pending',
-                        },
-                    });
-
-                    if (approvalMessage) {
-                        // Get channel name for Slack message update
-                        const runRecord = await prisma.run_history_records.findUnique({
-                            where: { id: runId },
-                            include: { automation: true },
-                        });
-
-                        if (runRecord?.automation) {
-                            const channel = await prisma.automations.findUnique({
-                                where: { id: runRecord.automation.id },
-                            });
-
-                            if (channel) {
-                                // Get tool name from run history action
-                                const runAction = await prisma.run_history_actions.findFirst({
-                                    where: {
-                                        run_history_record_id: runId,
-                                        step_id: message.step_id,
-                                    },
-                                });
-
-                                const toolName = runAction?.target || "Tool";
-                                const status = message.approved ? 'approved' : 'rejected';
-
-                                await updateSlackApprovalMessage(
-                                    approvalMessage.user_slack_integration_id,
-                                    approvalMessage.slack_channel_id,
-                                    approvalMessage.slack_message_ts,
-                                    status,
-                                    toolName,
-                                    channel.name
-                                );
-
-                                // Update database record
-                                await prisma.approval_slack_messages.update({
-                                    where: {
-                                        id: approvalMessage.id,
-                                    },
-                                    data: {
-                                        status: status,
-                                    },
-                                });
-
-                                logger.info(`[channel:chat:approval] Updated Slack message for approval`);
-                            }
-                        }
-                    }
-                } catch (error) {
-                    logger.error('Failed to update Slack approval message:', { error });
-                    // Don't fail the approval if Slack update fails
-                }
+            if (result.status === 'failed' && result.error) {
+                logger.error(`[channel:chat:approval] Approval processing failed: ${result.error}`);
+            } else {
+                logger.info(`[channel:chat:approval] Successfully processed approval for runId: ${runId}`);
             }
         });
 
