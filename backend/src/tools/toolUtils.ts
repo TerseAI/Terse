@@ -46,8 +46,6 @@ export type ErrorContext = {
 
 // MARK: - Approval
 
-// needsApproval function that matches ToolApprovalFunction signature
-// The library expects RunContext<unknown>, but we know it's actually SessionWithTracking
 export async function needsApproval(context?: RunContext<unknown>): Promise<boolean> {
     // Type guard: safely access channel.requireApproval from SessionWithTracking
     const sessionWithTracking = context?.context as SessionWithTracking<Session> | undefined;
