@@ -3,7 +3,6 @@ import ExpressReceiverModule from "@slack/bolt/dist/receivers/ExpressReceiver.js
 // ESM wraps CommonJS default exports, so we need to access .default
 import type ExpressReceiverType from "@slack/bolt/dist/receivers/ExpressReceiver";
 const ExpressReceiver = ((ExpressReceiverModule as any).default || ExpressReceiverModule) as typeof ExpressReceiverType;
-import { ModelEvent } from "../shared/ModelEvents";
 import { settings } from "../config/settings";
 import { db } from "../prismaClient";
 import { SlackIntegrationManager, SlackMessageEvent } from "../integrations/SlackIntegration";
@@ -95,13 +94,12 @@ export async function setupSlackBolt() {
     }
   });
 
-  // Handle approval button clicks
-  slack.action(/^approval_(approve|reject)_(.+)__(.+)$/, async ({ ack, body, action, respond }) => {
+  // Handle approve button clicks - process directly
+  slack.action(/^approval_approve_(.+)__(.+)$/, async ({ ack, body, action, respond, client }) => {
     await ack();
     
     try {
       // Type guard to ensure action has action_id property
-      // Bolt actions can be various types, but we need one with action_id
       if (!('action_id' in action)) {
         logger.error('[Slack Approval] Action does not have action_id');
         await respond({ text: "Error: Invalid action format", response_type: "ephemeral" });
@@ -110,18 +108,17 @@ export async function setupSlackBolt() {
       const actionWithId = action as { action_id: string };
       const actionId = actionWithId.action_id;
       
-      // Extract runId and stepId from action_id format: approval_{approve|reject}_{runId}__{stepId}
-      // Using double underscore (__) as separator since both runId and stepId can contain single underscores
-      const match = actionId.match(/^approval_(approve|reject)_(.+)__(.+)$/);
+      // Extract runId and stepId from action_id format: approval_approve_{runId}__{stepId}
+      const match = actionId.match(/^approval_approve_(.+)__(.+)$/);
       if (!match) {
         logger.error(`[Slack Approval] Invalid action_id format: ${actionId}`);
         await respond({ text: "Error: Invalid approval request format", response_type: "ephemeral" });
         return;
       }
 
-      const [, decision, runId, stepId] = match;
-      const approved = decision === 'approve';
-      logger.info(`[Slack Approval] Processing ${decision} for runId: ${runId}, stepId: ${stepId}`);
+      const [, runId, stepId] = match;
+      logger.info(`[Slack Approval] Processing approve for runId: ${runId}, stepId: ${stepId}`);
+      
       // Find the approval message record
       const approvalMessage = await db().approval_slack_messages.findFirst({
         where: {
@@ -180,19 +177,270 @@ export async function setupSlackBolt() {
       const result = await ApprovalService.processApproval({
         runId,
         stepId,
-        approved,
+        approved: true,
         userId,
       });
 
       if (result.status === 'failed' && result.error) {
         logger.error(`[Slack Approval] Approval processing failed: ${result.error}`);
       } else {
-        const decision = approved ? 'approve' : 'reject';
-        logger.info(`[Slack Approval] Successfully processed ${decision} for runId: ${runId}, stepId: ${stepId}`);
+        logger.info(`[Slack Approval] Successfully processed approve for runId: ${runId}, stepId: ${stepId}`);
       }
     } catch (error) {
       logger.error('[Slack Approval] Error processing approval:', { error });
       await respond({ text: "Error processing approval request", response_type: "ephemeral" });
+    }
+  });
+
+  // Handle reject button clicks - open modal for rejection reason
+  slack.action(/^approval_reject_(.+)__(.+)$/, async ({ ack, body, action, respond, client }) => {
+    await ack();
+    
+    try {
+      // Type guard to ensure action has action_id property
+      if (!('action_id' in action)) {
+        logger.error('[Slack Approval] Action does not have action_id');
+        await respond({ text: "Error: Invalid action format", response_type: "ephemeral" });
+        return;
+      }
+      const actionWithId = action as { action_id: string };
+      const actionId = actionWithId.action_id;
+      
+      // Extract runId and stepId from action_id format: approval_reject_{runId}__{stepId}
+      const match = actionId.match(/^approval_reject_(.+)__(.+)$/);
+      if (!match) {
+        logger.error(`[Slack Approval] Invalid action_id format: ${actionId}`);
+        await respond({ text: "Error: Invalid approval request format", response_type: "ephemeral" });
+        return;
+      }
+
+      const [, runId, stepId] = match;
+      logger.info(`[Slack Approval] Opening rejection modal for runId: ${runId}, stepId: ${stepId}`);
+
+      // Verify the approval message exists
+      const approvalMessage = await db().approval_slack_messages.findFirst({
+        where: {
+          run_id: runId,
+          step_id: stepId,
+        },
+      });
+
+      if (!approvalMessage) {
+        logger.error(`[Slack Approval] No approval message found for runId: ${runId}, stepId: ${stepId}`);
+        await respond({ text: "Error: Approval request not found", response_type: "ephemeral" });
+        return;
+      }
+
+      // Get user from slack integration to verify access
+      const userSlackIntegration = await db().user_slack_integrations.findUnique({
+        where: {
+          id: approvalMessage.user_slack_integration_id,
+        },
+        include: {
+          user: true,
+        },
+      });
+
+      if (!userSlackIntegration) {
+        logger.error('[Slack Approval] No user slack integration found');
+        await respond({ text: "Error: User integration not found", response_type: "ephemeral" });
+        return;
+      }
+
+      const userId = userSlackIntegration.user_id;
+
+      // Verify user has access to this run
+      const runRecord = await db().run_history_records.findUnique({
+        where: { id: runId },
+        include: { automation: true },
+      });
+
+      if (!runRecord || !runRecord.automation || runRecord.automation.user_id !== userId) {
+        logger.error(`[Slack Approval] User ${userId} does not have access to run ${runId}`);
+        await respond({ text: "Error: You don't have permission to reject this request", response_type: "ephemeral" });
+        return;
+      }
+
+      // Open modal with rejection reason input
+      const triggerId = (body as any).trigger_id;
+      if (!triggerId) {
+        logger.error('[Slack Approval] No trigger_id in body');
+        await respond({ text: "Error: Unable to open modal", response_type: "ephemeral" });
+        return;
+      }
+
+      await client.views.open({
+        trigger_id: triggerId,
+        view: {
+          type: 'modal',
+          callback_id: 'rejection_modal_submit',
+          title: {
+            type: 'plain_text',
+            text: 'Reject Approval Request',
+          },
+          submit: {
+            type: 'plain_text',
+            text: 'Submit',
+          },
+          close: {
+            type: 'plain_text',
+            text: 'Cancel',
+          },
+          private_metadata: JSON.stringify({ runId, stepId }),
+          blocks: [
+            {
+              type: 'section',
+              text: {
+                type: 'mrkdwn',
+                text: 'Please provide a reason for rejecting this approval request.',
+              },
+            },
+            {
+              type: 'input',
+              block_id: 'rejection_reason_block',
+              element: {
+                type: 'plain_text_input',
+                action_id: 'rejection_reason',
+                multiline: true,
+                placeholder: {
+                  type: 'plain_text',
+                  text: 'Enter your rejection reason...',
+                },
+              },
+              label: {
+                type: 'plain_text',
+                text: 'Rejection Reason',
+              },
+            },
+          ],
+        },
+      });
+    } catch (error) {
+      logger.error('[Slack Approval] Error opening rejection modal:', { error });
+      await respond({ text: "Error opening rejection modal", response_type: "ephemeral" });
+    }
+  });
+
+  // Handle rejection modal submission
+  slack.view('rejection_modal_submit', async ({ ack, body, view, client }) => {
+    try {
+      // Extract rejection reason from the view
+      const rejectionReasonBlock = view.state.values.rejection_reason_block;
+      const rejectionReason = rejectionReasonBlock?.rejection_reason?.value;
+
+      if (!rejectionReason || rejectionReason.trim().length === 0) {
+        await ack({
+          response_action: 'errors',
+          errors: {
+            rejection_reason_block: 'Rejection reason is required',
+          },
+        });
+        return;
+      }
+
+      // Extract runId and stepId from private metadata
+      const privateMetadata = view.private_metadata;
+      let metadata: { runId: string; stepId: string };
+      try {
+        metadata = JSON.parse(privateMetadata);
+      } catch (error) {
+        logger.error('[Slack Approval] Failed to parse private metadata:', { error, privateMetadata });
+        await ack({
+          response_action: 'errors',
+          errors: {
+            rejection_reason_block: 'Invalid request data',
+          },
+        });
+        return;
+      }
+
+      const { runId, stepId } = metadata;
+      logger.info(`[Slack Approval] Processing rejection with reason for runId: ${runId}, stepId: ${stepId}`);
+
+      // Find the approval message record
+      const approvalMessage = await db().approval_slack_messages.findFirst({
+        where: {
+          run_id: runId,
+          step_id: stepId,
+        },
+      });
+
+      if (!approvalMessage) {
+        logger.error(`[Slack Approval] No approval message found for runId: ${runId}, stepId: ${stepId}`);
+        await ack({
+          response_action: 'errors',
+          errors: {
+            rejection_reason_block: 'Approval request not found',
+          },
+        });
+        return;
+      }
+
+      // Get user from slack integration
+      const userSlackIntegration = await db().user_slack_integrations.findUnique({
+        where: {
+          id: approvalMessage.user_slack_integration_id,
+        },
+        include: {
+          user: true,
+        },
+      });
+
+      if (!userSlackIntegration) {
+        logger.error('[Slack Approval] No user slack integration found');
+        await ack({
+          response_action: 'errors',
+          errors: {
+            rejection_reason_block: 'User integration not found',
+          },
+        });
+        return;
+      }
+
+      const userId = userSlackIntegration.user_id;
+
+      // Verify user has access
+      const runRecord = await db().run_history_records.findUnique({
+        where: { id: runId },
+        include: { automation: true },
+      });
+
+      if (!runRecord || !runRecord.automation || runRecord.automation.user_id !== userId) {
+        logger.error(`[Slack Approval] User ${userId} does not have access to run ${runId}`);
+        await ack({
+          response_action: 'errors',
+          errors: {
+            rejection_reason_block: 'You don\'t have permission to reject this request',
+          },
+        });
+        return;
+      }
+
+      // Acknowledge the view submission
+      await ack();
+
+      // Process the rejection with the reason
+      const result = await ApprovalService.processApproval({
+        runId,
+        stepId,
+        approved: false,
+        userId,
+        rejectionReason: rejectionReason.trim(),
+      });
+
+      if (result.status === 'failed' && result.error) {
+        logger.error(`[Slack Approval] Rejection processing failed: ${result.error}`);
+      } else {
+        logger.info(`[Slack Approval] Successfully processed rejection with reason for runId: ${runId}, stepId: ${stepId}`);
+      }
+    } catch (error) {
+      logger.error('[Slack Approval] Error processing rejection modal submission:', { error });
+      await ack({
+        response_action: 'errors',
+        errors: {
+          rejection_reason_block: 'Error processing rejection',
+        },
+      });
     }
   });
 

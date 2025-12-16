@@ -262,7 +262,8 @@ export async function updateSlackApprovalMessage(
     summary: string, // Human-readable summary instead of toolName
     channelName: string,
     automationId?: string,
-    runId?: string
+    runId?: string,
+    stepId?: string
 ): Promise<boolean> {
     const userSlackIntegration = await db().user_slack_integrations.findFirst({
         where: {
@@ -293,6 +294,20 @@ export async function updateSlackApprovalMessage(
     } else {
         statusEmoji = '❌';
         statusText = 'Rejected';
+    }
+
+    // Fetch rejection reason from database if status is rejected and runId/stepId are available
+    let rejectionReason: string | null = null;
+    if (status === 'rejected' && runId && stepId) {
+        const approvalMessage = await db().approval_slack_messages.findFirst({
+            where: {
+                run_id: runId,
+                step_id: stepId,
+            },
+        });
+        if (approvalMessage?.rejection_reason) {
+            rejectionReason = approvalMessage.rejection_reason;
+        }
     }
 
     // Build deep link to run history if automationId and runId are provided
@@ -327,7 +342,22 @@ export async function updateSlackApprovalMessage(
                 },
             ],
         },
-        ...(runHistoryLink ? [{
+    ];
+
+    // Add rejection reason section if available
+    if (status === 'rejected' && rejectionReason) {
+        blocks.push({
+            type: 'section' as const,
+            text: {
+                type: 'mrkdwn' as const,
+                text: `*Rejection Reason:*\n${rejectionReason}`,
+            },
+        });
+    }
+
+    // Add view run history button if link is available
+    if (runHistoryLink) {
+        blocks.push({
             type: 'actions' as const,
             elements: [{
                 type: 'button' as const,
@@ -339,8 +369,8 @@ export async function updateSlackApprovalMessage(
                 url: runHistoryLink,
                 action_id: 'view_run_history',
             }],
-        }] : []),
-    ];
+        });
+    }
 
     const text = `${statusText}: ${summary} - ${channelName}`;
 

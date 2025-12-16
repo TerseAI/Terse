@@ -16,6 +16,7 @@ export type ApprovalRequest = {
     stepId: string;
     approved: boolean;
     userId: string;
+    rejectionReason?: string;
 };
 
 export type ApprovalResult = {
@@ -184,7 +185,8 @@ export class ApprovalService {
                 approvalSummary,
                 channel.name,
                 channel.id,
-                runId
+                runId,
+                stepId
             );
 
             if (!updateSuccess) {
@@ -210,12 +212,27 @@ export class ApprovalService {
     }
 
     static async processApproval(request: ApprovalRequest): Promise<ApprovalResult> {
-        const { runId, stepId, approved, userId } = request;
+        const { runId, stepId, approved, userId, rejectionReason } = request;
 
         logger.info(`[ApprovalService] Processing approval for runId: ${runId}, stepId: ${stepId}, approved: ${approved}`);
         try {
             // Validate user access and load channel
             const { runRecord, channel } = await this.validateUserAccess(runId, userId);
+
+            // Store rejection reason in database if provided
+            if (!approved && rejectionReason) {
+                const prisma = db();
+                await prisma.approval_slack_messages.updateMany({
+                    where: {
+                        run_id: runId,
+                        step_id: stepId,
+                    },
+                    data: {
+                        rejection_reason: rejectionReason,
+                    },
+                });
+                logger.info(`[ApprovalService] Stored rejection reason for runId: ${runId}, stepId: ${stepId}`);
+            }
 
             // Create output and session
             const outputAndSession = await this.createOutputAndSession(channel, userId);
@@ -255,7 +272,8 @@ export class ApprovalService {
                     runId,
                     userId: userId,
                     channelId: channel.id,
-                }
+                },
+                rejectionReason
             );
 
             // Finalize run status based on result

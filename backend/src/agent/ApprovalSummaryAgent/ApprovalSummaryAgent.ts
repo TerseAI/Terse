@@ -18,39 +18,24 @@ type ApprovalSummaryClassificationType = z.infer<typeof ApprovalSummaryClassific
 
 const approvalSummaryAgent = new Agent({
     name: "Approval Summary Agent",
-    instructions: `You are creating a summary for a Slack notification that explains what an AI agent is about to do and why.
+    instructions: `You write the short "Action" line shown in a Slack approval notification.
 
-Your summary should tell the story of:
-1. What event/trigger came in (e.g., "A new email arrived", "A Slack message was posted", "A Notion page was updated")
-2. What the agent reviewed (briefly)
-3. What action it will take
+CRITICAL OUTPUT REQUIREMENTS:
+- Output exactly ONE sentence.
+- Start the sentence with: "I'm going to ..."
+- Describe ONLY the action that will be taken (create/update/etc.) and the target (page/ticket/task/title) so the human understands what they're approving.
+- Do NOT mention the triggering event, source channel, workspace, or that you "reviewed" anything.
+- Do NOT narrate process (no "I reviewed...", "After reviewing...", "There was a message_received...").
+- Do NOT include low-signal field dumps (due date, status, priority, ids, etc.) unless absolutely necessary to identify the target.
+- Keep it tight: aim for <= 25 words when possible.
 
-### Guidelines:
-- Write in a casual, conversational, high-level tone (as if explaining to a colleague)
-- **CRITICAL: Maximum 2 sentences total. Be extremely concise and direct.**
-- Start with the event: "There was [X event] from [source]"
-- Briefly mention what was reviewed: "I reviewed [X and Y], and am going to..."
-- Describe the action: "I'm going to [create/update/etc.] [target]"
-- **NEVER list out field details** like due dates, status, priority, category, etc. unless they are truly unusual or noteworthy
-- Remove unnecessary phrases like "that came in", "I determined this should be captured as a task", "After reviewing... I determined"
-- Use direct language: "I reviewed X and Y, and am going to..." instead of "After reviewing X and Y, I determined this should be... and I'm going to..."
-- Keep it high level - avoid technical details like function names or API specifics
-- Focus on the "what", not the "how" or unnecessary details
-- Maximum length: 120 tokens. If your summary exceeds this, make it shorter.
-
-### Examples:
-- Good: "There was a new email from john@example.com about a bug report. I reviewed Linear tickets and am going to update the matching issue with the email details."
-
-- Good: "A Slack message was posted in #support asking about API rate limits. I checked Notion docs and am going to update the relevant page with the latest information."
-
-- Good: "There was a new Notion database row in our 'Customer Feedback' database. I reviewed similar tickets and am going to create a Linear ticket with the feedback details."
-
-- Good: "There was a Slack message in all-terse-inc from Olivier Simard-Morissette. I reviewed Slack and Notion, and am going to update a Notion to-do entry titled 'Review product requirements doc for the AI evals service'."
-
-- Bad: "There was a Slack message in all-terse-inc from Olivier Simard-Morissette that came in. After reviewing the Slack context and the Notion To-Do List, I determined this should be captured as a task and I'm going to update a Notion to-do entry titled 'Review product requirements doc for the AI evals service' with due date 2025-12-22, status Not started, priority Medium, and category Work." (Too verbose, lists unnecessary fields, uses wordy phrases)
+Examples:
+- Good: "I'm going to update the Notion My To-Do List with a task titled \"Read product requirements doc for data accuracy service\"."
+- Good: "I'm going to update the Confluence \"Data Accuracy\" page with the latest API rate-limit details."
+- Bad: "There was a message_received event from Slack in all-terse-inc... I reviewed..."
 
 IMPORTANT: Return ONLY a valid JSON object with this exact format:
-{"approvalSummary": "your approval summary here"}
+{"approvalSummary": "your single-sentence summary here"}
 
 Do not include any markdown formatting, code blocks, or explanations. Only return the JSON object.`,
     model: "gpt-5-nano",
@@ -126,16 +111,16 @@ export async function generateApprovalSummary(
         }
 
         const action = runActions[0];
-        userPrompt = `**Trigger Event:**
+        userPrompt = `Context (do NOT mention this context in the output; it is for grounding only):
 ${triggerDescription}
 
-**Action Being Requested:**
-Action: ${action.action}
-Integration: ${action.integration}
-Target: ${action.target}
-Details: ${action.details}
+Requested action to summarize (focus only on what will be done):
+- Action: ${action.action}
+- Integration: ${action.integration}
+- Target: ${action.target}
+- Details: ${action.details}
 
-Use the conversation history available in the session to understand the context and reasoning that led to this action. Generate a human-readable summary explaining what happened and what action will be taken.`;
+Return the single-sentence "I'm going to ..." approvalSummary.`;
     } else {
         // Format JSON parameters for readability
         let formattedParameters = toolCallEvent.parameters;
@@ -148,16 +133,16 @@ Use the conversation history available in the session to understand the context 
         }
 
         // Construct user prompt with tool call details
-        userPrompt = `**Trigger Event:**
+        userPrompt = `Context (do NOT mention this context in the output; it is for grounding only):
 ${triggerDescription}
 
-**Tool Call Being Requested:**
-Tool: ${toolCallEvent.summary}
-Integration: ${toolCallEvent.integration}
-Parameters:
+Tool call to summarize (focus only on what will be done):
+- Tool summary: ${toolCallEvent.summary}
+- Integration: ${toolCallEvent.integration}
+- Parameters:
 ${formattedParameters}
 
-Use the conversation history available in the session to understand the context and reasoning that led to this tool call. Generate a human-readable summary explaining what happened and what action will be taken.`;
+Return the single-sentence "I'm going to ..." approvalSummary.`;
     }
 
     const session = new RunHistoryChatMemorySession({

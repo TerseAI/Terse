@@ -134,7 +134,8 @@ export class ChannelAgent<T extends Session, TConfig extends ConfigInstance> {
     async resumeFromPendingApproval(
         decision: Decision,
         stepId: string,
-        streamingParams?: RunHistoryStreamingParams
+        streamingParams?: RunHistoryStreamingParams,
+        rejectionReason?: string
     ): Promise<ApprovalResult<SessionWithTracking<T>, Agent<SessionWithTracking<T>, AgentOutputType>>> {
         await this.initializeAgent();
 
@@ -196,11 +197,29 @@ export class ChannelAgent<T extends Session, TConfig extends ConfigInstance> {
             state.approve(interruption);
         } else {
             state.reject(interruption);
-            const rejectionMessage = user(`The tool call "${interruption.name}" was rejected. What should I do differently? Please ask me what changes you'd like me to make, or if you'd like me to skip this action entirely.`);
             const stateWithHistory = state as unknown as { history?: AgentInputItem[] };
             if (stateWithHistory.history && Array.isArray(stateWithHistory.history)) {
-                stateWithHistory.history.push(rejectionMessage);
-                logger.info("[resumeFromPendingApproval] Added rejection message to state history");
+                const trimmedReason = rejectionReason?.trim();
+                if (trimmedReason) {
+                    // Treat the rejection reason as actionable user guidance (verbatim) so the agent can
+                    // reliably detect “try again” or other imperative instructions (e.g. “Read X first”).
+                    const rejectionGuidance = user(
+                        `A human reviewer rejected your previous tool call "${interruption.name}".\n\n` +
+                        `Reviewer feedback (treat as user instructions, verbatim):\n` +
+                        `${trimmedReason}\n\n` +
+                        `If the feedback asks you to retry (e.g. "try again", "retry") OR provides guidance on how to proceed differently (e.g. "read X first", "narrow the scope"), proceed now by adapting your next steps/tool calls accordingly. ` +
+                        `Only ask a clarification question if the feedback is not sufficient to act.`
+                    );
+                    stateWithHistory.history.push(rejectionGuidance);
+                    logger.info("[resumeFromPendingApproval] Added rejection guidance to state history", { hasCustomReason: true });
+                } else {
+                    const rejectionMessage = user(
+                        `The tool call "${interruption.name}" was rejected. ` +
+                        `Ask the user what they want you to do differently, or whether to skip this action entirely.`
+                    );
+                    stateWithHistory.history.push(rejectionMessage);
+                    logger.info("[resumeFromPendingApproval] Added rejection message to state history", { hasCustomReason: false });
+                }
             } else {
                 logger.warn("[resumeFromPendingApproval] Could not access state.history directly.");
             }
