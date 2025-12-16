@@ -1,7 +1,7 @@
 import { db } from "../prismaClient";
 import { Identifiable, HydrationContext } from "./Hydrator";
-import { requireHydrator } from "./HydratorRegistry";
-import { requireHydratorType, HydratorType, HydratorTypeMap } from "../types/rag";
+import { getHydrator } from "./HydratorRegistry";
+import { parseHydratorType, HydratorType, HydratorTypeMap } from "../types/rag";
 
 type HydratedEvent = HydratorTypeMap[HydratorType];
 
@@ -70,7 +70,9 @@ export class AttributionStore {
             const identifiableRef = attr.source_item_ref;
             if (!identifiableRef) continue;
             
-            const entityType = requireHydratorType(identifiableRef.entity_type);
+            const entityType = parseHydratorType(identifiableRef.entity_type);
+            if (!entityType) continue;
+            
             const entityId = identifiableRef.entity_id;
             const key = `${entityType}:${entityId}`;
             
@@ -89,8 +91,12 @@ export class AttributionStore {
                 if (!identifiableRef) {
                     return null;
                 }
+                const entityType = parseHydratorType(identifiableRef.entity_type);
+                if (!entityType) {
+                    return null;
+                }
                 return {
-                    entityType: requireHydratorType(identifiableRef.entity_type),
+                    entityType,
                     entityId: identifiableRef.entity_id
                 };
             })
@@ -116,12 +122,14 @@ export class AttributionStore {
         const hydratedEvents: HydratedEvent[] = [];
         for (const [entityType, refs] of Object.entries(groupedByType)) {
             try {
-                const hydrator = requireHydrator(requireHydratorType(entityType), this.ctx);
+                const parsedType = parseHydratorType(entityType);
+                if (!parsedType) { continue; }
+                const hydrator = getHydrator(parsedType, this.ctx);
+                if (!hydrator) { continue; }
                 const events = await hydrator.hydrateBulk(refs);
                 hydratedEvents.push(...events);
             } catch (error) {
-                console.error(`Failed to hydrate events for type ${entityType}:`, error);
-                // Continue with other types
+                // Fail silently - continue with other types
             }
         }
 
