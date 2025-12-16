@@ -21,11 +21,11 @@ export default function RunHistoryEmptyState({ hasActiveFilters, onClearAll }: P
                 <EmptyMedia variant="icon">
                     <FileText className="text-primary"/>
                 </EmptyMedia>
-                <EmptyTitle>No runs found</EmptyTitle>
+                <EmptyTitle>No events found</EmptyTitle>
                 <EmptyDescription>
                     {hasActiveFilters
                         ? "Try adjusting your filters or search query"
-                        : "Run history will appear here as your automation processes events"}
+                        : "Event history will appear here as your automation processes events"}
                 </EmptyDescription>
             </EmptyHeader>
             {hasActiveFilters && (
