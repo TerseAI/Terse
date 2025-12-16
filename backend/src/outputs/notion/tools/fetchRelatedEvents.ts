@@ -1,0 +1,85 @@
+import { RunContext, tool } from "@openai/agents";
+import { z } from "zod";
+import chalk from "chalk";
+import { SessionWithTracking } from "../../../agent/ChannelAgent/ChannelAgent";
+import { NotionPageSession } from "../NotionPageOutput";
+import { AttributionStore } from "../../../rag/AttributionStore";
+import logger from "../../../logger";
+
+/**
+ * Fetches events that are related to a specific Notion block.
+ * This provides context about what source events caused this block to be created/modified.
+ *
+ * IMPORTANT: This tool should be called BEFORE modifying a block to understand
+ * the context and avoid recency bias.
+ */
+export const fetchRelatedEventsTool = tool({
+    name: 'notion_fetch_related_events',
+    description: `Fetch source events that are related to a specific Notion block. This provides important context about what caused the block to be created or modified.
+
+CRITICAL: You MUST call this tool before calling notion_modify_blocks to understand the context and avoid recency bias. The events returned will help you make informed decisions about how to modify the block.
+
+Use this when:
+- Before updating an existing block to understand what information it contains
+- Before deleting a block to know what events it represents
+- Before moving a block to understand its relationship to source events
+
+The tool returns the source events (e.g., Slack messages, emails) that led to this block's creation or modification.`,
+    parameters: z.object({
+        block_id: z.string().describe('The Notion block ID to fetch related events for'),
+    }),
+    execute: async ({ block_id }, runContext?: RunContext<SessionWithTracking<NotionPageSession>>) => {
+        logger.info('Fetching related events for block and user', { block_id, userId: runContext?.context?.user.display_name });
+
+        if (!runContext?.context) {
+            throw new Error("No context provided");
+        }
+
+        const userId = runContext.context.user.id;
+
+        try {
+            // Use AttributionStore to fetch and hydrate related events
+            const attributionStore = new AttributionStore({ userId });
+            const hydratedEvents = await attributionStore.fetchAttributionsForOutputItem(block_id);
+
+            if (hydratedEvents.length === 0) {
+                logger.info('No related events found for this block', { block_id, userId: runContext?.context?.user.display_name });
+                return {
+                    success: true,
+                    events_count: 0,
+                    message: 'No related events found for this block. It may have been created manually or the attributions were not tracked.',
+                };
+            }
+
+            logger.info('Found related events', { block_id, userId: runContext?.context?.user.display_name, events_count: hydratedEvents.length });
+
+            const formattedEvents = hydratedEvents.map((event, index) => {
+                if ('formatForChannelAgent' in event && typeof event.formatForChannelAgent === 'function') {
+                    return `Event ${index + 1}:\n${event.formatForChannelAgent()}`;
+                }
+
+                return `Event ${index + 1}:\n${JSON.stringify(event, null, 2)}`;
+            });
+
+            const eventsText = formattedEvents.join('\n\n---\n\n');
+
+            logger.info('Successfully fetched and formatted events', { block_id, userId: runContext?.context?.user.display_name, events_count: hydratedEvents.length });
+
+            return {
+                success: true,
+                events_count: hydratedEvents.length,
+                events: eventsText,
+                message: `Found ${hydratedEvents.length} related event(s). These events provide context about why this block was created or modified. Use this information to make informed decisions about modifications.`,
+            };
+        } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+            logger.error('Error fetching related events', { block_id, userId: runContext?.context?.user.display_name, error });
+            return {
+                success: false,
+                error: errorMessage,
+                hint: 'Failed to fetch related events. The block may still be modified, but without historical context.',
+            };
+        }
+    }
+});
+
