@@ -1,6 +1,7 @@
 import { RunHistoryRawEventWithRelations } from './prisma';
 import { IdentifiableRunHistoryRawEvent } from '../rag/runHistoryRag/hydrator';
 import { SlackEvent } from '../integrations/SlackIntegration';
+import logger from '../logger';
 
 export enum HydratorType {
     RUN_HISTORY_RAW_EVENT = 'run_history_raw_event',
@@ -19,7 +20,7 @@ export function parseHydratorType(value: string): HydratorType | undefined {
 
 export function requireHydratorType(value: string): HydratorType {
     if (!isHydratorType(value)) {
-        console.error(`Unknown HydratorType: ${value}`);
+        logger.error(`Unknown HydratorType: ${value}`);
         throw new Error(`Unknown HydratorType: ${value}`);
     }
     return value;

@@ -1,3 +1,4 @@
+import logger from "../../logger";
 import { db } from "../../prismaClient";
 import { Identifiable } from "../../rag/Hydrator";
 import { IdentifiableStore } from "../../rag/IdentifiableStore";
@@ -30,7 +31,7 @@ export async function persistOutputAttributions(
         });
 
     } catch (error) {
-        console.error(chalk.yellow('Failed to persist output attribution'), error);
+        logger.error(chalk.yellow('Failed to persist output attribution'));
     }
 }
 
@@ -51,8 +52,8 @@ export async function removeOutputAttributions(
             },
         });
         
-        console.log(chalk.green(`Deleted ${deleteResult.count} output attribution(s) for automation ${automationId}`));
+        logger.info(`Deleted ${deleteResult.count} output attribution(s) for automation ${automationId}`);
     } catch (error) {
-        console.error(chalk.yellow('Failed to remove output attribution'), error);
+        logger.error('Failed to remove output attribution');
     }
 }

@@ -2,6 +2,7 @@ import { Hydrator, Identifiable, HydrationContext } from "../Hydrator";
 import { db } from "../../prismaClient";
 import { HydratorType } from "../../types/rag";
 import { SlackEvent, SlackEventData, initializeSlackWebClient } from "../../integrations/SlackIntegration";
+import logger from "../../logger";
 
 // Parse Slack permalink: https://workspace.slack.com/archives/CHANNEL_ID/p1234567890123456
 function parsePermalink(permalink: string): { channelId: string; timestamp: string } | null {
@@ -47,7 +48,7 @@ export class SlackEventHydrator extends Hydrator<SlackEvent> {
     private async fetchFromSlack(permalink: string): Promise<SlackEvent | null> {
         const parsed = parsePermalink(permalink);
         if (!parsed) {
-            console.error(`Invalid Slack permalink: ${permalink}`);
+            logger.error(`Invalid Slack permalink: ${permalink}`);
             return null;
         }
 
@@ -63,7 +64,7 @@ export class SlackEventHydrator extends Hydrator<SlackEvent> {
         });
 
         if (userSlackIntegrations.length === 0) {
-            console.error(`No Slack integration found for user: ${this.ctx.userId}`);
+            logger.error(`No Slack integration found for user: ${this.ctx.userId}`);
             return null;
         }
 
@@ -72,7 +73,7 @@ export class SlackEventHydrator extends Hydrator<SlackEvent> {
             || userSlackIntegrations[0];
 
         if (!userSlackIntegration?.slack_integration) {
-            console.error(`No valid Slack integration found for user: ${this.ctx.userId}`);
+            logger.error(`No valid Slack integration found for user: ${this.ctx.userId}`);
             return null;
         }
 
@@ -89,7 +90,7 @@ export class SlackEventHydrator extends Hydrator<SlackEvent> {
 
             const message = result.messages?.[0];
             if (!message) {
-                console.error(`Message not found: ${permalink}`);
+                logger.error(`Message not found: ${permalink}`);
                 return null;
             }
 
@@ -102,9 +103,9 @@ export class SlackEventHydrator extends Hydrator<SlackEvent> {
                 // Handle channel not found or access denied errors
                 const errorCode = channelError?.data?.error || channelError?.code;
                 if (errorCode === 'channel_not_found' || errorCode === 'not_in_channel' || errorCode === 'missing_scope') {
-                    console.error(`Channel not found or access denied for channelId: ${channelId} (permalink: ${permalink}). Error: ${errorCode}`);
+                    logger.error(`Channel not found or access denied for channelId: ${channelId} (permalink: ${permalink}). Error: ${errorCode}`);
                 } else {
-                    console.error(`Failed to fetch channel info for channelId: ${channelId}`, channelError);
+                    logger.error(`Failed to fetch channel info for channelId: ${channelId}`, channelError);
                 }
                 // Continue without channel name
             }
@@ -139,13 +140,13 @@ export class SlackEventHydrator extends Hydrator<SlackEvent> {
             const errorMessage = error?.data?.error || error?.message || 'Unknown error';
             
             if (errorCode === 'channel_not_found') {
-                console.error(`Channel not found: ${channelId} (permalink: ${permalink})`);
+                logger.error(`Channel not found: ${channelId} (permalink: ${permalink})`);
             } else if (errorCode === 'not_in_channel') {
-                console.error(`Not in channel: ${channelId} (permalink: ${permalink}). User may not have access to this channel.`);
+                logger.error(`Not in channel: ${channelId} (permalink: ${permalink}). User may not have access to this channel.`);
             } else if (errorCode === 'missing_scope') {
-                console.error(`Missing scope for channel: ${channelId} (permalink: ${permalink}). Required scopes may not be granted.`);
+                logger.error(`Missing scope for channel: ${channelId} (permalink: ${permalink}). Required scopes may not be granted.`);
             } else {
-                console.error(`Failed to fetch Slack message: ${permalink}`, error);
+                logger.error(`Failed to fetch Slack message: ${permalink}`, error);
             }
             return null;
         }
