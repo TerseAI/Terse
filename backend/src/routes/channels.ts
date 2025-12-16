@@ -57,12 +57,12 @@ async function upsertNotificationSettings(
         where: { automation_id: automationId },
         update: {
             enabled: settings.enabled,
-            action_types: settings.actionTypes as RunHistoryActionType[],
+            action_types: settings.actionTypes,
         },
         create: {
             automation_id: automationId,
             enabled: settings.enabled,
-            action_types: settings.actionTypes as RunHistoryActionType[],
+            action_types: settings.actionTypes,
         },
     });
 }
@@ -625,7 +625,7 @@ function transformChannelToFrontendFormat(channel: ChannelWithRelations & Partia
         },
         notificationSettings: channel.notification_settings ? {
             enabled: channel.notification_settings.enabled,
-            actionTypes: channel.notification_settings.action_types as RunHistoryActionType[],
+            actionTypes: channel.notification_settings.action_types,
         } : undefined,
     };
 }

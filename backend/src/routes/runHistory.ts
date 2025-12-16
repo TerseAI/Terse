@@ -91,7 +91,7 @@ export async function getRunHistory(req: Request, res: Response) {
         step_id: action.step_id ?? undefined,
         type: action.type,
       })),
-      status: runRecord.status as RunHistoryStatus,
+      status: runRecord.status,
     }));
 
     const response: GetRunHistoryResponse = {

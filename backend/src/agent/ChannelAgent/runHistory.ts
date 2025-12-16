@@ -62,7 +62,7 @@ export async function appendRunAction(
             details: action.details,
             url: action.url ?? null,
             step_id: stepId ?? action.step_id ?? null,
-            type: action.type as RunHistoryActionType,
+            type: action.type,
             is_read_only: action.isReadOnly ?? true,
         },
     });
@@ -129,7 +129,7 @@ export async function storeChatEvent(runId: string, event: ModelEvent, timestamp
     const created = await prisma.run_history_chat_events.create({
         data: {
             run_history_record_id: runId,
-            event_type: event.type as RunHistoryChatEventType,
+            event_type: event.type,
             event_json: event as Prisma.InputJsonValue,
             timestamp: eventTimestamp,
         },
