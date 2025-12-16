@@ -938,7 +938,8 @@ model approval_slack_messages {
   slack_channel_id          String
   slack_message_ts          String
   user_slack_integration_id String
-  status                    String // "pending", "approved", "rejected"
+  status                    String // "pending", "approved", "rejected", "processing"
+  summary                   String? // Cached approval summary to avoid regeneration
   created_at                DateTime @default(now())
   updated_at                DateTime @updatedAt
 

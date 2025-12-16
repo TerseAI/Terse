@@ -239,6 +239,7 @@ export async function sendSlackApprovalMessage(
                     slack_message_ts: result.ts,
                     user_slack_integration_id: userSlackIntegrationId,
                     status: 'pending',
+                    summary: summary,
                 },
             });
             logger.info(`[sendSlackApprovalMessage] Successfully sent approval message to channel ${channelId} with ts ${result.ts}`);

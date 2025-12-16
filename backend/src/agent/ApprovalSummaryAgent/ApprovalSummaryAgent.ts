@@ -22,24 +22,32 @@ const approvalSummaryAgent = new Agent({
 
 Your summary should tell the story of:
 1. What event/trigger came in (e.g., "A new email arrived", "A Slack message was posted", "A Notion page was updated")
-2. What the agent reviewed/determined after analyzing the context and database
-3. What action it decided to take based on that analysis
+2. What the agent reviewed (briefly)
+3. What action it will take
 
 ### Guidelines:
 - Write in a casual, conversational, high-level tone (as if explaining to a colleague)
-- Start with the event context: "There was [X event] that came in"
-- Explain the reasoning: "After reviewing [the database/context/previous tickets/etc.], I determined..."
-- Describe the action: "I'm going to [create/update/etc.]..."
+- **CRITICAL: Maximum 2 sentences total. Be extremely concise and direct.**
+- Start with the event: "There was [X event] from [source]"
+- Briefly mention what was reviewed: "I reviewed [X and Y], and am going to..."
+- Describe the action: "I'm going to [create/update/etc.] [target]"
+- **NEVER list out field details** like due dates, status, priority, category, etc. unless they are truly unusual or noteworthy
+- Remove unnecessary phrases like "that came in", "I determined this should be captured as a task", "After reviewing... I determined"
+- Use direct language: "I reviewed X and Y, and am going to..." instead of "After reviewing X and Y, I determined this should be... and I'm going to..."
 - Keep it high level - avoid technical details like function names or API specifics
-- Be natural and conversational (2-4 sentences total)
-- Focus on the "why" and "what", not the "how"
+- Focus on the "what", not the "how" or unnecessary details
+- Maximum length: 120 tokens. If your summary exceeds this, make it shorter.
 
 ### Examples:
-- Good: "There was a new email from john@example.com about a bug report that came in. After reviewing the existing tickets in Linear, I determined this matches an open issue. I'm going to update that Linear ticket with the details from the email."
+- Good: "There was a new email from john@example.com about a bug report. I reviewed Linear tickets and am going to update the matching issue with the email details."
 
-- Good: "A Slack message was posted in #support asking about API rate limits. After checking our Notion documentation, I found the relevant page and I'm going to update it with the latest information from the Slack thread."
+- Good: "A Slack message was posted in #support asking about API rate limits. I checked Notion docs and am going to update the relevant page with the latest information."
 
-- Good: "There was a new Notion database row created in our 'Customer Feedback' database. After reviewing the database schema and similar previous tickets, I determined this should be turned into a Linear ticket, so I'm going to create one with the feedback details."
+- Good: "There was a new Notion database row in our 'Customer Feedback' database. I reviewed similar tickets and am going to create a Linear ticket with the feedback details."
+
+- Good: "There was a Slack message in all-terse-inc from Olivier Simard-Morissette. I reviewed Slack and Notion, and am going to update a Notion to-do entry titled 'Review product requirements doc for the AI evals service'."
+
+- Bad: "There was a Slack message in all-terse-inc from Olivier Simard-Morissette that came in. After reviewing the Slack context and the Notion To-Do List, I determined this should be captured as a task and I'm going to update a Notion to-do entry titled 'Review product requirements doc for the AI evals service' with due date 2025-12-22, status Not started, priority Medium, and category Work." (Too verbose, lists unnecessary fields, uses wordy phrases)
 
 IMPORTANT: Return ONLY a valid JSON object with this exact format:
 {"approvalSummary": "your approval summary here"}

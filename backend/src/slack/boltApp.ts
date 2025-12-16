@@ -177,23 +177,29 @@ export async function setupSlackBolt() {
         await respond({ text: "Error: Channel not found", response_type: "ephemeral" });
         return;
       }
-
-      const prisma = db();
-
-      const runActions = await prisma.run_history_actions.findMany({
-        where: {
-          run_history_record_id: runId,
-          step_id: stepId,
-        },
-      });
-
-      // Generate human-readable summary (Slack-specific UI logic)
-      const {approvalSummary} = await generateApprovalSummary(
-        runId,
-        userId,
-        channel.id,
-        stepId
-      );
+      
+      // Retrieve cached summary or generate if not available (for backward compatibility)
+      let approvalSummary: string;
+      if (approvalMessage.summary) {
+        approvalSummary = approvalMessage.summary;
+        logger.debug(`[Slack Approval] Using cached summary for runId: ${runId}, stepId: ${stepId}`);
+      } else {
+        // Fallback: generate summary if not cached (for existing records)
+        logger.debug(`[Slack Approval] Summary not cached, generating for runId: ${runId}, stepId: ${stepId}`);
+        const result = await generateApprovalSummary(
+          runId,
+          userId,
+          channel.id,
+          stepId
+        );
+        approvalSummary = result.approvalSummary;
+        
+        // Store the generated summary for future use
+        await db().approval_slack_messages.update({
+          where: { id: approvalMessage.id },
+          data: { summary: approvalSummary },
+        });
+      }
 
       // Immediately update Slack message to show processing state (Slack-specific UI logic)
       await updateSlackApprovalMessage(
