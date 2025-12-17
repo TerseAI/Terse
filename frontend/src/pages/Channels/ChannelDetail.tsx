@@ -105,7 +105,7 @@ function ChannelDetail() {
                             </Tab>
                             <Tab className={({ selected }) => `px-3 py-2 text-sm font-medium rounded-t-md border-b-2 -mb-px inline-flex items-center gap-2 ${selected ? 'text-foreground border-primary' : 'text-muted-foreground border-transparent hover:text-foreground'}`}>
                                 <Clock className="h-4 w-4" />
-                                <span>Run history</span>
+                                <span>Activity</span>
                             </Tab>
                         </TabList>
                         <TabPanels className="flex-1 min-h-0 flex">
