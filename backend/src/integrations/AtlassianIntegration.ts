@@ -15,7 +15,7 @@ import { InputEvent } from "./abstract/InputEvent";
 import { InputConfigType } from "@prisma/client";
 import { RunHistoryTrigger } from "../shared/RunHistoryTypes";
 import { EventProcessor } from "../agent/ChannelAgent/EventProcessor";
-import logger from "../logger";
+import logger, { runWithUserContext } from "../logger";
 
 const OAUTH_TOKEN_REFRESH_THRESHOLD_MS = 1000 * 60 * 30; // 30 minutes (expires access token after 1 hour)
 
@@ -370,24 +370,27 @@ export class AtlassianIntegrationManager implements Integration<AtlassianIntegra
                     continue;
                 }
 
-                // Enrich context using JiraAdapter if needed
-                let enrichedEvent = event;
-                try {
-                    // If this is an issue event, we could fetch additional details
-                    if (event.issue?.id && integration.cloud_id && integration.access_token) {
-                        // For now, we'll use the event as-is since it already contains rich information
-                        // Future: Could fetch additional context using OAuth token
-                        logger.info(`📊 [JIRA INTEGRATION MANAGER] Using webhook payload for issue ${event.issue.key}`);
+                // Process with user context for logging
+                await runWithUserContext(user.id, user.email, async () => {
+                    // Enrich context using JiraAdapter if needed
+                    let enrichedEvent = event;
+                    try {
+                        // If this is an issue event, we could fetch additional details
+                        if (event.issue?.id && integration.cloud_id && integration.access_token) {
+                            // For now, we'll use the event as-is since it already contains rich information
+                            // Future: Could fetch additional context using OAuth token
+                            logger.info(`📊 [JIRA INTEGRATION MANAGER] Using webhook payload for issue ${event.issue.key}`);
+                        }
+                    } catch (error) {
+                        logger.info(`⚠️  [JIRA INTEGRATION MANAGER] Error enriching context: ${error}`);
+                        // Continue with original event if enrichment fails
                     }
-                } catch (error) {
-                    logger.info(`⚠️  [JIRA INTEGRATION MANAGER] Error enriching context: ${error}`);
-                    // Continue with original event if enrichment fails
-                }
 
-                // Create JiraEvent and process it
-                const jiraEvent = new JiraEvent(enrichedEvent, integration.id);
-                const eventProcessor = new EventProcessor(jiraEvent, user);
-                await eventProcessor.process();
+                    // Create JiraEvent and process it
+                    const jiraEvent = new JiraEvent(enrichedEvent, integration.id);
+                    const eventProcessor = new EventProcessor(jiraEvent, user);
+                    await eventProcessor.process();
+                });
             } catch (error) {
                 logger.error(`❌ [JIRA INTEGRATION MANAGER] Error processing event for integration ${integration.id}`, { 
                     error,
