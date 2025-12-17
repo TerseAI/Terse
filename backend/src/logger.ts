@@ -4,6 +4,7 @@ import { BatchLogRecordProcessor } from '@opentelemetry/sdk-logs';
 import { resourceFromAttributes } from '@opentelemetry/resources';
 import { settings } from './config/settings';
 import { logs, Logger as OpenTelemetryLogger } from '@opentelemetry/api-logs';
+import { AsyncLocalStorage } from 'async_hooks';
 
 
 const config: LoggerConfig = {
@@ -104,6 +105,41 @@ const gracefulShutdown = async () => {
 process.on('SIGTERM', gracefulShutdown);
 process.on('SIGINT', gracefulShutdown);
 process.on('beforeExit', gracefulShutdown);
+
+// AsyncLocalStorage to store user context for logging
+interface UserContext {
+  userId?: string;
+  userEmail?: string;
+}
+
+const userContextStorage = new AsyncLocalStorage<UserContext>();
+
+/**
+ * Sets the user context for the current async execution context.
+ * This will be automatically included in all log messages.
+ */
+export function setUserContext(userId?: string, userEmail?: string): void {
+  userContextStorage.enterWith({ userId, userEmail });
+}
+
+/**
+ * Runs a function with the specified user context.
+ * Useful for background jobs or non-request contexts.
+ */
+export function runWithUserContext<T>(
+  userId: string | undefined,
+  userEmail: string | undefined,
+  fn: () => T
+): T {
+  return userContextStorage.run({ userId, userEmail }, fn);
+}
+
+/**
+ * Gets the current user context from AsyncLocalStorage.
+ */
+function getUserContext(): UserContext | undefined {
+  return userContextStorage.getStore();
+}
 
 class Logger {
   private static instance: Logger;
@@ -233,11 +269,18 @@ class Logger {
   }
 
   private log(severityText: string, message: string, attributes?: Record<string, any>): void {
-    const processedAttributes = this.processAttributes(attributes);
+    // Get user context from AsyncLocalStorage and merge with provided attributes
+    const userContext = getUserContext();
+    const mergedAttributes = {
+      ...(userContext?.userId && { userId: userContext.userId }),
+      ...(userContext?.userEmail && { userEmail: userContext.userEmail }),
+      ...this.processAttributes(attributes),
+    };
+    
     if (config.usePostHog) {
-      this.emitToPostHog(severityText, message, processedAttributes);
+      this.emitToPostHog(severityText, message, mergedAttributes);
     } else {
-      this.logToConsole(severityText, message, processedAttributes);
+      this.logToConsole(severityText, message, mergedAttributes);
     }
   }
 

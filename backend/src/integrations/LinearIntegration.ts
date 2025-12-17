@@ -15,7 +15,7 @@ import { InputEvent } from "./abstract/InputEvent";
 import { InputConfigType } from "@prisma/client";
 import { RunHistoryTrigger } from "../shared/RunHistoryTypes";
 import { EventProcessor } from "../agent/ChannelAgent/EventProcessor";
-import logger from "../logger";
+import logger, { runWithUserContext } from "../logger";
 
 export class LinearIntegrationManager implements Integration<LinearIntegration, LinearWebhookPayload, typeof LinearIntegrationMetadata>, OAuthIntegrationInstallation<IntegrationType.LINEAR> {
     constructor() { }
@@ -87,39 +87,42 @@ export class LinearIntegrationManager implements Integration<LinearIntegration, 
                     continue;
                 }
 
-                // Enrich context using LinearAdapter
-                let enrichedEvent = event;
-                try {
-                    // Get valid access token (handles refresh automatically)
-                    const accessToken = await this.getAccessToken(integration.id);
-                    if (!accessToken) {
-                        logger.warn(`⚠️  [LINEAR INTEGRATION MANAGER] Could not get valid access token for integration ${integration.id}`, { integrationId: integration.id });
-                        // Continue with original event if token cannot be obtained
-                    } else {
-                        const adapter = new LinearAdapter(accessToken);
-                        
-                        // If this is an Issue event, fetch additional details
-                        if (event.type === "Issue" && event.data?.id) {
-                            try {
-                                const issue = await adapter.findTicket(event.data.id);
-                                // Enrich the event with additional context from the API
-                                // The event already has most data, but we can add any missing fields
-                                logger.debug(`📊 [LINEAR INTEGRATION MANAGER] Enriched issue context for ${event.data.id}`, { issueId: event.data.id, integrationId: integration.id });
-                            } catch (error) {
-                                logger.warn(`⚠️  [LINEAR INTEGRATION MANAGER] Could not enrich issue context`, { error, issueId: event.data.id, integrationId: integration.id });
-                                // Continue with original event if enrichment fails
+                // Process with user context for logging
+                await runWithUserContext(user.id, user.email, async () => {
+                    // Enrich context using LinearAdapter
+                    let enrichedEvent = event;
+                    try {
+                        // Get valid access token (handles refresh automatically)
+                        const accessToken = await this.getAccessToken(integration.id);
+                        if (!accessToken) {
+                            logger.warn(`⚠️  [LINEAR INTEGRATION MANAGER] Could not get valid access token for integration ${integration.id}`, { integrationId: integration.id });
+                            // Continue with original event if token cannot be obtained
+                        } else {
+                            const adapter = new LinearAdapter(accessToken);
+                            
+                            // If this is an Issue event, fetch additional details
+                            if (event.type === "Issue" && event.data?.id) {
+                                try {
+                                    const issue = await adapter.findTicket(event.data.id);
+                                    // Enrich the event with additional context from the API
+                                    // The event already has most data, but we can add any missing fields
+                                    logger.debug(`📊 [LINEAR INTEGRATION MANAGER] Enriched issue context for ${event.data.id}`, { issueId: event.data.id, integrationId: integration.id });
+                                } catch (error) {
+                                    logger.warn(`⚠️  [LINEAR INTEGRATION MANAGER] Could not enrich issue context`, { error, issueId: event.data.id, integrationId: integration.id });
+                                    // Continue with original event if enrichment fails
+                                }
                             }
                         }
+                    } catch (error) {
+                        logger.warn(`⚠️  [LINEAR INTEGRATION MANAGER] Error enriching context`, { error, integrationId: integration.id });
+                        // Continue with original event if enrichment fails
                     }
-                } catch (error) {
-                    logger.warn(`⚠️  [LINEAR INTEGRATION MANAGER] Error enriching context`, { error, integrationId: integration.id });
-                    // Continue with original event if enrichment fails
-                }
 
-                // Create LinearEvent and process it
-                const linearEvent = new LinearEvent(enrichedEvent, integration.id);
-                const eventProcessor = new EventProcessor(linearEvent, user);
-                await eventProcessor.process();
+                    // Create LinearEvent and process it
+                    const linearEvent = new LinearEvent(enrichedEvent, integration.id);
+                    const eventProcessor = new EventProcessor(linearEvent, user);
+                    await eventProcessor.process();
+                });
             } catch (error) {
                 logger.error(
                     `❌ [LINEAR INTEGRATION MANAGER] Error processing event for integration ${integration.id}`,

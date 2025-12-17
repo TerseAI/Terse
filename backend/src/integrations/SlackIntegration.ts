@@ -18,7 +18,7 @@ import { IntegrationType } from "../shared/Integrations";
 import { InputConfigType } from "@prisma/client";
 import { Identifiable } from "../rag/Hydrator";
 import { HydratorType } from "../types/rag";
-import logger from "../logger";
+import logger, { runWithUserContext } from "../logger";
 
 export class SlackIntegrationManager implements Integration<SlackIntegration, SlackMessageEvent, typeof SlackIntegrationMetadata>, OAuthIntegrationInstallation<IntegrationType.SLACK> {
     constructor() { }
@@ -393,7 +393,8 @@ export class SlackEvent extends InputEvent implements Identifiable {
     }
 
     debugLog(): string {
-        return `Slack Event: ${this.data.channelName || this.data.channelId} - ${this.data.userName || this.data.userId} - ${this.data.text.substring(0, 50)}`;
+        const isDM = this.data.channelType === SlackChannelType.IM;
+        return `Slack Event: ${isDM ? 'DM' : this.data.channelName || this.data.channelId} - ${this.data.userName || this.data.userId}}`;
     }
 
     matchesChannelInput(channelInput: ChannelInputWithConfigs): boolean {
@@ -729,21 +730,24 @@ async function handleSlackMessage(event: SlackMessageEvent, teamId: string, auth
         let totalMatches = 0;
         for (const userSlackIntegration of filteredWorkspaceUserIntegrations) {
             try {
-                const eventProcessor = new EventProcessor(slackEvent, userSlackIntegration.user);
-                const results = await eventProcessor.process();
+                // Process with user context for logging
+                await runWithUserContext(userSlackIntegration.user.id, userSlackIntegration.user.email, async () => {
+                    const eventProcessor = new EventProcessor(slackEvent, userSlackIntegration.user);
+                    const results = await eventProcessor.process();
 
-                // Log results for this user
-                if (results.length > 0 && results.some(r => r.success || r.channel !== null)) {
-                    totalMatches += results.filter(r => r.success || r.channel !== null).length;
-                    logger.info(`User ${userSlackIntegration.user.email}: ${results.length} automation(s) matched`, { userId: userSlackIntegration.user.id, email: userSlackIntegration.user.email, resultsCount: results.length, teamId });
-                    for (const result of results) {
-                        if (result.success) {
-                            logger.debug(`  ✓ Channel "${result.channel?.name}" processed successfully`, { channelName: result.channel?.name, userId: userSlackIntegration.user.id });
-                        } else if (result.channel) {
-                            logger.warn(`  ⚠ Channel "${result.channel?.name}": ${result.message}`, { channelName: result.channel?.name, message: result.message, userId: userSlackIntegration.user.id });
+                    // Log results for this user
+                    if (results.length > 0 && results.some(r => r.success || r.channel !== null)) {
+                        totalMatches += results.filter(r => r.success || r.channel !== null).length;
+                        logger.info(`User ${userSlackIntegration.user.email}: ${results.length} automation(s) matched`, { userId: userSlackIntegration.user.id, email: userSlackIntegration.user.email, resultsCount: results.length, teamId });
+                        for (const result of results) {
+                            if (result.success) {
+                                logger.debug(`  ✓ Channel "${result.channel?.name}" processed successfully`, { channelName: result.channel?.name, userId: userSlackIntegration.user.id });
+                            } else if (result.channel) {
+                                logger.warn(`  ⚠ Channel "${result.channel?.name}": ${result.message}`, { channelName: result.channel?.name, message: result.message, userId: userSlackIntegration.user.id });
+                            }
                         }
                     }
-                }
+                });
             } catch (error) {
                 logger.error(`Error processing automations for user ${userSlackIntegration.user.email}`, { error, userId: userSlackIntegration.user.id, email: userSlackIntegration.user.email });
                 // Continue processing other users even if one fails
