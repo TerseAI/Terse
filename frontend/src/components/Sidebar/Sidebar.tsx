@@ -62,7 +62,7 @@ function ApplicationNavigation({ channels, loading }: ApplicationNavigationProps
         <SidebarMenu>
             {applicationItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton asChild data-active={location.pathname === item.url}>
+                    <SidebarMenuButton asChild isActive={location.pathname === item.url}>
                         <Link to={item.url}>
                             <item.icon className={item.iconColor} />
                             <span>{item.title}</span>
@@ -84,7 +84,7 @@ function SettingsNavigation() {
         <SidebarMenu>
             {SettingsItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton asChild data-active={location.pathname === item.url}>
+                    <SidebarMenuButton asChild isActive={location.pathname === item.url}>
                         <Link to={item.url}>
                             <item.icon className={item.iconColor} />
                             <span>{item.title}</span>
@@ -120,26 +120,24 @@ function ChannelsList({ channels, loading }: ChannelsListProps) {
     }
 
     return (
-        <>
+        <SidebarMenuSub>
             {channels.map((channel) => (
                 <ChannelListItem key={channel.id} channel={channel} />
             ))}
-            <SidebarMenuSub>
-                <SidebarMenuSubItem>
-                    <SidebarMenuSubButton asChild>
-                        <Button 
-                            variant="ghost" 
-                            size="sm" 
-                            className="gap-1 text-xs text-muted-foreground"
-                            onClick={() => navigate('/app/channels/new')}
-                        >
-                            <Plus className="size-3 !text-muted-foreground hover:!text-foreground" color="currentColor"/>
-                            Add Channel
-                        </Button>
-                    </SidebarMenuSubButton>
-                </SidebarMenuSubItem>
-            </SidebarMenuSub>
-        </>
+            <SidebarMenuSubItem>
+                <SidebarMenuSubButton asChild>
+                    <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="gap-1 text-xs text-muted-foreground"
+                        onClick={() => navigate('/app/channels/new')}
+                    >
+                        <Plus className="size-3 !text-muted-foreground hover:!text-foreground" color="currentColor"/>
+                        Add Channel
+                    </Button>
+                </SidebarMenuSubButton>
+            </SidebarMenuSubItem>
+        </SidebarMenuSub>
     )
 }
 
@@ -152,15 +150,13 @@ function ChannelListItem({ channel }: ChannelListItemProps) {
     const isActive = location.pathname === `/app/channels/${channel.id}`;
 
     return (
-        <SidebarMenuSub>
-            <SidebarMenuSubItem>
-                <SidebarMenuSubButton asChild data-active={isActive}>
-                    <Link to={`/app/channels/${channel.id}`}>
-                        <span>{channel.name}</span>
-                    </Link>
-                </SidebarMenuSubButton>
-            </SidebarMenuSubItem>
-        </SidebarMenuSub>
+        <SidebarMenuSubItem>
+            <SidebarMenuSubButton asChild isActive={isActive}>
+                <Link to={`/app/channels/${channel.id}`}>
+                    <span>{channel.name}</span>
+                </Link>
+            </SidebarMenuSubButton>
+        </SidebarMenuSubItem>
     )
 }
 
