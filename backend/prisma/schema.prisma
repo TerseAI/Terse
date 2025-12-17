@@ -834,7 +834,6 @@ enum RunHistoryActionType {
   update
   delete
   read
-  approval
 }
 
 // Pending approvals for tools that require human approval

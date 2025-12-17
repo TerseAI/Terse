@@ -50,7 +50,10 @@ export class NotificationManager {
         }
 
         // Handle approval notifications specially
-        if (runAction.type === RunHistoryActionType.approval && runId && runAction.step_id) {
+
+        const editableActions: RunHistoryActionType[] = [RunHistoryActionType.create, RunHistoryActionType.update, RunHistoryActionType.delete];
+
+        if (editableActions.includes(runAction.type) && runId && runAction.step_id && this.channel.require_approval) {
             switch (notificationDestinations.destination_type) {
                 case NotificationDestinationType.SLACK:
                     await notifyApprovalRequest(notificationDestinations, runId, runAction, this.channel, this.user.id);

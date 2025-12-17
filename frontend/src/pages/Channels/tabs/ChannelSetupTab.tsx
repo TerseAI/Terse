@@ -192,8 +192,9 @@ export default function ChannelSetupTab({
                         <InputLayout inputs={inputs} setInputs={setInputs} />
                     </div>
 
-                    <div className="min-w-md max-w-md overflow-hidden">
+                    <div className="min-w-md max-w-md overflow-hidden flex flex-col gap-4">
                         <OutputLayout output={output} setOutput={setOutput} />
+                        <ChannelApprovalSettings requireApproval={requireApproval} onChange={setRequireApproval} />
                     </div>
                 </div>
 
@@ -208,7 +209,6 @@ export default function ChannelSetupTab({
             <div className="min-w-md max-w-md"></div>
                 <div className="min-w-md max-w-md flex flex-col gap-4">
                     <ChannelNotificationSettings settings={notificationSettings} onChange={setNotificationSettings} />
-                    <ChannelApprovalSettings requireApproval={requireApproval} onChange={setRequireApproval} />
                 </div>
             </div>
         </div>

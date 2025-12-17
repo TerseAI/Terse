@@ -7,9 +7,6 @@
 
 */
 -- AlterEnum
-ALTER TYPE "RunHistoryActionType" ADD VALUE 'approval';
-
--- AlterEnum
 ALTER TYPE "RunHistoryChatEventType" ADD VALUE 'ToolApprovalResponse';
 
 -- AlterTable
@@ -29,6 +26,8 @@ CREATE TABLE "approval_slack_messages" (
     "slack_message_ts" TEXT NOT NULL,
     "user_slack_integration_id" TEXT NOT NULL,
     "status" TEXT NOT NULL,
+    "summary" TEXT,
+    "rejection_reason" TEXT,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMP(3) NOT NULL,
 

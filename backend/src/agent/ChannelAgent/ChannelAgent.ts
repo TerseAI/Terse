@@ -531,7 +531,7 @@ ${this.inputEvent!.formatForChannelAgent()}
                             target: interruption.name,
                             details: `The bot is requesting approval to execute: ${interruption.name} with arguments: ${JSON.stringify(interruption.arguments)}`,
                             step_id: stepId,
-                            type: 'approval',
+                            type: RunHistoryActionType.update,
                             isReadOnly: false,
                         };
 

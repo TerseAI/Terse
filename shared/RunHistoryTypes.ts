@@ -4,7 +4,7 @@ import { ConfigType } from "./Configs";
 
 export type RunHistoryStatus = "success" | "failed" | "skipped" | "in_progress" | "awaiting_approval";
 export type RunHistoryDecisionAction = "processed" | "skipped";
-export type RunHistoryActionType = "create" | "update" | "delete" | "read" | "approval";
+export type RunHistoryActionType = "create" | "update" | "delete" | "read";
 
 export type RunHistoryAction = {
    // What action was taken (free-text, e.g. "create database entry", "send notification")
