@@ -324,7 +324,7 @@ export default function ChannelSetupTab({
 
     return (
         <div className="flex flex-col h-full min-h-0 gap-0">
-            <div className="bg-sidebar px-4 py-6">
+            <div className="px-4 py-6">
                 <div className="grid grid-cols-3 gap-4 items-center">
                     <div className="flex justify-start min-w-0 pl-2">
                         <SaveChannelButton
@@ -364,7 +364,7 @@ export default function ChannelSetupTab({
             </div>
 
             <div className="flex-1 min-h-0 flex flex-col md:flex-row gap-0 overflow-hidden relative">
-                <nav className="shrink-0 md:w-56 bg-sidebar h-full relative md:-mt-2 z-10">
+                <nav className="shrink-0 md:w-56 h-full relative md:-mt-2 z-10 border-t border-r border-border">
                     <div className="flex md:flex-col gap-4 md:pr-4 overflow-x-auto md:overflow-visible p-4 p-2 h-full">
                         <Button
                             type="button"
@@ -436,7 +436,7 @@ export default function ChannelSetupTab({
                     </div>
                 </nav>
 
-                <div className="flex-1 min-h-0 overflow-hidden p-6 pl-8">
+                <div className="flex-1 min-h-0 overflow-hidden pl-6">
                     <div className="h-full min-h-0 overflow-y-auto pr-1">
                         {activeSection === 'triggers' && (
                             <div className="max-w-3xl flex flex-col gap-4">

@@ -89,7 +89,7 @@ function ChannelDetail() {
     }
 
     return (
-        <div className="grid grid-cols-20 h-full pt-2">
+        <div className="grid grid-cols-20 h-full pt-2 pl-2">
             <div className="h-full min-h-0 col-span-20">
                 <div className="mx-auto h-full min-h-0 flex flex-col h-full">
                     <TabGroup selectedIndex={selectedIndex} className="h-full" onChange={(index) => {
