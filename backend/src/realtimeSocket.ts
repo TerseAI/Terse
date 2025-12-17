@@ -4,7 +4,7 @@ import { createClient } from "redis";
 import { createAdapter } from "@socket.io/redis-adapter";
 import { Jwt } from "./utility/jwt";
 import { urls, nodeEnv, optional } from "./config/settings";
-import { SendModelRequest, ModelEvent } from "./shared/ModelEvents";
+import { SendModelRequest, ModelEvent, ModelRequest, ToolApprovalResponse } from "./shared/ModelEvents";
 import { db } from "./prismaClient";
 import { ChannelAgent } from "./agent/ChannelAgent/ChannelAgent";
 import { RunContext } from "./agent/ChannelAgent/SystemPromptBuilder";
@@ -14,6 +14,7 @@ import { OutputFactory } from "./outputs/abstract/OutputFactory";
 import { Session } from "./server";
 import { storeChatEvent, markRunFailed, finalizeRunStatus } from "./agent/ChannelAgent/runHistory";
 import { DirectiveTask, directiveTaskQueue } from "./agent/DirectiveAgent/DirectiveAgent";
+import { ApprovalService } from "./services/ApprovalService";
 import logger from "./logger";
 
 // Extended Socket type with userId property
@@ -150,7 +151,7 @@ export async function initializeRealtimeSocket(server: HttpServer): Promise<Serv
                         include: getOutputConfigInclude()
                     }
                 }
-            }) as ChannelWithRelations | null;
+            })
 
             if (!channel) {
                 logger.error(`[channel:chat:message] Channel not found for automation id: ${runRecord.automation.id}`, { automationId: runRecord.automation.id, userId });
@@ -257,6 +258,31 @@ export async function initializeRealtimeSocket(server: HttpServer): Promise<Serv
                 userMessage,
             ));
 
+        });
+
+        // Listen for tool approval responses
+        socket.on("channel:chat:approval", async (payload: { runId: string; message: ToolApprovalResponse }) => {
+            const { runId, message } = payload;
+            logger.info(`[channel:chat:approval] Received approval response`, { message, userId, runId });
+
+            if (!runId) {
+                logger.error(`[channel:chat:approval] No runId provided`);
+                return;
+            }
+
+            // Use centralized approval service - it handles Slack notifications internally
+            const result = await ApprovalService.processApproval({
+                runId,
+                stepId: message.step_id,
+                approved: message.approved,
+                userId,
+            });
+
+            if (result.status === 'failed' && result.error) {
+                logger.error(`[channel:chat:approval] Approval processing failed: ${result.error}`);
+            } else {
+                logger.info(`[channel:chat:approval] Successfully processed approval for runId: ${runId}`);
+            }
         });
 
         // presence: mark online (60s TTL), refresh every 25s (only if Redis is available)

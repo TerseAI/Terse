@@ -15,6 +15,8 @@ interface ChatLayoutProps {
     setInput: (input: string) => void;
     placeholders?: string[];
     EmptyContentPlaceholder?: React.ReactNode;
+    onApprove?: (stepId: string) => void;
+    onReject?: (stepId: string) => void;
 }
 
 export interface ChatLayoutHandle {
@@ -29,6 +31,8 @@ export const ChatLayout = forwardRef<ChatLayoutHandle, ChatLayoutProps>(function
     setInput,
     placeholders = ["Type a message..."],
     EmptyContentPlaceholder,
+    onApprove,
+    onReject,
 }, ref) {
     const [showScrollIndicator, setShowScrollIndicator] = useState(false);
     const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -101,7 +105,7 @@ export const ChatLayout = forwardRef<ChatLayoutHandle, ChatLayoutProps>(function
             >
                 <div ref={contentRef} className="space-y-4">
                     {turns.map((turn, index) => (
-                        <TurnView key={index} {...turn} />
+                        <TurnView key={index} {...turn} onApprove={onApprove} onReject={onReject} />
                     ))}
 
                     {isPendingAssistantResponse && (

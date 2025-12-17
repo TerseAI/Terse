@@ -3,6 +3,7 @@ import chalk from "chalk";
 import { db } from "../prismaClient";
 import { JiraWebhookPayload } from "../utility/JiraWebhookPayload";
 import { AtlassianIntegrationManager } from "../integrations/AtlassianIntegration";
+import logger from "../logger";
 
 export async function getAtlassianIntegrations(req: Request, res: Response) {
     if (!req.session?.user) {
@@ -15,7 +16,7 @@ export async function getAtlassianIntegrations(req: Request, res: Response) {
         const integrations = await manager.getInstancesForUser(req.session.user.id);
         res.status(200).json(integrations);
     } catch (error) {
-        console.error('Error fetching Atlassian integrations:', error);
+        logger.error('Error fetching Atlassian integrations:', { error });
         res.status(500).json({ error: 'Failed to fetch Atlassian integrations' });
     }
 }
@@ -40,7 +41,7 @@ function verifyJiraWebhook(event: JiraWebhookPayload): boolean {
             const url = new URL(event.issue.self);
             baseUrl = `${url.protocol}//${url.hostname}`;
         } catch (error) {
-            console.warn(chalk.yellow("⚠️  Could not parse issue URL:"), event.issue.self);
+            logger.warn("⚠️  Could not parse issue URL:", { issueUrl: event.issue.self });
             return false;
         }
     }
@@ -49,7 +50,7 @@ function verifyJiraWebhook(event: JiraWebhookPayload): boolean {
     const userEmail = event.user?.emailAddress;
 
     if (!baseUrl && !userEmail) {
-        console.warn(chalk.yellow("⚠️  [JIRA WEBHOOK] No base URL or user email found in webhook payload"));
+        logger.warn("⚠️  [JIRA WEBHOOK] No base URL or user email found in webhook payload");
         return false;
     }
 
@@ -64,13 +65,13 @@ export const handleJiraWebhook = async (req: Request, res: Response) => {
         try {
             body = req.body as JiraWebhookPayload;
         } catch (error) {
-            console.error(chalk.red("❌ [JIRA WEBHOOK] Failed to parse JSON body:"), error);
+            logger.error('Failed to parse JSON body:', { error });  
             return res.sendStatus(400);
         }
 
         // Verify webhook authenticity
         if (!verifyJiraWebhook(body)) {
-            console.error(chalk.red("❌ [JIRA WEBHOOK] Invalid webhook payload"));
+            logger.error('Invalid webhook payload');
             return res.sendStatus(401);
         }
 
@@ -81,7 +82,7 @@ export const handleJiraWebhook = async (req: Request, res: Response) => {
         const integration = new AtlassianIntegrationManager();
         await integration.processWebhookEvent(body);
     } catch (error) {
-        console.error(chalk.red("❌ [JIRA WEBHOOK] Error processing webhook:"), error);
+        logger.error('Error processing webhook:', { error });
         // Indicate to Jira that there was a server error so the webhook is retried later
         return res.sendStatus(500);
     }
@@ -161,7 +162,7 @@ export async function getJiraResources(req: Request, res: Response) {
                 }));
             }
         } catch (error) {
-            console.warn(chalk.yellow('⚠️  Could not fetch projects:'), error);
+            logger.warn('⚠️  Could not fetch projects:', { error });
             return res.status(500).json({
                 success: false,
                 error: 'Failed to fetch projects',
@@ -177,7 +178,7 @@ export async function getJiraResources(req: Request, res: Response) {
             },
         });
     } catch (error: any) {
-        console.error(chalk.red('Error fetching Jira resources:'), error);
+        logger.error('Error fetching Jira resources:', { error });
         return res.status(500).json({
             success: false,
             error: error.message || 'Failed to fetch Jira resources',

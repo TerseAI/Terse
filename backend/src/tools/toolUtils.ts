@@ -1,6 +1,9 @@
 import { RunContext } from "@openai/agents";
+import { Session } from "../server";
+import { SessionWithTracking } from "../agent/ChannelAgent/ChannelAgent";
 import logger from "../logger";
 
+// MARK: - Error Handling
 
 export async function formatError(context: RunContext, error: Error | unknown) : Promise<string> {
     return `[TERSE ERROR]:${JSON.stringify({context, error: error instanceof Error ? error.message : error})}`;
@@ -40,3 +43,12 @@ export type ErrorContext = {
     context: RunContext;
     error: string | unknown;
 }
+
+// MARK: - Approval
+
+export async function needsApproval(context?: RunContext<unknown>): Promise<boolean> {
+    // Type guard: safely access channel.requireApproval from SessionWithTracking
+    const sessionWithTracking = context?.context as SessionWithTracking<Session> | undefined;
+    return sessionWithTracking?.channel?.requireApproval ?? false;
+}
+

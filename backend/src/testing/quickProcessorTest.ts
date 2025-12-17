@@ -2,8 +2,6 @@ import { EventProcessor } from '../agent/ChannelAgent/EventProcessor';
 import { GmailEvent, GmailEventData } from '../integrations/GmailIntegration';
 import { db } from '../prismaClient';
 import chalk from 'chalk';
-import * as readline from 'readline';
-import { PendingApprovalState, promptForApprovalDecision, resumeApprovalFlow } from './helpers/ApprovalTestHelper';
 
 /**
  * Quick test script for EventProcessor
@@ -23,8 +21,6 @@ const getUserEmail = (): string => {
 
 const USER_EMAIL = getUserEmail();
 
-// In-memory storage for pending approval state
-let pendingApprovalState: PendingApprovalState | null = null;
 
 // EDIT THIS to test different emails
 // This email should trigger a CRM update in Notion
@@ -120,37 +116,6 @@ async function runQuickTest() {
         }
         console.log(chalk.gray('  Duration:'), `${duration}ms`);
         console.log();
-
-        // Check if any result has a pending approval
-        for (const result of results) {
-            if (result.approvalResult && result.approvalResult.status === 'awaiting_approval' && result.channel) {
-                pendingApprovalState = {
-                    channelId: result.channel.id,
-                    serializedState: JSON.stringify(result.approvalResult.state),
-                    interruptions: result.approvalResult.interruptions,
-                };
-
-                console.log(chalk.cyan('\n⏸️  Channel paused awaiting approval'));
-                console.log(chalk.gray(`Channel: ${result.channel.name}`));
-                console.log(chalk.gray(`Pending interruptions: ${pendingApprovalState.interruptions.length}`));
-                console.log();
-
-                const rl = readline.createInterface({
-                    input: process.stdin,
-                    output: process.stdout,
-                });
-
-                const approved = await promptForApprovalDecision(rl);
-                rl.close();
-
-                if (approved) {
-                    console.log(chalk.green('\n✓ Approved! Resuming channel...\n'));
-                    await resumeApprovalFlow(pendingApprovalState);
-                } else {
-                    console.log(chalk.yellow('\n✗ Rejected. Channel cancelled.\n'));
-                }
-            }
-        }
 
     } catch (error) {
         console.error(chalk.red('\nError:'), error);

@@ -1,4 +1,4 @@
-import { CheckCircle2, Filter as FilterIcon, XCircle, Loader2, ChevronDown } from "lucide-react";
+import { CheckCircle2, Filter as FilterIcon, XCircle, Loader2, Clock, ChevronDown } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
 import { Button } from "../ui/button";
 import { Checkbox } from "../ui/checkbox";
@@ -22,7 +22,7 @@ function StatusFilter({
             <PopoverTrigger asChild>
                 <Button variant="outline">
                     <FilterIcon className="w-4 h-4 mr-2" />
-                    {selectedStatuses.size === 4
+                    {selectedStatuses.size === 5
                         ? "All Status"
                         : selectedStatuses.size === 0
                         ? "No Status"
@@ -63,6 +63,14 @@ function StatusFilter({
                         />
                         <FilterIcon className="w-4 h-4 text-muted-foreground" />
                         <span className="text-sm">Filtered</span>
+                    </div>
+                    <div className="flex items-center gap-3 cursor-pointer" onClick={() => onToggleStatus("awaiting_approval")}>
+                        <Checkbox
+                            checked={selectedStatuses.has("awaiting_approval")}
+                            onCheckedChange={() => onToggleStatus("awaiting_approval")}
+                        />
+                        <Clock className="w-4 h-4 text-yellow-600 dark:text-yellow-400" />
+                        <span className="text-sm">Awaiting Approval</span>
                     </div>
                 </div>
             </PopoverContent>

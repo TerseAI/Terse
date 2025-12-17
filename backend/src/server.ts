@@ -65,12 +65,10 @@ import { getRunHistory, getChatHistory, getRunHistoryActions } from "./routes/ru
 import { getStats } from "./routes/stats";
 import { User as TicketUser } from "./shared/TicketSystem";
 import {
-  handleSlackWebhook,
   getCurrentSlackIntegration,
   slackOAuthCallback,
   getSlackChannels,
   getSlackIntegrations,
-  handleSlackInteraction,
   getSlackUsers,
 } from "./routes/slack";
 import { TicketManager } from "./ticketing/TicketIntegration";
@@ -90,6 +88,7 @@ import {
   getNotificationDestinations,
   updateNotificationDestination,
 } from "./routes/notificationDestinations";
+import { setupSlackBolt } from "./slack/boltApp";
 import logger from "./logger";
 
 export type Session = {
@@ -111,6 +110,9 @@ try {
   process.exit(1);
 }
 
+// Initialize Slack Bolt app
+const slackReceiver: Awaited<ReturnType<typeof setupSlackBolt>> | null = await setupSlackBolt();
+
 app.use(
   cors({
     origin: true,
@@ -122,7 +124,7 @@ app.use(
 app.use((req: Request, res: Response, next: NextFunction) => {
   const startTime = Date.now();
   const requestId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-  
+
   // Capture request details
   const requestInfo = {
     requestId,
@@ -165,6 +167,12 @@ app.use((req: Request, res: Response, next: NextFunction) => {
 
   next();
 });
+
+
+if (slackReceiver?.receiver) {
+  app.use("/slack", slackReceiver.receiver.router);
+  logger.info("✅ Slack Bolt router mounted at /slack");
+}
 
 // Parse JSON for all routes except Slack events and Linear webhook (which need raw body for signature verification)
 app.use((req, res, next) => {
@@ -261,7 +269,7 @@ app.get("/session/token", authMiddleware, async (req, res) => {
 
 // MARK: GITHUB APP
 
-app.get("/github/integrations", authMiddleware, async(req, res) => {
+app.get("/github/integrations", authMiddleware, async (req, res) => {
   getGithubIntegrations(req, res);
 })
 
@@ -344,7 +352,7 @@ app.post("/refresh-tokens", async (req, res) => {
 
 // MARK: NOTION
 
-app.get("/notion/integrations", authMiddleware, async(req, res) => {
+app.get("/notion/integrations", authMiddleware, async (req, res) => {
   getNotionIntegrations(req, res);
 })
 
@@ -360,7 +368,7 @@ app.get("/notion/resources", authMiddleware, async (req, res) => {
 
 // MARK: FIGMA
 
-app.get("/figma/integrations", authMiddleware, async(req, res) => {
+app.get("/figma/integrations", authMiddleware, async (req, res) => {
   getFigmaIntegrations(req, res);
 })
 
@@ -400,7 +408,7 @@ app.post("/webhooks/jira/:accountId", async (req, res) => {
 
 // MARK: SLACK
 
-app.get("/slack/integrations", authMiddleware, async(req, res) => {
+app.get("/slack/integrations", authMiddleware, async (req, res) => {
   getSlackIntegrations(req, res);
 })
 
@@ -410,16 +418,6 @@ app.get("/slack/get-current-integration", authMiddleware, async (req, res) => {
 
 app.get("/slack/oauth-callback", async (req, res) => {
   slackOAuthCallback(req, res);
-});
-
-app.use("/slack/events", express.raw({ type: "application/json" }));
-
-app.post("/slack/events", async (req, res) => {
-  await handleSlackWebhook(req, res);
-});
-
-app.post("/slack/interactions", async (req, res) => {
-  await handleSlackInteraction(req, res);
 });
 
 app.get("/slack/channels", authMiddleware, async (req, res) => {
@@ -503,8 +501,8 @@ app.delete("/notification-destinations/:id", authMiddleware, async (req, res) =>
  * This catches errors from async route handlers
  */
 app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
-  logger.error("❌ Express Error Handler", { 
-    error: err.message, 
+  logger.error("❌ Express Error Handler", {
+    error: err.message,
     stack: err.stack,
     path: req.path,
     method: req.method
@@ -519,7 +517,7 @@ app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
 process.on("unhandledRejection", (reason: unknown, promise: Promise<unknown>) => {
   const errorMessage = reason instanceof Error ? reason.message : String(reason);
   const stack = reason instanceof Error ? reason.stack : undefined;
-  logger.error("❌ Unhandled Promise Rejection (safety net)", { 
+  logger.error("❌ Unhandled Promise Rejection (safety net)", {
     error: errorMessage,
     stack
   });

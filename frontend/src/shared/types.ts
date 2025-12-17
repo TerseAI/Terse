@@ -328,6 +328,7 @@ export type Channel = {
     id: string;
     name: string;
     isActive: boolean;
+    requireApproval: boolean;
     prompt: ChannelPrompt;
     inputs: ChannelInput[];
     output: ChannelOutput;
@@ -345,6 +346,7 @@ export type ChannelUpdate = {
     output?: ChannelOutput;
     prompt?: ChannelPrompt;
     isActive?: boolean;
+    requireApproval?: boolean;
     notificationSettings?: ChannelNotificationSettings;
 };
 

@@ -9,7 +9,7 @@ import chalk from "chalk";
 import { OutputConfigType } from "@prisma/client";
 import { ConfluenceConfig } from "../shared/Configs";
 import { SessionWithTracking } from "../agent/ChannelAgent/ChannelAgent";
-import { formatError } from "../tools/errors";
+import { formatError, needsApproval } from "../tools/toolUtils";
 import logger from "../logger";
 
 // MARK: - Exports
@@ -153,6 +153,7 @@ To find the correct position, first call confluence_query_page to see the page c
         start_position: z.number().nullable().optional().describe('Optional: The start character position (offset) in the page storage format where the comment should be attached. Required if text_to_comment_on is not provided.'),
         end_position: z.number().nullable().optional().describe('Optional: The end character position (offset) in the page storage format where the comment should be attached. Required if text_to_comment_on is not provided.'),
     }),
+    needsApproval,
     execute: async ({ comment_text, text_to_comment_on, start_position, end_position }, runContext?: RunContext<SessionWithTracking<ConfluenceSession>>) => {
         logger.debug("[Confluence Add Comment] Executing confluence_add_comment tool", { comment_text, text_to_comment_on, start_position, end_position });
         if (!runContext?.context) {

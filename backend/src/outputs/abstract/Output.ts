@@ -6,7 +6,7 @@ import { ChannelOutput, PrismaTransaction, User } from "../../types/prisma";
 import { OutputConfigType } from "@prisma/client";
 import { ConfigInstance } from "../../shared/Configs";
 import { IntegrationType } from "../../shared/Integrations";
-import { formatError } from "../../tools/errors";
+import { formatError } from "../../tools/toolUtils";
 // You can only have one output at a time. Basically, it's just a specific integration + a toolbox to modify the content.
 // For Notion, we should support multiple integrations with the same account. 
 
