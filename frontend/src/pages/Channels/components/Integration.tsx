@@ -8,6 +8,7 @@ import {
     NotionIcon,
     FigmaIcon,
     JiraIcon,
+    ConfluenceIcon,
     JiraConfluenceIcon,
     TerseIcon,
 } from "@/components/icons/IntegrationIcons";
@@ -29,8 +30,9 @@ export function IconForConfigType({ type }: { type: ConfigType }) {
         case ConfigType.FIGMA:
             return <FigmaIcon />;
         case ConfigType.JIRA:
-        case ConfigType.CONFLUENCE:
             return <JiraIcon />;
+        case ConfigType.CONFLUENCE:
+            return <ConfluenceIcon />;
         default:
             // Exhaustive check: TypeScript will error if any IntegrationType case is missing
             throw type satisfies never;

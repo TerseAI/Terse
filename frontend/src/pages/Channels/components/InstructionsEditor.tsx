@@ -7,12 +7,14 @@ import {
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog";
-import { AlertTriangleIcon, Maximize2Icon, Sparkles } from "lucide-react";
+import { Maximize2Icon, Sparkles, Info, AlertTriangleIcon } from "lucide-react";
 import { ChannelInput, ChannelOutput, ChannelPrompt } from "@/shared/types";
 import { PromptBuilderModal } from "../../../components/PromptBuilder/PromptBuilderModal";
 import { Switch } from "../../../components/ui/switch";
 import { Label } from "../../../components/ui/label";
 import ReactMarkdown from "react-markdown";
+import { SectionHeader } from "@/components/ui/section-header";
+import { Tooltip, TooltipTrigger, TooltipContent } from "../../../components/ui/tooltip";
 
 const instructionsPlaceholder = `Describe what you want the AI to do with incoming events from your sources.
 
@@ -32,25 +34,37 @@ interface InstructionsEditorProps {
     setPrompt: (prompt: ChannelPrompt | undefined) => void;
     channelInputs: ChannelInput[];
     channelOutput: ChannelOutput | undefined;
+    isIncomplete?: boolean;
 }
 
-export function InstructionsEditor({ prompt, setPrompt, channelInputs, channelOutput }: InstructionsEditorProps) {
+export function InstructionsEditor({ prompt, setPrompt, channelInputs, channelOutput, isIncomplete }: InstructionsEditorProps) {
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [showPromptBuilder, setShowPromptBuilder] = useState(false);
     const [showMarkdown, setShowMarkdown] = useState(false);
     const text: string = prompt?.text ?? '';
-    const isEmpty = text.trim() === '';
 
     return (
         <div className="flex flex-col h-full w-full overflow-hidden">
-            <div className="flex flex-row gap-2 items-center justify-between mb-2 shrink-0">
+            <div className="flex flex-row gap-2 items-center justify-between mb-4 shrink-0">
                 <div className="flex flex-row gap-2 items-center">
-                    <h2 className="text-lg">Instructions</h2>
-                    {isEmpty && (
-                        <AlertTriangleIcon className="size-4 text-yellow-500" />
-                    )}
+                    <SectionHeader>Prompt</SectionHeader>
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            {isIncomplete ? (
+                                <AlertTriangleIcon className="size-3 text-yellow-500 cursor-help relative -top-1" />
+                            ) : (
+                                <Info className="size-3 text-muted-foreground hover:text-foreground cursor-help relative -top-1" />
+                            )}
+                        </TooltipTrigger>
+                        <TooltipContent side="right" className="max-w-xs whitespace-pre-line">
+                            {isIncomplete 
+                                ? "Add a prompt describing what the AI should do with incoming events to remove this warning.\n\nThe prompt describes what the AI should do with incoming events. Be specific about what information to extract, how to format output, and any rules for filtering or prioritizing."
+                                : "The prompt describes what the AI should do with incoming events. Be specific about what information to extract, how to format output, and any rules for filtering or prioritizing."
+                            }
+                        </TooltipContent>
+                    </Tooltip>
                 </div>
-                <div className="flex flex-row gap-2 items-center">
+                <div className="flex justify-end gap-2">
                     <div className="flex items-center gap-2">
                         <Switch
                             id="markdown-toggle"
@@ -70,16 +84,15 @@ export function InstructionsEditor({ prompt, setPrompt, channelInputs, channelOu
                         <Sparkles className="h-4 w-4 mr-2" />
                         Open Prompt Builder
                     </Button>
+                    <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        onClick={() => setIsDialogOpen(true)}
+                        title="Expand editor"
+                    >
+                        <Maximize2Icon className="size-4" />
+                    </Button>
                 </div>
-
-                <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    onClick={() => setIsDialogOpen(true)}
-                    title="Expand editor"
-                >
-                    <Maximize2Icon className="size-4" />
-                </Button>
             </div>
             {showMarkdown && prompt?.text ? (
                 <div className="flex-1 min-h-0 overflow-auto p-3 border rounded-md bg-background">
@@ -102,10 +115,7 @@ export function InstructionsEditor({ prompt, setPrompt, channelInputs, channelOu
                 <DialogContent className="sm:max-w-2xl h-[80vh] flex flex-col">
                     <DialogHeader>
                         <DialogTitle className="flex items-center gap-2">
-                            Instructions
-                            {isEmpty && (
-                                <AlertTriangleIcon className="size-4 text-yellow-500" />
-                            )}
+                            Prompt
                         </DialogTitle>
                     </DialogHeader>
                     {showMarkdown && prompt?.text ? (
