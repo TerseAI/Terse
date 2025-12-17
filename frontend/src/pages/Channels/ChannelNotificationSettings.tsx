@@ -110,7 +110,7 @@ const EVENT_TYPE_OPTIONS: { value: RunHistoryActionType; label: string; icon: Re
     { value: "create", label: "Create", icon: <Plus className="h-4 w-4" /> },
     { value: "update", label: "Update", icon: <Pencil className="h-4 w-4" /> },
     { value: "delete", label: "Delete", icon: <Trash2 className="h-4 w-4" /> },
-    { value: "read", label: "Read", icon: <Eye className="h-4 w-4" /> },
+    { value: "read", label: "Read", icon: <Eye className="h-4 w-4" /> }
 ];
 
 export default ChannelNotificationSettings;

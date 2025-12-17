@@ -1,13 +1,12 @@
 import { RunContext, tool } from "@openai/agents";
 import { z } from "zod";
 import { LinearClient } from "@linear/sdk";
-import chalk from "chalk";
 import { IntegrationType } from "../../../shared/Integrations";
 import { LinearTicketSession } from "../LinearTicketOutput";
 import { SessionWithTracking } from "../../../agent/ChannelAgent/ChannelAgent";
 import type { IssueUpdateInput } from "@linear/sdk/dist/_generated_documents";
 import { RunHistoryActionType } from "@prisma/client";
-import { formatError } from "../../../tools/errors";
+import { formatError, needsApproval } from "../../../tools/toolUtils";
 import logger from "../../../logger";
 
 export const linearUpdateTicketTool = tool({
@@ -45,6 +44,7 @@ COMMON UPDATE OPERATIONS:
         subscriberIds: z.array(z.string()).nullable().optional().describe('The IDs of users subscribing to this ticket.'),
         trashed: z.boolean().nullable().optional().describe('Whether the issue has been trashed.'),
     }),
+    needsApproval,
     execute: async ({ 
         issueId, 
         title, 

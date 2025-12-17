@@ -7,6 +7,7 @@ import { settings } from "../config/settings";
 import { db } from "../prismaClient";
 import { LinearTeam } from "../shared/types";
 import { LinearAdapter } from "../ticketing/linear";
+import logger from "../logger";
 
 
 /**
@@ -22,7 +23,7 @@ function verifySignature(headerSignatureString: string | undefined, rawBody: Buf
 
     const LINEAR_WEBHOOK_SECRET = settings.linear.signingSecret;
     if (!LINEAR_WEBHOOK_SECRET) {
-        console.error(chalk.red("❌ LINEAR_WEBHOOK_SECRET is not configured"));
+        logger.error('LINEAR_WEBHOOK_SECRET is not configured');
         return false;
     }
 
@@ -35,7 +36,7 @@ function verifySignature(headerSignatureString: string | undefined, rawBody: Buf
 
         return crypto.timingSafeEqual(computedSignature, headerSignature);
     } catch (error) {
-        console.error(chalk.red("❌ Error verifying signature:"), error);
+        logger.error('Error verifying signature:', { error });
         return false;
     }
 }
@@ -51,14 +52,14 @@ export const handleLinearWebhook = async (req: Request, res: Response) => {
         // Get raw body (Buffer from express.raw())
         const rawBody = req.body as Buffer;
         if (!rawBody || !Buffer.isBuffer(rawBody)) {
-            console.error(chalk.red("❌ [LINEAR WEBHOOK] Missing or invalid raw body"));
+            logger.error('Missing or invalid raw body');
             return res.sendStatus(400);
         }
 
         // Verify signature
         const headerSignature = req.get("linear-signature");
         if (!verifySignature(headerSignature, rawBody)) {
-            console.error(chalk.red("❌ [LINEAR WEBHOOK] Invalid signature"));
+            logger.error('Invalid signature');
             return res.sendStatus(401);
         }
 
@@ -67,7 +68,7 @@ export const handleLinearWebhook = async (req: Request, res: Response) => {
         try {
             body = JSON.parse(rawBody.toString("utf8")) as LinearWebhookPayload;
         } catch (error) {
-            console.error(chalk.red("❌ [LINEAR WEBHOOK] Failed to parse JSON body:"), error);
+            logger.error('Failed to parse JSON body:', { error });
             return res.sendStatus(400);
         }
 
@@ -78,7 +79,7 @@ export const handleLinearWebhook = async (req: Request, res: Response) => {
         const integration = new LinearIntegrationManager();
         await integration.processWebhookEvent(body);
     } catch (error) {
-        console.error(chalk.red("❌ [LINEAR WEBHOOK] Error processing webhook:"), error);
+        logger.error('Error processing webhook:', { error });
         // Indicate to Linear that there was a server error so the webhook is retried later
         return res.sendStatus(500);
     }
@@ -95,7 +96,7 @@ export async function getLinearIntegrations(req: Request, res: Response) {
         const integrations = await manager.getInstancesForUser(req.session.user.id);
         res.status(200).json(integrations);
     } catch (error) {
-        console.error('Error fetching Linear integrations:', error);
+        logger.error('Error fetching Linear integrations:', { error });
         res.status(500).json({ error: 'Failed to fetch Linear integrations' });
     }
 }
@@ -143,7 +144,7 @@ export async function getLinearTeams(req: Request, res: Response) {
 
         res.status(200).json(teamsResponse);
     } catch (error: unknown) {
-        console.error('Error fetching Linear teams:', error);
+        logger.error('Error fetching Linear teams:', { error });
         const errorMessage = error instanceof Error ? error.message : 'Failed to fetch Linear teams';
         res.status(500).json({ error: errorMessage });
     }

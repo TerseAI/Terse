@@ -1,4 +1,4 @@
-import { CheckCircle2, XCircle, Filter } from "lucide-react";
+import { CheckCircle2, XCircle, Filter, Clock } from "lucide-react";
 import type { RunHistoryStatus } from "../../shared/RunHistoryTypes";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
@@ -39,9 +39,16 @@ export default function RunHistoryStatusBadge({ status, filtered: _filtered, cla
                 In Progress
             </Badge>
         );
+    if (status === "awaiting_approval")
+        return (
+            <Badge variant="outline" className={cn("gap-1.5", className)}>
+                <Clock className="text-yellow-600 dark:text-yellow-400" />
+                Awaiting Approval
+            </Badge>
+        );
     return (
         <Badge variant="outline" className={className}>
-            Pending
+            Unknown
         </Badge>
     );
 }

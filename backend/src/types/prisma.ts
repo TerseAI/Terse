@@ -28,6 +28,8 @@ import {
   automation_linear_configs,
   directive_records,
   run_history_raw_events,
+  approval_slack_messages,
+  $Enums,
   output_change_attributions,
   identifiable_refs,
 } from '@prisma/client';
@@ -84,6 +86,8 @@ export type AutomationInput = automation_inputs;
 export type ChannelInput = automation_inputs; // Alias for rebranding
 
 export type DirectiveRecord = directive_records;
+
+export type ApprovalSlackMessage = approval_slack_messages;
 
 export type ChannelNotificationSettings = automation_notification_settings;
 
@@ -212,6 +216,9 @@ export type RunHistoryRawEventWithRelations = Prisma.run_history_raw_eventsGetPa
   };
 }>;
 
+// Re-export enum types
+export type RunHistoryActionType = $Enums.RunHistoryActionType;
+
 // Re-export the original types too
 export {
   users,
@@ -239,6 +246,7 @@ export {
   automation_confluence_configs,
   user_notification_destinations,
   automation_linear_configs,
+  approval_slack_messages,
   output_change_attributions,
   identifiable_refs,
 }; 

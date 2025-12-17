@@ -7,7 +7,7 @@ import { convertPrismaIntegrationTypeToIntegrationTypeFromRunHistory } from "../
 import { ModelEvent } from "../shared/ModelEvents";
 import logger from "../logger";
 // Valid status values for validation
-const VALID_STATUSES: RunHistoryStatus[] = ["success", "failed", "skipped", "in_progress"];
+const VALID_STATUSES: RunHistoryStatus[] = ["success", "failed", "skipped", "in_progress", "awaiting_approval"];
 
 export async function getRunHistory(req: Request, res: Response) {
   try {
@@ -91,7 +91,7 @@ export async function getRunHistory(req: Request, res: Response) {
         step_id: action.step_id ?? undefined,
         type: action.type,
       })),
-      status: runRecord.status as RunHistoryStatus,
+      status: runRecord.status,
     }));
 
     const response: GetRunHistoryResponse = {

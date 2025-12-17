@@ -77,8 +77,9 @@ export default function RunHistoryChatDrawer({
             )}>
                 {isOpen && (
                     <RunHistoryChatAdapter runId={runId} status={status}>
-                        {({ initialTurns, isLoading, subscribeToEvents, sendMessage, currentStatus }) => {
+                        {({ initialTurns, isLoading, subscribeToEvents, sendMessage, handleApprove, handleReject, currentStatus }) => {
                             const isFiltered = currentStatus === 'skipped';
+                            
                             return (
                                 <>
                                     <RunHistoryChatDrawerHeader
@@ -102,6 +103,8 @@ export default function RunHistoryChatDrawer({
                                                     initialTurns={initialTurns} 
                                                     subscribeToEvents={subscribeToEvents}
                                                     sendMessage={sendMessage}
+                                                    onHandleApprove={handleApprove}
+                                                    onHandleReject={handleReject}
                                                     EmptyContentPlaceholder={
                                                         isLoading 
                                                             ? <div className="p-4 text-center text-muted-foreground">Loading history...</div> 

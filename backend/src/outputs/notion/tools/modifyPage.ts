@@ -1,11 +1,10 @@
 import { RunContext, tool } from "@openai/agents";
 import { z } from "zod";
 import { Client } from '@notionhq/client';
-import chalk from "chalk";
 import { IntegrationType } from "../../../shared/Integrations";
 import { NotionDatabaseSession } from "../NotionDatabaseOutput";
 import { SessionWithTracking } from "../../../agent/ChannelAgent/ChannelAgent";
-import { formatError } from "../../../tools/errors";
+import { formatError, needsApproval } from "../../../tools/toolUtils";
 import logger from "../../../logger";
 
 export const notionModifyPageTool = tool({
@@ -52,9 +51,7 @@ IMPORTANT:
         page_id: z.string().nullable().describe('The ID of the page to update (from notion_query_database). MUST be null (not empty string, not period) to create a new page. Only provide a valid page ID string to update an existing page.'),
         properties_json: z.string().describe('JSON string with property names as keys and Notion-formatted values. Example: "{\\"Name\\": {\\"title\\": [{\\"text\\": {\\"content\\": \\"New Item\\"}}]}, \\"Status\\": {\\"select\\": {\\"name\\": \\"In Progress\\"}}}"'),
     }),
-    needsApproval: async (_context, { page_id, properties_json }) => {
-        return false; // DISABLE UNTIL HUMAN IN THE LOOP IS IMPLEMENTED
-    },
+    needsApproval,
     execute: async ({ page_id, properties_json }, runContext?: RunContext<SessionWithTracking<NotionDatabaseSession>>) => {
         logger.debug('🛠️ Executing notion_modify_page tool', { pageId: page_id ?? '(new page)', propertiesJson: properties_json });
 

@@ -139,7 +139,7 @@ export function useChatTurns({ initialTurns }: UseChatTurnsOptions = {}) {
         pendingApprovalsRef.current.delete(step_id);
 
         if (approved) {
-            // Mark as running again
+            // Mark as running again and approved
             setTurns(prev => {
                 const updated = [...prev];
                 for (const turn of updated) {
@@ -147,6 +147,7 @@ export function useChatTurns({ initialTurns }: UseChatTurnsOptions = {}) {
                     if (toolCall) {
                         toolCall.isRunning = true;
                         toolCall.isWaitingForApproval = false;
+                        toolCall.isApproved = true;
                         break;
                     }
                 }

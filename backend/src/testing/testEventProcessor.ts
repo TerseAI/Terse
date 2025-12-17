@@ -28,15 +28,11 @@ import { db } from '../prismaClient';
 import { User } from '../types/prisma';
 import * as readline from 'readline';
 import chalk from 'chalk';
-import { PendingApprovalState, promptForApprovalDecision, resumeApprovalFlow } from './helpers/ApprovalTestHelper';
 import { 
     MOCK_CRM_SALES_PIPELINE_EMAILS, 
     MOCK_ARCHITECTURE_DISCUSSION_EMAILS,
     DEFAULT_USER_EMAIL 
 } from './helpers/MockArchitectureEmails';
-
-// In-memory storage for pending approval state
-let pendingApprovalState: PendingApprovalState | null = null;
 
 // Create a custom GmailEventData
 function createCustomEmail(
@@ -253,31 +249,6 @@ async function main() {
                         }
                     }
                     console.log(chalk.gray('Duration:'), `${duration}ms`);
-
-                    // Check if any result has a pending approval
-                    for (const result of results) {
-                        if (result.approvalResult && result.approvalResult.status === 'awaiting_approval' && result.channel) {
-                            pendingApprovalState = {
-                                channelId: result.channel.id,
-                                serializedState: JSON.stringify(result.approvalResult.state),
-                                interruptions: result.approvalResult.interruptions,
-                            };
-
-                            console.log(chalk.cyan('\n⏸️  Channel paused awaiting approval'));
-                            console.log(chalk.gray(`Channel: ${result.channel.name}`));
-                            console.log(chalk.gray(`Pending interruptions: ${pendingApprovalState.interruptions.length}`));
-                            console.log();
-
-                            const approved = await promptForApprovalDecision(rl);
-
-                            if (approved) {
-                                console.log(chalk.green('\n✓ Approved! Resuming channel...\n'));
-                                await resumeApprovalFlow(pendingApprovalState);
-                            } else {
-                                console.log(chalk.yellow('\n✗ Rejected. Channel cancelled.\n'));
-                            }
-                        }
-                    }
                 }
             }
         }

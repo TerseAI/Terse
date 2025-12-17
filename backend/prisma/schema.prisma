@@ -440,12 +440,13 @@ model project_activity_events {
 
 // Automation tables
 model automations {
-  id         String   @id @default(cuid())
-  user_id    String
-  name       String
-  is_active  Boolean  @default(true)
-  created_at DateTime @default(now())
-  updated_at DateTime @updatedAt
+  id               String   @id @default(cuid())
+  user_id          String
+  name             String
+  is_active        Boolean  @default(true)
+  require_approval Boolean  @default(false)
+  created_at       DateTime @default(now())
+  updated_at       DateTime @updatedAt
 
   user                       users                             @relation(fields: [user_id], references: [id], onDelete: Cascade)
   prompt                     automation_prompts?
@@ -768,6 +769,7 @@ enum RunHistoryChatEventType {
   FilterResult
   UserMessage
   Thinking
+  ToolApprovalResponse
 }
 
 // Run History tables
@@ -836,12 +838,15 @@ enum RunHistoryActionType {
 
 // Pending approvals for tools that require human approval
 // Status is tracked via run_history_record.status (awaiting_approval)
+// This table stores the serialized state and interruptions separately from run_history_records
+// for better data organization and compliance tracking (created_at timestamp)
 model pending_approvals {
   id                    String    @id @default(cuid())
   user_id               String
   run_history_record_id String    @unique
-  run_state_json        String    @db.Text // Serialized OpenAI RunState for resumption
-  created_at            DateTime  @default(now())
+  serialized_state      String    @db.Text // Serialized OpenAI RunState for resumption (JSON string)
+  interruptions         Json // Array of RunToolApprovalItem objects
+  created_at            DateTime  @default(now()) // Creation timestamp for compliance tracking
   updated_at            DateTime  @updatedAt
   approved_at           DateTime?
 
@@ -850,6 +855,7 @@ model pending_approvals {
 
   @@index([user_id])
   @@index([created_at])
+  @@index([run_history_record_id])
 }
 
 // Chat events from ChannelAgent streaming
@@ -923,6 +929,25 @@ model user_notification_destinations {
 enum NotificationDestinationType {
   SLACK
   EMAIL
+}
+
+model approval_slack_messages {
+  id                        String   @id @default(cuid())
+  run_id                    String
+  step_id                   String
+  slack_channel_id          String
+  slack_message_ts          String
+  user_slack_integration_id String
+  status                    String // "pending", "approved", "rejected", "processing"
+  summary                   String? // Cached approval summary to avoid regeneration
+  rejection_reason          String? // Reason provided when rejecting the approval
+  created_at                DateTime @default(now())
+  updated_at                DateTime @updatedAt
+
+  @@unique([run_id, step_id])
+  @@index([run_id])
+  @@index([step_id])
+  @@index([status])
 }
 
 model directive_records {
