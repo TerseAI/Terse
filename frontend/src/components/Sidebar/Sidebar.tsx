@@ -62,9 +62,9 @@ function ApplicationNavigation({ channels, loading }: ApplicationNavigationProps
         <SidebarMenu>
             {applicationItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton asChild data-active={location.pathname === item.url}>
+                    <SidebarMenuButton asChild isActive={location.pathname === item.url}>
                         <Link to={item.url}>
-                            <item.icon />
+                            <item.icon className={item.iconColor} />
                             <span>{item.title}</span>
                         </Link>
                     </SidebarMenuButton>
@@ -84,9 +84,9 @@ function SettingsNavigation() {
         <SidebarMenu>
             {SettingsItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton asChild data-active={location.pathname === item.url}>
+                    <SidebarMenuButton asChild isActive={location.pathname === item.url}>
                         <Link to={item.url}>
-                            <item.icon />
+                            <item.icon className={item.iconColor} />
                             <span>{item.title}</span>
                         </Link>
                     </SidebarMenuButton>
@@ -120,26 +120,24 @@ function ChannelsList({ channels, loading }: ChannelsListProps) {
     }
 
     return (
-        <>
+        <SidebarMenuSub>
             {channels.map((channel) => (
                 <ChannelListItem key={channel.id} channel={channel} />
             ))}
-            <SidebarMenuSub>
-                <SidebarMenuSubItem>
-                    <SidebarMenuSubButton asChild>
-                        <Button 
-                            variant="ghost" 
-                            size="sm" 
-                            className="gap-1 text-xs text-muted-foreground"
-                            onClick={() => navigate('/app/channels/new')}
-                        >
-                            <Plus className="size-3 !text-muted-foreground hover:!text-foreground" color="currentColor"/>
-                            Add Channel
-                        </Button>
-                    </SidebarMenuSubButton>
-                </SidebarMenuSubItem>
-            </SidebarMenuSub>
-        </>
+            <SidebarMenuSubItem>
+                <SidebarMenuSubButton asChild>
+                    <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="gap-1 text-xs text-muted-foreground"
+                        onClick={() => navigate('/app/channels/new')}
+                    >
+                        <Plus className="size-3 !text-muted-foreground hover:!text-foreground" color="currentColor"/>
+                        Add Channel
+                    </Button>
+                </SidebarMenuSubButton>
+            </SidebarMenuSubItem>
+        </SidebarMenuSub>
     )
 }
 
@@ -152,15 +150,13 @@ function ChannelListItem({ channel }: ChannelListItemProps) {
     const isActive = location.pathname === `/app/channels/${channel.id}`;
 
     return (
-        <SidebarMenuSub>
-            <SidebarMenuSubItem>
-                <SidebarMenuSubButton asChild data-active={isActive}>
-                    <Link to={`/app/channels/${channel.id}`}>
-                        <span>{channel.name}</span>
-                    </Link>
-                </SidebarMenuSubButton>
-            </SidebarMenuSubItem>
-        </SidebarMenuSub>
+        <SidebarMenuSubItem>
+            <SidebarMenuSubButton asChild isActive={isActive}>
+                <Link to={`/app/channels/${channel.id}`}>
+                    <span>{channel.name}</span>
+                </Link>
+            </SidebarMenuSubButton>
+        </SidebarMenuSubItem>
     )
 }
 
@@ -170,6 +166,7 @@ interface NavItem {
     title: string;
     url: string;
     icon: LucideIcon;
+    iconColor?: string;
 }
 
 const DefaultApplicationItems: NavItem[] = [
@@ -177,11 +174,13 @@ const DefaultApplicationItems: NavItem[] = [
         title: "Home",
         url: "/app",
         icon: Home,
+        iconColor: "text-primary",
     },
     {
         title: "Channels",
         url: "/app/channels",
         icon: Zap,
+        iconColor: "text-primary",
     }
 ]
 
@@ -190,16 +189,19 @@ const BirdsEyeApplicationItems: NavItem[] = [
         title: "Birds Eye",
         url: "/app/birds-eye",
         icon: Eye,
+        iconColor: "text-primary",
     },
     {
         title: "Home",
         url: "/app",
         icon: Home,
+        iconColor: "text-primary",
     },
     {
         title: "Channels",
         url: "/app/channels",
         icon: Zap,
+        iconColor: "text-primary",
     }
 ]
 
@@ -208,10 +210,12 @@ const SettingsItems: NavItem[] = [
         title: "Integrations",
         url: "/app/integrations",
         icon: Plug,
+        iconColor: "text-primary",
     },
     {
         title: "Notifications",
         url: "/app/notifications",
         icon: Bell,
+        iconColor: "text-primary",
     },
 ]
