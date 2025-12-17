@@ -1,6 +1,5 @@
 import { Integration, OAuthIntegrationInstallation } from "./abstract/Integration";
 import { db } from "../prismaClient";
-import chalk from "chalk";
 import { EventProcessor } from "../agent/ChannelAgent/EventProcessor";
 import { InputEvent } from "./abstract/InputEvent";
 import { GithubIntegration, GithubIntegrationMetadata, IntegrationType } from "../shared/Integrations";
@@ -15,7 +14,7 @@ import { Request, Response } from "express";
 import { InputConfigType } from "@prisma/client";
 import axios, { AxiosResponse } from "axios";
 import { GithubAppUser } from "../routes/GithubTypes";
-import logger from "../logger";
+import logger, { runWithUserContext } from "../logger";
 
 export class GithubIntegrationManager implements Integration<GithubIntegration, GithubAppUnifiedEventRequest, typeof GithubIntegrationMetadata>, OAuthIntegrationInstallation<IntegrationType.GITHUB> {
     constructor() { }
@@ -60,9 +59,12 @@ export class GithubIntegrationManager implements Integration<GithubIntegration, 
         }
         
         for (const user of users) {
-            const githubEvent = new GithubEvent(event);
-            const eventProcessor = new EventProcessor(githubEvent, user);
-            await eventProcessor.process();
+            // Process with user context for logging
+            await runWithUserContext(user.id, user.email, async () => {
+                const githubEvent = new GithubEvent(event);
+                const eventProcessor = new EventProcessor(githubEvent, user);
+                await eventProcessor.process();
+            });
         }
     }
 

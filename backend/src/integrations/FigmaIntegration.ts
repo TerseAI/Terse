@@ -22,7 +22,7 @@ import { FigmaIntegration, FigmaIntegrationMetadata, IntegrationType } from "../
 import jwt from "jsonwebtoken";
 import { figma as figmaConfig, jwt as jwtConfig, urls, OAUTH_TOKEN_REFRESH_THRESHOLD_MS } from "../config/settings";
 import { Request, Response } from "express";
-import logger from "../logger";
+import logger, { runWithUserContext } from "../logger";
 
 export class FigmaIntegrationManager implements Integration<FigmaIntegration, FigmaWebhookEvent, typeof FigmaIntegrationMetadata>, OAuthIntegrationInstallation<IntegrationType.FIGMA> {
   constructor() { }
@@ -90,7 +90,10 @@ export class FigmaIntegrationManager implements Integration<FigmaIntegration, Fi
 
     for (const integration of integrations) {
       if (eventType === FigmaEventTypes.FILE_COMMENT) {
-        await this.handleFigmaCommentEvent(integration, event, integration.user);
+        // Process with user context for logging
+        await runWithUserContext(integration.user.id, integration.user.email, async () => {
+          await this.handleFigmaCommentEvent(integration, event, integration.user);
+        });
       }
     }
   }
