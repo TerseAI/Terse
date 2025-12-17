@@ -38,7 +38,7 @@ export function useRunHistory({
         q: searchQuery.trim() || undefined,
         start: toLocalStartISOString(dateRange.from),
         end: toLocalEndISOString(dateRange.to ?? dateRange.from),
-        status: Array.from(selectedStatuses),
+        status: Array.from(selectedStatuses).sort(),
     };
     
     if (!channelId) {
