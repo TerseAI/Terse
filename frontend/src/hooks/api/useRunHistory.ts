@@ -1,6 +1,6 @@
 import useSWR from 'swr';
 import { BackendProvider } from '@/services/backend';
-import type { GetRunHistoryParams, GetRunHistoryResponse } from '@/shared/RunHistoryTypes';
+import type { GetRunHistoryParams, GetRunHistoryResponse, RunHistoryStatus } from '@/shared/RunHistoryTypes';
 import { runHistoryKey } from '@/shared/InvalidationKeys';
 
 type UseRunHistoryParams = {
@@ -9,7 +9,7 @@ type UseRunHistoryParams = {
     pageSize?: number;
     searchQuery?: string;
     dateRange?: { from: Date | undefined; to: Date | undefined };
-    selectedStatuses?: Set<string>;
+    selectedStatuses: Set<RunHistoryStatus>;
 };
 
 export function useRunHistory({
@@ -18,7 +18,7 @@ export function useRunHistory({
     pageSize = 10,
     searchQuery = '',
     dateRange = { from: undefined, to: undefined },
-    selectedStatuses = new Set(['success', 'failed', 'in_progress']),
+    selectedStatuses,
 }: UseRunHistoryParams) {
     // Convert date range to ISO strings
     const toLocalStartISOString = (d?: Date) => {
@@ -32,16 +32,13 @@ export function useRunHistory({
         return new Date(local.getTime() - local.getTimezoneOffset() * 60000).toISOString();
     };
 
-    // Build params object
-    // Convert Set to sorted array for consistent key generation
-    const statusArray = Array.from(selectedStatuses).sort();
     const params: GetRunHistoryParams = {
         page,
         pageSize,
         q: searchQuery.trim() || undefined,
         start: toLocalStartISOString(dateRange.from),
         end: toLocalEndISOString(dateRange.to ?? dateRange.from),
-        status: statusArray.length < 4 ? statusArray as any : undefined,
+        status: Array.from(selectedStatuses),
     };
     
     if (!channelId) {
@@ -58,6 +55,7 @@ export function useRunHistory({
     }
     
     const key = runHistoryKey(channelId, params);
+
 
     const { data, error, isValidating, mutate } = useSWR<GetRunHistoryResponse>(
         key,
