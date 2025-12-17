@@ -125,3 +125,18 @@ export function sendChatMessage(runId: string | null, message: ModelRequest): vo
     }
     socket.emit('channel:chat:message', { runId, message });
 }
+
+export function sendToolApprovalResponse(runId: string, stepId: string, approved: boolean): void {
+    if (!socket || !socket.connected) {
+        console.warn('Socket not connected, cannot send approval response');
+        return;
+    }
+    socket.emit('channel:chat:approval', {
+        runId,
+        message: {
+            type: 'ToolApprovalResponse',
+            step_id: stepId,
+            approved,
+        },
+    });
+}

@@ -19,7 +19,7 @@ export async function getNotionIntegrations(req: Request, res: Response) {
       const integrations = await manager.getInstancesForUser(req.session.user.id);
       res.status(200).json(integrations);
   } catch (error) {
-      logger.error('Error fetching Notion integrations');
+      logger.error('Error fetching Notion integrations:', { error });
       res.status(500).json({ error: 'Failed to fetch Notion integrations' });
   }
 }
@@ -116,7 +116,7 @@ export const getNotionResources = async (req: Request, res: Response) => {
 
     res.status(200).json(response);
   } catch (error: any) {
-    logger.error("Error searching Notion resources:", error);
+    logger.error('Error searching Notion resources:', { error });
     res.status(500).json({
       error: "Failed to search resources",
       details: error.message

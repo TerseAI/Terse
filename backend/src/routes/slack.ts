@@ -322,7 +322,7 @@ export const getSlackUsers = async (req: Request, res: Response) => {
 
     res.status(200).json(response);
   } catch (error: any) {
-    logger.error("Error fetching Slack users:", error);
+    logger.error('Error fetching Slack users:', { error });
     res.status(500).json({ error: "Failed to fetch users" });
   }
 }

@@ -1,13 +1,12 @@
 import { RunContext, tool } from "@openai/agents";
 import { z } from "zod";
 import { Client } from '@notionhq/client';
-import chalk from "chalk";
 import { IntegrationType } from "../../../shared/Integrations";
 import { NotionPageSession } from "../NotionPageOutput";
 import { getBlockTypeName, describeBlocks } from "../../../utility/notion";
 import { SessionWithTracking } from "../../../agent/ChannelAgent/ChannelAgent";
+import { formatError, needsApproval } from "../../../tools/toolUtils";
 import { ConfigType } from "../../../shared/Configs";
-import { formatError } from "../../../tools/errors";
 import logger from "../../../logger";
 
 /**
@@ -57,6 +56,7 @@ Example append: "{\"operation\": \"append\", \"blocks\": [{\"object\": \"block\"
 Example update: "{\"operation\": \"update\", \"block_id\": \"abc123\", \"block\": {\"paragraph\": {\"rich_text\": [{\"type\": \"text\", \"text\": {\"content\": \"Updated\"}}]}}}"
 Example delete: "{\"operation\": \"delete\", \"block_id\": \"abc123\"}"`),
     }),
+    needsApproval,
     execute: async ({ operation_json }, runContext?: RunContext<SessionWithTracking<NotionPageSession>>) => {        
         // Parse the JSON string
         let op: {
