@@ -2,9 +2,9 @@ import { useMemo } from 'react';
 import { useChatHistory } from '@/hooks/api/useChatHistory';
 import { Chat } from '@/components/chat/Chat';
 import { RunHistoryStatus} from '@/shared/RunHistoryTypes';
-import { Failure, FilterResult, ModelEvent, ModelRequest, TextDelta, ToolCall, ToolCallComplete, UserMessage } from '@/shared/ModelEvents';
+import { Failure, FilterResult, ModelEvent, ModelRequest, TextDelta, ToolApprovalResponse, ToolCall, ToolCallComplete, UserMessage } from '@/shared/ModelEvents';
 import { Turn } from '@/components/chat/Turn';
-import { subscribeToChatEvents, sendChatMessage } from '@/socket';
+import { subscribeToChatEvents, sendChatMessage, sendToolApprovalResponse } from '@/socket';
 import { type ChatEventSubscription } from '@/components/chat/hooks/useCompletionSocket';
 import type { RunHistoryModelSocketEvent } from '@/shared/RunHistoryTypes';
 import { filterOutThinkingOnlyTurns } from '@/components/chat/utils/turnUtils';
@@ -20,6 +20,8 @@ type RunHistoryChatAdapterProps = {
         endTimestamp?: string;
         subscribeToEvents?: ChatEventSubscription | null;
         sendMessage: (message: ModelRequest) => void;
+        handleApprove: (stepId: string) => void;
+        handleReject: (stepId: string) => void;
         currentStatus: RunHistoryStatus;
     }) => React.ReactNode;
 };
@@ -51,8 +53,16 @@ export default function RunHistoryChatAdapter({ runId, status, children}: RunHis
         sendChatMessage(runId, message);
     };
 
+    const handleApprove = (stepId: string) => {
+        sendToolApprovalResponse(runId, stepId, true);
+    };
+    
+    const handleReject = (stepId: string) => {
+        sendToolApprovalResponse(runId, stepId, false);
+    };
+
     if (children) {
-        return <>{children({ initialTurns: turns, isLoading, runId, startTimestamp, endTimestamp, subscribeToEvents, sendMessage, currentStatus })}</>;
+        return <>{children({ initialTurns: turns, isLoading, runId, startTimestamp, endTimestamp, subscribeToEvents, sendMessage, currentStatus, handleApprove, handleReject })}</>;
     }
 
     return (
@@ -60,6 +70,8 @@ export default function RunHistoryChatAdapter({ runId, status, children}: RunHis
             initialTurns={turns}
             subscribeToEvents={subscribeToEvents}
             sendMessage={sendMessage}
+            onHandleApprove={handleApprove}
+            onHandleReject={handleReject}
             EmptyContentPlaceholder={isLoading ? <div className="p-4 text-center text-muted-foreground">Loading history...</div> : <div className="p-4 text-center text-muted-foreground">No events found</div>}
         />
     );
@@ -214,6 +226,22 @@ function convertRunHistoryEventsToTurns(events: ModelEvent[]): Turn[] {
                         fc.isWaitingForApproval = true;
                         fc.isRunning = false;
                         break;
+                    }
+                }
+                break;
+            }
+            case 'ToolApprovalResponse': {
+                const e = event as ToolApprovalResponse;
+                const step_id = e.step_id;
+                for (const t of turns) {
+                    const fc = t.function_calls.find(c => c.id === step_id);
+                    if (fc) {
+                        fc.isWaitingForApproval = false;
+                        if (e.approved) {
+                            fc.isApproved = true;
+                        } else {
+                            fc.isRejected = true;
+                        }
                     }
                 }
                 break;

@@ -22,6 +22,7 @@ import { AddOutputModal } from "../components/AddOutputModal";
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "../../../components/ui/empty";
 import { Badge } from "../../../components/ui/badge";
 import ChannelNotificationSettings from "../ChannelNotificationSettings";
+import ChannelApprovalSettings from "../ChannelApprovalSettings";
 import { InstructionsEditor } from "../components/InstructionsEditor";
 
 export type ChannelSetupTabProps = {
@@ -36,6 +37,8 @@ export type ChannelSetupTabProps = {
     setPrompt: (prompt: ChannelPrompt | undefined) => void;
     isActive: boolean;
     setIsActive: (isActive: boolean) => void;
+    requireApproval: boolean;
+    setRequireApproval: (requireApproval: boolean) => void;
     notificationSettings: ChannelNotificationSettingsType;
     setNotificationSettings: (settings: ChannelNotificationSettingsType) => void;
     isLoading: boolean;
@@ -50,6 +53,7 @@ function SaveChannelButton({
     output,
     prompt,
     isActive,
+    requireApproval,
     notificationSettings,
     mutate
 }: {
@@ -60,6 +64,7 @@ function SaveChannelButton({
     output: ChannelOutput | undefined;
     prompt: ChannelPrompt | undefined;
     isActive: boolean;
+    requireApproval: boolean;
     notificationSettings: ChannelNotificationSettingsType;
     mutate: KeyedMutator<Channel>;
 }) {
@@ -89,6 +94,7 @@ function SaveChannelButton({
                 output,
                 prompt,
                 isActive,
+                requireApproval,
                 notificationSettings
             };
 
@@ -107,6 +113,7 @@ function SaveChannelButton({
                     output: channelData.output,
                     prompt: channelData.prompt || { text: '' },
                     isActive: channelData.isActive || true,
+                    requireApproval: channelData.requireApproval || false,
                 });
 
                 if (creation?.id) {
@@ -149,6 +156,8 @@ export default function ChannelSetupTab({
     setOutput,
     setPrompt,
     isActive,
+    requireApproval,
+    setRequireApproval,
     notificationSettings,
     setNotificationSettings,
     mutate,
@@ -171,6 +180,7 @@ export default function ChannelSetupTab({
                     output={channelOutput}
                     prompt={prompt}
                     isActive={isActive}
+                    requireApproval={requireApproval}
                     notificationSettings={notificationSettings}
                     mutate={mutate}
                 />
@@ -182,8 +192,9 @@ export default function ChannelSetupTab({
                         <InputLayout inputs={inputs} setInputs={setInputs} />
                     </div>
 
-                    <div className="min-w-md max-w-md overflow-hidden">
+                    <div className="min-w-md max-w-md overflow-hidden flex flex-col gap-4">
                         <OutputLayout output={output} setOutput={setOutput} />
+                        <ChannelApprovalSettings requireApproval={requireApproval} onChange={setRequireApproval} />
                     </div>
                 </div>
 
@@ -196,7 +207,7 @@ export default function ChannelSetupTab({
 
             <div className="flex flex-row gap-12">
             <div className="min-w-md max-w-md"></div>
-                <div className="min-w-md max-w-md">
+                <div className="min-w-md max-w-md flex flex-col gap-4">
                     <ChannelNotificationSettings settings={notificationSettings} onChange={setNotificationSettings} />
                 </div>
             </div>

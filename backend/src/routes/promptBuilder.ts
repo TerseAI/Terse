@@ -26,7 +26,7 @@ export async function generateQuestionsRoute(req: Request, res: Response) {
 
     return res.json({ questions });
   } catch (error: any) {
-    logger.error('Error generating questions:', error);
+    logger.error('Error generating questions:', { error });
     return res.status(500).json({ 
       error: 'Failed to generate questions',
       message: error.message 
@@ -67,7 +67,7 @@ export async function generatePromptRoute(req: Request, res: Response) {
 
     return res.json({ prompt });
   } catch (error: any) {
-    logger.error('Error generating prompt:', error);
+    logger.error('Error generating prompt:', { error });
     return res.status(500).json({ 
       error: 'Failed to generate prompt',
       message: error.message 

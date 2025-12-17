@@ -3,7 +3,7 @@ import { db } from "../prismaClient";
 import { Channel, ChannelInput, ChannelsResponse, ChannelNotificationSettings, ChannelUpdate } from "../shared/types";
 import { parsePageParams } from "../utility/pagination";
 import chalk from "chalk";
-import { ChannelWithInputRelations, PrismaTransaction, ChannelWithRelations, ChannelWithNotificationSettingsRelations } from "../types/prisma";
+import { ChannelWithInputRelations, PrismaTransaction, ChannelWithRelations, ChannelWithNotificationSettingsRelations, RunHistoryActionType } from "../types/prisma";
 import { IntegrationType } from "../shared/Integrations";
 import { convertConfigTypeToInputConfigType, convertConfigTypeToOutputConfigType, convertPrismaConfigToConfigInstance, convertPrismaOutputConfigToConfigInstance } from "../utility/typeConverters";
 import { ConfigInstance } from "../shared/Configs";
@@ -261,7 +261,7 @@ export async function createChannel(req: Request, res: Response) {
     }
 
     const userId = req.session.user.id;
-    const { name, inputs, output, prompt, isActive = true, notificationSettings } = req.body as ChannelUpdate;
+    const { name, inputs, output, prompt, isActive = true, requireApproval = false, notificationSettings } = req.body as ChannelUpdate;
     logger.debug("Output from frontend", { output: JSON.stringify(output, null, 2), userId });
     logger.debug("Inputs from frontend", { inputs: JSON.stringify(inputs, null, 2), userId });
     logger.debug("Notification settings from frontend", { notificationSettings: JSON.stringify(notificationSettings, null, 2), userId });
@@ -282,7 +282,8 @@ export async function createChannel(req: Request, res: Response) {
                 data: {
                     user_id: userId,
                     name,
-                    is_active: isActive
+                    is_active: isActive,
+                    require_approval: requireApproval
                 }
             });
 
@@ -398,7 +399,7 @@ export async function updateChannel(req: Request, res: Response) {
 
     const userId = req.session.user.id;
     const channelId = req.params.id;
-    const { name, inputs, output, prompt, isActive, notificationSettings } = req.body as Partial<ChannelUpdate>;
+    const { name, inputs, output, prompt, isActive, requireApproval, notificationSettings } = req.body as Partial<ChannelUpdate>;
 
     try {
         const prisma = db();
@@ -419,12 +420,13 @@ export async function updateChannel(req: Request, res: Response) {
         // Update channel in transaction
         await prisma.$transaction(async (tx) => {
             // Update basic fields if provided
-            if (name !== undefined || isActive !== undefined) {
+            if (name !== undefined || isActive !== undefined || requireApproval !== undefined) {
                 await tx.automations.update({
                     where: { id: channelId },
                     data: {
                         ...(name !== undefined && { name }),
-                        ...(isActive !== undefined && { is_active: isActive })
+                        ...(isActive !== undefined && { is_active: isActive }),
+                        ...(requireApproval !== undefined && { require_approval: requireApproval })
                     }
                 });
             }
@@ -611,6 +613,7 @@ function transformChannelToFrontendFormat(channel: ChannelWithRelations & Partia
         id: channel.id,
         name: channel.name,
         isActive: channel.is_active,
+        requireApproval: channel.require_approval ?? false,
         prompt: channel.prompt ? { text: channel.prompt.content } : { text: '' },
         inputs: channel.inputs.map(input => ({
             id: input.id,
@@ -622,7 +625,7 @@ function transformChannelToFrontendFormat(channel: ChannelWithRelations & Partia
         },
         notificationSettings: channel.notification_settings ? {
             enabled: channel.notification_settings.enabled,
-            actionTypes: channel.notification_settings.action_types as any[], // RunHistoryActionType[]
+            actionTypes: channel.notification_settings.action_types,
         } : undefined,
     };
 }

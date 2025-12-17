@@ -10,6 +10,7 @@ import logger from '../logger';
 interface RunHistoryChatMemorySessionOptions {
   sessionId: string;
   skipSave?: boolean;
+  filterIncompleteToolCalls?: boolean;
 }
 
 /**
@@ -19,12 +20,13 @@ interface RunHistoryChatMemorySessionOptions {
 export class RunHistoryChatMemorySession implements Session {
   private readonly sessionId: string;
   private readonly skipSave: boolean;
-
+  private readonly filterIncompleteToolCalls: boolean;
   constructor(
-      options: RunHistoryChatMemorySessionOptions
+    options: RunHistoryChatMemorySessionOptions
   ) {
     this.sessionId = options.sessionId
     this.skipSave = options.skipSave ?? false;
+    this.filterIncompleteToolCalls = options.filterIncompleteToolCalls ?? false;
   }
 
   async getSessionId(): Promise<string> {
@@ -48,7 +50,9 @@ export class RunHistoryChatMemorySession implements Session {
     })
     const rawEvents = items.map(item => item.raw_event_json as AgentInputItem);
     const filteredEvents = filterReasoningItems(rawEvents);
-    return filteredEvents.map(cloneAgentItem);
+    const deduplicatedEvents = deduplicateItemsById(filteredEvents);
+    const filteredToolCallEvents = this.filterIncompleteToolCalls ? filterToolCallEvents(deduplicatedEvents) : deduplicatedEvents;
+    return filteredToolCallEvents.map(cloneAgentItem);
   }
 
   async addItems(items: AgentInputItem[]): Promise<void> {
@@ -193,9 +197,9 @@ function isUserMessage(item: AgentInputItem): boolean {
 export function trimToLastTurns(items: AgentInputItem[], maxTurns: number): AgentInputItem[] {
   if (items.length === 0) return items;
   maxTurns = Math.max(1, maxTurns);
-  
+
   let count = 0;
-  let startIdx = 0; 
+  let startIdx = 0;
 
   for (let i = items.length - 1; i >= 0; i--) {
     if (isUserMessage(items[i])) {
@@ -214,6 +218,39 @@ function cloneAgentItem<T extends AgentInputItem>(item: T): T {
   return structuredClone(item);
 }
 
+/**
+ * Deduplicates items by their ID, keeping only the last occurrence of each ID.
+ * This prevents duplicate item errors when sending items to the OpenAI API.
+ */
+function deduplicateItemsById(items: AgentInputItem[]): AgentInputItem[] {
+  // Track the last index where each ID appears
+  const idToLastIndex = new Map<string, number>();
+
+  for (let i = 0; i < items.length; i++) {
+    const itemAny = items[i];
+    if (itemAny?.id && typeof itemAny.id === 'string') {
+      idToLastIndex.set(itemAny.id, i);
+    }
+  }
+
+  // If no IDs found, no duplicates possible
+  if (idToLastIndex.size === 0) {
+    return items;
+  }
+
+  // Filter to keep only items that are either:
+  // 1. The last occurrence of their ID, or
+  // 2. Don't have an ID
+  const result: AgentInputItem[] = items.map((item, i) => {
+    const itemId = item?.id;
+    if (!itemId || typeof itemId !== 'string') return item;
+    if (idToLastIndex.get(itemId) === i) return item;
+    return undefined;
+  }).filter((item) => item !== undefined)
+
+  return result;
+}
+
 
 export const recentHistoryCallback = (history: AgentInputItem[], newItems: AgentInputItem[]): AgentInputItem[] => {
   const trimmedHistory = trimToLastTurns(history, 10)
@@ -222,6 +259,61 @@ export const recentHistoryCallback = (history: AgentInputItem[], newItems: Agent
 
 export const identityHistoryCallback = (history: AgentInputItem[], newItems: AgentInputItem[]): AgentInputItem[] => {
   return [...history, ...newItems];
+}
+
+const filterToolCallEvents = (events: AgentInputItem[]): AgentInputItem[] => {
+  // Track function_call events by callId
+  const functionCallsByCallId = new Map<string, AgentInputItem>();
+  // Track function_call_result events by callId
+  const functionCallResultsByCallId = new Map<string, AgentInputItem>();
+
+  // First pass: collect all function_call and function_call_result events
+  for (const event of events) {
+    const eventAny = event as any;
+
+    if (eventAny?.type === 'function_call' && eventAny?.callId) {
+      const callId = eventAny.callId;
+      // Keep the last occurrence if there are duplicates
+      functionCallsByCallId.set(callId, event);
+    } else if (eventAny?.type === 'function_call_result' && eventAny?.callId) {
+      const callId = eventAny.callId;
+      // Keep the last occurrence if there are duplicates
+      functionCallResultsByCallId.set(callId, event);
+    }
+  }
+
+  // Second pass: filter events to only include:
+  // 1. function_call events that have a matching function_call_result
+  // 2. function_call_result events that have a matching function_call
+  // 3. All other events (non-function-call events)
+  const filteredEvents: AgentInputItem[] = [];
+
+  for (const event of events) {
+    const eventAny = event as any;
+
+    if (eventAny?.type === 'function_call' && eventAny?.callId) {
+      const callId = eventAny.callId;
+      // Only include if there's a corresponding function_call_result
+      if (functionCallResultsByCallId.has(callId)) {
+        filteredEvents.push(event);
+      } else {
+        logger.info(`[filterToolCallEvents] Filtering out function_call without result: ${eventAny.name} (callId: ${callId})`);
+      }
+    } else if (eventAny?.type === 'function_call_result' && eventAny?.callId) {
+      const callId = eventAny.callId;
+      // Only include if there's a corresponding function_call
+      if (functionCallsByCallId.has(callId)) {
+        filteredEvents.push(event);
+      } else {
+        logger.info(`[filterToolCallEvents] Filtering out function_call_result without call: ${eventAny.name} (callId: ${callId})`);
+      }
+    } else {
+      // Include all other events (not function_call or function_call_result)
+      filteredEvents.push(event);
+    }
+  }
+
+  return filteredEvents;
 }
 
 /**

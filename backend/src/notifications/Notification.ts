@@ -1,8 +1,9 @@
-import { NotificationDestinationType } from "@prisma/client";
+import { NotificationDestinationType, RunHistoryActionType } from "@prisma/client";
 import { db } from "../prismaClient";
 import { RunHistoryAction } from "../shared/RunHistoryTypes";
 import { User, Channel, UserNotificationDestination, AutomationNotificationSettings } from "../types/prisma";
-import { formatNotificationMessage, sendSlackMessage } from "../utility/slack";
+import { formatNotificationMessage, sendSlackMessage, sendSlackApprovalMessage } from "../utility/slack";
+import { generateApprovalSummary } from "../agent/ApprovalSummaryAgent/ApprovalSummaryAgent";
 import logger from "../logger";
 
 export class NotificationManager {
@@ -14,7 +15,7 @@ export class NotificationManager {
         this.channel = channel;
     }
 
-    async notify(runAction: RunHistoryAction) {
+    async notify(runAction: RunHistoryAction, runId?: string) {
         // Get the notification settings for the automation
         const notificationSettings: AutomationNotificationSettings | null = await db().automation_notification_settings.findFirst({
             where: {
@@ -48,6 +49,22 @@ export class NotificationManager {
             return;
         }
 
+        // Handle approval notifications specially
+
+        const editableActions: RunHistoryActionType[] = [RunHistoryActionType.create, RunHistoryActionType.update, RunHistoryActionType.delete];
+
+        if (editableActions.includes(runAction.type) && runId && runAction.step_id && this.channel.require_approval) {
+            switch (notificationDestinations.destination_type) {
+                case NotificationDestinationType.SLACK:
+                    await notifyApprovalRequest(notificationDestinations, runId, runAction, this.channel, this.user.id);
+                    break;
+                case NotificationDestinationType.EMAIL:
+                    await notifyEmail(notificationDestinations, runAction);
+                    break;
+            }
+            return;
+        }
+
         switch (notificationDestinations.destination_type) {
             case NotificationDestinationType.SLACK:
                 await notifySlack(notificationDestinations, runAction, this.channel);
@@ -76,6 +93,46 @@ async function notifySlack(notificationDestination: UserNotificationDestination,
         notificationDestination.slack_integration_id,
         notificationDestination.slack_channel_id,
         message
+    );
+}
+
+async function notifyApprovalRequest(
+    notificationDestination: UserNotificationDestination,
+    runId: string,
+    runAction: RunHistoryAction,
+    channel: Channel,
+    userId: string
+) {
+    if (!notificationDestination.slack_integration_id) {
+        logger.debug(`[notifyApprovalRequest] No Slack integration ID found. Skipping.`);
+        return;
+    }
+
+    if (!notificationDestination.slack_channel_id) {
+        logger.debug(`[notifyApprovalRequest] No Slack channel ID configured. Skipping.`);
+        return;
+    }
+
+    if (!runAction.step_id) {
+        logger.debug(`[notifyApprovalRequest] No step_id found in runAction. Skipping.`);
+        return;
+    }
+
+    const { approvalSummary } = await generateApprovalSummary(
+        runId,
+        userId,
+        channel.id,
+        runAction.step_id
+    );
+
+    await sendSlackApprovalMessage(
+        notificationDestination.slack_integration_id,
+        notificationDestination.slack_channel_id,
+        runId,
+        runAction.step_id,
+        approvalSummary,
+        channel.name,
+        channel.id
     );
 }
 
