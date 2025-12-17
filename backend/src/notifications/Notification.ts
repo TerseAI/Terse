@@ -44,11 +44,6 @@ export class NotificationManager {
             return;
         }
 
-        if (!notificationSettings.action_types.includes(runAction.type)) {
-            logger.debug(`Notification settings for automation ${this.channel.name} do not include action ${runAction.type}. Skipping`);
-            return;
-        }
-
         // Handle approval notifications specially
 
         const editableActions: RunHistoryActionType[] = [RunHistoryActionType.create, RunHistoryActionType.update, RunHistoryActionType.delete];
@@ -62,6 +57,11 @@ export class NotificationManager {
                     await notifyEmail(notificationDestinations, runAction);
                     break;
             }
+            return;
+        }
+
+        if (!notificationSettings.action_types.includes(runAction.type)) {
+            logger.debug(`Notification settings for automation ${this.channel.name} do not include action ${runAction.type}. Skipping`);
             return;
         }
 
