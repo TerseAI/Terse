@@ -13,7 +13,7 @@ export interface MetricCardProps {
     icon: React.ComponentType<{ className?: string }>;
 }
 
-export function MetricCard({ label, value, change, trend, description, subtext, icon: Icon }: MetricCardProps) {
+export function MetricCard({ label, value, change, trend, description, subtext }: MetricCardProps) {
     const TrendIcon = trend === "up" ? TrendingUp : TrendingDown;
     const trendColor = trend === "up" ? "text-chart-2" : "text-destructive";
     const trendBgColor = trend === "up" ? "bg-chart-2/10" : "bg-destructive/10";
