@@ -124,20 +124,22 @@ export function LinearOutputIntegration({
     // Dialog variant: full view
     return (
         <div className="flex flex-col gap-3 min-w-0 overflow-hidden">
-            <div className="flex flex-row gap-2 items-center mb-2">
-                <div className="w-15 h-15">
+            <div className="flex flex-row gap-2 items-center">
+                <div className="w-8 h-8 flex items-center justify-center shrink-0">
                     <IconForConfigType type={ConfigType.LINEAR_OUTPUT}/>
                 </div>
-                <DropdownSelect
-                    statusOptions={connectionSelections}
-                    selectedOption={selectedOption}
-                    setSelected={onSelect}
-                    placeholder="No connection selected"
-                    additionalAction={{
-                        label: 'Connect Another Linear',
-                        onClick: connectOAuth
-                    }}
-                />
+                <div className="flex-1 min-w-0">
+                    <DropdownSelect
+                        statusOptions={connectionSelections}
+                        selectedOption={selectedOption}
+                        setSelected={onSelect}
+                        placeholder="No connection selected"
+                        additionalAction={{
+                            label: 'Connect Another Linear',
+                            onClick: connectOAuth
+                        }}
+                    />
+                </div>
             </div>
 
             {/* Team selector - required for output, optional for input */}

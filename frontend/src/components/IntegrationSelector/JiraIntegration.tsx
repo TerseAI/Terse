@@ -18,6 +18,7 @@ import {
 } from "../ui/select";
 import { useEffect } from 'react';
 import { ConfigType } from '../../shared/Configs';
+import { IconForConfigType } from '../../pages/Channels/components/Integration';
 
 export function JiraIntegration({
     input,
@@ -137,26 +138,23 @@ export function JiraIntegration({
     // Dialog variant: full view
     return (
         <div className="flex flex-col gap-3">
-            <div className="flex flex-col gap-1.5">
-                <label className="font-medium">
-                    Jira Site
-                </label>
-                <DropdownSelect
-                    statusOptions={connectionSelections}
-                    selectedOption={selectedOption}
-                    setSelected={onSelectIntegration}
-                    placeholder="No connection selected"
-                />
+            <div className="flex flex-row gap-2 items-center">
+                <div className="w-8 h-8 flex items-center justify-center shrink-0">
+                    <IconForConfigType type={ConfigType.JIRA}/>
+                </div>
+                <div className="flex-1 min-w-0">
+                    <DropdownSelect
+                        statusOptions={connectionSelections}
+                        selectedOption={selectedOption}
+                        setSelected={onSelectIntegration}
+                        placeholder="No connection selected"
+                        additionalAction={{
+                            label: 'Connect Another Jira',
+                            onClick: connectOAuth
+                        }}
+                    />
+                </div>
             </div>
-
-            <Button
-                onClick={connectOAuth}
-                disabled={isOAuthConnecting}
-                variant="outline"
-            >
-                <Plus className="w-4 h-4" />
-                {isOAuthConnecting ? 'Connecting...' : "Connect Another Jira"}
-            </Button>
 
             {/* Project selector - only show when an integration is selected */}
             {selectedIntegrationId && (

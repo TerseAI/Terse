@@ -333,6 +333,7 @@ export type Channel = {
     inputs: ChannelInput[];
     output: ChannelOutput;
     notificationSettings?: ChannelNotificationSettings;
+    updatedAt?: string;
 };
 
 export type ChannelNotificationSettings = {

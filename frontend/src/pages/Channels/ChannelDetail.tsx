@@ -85,13 +85,14 @@ function ChannelDetail() {
         setNotificationSettings,
         isLoading: isFetching,
         mutate,
+        updatedAt: channel?.updatedAt,
     }
 
     return (
-        <div className="grid grid-cols-20 h-full pt-1">
+        <div className="grid grid-cols-20 h-full pt-2">
             <div className="h-full min-h-0 col-span-20">
-                <div className="mx-auto px-4 h-full min-h-0 flex flex-col">
-                    <TabGroup selectedIndex={selectedIndex} onChange={(index) => {
+                <div className="mx-auto h-full min-h-0 flex flex-col h-full">
+                    <TabGroup selectedIndex={selectedIndex} className="h-full" onChange={(index) => {
                         setSelectedIndex(index);
                         const next = tabs[index];
                         const nextParams = new URLSearchParams(searchParams);
@@ -108,8 +109,8 @@ function ChannelDetail() {
                                 <span>Activity</span>
                             </Tab>
                         </TabList>
-                        <TabPanels className="flex-1 min-h-0 flex">
-                            <TabPanel className="flex-1 min-h-0 flex flex-col">
+                        <TabPanels className="flex-1 min-h-0 h-full flex">
+                            <TabPanel className="flex-1 min-h-0 h-full flex flex-col">
                                 <ChannelSetupTab {...channelProps} />
                             </TabPanel>
                             <TabPanel className="flex-1 min-h-0 flex flex-col">
