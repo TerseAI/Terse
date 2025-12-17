@@ -3,7 +3,7 @@ import { Jwt } from "../utility/jwt";
 import { login as loginUser } from "../types/user";
 import { Session } from "../server";
 import { nodeEnv, optional } from "../config/settings";
-import logger from "../logger";
+import logger, { setUserContext } from "../logger";
 
 export const COOKIE_NAME = 'AUTH_JWT';
 
@@ -41,6 +41,10 @@ export const authMiddleware = async (req: Request, res: Response, next: NextFunc
         };
 
         req.session = session;
+        
+        // Set user context for logging
+        setUserContext(user.id, user.email);
+        
         next();
     } catch (error) {
         next(error); // Pass errors to error handler

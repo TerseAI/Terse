@@ -12,7 +12,7 @@ import { githubApp } from "../config/settings";
 import { Repository, GithubAppInstallationCallbackRequest, GetGithubRepositoriesForIntegrationResponse } from "../shared/types";
 import { getAppInstallationRepositories, getAppInstallationsForUser, GithubIntegrationManager } from "../integrations/GithubIntegration";
 import { emitCacheInvalidationWithKey } from "../realtimeSocket";
-import logger from "../logger";
+import logger, { runWithUserContext } from "../logger";
 
 // MARK: - Route Handlers
 
@@ -132,20 +132,27 @@ export async function githubAppUnifiedEvent(req: Request, res: Response) {
             ticketManager: undefined,
         }
 
-        logger.debug('Processing event for user', { githubUsername: user.github_username, teamId: session.teamId, eventType: body.eventType, repositoryName });
+        // Process with user context for logging
+        const summary = await runWithUserContext(user.id, user.email, async () => {
+            logger.debug('Processing event for user', { githubUsername: user.github_username, teamId: session.teamId, eventType: body.eventType, repositoryName });
 
-        // init an Owner with isolated session
-        const owner: Owner = new Owner(search(), session)
+            // init an Owner with isolated session
+            const owner: Owner = new Owner(search(), session)
 
-        // handle the unified event with proper error handling
-        const summary = await owner.handleUnifiedGitHubEvent(body);
+            // handle the unified event with proper error handling
+            return await owner.handleUnifiedGitHubEvent(body);
+        });
+
         if (!summary) {
             res.status(200).json({ message: 'No summary generated. No action will be taken.' });
             return;
         }
 
-        logger.info('Saving activity event for changed items', { summary, repositoryName, githubUsername: user.github_username });
-        await saveActivityEvent(repository, body, summary, user.id);
+        // Save activity event with user context
+        await runWithUserContext(user.id, user.email, async () => {
+            logger.info('Saving activity event for changed items', { summary, repositoryName, githubUsername: user.github_username });
+            await saveActivityEvent(repository, body, summary, user.id);
+        });
 
         res.status(200).json({ message: 'GitHub event received and processed' });
     } catch (error) {

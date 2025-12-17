@@ -13,7 +13,7 @@ import { InputConfigType } from "@prisma/client";
 import { RunHistoryTrigger } from "../shared/RunHistoryTypes";
 import { InputEvent } from "./abstract/InputEvent";
 import { Request, Response } from "express";
-import logger from "../logger";
+import logger, { runWithUserContext } from "../logger";
 
 
 // OAuth2 scopes for Gmail
@@ -83,28 +83,31 @@ export class GmailIntegrationManager implements Integration<GmailIntegration, Gm
                     continue;
                 }
                 const { integration, user, oldHistoryId } = claim;
-                // Step 2: Fetch message IDs from Gmail (fast, non-blocking)
-                const messageIds = await fetchNewMessageIds(integration, oldHistoryId);
+                
+                // Process with user context for logging
+                await runWithUserContext(user.id, user.email, async () => {
+                    // Step 2: Fetch message IDs from Gmail (fast, non-blocking)
+                    const messageIds = await fetchNewMessageIds(integration, oldHistoryId);
 
-                if (messageIds.length === 0) {
-                    logger.debug(`No new messages to process for ${emailAddress}`, { emailAddress, integrationId: integration.id });
-                    return;
-                }
+                    if (messageIds.length === 0) {
+                        logger.debug(`No new messages to process for ${emailAddress}`, { emailAddress, integrationId: integration.id });
+                        return;
+                    }
 
-                // Step 3: Set up Gmail client (fast, non-blocking)
-                const accessToken = await refreshAccessTokenIfNeeded(integration);
-                const oauth2Client = getOAuth2Client();
-                oauth2Client.setCredentials({
-                    access_token: accessToken,
-                    refresh_token: integration.refresh_token,
-                });
-                const gmail = google.gmail({ version: 'v1', auth: oauth2Client });
+                    // Step 3: Set up Gmail client (fast, non-blocking)
+                    const accessToken = await refreshAccessTokenIfNeeded(integration);
+                    const oauth2Client = getOAuth2Client();
+                    oauth2Client.setCredentials({
+                        access_token: accessToken,
+                        refresh_token: integration.refresh_token,
+                    });
+                    const gmail = google.gmail({ version: 'v1', auth: oauth2Client });
 
-                const lastProcessedDate: Date | null = integration.last_processed_message_date;
-                let mostRecentEmailDate: Date | null = lastProcessedDate;
+                    const lastProcessedDate: Date | null = integration.last_processed_message_date;
+                    let mostRecentEmailDate: Date | null = lastProcessedDate;
 
-                // Step 4: Process each message (fast, non-blocking)
-                for (const messageId of messageIds) {
+                    // Step 4: Process each message (fast, non-blocking)
+                    for (const messageId of messageIds) {
                     // Try to mark this message as processed (non-blocking, unique constraint prevents duplicates)
                     const wasNewlyProcessed = await markMessageAsProcessed(
                         integration.id,
@@ -155,18 +158,19 @@ export class GmailIntegrationManager implements Integration<GmailIntegration, Gm
                             mostRecentEmailDate = emailDate;
                         }
                     }
-                }
+                    }
 
-                // Step 5: Update the last processed message date (non-blocking)
-                if (mostRecentEmailDate && mostRecentEmailDate !== lastProcessedDate) {
-                    await db().gmail_integrations.update({
-                        where: { id: integration.id },
-                        data: { last_processed_message_date: mostRecentEmailDate },
-                    });
-                    logger.info(`Updated last processed message date to ${mostRecentEmailDate.toISOString()}`, { mostRecentEmailDate: mostRecentEmailDate.toISOString(), integrationId: integration.id });
-                }
+                    // Step 5: Update the last processed message date (non-blocking)
+                    if (mostRecentEmailDate && mostRecentEmailDate !== lastProcessedDate) {
+                        await db().gmail_integrations.update({
+                            where: { id: integration.id },
+                            data: { last_processed_message_date: mostRecentEmailDate },
+                        });
+                        logger.info(`Updated last processed message date to ${mostRecentEmailDate.toISOString()}`, { mostRecentEmailDate: mostRecentEmailDate.toISOString(), integrationId: integration.id });
+                    }
 
-                logger.info(`Successfully processed webhook for ${emailAddress}, historyId: ${historyId}`, { emailAddress, historyId, integrationId: integration.id });
+                    logger.info(`Successfully processed webhook for ${emailAddress}, historyId: ${historyId}`, { emailAddress, historyId, integrationId: integration.id });
+                });
             }
         } catch (error) {
             logger.error('Error processing Gmail webhook', { error, emailAddress, historyId });
