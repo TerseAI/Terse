@@ -30,8 +30,8 @@ export function transformStatsToMetrics(stats: StatsResponse | null): MetricData
             value: formatNumber(stats.totalEventsProcessed),
             change: stats.totalEventsProcessedChange,
             trend: getTrend(stats.totalEventsProcessedChange),
-            description: "Events processed this month",
-            subtext: "Events for the last 6 months",
+            description: "This month",
+            subtext: "Compared to previous month",
             icon: Activity,
         },
         {
@@ -39,8 +39,8 @@ export function transformStatsToMetrics(stats: StatsResponse | null): MetricData
             value: formatNumber(stats.actionsTaken),
             change: stats.actionsTakenChange,
             trend: getTrend(stats.actionsTakenChange),
-            description: "Trending up this month",
-            subtext: "Actions for the last 6 months",
+            description: "This month",
+            subtext: "Compared to previous month",
             icon: Zap,
         },
         {
@@ -48,8 +48,8 @@ export function transformStatsToMetrics(stats: StatsResponse | null): MetricData
             value: formatNumber(stats.numberOfChannels),
             change: stats.numberOfChannelsChange,
             trend: getTrend(stats.numberOfChannelsChange),
-            description: "Total channels",
-            subtext: "Channels created",
+            description: "Total active channels",
+            subtext: "Change from previous month",
             icon: Hash,
         },
     ];
