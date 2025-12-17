@@ -1,6 +1,7 @@
-import { Card, CardContent, CardHeader } from "../../../components/ui/card";
+import { Card, CardContent } from "../../../components/ui/card";
 import { Badge } from "../../../components/ui/badge";
 import { TrendingUp, TrendingDown } from "lucide-react";
+import { cn } from "../../../lib/utils";
 
 export interface MetricCardProps {
     label: string;
@@ -15,36 +16,34 @@ export interface MetricCardProps {
 export function MetricCard({ label, value, change, trend, description, subtext, icon: Icon }: MetricCardProps) {
     const TrendIcon = trend === "up" ? TrendingUp : TrendingDown;
     const trendColor = trend === "up" ? "text-chart-2" : "text-destructive";
+    const trendBgColor = trend === "up" ? "bg-chart-2/10" : "bg-destructive/10";
 
     return (
-        <Card className="relative">
-            <CardHeader className="pb-4">
-                <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                        <p className="text-sm text-muted-foreground mb-2">{label}</p>
-                        <div className="flex items-baseline gap-2">
-                            <h2 className="text-3xl font-bold">{value}</h2>
-                            <Badge
-                                variant="outline"
-                                className={`${trendColor} border-muted bg-muted/50`}
-                            >
-                                <TrendIcon className="h-3 w-3" />
-                                <span>{change}</span>
-                            </Badge>
-                        </div>
-                    </div>
-                    <div className="p-2 rounded-lg bg-muted/50">
-                        <Icon className="h-5 w-5 text-muted-foreground" />
+        <Card className="overflow-hidden">
+            <CardContent>
+                <div className="flex items-start justify-between mb-3">
+                    <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-muted-foreground mb-1 truncate">{label}</p>
+                        <h2 className="text-4xl font-bold tracking-tight mb-2">{value}</h2>
                     </div>
                 </div>
-            </CardHeader>
-            <CardContent>
-                <div className="flex items-center justify-between">
-                    <div>
-                        <p className="text-sm font-medium mb-1">{description}</p>
+                <div className="pt-3 border-t border-border/50 flex items-center justify-between">
+                    <div className="">
+                        <p className="text-sm font-medium mb-0.5">{description}</p>
                         <p className="text-xs text-muted-foreground">{subtext}</p>
                     </div>
-                    <TrendIcon className={`h-5 w-5 ${trendColor}`} />
+                    <Badge
+                        variant="outline"
+                        className={cn(
+                            "inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium",
+                            trendColor,
+                            trendBgColor,
+                            "border-transparent"
+                        )}
+                    >
+                        <TrendIcon className="h-3 w-3" />
+                        <span>{change}</span>
+                    </Badge>
                 </div>
             </CardContent>
         </Card>

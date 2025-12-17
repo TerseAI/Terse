@@ -7,7 +7,6 @@ import { OAuthInstallationDetails } from "../shared/types";
 import jwt from "jsonwebtoken";
 import { settings, OAUTH_TOKEN_REFRESH_THRESHOLD_MS } from "../config/settings";
 import { Request, Response } from "express";
-import chalk from "chalk";
 import { LinearAdapter } from "../ticketing/linear";
 import { urls } from "../config/settings";
 import { LinearWebhookPayload } from "../utility/LinearWebhookPayload";
