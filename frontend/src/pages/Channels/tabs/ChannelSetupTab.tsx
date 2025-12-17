@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { useState, useEffect, useRef } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import EditableTextField from '../../../components/ui/EditableTextField';
 import { ChannelNotificationSettings as ChannelNotificationSettingsType, ChannelUpdate, TransientChannelInput, TransientChannelOutput } from "@/shared/types";
@@ -146,7 +146,7 @@ function SaveChannelButton({
         <Button
             onClick={handleSave}
             disabled={!isComplete || isSaving}
-            className="w-24"
+            className="min-w-24 w-fit"
         >
             {isSaving ? 'Saving...' : saveSuccess ? 'Saved!' : isComplete ? 'Save' : 'Complete All Steps'}
         </Button>
@@ -185,123 +185,6 @@ export default function ChannelSetupTab({
     const promptIncomplete = !prompt?.text || prompt.text.trim() === '';
     const skillsIncomplete = !output || !output.config || !output.config.isComplete();
 
-    // Track original state to detect unsaved changes
-    const originalStateRef = useRef<{
-        name: string | null;
-        inputs: TransientChannelInput[];
-        output: TransientChannelOutput | undefined;
-        prompt: ChannelPrompt | undefined;
-        isActive: boolean;
-        requireApproval: boolean;
-        notificationSettings: ChannelNotificationSettingsType;
-    } | null>(null);
-
-    // Initialize original state when channel data loads
-    useEffect(() => {
-        if (channelId || (!channelId && (inputs.length > 0 || output || prompt?.text))) {
-            originalStateRef.current = {
-                name,
-                inputs: JSON.parse(JSON.stringify(inputs)),
-                output: output ? JSON.parse(JSON.stringify(output)) : undefined,
-                prompt: prompt ? JSON.parse(JSON.stringify(prompt)) : undefined,
-                isActive,
-                requireApproval,
-                notificationSettings: JSON.parse(JSON.stringify(notificationSettings)),
-            };
-        }
-    }, [channelId]); // Only reset when channelId changes
-
-    // Check if there are unsaved changes
-    const hasUnsavedChanges = useRef<() => boolean>(() => false);
-    
-    // Update the function with current values
-    useEffect(() => {
-        hasUnsavedChanges.current = (): boolean => {
-            if (!originalStateRef.current) return false;
-
-            const original = originalStateRef.current;
-            
-            // Compare all fields
-            if (original.name !== name) return true;
-            if (original.isActive !== isActive) return true;
-            if (original.requireApproval !== requireApproval) return true;
-            
-            // Deep compare inputs
-            if (original.inputs.length !== inputs.length) return true;
-            for (let i = 0; i < inputs.length; i++) {
-                const orig = original.inputs[i];
-                const curr = inputs[i];
-                if (!orig || !curr || orig.id !== curr.id || orig.configType !== curr.configType) return true;
-                if (JSON.stringify(orig.config) !== JSON.stringify(curr.config)) return true;
-            }
-            
-            // Deep compare output
-            if (JSON.stringify(original.output) !== JSON.stringify(output)) return true;
-            
-            // Deep compare prompt
-            if (JSON.stringify(original.prompt) !== JSON.stringify(prompt)) return true;
-            
-            // Deep compare notification settings
-            if (JSON.stringify(original.notificationSettings) !== JSON.stringify(notificationSettings)) return true;
-            
-            return false;
-        };
-    }, [name, inputs, output, prompt, isActive, requireApproval, notificationSettings]);
-
-    // Handle browser navigation (refresh/close tab/back button)
-    useEffect(() => {
-        const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-            if (hasUnsavedChanges.current()) {
-                e.preventDefault();
-                e.returnValue = '';
-                return '';
-            }
-        };
-
-        window.addEventListener('beforeunload', handleBeforeUnload);
-        return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-    }, [name, inputs, output, prompt, isActive, requireApproval, notificationSettings]);
-
-    // Intercept programmatic navigation and link clicks
-    useEffect(() => {
-        const handleClick = (e: MouseEvent) => {
-            // Check if clicking on a link or button that would navigate away
-            const target = e.target as HTMLElement;
-            const link = target.closest('a[href]') as HTMLAnchorElement;
-            
-            if (link && hasUnsavedChanges.current()) {
-                // Check if it's navigating to a different route
-                const href = link.getAttribute('href');
-                const currentPath = window.location.pathname;
-                
-                if (href && href.startsWith('/') && href !== currentPath) {
-                    if (!window.confirm('You have unsaved changes. Are you sure you want to leave? You may lose your work.')) {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        return false;
-                    }
-                }
-            }
-        };
-
-        // Use capture phase to intercept early
-        document.addEventListener('click', handleClick, true);
-        return () => document.removeEventListener('click', handleClick, true);
-    }, [name, inputs, output, prompt, isActive, requireApproval, notificationSettings]);
-
-    // Update original state after successful save
-    const handleSaveSuccess = () => {
-        originalStateRef.current = {
-            name,
-            inputs: JSON.parse(JSON.stringify(inputs)),
-            output: output ? JSON.parse(JSON.stringify(output)) : undefined,
-            prompt: prompt ? JSON.parse(JSON.stringify(prompt)) : undefined,
-            isActive,
-            requireApproval,
-            notificationSettings: JSON.parse(JSON.stringify(notificationSettings)),
-        };
-    };
-
     // Check if automation is complete (same logic as SaveChannelButton)
     const isComplete =
         inputs.length > 0 &&
@@ -338,7 +221,6 @@ export default function ChannelSetupTab({
                             requireApproval={requireApproval}
                             notificationSettings={notificationSettings}
                             mutate={mutate}
-                            onSaveSuccess={handleSaveSuccess}
                         />
                     </div>
                     <div className="flex justify-center items-center min-w-0">
