@@ -123,9 +123,9 @@ export function SlackIntegration({
         const isComplete = currentConfig?.isComplete();
         if (!isComplete) {
             return (
-                <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                <div className="flex items-center gap-1 text-xs text-muted-foreground min-w-0 max-w-full">
                     <AlertTriangleIcon className="size-3 text-yellow-500" />
-                    Select channel or DMs
+                    <span className="truncate">Connect Slack</span>
                 </div>
             );
         }

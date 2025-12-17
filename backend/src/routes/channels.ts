@@ -627,6 +627,7 @@ function transformChannelToFrontendFormat(channel: ChannelWithRelations & Partia
             enabled: channel.notification_settings.enabled,
             actionTypes: channel.notification_settings.action_types,
         } : undefined,
+        updatedAt: channel.updated_at.toISOString(),
     };
 }
 

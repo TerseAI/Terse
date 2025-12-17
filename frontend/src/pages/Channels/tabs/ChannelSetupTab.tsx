@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import EditableTextField from '../../../components/ui/EditableTextField';
 import { ChannelNotificationSettings as ChannelNotificationSettingsType, ChannelUpdate, TransientChannelInput, TransientChannelOutput } from "@/shared/types";
@@ -9,21 +9,22 @@ import { useChannelCount } from "@/hooks/api/useChannelCount";
 import { useChannelMutations } from "@/hooks/api/useChannels";
 import { type KeyedMutator } from 'swr';
 import { Channel, ChannelInput, ChannelOutput, ChannelPrompt } from "@/shared/types";
-import { ConfigTitle } from "../components/ConfigTitle";
 import { AddInputModal } from "../components/AddInputModal";
-import { ConfigInstance, ConfigType } from "../../../shared/Configs";
+import { CONFIG_DETAILS, ConfigInstance, ConfigType } from "../../../shared/Configs";
 import { v4 as uuidv4 } from 'uuid';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../../../components/ui/dialog";
 import { InputConfigSelectorProps, IntegrationSelector } from "../../../components/IntegrationSelector";
-import { AlertTriangleIcon, FileText, PlusIcon, XIcon } from "lucide-react";
+import { AlertTriangleIcon, PlusIcon, XIcon, Zap, FileText, Wrench, Bell, Info } from "lucide-react";
 import { cn } from "../../../lib/utils";
-import { Card, CardContent } from "../../../components/ui/card";
-import { AddOutputModal } from "../components/AddOutputModal";
-import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "../../../components/ui/empty";
+import { OutputToolSetPicker } from "../components/OutputToolSetPicker";
 import { Badge } from "../../../components/ui/badge";
+import { SectionHeader } from "@/components/ui/section-header";
 import ChannelNotificationSettings from "../ChannelNotificationSettings";
 import ChannelApprovalSettings from "../ChannelApprovalSettings";
 import { InstructionsEditor } from "../components/InstructionsEditor";
+import { Tooltip, TooltipTrigger, TooltipContent } from "../../../components/ui/tooltip";
+import { IconForConfigType } from "../components/Integration";
+import { AppsList } from "../../../components/Channels";
 
 export type ChannelSetupTabProps = {
     channelId: string | null;
@@ -43,6 +44,7 @@ export type ChannelSetupTabProps = {
     setNotificationSettings: (settings: ChannelNotificationSettingsType) => void;
     isLoading: boolean;
     mutate: KeyedMutator<Channel>;
+    updatedAt?: string;
 };
 
 function SaveChannelButton({
@@ -55,7 +57,8 @@ function SaveChannelButton({
     isActive,
     requireApproval,
     notificationSettings,
-    mutate
+    mutate,
+    onSaveSuccess
 }: {
     defaultName: string;
     channelId: string | null;
@@ -67,6 +70,7 @@ function SaveChannelButton({
     requireApproval: boolean;
     notificationSettings: ChannelNotificationSettingsType;
     mutate: KeyedMutator<Channel>;
+    onSaveSuccess?: () => void;
 }) {
     const navigate = useNavigate();
     const [isSaving, setIsSaving] = useState(false);
@@ -123,6 +127,9 @@ function SaveChannelButton({
 
             toast.success('Channel saved successfully');
 
+            // Notify parent that save was successful
+            onSaveSuccess?.();
+
             setSaveSuccess(true);
             setTimeout(() => {
                 setSaveSuccess(false);
@@ -139,8 +146,9 @@ function SaveChannelButton({
         <Button
             onClick={handleSave}
             disabled={!isComplete || isSaving}
+            className="w-24"
         >
-            {isSaving ? 'Saving...' : saveSuccess ? 'Saved!' : isComplete ? (isEditMode ? 'Update Channel' : 'Save Channel') : 'Complete All Steps'}
+            {isSaving ? 'Saving...' : saveSuccess ? 'Saved!' : isComplete ? 'Save' : 'Complete All Steps'}
         </Button>
     )
 }
@@ -161,6 +169,7 @@ export default function ChannelSetupTab({
     notificationSettings,
     setNotificationSettings,
     mutate,
+    updatedAt,
 }: ChannelSetupTabProps) {
     const { totalCount } = useChannelCount();
     const defaultName = getDefaultChannelName(totalCount);
@@ -168,54 +177,357 @@ export default function ChannelSetupTab({
     const channelInputs = inputs.map(toChannelInput).filter((i): i is ChannelInput => i !== null);
     const channelOutput = toChannelOutput(output)
 
+    type SetupSection = 'triggers' | 'prompt' | 'skills' | 'alerts';
+    const [activeSection, setActiveSection] = useState<SetupSection>('triggers');
+
+    const triggersIncomplete =
+        inputs.length === 0 || inputs.some((i) => !i.config || !i.config.isComplete());
+    const promptIncomplete = !prompt?.text || prompt.text.trim() === '';
+    const skillsIncomplete = !output || !output.config || !output.config.isComplete();
+
+    // Track original state to detect unsaved changes
+    const originalStateRef = useRef<{
+        name: string | null;
+        inputs: TransientChannelInput[];
+        output: TransientChannelOutput | undefined;
+        prompt: ChannelPrompt | undefined;
+        isActive: boolean;
+        requireApproval: boolean;
+        notificationSettings: ChannelNotificationSettingsType;
+    } | null>(null);
+
+    // Initialize original state when channel data loads
+    useEffect(() => {
+        if (channelId || (!channelId && (inputs.length > 0 || output || prompt?.text))) {
+            originalStateRef.current = {
+                name,
+                inputs: JSON.parse(JSON.stringify(inputs)),
+                output: output ? JSON.parse(JSON.stringify(output)) : undefined,
+                prompt: prompt ? JSON.parse(JSON.stringify(prompt)) : undefined,
+                isActive,
+                requireApproval,
+                notificationSettings: JSON.parse(JSON.stringify(notificationSettings)),
+            };
+        }
+    }, [channelId]); // Only reset when channelId changes
+
+    // Check if there are unsaved changes
+    const hasUnsavedChanges = useRef<() => boolean>(() => false);
+    
+    // Update the function with current values
+    useEffect(() => {
+        hasUnsavedChanges.current = (): boolean => {
+            if (!originalStateRef.current) return false;
+
+            const original = originalStateRef.current;
+            
+            // Compare all fields
+            if (original.name !== name) return true;
+            if (original.isActive !== isActive) return true;
+            if (original.requireApproval !== requireApproval) return true;
+            
+            // Deep compare inputs
+            if (original.inputs.length !== inputs.length) return true;
+            for (let i = 0; i < inputs.length; i++) {
+                const orig = original.inputs[i];
+                const curr = inputs[i];
+                if (!orig || !curr || orig.id !== curr.id || orig.configType !== curr.configType) return true;
+                if (JSON.stringify(orig.config) !== JSON.stringify(curr.config)) return true;
+            }
+            
+            // Deep compare output
+            if (JSON.stringify(original.output) !== JSON.stringify(output)) return true;
+            
+            // Deep compare prompt
+            if (JSON.stringify(original.prompt) !== JSON.stringify(prompt)) return true;
+            
+            // Deep compare notification settings
+            if (JSON.stringify(original.notificationSettings) !== JSON.stringify(notificationSettings)) return true;
+            
+            return false;
+        };
+    }, [name, inputs, output, prompt, isActive, requireApproval, notificationSettings]);
+
+    // Handle browser navigation (refresh/close tab/back button)
+    useEffect(() => {
+        const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+            if (hasUnsavedChanges.current()) {
+                e.preventDefault();
+                e.returnValue = '';
+                return '';
+            }
+        };
+
+        window.addEventListener('beforeunload', handleBeforeUnload);
+        return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+    }, [name, inputs, output, prompt, isActive, requireApproval, notificationSettings]);
+
+    // Intercept programmatic navigation and link clicks
+    useEffect(() => {
+        const handleClick = (e: MouseEvent) => {
+            // Check if clicking on a link or button that would navigate away
+            const target = e.target as HTMLElement;
+            const link = target.closest('a[href]') as HTMLAnchorElement;
+            
+            if (link && hasUnsavedChanges.current()) {
+                // Check if it's navigating to a different route
+                const href = link.getAttribute('href');
+                const currentPath = window.location.pathname;
+                
+                if (href && href.startsWith('/') && href !== currentPath) {
+                    if (!window.confirm('You have unsaved changes. Are you sure you want to leave? You may lose your work.')) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        return false;
+                    }
+                }
+            }
+        };
+
+        // Use capture phase to intercept early
+        document.addEventListener('click', handleClick, true);
+        return () => document.removeEventListener('click', handleClick, true);
+    }, [name, inputs, output, prompt, isActive, requireApproval, notificationSettings]);
+
+    // Update original state after successful save
+    const handleSaveSuccess = () => {
+        originalStateRef.current = {
+            name,
+            inputs: JSON.parse(JSON.stringify(inputs)),
+            output: output ? JSON.parse(JSON.stringify(output)) : undefined,
+            prompt: prompt ? JSON.parse(JSON.stringify(prompt)) : undefined,
+            isActive,
+            requireApproval,
+            notificationSettings: JSON.parse(JSON.stringify(notificationSettings)),
+        };
+    };
+
+    // Check if automation is complete (same logic as SaveChannelButton)
+    const isComplete =
+        inputs.length > 0 &&
+        inputs.every(i => i.config != null && i.config.isComplete()) &&
+        !!output && output.config && output.config.isComplete() &&
+        !!prompt?.text;
+
+    // Create a minimal channel-like object for AppsList
+    // Only create if we have an output (required by Channel type)
+    const channelForAppsList = channelOutput ? {
+        id: channelId || '',
+        name: name || defaultName || '',
+        isActive,
+        requireApproval,
+        prompt: prompt || { text: '' },
+        inputs: channelInputs,
+        output: channelOutput,
+        notificationSettings,
+    } : null;
+
     return (
-        <div className="grid grid-flow-row place-items-center gap-8">
-            <div className="flex justify-between items-center w-full p-2">
-                <EditableTextField value={name || ''} placeholder={defaultName} onSave={(value) => setName(value)} />
-                <SaveChannelButton
-                    defaultName={defaultName}
-                    channelId={channelId}
-                    name={name}
-                    inputs={channelInputs}
-                    output={channelOutput}
-                    prompt={prompt}
-                    isActive={isActive}
-                    requireApproval={requireApproval}
-                    notificationSettings={notificationSettings}
-                    mutate={mutate}
-                />
-            </div>
-
-            <div className="flex flex-row gap-12">
-                <div className="flex flex-col gap-4 justify-between">
-                    <div className="flex flex-row gap-4 min-w-md max-w-md">
-                        <InputLayout inputs={inputs} setInputs={setInputs} />
+        <div className="flex flex-col h-full min-h-0 gap-0">
+            <div className="px-4 py-6">
+                <div className="grid grid-cols-3 gap-4 items-center">
+                    <div className="flex justify-start min-w-0 pl-2">
+                        <SaveChannelButton
+                            defaultName={defaultName}
+                            channelId={channelId}
+                            name={name}
+                            inputs={channelInputs}
+                            output={channelOutput}
+                            prompt={prompt}
+                            isActive={isActive}
+                            requireApproval={requireApproval}
+                            notificationSettings={notificationSettings}
+                            mutate={mutate}
+                            onSaveSuccess={handleSaveSuccess}
+                        />
                     </div>
-
-                    <div className="min-w-md max-w-md overflow-hidden flex flex-col gap-4">
-                        <OutputLayout output={output} setOutput={setOutput} />
-                        <ChannelApprovalSettings requireApproval={requireApproval} onChange={setRequireApproval} />
+                    <div className="flex justify-center items-center min-w-0">
+                        <EditableTextField className="text-center max-w-fit" value={name || ''} placeholder={defaultName} onSave={(value) => setName(value)} />
+                    </div>
+                    <div className="flex justify-end min-w-0 items-center gap-3">
+                        {isComplete && channelForAppsList ? (
+                            <>
+                                <AppsList channel={channelForAppsList} />
+                                {updatedAt && (
+                                    <span className="text-xs text-muted-foreground italic">
+                                        Last saved {new Date(updatedAt).toLocaleDateString()} {new Date(updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                    </span>
+                                )}
+                            </>
+                        ) : (
+                            <div className="text-sm text-muted-foreground text-right">
+                                Complete your automation to see connected apps
+                            </div>
+                        )}
                     </div>
                 </div>
-
-                <div className="relative min-w-md max-w-md">
-                    <div className="absolute inset-0">
-                        <InstructionsEditor prompt={prompt} setPrompt={setPrompt} channelInputs={channelInputs} channelOutput={channelOutput} />
-                    </div>
-                </div>
             </div>
 
-            <div className="flex flex-row gap-12">
-            <div className="min-w-md max-w-md"></div>
-                <div className="min-w-md max-w-md flex flex-col gap-4">
-                    <ChannelNotificationSettings settings={notificationSettings} onChange={setNotificationSettings} />
+            <div className="flex-1 min-h-0 flex flex-col md:flex-row gap-0 overflow-hidden relative">
+                <nav className="shrink-0 md:w-56 h-full relative md:-mt-2 z-10 border-t border-r border-border">
+                    <div className="flex md:flex-col gap-4 md:pr-4 overflow-x-auto md:overflow-visible p-4 p-2 h-full">
+                        <Button
+                            type="button"
+                            variant={activeSection === 'triggers' ? "secondary" : "ghost"}
+                            size="sm"
+                            className={cn("w-auto md:w-full justify-start text-base", activeSection === 'triggers' && "font-medium")}
+                            onClick={() => setActiveSection('triggers')}
+                            aria-current={activeSection === 'triggers' ? 'page' : undefined}
+                        >
+                            <span className="flex items-center gap-2 w-full">
+                                <Zap className="size-4" />
+                                <span>Triggers</span>
+                                {triggersIncomplete && (
+                                    <div className="ml-auto">
+                                        <WarningIcon content="Add at least one trigger integration and complete its configuration to remove this warning." />
+                                    </div>
+                                )}
+                            </span>
+                        </Button>
+                        <Button
+                            type="button"
+                            variant={activeSection === 'prompt' ? "secondary" : "ghost"}
+                            size="sm"
+                            className={cn("w-auto md:w-full justify-start text-base", activeSection === 'prompt' && "font-medium")}
+                            onClick={() => setActiveSection('prompt')}
+                            aria-current={activeSection === 'prompt' ? 'page' : undefined}
+                        >
+                            <span className="flex items-center gap-2 w-full">
+                                <FileText className="size-4" />
+                                <span>Prompt</span>
+                                {promptIncomplete && (
+                                    <div className="ml-auto">
+                                        <WarningIcon content="Add a prompt describing what the AI should do with incoming events to remove this warning." />
+                                    </div>
+                                )}
+                            </span>
+                        </Button>
+                        <Button
+                            type="button"
+                            variant={activeSection === 'skills' ? "secondary" : "ghost"}
+                            size="sm"
+                            className={cn("w-auto md:w-full justify-start text-base", activeSection === 'skills' && "font-medium")}
+                            onClick={() => setActiveSection('skills')}
+                            aria-current={activeSection === 'skills' ? 'page' : undefined}
+                        >
+                            <span className="flex items-center gap-2 w-full">
+                                <Wrench className="size-4" />
+                                <span>Skills</span>
+                                {skillsIncomplete && (
+                                    <div className="ml-auto">
+                                        <WarningIcon content="Select a skill destination and complete its configuration to remove this warning." />
+                                    </div>
+                                )}
+                            </span>
+                        </Button>
+                        <Button
+                            type="button"
+                            variant={activeSection === 'alerts' ? "secondary" : "ghost"}
+                            size="sm"
+                            className={cn("w-auto md:w-full justify-start text-base", activeSection === 'alerts' && "font-medium")}
+                            onClick={() => setActiveSection('alerts')}
+                            aria-current={activeSection === 'alerts' ? 'page' : undefined}
+                        >
+                            <span className="flex items-center gap-2 w-full">
+                                <Bell className="size-4" />
+                                <span>Alerts</span>
+                            </span>
+                        </Button>
+                    </div>
+                </nav>
+
+                <div className="flex-1 min-h-0 overflow-hidden pl-6">
+                    <div className="h-full min-h-0 overflow-y-auto pr-1">
+                        {activeSection === 'triggers' && (
+                            <div className="max-w-3xl flex flex-col gap-4">
+                                <InputLayout inputs={inputs} setInputs={setInputs} isIncomplete={triggersIncomplete} />
+                            </div>
+                        )}
+
+                        {activeSection === 'prompt' && (
+                            <div className="max-w-4xl flex flex-col gap-4">
+                                <div className="h-[70vh] min-h-[420px] overflow-hidden">
+                                    <InstructionsEditor
+                                        prompt={prompt}
+                                        setPrompt={setPrompt}
+                                        channelInputs={channelInputs}
+                                        channelOutput={channelOutput}
+                                        isIncomplete={promptIncomplete}
+                                    />
+                                </div>
+                            </div>
+                        )}
+
+                        {activeSection === 'skills' && (
+                            <div className="max-w-3xl flex flex-col gap-4">
+                                <OutputLayout output={output} setOutput={setOutput} isIncomplete={skillsIncomplete} />
+                            </div>
+                        )}
+
+                        {activeSection === 'alerts' && (
+                            <div className="max-w-3xl flex flex-col gap-4">
+                                <div className="flex flex-row gap-2 items-center mb-2">
+                                    <SectionHeader>Alerts</SectionHeader>
+                                    <SectionInfoIcon 
+                                        isIncomplete={false}
+                                        alertMessage=""
+                                        infoMessage="Configure approval requirements and notification settings for when the AI takes actions on your behalf."
+                                    />
+                                </div>
+                                <ChannelApprovalSettings requireApproval={requireApproval} onChange={setRequireApproval} />
+                                <ChannelNotificationSettings settings={notificationSettings} onChange={setNotificationSettings} />
+                            </div>
+                        )}
+                    </div>
                 </div>
             </div>
         </div>
     )
 }
 
-function InputLayout({ inputs, setInputs }: { inputs: TransientChannelInput[], setInputs: (inputs: TransientChannelInput[]) => void }) {
+function SectionInfoIcon({ 
+    isIncomplete, 
+    alertMessage, 
+    infoMessage 
+}: { 
+    isIncomplete: boolean; 
+    alertMessage: string; 
+    infoMessage: string;
+}) {
+    const tooltipContent = isIncomplete 
+        ? `${alertMessage}\n\n${infoMessage}`
+        : infoMessage;
+
+    return (
+        <Tooltip>
+            <TooltipTrigger asChild>
+                {isIncomplete ? (
+                    <AlertTriangleIcon className="size-3 text-yellow-500 cursor-help relative -top-1" />
+                ) : (
+                    <Info className="size-3 text-muted-foreground hover:text-foreground cursor-help relative -top-1" />
+                )}
+            </TooltipTrigger>
+            <TooltipContent side="right" className="max-w-xs whitespace-pre-line">
+                {tooltipContent}
+            </TooltipContent>
+        </Tooltip>
+    );
+}
+
+function WarningIcon({ content }: { content: string }) {
+    return (
+        <Tooltip>
+            <TooltipTrigger asChild>
+                <AlertTriangleIcon className="size-4 text-yellow-500 cursor-help" />
+            </TooltipTrigger>
+            <TooltipContent side="right" className="max-w-xs">
+                {content}
+            </TooltipContent>
+        </Tooltip>
+    );
+}
+
+function InputLayout({ inputs, setInputs, isIncomplete }: { inputs: TransientChannelInput[], setInputs: (inputs: TransientChannelInput[]) => void, isIncomplete: boolean }) {
     const [showAddModal, setShowAddModal] = useState(false);
 
     const handleSelectPlatform = (config: ConfigType) => {
@@ -231,19 +543,21 @@ function InputLayout({ inputs, setInputs }: { inputs: TransientChannelInput[], s
     };
 
     return (
-        <div className="flex flex-col gap-2">
+        <div className="flex flex-col gap-3">
             <div className="flex flex-row gap-2 items-center mb-2">
-                <h2 className="text-lg">Event Sources</h2>
-                {inputs.length === 0 && (
-                    <AlertTriangleIcon className="size-4 text-yellow-500" />
-                )}
+                <SectionHeader>Triggers</SectionHeader>
+                <SectionInfoIcon 
+                    isIncomplete={isIncomplete}
+                    alertMessage="Add at least one trigger integration and complete its configuration to remove this warning."
+                    infoMessage="Triggers define where events come from. Add integrations like Slack, GitHub, or Gmail to monitor for new activity."
+                />
             </div>
-            <div className="flex flex-row flex-wrap gap-2 items-stretch">
+            <div className="grid grid-cols-[repeat(auto-fill,minmax(10rem,1fr))] gap-4 items-stretch">
                 {inputs.map((input) => (
                     <Input key={input.id} input={input} inputs={inputs} setInputs={setInputs} handleRemove={handleRemove} />
                 ))}
-                <Button variant="outline" onClick={() => setShowAddModal(true)} className="h-auto aspect-square">
-                    <PlusIcon className={cn("size-4", inputs.length > 0 ? "text-primary" : "text-muted-foreground")} />
+                <Button variant="outline" onClick={() => setShowAddModal(true)} className="w-full aspect-square h-auto">
+                    <PlusIcon className={cn("size-5", inputs.length > 0 ? "text-primary" : "text-muted-foreground")} />
                 </Button>
                 <AddInputModal
                     isOpen={showAddModal}
@@ -269,28 +583,52 @@ function Input({ input, inputs, setInputs, handleRemove }: { input: TransientCha
     let cardContent;
     if (isPlaceholder) {
         cardContent = (
-            <div className="p-2 border rounded-md cursor-pointer" onClick={() => setShowDetailsDialog(true)}>
-                <div className="flex flex-row justify-between items-center">
-                    <ConfigTitle configType={input.configType} iconSize="md" />
+            <div
+                className="w-full aspect-square px-4 pb-4 pt-1 border rounded-lg cursor-pointer hover:bg-accent/30 transition-colors flex flex-col gap-2"
+                onClick={() => setShowDetailsDialog(true)}
+            >
+                <div className="flex flex-row justify-between items-center gap-2">
+                    <div className="min-w-0 flex-1 text-sm font-medium leading-none truncate">
+                        {CONFIG_DETAILS[input.configType].name}
+                    </div>
                     <Button variant="ghost" size="icon-sm" onClick={(e) => { e.stopPropagation(); handleRemove(input.id); }} className="hover:text-destructive">
                         <XIcon />
                     </Button>
                 </div>
-                <Badge variant="outline" className="border-yellow-500 text-yellow-600 dark:text-yellow-500">
+
+                <div className="flex-1 flex items-center justify-center">
+                    <div className="w-16 h-16">
+                        <IconForConfigType type={input.configType} />
+                    </div>
+                </div>
+
+                <Badge variant="outline" className="mt-auto self-center max-w-full px-3 py-1 border-yellow-500 text-yellow-600 dark:text-yellow-500">
                     <IntegrationSelector {...selectorProps} variant="card" />
                 </Badge>
             </div>
         );
     } else {
         cardContent = (
-            <div className="p-2 border rounded-md cursor-pointer" onClick={() => setShowDetailsDialog(true)}>
-                <div className="flex flex-row justify-between pb-2">
-                    <ConfigTitle configType={input.configType} iconSize="md" />
+            <div
+                className="w-full aspect-square px-4 pb-4 pt-2 border rounded-lg cursor-pointer hover:bg-accent/30 transition-colors flex flex-col gap-2"
+                onClick={() => setShowDetailsDialog(true)}
+            >
+                <div className="flex flex-row justify-between items-center gap-2">
+                    <div className="min-w-0 flex-1 text-sm font-medium leading-none truncate">
+                        {CONFIG_DETAILS[input.configType].name}
+                    </div>
                     <Button variant="ghost" size="icon-sm" onClick={(e) => { e.stopPropagation(); handleRemove(input.id); }} className="hover:text-destructive">
                         <XIcon />
                     </Button>
                 </div>
-                <Badge variant="outline" className="max-w-40 truncate">
+
+                <div className="flex-1 flex items-center justify-center">
+                    <div className="w-16 h-16">
+                        <IconForConfigType type={input.configType} />
+                    </div>
+                </div>
+
+                <Badge variant="outline" className="mt-auto self-center max-w-full px-3 py-1">
                     <IntegrationSelector {...selectorProps} variant="card" />
                 </Badge>
             </div>
@@ -313,9 +651,7 @@ function Input({ input, inputs, setInputs, handleRemove }: { input: TransientCha
     )
 }
 
-function OutputLayout({ output, setOutput }: { output: TransientChannelOutput | undefined, setOutput: (output: TransientChannelOutput | undefined) => void }) {
-    const [showAddModal, setShowAddModal] = useState(false);
-
+function OutputLayout({ output, setOutput, isIncomplete }: { output: TransientChannelOutput | undefined, setOutput: (output: TransientChannelOutput | undefined) => void, isIncomplete: boolean }) {
     const handleSelectPlatform = (configType: ConfigType) => {
         // Clear all configs when switching platform (new integration type)
         const newOutput: TransientChannelOutput = {
@@ -324,7 +660,6 @@ function OutputLayout({ output, setOutput }: { output: TransientChannelOutput | 
             configType: configType,
         };
         setOutput(newOutput);
-        setShowAddModal(false);
     };
 
     const onSelect = (config: ConfigInstance) => {
@@ -336,23 +671,7 @@ function OutputLayout({ output, setOutput }: { output: TransientChannelOutput | 
     let cardContent;
     if (!output) {
         cardContent = (
-            <Empty>
-                <EmptyHeader>
-                    <EmptyMedia variant="icon">
-                        <FileText className="text-destructive" />
-                    </EmptyMedia>
-                    <EmptyTitle>No output yet</EmptyTitle>
-                    <EmptyDescription>
-                        No output yet. Add an integration to get started.
-                    </EmptyDescription>
-                </EmptyHeader>
-                <EmptyContent>
-                    <Button onClick={() => setShowAddModal(true)}>
-                        <PlusIcon className="h-4 w-4" />
-                        Add Output
-                    </Button>
-                </EmptyContent>
-            </Empty>
+            <OutputToolSetPicker onSelectIntegration={handleSelectPlatform} />
         )
     } else {
         cardContent = (
@@ -361,45 +680,51 @@ function OutputLayout({ output, setOutput }: { output: TransientChannelOutput | 
     }
 
     let headerContent;
-    if (needsConfiguration && output) {
+    if (output) {
+        const skillName = CONFIG_DETAILS[output.configType].name;
         headerContent = (
-            <div className="flex flex-row gap-2">
-                <h2 className="text-lg">Output</h2>
-                <Badge variant="outline" className="border-yellow-500 text-yellow-600 dark:text-yellow-500">
-                    <AlertTriangleIcon className="size-4 text-yellow-500" />
-                    Needs Configuration
-                </Badge>
+            <div className="flex flex-row gap-4 items-center flex-wrap">
+                <div className="flex items-center gap-2">
+                    <SectionHeader>{skillName}</SectionHeader>
+                    <SectionInfoIcon 
+                        isIncomplete={isIncomplete}
+                        alertMessage="Select a skill destination and complete its configuration to remove this warning."
+                        infoMessage="Skills define where the AI will continuously update content. Choose a destination like Notion, Linear, or Slack where updates will be posted."
+                    />
+                </div>
+                <div className="flex items-center gap-2">
+                    {needsConfiguration && (
+                        <Badge variant="outline" className="border-yellow-500 text-yellow-600 dark:text-yellow-500">
+                            Needs Configuration
+                        </Badge>
+                    )}
+                    <Button variant="outline" size="sm" onClick={() => setOutput(undefined)}>
+                        Change skill
+                    </Button>
+                </div>
             </div>
         );
     } else {
         headerContent = (
-            <h2 className="text-lg">Output</h2>
+            <div className="flex items-center gap-2">
+                <SectionHeader>Skills</SectionHeader>
+                <SectionInfoIcon 
+                    isIncomplete={isIncomplete}
+                    alertMessage="Select a skill destination and complete its configuration to remove this warning."
+                    infoMessage="Skills define where the AI will continuously update content. Choose a destination like Notion, Linear, or Slack where updates will be posted."
+                />
+            </div>
         );
     }
 
     return (
         <>
-            <div className="flex flex-row justify-between items-center mb-4">
+            <div className="flex flex-col gap-4 mb-4">
                 {headerContent}
-                {output && (
-                    <Button variant="outline" size="sm" onClick={() => setShowAddModal(true)}>
-                        Change output
-                    </Button>
-                )}
             </div>
             <div className="flex flex-row gap-2">
-                <Card className="flex flex-row gap-2 w-full min-w-0 overflow-hidden">
-                    <CardContent className="min-w-0 overflow-hidden">
-                        {cardContent}
-                    </CardContent>
-                </Card>
+                {cardContent}
             </div>
-
-            <AddOutputModal
-                isOpen={showAddModal}
-                onClose={() => setShowAddModal(false)}
-                onSelectIntegration={handleSelectPlatform}
-            />
         </>
     )
 }

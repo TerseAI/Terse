@@ -9,6 +9,7 @@ import { useAtlassianIntegrations } from '@/hooks/api/useAtlassianIntegrations';
 import { useOAuthConnection } from '@/hooks/useOAuthConnection';
 import { useIntegrationId } from '@/hooks/useIntegrationId';
 import { StatusOption } from '../ui/DropdownSelect';
+import { IconForConfigType } from '../../pages/Channels/components/Integration';
 
 export function ConfluenceIntegration({
     input,
@@ -99,27 +100,24 @@ export function ConfluenceIntegration({
 
     // Dialog variant: full view
     return (
-        <div className="flex flex-col gap-3">
-            <div className="flex flex-col gap-1.5">
-                <label className="font-medium">
-                    Atlassian Site
-                </label>
-                <DropdownSelect
-                    statusOptions={connectionSelections}
-                    selectedOption={selectedOption}
-                    setSelected={onSelect}
-                    placeholder="No connection selected"
-                />
+        <div className="flex flex-col gap-3 min-w-0 overflow-hidden">
+            <div className="flex flex-row gap-2 items-center">
+                <div className="w-8 h-8 flex items-center justify-center shrink-0">
+                    <IconForConfigType type={ConfigType.CONFLUENCE}/>
+                </div>
+                <div className="flex-1 min-w-0">
+                    <DropdownSelect
+                        statusOptions={connectionSelections}
+                        selectedOption={selectedOption}
+                        setSelected={onSelect}
+                        placeholder="No connection selected"
+                        additionalAction={{
+                            label: 'Connect Another Atlassian',
+                            onClick: connectOAuth
+                        }}
+                    />
+                </div>
             </div>
-
-            <Button
-                onClick={connectOAuth}
-                disabled={isOAuthConnecting}
-                variant="outline"
-            >
-                <Plus className="w-4 h-4" />
-                {isOAuthConnecting ? 'Connecting...' : "Connect Another Atlassian"}
-            </Button>
 
             {/* Confluence-specific resource selector */}
             {selectedIntegrationId && (
