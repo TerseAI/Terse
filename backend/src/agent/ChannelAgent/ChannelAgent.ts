@@ -535,7 +535,7 @@ ${this.inputEvent!.formatForChannelAgent()}
                             isReadOnly: false,
                         };
 
-                        await this.notificationManager.notify(approvalAction, this.runContext.runId);
+                        await this.notificationManager.notifyApprovalRequest(this.runContext.runId, approvalAction);
                     } catch (error) {
                         logger.error('Failed to send approval request notification:', { error });
                     }

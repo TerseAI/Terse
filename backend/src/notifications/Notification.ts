@@ -15,7 +15,7 @@ export class NotificationManager {
         this.channel = channel;
     }
 
-    async notify(runAction: RunHistoryAction, runId?: string) {
+    async notify(runAction: RunHistoryAction) {
         // Get the notification settings for the automation
         const notificationSettings: AutomationNotificationSettings | null = await db().automation_notification_settings.findFirst({
             where: {
@@ -44,22 +44,6 @@ export class NotificationManager {
             return;
         }
 
-        // Handle approval notifications specially
-
-        const editableActions: RunHistoryActionType[] = [RunHistoryActionType.create, RunHistoryActionType.update, RunHistoryActionType.delete];
-
-        if (editableActions.includes(runAction.type) && runId && runAction.step_id && this.channel.require_approval) {
-            switch (notificationDestinations.destination_type) {
-                case NotificationDestinationType.SLACK:
-                    await notifyApprovalRequest(notificationDestinations, runId, runAction, this.channel, this.user.id);
-                    break;
-                case NotificationDestinationType.EMAIL:
-                    await notifyEmail(notificationDestinations, runAction);
-                    break;
-            }
-            return;
-        }
-
         if (!notificationSettings.action_types.includes(runAction.type)) {
             logger.debug(`Notification settings for automation ${this.channel.name} do not include action ${runAction.type}. Skipping`);
             return;
@@ -71,6 +55,39 @@ export class NotificationManager {
                 break;
             case NotificationDestinationType.EMAIL:
                 await notifyEmail(notificationDestinations, runAction);
+                break;
+        }
+    }
+
+    async notifyApprovalRequest(runId: string, runAction: RunHistoryAction) {
+        if (!this.channel.require_approval) {
+            logger.debug(`Channel ${this.channel.name} does not require approval. Skipping approval notification.`);
+            return;
+        }
+
+        if (!runAction.step_id) {
+            logger.debug(`No step_id found in runAction. Cannot send approval notification.`);
+            return;
+        }
+
+        const notificationDestinations: UserNotificationDestination | null = await db().user_notification_destinations.findFirst({
+            where: {
+                user_id: this.user.id,
+            },
+        });
+
+        if (!notificationDestinations) {
+            logger.debug(`No notification destinations found for user ${this.user.email}. Skipping`);
+            return;
+        }
+
+        switch (notificationDestinations.destination_type) {
+            case NotificationDestinationType.SLACK:
+                await notifyApprovalRequest(notificationDestinations, runId, runAction, this.channel, this.user.id);
+                break;
+            case NotificationDestinationType.EMAIL:
+                // TODO: Implement email approval notifications
+                logger.debug(`Email approval notifications not yet implemented`);
                 break;
         }
     }
