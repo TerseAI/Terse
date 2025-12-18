@@ -14,12 +14,12 @@ export interface RunContext {
     runId: string;
 }
 
-export interface SystemPromptBuilderDependencies<T extends Session, TConfig extends ConfigInstance> {
+export interface SystemPromptBuilderDependencies<T extends Session, TConfig extends ConfigInstance, K extends Session, KBConfig extends ConfigInstance> {
     session: T;
     channel: ChannelWithRelations;
     output: Output<T, TConfig>;
-    knowledgeBases?: KnowledgeBase<T, TConfig>[];
-    knowledgeBaseSessions?: T[];
+    knowledgeBases?: KnowledgeBase<K, KBConfig>[];
+    knowledgeBaseSessions?: K[];
 }
 
 interface Section {
@@ -29,11 +29,11 @@ interface Section {
 
 type SectionBuilder = () => Section | null | Promise<Section | null>;
 
-export class SystemPromptBuilder<T extends Session, TConfig extends ConfigInstance> {
+export class SystemPromptBuilder<T extends Session, TConfig extends ConfigInstance, K extends Session, KBConfig extends ConfigInstance> {
     private sections: SectionBuilder[] = [];
 
     constructor(
-        private deps: SystemPromptBuilderDependencies<T, TConfig>,
+        private deps: SystemPromptBuilderDependencies<T, TConfig, K, KBConfig>,
         private runContext: RunContext
     ) { }
 
