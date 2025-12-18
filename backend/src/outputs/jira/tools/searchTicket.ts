@@ -15,6 +15,9 @@ export const jiraSearchTicketTool = tool({
 
 Use this tool to find existing Jira issues before creating new ones or to look up ticket information.
 
+PAGINATION:
+This tool uses nextPageToken for pagination. To get the next page of results, call this tool again with the nextPageToken value from the previous response.
+
 JQL EXAMPLES:
 - Basic text search: "text ~ 'search term'"
 - By project: "project = PROJ"
@@ -28,7 +31,7 @@ JQL EXAMPLES:
         assigneeEmail: z.string().nullable().optional().describe('Filter by assignee email address'),
         status: z.string().nullable().optional().describe('Filter by status name (e.g., "In Progress", "Done", "To Do")'),
         limit: z.number().nullable().optional().describe('Maximum number of issues to return. Defaults to 50 if not provided.'),
-        startAt: z.number().nullable().optional().describe('The index of the first issue to return (0-based). Used for pagination.'),
+        nextPageToken: z.string().nullable().optional().describe('Token from a previous search response to retrieve the next page of results. Use the nextPageToken value from the previous response to paginate through all results.'),
     }),
     execute: async ({ 
         jql,
@@ -37,9 +40,9 @@ JQL EXAMPLES:
         assigneeEmail,
         status,
         limit = 50,
-        startAt = 0,
+        nextPageToken,
     }, runContext?: RunContext<SessionWithTracking<JiraTicketSession>>) => {
-        logger.debug('🛠️ Executing jira_search_ticket tool', { jql, text, projectKey, assigneeEmail, status, limit, startAt });
+        logger.debug('🛠️ Executing jira_search_ticket tool', { jql, text, projectKey, assigneeEmail, status, limit, nextPageToken });
 
         if (!runContext?.context) {
             throw new Error("No context provided");
@@ -88,7 +91,9 @@ JQL EXAMPLES:
 
             // Add project filter if provided
             if (projectKey) {
-                const projectQuery = `project = ${projectKey}`;
+                // Escape quotes and wrap in quotes for safety
+                const escapedProjectKey = projectKey.replace(/"/g, '\\"');
+                const projectQuery = `project = "${escapedProjectKey}"`;
                 if (finalJql) {
                     finalJql = `${finalJql} AND ${projectQuery}`;
                 } else {
@@ -144,9 +149,10 @@ JQL EXAMPLES:
                 fields: fields.join(','),
             });
 
-            // Note: The new API uses nextPageToken for pagination instead of startAt.
-            // If startAt is provided, we'll note it but the API doesn't support it directly.
-            // For proper pagination with the new API, use nextPageToken from previous responses.
+            // Add nextPageToken for pagination if provided
+            if (nextPageToken) {
+                queryParams.append('nextPageToken', nextPageToken);
+            }
 
             // Search for issues using the new JQL enhanced search endpoint
             const response = await fetch(
@@ -173,7 +179,6 @@ JQL EXAMPLES:
             const issuesArray = searchResults.issues || [];
             const isLast = searchResults.isLast ?? true;
             const total = searchResults.total ?? issuesArray.length;
-            const startAtResult = searchResults.startAt ?? (startAt ?? 0);
             const maxResultsResult = searchResults.maxResults ?? (limit ?? 50);
 
             // Convert issues to a consistent format
@@ -228,7 +233,6 @@ JQL EXAMPLES:
                 issues: issues,
                 count: issues.length,
                 total: total,
-                startAt: startAtResult,
                 maxResults: maxResultsResult,
                 isLast: isLast,
                 nextPageToken: searchResults.nextPageToken || undefined,
