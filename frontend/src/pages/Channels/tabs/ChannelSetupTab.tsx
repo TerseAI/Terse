@@ -169,7 +169,6 @@ export default function ChannelSetupTab({
     notificationSettings,
     setNotificationSettings,
     mutate,
-    updatedAt,
 }: ChannelSetupTabProps) {
     const { totalCount } = useChannelCount();
     const defaultName = getDefaultChannelName(totalCount);
@@ -230,11 +229,6 @@ export default function ChannelSetupTab({
                         {isComplete && channelForAppsList ? (
                             <>
                                 <AppsList channel={channelForAppsList} />
-                                {updatedAt && (
-                                    <span className="text-xs text-muted-foreground italic">
-                                        Last saved {new Date(updatedAt).toLocaleDateString()} {new Date(updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                    </span>
-                                )}
                             </>
                         ) : (
                             <div className="text-sm text-muted-foreground text-right">

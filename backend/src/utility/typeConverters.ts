@@ -263,12 +263,21 @@ export const convertPrismaOutputConfigToConfigInstance = (channelOutput: Channel
         );
     }
 
+    if (channelOutput.jira_config) {
+        return new JiraConfig(
+            integrationId,
+            channelOutput.jira_config.project_key || undefined,
+            channelOutput.jira_config.project_id || undefined
+        );
+    }
+
     // Type guard to ensure we implement conversion here
     switch (channelOutput.config_type) {
         case OutputConfigType.NOTION_PAGE:
         case OutputConfigType.NOTION_DATABASE:
         case OutputConfigType.CONFLUENCE:
         case OutputConfigType.LINEAR_TICKET:
+        case OutputConfigType.JIRA_TICKET:
             break;
         default:
             throw channelOutput.config_type satisfies never;
@@ -344,6 +353,8 @@ export const convertConfigTypeToOutputConfigType = (configType: ConfigType): Out
             return OutputConfigType.CONFLUENCE;
         case ConfigType.LINEAR_OUTPUT:
             return OutputConfigType.LINEAR_TICKET;
+        case ConfigType.JIRA:
+            return OutputConfigType.JIRA_TICKET;
         default:
             throw new Error(`ConfigType ${configType} is not a valid output config type. Supported output config types are: NOTION_PAGE, NOTION_DATABASE, CONFLUENCE, LINEAR.`);
     }
@@ -362,6 +373,8 @@ export const convertOutputConfigTypeToIntegrationType = (outputConfigType: Outpu
             return IntegrationType.ATLASSIAN;
         case OutputConfigType.LINEAR_TICKET:
             return IntegrationType.LINEAR;
+        case OutputConfigType.JIRA_TICKET:
+            return IntegrationType.ATLASSIAN;
         default:
             throw outputConfigType satisfies never;
     }
