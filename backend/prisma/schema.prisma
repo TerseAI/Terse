@@ -742,6 +742,7 @@ enum OutputConfigType {
   NOTION_DATABASE
   CONFLUENCE
   LINEAR_TICKET
+  JIRA_TICKET
 }
 
 // Run History enums to mirror backend/shared RunHistoryTypes
