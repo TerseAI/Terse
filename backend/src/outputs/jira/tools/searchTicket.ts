@@ -66,6 +66,11 @@ JQL EXAMPLES:
         }
 
         const cloudId = integration.cloud_id;
+        const baseUrl = runContext.context.jiraIntegration.baseUrl;
+
+        if (!baseUrl) {
+            throw new Error("No base_url found in Jira integration");
+        }
 
         try {
             // Build JQL query
@@ -173,17 +178,8 @@ JQL EXAMPLES:
 
             // Convert issues to a consistent format
             const issues = issuesArray.map((issue: any) => {
-                // Convert REST API URL to browse URL
-                let issueUrl: string | undefined;
-                if (issue.self) {
-                    try {
-                        const urlObj = new URL(issue.self);
-                        const baseUrl = `${urlObj.protocol}//${urlObj.hostname}`;
-                        issueUrl = `${baseUrl}/browse/${issue.key}`;
-                    } catch {
-                        issueUrl = issue.self.replace(/\/rest\/api\/[23]\/issue\//, '/browse/');
-                    }
-                }
+                // Construct browse URL using the base_url from integration session
+                const issueUrl = `${baseUrl}/browse/${issue.key}`;
 
                 return {
                     id: issue.id,

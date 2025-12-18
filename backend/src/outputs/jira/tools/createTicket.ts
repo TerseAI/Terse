@@ -232,8 +232,6 @@ BEFORE USING THIS TOOL:
 
             const fullIssue = issueResponse.ok ? await issueResponse.json() : null;
 
-            console.log('fullIssue', fullIssue);
-
             // Construct browse URL using the base_url from integration
             const issueUrl = `${baseUrl}/browse/${createdIssue.key}`;
 
