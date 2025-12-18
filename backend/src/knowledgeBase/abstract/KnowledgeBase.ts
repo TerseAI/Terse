@@ -1,36 +1,41 @@
 // MARK: - Output Integrations
 
-import { Tool } from "@openai/agents";
+import { webSearchTool } from "@openai/agents";
 import { Session } from "../../server";
-import { ChannelOutput, PrismaTransaction, User } from "../../types/prisma";
-import { OutputConfigType } from "@prisma/client";
+import { ChannelKnowledgeBase, PrismaTransaction, User } from "../../types/prisma";
+import { KnowledgeBaseConfigType } from "@prisma/client";
 import { ConfigInstance } from "../../shared/Configs";
 import { IntegrationType } from "../../shared/Integrations";
-import { defaultToolbox } from "../../knowledgeBase/abstract/KnowledgeBase";
-// You can only have one output at a time. Basically, it's just a specific integration + a toolbox to modify the content.
-// For Notion, we should support multiple integrations with the same account. 
-
-export interface ToolboxEntry {
-    tool: Tool;
-    isReadOnly: boolean;
-    integration: IntegrationType;
-}
+import { ToolboxEntry } from "../../outputs/abstract/Output";
 
 
 
+/**
+ * Built in tools that are always available to the output.
+ */
+export const defaultToolbox: readonly ToolboxEntry[] = [
+    {
+        tool: webSearchTool({
+            searchContextSize: 'medium',
+        }),
+        isReadOnly: true,
+        integration: IntegrationType.TERSE
+    }
+]
 
-export abstract class Output<T extends Session, TConfig extends ConfigInstance> {
-    integration: OutputConfigType;
+
+export abstract class KnowledgeBase<T extends Session, TConfig extends ConfigInstance> {
+    integration: KnowledgeBaseConfigType;
     readonly toolbox: readonly ToolboxEntry[];
 
-    constructor(integration: OutputConfigType, toolbox: readonly ToolboxEntry[]) {
+    constructor(integration: KnowledgeBaseConfigType, toolbox: readonly ToolboxEntry[]) {
         this.integration = integration;
         this.toolbox = [...defaultToolbox, ...toolbox] 
     }
 
     abstract createSessionFromConfig(
         integrationId: string, // Integration ID to fetch from database
-        channelOutputConfig: ChannelOutput, // ChannelOutput with loaded config relations
+        channelOutputConfig: ChannelKnowledgeBase, // ChannelOutput with loaded config relations
         user: User
     ): Promise<T>;
 

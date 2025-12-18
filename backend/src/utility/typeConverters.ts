@@ -38,6 +38,8 @@ export const convertIntegrationTypeToPrismaIntegrationType = (integrationType: I
             return PrismaIntegrationType.FIGMA;
         case IntegrationType.TERSE:
             return PrismaIntegrationType.TERSE;
+        case IntegrationType.POSTHOG:
+            return PrismaIntegrationType.POSTHOG;
         default:
             throw integrationType satisfies never;
     }
@@ -65,6 +67,8 @@ export const convertPrismaIntegrationTypeToIntegrationType = (prismaIntegrationT
             return IntegrationType.FIGMA;
         case PrismaIntegrationType.TERSE:
             return IntegrationType.TERSE;
+        case PrismaIntegrationType.POSTHOG:
+            return IntegrationType.POSTHOG;
         default:
             throw prismaIntegrationType satisfies never;
     }
@@ -92,6 +96,8 @@ export const convertIntegrationTypeToPrismaIntegrationTypeForRunHistory = (integ
             return PrismaIntegrationType.FIGMA;
         case IntegrationType.TERSE:
             return PrismaIntegrationType.TERSE;
+        case IntegrationType.POSTHOG:
+            return PrismaIntegrationType.POSTHOG;
         default:
             throw integrationType satisfies never;
     }
@@ -120,6 +126,8 @@ export const convertPrismaIntegrationTypeToIntegrationTypeFromRunHistory = (pris
             return IntegrationType.FIGMA;
         case PrismaIntegrationType.TERSE:
             return IntegrationType.TERSE;
+        case PrismaIntegrationType.POSTHOG:
+            return IntegrationType.POSTHOG;
         default:
             throw prismaIntegrationType satisfies never;
     }

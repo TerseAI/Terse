@@ -32,6 +32,7 @@ import {
   $Enums,
   output_change_attributions,
   identifiable_refs,
+  automation_knowledge_bases,
 } from '@prisma/client';
 
 
@@ -109,6 +110,9 @@ export type ChannelInputWithConfigs = AutomationInputWithConfigs; // Alias for r
 
 export type AutomationOutput = automation_outputs;
 export type ChannelOutput = automation_outputs; // Alias for rebranding
+
+export type ChannelKnowledgeBase = automation_knowledge_bases;
+
 
 // Extended type for ChannelOutput with all config relations included
 export type AutomationOutputWithConfigs = Prisma.automation_outputsGetPayload<{

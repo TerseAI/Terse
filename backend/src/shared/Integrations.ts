@@ -8,6 +8,7 @@ export enum IntegrationType {
     NOTION = 'notion',
     FIGMA = 'figma',
     TERSE = 'terse',
+    POSTHOG = 'posthog',
 }
 
 // MARK: Integration Metadata
@@ -17,6 +18,7 @@ export interface IntegrationDetails {
     description: string;
     isInput?: boolean;
     isOutput?: boolean;
+    isKnowledgeBase?: boolean;
 }
 
 // Metadata objects - using const objects instead of classes
@@ -26,6 +28,7 @@ export const GmailIntegrationMetadata = {
     description: 'Monitor incoming emails',
     isInput: true,
     isOutput: false,
+    isKnowledgeBase: false,
 } as const satisfies IntegrationDetails;
 
 export const NotionIntegrationMetadata = {
@@ -34,6 +37,7 @@ export const NotionIntegrationMetadata = {
     description: 'Update living documents',
     isInput: false,
     isOutput: true,
+    isKnowledgeBase: false,
 } as const satisfies IntegrationDetails;
 
 export const LinearIntegrationMetadata = {
@@ -42,6 +46,7 @@ export const LinearIntegrationMetadata = {
     description: 'Update tasks in Linear',
     isInput: false,
     isOutput: true,
+    isKnowledgeBase: false,
 } as const satisfies IntegrationDetails;
 
 export const SlackIntegrationMetadata = {
@@ -50,6 +55,7 @@ export const SlackIntegrationMetadata = {
     description: 'Send and receive messages in Slack',
     isInput: true,
     isOutput: false,
+    isKnowledgeBase: false,
 } as const satisfies IntegrationDetails;
 
 export const FigmaIntegrationMetadata = {
@@ -58,6 +64,7 @@ export const FigmaIntegrationMetadata = {
     description: 'Update designs in Figma',
     isInput: true,
     isOutput: false,
+    isKnowledgeBase: false,
 } as const satisfies IntegrationDetails;
 
 export const AtlassianIntegrationMetadata = {
@@ -66,6 +73,7 @@ export const AtlassianIntegrationMetadata = {
     description: 'Update documents in Atlassian',
     isInput: true,
     isOutput: false,
+    isKnowledgeBase: false,
 } as const satisfies IntegrationDetails;
 
 export const GithubIntegrationMetadata = {
@@ -74,6 +82,7 @@ export const GithubIntegrationMetadata = {
     description: 'Update repositories in Github',
     isInput: true,
     isOutput: false,
+    isKnowledgeBase: false,
 } as const satisfies IntegrationDetails;
 
 export const TerseIntegrationMetadata = {
@@ -82,6 +91,16 @@ export const TerseIntegrationMetadata = {
     description: 'Platform tools',
     isInput: false,
     isOutput: false,
+    isKnowledgeBase: false,
+} as const satisfies IntegrationDetails;
+
+export const PosthogIntegrationMetadata = {
+    type: IntegrationType.POSTHOG,
+    name: 'Posthog',
+    description: 'Update events in Posthog',
+    isInput: false,
+    isOutput: false,
+    isKnowledgeBase: true,
 } as const satisfies IntegrationDetails;
 
 export type IntegrationMetadataMap = Record<IntegrationType, IntegrationDetails>; // Allow indexing with any IntegrationType
@@ -95,6 +114,7 @@ export const INTEGRATION_METADATA: IntegrationMetadataMap = {
     [IntegrationType.GITHUB]: GithubIntegrationMetadata,
     [IntegrationType.FIGMA]: FigmaIntegrationMetadata,
     [IntegrationType.TERSE]: TerseIntegrationMetadata,
+    [IntegrationType.POSTHOG]: PosthogIntegrationMetadata,
 } as const satisfies IntegrationMetadataMap;
 
 // MARK: Integration Details
@@ -120,6 +140,7 @@ export type IntegrationInstallationOptions = EnsureExhaustiveInstallationOptions
     [IntegrationType.GITHUB]: NoInstallationOptions;
     [IntegrationType.FIGMA]: NoInstallationOptions;
     [IntegrationType.TERSE]: NoInstallationOptions;
+    [IntegrationType.POSTHOG]: NoInstallationOptions;
 }> 
 
 export type InstallationOptionsFor<T extends IntegrationType> = IntegrationInstallationOptions[T];
@@ -170,6 +191,11 @@ export interface GithubIntegration extends IntegrationInstance {
 export interface LinearIntegration extends IntegrationInstance {
     id: string;
     workspaceName: string;
+};
+
+export interface PosthogIntegration extends IntegrationInstance {
+    id: string;
+    apiKey: string | null;
 };
 
 export interface IntegrationWithStatus {

@@ -1,0 +1,1301 @@
+{
+    "date_joined": "2025-11-19T00:03:41.717001Z",
+    "uuid": "019a996c-9615-0000-bd64-21de17de2ed2",
+    "distinct_id": "sGZtQ13R07P2chA4ecq8plSv22AUNNw9Iammfex7iTn",
+    "first_name": "Olivier",
+    "last_name": "Simard-Morissette",
+    "email": "olivier@useterse.ai",
+    "pending_email": null,
+    "is_email_verified": true,
+    "notification_settings": {
+        "plugin_disabled": true,
+        "error_tracking_issue_assigned": true,
+        "discussions_mentioned": true,
+        "project_weekly_digest_disabled": {},
+        "all_weekly_digest_disabled": false
+    },
+    "anonymize_data": false,
+    "allow_impersonation": true,
+    "toolbar_mode": "toolbar",
+    "has_password": true,
+    "id": 341692,
+    "is_staff": false,
+    "is_impersonated": false,
+    "is_impersonated_until": null,
+    "sensitive_session_expires_at": null,
+    "team": {
+        "id": 250907,
+        "uuid": "019a9441-6030-0000-802b-f2eab6ad57ed",
+        "organization": "0199400d-0ea7-0000-28a1-ef9d67fb562d",
+        "project_id": 250907,
+        "api_token": "phc_tf7yIHR1SEP1AJ0JzAD3OTTDiBOlmOXeikeXBJX0k2I",
+        "name": "Terse",
+        "completed_snippet_onboarding": false,
+        "has_completed_onboarding_for": {
+            "feature_flags": true
+        },
+        "ingested_event": true,
+        "is_demo": false,
+        "timezone": "UTC",
+        "access_control": false
+    },
+    "organization": {
+        "id": "0199400d-0ea7-0000-28a1-ef9d67fb562d",
+        "name": "Terse Inc.",
+        "slug": "terse-inc",
+        "logo_media_id": null,
+        "created_at": "2025-09-12T22:30:21.607872Z",
+        "updated_at": "2025-12-18T12:02:36.013142Z",
+        "membership_level": 8,
+        "plugins_access_level": 3,
+        "teams": [
+            {
+                "id": 220160,
+                "uuid": "0199400d-0eba-0000-5795-e8b093d4a2f3",
+                "organization": "0199400d-0ea7-0000-28a1-ef9d67fb562d",
+                "project_id": 220160,
+                "api_token": "phc_GEjKCnmMRwBRZVLqpZbiFXUqzrQAQ9ul89Y9uVRvxwq",
+                "name": "Default project",
+                "completed_snippet_onboarding": false,
+                "has_completed_onboarding_for": null,
+                "ingested_event": true,
+                "is_demo": false,
+                "timezone": "UTC",
+                "access_control": false
+            },
+            {
+                "id": 250907,
+                "uuid": "019a9441-6030-0000-802b-f2eab6ad57ed",
+                "organization": "0199400d-0ea7-0000-28a1-ef9d67fb562d",
+                "project_id": 250907,
+                "api_token": "phc_tf7yIHR1SEP1AJ0JzAD3OTTDiBOlmOXeikeXBJX0k2I",
+                "name": "Terse",
+                "completed_snippet_onboarding": false,
+                "has_completed_onboarding_for": {
+                    "feature_flags": true
+                },
+                "ingested_event": true,
+                "is_demo": false,
+                "timezone": "UTC",
+                "access_control": false
+            }
+        ],
+        "projects": [
+            {
+                "id": 220160,
+                "organization_id": "0199400d-0ea7-0000-28a1-ef9d67fb562d",
+                "name": "Default project"
+            },
+            {
+                "id": 250907,
+                "organization_id": "0199400d-0ea7-0000-28a1-ef9d67fb562d",
+                "name": "Terse"
+            }
+        ],
+        "available_product_features": [
+            {
+                "key": "surveys_unlimited_surveys",
+                "name": "Unlimited surveys",
+                "note": null,
+                "unit": null,
+                "limit": null,
+                "description": "Create as many surveys as you want.",
+                "is_plan_default": true,
+                "entitlement_only": false
+            },
+            {
+                "key": "surveys_all_question_types",
+                "name": "All question types",
+                "note": null,
+                "unit": null,
+                "limit": null,
+                "description": "Rating scale (for NPS and the like), multiple choice, single choice, emoji rating, link, free text.",
+                "is_plan_default": true,
+                "entitlement_only": false
+            },
+            {
+                "key": "surveys_multiple_questions",
+                "name": "Multiple questions",
+                "note": null,
+                "unit": null,
+                "limit": null,
+                "description": "Ask multiple questions in a single survey.",
+                "is_plan_default": true,
+                "entitlement_only": false
+            },
+            {
+                "key": "surveys_user_targeting",
+                "name": "Advanced user targeting",
+                "note": null,
+                "unit": null,
+                "limit": null,
+                "description": "Target by URL, user property, or feature flag when used with Feature flags.",
+                "is_plan_default": true,
+                "entitlement_only": false
+            },
+            {
+                "key": "surveys_user_sampling",
+                "name": "User sampling",
+                "note": null,
+                "unit": null,
+                "limit": null,
+                "description": "Sample users to only survey a portion of the users who match the criteria.",
+                "is_plan_default": true,
+                "entitlement_only": false
+            },
+            {
+                "key": "surveys_styling",
+                "name": "Custom colors & positioning",
+                "note": null,
+                "unit": null,
+                "limit": null,
+                "description": "Customize the colors of your surveys to match your brand and set survey position.",
+                "is_plan_default": true,
+                "entitlement_only": false
+            },
+            {
+                "key": "surveys_text_html",
+                "name": "Custom HTML text",
+                "note": null,
+                "unit": null,
+                "limit": null,
+                "description": "Add custom HTML to your survey text.",
+                "is_plan_default": true,
+                "entitlement_only": false
+            },
+            {
+                "key": "surveys_api_mode",
+                "name": "API mode",
+                "note": null,
+                "unit": null,
+                "limit": null,
+                "description": "Using Popover or Feedback button surveys? No more code required. But if want to create your own UI, we have a full API.",
+                "is_plan_default": true,
+                "entitlement_only": false
+            },
+            {
+                "key": "surveys_results_analysis",
+                "name": "Aggregated results",
+                "note": null,
+                "unit": null,
+                "limit": null,
+                "description": "See feedback summarized and broken down per response, plus completion rates and drop offs.",
+                "is_plan_default": true,
+                "entitlement_only": false
+            },
+            {
+                "key": "surveys_templates",
+                "name": "Templates",
+                "note": null,
+                "unit": null,
+                "limit": null,
+                "description": "Use our templates to get started quickly with NPS, customer satisfaction surveys, user interviews, and more.",
+                "is_plan_default": true,
+                "entitlement_only": false
+            },
+            {
+                "key": "surveys_recurring",
+                "name": "Recurring Surveys",
+                "note": null,
+                "unit": null,
+                "limit": null,
+                "description": "Track user sentiment in distinct iterations of a survey.",
+                "is_plan_default": true,
+                "entitlement_only": false
+            },
+            {
+                "key": "surveys_events",
+                "name": "Event based Surveys",
+                "note": null,
+                "unit": null,
+                "limit": null,
+                "description": "Activate surveys based on user events.",
+                "is_plan_default": true,
+                "entitlement_only": false
+            },
+            {
+                "key": "surveys_data_retention",
+                "name": "Data retention",
+                "note": null,
+                "unit": "years",
+                "limit": 7,
+                "description": "Keep a historical record of your data.",
+                "is_plan_default": true,
+                "entitlement_only": false
+            },
+            {
+                "key": "posthog_ai",
+                "name": "PostHog AI",
+                "note": null,
+                "unit": null,
+                "limit": null,
+                "description": "PostHog AI builds insights, automates manual tasks, and routes more complex tasks to other AI agents for specialized work.",
+                "is_plan_default": true,
+                "entitlement_only": false
+            },
+            {
+                "key": "zapier",
+                "name": "Zapier",
+                "note": null,
+                "unit": null,
+                "limit": null,
+                "description": "Zapier lets you connect PostHog with thousands of the most popular apps, so you can automate your work and have more time for what matters most—no code required.",
+                "is_plan_default": true,
+                "entitlement_only": false
+            },
+            {
+                "key": "slack_integration",
+                "name": "Slack",
+                "note": null,
+                "unit": null,
+                "limit": null,
+                "description": "Get notified about new actions in Slack.",
+                "is_plan_default": true,
+                "entitlement_only": false
+            },
+            {
+                "key": "microsoft_teams_integration",
+                "name": "Microsoft Teams",
+                "note": null,
+                "unit": null,
+                "limit": null,
+                "description": "Get notified about new actions in Microsoft Teams.",
+                "is_plan_default": true,
+                "entitlement_only": false
+            },
+            {
+                "key": "discord_integration",
+                "name": "Discord",
+                "note": null,
+                "unit": null,
+                "limit": null,
+                "description": "Get notified about new actions in Discord.",
+                "is_plan_default": true,
+                "entitlement_only": false
+            },
+            {
+                "key": "apps",
+                "name": "Transformations",
+                "note": null,
+                "unit": null,
+                "limit": null,
+                "description": "Use transformations to filter or modify your incoming data (destinations not included, see the data pipelines addon for product analytics).",
+                "is_plan_default": true,
+                "entitlement_only": false
+            },
+            {
+                "key": "app_metrics",
+                "name": "Transformation & destination metrics",
+                "note": null,
+                "unit": null,
+                "limit": null,
+                "description": "Get metrics on your transformation and destinations to see their usage, reliability, and more.",
+                "is_plan_default": true,
+                "entitlement_only": false
+            },
+            {
+                "key": "data_pipelines_batch_exports",
+                "name": "Batch exports",
+                "note": null,
+                "unit": null,
+                "limit": null,
+                "description": "Schedule regular data exports to your warehouse or other tools like BigQuery, Redshift, and more.",
+                "is_plan_default": true,
+                "entitlement_only": false
+            },
+            {
+                "key": "unlimited_flags",
+                "name": "Unlimited feature flags",
+                "note": null,
+                "unit": null,
+                "limit": null,
+                "description": "Create as many feature flags as you need.",
+                "is_plan_default": true,
+                "entitlement_only": false
+            },
+            {
+                "key": "boolean_flags",
+                "name": "Boolean feature flags",
+                "note": null,
+                "unit": null,
+                "limit": null,
+                "description": "Turn features on and off for specific users.",
+                "is_plan_default": true,
+                "entitlement_only": false
+            },
+            {
+                "key": "multivariate_flags",
+                "name": "Multivariate feature flags & experiments",
+                "note": null,
+                "unit": null,
+                "limit": null,
+                "description": "Create three or more variants of a feature flag to test or release different versions of a feature.",
+                "is_plan_default": true,
+                "entitlement_only": false
+            },
+            {
+                "key": "persist_flags_cross_authentication",
+                "name": "Persist flags across authentication",
+                "note": null,
+                "unit": null,
+                "limit": null,
+                "description": "Persist feature flags across authentication events so that flag values don't change when an anonymous user logs in and becomes identified.",
+                "is_plan_default": true,
+                "entitlement_only": false
+            },
+            {
+                "key": "feature_flag_payloads",
+                "name": "Test changes without code",
+                "note": null,
+                "unit": null,
+                "limit": null,
+                "description": "Use JSON payloads to change text, visuals, or entire blocks of code without subsequent deployments.",
+                "is_plan_default": true,
+                "entitlement_only": false
+            },
+            {
+                "key": "multiple_release_conditions",
+                "name": "Multiple release conditions",
+                "note": null,
+                "unit": null,
+                "limit": null,
+                "description": "Customize your rollout strategy by user or group properties, cohort, or trafic percentage.",
+                "is_plan_default": true,
+                "entitlement_only": false
+            },
+            {
+                "key": "release_condition_overrides",
+                "name": "Release condition overrides",
+                "note": null,
+                "unit": null,
+                "limit": null,
+                "description": "For any release condition, specify which flag value the users or groups in that condition should receive.",
+                "is_plan_default": true,
+                "entitlement_only": false
+            },
+            {
+                "key": "targeting_by_group",
+                "name": "Flag targeting by groups",
+                "note": null,
+                "unit": null,
+                "limit": null,
+                "description": "Target feature flag release conditions by group properties, not just user properties.",
+                "is_plan_default": true,
+                "entitlement_only": false
+            },
+            {
+                "key": "local_evaluation_and_bootstrapping",
+                "name": "Local evaluation & bootstrapping",
+                "note": null,
+                "unit": null,
+                "limit": null,
+                "description": "Bootstrap flags on initialization so all flags are available immediately, without having to make extra network requests.",
+                "is_plan_default": true,
+                "entitlement_only": false
+            },
+            {
+                "key": "flag_usage_stats",
+                "name": "Flag usage stats",
+                "note": null,
+                "unit": null,
+                "limit": null,
+                "description": "See how many times a flag has been evaluated, how many times each variant has been returned, and what values users received.",
+                "is_plan_default": true,
+                "entitlement_only": false
+            },
+            {
+                "key": "experimentation",
+                "name": "Experiments",
+                "note": null,
+                "unit": null,
+                "limit": null,
+                "description": "Test changes to your product and evaluate the impacts those changes make.",
+                "is_plan_default": true,
+                "entitlement_only": false
+            },
+            {
+                "key": "funnel_experiments",
+                "name": "Funnel & trend experiments",
+                "note": null,
+                "unit": null,
+                "limit": null,
+                "description": "Measure the impact of a change on a aggregate values or a series of events, like a signup flow.",
+                "is_plan_default": true,
+                "entitlement_only": false
+            },
+            {
+                "key": "secondary_metrics",
+                "name": "Secondary experiment metrics",
+                "note": null,
+                "unit": null,
+                "limit": null,
+                "description": "Track additional metrics to see how your experiment affects other parts of your app or different flows.",
+                "is_plan_default": true,
+                "entitlement_only": false
+            },
+            {
+                "key": "statistical_analysis",
+                "name": "Statistical analysis",
+                "note": null,
+                "unit": null,
+                "limit": null,
+                "description": "Get a statistical analysis of your experiment results to see if the results are significant, or if they're likely just due to chance.",
+                "is_plan_default": true,
+                "entitlement_only": false
+            },
+            {
+                "key": "group_experiments",
+                "name": "Group experiments",
+                "note": null,
+                "unit": null,
+                "limit": null,
+                "description": "Target experiments to specific groups of users so everyone in the same group gets the same variant.",
+                "is_plan_default": true,
+                "entitlement_only": false
+            },
+            {
+                "key": "multiple_environments",
+                "name": "Multi-environment support",
+                "note": null,
+                "unit": null,
+                "limit": null,
+                "description": "Test flags in local development or staging by using the same flag key across PostHog projects.",
+                "is_plan_default": true,
+                "entitlement_only": false
+            },
+            {
+                "key": "feature_flags_data_retention",
+                "name": "Data retention",
+                "note": null,
+                "unit": "years",
+                "limit": 7,
+                "description": "Keep a historical record of your data.",
+                "is_plan_default": true,
+                "entitlement_only": false
+            },
+            {
+                "key": "llm_analytics_data_retention",
+                "name": "Data retention",
+                "note": null,
+                "unit": null,
+                "limit": null,
+                "description": "Keep a historical record of your data.",
+                "is_plan_default": true,
+                "entitlement_only": false
+            },
+            {
+                "key": "llm_analytics_dashboard",
+                "name": "LLM analytics dashboard",
+                "note": null,
+                "unit": null,
+                "limit": null,
+                "description": "Overview dashboard with usage metrics, costs, and performance.",
+                "is_plan_default": true,
+                "entitlement_only": false
+            },
+            {
+                "key": "llm_analytics_traces",
+                "name": "Traces",
+                "note": null,
+                "unit": null,
+                "limit": null,
+                "description": "Full interaction timelines grouping related LLM calls.",
+                "is_plan_default": true,
+                "entitlement_only": false
+            },
+            {
+                "key": "llm_analytics_generations",
+                "name": "Generations",
+                "note": null,
+                "unit": null,
+                "limit": null,
+                "description": "Track individual LLM requests with conversation history.",
+                "is_plan_default": true,
+                "entitlement_only": false
+            },
+            {
+                "key": "llm_analytics_spans",
+                "name": "Spans",
+                "note": null,
+                "unit": null,
+                "limit": null,
+                "description": "Capture atomic operations like vector searches and tool calls.",
+                "is_plan_default": true,
+                "entitlement_only": false
+            },
+            {
+                "key": "llm_analytics_playground",
+                "name": "LLM playground",
+                "note": null,
+                "unit": null,
+                "limit": null,
+                "description": "Test and debug LLM interactions.",
+                "is_plan_default": true,
+                "entitlement_only": false
+            },
+            {
+                "key": "llm_analytics_python_sdk",
+                "name": "Python SDK",
+                "note": null,
+                "unit": null,
+                "limit": null,
+                "description": "Python SDK support for OpenAI, Anthropic, Google Gemini, LangChain, and more.",
+                "is_plan_default": true,
+                "entitlement_only": false
+            },
+            {
+                "key": "llm_analytics_node_sdk",
+                "name": "Node.js SDK",
+                "note": null,
+                "unit": null,
+                "limit": null,
+                "description": "Node.js SDK support for OpenAI, Anthropic, Google Gemini, Vercel AI SDK, LangChain, and more.",
+                "is_plan_default": true,
+                "entitlement_only": false
+            },
+            {
+                "key": "llm_analytics_cost_tracking",
+                "name": "Cost tracking",
+                "note": null,
+                "unit": null,
+                "limit": null,
+                "description": "Automatic cost calculation per request.",
+                "is_plan_default": true,
+                "entitlement_only": false
+            },
+            {
+                "key": "llm_analytics_token_usage",
+                "name": "Token usage",
+                "note": null,
+                "unit": null,
+                "limit": null,
+                "description": "Track input, output, and cached token usage.",
+                "is_plan_default": true,
+                "entitlement_only": false
+            },
+            {
+                "key": "llm_analytics_latency_monitoring",
+                "name": "Latency monitoring",
+                "note": null,
+                "unit": null,
+                "limit": null,
+                "description": "Monitor response times and performance.",
+                "is_plan_default": true,
+                "entitlement_only": false
+            },
+            {
+                "key": "llm_analytics_product_analytics",
+                "name": "Product analytics integration",
+                "note": null,
+                "unit": null,
+                "limit": null,
+                "description": "Analyze LLM usage with dashboards, funnels, retention, and custom SQL queries.",
+                "is_plan_default": true,
+                "entitlement_only": false
+            },
+            {
+                "key": "llm_analytics_error_tracking",
+                "name": "Error tracking integration",
+                "note": null,
+                "unit": null,
+                "limit": null,
+                "description": "Monitor, debug, and resolve LLM-generated errors automatically.",
+                "is_plan_default": true,
+                "entitlement_only": false
+            },
+            {
+                "key": "llm_analytics_session_replay",
+                "name": "Session replay integration",
+                "note": null,
+                "unit": null,
+                "limit": null,
+                "description": "Watch session recordings to see exactly how users interact with your LLM features.",
+                "is_plan_default": true,
+                "entitlement_only": false
+            },
+            {
+                "key": "llm_analytics_privacy_mode",
+                "name": "Privacy mode",
+                "note": null,
+                "unit": null,
+                "limit": null,
+                "description": "Exclude sensitive data from tracking.",
+                "is_plan_default": true,
+                "entitlement_only": false
+            },
+            {
+                "key": "llm_analytics_custom_properties",
+                "name": "Custom properties",
+                "note": null,
+                "unit": null,
+                "limit": null,
+                "description": "Add metadata and custom properties.",
+                "is_plan_default": true,
+                "entitlement_only": false
+            },
+            {
+                "key": "mobile_replay",
+                "name": "Mobile session replay",
+                "note": null,
+                "unit": null,
+                "limit": null,
+                "description": "Record and replay mobile app sessions.",
+                "is_plan_default": true,
+                "entitlement_only": false
+            },
+            {
+                "key": "data_warehouse_integrations",
+                "name": "One-click integrations",
+                "note": null,
+                "unit": null,
+                "limit": null,
+                "description": "Sync data from Stripe, Hubspot, Zendesk, Snowflake, Postgres, and more.",
+                "is_plan_default": true,
+                "entitlement_only": false
+            },
+            {
+                "key": "data_warehouse_views",
+                "name": "Custom views",
+                "note": null,
+                "unit": null,
+                "limit": null,
+                "description": "Create views to model your data and streamline queries.",
+                "is_plan_default": true,
+                "entitlement_only": false
+            },
+            {
+                "key": "data_warehouse_direct_linking",
+                "name": "Direct linking",
+                "note": null,
+                "unit": null,
+                "limit": null,
+                "description": "Link directly to your data sources such as S3, Google Cloud Storage, and Cloudflare R2. Data stays on your servers.",
+                "is_plan_default": true,
+                "entitlement_only": false
+            },
+            {
+                "key": "data_warehouse_joins",
+                "name": "Cross-source joins",
+                "note": null,
+                "unit": null,
+                "limit": null,
+                "description": "Join data from any source, including your PostHog analytics data, to easily get the answers you need.",
+                "is_plan_default": true,
+                "entitlement_only": false
+            },
+            {
+                "key": "data_warehouse_unified_querying",
+                "name": "Unified querying",
+                "note": null,
+                "unit": null,
+                "limit": null,
+                "description": "Query all your business and product data directly inside PostHog.",
+                "is_plan_default": true,
+                "entitlement_only": false
+            },
+            {
+                "key": "data_warehouse_insights_visualization",
+                "name": "Data visualization",
+                "note": null,
+                "unit": null,
+                "limit": null,
+                "description": "Create insights from the data you import and add them to your PostHog dashboards.",
+                "is_plan_default": true,
+                "entitlement_only": false
+            },
+            {
+                "key": "data_warehouse_incremental_sync",
+                "name": "Incremental sync",
+                "note": null,
+                "unit": null,
+                "limit": null,
+                "description": "Sync only the data that has changed since the last sync.",
+                "is_plan_default": true,
+                "entitlement_only": false
+            },
+            {
+                "key": "data_warehouse_sync_frequency",
+                "name": "Sync frequency",
+                "note": null,
+                "unit": null,
+                "limit": null,
+                "description": "Choose how often you want to sync your data - daily, weekly, or monthly.",
+                "is_plan_default": true,
+                "entitlement_only": false
+            },
+            {
+                "key": "error_tracking_exception_autocapture",
+                "name": "Exception autocapture",
+                "note": null,
+                "unit": null,
+                "limit": null,
+                "description": "Automatically capture unhandled exceptions in your code.",
+                "is_plan_default": true,
+                "entitlement_only": false
+            },
+            {
+                "key": "error_tracking_stack_trace_demangling",
+                "name": "Stack trace demangling",
+                "note": null,
+                "unit": null,
+                "limit": null,
+                "description": "Upload source maps to get code context.",
+                "is_plan_default": true,
+                "entitlement_only": false
+            },
+            {
+                "key": "error_tracking_issue_recordings",
+                "name": "Linked recordings",
+                "note": null,
+                "unit": null,
+                "limit": null,
+                "description": "Watch a users session when they encounter an error.",
+                "is_plan_default": true,
+                "entitlement_only": false
+            },
+            {
+                "key": "error_tracking_destinations",
+                "name": "Alert",
+                "note": "Unlimited",
+                "unit": null,
+                "limit": null,
+                "description": "Get notified of new issues by email, Slack, or webhook.",
+                "is_plan_default": true,
+                "entitlement_only": false
+            },
+            {
+                "key": "error_tracking_triage",
+                "name": "Triage",
+                "note": null,
+                "unit": null,
+                "limit": null,
+                "description": "Assign issues to individuals or groups.",
+                "is_plan_default": true,
+                "entitlement_only": false
+            },
+            {
+                "key": "replay_web_sdk",
+                "name": "Web recordings",
+                "note": null,
+                "unit": null,
+                "limit": null,
+                "description": "Record sessions on your web app.",
+                "is_plan_default": true,
+                "entitlement_only": false
+            },
+            {
+                "key": "replay_android_sdk",
+                "name": "Android recordings",
+                "note": null,
+                "unit": null,
+                "limit": null,
+                "description": "Record sessions on your Android app.",
+                "is_plan_default": true,
+                "entitlement_only": false
+            },
+            {
+                "key": "replay_ios_sdk",
+                "name": "iOS recordings",
+                "note": null,
+                "unit": null,
+                "limit": null,
+                "description": "Record sessions on your iOS app.",
+                "is_plan_default": true,
+                "entitlement_only": false
+            },
+            {
+                "key": "replay_react_native_sdk",
+                "name": "React Native recordings",
+                "note": null,
+                "unit": null,
+                "limit": null,
+                "description": "Record sessions on your React Native app.",
+                "is_plan_default": true,
+                "entitlement_only": false
+            },
+            {
+                "key": "replay_flutter_sdk",
+                "name": "Flutter recordings",
+                "note": null,
+                "unit": null,
+                "limit": null,
+                "description": "Record sessions on your Flutter app.",
+                "is_plan_default": true,
+                "entitlement_only": false
+            },
+            {
+                "key": "console_logs",
+                "name": "Console logs",
+                "note": null,
+                "unit": null,
+                "limit": null,
+                "description": "Debug issues faster by browsing the user's console.",
+                "is_plan_default": true,
+                "entitlement_only": false
+            },
+            {
+                "key": "recordings_playlists",
+                "name": "Recording playlists",
+                "note": null,
+                "unit": null,
+                "limit": null,
+                "description": "Create playlists of certain session recordings to easily find and watch them again in the future.",
+                "is_plan_default": true,
+                "entitlement_only": false
+            },
+            {
+                "key": "recordings_performance",
+                "name": "Network performance on recordings",
+                "note": null,
+                "unit": null,
+                "limit": null,
+                "description": "See your end-user's network performance and information alongside session recordings.",
+                "is_plan_default": true,
+                "entitlement_only": false
+            },
+            {
+                "key": "session_replay_network_payloads",
+                "name": "Network monitor",
+                "note": null,
+                "unit": null,
+                "limit": null,
+                "description": "Analyze performance and network calls.",
+                "is_plan_default": true,
+                "entitlement_only": false
+            },
+            {
+                "key": "recordings_file_export",
+                "name": "Download recording files",
+                "note": null,
+                "unit": null,
+                "limit": null,
+                "description": "Download recording JSON files that you can upload and watch inside PostHog again later. Retain important recordings beyond data retention limits.",
+                "is_plan_default": true,
+                "entitlement_only": false
+            },
+            {
+                "key": "session_replay_data_retention",
+                "name": "Data retention",
+                "note": null,
+                "unit": "months",
+                "limit": 3,
+                "description": "Keep a historical record of your data. Up to 5 years of retention available with add-on packages.",
+                "is_plan_default": true,
+                "entitlement_only": false
+            },
+            {
+                "key": "replay_mask_sensitive_data",
+                "name": "Block sensitive data",
+                "note": null,
+                "unit": null,
+                "limit": null,
+                "description": "Disable capturing data from any DOM element with HTML attributes or a customizable config.",
+                "is_plan_default": true,
+                "entitlement_only": false
+            },
+            {
+                "key": "replay_sharing_embedding",
+                "name": "Share and embed",
+                "note": null,
+                "unit": null,
+                "limit": null,
+                "description": "Share replays directly via URL or embed via iframe.",
+                "is_plan_default": true,
+                "entitlement_only": false
+            },
+            {
+                "key": "replay_product_analytics_integration",
+                "name": "Event timeline",
+                "note": null,
+                "unit": null,
+                "limit": null,
+                "description": "See a history of everything that happened in a user's session.",
+                "is_plan_default": true,
+                "entitlement_only": false
+            },
+            {
+                "key": "replay_filter_person_properties",
+                "name": "Filter person properties",
+                "note": null,
+                "unit": null,
+                "limit": null,
+                "description": "Filter by person properties to quickly find relevant recordings.",
+                "is_plan_default": true,
+                "entitlement_only": false
+            },
+            {
+                "key": "replay_filter_events",
+                "name": "Filter events",
+                "note": null,
+                "unit": null,
+                "limit": null,
+                "description": "Filter by events to quickly find relevant recordings.",
+                "is_plan_default": true,
+                "entitlement_only": false
+            },
+            {
+                "key": "replay_dom_explorer",
+                "name": "DOM Explorer",
+                "note": null,
+                "unit": null,
+                "limit": null,
+                "description": "Freeze snapshots of recordings and explore the DOM with your browser dev tools.",
+                "is_plan_default": true,
+                "entitlement_only": false
+            },
+            {
+                "key": "session_replay_sampling",
+                "name": "Sample recorded sessions",
+                "note": null,
+                "unit": null,
+                "limit": null,
+                "description": "Restrict the percentage of sessions that will be recorded.",
+                "is_plan_default": true,
+                "entitlement_only": false
+            },
+            {
+                "key": "replay_recording_duration_minimum",
+                "name": "Minimum duration",
+                "note": null,
+                "unit": null,
+                "limit": null,
+                "description": "Only record sessions longer than the minimum duration.",
+                "is_plan_default": true,
+                "entitlement_only": false
+            },
+            {
+                "key": "replay_feature_flag_based_recording",
+                "name": "Record via feature flag",
+                "note": null,
+                "unit": null,
+                "limit": null,
+                "description": "Only record sessions for users that have the flag enabled.",
+                "is_plan_default": true,
+                "entitlement_only": false
+            },
+            {
+                "key": "enhanced_persons",
+                "name": "Identified events",
+                "note": null,
+                "unit": null,
+                "limit": null,
+                "description": "Enhance your user data with properties and attribution data. Great for tracking user behavior across devices and sessions and tracking person changes over time.",
+                "is_plan_default": true,
+                "entitlement_only": false
+            },
+            {
+                "key": "dashboards",
+                "name": "Dashboards",
+                "note": null,
+                "unit": null,
+                "limit": null,
+                "description": "Save trends, funnels, and other insights for easy reference by your whole team.",
+                "is_plan_default": true,
+                "entitlement_only": false
+            },
+            {
+                "key": "funnels",
+                "name": "Funnels",
+                "note": null,
+                "unit": null,
+                "limit": null,
+                "description": "Visualize user dropoff between a sequence of events. See conversion rate over time, use flexible step ordering, set exclusion steps, and more.",
+                "is_plan_default": true,
+                "entitlement_only": false
+            },
+            {
+                "key": "graphs_trends",
+                "name": "Graphs & trends",
+                "note": null,
+                "unit": null,
+                "limit": null,
+                "description": "Plot any number of events or actions over time.",
+                "is_plan_default": true,
+                "entitlement_only": false
+            },
+            {
+                "key": "paths",
+                "name": "User paths",
+                "note": null,
+                "unit": null,
+                "limit": null,
+                "description": "Limited paths excludes: customizing path insights by setting the maximum number of paths, number of people on each path, how path names appear",
+                "is_plan_default": true,
+                "entitlement_only": false
+            },
+            {
+                "key": "subscriptions",
+                "name": "Insight & dashboard subscriptions",
+                "note": null,
+                "unit": null,
+                "limit": null,
+                "description": "Create a subscription for any insight or dashboard in PostHog to receive regular reports with their updates.",
+                "is_plan_default": true,
+                "entitlement_only": false
+            },
+            {
+                "key": "paths_advanced",
+                "name": "Advanced paths",
+                "note": null,
+                "unit": null,
+                "limit": null,
+                "description": "Customize your path insights by setting the maximum number of paths, number of people on each path, and how path names should appear.",
+                "is_plan_default": true,
+                "entitlement_only": false
+            },
+            {
+                "key": "correlation_analysis",
+                "name": "Correlation analysis",
+                "note": null,
+                "unit": null,
+                "limit": null,
+                "description": "Automatically highlight significant factors that affect the conversion rate of users within a funnel.",
+                "is_plan_default": true,
+                "entitlement_only": false
+            },
+            {
+                "key": "behavioral_cohort_filtering",
+                "name": "Lifecycle",
+                "note": null,
+                "unit": null,
+                "limit": null,
+                "description": "Discover how your active users break down, highlighting those who have recently stopped being active or those who have just become active for the first time.",
+                "is_plan_default": true,
+                "entitlement_only": false
+            },
+            {
+                "key": "customize_columns",
+                "name": "Customize columns",
+                "note": null,
+                "unit": null,
+                "limit": null,
+                "description": "Customize columns across the app.",
+                "is_plan_default": true,
+                "entitlement_only": false
+            },
+            {
+                "key": "product_analytics_data_retention",
+                "name": "Data retention",
+                "note": null,
+                "unit": "years",
+                "limit": 7,
+                "description": "Keep a historical record of your data.",
+                "is_plan_default": true,
+                "entitlement_only": false
+            },
+            {
+                "key": "alerts",
+                "name": "Alerts",
+                "note": "Unlimited",
+                "unit": null,
+                "limit": null,
+                "description": "Set up alerts to notify you when certain events happen.",
+                "is_plan_default": true,
+                "entitlement_only": false
+            },
+            {
+                "key": "tracked_users",
+                "name": "Tracked users",
+                "note": "Unlimited",
+                "unit": null,
+                "limit": null,
+                "description": "Track users across devices and sessions.",
+                "is_plan_default": true,
+                "entitlement_only": false
+            },
+            {
+                "key": "team_members",
+                "name": "Team members",
+                "note": "Unlimited",
+                "unit": null,
+                "limit": null,
+                "description": "PostHog doesn't charge per seat add your entire team!",
+                "is_plan_default": true,
+                "entitlement_only": false
+            },
+            {
+                "key": "organizations_projects",
+                "name": "Projects",
+                "note": null,
+                "unit": "projects",
+                "limit": 6,
+                "description": "Organize environments within a project. Share dashboards, insights and more across environments without duplicating work.",
+                "is_plan_default": true,
+                "entitlement_only": false
+            },
+            {
+                "key": "environments",
+                "name": "Environments",
+                "note": null,
+                "unit": "environment",
+                "limit": 3,
+                "description": "Create separate silos of data within a project. Data belongs to a single environment and all queries are environment-specific.",
+                "is_plan_default": true,
+                "entitlement_only": true
+            },
+            {
+                "key": "api_access",
+                "name": "API access",
+                "note": null,
+                "unit": null,
+                "limit": null,
+                "description": "Access your data via our developer-friendly API.",
+                "is_plan_default": true,
+                "entitlement_only": false
+            },
+            {
+                "key": "social_sso",
+                "name": "SSO via Google, Github, or Gitlab",
+                "note": null,
+                "unit": null,
+                "limit": null,
+                "description": "Log in to PostHog with your Google, Github, or Gitlab account.",
+                "is_plan_default": true,
+                "entitlement_only": false
+            },
+            {
+                "key": "community_support",
+                "name": "Community support",
+                "note": null,
+                "unit": null,
+                "limit": null,
+                "description": "Get help from other users and PostHog team members in our Community forums.",
+                "is_plan_default": true,
+                "entitlement_only": false
+            },
+            {
+                "key": "email_support",
+                "name": "Email support",
+                "note": null,
+                "unit": null,
+                "limit": null,
+                "description": "Get help directly from our product engineers via email. No wading through multiple support people before you get help.",
+                "is_plan_default": true,
+                "entitlement_only": false
+            },
+            {
+                "key": "2fa",
+                "name": "2FA",
+                "note": null,
+                "unit": null,
+                "limit": null,
+                "description": "Secure your PostHog account with two-factor authentication.",
+                "is_plan_default": true,
+                "entitlement_only": false
+            },
+            {
+                "key": "support_response_time",
+                "name": "Target support response time",
+                "note": "72 hours",
+                "unit": null,
+                "limit": null,
+                "description": "Get help from our team!",
+                "is_plan_default": true,
+                "entitlement_only": true
+            },
+            {
+                "key": "shared_resource_configurations",
+                "name": "Shared resource configurations",
+                "note": null,
+                "unit": "configuration",
+                "limit": 2,
+                "description": "Configure settings for publicly shared resources like insights and dashboards.",
+                "is_plan_default": true,
+                "entitlement_only": false
+            },
+            {
+                "key": "data_pipelines_real_time",
+                "name": "100+ realtime destinations",
+                "note": null,
+                "unit": null,
+                "limit": null,
+                "description": "Instantly send data to hundreds of third-party tools to trigger automations, send emails, enhance ads, and more.",
+                "is_plan_default": true,
+                "entitlement_only": false
+            },
+            {
+                "key": "data_pipelines_slack",
+                "name": "Trigger notifications & webhooks",
+                "note": null,
+                "unit": null,
+                "limit": null,
+                "description": "Send data to internal tools like Slack so you get notified whenever important events happen.",
+                "is_plan_default": true,
+                "entitlement_only": false
+            },
+            {
+                "key": "data_pipelines_transform",
+                "name": "Free event transformation",
+                "note": null,
+                "unit": null,
+                "limit": null,
+                "description": "Transform, enrich, sample, or drop events as they arrive — before ingestion, at no extra cost.",
+                "is_plan_default": true,
+                "entitlement_only": false
+            },
+            {
+                "key": "data_pipelines_free_allowance",
+                "name": "Only pay for what you use",
+                "note": null,
+                "unit": null,
+                "limit": null,
+                "description": "Get a massive free allowance every month to try the integrations you need, and only pay for usage at scale.",
+                "is_plan_default": true,
+                "entitlement_only": false
+            },
+            {
+                "key": "data_warehouse_historical_rows",
+                "name": "Free historical syncs",
+                "note": null,
+                "unit": null,
+                "limit": null,
+                "description": "Sync free historical rows in the first 7 days for each new source.",
+                "is_plan_default": true,
+                "entitlement_only": false
+            }
+        ],
+        "is_member_join_email_enabled": true,
+        "metadata": {
+            "instance_tag": "none"
+        },
+        "customer_id": "cus_T2l33qYezbp5cJ",
+        "enforce_2fa": null,
+        "members_can_invite": true,
+        "members_can_use_personal_api_keys": true,
+        "allow_publicly_shared_resources": true,
+        "member_count": 2,
+        "is_ai_data_processing_approved": true,
+        "default_experiment_stats_method": "bayesian",
+        "default_anonymize_ips": false,
+        "default_role_id": null,
+        "is_active": true,
+        "is_not_active_reason": null
+    },
+    "organizations": [
+        {
+            "id": "0199400d-0ea7-0000-28a1-ef9d67fb562d",
+            "name": "Terse Inc.",
+            "slug": "terse-inc",
+            "logo_media_id": null,
+            "membership_level": 8,
+            "members_can_use_personal_api_keys": true,
+            "is_active": true,
+            "is_not_active_reason": null
+        }
+    ],
+    "events_column_config": {
+        "active": "DEFAULT"
+    },
+    "is_2fa_enabled": false,
+    "has_social_auth": true,
+    "has_sso_enforcement": false,
+    "has_seen_product_intro_for": {
+        "logs": true
+    },
+    "scene_personalisation": [],
+    "theme_mode": null,
+    "hedgehog_config": null,
+    "allow_sidebar_suggestions": true,
+    "shortcut_position": "above",
+    "role_at_organization": "engineering"
+}

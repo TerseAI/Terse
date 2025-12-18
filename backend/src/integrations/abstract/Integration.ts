@@ -21,6 +21,10 @@ export interface OAuthIntegrationInstallation<T extends IntegrationType> {
     getAccessToken(integrationId: string): Promise<string | null>;
 }
 
+export interface FormIntegrationInstallation<T extends IntegrationType> {
+    processFormSubmission(req: Request, res: Response): Promise<void>;
+}
+
 // Type guards
 export function isOAuthIntegrationInstallation<T extends IntegrationType>(
     obj: any

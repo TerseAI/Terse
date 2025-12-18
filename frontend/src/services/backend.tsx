@@ -31,6 +31,7 @@ import {
     GithubIntegration,
     NotionIntegration,
     InstallationOptionsFor,
+    PosthogIntegration,
 } from "../shared/Integrations";
 import { User } from "../types/User";
 import { GetRunHistoryParams, GetRunHistoryResponse } from '../shared/RunHistoryTypes';
@@ -215,6 +216,16 @@ interface BackendService {
      * @param type - optional filter: "page" or "database"
      */
     getNotionResources(integrationId: string, search?: string, type?: 'page' | 'database'): Promise<NotionResourcesResponse>;
+
+    /**
+     * Gets all Posthog integrations for the current user
+     */
+    getPosthogIntegrations(): Promise<PosthogIntegration[]>;
+
+    /**
+     * Creates or updates a Posthog integration with API key
+     */
+    createOrUpdatePosthogIntegration(apiKey: string): Promise<{ success: boolean; email: string | null; orgName: string | null }>;
 
     /**
      * Gets available channels for a Slack integration
@@ -595,6 +606,28 @@ export const BackendProvider: BackendService = {
             .then(response => response.data)
             .catch(error => {
                 console.error('Error getting Notion integrations:', error);
+                throw error;
+            });
+    },
+
+    getPosthogIntegrations: () => {
+        return axios.get<PosthogIntegration[]>(`${backendBaseUrl}/posthog/integrations`, { withCredentials: true })
+            .then(response => response.data)
+            .catch(error => {
+                console.error('Error getting Posthog integrations:', error);
+                throw error;
+            });
+    },
+
+    createOrUpdatePosthogIntegration: (apiKey: string) => {
+        return axios.post<{ success: boolean; email: string | null; orgName: string | null }>(
+            `${backendBaseUrl}/posthog/integrations`,
+            { apiKey },
+            { withCredentials: true }
+        )
+            .then(response => response.data)
+            .catch(error => {
+                console.error('Error creating/updating Posthog integration:', error);
                 throw error;
             });
     },
