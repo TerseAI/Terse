@@ -34,6 +34,8 @@ export function IconForConfigType({ type }: { type: ConfigType }) {
             return <JiraIcon />;
         case ConfigType.CONFLUENCE:
             return <ConfluenceIcon />;
+        case ConfigType.POSTHOG:
+            return <PosthogIcon />;
         default:
             // Exhaustive check: TypeScript will error if any IntegrationType case is missing
             throw type satisfies never;

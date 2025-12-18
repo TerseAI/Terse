@@ -196,6 +196,8 @@ export interface LinearIntegration extends IntegrationInstance {
 export interface PosthogIntegration extends IntegrationInstance {
     id: string;
     apiKey: string | null;
+    email: string | null;
+    orgName: string | null;
 };
 
 export interface IntegrationWithStatus {

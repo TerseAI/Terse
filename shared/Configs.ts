@@ -11,6 +11,7 @@ export enum ConfigType {
     GITHUB = 'github',
     JIRA = 'jira',
     CONFLUENCE = 'confluence',
+    POSTHOG = "POSTHOG",
 }
 
 // MARK: Config Metadata
@@ -20,6 +21,7 @@ export interface ConfigDetails {
     description: string;
     isInput: boolean;
     isOutput: boolean;
+    isKnowledgeBase: boolean;
 }
 
 // Metadata objects - using const objects instead of classes
@@ -29,6 +31,7 @@ export const GmailConfigMetadata = {
     description: 'Monitor incoming emails',
     isInput: true,
     isOutput: false,
+    isKnowledgeBase: false,
 } as const satisfies ConfigDetails;
 
 export const FigmaConfigMetadata = {
@@ -37,6 +40,7 @@ export const FigmaConfigMetadata = {
     description: 'Monitor design changes in Figma files',
     isInput: true,
     isOutput: false,
+    isKnowledgeBase: false,
 } as const satisfies ConfigDetails;
 
 export const SlackConfigMetadata = {
@@ -45,6 +49,7 @@ export const SlackConfigMetadata = {
     description: 'Monitor messages in Slack channels or DMs',
     isInput: true,
     isOutput: false,
+    isKnowledgeBase: false,
 } as const satisfies ConfigDetails;
 
 export const NotionDatabaseConfigMetadata = {
@@ -53,6 +58,7 @@ export const NotionDatabaseConfigMetadata = {
     description: 'Update and monitor Notion databases',
     isInput: false,
     isOutput: true,
+    isKnowledgeBase: false,
 } as const satisfies ConfigDetails;
 
 export const NotionPageConfigMetadata = {
@@ -61,6 +67,7 @@ export const NotionPageConfigMetadata = {
     description: 'Update and monitor Notion pages',
     isInput: false,
     isOutput: true,
+    isKnowledgeBase: false,
 } as const satisfies ConfigDetails;
 
 export const LinearInputConfigMetadata = {
@@ -69,6 +76,7 @@ export const LinearInputConfigMetadata = {
     description: 'Monitor Linear issues',
     isInput: true,
     isOutput: false,
+    isKnowledgeBase: false,
 } as const satisfies ConfigDetails;
 
 
@@ -78,6 +86,7 @@ export const LinearOutputConfigMetadata = {
     description: 'Update Linear issues',
     isInput: false,
     isOutput: true,
+    isKnowledgeBase: false,
 } as const satisfies ConfigDetails;
 
 export const GitHubConfigMetadata = {
@@ -86,6 +95,7 @@ export const GitHubConfigMetadata = {
     description: 'Monitor GitHub repository events',
     isInput: true,
     isOutput: false,
+    isKnowledgeBase: false,
 } as const satisfies ConfigDetails;
 
 export const JiraConfigMetadata = {
@@ -94,6 +104,7 @@ export const JiraConfigMetadata = {
     description: 'Monitor and update Jira issues',
     isInput: true,
     isOutput: true,
+    isKnowledgeBase: false,
 } as const satisfies ConfigDetails;
 
 export const ConfluenceConfigMetadata = {
@@ -102,6 +113,16 @@ export const ConfluenceConfigMetadata = {
     description: 'Update Confluence pages',
     isInput: false,
     isOutput: true,
+    isKnowledgeBase: false,
+} as const satisfies ConfigDetails;
+
+export const PosthogConfigMetadata = {
+    configType: ConfigType.POSTHOG,
+    name: 'Posthog',
+    description: 'Track user events',
+    isInput: false,
+    isOutput: false,
+    isKnowledgeBase: true
 } as const satisfies ConfigDetails;
 
 export type ConfigDetailsMap = Record<ConfigType, ConfigDetails>;
@@ -117,6 +138,7 @@ export const CONFIG_DETAILS: ConfigDetailsMap = {
     [ConfigType.GITHUB]: GitHubConfigMetadata,
     [ConfigType.JIRA]: JiraConfigMetadata,
     [ConfigType.CONFLUENCE]: ConfluenceConfigMetadata,
+    [ConfigType.POSTHOG]: PosthogConfigMetadata,
 } as const satisfies ConfigDetailsMap;
 
 export interface ConfigInstance {
@@ -403,6 +425,34 @@ export class ConfluenceConfig implements ConfigInstance {
     }
 };
 
+export class PosthogConfig implements ConfigInstance {
+    integrationType: IntegrationType = IntegrationType.POSTHOG;
+    configType: ConfigType = ConfigType.POSTHOG;
+    
+    constructor(
+        public integrationId: string,
+        public canReadLogs?: boolean,
+        public canReadSessionRecordings?: boolean
+    ) {
+    }
+
+    isComplete(): boolean {
+        // Confluence only requires integrationId (base check handled in isInputComplete)
+        return !!(this.canReadLogs || this.canReadSessionRecordings);
+    }
+
+    formatForAgent(): string {
+        const parts = [`Type: Posthog`, `Integration ID: ${this.integrationId}`];
+        if (this.canReadLogs) {
+            parts.push(`Can read logs: Yes`);
+        }
+        if (this.canReadSessionRecordings) {
+            parts.push(`Can read session recordings: Yes`);
+        }
+        return parts.join('\n');
+    }
+}
+
 // To be studied Later!!
 type EnsureExhaustiveMetadata<T extends Record<ConfigType, new (...args: any[]) => ConfigInstance>> = T;
 
@@ -417,6 +467,7 @@ export type ConfigMetadataMap = EnsureExhaustiveMetadata<{
     [ConfigType.GITHUB]: typeof GitHubConfig;
     [ConfigType.JIRA]: typeof JiraConfig;
     [ConfigType.CONFLUENCE]: typeof ConfluenceConfig;
+    [ConfigType.POSTHOG]: typeof PosthogConfig;
 }>;
 
 export const CONFIG_METADATA: ConfigMetadataMap = {
@@ -430,4 +481,5 @@ export const CONFIG_METADATA: ConfigMetadataMap = {
     [ConfigType.GITHUB]: GitHubConfig,
     [ConfigType.JIRA]: JiraConfig,
     [ConfigType.CONFLUENCE]: ConfluenceConfig,
+    [ConfigType.POSTHOG]: PosthogConfig,
 } as const satisfies ConfigMetadataMap;

@@ -4,7 +4,7 @@ import {
     IntegrationType as PrismaIntegrationType, 
     OutputConfigType,
 } from "@prisma/client";
-import { ChannelInputWithConfigs, ChannelOutputWithConfigs } from "../types/prisma";
+import { ChannelInputWithConfigs, ChannelOutputWithConfigs, ChannelKnowledgeBaseWithConfigs } from "../types/prisma";
 import { 
     ConfigInstance, 
     GmailConfig, 
@@ -17,6 +17,7 @@ import {
     GitHubConfig, 
     JiraConfig, 
     ConfluenceConfig,
+    PosthogConfig,
     ConfigType
 } from "../shared/Configs";
 
@@ -220,6 +221,7 @@ export const convertPrismaConfigToConfigInstance = (channelInput: ChannelInputWi
         case InputConfigType.GITHUB:
         case InputConfigType.JIRA:
         case InputConfigType.CONFLUENCE:
+        case InputConfigType.POSTHOG:
             break;
         default:
             throw channelInput.config_type satisfies never;
@@ -308,6 +310,8 @@ export const convertConfigTypeToInputConfigType = (configType: ConfigType): Inpu
             return InputConfigType.JIRA;
         case ConfigType.CONFLUENCE:
             return InputConfigType.CONFLUENCE;
+        case ConfigType.POSTHOG:
+            return InputConfigType.POSTHOG;
         default:
             throw configType satisfies never;
     }
@@ -333,6 +337,8 @@ export const convertInputConfigTypeToConfigType = (inputConfigType: InputConfigT
             return ConfigType.JIRA;
         case InputConfigType.CONFLUENCE:
             return ConfigType.CONFLUENCE;
+        case InputConfigType.POSTHOG:
+            return ConfigType.POSTHOG;
         default:
             throw inputConfigType satisfies never;
     }
@@ -373,4 +379,22 @@ export const convertOutputConfigTypeToIntegrationType = (outputConfigType: Outpu
         default:
             throw outputConfigType satisfies never;
     }
+}
+
+/**
+ * Converts a ChannelKnowledgeBase with configs to a ConfigInstance.
+ */
+export const convertPrismaKnowledgeBaseConfigToConfigInstance = (channelKnowledgeBase: ChannelKnowledgeBaseWithConfigs): ConfigInstance => {
+    const integrationId = channelKnowledgeBase.integration_id;
+
+    if (channelKnowledgeBase.posthog_config) {
+        const posthogIntegration = channelKnowledgeBase.posthog_config;
+        return new PosthogConfig(
+            integrationId,
+            posthogIntegration.can_read_logs || false,
+            posthogIntegration.can_read_session_recordings || false
+        );
+    }
+
+    throw new Error(`Unsupported knowledge base config type: ${channelKnowledgeBase.config_type}`);
 }
