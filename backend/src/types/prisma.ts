@@ -32,6 +32,7 @@ import {
   $Enums,
   output_change_attributions,
   identifiable_refs,
+  automation_jira_configs,
 } from '@prisma/client';
 
 
@@ -139,6 +140,8 @@ export type ChannelConfluenceConfig = automation_confluence_configs; // Alias fo
 
 export type AutomationLinearConfig = automation_linear_configs;
 export type ChannelLinearConfig = automation_linear_configs; // Alias for rebranding
+
+export type ChannelJiraConfig = automation_jira_configs;
 
 export type AutomationWithInputRelations = Prisma.automationsGetPayload<{
   include: {
