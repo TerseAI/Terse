@@ -345,24 +345,19 @@ export class ChannelAgent<
     }
 
     async initializeAgent(): Promise<void> {
-        // Create knowledge base sessions
-        if (this.knowledgeBases.length > 0 && this.channel.knowledge_bases) {
-            this.knowledgeBaseSessions = await Promise.all(
-                this.knowledgeBases.map(async (kb) => {
-                    const channelKnowledgeBase = this.channel.knowledge_bases?.find(
-                        ckb => ckb.config_type === kb.integration
-                    );
-                    if (!channelKnowledgeBase) {
-                        throw new Error(`Knowledge base config not found for ${kb.integration}`);
-                    }
-                    return await kb.createSessionFromConfig(
-                        channelKnowledgeBase.integration_id,
-                        channelKnowledgeBase,
-                        this.session.user
-                    );
-                })
+        this.knowledgeBaseSessions = await Promise.all(this.knowledgeBases.map(kb => {
+            const channelKnowledgeBase = this.channel.knowledge_bases?.find(
+                ckb => ckb.config_type === kb.integration
             );
-        }
+            if (!channelKnowledgeBase) {
+                throw new Error(`Knowledge base config not found for ${kb.integration}`);
+            }
+            return kb.createSessionFromConfig(
+                channelKnowledgeBase.integration_id,
+                channelKnowledgeBase,
+                this.session.user
+            );
+        }));
 
         const deps: SystemPromptBuilderDependencies<T, TConfig, K, KBConfig> = {
             session: this.session,

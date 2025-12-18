@@ -3,7 +3,7 @@ import { db } from '../../prismaClient';
 import { Channel, ChannelWithRelations, User } from '../../types/prisma';
 import { InputEvent } from '../../integrations/abstract/InputEvent';
 import { OutputFactory } from '../../outputs/abstract/OutputFactory';
-import { ChannelAgent } from './ChannelAgent';
+import { ChannelAgent, SessionWithTracking } from './ChannelAgent';
 import { filterEvent } from './EventFilter';
 import { createRunRecord, finalizeRunStatus, markRunFailed, markRunProcessed, markRunSkipped, appendRunAction } from './runHistory';
 import { ApprovalResult } from './ChannelAgent';
@@ -21,13 +21,13 @@ import logger from '../../logger';
 // The job of this class is to take an Input Event, and check if it's a match for an Channel.
 // It will then create a Session, and summon the Channel Agent with the create user data.
 
-export class ProcessorResult<T extends Session = Session> {
+export class ProcessorResult<T extends Session = SessionWithTracking<Session>> {
     success: boolean;
     message: string;
     channel: Channel | null;
-    approvalResult?: ApprovalResult<T, Agent<T, AgentOutputType>> | null;
+    approvalResult?: ApprovalResult<SessionWithTracking<T>, Agent<SessionWithTracking<T>, AgentOutputType>> | null;
 
-    constructor(success: boolean, message: string, channel: Channel | null, approvalResult?: ApprovalResult<T, Agent<T, AgentOutputType>> | null) {
+    constructor(success: boolean, message: string, channel: Channel | null, approvalResult?: ApprovalResult<SessionWithTracking<T>, Agent<SessionWithTracking<T>, AgentOutputType>> | null) {
         this.success = success;
         this.message = message;
         this.channel = channel;
@@ -70,7 +70,7 @@ export class EventProcessor {
                     include: getKnowledgeBaseConfigInclude()
                 }
             }
-        }) as ChannelWithRelations[];
+        })
 
         if (channels.length === 0) {
             return [new ProcessorResult(false, "No channels found for this user", null)];
@@ -225,13 +225,13 @@ export class EventProcessor {
         channelAgent.setInputEvent(this.inputEvent);
 
         // Run the channel agent with streaming parameters
-        let result: ApprovalResult<Session, Agent<Session, AgentOutputType>>;
+        let result: ApprovalResult<SessionWithTracking<Session>, Agent<SessionWithTracking<Session>, AgentOutputType>>;
         try {
             result = await channelAgent.run({
                 runId,
                 userId: this.user.id,
                 channelId: channel.id,
-            }) as unknown as ApprovalResult<Session, Agent<Session, AgentOutputType>>;
+            });
         } catch (error) {
             // Log the error and update run history
             const errorMessage = error instanceof Error ? error.message : 'Unknown error';
@@ -253,18 +253,18 @@ export class EventProcessor {
             return persistRunResult(runId, result.result, session, channel, result);
         } else {
             logger.info(`Channel "${channel.name}" awaiting approval:`);
-            return new ProcessorResult(false, "Channel awaiting approval", channel, result);
+            return new ProcessorResult<SessionWithTracking<Session>>(false, "Channel awaiting approval", channel, result);
         }
     }
 }
 
 async function persistRunResult<T extends Session>(
     runId: string,
-    result: RunResult<T, Agent<T, AgentOutputType>>,
+    result: RunResult<SessionWithTracking<T>, Agent<SessionWithTracking<T>, AgentOutputType>>,
     session: T,
     channel: Channel,
-    approvalResult?: ApprovalResult<T, Agent<T, AgentOutputType>> | null
-): Promise<ProcessorResult<T>> {
+    approvalResult?: ApprovalResult<SessionWithTracking<T>, Agent<SessionWithTracking<T>, AgentOutputType>> | null
+): Promise<ProcessorResult<SessionWithTracking<T>>> {
     // Finalize run status
     const hasFinalOutput = Boolean(result.finalOutput);
     try {
@@ -276,7 +276,7 @@ async function persistRunResult<T extends Session>(
     }
 
     const finalOutput = typeof result.finalOutput === 'string' ? result.finalOutput : '';
-    return new ProcessorResult<T>(
+    return new ProcessorResult<SessionWithTracking<T>>(
         hasFinalOutput,
         finalOutput,
         channel,

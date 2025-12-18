@@ -16,9 +16,6 @@ export interface ToolboxEntry {
     integration: IntegrationType;
 }
 
-
-
-
 export abstract class Output<T extends Session, TConfig extends ConfigInstance> {
     integration: OutputConfigType;
     readonly toolbox: readonly ToolboxEntry[];

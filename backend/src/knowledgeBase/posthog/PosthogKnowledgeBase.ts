@@ -64,7 +64,7 @@ export class PosthogKnowledgeBase extends KnowledgeBase<PosthogKnowledgeBaseSess
         }
 
         const posthogConfig = channelKnowledgeBase.posthog_config;
-        
+
         // Create the PostHog config instance
         const config = new PosthogConfig(
             integrationId,
@@ -90,6 +90,22 @@ export class PosthogKnowledgeBase extends KnowledgeBase<PosthogKnowledgeBaseSess
         };
 
         return session;
+    }
+
+    async addKnowledgeBaseToChannel(tx: PrismaTransaction, channelKnowledgeBaseId: string, knowledgeBase: PosthogConfig): Promise<void> {
+        if (!knowledgeBase.projectId) {
+            throw new Error('Posthog config requires projectId');
+        }
+        // Use unchecked input to bypass relation checks
+        await tx.automation_posthog_configs.create({
+            data: {
+                automation_knowledge_base_id: channelKnowledgeBaseId,
+                project_id: knowledgeBase.projectId,
+                project_name: knowledgeBase.projectName || null,
+                can_read_logs: knowledgeBase.canReadLogs ?? false,
+                can_read_session_recordings: knowledgeBase.canReadSessionRecordings ?? false,
+            }
+        });
     }
 
     /**
