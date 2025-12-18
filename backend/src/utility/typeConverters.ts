@@ -3,6 +3,7 @@ import {
     InputConfigType, 
     IntegrationType as PrismaIntegrationType, 
     OutputConfigType,
+    KnowledgeBaseConfigType,
 } from "@prisma/client";
 import { ChannelInputWithConfigs, ChannelOutputWithConfigs, ChannelKnowledgeBaseWithConfigs } from "../types/prisma";
 import { 
@@ -378,6 +379,19 @@ export const convertOutputConfigTypeToIntegrationType = (outputConfigType: Outpu
             return IntegrationType.LINEAR;
         default:
             throw outputConfigType satisfies never;
+    }
+}
+
+/**
+ * Converts ConfigType to KnowledgeBaseConfigType.
+ * Only POSTHOG is currently supported as a knowledge base config type.
+ */
+export const convertConfigTypeToKnowledgeBaseConfigType = (configType: ConfigType): KnowledgeBaseConfigType => {
+    switch (configType) {
+        case ConfigType.POSTHOG:
+            return KnowledgeBaseConfigType.POSTHOG;
+        default:
+            throw new Error(`ConfigType ${configType} is not a valid knowledge base config type. Supported knowledge base config types are: POSTHOG.`);
     }
 }
 

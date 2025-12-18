@@ -2,6 +2,9 @@
 CREATE TYPE "KnowledgeBaseConfigType" AS ENUM ('POSTHOG');
 
 -- AlterEnum
+ALTER TYPE "InputConfigType" ADD VALUE 'POSTHOG';
+
+-- AlterEnum
 ALTER TYPE "IntegrationType" ADD VALUE 'POSTHOG';
 
 -- CreateTable
@@ -9,6 +12,8 @@ CREATE TABLE "posthog_integrations" (
     "id" TEXT NOT NULL,
     "user_id" TEXT NOT NULL,
     "api_key" TEXT NOT NULL,
+    "user_email" TEXT,
+    "org_name" TEXT,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMP(3) NOT NULL,
 
@@ -31,6 +36,8 @@ CREATE TABLE "automation_knowledge_bases" (
 CREATE TABLE "automation_posthog_configs" (
     "id" TEXT NOT NULL,
     "automation_knowledge_base_id" TEXT NOT NULL,
+    "can_read_logs" BOOLEAN NOT NULL DEFAULT false,
+    "can_read_session_recordings" BOOLEAN NOT NULL DEFAULT false,
 
     CONSTRAINT "automation_posthog_configs_pkey" PRIMARY KEY ("id")
 );
@@ -39,7 +46,7 @@ CREATE TABLE "automation_posthog_configs" (
 CREATE INDEX "posthog_integrations_user_id_idx" ON "posthog_integrations"("user_id");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "automation_knowledge_bases_automation_id_key" ON "automation_knowledge_bases"("automation_id");
+CREATE INDEX "automation_knowledge_bases_automation_id_idx" ON "automation_knowledge_bases"("automation_id");
 
 -- CreateIndex
 CREATE INDEX "automation_knowledge_bases_config_type_integration_id_idx" ON "automation_knowledge_bases"("config_type", "integration_id");

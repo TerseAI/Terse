@@ -280,24 +280,6 @@ export default function ChannelSetupTab({
                         </Button>
                         <Button
                             type="button"
-                            variant={activeSection === 'knowledgeBase' ? "secondary" : "ghost"}
-                            size="sm"
-                            className={cn("w-auto md:w-full justify-start text-base", activeSection === 'knowledgeBase' && "font-medium")}
-                            onClick={() => setActiveSection('knowledgeBase')}
-                            aria-current={activeSection === 'knowledgeBase' ? 'page' : undefined}
-                        >
-                            <span className="flex items-center gap-2 w-full">
-                                <Database className="size-4" />
-                                <span>Knowledge Base</span>
-                                {knowledgeBaseIncomplete && knowledgeBases.length > 0 && (
-                                    <div className="ml-auto">
-                                        <WarningIcon content="Complete knowledge base configuration to remove this warning." />
-                                    </div>
-                                )}
-                            </span>
-                        </Button>
-                        <Button
-                            type="button"
                             variant={activeSection === 'prompt' ? "secondary" : "ghost"}
                             size="sm"
                             className={cn("w-auto md:w-full justify-start text-base", activeSection === 'prompt' && "font-medium")}
@@ -328,6 +310,24 @@ export default function ChannelSetupTab({
                                 {skillsIncomplete && (
                                     <div className="ml-auto">
                                         <WarningIcon content="Select a skill destination and complete its configuration to remove this warning." />
+                                    </div>
+                                )}
+                            </span>
+                        </Button>
+                        <Button
+                            type="button"
+                            variant={activeSection === 'knowledgeBase' ? "secondary" : "ghost"}
+                            size="sm"
+                            className={cn("w-auto md:w-full justify-start text-base", activeSection === 'knowledgeBase' && "font-medium")}
+                            onClick={() => setActiveSection('knowledgeBase')}
+                            aria-current={activeSection === 'knowledgeBase' ? 'page' : undefined}
+                        >
+                            <span className="flex items-center gap-2 w-full">
+                                <Database className="size-4" />
+                                <span>Knowledge Base</span>
+                                {knowledgeBaseIncomplete && knowledgeBases.length > 0 && (
+                                    <div className="ml-auto">
+                                        <WarningIcon content="Complete knowledge base configuration to remove this warning." />
                                     </div>
                                 )}
                             </span>
@@ -386,7 +386,7 @@ export default function ChannelSetupTab({
                             <div className="max-w-3xl flex flex-col gap-4">
                                 <div className="flex flex-row gap-2 items-center mb-2">
                                     <SectionHeader>Alerts</SectionHeader>
-                                    <SectionInfoIcon 
+                                    <SectionInfoIcon
                                         isIncomplete={false}
                                         alertMessage=""
                                         infoMessage="Configure approval requirements and notification settings for when the AI takes actions on your behalf."
@@ -403,16 +403,16 @@ export default function ChannelSetupTab({
     )
 }
 
-function SectionInfoIcon({ 
-    isIncomplete, 
-    alertMessage, 
-    infoMessage 
-}: { 
-    isIncomplete: boolean; 
-    alertMessage: string; 
+function SectionInfoIcon({
+    isIncomplete,
+    alertMessage,
+    infoMessage
+}: {
+    isIncomplete: boolean;
+    alertMessage: string;
     infoMessage: string;
 }) {
-    const tooltipContent = isIncomplete 
+    const tooltipContent = isIncomplete
         ? `${alertMessage}\n\n${infoMessage}`
         : infoMessage;
 
@@ -464,7 +464,7 @@ function InputLayout({ inputs, setInputs, isIncomplete }: { inputs: TransientCha
         <div className="flex flex-col gap-3">
             <div className="flex flex-row gap-2 items-center mb-2">
                 <SectionHeader>Triggers</SectionHeader>
-                <SectionInfoIcon 
+                <SectionInfoIcon
                     isIncomplete={isIncomplete}
                     alertMessage="Add at least one trigger integration and complete its configuration to remove this warning."
                     infoMessage="Triggers define where events come from. Add integrations like Slack, GitHub, or Gmail to monitor for new activity."
@@ -604,7 +604,7 @@ function OutputLayout({ output, setOutput, isIncomplete }: { output: TransientCh
             <div className="flex flex-row gap-4 items-center flex-wrap">
                 <div className="flex items-center gap-2">
                     <SectionHeader>{skillName}</SectionHeader>
-                    <SectionInfoIcon 
+                    <SectionInfoIcon
                         isIncomplete={isIncomplete}
                         alertMessage="Select a skill destination and complete its configuration to remove this warning."
                         infoMessage="Skills define where the AI will continuously update content. Choose a destination like Notion, Linear, or Slack where updates will be posted."
@@ -626,7 +626,7 @@ function OutputLayout({ output, setOutput, isIncomplete }: { output: TransientCh
         headerContent = (
             <div className="flex items-center gap-2">
                 <SectionHeader>Skills</SectionHeader>
-                <SectionInfoIcon 
+                <SectionInfoIcon
                     isIncomplete={isIncomplete}
                     alertMessage="Select a skill destination and complete its configuration to remove this warning."
                     infoMessage="Skills define where the AI will continuously update content. Choose a destination like Notion, Linear, or Slack where updates will be posted."
@@ -652,10 +652,10 @@ function KnowledgeBaseLayout({ knowledgeBases, setKnowledgeBases, isIncomplete }
 
     const handleSelectKnowledgeBase = (configType: ConfigType) => {
         const newKnowledgeBaseId = uuidv4();
-        const newKnowledgeBase: TransientKnowledgeBase = { 
-            id: newKnowledgeBaseId, 
-            config: undefined, 
-            configType: configType 
+        const newKnowledgeBase: TransientKnowledgeBase = {
+            id: newKnowledgeBaseId,
+            config: undefined,
+            configType: configType
         };
         const newKnowledgeBases = [...knowledgeBases, newKnowledgeBase];
         setKnowledgeBases(newKnowledgeBases);
@@ -670,10 +670,10 @@ function KnowledgeBaseLayout({ knowledgeBases, setKnowledgeBases, isIncomplete }
         <div className="flex flex-col gap-3">
             <div className="flex flex-row gap-2 items-center mb-2">
                 <SectionHeader>Knowledge Base</SectionHeader>
-                <SectionInfoIcon 
+                <SectionInfoIcon
                     isIncomplete={isIncomplete}
                     alertMessage="Complete knowledge base configuration to remove this warning."
-                    infoMessage="Knowledge bases provide context and data for your automation. Add integrations like PostHog to access logs and session recordings."
+                    infoMessage="Knowledge bases provide context and data for your automation."
                 />
             </div>
             <div className="grid grid-cols-[repeat(auto-fill,minmax(10rem,1fr))] gap-4 items-stretch">

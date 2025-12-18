@@ -205,7 +205,7 @@ export type ChannelWithNotificationSettingsRelations = AutomationWithNotificatio
 
 export type AutomationWithKnowledgeBaseRelations = Prisma.automationsGetPayload<{
   include: {
-    knowledge_base: {
+    knowledge_bases: {
       include: {
         posthog_config: true;
       };

@@ -368,13 +368,13 @@ model figma_comment_context {
 }
 
 model posthog_integrations {
-  id             String   @id @default(cuid())
-  user_id        String
-  api_key        String
-  user_email     String?
-  org_name       String?
-  created_at     DateTime @default(now())
-  updated_at     DateTime @updatedAt
+  id         String   @id @default(cuid())
+  user_id    String
+  api_key    String
+  user_email String?
+  org_name   String?
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
 
   user users @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
@@ -471,7 +471,7 @@ model automations {
   directiveRecords           directive_records[]
   notification_settings      automation_notification_settings?
   output_change_attributions output_change_attributions[]
-  knowledge_base             automation_knowledge_bases?
+  knowledge_bases            automation_knowledge_bases[]
 
   @@index([user_id])
   @@index([is_active])
@@ -540,25 +540,26 @@ model automation_outputs {
 }
 
 model automation_knowledge_bases {
-  id             String           @id @default(cuid())
-  automation_id  String           @unique
+  id             String                  @id @default(cuid())
+  automation_id  String
   config_type    KnowledgeBaseConfigType
   integration_id String
-  created_at     DateTime         @default(now())
-  updated_at     DateTime         @updatedAt
+  created_at     DateTime                @default(now())
+  updated_at     DateTime                @updatedAt
 
   automation automations @relation(fields: [automation_id], references: [id], onDelete: Cascade)
 
   posthog_config automation_posthog_configs?
 
+  @@index([automation_id])
   @@index([config_type, integration_id])
 }
 
 model automation_posthog_configs {
-  id                   String  @id @default(cuid())
-  automation_knowledge_base_id String @unique // FK to automation_knowledge_bases
-  can_read_logs        Boolean @default(false)
-  can_read_session_recordings Boolean @default(false)
+  id                           String  @id @default(cuid())
+  automation_knowledge_base_id String  @unique // FK to automation_knowledge_bases
+  can_read_logs                Boolean @default(false)
+  can_read_session_recordings  Boolean @default(false)
 
   automation_knowledge_base automation_knowledge_bases @relation(fields: [automation_knowledge_base_id], references: [id], onDelete: Cascade)
 }
