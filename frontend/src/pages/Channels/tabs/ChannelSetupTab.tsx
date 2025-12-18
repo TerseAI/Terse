@@ -171,7 +171,6 @@ export default function ChannelSetupTab({
     notificationSettings,
     setNotificationSettings,
     mutate,
-    updatedAt,
 }: ChannelSetupTabProps) {
     const { totalCount } = useChannelCount();
     const defaultName = getDefaultChannelName(totalCount);
@@ -213,7 +212,7 @@ export default function ChannelSetupTab({
 
     return (
         <div className="flex flex-col h-full min-h-0 gap-0">
-            <div className="px-4 py-6">
+            <div className="py-6">
                 <div className="grid grid-cols-3 gap-4 items-center">
                     <div className="flex justify-start min-w-0 pl-2">
                         <SaveChannelButton
@@ -233,15 +232,10 @@ export default function ChannelSetupTab({
                     <div className="flex justify-center items-center min-w-0">
                         <EditableTextField className="text-center max-w-fit" value={name || ''} placeholder={defaultName} onSave={(value) => setName(value)} />
                     </div>
-                    <div className="flex justify-end min-w-0 items-center gap-3">
+                    <div className="flex justify-end min-w-0 items-center gap-3 px-2">
                         {isComplete && channelForAppsList ? (
                             <>
                                 <AppsList channel={channelForAppsList} />
-                                {updatedAt && (
-                                    <span className="text-xs text-muted-foreground italic">
-                                        Last saved {new Date(updatedAt).toLocaleDateString()} {new Date(updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                    </span>
-                                )}
                             </>
                         ) : (
                             <div className="text-sm text-muted-foreground text-right">
@@ -253,8 +247,8 @@ export default function ChannelSetupTab({
             </div>
 
             <div className="flex-1 min-h-0 flex flex-col md:flex-row gap-0 overflow-hidden relative">
-                <nav className="shrink-0 md:w-56 h-full relative md:-mt-2 z-10 border-t border-r border-border">
-                    <div className="flex md:flex-col gap-4 md:pr-4 overflow-x-auto md:overflow-visible p-4 p-2 h-full">
+                <nav className="shrink-0 md:w-46 h-full relative md:-mt-2 z-10 border-t border-r border-border">
+                    <div className="flex md:flex-col gap-4 md:pr-4 overflow-x-auto md:overflow-visible pt-4 h-full">
                         <Button
                             type="button"
                             variant={activeSection === 'triggers' ? "secondary" : "ghost"}

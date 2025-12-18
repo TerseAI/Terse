@@ -1,7 +1,6 @@
 import { Hash, MessageSquare } from "lucide-react";
 import { Card, CardContent } from "../ui/card";
-import { IntegrationType } from "@/shared/Integrations"
-import { SlackChannel } from "@/shared/types";
+import { IntegrationType, SlackIntegration } from "@/shared/Integrations"
 import { IntegrationCardHeader } from "./helpers/IntegrationCardHeader";
 import { IntegrationCardFooter } from "./helpers/IntegrationCardFooter";
 import { IntegrationItem } from "./helpers/IntegrationItem";
@@ -19,9 +18,6 @@ function SlackIntegrationCard({ className, isActive = true }: { className?: stri
     const [isBotUser, setIsBotUser] = useState(true);
     const [isConnecting, setIsConnecting] = useState(false);
     const { integrations, isLoading: integrationsLoading } = useSlackIntegrations();
-    const firstIntegrationId = integrations[0]?.id;
-    const { channels, isLoading: channelsLoading } = useSlackChannels(firstIntegrationId || null);
-
     const handleConnectClick = () => {
         setShowConnectionOptions(true);
     };
@@ -34,7 +30,7 @@ function SlackIntegrationCard({ className, isActive = true }: { className?: stri
         setIsConnecting(true);
         try {
             const installationDetails = await BackendProvider.getIntegrationInstallationDetails(IntegrationType.SLACK, { isBotUser });
-            
+
             if (installationDetails?.oauthUrl) {
                 window.open(installationDetails.oauthUrl, 'oauth-popup', 'width=600,height=700');
                 // Return to previous page after opening OAuth popup
@@ -62,17 +58,16 @@ function SlackIntegrationCard({ className, isActive = true }: { className?: stri
                         isConnecting={isConnecting}
                     />
                 ) : (
-                    <SlackCardContent 
+                    <SlackCardContent
                         integrations={integrations}
-                        channels={channels}
-                        isLoading={integrationsLoading || channelsLoading} 
+                        isLoading={integrationsLoading}
                     />
                 )}
             </CardContent>
             {!showConnectionOptions && (
-                <IntegrationCardFooter 
-                    connect={handleConnectClick} 
-                    isConnecting={isConnecting} 
+                <IntegrationCardFooter
+                    connect={handleConnectClick}
+                    isConnecting={isConnecting}
                     buttonText="Connect Another Slack"
                 />
             )}
@@ -80,13 +75,11 @@ function SlackIntegrationCard({ className, isActive = true }: { className?: stri
     )
 }
 
-function SlackCardContent({ 
+function SlackCardContent({
     integrations,
-    channels,
-    isLoading 
-}: { 
-    integrations: Array<{ id: string; teamId?: string; teamName?: string; isBotUser?: boolean }>;
-    channels: SlackChannel[];
+    isLoading
+}: {
+    integrations: SlackIntegration[];
     isLoading: boolean;
 }) {
     if (isLoading && integrations.length === 0) {
@@ -108,47 +101,53 @@ function SlackCardContent({
         );
     }
 
-    const channelCount = channels.length;
-    const availableChannels = channels.filter(ch => !ch.isArchived).length;
-
     return (
         <div className="space-y-2">
             {integrations.map((integration) => (
-                <IntegrationItem
-                    key={integration.id}
-                    icon={<MessageSquare className="w-4 h-4" />}
-                    title={`${integration.teamName || 'Unknown Workspace'}${integration.isBotUser === false ? ' - User' : ' - Bot'}`}
-                    description={
-                        <span className="flex items-center gap-2">
-                            <Hash className="size-3" />
-                            <ChannelsCount 
-                                channelCount={availableChannels} 
-                                totalChannels={channelCount}
-                                isLoading={isLoading} 
-                            />
-                        </span>
-                    }
-                />
+                <SlackIntegrationItem integration={integration} />
             ))}
         </div>
     );
 }
 
-function ChannelsCount({ 
-    channelCount, 
+function SlackIntegrationItem({ integration }: { integration: SlackIntegration }) {
+    const { channels, isLoading: channelsLoading } = useSlackChannels(integration.id);
+    const channelCount = channels.length;
+    const availableChannels = channels.filter(ch => !ch.isArchived).length;
+    return (
+        <IntegrationItem
+            key={integration.id}
+            icon={<MessageSquare className="w-4 h-4" />}
+            title={`${integration.teamName || 'Unknown Workspace'}${integration.isBotUser === false ? ' - User' : ' - Bot'}`}
+            description={
+                <span className="flex items-center gap-2">
+                    <Hash className="size-3" />
+                    <ChannelsCount
+                        channelCount={availableChannels}
+                        totalChannels={channelCount}
+                        isLoading={channelsLoading}
+                    />
+                </span>
+            }
+        />
+    )
+}
+
+function ChannelsCount({
+    channelCount,
     totalChannels,
-    isLoading 
-}: { 
+    isLoading
+}: {
     channelCount: number;
     totalChannels: number;
     isLoading: boolean;
 }) {
-    const additionalInfo = totalChannels > channelCount 
+    const additionalInfo = totalChannels > channelCount
         ? `(${totalChannels - channelCount} archived)`
         : undefined;
 
     return (
-        <CountDisplay 
+        <CountDisplay
             count={channelCount}
             singular="channel available"
             plural="channels available"

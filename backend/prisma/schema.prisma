@@ -789,6 +789,7 @@ enum OutputConfigType {
   NOTION_DATABASE
   CONFLUENCE
   LINEAR_TICKET
+  JIRA_TICKET
 }
 
 enum KnowledgeBaseConfigType {
