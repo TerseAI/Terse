@@ -207,7 +207,7 @@ export default function ChannelSetupTab({
 
     return (
         <div className="flex flex-col h-full min-h-0 gap-0">
-            <div className="px-4 py-6">
+            <div className="py-6">
                 <div className="grid grid-cols-3 gap-4 items-center">
                     <div className="flex justify-start min-w-0 pl-2">
                         <SaveChannelButton
@@ -226,7 +226,7 @@ export default function ChannelSetupTab({
                     <div className="flex justify-center items-center min-w-0">
                         <EditableTextField className="text-center max-w-fit" value={name || ''} placeholder={defaultName} onSave={(value) => setName(value)} />
                     </div>
-                    <div className="flex justify-end min-w-0 items-center gap-3">
+                    <div className="flex justify-end min-w-0 items-center gap-3 px-2">
                         {isComplete && channelForAppsList ? (
                             <>
                                 <AppsList channel={channelForAppsList} />
@@ -246,8 +246,8 @@ export default function ChannelSetupTab({
             </div>
 
             <div className="flex-1 min-h-0 flex flex-col md:flex-row gap-0 overflow-hidden relative">
-                <nav className="shrink-0 md:w-56 h-full relative md:-mt-2 z-10 border-t border-r border-border">
-                    <div className="flex md:flex-col gap-4 md:pr-4 overflow-x-auto md:overflow-visible p-4 p-2 h-full">
+                <nav className="shrink-0 md:w-46 h-full relative md:-mt-2 z-10 border-t border-r border-border">
+                    <div className="flex md:flex-col gap-4 md:pr-4 overflow-x-auto md:overflow-visible pt-4 h-full">
                         <Button
                             type="button"
                             variant={activeSection === 'triggers' ? "secondary" : "ghost"}
@@ -350,7 +350,7 @@ export default function ChannelSetupTab({
                             <div className="max-w-3xl flex flex-col gap-4">
                                 <div className="flex flex-row gap-2 items-center mb-2">
                                     <SectionHeader>Alerts</SectionHeader>
-                                    <SectionInfoIcon 
+                                    <SectionInfoIcon
                                         isIncomplete={false}
                                         alertMessage=""
                                         infoMessage="Configure approval requirements and notification settings for when the AI takes actions on your behalf."
@@ -367,16 +367,16 @@ export default function ChannelSetupTab({
     )
 }
 
-function SectionInfoIcon({ 
-    isIncomplete, 
-    alertMessage, 
-    infoMessage 
-}: { 
-    isIncomplete: boolean; 
-    alertMessage: string; 
+function SectionInfoIcon({
+    isIncomplete,
+    alertMessage,
+    infoMessage
+}: {
+    isIncomplete: boolean;
+    alertMessage: string;
     infoMessage: string;
 }) {
-    const tooltipContent = isIncomplete 
+    const tooltipContent = isIncomplete
         ? `${alertMessage}\n\n${infoMessage}`
         : infoMessage;
 
@@ -428,7 +428,7 @@ function InputLayout({ inputs, setInputs, isIncomplete }: { inputs: TransientCha
         <div className="flex flex-col gap-3">
             <div className="flex flex-row gap-2 items-center mb-2">
                 <SectionHeader>Triggers</SectionHeader>
-                <SectionInfoIcon 
+                <SectionInfoIcon
                     isIncomplete={isIncomplete}
                     alertMessage="Add at least one trigger integration and complete its configuration to remove this warning."
                     infoMessage="Triggers define where events come from. Add integrations like Slack, GitHub, or Gmail to monitor for new activity."
@@ -568,7 +568,7 @@ function OutputLayout({ output, setOutput, isIncomplete }: { output: TransientCh
             <div className="flex flex-row gap-4 items-center flex-wrap">
                 <div className="flex items-center gap-2">
                     <SectionHeader>{skillName}</SectionHeader>
-                    <SectionInfoIcon 
+                    <SectionInfoIcon
                         isIncomplete={isIncomplete}
                         alertMessage="Select a skill destination and complete its configuration to remove this warning."
                         infoMessage="Skills define where the AI will continuously update content. Choose a destination like Notion, Linear, or Slack where updates will be posted."
@@ -590,7 +590,7 @@ function OutputLayout({ output, setOutput, isIncomplete }: { output: TransientCh
         headerContent = (
             <div className="flex items-center gap-2">
                 <SectionHeader>Skills</SectionHeader>
-                <SectionInfoIcon 
+                <SectionInfoIcon
                     isIncomplete={isIncomplete}
                     alertMessage="Select a skill destination and complete its configuration to remove this warning."
                     infoMessage="Skills define where the AI will continuously update content. Choose a destination like Notion, Linear, or Slack where updates will be posted."
