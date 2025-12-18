@@ -118,34 +118,40 @@ JQL EXAMPLES:
                 finalJql = `${finalJql} ORDER BY updated DESC`;
             }
 
-            // Search for issues using REST API
+            // Build query parameters for the new JQL enhanced search endpoint
+            const fields = [
+                'summary',
+                'description',
+                'status',
+                'assignee',
+                'priority',
+                'labels',
+                'duedate',
+                'project',
+                'created',
+                'updated',
+                'issuetype',
+            ];
+
+            const queryParams = new URLSearchParams({
+                jql: finalJql,
+                maxResults: (limit ?? 50).toString(),
+                fields: fields.join(','),
+            });
+
+            // Note: The new API uses nextPageToken for pagination instead of startAt.
+            // If startAt is provided, we'll note it but the API doesn't support it directly.
+            // For proper pagination with the new API, use nextPageToken from previous responses.
+
+            // Search for issues using the new JQL enhanced search endpoint
             const response = await fetch(
-                `https://api.atlassian.com/ex/jira/${cloudId}/rest/api/3/search`,
+                `https://api.atlassian.com/ex/jira/${cloudId}/rest/api/3/search/jql?${queryParams.toString()}`,
                 {
-                    method: "POST",
+                    method: "GET",
                     headers: {
                         "Authorization": `Bearer ${accessToken}`,
                         "Accept": "application/json",
-                        "Content-Type": "application/json",
                     },
-                    body: JSON.stringify({
-                        jql: finalJql,
-                        startAt: startAt,
-                        maxResults: limit,
-                        fields: [
-                            'summary',
-                            'description',
-                            'status',
-                            'assignee',
-                            'priority',
-                            'labels',
-                            'duedate',
-                            'project',
-                            'created',
-                            'updated',
-                            'issuetype',
-                        ],
-                    }),
                 }
             );
 
@@ -157,8 +163,16 @@ JQL EXAMPLES:
 
             const searchResults = await response.json();
 
+            // The new API returns SearchAndReconcileResults with isLast and issues
+            // Handle both new and old response formats for compatibility
+            const issuesArray = searchResults.issues || [];
+            const isLast = searchResults.isLast ?? true;
+            const total = searchResults.total ?? issuesArray.length;
+            const startAtResult = searchResults.startAt ?? (startAt ?? 0);
+            const maxResultsResult = searchResults.maxResults ?? (limit ?? 50);
+
             // Convert issues to a consistent format
-            const issues = (searchResults.issues || []).map((issue: any) => {
+            const issues = issuesArray.map((issue: any) => {
                 // Convert REST API URL to browse URL
                 let issueUrl: string | undefined;
                 if (issue.self) {
@@ -209,7 +223,7 @@ JQL EXAMPLES:
                 action: 'Searched tickets',
                 integration: IntegrationType.ATLASSIAN,
                 target: 'Jira workspace',
-                details: `Found ${issues.length} issue(s) matching search criteria${searchResults.total > issues.length ? ` (${searchResults.total} total)` : ''}`,
+                details: `Found ${issues.length} issue(s) matching search criteria${total > issues.length ? ` (${total} total)` : ''}`,
                 type: RunHistoryActionType.read,
             });
 
@@ -217,9 +231,11 @@ JQL EXAMPLES:
                 success: true,
                 issues: issues,
                 count: issues.length,
-                total: searchResults.total || issues.length,
-                startAt: searchResults.startAt || startAt,
-                maxResults: searchResults.maxResults || limit,
+                total: total,
+                startAt: startAtResult,
+                maxResults: maxResultsResult,
+                isLast: isLast,
+                nextPageToken: searchResults.nextPageToken || undefined,
                 jql: finalJql,
             };
         } catch (error: unknown) {

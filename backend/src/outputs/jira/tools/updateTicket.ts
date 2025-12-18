@@ -116,7 +116,7 @@ COMMON UPDATE OPERATIONS:
 - Assign issue: Set assignee to assign to a user by email
 - Update priority: Set priority (number, typically 1-5)
 - Add/remove labels: Set labels to replace all labels, or use the labels array
-- Set due date: Use dueDate in format "YYYY-MM-DD"
+- Set due date: Use dueDate in format "yyyy-MM-dd" (e.g., "2024-12-31"). Note: Jira requires the due date format to be yyyy-MM-dd.
 - Update description: Set description (supports plain text or markdown format)`,
     parameters: z.object({
         issueKey: z.string().describe('The key of the Jira issue to update (e.g., "PROJ-123"). This is required.'),
@@ -128,7 +128,7 @@ COMMON UPDATE OPERATIONS:
         }), z.null()]).optional().describe('The assignee of the ticket. Set to null to unassign.'),
         priority: z.union([z.number(), z.null()]).optional().describe('The priority of the ticket (number, typically 1-5).'),
         labels: z.union([z.array(z.string()), z.null()]).optional().describe('The labels for the ticket (array of label names). This replaces all existing labels.'),
-        dueDate: z.string().nullable().optional().describe('The due date for the ticket in format "YYYY-MM-DD". Set to null to remove due date.'),
+        dueDate: z.string().nullable().optional().describe('The due date for the ticket in format "yyyy-MM-dd" (e.g., "2024-12-31"). Note: Jira requires the due date format to be yyyy-MM-dd. Set to null to remove due date.'),
     }),
     needsApproval,
     execute: async ({ 
@@ -157,17 +157,22 @@ COMMON UPDATE OPERATIONS:
             throw new Error("No valid access token found for Jira integration");
         }
 
-        // Get cloud_id from the integration
+        // Get cloud_id and base_url from the integration
         const integration = await db().atlassian_integrations.findUnique({
             where: { id: integrationId },
-            select: { cloud_id: true },
+            select: { cloud_id: true, base_url: true },
         });
 
         if (!integration || !integration.cloud_id) {
             throw new Error("No cloud_id found in Jira integration");
         }
 
+        if (!integration.base_url) {
+            throw new Error("No base_url found in Jira integration");
+        }
+
         const cloudId = integration.cloud_id;
+        const baseUrl = integration.base_url;
 
         try {
             // Build the update fields object
@@ -217,8 +222,11 @@ COMMON UPDATE OPERATIONS:
             if (dueDate !== undefined) {
                 if (dueDate === null) {
                     fields.duedate = null;
-                } else {
+                } else if (dueDate.trim() !== '' && /^\d{4}-\d{2}-\d{2}$/.test(dueDate)) {
+                    // Only set due date if it's not empty and matches yyyy-MM-dd format
                     fields.duedate = dueDate;
+                } else {
+                    logger.warn(`Invalid due date format: "${dueDate}". Expected format: yyyy-MM-dd. Skipping due date update.`);
                 }
             }
 
@@ -308,17 +316,8 @@ COMMON UPDATE OPERATIONS:
 
             const updatedIssue = await issueResponse.json();
 
-            // Convert REST API URL to browse URL
-            let issueUrl: string | undefined;
-            if (updatedIssue.self) {
-                try {
-                    const urlObj = new URL(updatedIssue.self);
-                    const baseUrl = `${urlObj.protocol}//${urlObj.hostname}`;
-                    issueUrl = `${baseUrl}/browse/${issueKey}`;
-                } catch {
-                    issueUrl = updatedIssue.self.replace(/\/rest\/api\/[23]\/issue\//, '/browse/');
-                }
-            }
+            // Construct browse URL using the base_url from integration
+            const issueUrl = `${baseUrl}/browse/${issueKey}`;
 
             // Extract issue data
             const issueData = {

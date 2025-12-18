@@ -90,7 +90,7 @@ OPTIONAL FIELDS:
 - assignee: The assignee email address
 - priority: The priority level (number, typically 1-5)
 - labels: Array of label names to associate with the issue
-- dueDate: The due date in format "YYYY-MM-DD"
+- dueDate: The due date in format "yyyy-MM-dd" (e.g., "2024-12-31"). Note: Jira requires the due date format to be yyyy-MM-dd.
 
 BEFORE USING THIS TOOL:
 - Ensure you have the correct projectKey for the project where you want to create the issue`,
@@ -104,7 +104,7 @@ BEFORE USING THIS TOOL:
         }), z.null()]).optional().describe('The assignee of the ticket'),
         priority: z.union([z.number(), z.null()]).optional().describe('The priority of the ticket (number, typically 1-5)'),
         labels: z.union([z.array(z.string()), z.null()]).optional().describe('The labels for the ticket (array of label names)'),
-        dueDate: z.string().nullable().optional().describe('The due date for the ticket in format "YYYY-MM-DD"'),
+        dueDate: z.string().nullable().optional().describe('The due date for the ticket in format "yyyy-MM-dd" (e.g., "2024-12-31"). Note: Jira requires the due date format to be yyyy-MM-dd.'),
     }),
     needsApproval,
     execute: async ({ 
@@ -133,17 +133,22 @@ BEFORE USING THIS TOOL:
             throw new Error("No valid access token found for Jira integration");
         }
 
-        // Get cloud_id from the integration
+        // Get cloud_id and base_url from the integration
         const integration = await db().atlassian_integrations.findUnique({
             where: { id: integrationId },
-            select: { cloud_id: true },
+            select: { cloud_id: true, base_url: true },
         });
 
         if (!integration || !integration.cloud_id) {
             throw new Error("No cloud_id found in Jira integration");
         }
 
+        if (!integration.base_url) {
+            throw new Error("No base_url found in Jira integration");
+        }
+
         const cloudId = integration.cloud_id;
+        const baseUrl = integration.base_url;
 
         try {
             // Build the issue fields
@@ -180,9 +185,11 @@ BEFORE USING THIS TOOL:
                 fields.labels = labels;
             }
 
-            // Add due date if provided
-            if (dueDate) {
+            // Add due date if provided and valid
+            if (dueDate && dueDate.trim() !== '' && /^\d{4}-\d{2}-\d{2}$/.test(dueDate)) {
                 fields.duedate = dueDate;
+            } else if (dueDate && (dueDate.trim() === '' || !/^\d{4}-\d{2}-\d{2}$/.test(dueDate))) {
+                logger.warn(`Invalid due date format: "${dueDate}". Expected format: yyyy-MM-dd. Skipping due date.`);
             }
 
             // Create the issue using REST API
@@ -225,6 +232,11 @@ BEFORE USING THIS TOOL:
 
             const fullIssue = issueResponse.ok ? await issueResponse.json() : null;
 
+            console.log('fullIssue', fullIssue);
+
+            // Construct browse URL using the base_url from integration
+            const issueUrl = `${baseUrl}/browse/${createdIssue.key}`;
+
             // Extract issue data
             const issueData = {
                 id: fullIssue?.id || createdIssue.id,
@@ -249,15 +261,7 @@ BEFORE USING THIS TOOL:
                     name: fullIssue.fields.project.name,
                     key: fullIssue.fields.project.key,
                 } : { id: '', name: '', key: projectKey },
-                url: fullIssue?.self ? (() => {
-                    try {
-                        const urlObj = new URL(fullIssue.self);
-                        const baseUrl = `${urlObj.protocol}//${urlObj.hostname}`;
-                        return `${baseUrl}/browse/${createdIssue.key}`;
-                    } catch {
-                        return fullIssue.self.replace(/\/rest\/api\/[23]\/issue\//, '/browse/');
-                    }
-                })() : undefined,
+                url: issueUrl,
                 createdAt: fullIssue?.fields?.created || new Date().toISOString(),
                 updatedAt: fullIssue?.fields?.updated || new Date().toISOString(),
             };

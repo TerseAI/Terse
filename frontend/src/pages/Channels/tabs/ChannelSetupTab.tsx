@@ -169,7 +169,6 @@ export default function ChannelSetupTab({
     notificationSettings,
     setNotificationSettings,
     mutate,
-    updatedAt,
 }: ChannelSetupTabProps) {
     const { totalCount } = useChannelCount();
     const defaultName = getDefaultChannelName(totalCount);
