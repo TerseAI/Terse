@@ -13,11 +13,11 @@ export const searchLogsTool = tool({
     description: 'Query PostHog logs for a specific user by their email address. Returns logs data and a link to view logs in PostHog. Use this when you need to investigate user activity, errors, or events in PostHog logs.',
     parameters: z.object({
         userEmail: z.string().email().describe('The email address of the user to query logs for. Must be a valid email address.'),
-        limit: z.number().optional().default(50).describe('Maximum number of log entries to return (default: 50, max: 100)'),
-        offset: z.number().optional().default(0).describe('Offset for pagination (default: 0)'),
-        last7Days: z.boolean().optional().default(false).describe('Filter logs from the last 7 days only (default: false)'),
-        dateFrom: z.string().optional().describe('Start date for filtering (ISO format or relative like "-7d"). If not provided and last7Days is true, defaults to 7 days ago.'),
-        dateTo: z.string().optional().describe('End date for filtering (ISO format or relative like "now"). If not provided, defaults to now.'),
+        limit: z.number().default(50).describe('Maximum number of log entries to return (default: 50, max: 100)'),
+        offset: z.number().default(0).describe('Offset for pagination (default: 0)'),
+        last7Days: z.boolean().default(false).describe('Filter logs from the last 7 days only (default: false)'),
+        dateFrom: z.union([z.string(), z.null()]).describe('Start date for filtering (ISO format or relative like "-7d"). If not provided and last7Days is true, defaults to 7 days ago.'),
+        dateTo: z.union([z.string(), z.null()]).describe('End date for filtering (ISO format or relative like "now"). If not provided, defaults to now.'),
     }),
     execute: async ({ userEmail, limit = 50, offset = 0, last7Days = false, dateFrom, dateTo }, runContext?: RunContext<any>) => {
         if (!runContext?.context) {
@@ -53,16 +53,18 @@ export const searchLogsTool = tool({
         const posthogHost = 'https://us.posthog.com';
 
         try {
-            // Calculate date filters
-            let dateFromValue = dateFrom;
-            let dateToValue = dateTo;
+            // Calculate date filters - default to last 7 days if not provided
+            let dateFromValue = dateFrom ?? undefined;
+            let dateToValue = dateTo ?? undefined;
             
-            if (last7Days && !dateFromValue) {
+            // Default to last 7 days if dateFrom is not provided
+            if (!dateFromValue) {
                 const sevenDaysAgo = new Date();
                 sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
                 dateFromValue = sevenDaysAgo.toISOString();
             }
             
+            // Default to now if dateTo is not provided
             if (!dateToValue) {
                 dateToValue = new Date().toISOString();
             }
@@ -73,6 +75,7 @@ export const searchLogsTool = tool({
             const logsQueryUrl = `${posthogHost}/api/projects/${projectId}/logs/query/`;
             
             const requestBody: any = {
+                query: '', // PostHog logs API requires a query parameter (can be empty when using filters)
                 filters: {
                     person: {
                         email: userEmail
@@ -90,8 +93,7 @@ export const searchLogsTool = tool({
                 requestBody.date_to = dateToValue;
             }
 
-            // Order by latest first (descending timestamp)
-            requestBody.order_by = '-timestamp';
+            // Note: PostHog API doesn't support order_by in request body, so we'll sort client-side
             
             const response = await fetch(logsQueryUrl, {
                 method: 'POST',

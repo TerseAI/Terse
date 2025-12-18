@@ -8,6 +8,7 @@ import { RunHistoryMemory } from '../../rag/runHistoryRag/indexer';
 import { extractConversationContent } from '../../rag/runHistoryRag/conversationExtractor';
 import type { AgentInputItem } from '@openai/agents-core';
 import logger from '../../logger';
+import { KnowledgeBase } from '../../knowledgeBase/abstract/KnowledgeBase';
 
 export interface RunContext {
     runId: string;
@@ -17,6 +18,8 @@ export interface SystemPromptBuilderDependencies<T extends Session, TConfig exte
     session: T;
     channel: ChannelWithRelations;
     output: Output<T, TConfig>;
+    knowledgeBases?: KnowledgeBase<T, TConfig>[];
+    knowledgeBaseSessions?: T[];
 }
 
 interface Section {
@@ -45,7 +48,8 @@ export class SystemPromptBuilder<T extends Session, TConfig extends ConfigInstan
             .withSection(() => this.buildCoreInstructions())
             .withSection(() => this.buildRunContextSection())
             .withSection(() => this.buildDirectivesSection())
-            .withSection(() => this.buildOutputInstructions());
+            .withSection(() => this.buildOutputInstructions())
+            .withSection(() => this.buildKnowledgeBaseInstructions());
     }
 
     /**
@@ -134,6 +138,34 @@ This is event #${eventPosition} processed by this automation.`
         return {
             header: 'OUTPUT-SPECIFIC INSTRUCTIONS',
             content: instructions
+        };
+    }
+
+    private buildKnowledgeBaseInstructions(): Section | null {
+        if (!this.deps.knowledgeBases || !this.deps.knowledgeBaseSessions || 
+            this.deps.knowledgeBases.length === 0 || this.deps.knowledgeBaseSessions.length === 0) {
+            return null;
+        }
+
+        const instructions: string[] = [];
+        for (let i = 0; i < this.deps.knowledgeBases.length; i++) {
+            const kb = this.deps.knowledgeBases[i];
+            const kbSession = this.deps.knowledgeBaseSessions[i];
+            if (kb && kbSession) {
+                const kbInstructions = kb.getSystemInstructions(kbSession);
+                if (kbInstructions) {
+                    instructions.push(kbInstructions);
+                }
+            }
+        }
+
+        if (instructions.length === 0) {
+            return null;
+        }
+
+        return {
+            header: 'KNOWLEDGE BASE INSTRUCTIONS',
+            content: instructions.join('\n\n')
         };
     }
 

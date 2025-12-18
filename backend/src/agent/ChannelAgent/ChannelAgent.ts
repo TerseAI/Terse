@@ -32,6 +32,7 @@ export class ChannelAgent<T extends Session, TConfig extends ConfigInstance> {
     private channel: ChannelWithRelations;
     private output: Output<T, TConfig>;
     private knowledgeBases: KnowledgeBase<T, TConfig>[];
+    private knowledgeBaseSessions: T[] = [];
     private agent?: Agent<SessionWithTracking<T>, AgentOutputType>;
     private tools: Tool<SessionWithTracking<T>>[] = [];
     private runContext: RunContext;
@@ -337,10 +338,31 @@ export class ChannelAgent<T extends Session, TConfig extends ConfigInstance> {
     }
 
     async initializeAgent(): Promise<void> {
+        // Create knowledge base sessions
+        if (this.knowledgeBases.length > 0 && this.channel.knowledge_bases) {
+            this.knowledgeBaseSessions = await Promise.all(
+                this.knowledgeBases.map(async (kb) => {
+                    const channelKnowledgeBase = this.channel.knowledge_bases?.find(
+                        ckb => ckb.config_type === kb.integration
+                    );
+                    if (!channelKnowledgeBase) {
+                        throw new Error(`Knowledge base config not found for ${kb.integration}`);
+                    }
+                    return await kb.createSessionFromConfig(
+                        channelKnowledgeBase.integration_id,
+                        channelKnowledgeBase,
+                        this.session.user
+                    );
+                })
+            );
+        }
+
         const deps: SystemPromptBuilderDependencies<T, TConfig> = {
             session: this.session,
             channel: this.channel,
             output: this.output,
+            knowledgeBases: this.knowledgeBases,
+            knowledgeBaseSessions: this.knowledgeBaseSessions,
         };
 
         const builder = new SystemPromptBuilder(deps, this.runContext)
@@ -357,8 +379,16 @@ export class ChannelAgent<T extends Session, TConfig extends ConfigInstance> {
     }
 
     private getToolContext(): SessionWithTracking<T> {
+        // Merge knowledge base session properties into the context
+        const mergedContext = { ...this.session };
+        
+        // Merge properties from all knowledge base sessions
+        for (const kbSession of this.knowledgeBaseSessions) {
+            Object.assign(mergedContext, kbSession);
+        }
+
         return {
-            ...this.session,
+            ...mergedContext,
             trackAction: (action: RunHistoryAction) => this.queueAction(action),
             channel: {
                 requireApproval: this.channel.require_approval ?? false,
