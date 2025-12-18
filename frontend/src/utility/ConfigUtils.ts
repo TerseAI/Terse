@@ -93,6 +93,8 @@ export function deserializeConfig(jsonConfig: any): ConfigInstance {
         case ConfigType.POSTHOG:
             return new PosthogConfig(
                 integrationId,
+                jsonConfig.projectId || '',
+                jsonConfig.projectName || undefined,
                 jsonConfig.canReadLogs ?? false,
                 jsonConfig.canReadSessionRecordings ?? false
             );

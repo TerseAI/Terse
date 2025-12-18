@@ -55,7 +55,11 @@ export function useChannels(params: ChannelListArgs = {}) {
                     output: {
                         ...channel.output,
                         config: deserializeConfig(channel.output.config)
-                    }
+                    },
+                    knowledgeBases: channel.knowledgeBases?.map(kb => ({
+                        ...kb,
+                        config: deserializeConfig(kb.config)
+                    }))
                 }))
             };
         },
@@ -91,7 +95,11 @@ export function useChannel(id: string | null) {
                 output: {
                     ...channel.output,
                     config: deserializeConfig(channel.output.config)
-                }
+                },
+                knowledgeBases: channel.knowledgeBases?.map(kb => ({
+                    ...kb,
+                    config: deserializeConfig(kb.config)
+                }))
             };
         } : null,
     );
@@ -114,8 +122,8 @@ function invalidateChannelDetail(id: string) {
 }
 
 export function useChannelMutations() {
-    const createChannel = async ({ name, inputs, output, prompt, isActive }: Omit<Channel, 'id'>) => {
-        const result = await BackendProvider.createChannel(name, inputs, output, prompt, isActive);
+    const createChannel = async (data: ChannelUpdate) => {
+        const result = await BackendProvider.createChannel(data);
         await invalidateChannelLists();
         return result;
     };
@@ -165,7 +173,11 @@ export function useChannelMutations() {
                             output: {
                                 ...channel.output,
                                 config: deserializeConfig(channel.output.config)
-                            }
+                            },
+                            knowledgeBases: channel.knowledgeBases?.map(kb => ({
+                                ...kb,
+                                config: deserializeConfig(kb.config)
+                            }))
                         }))
                     };
                 },

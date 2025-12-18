@@ -2,9 +2,6 @@ import axios from 'axios';
 import type { RunHistoryModelEvent, RunHistoryActionWithId } from "../shared/RunHistoryTypes";
 import {
     Channel,
-    ChannelInput, 
-    ChannelOutput,
-    ChannelPrompt, 
     ChannelsResponse, 
     ChannelUpdate, 
     ConfluenceResourcesResponse, 
@@ -14,6 +11,7 @@ import {
     JiraResourcesResponse,
     LinearTeam,
     NotionResourcesResponse, 
+    PosthogProjectsResponse,
     RecentChannel,
     SlackChannelsResponse,
     StatsResponse,
@@ -228,6 +226,13 @@ interface BackendService {
     createOrUpdatePosthogIntegration(apiKey: string): Promise<{ success: boolean; email: string | null; orgName: string | null }>;
 
     /**
+     * Gets Posthog projects for an integration
+     * @param integrationId - The Posthog integration ID
+     * @param search - Optional search term to filter projects
+     */
+    getPosthogProjects(integrationId: string, search?: string): Promise<PosthogProjectsResponse>;
+
+    /**
      * Gets available channels for a Slack integration
      */
     getSlackChannels(integrationId: string): Promise<SlackChannelsResponse>;
@@ -260,7 +265,7 @@ interface BackendService {
     /**
      * Creates a new channel
      */
-    createChannel(name: string, inputs: ChannelInput[], output: ChannelOutput, prompt: ChannelPrompt, isActive?: boolean): Promise<{ success: boolean; id: string }>;
+    createChannel(data: ChannelUpdate): Promise<{ success: boolean; id: string }>;
 
     /**
      * Updates an existing channel
@@ -632,6 +637,19 @@ export const BackendProvider: BackendService = {
             });
     },
 
+    getPosthogProjects: (integrationId: string, search?: string) => {
+        const params = new URLSearchParams({ integrationId });
+        if (search) {
+            params.append('search', search);
+        }
+        return axios.get<PosthogProjectsResponse>(`${backendBaseUrl}/posthog/projects?${params.toString()}`, { withCredentials: true })
+            .then(response => response.data)
+            .catch(error => {
+                console.error('Error fetching Posthog projects:', error);
+                throw error;
+            });
+    },
+
     getSlackIntegrations: () => {
         return axios.get<SlackIntegration[]>(`${backendBaseUrl}/slack/integrations`, { withCredentials: true })
             .then(response => response.data)
@@ -755,9 +773,9 @@ export const BackendProvider: BackendService = {
             });
     },
 
-    createChannel: (name: string, inputs: ChannelInput[], output: ChannelOutput, prompt: ChannelPrompt, isActive = true) => {
+    createChannel: (data: ChannelUpdate) => {
         return axios.post<{ success: boolean; id: string }>(`${backendBaseUrl}/channels`,
-            { name, inputs, output, prompt, isActive },
+            data,
             { withCredentials: true }
         )
             .then(response => response.data)

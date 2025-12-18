@@ -38,9 +38,7 @@ export abstract class KnowledgeBase<T extends Session, TConfig extends ConfigIns
         channelOutputConfig: ChannelKnowledgeBase, // ChannelOutput with loaded config relations
         user: User
     ): Promise<T>;
-
-    abstract addOutputToChannel(tx: PrismaTransaction, channelOutputId: string, output: TConfig): Promise<void>;
-
+    
     /**
      * Returns output-specific system instructions that will be appended to the base system prompt.
      * Override this method in subclasses to provide output-specific guidance.

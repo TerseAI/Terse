@@ -24,12 +24,14 @@ import { storePendingApprovalState, getPendingApprovalState, clearPendingApprova
 import { persistOutputAttributions, removeOutputAttributions } from './persistOutputAttributions';
 import logger from '../../logger';
 import { RunHistoryActionType } from '@prisma/client';
+import { KnowledgeBase } from '../../knowledgeBase/abstract/KnowledgeBase';
 
 export class ChannelAgent<T extends Session, TConfig extends ConfigInstance> {
     private session: T;
     private inputEvent: InputEvent | null = null;
     private channel: ChannelWithRelations;
     private output: Output<T, TConfig>;
+    private knowledgeBases: KnowledgeBase<T, TConfig>[];
     private agent?: Agent<SessionWithTracking<T>, AgentOutputType>;
     private tools: Tool<SessionWithTracking<T>>[] = [];
     private runContext: RunContext;
@@ -42,14 +44,20 @@ export class ChannelAgent<T extends Session, TConfig extends ConfigInstance> {
     constructor(
         session: T,
         output: Output<T, TConfig>,
+        knowledgeBases: KnowledgeBase<T, TConfig>[],
         channel: ChannelWithRelations,
         runContext: RunContext,
         maxTurns: number = 50
     ) {
         this.session = session;
         this.output = output;
+        this.knowledgeBases = knowledgeBases;
         this.channel = channel;
-        this.tools = output.toolbox.map(entry => entry.tool);
+        this.tools = [
+            ...output.toolbox.map(entry => entry.tool),
+            ...knowledgeBases.flatMap(kb => kb.toolbox.map(entry => entry.tool))
+        ];
+
         this.runContext = runContext;
         this.buildToolMetadataMap();
         this.memorySession = new RunHistoryChatMemorySession({

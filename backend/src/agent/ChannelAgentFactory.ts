@@ -5,7 +5,11 @@ import { RunContext } from './ChannelAgent/SystemPromptBuilder';
 import { NotionDatabaseOutput, NotionDatabaseSession } from '../outputs/notion/NotionDatabaseOutput';
 import { ChannelWithRelations, User } from '../types/prisma';
 import { NotionConfig } from '../shared/Configs';
-import { getInputConfigInclude, getOutputConfigInclude } from '../utility/prismaIncludes';
+import { getInputConfigInclude, getOutputConfigInclude, getKnowledgeBaseConfigInclude } from '../utility/prismaIncludes';
+import { KnowledgeBaseFactory } from '../knowledgeBase/abstract/KnowledgeBaseFactory';
+import { KnowledgeBase } from '../knowledgeBase/abstract/KnowledgeBase';
+import { ConfigInstance } from '../shared/Configs';
+import { Session } from '../server';
 
 /**
  * Factory for creating ChannelAgent instances from channel configurations.
@@ -28,6 +32,9 @@ export class ChannelAgentFactory {
           },
           output: {
             include: getOutputConfigInclude(),
+          },
+          knowledge_bases: {
+            include: getKnowledgeBaseConfigInclude(),
           },
         },
       });
@@ -70,11 +77,17 @@ export class ChannelAgentFactory {
         user
       );
 
+      // Create knowledge bases from channel configuration
+      const knowledgeBases = channel.knowledge_bases && channel.knowledge_bases.length > 0
+        ? KnowledgeBaseFactory.createKnowledgeBases(channel.knowledge_bases.map(kb => kb.config_type))
+        : [];
+
       // Create fresh ChannelAgent
       const runContext: RunContext = { runId: runId ?? '' };
       const channelAgent = new ChannelAgent<NotionDatabaseSession, NotionConfig>(
         session,
         notionOutput,
+        [],
         channel,
         runContext
       );

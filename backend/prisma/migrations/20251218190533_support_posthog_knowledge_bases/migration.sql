@@ -36,6 +36,8 @@ CREATE TABLE "automation_knowledge_bases" (
 CREATE TABLE "automation_posthog_configs" (
     "id" TEXT NOT NULL,
     "automation_knowledge_base_id" TEXT NOT NULL,
+    "project_id" TEXT NOT NULL,
+    "project_name" TEXT,
     "can_read_logs" BOOLEAN NOT NULL DEFAULT false,
     "can_read_session_recordings" BOOLEAN NOT NULL DEFAULT false,
 
@@ -53,6 +55,9 @@ CREATE INDEX "automation_knowledge_bases_config_type_integration_id_idx" ON "aut
 
 -- CreateIndex
 CREATE UNIQUE INDEX "automation_posthog_configs_automation_knowledge_base_id_key" ON "automation_posthog_configs"("automation_knowledge_base_id");
+
+-- CreateIndex
+CREATE INDEX "automation_posthog_configs_project_id_idx" ON "automation_posthog_configs"("project_id");
 
 -- AddForeignKey
 ALTER TABLE "posthog_integrations" ADD CONSTRAINT "posthog_integrations_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;

@@ -558,10 +558,14 @@ model automation_knowledge_bases {
 model automation_posthog_configs {
   id                           String  @id @default(cuid())
   automation_knowledge_base_id String  @unique // FK to automation_knowledge_bases
+  project_id                   String  // Posthog project ID (required)
+  project_name                 String? // Posthog project display name (for UI, optional)
   can_read_logs                Boolean @default(false)
   can_read_session_recordings  Boolean @default(false)
 
   automation_knowledge_base automation_knowledge_bases @relation(fields: [automation_knowledge_base_id], references: [id], onDelete: Cascade)
+
+  @@index([project_id])
 }
 
 // Automation Configuration Tables - Typed config per integration type

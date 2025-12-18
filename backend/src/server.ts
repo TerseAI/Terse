@@ -90,7 +90,7 @@ import {
 } from "./routes/notificationDestinations";
 import { setupSlackBolt } from "./slack/boltApp";
 import logger from "./logger";
-import { getPosthogIntegrations, createOrUpdatePosthogIntegration } from "./routes/posthog";
+import { getPosthogIntegrations, createOrUpdatePosthogIntegration, getPosthogProjects } from "./routes/posthog";
 
 export type Session = {
   user: User;
@@ -437,6 +437,10 @@ app.get("/posthog/integrations", authMiddleware, async (req, res) => {
 
 app.post("/posthog/integrations", authMiddleware, async (req, res) => {
   createOrUpdatePosthogIntegration(req, res);
+});
+
+app.get("/posthog/projects", authMiddleware, async (req, res) => {
+  getPosthogProjects(req, res);
 });
 
 // MARK: CHANNELS

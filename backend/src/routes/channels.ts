@@ -45,10 +45,15 @@ async function createKnowledgeBaseConfig(
 ): Promise<void> {
     if (config.configType === ConfigType.POSTHOG) {
         const posthogConfig = config as PosthogConfig;
+        if (!posthogConfig.projectId) {
+            throw new Error('Posthog config requires projectId');
+        }
         // Use unchecked input to bypass relation checks
         await tx.automation_posthog_configs.create({
             data: {
                 automation_knowledge_base_id: knowledgeBaseId,
+                project_id: posthogConfig.projectId,
+                project_name: posthogConfig.projectName || null,
                 can_read_logs: posthogConfig.canReadLogs ?? false,
                 can_read_session_recordings: posthogConfig.canReadSessionRecordings ?? false,
             }

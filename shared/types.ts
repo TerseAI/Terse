@@ -78,6 +78,16 @@ export type NotionResourcesResponse = {
   resources: NotionResource[];
 };
 
+export type PosthogProject = {
+  id: string;
+  name: string;
+  organization_id?: string;
+};
+
+export type PosthogProjectsResponse = {
+  projects: PosthogProject[];
+};
+
 export type SlackChannel = {
   id: string;
   name: string;

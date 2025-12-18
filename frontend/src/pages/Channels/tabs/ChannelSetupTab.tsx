@@ -118,14 +118,7 @@ function SaveChannelButton({
                 });
             } else if (isComplete && channelData.output && channelData.inputs && channelData.inputs.length > 0) {
                 // Create new channel
-                const creation = await createChannel({
-                    name: channelData.name || '',
-                    inputs: channelData.inputs || [],
-                    output: channelData.output,
-                    prompt: channelData.prompt || { text: '' },
-                    isActive: channelData.isActive || true,
-                    requireApproval: channelData.requireApproval || false,
-                });
+                const creation = await createChannel(channelData);
 
                 if (creation?.id) {
                     navigate(`/app/channels/${creation.id}`, { replace: true });
@@ -192,6 +185,7 @@ export default function ChannelSetupTab({
 
     const triggersIncomplete =
         inputs.length === 0 || inputs.some((i) => !i.config || !i.config.isComplete());
+    console.log("Knowledge bases", { knowledgeBases });
     const knowledgeBaseIncomplete = knowledgeBases.some((kb) => !kb.config || !kb.config.isComplete());
     const promptIncomplete = !prompt?.text || prompt.text.trim() === '';
     const skillsIncomplete = !output || !output.config || !output.config.isComplete();
@@ -213,6 +207,7 @@ export default function ChannelSetupTab({
         prompt: prompt || { text: '' },
         inputs: channelInputs,
         output: channelOutput,
+        knowledgeBases: channelKnowledgeBases,
         notificationSettings,
     } : null;
 

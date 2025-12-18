@@ -403,8 +403,13 @@ export const convertPrismaKnowledgeBaseConfigToConfigInstance = (channelKnowledg
 
     if (channelKnowledgeBase.posthog_config) {
         const posthogIntegration = channelKnowledgeBase.posthog_config;
+        if (!posthogIntegration.project_id) {
+            throw new Error('Posthog config requires project_id');
+        }
         return new PosthogConfig(
             integrationId,
+            posthogIntegration.project_id,
+            posthogIntegration.project_name || undefined,
             posthogIntegration.can_read_logs || false,
             posthogIntegration.can_read_session_recordings || false
         );
