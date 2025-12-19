@@ -5,24 +5,7 @@ import { Session } from "../../server";
 import { ChannelKnowledgeBase, PrismaTransaction, User } from "../../types/prisma";
 import { KnowledgeBaseConfigType } from "@prisma/client";
 import { ConfigInstance } from "../../shared/Configs";
-import { IntegrationType } from "../../shared/Integrations";
 import { ToolboxEntry } from "../../outputs/abstract/Output";
-
-
-
-/**
- * Built in tools that are always available to the output.
- */
-export const defaultToolbox: readonly ToolboxEntry[] = [
-    {
-        tool: webSearchTool({
-            searchContextSize: 'medium',
-        }),
-        isReadOnly: true,
-        integration: IntegrationType.TERSE
-    }
-]
-
 
 export abstract class KnowledgeBase<T extends Session, KBConfig extends ConfigInstance> {
     integration: KnowledgeBaseConfigType;
@@ -30,7 +13,7 @@ export abstract class KnowledgeBase<T extends Session, KBConfig extends ConfigIn
 
     constructor(integration: KnowledgeBaseConfigType, toolbox: readonly ToolboxEntry[]) {
         this.integration = integration;
-        this.toolbox = [...defaultToolbox, ...toolbox]
+        this.toolbox = [...toolbox]
     }
 
     abstract createSessionFromConfig(
