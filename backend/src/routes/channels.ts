@@ -377,7 +377,6 @@ export async function createChannel(req: Request, res: Response) {
             // Create config record if provided
             await createOutputConfig(tx, newOutput.id, output.config);
 
-            console.log("Knowledge bases", { knowledgeBases });
             // Create knowledge bases if provided
             if (knowledgeBases && knowledgeBases.length > 0) {
                 for (const kb of knowledgeBases) {
