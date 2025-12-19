@@ -7,6 +7,7 @@ import { ToolboxEntry } from "../../outputs/abstract/Output";
 import { KnowledgeBase } from "../abstract/KnowledgeBase";
 import { searchLogsTool } from "./tools/searchLogs";
 import { searchSessionsTool } from "./tools/searchSessions";
+import { analyzeSessionTool } from "./tools/analyzeSession";
 import { db } from "../../prismaClient";
 import logger from "../../logger";
 
@@ -32,6 +33,11 @@ export class PosthogKnowledgeBase extends KnowledgeBase<PosthogKnowledgeBaseSess
             },
             {
                 tool: searchSessionsTool,
+                isReadOnly: true,
+                integration: IntegrationType.POSTHOG
+            },
+            {
+                tool: analyzeSessionTool,
                 isReadOnly: true,
                 integration: IntegrationType.POSTHOG
             }
@@ -129,6 +135,13 @@ export class PosthogKnowledgeBase extends KnowledgeBase<PosthogKnowledgeBaseSess
             instructions.push(
                 '- Use searchPosthogSessions tool to query session recordings for a user by email. ' +
                 'This is useful for replaying user sessions, understanding user behavior, or investigating UX issues.'
+            );
+            instructions.push(
+                '- Use analyzePosthogSession tool to deeply analyze a user session with Gemini AI. ' +
+                'This tool exports the session video, fetches console logs, and generates a comprehensive bug report. ' +
+                'By default, use this tool with a userEmail to analyze their most recent session when investigating issues or bugs. ' +
+                'You can also analyze a specific session by providing its sessionId. ' +
+                'This should be your first action when a user reports an issue - analyze their latest session to understand what went wrong.'
             );
         }
 
