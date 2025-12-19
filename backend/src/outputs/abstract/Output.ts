@@ -1,12 +1,11 @@
 // MARK: - Output Integrations
 
-import { Tool } from "@openai/agents";
+import { Tool, webSearchTool } from "@openai/agents";
 import { Session } from "../../server";
 import { ChannelOutput, PrismaTransaction, User } from "../../types/prisma";
 import { OutputConfigType } from "@prisma/client";
 import { ConfigInstance } from "../../shared/Configs";
 import { IntegrationType } from "../../shared/Integrations";
-import { defaultToolbox } from "../../knowledgeBase/abstract/KnowledgeBase";
 // You can only have one output at a time. Basically, it's just a specific integration + a toolbox to modify the content.
 // For Notion, we should support multiple integrations with the same account. 
 
@@ -43,3 +42,13 @@ export abstract class Output<T extends Session, TConfig extends ConfigInstance> 
         return '';
     }
 }
+
+export const defaultToolbox: readonly ToolboxEntry[] = [
+    {
+        tool: webSearchTool({
+            searchContextSize: 'medium',
+        }),
+        isReadOnly: true,
+        integration: IntegrationType.TERSE
+    }
+]
