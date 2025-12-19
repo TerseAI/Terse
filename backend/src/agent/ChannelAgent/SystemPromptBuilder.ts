@@ -147,17 +147,16 @@ This is event #${eventPosition} processed by this automation.`
             return null;
         }
 
-        const instructions: string[] = [];
-        for (let i = 0; i < this.deps.knowledgeBases.length; i++) {
-            const kb = this.deps.knowledgeBases[i];
-            const kbSession = this.deps.knowledgeBaseSessions[i];
+        const instructions = this.deps.knowledgeBases.reduce<string[]>((acc, kb, i) => {
+            const kbSession = this.deps.knowledgeBaseSessions?.[i];
             if (kb && kbSession) {
                 const kbInstructions = kb.getSystemInstructions(kbSession);
                 if (kbInstructions) {
-                    instructions.push(kbInstructions);
+                    acc.push(kbInstructions);
                 }
             }
-        }
+            return acc;
+        }, []);
 
         if (instructions.length === 0) {
             return null;
