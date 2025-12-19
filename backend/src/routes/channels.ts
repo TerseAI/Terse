@@ -12,6 +12,7 @@ import { INTEGRATION_REGISTRY } from "../integrations/abstract/IntegrationRegist
 import { OutputFactory } from "../outputs/abstract/OutputFactory";
 import { emitCacheInvalidationWithKey } from "../realtimeSocket";
 import logger from "../logger";
+import { KnowledgeBaseFactory } from "../knowledgeBase/abstract/KnowledgeBaseFactory";
 
 async function createInputConfig(
     tx: PrismaTransaction,
@@ -43,24 +44,11 @@ async function createKnowledgeBaseConfig(
     knowledgeBaseId: string,
     config: ConfigInstance
 ): Promise<void> {
-    if (config.configType === ConfigType.POSTHOG) {
-        const posthogConfig = config as PosthogConfig;
-        if (!posthogConfig.projectId) {
-            throw new Error('Posthog config requires projectId');
-        }
-        // Use unchecked input to bypass relation checks
-        await tx.automation_posthog_configs.create({
-            data: {
-                automation_knowledge_base_id: knowledgeBaseId,
-                project_id: posthogConfig.projectId,
-                project_name: posthogConfig.projectName || null,
-                can_read_logs: posthogConfig.canReadLogs ?? false,
-                can_read_session_recordings: posthogConfig.canReadSessionRecordings ?? false,
-            }
-        });
-    } else {
-        throw new Error(`Unsupported knowledge base config type: ${config.configType}`);
+    const knowledgeBase = KnowledgeBaseFactory.KNOWLEDGE_BASE_REGISTRY.get(convertConfigTypeToKnowledgeBaseConfigType(config.configType));
+    if (!knowledgeBase) {
+        throw new Error(`Knowledge base not found for integration type: ${config.configType}`);
     }
+    await knowledgeBase().addKnowledgeBaseToChannel(tx, knowledgeBaseId, config);
 }
 
 async function validateUserOwnsIntegration(userId: string, integrationType: IntegrationType, integrationId: string): Promise<boolean> {

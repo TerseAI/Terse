@@ -14,12 +14,12 @@ export interface RunContext {
     runId: string;
 }
 
-export interface SystemPromptBuilderDependencies<T extends Session, TConfig extends ConfigInstance> {
+export interface SystemPromptBuilderDependencies<T extends Session, TConfig extends ConfigInstance, K extends Session, KBConfig extends ConfigInstance> {
     session: T;
     channel: ChannelWithRelations;
     output: Output<T, TConfig>;
-    knowledgeBases?: KnowledgeBase<T, TConfig>[];
-    knowledgeBaseSessions?: T[];
+    knowledgeBases?: KnowledgeBase<K, KBConfig>[];
+    knowledgeBaseSessions?: K[];
 }
 
 interface Section {
@@ -29,11 +29,11 @@ interface Section {
 
 type SectionBuilder = () => Section | null | Promise<Section | null>;
 
-export class SystemPromptBuilder<T extends Session, TConfig extends ConfigInstance> {
+export class SystemPromptBuilder<T extends Session, TConfig extends ConfigInstance, K extends Session, KBConfig extends ConfigInstance> {
     private sections: SectionBuilder[] = [];
 
     constructor(
-        private deps: SystemPromptBuilderDependencies<T, TConfig>,
+        private deps: SystemPromptBuilderDependencies<T, TConfig, K, KBConfig>,
         private runContext: RunContext
     ) { }
 
@@ -147,17 +147,16 @@ This is event #${eventPosition} processed by this automation.`
             return null;
         }
 
-        const instructions: string[] = [];
-        for (let i = 0; i < this.deps.knowledgeBases.length; i++) {
-            const kb = this.deps.knowledgeBases[i];
-            const kbSession = this.deps.knowledgeBaseSessions[i];
+        const instructions = this.deps.knowledgeBases.reduce<string[]>((acc, kb, i) => {
+            const kbSession = this.deps.knowledgeBaseSessions?.[i];
             if (kb && kbSession) {
                 const kbInstructions = kb.getSystemInstructions(kbSession);
                 if (kbInstructions) {
-                    instructions.push(kbInstructions);
+                    acc.push(kbInstructions);
                 }
             }
-        }
+            return acc;
+        }, []);
 
         if (instructions.length === 0) {
             return null;
