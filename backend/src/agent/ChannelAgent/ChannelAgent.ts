@@ -332,10 +332,21 @@ export class ChannelAgent<
     }
 
     private buildToolMetadataMap(): void {
+        // Populate metadata from output toolbox
         this.output.toolbox.forEach(entry => {
             this.toolMetadataMap.set(entry.tool.name, {
                 integration: entry.integration,
                 isReadOnly: entry.isReadOnly,
+            });
+        });
+        
+        // Populate metadata from knowledge base toolboxes
+        this.knowledgeBases.forEach(kb => {
+            kb.toolbox.forEach(entry => {
+                this.toolMetadataMap.set(entry.tool.name, {
+                    integration: entry.integration,
+                    isReadOnly: entry.isReadOnly,
+                });
             });
         });
     }

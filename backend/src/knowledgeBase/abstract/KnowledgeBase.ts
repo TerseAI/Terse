@@ -1,6 +1,5 @@
 // MARK: - Output Integrations
 
-import { webSearchTool } from "@openai/agents";
 import { Session } from "../../server";
 import { ChannelKnowledgeBase, PrismaTransaction, User } from "../../types/prisma";
 import { KnowledgeBaseConfigType } from "@prisma/client";
