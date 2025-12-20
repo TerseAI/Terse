@@ -98,7 +98,7 @@ export const getPosthogProjects = async (req: Request, res: Response) => {
             const searchLower = search.toLowerCase();
             projects = projects.filter((project: any) => 
                 project.name?.toLowerCase().includes(searchLower) ||
-                project.id?.toLowerCase().includes(searchLower)
+                project.id?.toString().toLowerCase().includes(searchLower)
             );
         }
 

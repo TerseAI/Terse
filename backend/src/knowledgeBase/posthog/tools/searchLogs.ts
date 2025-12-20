@@ -15,8 +15,8 @@ export const searchLogsTool = tool({
         userEmail: z.string().email().describe('The email address of the user to query logs for. Must be a valid email address.'),
         limit: z.number().default(50).describe('Maximum number of log entries to return (default: 50, max: 100)'),
         offset: z.number().default(0).describe('Offset for pagination (default: 0)'),
-        last7Days: z.boolean().default(false).describe('Filter logs from the last 7 days only (default: false)'),
-        dateFrom: z.union([z.string(), z.null()]).describe('Start date for filtering (ISO format or relative like "-7d"). If not provided and last7Days is true, defaults to 7 days ago.'),
+        last7Days: z.boolean().default(false).describe('If true and dateFrom is not provided, filters logs from the last 7 days only (default: false). If false, no date restriction is applied unless dateFrom is explicitly provided.'),
+        dateFrom: z.union([z.string(), z.null()]).describe('Start date for filtering (ISO format or relative like "-7d"). If not provided and last7Days is true, defaults to 7 days ago. If not provided and last7Days is false, no date restriction is applied.'),
         dateTo: z.union([z.string(), z.null()]).describe('End date for filtering (ISO format or relative like "now"). If not provided, defaults to now.'),
     }),
     execute: async ({ userEmail, limit = 50, offset = 0, last7Days = false, dateFrom, dateTo }, runContext?: RunContext<any>) => {
@@ -53,12 +53,12 @@ export const searchLogsTool = tool({
         const posthogHost = 'https://us.posthog.com';
 
         try {
-            // Calculate date filters - default to last 7 days if not provided
+            // Calculate date filters
             let dateFromValue = dateFrom ?? undefined;
             let dateToValue = dateTo ?? undefined;
             
-            // Default to last 7 days if dateFrom is not provided
-            if (!dateFromValue) {
+            // Default to last 7 days if last7Days is true and dateFrom is not provided
+            if (last7Days && !dateFromValue) {
                 const sevenDaysAgo = new Date();
                 sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
                 dateFromValue = sevenDaysAgo.toISOString();

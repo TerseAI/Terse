@@ -15,8 +15,8 @@ export const searchSessionsTool = tool({
         userEmail: z.string().email().describe('The email address of the user to query session recordings for. Must be a valid email address.'),
         limit: z.number().default(10).describe('Maximum number of session recordings to return (default: 10, max: 100)'),
         offset: z.number().default(0).describe('Offset for pagination (default: 0)'),
-        last7Days: z.boolean().default(false).describe('Filter session recordings from the last 7 days only (default: false)'),
-        dateFrom: z.union([z.string(), z.null()]).describe('Start date for filtering (ISO format or relative like "-7d"). If not provided, defaults to 7 days ago.'),
+        last7Days: z.boolean().default(false).describe('If true and dateFrom is not provided, filters session recordings from the last 7 days only (default: false). If false, no date restriction is applied unless dateFrom is explicitly provided.'),
+        dateFrom: z.union([z.string(), z.null()]).describe('Start date for filtering (ISO format or relative like "-7d"). If not provided and last7Days is true, defaults to 7 days ago. If not provided and last7Days is false, no date restriction is applied.'),
         dateTo: z.union([z.string(), z.null()]).describe('End date for filtering (ISO format or relative like "now"). If not provided, defaults to now.'),
     }),
     execute: async ({ userEmail, limit = 10, offset = 0, last7Days = false, dateFrom, dateTo }, runContext?: RunContext<any>) => {
@@ -114,12 +114,12 @@ export const searchSessionsTool = tool({
             const distinctId = person.distinct_ids?.[0] || userEmail; // Fallback to email if no distinct_id
 
             // Step 2: Get session recordings for the person with pagination and date filtering
-            // Calculate date filters - default to last 7 days if not provided
+            // Calculate date filters
             let dateFromValue = dateFrom ?? undefined;
             let dateToValue = dateTo ?? undefined;
             
-            // Default to last 7 days if dateFrom is not provided
-            if (!dateFromValue) {
+            // Default to last 7 days if last7Days is true and dateFrom is not provided
+            if (last7Days && !dateFromValue) {
                 dateFromValue = '-7d'; // Use relative date format
             }
             
