@@ -5,10 +5,11 @@ import { IntegrationItem } from "./helpers/IntegrationItem";
 import { cn } from "@/lib/utils";
 import { usePosthogIntegrations } from "@/hooks/api/usePosthogIntegrations";
 import { Skeleton } from "../ui/skeleton";
-import { Palette, Eye, EyeOff } from "lucide-react";
+import { Palette, Eye, EyeOff, Info } from "lucide-react";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
+import { Tooltip, TooltipTrigger, TooltipContent } from "../ui/tooltip";
 import { useState } from "react";
 import { BackendProvider } from "@/services/backend";
 
@@ -134,7 +135,32 @@ function PosthogForm({
     return (
         <form onSubmit={onSubmit} className="space-y-4">
             <div className="space-y-2">
-                <Label htmlFor="apiKey">API Key</Label>
+                <div className="flex items-center gap-2">
+                    <Label htmlFor="apiKey">API Key</Label>
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <button
+                                type="button"
+                                className="text-muted-foreground hover:text-foreground transition-colors"
+                            >
+                                <Info className="h-4 w-4" />
+                            </button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                            <div className="flex flex-col gap-1">
+                                <span>Get your API key from PostHog</span>
+                                <a
+                                    href="https://us.posthog.com/project/user-api-keys"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="underline hover:no-underline"
+                                >
+                                    Open API keys page
+                                </a>
+                            </div>
+                        </TooltipContent>
+                    </Tooltip>
+                </div>
                 <div className="relative">
                     <Input
                         id="apiKey"
@@ -157,6 +183,7 @@ function PosthogForm({
                         ) : (
                             <Eye className="h-4 w-4" />
                         )}
+                        
                     </button>
                 </div>
                 {error && (
