@@ -7,18 +7,19 @@ import { settings } from "../../../config/settings";
 import { analyzeSession, AnalyzeSessionOptions } from "./sessionAnalysis";
 
 /**
- * Tool for analyzing PostHog session recordings with Gemini AI.
- * This tool exports the session as MP4, fetches console logs, and analyzes everything with Gemini
+ * Tool for analyzing PostHog session recordings using the Session Analysis API.
+ * This tool uses an external service to convert session recordings to MP4 and analyze them with AI
  * to provide a comprehensive bug report and analysis.
  */
 export const analyzeSessionTool = tool({
     name: 'analyzePosthogSession',
-    description: 'Analyze a PostHog session recording with Gemini AI. This tool exports the session video, fetches console logs, and generates a comprehensive bug report and analysis. Use this when you need to investigate user issues, bugs, or understand what happened during a user session. By default, analyzes the most recent session for a user. Can also analyze a specific session by ID.',
+    description: 'Analyze a PostHog session recording using the Session Analysis API. This tool converts the session to video and analyzes it with AI to generate a comprehensive bug report and analysis. Use this when you need to investigate user issues, bugs, or understand what happened during a user session. By default, analyzes the most recent session for a user. Can also analyze a specific session by ID. Requires a description of the issue the user reported to focus the analysis.',
     parameters: z.object({
         userEmail: z.string().email().optional().describe('The email address of the user to analyze a session for. If provided without sessionId, analyzes the most recent session for this user.'),
         sessionId: z.string().uuid().optional().describe('The PostHog session ID (UUID format) to analyze. If provided, this takes precedence over userEmail.'),
+        userIssueDescription: z.string().describe('Required: A clear description of the issue the user reported. This helps the AI focus its analysis on the specific problem. Be specific about what the user was trying to do, what went wrong, any error messages, and when/where in the flow the issue occurred. Examples: "User reports that clicking the submit button does nothing - no error message, no network request", "User says the page loads very slowly - takes over 30 seconds", "User reports a JavaScript error appears in the console when trying to complete checkout".'),
     }),
-    execute: async ({ userEmail, sessionId }, runContext?: RunContext<any>) => {
+    execute: async ({ userEmail, sessionId, userIssueDescription }, runContext?: RunContext<any>) => {
         if (!runContext?.context) {
             throw new Error("No context provided");
         }
@@ -38,10 +39,19 @@ export const analyzeSessionTool = tool({
             throw new Error("Either userEmail or sessionId must be provided. At least one parameter is required.");
         }
 
-        // Get Google API key from settings
-        const googleApiKey = settings.google.apiKey;
-        if (!googleApiKey) {
-            throw new Error("GOOGLE_API_KEY is not configured. Please set the GOOGLE_API_KEY environment variable.");
+        // Validate required userIssueDescription
+        if (!userIssueDescription || userIssueDescription.trim() === '') {
+            throw new Error("userIssueDescription is required and cannot be empty. Please provide a clear description of the issue the user reported.");
+        }
+
+        // Get Session Analysis API settings
+        const sessionAnalysisApiKey = settings.posthogSessionAnalysis.apiKey;
+        const sessionAnalysisBaseUrl = settings.posthogSessionAnalysis.baseUrl;
+        if (!sessionAnalysisApiKey) {
+            throw new Error("POSTHOG_SESSION_ANALYSIS_API_KEY is not configured. Please set the POSTHOG_SESSION_ANALYSIS_API_KEY environment variable.");
+        }
+        if (!sessionAnalysisBaseUrl) {
+            throw new Error("POSTHOG_SESSION_ANALYSIS_BASE_URL is not configured. Please set the POSTHOG_SESSION_ANALYSIS_BASE_URL environment variable.");
         }
 
         // Get PostHog integration
@@ -69,7 +79,9 @@ export const analyzeSessionTool = tool({
             const options: AnalyzeSessionOptions = {
                 posthogApiKey,
                 projectId,
-                googleApiKey,
+                sessionAnalysisApiKey,
+                sessionAnalysisBaseUrl,
+                userIssueDescription: userIssueDescription.trim(),
                 posthogHost,
                 sessionId,
                 userEmail,

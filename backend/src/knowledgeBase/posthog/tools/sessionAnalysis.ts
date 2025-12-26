@@ -1,6 +1,5 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import { GoogleGenerativeAI } from '@google/generative-ai';
 
 
 export interface SessionRecording {
@@ -23,7 +22,9 @@ export interface ConsoleLog {
 export interface AnalyzeSessionOptions {
     posthogApiKey: string;
     projectId: string;
-    googleApiKey: string;
+    sessionAnalysisApiKey: string;
+    sessionAnalysisBaseUrl: string;
+    userIssueDescription: string; // Required: Description of the issue the user reported
     posthogHost?: string;
     userEmail?: string;
     sessionId?: string;
@@ -37,8 +38,8 @@ export interface AnalyzeSessionResult {
     analysis: string;
     session: SessionRecording;
     sessionUrl: string;
-    videoPath: string;
-    analysisPath: string;
+    videoPath?: string; // Optional now since video is handled by the API
+    analysisPath?: string; // Optional now since analysis is returned directly
     consoleLogsPath?: string;
 }
 
@@ -654,125 +655,169 @@ export async function getConsoleLogs(
 }
 
 /**
- * Analyze video with Gemini
+ * Initiate video conversion and analysis via the PostHog Session Analysis API
  */
-export async function analyzeWithGemini(
-    videoPath: string,
+async function initiateSessionAnalysis(
+    sessionId: string,
     options: {
         apiKey: string;
-        sessionInfo?: SessionRecording;
-        consoleLogs?: ConsoleLog[];
-        silent?: boolean; // If true, don't log to console
+        baseUrl: string;
+        posthogApiKey: string;
+        projectId: string;
+        userIssueDescription: string; // Required: Description of the issue the user reported
+        posthogHost?: string;
+        silent?: boolean;
     }
-): Promise<string> {
-    const { apiKey, sessionInfo, consoleLogs = [], silent = false } = options;
+): Promise<void> {
+    const {
+        apiKey,
+        baseUrl,
+        posthogApiKey,
+        projectId,
+        userIssueDescription,
+        posthogHost = 'https://us.posthog.com',
+        silent = false,
+    } = options;
 
     if (!silent) {
-        console.log(`\n🤖 Step 4: Analyzing video with Gemini...`);
+        console.log(`\n📡 Initiating session analysis for ${sessionId}...`);
     }
 
-    const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash-exp' });
-
-    // Read video file as base64
-    const videoBuffer = fs.readFileSync(videoPath);
-    const videoBase64 = videoBuffer.toString('base64');
-
-    // Prepare console logs and network requests text for the prompt
-    // Prioritize errors and warnings, but include all for comprehensive analysis
-    let consoleLogsText = '';
-    if (consoleLogs.length > 0) {
-        // Sort to put errors/warnings first, but include all
-        const sortedLogs = [...consoleLogs].sort((a, b) => {
-            const priority = { error: 0, warn: 1, info: 2, log: 3, debug: 4 };
-            return (priority[a.level as keyof typeof priority] ?? 99) - (priority[b.level as keyof typeof priority] ?? 99);
-        });
-        
-        // Truncate very long messages to prevent token bloat, but keep enough context
-        const formattedLogs = sortedLogs.map((log) => {
-            const maxLength = 500;
-            const message = log.message.length > maxLength 
-                ? log.message.substring(0, maxLength) + '...[truncated]'
-                : log.message;
-            return `[${log.timestamp}] [${log.level.toUpperCase()}] ${message}`;
-        });
-        
-        consoleLogsText = `\n\n## CONSOLE LOGS (${consoleLogs.length} total entries, sorted by severity: errors/warnings first):
-${formattedLogs.join('\n')}`;
+    // Validate required field
+    if (!userIssueDescription || userIssueDescription.trim() === '') {
+        throw new Error('userIssueDescription is required and cannot be empty');
     }
 
-    // Prepare prompt
-    const prompt = `You are a Software Bug Triage Specialist. Your job is to quickly gather context necessary to prep an engineer when a client emails stating there is an issue.
+    // Base64 encode the PostHog API key as required by the API
+    const posthogApiKeyBase64 = Buffer.from(posthogApiKey).toString('base64');
 
-A client has reported a problem with the application. You have access to:
-1. A session recording video showing the user's interaction
-2. Console logs from the browser session
-3. Network requests made during the session
+    const payload = {
+        sessionId,
+        posthogApiKey: posthogApiKeyBase64,
+        projectId,
+        posthogApiBaseUrl: posthogHost,
+        userIssueDescription: userIssueDescription.trim(),
+    };
 
-Your task is to analyze these sources and create a concise, actionable bug report that will help an engineer quickly understand and fix the issue.
+    const response = await fetch(`${baseUrl}/convert`, {
+        method: 'POST',
+        headers: {
+            'Authorization': `Bearer ${apiKey}`,
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+    });
 
-**CRITICAL: You MUST cite the source for EVERY claim you make. For each issue you identify, you must specify which source provides the evidence:**
-- **CONSOLE**: Reference specific console log entries by timestamp and level
-- **SESSION**: Reference specific timestamps in the video where the issue is visible
-
-Format citations like: [CONSOLE: 2025-01-19T10:15:23.456Z error] or [NETWORK: 2025-01-19T10:15:24.789Z GET /api/users] or [SESSION: 00:01:23]
-
-Provide a structured bug report with the following sections:
-1. **Summary**: Brief one-sentence description of the issue (what the client is experiencing)
-
-2. **Technical Errors & Bugs**: Any JavaScript errors, API failures, broken functionality, or unexpected application crashes. Include specific error messages. MUST cite console logs that show the error.
-
-3. **UI/UX Issues**: Broken interactions, unresponsive buttons/links, visual glitches, layout issues, or elements that don't work as expected. MUST cite the video timestamp where the issue occurs.
-
-4. **Performance Problems**: Slow loading times, laggy interactions, unresponsive UI, or noticeable performance degradation. MUST cite network request timings or video timestamps showing the delay.
-
-5. **Reproduction Steps**: For each bug identified, provide clear, step-by-step instructions to reproduce the problem, including timestamps from the session. MUST reference the source that shows the issue.
-
-6. **Root Cause Indicators**: Technical evidence that points to the likely root cause (error messages, failed API calls, network timeouts, etc.). MUST include citations.
-
-7. **Recommended Next Steps**: What the engineer should investigate first (specific files, API endpoints, error codes, etc.).
-
-Focus on ACTIONABLE, ENGINEERING-FOCUSED bug reports. This is not for product management - focus on technical issues that need to be fixed. Avoid product feature recommendations or general UX improvements unless they're clearly bugs.
-
-${sessionInfo ? `Session Info:
-- Duration: ${sessionInfo.duration}s
-- Events: ${sessionInfo.eventsCount}
-- Start Time: ${sessionInfo.startTime}
-` : ''}${consoleLogsText}
-
-Remember: EVERY claim must include a citation indicating the source (CONSOLE, NETWORK, or SESSION) and the specific timestamp or identifier.`;
-
-    try {
-        const result = await model.generateContent([
-            {
-                inlineData: {
-                    mimeType: 'video/mp4',
-                    data: videoBase64,
-                },
-            },
-            prompt,
-        ]);
-
-        const response = result.response;
-        const analysis = response.text();
-
-        if (!silent) {
-            console.log(`✅ Analysis complete!`);
+    if (!response.ok) {
+        const errorText = await response.text();
+        if (response.status === 401 || response.status === 403) {
+            throw new Error('Session Analysis API authentication failed. Check your API key.');
+        } else if (response.status === 400) {
+            throw new Error(`Invalid request: ${errorText}`);
         }
-        return analysis;
-    } catch (error: any) {
-        throw new Error(`Failed to analyze video with Gemini: ${error.message}`);
+        throw new Error(`Failed to initiate session analysis: ${errorText}`);
+    }
+
+    const data = await response.json();
+    if (data.status !== 'pending') {
+        throw new Error(`Unexpected response status: ${data.status}`);
+    }
+
+    if (!silent) {
+        console.log(`✅ Analysis initiated. Status: ${data.status}`);
     }
 }
 
 /**
- * Main analysis function - analyzes a PostHog session recording with Gemini
+ * Poll for analysis status and results
+ */
+async function pollForAnalysis(
+    sessionId: string,
+    options: {
+        apiKey: string;
+        baseUrl: string;
+        maxWait?: number;
+        initialInterval?: number;
+        silent?: boolean;
+    }
+): Promise<string | null> {
+    const {
+        apiKey,
+        baseUrl,
+        maxWait = 300, // 5 minutes default
+        initialInterval = 2, // 2 seconds initial
+        silent = false,
+    } = options;
+
+    if (!silent) {
+        console.log(`\n⏳ Polling for analysis results...`);
+    }
+
+    let interval = initialInterval;
+    const startTime = Date.now();
+
+    while (Date.now() - startTime < maxWait * 1000) {
+        const response = await fetch(`${baseUrl}/status/${sessionId}`, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${apiKey}`,
+            },
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            if (response.status === 401 || response.status === 403) {
+                throw new Error('Session Analysis API authentication failed. Check your API key.');
+            } else if (response.status === 404) {
+                throw new Error(`Session ${sessionId} not found in analysis service.`);
+            }
+            throw new Error(`Failed to check analysis status: ${errorText}`);
+        }
+
+        const data = await response.json();
+
+        if (data.status === 'completed') {
+            if (!silent) {
+                console.log(`✅ Analysis complete!`);
+            }
+            return data.analysis || null;
+        } else if (data.status === 'not_found') {
+            throw new Error(`Session ${sessionId} not found in analysis service.`);
+        } else if (data.status === 'processing') {
+            if (!silent) {
+                const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+                process.stdout.write(`\r   Processing... ${elapsed}s elapsed`);
+            }
+        } else {
+            // Unknown status, continue polling
+            if (!silent) {
+                const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+                process.stdout.write(`\r   Status: ${data.status}... ${elapsed}s elapsed`);
+            }
+        }
+
+        // Exponential backoff: 2s, 4s, 8s, 16s, max 30s
+        await new Promise(resolve => setTimeout(resolve, Math.min(interval * 1000, 30000)));
+        interval *= 2;
+    }
+
+    if (!silent) {
+        process.stdout.write('\r'); // Clear the progress line
+    }
+
+    throw new Error(`Analysis timeout after ${maxWait} seconds`);
+}
+
+/**
+ * Main analysis function - analyzes a PostHog session recording using the Session Analysis API
  */
 export async function analyzeSession(options: AnalyzeSessionOptions): Promise<AnalyzeSessionResult> {
     const {
         posthogApiKey,
         projectId,
-        googleApiKey,
+        sessionAnalysisApiKey,
+        sessionAnalysisBaseUrl,
+        userIssueDescription,
         posthogHost = 'https://us.posthog.com',
         userEmail,
         sessionId,
@@ -786,11 +831,9 @@ export async function analyzeSession(options: AnalyzeSessionOptions): Promise<An
     if (!sessionId && !userEmail) {
         throw new Error('Either userEmail or sessionId must be provided');
     }
-
-    // Setup output directory
-    const defaultOutputDir = outputDir || path.join(process.cwd(), 'session_output');
-    if (!fs.existsSync(defaultOutputDir)) {
-        fs.mkdirSync(defaultOutputDir, { recursive: true });
+    
+    if (!userIssueDescription || userIssueDescription.trim() === '') {
+        throw new Error('userIssueDescription is required and cannot be empty');
     }
 
     // Step 1: Get session (either by ID or most recent by email)
@@ -823,62 +866,74 @@ export async function analyzeSession(options: AnalyzeSessionOptions): Promise<An
         throw new Error('No session found');
     }
 
-    // Create a unique folder for this session run: <timestamp>-<sessionId>
-    const timestamp = Date.now();
-    const sessionFolder = path.join(defaultOutputDir, `${timestamp}-${session.id}`);
-    if (!fs.existsSync(sessionFolder)) {
-        fs.mkdirSync(sessionFolder, { recursive: true });
-    }
-
-    // Step 2: Fetch console logs
-    let consoleLogs: ConsoleLog[] = [];
-    let consoleLogsPath: string | null = null;
-    
-    // Fetch and save console logs
-    try {
-        consoleLogs = await getConsoleLogs(session.id, {
-            apiKey: posthogApiKey,
-            projectId,
-            host: posthogHost,
-            silent: true, // Don't log in programmatic use
-        });
-        
-        consoleLogsPath = path.join(sessionFolder, `console-logs_${session.id}.json`);
-        fs.writeFileSync(consoleLogsPath, JSON.stringify(consoleLogs, null, 2));
-    } catch (error: any) {
-        // Console logs are optional, continue if they fail
-    }
-
-    // Step 3: Export session as MP4
-    const videoPath = path.join(sessionFolder, `session_${session.id}.mp4`);
-    const duration = session.duration || 60; // Default to 60 seconds if duration is not available
-    await exportSessionReplay(session.id, duration, {
-        apiKey: posthogApiKey,
+    // Step 2: Initiate analysis via the Session Analysis API
+    await initiateSessionAnalysis(session.id, {
+        apiKey: sessionAnalysisApiKey,
+        baseUrl: sessionAnalysisBaseUrl,
+        posthogApiKey,
         projectId,
-        host: posthogHost,
-        outputPath: videoPath,
+        userIssueDescription,
+        posthogHost,
         silent: true, // Don't log in programmatic use
     });
 
-    // Step 4: Analyze with Gemini
-    const analysis = await analyzeWithGemini(videoPath, {
-        apiKey: googleApiKey,
-        sessionInfo: session,
-        consoleLogs: consoleLogs,
+    // Step 3: Poll for analysis results
+    const analysis = await pollForAnalysis(session.id, {
+        apiKey: sessionAnalysisApiKey,
+        baseUrl: sessionAnalysisBaseUrl,
+        maxWait: 300, // 5 minutes
+        initialInterval: 2,
         silent: true, // Don't log in programmatic use
     });
 
-    // Save analysis to file
-    const analysisPath = path.join(sessionFolder, `analysis_${session.id}.txt`);
-    fs.writeFileSync(analysisPath, analysis);
+    if (!analysis) {
+        throw new Error('Analysis completed but no analysis text was returned');
+    }
+
+    // Optionally save analysis to file if outputDir is provided
+    let analysisPath: string | undefined;
+    let consoleLogsPath: string | undefined;
+    
+    if (outputDir) {
+        const defaultOutputDir = outputDir || path.join(process.cwd(), 'session_output');
+        if (!fs.existsSync(defaultOutputDir)) {
+            fs.mkdirSync(defaultOutputDir, { recursive: true });
+        }
+
+        // Create a unique folder for this session run: <timestamp>-<sessionId>
+        const timestamp = Date.now();
+        const sessionFolder = path.join(defaultOutputDir, `${timestamp}-${session.id}`);
+        if (!fs.existsSync(sessionFolder)) {
+            fs.mkdirSync(sessionFolder, { recursive: true });
+        }
+
+        // Save analysis to file
+        analysisPath = path.join(sessionFolder, `analysis_${session.id}.txt`);
+        fs.writeFileSync(analysisPath, analysis);
+
+        // Optionally fetch and save console logs (for reference, not used by API)
+        try {
+            const consoleLogs = await getConsoleLogs(session.id, {
+                apiKey: posthogApiKey,
+                projectId,
+                host: posthogHost,
+                silent: true,
+            });
+            
+            consoleLogsPath = path.join(sessionFolder, `console-logs_${session.id}.json`);
+            fs.writeFileSync(consoleLogsPath, JSON.stringify(consoleLogs, null, 2));
+        } catch (error: any) {
+            // Console logs are optional, continue if they fail
+        }
+    }
 
     return {
         analysis,
         session,
         sessionUrl: session.sessionUrl,
-        videoPath,
+        videoPath: undefined, // Video is handled by the API service
         analysisPath,
-        consoleLogsPath: consoleLogsPath || undefined,
+        consoleLogsPath,
     };
 }
 

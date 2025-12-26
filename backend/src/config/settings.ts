@@ -136,6 +136,12 @@ export const settings = {
     enableInDevelopment: optionalEnv('POSTHOG_ENABLE_IN_DEV', 'false') === 'true',
   },
 
+  // PostHog Session Analysis API
+  posthogSessionAnalysis: {
+    apiKey: requireEnv('POSTHOG_SESSION_ANALYSIS_API_KEY'),
+    baseUrl: requireEnv('POSTHOG_SESSION_ANALYSIS_BASE_URL'),
+  },
+
   // Optional configuration
   optional: {
     redisUrl: optionalEnv('REDIS_URL'),
