@@ -83,8 +83,8 @@ export const analyzeSessionTool = tool({
                 sessionAnalysisBaseUrl,
                 userIssueDescription: userIssueDescription.trim(),
                 posthogHost,
-                sessionId,
-                userEmail,
+                sessionId: sessionId ?? undefined,
+                userEmail: userEmail ?? undefined,
             };
 
             // Call the analysis function
