@@ -33,3 +33,12 @@ export function getOutputConfigInclude() {
         figma_config: true,
     } as const;
 }
+
+/**
+ * Returns the include object for channel knowledge base configs.
+ */
+export function getKnowledgeBaseConfigInclude() {
+    return {
+        posthog_config: true,
+    } as const;
+}

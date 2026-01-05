@@ -1,0 +1,131 @@
+import { Request, Response } from "express";
+import { PosthogIntegrationManager } from "../integrations/PosthogIntegration";
+import { PosthogProjectsResponse } from "../shared/types";
+import { db } from "../prismaClient";
+import logger from "../logger";
+
+
+export async function getPosthogIntegrations(req: Request, res: Response) {
+    if (!req.session?.user) {
+        res.status(401).json({ error: 'Unauthorized' });
+        return;
+    }
+  
+    try {
+        const manager = new PosthogIntegrationManager();
+        const integrations = await manager.getInstancesForUser(req.session.user.id);
+        res.status(200).json(integrations);
+    } catch (error) {
+        logger.error('Error fetching Posthog integrations:', { error });
+        res.status(500).json({ error: 'Failed to fetch Posthog integrations' });
+    }
+}
+
+export async function createOrUpdatePosthogIntegration(req: Request, res: Response) {
+    if (!req.session?.user) {
+        res.status(401).json({ error: 'Unauthorized' });
+        return;
+    }
+
+    try {
+        const manager = new PosthogIntegrationManager();
+        await manager.processFormSubmission(req, res);
+    } catch (error) {
+        logger.error('Error creating/updating Posthog integration:', { error });
+        res.status(500).json({ error: 'Failed to process integration' });
+    }
+}
+
+// Get Posthog projects for an integration
+export const getPosthogProjects = async (req: Request, res: Response) => {
+    const user = req.session?.user;
+    if (!user) {
+        return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const integrationId = req.query.integrationId as string;
+    if (!integrationId) {
+        return res.status(400).json({ error: "integrationId is required" });
+    }
+
+    // Search term is optional - empty string returns all projects
+    const search = (req.query.search as string) || "";
+
+    try {
+        // Verify user owns this integration
+        const integration = await db().posthog_integrations.findFirst({
+            where: {
+                id: integrationId,
+                user_id: user.id,
+            },
+        });
+
+        if (!integration) {
+            return res.status(404).json({ error: "Posthog integration not found" });
+        }
+
+        // Fetch projects from Posthog API
+        // Posthog API endpoint: GET /api/projects/
+        const apiUrl = 'https://us.posthog.com/api/projects/';
+        const response = await fetch(apiUrl, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${integration.api_key}`,
+                'Content-Type': 'application/json',
+            },
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            logger.error('Posthog API error fetching projects', {
+                status: response.status,
+                error: errorText,
+            });
+            return res.status(response.status).json({
+                error: "Failed to fetch projects from Posthog",
+                details: response.status === 401 ? 'Invalid API key' : errorText
+            });
+        }
+
+        const data = await response.json();
+        
+        // Posthog API returns results in different formats depending on version
+        // Handle both array and paginated response formats
+        let projects = Array.isArray(data) ? data : (data.results || data.data || []);
+        
+        // Filter by search term if provided
+        if (search) {
+            const searchLower = search.toLowerCase();
+            projects = projects.filter((project: any) => 
+                project.name?.toLowerCase().includes(searchLower) ||
+                project.id?.toString().toLowerCase().includes(searchLower)
+            );
+        }
+
+        // Map to our PosthogProject type
+        const mappedProjects = projects.map((project: any) => ({
+            id: project.id?.toString() || project.uuid || '',
+            name: project.name || 'Unnamed Project',
+            organization_id: project.organization_id || project.organization?.id || undefined,
+        })).filter((project: any) => project.id); // Filter out projects without IDs
+
+        // Sort alphabetically when no search term
+        if (!search) {
+            mappedProjects.sort((a: { name: string }, b: { name: string }) => 
+                a.name.localeCompare(b.name, undefined, { sensitivity: 'base' })
+            );
+        }
+
+        const responseData: PosthogProjectsResponse = {
+            projects: mappedProjects,
+        };
+
+        res.status(200).json(responseData);
+    } catch (error: any) {
+        logger.error('Error fetching Posthog projects:', { error });
+        res.status(500).json({
+            error: "Failed to fetch projects",
+            details: error.message
+        });
+    }
+};

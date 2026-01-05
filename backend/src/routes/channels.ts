@@ -1,18 +1,18 @@
 import { Request, Response } from "express";
 import { db } from "../prismaClient";
-import { Channel, ChannelInput, ChannelsResponse, ChannelNotificationSettings, ChannelUpdate } from "../shared/types";
+import { Channel, ChannelInput, ChannelsResponse, ChannelNotificationSettings, ChannelUpdate, ChannelKnowledgeBase } from "../shared/types";
 import { parsePageParams } from "../utility/pagination";
-import chalk from "chalk";
 import { ChannelWithInputRelations, PrismaTransaction, ChannelWithRelations, ChannelWithNotificationSettingsRelations, RunHistoryActionType } from "../types/prisma";
 import { IntegrationType } from "../shared/Integrations";
-import { convertConfigTypeToInputConfigType, convertConfigTypeToOutputConfigType, convertPrismaConfigToConfigInstance, convertPrismaOutputConfigToConfigInstance } from "../utility/typeConverters";
-import { ConfigInstance } from "../shared/Configs";
-import { getInputConfigInclude, getOutputConfigInclude } from "../utility/prismaIncludes";
+import { convertConfigTypeToInputConfigType, convertConfigTypeToOutputConfigType, convertConfigTypeToKnowledgeBaseConfigType, convertPrismaConfigToConfigInstance, convertPrismaOutputConfigToConfigInstance, convertPrismaKnowledgeBaseConfigToConfigInstance } from "../utility/typeConverters";
+import { ConfigInstance, PosthogConfig, ConfigType } from "../shared/Configs";
+import { getInputConfigInclude, getOutputConfigInclude, getKnowledgeBaseConfigInclude } from "../utility/prismaIncludes";
 import { INPUT_REGISTRY } from "../inputs/InputRegistry";
 import { INTEGRATION_REGISTRY } from "../integrations/abstract/IntegrationRegistry";
 import { OutputFactory } from "../outputs/abstract/OutputFactory";
 import { emitCacheInvalidationWithKey } from "../realtimeSocket";
 import logger from "../logger";
+import { KnowledgeBaseFactory } from "../knowledgeBase/abstract/KnowledgeBaseFactory";
 
 async function createInputConfig(
     tx: PrismaTransaction,
@@ -37,6 +37,18 @@ async function createOutputConfig(
         throw new Error(`Output not found for integration type: ${config.configType}`);
     }
     await output().addOutputToChannel(tx, outputId, config);
+}
+
+async function createKnowledgeBaseConfig(
+    tx: PrismaTransaction,
+    knowledgeBaseId: string,
+    config: ConfigInstance
+): Promise<void> {
+    const knowledgeBase = KnowledgeBaseFactory.KNOWLEDGE_BASE_REGISTRY.get(convertConfigTypeToKnowledgeBaseConfigType(config.configType));
+    if (!knowledgeBase) {
+        throw new Error(`Knowledge base not found for integration type: ${config.configType}`);
+    }
+    await knowledgeBase().addKnowledgeBaseToChannel(tx, knowledgeBaseId, config);
 }
 
 async function validateUserOwnsIntegration(userId: string, integrationType: IntegrationType, integrationId: string): Promise<boolean> {
@@ -108,6 +120,9 @@ export async function getUserChannels(req: Request, res: Response) {
                 output: {
                     include: getOutputConfigInclude()
                 },
+                knowledge_bases: {
+                    include: getKnowledgeBaseConfigInclude()
+                },
                 notification_settings: true
             },
             orderBy: { created_at: 'desc' },
@@ -163,15 +178,18 @@ export async function getRecentChannels(req: Request, res: Response) {
                 where: {
                     user_id: userId,
                 },
-                include: {
-                    prompt: true,
-                    inputs: {
-                        include: getInputConfigInclude()
-                    },
-                    output: {
-                        include: getOutputConfigInclude()
-                    },
+            include: {
+                prompt: true,
+                inputs: {
+                    include: getInputConfigInclude()
                 },
+                output: {
+                    include: getOutputConfigInclude()
+                },
+                knowledge_bases: {
+                    include: getKnowledgeBaseConfigInclude()
+                },
+            },
                 orderBy: { updated_at: 'desc' },
                 take: limit
             }) as Promise<ChannelWithRelations[]>,
@@ -234,6 +252,9 @@ export async function getUserChannel(req: Request, res: Response) {
                 output: {
                     include: getOutputConfigInclude()
                 },
+                knowledge_bases: {
+                    include: getKnowledgeBaseConfigInclude()
+                },
                 notification_settings: true
             }
         });
@@ -261,9 +282,10 @@ export async function createChannel(req: Request, res: Response) {
     }
 
     const userId = req.session.user.id;
-    const { name, inputs, output, prompt, isActive = true, requireApproval = false, notificationSettings } = req.body as ChannelUpdate;
+    const { name, inputs, output, knowledgeBases, prompt, isActive = true, requireApproval = false, notificationSettings } = req.body as ChannelUpdate;
     logger.debug("Output from frontend", { output: JSON.stringify(output, null, 2), userId });
     logger.debug("Inputs from frontend", { inputs: JSON.stringify(inputs, null, 2), userId });
+    logger.debug("Knowledge bases from frontend", { knowledgeBases: JSON.stringify(knowledgeBases, null, 2), userId });
     logger.debug("Notification settings from frontend", { notificationSettings: JSON.stringify(notificationSettings, null, 2), userId });
 
     // Validate request
@@ -333,7 +355,6 @@ export async function createChannel(req: Request, res: Response) {
             if (!outputIntegrationId) {
                 throw new Error(`Integration ID is required for ${output.config.integrationType}`);
             }
-
             const isOwner = await validateUserOwnsIntegration(userId, outputIntegrationType, outputIntegrationId);
             if (!isOwner) {
                 throw new Error(`Integration ${output.config.integrationType} not found or not owned by user`);
@@ -355,6 +376,38 @@ export async function createChannel(req: Request, res: Response) {
 
             // Create config record if provided
             await createOutputConfig(tx, newOutput.id, output.config);
+
+            // Create knowledge bases if provided
+            if (knowledgeBases && knowledgeBases.length > 0) {
+                for (const kb of knowledgeBases) {
+                    const integrationType = kb.config.integrationType;
+                    if (!integrationType) {
+                        throw new Error(`Unknown integration type: ${kb.config.integrationType}`);
+                    }
+
+                    // Validate that user owns the integration
+                    const integrationId = kb.config.integrationId;
+                    if (!integrationId) {
+                        throw new Error(`Integration ID is required for ${kb.config.integrationType}`);
+                    }
+
+                    const isOwner = await validateUserOwnsIntegration(userId, integrationType, integrationId);
+                    if (!isOwner) {
+                        throw new Error(`Integration ${kb.config.integrationType} not found or not owned by user`);
+                    }
+
+                    const newKnowledgeBase = await tx.automation_knowledge_bases.create({
+                        data: {
+                            automation_id: newChannel.id,
+                            config_type: convertConfigTypeToKnowledgeBaseConfigType(kb.config.configType),
+                            integration_id: integrationId
+                        }
+                    });
+
+                    // Create config record
+                    await createKnowledgeBaseConfig(tx, newKnowledgeBase.id, kb.config);
+                }
+            }
 
             // Create notification settings if provided
             if (notificationSettings) {
@@ -399,7 +452,7 @@ export async function updateChannel(req: Request, res: Response) {
 
     const userId = req.session.user.id;
     const channelId = req.params.id;
-    const { name, inputs, output, prompt, isActive, requireApproval, notificationSettings } = req.body as Partial<ChannelUpdate>;
+    const { name, inputs, output, knowledgeBases, prompt, isActive, requireApproval, notificationSettings } = req.body as Partial<ChannelUpdate>;
 
     try {
         const prisma = db();
@@ -522,6 +575,46 @@ export async function updateChannel(req: Request, res: Response) {
                 await createOutputConfig(tx, newOutput.id, output.config);
             }
 
+            // Update knowledge bases if provided
+            if (knowledgeBases !== undefined) {
+                // Delete old knowledge bases if exists (configs cascade delete)
+                await tx.automation_knowledge_bases.deleteMany({
+                    where: { automation_id: channelId }
+                });
+
+                // Create new knowledge bases if provided
+                if (knowledgeBases.length > 0) {
+                    for (const kb of knowledgeBases) {
+                        const integrationType = kb.config.integrationType;
+                        if (!integrationType) {
+                            throw new Error(`Unknown integration type: ${kb.config.integrationType}`);
+                        }
+
+                        // Validate that user owns the integration
+                        const integrationId = kb.config.integrationId;
+                        if (!integrationId) {
+                            throw new Error(`Integration ID is required for ${kb.config.integrationType}`);
+                        }
+
+                        const isOwner = await validateUserOwnsIntegration(userId, integrationType, integrationId);
+                        if (!isOwner) {
+                            throw new Error(`Integration ${kb.config.integrationType} not found or not owned by user`);
+                        }
+
+                        const newKnowledgeBase = await tx.automation_knowledge_bases.create({
+                            data: {
+                                automation_id: channelId,
+                                config_type: convertConfigTypeToKnowledgeBaseConfigType(kb.config.configType),
+                                integration_id: integrationId
+                            }
+                        });
+
+                        // Create config record
+                        await createKnowledgeBaseConfig(tx, newKnowledgeBase.id, kb.config);
+                    }
+                }
+            }
+
             // Update notification settings if provided
             if (notificationSettings) {
                 await upsertNotificationSettings(tx, channelId, notificationSettings);
@@ -623,6 +716,10 @@ function transformChannelToFrontendFormat(channel: ChannelWithRelations & Partia
             id: channel.output.id,
             config: convertPrismaOutputConfigToConfigInstance(channel.output),
         },
+        knowledgeBases: (channel as any).knowledge_bases && (channel as any).knowledge_bases.length > 0 ? (channel as any).knowledge_bases.map((kb: any) => ({
+            id: kb.id,
+            config: convertPrismaKnowledgeBaseConfigToConfigInstance(kb),
+        })) : undefined,
         notificationSettings: channel.notification_settings ? {
             enabled: channel.notification_settings.enabled,
             actionTypes: channel.notification_settings.action_types,

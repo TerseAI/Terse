@@ -67,3 +67,7 @@ export function TerseIcon() {
         <img src="/terse.png" alt="Terse" className="w-full h-full object-contain" />
     );
 }
+
+export function PosthogIcon() {
+    return <img src="/posthog.png" alt="Posthog" className="w-full h-full object-contain" />;
+}

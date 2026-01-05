@@ -1,4 +1,4 @@
-import { ChannelInput, ChannelOutput, TransientChannelInput, TransientChannelOutput } from "@/shared/types";
+import { ChannelInput, ChannelOutput, TransientChannelInput, TransientChannelOutput, ChannelKnowledgeBase, TransientKnowledgeBase } from "@/shared/types";
 
 export function getDefaultChannelName(
     totalCount: number = 0
@@ -56,5 +56,30 @@ export function toChannelOutput(output: TransientChannelOutput | undefined): Cha
     return {
         id: output.id,
         config: output.config,
+    };
+}
+
+/**
+ * Converts ChannelKnowledgeBase to TransientKnowledgeBase
+ */
+export function toTransientKnowledgeBase(kb: ChannelKnowledgeBase): TransientKnowledgeBase {
+    return {
+        id: kb.id,
+        config: kb.config,
+        configType: kb.config.configType,
+    };
+}
+
+/**
+ * Converts TransientKnowledgeBase to ChannelKnowledgeBase
+ * Only converts if config is present (filters out incomplete knowledge bases)
+ */
+export function toChannelKnowledgeBase(kb: TransientKnowledgeBase): ChannelKnowledgeBase | null {
+    if (!kb.config) {
+        return null;
+    }
+    return {
+        id: kb.id,
+        config: kb.config,
     };
 }

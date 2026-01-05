@@ -5,8 +5,8 @@ import ChannelSetupTab, { ChannelSetupTabProps } from "./tabs/ChannelSetupTab";
 import ChannelRunHistoryTab from "./tabs/ChannelRunHistoryTab";
 import { useEffect, useState} from "react";
 import { useChannel } from "../../hooks/api/useChannels";
-import { ChannelNotificationSettings, ChannelPrompt, TransientChannelInput, TransientChannelOutput } from "../../shared/types";
-import { toTransientChannelInput, toTransientChannelOutput } from "../../utility/ChannelUtils";
+import { ChannelNotificationSettings, ChannelPrompt, TransientChannelInput, TransientChannelOutput, TransientKnowledgeBase } from "../../shared/types";
+import { toTransientChannelInput, toTransientChannelOutput, toTransientKnowledgeBase } from "../../utility/ChannelUtils";
 
 function ChannelDetail() {
     const { id } = useParams<{ id: string }>();
@@ -22,6 +22,7 @@ function ChannelDetail() {
     const [name, setName] = useState<string | null>(null);
     const [inputs, setInputs] = useState<TransientChannelInput[]>([]);
     const [output, setOutput] = useState<TransientChannelOutput | undefined>(undefined);
+    const [knowledgeBases, setKnowledgeBases] = useState<TransientKnowledgeBase[]>([]);
     const [prompt, setPrompt] = useState<ChannelPrompt | undefined>(undefined);
     const [isActive, setIsActive] = useState<boolean>(true);
     const [requireApproval, setRequireApproval] = useState<boolean>(false);
@@ -37,6 +38,7 @@ function ChannelDetail() {
             setName(null);
             setInputs([]);
             setOutput(undefined);
+            setKnowledgeBases([]);
             setPrompt(undefined);
             setIsActive(true);
             setRequireApproval(false);
@@ -45,6 +47,7 @@ function ChannelDetail() {
             setName(channel.name);
             setInputs(channel.inputs.map(toTransientChannelInput));
             setOutput(channel.output ? toTransientChannelOutput(channel.output) : undefined);
+            setKnowledgeBases(channel.knowledgeBases?.map(toTransientKnowledgeBase) || []);
             setPrompt(channel.prompt);
             setIsActive(channel.isActive);
             setRequireApproval(channel.requireApproval ?? false);
@@ -75,6 +78,8 @@ function ChannelDetail() {
         setInputs,
         output,
         setOutput,
+        knowledgeBases,
+        setKnowledgeBases,
         prompt,
         setPrompt,
         isActive,

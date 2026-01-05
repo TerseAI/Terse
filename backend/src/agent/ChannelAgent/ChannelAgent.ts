@@ -24,14 +24,24 @@ import { storePendingApprovalState, getPendingApprovalState, clearPendingApprova
 import { persistOutputAttributions, removeOutputAttributions } from './persistOutputAttributions';
 import logger from '../../logger';
 import { RunHistoryActionType } from '@prisma/client';
+import { KnowledgeBase } from '../../knowledgeBase/abstract/KnowledgeBase';
+import { ChannelKnowledgeBaseWithConfigs } from '../../types/prisma';
 
-export class ChannelAgent<T extends Session, TConfig extends ConfigInstance> {
+export class ChannelAgent<
+    T extends Session,
+    K extends Session,
+    TConfig extends ConfigInstance,
+    KBConfig extends ConfigInstance
+> {
     private session: T;
     private inputEvent: InputEvent | null = null;
     private channel: ChannelWithRelations;
     private output: Output<T, TConfig>;
-    private agent?: Agent<SessionWithTracking<T>, AgentOutputType>;
-    private tools: Tool<SessionWithTracking<T>>[] = [];
+    private knowledgeBases: KnowledgeBase<K, KBConfig>[];
+    private knowledgeBaseChannelConfigs: ChannelKnowledgeBaseWithConfigs[];
+    private knowledgeBaseSessions: K[] = [];
+    private agent?: Agent<SessionWithTracking<T & K>, AgentOutputType>;
+    private tools: Tool<SessionWithTracking<T & K>>[] = [];
     private runContext: RunContext;
     private toolMetadataMap: Map<string, ToolMetadata> = new Map();
     private pendingActions: RunHistoryAction[] = [];
@@ -42,14 +52,26 @@ export class ChannelAgent<T extends Session, TConfig extends ConfigInstance> {
     constructor(
         session: T,
         output: Output<T, TConfig>,
+        knowledgeBases: KnowledgeBase<K, KBConfig>[],
+        knowledgeBaseChannelConfigs: ChannelKnowledgeBaseWithConfigs[],
         channel: ChannelWithRelations,
         runContext: RunContext,
         maxTurns: number = 50
     ) {
+        if (knowledgeBases.length !== knowledgeBaseChannelConfigs.length) {
+            throw new Error(`Mismatch between knowledge base instances (${knowledgeBases.length}) and channel configs (${knowledgeBaseChannelConfigs.length})`);
+        }
+        
         this.session = session;
         this.output = output;
+        this.knowledgeBases = knowledgeBases;
+        this.knowledgeBaseChannelConfigs = knowledgeBaseChannelConfigs;
         this.channel = channel;
-        this.tools = output.toolbox.map(entry => entry.tool);
+        this.tools = [
+            ...output.toolbox.map(entry => entry.tool),
+            ...knowledgeBases.flatMap(kb => kb.toolbox.map(entry => entry.tool))
+        ];
+
         this.runContext = runContext;
         this.buildToolMetadataMap();
         this.memorySession = new RunHistoryChatMemorySession({
@@ -182,10 +204,12 @@ export class ChannelAgent<T extends Session, TConfig extends ConfigInstance> {
                 }
                 return undefined;
             };
-            logger.error(`[resumeFromPendingApproval] Available stored interruptions:`, { interruptions: pendingState.interruptions.map((int) => ({
-                callId: getInterruptionCallId(int),
-                name: int.name
-            })) });
+            logger.error(`[resumeFromPendingApproval] Available stored interruptions:`, {
+                interruptions: pendingState.interruptions.map((int) => ({
+                    callId: getInterruptionCallId(int),
+                    name: int.name
+                }))
+            });
             throw new Error(`Could not find matching interruption for step_id ${stepId}`);
         }
 
@@ -316,10 +340,21 @@ export class ChannelAgent<T extends Session, TConfig extends ConfigInstance> {
     }
 
     private buildToolMetadataMap(): void {
+        // Populate metadata from output toolbox
         this.output.toolbox.forEach(entry => {
             this.toolMetadataMap.set(entry.tool.name, {
                 integration: entry.integration,
                 isReadOnly: entry.isReadOnly,
+            });
+        });
+        
+        // Populate metadata from knowledge base toolboxes
+        this.knowledgeBases.forEach(kb => {
+            kb.toolbox.forEach(entry => {
+                this.toolMetadataMap.set(entry.tool.name, {
+                    integration: entry.integration,
+                    isReadOnly: entry.isReadOnly,
+                });
             });
         });
     }
@@ -329,10 +364,31 @@ export class ChannelAgent<T extends Session, TConfig extends ConfigInstance> {
     }
 
     async initializeAgent(): Promise<void> {
-        const deps: SystemPromptBuilderDependencies<T, TConfig> = {
+        // Pair each knowledge base instance with its corresponding channel config by index
+        this.knowledgeBaseSessions = await Promise.all(
+            this.knowledgeBases.map((kb, index) => {
+                const channelKnowledgeBase = this.knowledgeBaseChannelConfigs[index];
+                if (!channelKnowledgeBase) {
+                    throw new Error(`Channel knowledge base config not found at index ${index} for ${kb.integration}`);
+                }
+                // Verify the types match as a sanity check
+                if (channelKnowledgeBase.config_type !== kb.integration) {
+                    throw new Error(`Type mismatch: knowledge base at index ${index} is ${kb.integration} but channel config is ${channelKnowledgeBase.config_type}`);
+                }
+                return kb.createSessionFromConfig(
+                    channelKnowledgeBase.integration_id,
+                    channelKnowledgeBase,
+                    this.session.user
+                );
+            })
+        );
+
+        const deps: SystemPromptBuilderDependencies<T, TConfig, K, KBConfig> = {
             session: this.session,
             channel: this.channel,
             output: this.output,
+            knowledgeBases: this.knowledgeBases,
+            knowledgeBaseSessions: this.knowledgeBaseSessions,
         };
 
         const builder = new SystemPromptBuilder(deps, this.runContext)
@@ -340,7 +396,7 @@ export class ChannelAgent<T extends Session, TConfig extends ConfigInstance> {
 
         const fullSystemPrompt = await builder.build();
 
-        this.agent = new Agent<SessionWithTracking<T>, AgentOutputType>({
+        this.agent = new Agent<SessionWithTracking<T & K>, AgentOutputType>({
             name: 'Living Document Automator',
             instructions: fullSystemPrompt,
             model: this.chooseModel(),
@@ -349,8 +405,16 @@ export class ChannelAgent<T extends Session, TConfig extends ConfigInstance> {
     }
 
     private getToolContext(): SessionWithTracking<T> {
+        // Merge knowledge base session properties into the context
+        const mergedContext = { ...this.session };
+
+        // Merge properties from all knowledge base sessions
+        for (const kbSession of this.knowledgeBaseSessions) {
+            Object.assign(mergedContext, kbSession);
+        }
+
         return {
-            ...this.session,
+            ...mergedContext,
             trackAction: (action: RunHistoryAction) => this.queueAction(action),
             channel: {
                 requireApproval: this.channel.require_approval ?? false,

@@ -1,9 +1,8 @@
 import { Client } from "@notionhq/client";
-import chalk from "chalk";
 import { Request, Response } from "express";
 import { db } from "../prismaClient";
 import { NotionResource, NotionResourcesResponse } from "../shared/types";
-import { PageObjectResponse, PartialPageObjectResponse, SearchResponse } from "@notionhq/client/build/src/api-endpoints";
+import { SearchResponse } from "@notionhq/client/build/src/api-endpoints";
 import { extractPageTitle } from "../utility/notion";
 import { NotionIntegrationManager } from "../integrations/NotionIntegration";
 import logger from "../logger";

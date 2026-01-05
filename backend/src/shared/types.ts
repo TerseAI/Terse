@@ -78,6 +78,16 @@ export type NotionResourcesResponse = {
   resources: NotionResource[];
 };
 
+export type PosthogProject = {
+  id: string;
+  name: string;
+  organization_id?: string;
+};
+
+export type PosthogProjectsResponse = {
+  projects: PosthogProject[];
+};
+
 export type SlackChannel = {
   id: string;
   name: string;
@@ -324,6 +334,17 @@ export type TransientChannelOutput = {
   configType: ConfigType;
 };
 
+export type ChannelKnowledgeBase = {
+    id: string;
+    config: ConfigInstance;
+};
+
+export type TransientKnowledgeBase = {
+    id: string;
+    config?: ConfigInstance;
+    configType: ConfigType;
+};
+
 export type Channel = {
     id: string;
     name: string;
@@ -332,6 +353,7 @@ export type Channel = {
     prompt: ChannelPrompt;
     inputs: ChannelInput[];
     output: ChannelOutput;
+    knowledgeBases?: ChannelKnowledgeBase[];
     notificationSettings?: ChannelNotificationSettings;
     updatedAt?: string;
 };
@@ -348,6 +370,7 @@ export type ChannelUpdate = {
     prompt?: ChannelPrompt;
     isActive?: boolean;
     requireApproval?: boolean;
+    knowledgeBases?: ChannelKnowledgeBase[];
     notificationSettings?: ChannelNotificationSettings;
 };
 

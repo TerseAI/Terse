@@ -6,7 +6,6 @@ import { ChannelInputWithConfigs } from "../types/prisma";
 import jwt from "jsonwebtoken";
 import { notion as notionConfig, jwt as jwtSettings, urls } from "../config/settings";
 import { Request, Response } from "express";
-import chalk from "chalk";
 import { IntegrationType } from "../shared/Integrations";
 import logger from "../logger";
 

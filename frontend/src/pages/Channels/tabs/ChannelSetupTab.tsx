@@ -2,19 +2,21 @@ import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import EditableTextField from '../../../components/ui/EditableTextField';
-import { ChannelNotificationSettings as ChannelNotificationSettingsType, ChannelUpdate, TransientChannelInput, TransientChannelOutput } from "@/shared/types";
+import { ChannelKnowledgeBase, ChannelNotificationSettings as ChannelNotificationSettingsType, ChannelUpdate, TransientChannelInput, TransientChannelOutput } from "@/shared/types";
 import { toast } from "sonner";
-import { getDefaultChannelName, toChannelInput, toChannelOutput } from "@/utility/ChannelUtils";
+import { getDefaultChannelName, toChannelInput, toChannelOutput, toChannelKnowledgeBase } from "@/utility/ChannelUtils";
 import { useChannelCount } from "@/hooks/api/useChannelCount";
 import { useChannelMutations } from "@/hooks/api/useChannels";
 import { type KeyedMutator } from 'swr';
-import { Channel, ChannelInput, ChannelOutput, ChannelPrompt } from "@/shared/types";
+import { Channel, ChannelInput, ChannelOutput, ChannelPrompt, TransientKnowledgeBase } from "@/shared/types";
 import { AddInputModal } from "../components/AddInputModal";
+import { AddKnowledgeBaseModal } from "../components/AddKnowledgeBaseModal";
+import { KnowledgeBaseSelector } from "../components/KnowledgeBaseSelector";
 import { CONFIG_DETAILS, ConfigInstance, ConfigType } from "../../../shared/Configs";
 import { v4 as uuidv4 } from 'uuid';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../../../components/ui/dialog";
 import { InputConfigSelectorProps, IntegrationSelector } from "../../../components/IntegrationSelector";
-import { AlertTriangleIcon, PlusIcon, XIcon, Zap, FileText, Wrench, Bell, Info } from "lucide-react";
+import { AlertTriangleIcon, PlusIcon, XIcon, Zap, FileText, Wrench, Bell, Info, Database } from "lucide-react";
 import { cn } from "../../../lib/utils";
 import { OutputToolSetPicker } from "../components/OutputToolSetPicker";
 import { Badge } from "../../../components/ui/badge";
@@ -34,6 +36,8 @@ export type ChannelSetupTabProps = {
     setInputs: (inputs: TransientChannelInput[]) => void;
     output: TransientChannelOutput | undefined;
     setOutput: (output: TransientChannelOutput | undefined) => void;
+    knowledgeBases: TransientKnowledgeBase[];
+    setKnowledgeBases: (knowledgeBases: TransientKnowledgeBase[]) => void;
     prompt: ChannelPrompt | undefined;
     setPrompt: (prompt: ChannelPrompt | undefined) => void;
     isActive: boolean;
@@ -53,6 +57,7 @@ function SaveChannelButton({
     name,
     inputs,
     output,
+    knowledgeBases,
     prompt,
     isActive,
     requireApproval,
@@ -65,6 +70,7 @@ function SaveChannelButton({
     name: string | null;
     inputs: ChannelInput[];
     output: ChannelOutput | undefined;
+    knowledgeBases: ChannelKnowledgeBase[];
     prompt: ChannelPrompt | undefined;
     isActive: boolean;
     requireApproval: boolean;
@@ -96,6 +102,7 @@ function SaveChannelButton({
                 name: name || defaultName || '',
                 inputs,
                 output,
+                knowledgeBases,
                 prompt,
                 isActive,
                 requireApproval,
@@ -111,14 +118,7 @@ function SaveChannelButton({
                 });
             } else if (isComplete && channelData.output && channelData.inputs && channelData.inputs.length > 0) {
                 // Create new channel
-                const creation = await createChannel({
-                    name: channelData.name || '',
-                    inputs: channelData.inputs || [],
-                    output: channelData.output,
-                    prompt: channelData.prompt || { text: '' },
-                    isActive: channelData.isActive || true,
-                    requireApproval: channelData.requireApproval || false,
-                });
+                const creation = await createChannel(channelData);
 
                 if (creation?.id) {
                     navigate(`/app/channels/${creation.id}`, { replace: true });
@@ -159,9 +159,11 @@ export default function ChannelSetupTab({
     setName,
     inputs,
     output,
+    knowledgeBases,
     prompt,
     setInputs,
     setOutput,
+    setKnowledgeBases,
     setPrompt,
     isActive,
     requireApproval,
@@ -174,13 +176,16 @@ export default function ChannelSetupTab({
     const defaultName = getDefaultChannelName(totalCount);
 
     const channelInputs = inputs.map(toChannelInput).filter((i): i is ChannelInput => i !== null);
-    const channelOutput = toChannelOutput(output)
+    const channelOutput = toChannelOutput(output);
+    const channelKnowledgeBases = knowledgeBases.map(toChannelKnowledgeBase).filter((kb): kb is ChannelKnowledgeBase => kb !== null);
 
-    type SetupSection = 'triggers' | 'prompt' | 'skills' | 'alerts';
+    type SetupSection = 'triggers' | 'knowledgeBase' | 'prompt' | 'skills' | 'alerts';
     const [activeSection, setActiveSection] = useState<SetupSection>('triggers');
 
     const triggersIncomplete =
         inputs.length === 0 || inputs.some((i) => !i.config || !i.config.isComplete());
+    console.log("Knowledge bases", { knowledgeBases });
+    const knowledgeBaseIncomplete = knowledgeBases.some((kb) => !kb.config || !kb.config.isComplete());
     const promptIncomplete = !prompt?.text || prompt.text.trim() === '';
     const skillsIncomplete = !output || !output.config || !output.config.isComplete();
 
@@ -201,6 +206,7 @@ export default function ChannelSetupTab({
         prompt: prompt || { text: '' },
         inputs: channelInputs,
         output: channelOutput,
+        knowledgeBases: channelKnowledgeBases,
         notificationSettings,
     } : null;
 
@@ -215,6 +221,7 @@ export default function ChannelSetupTab({
                             name={name}
                             inputs={channelInputs}
                             output={channelOutput}
+                            knowledgeBases={channelKnowledgeBases}
                             prompt={prompt}
                             isActive={isActive}
                             requireApproval={requireApproval}
@@ -298,6 +305,24 @@ export default function ChannelSetupTab({
                         </Button>
                         <Button
                             type="button"
+                            variant={activeSection === 'knowledgeBase' ? "secondary" : "ghost"}
+                            size="sm"
+                            className={cn("w-auto md:w-full justify-start text-base", activeSection === 'knowledgeBase' && "font-medium")}
+                            onClick={() => setActiveSection('knowledgeBase')}
+                            aria-current={activeSection === 'knowledgeBase' ? 'page' : undefined}
+                        >
+                            <span className="flex items-center gap-2 w-full">
+                                <Database className="size-4" />
+                                <span>Knowledge Base</span>
+                                {knowledgeBaseIncomplete && knowledgeBases.length > 0 && (
+                                    <div className="ml-auto">
+                                        <WarningIcon content="Complete knowledge base configuration to remove this warning." />
+                                    </div>
+                                )}
+                            </span>
+                        </Button>
+                        <Button
+                            type="button"
                             variant={activeSection === 'alerts' ? "secondary" : "ghost"}
                             size="sm"
                             className={cn("w-auto md:w-full justify-start text-base", activeSection === 'alerts' && "font-medium")}
@@ -317,6 +342,12 @@ export default function ChannelSetupTab({
                         {activeSection === 'triggers' && (
                             <div className="max-w-3xl flex flex-col gap-4">
                                 <InputLayout inputs={inputs} setInputs={setInputs} isIncomplete={triggersIncomplete} />
+                            </div>
+                        )}
+
+                        {activeSection === 'knowledgeBase' && (
+                            <div className="max-w-3xl flex flex-col gap-4">
+                                <KnowledgeBaseLayout knowledgeBases={knowledgeBases} setKnowledgeBases={setKnowledgeBases} isIncomplete={knowledgeBaseIncomplete} />
                             </div>
                         )}
 
@@ -601,6 +632,134 @@ function OutputLayout({ output, setOutput, isIncomplete }: { output: TransientCh
             <div className="flex flex-row gap-2">
                 {cardContent}
             </div>
+        </>
+    )
+}
+
+function KnowledgeBaseLayout({ knowledgeBases, setKnowledgeBases, isIncomplete }: { knowledgeBases: TransientKnowledgeBase[], setKnowledgeBases: (knowledgeBases: TransientKnowledgeBase[]) => void, isIncomplete: boolean }) {
+    const [showAddModal, setShowAddModal] = useState(false);
+
+    const handleSelectKnowledgeBase = (configType: ConfigType) => {
+        const newKnowledgeBaseId = uuidv4();
+        const newKnowledgeBase: TransientKnowledgeBase = {
+            id: newKnowledgeBaseId,
+            config: undefined,
+            configType: configType
+        };
+        const newKnowledgeBases = [...knowledgeBases, newKnowledgeBase];
+        setKnowledgeBases(newKnowledgeBases);
+        setShowAddModal(false);
+    };
+
+    const handleRemove = (id: string) => {
+        setKnowledgeBases(knowledgeBases.filter(kb => kb.id !== id));
+    };
+
+    return (
+        <div className="flex flex-col gap-3">
+            <div className="flex flex-row gap-2 items-center mb-2">
+                <SectionHeader>Knowledge Base</SectionHeader>
+                <SectionInfoIcon
+                    isIncomplete={isIncomplete}
+                    alertMessage="Complete knowledge base configuration to remove this warning."
+                    infoMessage="Knowledge bases provide context and data for your automation."
+                />
+            </div>
+            <div className="grid grid-cols-[repeat(auto-fill,minmax(10rem,1fr))] gap-4 items-stretch">
+                {knowledgeBases.map((kb) => (
+                    <KnowledgeBaseCard key={kb.id} knowledgeBase={kb} knowledgeBases={knowledgeBases} setKnowledgeBases={setKnowledgeBases} handleRemove={handleRemove} />
+                ))}
+                <Button variant="outline" onClick={() => setShowAddModal(true)} className="w-full aspect-square h-auto">
+                    <PlusIcon className={cn("size-5", knowledgeBases.length > 0 ? "text-primary" : "text-muted-foreground")} />
+                </Button>
+                <AddKnowledgeBaseModal
+                    isOpen={showAddModal}
+                    onClose={() => setShowAddModal(false)}
+                    onSelectKnowledgeBase={handleSelectKnowledgeBase}
+                />
+            </div>
+        </div>
+    )
+}
+
+function KnowledgeBaseCard({ knowledgeBase, knowledgeBases, setKnowledgeBases, handleRemove }: { knowledgeBase: TransientKnowledgeBase, knowledgeBases: TransientKnowledgeBase[], setKnowledgeBases: (knowledgeBases: TransientKnowledgeBase[]) => void, handleRemove: (id: string) => void }) {
+    const [showDetailsDialog, setShowDetailsDialog] = useState(false);
+    const isPlaceholder = knowledgeBase.config === undefined;
+    const needsConfiguration = !knowledgeBase.config || !knowledgeBase.config.isComplete();
+
+    const selectorProps = {
+        knowledgeBase: knowledgeBase,
+        setConfig: (config: ConfigInstance) => setKnowledgeBases(knowledgeBases.map(kb => kb.id === knowledgeBase.id ? { ...kb, config, configType: config.configType } : kb)),
+        variant: "card" as const,
+    };
+
+    let cardContent;
+    if (isPlaceholder) {
+        cardContent = (
+            <div
+                className="w-full aspect-square px-4 pb-4 pt-1 border rounded-lg cursor-pointer hover:bg-accent/30 transition-colors flex flex-col gap-2"
+                onClick={() => setShowDetailsDialog(true)}
+            >
+                <div className="flex flex-row justify-between items-center gap-2">
+                    <div className="min-w-0 flex-1 text-sm font-medium leading-none truncate">
+                        {CONFIG_DETAILS[knowledgeBase.configType].name}
+                    </div>
+                    <Button variant="ghost" size="icon-sm" onClick={(e) => { e.stopPropagation(); handleRemove(knowledgeBase.id); }} className="hover:text-destructive">
+                        <XIcon />
+                    </Button>
+                </div>
+
+                <div className="flex-1 flex items-center justify-center">
+                    <div className="w-16 h-16">
+                        <IconForConfigType type={knowledgeBase.configType} />
+                    </div>
+                </div>
+
+                <Badge variant="outline" className="mt-auto self-center max-w-full px-3 py-1 border-yellow-500 text-yellow-600 dark:text-yellow-500">
+                    <KnowledgeBaseSelector {...selectorProps} variant="card" />
+                </Badge>
+            </div>
+        );
+    } else {
+        cardContent = (
+            <div
+                className="w-full aspect-square px-4 pb-4 pt-2 border rounded-lg cursor-pointer hover:bg-accent/30 transition-colors flex flex-col gap-2"
+                onClick={() => setShowDetailsDialog(true)}
+            >
+                <div className="flex flex-row justify-between items-center gap-2">
+                    <div className="min-w-0 flex-1 text-sm font-medium leading-none truncate">
+                        {CONFIG_DETAILS[knowledgeBase.configType].name}
+                    </div>
+                    <Button variant="ghost" size="icon-sm" onClick={(e) => { e.stopPropagation(); handleRemove(knowledgeBase.id); }} className="hover:text-destructive">
+                        <XIcon />
+                    </Button>
+                </div>
+
+                <div className="flex-1 flex items-center justify-center">
+                    <div className="w-16 h-16">
+                        <IconForConfigType type={knowledgeBase.configType} />
+                    </div>
+                </div>
+
+                <Badge variant="outline" className="mt-auto self-center max-w-full px-3 py-1">
+                    <KnowledgeBaseSelector {...selectorProps} variant="card" />
+                </Badge>
+            </div>
+        );
+    }
+
+    return (
+        <>
+            {cardContent}
+
+            <Dialog open={showDetailsDialog} onOpenChange={setShowDetailsDialog}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>{needsConfiguration ? "Configure Knowledge Base" : "Knowledge Base Details"}</DialogTitle>
+                    </DialogHeader>
+                    <KnowledgeBaseSelector {...selectorProps} variant="dialog" />
+                </DialogContent>
+            </Dialog>
         </>
     )
 }

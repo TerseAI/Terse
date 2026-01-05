@@ -1,4 +1,4 @@
-import { ConfigInstance, ConfigType, GmailConfig, FigmaConfig, SlackConfig, NotionConfig, NotionPageConfig, LinearInputConfig, LinearOutputConfig, GitHubConfig, JiraConfig, ConfluenceConfig } from '@/shared/Configs';
+import { ConfigInstance, ConfigType, GmailConfig, FigmaConfig, SlackConfig, NotionConfig, NotionPageConfig, LinearInputConfig, LinearOutputConfig, GitHubConfig, JiraConfig, ConfluenceConfig, PosthogConfig } from '@/shared/Configs';
 
 /**
  * Converts a plain JSON config object (from backend) back into a ConfigInstance class.
@@ -89,6 +89,14 @@ export function deserializeConfig(jsonConfig: any): ConfigInstance {
                 jsonConfig.spaceId || '',
                 jsonConfig.pageId || '',
                 jsonConfig.pageName || ''
+            );
+        case ConfigType.POSTHOG:
+            return new PosthogConfig(
+                integrationId,
+                jsonConfig.projectId || '',
+                jsonConfig.projectName || undefined,
+                jsonConfig.canReadLogs ?? false,
+                jsonConfig.canReadSessionRecordings ?? false
             );
 
         default:
