@@ -1,7 +1,10 @@
 import { db } from "../prismaClient";
-import { ChannelWithRelations } from "../types/prisma";
-import { getInputConfigInclude, getOutputConfigInclude } from "../utility/prismaIncludes";
+import { ChannelWithRelations, ChannelKnowledgeBaseWithConfigs } from "../types/prisma";
+import { getInputConfigInclude, getOutputConfigInclude, getKnowledgeBaseConfigInclude } from "../utility/prismaIncludes";
 import { OutputFactory } from "../outputs/abstract/OutputFactory";
+import { KnowledgeBaseFactory } from "../knowledgeBase/abstract/KnowledgeBaseFactory";
+import { KnowledgeBase } from "../knowledgeBase/abstract/KnowledgeBase";
+import { ConfigInstance } from "../shared/Configs";
 import { Session } from "../server";
 import { storeChatEvent, markRunFailed, finalizeRunStatus, markRunInProgress } from "../agent/ChannelAgent/runHistory";
 import { ChannelAgent } from "../agent/ChannelAgent/ChannelAgent";
@@ -59,6 +62,9 @@ export class ApprovalService {
                 output: {
                     include: getOutputConfigInclude(),
                 },
+                knowledge_bases: {
+                    include: getKnowledgeBaseConfigInclude(),
+                },
             },
         })
 
@@ -105,6 +111,28 @@ export class ApprovalService {
         }
 
         return { output, session };
+    }
+
+    private static createKnowledgeBases(
+        channelKnowledgeBases: ChannelWithRelations['knowledge_bases']
+    ): { knowledgeBases: KnowledgeBase<Session, ConfigInstance>[]; channelConfigs: ChannelKnowledgeBaseWithConfigs[] } {
+        if (!channelKnowledgeBases || channelKnowledgeBases.length === 0) {
+            return { knowledgeBases: [], channelConfigs: [] };
+        }
+
+        // Create knowledge base instances and maintain pairing with channel configs
+        const knowledgeBases: KnowledgeBase<Session, ConfigInstance>[] = [];
+        const channelConfigs: ChannelKnowledgeBaseWithConfigs[] = [];
+        
+        for (const channelKnowledgeBase of channelKnowledgeBases) {
+            const kb = KnowledgeBaseFactory.createKnowledgeBase(channelKnowledgeBase.config_type);
+            if (kb) {
+                knowledgeBases.push(kb);
+                channelConfigs.push(channelKnowledgeBase as ChannelKnowledgeBaseWithConfigs);
+            }
+        }
+        
+        return { knowledgeBases, channelConfigs };
     }
 
     /**
@@ -248,6 +276,9 @@ export class ApprovalService {
             }
             const { output, session } = outputAndSession;
 
+            // Create knowledge bases from channel configuration
+            const { knowledgeBases, channelConfigs } = this.createKnowledgeBases(channel.knowledge_bases || []);
+
             // Ensure run status is 'in_progress' for streaming
             if (runRecord.status !== 'in_progress') {
                 await markRunInProgress(runId);
@@ -269,7 +300,7 @@ export class ApprovalService {
 
             // Create channel agent and resume from pending approval
             const runContext = { runId };
-            const channelAgent = new ChannelAgent(session, output, channel, runContext);
+            const channelAgent = new ChannelAgent(session, output, knowledgeBases, channelConfigs, channel, runContext);
             await channelAgent.initializeAgent();
 
             const decision: 'approve' | 'reject' = approved ? 'approve' : 'reject';

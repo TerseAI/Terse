@@ -1,16 +1,19 @@
 import chalk from 'chalk';
 import { db } from '../../prismaClient';
-import { Channel, ChannelWithRelations, User } from '../../types/prisma';
+import { Channel, ChannelWithRelations, User, ChannelKnowledgeBaseWithConfigs } from '../../types/prisma';
 import { InputEvent } from '../../integrations/abstract/InputEvent';
 import { OutputFactory } from '../../outputs/abstract/OutputFactory';
-import { ChannelAgent } from './ChannelAgent';
+import { ChannelAgent, SessionWithTracking } from './ChannelAgent';
 import { filterEvent } from './EventFilter';
 import { createRunRecord, finalizeRunStatus, markRunFailed, markRunProcessed, markRunSkipped, appendRunAction } from './runHistory';
 import { ApprovalResult } from './ChannelAgent';
 import { Agent, AgentOutputType, RunResult } from '@openai/agents';
 import { Session } from '../../server';
 import { emitCacheInvalidationWithKey, emitCacheInvalidationWithWildcard } from '../../realtimeSocket';
-import { getInputConfigInclude, getOutputConfigInclude } from '../../utility/prismaIncludes';
+import { getInputConfigInclude, getOutputConfigInclude, getKnowledgeBaseConfigInclude } from '../../utility/prismaIncludes';
+import { KnowledgeBaseFactory } from '../../knowledgeBase/abstract/KnowledgeBaseFactory';
+import { KnowledgeBase } from '../../knowledgeBase/abstract/KnowledgeBase';
+import { ConfigInstance } from '../../shared/Configs';
 import { RunHistoryAction } from '../../shared/RunHistoryTypes';
 import { RunContext } from './SystemPromptBuilder';
 import logger from '../../logger';
@@ -18,13 +21,13 @@ import logger from '../../logger';
 // The job of this class is to take an Input Event, and check if it's a match for an Channel.
 // It will then create a Session, and summon the Channel Agent with the create user data.
 
-export class ProcessorResult<T extends Session = Session> {
+export class ProcessorResult<T extends Session = SessionWithTracking<Session>> {
     success: boolean;
     message: string;
     channel: Channel | null;
-    approvalResult?: ApprovalResult<T, Agent<T, AgentOutputType>> | null;
+    approvalResult?: ApprovalResult<SessionWithTracking<T>, Agent<SessionWithTracking<T>, AgentOutputType>> | null;
 
-    constructor(success: boolean, message: string, channel: Channel | null, approvalResult?: ApprovalResult<T, Agent<T, AgentOutputType>> | null) {
+    constructor(success: boolean, message: string, channel: Channel | null, approvalResult?: ApprovalResult<SessionWithTracking<T>, Agent<SessionWithTracking<T>, AgentOutputType>> | null) {
         this.success = success;
         this.message = message;
         this.channel = channel;
@@ -62,9 +65,12 @@ export class EventProcessor {
                 },
                 output: {
                     include: getOutputConfigInclude()
+                },
+                knowledge_bases: {
+                    include: getKnowledgeBaseConfigInclude()
                 }
             }
-        }) as ChannelWithRelations[];
+        })
 
         if (channels.length === 0) {
             return [new ProcessorResult(false, "No channels found for this user", null)];
@@ -98,6 +104,28 @@ export class EventProcessor {
         }
 
         return results;
+    }
+
+    private createKnowledgeBases(
+        channelKnowledgeBases: ChannelWithRelations['knowledge_bases']
+    ): { knowledgeBases: KnowledgeBase<Session, ConfigInstance>[]; channelConfigs: ChannelKnowledgeBaseWithConfigs[] } {
+        if (!channelKnowledgeBases || channelKnowledgeBases.length === 0) {
+            return { knowledgeBases: [], channelConfigs: [] };
+        }
+
+        // Create knowledge base instances and maintain pairing with channel configs
+        const knowledgeBases: KnowledgeBase<Session, ConfigInstance>[] = [];
+        const channelConfigs: ChannelKnowledgeBaseWithConfigs[] = [];
+        
+        for (const channelKnowledgeBase of channelKnowledgeBases) {
+            const kb = KnowledgeBaseFactory.createKnowledgeBase(channelKnowledgeBase.config_type);
+            if (kb) {
+                knowledgeBases.push(kb);
+                channelConfigs.push(channelKnowledgeBase as ChannelKnowledgeBaseWithConfigs);
+            }
+        }
+        
+        return { knowledgeBases, channelConfigs };
     }
 
     private async processChannel(channel: ChannelWithRelations): Promise<ProcessorResult> {
@@ -199,19 +227,22 @@ export class EventProcessor {
 
         logger.info(`Event is relevant to channel "${channel.name}"`);
 
+        // Create knowledge bases from channel configuration
+        const { knowledgeBases, channelConfigs } = this.createKnowledgeBases(channel.knowledge_bases || []);
+
         // Create channel agent with the session and output
         const runContext: RunContext = { runId };
-        const channelAgent = new ChannelAgent(session, output, channel, runContext);
+        const channelAgent = new ChannelAgent(session, output, knowledgeBases, channelConfigs, channel, runContext);
         channelAgent.setInputEvent(this.inputEvent);
 
         // Run the channel agent with streaming parameters
-        let result: ApprovalResult<Session, Agent<Session, AgentOutputType>>;
+        let result: ApprovalResult<SessionWithTracking<Session>, Agent<SessionWithTracking<Session>, AgentOutputType>>;
         try {
             result = await channelAgent.run({
                 runId,
                 userId: this.user.id,
                 channelId: channel.id,
-            }) as unknown as ApprovalResult<Session, Agent<Session, AgentOutputType>>;
+            });
         } catch (error) {
             // Log the error and update run history
             const errorMessage = error instanceof Error ? error.message : 'Unknown error';
@@ -233,18 +264,18 @@ export class EventProcessor {
             return persistRunResult(runId, result.result, session, channel, result);
         } else {
             logger.info(`Channel "${channel.name}" awaiting approval:`);
-            return new ProcessorResult(false, "Channel awaiting approval", channel, result);
+            return new ProcessorResult<SessionWithTracking<Session>>(false, "Channel awaiting approval", channel, result);
         }
     }
 }
 
 async function persistRunResult<T extends Session>(
     runId: string,
-    result: RunResult<T, Agent<T, AgentOutputType>>,
+    result: RunResult<SessionWithTracking<T>, Agent<SessionWithTracking<T>, AgentOutputType>>,
     session: T,
     channel: Channel,
-    approvalResult?: ApprovalResult<T, Agent<T, AgentOutputType>> | null
-): Promise<ProcessorResult<T>> {
+    approvalResult?: ApprovalResult<SessionWithTracking<T>, Agent<SessionWithTracking<T>, AgentOutputType>> | null
+): Promise<ProcessorResult<SessionWithTracking<T>>> {
     // Finalize run status
     const hasFinalOutput = Boolean(result.finalOutput);
     try {
@@ -256,7 +287,7 @@ async function persistRunResult<T extends Session>(
     }
 
     const finalOutput = typeof result.finalOutput === 'string' ? result.finalOutput : '';
-    return new ProcessorResult<T>(
+    return new ProcessorResult<SessionWithTracking<T>>(
         hasFinalOutput,
         finalOutput,
         channel,

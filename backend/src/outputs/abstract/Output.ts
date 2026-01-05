@@ -6,7 +6,6 @@ import { ChannelOutput, PrismaTransaction, User } from "../../types/prisma";
 import { OutputConfigType } from "@prisma/client";
 import { ConfigInstance } from "../../shared/Configs";
 import { IntegrationType } from "../../shared/Integrations";
-import { formatError } from "../../tools/toolUtils";
 // You can only have one output at a time. Basically, it's just a specific integration + a toolbox to modify the content.
 // For Notion, we should support multiple integrations with the same account. 
 
@@ -15,21 +14,6 @@ export interface ToolboxEntry {
     isReadOnly: boolean;
     integration: IntegrationType;
 }
-
-
-/**
- * Built in tools that are always available to the output.
- */
-export const defaultToolbox: readonly ToolboxEntry[] = [
-    {
-        tool: webSearchTool({
-            searchContextSize: 'medium',
-        }),
-        isReadOnly: true,
-        integration: IntegrationType.TERSE
-    }
-]
-
 
 export abstract class Output<T extends Session, TConfig extends ConfigInstance> {
     integration: OutputConfigType;
@@ -58,3 +42,13 @@ export abstract class Output<T extends Session, TConfig extends ConfigInstance> 
         return '';
     }
 }
+
+export const defaultToolbox: readonly ToolboxEntry[] = [
+    {
+        tool: webSearchTool({
+            searchContextSize: 'medium',
+        }),
+        isReadOnly: true,
+        integration: IntegrationType.TERSE
+    }
+]

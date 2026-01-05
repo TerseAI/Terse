@@ -11,6 +11,7 @@ import {
     ConfluenceIcon,
     JiraConfluenceIcon,
     TerseIcon,
+    PosthogIcon,
 } from "@/components/icons/IntegrationIcons";
 
 export function IconForConfigType({ type }: { type: ConfigType }) {
@@ -33,6 +34,8 @@ export function IconForConfigType({ type }: { type: ConfigType }) {
             return <JiraIcon />;
         case ConfigType.CONFLUENCE:
             return <ConfluenceIcon />;
+        case ConfigType.POSTHOG:
+            return <PosthogIcon />;
         default:
             // Exhaustive check: TypeScript will error if any IntegrationType case is missing
             throw type satisfies never;
@@ -57,6 +60,8 @@ export function IconForIntegration({ integration }: { integration: IntegrationTy
             return <JiraConfluenceIcon />;
         case IntegrationType.TERSE:
             return <TerseIcon />;
+        case IntegrationType.POSTHOG:
+            return <PosthogIcon />
         default:
             throw integration satisfies never;
     }

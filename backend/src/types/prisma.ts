@@ -32,6 +32,7 @@ import {
   $Enums,
   output_change_attributions,
   identifiable_refs,
+  automation_knowledge_bases,
   automation_jira_configs,
 } from '@prisma/client';
 
@@ -110,6 +111,16 @@ export type ChannelInputWithConfigs = AutomationInputWithConfigs; // Alias for r
 
 export type AutomationOutput = automation_outputs;
 export type ChannelOutput = automation_outputs; // Alias for rebranding
+
+export type ChannelKnowledgeBase = automation_knowledge_bases;
+
+// Extended type for ChannelKnowledgeBase with all config relations included
+export type ChannelKnowledgeBaseWithConfigs = Prisma.automation_knowledge_basesGetPayload<{
+  include: {
+    posthog_config: true;
+  };
+}>;
+
 
 // Extended type for ChannelOutput with all config relations included
 export type AutomationOutputWithConfigs = Prisma.automation_outputsGetPayload<{
@@ -195,8 +206,19 @@ export type AutomationWithNotificationSettingsRelations = Prisma.automationsGetP
 }>;
 export type ChannelWithNotificationSettingsRelations = AutomationWithNotificationSettingsRelations; // Alias for rebranding
 
-export type AutomationWithRelations = AutomationWithInputRelations & AutomationWithOutputRelations & AutomationWithPromptRelations;
-export type ChannelWithRelations = ChannelWithInputRelations & ChannelWithOutputRelations & ChannelWithPromptRelations;
+export type AutomationWithKnowledgeBaseRelations = Prisma.automationsGetPayload<{
+  include: {
+    knowledge_bases: {
+      include: {
+        posthog_config: true;
+      };
+    };
+  };
+}>;
+export type ChannelWithKnowledgeBaseRelations = AutomationWithKnowledgeBaseRelations;
+
+export type AutomationWithRelations = AutomationWithInputRelations & AutomationWithOutputRelations & AutomationWithPromptRelations & Partial<AutomationWithKnowledgeBaseRelations>;
+export type ChannelWithRelations = ChannelWithInputRelations & ChannelWithOutputRelations & ChannelWithPromptRelations & Partial<ChannelWithKnowledgeBaseRelations>;
 
 // Extract the transaction type from PrismaClient
 export type PrismaTransaction = Parameters<Parameters<PrismaClient['$transaction']>[0]>[0];
