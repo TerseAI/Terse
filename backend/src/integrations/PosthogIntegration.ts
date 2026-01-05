@@ -13,20 +13,29 @@ export class PosthogIntegrationManager implements Integration<PosthogIntegration
     async getInstancesForUser(userId: string): Promise<PosthogIntegration[]> {
         const posthogIntegrations = await db().posthog_integrations.findMany({
             where: { user_id: userId },
+            select: {
+                id: true,
+                user_email: true,
+                org_name: true,
+            },
         });
         return posthogIntegrations.map(ni => ({
             id: ni.id,
-            apiKey: ni.api_key,
             email: ni.user_email || null,
             orgName: ni.org_name || null,
         }));
     }
 
     async getAllActiveInstances(): Promise<PosthogIntegration[]> {
-        const posthogIntegrations = await db().posthog_integrations.findMany();
+        const posthogIntegrations = await db().posthog_integrations.findMany({
+            select: {
+                id: true,
+                user_email: true,
+                org_name: true,
+            },
+        });
         return posthogIntegrations.map(pi => ({
             id: pi.id,
-            apiKey: pi.api_key,
             email: pi.user_email || null,
             orgName: pi.org_name || null,
         }));
