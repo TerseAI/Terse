@@ -8,7 +8,7 @@ import { SendModelRequest, ModelEvent, ModelRequest, ToolApprovalResponse } from
 import { db } from "./prismaClient";
 import { ChannelAgent } from "./agent/ChannelAgent/ChannelAgent";
 import { RunContext } from "./agent/ChannelAgent/SystemPromptBuilder";
-import { ChannelWithRelations } from "./types/prisma";
+import { ChannelWithRelations, ChannelKnowledgeBaseWithConfigs } from "./types/prisma";
 import { getInputConfigInclude, getOutputConfigInclude, getKnowledgeBaseConfigInclude } from './utility/prismaIncludes';
 import { OutputFactory } from "./outputs/abstract/OutputFactory";
 import { KnowledgeBaseFactory } from "./knowledgeBase/abstract/KnowledgeBaseFactory";
@@ -31,13 +31,24 @@ let sub: ReturnType<typeof createClient> | null = null;
 
 function createKnowledgeBases(
     channelKnowledgeBases: ChannelWithRelations['knowledge_bases']
-): KnowledgeBase<Session, ConfigInstance>[] {
+): { knowledgeBases: KnowledgeBase<Session, ConfigInstance>[]; channelConfigs: ChannelKnowledgeBaseWithConfigs[] } {
     if (!channelKnowledgeBases || channelKnowledgeBases.length === 0) {
-        return [];
+        return { knowledgeBases: [], channelConfigs: [] };
     }
 
-    const knowledgeBaseTypes = channelKnowledgeBases.map(kb => kb.config_type);
-    return KnowledgeBaseFactory.createKnowledgeBases(knowledgeBaseTypes);
+    // Create knowledge base instances and maintain pairing with channel configs
+    const knowledgeBases: KnowledgeBase<Session, ConfigInstance>[] = [];
+    const channelConfigs: ChannelKnowledgeBaseWithConfigs[] = [];
+    
+    for (const channelKnowledgeBase of channelKnowledgeBases) {
+        const kb = KnowledgeBaseFactory.createKnowledgeBase(channelKnowledgeBase.config_type);
+        if (kb) {
+            knowledgeBases.push(kb);
+            channelConfigs.push(channelKnowledgeBase as ChannelKnowledgeBaseWithConfigs);
+        }
+    }
+    
+    return { knowledgeBases, channelConfigs };
 }
 
 export async function initializeRealtimeSocket(server: HttpServer): Promise<Server> {
@@ -231,10 +242,10 @@ export async function initializeRealtimeSocket(server: HttpServer): Promise<Serv
             emitCacheInvalidationWithWildcard(user.id, 'chatHistory', runId);
 
             // Create knowledge bases from channel configuration
-            const knowledgeBases = createKnowledgeBases(channel.knowledge_bases || []);
+            const { knowledgeBases, channelConfigs } = createKnowledgeBases(channel.knowledge_bases || []);
 
             const runContext: RunContext = { runId };
-            const channelAgent = new ChannelAgent(session, output, knowledgeBases, channel, runContext);
+            const channelAgent = new ChannelAgent(session, output, knowledgeBases, channelConfigs, channel, runContext);
             await channelAgent.initializeAgent();
             
             let result;

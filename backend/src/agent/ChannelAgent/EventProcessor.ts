@@ -1,6 +1,6 @@
 import chalk from 'chalk';
 import { db } from '../../prismaClient';
-import { Channel, ChannelWithRelations, User } from '../../types/prisma';
+import { Channel, ChannelWithRelations, User, ChannelKnowledgeBaseWithConfigs } from '../../types/prisma';
 import { InputEvent } from '../../integrations/abstract/InputEvent';
 import { OutputFactory } from '../../outputs/abstract/OutputFactory';
 import { ChannelAgent, SessionWithTracking } from './ChannelAgent';
@@ -108,13 +108,24 @@ export class EventProcessor {
 
     private createKnowledgeBases(
         channelKnowledgeBases: ChannelWithRelations['knowledge_bases']
-    ): KnowledgeBase<Session, ConfigInstance>[] {
+    ): { knowledgeBases: KnowledgeBase<Session, ConfigInstance>[]; channelConfigs: ChannelKnowledgeBaseWithConfigs[] } {
         if (!channelKnowledgeBases || channelKnowledgeBases.length === 0) {
-            return [];
+            return { knowledgeBases: [], channelConfigs: [] };
         }
 
-        const knowledgeBaseTypes = channelKnowledgeBases.map(kb => kb.config_type);
-        return KnowledgeBaseFactory.createKnowledgeBases(knowledgeBaseTypes);
+        // Create knowledge base instances and maintain pairing with channel configs
+        const knowledgeBases: KnowledgeBase<Session, ConfigInstance>[] = [];
+        const channelConfigs: ChannelKnowledgeBaseWithConfigs[] = [];
+        
+        for (const channelKnowledgeBase of channelKnowledgeBases) {
+            const kb = KnowledgeBaseFactory.createKnowledgeBase(channelKnowledgeBase.config_type);
+            if (kb) {
+                knowledgeBases.push(kb);
+                channelConfigs.push(channelKnowledgeBase as ChannelKnowledgeBaseWithConfigs);
+            }
+        }
+        
+        return { knowledgeBases, channelConfigs };
     }
 
     private async processChannel(channel: ChannelWithRelations): Promise<ProcessorResult> {
@@ -217,11 +228,11 @@ export class EventProcessor {
         logger.info(`Event is relevant to channel "${channel.name}"`);
 
         // Create knowledge bases from channel configuration
-        const knowledgeBases = this.createKnowledgeBases(channel.knowledge_bases || []);
+        const { knowledgeBases, channelConfigs } = this.createKnowledgeBases(channel.knowledge_bases || []);
 
         // Create channel agent with the session and output
         const runContext: RunContext = { runId };
-        const channelAgent = new ChannelAgent(session, output, knowledgeBases, channel, runContext);
+        const channelAgent = new ChannelAgent(session, output, knowledgeBases, channelConfigs, channel, runContext);
         channelAgent.setInputEvent(this.inputEvent);
 
         // Run the channel agent with streaming parameters

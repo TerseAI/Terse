@@ -25,6 +25,7 @@ import { persistOutputAttributions, removeOutputAttributions } from './persistOu
 import logger from '../../logger';
 import { RunHistoryActionType } from '@prisma/client';
 import { KnowledgeBase } from '../../knowledgeBase/abstract/KnowledgeBase';
+import { ChannelKnowledgeBaseWithConfigs } from '../../types/prisma';
 
 export class ChannelAgent<
     T extends Session,
@@ -37,6 +38,7 @@ export class ChannelAgent<
     private channel: ChannelWithRelations;
     private output: Output<T, TConfig>;
     private knowledgeBases: KnowledgeBase<K, KBConfig>[];
+    private knowledgeBaseChannelConfigs: ChannelKnowledgeBaseWithConfigs[];
     private knowledgeBaseSessions: K[] = [];
     private agent?: Agent<SessionWithTracking<T & K>, AgentOutputType>;
     private tools: Tool<SessionWithTracking<T & K>>[] = [];
@@ -51,13 +53,19 @@ export class ChannelAgent<
         session: T,
         output: Output<T, TConfig>,
         knowledgeBases: KnowledgeBase<K, KBConfig>[],
+        knowledgeBaseChannelConfigs: ChannelKnowledgeBaseWithConfigs[],
         channel: ChannelWithRelations,
         runContext: RunContext,
         maxTurns: number = 50
     ) {
+        if (knowledgeBases.length !== knowledgeBaseChannelConfigs.length) {
+            throw new Error(`Mismatch between knowledge base instances (${knowledgeBases.length}) and channel configs (${knowledgeBaseChannelConfigs.length})`);
+        }
+        
         this.session = session;
         this.output = output;
         this.knowledgeBases = knowledgeBases;
+        this.knowledgeBaseChannelConfigs = knowledgeBaseChannelConfigs;
         this.channel = channel;
         this.tools = [
             ...output.toolbox.map(entry => entry.tool),
@@ -356,19 +364,24 @@ export class ChannelAgent<
     }
 
     async initializeAgent(): Promise<void> {
-        this.knowledgeBaseSessions = await Promise.all(this.knowledgeBases.map(kb => {
-            const channelKnowledgeBase = this.channel.knowledge_bases?.find(
-                ckb => ckb.config_type === kb.integration
-            );
-            if (!channelKnowledgeBase) {
-                throw new Error(`Knowledge base config not found for ${kb.integration}`);
-            }
-            return kb.createSessionFromConfig(
-                channelKnowledgeBase.integration_id,
-                channelKnowledgeBase,
-                this.session.user
-            );
-        }));
+        // Pair each knowledge base instance with its corresponding channel config by index
+        this.knowledgeBaseSessions = await Promise.all(
+            this.knowledgeBases.map((kb, index) => {
+                const channelKnowledgeBase = this.knowledgeBaseChannelConfigs[index];
+                if (!channelKnowledgeBase) {
+                    throw new Error(`Channel knowledge base config not found at index ${index} for ${kb.integration}`);
+                }
+                // Verify the types match as a sanity check
+                if (channelKnowledgeBase.config_type !== kb.integration) {
+                    throw new Error(`Type mismatch: knowledge base at index ${index} is ${kb.integration} but channel config is ${channelKnowledgeBase.config_type}`);
+                }
+                return kb.createSessionFromConfig(
+                    channelKnowledgeBase.integration_id,
+                    channelKnowledgeBase,
+                    this.session.user
+                );
+            })
+        );
 
         const deps: SystemPromptBuilderDependencies<T, TConfig, K, KBConfig> = {
             session: this.session,
