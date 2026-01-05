@@ -188,12 +188,8 @@ export class AtlassianIntegrationManager implements Integration<AtlassianIntegra
                 logger.warn("⚠️  Could not determine user email from Atlassian API");
             }
 
-            // Extract site name from baseUrl
-            let siteName = baseUrl;
-            const siteNameMatch = baseUrl.match(/https?:\/\/([^.]+)/);
-            if (siteNameMatch) {
-                siteName = siteNameMatch[1];
-            }
+            const url = new URL(baseUrl);
+            const siteName = url.hostname.replace(/\.atlassian\.net$/, '');
 
             logger.info("🏢 Atlassian site:", {siteName, cloudId});
 
