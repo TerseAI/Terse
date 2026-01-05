@@ -15,8 +15,8 @@ export const analyzeSessionTool = tool({
     name: 'analyzePosthogSession',
     description: 'Analyze a PostHog session recording using the Session Analysis API. This tool converts the session to video and analyzes it with AI to generate a comprehensive bug report and analysis. Use this when you need to investigate user issues, bugs, or understand what happened during a user session. By default, analyzes the most recent session for a user. Can also analyze a specific session by ID. Requires a description of the issue the user reported to focus the analysis.',
     parameters: z.object({
-        userEmail: z.string().email().optional().describe('The email address of the user to analyze a session for. If provided without sessionId, analyzes the most recent session for this user.'),
-        sessionId: z.string().uuid().optional().describe('The PostHog session ID (UUID format) to analyze. If provided, this takes precedence over userEmail.'),
+        userEmail: z.union([z.string().email(), z.null()]).describe('The email address of the user to analyze a session for. If provided without sessionId, analyzes the most recent session for this user.'),
+        sessionId: z.union([z.string().uuid(), z.null()]).describe('The PostHog session ID (UUID format) to analyze. If provided, this takes precedence over userEmail.'),
         userIssueDescription: z.string().describe('Required: A clear description of the issue the user reported. This helps the AI focus its analysis on the specific problem. Be specific about what the user was trying to do, what went wrong, any error messages, and when/where in the flow the issue occurred. Examples: "User reports that clicking the submit button does nothing - no error message, no network request", "User says the page loads very slowly - takes over 30 seconds", "User reports a JavaScript error appears in the console when trying to complete checkout".'),
     }),
     execute: async ({ userEmail, sessionId, userIssueDescription }, runContext?: RunContext<any>) => {

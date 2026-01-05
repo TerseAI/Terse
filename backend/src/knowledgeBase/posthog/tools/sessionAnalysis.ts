@@ -744,7 +744,7 @@ async function pollForAnalysis(
     const {
         apiKey,
         baseUrl,
-        maxWait = 300, // 5 minutes default
+        maxWait = 600, // 10 minutes default (increased for longer session analysis)
         initialInterval = 2, // 2 seconds initial
         silent = false,
     } = options;
@@ -881,7 +881,7 @@ export async function analyzeSession(options: AnalyzeSessionOptions): Promise<An
     const analysis = await pollForAnalysis(session.id, {
         apiKey: sessionAnalysisApiKey,
         baseUrl: sessionAnalysisBaseUrl,
-        maxWait: 300, // 5 minutes
+        maxWait: 600, // 10 minutes (increased for longer session analysis)
         initialInterval: 2,
         silent: true, // Don't log in programmatic use
     });
