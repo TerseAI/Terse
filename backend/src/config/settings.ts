@@ -42,9 +42,6 @@ export const settings = {
   openai: {
     apiKey: requireEnv('OPENAI_API_KEY'),
   },
-  google: {
-    apiKey: requireEnv('GOOGLE_API_KEY'),
-  },
 
   // Application URLs
   urls: {
@@ -154,7 +151,6 @@ export const {
   jwt,
   database,
   openai,
-  google,
   urls,
   nodeEnv,
   gmail,

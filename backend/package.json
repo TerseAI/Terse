@@ -28,7 +28,6 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@google/generative-ai": "^0.24.1",
     "@linear/sdk": "^45.3.0",
     "@notionhq/client": "^5.4.0",
     "@openai/agents": "^0.3.3",
