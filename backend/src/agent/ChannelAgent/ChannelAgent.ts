@@ -61,7 +61,7 @@ export class ChannelAgent<
         if (knowledgeBases.length !== knowledgeBaseChannelConfigs.length) {
             throw new Error(`Mismatch between knowledge base instances (${knowledgeBases.length}) and channel configs (${knowledgeBaseChannelConfigs.length})`);
         }
-        
+
         this.session = session;
         this.output = output;
         this.knowledgeBases = knowledgeBases;
@@ -107,24 +107,16 @@ export class ChannelAgent<
 
         logger.info("User history build to be sent to agent", { userHistory: JSON.stringify(userHistory, null, 2) });
 
-        // const result = await runner.run(
-        //     this.agent,
-        //     userHistory,
-        //     {
-        //         context: this.getToolContext(),
-        //         stream: true,
-        //         session: this.memorySession,
-        //         sessionInputCallback: recentHistoryCallback,
-        //         maxTurns: this.maxTurns
-        //     });
-
-        const result = await run(this.agent, userHistory, {
-            context: this.getToolContext(),
-            stream: true,
-            session: this.memorySession,
-            sessionInputCallback: recentHistoryCallback,
-            maxTurns: this.maxTurns
-        });
+        const result = await runner.run(
+            this.agent,
+            userHistory,
+            {
+                context: this.getToolContext(),
+                stream: true,
+                session: this.memorySession,
+                sessionInputCallback: recentHistoryCallback,
+                maxTurns: this.maxTurns
+            });
 
         await this.processStream(result, streamingParams);
 
@@ -189,7 +181,7 @@ export class ChannelAgent<
         }
 
         // Deserialize the state first
-        const state = await RunState.fromString(this.agent, pendingState.serializedState);
+        const state = await RunState.fromString<SessionWithTracking<T & K>, Agent<SessionWithTracking<T & K>, AgentOutputType>>(this.agent, pendingState.serializedState);
 
         // Find the interruption from the stored interruptions array
         // We stored the full interruption objects, so we can use them directly
@@ -278,7 +270,7 @@ export class ChannelAgent<
 
         // Bug in the SDK where functions are not serialized properly.
         // This is a workaround to get the context to work.
-        const unifiedContext = {
+        const unifiedContext: SessionWithTracking<T & K> = {
             ...toolContext,
             ...state._context,
         }
@@ -292,7 +284,7 @@ export class ChannelAgent<
             maxTurns: this.maxTurns
         });
 
-        await this.processStream(result as StreamedRunResult<SessionWithTracking<T & K>, Agent<SessionWithTracking<T & K>, AgentOutputType>>, streamingParams);
+        await this.processStream(result, streamingParams);
 
         return await this.buildResult(result, streamingParams);
     }
@@ -415,17 +407,13 @@ export class ChannelAgent<
         });
     }
 
-    private getToolContext(): SessionWithTracking<T> {
-        // Merge knowledge base session properties into the context
-        const mergedContext = { ...this.session };
-
-        // Merge properties from all knowledge base sessions
-        for (const kbSession of this.knowledgeBaseSessions) {
-            Object.assign(mergedContext, kbSession);
-        }
-
+    private getToolContext(): SessionWithTracking<T & K> {
         return {
-            ...mergedContext,
+            ...this.session,
+            ...this.knowledgeBaseSessions.reduce(
+                (acc, kbSession) => ({ ...acc, ...kbSession }),
+                {} as K
+            ),
             trackAction: (action: RunHistoryAction) => this.queueAction(action),
             channel: {
                 requireApproval: this.channel.require_approval ?? false,
@@ -494,7 +482,7 @@ ${inputEvent.formatForChannelAgent()}
     ): Promise<void> {
         const io = getRealtimeSocket();
 
-        const eventStream = transformAgentStreamToModelEvents(result as StreamedRunResult<TSession, Agent<TSession, any>>, {
+        const eventStream = transformAgentStreamToModelEvents(result, {
             toolToIntegrationMap: this.getToolToIntegrationMap(),
             onToolCallComplete: (callId, toolName) => this.flushPendingActions(callId, toolName),
         });
