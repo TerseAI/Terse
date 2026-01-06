@@ -104,6 +104,9 @@ export class ChannelAgent<
             userId: this.session.user.id,
             env: settings.nodeEnv,
         })
+
+        logger.info("User history build to be sent to agent", { userHistory: JSON.stringify(userHistory, null, 2) });
+        
         const result = await runner.run(
             this.agent,
             userHistory,
@@ -347,7 +350,7 @@ export class ChannelAgent<
                 isReadOnly: entry.isReadOnly,
             });
         });
-        
+
         // Populate metadata from knowledge base toolboxes
         this.knowledgeBases.forEach(kb => {
             kb.toolbox.forEach(entry => {
