@@ -95,7 +95,7 @@ export class ChannelAgent<
             throw new Error("Agent not initialized. Call initializeAgent() before run()");
         }
 
-        const userMessage = this.buildUserMessage();
+        const userMessage = this.buildUserMessage(this.inputEvent);
         const userHistory = this.buildUserHistory(userMessage);
 
         const runner = runnerFactory({
@@ -422,11 +422,11 @@ export class ChannelAgent<
         };
     }
 
-    private buildUserMessage(): (InputTextContent | InputImageContent)[] {
-        const textContent = this.buildTextContent();
+    private buildUserMessage(inputEvent: InputEvent): (InputTextContent | InputImageContent)[] {
+        const textContent = this.buildTextContent(inputEvent);
         const content: (InputTextContent | InputImageContent)[] = [{ type: 'input_text', text: textContent }];
 
-        const imageUrls = this.inputEvent!.getImageUrls();
+        const imageUrls = inputEvent.getImageUrls();
         for (const imageUrl of imageUrls) {
             content.push({ type: 'input_image', image_url: imageUrl, detail: 'auto' });
         }
@@ -434,7 +434,7 @@ export class ChannelAgent<
         return content;
     }
 
-    private buildTextContent(): string {
+    private buildTextContent(inputEvent: InputEvent): string {
         return `
 <USER_CONTEXT>
 ${UserFormatter.formatForAgent(this.session.user)}
@@ -453,7 +453,7 @@ ${formatChannelOutputForAgent(this.channel.output as ChannelOutput)}
 </OUTPUT_DESTINATION>
 
 <EVENT>
-${this.inputEvent!.formatForChannelAgent()}
+${inputEvent.formatForChannelAgent()}
 </EVENT>
         `.trim();
     }
