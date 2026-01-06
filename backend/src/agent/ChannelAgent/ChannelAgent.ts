@@ -292,7 +292,7 @@ export class ChannelAgent<
             maxTurns: this.maxTurns
         });
 
-        await this.processStream(result, streamingParams);
+        await this.processStream(result as StreamedRunResult<SessionWithTracking<T & K>, Agent<SessionWithTracking<T & K>, AgentOutputType>>, streamingParams);
 
         return await this.buildResult(result, streamingParams);
     }
@@ -471,8 +471,8 @@ ${inputEvent.formatForChannelAgent()}
         `.trim();
     }
 
-    private async processStream(
-        result: AsyncIterable<RunStreamEvent>,
+    private async processStream<TSession extends Session = Session, TAgent extends Agent<any, any> = Agent<Session, any>>(
+        result: StreamedRunResult<TSession, TAgent>,
         streamingParams?: RunHistoryStreamingParams
     ): Promise<void> {
         const shouldStream = this.shouldEnableStreaming(streamingParams);
@@ -488,13 +488,13 @@ ${inputEvent.formatForChannelAgent()}
         return !!(params?.runId && params?.userId && params?.channelId);
     }
 
-    private async processWithStreaming(
-        result: AsyncIterable<RunStreamEvent>,
+    private async processWithStreaming<TSession extends Session = Session, TAgent extends Agent<any, any> = Agent<Session, any>>(
+        result: StreamedRunResult<TSession, TAgent>,
         streamingParams: RunHistoryStreamingParams
     ): Promise<void> {
         const io = getRealtimeSocket();
 
-        const eventStream = transformAgentStreamToModelEvents(result as StreamedRunResult<Session, Agent<Session, any>>, {
+        const eventStream = transformAgentStreamToModelEvents(result as StreamedRunResult<TSession, Agent<TSession, any>>, {
             toolToIntegrationMap: this.getToolToIntegrationMap(),
             onToolCallComplete: (callId, toolName) => this.flushPendingActions(callId, toolName),
         });
@@ -515,7 +515,9 @@ ${inputEvent.formatForChannelAgent()}
         return map;
     }
 
-    private async processWithLogging(result: AsyncIterable<RunStreamEvent>): Promise<void> {
+    private async processWithLogging<TSession extends Session = Session, TAgent extends Agent<any, any> = Agent<Session, any>>(
+        result: StreamedRunResult<TSession, TAgent>
+    ): Promise<void> {
         for await (const event of result) {
             this.logRawEvent(event);
         }
