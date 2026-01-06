@@ -741,10 +741,7 @@ export class FigmaIntegrationManager implements Integration<FigmaIntegration, Fi
       // Continue with empty object if image extraction fails
     }
 
-    // Calculate image expiry (24 hours from now)
-    const imageExpiry = imageUrls.nodeImage || imageUrls.fullFrame
-      ? new Date(Date.now() + 24 * 60 * 60 * 1000) // 24 hours
-      : null;
+    logger.info("Figma for comment imageUrls", { imageUrls: JSON.stringify(imageUrls, null, 2), commentId, fileKey });
 
     // Get the closest node ID for storage
     const closestNodeId = matchedNodeIds.length > 0
@@ -1379,10 +1376,38 @@ export async function extractCommentImages(
                   if (imageData.images && imageData.images[targetNodeId]) {
                     imageUrls.fullFrame = imageData.images[targetNodeId];
                     logger.debug(`📄 Extracted full page image for file-level comment`, { fileKey, targetNodeId });
+                  } else {
+                    logger.info(`Unable to get valid image for file-level comment: image data missing or empty`, { 
+                      fileKey, 
+                      targetNodeId, 
+                      hasImages: !!imageData.images,
+                      imageKeys: imageData.images ? Object.keys(imageData.images) : []
+                    });
                   }
+                } else {
+                  const errorText = await imageResponse.text();
+                  logger.info(`Unable to get image for file-level comment: API returned non-ok status`, { 
+                    fileKey, 
+                    targetNodeId, 
+                    status: imageResponse.status, 
+                    statusText: imageResponse.statusText,
+                    error: errorText 
+                  });
                 }
+              } else {
+                logger.info(`Unable to get image for file-level comment: no target node ID found`, { fileKey, pageNodeId, documentId: document.id });
               }
+            } else {
+              logger.info(`Unable to get image for file-level comment: document not found in file data`, { fileKey });
             }
+          } else {
+            const errorText = await fileResponse.text();
+            logger.info(`Unable to get image for file-level comment: file API returned non-ok status`, { 
+              fileKey, 
+              status: fileResponse.status, 
+              statusText: fileResponse.statusText,
+              error: errorText 
+            });
           }
         } catch (error) {
           logger.error(`Error extracting file-level comment image`, { error, fileKey });
@@ -1408,10 +1433,24 @@ export async function extractCommentImages(
         const imageData = await imageResponse.json();
         if (imageData.images && imageData.images[primaryNodeId]) {
           imageUrls.nodeImage = imageData.images[primaryNodeId];
+        } else {
+          logger.info(`Unable to get valid node image: image data missing or empty`, { 
+            fileKey, 
+            primaryNodeId, 
+            hasImages: !!imageData.images,
+            imageKeys: imageData.images ? Object.keys(imageData.images) : []
+          });
         }
       } else {
         const errorText = await imageResponse.text();
         logger.error(`Failed to extract node image for ${primaryNodeId}`, { error: errorText, fileKey, primaryNodeId });
+        logger.info(`Unable to get node image: API returned non-ok status`, { 
+          fileKey, 
+          primaryNodeId, 
+          status: imageResponse.status, 
+          statusText: imageResponse.statusText,
+          error: errorText 
+        });
       }
     }
 
@@ -1477,10 +1516,48 @@ export async function extractCommentImages(
               const fullFrameData = await fullFrameResponse.json();
               if (fullFrameData.images && fullFrameData.images[targetFrameId]) {
                 imageUrls.fullFrame = fullFrameData.images[targetFrameId];
+              } else {
+                logger.info(`Unable to get valid full frame image: image data missing or empty`, { 
+                  fileKey, 
+                  targetFrameId, 
+                  primaryNodeId,
+                  pageNodeId,
+                  hasImages: !!fullFrameData.images,
+                  imageKeys: fullFrameData.images ? Object.keys(fullFrameData.images) : []
+                });
               }
+            } else {
+              const errorText = await fullFrameResponse.text();
+              logger.info(`Unable to get full frame image: API returned non-ok status`, { 
+                fileKey, 
+                targetFrameId, 
+                primaryNodeId,
+                pageNodeId,
+                status: fullFrameResponse.status, 
+                statusText: fullFrameResponse.statusText,
+                error: errorText 
+              });
             }
+          } else {
+            logger.info(`Unable to get full frame image: no target frame ID found`, { fileKey, primaryNodeId, pageNodeId });
+          }
+        } else {
+          if (!document) {
+            logger.info(`Unable to get full frame image: document not found in file data`, { fileKey, primaryNodeId });
+          }
+          if (!primaryNodeId) {
+            logger.info(`Unable to get full frame image: no primary node ID available`, { fileKey });
           }
         }
+      } else {
+        const errorText = await fileResponse.text();
+        logger.info(`Unable to get full frame image: file API returned non-ok status`, { 
+          fileKey, 
+          primaryNodeId,
+          status: fileResponse.status, 
+          statusText: fileResponse.statusText,
+          error: errorText 
+        });
       }
     } catch (error) {
       logger.error(`Error extracting full frame image`, { error, fileKey });
