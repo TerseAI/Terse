@@ -10,7 +10,7 @@ import { PosthogConfig } from "../../../shared/Configs";
  */
 export const searchSessionsTool = tool({
     name: 'searchPosthogSessions',
-    description: 'Query PostHog session recordings for a specific user by their email address. Returns session recordings data and links to view sessions in PostHog. Use this when you need to replay user sessions, investigate user behavior, or understand how users interact with the application.',
+    description: 'Query PostHog session recordings for a specific user by their email address. Returns session recordings data and links to view sessions in PostHog. Use this when you need to replay user sessions, investigate user behavior, or understand how users interact with the application. Returns the most recent session recordings first.',
     parameters: z.object({
         userEmail: z.string().email().describe('The email address of the user to query session recordings for. Must be a valid email address.'),
         limit: z.number().default(10).describe('Maximum number of session recordings to return (default: 10, max: 100)'),
@@ -196,8 +196,8 @@ export const searchSessionsTool = tool({
 
             // Sort by start_time descending (latest first) if not already sorted
             const sortedRecordings = [...recordings].sort((a: any, b: any) => {
-                const timeA = new Date(a.start_time || a.created_at || a.timestamp || 0).getTime();
-                const timeB = new Date(b.start_time || b.created_at || b.timestamp || 0).getTime();
+                const timeA = new Date(a.start_time || 0).getTime();
+                const timeB = new Date(b.start_time || 0).getTime();
                 return timeB - timeA; // Descending order
             });
 
