@@ -972,9 +972,9 @@ export class FigmaCommentEvent extends InputEvent {
       if (this.data.imageUrls.nodeImage) {
         urls.push(this.data.imageUrls.nodeImage);
       }
-      // if (this.data.imageUrls.fullFrame) {
-      //   urls.push(this.data.imageUrls.fullFrame);
-      // }
+      if (this.data.imageUrls.fullFrame) {
+        urls.push(this.data.imageUrls.fullFrame);
+      }
     }
     return urls;
   }
