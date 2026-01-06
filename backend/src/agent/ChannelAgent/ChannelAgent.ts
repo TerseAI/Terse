@@ -1,4 +1,4 @@
-import { Agent, AgentInputItem, AgentOutputType, Tool, RunResult, RunState, RunToolApprovalItem, Runner, run, user } from '@openai/agents';
+import { Agent, AgentInputItem, AgentOutputType, Tool, RunResult, RunState, RunToolApprovalItem, Runner, run, user, StreamedRunResult, RunStreamEvent } from '@openai/agents';
 import { Session } from '../../server';
 import { SystemPromptBuilder, RunContext, SystemPromptBuilderDependencies } from './SystemPromptBuilder';
 import { InputEvent } from '../../integrations/abstract/InputEvent';
@@ -118,7 +118,7 @@ export class ChannelAgent<
         //         maxTurns: this.maxTurns
         //     });
 
-        const result = run(this.agent, userHistory, {
+        const result = await run(this.agent, userHistory, {
             context: this.getToolContext(),
             stream: true,
             session: this.memorySession,
@@ -472,7 +472,7 @@ ${inputEvent.formatForChannelAgent()}
     }
 
     private async processStream(
-        result: any,
+        result: AsyncIterable<RunStreamEvent>,
         streamingParams?: RunHistoryStreamingParams
     ): Promise<void> {
         const shouldStream = this.shouldEnableStreaming(streamingParams);
@@ -489,12 +489,12 @@ ${inputEvent.formatForChannelAgent()}
     }
 
     private async processWithStreaming(
-        result: any,
+        result: AsyncIterable<RunStreamEvent>,
         streamingParams: RunHistoryStreamingParams
     ): Promise<void> {
         const io = getRealtimeSocket();
 
-        const eventStream = transformAgentStreamToModelEvents(result, {
+        const eventStream = transformAgentStreamToModelEvents(result as StreamedRunResult<Session, Agent<Session, any>>, {
             toolToIntegrationMap: this.getToolToIntegrationMap(),
             onToolCallComplete: (callId, toolName) => this.flushPendingActions(callId, toolName),
         });
@@ -515,7 +515,7 @@ ${inputEvent.formatForChannelAgent()}
         return map;
     }
 
-    private async processWithLogging(result: any): Promise<void> {
+    private async processWithLogging(result: AsyncIterable<RunStreamEvent>): Promise<void> {
         for await (const event of result) {
             this.logRawEvent(event);
         }
