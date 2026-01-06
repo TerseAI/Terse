@@ -431,6 +431,8 @@ export class ChannelAgent<
             content.push({ type: 'input_image', image_url: imageUrl, detail: 'auto' });
         }
 
+        logger.info("User message build to be sent to agent", { content: JSON.stringify(content, null, 2) });
+
         return content;
     }
 
