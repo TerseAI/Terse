@@ -699,7 +699,7 @@ async function initiateSessionAnalysis(
         userIssueDescription: userIssueDescription.trim(),
     };
 
-    const response = await fetch(`${baseUrl}/convert`, {
+    const response = await fetch(`${baseUrl}/posthog/convert`, {
         method: 'POST',
         headers: {
             'Authorization': `Bearer ${apiKey}`,
