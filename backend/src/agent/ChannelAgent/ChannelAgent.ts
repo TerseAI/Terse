@@ -96,7 +96,7 @@ export class ChannelAgent<
         }
 
         const userMessage = this.buildUserMessage(this.inputEvent);
-        const userHistory = this.buildUserHistory(userMessage);
+        const userHistory: AgentInputItem[] = this.buildUserHistory(userMessage);
 
         const runner = runnerFactory({
             channelId: this.channel.id,
@@ -106,17 +106,25 @@ export class ChannelAgent<
         })
 
         logger.info("User history build to be sent to agent", { userHistory: JSON.stringify(userHistory, null, 2) });
-        
-        const result = await runner.run(
-            this.agent,
-            userHistory,
-            {
-                context: this.getToolContext(),
-                stream: true,
-                session: this.memorySession,
-                sessionInputCallback: recentHistoryCallback,
-                maxTurns: this.maxTurns
-            });
+
+        // const result = await runner.run(
+        //     this.agent,
+        //     userHistory,
+        //     {
+        //         context: this.getToolContext(),
+        //         stream: true,
+        //         session: this.memorySession,
+        //         sessionInputCallback: recentHistoryCallback,
+        //         maxTurns: this.maxTurns
+        //     });
+
+        const result = run(this.agent, userHistory, {
+            context: this.getToolContext(),
+            stream: true,
+            session: this.memorySession,
+            sessionInputCallback: recentHistoryCallback,
+            maxTurns: this.maxTurns
+        });
 
         await this.processStream(result, streamingParams);
 
