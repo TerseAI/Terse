@@ -1,4 +1,4 @@
-import { Agent, AgentInputItem, AgentOutputType, Tool, RunResult, RunState, RunToolApprovalItem, Runner, run, user, StreamedRunResult, RunStreamEvent } from '@openai/agents';
+import { Agent, AgentInputItem, AgentOutputType, Tool, RunResult, RunState, RunToolApprovalItem, Runner, run, user, StreamedRunResult, RunStreamEvent, protocol } from '@openai/agents';
 import { Session } from '../../server';
 import { SystemPromptBuilder, RunContext, SystemPromptBuilderDependencies } from './SystemPromptBuilder';
 import { InputEvent } from '../../integrations/abstract/InputEvent';
@@ -17,7 +17,6 @@ import { persistRunAction } from './EventProcessor';
 import { processModelEventStream } from './StreamProcessor';
 import { recentHistoryCallback, RunHistoryChatMemorySession } from '../CustomMemorySession';
 import { IntegrationType } from '../../shared/Integrations';
-import { InputImageContent, InputTextContent } from 'openai/resources/conversations/conversations.mjs';
 import { runnerFactory } from '../runner';
 import { NotificationManager } from '../../notifications/Notification';
 import { storePendingApprovalState, getPendingApprovalState, clearPendingApprovalState, storeChatEvent, markRunInProgress } from './runHistory';
@@ -26,6 +25,10 @@ import logger from '../../logger';
 import { RunHistoryActionType } from '@prisma/client';
 import { KnowledgeBase } from '../../knowledgeBase/abstract/KnowledgeBase';
 import { ChannelKnowledgeBaseWithConfigs } from '../../types/prisma';
+
+// Types from @openai/agents SDK for content items
+type AgentInputText = protocol.InputText;
+type AgentInputImage = protocol.InputImage;
 
 export class ChannelAgent<
     T extends Session,
@@ -151,7 +154,7 @@ export class ChannelAgent<
         return await this.buildResult(result, streamingParams);
     }
 
-    private buildUserHistory(userMessage: string | (InputTextContent | InputImageContent)[]): AgentInputItem[] {
+    private buildUserHistory(userMessage: string | (AgentInputText | AgentInputImage)[]): AgentInputItem[] {
         // Directives are now included in the system prompt via SystemPromptBuilder.buildDirectivesSection()
         // to avoid accumulating duplicate directive entries in session history on each conversation turn.
         return [{ role: 'user' as const, content: userMessage }];
@@ -421,13 +424,13 @@ export class ChannelAgent<
         };
     }
 
-    private buildUserMessage(inputEvent: InputEvent): (InputTextContent | InputImageContent)[] {
+    private buildUserMessage(inputEvent: InputEvent): (AgentInputText | AgentInputImage)[] {
         const textContent = this.buildTextContent(inputEvent);
-        const content: (InputTextContent | InputImageContent)[] = [{ type: 'input_text', text: textContent }];
+        const content: (AgentInputText | AgentInputImage)[] = [{ type: 'input_text', text: textContent }];
 
         const imageUrls = inputEvent.getImageUrls();
         for (const imageUrl of imageUrls) {
-            content.push({ type: 'input_image', image_url: imageUrl, detail: 'auto' });
+            content.push({ type: 'input_image', image: imageUrl });
         }
 
         logger.info("User message build to be sent to agent", { content: JSON.stringify(content, null, 2) });

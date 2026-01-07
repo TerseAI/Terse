@@ -390,6 +390,12 @@ export class SlackEvent extends InputEvent implements Identifiable {
         // Determine the main message content
         // If text is empty but we have block/attachment content, note that
         const messageText = this.data.text || '(no plain text)';
+
+        // Note if images are present
+        const images = this.getImages();
+        const imageNote = images.length > 0 
+            ? `\n        Images: ${images.length} image(s) attached` 
+            : '';
         
         return `
         Incoming Slack Message Event.
@@ -400,7 +406,7 @@ export class SlackEvent extends InputEvent implements Identifiable {
         Message: ${messageText}
         Timestamp: ${this.data.timestamp}
         ${this.data.threadTimestamp ? `Thread: ${this.data.threadTimestamp}` : ''}
-        Team ID: ${this.data.teamId}
+        Team ID: ${this.data.teamId}${imageNote}
         ${blockContent ? `
         Rich Content (from blocks):
         ${blockContent}` : ''}
@@ -408,6 +414,38 @@ export class SlackEvent extends InputEvent implements Identifiable {
         Attachment Content:
         ${attachmentContent}` : ''}
         `;
+    }
+
+    /**
+     * Extract all images from the Slack message
+     * Images can come from:
+     * - Block Kit image blocks
+     * - Section block accessories
+     * - Context block elements
+     * - Attachments (image_url, thumb_url)
+     * - File uploads (files array)
+     * 
+     * @returns Array of image objects with URLs and metadata
+     */
+    getImages(): SlackMessageImage[] {
+        return extractImagesFromMessage(this.data);
+    }
+
+    /**
+     * Check if the message contains any images
+     */
+    hasImages(): boolean {
+        return this.getImages().length > 0;
+    }
+
+    /**
+     * Get all publicly accessible image URLs from the message
+     * Note: Excludes Slack file uploads which require authentication
+     */
+    getImageUrls(): string[] {
+        return this.getImages()
+            .filter(img => !img.requiresAuth)
+            .map(img => img.url);
     }
 
     debugLog(): string {
@@ -460,12 +498,6 @@ export class SlackEvent extends InputEvent implements Identifiable {
             subheader: this.data.userName || this.data.userId,
             url: this.data.permalink,
         };
-    }
-
-    getImageUrls(): string[] {
-        // Slack events don't currently include images
-        // Future: could extract image URLs from message attachments if needed
-        return [];
     }
 }
 
@@ -1037,6 +1069,161 @@ function extractTextFromAttachments(attachments: SlackAttachment[]): string {
 }
 
 
+// =============================================================================
+// IMAGE EXTRACTION
+// =============================================================================
+
+/**
+ * Extract all images from a Slack message
+ * Searches blocks, attachments, and files for images
+ */
+function extractImagesFromMessage(data: SlackEventData): SlackMessageImage[] {
+    const images: SlackMessageImage[] = [];
+
+    // Extract from blocks
+    if (data.blocks) {
+        images.push(...extractImagesFromBlocks(data.blocks));
+    }
+
+    // Extract from attachments
+    if (data.attachments) {
+        images.push(...extractImagesFromAttachments(data.attachments));
+    }
+
+    // Extract from files
+    if (data.files) {
+        images.push(...extractImagesFromFiles(data.files));
+    }
+
+    return images;
+}
+
+/**
+ * Extract images from Block Kit blocks
+ * Handles: image blocks, section accessories, context elements
+ */
+function extractImagesFromBlocks(blocks: SlackBlock[]): SlackMessageImage[] {
+    const images: SlackMessageImage[] = [];
+
+    for (const block of blocks) {
+        // Image block
+        if (block.type === 'image') {
+            if (block.image_url) {
+                images.push({
+                    url: block.image_url,
+                    alt_text: block.alt_text,
+                    title: block.title?.text,
+                    source: 'block',
+                    requiresAuth: false,
+                });
+            }
+        }
+
+        // Section block with image accessory
+        if (block.type === 'section' && block.accessory?.type === 'image') {
+            const accessory = block.accessory as any;
+            if (accessory.image_url) {
+                images.push({
+                    url: accessory.image_url,
+                    alt_text: accessory.alt_text,
+                    source: 'block',
+                    requiresAuth: false,
+                });
+            }
+        }
+
+        // Context block with image elements
+        if (block.type === 'context' && block.elements) {
+            for (const element of block.elements) {
+                if (element.type === 'image') {
+                    const imgElement = element as any;
+                    if (imgElement.image_url) {
+                        images.push({
+                            url: imgElement.image_url,
+                            alt_text: imgElement.alt_text,
+                            source: 'block',
+                            requiresAuth: false,
+                        });
+                    }
+                }
+            }
+        }
+    }
+
+    return images;
+}
+
+/**
+ * Extract images from legacy attachments
+ */
+function extractImagesFromAttachments(attachments: SlackAttachment[]): SlackMessageImage[] {
+    const images: SlackMessageImage[] = [];
+
+    for (const attachment of attachments) {
+        // Main image in attachment
+        if (attachment.image_url) {
+            images.push({
+                url: attachment.image_url,
+                alt_text: attachment.title || attachment.fallback,
+                source: 'attachment',
+                requiresAuth: false,
+            });
+        }
+        // Thumbnail image (use if no main image, or as fallback)
+        else if (attachment.thumb_url) {
+            images.push({
+                url: attachment.thumb_url,
+                alt_text: attachment.title || attachment.fallback,
+                source: 'attachment',
+                requiresAuth: false,
+            });
+        }
+    }
+
+    return images;
+}
+
+/**
+ * Extract images from file uploads
+ * Note: Slack file URLs require authentication to access
+ */
+function extractImagesFromFiles(files: SlackFile[]): SlackMessageImage[] {
+    const images: SlackMessageImage[] = [];
+    const imageMimeTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/bmp', 'image/svg+xml'];
+    const imageFileTypes = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'svg'];
+
+    for (const file of files) {
+        // Check if it's an image file
+        const isImage = (file.mimetype && imageMimeTypes.includes(file.mimetype)) ||
+                       (file.filetype && imageFileTypes.includes(file.filetype.toLowerCase()));
+
+        if (!isImage) continue;
+
+        // Get the best available URL (prefer larger versions for quality)
+        const url = file.url_private ||
+                   file.thumb_1024 ||
+                   file.thumb_960 ||
+                   file.thumb_800 ||
+                   file.thumb_720 ||
+                   file.thumb_480 ||
+                   file.thumb_360;
+
+        if (url) {
+            images.push({
+                url: url,
+                alt_text: file.title || file.name,
+                title: file.title,
+                source: 'file',
+                // Slack file URLs require authentication
+                requiresAuth: true,
+            });
+        }
+    }
+
+    return images;
+}
+
+
 async function handleSlackMessage(event: SlackMessageEvent, teamId: string, authorizations: SlackAuthorizations[]) {
     try {
         logger.debug('Processing Slack message event', { event: JSON.stringify(event, null, 2), teamId });
@@ -1192,9 +1379,10 @@ async function handleSlackMessage(event: SlackMessageEvent, teamId: string, auth
             'Failed to fetch full message'
         );
 
-        // Use blocks/attachments from API if not in event payload
+        // Use blocks/attachments/files from API if not in event payload
         let blocks = messageEvent.blocks as SlackBlock[] | undefined;
         let attachments = messageEvent.attachments as SlackAttachment[] | undefined;
+        let files = messageEvent.files as SlackFile[] | undefined;
         let text = messageEvent.text || '';
 
         if (fullMessageApiResult.success && fullMessageApiResult.data?.messages?.[0]) {
@@ -1210,6 +1398,10 @@ async function handleSlackMessage(event: SlackMessageEvent, teamId: string, auth
             if (!attachments && fullMessage.attachments) {
                 attachments = fullMessage.attachments as SlackAttachment[];
                 logger.debug(`✓ Extracted attachments from full message API (${attachments.length} attachments)`, { channel: messageEvent.channel, messageTs: messageEvent.ts });
+            }
+            if (!files && fullMessage.files) {
+                files = fullMessage.files as SlackFile[];
+                logger.debug(`✓ Extracted files from full message API (${files.length} files)`, { channel: messageEvent.channel, messageTs: messageEvent.ts });
             }
             // Also update text if it was empty in the event but present in full message
             if (!text && fullMessage.text) {
@@ -1230,13 +1422,12 @@ async function handleSlackMessage(event: SlackMessageEvent, teamId: string, auth
             teamId: teamId,
             permalink: permalink,
             channelType: messageEvent.channel_type,
-            // Include blocks and attachments (from event or API)
+            // Include blocks, attachments, and files (from event or API)
             blocks: blocks,
             attachments: attachments,
+            files: files,
         };
-
-        logger.info('slackEventData', slackEventData);
-
+        
         // Create SlackEvent once
         const slackEvent = new SlackEvent(slackEventData);
 
@@ -1338,6 +1529,7 @@ type SlackFullMessageResponse = {
     messages?: Array<{
         blocks?: unknown[];
         attachments?: unknown[];
+        files?: unknown[];
         text?: string;
     }>;
 };
@@ -1362,6 +1554,47 @@ export interface SlackEventData {
     blocks?: SlackBlock[];
     // Legacy attachments
     attachments?: SlackAttachment[];
+    // File attachments (including images)
+    files?: SlackFile[];
+}
+
+/**
+ * Slack file object from the files array in messages
+ */
+export interface SlackFile {
+    id: string;
+    name?: string;
+    title?: string;
+    mimetype?: string;
+    filetype?: string;
+    // Various URL formats for accessing the file
+    url_private?: string;
+    url_private_download?: string;
+    thumb_64?: string;
+    thumb_80?: string;
+    thumb_160?: string;
+    thumb_360?: string;
+    thumb_480?: string;
+    thumb_720?: string;
+    thumb_800?: string;
+    thumb_960?: string;
+    thumb_1024?: string;
+    // For images
+    original_w?: number;
+    original_h?: number;
+}
+
+/**
+ * Represents an image extracted from a Slack message
+ * Can be from blocks, attachments, or file uploads
+ */
+export interface SlackMessageImage {
+    url: string;
+    alt_text?: string;
+    title?: string;
+    source: 'block' | 'attachment' | 'file';
+    // For files, we need auth to access
+    requiresAuth: boolean;
 }
 
 /**
