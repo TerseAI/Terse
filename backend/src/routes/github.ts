@@ -13,6 +13,7 @@ import { Repository, GithubAppInstallationCallbackRequest, GetGithubRepositories
 import { getAppInstallationRepositories, getAppInstallationsForUser, GithubIntegrationManager } from "../integrations/GithubIntegration";
 import { emitCacheInvalidationWithKey } from "../realtimeSocket";
 import logger, { runWithUserContext } from "../logger";
+import { FeatureFlagService, FeatureFlag } from "../utility/featureFlags";
 
 // MARK: - Route Handlers
 
@@ -120,6 +121,23 @@ export async function githubAppUnifiedEvent(req: Request, res: Response) {
             }
             return foundUser;
         });
+
+        // Check feature flag before processing
+        const featureFlagService = FeatureFlagService.getInstance();
+        const hasBirdsEyeFlag = await featureFlagService.isFeatureFlagEnabled(FeatureFlag.BIRDS_EYE_VIEW_HOMEPAGE, user.id, {
+            email: user.email,
+            github_username: user.github_username
+        });
+
+        if (!hasBirdsEyeFlag) {
+            logger.info('Feature flag not enabled, skipping event processing', { 
+                userId: user.id, 
+                githubUsername: user.github_username,
+                eventType: body.eventType 
+            });
+            res.status(200).json({ message: 'Feature flag not enabled. Event processing skipped.' });
+            return;
+        }
 
         // resolve the user github relation
         const repository: GithubRepository = await resolveUserGithubRelation(user, username, repositoryName, installationId);
