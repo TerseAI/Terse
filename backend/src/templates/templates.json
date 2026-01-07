@@ -1,0 +1,195 @@
+[
+  {
+    "name": "Gmail to Notion Database",
+    "description": "Monitor Gmail inbox and automatically create entries in a Notion database",
+    "prompt": {
+      "text": "You are an AI assistant that monitors incoming emails and creates structured entries in a Notion database. When you receive an email, extract key information (sender, subject, date, body) and create a new database entry. Be concise but capture all important details."
+    },
+    "inputs": [
+      {
+        "config": {
+          "configType": "gmail",
+          "integrationType": "gmail"
+        }
+      }
+    ],
+    "output": {
+      "config": {
+        "configType": "notion_database",
+        "integrationType": "notion"
+      }
+    },
+    "requireApproval": false,
+    "isActive": true
+  },
+  {
+    "name": "Slack to Linear",
+    "description": "Monitor Slack messages and create Linear issues for actionable items",
+    "prompt": {
+      "text": "You are an AI assistant that monitors Slack messages and creates Linear issues for actionable items. When you identify a task, bug, or feature request in Slack, create a corresponding Linear issue with appropriate title, description, and labels. Only create issues for items that require action."
+    },
+    "inputs": [
+      {
+        "config": {
+          "configType": "slack",
+          "integrationType": "slack"
+        }
+      }
+    ],
+    "output": {
+      "config": {
+        "configType": "linear_output",
+        "integrationType": "linear"
+      }
+    },
+    "requireApproval": false,
+    "isActive": true
+  },
+  {
+    "name": "GitHub to Notion Page",
+    "description": "Monitor GitHub repository activity and update a Notion page with summaries",
+    "prompt": {
+      "text": "You are an AI assistant that monitors GitHub repository activity (commits, PRs, issues) and updates a Notion page with summaries. Create clear, organized summaries of recent activity, grouping related changes together. Keep the page updated with the latest developments."
+    },
+    "inputs": [
+      {
+        "config": {
+          "configType": "github",
+          "integrationType": "github"
+        }
+      }
+    ],
+    "output": {
+      "config": {
+        "configType": "notion_page",
+        "integrationType": "notion"
+      }
+    },
+    "requireApproval": false,
+    "isActive": true
+  },
+  {
+    "name": "Figma Comments to Linear",
+    "description": "Monitor Figma file comments and create Linear issues for design feedback",
+    "prompt": {
+      "text": "You are an AI assistant that monitors Figma file comments and creates Linear issues for design feedback. When you see actionable feedback or requests in Figma comments, create a Linear issue with the comment context, file reference, and any relevant design details."
+    },
+    "inputs": [
+      {
+        "config": {
+          "configType": "figma",
+          "integrationType": "figma"
+        }
+      }
+    ],
+    "output": {
+      "config": {
+        "configType": "linear_output",
+        "integrationType": "linear"
+      }
+    },
+    "requireApproval": false,
+    "isActive": true
+  },
+  {
+    "name": "Linear Input to Notion Database",
+    "description": "Monitor Linear issues and sync them to a Notion database",
+    "prompt": {
+      "text": "You are an AI assistant that monitors Linear issues and syncs them to a Notion database. When new issues are created or updated in Linear, update the corresponding entry in Notion. Keep the database in sync with Linear, including status, assignees, and descriptions."
+    },
+    "inputs": [
+      {
+        "config": {
+          "configType": "linear_input",
+          "integrationType": "linear"
+        }
+      }
+    ],
+    "output": {
+      "config": {
+        "configType": "notion_database",
+        "integrationType": "notion"
+      }
+    },
+    "requireApproval": false,
+    "isActive": true
+  },
+  {
+    "name": "Gmail to Confluence",
+    "description": "Monitor Gmail and create/update Confluence pages with email summaries",
+    "prompt": {
+      "text": "You are an AI assistant that monitors Gmail and creates or updates Confluence pages with email summaries. Organize emails by topic or project, creating structured pages with clear headings and bullet points. Keep pages updated with the latest relevant emails."
+    },
+    "inputs": [
+      {
+        "config": {
+          "configType": "gmail",
+          "integrationType": "gmail"
+        }
+      }
+    ],
+    "output": {
+      "config": {
+        "configType": "confluence",
+        "integrationType": "atlassian"
+      }
+    },
+    "requireApproval": false,
+    "isActive": true
+  },
+  {
+    "name": "Slack to Notion Database with Knowledge Base",
+    "description": "Monitor Slack messages, create Notion entries, and use PostHog knowledge base for context",
+    "prompt": {
+      "text": "You are an AI assistant that monitors Slack messages and creates entries in a Notion database. Use the PostHog knowledge base to understand user behavior and product context when processing messages. Create well-structured database entries that include relevant context from user analytics."
+    },
+    "inputs": [
+      {
+        "config": {
+          "configType": "slack",
+          "integrationType": "slack"
+        }
+      }
+    ],
+    "output": {
+      "config": {
+        "configType": "notion_database",
+        "integrationType": "notion"
+      }
+    },
+    "knowledgeBases": [
+      {
+        "config": {
+          "configType": "POSTHOG",
+          "integrationType": "posthog"
+        }
+      }
+    ],
+    "requireApproval": false,
+    "isActive": true
+  },
+  {
+    "name": "Jira to Linear",
+    "description": "Monitor Jira issues and sync them to Linear",
+    "prompt": {
+      "text": "You are an AI assistant that monitors Jira issues and creates corresponding Linear issues. When new Jira issues are created or updated, sync them to Linear with appropriate mapping of fields, status, and assignees. Keep both systems in sync."
+    },
+    "inputs": [
+      {
+        "config": {
+          "configType": "jira",
+          "integrationType": "atlassian"
+        }
+      }
+    ],
+    "output": {
+      "config": {
+        "configType": "linear_output",
+        "integrationType": "linear"
+      }
+    },
+    "requireApproval": false,
+    "isActive": true
+  }
+]
+
