@@ -7,16 +7,17 @@ import { useEffect, useState} from "react";
 import { useChannel } from "../../hooks/api/useChannels";
 import { ChannelNotificationSettings, ChannelPrompt, TransientChannelInput, TransientChannelOutput, TransientKnowledgeBase } from "../../shared/types";
 import { toTransientChannelInput, toTransientChannelOutput, toTransientKnowledgeBase } from "../../utility/ChannelUtils";
+import { ChannelTemplate } from "../../shared/Templates";
 
 function ChannelDetail() {
-    const { id } = useParams<{ id: string }>();
+    const { id, templateId } = useParams<{ id: string, templateId: string }>();
     const [searchParams, setSearchParams] = useSearchParams();
 
     // Only pass channelId if it's not "new"
     const channelId: string | null = id && id !== 'new' ? id : null;
 
     // Fetch channel data using useSWR
-    const { channel, isLoading: isFetching, mutate } = useChannel(channelId);
+    const { channel, isLoading: isFetching, mutate } = useChannel(channelId, templateId);
 
     // Local state for editing - use transient types for the editing interface
     const [name, setName] = useState<string | null>(null);

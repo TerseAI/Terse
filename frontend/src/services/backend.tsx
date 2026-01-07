@@ -35,6 +35,7 @@ import { User } from "../types/User";
 import { GetRunHistoryParams, GetRunHistoryResponse } from '../shared/RunHistoryTypes';
 import { deserializeConfig } from '../utility/ConfigUtils';
 import { CreateNotificationDestinationRequest, NotificationDestination } from '../shared/Notifications';
+import { ChannelTemplates } from '../shared/Templates';
 
 const backendBaseUrl = '/api';
 
@@ -321,6 +322,11 @@ interface BackendService {
      * Deletes a notification destination
      */
     deleteNotificationDestination(destination: NotificationDestination): Promise<void>;
+
+    /**
+     * Gets all available channel templates
+     */
+    getTemplates(): Promise<ChannelTemplates>;
 }
 
 export const BackendProvider: BackendService = {
@@ -903,6 +909,15 @@ export const BackendProvider: BackendService = {
             .then(response => response.data)
             .catch(error => {
                 console.error('Error deleting notification destination:', error);
+                throw error;
+            });
+    },
+
+    getTemplates: () => {
+        return axios.get<ChannelTemplates>(`${backendBaseUrl}/templates`, { withCredentials: true })
+            .then(response => response.data)
+            .catch(error => {
+                console.error('Error getting templates:', error);
                 throw error;
             });
     },
