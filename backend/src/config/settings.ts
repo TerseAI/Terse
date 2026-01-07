@@ -131,6 +131,7 @@ export const settings = {
     apiKey: requireEnv('POSTHOG_API_KEY'),
     serviceName: optionalEnv('POSTHOG_SERVICE_NAME', 'terse-backend'),
     enableInDevelopment: optionalEnv('POSTHOG_ENABLE_IN_DEV', 'false') === 'true',
+    host: optionalEnv('POSTHOG_HOST', 'https://us.i.posthog.com'),
   },
 
   // PostHog Session Analysis API
