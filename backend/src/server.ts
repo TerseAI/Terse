@@ -91,6 +91,7 @@ import {
 import { setupSlackBolt } from "./slack/boltApp";
 import logger from "./logger";
 import { getPosthogIntegrations, createOrUpdatePosthogIntegration, getPosthogProjects } from "./routes/posthog";
+import { getTemplates } from "./routes/templates";
 
 export type Session = {
   user: User;
@@ -467,6 +468,12 @@ app.patch("/channels/:id", authMiddleware, async (req, res) => {
 
 app.delete("/channels/:id", authMiddleware, async (req, res) => {
   deleteChannel(req, res);
+});
+
+// MARK: TEMPLATES
+
+app.get("/templates", authMiddleware, async (req, res) => {
+  getTemplates(req, res);
 });
 
 // MARK: PROMPT BUILDER
