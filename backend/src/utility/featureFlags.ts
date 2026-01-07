@@ -2,6 +2,10 @@ import { PostHog } from 'posthog-node';
 import { settings } from '../config/settings';
 import logger from '../logger';
 
+export enum FeatureFlag {
+  BIRDS_EYE_VIEW_HOMEPAGE = 'Birds-eye-view-homepage',
+}
+
 export class FeatureFlagService {
   private static instance: FeatureFlagService | null = null;
   private client: PostHog | null = null;

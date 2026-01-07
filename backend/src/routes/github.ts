@@ -13,7 +13,7 @@ import { Repository, GithubAppInstallationCallbackRequest, GetGithubRepositories
 import { getAppInstallationRepositories, getAppInstallationsForUser, GithubIntegrationManager } from "../integrations/GithubIntegration";
 import { emitCacheInvalidationWithKey } from "../realtimeSocket";
 import logger, { runWithUserContext } from "../logger";
-import { FeatureFlagService } from "../utility/featureFlags";
+import { FeatureFlagService, FeatureFlag } from "../utility/featureFlags";
 
 // MARK: - Route Handlers
 
@@ -124,7 +124,7 @@ export async function githubAppUnifiedEvent(req: Request, res: Response) {
 
         // Check feature flag before processing
         const featureFlagService = FeatureFlagService.getInstance();
-        const hasBirdsEyeFlag = await featureFlagService.isFeatureFlagEnabled('Birds-eye-view-homepage', user.id, {
+        const hasBirdsEyeFlag = await featureFlagService.isFeatureFlagEnabled(FeatureFlag.BIRDS_EYE_VIEW_HOMEPAGE, user.id, {
             email: user.email,
             github_username: user.github_username
         });
