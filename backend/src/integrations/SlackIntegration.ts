@@ -379,17 +379,73 @@ export class SlackEvent extends InputEvent implements Identifiable {
     }
 
     formatForChannelAgent(): string {
+        // Extract rich content from blocks and attachments (used by third-party apps)
+        const blockContent = this.data.blocks 
+            ? extractTextFromBlocks(this.data.blocks) 
+            : '';
+        const attachmentContent = this.data.attachments
+            ? extractTextFromAttachments(this.data.attachments)
+            : '';
+
+        // Determine the main message content
+        // If text is empty but we have block/attachment content, note that
+        const messageText = this.data.text || '(no plain text)';
+
+        // Note if images are present
+        const images = this.getImages();
+        const imageNote = images.length > 0 
+            ? `\n        Images: ${images.length} image(s) attached` 
+            : '';
+        
         return `
         Incoming Slack Message Event.
 
         Slack Event:
         Channel: ${this.data.channelName || this.data.channelId}
         User: ${this.data.userName || this.data.userId}
-        Message: ${this.data.text}
+        Message: ${messageText}
         Timestamp: ${this.data.timestamp}
         ${this.data.threadTimestamp ? `Thread: ${this.data.threadTimestamp}` : ''}
-        Team ID: ${this.data.teamId}
+        Team ID: ${this.data.teamId}${imageNote}
+        ${blockContent ? `
+        Rich Content (from blocks):
+        ${blockContent}` : ''}
+        ${attachmentContent ? `
+        Attachment Content:
+        ${attachmentContent}` : ''}
         `;
+    }
+
+    /**
+     * Extract all images from the Slack message
+     * Images can come from:
+     * - Block Kit image blocks
+     * - Section block accessories
+     * - Context block elements
+     * - Attachments (image_url, thumb_url)
+     * - File uploads (files array)
+     * 
+     * @returns Array of image objects with URLs and metadata
+     */
+    getImages(): SlackMessageImage[] {
+        return extractImagesFromMessage(this.data);
+    }
+
+    /**
+     * Check if the message contains any images
+     */
+    hasImages(): boolean {
+        return this.getImages().length > 0;
+    }
+
+    /**
+     * Get all publicly accessible image URLs from the message
+     * Note: Excludes Slack file uploads which require authentication
+     */
+    getImageUrls(): string[] {
+        return this.getImages()
+            .filter(img => !img.requiresAuth)
+            .map(img => img.url);
     }
 
     debugLog(): string {
@@ -442,12 +498,6 @@ export class SlackEvent extends InputEvent implements Identifiable {
             subheader: this.data.userName || this.data.userId,
             url: this.data.permalink,
         };
-    }
-
-    getImageUrls(): string[] {
-        // Slack events don't currently include images
-        // Future: could extract image URLs from message attachments if needed
-        return [];
     }
 }
 
@@ -568,6 +618,611 @@ function extractUserName(
     return userName;
 }
 
+/**
+ * Extract readable text from Slack Block Kit blocks
+ * Handles section, header, context, rich_text, and divider blocks
+ */
+function extractTextFromBlocks(blocks: SlackBlock[]): string {
+    if (!blocks || blocks.length === 0) {
+        return '';
+    }
+
+    const textParts: string[] = [];
+
+    for (const block of blocks) {
+        const blockText = extractTextFromBlock(block);
+        if (blockText) {
+            textParts.push(blockText);
+        }
+    }
+
+    return textParts.join('\n');
+}
+
+/**
+ * Extract text from a single Slack block
+ */
+function extractTextFromBlock(block: SlackBlock): string {
+    switch (block.type) {
+        case 'section':
+            return extractTextFromSectionBlock(block);
+        case 'header':
+            return extractTextFromHeaderBlock(block);
+        case 'context':
+            return extractTextFromContextBlock(block);
+        case 'rich_text':
+            return extractTextFromRichTextBlock(block);
+        case 'actions':
+            return extractTextFromActionsBlock(block);
+        case 'image':
+            return extractTextFromImageBlock(block);
+        case 'input':
+            return extractTextFromInputBlock(block);
+        case 'table':
+            return extractTextFromTableBlock(block);
+        case 'context_actions':
+            return extractTextFromContextActionsBlock(block);
+        case 'divider':
+            return '---';
+        default:
+            // For unknown block types, try to extract any text property
+            if (block.text) {
+                return extractTextFromTextObject(block.text);
+            }
+            return '';
+    }
+}
+
+/**
+ * Extract text from an actions block (buttons, checkboxes, radio buttons, etc.)
+ * Focuses on meaningful content like button labels and checkbox/radio options
+ */
+function extractTextFromActionsBlock(block: SlackBlock): string {
+    if (!block.elements || block.elements.length === 0) {
+        return '';
+    }
+
+    const parts: string[] = [];
+
+    for (const element of block.elements) {
+        const text = extractTextFromActionElement(element);
+        if (text) {
+            parts.push(text);
+        }
+    }
+
+    return parts.join('\n');
+}
+
+/**
+ * Extract meaningful text from action elements
+ * Prioritizes content that conveys meaning (button labels, checkbox options)
+ * over generic UI placeholders
+ */
+function extractTextFromActionElement(element: SlackBlockElement): string {
+    switch (element.type) {
+        case 'button':
+            // Button text is meaningful - "Approve", "Submit", "Cancel"
+            if (element.text) {
+                return extractTextFromTextObject(element.text as SlackTextObject);
+            }
+            return '';
+
+        case 'checkboxes':
+        case 'radio_buttons':
+            // Option labels are meaningful content
+            if (element.options && Array.isArray(element.options)) {
+                const optionTexts = element.options
+                    .map((opt: any) => {
+                        const parts: string[] = [];
+                        if (opt.text?.text) {
+                            parts.push(opt.text.text);
+                        }
+                        if (opt.description?.text) {
+                            parts.push(`(${opt.description.text})`);
+                        }
+                        return parts.join(' ');
+                    })
+                    .filter(Boolean);
+                return optionTexts.length > 0 ? `[Options: ${optionTexts.join(', ')}]` : '';
+            }
+            return '';
+
+        case 'static_select':
+        case 'multi_static_select':
+            // Static select options might be meaningful in some contexts
+            if (element.options && Array.isArray(element.options)) {
+                const optionTexts = element.options
+                    .map((opt: any) => opt.text?.text)
+                    .filter(Boolean);
+                return optionTexts.length > 0 ? `[Options: ${optionTexts.join(', ')}]` : '';
+            }
+            return '';
+
+        case 'overflow':
+            // Overflow menu options
+            if (element.options && Array.isArray(element.options)) {
+                const optionTexts = element.options
+                    .map((opt: any) => opt.text?.text)
+                    .filter(Boolean);
+                return optionTexts.length > 0 ? `[Menu: ${optionTexts.join(', ')}]` : '';
+            }
+            return '';
+
+        // Skip these - just generic UI placeholders with no meaningful content
+        case 'users_select':
+        case 'multi_users_select':
+        case 'conversations_select':
+        case 'multi_conversations_select':
+        case 'channels_select':
+        case 'multi_channels_select':
+        case 'external_select':
+        case 'multi_external_select':
+        case 'datepicker':
+        case 'timepicker':
+        case 'datetimepicker':
+            return '';
+
+        default:
+            return '';
+    }
+}
+
+/**
+ * Extract text from an image block
+ * Extracts title (meaningful) and alt_text (sometimes meaningful)
+ */
+function extractTextFromImageBlock(block: SlackBlock): string {
+    const parts: string[] = [];
+
+    // Title is usually meaningful (e.g., "I love tacos")
+    if (block.title) {
+        parts.push(extractTextFromTextObject(block.title));
+    }
+
+    // Alt text can be meaningful in some cases
+    if (block.alt_text) {
+        parts.push(`[Image: ${block.alt_text}]`);
+    }
+
+    return parts.join('\n');
+}
+
+/**
+ * Extract text from an input block
+ * Extracts the label and any meaningful options from the input element
+ */
+function extractTextFromInputBlock(block: SlackBlock): string {
+    const parts: string[] = [];
+
+    // Label tells you what the input is for (e.g., "Email Address", "Select your department")
+    if (block.label) {
+        parts.push(extractTextFromTextObject(block.label));
+    }
+
+    // Extract meaningful content from the input element
+    if (block.element) {
+        const elementText = extractTextFromActionElement(block.element);
+        if (elementText) {
+            parts.push(elementText);
+        }
+    }
+
+    return parts.join(': ');
+}
+
+/**
+ * Extract text from a table block
+ * Tables contain rows of cells, each cell containing rich_text blocks
+ */
+function extractTextFromTableBlock(block: SlackBlock): string {
+    if (!block.rows || !Array.isArray(block.rows) || block.rows.length === 0) {
+        return '';
+    }
+
+    const rowTexts: string[] = [];
+
+    for (const row of block.rows) {
+        if (!Array.isArray(row)) continue;
+        
+        const cellTexts: string[] = [];
+        for (const cell of row) {
+            // Each cell is typically a rich_text block
+            if (cell && cell.type === 'rich_text') {
+                const cellText = extractTextFromRichTextBlock(cell as SlackBlock);
+                if (cellText) {
+                    cellTexts.push(cellText.trim());
+                }
+            }
+        }
+        
+        if (cellTexts.length > 0) {
+            rowTexts.push(cellTexts.join(' | '));
+        }
+    }
+
+    return rowTexts.join('\n');
+}
+
+/**
+ * Extract text from a context_actions block
+ * These typically contain feedback buttons and other action elements
+ */
+function extractTextFromContextActionsBlock(block: SlackBlock): string {
+    if (!block.elements || block.elements.length === 0) {
+        return '';
+    }
+
+    const parts: string[] = [];
+
+    for (const element of block.elements) {
+        if (element.type === 'feedback_buttons') {
+            // Extract text from positive/negative buttons
+            const feedbackParts: string[] = [];
+            if ((element as any).positive_button?.text?.text) {
+                feedbackParts.push((element as any).positive_button.text.text);
+            }
+            if ((element as any).negative_button?.text?.text) {
+                feedbackParts.push((element as any).negative_button.text.text);
+            }
+            if (feedbackParts.length > 0) {
+                parts.push(`[Feedback: ${feedbackParts.join(' / ')}]`);
+            }
+        } else if (element.type === 'icon_button') {
+            // Extract button text
+            if (element.text) {
+                const text = typeof element.text === 'string' 
+                    ? element.text 
+                    : (element.text as SlackTextObject).text;
+                if (text) {
+                    parts.push(text);
+                }
+            }
+        }
+    }
+
+    return parts.join('\n');
+}
+
+/**
+ * Extract text from a section block (can have text and/or fields)
+ */
+function extractTextFromSectionBlock(block: SlackBlock): string {
+    const parts: string[] = [];
+
+    if (block.text) {
+        parts.push(extractTextFromTextObject(block.text));
+    }
+
+    if (block.fields && block.fields.length > 0) {
+        for (const field of block.fields) {
+            parts.push(extractTextFromTextObject(field));
+        }
+    }
+
+    return parts.join('\n');
+}
+
+/**
+ * Extract text from a header block
+ */
+function extractTextFromHeaderBlock(block: SlackBlock): string {
+    if (block.text) {
+        return `**${extractTextFromTextObject(block.text)}**`;
+    }
+    return '';
+}
+
+/**
+ * Extract text from a context block (usually metadata/footnotes)
+ */
+function extractTextFromContextBlock(block: SlackBlock): string {
+    if (!block.elements || block.elements.length === 0) {
+        return '';
+    }
+
+    const parts: string[] = [];
+    for (const element of block.elements) {
+        if (element.type === 'mrkdwn' || element.type === 'plain_text') {
+            const text = typeof element.text === 'string' 
+                ? element.text 
+                : element.text?.text || '';
+            if (text) {
+                parts.push(text);
+            }
+        } else if (element.type === 'image') {
+            // Skip images in context
+        }
+    }
+
+    return parts.length > 0 ? `[${parts.join(' | ')}]` : '';
+}
+
+/**
+ * Extract text from a rich_text block (complex formatted text)
+ */
+function extractTextFromRichTextBlock(block: SlackBlock): string {
+    if (!block.elements || block.elements.length === 0) {
+        return '';
+    }
+
+    const parts: string[] = [];
+    for (const element of block.elements) {
+        const text = extractTextFromRichTextElement(element);
+        if (text) {
+            parts.push(text);
+        }
+    }
+
+    return parts.join('\n');
+}
+
+/**
+ * Recursively extract text from rich_text elements
+ */
+function extractTextFromRichTextElement(element: SlackBlockElement): string {
+    switch (element.type) {
+        case 'rich_text_section':
+        case 'rich_text_preformatted':
+        case 'rich_text_quote':
+            if (element.elements) {
+                return element.elements.map(el => extractTextFromRichTextSubElement(el)).join('');
+            }
+            return '';
+        case 'rich_text_list':
+            if (element.elements) {
+                return element.elements.map((el, i) => `• ${extractTextFromRichTextElement(el as SlackBlockElement)}`).join('\n');
+            }
+            return '';
+        default:
+            return '';
+    }
+}
+
+/**
+ * Extract text from rich_text sub-elements (text, link, emoji, etc.)
+ */
+function extractTextFromRichTextSubElement(element: SlackRichTextElement): string {
+    switch (element.type) {
+        case 'text':
+            return element.text || '';
+        case 'link':
+            return element.url || element.text || '';
+        case 'emoji':
+            return element.name ? `:${element.name}:` : '';
+        case 'user':
+            return '@user';
+        case 'channel':
+            return '#channel';
+        default:
+            return element.text || '';
+    }
+}
+
+/**
+ * Extract text from a Slack text object (mrkdwn or plain_text)
+ */
+function extractTextFromTextObject(textObj: SlackTextObject): string {
+    return textObj.text || '';
+}
+
+/**
+ * Extract readable text from Slack attachments (legacy format)
+ * Many third-party apps still use attachments for rich content
+ */
+function extractTextFromAttachments(attachments: SlackAttachment[]): string {
+    if (!attachments || attachments.length === 0) {
+        return '';
+    }
+
+    const textParts: string[] = [];
+
+    for (const attachment of attachments) {
+        const attachmentParts: string[] = [];
+
+        // Add pretext if present
+        if (attachment.pretext) {
+            attachmentParts.push(attachment.pretext);
+        }
+
+        // Add author if present
+        if (attachment.author_name) {
+            attachmentParts.push(`Author: ${attachment.author_name}`);
+        }
+
+        // Add title (often the main content identifier)
+        if (attachment.title) {
+            const titleText = attachment.title_link 
+                ? `${attachment.title} (${attachment.title_link})`
+                : attachment.title;
+            attachmentParts.push(titleText);
+        }
+
+        // Add main text content
+        if (attachment.text) {
+            attachmentParts.push(attachment.text);
+        }
+
+        // Add fields (key-value pairs)
+        if (attachment.fields && attachment.fields.length > 0) {
+            for (const field of attachment.fields) {
+                attachmentParts.push(`${field.title}: ${field.value}`);
+            }
+        }
+
+        // Add footer if present
+        if (attachment.footer) {
+            attachmentParts.push(`[${attachment.footer}]`);
+        }
+
+        // Use fallback if no other content was extracted
+        if (attachmentParts.length === 0 && attachment.fallback) {
+            attachmentParts.push(attachment.fallback);
+        }
+
+        if (attachmentParts.length > 0) {
+            textParts.push(attachmentParts.join('\n'));
+        }
+    }
+
+    return textParts.join('\n---\n');
+}
+
+
+// =============================================================================
+// IMAGE EXTRACTION
+// =============================================================================
+
+/**
+ * Extract all images from a Slack message
+ * Searches blocks, attachments, and files for images
+ */
+function extractImagesFromMessage(data: SlackEventData): SlackMessageImage[] {
+    const images: SlackMessageImage[] = [];
+
+    // Extract from blocks
+    if (data.blocks) {
+        images.push(...extractImagesFromBlocks(data.blocks));
+    }
+
+    // Extract from attachments
+    if (data.attachments) {
+        images.push(...extractImagesFromAttachments(data.attachments));
+    }
+
+    // Extract from files
+    if (data.files) {
+        images.push(...extractImagesFromFiles(data.files));
+    }
+
+    return images;
+}
+
+/**
+ * Extract images from Block Kit blocks
+ * Handles: image blocks, section accessories, context elements
+ */
+function extractImagesFromBlocks(blocks: SlackBlock[]): SlackMessageImage[] {
+    const images: SlackMessageImage[] = [];
+
+    for (const block of blocks) {
+        // Image block
+        if (block.type === 'image') {
+            if (block.image_url) {
+                images.push({
+                    url: block.image_url,
+                    alt_text: block.alt_text,
+                    title: block.title?.text,
+                    source: 'block',
+                    requiresAuth: false,
+                });
+            }
+        }
+
+        // Section block with image accessory
+        if (block.type === 'section' && block.accessory?.type === 'image') {
+            const accessory = block.accessory as any;
+            if (accessory.image_url) {
+                images.push({
+                    url: accessory.image_url,
+                    alt_text: accessory.alt_text,
+                    source: 'block',
+                    requiresAuth: false,
+                });
+            }
+        }
+
+        // Context block with image elements
+        if (block.type === 'context' && block.elements) {
+            for (const element of block.elements) {
+                if (element.type === 'image') {
+                    const imgElement = element as any;
+                    if (imgElement.image_url) {
+                        images.push({
+                            url: imgElement.image_url,
+                            alt_text: imgElement.alt_text,
+                            source: 'block',
+                            requiresAuth: false,
+                        });
+                    }
+                }
+            }
+        }
+    }
+
+    return images;
+}
+
+/**
+ * Extract images from legacy attachments
+ */
+function extractImagesFromAttachments(attachments: SlackAttachment[]): SlackMessageImage[] {
+    const images: SlackMessageImage[] = [];
+
+    for (const attachment of attachments) {
+        // Main image in attachment
+        if (attachment.image_url) {
+            images.push({
+                url: attachment.image_url,
+                alt_text: attachment.title || attachment.fallback,
+                source: 'attachment',
+                requiresAuth: false,
+            });
+        }
+        // Thumbnail image (use if no main image, or as fallback)
+        else if (attachment.thumb_url) {
+            images.push({
+                url: attachment.thumb_url,
+                alt_text: attachment.title || attachment.fallback,
+                source: 'attachment',
+                requiresAuth: false,
+            });
+        }
+    }
+
+    return images;
+}
+
+/**
+ * Extract images from file uploads
+ * Note: Slack file URLs require authentication to access
+ */
+function extractImagesFromFiles(files: SlackFile[]): SlackMessageImage[] {
+    const images: SlackMessageImage[] = [];
+    const imageMimeTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/bmp', 'image/svg+xml'];
+    const imageFileTypes = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'svg'];
+
+    for (const file of files) {
+        // Check if it's an image file
+        const isImage = (file.mimetype && imageMimeTypes.includes(file.mimetype)) ||
+                       (file.filetype && imageFileTypes.includes(file.filetype.toLowerCase()));
+
+        if (!isImage) continue;
+
+        // Get the best available URL (prefer larger versions for quality)
+        const url = file.url_private ||
+                   file.thumb_1024 ||
+                   file.thumb_960 ||
+                   file.thumb_800 ||
+                   file.thumb_720 ||
+                   file.thumb_480 ||
+                   file.thumb_360;
+
+        if (url) {
+            images.push({
+                url: url,
+                alt_text: file.title || file.name,
+                title: file.title,
+                source: 'file',
+                // Slack file URLs require authentication
+                requiresAuth: true,
+            });
+        }
+    }
+
+    return images;
+}
+
 
 async function handleSlackMessage(event: SlackMessageEvent, teamId: string, authorizations: SlackAuthorizations[]) {
     try {
@@ -661,7 +1316,8 @@ async function handleSlackMessage(event: SlackMessageEvent, teamId: string, auth
         logger.debug(`📡 Fetching additional Slack data for channel ${messageEvent.channel}, user ${messageEvent.user}, message ${messageEvent.ts}`, { channel: messageEvent.channel, user: messageEvent.user, messageTs: messageEvent.ts, teamId });
 
         // Fetch all available data from Slack API in parallel
-        const [channelInfo, userInfo, permalinkResult] = await Promise.allSettled([
+        // Include full message fetch to get blocks/attachments (not always in event payload)
+        const [channelInfo, userInfo, permalinkResult, fullMessageResult] = await Promise.allSettled([
             // Fetch channel information
             client.conversations.info({
                 channel: messageEvent.channel!
@@ -674,6 +1330,14 @@ async function handleSlackMessage(event: SlackMessageEvent, teamId: string, auth
             client.chat.getPermalink({
                 channel: messageEvent.channel!,
                 message_ts: messageEvent.ts!
+            }),
+            // Fetch full message to get blocks/attachments (Slack Events API often omits these)
+            client.conversations.history({
+                channel: messageEvent.channel!,
+                oldest: messageEvent.ts!,
+                latest: messageEvent.ts!,
+                inclusive: true,
+                limit: 1
             })
         ]);
 
@@ -708,20 +1372,62 @@ async function handleSlackMessage(event: SlackMessageEvent, teamId: string, auth
             logger.debug(`✓ Fetched message permalink: ${permalink}`, { permalink, channel: messageEvent.channel, messageTs: messageEvent.ts });
         }
 
+        // Extract blocks/attachments from full message API call (Events API often omits these)
+        const fullMessageApiResult = processSlackApiResult<SlackFullMessageResponse>(
+            fullMessageResult as SlackApiSettledResult<SlackFullMessageResponse>,
+            'Full message',
+            'Failed to fetch full message'
+        );
+
+        // Use blocks/attachments/files from API if not in event payload
+        let blocks = messageEvent.blocks as SlackBlock[] | undefined;
+        let attachments = messageEvent.attachments as SlackAttachment[] | undefined;
+        let files = messageEvent.files as SlackFile[] | undefined;
+        let text = messageEvent.text || '';
+
+        if (fullMessageApiResult.success && fullMessageApiResult.data?.messages?.[0]) {
+            // Since we limit the API call to 1 message (oldest=ts, latest=ts, limit=1),
+            // the first item in the array is always the exact message we requested
+            const fullMessage = fullMessageApiResult.data.messages[0];
+            
+            // Use API blocks/attachments if event payload didn't have them
+            if (!blocks && fullMessage.blocks) {
+                blocks = fullMessage.blocks as SlackBlock[];
+                logger.debug(`✓ Extracted blocks from full message API (${blocks.length} blocks)`, { channel: messageEvent.channel, messageTs: messageEvent.ts });
+            }
+            if (!attachments && fullMessage.attachments) {
+                attachments = fullMessage.attachments as SlackAttachment[];
+                logger.debug(`✓ Extracted attachments from full message API (${attachments.length} attachments)`, { channel: messageEvent.channel, messageTs: messageEvent.ts });
+            }
+            if (!files && fullMessage.files) {
+                files = fullMessage.files as SlackFile[];
+                logger.debug(`✓ Extracted files from full message API (${files.length} files)`, { channel: messageEvent.channel, messageTs: messageEvent.ts });
+            }
+            // Also update text if it was empty in the event but present in full message
+            if (!text && fullMessage.text) {
+                text = fullMessage.text;
+                logger.debug(`✓ Extracted text from full message API`, { channel: messageEvent.channel, messageTs: messageEvent.ts });
+            }
+        }
+
         // Build SlackEventData with all available information
         const slackEventData: SlackEventData = {
             channelId: messageEvent.channel!,
             channelName: channelName,
             userId: messageEvent.user!,
             userName: userName,
-            text: messageEvent.text!,
+            text: text,
             timestamp: messageEvent.ts!,
             threadTimestamp: messageEvent.thread_ts,
             teamId: teamId,
             permalink: permalink,
-            channelType: messageEvent.channel_type
+            channelType: messageEvent.channel_type,
+            // Include blocks, attachments, and files (from event or API)
+            blocks: blocks,
+            attachments: attachments,
+            files: files,
         };
-
+        
         // Create SlackEvent once
         const slackEvent = new SlackEvent(slackEventData);
 
@@ -816,6 +1522,19 @@ type SlackApiResponse<T = unknown> = { ok: boolean; error?: string } & T;
 type SlackApiSettledResult<T = unknown> = PromiseSettledResult<SlackApiResponse<T>>;
 
 /**
+ * Response type for conversations.history API call
+ * Used to fetch full message content including blocks/attachments
+ */
+type SlackFullMessageResponse = {
+    messages?: Array<{
+        blocks?: unknown[];
+        attachments?: unknown[];
+        files?: unknown[];
+        text?: string;
+    }>;
+};
+
+/**
  * Slack event data
  * Processed Slack message event data used for channel events
  */
@@ -831,6 +1550,128 @@ export interface SlackEventData {
     // Permalink for the message (if available)
     permalink?: string;
     channelType?: SlackChannelType;
+    // Block Kit content from third-party apps
+    blocks?: SlackBlock[];
+    // Legacy attachments
+    attachments?: SlackAttachment[];
+    // File attachments (including images)
+    files?: SlackFile[];
+}
+
+/**
+ * Slack file object from the files array in messages
+ */
+export interface SlackFile {
+    id: string;
+    name?: string;
+    title?: string;
+    mimetype?: string;
+    filetype?: string;
+    // Various URL formats for accessing the file
+    url_private?: string;
+    url_private_download?: string;
+    thumb_64?: string;
+    thumb_80?: string;
+    thumb_160?: string;
+    thumb_360?: string;
+    thumb_480?: string;
+    thumb_720?: string;
+    thumb_800?: string;
+    thumb_960?: string;
+    thumb_1024?: string;
+    // For images
+    original_w?: number;
+    original_h?: number;
+}
+
+/**
+ * Represents an image extracted from a Slack message
+ * Can be from blocks, attachments, or file uploads
+ */
+export interface SlackMessageImage {
+    url: string;
+    alt_text?: string;
+    title?: string;
+    source: 'block' | 'attachment' | 'file';
+    // For files, we need auth to access
+    requiresAuth: boolean;
+}
+
+/**
+ * Slack Block Kit block types
+ * Used to parse rich content from third-party app messages
+ */
+interface SlackBlock {
+    type: string;
+    block_id?: string;
+    text?: SlackTextObject;
+    fields?: SlackTextObject[];
+    elements?: SlackBlockElement[];
+    accessory?: SlackBlockElement;
+    // For image blocks
+    title?: SlackTextObject;
+    alt_text?: string;
+    image_url?: string;
+    // For input blocks
+    label?: SlackTextObject;
+    element?: SlackBlockElement;
+    // For table blocks
+    rows?: any[][];
+}
+
+interface SlackTextObject {
+    type: 'plain_text' | 'mrkdwn';
+    text: string;
+    emoji?: boolean;
+    verbatim?: boolean;
+}
+
+interface SlackBlockElement {
+    type: string;
+    text?: SlackTextObject | string;
+    elements?: SlackRichTextElement[];
+    // For rich_text_section elements
+    style?: Record<string, boolean>;
+    // For action elements (checkboxes, radio_buttons, selects, overflow)
+    options?: Array<{
+        text?: SlackTextObject;
+        description?: SlackTextObject;
+        value?: string;
+    }>;
+}
+
+interface SlackRichTextElement {
+    type: string;
+    text?: string;
+    url?: string;
+    name?: string;
+    style?: Record<string, boolean>;
+    elements?: SlackRichTextElement[];
+}
+
+/**
+ * Slack attachment (legacy rich message format)
+ */
+interface SlackAttachment {
+    fallback?: string;
+    color?: string;
+    pretext?: string;
+    author_name?: string;
+    author_link?: string;
+    author_icon?: string;
+    title?: string;
+    title_link?: string;
+    text?: string;
+    fields?: Array<{
+        title: string;
+        value: string;
+        short: boolean;
+    }>;
+    image_url?: string;
+    thumb_url?: string;
+    footer?: string;
+    footer_icon?: string;
+    ts?: number;
 }
 
 
