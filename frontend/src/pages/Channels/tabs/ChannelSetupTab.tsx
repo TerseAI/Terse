@@ -352,7 +352,7 @@ export default function ChannelSetupTab({
                         )}
 
                         {activeSection === 'prompt' && (
-                            <div className="max-w-4xl flex flex-col gap-4">
+                            <div className="max-w-4xl mx-auto flex flex-col gap-4">
                                 <div className="h-[70vh] min-h-[420px] overflow-hidden">
                                     <InstructionsEditor
                                         prompt={prompt}
