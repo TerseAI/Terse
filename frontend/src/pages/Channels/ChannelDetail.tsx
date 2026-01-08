@@ -7,7 +7,6 @@ import { useEffect, useState} from "react";
 import { useChannel } from "../../hooks/api/useChannels";
 import { ChannelNotificationSettings, ChannelPrompt, TransientChannelInput, TransientChannelOutput, TransientKnowledgeBase } from "../../shared/types";
 import { toTransientChannelInput, toTransientChannelOutput, toTransientKnowledgeBase } from "../../utility/ChannelUtils";
-import { ChannelTemplate } from "../../shared/Templates";
 
 function ChannelDetail() {
     const { id, templateId } = useParams<{ id: string, templateId: string }>();
