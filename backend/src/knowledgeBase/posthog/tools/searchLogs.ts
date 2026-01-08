@@ -6,20 +6,21 @@ import { PosthogConfig } from "../../../shared/Configs";
 
 /**
  * Tool for querying PostHog logs for a specific user.
- * This tool queries the PostHog Logs product API to find logs associated with a user's email.
+ * This tool queries the PostHog Logs product API to find logs associated with a user.
  */
 export const searchLogsTool = tool({
     name: 'searchPosthogLogs',
-    description: 'Query PostHog logs for a specific user by their email address. Returns logs data and a link to view logs in PostHog. Use this when you need to investigate user activity, errors, or events in PostHog logs.',
+    description: 'Query PostHog logs for a specific user. Returns logs data and a link to view logs in PostHog. Use this when you need to investigate user activity, errors, or events in PostHog logs. The logs can be filtered by user email or user ID depending on how logs are instrumented.',
     parameters: z.object({
-        userEmail: z.string().email().describe('The email address of the user to query logs for. Must be a valid email address.'),
-        limit: z.number().default(50).describe('Maximum number of log entries to return (default: 50, max: 100)'),
-        offset: z.number().default(0).describe('Offset for pagination (default: 0)'),
+        filterValue: z.string().describe('The value to filter logs by (e.g., user email like "user@example.com" or user ID like "cmgv175dh06doks21hj06m2gt").'),
+        filterKey: z.enum(['userEmail', 'userId']).default('userEmail').describe('The PostHog log attribute key to filter on. Use "userEmail" if logs have a userEmail attribute, or "userId" if logs have a userId attribute. Default: "userEmail".'),
+        limit: z.number().default(50).describe('Maximum number of log entries to return (default: 50, max: 250)'),
+        offset: z.number().default(0).describe('Offset for pagination (default: 0). Use with limit to page through results. For example, offset=0 gets logs 1-50, offset=50 gets logs 51-100, etc.'),
         last7Days: z.boolean().default(false).describe('If true and dateFrom is not provided, filters logs from the last 7 days only (default: false). If false, no date restriction is applied unless dateFrom is explicitly provided.'),
         dateFrom: z.union([z.string(), z.null()]).describe('Start date for filtering (ISO format or relative like "-7d"). If not provided and last7Days is true, defaults to 7 days ago. If not provided and last7Days is false, no date restriction is applied.'),
         dateTo: z.union([z.string(), z.null()]).describe('End date for filtering (ISO format or relative like "now"). If not provided, defaults to now.'),
     }),
-    execute: async ({ userEmail, limit = 50, offset = 0, last7Days = false, dateFrom, dateTo }, runContext?: RunContext<any>) => {
+    execute: async ({ filterValue, filterKey = 'userEmail', limit = 50, offset = 0, last7Days = false, dateFrom, dateTo }, runContext?: RunContext<any>) => {
         if (!runContext?.context) {
             throw new Error("No context provided");
         }
@@ -53,47 +54,50 @@ export const searchLogsTool = tool({
         const posthogHost = 'https://us.posthog.com';
 
         try {
-            // Calculate date filters
-            let dateFromValue = dateFrom ?? undefined;
-            let dateToValue = dateTo ?? undefined;
+            // Calculate date filters - use PostHog relative format
+            let dateFromValue: string | null = dateFrom ?? null;
             
             // Default to last 7 days if last7Days is true and dateFrom is not provided
             if (last7Days && !dateFromValue) {
-                const sevenDaysAgo = new Date();
-                sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-                dateFromValue = sevenDaysAgo.toISOString();
-            }
-            
-            // Default to now if dateTo is not provided
-            if (!dateToValue) {
-                dateToValue = new Date().toISOString();
+                dateFromValue = '-7d';
             }
 
-            logger.info('Querying PostHog logs', { userEmail, projectId, limit, offset, dateFrom: dateFromValue, dateTo: dateToValue });
+            logger.info('Querying PostHog logs', { filterValue, filterKey, projectId, limit, offset, dateFrom: dateFromValue });
 
             // Query the Logs product API
             const logsQueryUrl = `${posthogHost}/api/projects/${projectId}/logs/query/`;
             
-            const requestBody: any = {
-                query: '', // PostHog logs API requires a query parameter (can be empty when using filters)
-                filters: {
-                    person: {
-                        email: userEmail
-                    }
+            // Build the request body in the correct PostHog Logs API format
+            const requestBody = {
+                query: {
+                    limit: Math.min(limit, 250), // PostHog max is 250
+                    offset: offset,
+                    orderBy: 'latest',
+                    dateRange: {
+                        date_from: dateFromValue,
+                        date_to: dateTo ?? null,
+                    },
+                    searchTerm: '',
+                    filterGroup: {
+                        type: 'AND',
+                        values: [
+                            {
+                                type: 'AND',
+                                values: [
+                                    {
+                                        key: filterKey,
+                                        value: [filterValue],
+                                        operator: 'exact',
+                                        type: 'log_attribute',
+                                    },
+                                ],
+                            },
+                        ],
+                    },
+                    severityLevels: [],
+                    serviceNames: [],
                 },
-                limit: Math.min(limit, 100), // Cap at 100
-                offset: offset,
             };
-
-            // Add date filters if provided
-            if (dateFromValue) {
-                requestBody.date_from = dateFromValue;
-            }
-            if (dateToValue) {
-                requestBody.date_to = dateToValue;
-            }
-
-            // Note: PostHog API doesn't support order_by in request body, so we'll sort client-side
             
             const response = await fetch(logsQueryUrl, {
                 method: 'POST',
@@ -109,7 +113,8 @@ export const searchLogsTool = tool({
                 logger.error('PostHog logs API error', {
                     status: response.status,
                     error: errorText,
-                    userEmail,
+                    filterKey,
+                    filterValue,
                     projectId
                 });
                 
@@ -126,8 +131,8 @@ export const searchLogsTool = tool({
 
             const logsData = await response.json();
             
-            // Build link to logs UI (filtered by user if possible)
-            const logsLink = `${posthogHost}/logs?person_email=${encodeURIComponent(userEmail)}`;
+            // Build link to logs UI
+            const logsLink = `${posthogHost}/project/${projectId}/logs`;
 
             // Extract and format log entries
             const logEntries = Array.isArray(logsData) 
@@ -136,8 +141,6 @@ export const searchLogsTool = tool({
 
             // Get pagination metadata if available
             const totalCount = logsData.count || logsData.total || logEntries.length;
-            const hasNext = logsData.next ? true : false;
-            const hasPrevious = logsData.previous ? true : false;
 
             // Sort by timestamp descending (latest first) if not already sorted
             const sortedLogs = [...logEntries].sort((a: any, b: any) => {
@@ -155,25 +158,29 @@ export const searchLogsTool = tool({
                 attributes: log.attributes || log.properties || {},
             }));
 
+            // Determine if there are more results available
+            const hasMore = formattedLogs.length === Math.min(limit, 250);
+            const nextOffset = hasMore ? offset + formattedLogs.length : null;
+
             return {
                 success: true,
-                userEmail,
+                filterKey,
+                filterValue,
                 projectId,
                 totalLogs: totalCount,
                 logs: formattedLogs,
                 logsLink,
                 pagination: {
-                    limit,
+                    limit: Math.min(limit, 250),
                     offset,
-                    hasNext,
-                    hasPrevious,
-                    nextOffset: hasNext ? offset + limit : null,
-                    previousOffset: hasPrevious ? Math.max(0, offset - limit) : null,
+                    hasMore,
+                    nextOffset,
+                    showing: `${offset + 1}-${offset + formattedLogs.length}`,
                 },
-                message: `Found ${formattedLogs.length} log entries for ${userEmail} (showing ${offset + 1}-${offset + formattedLogs.length} of ${totalCount}). View all logs: ${logsLink}`
+                message: `Found ${formattedLogs.length} log entries for ${filterKey}="${filterValue}" (showing ${offset + 1}-${offset + formattedLogs.length}${hasMore ? ', more available' : ''}). View all logs: ${logsLink}`
             };
         } catch (error: any) {
-            logger.error('Error querying PostHog logs', { error, userEmail, projectId });
+            logger.error('Error querying PostHog logs', { error, filterKey, filterValue, projectId });
             throw new Error(`Failed to query PostHog logs: ${error.message || 'Unknown error'}`);
         }
     },

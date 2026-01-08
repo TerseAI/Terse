@@ -134,12 +134,6 @@ export const settings = {
     host: optionalEnv('POSTHOG_HOST', 'https://us.i.posthog.com'),
   },
 
-  // PostHog Session Analysis API
-  posthogSessionAnalysis: {
-    apiKey: requireEnv('POSTHOG_SESSION_ANALYSIS_API_KEY'),
-    baseUrl: requireEnv('POSTHOG_SESSION_ANALYSIS_BASE_URL'),
-  },
-
   // Optional configuration
   optional: {
     redisUrl: optionalEnv('REDIS_URL'),

@@ -7,7 +7,7 @@ import { ToolboxEntry } from "../../outputs/abstract/Output";
 import { KnowledgeBase } from "../abstract/KnowledgeBase";
 import { searchLogsTool } from "./tools/searchLogs";
 import { searchSessionsTool } from "./tools/searchSessions";
-import { analyzeSessionTool } from "./tools/analyzeSession";
+import { getSessionEventsTool } from "./tools/getSessionEvents";
 import { db } from "../../prismaClient";
 import logger from "../../logger";
 
@@ -37,7 +37,7 @@ export class PosthogKnowledgeBase extends KnowledgeBase<PosthogKnowledgeBaseSess
                 integration: IntegrationType.POSTHOG
             },
             {
-                tool: analyzeSessionTool,
+                tool: getSessionEventsTool,
                 isReadOnly: true,
                 integration: IntegrationType.POSTHOG
             }
@@ -116,43 +116,134 @@ export class PosthogKnowledgeBase extends KnowledgeBase<PosthogKnowledgeBaseSess
 
     /**
      * Returns system instructions for PostHog knowledge base.
-     * Provides guidance on when and how to use PostHog tools.
+     * Provides guidance on when and how to use PostHog tools with an investigative mindset.
      */
     getSystemInstructions(session: PosthogKnowledgeBaseSession): string {
         const { posthogConfig } = session;
-        const instructions: string[] = [];
+        const sections: string[] = [];
 
-        instructions.push('PostHog Knowledge Base is available for querying user activity data.');
+        // Header
+        sections.push('=== POSTHOG KNOWLEDGE BASE ===');
+        sections.push(`Project: ${posthogConfig.projectName || posthogConfig.projectId}`);
 
+        // Available tools section
+        const toolDescriptions: string[] = [];
         if (posthogConfig.canReadLogs) {
-            instructions.push(
-                '- Use searchPosthogLogs tool to query logs for a user by email. ' +
-                'This is useful for investigating errors, debugging issues, or understanding user activity patterns.'
+            toolDescriptions.push(
+                '• searchPosthogLogs: Query backend logs filtered by user email or ID. ' +
+                'Returns log entries with timestamps, severity, messages, and attributes. ' +
+                'Supports pagination (offset parameter) and date filtering.'
             );
         }
-
         if (posthogConfig.canReadSessionRecordings) {
-            instructions.push(
-                '- Use searchPosthogSessions tool to query session recordings for a user by email. ' +
-                'This is useful for replaying user sessions, understanding user behavior, or investigating UX issues.'
+            toolDescriptions.push(
+                '• searchPosthogSessions: Find session recordings for a user by email. ' +
+                'Returns session IDs, timestamps, duration, and replay URLs.'
             );
-            instructions.push(
-                '- Use analyzePosthogSession tool to deeply analyze a user session with AI. ' +
-                'This tool exports the session video, fetches console logs, and generates a comprehensive bug report. ' +
-                'By default, when a user reports an issue or you need to investigate their activity, use this tool with their userEmail to automatically analyze their most recent session. ' +
-                'You can also analyze a specific session by providing its sessionId. ' +
-                'This should be your first action when a user reports an issue - analyze their latest session to understand what went wrong. ' +
-                'Always provide a clear userIssueDescription describing what the user reported or what you are investigating.'
+            toolDescriptions.push(
+                '• getPosthogSessionEvents: Decode a session\'s events (clicks, inputs, console logs, errors, navigation). ' +
+                'Use startSeconds/endSeconds to focus on specific time windows within a session.'
             );
         }
-
-        if (posthogConfig.projectName) {
-            instructions.push(`- PostHog project: ${posthogConfig.projectName} (ID: ${posthogConfig.projectId})`);
-        } else {
-            instructions.push(`- PostHog project ID: ${posthogConfig.projectId}`);
+        if (toolDescriptions.length > 0) {
+            sections.push('\nAVAILABLE TOOLS:\n' + toolDescriptions.join('\n'));
         }
+        
+        sections.push(`
+INVESTIGATION STRATEGY:
+Investigate like a human engineer would - be thorough and iterative, not superficial.
 
-        return instructions.join('\n');
+1. START BROAD:
+   - Always use last7Days: true to capture full week context
+   - Don't assume the issue happened in the most recent logs/session
+
+2. PAGINATE THROUGH RESULTS:
+   - If the first batch (50 logs) doesn't show a smoking gun, page through more
+   - Use offset parameter: offset=0 for first 50, offset=50 for next 50, etc.
+   - Continue until you find relevant evidence OR have reviewed at least 150-200 logs
+
+3. CHECK MULTIPLE SESSIONS:
+   - Don't stop at the most recent session - check 2-3 recent sessions
+   - The bug might have occurred in an earlier session
+   - Compare behavior across sessions to spot patterns
+
+4. CROSS-REFERENCE DATA:
+   - If logs show an error at timestamp T, check session events around that time
+   - If a session shows unexpected behavior, look for corresponding backend logs
+   - Match frontend events with backend processing
+
+5. LOOK FOR PATTERNS:
+   - Repeated errors or warnings
+   - Unusual sequences of events
+   - Failed network requests or console errors
+   - Events that correlate with the reported issue timing
+
+6. KNOW WHEN TO STOP:
+   - You've reviewed logs across the relevant timeframe (last 7 days)
+   - You've checked multiple sessions
+   - You've cross-referenced frontend and backend data
+   - If still no smoking gun, report what you searched and what you ruled out
+
+DESCRIBING USER SESSIONS (CRITICAL):
+When analyzing session data, describe WHAT THE USER DID in plain human terms. 
+Do NOT dump technical metadata about the session structure.
+
+GOOD - Describe the user's journey:
+"In their session on Jan 7th, Olivier opened the app, navigated to Channels, clicked on a Gmail 
+integration icon, and the text appeared cut off. He then scrolled down and clicked Settings."
+(Replay: <sessionUrl>)
+
+BAD - Technical metadata dump:
+"Session 019b98c0-de78-7988-b0ce-1459b021bab6 contains 529 raw events, 93 meaningful events, 
+including navigation to channels and Gmail-related paths; knowledge bases surfaced with ID 
+cmk1r6qqm000dpr2jdeomx4qm but initial discovery showed empty knowledgeBases."
+(This is useless noise - nobody cares about event counts or internal IDs)
+
+Focus on:
+- What pages/screens did the user visit?
+- What did they click on?
+- What did they type?
+- What errors appeared (console errors, failed requests)?
+- What was the sequence of their actions?
+
+Never mention:
+- Raw event counts or "meaningful event" counts
+- Internal IDs (unless directly relevant to a bug)
+- Technical session metadata
+- Knowledge base initialization details
+
+CITING EVIDENCE:
+Every claim MUST be backed by specific, verifiable references.
+
+When citing LOG evidence:
+- Include the exact timestamp (e.g., "At 2026-01-08T16:03:22Z...")
+- Quote the relevant log message or error
+- Include the logsLink so the user can view all logs in PostHog
+
+When citing SESSION evidence:
+- Include the session replay URL so the user can watch it
+- Reference the specific time within the session (e.g., "At 2:34 into session...")
+- Describe what the user did in human terms
+
+Example of GOOD report:
+"In Olivier's session on Jan 7th (replay: <sessionUrl>), he navigated to the Channels page at 14:02 
+and clicked the Gmail icon at 14:03. The icon's label text appears truncated. Backend logs at 
+14:03:22Z show: 'No channels match this gmail event' (logs: <logsLink>), suggesting a mapping issue."
+
+Example of BAD report:
+"The session had 529 raw events and 93 meaningful events with Gmail-related processing."
+(No user journey, no specifics, just useless metadata)
+
+REPORTING:
+Always summarize your investigation with citations:
+- List specific sessions reviewed with their replay URLs
+- List specific log entries found with timestamps
+- Link to PostHog views so users can verify your findings
+- Any patterns or anomalies observed (with evidence)
+- What you ruled out and why
+- Suggested next steps if inconclusive`);
+
+        return sections.join('\n');
     }
 }
 
