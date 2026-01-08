@@ -9,3 +9,6 @@ export { AppsList } from './AppsList';
 export { ActionButtons } from './ActionButtons';
 export { PaginationControls } from './PaginationControls';
 export { TableContent } from './TableContent';
+export { TemplateAppsList } from './TemplateAppsList';
+export { TemplateCard } from './TemplateCard';
+export { TemplatesGrid } from './TemplatesGrid';
