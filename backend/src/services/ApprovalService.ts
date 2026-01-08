@@ -20,6 +20,8 @@ export type ApprovalRequest = {
     approved: boolean;
     userId: string;
     rejectionReason?: string;
+    /** When true, stops the run completely without resuming the agent */
+    hardReject?: boolean;
 };
 
 export type ApprovalResult = {
@@ -142,7 +144,7 @@ export class ApprovalService {
     private static async updateSlackNotification(
         runId: string,
         stepId: string,
-        status: 'processing' | 'approved' | 'rejected' | 'failed',
+        status: 'processing' | 'approved' | 'rejected' | 'changes_requested' | 'failed',
         userId: string,
         channelId: string
     ): Promise<void> {
@@ -242,9 +244,9 @@ export class ApprovalService {
     }
 
     static async processApproval(request: ApprovalRequest): Promise<ApprovalResult> {
-        const { runId, stepId, approved, userId, rejectionReason } = request;
+        const { runId, stepId, approved, userId, rejectionReason, hardReject } = request;
 
-        logger.info(`[ApprovalService] Processing approval for runId: ${runId}, stepId: ${stepId}, approved: ${approved}`);
+        logger.info(`[ApprovalService] Processing approval for runId: ${runId}, stepId: ${stepId}, approved: ${approved}, hardReject: ${hardReject}`);
 
         // Keep minimal state outside the try so the catch can update Slack if we already flipped it to "processing".
         let channelIdForSlack: string | null = null;
@@ -254,7 +256,7 @@ export class ApprovalService {
             const { runRecord, channel } = await this.validateUserAccess(runId, userId);
             channelIdForSlack = channel.id;
 
-            // Store rejection reason in database if provided
+            // Store rejection reason in database if provided (for request changes flow)
             if (!approved && rejectionReason) {
                 const prisma = db();
                 await prisma.approval_slack_messages.updateMany({
@@ -312,10 +314,12 @@ export class ApprovalService {
                     userId: userId,
                     channelId: channel.id,
                 },
-                rejectionReason
+                rejectionReason,
+                hardReject
             );
 
-            const finalSlackStatus = approved ? 'approved' : 'rejected';
+            // Use 'changes_requested' for request changes flow (rejected with feedback), 'rejected' for hard reject
+            const finalSlackStatus = approved ? 'approved' : (rejectionReason ? 'changes_requested' : 'rejected');
 
             // Finalize run status based on result
             if (result.status === 'completed') {

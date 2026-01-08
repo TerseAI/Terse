@@ -200,6 +200,16 @@ export async function sendSlackApprovalMessage(
                     text: {
                         type: 'plain_text' as const,
                         emoji: true,
+                        text: 'Request Changes',
+                    },
+                    action_id: `approval_request_changes_${runId}__${stepId}`,
+                    value: 'request_changes',
+                },
+                {
+                    type: 'button' as const,
+                    text: {
+                        type: 'plain_text' as const,
+                        emoji: true,
                         text: 'Reject',
                     },
                     style: 'danger' as const,
@@ -258,7 +268,7 @@ export async function updateSlackApprovalMessage(
     userSlackIntegrationId: string,
     channelId: string,
     messageTs: string,
-    status: 'approved' | 'rejected' | 'processing' | 'failed',
+    status: 'approved' | 'rejected' | 'changes_requested' | 'processing' | 'failed',
     summary: string, // Human-readable summary instead of toolName
     channelName: string,
     automationId?: string,
@@ -294,14 +304,17 @@ export async function updateSlackApprovalMessage(
     } else if (status === 'approved') {
         statusEmoji = '✅';
         statusText = 'Approved';
+    } else if (status === 'changes_requested') {
+        statusEmoji = '🔄';
+        statusText = 'Changes Requested';
     } else {
         statusEmoji = '❌';
         statusText = 'Rejected';
     }
 
-    // Fetch rejection reason from database if status is rejected and runId/stepId are available
+    // Fetch rejection reason from database if status is rejected/changes_requested and runId/stepId are available
     let rejectionReason: string | null = null;
-    if (status === 'rejected' && runId && stepId) {
+    if ((status === 'rejected' || status === 'changes_requested') && runId && stepId) {
         const approvalMessage = await db().approval_slack_messages.findFirst({
             where: {
                 run_id: runId,
@@ -330,9 +343,11 @@ export async function updateSlackApprovalMessage(
                         ? 'approved'
                         : status === 'rejected'
                             ? 'rejected'
-                            : status === 'failed'
-                                ? 'failed'
-                                : 'is being processed'
+                            : status === 'changes_requested'
+                                ? 'has changes requested'
+                                : status === 'failed'
+                                    ? 'failed'
+                                    : 'is being processed'
                 }:\n*<${runHistoryLink || '#'}|${channelName} - ${statusText}>*`,
             },
         },
@@ -355,13 +370,14 @@ export async function updateSlackApprovalMessage(
         },
     ];
 
-    // Add rejection reason section if available
-    if (status === 'rejected' && rejectionReason) {
+    // Add rejection reason / feedback section if available
+    if ((status === 'rejected' || status === 'changes_requested') && rejectionReason) {
+        const feedbackLabel = status === 'changes_requested' ? 'Feedback' : 'Rejection Reason';
         blocks.push({
             type: 'section' as const,
             text: {
                 type: 'mrkdwn' as const,
-                text: `*Rejection Reason:*\n${rejectionReason}`,
+                text: `*${feedbackLabel}:*\n${rejectionReason}`,
             },
         });
     }
