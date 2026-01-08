@@ -3,6 +3,7 @@ import { KnowledgeBase } from "./KnowledgeBase";
 import { Session } from "../../server";
 import { ConfigInstance } from "../../shared/Configs";
 import { PosthogKnowledgeBase } from "../posthog/PosthogKnowledgeBase";
+import { GitHubKnowledgeBase } from "../github/GitHubKnowledgeBase";
 
 /**
  * Factory for creating KnowledgeBase instances based on KnowledgeBaseConfigType.
@@ -12,6 +13,7 @@ import { PosthogKnowledgeBase } from "../posthog/PosthogKnowledgeBase";
 export class KnowledgeBaseFactory {
     public static readonly KNOWLEDGE_BASE_REGISTRY: Map<KnowledgeBaseConfigType, () => KnowledgeBase<Session, ConfigInstance>> = new Map<KnowledgeBaseConfigType, () => KnowledgeBase<Session, ConfigInstance>>([
         [KnowledgeBaseConfigType.POSTHOG, () => new PosthogKnowledgeBase()],
+        [KnowledgeBaseConfigType.GITHUB, () => new GitHubKnowledgeBase()],
     ]);
 
     /**

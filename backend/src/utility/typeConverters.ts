@@ -19,7 +19,8 @@ import {
     JiraConfig, 
     ConfluenceConfig,
     PosthogConfig,
-    ConfigType
+    ConfigType,
+    GitHubKBConfig
 } from "../shared/Configs";
 
 export const convertIntegrationTypeToPrismaIntegrationType = (integrationType: IntegrationType): PrismaIntegrationType => {
@@ -322,6 +323,9 @@ export const convertConfigTypeToInputConfigType = (configType: ConfigType): Inpu
             return InputConfigType.CONFLUENCE;
         case ConfigType.POSTHOG:
             return InputConfigType.POSTHOG;
+        case ConfigType.GITHUB_KB:
+            // GitHub KB is a knowledge base config type, not an input config type
+            throw new Error('GITHUB_KB is a knowledge base type, not an input type');
         default:
             throw configType satisfies never;
     }
@@ -425,6 +429,14 @@ export const convertPrismaKnowledgeBaseConfigToConfigInstance = (channelKnowledg
             posthogIntegration.project_name || undefined,
             posthogIntegration.can_read_logs || false,
             posthogIntegration.can_read_session_recordings || false
+        );
+    }
+
+    if (channelKnowledgeBase.github_kb_config) {
+        return new GitHubKBConfig(
+            integrationId,
+            channelKnowledgeBase.github_kb_config.repository_ids || [],
+            channelKnowledgeBase.github_kb_config.repository_names || []
         );
     }
 
