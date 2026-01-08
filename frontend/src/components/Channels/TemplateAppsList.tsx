@@ -2,7 +2,7 @@ import { ChevronRight } from 'lucide-react';
 import { IconForIntegration } from '../../pages/Channels/components/Integration';
 import { IntegrationType } from "@/shared/Integrations";
 import { capitalize } from '../../lib/utils';
-import { ChannelTemplate } from '@/shared/Templates';
+import { ChannelTemplate } from '@/shared/types';
 
 interface TemplateAppsListProps {
     template: ChannelTemplate;
