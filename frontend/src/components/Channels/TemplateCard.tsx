@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
-import { ChannelTemplate } from '@/shared/Templates';
+import { ChannelTemplate } from '@/shared/types';
 import { TemplateAppsList } from './TemplateAppsList';
 
 interface TemplateCardProps {
