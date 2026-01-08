@@ -18,7 +18,7 @@ function ChannelDetail() {
     const channelId: string | null = id && id !== 'new' ? id : null;
 
     // Fetch channel data using useSWR
-    const { channel, isLoading: isFetching, mutate } = useChannel(channelId, templateId);
+    const { channel, isLoading: isFetching, mutate } = useChannel(channelId);
 
     // Fetch templates for template hydration
     const { templates, isLoading: isLoadingTemplates } = useTemplates();

@@ -78,7 +78,7 @@ export function useChannels(params: ChannelListArgs = {}) {
     };
 }
 
-export function useChannel(id: string | null, templateId: string | undefined) {
+export function useChannel(id: string | null) {
     const key = channelDetailKey(id);
 
     const { data, error, isValidating, mutate } = useSWR<Channel>(

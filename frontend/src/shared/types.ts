@@ -347,8 +347,8 @@ export type TransientKnowledgeBase = {
 
 // Template types - simplified config references without integrationId
 export type TemplateConfigRef = {
-    configType: string;
-    integrationType: string;
+    configType: ConfigType;
+    integrationType: IntegrationType;
 };
 
 export type TemplateInput = {
