@@ -41,7 +41,7 @@ export default function ChannelsList() {
     };
 
     const handleCreateNew = () => {
-        navigate('/app/channels/new');
+        navigate('/app/channels/setup');
     };
 
     return (
