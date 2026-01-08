@@ -43,7 +43,7 @@ export function RecentChannelsSection({ isLoading, channels }: RecentChannelsSec
                     <EmptyContent>
                         <Button
                             variant="default"
-                            onClick={() => navigate('/app/channels/new')}
+                            onClick={() => navigate('/app/channels/setup')}
                         >
                             <Plus className="h-4 w-4" />
                             Create Channel
