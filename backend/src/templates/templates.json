@@ -1,7 +1,7 @@
 [
   {
     "name": "Automated Todo List",
-    "description": "Monitor Gmail inbox and linear and create the ultiomate Todo List for Engineers",
+    "description": "Monitor Gmail and Linear to create the ultimate Todo List for Engineers",
     "prompt": {
       "text": "Look at my emails and Linear issues, And auto update my personal todo-list.\n\nYou can ignore Build warning from Render.\n\nBe sure to cross reference github PRs with the Linear Ticket associated to it.\n\nFor linear, you only place items that are assigned to me. Never add something that is unassigned or assigned to someone else.\n\nAlso be on the lookout for duplicates. But make sure we process duplicates from Linear.\n\nIn general, if it's from a real person, and they are asking me for something, I expect it to be tracked!\n\nFor linear, make sure to show the tickets I have assigned to me that are in progress.\n\nIf you see similar Tasks, don't make separate pages, I'd prefer you use the notes section or right the details into the page itself.\n\nI expect people tagging me in Linear/Github to show up (with low priority).\n\nNEVER PUT A BOT NOTIFICATION ON THE TODO LIST:\n\nEx: LinearBot, VercelBot etc...\n\nI should wake up in the morning and have a good idea of what to prioritize for my day.\n\nThink really hard! Make no mistakes!"
     },
@@ -10,6 +10,12 @@
         "config": {
           "configType": "gmail",
           "integrationType": "gmail"
+        }
+      },
+      {
+        "config": {
+          "configType": "linear_input",
+          "integrationType": "linear"
         }
       }
     ],
@@ -24,14 +30,14 @@
   },
   {
     "name": "Ticket Enrichment",
-    "description": "Monitor Slack messages and create Linear issues for actionable items",
+    "description": "Triage bugs from Slack, enrich with PostHog session data, and create Linear issues",
     "prompt": {
       "text": "You are a bug triage agent. Your job is to triage issues reported by user's in the Slack user channel.\n\nPlease listen for feedback in the user feedback channel. If the user mentions a specific bug that a user encountered (they must include an email), then update our linear board with a new ticket (verifying for duplicates where possible). The email should serve in posthog to lookup the user's last session and analyze what they were doing last, including any relevant logs such as errors the user may have encountered etc."
     },
     "inputs": [
       {
         "config": {
-          "configType": "gmail",
+          "configType": "slack",
           "integrationType": "slack"
         }
       }
@@ -42,20 +48,28 @@
         "integrationType": "linear"
       }
     },
+    "knowledgeBases": [
+      {
+        "config": {
+          "configType": "POSTHOG",
+          "integrationType": "posthog"
+        }
+      }
+    ],
     "requireApproval": false,
     "isActive": true
   },
   {
     "name": "Feedback Aggregator",
-    "description": "Monitor GitHub repository activity and update a Notion page with summaries",
+    "description": "Monitor Slack for user feedback and synthesize insights into a Notion page",
     "prompt": {
-      "text": "Constantly monitor the slack channel for user feedback on our app and continuously update the Notion page to reflect your syhtesis of user problems, needs and desires and."
+      "text": "Constantly monitor the slack channel for user feedback on our app and continuously update the Notion page to reflect your synthesis of user problems, needs and desires."
     },
     "inputs": [
       {
         "config": {
-          "configType": "github",
-          "integrationType": "github"
+          "configType": "slack",
+          "integrationType": "slack"
         }
       }
     ],
@@ -92,104 +106,26 @@
     "isActive": true
   },
   {
-    "name": "Linear Input to Notion Database",
-    "description": "Monitor Linear issues and sync them to a Notion database",
+    "name": "Release Notes Builder",
+    "description": "Monitor GitHub activity and generate release notes in Notion",
     "prompt": {
-      "text": "You are an AI assistant that monitors Linear issues and syncs them to a Notion database. When new issues are created or updated in Linear, update the corresponding entry in Notion. Keep the database in sync with Linear, including status, assignees, and descriptions."
+      "text": "# Weekly Customer-Facing Changelog Generator (for GitHub input)\n\nPurpose\n- Read landed GitHub PRs/commits and maintain a running draft of a customer-facing weekly changelog focused on features, UX improvements, and bug fixes. Produce a ready-to-publish markdown draft each run.\n\nInputs\n- Source: GitHub (merged PRs, don't look at simple commit pushes).\n- Time window: include items merged since the last published changelog or since the last run if no published date provided.\n\nPrimary goals\n- Extract customer-facing changes only: features, UX improvements, bug fixes.\n- Exclude internal-only work (refactors, tests, CI, dependency bumps) unless there is clear customer impact.\n- Collapse related PRs into concise, high-level changelog entries.\n- Output a clean markdown draft with three sections: Features, UX Improvements, Bug Fixes.\n\nExtraction & classification rules\n1. Identify candidate PRs/commits using:\n   - PR title, labels, description, linked issue, changed files, and commit messages.\n2. Classify into one of three categories:\n   - Feature: new capabilities, commands, endpoints, or major enhancements.\n   - UX Improvement: UI/UX changes, clearer flows, documentation or onboarding improvements that affect customers.\n   - Bug Fix: fixes that resolve user-facing errors, crashes, incorrect behavior.\n3. Use keyword heuristics (examples): feature/add/implement/introduce, improve/ui/ux/experience, fix/bug/resolve/patch. Use labels and changed file paths to help (e.g., files under docs/, src/ui/, api/ are more likely customer-facing).\n\nFiltering rules (exclude unless clearly customer-impacting)\n- Exclude PRs primarily labeled or described as: refactor, chore, test, ci, deps, lint.\n- Include such PRs only if:\n  - The PR touches user-facing code or documentation, or\n  - The description explicitly states customer impact (e.g., \"fixes data loss for customers\").\n- Exclude routine dependency bumps and internal tooling changes.\n\nCollapsing & grouping rules\n- Group related PRs into one entry when they:\n  - Share the same linked issue or epic, OR\n  - Have similar titles/keywords and touch the same product area, OR\n  - All contribute to a single customer-visible outcome (e.g., multiple backend and UI PRs that enable one feature).\n- When grouping, synthesize a single high-level headline and one-line description.\n\nOutput format and structure (must be produced in Markdown)\n- Top: Draft header with week range or \"Draft — week of YYYY-MM-DD\" and a one-line summary highlight (optional).\n- Then three sections in this exact order:\n\n# Features\n- Bullet list. Each bullet:\n  - Headline (8–14 words): concise benefit-first phrase (what changed for the customer).\n  - Optional 1–2 sentence plain-language description (why it matters).\n  - Example bullet:\n    - Improved file export reliability — Exports now complete successfully for large projects (see PRs).\n\n# UX Improvements\n- Same bullet format, focusing on visual/flow/documentation improvements.\n\n# Bug Fixes\n- Same bullet format, focusing on user-facing fixes and whether any action is required.\n\n- If a section has no items: include a single line \"No customer-facing items this week.\"\n\nTone and style\n- Customer-facing, concise, non-technical, benefit-oriented.\n- Use plain language; avoid implementation details or internal terminology.\n- Neutral and factual (no marketing superlatives).\n\nOperational rules (running draft & deduplication)\n- Maintain a running draft: mark which PRs/commits have already been included to avoid duplication across weeks. If that metadata is unavailable, deduplicate by canonical title and linked issue.\n- For each new run, only include merged/landed items since last included marker.\n- If uncertain about classification, place the item in a draft \"Potential\" list and flag for human review (include the PR title and short reason).\n\nExamples\n- Input PR titles:\n  - \"Add multi-file export\" → Feature bullet: \"Multi-file export — Export entire projects as a single archive, making backups faster.\"\n  - \"Fix crash when saving large notes\" → Bug Fix bullet: \"Fix saving crash for large notes — Prevents app crashes when saving very large notes; no action required from customers.\"\n  - \"Improve onboarding checklist copy\" → UX Improvement bullet: \"Clearer onboarding checklist — Updated wording to make first steps easier for new users.\"\n\nRules summary (quick)\n- Focus: features, UX improvements, bug fixes.\n- Exclude internal-only work unless customer-facing.\n- Collapse related items into single entries.\n- Output: markdown with three sections, concise benefit-first bullets.\n- Tone: customer-facing, plain, neutral.\n\nIf any item is ambiguous, add it to a short \"Pending review\" block at the end with a one-line reason for review."
     },
     "inputs": [
       {
         "config": {
-          "configType": "linear_input",
-          "integrationType": "linear"
+          "configType": "github",
+          "integrationType": "github"
         }
       }
     ],
     "output": {
       "config": {
-        "configType": "notion_database",
+        "configType": "notion_page",
         "integrationType": "notion"
-      }
-    },
-    "requireApproval": false,
-    "isActive": true
-  },
-  {
-    "name": "Gmail to Confluence",
-    "description": "Monitor Gmail and create/update Confluence pages with email summaries",
-    "prompt": {
-      "text": "You are an AI assistant that monitors Gmail and creates or updates Confluence pages with email summaries. Organize emails by topic or project, creating structured pages with clear headings and bullet points. Keep pages updated with the latest relevant emails."
-    },
-    "inputs": [
-      {
-        "config": {
-          "configType": "gmail",
-          "integrationType": "gmail"
-        }
-      }
-    ],
-    "output": {
-      "config": {
-        "configType": "confluence",
-        "integrationType": "atlassian"
-      }
-    },
-    "requireApproval": false,
-    "isActive": true
-  },
-  {
-    "name": "Slack to Notion Database with Knowledge Base",
-    "description": "Monitor Slack messages, create Notion entries, and use PostHog knowledge base for context",
-    "prompt": {
-      "text": "You are an AI assistant that monitors Slack messages and creates entries in a Notion database. Use the PostHog knowledge base to understand user behavior and product context when processing messages. Create well-structured database entries that include relevant context from user analytics."
-    },
-    "inputs": [
-      {
-        "config": {
-          "configType": "slack",
-          "integrationType": "slack"
-        }
-      }
-    ],
-    "output": {
-      "config": {
-        "configType": "notion_database",
-        "integrationType": "notion"
-      }
-    },
-    "knowledgeBases": [
-      {
-        "config": {
-          "configType": "POSTHOG",
-          "integrationType": "posthog"
-        }
-      }
-    ],
-    "requireApproval": false,
-    "isActive": true
-  },
-  {
-    "name": "Jira to Linear",
-    "description": "Monitor Jira issues and sync them to Linear",
-    "prompt": {
-      "text": "You are an AI assistant that monitors Jira issues and creates corresponding Linear issues. When new Jira issues are created or updated, sync them to Linear with appropriate mapping of fields, status, and assignees. Keep both systems in sync."
-    },
-    "inputs": [
-      {
-        "config": {
-          "configType": "jira",
-          "integrationType": "atlassian"
-        }
-      }
-    ],
-    "output": {
-      "config": {
-        "configType": "linear_output",
-        "integrationType": "linear"
       }
     },
     "requireApproval": false,
     "isActive": true
   }
 ]
-
