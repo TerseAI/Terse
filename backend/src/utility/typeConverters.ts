@@ -407,6 +407,8 @@ export const convertConfigTypeToKnowledgeBaseConfigType = (configType: ConfigTyp
     switch (configType) {
         case ConfigType.POSTHOG:
             return KnowledgeBaseConfigType.POSTHOG;
+        case ConfigType.GITHUB_KB:
+            return KnowledgeBaseConfigType.GITHUB;
         default:
             throw new Error(`ConfigType ${configType} is not a valid knowledge base config type. Supported knowledge base config types are: POSTHOG.`);
     }

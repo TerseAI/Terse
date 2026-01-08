@@ -20,8 +20,8 @@ Note: This reads from the default branch (main/master). Large files may be trunc
     parameters: z.object({
         repository: z.string().describe('The repository in "owner/repo" format (e.g., "facebook/react"). Must be one of the configured repositories.'),
         path: z.string().describe('The file path within the repository (e.g., "src/components/Button.tsx" or "README.md")'),
-        startLine: z.number().optional().describe('Optional: Start reading from this line number (1-indexed). Use with endLine for partial file reads.'),
-        endLine: z.number().optional().describe('Optional: Stop reading at this line number (1-indexed, inclusive). Use with startLine for partial file reads.'),
+        startLine: z.union([z.number(), z.null()]).describe('Start reading from this line number (1-indexed). Use with endLine for partial file reads. Use null to start from beginning.'),
+        endLine: z.union([z.number(), z.null()]).describe('Stop reading at this line number (1-indexed, inclusive). Use with startLine for partial file reads. Use null to read to end.'),
     }),
     execute: async ({ repository, path, startLine, endLine }, runContext?: RunContext<any>) => {
         if (!runContext?.context) {
@@ -51,10 +51,29 @@ Note: This reads from the default branch (main/master). Large files may be trunc
         const client = createGitHubClient(accessToken);
         const { owner, repo } = parseRepoFullName(repository);
 
-        logger.info('Reading GitHub file', { repository, path, startLine, endLine });
+        const requestParams = {
+            tool: 'readGitHubFile',
+            repository,
+            owner,
+            repo,
+            path,
+            startLine,
+            endLine,
+        };
+        logger.info('[GitHub KB] readGitHubFile - Request', requestParams);
+        logger.debug('[GitHub KB] readGitHubFile - Full request params', { requestParams });
 
         try {
             const fileContent = await getFileContents(client, owner, repo, path);
+
+            logger.debug('[GitHub KB] readGitHubFile - Raw API response', {
+                name: fileContent.name,
+                path: fileContent.path,
+                sha: fileContent.sha,
+                size: fileContent.size,
+                encoding: fileContent.encoding,
+                contentLength: fileContent.content.length,
+            });
             
             let content = fileContent.content;
             let totalLines = content.split('\n').length;
@@ -84,7 +103,7 @@ Note: This reads from the default branch (main/master). Large files may be trunc
                 finalContent = numberedContent.substring(0, 100000) + '\n... (file truncated, use startLine/endLine to read specific sections)';
             }
 
-            return {
+            const response = {
                 success: true,
                 repository,
                 path,
@@ -97,8 +116,27 @@ Note: This reads from the default branch (main/master). Large files may be trunc
                     ? `This file has ${totalLines} lines. Consider using startLine/endLine to read specific sections.`
                     : undefined,
             };
+
+            logger.info('[GitHub KB] readGitHubFile - Response', {
+                success: true,
+                totalLines,
+                displayedLines: `${displayedLines.start}-${displayedLines.end}`,
+                size: fileContent.size,
+                isTruncated,
+            });
+            logger.debug('[GitHub KB] readGitHubFile - Full response (excluding content)', {
+                ...response,
+                content: `[${finalContent.length} chars]`,
+            });
+
+            return response;
         } catch (error: any) {
-            logger.error('Failed to read GitHub file', { repository, path, error: error.message });
+            logger.error('[GitHub KB] readGitHubFile - Failed', { 
+                repository, 
+                path, 
+                error: error.message,
+                stack: error.stack,
+            });
             return {
                 success: false,
                 error: error.message,

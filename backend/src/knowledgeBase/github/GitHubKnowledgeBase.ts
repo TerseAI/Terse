@@ -1,7 +1,7 @@
 import { Session } from "../../server";
 import { ChannelKnowledgeBaseWithConfigs, PrismaTransaction, User } from "../../types/prisma";
 import { KnowledgeBaseConfigType } from "@prisma/client";
-import { ConfigInstance, GitHubKBConfig } from "../../shared/Configs";
+import { GitHubKBConfig } from "../../shared/Configs";
 import { IntegrationType } from "../../shared/Integrations";
 import { ToolboxEntry } from "../../outputs/abstract/Output";
 import { KnowledgeBase } from "../abstract/KnowledgeBase";
@@ -9,7 +9,8 @@ import { searchGitHubCodeTool } from "./tools/searchCode";
 import { grepGitHubCodeTool } from "./tools/grepCode";
 import { readGitHubFileTool } from "./tools/readFile";
 import { listGitHubDirectoryTool } from "./tools/listDirectory";
-import { db } from "../../prismaClient";
+import { listGitHubPullRequestsTool } from "./tools/listPullRequests";
+import { listGitHubCommitsTool } from "./tools/listCommits";
 import { getGitHubAccessToken } from "./githubApiClient";
 import logger from "../../logger";
 
@@ -46,6 +47,16 @@ export class GitHubKnowledgeBase extends KnowledgeBase<GitHubKnowledgeBaseSessio
             },
             {
                 tool: listGitHubDirectoryTool,
+                isReadOnly: true,
+                integration: IntegrationType.GITHUB
+            },
+            {
+                tool: listGitHubPullRequestsTool,
+                isReadOnly: true,
+                integration: IntegrationType.GITHUB
+            },
+            {
+                tool: listGitHubCommitsTool,
                 isReadOnly: true,
                 integration: IntegrationType.GITHUB
             }
@@ -130,16 +141,26 @@ export class GitHubKnowledgeBase extends KnowledgeBase<GitHubKnowledgeBaseSessio
         // Available tools section
         sections.push(`
 AVAILABLE TOOLS:
-• searchGitHubCode: Semantic search for code by meaning. Find functions, classes, patterns by description.
-  Example: "authentication middleware", "form validation hook", "database connection pool"
+• searchGitHubCode: SEMANTIC search - find code by CONCEPT/MEANING when you DON'T know exact text.
+  Use for: "authentication", "error handling", "database queries" (finds related code by meaning)
+  Example: "authentication middleware" finds login, auth, verifyToken, etc.
   
-• grepGitHubCode: Exact text search (like grep). Find specific strings, function calls, imports.
-  Example: "getUserById(", "from '@prisma/client'", "TODO: refactor"
+• grepGitHubCode: EXACT text search (like grep) - find specific strings when you KNOW exact text.
+  Use for: exact function names, imports, constants, known identifiers
+  Example: "getUserById(" finds only that exact function call
   
 • readGitHubFile: Read full file contents. Use after finding relevant files via search.
   Supports line ranges for large files: startLine/endLine parameters.
   
-• listGitHubDirectory: Browse directory structure. Start from root to understand project layout.`);
+• listGitHubDirectory: Browse directory structure. Start from root to understand project layout.
+
+• listGitHubPullRequests: List PRs in a time window. Find merged PRs, track development activity.
+  Filter by state (open/closed/all), date range (since/until).
+  Example: since "2024-01-01" to see PRs from the new year.
+  
+• listGitHubCommits: List commits in a time window. Track code changes, find commits by author or path.
+  Filter by date range, branch, file path, or author.
+  Example: path "src/auth" to see commits affecting authentication code.`);
 
         sections.push(`
 CODE EXPLORATION STRATEGY:
@@ -151,8 +172,8 @@ Explore code like an experienced engineer would - systematically and thoroughly.
    - Look for README, package.json, or config files to understand the stack
 
 2. SEARCH BEFORE READING:
-   - Use searchGitHubCode for conceptual queries ("how does auth work")
-   - Use grepGitHubCode for exact matches ("loginUser(", "export class Auth")
+   - Use searchGitHubCode for CONCEPTS you don't know exact text for ("how does auth work", "error handling patterns")
+   - Use grepGitHubCode for EXACT strings you know ("loginUser(", "export class Auth", exact imports)
    - Review search snippets before deciding which files to read fully
 
 3. FOLLOW THE TRAIL:

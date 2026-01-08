@@ -10,19 +10,29 @@ import { GitHubKBConfig } from "../../../shared/Configs";
  */
 export const grepGitHubCodeTool = tool({
     name: 'grepGitHubCode',
-    description: `Search GitHub repositories for exact text matches, similar to grep. Use this when you need to:
-- Find exact function calls (e.g., "getUserById(")
-- Find specific error messages or strings
-- Find imports of specific modules (e.g., "from '@prisma/client'")
-- Find TODO/FIXME comments
-- Find specific variable names or constants
+    description: `Search GitHub repositories for EXACT TEXT MATCHES (like grep). Use this when you KNOW the exact string you're looking for.
 
-This is more precise than semantic search - use it when you know exactly what text you're looking for.`,
+Use grepGitHubCode for:
+- Exact function calls: "getUserById(", "processPayment()"
+- Exact imports: "from '@prisma/client'", "import React from"
+- Exact strings: "API_KEY", "TODO:", "FIXME:"
+- Known identifiers: class names, constants, variable names you know exist
+
+Use searchGitHubCode instead when you DON'T know the exact text (looking for concepts/patterns).
+
+Examples:
+- ✅ "getUserById(" (exact function call)
+- ✅ "from '@prisma/client'" (exact import statement)
+- ✅ "TODO: refactor" (exact comment)
+- ✅ "useState" (exact React hook name)
+- ❌ "state management" → Use searchGitHubCode for concepts
+
+This is more precise than semantic search - use it when you know exactly what text to find.`,
     parameters: z.object({
         pattern: z.string().describe('The exact text pattern to search for. For function calls, include the opening parenthesis (e.g., "fetchUser("). For strings, include quotes if needed.'),
-        fileExtension: z.string().optional().describe('Filter by file extension (e.g., "ts", "js", "py"). Do not include the dot.'),
-        path: z.string().optional().describe('Filter by directory path (e.g., "src/services" to only search in that directory)'),
-        perPage: z.number().default(20).describe('Number of results to return (default: 20, max: 100)'),
+        fileExtension: z.union([z.string(), z.null()]).describe('Filter by file extension (e.g., "ts", "js", "py"). Do not include the dot. Use null to search all file types.'),
+        path: z.union([z.string(), z.null()]).describe('Filter by directory path (e.g., "src/services" to only search in that directory). Use null to search everywhere.'),
+        perPage: z.number().describe('Number of results to return (default: 20, max: 100)'),
     }),
     execute: async ({ pattern, fileExtension, path, perPage = 20 }, runContext?: RunContext<any>) => {
         if (!runContext?.context) {
@@ -59,20 +69,35 @@ This is more precise than semantic search - use it when you know exactly what te
             query += ` path:${path}`;
         }
 
-        logger.info('Grepping GitHub code', { 
+        const requestParams = {
+            tool: 'grepGitHubCode',
             pattern,
-            query, 
+            query,
+            filters: { fileExtension, path },
             repositories: githubKBConfig.repositoryNames,
-            perPage 
-        });
+            perPage: Math.min(perPage || 20, 100),
+        };
+        logger.info('[GitHub KB] grepGitHubCode - Request', requestParams);
+        logger.debug('[GitHub KB] grepGitHubCode - Full request params', { requestParams });
 
         try {
             const results = await searchCode(
                 client,
                 query,
                 githubKBConfig.repositoryNames,
-                { perPage: Math.min(perPage, 100) }
+                { perPage: Math.min(perPage || 20, 100) }
             );
+
+            logger.debug('[GitHub KB] grepGitHubCode - Raw API response', {
+                totalCount: results.totalCount,
+                itemCount: results.items.length,
+                items: results.items.map(item => ({
+                    path: item.path,
+                    repository: item.repository.fullName,
+                    sha: item.sha,
+                    textMatchCount: item.textMatches?.length || 0,
+                })),
+            });
 
             // Format results with line-focused snippets
             const formattedResults = results.items.map((item, index) => {
@@ -97,7 +122,7 @@ This is more precise than semantic search - use it when you know exactly what te
                 };
             });
 
-            return {
+            const response = {
                 success: true,
                 totalCount: results.totalCount,
                 resultsReturned: formattedResults.length,
@@ -112,8 +137,22 @@ This is more precise than semantic search - use it when you know exactly what te
                     ? 'Use readGitHubFile to see the full file contents and surrounding context.'
                     : 'Try a partial match or use searchGitHubCode for broader semantic search.',
             };
+
+            logger.info('[GitHub KB] grepGitHubCode - Response', {
+                success: true,
+                totalCount: results.totalCount,
+                resultsReturned: formattedResults.length,
+            });
+            logger.debug('[GitHub KB] grepGitHubCode - Full response', { response });
+
+            return response;
         } catch (error: any) {
-            logger.error('GitHub grep search failed', { pattern, query, error: error.message });
+            logger.error('[GitHub KB] grepGitHubCode - Failed', { 
+                pattern, 
+                query, 
+                error: error.message,
+                stack: error.stack,
+            });
             return {
                 success: false,
                 error: error.message,

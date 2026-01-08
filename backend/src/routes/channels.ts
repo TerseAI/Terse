@@ -396,6 +396,9 @@ export async function createChannel(req: Request, res: Response) {
                         throw new Error(`Integration ${kb.config.integrationType} not found or not owned by user`);
                     }
 
+                    console.log("kb.config.configType", kb.config.configType);
+                    console.log("convertConfigTypeToKnowledgeBaseConfigType(kb.config.configType)", convertConfigTypeToKnowledgeBaseConfigType(kb.config.configType));
+
                     const newKnowledgeBase = await tx.automation_knowledge_bases.create({
                         data: {
                             automation_id: newChannel.id,
@@ -403,8 +406,7 @@ export async function createChannel(req: Request, res: Response) {
                             integration_id: integrationId
                         }
                     });
-
-                    // Create config record
+                    
                     await createKnowledgeBaseConfig(tx, newKnowledgeBase.id, kb.config);
                 }
             }

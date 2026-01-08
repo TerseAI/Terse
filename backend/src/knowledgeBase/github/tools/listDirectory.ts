@@ -19,8 +19,8 @@ export const listGitHubDirectoryTool = tool({
 Start with the root directory (empty path) to see the top-level structure, then drill down into interesting directories.`,
     parameters: z.object({
         repository: z.string().describe('The repository in "owner/repo" format (e.g., "facebook/react"). Must be one of the configured repositories.'),
-        path: z.string().default('').describe('The directory path to list (e.g., "src/components"). Leave empty for root directory.'),
-        recursive: z.boolean().default(false).describe('If true, list all files recursively (can be large for big repos). Default: false.'),
+        path: z.string().describe('The directory path to list (e.g., "src/components"). Use empty string "" for root directory.'),
+        recursive: z.boolean().describe('If true, list all files recursively (can be large for big repos). Use false for single-level listing.'),
     }),
     execute: async ({ repository, path = '', recursive = false }, runContext?: RunContext<any>) => {
         if (!runContext?.context) {
@@ -50,7 +50,16 @@ Start with the root directory (empty path) to see the top-level structure, then 
         const client = createGitHubClient(accessToken);
         const { owner, repo } = parseRepoFullName(repository);
 
-        logger.info('Listing GitHub directory', { repository, path, recursive });
+        const requestParams = {
+            tool: 'listGitHubDirectory',
+            repository,
+            owner,
+            repo,
+            path: path || '(root)',
+            recursive,
+        };
+        logger.info('[GitHub KB] listGitHubDirectory - Request', requestParams);
+        logger.debug('[GitHub KB] listGitHubDirectory - Full request params', { requestParams });
 
         try {
             if (recursive) {
@@ -60,11 +69,26 @@ Start with the root directory (empty path) to see the top-level structure, then 
                     throw new Error('Failed to get repository info');
                 }
 
+                logger.debug('[GitHub KB] listGitHubDirectory - Got repo info', {
+                    defaultBranch: repoInfo.defaultBranch,
+                    fullName: repoInfo.fullName,
+                });
+
                 // Get the tree SHA for the default branch
                 const branchInfo = await getBranch(client, owner, repo, repoInfo.defaultBranch);
                 const treeSha = branchInfo.treeSha;
 
+                logger.debug('[GitHub KB] listGitHubDirectory - Got branch info', {
+                    treeSha,
+                    commitSha: branchInfo.commitSha,
+                });
+
                 const treeResult = await getTree(client, owner, repo, treeSha, true);
+
+                logger.debug('[GitHub KB] listGitHubDirectory - Got tree', {
+                    itemCount: treeResult.tree.length,
+                    truncated: treeResult.truncated,
+                });
 
                 // Filter to only show items within the specified path
                 let items = treeResult.tree;
@@ -91,7 +115,7 @@ Start with the root directory (empty path) to see the top-level structure, then 
                     }
                 });
 
-                return {
+                const response = {
                     success: true,
                     repository,
                     path: path || '(root)',
@@ -109,9 +133,25 @@ Start with the root directory (empty path) to see the top-level structure, then 
                             ? `Showing first 200 of ${files.length} files. Use a more specific path to narrow results.`
                             : undefined,
                 };
+
+                logger.info('[GitHub KB] listGitHubDirectory - Response (recursive)', {
+                    success: true,
+                    totalItems: formattedItems.length,
+                    dirCount: directories.size,
+                    fileCount: files.length,
+                    truncated: treeResult.truncated,
+                });
+                logger.debug('[GitHub KB] listGitHubDirectory - Full response', { response });
+
+                return response;
             } else {
                 // Use Contents API for non-recursive listing
                 const entries = await listDirectory(client, owner, repo, path);
+
+                logger.debug('[GitHub KB] listGitHubDirectory - Got entries', {
+                    entryCount: entries.length,
+                    entries: entries.map(e => ({ name: e.name, type: e.type })),
+                });
 
                 // Separate directories and files
                 const directories = entries.filter(e => e.type === 'dir').sort((a, b) => a.name.localeCompare(b.name));
@@ -132,7 +172,7 @@ Start with the root directory (empty path) to see the top-level structure, then 
                     size: f.size,
                 }));
 
-                return {
+                const response = {
                     success: true,
                     repository,
                     path: path || '(root)',
@@ -143,9 +183,24 @@ Start with the root directory (empty path) to see the top-level structure, then 
                     other: other.length > 0 ? other.map(o => ({ name: o.name, type: o.type })) : undefined,
                     tip: 'Use readGitHubFile to read file contents, or list a subdirectory to explore further.',
                 };
+
+                logger.info('[GitHub KB] listGitHubDirectory - Response', {
+                    success: true,
+                    totalItems: entries.length,
+                    dirCount: directories.length,
+                    fileCount: files.length,
+                });
+                logger.debug('[GitHub KB] listGitHubDirectory - Full response', { response });
+
+                return response;
             }
         } catch (error: any) {
-            logger.error('Failed to list GitHub directory', { repository, path, error: error.message });
+            logger.error('[GitHub KB] listGitHubDirectory - Failed', { 
+                repository, 
+                path: path || '(root)', 
+                error: error.message,
+                stack: error.stack,
+            });
             return {
                 success: false,
                 error: error.message,

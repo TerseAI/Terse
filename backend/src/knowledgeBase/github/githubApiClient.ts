@@ -322,3 +322,172 @@ export function parseRepoFullName(fullName: string): { owner: string; repo: stri
     }
     return { owner, repo };
 }
+
+/**
+ * Pull request information
+ */
+export interface PullRequestInfo {
+    number: number;
+    title: string;
+    state: 'open' | 'closed';
+    merged: boolean;
+    mergedAt: string | null;
+    createdAt: string;
+    closedAt: string | null;
+    author: string;
+    htmlUrl: string;
+    body: string | null;
+    additions: number;
+    deletions: number;
+    changedFiles: number;
+    labels: string[];
+    baseBranch: string;
+    headBranch: string;
+}
+
+/**
+ * List pull requests for a repository within a time window
+ */
+export async function listPullRequests(
+    client: Octokit,
+    owner: string,
+    repo: string,
+    options: {
+        state?: 'open' | 'closed' | 'all';
+        since?: string; // ISO date string
+        until?: string; // ISO date string
+        perPage?: number;
+        page?: number;
+    } = {}
+): Promise<{ items: PullRequestInfo[]; totalFetched: number }> {
+    const { state = 'all', since, until, perPage = 30, page = 1 } = options;
+
+    try {
+        const { data } = await client.pulls.list({
+            owner,
+            repo,
+            state,
+            sort: 'updated',
+            direction: 'desc',
+            per_page: perPage,
+            page,
+        });
+
+        // Filter by date range if specified
+        let filteredPRs = data;
+        
+        if (since || until) {
+            const sinceDate = since ? new Date(since) : null;
+            const untilDate = until ? new Date(until) : null;
+
+            filteredPRs = data.filter((pr) => {
+                // For merged PRs, use merged_at; for others, use updated_at
+                const relevantDate = pr.merged_at 
+                    ? new Date(pr.merged_at) 
+                    : (pr.closed_at ? new Date(pr.closed_at) : new Date(pr.updated_at));
+                
+                if (sinceDate && relevantDate < sinceDate) return false;
+                if (untilDate && relevantDate > untilDate) return false;
+                return true;
+            });
+        }
+
+        const items: PullRequestInfo[] = filteredPRs.map((pr) => ({
+            number: pr.number,
+            title: pr.title,
+            state: pr.state as 'open' | 'closed',
+            merged: pr.merged_at !== null,
+            mergedAt: pr.merged_at,
+            createdAt: pr.created_at,
+            closedAt: pr.closed_at,
+            author: pr.user?.login || 'unknown',
+            htmlUrl: pr.html_url,
+            body: pr.body,
+            additions: 0, // Not available in list endpoint
+            deletions: 0,
+            changedFiles: 0,
+            labels: pr.labels.map((l) => (typeof l === 'string' ? l : l.name || '')),
+            baseBranch: pr.base.ref,
+            headBranch: pr.head.ref,
+        }));
+
+        return {
+            items,
+            totalFetched: items.length,
+        };
+    } catch (error: any) {
+        logger.error('Failed to list pull requests', { owner, repo, error: error.message });
+        throw error;
+    }
+}
+
+/**
+ * Commit information
+ */
+export interface CommitInfo {
+    sha: string;
+    shortSha: string;
+    message: string;
+    author: string;
+    authorEmail: string;
+    date: string;
+    htmlUrl: string;
+    additions: number;
+    deletions: number;
+    filesChanged: number;
+}
+
+/**
+ * List commits for a repository within a time window
+ */
+export async function listCommits(
+    client: Octokit,
+    owner: string,
+    repo: string,
+    options: {
+        since?: string; // ISO date string
+        until?: string; // ISO date string
+        sha?: string; // Branch name or commit SHA to start from
+        path?: string; // Only commits affecting this file/directory
+        author?: string; // Filter by author
+        perPage?: number;
+        page?: number;
+    } = {}
+): Promise<{ items: CommitInfo[]; totalFetched: number }> {
+    const { since, until, sha, path, author, perPage = 30, page = 1 } = options;
+
+    try {
+        const { data } = await client.repos.listCommits({
+            owner,
+            repo,
+            since,
+            until,
+            sha,
+            path,
+            author,
+            per_page: perPage,
+            page,
+        });
+
+        const items: CommitInfo[] = data.map((commit) => ({
+            sha: commit.sha,
+            shortSha: commit.sha.slice(0, 7),
+            message: commit.commit.message,
+            author: commit.commit.author?.name || commit.author?.login || 'unknown',
+            authorEmail: commit.commit.author?.email || '',
+            date: commit.commit.author?.date || '',
+            htmlUrl: commit.html_url,
+            additions: commit.stats?.additions || 0,
+            deletions: commit.stats?.deletions || 0,
+            filesChanged: commit.files?.length || 0,
+        }));
+
+        return {
+            items,
+            totalFetched: items.length,
+        };
+    } catch (error: any) {
+        logger.error('Failed to list commits', { owner, repo, error: error.message });
+        throw error;
+    }
+}

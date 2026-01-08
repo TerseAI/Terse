@@ -10,23 +10,32 @@ import { GitHubKBConfig } from "../../../shared/Configs";
  */
 export const searchGitHubCodeTool = tool({
     name: 'searchGitHubCode',
-    description: `Search GitHub repositories for code by semantic meaning. Use this to find:
-- Function or class definitions (e.g., "function handleAuth" or "class UserService")
-- Code patterns and implementations (e.g., "useEffect cleanup" or "async/await error handling")
-- Specific imports or dependencies (e.g., "import from lodash")
-- Comments or documentation (e.g., "TODO refactor")
+    description: `Search GitHub repositories for code by SEMANTIC MEANING (conceptual search). Use this when you DON'T know the exact code text.
+
+Use searchGitHubCode for:
+- Concepts and patterns: "authentication", "error handling", "database connections"
+- Unknown implementations: "how is validation done?", "where are API routes?"
+- Exploring codebases: "logging implementations", "payment processing"
+- Finding code by what it DOES, not what it's CALLED
+
+Use grepGitHubCode instead when you KNOW the exact text string (function name, import, etc.)
+
+Examples:
+- ✅ "authentication middleware" (finds login, auth, verifyToken, etc.)
+- ✅ "error handling patterns" (finds try/catch, error handlers, etc.)
+- ✅ "database queries" (finds prisma, mysql, query builders)
+- ❌ "getUserById(" → Use grepGitHubCode for exact matches
 
 Tips:
 - Start with broad searches, then narrow down
-- Use specific terms from the domain (function names, class names, variable names)
-- Combine multiple terms for more specific results
-- Results include code snippets with matched fragments`,
+- Use natural language or domain terms
+- Combine multiple terms for more specific results`,
     parameters: z.object({
         query: z.string().describe('The search query. Use natural language or code-specific terms. Examples: "authentication middleware", "class UserRepository", "handleSubmit form validation"'),
-        language: z.string().optional().describe('Filter by programming language (e.g., "typescript", "python", "javascript"). Leave empty to search all languages.'),
-        filename: z.string().optional().describe('Filter by filename pattern (e.g., "*.test.ts" for test files, "*.config.*" for config files)'),
-        path: z.string().optional().describe('Filter by path (e.g., "src/components" to only search in that directory)'),
-        perPage: z.number().default(10).describe('Number of results to return (default: 10, max: 100)'),
+        language: z.union([z.string(), z.null()]).describe('Filter by programming language (e.g., "typescript", "python", "javascript"). Use null to search all languages.'),
+        filename: z.union([z.string(), z.null()]).describe('Filter by filename pattern (e.g., "*.test.ts" for test files, "*.config.*" for config files). Use null to search all files.'),
+        path: z.union([z.string(), z.null()]).describe('Filter by path (e.g., "src/components" to only search in that directory). Use null to search everywhere.'),
+        perPage: z.number().describe('Number of results to return (default: 10, max: 100)'),
     }),
     execute: async ({ query, language, filename, path, perPage = 10 }, runContext?: RunContext<any>) => {
         if (!runContext?.context) {
@@ -61,19 +70,35 @@ Tips:
             enhancedQuery += ` path:${path}`;
         }
 
-        logger.info('Searching GitHub code', { 
-            query: enhancedQuery, 
+        const requestParams = {
+            tool: 'searchGitHubCode',
+            query: enhancedQuery,
+            originalQuery: query,
+            filters: { language, filename, path },
             repositories: githubKBConfig.repositoryNames,
-            perPage 
-        });
+            perPage: Math.min(perPage || 10, 100),
+        };
+        logger.info('[GitHub KB] searchGitHubCode - Request', requestParams);
+        logger.debug('[GitHub KB] searchGitHubCode - Full request params', { requestParams });
 
         try {
             const results = await searchCode(
                 client,
                 enhancedQuery,
                 githubKBConfig.repositoryNames,
-                { perPage: Math.min(perPage, 100) }
+                { perPage: Math.min(perPage || 10, 100) }
             );
+
+            logger.debug('[GitHub KB] searchGitHubCode - Raw API response', {
+                totalCount: results.totalCount,
+                itemCount: results.items.length,
+                items: results.items.map(item => ({
+                    path: item.path,
+                    repository: item.repository.fullName,
+                    sha: item.sha,
+                    textMatchCount: item.textMatches?.length || 0,
+                })),
+            });
 
             // Format results with snippets
             const formattedResults = results.items.map((item, index) => {
@@ -88,7 +113,7 @@ Tips:
                 };
             });
 
-            return {
+            const response = {
                 success: true,
                 totalCount: results.totalCount,
                 resultsReturned: formattedResults.length,
@@ -102,8 +127,21 @@ Tips:
                     ? 'Use readGitHubFile to read the full contents of any file that looks relevant.'
                     : 'Try searching for different terms, or use listGitHubDirectory to explore the repository structure.',
             };
+
+            logger.info('[GitHub KB] searchGitHubCode - Response', {
+                success: true,
+                totalCount: results.totalCount,
+                resultsReturned: formattedResults.length,
+            });
+            logger.debug('[GitHub KB] searchGitHubCode - Full response', { response });
+
+            return response;
         } catch (error: any) {
-            logger.error('GitHub code search failed', { query: enhancedQuery, error: error.message });
+            logger.error('[GitHub KB] searchGitHubCode - Failed', { 
+                query: enhancedQuery, 
+                error: error.message,
+                stack: error.stack,
+            });
             return {
                 success: false,
                 error: error.message,
