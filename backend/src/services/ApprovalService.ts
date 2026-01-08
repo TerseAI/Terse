@@ -319,7 +319,7 @@ export class ApprovalService {
             );
 
             // Use 'changes_requested' for request changes flow (rejected with feedback), 'rejected' for hard reject
-            const finalSlackStatus = approved ? 'approved' : (rejectionReason ? 'changes_requested' : 'rejected');
+            const finalSlackStatus = approved ? 'approved' : (hardReject ? 'rejected' : (rejectionReason ? 'changes_requested' : 'rejected'));
 
             // Finalize run status based on result
             if (result.status === 'completed') {
