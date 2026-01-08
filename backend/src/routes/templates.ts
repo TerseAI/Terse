@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import templates from "../templates/templates.json";
+import templates from "../templates/templates.json" with { type: "json" };
 import logger from "../logger";
 import { ChannelTemplate } from "../shared/types";
 
