@@ -1,9 +1,9 @@
 import useSWR from 'swr';
 import { BackendProvider } from '@/services/backend';
-import type { ChannelTemplates, ChannelTemplate } from '@/shared/Templates';
+import type { ChannelTemplate } from '@/shared/types';
 
 export function useTemplates() {
-    const { data, error, isValidating } = useSWR<ChannelTemplates>(
+    const { data, error, isValidating } = useSWR<ChannelTemplate[]>(
         'templates',
         async () => {
             return BackendProvider.getTemplates();
@@ -22,4 +22,4 @@ export function useTemplates() {
     };
 }
 
-export type { ChannelTemplate, ChannelTemplates };
+export type { ChannelTemplate };

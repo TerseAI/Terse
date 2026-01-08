@@ -8,11 +8,7 @@ import { useChannel } from "../../hooks/api/useChannels";
 import { useTemplates } from "../../hooks/api/useTemplates";
 import { ChannelNotificationSettings, ChannelPrompt, TransientChannelInput, TransientChannelOutput, TransientKnowledgeBase } from "../../shared/types";
 import { toTransientChannelInput, toTransientChannelOutput, toTransientKnowledgeBase } from "../../utility/ChannelUtils";
-<<<<<<< HEAD
-=======
-import { ConfigType } from "../../shared/Configs";
-import { v4 as uuidv4 } from "uuid";
->>>>>>> 1cf699f4115c81ced175a0575c2da401d3e6682c
+import { useTemplateHydration } from "../../hooks/useTemplateHydration";
 
 function ChannelDetail() {
     const { id, templateId } = useParams<{ id: string, templateId: string }>();
@@ -26,6 +22,9 @@ function ChannelDetail() {
 
     // Fetch templates for template hydration
     const { templates, isLoading: isLoadingTemplates } = useTemplates();
+
+    // Hydrate from template if templateId is provided
+    const { hydratedState: templateHydratedState, templateFound } = useTemplateHydration(templateId, templates);
 
     // Track if we've already hydrated from a template to avoid re-hydration
     const [templateHydrated, setTemplateHydrated] = useState<string | null>(null);
@@ -47,58 +46,18 @@ function ChannelDetail() {
     useEffect(() => {
         if (!channelId) {
             // Check if we need to hydrate from a template
-            if (templateId && templates.length > 0 && templateHydrated !== templateId) {
-                const templateIndex = parseInt(templateId, 10);
-                const template = templates[templateIndex];
-
-                if (template) {
-                    // Hydrate from template
-                    setName(template.name);
-                    setPrompt(template.prompt);
-                    setIsActive(template.isActive ?? true);
-                    setRequireApproval(template.requireApproval ?? false);
-
-                    // Convert template inputs to transient inputs (config will be undefined, user needs to configure)
-                    const transientInputs: TransientChannelInput[] = template.inputs.map(input => ({
-                        id: uuidv4(),
-                        configType: input.config.configType as ConfigType,
-                        config: undefined, // User needs to select integration
-                    }));
-                    setInputs(transientInputs);
-
-                    // Convert template output to transient output
-                    if (template.output) {
-                        setOutput({
-                            id: uuidv4(),
-                            configType: template.output.config.configType as ConfigType,
-                            config: undefined, // User needs to select integration
-                        });
-                    } else {
-                        setOutput(undefined);
-                    }
-
-                    // Convert template knowledge bases to transient knowledge bases
-                    if (template.knowledgeBases && template.knowledgeBases.length > 0) {
-                        const transientKBs: TransientKnowledgeBase[] = template.knowledgeBases.map(kb => ({
-                            id: uuidv4(),
-                            configType: kb.config.configType as ConfigType,
-                            config: undefined, // User needs to select integration
-                        }));
-                        setKnowledgeBases(transientKBs);
-                    } else {
-                        setKnowledgeBases([]);
-                    }
-
-                    // Handle notification settings from template
-                    if (template.notificationSettings) {
-                        setNotificationSettings(template.notificationSettings);
-                    } else {
-                        setNotificationSettings({ enabled: false, actionTypes: [] });
-                    }
-
-                    setTemplateHydrated(templateId);
-                    return;
-                }
+            if (templateId && templateFound && templateHydratedState && templateHydrated !== templateId) {
+                // Hydrate from template
+                setName(templateHydratedState.name);
+                setPrompt(templateHydratedState.prompt);
+                setIsActive(templateHydratedState.isActive);
+                setRequireApproval(templateHydratedState.requireApproval);
+                setInputs(templateHydratedState.inputs);
+                setOutput(templateHydratedState.output);
+                setKnowledgeBases(templateHydratedState.knowledgeBases);
+                setNotificationSettings(templateHydratedState.notificationSettings);
+                setTemplateHydrated(templateId);
+                return;
             }
 
             // Reset to blank state for new channel (no template)
@@ -125,7 +84,7 @@ function ChannelDetail() {
             setRequireApproval(channel.requireApproval ?? false);
             setNotificationSettings(channel.notificationSettings ?? { enabled: false, actionTypes: [] });
         }
-    }, [channel, channelId, templateId, templates, templateHydrated]);
+    }, [channel, channelId, templateId, templateFound, templateHydratedState, templateHydrated]);
 
     const tabs = ['setup', 'history'] as const;
     const tabFromQuery = searchParams.get('tab');
@@ -143,7 +102,7 @@ function ChannelDetail() {
     // Determine if we're still loading
     // - For existing channels: wait for channel data
     // - For template-based channels: wait for templates to load and hydrate
-    const isLoading = isFetching || (!!templateId && (isLoadingTemplates || templateHydrated !== templateId));
+    const isLoading = isFetching || (!!templateId && (isLoadingTemplates || !templateFound || templateHydrated !== templateId));
 
     // Prepare props for child components
     // Note: inputs and output are already in TransientChannelInput/Output format

@@ -15,7 +15,8 @@ import {
     RecentChannel,
     SlackChannelsResponse,
     StatsResponse,
-    SlackUsersResponse, 
+    SlackUsersResponse,
+    ChannelTemplate, 
 } from "../shared/types";
 import { GenerateSurveyQuestionsRequest, GenerateSurveyQuestionsResponse, GenerateSurveyPromptRequest, GenerateSurveyPromptResponse } from "../shared/PromptBuilderTypes";
 import { 
@@ -35,7 +36,6 @@ import { User } from "../types/User";
 import { GetRunHistoryParams, GetRunHistoryResponse } from '../shared/RunHistoryTypes';
 import { deserializeConfig } from '../utility/ConfigUtils';
 import { CreateNotificationDestinationRequest, NotificationDestination } from '../shared/Notifications';
-import { ChannelTemplates } from '../shared/Templates';
 
 const backendBaseUrl = '/api';
 
@@ -326,7 +326,7 @@ interface BackendService {
     /**
      * Gets all available channel templates
      */
-    getTemplates(): Promise<ChannelTemplates>;
+    getTemplates(): Promise<ChannelTemplate[]>;
 }
 
 export const BackendProvider: BackendService = {
@@ -914,7 +914,7 @@ export const BackendProvider: BackendService = {
     },
 
     getTemplates: () => {
-        return axios.get<ChannelTemplates>(`${backendBaseUrl}/templates`, { withCredentials: true })
+        return axios.get<ChannelTemplate[]>(`${backendBaseUrl}/templates`, { withCredentials: true })
             .then(response => response.data)
             .catch(error => {
                 console.error('Error getting templates:', error);
