@@ -126,11 +126,11 @@ function ChannelsList({ channels, loading }: ChannelsListProps) {
             ))}
             <SidebarMenuSubItem>
                 <SidebarMenuSubButton asChild>
-                    <Button 
-                        variant="ghost" 
-                        size="sm" 
+                    <Button
+                        variant="ghost"
+                        size="sm"
                         className="gap-1 text-xs text-muted-foreground"
-                        onClick={() => navigate('/app/channels/new')}
+                        onClick={() => navigate('/app/channels/setup')}
                     >
                         <Plus className="size-3 !text-muted-foreground hover:!text-foreground" color="currentColor"/>
                         Add Channel
