@@ -15,7 +15,8 @@ import {
     RecentChannel,
     SlackChannelsResponse,
     StatsResponse,
-    SlackUsersResponse, 
+    SlackUsersResponse,
+    ChannelTemplate, 
 } from "../shared/types";
 import { GenerateSurveyQuestionsRequest, GenerateSurveyQuestionsResponse, GenerateSurveyPromptRequest, GenerateSurveyPromptResponse } from "../shared/PromptBuilderTypes";
 import { 
@@ -321,6 +322,11 @@ interface BackendService {
      * Deletes a notification destination
      */
     deleteNotificationDestination(destination: NotificationDestination): Promise<void>;
+
+    /**
+     * Gets all available channel templates
+     */
+    getTemplates(): Promise<ChannelTemplate[]>;
 }
 
 export const BackendProvider: BackendService = {
@@ -903,6 +909,15 @@ export const BackendProvider: BackendService = {
             .then(response => response.data)
             .catch(error => {
                 console.error('Error deleting notification destination:', error);
+                throw error;
+            });
+    },
+
+    getTemplates: () => {
+        return axios.get<ChannelTemplate[]>(`${backendBaseUrl}/templates`, { withCredentials: true })
+            .then(response => response.data)
+            .catch(error => {
+                console.error('Error getting templates:', error);
                 throw error;
             });
     },

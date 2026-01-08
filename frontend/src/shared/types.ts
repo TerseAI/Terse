@@ -345,6 +345,35 @@ export type TransientKnowledgeBase = {
     configType: ConfigType;
 };
 
+// Template types - simplified config references without integrationId
+export type TemplateConfigRef = {
+    configType: ConfigType;
+    integrationType: IntegrationType;
+};
+
+export type TemplateInput = {
+    config: TemplateConfigRef;
+};
+
+export type TemplateOutput = {
+    config: TemplateConfigRef;
+};
+
+export type TemplateKnowledgeBase = {
+    config: TemplateConfigRef;
+};
+
+export type ChannelTemplate = {
+    name: string;
+    description: string;
+    prompt: ChannelPrompt;
+    inputs: TemplateInput[];
+    output: TemplateOutput;
+    knowledgeBases?: TemplateKnowledgeBase[];
+    requireApproval: boolean;
+    isActive: boolean;
+};
+
 export type Channel = {
     id: string;
     name: string;

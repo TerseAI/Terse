@@ -6,6 +6,7 @@ import { AppSidebar } from "./components/Sidebar/Sidebar";
 import ActivityFeed from "./pages/ActivityFeed";
 import ChannelDetail from "./pages/Channels/ChannelDetail";
 import ChannelsList from "./pages/Channels/ChannelsList";
+import ChannelSetup from "./pages/Channels/ChannelSetup";
 import BirdsEyeViewHomepage from "./pages/BirdsEye";
 import Home from "./pages/Home";
 import LandingPageChangelog from "./pages/LandingPage_changelog";
@@ -35,7 +36,9 @@ function App() {
               <Route index element={ hasBirdsEyeFlag ? <BirdsEyeViewHomepage /> : <Home />} />
               <Route path="activity" element={<ActivityFeed />} />
               <Route path="channels" element={<ChannelsList />} />
+              <Route path="channels/setup" element={<ChannelSetup />} />
               <Route path="channels/new" element={<ChannelDetail />} />
+              <Route path="channels/new/template/:templateId" element={<ChannelDetail />} />
               <Route path="channels/:id" element={<ChannelDetail />} />
               <Route path="integrations" element={<IntegrationPage />} />
               <Route path="notifications" element={<NotificationsPage />} />
