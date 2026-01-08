@@ -8,6 +8,7 @@ import {
     EmptyMedia,
     EmptyTitle,
 } from "@/components/ui/empty";
+import { TemplatesGrid } from "./TemplatesGrid";
 
 interface EmptyStateProps {
     hasFilters: boolean;
@@ -15,6 +16,42 @@ interface EmptyStateProps {
 }
 
 export function EmptyState({ hasFilters, onCreateNew }: EmptyStateProps) {
+    // If no filters, show templates grid for new users
+    if (!hasFilters) {
+        return (
+            <div className="space-y-8">
+                <TemplatesGrid />
+                <div className="flex items-center gap-4">
+                    <div className="h-px flex-1 bg-border" />
+                    <span className="text-sm text-muted-foreground">or</span>
+                    <div className="h-px flex-1 bg-border" />
+                </div>
+                <Empty>
+                    <EmptyHeader>
+                        <EmptyMedia variant="icon">
+                            <Settings className="text-primary" />
+                        </EmptyMedia>
+                        <EmptyTitle>Start from scratch</EmptyTitle>
+                        <EmptyDescription>
+                            Create a custom channel with your own configuration
+                        </EmptyDescription>
+                    </EmptyHeader>
+                    {onCreateNew && (
+                        <EmptyContent>
+                            <Button
+                                variant="default"
+                                onClick={onCreateNew}
+                            >
+                                <Plus className="h-4 w-4" />
+                                Add Channel
+                            </Button>
+                        </EmptyContent>
+                    )}
+                </Empty>
+            </div>
+        );
+    }
+
     return (
         <Empty>
             <EmptyHeader>
@@ -23,22 +60,9 @@ export function EmptyState({ hasFilters, onCreateNew }: EmptyStateProps) {
                 </EmptyMedia>
                 <EmptyTitle>No channels found</EmptyTitle>
                 <EmptyDescription>
-                    {hasFilters
-                        ? "Try adjusting your search or filters"
-                        : "Create your first channel to get started"}
+                    Try adjusting your search or filters
                 </EmptyDescription>
             </EmptyHeader>
-            {!hasFilters && onCreateNew && (
-                <EmptyContent>
-                    <Button
-                        variant="default"
-                        onClick={onCreateNew}
-                    >
-                        <Plus className="h-4 w-4" />
-                        Add Channel
-                    </Button>
-                </EmptyContent>
-            )}
         </Empty>
     );
 }
