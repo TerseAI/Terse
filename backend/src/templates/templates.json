@@ -1,9 +1,9 @@
 [
   {
-    "name": "Gmail to Notion Database",
-    "description": "Monitor Gmail inbox and automatically create entries in a Notion database",
+    "name": "Automated Todo List",
+    "description": "Monitor Gmail inbox and linear and create the ultiomate Todo List for Engineers",
     "prompt": {
-      "text": "You are an AI assistant that monitors incoming emails and creates structured entries in a Notion database. When you receive an email, extract key information (sender, subject, date, body) and create a new database entry. Be concise but capture all important details."
+      "text": "Look at my emails and Linear issues, And auto update my personal todo-list.\n\nYou can ignore Build warning from Render.\n\nBe sure to cross reference github PRs with the Linear Ticket associated to it.\n\nFor linear, you only place items that are assigned to me. Never add something that is unassigned or assigned to someone else.\n\nAlso be on the lookout for duplicates. But make sure we process duplicates from Linear.\n\nIn general, if it's from a real person, and they are asking me for something, I expect it to be tracked!\n\nFor linear, make sure to show the tickets I have assigned to me that are in progress.\n\nIf you see similar Tasks, don't make separate pages, I'd prefer you use the notes section or right the details into the page itself.\n\nI expect people tagging me in Linear/Github to show up (with low priority).\n\nNEVER PUT A BOT NOTIFICATION ON THE TODO LIST:\n\nEx: LinearBot, VercelBot etc...\n\nI should wake up in the morning and have a good idea of what to prioritize for my day.\n\nThink really hard! Make no mistakes!"
     },
     "inputs": [
       {
@@ -23,15 +23,15 @@
     "isActive": true
   },
   {
-    "name": "Slack to Linear",
+    "name": "Ticket Enrichment",
     "description": "Monitor Slack messages and create Linear issues for actionable items",
     "prompt": {
-      "text": "You are an AI assistant that monitors Slack messages and creates Linear issues for actionable items. When you identify a task, bug, or feature request in Slack, create a corresponding Linear issue with appropriate title, description, and labels. Only create issues for items that require action."
+      "text": "You are a bug triage agent. Your job is to triage issues reported by user's in the Slack user channel.\n\nPlease listen for feedback in the user feedback channel. If the user mentions a specific bug that a user encountered (they must include an email), then update our linear board with a new ticket (verifying for duplicates where possible). The email should serve in posthog to lookup the user's last session and analyze what they were doing last, including any relevant logs such as errors the user may have encountered etc."
     },
     "inputs": [
       {
         "config": {
-          "configType": "slack",
+          "configType": "gmail",
           "integrationType": "slack"
         }
       }
@@ -46,10 +46,10 @@
     "isActive": true
   },
   {
-    "name": "GitHub to Notion Page",
+    "name": "Feedback Aggregator",
     "description": "Monitor GitHub repository activity and update a Notion page with summaries",
     "prompt": {
-      "text": "You are an AI assistant that monitors GitHub repository activity (commits, PRs, issues) and updates a Notion page with summaries. Create clear, organized summaries of recent activity, grouping related changes together. Keep the page updated with the latest developments."
+      "text": "Constantly monitor the slack channel for user feedback on our app and continuously update the Notion page to reflect your syhtesis of user problems, needs and desires and."
     },
     "inputs": [
       {
@@ -69,10 +69,10 @@
     "isActive": true
   },
   {
-    "name": "Figma Comments to Linear",
-    "description": "Monitor Figma file comments and create Linear issues for design feedback",
+    "name": "Detect Information Drift Between Figma and PRD",
+    "description": "Monitor Figma file comments and PRD to detect information drift",
     "prompt": {
-      "text": "You are an AI assistant that monitors Figma file comments and creates Linear issues for design feedback. When you see actionable feedback or requests in Figma comments, create a Linear issue with the comment context, file reference, and any relevant design details."
+      "text": "Monitor Figma for conflicting discussions with the PRD."
     },
     "inputs": [
       {
@@ -84,8 +84,8 @@
     ],
     "output": {
       "config": {
-        "configType": "linear_output",
-        "integrationType": "linear"
+        "configType": "confluence",
+        "integrationType": "atlassian"
       }
     },
     "requireApproval": false,
