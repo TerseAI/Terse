@@ -1,5 +1,6 @@
 import { useRecentChannels } from "../../hooks/api/useRecentChannels";
 import { useStats } from "../../hooks/api/useStats";
+import { useChannels } from "../../hooks/api/useChannels";
 import { formatRelativeTime } from "../../utility/timeUtils";
 import { IntegrationType } from "../../shared/Integrations";
 import { RunHistoryAction } from "../../shared/RunHistoryTypes";
@@ -7,11 +8,20 @@ import { StatsMetricsSection } from "./components/StatsMetricsSection";
 import { DailyEventsChart } from "./components/DailyEventsChart";
 import { RecentActionsSection } from "./components/RecentActionsSection";
 import { RecentChannelsSection } from "./components/RecentChannelsSection";
+import { HomeEmptyState } from "./components/HomeEmptyState";
 import { transformStatsToMetrics } from "./utils";
 
 function Home() {
+    const { channels: allChannels, isLoading: isLoadingAllChannels } = useChannels({ limit: 1 });
     const { channels: recentChannelsData, isLoading: isLoadingChannels } = useRecentChannels(3);
     const { stats, isLoading: isLoadingStats } = useStats();
+
+    const hasNoChannels = !isLoadingAllChannels && allChannels.length === 0;
+
+    // Show empty state if user has no channels
+    if (hasNoChannels) {
+        return <HomeEmptyState />;
+    }
 
     const metrics = transformStatsToMetrics(stats);
 

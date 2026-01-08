@@ -8,47 +8,39 @@ import {
     EmptyMedia,
     EmptyTitle,
 } from "@/components/ui/empty";
-import { TemplatesGrid } from "./TemplatesGrid";
+import { useNavigate } from "react-router-dom";
 
 interface EmptyStateProps {
     hasFilters: boolean;
     onCreateNew?: () => void;
 }
 
-export function EmptyState({ hasFilters, onCreateNew }: EmptyStateProps) {
-    // If no filters, show templates grid for new users
+export function EmptyState({ hasFilters }: EmptyStateProps) {
+    const navigate = useNavigate();
+
+    // If no filters, show empty state that redirects to setup page
     if (!hasFilters) {
         return (
-            <div className="space-y-8">
-                <TemplatesGrid />
-                <div className="flex items-center gap-4">
-                    <div className="h-px flex-1 bg-border" />
-                    <span className="text-sm text-muted-foreground">or</span>
-                    <div className="h-px flex-1 bg-border" />
-                </div>
-                <Empty>
-                    <EmptyHeader>
-                        <EmptyMedia variant="icon">
-                            <Settings className="text-primary" />
-                        </EmptyMedia>
-                        <EmptyTitle>Start from scratch</EmptyTitle>
-                        <EmptyDescription>
-                            Create a custom channel with your own configuration
-                        </EmptyDescription>
-                    </EmptyHeader>
-                    {onCreateNew && (
-                        <EmptyContent>
-                            <Button
-                                variant="default"
-                                onClick={onCreateNew}
-                            >
-                                <Plus className="h-4 w-4" />
-                                Add Channel
-                            </Button>
-                        </EmptyContent>
-                    )}
-                </Empty>
-            </div>
+            <Empty>
+                <EmptyHeader>
+                    <EmptyMedia variant="icon">
+                        <Settings className="text-primary" />
+                    </EmptyMedia>
+                    <EmptyTitle>No channels yet</EmptyTitle>
+                    <EmptyDescription>
+                        Create your first channel to start automating your workflow
+                    </EmptyDescription>
+                </EmptyHeader>
+                <EmptyContent>
+                    <Button
+                        variant="default"
+                        onClick={() => navigate('/app/channels/setup')}
+                    >
+                        <Plus className="h-4 w-4" />
+                        Create Channel
+                    </Button>
+                </EmptyContent>
+            </Empty>
         );
     }
 
