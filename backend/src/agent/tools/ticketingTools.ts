@@ -155,7 +155,7 @@ const createTicketTool = tool({
             name: z.string().describe('The label name'),
             color: z.string().describe('The label color')
         })), z.null()]).describe('The labels for the ticket'),
-        estimate: z.union([z.number(), z.null()]).describe('The time estimate for the ticket'),
+        estimate: z.union([z.number(), z.null()]).describe('The time estimate/story points for the ticket. IMPORTANT: Do NOT set to 0 - many teams disallow 0 estimates. Use positive numbers (1, 2, 3, 5, 8, etc.) or null to skip.'),
         dueDate: z.union([z.string(), z.null()]).describe('The due date for the ticket'),
         project: z.union([z.object({
             id: z.string().describe('The project ID'),
@@ -194,7 +194,7 @@ const createTicketTool = tool({
             assignee: assignee?.email || undefined,
             priority: priority || undefined,
             labels: labels || undefined,
-            estimate: estimate || undefined,
+            estimate: (estimate && estimate > 0) ? estimate : undefined,
             dueDate: dueDate || undefined,
             project: project || undefined,
             milestone: milestone || undefined,
@@ -253,7 +253,7 @@ const updateTicketTool = tool({
         //     name: z.string().describe('The label name'),
         //     color: z.string().describe('The label color')
         // })), z.null()]).describe('The labels for the ticket'),
-        estimate: z.union([z.number(), z.null()]).describe('The time estimate for the ticket'),
+        estimate: z.union([z.number(), z.null()]).describe('The time estimate/story points for the ticket. IMPORTANT: Do NOT set to 0 - many teams disallow 0 estimates. Use positive numbers (1, 2, 3, 5, 8, etc.) or null to skip.'),
         dueDate: z.union([z.string(), z.null()]).describe('The due date for the ticket'),
         project: z.union([z.object({
             id: z.string().describe('The project ID'),

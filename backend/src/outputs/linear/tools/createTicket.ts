@@ -45,7 +45,7 @@ BEFORE USING THIS TOOL:
         projectId: z.string().nullable().optional().describe('The ID of the project to associate with the issue.'),
         projectMilestoneId: z.string().nullable().optional().describe('The ID of the project milestone to associate with the issue.'),
         parentId: z.string().nullable().optional().describe('The ID of the parent issue (to create a sub-issue).'),
-        estimate: z.number().nullable().optional().describe('The estimated complexity of the issue.'),
+        estimate: z.number().nullable().optional().describe('The estimated complexity/story points of the issue. IMPORTANT: Do NOT set estimate to 0 - many Linear teams disallow 0 estimates. Valid values are positive numbers (1, 2, 3, 5, 8, etc.) or null/omit to skip. Only set an estimate if you have a meaningful value.'),
         subscriberIds: z.array(z.string()).nullable().optional().describe('The IDs of users subscribing to this ticket.'),
     }),
     needsApproval,
@@ -113,7 +113,8 @@ BEFORE USING THIS TOOL:
             if (hasValue(projectId)) createInput.projectId = projectId as string;
             if (hasValue(projectMilestoneId)) createInput.projectMilestoneId = projectMilestoneId as string;
             if (hasValue(parentId)) createInput.parentId = parentId as string;
-            if (estimate !== undefined && estimate !== null) createInput.estimate = estimate;
+            // Only include estimate if it's a positive number - 0 is often invalid in Linear teams
+            if (estimate !== undefined && estimate !== null && estimate > 0) createInput.estimate = estimate;
             if (subscriberIds !== undefined && subscriberIds !== null && subscriberIds.length > 0) createInput.subscriberIds = subscriberIds;
 
             // Create the issue using createIssue method

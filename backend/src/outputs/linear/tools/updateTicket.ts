@@ -40,7 +40,7 @@ COMMON UPDATE OPERATIONS:
         projectMilestoneId: z.string().nullable().optional().describe('The ID of the project milestone to associate with the issue.'),
         teamId: z.string().nullable().optional().describe('The ID of the team to associate with the issue.'),
         parentId: z.string().nullable().optional().describe('The ID of the parent issue (to make this a sub-issue).'),
-        estimate: z.number().nullable().optional().describe('The estimated complexity of the issue.'),
+        estimate: z.number().nullable().optional().describe('The estimated complexity/story points of the issue. IMPORTANT: Do NOT set estimate to 0 - many Linear teams disallow 0 estimates. Valid values are positive numbers (1, 2, 3, 5, 8, etc.) or null/omit to leave unchanged. Only set an estimate if you have a meaningful value.'),
         subscriberIds: z.array(z.string()).nullable().optional().describe('The IDs of users subscribing to this ticket.'),
         trashed: z.boolean().nullable().optional().describe('Whether the issue has been trashed.'),
     }),
@@ -104,7 +104,8 @@ COMMON UPDATE OPERATIONS:
             if (hasValue(projectMilestoneId)) updateInput.projectMilestoneId = projectMilestoneId as string;
             if (hasValue(teamId)) updateInput.teamId = teamId as string;
             if (hasValue(parentId)) updateInput.parentId = parentId as string;
-            if (estimate !== undefined && estimate !== null) updateInput.estimate = estimate;
+            // Only include estimate if it's a positive number - 0 is often invalid in Linear teams
+            if (estimate !== undefined && estimate !== null && estimate > 0) updateInput.estimate = estimate;
             if (subscriberIds !== undefined && subscriberIds !== null && subscriberIds.length > 0) updateInput.subscriberIds = subscriberIds;
             // Only send trashed if it's explicitly true (to trash an issue)
             // Don't send trashed: false as Linear may not handle it well
