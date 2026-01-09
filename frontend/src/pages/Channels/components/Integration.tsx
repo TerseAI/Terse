@@ -36,6 +36,8 @@ export function IconForConfigType({ type }: { type: ConfigType }) {
             return <ConfluenceIcon />;
         case ConfigType.POSTHOG:
             return <PosthogIcon />;
+        case ConfigType.GITHUB_KB:
+            return <GithubIcon />;
         default:
             // Exhaustive check: TypeScript will error if any IntegrationType case is missing
             throw type satisfies never;
