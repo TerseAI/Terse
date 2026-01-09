@@ -223,6 +223,7 @@ export const convertPrismaConfigToConfigInstance = (channelInput: ChannelInputWi
         case InputConfigType.JIRA:
         case InputConfigType.CONFLUENCE:
         case InputConfigType.POSTHOG:
+        case InputConfigType.TIME_TRIGGER:
             break;
         default:
             throw channelInput.config_type satisfies never;
