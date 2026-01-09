@@ -118,6 +118,7 @@ export type ChannelKnowledgeBase = automation_knowledge_bases;
 export type ChannelKnowledgeBaseWithConfigs = Prisma.automation_knowledge_basesGetPayload<{
   include: {
     posthog_config: true;
+    github_kb_config: true;
   };
 }>;
 
