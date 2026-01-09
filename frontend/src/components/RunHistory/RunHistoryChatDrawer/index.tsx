@@ -93,7 +93,7 @@ export default function RunHistoryChatDrawer({
                                         onFullscreenChange={handleFullscreenChange}
                                     />
                                     <div className={cn(
-                                        "flex-1 overflow-hidden min-h-0 bg-background",
+                                        "flex-1 overflow-hidden min-h-0 bg-background select-text",
                                         isFullscreen && "mx-auto w-full"
                                     )}>
                                         <div className="flex flex-col h-full relative">

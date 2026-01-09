@@ -99,7 +99,7 @@ function ToolResultInput({ toolName, parameters, onSubmit }: { toolName: string;
                 </div>
                 <div className="flex items-center gap-2">
                     <CheckIcon className="w-4 h-4 text-green-500 flex-shrink-0" />
-                    <span className="text-sm text-foreground font-mono bg-background px-2 py-1 rounded">
+                    <span className="text-sm text-foreground font-mono bg-background px-2 py-1 rounded select-text">
                         {submittedValue}
                     </span>
                 </div>
@@ -117,7 +117,7 @@ function ToolResultInput({ toolName, parameters, onSubmit }: { toolName: string;
             {parameters && parsedParams && typeof parsedParams === 'object' && Object.keys(parsedParams).length > 0 && (
                 <div className="mb-3 p-2 bg-background rounded border border-border">
                     <div className="text-xs text-muted-foreground mb-1">Parameters:</div>
-                    <pre className="text-xs text-foreground whitespace-pre-wrap font-mono">
+                    <pre className="text-xs text-foreground whitespace-pre-wrap font-mono select-text">
                         {JSON.stringify(parsedParams, null, 2)}
                     </pre>
                 </div>
@@ -230,7 +230,7 @@ export default function FunctionCallItem({ call, isTurnFailure = false, index, o
                                 {call.errorContext && (
                                     <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-3">
                                         <div className="text-sm font-semibold text-red-500 mb-1">Error:</div>
-                                        <div className="text-sm text-red-400 font-mono whitespace-pre-wrap">
+                                        <div className="text-sm text-red-400 font-mono whitespace-pre-wrap select-text">
                                             {String(call.errorContext.error)}
                                         </div>
                                     </div>
