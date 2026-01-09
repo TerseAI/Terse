@@ -65,7 +65,7 @@ function TurnView({ role, text, function_calls, isFailure = false, isGenerating 
                 )}
 
                 {(text || isFailure) && (
-                    <div className="text-[#F1F1F1] text-md py-2 rounded-8xl">
+                    <div className="text-[#F1F1F1] text-md py-2 rounded-8xl select-text">
                         <div className={`prose prose-invert ${isUser ? 'bg-stone-900/80 rounded-lg p-3' : ''}`}>
                             {isFailure && (
                                 <svg className="w-4 h-4 text-red-500 inline-block mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -73,9 +73,11 @@ function TurnView({ role, text, function_calls, isFailure = false, isGenerating 
                                 </svg>
                             )}
                             {isUser ? (
-                                <span>{text}</span>
+                                <span className="select-text">{text}</span>
                             ) : (
-                                <TokenStream text={text} disableAnimation={disableAnimation} />
+                                <div className="select-text">
+                                    <TokenStream text={text} disableAnimation={disableAnimation} />
+                                </div>
                             )}
                         </div>
                     </div>
