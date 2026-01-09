@@ -9,6 +9,7 @@ export enum ConfigType {
     LINEAR_INPUT = 'linear_input',
     LINEAR_OUTPUT = 'linear_output',
     GITHUB = 'github',
+    GITHUB_KB = 'github_kb',
     JIRA = 'jira',
     CONFLUENCE = 'confluence',
     POSTHOG = "POSTHOG",
@@ -135,6 +136,15 @@ export const TimeTriggerConfigMetadata = {
     isKnowledgeBase: false,
 } as const satisfies ConfigDetails;
 
+export const GitHubKBConfigMetadata = {
+    configType: ConfigType.GITHUB_KB,
+    name: 'GitHub Codebase',
+    description: 'Search and read code in repositories',
+    isInput: false,
+    isOutput: false,
+    isKnowledgeBase: true,
+} as const satisfies ConfigDetails;
+
 export type ConfigDetailsMap = Record<ConfigType, ConfigDetails>;
 
 export const CONFIG_DETAILS: ConfigDetailsMap = {
@@ -146,6 +156,7 @@ export const CONFIG_DETAILS: ConfigDetailsMap = {
     [ConfigType.LINEAR_INPUT]: LinearInputConfigMetadata,
     [ConfigType.LINEAR_OUTPUT]: LinearOutputConfigMetadata,
     [ConfigType.GITHUB]: GitHubConfigMetadata,
+    [ConfigType.GITHUB_KB]: GitHubKBConfigMetadata,
     [ConfigType.JIRA]: JiraConfigMetadata,
     [ConfigType.CONFLUENCE]: ConfluenceConfigMetadata,
     [ConfigType.POSTHOG]: PosthogConfigMetadata,
@@ -490,6 +501,30 @@ export class TimeTriggerConfig implements ConfigInstance {
         const parts = [`Type: Time Trigger`, `Integration ID: ${this.integrationId}`];
         if (this.cronExpression) {
             parts.push(`Schedule (UTC): ${this.cronExpression}`);
+         }
+        return parts.join('\n');
+    }
+}
+
+export class GitHubKBConfig implements ConfigInstance {
+    integrationType: IntegrationType = IntegrationType.GITHUB;
+    configType: ConfigType = ConfigType.GITHUB_KB;
+    
+    constructor(
+        public integrationId: string,
+        public repositoryIds: number[],
+        public repositoryNames: string[], // Full names like "owner/repo"
+    ) {
+    }
+
+    isComplete(): boolean {
+        return this.repositoryIds.length > 0;
+    }
+
+    formatForAgent(): string {
+        const parts = [`Type: GitHub Codebase`, `Integration ID: ${this.integrationId}`];
+        if (this.repositoryNames.length > 0) {
+            parts.push(`Repositories: ${this.repositoryNames.join(', ')}`);
         }
         return parts.join('\n');
     }
@@ -507,6 +542,7 @@ export type ConfigMetadataMap = EnsureExhaustiveMetadata<{
     [ConfigType.LINEAR_INPUT]: typeof LinearInputConfig;
     [ConfigType.LINEAR_OUTPUT]: typeof LinearOutputConfig;
     [ConfigType.GITHUB]: typeof GitHubConfig;
+    [ConfigType.GITHUB_KB]: typeof GitHubKBConfig;
     [ConfigType.JIRA]: typeof JiraConfig;
     [ConfigType.CONFLUENCE]: typeof ConfluenceConfig;
     [ConfigType.POSTHOG]: typeof PosthogConfig;
@@ -522,6 +558,7 @@ export const CONFIG_METADATA: ConfigMetadataMap = {
     [ConfigType.LINEAR_INPUT]: LinearInputConfig,
     [ConfigType.LINEAR_OUTPUT]: LinearOutputConfig,
     [ConfigType.GITHUB]: GitHubConfig,
+    [ConfigType.GITHUB_KB]: GitHubKBConfig,
     [ConfigType.JIRA]: JiraConfig,
     [ConfigType.CONFLUENCE]: ConfluenceConfig,
     [ConfigType.POSTHOG]: PosthogConfig,

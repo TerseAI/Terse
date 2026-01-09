@@ -17,6 +17,7 @@ import { ClockIcon } from "lucide-react";
 export function IconForConfigType({ type }: { type: ConfigType }) {
     switch (type) {
         case ConfigType.GITHUB:
+        case ConfigType.GITHUB_KB:
             return <GithubIcon />;
         case ConfigType.LINEAR_INPUT:
         case ConfigType.LINEAR_OUTPUT:
@@ -37,7 +38,7 @@ export function IconForConfigType({ type }: { type: ConfigType }) {
         case ConfigType.POSTHOG:
             return <PosthogIcon />;
         case ConfigType.TIME_TRIGGER:
-            return <ClockIcon className="w-full h-full text-[theme(text-primary)]" />;
+            return <ClockIcon className="w-full h-full text-[theme(text-primary)]" />;        
         default:
             // Exhaustive check: TypeScript will error if any IntegrationType case is missing
             throw type satisfies never;

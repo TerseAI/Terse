@@ -403,8 +403,7 @@ export async function createChannel(req: Request, res: Response) {
                             integration_id: integrationId
                         }
                     });
-
-                    // Create config record
+                    
                     await createKnowledgeBaseConfig(tx, newKnowledgeBase.id, kb.config);
                 }
             }
