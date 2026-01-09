@@ -30,6 +30,7 @@
   "dependencies": {
     "@linear/sdk": "^45.3.0",
     "@notionhq/client": "^5.4.0",
+    "@octokit/rest": "^22.0.1",
     "@openai/agents": "^0.3.3",
     "@openai/agents-core": "^0.3.4",
     "@opentelemetry/api-logs": "^0.208.0",

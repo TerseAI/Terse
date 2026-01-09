@@ -164,7 +164,8 @@ export class ChannelAgent<
         decision: Decision,
         stepId: string,
         streamingParams?: RunHistoryStreamingParams,
-        rejectionReason?: string
+        rejectionReason?: string,
+        hardReject?: boolean
     ): Promise<ApprovalResult<SessionWithTracking<T>, Agent<SessionWithTracking<T>, AgentOutputType>>> {
         await this.initializeAgent();
 
@@ -230,26 +231,38 @@ export class ChannelAgent<
             state.reject(interruption);
             const stateWithHistory = state as unknown as { history?: AgentInputItem[] };
             if (stateWithHistory.history && Array.isArray(stateWithHistory.history)) {
-                const trimmedReason = rejectionReason?.trim();
-                if (trimmedReason) {
-                    // Treat the rejection reason as actionable user guidance (verbatim) so the agent can
-                    // reliably detect “try again” or other imperative instructions (e.g. “Read X first”).
-                    const rejectionGuidance = user(
-                        `A human reviewer rejected your previous tool call "${interruption.name}".\n\n` +
-                        `Reviewer feedback (treat as user instructions, verbatim):\n` +
-                        `${trimmedReason}\n\n` +
-                        `If the feedback asks you to retry (e.g. "try again", "retry") OR provides guidance on how to proceed differently (e.g. "read X first", "narrow the scope"), proceed now by adapting your next steps/tool calls accordingly. ` +
-                        `Only ask a clarification question if the feedback is not sufficient to act.`
+                if (hardReject) {
+                    // Hard reject: tell the agent to stop completely without asking questions or retrying
+                    const hardRejectMessage = user(
+                        `A human reviewer rejected your previous tool call "${interruption.name}" and has chosen to stop this workflow entirely.\n\n` +
+                        `Do NOT ask any follow-up questions. Do NOT attempt to retry or suggest alternatives. ` +
+                        `Simply acknowledge that the action was rejected and the workflow has been stopped. ` +
+                        `End your response with a brief confirmation that no further actions will be taken.`
                     );
-                    stateWithHistory.history.push(rejectionGuidance);
-                    logger.info("[resumeFromPendingApproval] Added rejection guidance to state history", { hasCustomReason: true });
+                    stateWithHistory.history.push(hardRejectMessage);
+                    logger.info("[resumeFromPendingApproval] Added hard reject message to state history", { hardReject: true });
                 } else {
-                    const rejectionMessage = user(
-                        `The tool call "${interruption.name}" was rejected. ` +
-                        `Ask the user what they want you to do differently, or whether to skip this action entirely.`
-                    );
-                    stateWithHistory.history.push(rejectionMessage);
-                    logger.info("[resumeFromPendingApproval] Added rejection message to state history", { hasCustomReason: false });
+                    const trimmedReason = rejectionReason?.trim();
+                    if (trimmedReason) {
+                        // Treat the rejection reason as actionable user guidance (verbatim) so the agent can
+                        // reliably detect "try again" or other imperative instructions (e.g. "Read X first").
+                        const rejectionGuidance = user(
+                            `A human reviewer rejected your previous tool call "${interruption.name}".\n\n` +
+                            `Reviewer feedback (treat as user instructions, verbatim):\n` +
+                            `${trimmedReason}\n\n` +
+                            `If the feedback asks you to retry (e.g. "try again", "retry") OR provides guidance on how to proceed differently (e.g. "read X first", "narrow the scope"), proceed now by adapting your next steps/tool calls accordingly. ` +
+                            `Only ask a clarification question if the feedback is not sufficient to act.`
+                        );
+                        stateWithHistory.history.push(rejectionGuidance);
+                        logger.info("[resumeFromPendingApproval] Added rejection guidance to state history", { hasCustomReason: true });
+                    } else {
+                        const rejectionMessage = user(
+                            `The tool call "${interruption.name}" was rejected. ` +
+                            `Ask the user what they want you to do differently, or whether to skip this action entirely.`
+                        );
+                        stateWithHistory.history.push(rejectionMessage);
+                        logger.info("[resumeFromPendingApproval] Added rejection message to state history", { hasCustomReason: false });
+                    }
                 }
             } else {
                 logger.warn("[resumeFromPendingApproval] Could not access state.history directly.");
