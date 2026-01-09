@@ -12,7 +12,6 @@ import { LinearOutputIntegration } from './LinearOutputIntegration';
 import { TimeTriggerIntegration } from './TimeTriggerIntegration';
 
 export function IntegrationSelector(props: InputConfigSelectorProps) {
-    console.log(props.input);
     switch (props.input.config?.configType || props.input.configType) {
         case ConfigType.GMAIL:
             return <GmailIntegration {...props} />;
