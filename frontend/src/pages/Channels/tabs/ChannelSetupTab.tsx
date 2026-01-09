@@ -558,13 +558,22 @@ function Input({ input, inputs, setInputs, handleRemove }: { input: TransientCha
     )
 }
 
+function getNotionUrl(id: string): string {
+    // Notion IDs are UUIDs, but can be stored with or without hyphens
+    // The URL format is: https://notion.so/{id-without-hyphens}
+    const cleanId = id.replace(/-/g, '');
+    return `https://notion.so/${cleanId}`;
+}
+
 function getOutputUrl(output: TransientChannelOutput | undefined): string | undefined {
     if (!output?.config) return undefined;
 
     if (output.configType === ConfigType.NOTION_DATABASE) {
-        return (output.config as NotionConfig).databaseUrl;
+        const databaseId = (output.config as NotionConfig).databaseId;
+        return databaseId ? getNotionUrl(databaseId) : undefined;
     } else if (output.configType === ConfigType.NOTION_PAGE) {
-        return (output.config as NotionPageConfig).pageUrl;
+        const pageId = (output.config as NotionPageConfig).pageId;
+        return pageId ? getNotionUrl(pageId) : undefined;
     }
 
     return undefined;

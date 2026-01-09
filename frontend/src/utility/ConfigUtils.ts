@@ -47,16 +47,14 @@ export function deserializeConfig(jsonConfig: any): ConfigInstance {
             return new NotionConfig(
                 integrationId,
                 jsonConfig.databaseId,
-                jsonConfig.databaseName,
-                jsonConfig.databaseUrl
+                jsonConfig.databaseName
             );
 
         case ConfigType.NOTION_PAGE:
             return new NotionPageConfig(
                 integrationId,
                 jsonConfig.pageId,
-                jsonConfig.pageName,
-                jsonConfig.pageUrl
+                jsonConfig.pageName
             );
 
         case ConfigType.LINEAR_INPUT:
