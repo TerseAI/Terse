@@ -130,8 +130,9 @@ export class PosthogKnowledgeBase extends KnowledgeBase<PosthogKnowledgeBaseSess
         const toolDescriptions: string[] = [];
         if (posthogConfig.canReadLogs) {
             toolDescriptions.push(
-                '• searchPosthogLogs: Query backend logs filtered by user email or ID. ' +
-                'Returns log entries with timestamps, severity, messages, and attributes. ' +
+                '• searchPosthogLogs: Query backend logs with flexible filtering options. ' +
+                'Can filter by user email, log severity levels (error, warn, info, debug), message text search, or combinations. ' +
+                'At least one filter must be provided. Returns log entries with timestamps, severity, messages, and attributes. ' +
                 'Supports pagination (offset parameter) and date filtering.'
             );
         }
