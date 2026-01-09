@@ -54,6 +54,7 @@ export class NotionPageOutput extends Output<NotionPageSession, NotionPageConfig
                 automation_output_id: channelOutputId,
                 page_id: output.pageId || '',
                 page_name: output.pageName || '',
+                page_url: output.pageUrl || null,
             },
         });
     }
