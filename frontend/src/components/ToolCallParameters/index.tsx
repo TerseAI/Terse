@@ -29,7 +29,7 @@ const ToolCallParameters = ({ parameters }: ToolCallParametersProps) => {
         case ToolTypes.OPEN_PAGE:
             return <OpenPageParameters {...parsedParameters} />;
         default:
-            return <pre className="text-sm text-foreground whitespace-pre-wrap font-mono">
+            return <pre className="text-sm text-foreground whitespace-pre-wrap font-mono select-text">
             {JSON.stringify(parsedParameters, null, 2)}
         </pre>
     }
@@ -42,14 +42,14 @@ interface SearchParametersProps {
     query: string;  
 }
 const SearchParameters = ({ query }: SearchParametersProps) => {
-    return <pre className="text-sm text-foreground whitespace-pre-wrap font-mono">
+    return <pre className="text-sm text-foreground whitespace-pre-wrap font-mono select-text">
         Searching for: {query}
     </pre>
 }
 
 
 const OpenPageParameters = () => {
-    return <pre className="text-sm text-foreground whitespace-pre-wrap font-mono">
+    return <pre className="text-sm text-foreground whitespace-pre-wrap font-mono select-text">
         Opening page
     </pre>
 }
