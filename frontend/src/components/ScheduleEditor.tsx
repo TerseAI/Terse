@@ -1,7 +1,14 @@
-import { CronBuilder, getCronText } from "@vpfaiz/cron-builder-ui";
+import { useState, useEffect } from "react";
 import { CronExpressionParser } from "cron-parser";
 import { cn } from "@/lib/utils";
-import { Clock, AlertCircle } from "lucide-react";
+import { Clock, Calendar, CalendarDays, Repeat } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface ScheduleEditorProps {
   value: string;
@@ -9,26 +16,163 @@ interface ScheduleEditorProps {
   className?: string;
 }
 
-function parseSchedule(cronValue: string): {
-  humanReadable: string | null;
-  nextRuns: Date[];
-  error: string | null;
+type Frequency = "daily" | "weekly" | "monthly";
+
+const DAYS_OF_WEEK = [
+  { value: "0", label: "Sun" },
+  { value: "1", label: "Mon" },
+  { value: "2", label: "Tue" },
+  { value: "3", label: "Wed" },
+  { value: "4", label: "Thu" },
+  { value: "5", label: "Fri" },
+  { value: "6", label: "Sat" },
+];
+
+const HOURS = Array.from({ length: 24 }, (_, i) => ({
+  value: String(i),
+  label: i === 0 ? "12 AM" : i < 12 ? `${i} AM` : i === 12 ? "12 PM" : `${i - 12} PM`,
+}));
+
+const MINUTES = [
+  { value: "0", label: ":00" },
+  { value: "15", label: ":15" },
+  { value: "30", label: ":30" },
+  { value: "45", label: ":45" },
+];
+
+const DAYS_OF_MONTH = Array.from({ length: 28 }, (_, i) => ({
+  value: String(i + 1),
+  label: `${i + 1}${getOrdinalSuffix(i + 1)}`,
+}));
+
+function getOrdinalSuffix(n: number): string {
+  const s = ["th", "st", "nd", "rd"];
+  const v = n % 100;
+  return s[(v - 20) % 10] || s[v] || s[0];
+}
+
+function parseCronToState(cron: string): {
+  frequency: Frequency;
+  hour: string;
+  minute: string;
+  daysOfWeek: string[];
+  dayOfMonth: string;
 } {
-  if (!cronValue) {
-    return { humanReadable: null, nextRuns: [], error: null };
-  }
+  const defaults = {
+    frequency: "daily" as Frequency,
+    hour: "9",
+    minute: "0",
+    daysOfWeek: ["1"], // Monday by default
+    dayOfMonth: "1",
+  };
+
+  if (!cron) return defaults;
 
   try {
-    const cronText = getCronText(cronValue);
-    const human = cronText.status ? cronText.value ?? null : null;
-    const expression = CronExpressionParser.parse(cronValue, { tz: "UTC" });
-    const runs: Date[] = [];
-    for (let i = 0; i < 3; i++) {
-      runs.push(expression.next().toDate());
+    const parts = cron.split(" ");
+    if (parts.length !== 5) return defaults;
+
+    const [minute, hour, dayOfMonth, , dayOfWeek] = parts;
+
+    const result = { ...defaults };
+    result.minute = minute === "*" ? "0" : minute;
+    result.hour = hour === "*" ? "9" : hour;
+
+    if (dayOfWeek !== "*" && dayOfWeek !== "?") {
+      result.frequency = "weekly";
+      // Parse comma-separated days (e.g., "1,3,5")
+      result.daysOfWeek = dayOfWeek.split(",").map((d) => d.trim());
+    } else if (dayOfMonth !== "*" && dayOfMonth !== "?") {
+      result.frequency = "monthly";
+      result.dayOfMonth = dayOfMonth;
+    } else {
+      result.frequency = "daily";
     }
-    return { humanReadable: human, nextRuns: runs, error: null };
+
+    return result;
   } catch {
-    return { humanReadable: null, nextRuns: [], error: "Invalid cron expression" };
+    return defaults;
+  }
+}
+
+function buildCron(
+  frequency: Frequency,
+  hour: string,
+  minute: string,
+  daysOfWeek: string[],
+  dayOfMonth: string
+): string {
+  switch (frequency) {
+    case "daily":
+      return `${minute} ${hour} * * *`;
+    case "weekly":
+      // Sort days and join with commas
+      const sortedDays = [...daysOfWeek].sort((a, b) => parseInt(a) - parseInt(b));
+      return `${minute} ${hour} * * ${sortedDays.join(",")}`;
+    case "monthly":
+      return `${minute} ${hour} ${dayOfMonth} * *`;
+  }
+}
+
+function getNextRuns(cron: string, count: number = 3): Date[] {
+  try {
+    const parsed = CronExpressionParser.parse(cron, { tz: "UTC" });
+    const runs: Date[] = [];
+    for (let i = 0; i < count; i++) {
+      runs.push(parsed.next().toDate());
+    }
+    return runs;
+  } catch {
+    return [];
+  }
+}
+
+function getHumanReadable(
+  frequency: Frequency,
+  hour: string,
+  minute: string,
+  daysOfWeek: string[],
+  dayOfMonth: string
+): string {
+  const hourNum = parseInt(hour);
+  const timeStr =
+    hourNum === 0
+      ? `12:${minute.padStart(2, "0")} AM`
+      : hourNum < 12
+        ? `${hourNum}:${minute.padStart(2, "0")} AM`
+        : hourNum === 12
+          ? `12:${minute.padStart(2, "0")} PM`
+          : `${hourNum - 12}:${minute.padStart(2, "0")} PM`;
+
+  switch (frequency) {
+    case "daily":
+      return `Every day at ${timeStr}`;
+    case "weekly":
+      const sortedDays = [...daysOfWeek].sort((a, b) => parseInt(a) - parseInt(b));
+      const dayNames = sortedDays
+        .map((d) => DAYS_OF_WEEK.find((day) => day.value === d)?.label)
+        .filter(Boolean);
+      
+      if (dayNames.length === 0) return `Select days`;
+      if (dayNames.length === 1) return `Every ${dayNames[0]} at ${timeStr}`;
+      if (dayNames.length === 7) return `Every day at ${timeStr}`;
+      
+      // Check for weekdays (Mon-Fri)
+      const weekdaySet = new Set(["1", "2", "3", "4", "5"]);
+      if (sortedDays.length === 5 && sortedDays.every((d) => weekdaySet.has(d))) {
+        return `Weekdays at ${timeStr}`;
+      }
+      
+      // Check for weekends (Sat-Sun)
+      const weekendSet = new Set(["0", "6"]);
+      if (sortedDays.length === 2 && sortedDays.every((d) => weekendSet.has(d))) {
+        return `Weekends at ${timeStr}`;
+      }
+      
+      const lastDay = dayNames.pop();
+      return `Every ${dayNames.join(", ")} & ${lastDay} at ${timeStr}`;
+    case "monthly":
+      return `On the ${dayOfMonth}${getOrdinalSuffix(parseInt(dayOfMonth))} of each month at ${timeStr}`;
   }
 }
 
@@ -37,60 +181,179 @@ export function ScheduleEditor({
   onChange,
   className,
 }: ScheduleEditorProps) {
-  const { humanReadable, nextRuns, error } = parseSchedule(value);
+  const initial = parseCronToState(value);
+  const [frequency, setFrequency] = useState<Frequency>(initial.frequency);
+  const [hour, setHour] = useState(initial.hour);
+  const [minute, setMinute] = useState(initial.minute);
+  const [daysOfWeek, setDaysOfWeek] = useState<string[]>(initial.daysOfWeek);
+  const [dayOfMonth, setDayOfMonth] = useState(initial.dayOfMonth);
+
+  const toggleDay = (day: string) => {
+    setDaysOfWeek((prev) => {
+      if (prev.includes(day)) {
+        // Don't allow deselecting the last day
+        if (prev.length === 1) return prev;
+        return prev.filter((d) => d !== day);
+      }
+      return [...prev, day];
+    });
+  };
+
+  // Update cron when any value changes
+  useEffect(() => {
+    const newCron = buildCron(frequency, hour, minute, daysOfWeek, dayOfMonth);
+    if (newCron !== value) {
+      onChange(newCron);
+    }
+  }, [frequency, hour, minute, daysOfWeek, dayOfMonth]);
+
+  const nextRuns = getNextRuns(value, 3);
+  const humanReadable = getHumanReadable(frequency, hour, minute, daysOfWeek, dayOfMonth);
 
   return (
-    <div className={cn("space-y-4", className)}>
-      <CronBuilder
-        defaultValue={value || "0 9 * * *"}
-        onChange={onChange}
-      />
+    <div className={cn("space-y-5", className)}>
+      {/* Frequency Selection */}
+      <div className="flex gap-2">
+        {[
+          { value: "daily", label: "Daily", icon: Repeat },
+          { value: "weekly", label: "Weekly", icon: Calendar },
+          { value: "monthly", label: "Monthly", icon: CalendarDays },
+        ].map(({ value: freq, label, icon: Icon }) => (
+          <button
+            key={freq}
+            onClick={() => setFrequency(freq as Frequency)}
+            className={cn(
+              "flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all",
+              frequency === freq
+                ? "bg-primary text-primary-foreground shadow-md"
+                : "bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground"
+            )}
+          >
+            <Icon className="size-4" />
+            {label}
+          </button>
+        ))}
+      </div>
 
-      {/* Schedule Preview */}
-      {value && (
-        <div className="rounded-lg border border-border bg-muted/30 p-4 space-y-3">
-          {error ? (
-            <div className="flex items-center gap-2 text-destructive">
-              <AlertCircle className="h-4 w-4" />
-              <span className="text-sm">{error}</span>
-            </div>
-          ) : (
-            <>
-              <div className="flex items-center gap-2">
-                <Clock className="h-4 w-4 text-muted-foreground" />
-                <span className="text-sm font-medium">{humanReadable}</span>
-              </div>
-              {nextRuns.length > 0 && (
-                <div className="space-y-1">
-                  <p className="text-xs text-muted-foreground">Next runs (UTC):</p>
-                  <ul className="text-xs text-muted-foreground space-y-0.5">
-                    {nextRuns.map((run, i) => (
-                      <li key={i}>
-                        {run.toLocaleString("en-US", {
-                          weekday: "short",
-                          month: "short",
-                          day: "numeric",
-                          hour: "numeric",
-                          minute: "2-digit",
-                          timeZone: "UTC",
-                        })}{" "}
-                        UTC
-                      </li>
-                    ))}
-                  </ul>
-                </div>
+      {/* Weekly Day Selection */}
+      {frequency === "weekly" && (
+        <div className="flex gap-1.5">
+          {DAYS_OF_WEEK.map((day) => (
+            <button
+              key={day.value}
+              onClick={() => toggleDay(day.value)}
+              className={cn(
+                "size-10 rounded-lg text-sm font-medium transition-all",
+                daysOfWeek.includes(day.value)
+                  ? "bg-primary text-primary-foreground shadow-sm"
+                  : "bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground"
               )}
-            </>
-          )}
+            >
+              {day.label}
+            </button>
+          ))}
         </div>
       )}
+
+      {/* Configuration Row */}
+      <div className="flex flex-wrap items-center gap-3">
+        {frequency === "weekly" && (
+          <span className="text-sm text-muted-foreground">at</span>
+        )}
+
+        {frequency === "monthly" && (
+          <>
+            <span className="text-sm text-muted-foreground">on the</span>
+            <Select value={dayOfMonth} onValueChange={setDayOfMonth}>
+              <SelectTrigger className="w-[80px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {DAYS_OF_MONTH.map((day) => (
+                  <SelectItem key={day.value} value={day.value}>
+                    {day.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </>
+        )}
+
+        {frequency === "daily" && (
+          <span className="text-sm text-muted-foreground">Every day at</span>
+        )}
+        {frequency === "monthly" && (
+          <span className="text-sm text-muted-foreground">at</span>
+        )}
+
+        <div className="flex items-center gap-1">
+          <Select value={hour} onValueChange={setHour}>
+            <SelectTrigger className="w-[90px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {HOURS.map((h) => (
+                <SelectItem key={h.value} value={h.value}>
+                  {h.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <Select value={minute} onValueChange={setMinute}>
+            <SelectTrigger className="w-[70px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {MINUTES.map((m) => (
+                <SelectItem key={m.value} value={m.value}>
+                  {m.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <span className="text-xs text-muted-foreground/70">UTC</span>
+      </div>
+
+      {/* Preview */}
+      <div className="rounded-xl border border-border/50 bg-gradient-to-br from-muted/30 to-muted/10 p-4">
+        <div className="flex items-center gap-2.5 mb-3">
+          <div className="size-8 rounded-lg bg-primary/10 flex items-center justify-center">
+            <Clock className="size-4 text-primary" />
+          </div>
+          <span className="text-sm font-medium">{humanReadable}</span>
+        </div>
+
+        {nextRuns.length > 0 && (
+          <div className="pl-10">
+            <p className="text-xs text-muted-foreground mb-1.5">Upcoming runs:</p>
+            <div className="flex flex-wrap gap-2">
+              {nextRuns.map((run, i) => (
+                <span
+                  key={i}
+                  className="text-xs px-2.5 py-1 rounded-md bg-background/60 text-muted-foreground border border-border/30"
+                >
+                  {run.toLocaleString("en-US", {
+                    weekday: "short",
+                    month: "short",
+                    day: "numeric",
+                    hour: "numeric",
+                    minute: "2-digit",
+                    timeZone: "UTC",
+                  })}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
 
-// Re-export utility functions
-export { getCronText } from "@vpfaiz/cron-builder-ui";
-
+// Utility exports
 export function isValidCronExpression(expression: string): boolean {
   try {
     CronExpressionParser.parse(expression);
@@ -101,14 +364,16 @@ export function isValidCronExpression(expression: string): boolean {
 }
 
 export function getNextCronRuns(expression: string, count: number = 5): Date[] {
-  try {
-    const parsed = CronExpressionParser.parse(expression, { tz: "UTC" });
-    const runs: Date[] = [];
-    for (let i = 0; i < count; i++) {
-      runs.push(parsed.next().toDate());
-    }
-    return runs;
-  } catch {
-    return [];
-  }
+  return getNextRuns(expression, count);
+}
+
+export function getCronDescription(cron: string): string {
+  const state = parseCronToState(cron);
+  return getHumanReadable(
+    state.frequency,
+    state.hour,
+    state.minute,
+    state.daysOfWeek,
+    state.dayOfMonth
+  );
 }
