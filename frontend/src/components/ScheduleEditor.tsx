@@ -1,7 +1,5 @@
-import { useMemo } from "react";
 import { CronBuilder, getCronText } from "@vpfaiz/cron-builder-ui";
-import "@vpfaiz/cron-builder-ui/styles/globals.css";
-import { parseExpression } from "cron-parser";
+import { CronExpressionParser } from "cron-parser";
 import { cn } from "@/lib/utils";
 import { Clock, AlertCircle } from "lucide-react";
 
@@ -11,29 +9,35 @@ interface ScheduleEditorProps {
   className?: string;
 }
 
+function parseSchedule(cronValue: string): {
+  humanReadable: string | null;
+  nextRuns: Date[];
+  error: string | null;
+} {
+  if (!cronValue) {
+    return { humanReadable: null, nextRuns: [], error: null };
+  }
+
+  try {
+    const cronText = getCronText(cronValue);
+    const human = cronText.status ? cronText.value ?? null : null;
+    const expression = CronExpressionParser.parse(cronValue, { tz: "UTC" });
+    const runs: Date[] = [];
+    for (let i = 0; i < 3; i++) {
+      runs.push(expression.next().toDate());
+    }
+    return { humanReadable: human, nextRuns: runs, error: null };
+  } catch {
+    return { humanReadable: null, nextRuns: [], error: "Invalid cron expression" };
+  }
+}
+
 export function ScheduleEditor({
   value,
   onChange,
   className,
 }: ScheduleEditorProps) {
-  // Parse the current cron expression for display
-  const { humanReadable, nextRuns, error } = useMemo(() => {
-    if (!value) {
-      return { humanReadable: null, nextRuns: [], error: null };
-    }
-
-    try {
-      const human = getCronText(value);
-      const interval = parseExpression(value, { utc: true });
-      const runs: Date[] = [];
-      for (let i = 0; i < 3; i++) {
-        runs.push(interval.next().toDate());
-      }
-      return { humanReadable: human, nextRuns: runs, error: null };
-    } catch {
-      return { humanReadable: null, nextRuns: [], error: "Invalid cron expression" };
-    }
-  }, [value]);
+  const { humanReadable, nextRuns, error } = parseSchedule(value);
 
   return (
     <div className={cn("space-y-4", className)}>
@@ -89,7 +93,7 @@ export { getCronText } from "@vpfaiz/cron-builder-ui";
 
 export function isValidCronExpression(expression: string): boolean {
   try {
-    parseExpression(expression);
+    CronExpressionParser.parse(expression);
     return true;
   } catch {
     return false;
@@ -98,10 +102,10 @@ export function isValidCronExpression(expression: string): boolean {
 
 export function getNextCronRuns(expression: string, count: number = 5): Date[] {
   try {
-    const interval = parseExpression(expression, { utc: true });
+    const parsed = CronExpressionParser.parse(expression, { tz: "UTC" });
     const runs: Date[] = [];
     for (let i = 0; i < count; i++) {
-      runs.push(interval.next().toDate());
+      runs.push(parsed.next().toDate());
     }
     return runs;
   } catch {

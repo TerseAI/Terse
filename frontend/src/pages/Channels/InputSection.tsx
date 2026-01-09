@@ -164,6 +164,7 @@ export const InputCard = forwardRef<HTMLDivElement, {
     setInputs,
     handleRemove
 }, ref) => {
+    console.log("input", input);
     const [showDetailsDialog, setShowDetailsDialog] = useState(false);
 
     const selectorProps: InputConfigSelectorProps = {
