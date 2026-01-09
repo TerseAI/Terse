@@ -550,7 +550,7 @@ model automation_knowledge_bases {
 
   automation automations @relation(fields: [automation_id], references: [id], onDelete: Cascade)
 
-  posthog_config automation_posthog_configs?
+  posthog_config   automation_posthog_configs?
   github_kb_config automation_github_kb_configs?
 
   @@index([automation_id])
@@ -572,9 +572,9 @@ model automation_posthog_configs {
 
 // GitHub Knowledge Base Configuration
 model automation_github_kb_configs {
-  id                           String  @id @default(cuid())
-  automation_knowledge_base_id String  @unique // FK to automation_knowledge_bases
-  repository_ids               Int[]   // GitHub repository IDs to search (from user_github_installation)
+  id                           String   @id @default(cuid())
+  automation_knowledge_base_id String   @unique // FK to automation_knowledge_bases
+  repository_ids               Int[] // GitHub repository IDs to search (from user_github_installation)
   repository_names             String[] // Repository full names (owner/repo) for display
 
   automation_knowledge_base automation_knowledge_bases @relation(fields: [automation_knowledge_base_id], references: [id], onDelete: Cascade)

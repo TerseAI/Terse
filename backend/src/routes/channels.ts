@@ -28,7 +28,7 @@ async function createInputConfig(
 }
 
 async function createOutputConfig(
-    tx: any,
+    tx: PrismaTransaction,
     outputId: string,
     config: ConfigInstance
 ): Promise<void> {
@@ -52,6 +52,10 @@ async function createKnowledgeBaseConfig(
 }
 
 async function validateUserOwnsIntegration(userId: string, integrationType: IntegrationType, integrationId: string): Promise<boolean> {
+    // Edge case, Terse is a special integration that is not owned by a user.
+    if (integrationType === IntegrationType.TERSE) {
+        return true;
+    }
     const integration = INTEGRATION_REGISTRY.find(integration => integration.integrationType === integrationType);
     if (!integration) {
         throw new Error(`Integration ${integrationType} not found`);
