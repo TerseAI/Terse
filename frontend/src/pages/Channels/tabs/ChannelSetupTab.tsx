@@ -505,12 +505,12 @@ function Input({ input, inputs, setInputs, handleRemove }: { input: TransientCha
                 </div>
 
                 <div className="flex-1 flex items-center justify-center">
-                    <div className="w-16 h-16">
+                    <div className="size-16">
                         <IconForConfigType type={input.configType} />
                     </div>
                 </div>
 
-                <Badge variant="outline" className="mt-auto self-center max-w-full px-3 py-1 border-yellow-500 text-yellow-600 dark:text-yellow-500">
+                <Badge variant="outline" className="mt-auto self-center max-w-full px-3 py-1 border-yellow-500 text-yellow-600 dark:text-yellow-500 whitespace-normal text-center">
                     <IntegrationSelector {...selectorProps} variant="card" />
                 </Badge>
             </div>
@@ -536,7 +536,7 @@ function Input({ input, inputs, setInputs, handleRemove }: { input: TransientCha
                     </div>
                 </div>
 
-                <Badge variant="outline" className="mt-auto self-center max-w-full px-3 py-1">
+                <Badge variant="outline" className="mt-auto self-center max-w-full px-3 py-1 whitespace-normal text-center">
                     <IntegrationSelector {...selectorProps} variant="card" />
                 </Badge>
             </div>

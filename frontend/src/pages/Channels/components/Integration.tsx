@@ -37,7 +37,7 @@ export function IconForConfigType({ type }: { type: ConfigType }) {
         case ConfigType.POSTHOG:
             return <PosthogIcon />;
         case ConfigType.TIME_TRIGGER:
-            return <ClockIcon />;
+            return <ClockIcon className="w-full h-full text-[theme(text-primary)]" />;
         default:
             // Exhaustive check: TypeScript will error if any IntegrationType case is missing
             throw type satisfies never;
