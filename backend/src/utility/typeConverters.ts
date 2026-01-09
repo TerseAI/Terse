@@ -322,6 +322,8 @@ export const convertConfigTypeToInputConfigType = (configType: ConfigType): Inpu
             return InputConfigType.CONFLUENCE;
         case ConfigType.POSTHOG:
             return InputConfigType.POSTHOG;
+        case ConfigType.TIME_TRIGGER:
+            return InputConfigType.TIME_TRIGGER;
         default:
             throw configType satisfies never;
     }
@@ -349,6 +351,8 @@ export const convertInputConfigTypeToConfigType = (inputConfigType: InputConfigT
             return ConfigType.CONFLUENCE;
         case InputConfigType.POSTHOG:
             return ConfigType.POSTHOG;
+        case InputConfigType.TIME_TRIGGER:
+            return ConfigType.TIME_TRIGGER;
         default:
             throw inputConfigType satisfies never;
     }
