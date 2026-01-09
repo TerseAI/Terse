@@ -5,22 +5,23 @@ import { db } from "../../../prismaClient";
 import { PosthogConfig } from "../../../shared/Configs";
 
 /**
- * Tool for querying PostHog logs for a specific user.
- * This tool queries the PostHog Logs product API to find logs associated with a user.
+ * Tool for querying PostHog logs with flexible filtering options.
+ * This tool queries the PostHog Logs product API to find logs. You can filter by user, log level, message content, or combinations thereof.
  */
 export const searchLogsTool = tool({
     name: 'searchPosthogLogs',
-    description: 'Query PostHog logs for a specific user. Returns logs data and a link to view logs in PostHog. Use this when you need to investigate user activity, errors, or events in PostHog logs. The logs can be filtered by user email or user ID depending on how logs are instrumented.',
+    description: 'Query PostHog logs with flexible filtering. Returns logs data and a link to view logs in PostHog. You can filter by user email, log severity levels (error, warn, info, debug), message text search, or combinations. At least one filter (user email, severity levels, or message search) should be provided to avoid overly broad queries. Use this when you need to investigate user activity, errors, or events in PostHog logs.',
     parameters: z.object({
-        filterValue: z.string().describe('The value to filter logs by (e.g., user email like "user@example.com" or user ID like "cmgv175dh06doks21hj06m2gt").'),
-        filterKey: z.enum(['userEmail', 'userId']).default('userEmail').describe('The PostHog log attribute key to filter on. Use "userEmail" if logs have a userEmail attribute, or "userId" if logs have a userId attribute. Default: "userEmail".'),
+        userEmail: z.union([z.string(), z.null()]).optional().describe('Optional: User email to filter logs by (e.g., "user@example.com").'),
+        severityLevels: z.union([z.array(z.enum(['error', 'warn', 'info', 'debug'])), z.null()]).describe('Optional: Array of log severity levels to filter by (e.g., ["error", "warn"]). If not provided, all severity levels are included.'),
+        messageSearch: z.union([z.string(), z.null()]).describe('Optional: Text to search for within log messages. Searches are case-insensitive and match partial text.'),
         limit: z.number().default(50).describe('Maximum number of log entries to return (default: 50, max: 250)'),
         offset: z.number().default(0).describe('Offset for pagination (default: 0). Use with limit to page through results. For example, offset=0 gets logs 1-50, offset=50 gets logs 51-100, etc.'),
         last7Days: z.boolean().default(false).describe('If true and dateFrom is not provided, filters logs from the last 7 days only (default: false). If false, no date restriction is applied unless dateFrom is explicitly provided.'),
         dateFrom: z.union([z.string(), z.null()]).describe('Start date for filtering (ISO format or relative like "-7d"). If not provided and last7Days is true, defaults to 7 days ago. If not provided and last7Days is false, no date restriction is applied.'),
         dateTo: z.union([z.string(), z.null()]).describe('End date for filtering (ISO format or relative like "now"). If not provided, defaults to now.'),
     }),
-    execute: async ({ filterValue, filterKey = 'userEmail', limit = 50, offset = 0, last7Days = false, dateFrom, dateTo }, runContext?: RunContext<any>) => {
+    execute: async ({ userEmail, severityLevels, messageSearch, limit = 50, offset = 0, last7Days = false, dateFrom, dateTo }, runContext?: RunContext<any>) => {
         if (!runContext?.context) {
             throw new Error("No context provided");
         }
@@ -38,6 +39,20 @@ export const searchLogsTool = tool({
         const user = runContext.context.user;
         if (!user) {
             throw new Error("User not found in context");
+        }
+
+        // Normalize null to undefined for easier handling
+        const normalizedUserEmail = userEmail ?? undefined;
+        const normalizedSeverityLevels = severityLevels ?? undefined;
+        const normalizedMessageSearch = messageSearch ?? undefined;
+
+        // Validate that at least one filter is provided
+        const hasUserFilter = normalizedUserEmail && normalizedUserEmail.trim().length > 0;
+        const hasSeverityFilter = normalizedSeverityLevels && normalizedSeverityLevels.length > 0;
+        const hasMessageFilter = normalizedMessageSearch && normalizedMessageSearch.trim().length > 0;
+
+        if (!hasUserFilter && !hasSeverityFilter && !hasMessageFilter) {
+            throw new Error("At least one filter must be provided: userEmail, severityLevels, or messageSearch.");
         }
 
         // Get PostHog integration
@@ -62,11 +77,30 @@ export const searchLogsTool = tool({
                 dateFromValue = '-7d';
             }
 
-            logger.info('Querying PostHog logs', { filterValue, filterKey, projectId, limit, offset, dateFrom: dateFromValue });
+            logger.info('Querying PostHog logs', { userEmail: normalizedUserEmail, severityLevels: normalizedSeverityLevels, messageSearch: normalizedMessageSearch, projectId, limit, offset, dateFrom: dateFromValue });
 
             // Query the Logs product API
             const logsQueryUrl = `${posthogHost}/api/projects/${projectId}/logs/query/`;
             
+            // Build filterGroup conditionally - all filters go into a single inner values array
+            const filterConditions: any[] = [];
+            if (hasUserFilter && normalizedUserEmail) {
+                filterConditions.push({
+                    key: 'userEmail',
+                    value: [normalizedUserEmail],
+                    operator: 'exact',
+                    type: 'log_attribute',
+                });
+            }
+            if (hasMessageFilter && normalizedMessageSearch) {
+                filterConditions.push({
+                    key: 'message',
+                    value: normalizedMessageSearch.trim(),
+                    operator: 'icontains',
+                    type: 'log',
+                });
+            }
+
             // Build the request body in the correct PostHog Logs API format
             const requestBody = {
                 query: {
@@ -77,24 +111,17 @@ export const searchLogsTool = tool({
                         date_from: dateFromValue,
                         date_to: dateTo ?? null,
                     },
-                    searchTerm: '',
-                    filterGroup: {
+                    searchTerm: '', // Not used - message filtering is done via filterGroup
+                    filterGroup: filterConditions.length > 0 ? {
                         type: 'AND',
                         values: [
                             {
                                 type: 'AND',
-                                values: [
-                                    {
-                                        key: filterKey,
-                                        value: [filterValue],
-                                        operator: 'exact',
-                                        type: 'log_attribute',
-                                    },
-                                ],
+                                values: filterConditions,
                             },
                         ],
-                    },
-                    severityLevels: [],
+                    } : undefined,
+                    severityLevels: normalizedSeverityLevels && normalizedSeverityLevels.length > 0 ? normalizedSeverityLevels : [],
                     serviceNames: [],
                 },
             };
@@ -113,8 +140,9 @@ export const searchLogsTool = tool({
                 logger.error('PostHog logs API error', {
                     status: response.status,
                     error: errorText,
-                    filterKey,
-                    filterValue,
+                    userEmail: normalizedUserEmail,
+                    severityLevels: normalizedSeverityLevels,
+                    messageSearch: normalizedMessageSearch,
                     projectId
                 });
                 
@@ -162,10 +190,26 @@ export const searchLogsTool = tool({
             const hasMore = formattedLogs.length === Math.min(limit, 250);
             const nextOffset = hasMore ? offset + formattedLogs.length : null;
 
+            // Build filter description for the response message
+            const filterDescriptions: string[] = [];
+            if (hasUserFilter && normalizedUserEmail) {
+                filterDescriptions.push(`userEmail="${normalizedUserEmail}"`);
+            }
+            if (hasSeverityFilter && normalizedSeverityLevels) {
+                filterDescriptions.push(`severity levels: ${normalizedSeverityLevels.join(', ')}`);
+            }
+            if (hasMessageFilter && normalizedMessageSearch) {
+                filterDescriptions.push(`message contains: "${normalizedMessageSearch}"`);
+            }
+            const filterDescription = filterDescriptions.length > 0 
+                ? filterDescriptions.join(', ') 
+                : 'no filters';
+
             return {
                 success: true,
-                filterKey,
-                filterValue,
+                userEmail: normalizedUserEmail || null,
+                severityLevels: normalizedSeverityLevels || null,
+                messageSearch: normalizedMessageSearch || null,
                 projectId,
                 totalLogs: totalCount,
                 logs: formattedLogs,
@@ -177,10 +221,10 @@ export const searchLogsTool = tool({
                     nextOffset,
                     showing: `${offset + 1}-${offset + formattedLogs.length}`,
                 },
-                message: `Found ${formattedLogs.length} log entries for ${filterKey}="${filterValue}" (showing ${offset + 1}-${offset + formattedLogs.length}${hasMore ? ', more available' : ''}). View all logs: ${logsLink}`
+                message: `Found ${formattedLogs.length} log entries filtered by ${filterDescription} (showing ${offset + 1}-${offset + formattedLogs.length}${hasMore ? ', more available' : ''}). View all logs: ${logsLink}`
             };
         } catch (error: any) {
-            logger.error('Error querying PostHog logs', { error, filterKey, filterValue, projectId });
+            logger.error('Error querying PostHog logs', { error, userEmail: normalizedUserEmail, severityLevels: normalizedSeverityLevels, messageSearch: normalizedMessageSearch, projectId });
             throw new Error(`Failed to query PostHog logs: ${error.message || 'Unknown error'}`);
         }
     },
