@@ -20,7 +20,8 @@ import {
     ConfluenceConfig,
     PosthogConfig,
     ConfigType,
-    GitHubKBConfig
+    GitHubKBConfig,
+    TimeTriggerConfig
 } from "../shared/Configs";
 
 export const convertIntegrationTypeToPrismaIntegrationType = (integrationType: IntegrationType): PrismaIntegrationType => {
@@ -209,6 +210,13 @@ export const convertPrismaConfigToConfigInstance = (channelInput: ChannelInputWi
             channelInput.confluence_config.space_id || '',
             channelInput.confluence_config.page_id || '',
             channelInput.confluence_config.page_name || ''
+        );
+    }
+
+    if (channelInput.time_trigger_config) {
+        return new TimeTriggerConfig(
+            integrationId,
+            channelInput.time_trigger_config.cron_expression || ''
         );
     }
 
