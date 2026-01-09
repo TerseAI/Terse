@@ -184,7 +184,6 @@ export default function ChannelSetupTab({
 
     const triggersIncomplete =
         inputs.length === 0 || inputs.some((i) => !i.config || !i.config.isComplete());
-    console.log("Knowledge bases", { knowledgeBases });
     const knowledgeBaseIncomplete = knowledgeBases.some((kb) => !kb.config || !kb.config.isComplete());
     const promptIncomplete = !prompt?.text || prompt.text.trim() === '';
     const skillsIncomplete = !output || !output.config || !output.config.isComplete();
@@ -480,6 +479,8 @@ function Input({ input, inputs, setInputs, handleRemove }: { input: TransientCha
     const isPlaceholder = input.config === undefined;
     const needsConfiguration = !input.config || !input.config.isComplete();
     const [showDetailsDialog, setShowDetailsDialog] = useState(false);
+
+    console.log("input", input);
 
     const selectorProps: InputConfigSelectorProps = {
         input: input,
