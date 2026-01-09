@@ -10,9 +10,9 @@ import {
     JiraIcon,
     ConfluenceIcon,
     JiraConfluenceIcon,
-    TerseIcon,
     PosthogIcon,
 } from "@/components/icons/IntegrationIcons";
+import { ClockIcon } from "lucide-react";
 
 export function IconForConfigType({ type }: { type: ConfigType }) {
     switch (type) {
@@ -36,6 +36,8 @@ export function IconForConfigType({ type }: { type: ConfigType }) {
             return <ConfluenceIcon />;
         case ConfigType.POSTHOG:
             return <PosthogIcon />;
+        case ConfigType.TIME_TRIGGER:
+            return <ClockIcon />;
         default:
             // Exhaustive check: TypeScript will error if any IntegrationType case is missing
             throw type satisfies never;
@@ -59,7 +61,7 @@ export function IconForIntegration({ integration }: { integration: IntegrationTy
         case IntegrationType.ATLASSIAN:
             return <JiraConfluenceIcon />;
         case IntegrationType.TERSE:
-            return <TerseIcon />;
+            return <ClockIcon />;
         case IntegrationType.POSTHOG:
             return <PosthogIcon />
         default:
