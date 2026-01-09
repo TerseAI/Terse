@@ -144,19 +144,21 @@ export function NotionIntegration({
                         resourceType={isPageConfig ? 'page' : 'database'}
                         selectedResourceId={selectedResourceId}
                         selectedResourceName={selectedResourceName}
-                        onSelect={(resourceId: string, resourceName: string, resourceType: NotionResourceType) => {
+                        onSelect={(resourceId: string, resourceName: string, resourceType: NotionResourceType, resourceUrl: string) => {
                             if (resourceType === 'database') {
                                 const updatedConfig = new NotionConfig(
                                     selectedIntegrationId || '',
                                     resourceId,
-                                    resourceName
+                                    resourceName,
+                                    resourceUrl
                                 );
                                 setConfig(updatedConfig);
                             } else if (resourceType === 'page') {
                                 const updatedConfig = new NotionPageConfig(
                                     selectedIntegrationId || '',
                                     resourceId,
-                                    resourceName
+                                    resourceName,
+                                    resourceUrl
                                 );
                                 setConfig(updatedConfig);
                             }

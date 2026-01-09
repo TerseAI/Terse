@@ -12,11 +12,11 @@ import { Channel, ChannelInput, ChannelOutput, ChannelPrompt, TransientKnowledge
 import { AddInputModal } from "../components/AddInputModal";
 import { AddKnowledgeBaseModal } from "../components/AddKnowledgeBaseModal";
 import { KnowledgeBaseSelector } from "../components/KnowledgeBaseSelector";
-import { CONFIG_DETAILS, ConfigInstance, ConfigType } from "../../../shared/Configs";
+import { CONFIG_DETAILS, ConfigInstance, ConfigType, NotionConfig, NotionPageConfig } from "../../../shared/Configs";
 import { v4 as uuidv4 } from 'uuid';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../../../components/ui/dialog";
 import { InputConfigSelectorProps, IntegrationSelector } from "../../../components/IntegrationSelector";
-import { AlertTriangleIcon, PlusIcon, XIcon, Zap, FileText, Wrench, Bell, Info, Database } from "lucide-react";
+import { AlertTriangleIcon, PlusIcon, XIcon, Zap, FileText, Wrench, Bell, Info, Database, ExternalLink } from "lucide-react";
 import { cn } from "../../../lib/utils";
 import { OutputToolSetPicker } from "../components/OutputToolSetPicker";
 import { Badge } from "../../../components/ui/badge";
@@ -558,6 +558,18 @@ function Input({ input, inputs, setInputs, handleRemove }: { input: TransientCha
     )
 }
 
+function getOutputUrl(output: TransientChannelOutput | undefined): string | undefined {
+    if (!output?.config) return undefined;
+
+    if (output.configType === ConfigType.NOTION_DATABASE) {
+        return (output.config as NotionConfig).databaseUrl;
+    } else if (output.configType === ConfigType.NOTION_PAGE) {
+        return (output.config as NotionPageConfig).pageUrl;
+    }
+
+    return undefined;
+}
+
 function OutputLayout({ output, setOutput, isIncomplete }: { output: TransientChannelOutput | undefined, setOutput: (output: TransientChannelOutput | undefined) => void, isIncomplete: boolean }) {
     const handleSelectPlatform = (configType: ConfigType) => {
         // Clear all configs when switching platform (new integration type)
@@ -574,6 +586,7 @@ function OutputLayout({ output, setOutput, isIncomplete }: { output: TransientCh
     };
 
     const needsConfiguration = !output || !output.config || !output.config.isComplete();
+    const outputUrl = getOutputUrl(output);
 
     let cardContent;
     if (!output) {
@@ -600,6 +613,17 @@ function OutputLayout({ output, setOutput, isIncomplete }: { output: TransientCh
                     />
                 </div>
                 <div className="flex items-center gap-2">
+                    {outputUrl && (
+                        <a
+                            href={outputUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+                        >
+                            <ExternalLink className="h-4 w-4" />
+                            <span>Open in Notion</span>
+                        </a>
+                    )}
                     {needsConfiguration && (
                         <Badge variant="outline" className="border-yellow-500 text-yellow-600 dark:text-yellow-500">
                             Needs Configuration
