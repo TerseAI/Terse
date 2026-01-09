@@ -12,7 +12,7 @@ interface NotionResourceSelectorProps {
     selectedResourceId?: string;
     selectedResourceName?: string;
     resourceType: NotionResourceType;
-    onSelect: (resourceId: string, resourceName: string, resourceType: NotionResourceType, resourceUrl: string) => void;
+    onSelect: (resourceId: string, resourceName: string, resourceType: NotionResourceType) => void;
 }
 
 export function NotionResourceSelector({
@@ -46,7 +46,7 @@ export function NotionResourceSelector({
     } = useNotionResources(integrationId, debouncedSearch, resourceType);
 
     const handleSelect = useCallback((resource: NotionResource) => {
-        onSelect(resource.id, resource.title, resource.type, resource.url);
+        onSelect(resource.id, resource.title, resource.type);
         setOpen(false);
         setSearchInput("");
     }, [onSelect]);

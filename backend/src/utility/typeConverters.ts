@@ -167,8 +167,7 @@ export const convertPrismaConfigToConfigInstance = (channelInput: ChannelInputWi
         return new NotionPageConfig(
             integrationId,
             channelInput.notion_page_config.page_id || undefined,
-            channelInput.notion_page_config.page_name || undefined,
-            channelInput.notion_page_config.page_url || undefined
+            channelInput.notion_page_config.page_name || undefined
         );
     }
 
@@ -176,8 +175,7 @@ export const convertPrismaConfigToConfigInstance = (channelInput: ChannelInputWi
         return new NotionConfig(
             integrationId,
             channelInput.notion_config.database_id || undefined,
-            channelInput.notion_config.database_name || undefined,
-            channelInput.notion_config.database_url || undefined
+            channelInput.notion_config.database_name || undefined
         );
     }
 
@@ -247,8 +245,7 @@ export const convertPrismaOutputConfigToConfigInstance = (channelOutput: Channel
         return new NotionPageConfig(
             integrationId,
             channelOutput.notion_page_config.page_id || undefined,
-            channelOutput.notion_page_config.page_name || undefined,
-            channelOutput.notion_page_config.page_url || undefined
+            channelOutput.notion_page_config.page_name || undefined
         );
     }
 
@@ -256,8 +253,7 @@ export const convertPrismaOutputConfigToConfigInstance = (channelOutput: Channel
         return new NotionConfig(
             integrationId,
             channelOutput.notion_config.database_id || undefined,
-            channelOutput.notion_config.database_name || undefined,
-            channelOutput.notion_config.database_url || undefined
+            channelOutput.notion_config.database_name || undefined
         );
     }
 

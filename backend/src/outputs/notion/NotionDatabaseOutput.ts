@@ -58,7 +58,6 @@ export class NotionDatabaseOutput extends Output<NotionDatabaseSession, NotionCo
                 automation_output_id: channelOutputId,
                 database_id: output.databaseId || '',
                 database_name: output.databaseName || '',
-                database_url: output.databaseUrl || null,
             },
         });
     }

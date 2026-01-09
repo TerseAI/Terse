@@ -253,7 +253,6 @@ export class NotionConfig implements ConfigInstance {
         public integrationId: string,
         public databaseId?: string,
         public databaseName?: string,
-        public databaseUrl?: string,
     ) {
     }
 
@@ -281,7 +280,6 @@ export class NotionPageConfig implements ConfigInstance {
         public integrationId: string,
         public pageId?: string,
         public pageName?: string,
-        public pageUrl?: string,
     ) {
     }
 
