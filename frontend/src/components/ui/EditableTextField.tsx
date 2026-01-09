@@ -66,7 +66,7 @@ function EditableText({ value, onSave, onChange, className = "", placeholder = "
             ) : (
                 <div
                     onClick={handleClick}
-                    className="text-4xl w-full box-border text-foreground border border-transparent hover:border-accent hover:cursor-pointer rounded cursor-text min-h-[40px] flex items-center gap-2"
+                    className="text-3xl w-full box-border text-foreground border border-transparent hover:border-accent hover:cursor-pointer rounded cursor-text min-h-[40px] flex items-center gap-2"
                 >
                     <span className="leading-tight">
                         {value || <span className="text-muted-foreground">{placeholder}</span>}
