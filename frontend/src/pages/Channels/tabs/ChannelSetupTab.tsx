@@ -184,7 +184,6 @@ export default function ChannelSetupTab({
 
     const triggersIncomplete =
         inputs.length === 0 || inputs.some((i) => !i.config || !i.config.isComplete());
-    console.log("Knowledge bases", { knowledgeBases });
     const knowledgeBaseIncomplete = knowledgeBases.some((kb) => !kb.config || !kb.config.isComplete());
     const promptIncomplete = !prompt?.text || prompt.text.trim() === '';
     const skillsIncomplete = !output || !output.config || !output.config.isComplete();
@@ -481,6 +480,8 @@ function Input({ input, inputs, setInputs, handleRemove }: { input: TransientCha
     const needsConfiguration = !input.config || !input.config.isComplete();
     const [showDetailsDialog, setShowDetailsDialog] = useState(false);
 
+    console.log("input", input);
+
     const selectorProps: InputConfigSelectorProps = {
         input: input,
         setConfig: (config: ConfigInstance) => setInputs(inputs.map(i => i.id === input.id ? { ...i, config, configType: config.configType } : i)),
@@ -504,12 +505,12 @@ function Input({ input, inputs, setInputs, handleRemove }: { input: TransientCha
                 </div>
 
                 <div className="flex-1 flex items-center justify-center">
-                    <div className="w-16 h-16">
+                    <div className="size-16">
                         <IconForConfigType type={input.configType} />
                     </div>
                 </div>
 
-                <Badge variant="outline" className="mt-auto self-center max-w-full px-3 py-1 border-yellow-500 text-yellow-600 dark:text-yellow-500">
+                <Badge variant="outline" className="mt-auto self-center max-w-full px-3 py-1 border-yellow-500 text-yellow-600 dark:text-yellow-500 whitespace-normal text-center">
                     <IntegrationSelector {...selectorProps} variant="card" />
                 </Badge>
             </div>
@@ -535,7 +536,7 @@ function Input({ input, inputs, setInputs, handleRemove }: { input: TransientCha
                     </div>
                 </div>
 
-                <Badge variant="outline" className="mt-auto self-center max-w-full px-3 py-1">
+                <Badge variant="outline" className="mt-auto self-center max-w-full px-3 py-1 whitespace-normal text-center">
                     <IntegrationSelector {...selectorProps} variant="card" />
                 </Badge>
             </div>

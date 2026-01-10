@@ -1,4 +1,5 @@
-import { ConfigInstance, ConfigType, GmailConfig, FigmaConfig, SlackConfig, NotionConfig, NotionPageConfig, LinearInputConfig, LinearOutputConfig, GitHubConfig, JiraConfig, ConfluenceConfig, PosthogConfig, GitHubKBConfig } from '@/shared/Configs';
+import { ConfigInstance, ConfigType, GmailConfig, FigmaConfig, SlackConfig, NotionConfig, NotionPageConfig, LinearInputConfig, LinearOutputConfig, GitHubConfig, JiraConfig, ConfluenceConfig, PosthogConfig, TimeTriggerConfig, GitHubKBConfig } from '@/shared/Configs';
+
 
 /**
  * Converts a plain JSON config object (from backend) back into a ConfigInstance class.
@@ -97,6 +98,10 @@ export function deserializeConfig(jsonConfig: any): ConfigInstance {
                 jsonConfig.projectName || undefined,
                 jsonConfig.canReadLogs ?? false,
                 jsonConfig.canReadSessionRecordings ?? false
+            );
+        case ConfigType.TIME_TRIGGER:
+            return new TimeTriggerConfig(
+                jsonConfig.cronExpression || ''
             );
         case ConfigType.GITHUB_KB:
             return new GitHubKBConfig(

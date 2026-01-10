@@ -1,7 +1,7 @@
 import { CloudSchedulerClient } from '@google-cloud/scheduler';
 import type { protos } from '@google-cloud/scheduler';
 import logger from '../logger';
-import { gcp } from '../config/settings';
+import { gcp, cloudScheduler } from '../config/settings';
 
 type Job = protos.google.cloud.scheduler.v1.IJob;
 type CreateJobRequest = protos.google.cloud.scheduler.v1.ICreateJobRequest;
@@ -123,6 +123,10 @@ export class SchedulerClient {
         httpTarget: {
           uri: url,
           httpMethod: 'POST',
+          headers: {
+            'Authorization': `Bearer ${cloudScheduler.secret}`,
+            'Content-Type': 'application/json',
+          },
         },
       };
 
@@ -163,7 +167,7 @@ export class SchedulerClient {
     }
   }
 
-  async get(jobId: string): Promise<ScheduledJob> {
+  async get(jobId: string): Promise<ScheduledJob | undefined> {
     try {
       const request: GetJobRequest = {
         name: this.getJobPath(jobId),
@@ -171,10 +175,10 @@ export class SchedulerClient {
 
       const [response] = await this.client.getJob(request);
       logger.debug('Scheduler job retrieved', { jobId });
-      return this.transformJob(response);
+      return response ? this.transformJob(response) : undefined;
     } catch (error) {
-      logger.error('Failed to get scheduler job', { error, jobId });
-      throw error;
+      logger.error('Unable to get scheduler job', { jobId });
+      return undefined;
     }
   }
 
