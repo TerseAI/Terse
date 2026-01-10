@@ -152,7 +152,7 @@ export function ScheduleEditor({
             </Select>
           </div>
 
-          <span className="text-xs text-muted-foreground/70">UTC</span>
+          <span className="text-xs text-muted-foreground/70">{getLocalTimezoneAbbreviation()}</span>
         </div>
       )}
 
@@ -180,7 +180,6 @@ export function ScheduleEditor({
                     day: "numeric",
                     hour: "numeric",
                     minute: "2-digit",
-                    timeZone: "UTC",
                   })}
                 </span>
               ))}
@@ -269,6 +268,39 @@ function getOrdinalSuffix(n: number): string {
   return s[(v - 20) % 10] || s[v] || s[0];
 }
 
+// Timezone conversion utilities
+function getTimezoneOffsetHours(): number {
+  // getTimezoneOffset returns minutes, negative for ahead of UTC
+  // e.g., UTC-5 (EST) returns 300, UTC+2 returns -120
+  return -new Date().getTimezoneOffset() / 60;
+}
+
+function utcHourToLocal(utcHour: number): number {
+  const offset = getTimezoneOffsetHours();
+  let localHour = utcHour + offset;
+  // Wrap around for timezone differences
+  if (localHour < 0) localHour += 24;
+  if (localHour >= 24) localHour -= 24;
+  return localHour;
+}
+
+function localHourToUtc(localHour: number): number {
+  const offset = getTimezoneOffsetHours();
+  let utcHour = localHour - offset;
+  // Wrap around for timezone differences
+  if (utcHour < 0) utcHour += 24;
+  if (utcHour >= 24) utcHour -= 24;
+  return utcHour;
+}
+
+function getLocalTimezoneAbbreviation(): string {
+  // Get timezone abbreviation (e.g., "EST", "PST", "UTC")
+  const formatter = new Intl.DateTimeFormat('en-US', { timeZoneName: 'short' });
+  const parts = formatter.formatToParts(new Date());
+  const tzPart = parts.find(part => part.type === 'timeZoneName');
+  return tzPart?.value || 'Local';
+}
+
 function parseCronToState(cron: string): {
   frequency: Frequency | null;
   hour: string;
@@ -276,6 +308,7 @@ function parseCronToState(cron: string): {
   daysOfWeek: string[];
   dayOfMonth: string;
 } {
+  // Default hour is 9 AM local time
   const emptyState = {
     frequency: null as Frequency | null,
     hour: "9",
@@ -294,7 +327,9 @@ function parseCronToState(cron: string): {
 
     const result = { ...emptyState };
     result.minute = minute === "*" ? "0" : minute;
-    result.hour = hour === "*" ? "9" : hour;
+    // Convert UTC hour from cron to local hour for display
+    const utcHour = hour === "*" ? 9 : parseInt(hour);
+    result.hour = String(utcHourToLocal(utcHour));
 
     if (dayOfWeek !== "*" && dayOfWeek !== "?") {
       result.frequency = "weekly";
@@ -320,15 +355,18 @@ function buildCron(
   daysOfWeek: string[],
   dayOfMonth: string
 ): string {
+  // Convert local hour to UTC for storage
+  const utcHour = localHourToUtc(parseInt(hour));
+
   switch (frequency) {
     case "daily":
-      return `${minute} ${hour} * * *`;
+      return `${minute} ${utcHour} * * *`;
     case "weekly":
       // Sort days and join with commas
       const sortedDays = [...daysOfWeek].sort((a, b) => parseInt(a) - parseInt(b));
-      return `${minute} ${hour} * * ${sortedDays.join(",")}`;
+      return `${minute} ${utcHour} * * ${sortedDays.join(",")}`;
     case "monthly":
-      return `${minute} ${hour} ${dayOfMonth} * *`;
+      return `${minute} ${utcHour} ${dayOfMonth} * *`;
   }
 }
 
