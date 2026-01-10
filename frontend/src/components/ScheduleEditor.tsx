@@ -139,7 +139,7 @@ export function ScheduleEditor({
             </Select>
 
             <Select value={minute} onValueChange={setMinute}>
-              <SelectTrigger className="w-[70px]">
+              <SelectTrigger className="w-[71px]">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
