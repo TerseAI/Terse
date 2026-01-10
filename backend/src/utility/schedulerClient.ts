@@ -163,7 +163,7 @@ export class SchedulerClient {
     }
   }
 
-  async get(jobId: string): Promise<ScheduledJob> {
+  async get(jobId: string): Promise<ScheduledJob | undefined> {
     try {
       const request: GetJobRequest = {
         name: this.getJobPath(jobId),
@@ -171,10 +171,10 @@ export class SchedulerClient {
 
       const [response] = await this.client.getJob(request);
       logger.debug('Scheduler job retrieved', { jobId });
-      return this.transformJob(response);
+      return response ? this.transformJob(response) : undefined;
     } catch (error) {
-      logger.error('Failed to get scheduler job', { error, jobId });
-      throw error;
+      logger.error('Unable to get scheduler job', { jobId });
+      return undefined;
     }
   }
 
