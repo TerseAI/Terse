@@ -6,8 +6,7 @@ import { AtlassianIntegrationManager } from "../integrations/AtlassianIntegratio
 export class ScheduleInput implements Input<TimeTriggerConfig> {
     configType: ConfigType = ConfigType.TIME_TRIGGER;
 
-    constructor() {
-    }
+    constructor() {}
 
     async addInputToChannel(tx: PrismaTransaction, automationInputId: string, input: TimeTriggerConfig): Promise<void> {
         await tx.automation_time_trigger_configs.create({
