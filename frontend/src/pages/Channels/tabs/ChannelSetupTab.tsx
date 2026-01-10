@@ -630,7 +630,6 @@ function OutputLayout({ output, setOutput, isIncomplete }: { output: TransientCh
                             className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
                         >
                             <ExternalLink className="h-4 w-4" />
-                            <span>Open in Notion</span>
                         </a>
                     )}
                     {needsConfiguration && (
