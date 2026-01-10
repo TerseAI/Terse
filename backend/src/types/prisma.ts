@@ -105,6 +105,7 @@ export type AutomationInputWithConfigs = Prisma.automation_inputsGetPayload<{
     github_config: true;
     gmail_config: true;
     figma_config: true;
+    time_trigger_config: true;
   };
 }>;
 export type ChannelInputWithConfigs = AutomationInputWithConfigs; // Alias for rebranding
@@ -168,6 +169,7 @@ export type AutomationWithInputRelations = Prisma.automationsGetPayload<{
         github_config: true;
         gmail_config: true;
         figma_config: true;
+        time_trigger_config: true;
       }
     };
   }
@@ -212,6 +214,7 @@ export type AutomationWithKnowledgeBaseRelations = Prisma.automationsGetPayload<
     knowledge_bases: {
       include: {
         posthog_config: true;
+        github_kb_config: true;
       };
     };
   };

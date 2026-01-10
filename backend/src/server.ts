@@ -91,6 +91,7 @@ import {
 import { setupSlackBolt } from "./slack/boltApp";
 import logger from "./logger";
 import { getPosthogIntegrations, createOrUpdatePosthogIntegration, getPosthogProjects } from "./routes/posthog";
+import { handleScheduleWebhook } from "./routes/schedule";
 import { getTemplates } from "./routes/templates";
 
 export type Session = {
@@ -406,6 +407,11 @@ app.get("/linear/teams", authMiddleware, async (req, res) => {
 app.post("/webhooks/jira/:accountId", async (req, res) => {
   // Use the new webhook handler which verifies authenticity and processes the event
   handleJiraWebhook(req, res);
+});
+
+// MARK: SCHEDULE (Cloud Scheduler)
+app.post("/webhooks/schedule/:inputId", async (req, res) => {
+  handleScheduleWebhook(req, res);
 });
 
 // MARK: SLACK

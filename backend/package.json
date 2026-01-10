@@ -50,6 +50,8 @@
     "confluence.js": "^2.1.0",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
+    "cron-parser": "^5.4.0",
+    "cronstrue": "^3.9.0",
     "dotenv": "^17.0.1",
     "express": "^5.1.0",
     "fflate": "^0.8.2",
