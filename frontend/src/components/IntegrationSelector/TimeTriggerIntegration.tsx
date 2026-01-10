@@ -28,7 +28,7 @@ export function TimeTriggerIntegration({ input, variant, setConfig }: InputConfi
         <ScheduleEditor
             value={existingConfig?.cronExpression ?? ""}
             onChange={(cronExpression) =>
-                setConfig(new TimeTriggerConfig(input.id, cronExpression))
+                setConfig(new TimeTriggerConfig(cronExpression))
             }
         />
     );
