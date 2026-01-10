@@ -8,7 +8,7 @@ import { convertConfigTypeToInputConfigType, convertConfigTypeToOutputConfigType
 import { ConfigInstance, PosthogConfig, ConfigType } from "../shared/Configs";
 import { getInputConfigInclude, getOutputConfigInclude, getKnowledgeBaseConfigInclude } from "../utility/prismaIncludes";
 import { INPUT_REGISTRY } from "../inputs/InputRegistry";
-import { INTEGRATION_REGISTRY } from "../integrations/abstract/IntegrationRegistry";
+import { INTEGRATION_REGISTRY, isSystemIntegration } from "../integrations/abstract/IntegrationRegistry";
 import { OutputFactory } from "../outputs/abstract/OutputFactory";
 import { emitCacheInvalidationWithKey } from "../realtimeSocket";
 import logger from "../logger";
@@ -52,8 +52,8 @@ async function createKnowledgeBaseConfig(
 }
 
 async function validateUserOwnsIntegration(userId: string, integrationType: IntegrationType, integrationId: string): Promise<boolean> {
-    // Edge case, Terse is a special integration that is not owned by a user.
-    if (integrationType === IntegrationType.TERSE) {
+    // System integrations are not owned by a user
+    if (isSystemIntegration(integrationType)) {
         return true;
     }
     const integration = INTEGRATION_REGISTRY.find(integration => integration.integrationType === integrationType);
@@ -328,13 +328,13 @@ export async function createChannel(req: Request, res: Response) {
                     throw new Error(`Unknown integration type: ${input.config.integrationType}`);
                 }
 
-                // Validate that user owns the integration
+                // Validate that user owns the integration (system integrations skip validation)
                 const integrationId = input.config.integrationId;
-                if (!integrationId) {
+                if (!integrationId && !isSystemIntegration(integrationType)) {
                     throw new Error(`Integration ID is required for ${input.config.integrationType}`);
                 }
 
-                const isOwner = await validateUserOwnsIntegration(userId, integrationType, integrationId);
+                const isOwner = await validateUserOwnsIntegration(userId, integrationType, integrationId || 'system');
                 if (!isOwner) {
                     throw new Error(`Integration ${input.config.integrationType} not found or not owned by user`);
                 }
@@ -343,7 +343,8 @@ export async function createChannel(req: Request, res: Response) {
                     data: {
                         automation_id: newChannel.id,
                         config_type: convertConfigTypeToInputConfigType(input.config.configType),
-                        integration_id: integrationId
+                        // System integrations use 'system' as a sentinel integration ID
+                        integration_id: integrationId || 'system'
                     }
                 });
 
@@ -513,13 +514,13 @@ export async function updateChannel(req: Request, res: Response) {
                         throw new Error(`Unknown integration type: ${input.config.integrationType}`);
                     }
 
-                    // Validate that user owns the integration
+                    // Validate that user owns the integration (system integrations skip validation)
                     const integrationId = input.config.integrationId;
-                    if (!integrationId) {
+                    if (!integrationId && !isSystemIntegration(integrationType)) {
                         throw new Error(`Integration ID is required for ${input.config.integrationType}`);
                     }
 
-                    const isOwner = await validateUserOwnsIntegration(userId, integrationType, integrationId);
+                    const isOwner = await validateUserOwnsIntegration(userId, integrationType, integrationId || 'system');
                     if (!isOwner) {
                         throw new Error(`Integration ${input.config.integrationType} not found or not owned by user`);
                     }
@@ -528,7 +529,8 @@ export async function updateChannel(req: Request, res: Response) {
                         data: {
                             automation_id: channelId,
                             config_type: convertConfigTypeToInputConfigType(input.config.configType),
-                            integration_id: integrationId
+                            // System integrations use 'system' as a sentinel integration ID
+                            integration_id: integrationId || 'system'
                         }
                     });
 

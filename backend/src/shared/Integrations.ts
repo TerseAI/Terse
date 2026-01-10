@@ -9,6 +9,7 @@ export enum IntegrationType {
     FIGMA = 'figma',
     TERSE = 'terse',
     POSTHOG = 'posthog',
+    CRON_JOB = 'cron_job',
 }
 
 // MARK: Integration Metadata
@@ -103,6 +104,15 @@ export const PosthogIntegrationMetadata = {
     isKnowledgeBase: true,
 } as const satisfies IntegrationDetails;
 
+export const CronJobIntegrationMetadata = {
+    type: IntegrationType.CRON_JOB,
+    name: 'Scheduled Jobs',
+    description: 'System integration for time-based triggers',
+    isInput: true,
+    isOutput: false,
+    isKnowledgeBase: false,
+} as const satisfies IntegrationDetails;
+
 export type IntegrationMetadataMap = Record<IntegrationType, IntegrationDetails>; // Allow indexing with any IntegrationType
 
 export const INTEGRATION_METADATA: IntegrationMetadataMap = {
@@ -115,6 +125,7 @@ export const INTEGRATION_METADATA: IntegrationMetadataMap = {
     [IntegrationType.FIGMA]: FigmaIntegrationMetadata,
     [IntegrationType.TERSE]: TerseIntegrationMetadata,
     [IntegrationType.POSTHOG]: PosthogIntegrationMetadata,
+    [IntegrationType.CRON_JOB]: CronJobIntegrationMetadata,
 } as const satisfies IntegrationMetadataMap;
 
 // MARK: Integration Details
@@ -141,6 +152,7 @@ export type IntegrationInstallationOptions = EnsureExhaustiveInstallationOptions
     [IntegrationType.FIGMA]: NoInstallationOptions;
     [IntegrationType.TERSE]: NoInstallationOptions;
     [IntegrationType.POSTHOG]: NoInstallationOptions;
+    [IntegrationType.CRON_JOB]: NoInstallationOptions;
 }> 
 
 export type InstallationOptionsFor<T extends IntegrationType> = IntegrationInstallationOptions[T];
