@@ -121,6 +121,13 @@ export const settings = {
     region: optionalEnv('TURBOPUFFER_REGION', 'aws-us-west-2'),
   },
   
+  // Google Cloud Platform (GCP)
+  gcp: {
+    serviceAccountBase64: optionalEnv('GCP_SERVICE_ACCOUNT_BASE64'),
+    projectId: optionalEnv('GCP_PROJECT_ID'),
+    region: optionalEnv('GCP_REGION', 'us-central1'),
+  },
+  
   // Cloud Scheduler (for cron jobs)
   cloudScheduler: {
     secret: requireEnv('CLOUD_SCHEDULER_SECRET'),
@@ -154,6 +161,7 @@ export const {
   notion,
   figma,
   slack,
+  gcp,
   cloudScheduler,
   optional,
 } = settings;
