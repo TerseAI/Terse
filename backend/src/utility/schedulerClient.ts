@@ -148,15 +148,14 @@ export class SchedulerClient {
         pageToken: pageToken,
       };
 
-      const [response] = await this.client.listJobs(request);
-      const listResponse = response as ListJobsResponse;
-      logger.debug('Scheduler jobs listed', { count: listResponse.jobs?.length || 0 });
+      const [jobs, , listResponse] = await this.client.listJobs(request);
+      logger.debug('Scheduler jobs listed', { count: jobs?.length || 0 });
       
-      const jobs = (listResponse.jobs || []).map(job => this.transformJob(job));
+      const transformedJobs = (jobs || []).map(job => this.transformJob(job));
       
       return {
-        jobs,
-        nextPageToken: listResponse.nextPageToken || undefined,
+        jobs: transformedJobs,
+        nextPageToken: listResponse?.nextPageToken || undefined,
       };
     } catch (error) {
       logger.error('Failed to list scheduler jobs', { error });
