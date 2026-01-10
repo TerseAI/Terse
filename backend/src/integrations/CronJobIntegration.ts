@@ -13,6 +13,9 @@ import { InputConfigType } from "@prisma/client";
 
 export interface ScheduleWebhookEvent {
     inputId: string;
+    isManualTrigger?: boolean;
+    manualContext?: string;
+    promptModifications?: string;
 }
 
 export class CronJobIntegrationManager implements
@@ -39,9 +42,14 @@ export class CronJobIntegrationManager implements
     }
 
     async processWebhookEvent(event: ScheduleWebhookEvent): Promise<void> {
-        const { inputId } = event;
+        const { inputId, isManualTrigger, manualContext, promptModifications } = event;
 
-        logger.info("⏰ Processing schedule trigger", { inputId });
+        logger.info(isManualTrigger ? "🖱️ Processing manual trigger" : "⏰ Processing schedule trigger", {
+            inputId,
+            isManualTrigger,
+            hasManualContext: !!manualContext,
+            hasPromptModifications: !!promptModifications
+        });
 
         const channelInput = await db().automation_inputs.findUnique({
             where: { id: inputId },
@@ -84,11 +92,12 @@ export class CronJobIntegrationManager implements
             return;
         }
 
-        logger.info("✅ Schedule trigger processed", {
+        logger.info(isManualTrigger ? "✅ Manual trigger processed" : "✅ Schedule trigger processed", {
             inputId,
             channelId: channel.id,
             channelName: channel.name,
             cronExpression: channelInput.time_trigger_config.cron_expression,
+            isManualTrigger,
         });
 
         // Process with user context for logging
@@ -196,11 +205,27 @@ export class CronJobEvent extends InputEvent {
     }
 
     formatForChannelAgent(): string {
+        const { isManualTrigger, manualContext, promptModifications } = this.data;
+
+        if (isManualTrigger) {
+            let message = `This is a manually triggered event for the channel input ${this.data.inputId}.`;
+
+            if (manualContext) {
+                message += `\n\nUser provided context for this manual trigger:\n${manualContext}`;
+            }
+
+            if (promptModifications) {
+                message += `\n\nUser requested prompt modifications for this run:\n${promptModifications}`;
+            }
+
+            return message;
+        }
+
         return `This is a scheduled event for the channel input ${this.data.inputId}. The channel input is configured to run at the following cron expression.`;
     }
 
     debugLog(): string {
-        return `Scheduled Event`;
+        return this.data.isManualTrigger ? `Manual Trigger` : `Scheduled Event`;
     }
 
     matchesChannelInput(channelInput: ChannelInputWithConfigs): boolean {
@@ -212,12 +237,14 @@ export class CronJobEvent extends InputEvent {
     }
 
     createTriggerMetadata(): RunHistoryTrigger {
+        const { isManualTrigger } = this.data;
+
         return {
-            event: 'scheduled_event',
+            event: isManualTrigger ? 'manual_trigger' : 'scheduled_event',
             integration: IntegrationType.CRON_JOB,
-            source: "Scheduled Job",
-            title: "Scheduled Job",
-            subheader: "Scheduled Job",
+            source: isManualTrigger ? "Manual Trigger" : "Scheduled Job",
+            title: isManualTrigger ? "Manual Trigger" : "Scheduled Job",
+            subheader: isManualTrigger ? "Triggered manually by user" : "Scheduled Job",
             url: `https://terse.ai/channels/${this.data.inputId}`,
         };
     }

@@ -327,6 +327,14 @@ interface BackendService {
      * Gets all available channel templates
      */
     getTemplates(): Promise<ChannelTemplate[]>;
+
+    /**
+     * Manually triggers a scheduled automation input
+     * @param inputId - The ID of the time trigger input to trigger
+     * @param context - Optional context explaining why the trigger is being run manually
+     * @param promptModifications - Optional modifications to the prompt for this specific run
+     */
+    triggerManually(inputId: string, context?: string, promptModifications?: string): Promise<{ received: boolean; message: string }>;
 }
 
 export const BackendProvider: BackendService = {
@@ -918,6 +926,19 @@ export const BackendProvider: BackendService = {
             .then(response => response.data)
             .catch(error => {
                 console.error('Error getting templates:', error);
+                throw error;
+            });
+    },
+
+    triggerManually: (inputId: string, context?: string, promptModifications?: string) => {
+        return axios.post<{ received: boolean; message: string }>(
+            `${backendBaseUrl}/schedule/trigger/${encodeURIComponent(inputId)}`,
+            { context, promptModifications },
+            { withCredentials: true }
+        )
+            .then(response => response.data)
+            .catch(error => {
+                console.error('Error triggering manually:', error);
                 throw error;
             });
     },
