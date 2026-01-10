@@ -62,6 +62,7 @@ export function IconForIntegration({ integration }: { integration: IntegrationTy
         case IntegrationType.ATLASSIAN:
             return <JiraConfluenceIcon />;
         case IntegrationType.TERSE:
+        case IntegrationType.CRON_JOB:
             return <ClockIcon />;
         case IntegrationType.POSTHOG:
             return <PosthogIcon />

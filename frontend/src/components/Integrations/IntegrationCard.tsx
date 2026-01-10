@@ -43,6 +43,7 @@ function IntegrationCard({ integration, isActive = true }: { integration: Integr
                 <FigmaIntegrationCard className={cardClassName} isActive={isActive} />
             );
         case IntegrationType.TERSE:
+        case IntegrationType.CRON_JOB:
             return null
         case IntegrationType.POSTHOG:
             return (
