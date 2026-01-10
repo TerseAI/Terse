@@ -2,12 +2,15 @@ import { FormIntegrationInstallation, Integration } from "./abstract/Integration
 import { CronJobIntegrationMetadata, IntegrationInstance, IntegrationType } from "../shared/Integrations";
 import { ChannelInputWithConfigs } from "../types/prisma";
 import { Request, Response } from "express";
-import logger from "../logger";
+import logger, { runWithUserContext } from "../logger";
 import { createSchedulerClient, SchedulerClient } from "../utility/schedulerClient";
 import { settings } from "../config/settings";
 import { db } from "../prismaClient";
+import { EventProcessor } from "../agent/ChannelAgent/EventProcessor";
+import { InputEvent } from "./abstract/InputEvent";
+import { RunHistoryTrigger } from "../shared/RunHistoryTypes";
+import { InputConfigType } from "@prisma/client";
 
-// Event type for schedule webhook
 export interface ScheduleWebhookEvent {
     inputId: string;
 }
@@ -48,7 +51,6 @@ export class CronJobIntegrationManager implements
                 time_trigger_config: true,
             },
         });
-
         if (!channelInput) {
             logger.warn("⚠️  Schedule trigger: channel input not found", { inputId });
             return;
@@ -74,11 +76,27 @@ export class CronJobIntegrationManager implements
             return;
         }
 
+        const user = await db().users.findUnique({
+            where: { id: channelInput.automation.user_id },
+        });
+
+        if (!user) {
+            logger.warn("⚠️  Schedule trigger: user not found", { inputId });
+            return;
+        }
+
         logger.info("✅ Schedule trigger processed", {
             inputId,
             channelId: channel.id,
             channelName: channel.name,
             cronExpression: channelInput.time_trigger_config.cron_expression,
+        });
+
+        // Process with user context for logging
+        await runWithUserContext(user.id, user.email, async () => {
+            const cronJobEvent = new CronJobEvent(event);
+            const eventProcessor = new EventProcessor(cronJobEvent, user);
+            await eventProcessor.process();
         });
     }
 
@@ -133,9 +151,6 @@ export class CronJobIntegrationManager implements
         }
     }
 
-    /**
-     * Deletes the Cloud Scheduler job when a TIME_TRIGGER input is removed from a channel.
-     */
     async teardownChannelInput(_integrationId: string, channelInput: ChannelInputWithConfigs): Promise<void> {
         if (!channelInput.time_trigger_config) {
             return;
@@ -168,5 +183,47 @@ export class CronJobIntegrationManager implements
     private getWebhookUrl(inputId: string): string {
         const baseUrl = settings.urls.backend;
         return `${baseUrl}/webhooks/schedule/${inputId}`;
+    }
+}
+
+
+export class CronJobEvent extends InputEvent {
+    readonly integrationType: IntegrationType = IntegrationType.CRON_JOB;
+    data: ScheduleWebhookEvent;
+
+    constructor(data: ScheduleWebhookEvent) {
+        super();
+        this.data = data;
+    }
+
+    formatForChannelAgent(): string {
+        return `This is a scheduled event for the channel input ${this.data.inputId}. The channel input is configured to run at the following cron expression.`;
+    }
+
+    debugLog(): string {
+        return `Scheduled Event`;
+    }
+
+    matchesChannelInput(channelInput: ChannelInputWithConfigs): boolean {
+        if (channelInput.config_type !== InputConfigType.TIME_TRIGGER) {
+            return false;
+        }
+
+        return true;
+    }
+
+    createTriggerMetadata(): RunHistoryTrigger {
+        return {
+            event: 'scheduled_event',
+            integration: IntegrationType.CRON_JOB,
+            source: "Scheduled Job",
+            title: "Scheduled Job",
+            subheader: "Scheduled Job",
+            url: `https://terse.ai/channels/${this.data.inputId}`,
+        };
+    }
+
+    getImageUrls(): string[] {
+        return [];
     }
 }
