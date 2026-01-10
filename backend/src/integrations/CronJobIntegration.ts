@@ -15,14 +15,13 @@ export interface ScheduleWebhookEvent {
     inputId: string;
 }
 
-export class CronJobIntegrationManager implements 
-    Integration<IntegrationInstance, ScheduleWebhookEvent, typeof CronJobIntegrationMetadata>, 
-    FormIntegrationInstallation<IntegrationType.CRON_JOB> 
-{
+export class CronJobIntegrationManager implements
+    Integration<IntegrationInstance, ScheduleWebhookEvent, typeof CronJobIntegrationMetadata>,
+    FormIntegrationInstallation<IntegrationType.CRON_JOB> {
     integrationType: IntegrationType = IntegrationType.CRON_JOB;
     private schedulerClient: SchedulerClient | null = null;
 
-    constructor() {}
+    constructor() { }
 
     private getSchedulerClient(): SchedulerClient {
         if (!this.schedulerClient) {
@@ -68,10 +67,10 @@ export class CronJobIntegrationManager implements
         }
 
         if (!channel.is_active) {
-            logger.info("ℹ️  Schedule triggered but channel is inactive", { 
-                inputId, 
+            logger.info("ℹ️  Schedule triggered but channel is inactive", {
+                inputId,
                 channelId: channel.id,
-                channelName: channel.name 
+                channelName: channel.name
             });
             return;
         }
@@ -134,7 +133,7 @@ export class CronJobIntegrationManager implements
             }
 
             const job = await scheduler.create(jobId, cronExpression, webhookUrl);
-            
+
             logger.info("✅ Created Cloud Scheduler job for time trigger", {
                 inputId: channelInput.id,
                 jobId: job.id,
@@ -165,7 +164,7 @@ export class CronJobIntegrationManager implements
         }
 
         await scheduler.delete(jobId);
-        
+
         logger.info("✅ Deleted Cloud Scheduler job for time trigger", {
             inputId: channelInput.id,
             jobId,

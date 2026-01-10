@@ -460,12 +460,15 @@ export async function updateChannel(req: Request, res: Response) {
 
     try {
         const prisma = db();
-
-        // Check if channel exists and belongs to user
-        const existingChannel = await prisma.automations.findFirst({
+        const existingChannel: ChannelWithInputRelations | null = await prisma.automations.findFirst({
             where: {
                 id: channelId,
                 user_id: userId
+            },
+            include: {
+                inputs: {
+                    include: getInputConfigInclude()
+                },
             }
         });
 
@@ -506,6 +509,9 @@ export async function updateChannel(req: Request, res: Response) {
                 await tx.automation_inputs.deleteMany({
                     where: { automation_id: channelId }
                 });
+
+                // Tear down old inputs (e.g., delete webhooks for Figma)
+                await tearDownChannelInputs(existingChannel);
 
                 // Create new inputs
                 for (const input of inputs) {
