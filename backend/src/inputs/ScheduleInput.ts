@@ -1,7 +1,6 @@
 import { ConfigType, TimeTriggerConfig } from "../shared/Configs";
 import { Input } from "./Input";
 import { PrismaTransaction } from "../types/prisma";
-import { AtlassianIntegrationManager } from "../integrations/AtlassianIntegration";
 
 export class ScheduleInput implements Input<TimeTriggerConfig> {
     configType: ConfigType = ConfigType.TIME_TRIGGER;

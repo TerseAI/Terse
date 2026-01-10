@@ -44,6 +44,8 @@ export const convertIntegrationTypeToPrismaIntegrationType = (integrationType: I
             return PrismaIntegrationType.TERSE;
         case IntegrationType.POSTHOG:
             return PrismaIntegrationType.POSTHOG;
+        case IntegrationType.CRON_JOB:
+            return PrismaIntegrationType.CRON_JOB;
         default:
             throw integrationType satisfies never;
     }
@@ -73,6 +75,8 @@ export const convertPrismaIntegrationTypeToIntegrationType = (prismaIntegrationT
             return IntegrationType.TERSE;
         case PrismaIntegrationType.POSTHOG:
             return IntegrationType.POSTHOG;
+        case PrismaIntegrationType.CRON_JOB:
+            return IntegrationType.CRON_JOB;
         default:
             throw prismaIntegrationType satisfies never;
     }
@@ -102,6 +106,8 @@ export const convertIntegrationTypeToPrismaIntegrationTypeForRunHistory = (integ
             return PrismaIntegrationType.TERSE;
         case IntegrationType.POSTHOG:
             return PrismaIntegrationType.POSTHOG;
+        case IntegrationType.CRON_JOB:
+            return PrismaIntegrationType.CRON_JOB;
         default:
             throw integrationType satisfies never;
     }
@@ -132,6 +138,8 @@ export const convertPrismaIntegrationTypeToIntegrationTypeFromRunHistory = (pris
             return IntegrationType.TERSE;
         case PrismaIntegrationType.POSTHOG:
             return IntegrationType.POSTHOG;
+        case PrismaIntegrationType.CRON_JOB:
+            return IntegrationType.CRON_JOB;
         default:
             throw prismaIntegrationType satisfies never;
     }
@@ -215,7 +223,6 @@ export const convertPrismaConfigToConfigInstance = (channelInput: ChannelInputWi
 
     if (channelInput.time_trigger_config) {
         return new TimeTriggerConfig(
-            integrationId,
             channelInput.time_trigger_config.cron_expression || ''
         );
     }

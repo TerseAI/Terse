@@ -484,11 +484,12 @@ export class PosthogConfig implements ConfigInstance {
 }
 
 export class TimeTriggerConfig implements ConfigInstance {
-    integrationType: IntegrationType = IntegrationType.TERSE;
+    integrationType: IntegrationType = IntegrationType.CRON_JOB;
     configType: ConfigType = ConfigType.TIME_TRIGGER;
+    // System integration - no real integration ID needed
+    integrationId: string = 'system';
 
     constructor(
-        public integrationId: string,
         public cronExpression: string,
     ) {
     }
@@ -498,10 +499,10 @@ export class TimeTriggerConfig implements ConfigInstance {
     }
 
     formatForAgent(): string {
-        const parts = [`Type: Time Trigger`, `Integration ID: ${this.integrationId}`];
+        const parts = [`Type: Time Trigger`];
         if (this.cronExpression) {
             parts.push(`Schedule (UTC): ${this.cronExpression}`);
-         }
+        }
         return parts.join('\n');
     }
 }
