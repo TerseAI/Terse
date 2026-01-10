@@ -101,7 +101,6 @@ export function deserializeConfig(jsonConfig: any): ConfigInstance {
             );
         case ConfigType.TIME_TRIGGER:
             return new TimeTriggerConfig(
-                "",
                 jsonConfig.cronExpression || ''
             );
         case ConfigType.GITHUB_KB:
