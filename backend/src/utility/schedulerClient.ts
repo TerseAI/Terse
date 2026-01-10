@@ -1,7 +1,7 @@
 import { CloudSchedulerClient } from '@google-cloud/scheduler';
 import type { protos } from '@google-cloud/scheduler';
 import logger from '../logger';
-import { gcp } from '../config/settings';
+import { gcp, cloudScheduler } from '../config/settings';
 
 type Job = protos.google.cloud.scheduler.v1.IJob;
 type CreateJobRequest = protos.google.cloud.scheduler.v1.ICreateJobRequest;
@@ -123,6 +123,10 @@ export class SchedulerClient {
         httpTarget: {
           uri: url,
           httpMethod: 'POST',
+          headers: {
+            'Authorization': `Bearer ${cloudScheduler.secret}`,
+            'Content-Type': 'application/json',
+          },
         },
       };
 

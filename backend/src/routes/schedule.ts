@@ -9,11 +9,22 @@ export async function handleScheduleWebhook(req: Request, res: Response) {
     logger.info("⏰ Schedule webhook received", { inputId });
 
     // Verify the request is from Cloud Scheduler using a shared secret
-    const authHeader = req.headers['x-scheduler-secret'] || req.headers['authorization'];
-    const expectedSecret = cloudScheduler.secret;
+    const authHeader = req.headers['authorization'];
+    
+    if (!authHeader) {
+        logger.warn("⚠️  Unauthorized schedule webhook request: Missing Authorization header", { inputId });
+        res.status(401).json({ error: "Unauthorized" });
+        return;
+    }
 
-    if (authHeader !== expectedSecret && authHeader !== `Bearer ${expectedSecret}`) {
-        logger.warn("⚠️  Unauthorized schedule webhook request", { inputId });
+    // Extract token from "Bearer <token>" or just check the header value
+    const token = authHeader.startsWith('Bearer ')
+        ? authHeader.substring(7)
+        : authHeader;
+
+    // Validate against configured secret
+    if (token !== cloudScheduler.secret) {
+        logger.warn("⚠️  Unauthorized schedule webhook request: Invalid token", { inputId });
         res.status(401).json({ error: "Unauthorized" });
         return;
     }
