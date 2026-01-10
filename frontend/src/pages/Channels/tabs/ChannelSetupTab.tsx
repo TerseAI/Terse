@@ -559,10 +559,8 @@ function Input({ input, inputs, setInputs, handleRemove }: { input: TransientCha
 }
 
 function getNotionUrl(id: string): string {
-    // Notion IDs are UUIDs, but can be stored with or without hyphens
-    // The URL format is: https://www.notion.so/{id-without-hyphens}
-    const cleanId = id.replace(/-/g, '');
-    return `https://www.notion.so/${cleanId}`;
+    // Notion URLs work with the ID directly (hyphens are fine)
+    return `https://www.notion.so/${id}`;
 }
 
 function getOutputUrl(output: TransientChannelOutput | undefined): string | undefined {
