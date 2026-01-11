@@ -1,4 +1,5 @@
 import { Octokit } from '@octokit/rest';
+import { DateTime } from 'luxon';
 import logger from '../../logger';
 import { db } from '../../prismaClient';
 
@@ -377,8 +378,42 @@ export async function listPullRequests(
         let filteredPRs = data;
         
         if (since || until) {
-            const sinceDate = since ? new Date(since) : null;
-            const untilDate = until ? new Date(until) : null;
+            let sinceDate: Date | null = null;
+            let untilDate: Date | null = null;
+            
+            if (since) {
+                const parsedSince = DateTime.fromISO(since.trim());
+                if (parsedSince.isValid) {
+                    // Check if it's a date-only string (equals start of day, meaning no explicit time component)
+                    if (parsedSince.equals(parsedSince.startOf('day'))) {
+                        // Date-only string: normalize to start of day (00:00:00)
+                        sinceDate = parsedSince.startOf('day').toJSDate();
+                    } else {
+                        // Has explicit time component: use as-is
+                        sinceDate = parsedSince.toJSDate();
+                    }
+                } else {
+                    // Fallback to native Date parsing if Luxon can't parse it
+                    sinceDate = new Date(since);
+                }
+            }
+            
+            if (until) {
+                const parsedUntil = DateTime.fromISO(until.trim());
+                if (parsedUntil.isValid) {
+                    // Check if it's a date-only string (equals start of day, meaning no explicit time component)
+                    if (parsedUntil.equals(parsedUntil.startOf('day'))) {
+                        // Date-only string: normalize to end of day (23:59:59.999)
+                        untilDate = parsedUntil.endOf('day').toJSDate();
+                    } else {
+                        // Has explicit time component: use as-is
+                        untilDate = parsedUntil.toJSDate();
+                    }
+                } else {
+                    // Fallback to native Date parsing if Luxon can't parse it
+                    untilDate = new Date(until);
+                }
+            }
 
             filteredPRs = data.filter((pr) => {
                 // For merged PRs, use merged_at; for others, use updated_at
