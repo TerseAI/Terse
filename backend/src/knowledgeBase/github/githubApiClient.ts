@@ -348,6 +348,7 @@ export interface PullRequestInfo {
 
 /**
  * List pull requests for a repository within a time window
+ * Dates are in YYYY-MM-DD format and are normalized to start/end of day
  */
 export async function listPullRequests(
     client: Octokit,
@@ -355,8 +356,8 @@ export async function listPullRequests(
     repo: string,
     options: {
         state?: 'open' | 'closed' | 'all';
-        since?: string; // ISO date string
-        until?: string; // ISO date string
+        since?: string; // Date string in YYYY-MM-DD format (normalized to start of day)
+        until?: string; // Date string in YYYY-MM-DD format (normalized to end of day)
         perPage?: number;
         page?: number;
     } = {}
@@ -385,19 +386,12 @@ export async function listPullRequests(
                 const trimmedSince = since.trim();
                 const parsedSince = DateTime.fromISO(trimmedSince);
                 if (parsedSince.isValid) {
-                    // Check if it's a date-only string (no 'T' separator in ISO format)
-                    // Date-only strings like "2024-01-15" should be normalized to start of day
-                    // Explicit datetime strings like "2024-01-15T00:00:00Z" should be used as-is
-                    if (!trimmedSince.includes('T')) {
-                        // Date-only string: normalize to start of day (00:00:00)
-                        sinceDate = parsedSince.startOf('day').toJSDate();
-                    } else {
-                        // Has explicit time component: use as-is
-                        sinceDate = parsedSince.toJSDate();
-                    }
+                    // Always normalize to start of day (00:00:00)
+                    sinceDate = parsedSince.startOf('day').toJSDate();
                 } else {
-                    // Fallback to native Date parsing if Luxon can't parse it
-                    sinceDate = new Date(since);
+                    // Fallback to native Date parsing if Luxon can't parse it, then normalize to start of day
+                    const fallbackDate = DateTime.fromJSDate(new Date(since));
+                    sinceDate = fallbackDate.isValid ? fallbackDate.startOf('day').toJSDate() : new Date(since);
                 }
             }
             
@@ -405,19 +399,12 @@ export async function listPullRequests(
                 const trimmedUntil = until.trim();
                 const parsedUntil = DateTime.fromISO(trimmedUntil);
                 if (parsedUntil.isValid) {
-                    // Check if it's a date-only string (no 'T' separator in ISO format)
-                    // Date-only strings like "2024-01-15" should be normalized to end of day
-                    // Explicit datetime strings like "2024-01-15T00:00:00Z" should be used as-is
-                    if (!trimmedUntil.includes('T')) {
-                        // Date-only string: normalize to end of day (23:59:59.999)
-                        untilDate = parsedUntil.endOf('day').toJSDate();
-                    } else {
-                        // Has explicit time component: use as-is
-                        untilDate = parsedUntil.toJSDate();
-                    }
+                    // Always normalize to end of day (23:59:59.999)
+                    untilDate = parsedUntil.endOf('day').toJSDate();
                 } else {
-                    // Fallback to native Date parsing if Luxon can't parse it
-                    untilDate = new Date(until);
+                    // Fallback to native Date parsing if Luxon can't parse it, then normalize to end of day
+                    const fallbackDate = DateTime.fromJSDate(new Date(until));
+                    untilDate = fallbackDate.isValid ? fallbackDate.endOf('day').toJSDate() : new Date(until);
                 }
             }
 
@@ -458,6 +445,100 @@ export async function listPullRequests(
         };
     } catch (error: any) {
         logger.error('Failed to list pull requests', { owner, repo, error: error.message });
+        throw error;
+    }
+}
+
+/**
+ * Pull request diff information
+ */
+export interface PullRequestDiff {
+    number: number;
+    title: string;
+    state: 'open' | 'closed';
+    merged: boolean;
+    baseBranch: string;
+    headBranch: string;
+    diff: string; // Unified diff format
+    filesChanged: Array<{
+        filename: string;
+        status: 'added' | 'removed' | 'modified' | 'renamed';
+        additions: number;
+        deletions: number;
+        changes: number;
+        patch?: string; // File-specific diff patch
+    }>;
+    additions: number;
+    deletions: number;
+    totalChanges: number;
+    htmlUrl: string;
+}
+
+/**
+ * Get the diff of a pull request
+ */
+export async function getPullRequestDiff(
+    client: Octokit,
+    owner: string,
+    repo: string,
+    pullNumber: number
+): Promise<PullRequestDiff> {
+    try {
+        // Get PR details (without diff format)
+        const { data: pr } = await client.pulls.get({
+            owner,
+            repo,
+            pull_number: pullNumber,
+        });
+
+        // Get PR diff using mediaType format
+        // Note: When using mediaType.format: 'diff', the response data is a string, not the PR object
+        const diffResponse = await client.pulls.get({
+            owner,
+            repo,
+            pull_number: pullNumber,
+            mediaType: {
+                format: 'diff',
+            },
+        });
+        // TypeScript doesn't know that data is a string when using diff format, so we cast it
+        const diff = diffResponse.data as unknown as string;
+
+        // Get PR files to get detailed file information
+        const { data: files } = await client.pulls.listFiles({
+            owner,
+            repo,
+            pull_number: pullNumber,
+        });
+
+        const filesChanged = files.map((file) => ({
+            filename: file.filename,
+            status: file.status as 'added' | 'removed' | 'modified' | 'renamed',
+            additions: file.additions,
+            deletions: file.deletions,
+            changes: file.changes,
+            patch: file.patch || undefined,
+        }));
+
+        return {
+            number: pr.number,
+            title: pr.title,
+            state: pr.state as 'open' | 'closed',
+            merged: pr.merged_at !== null,
+            baseBranch: pr.base.ref,
+            headBranch: pr.head.ref,
+            diff,
+            filesChanged,
+            additions: pr.additions,
+            deletions: pr.deletions,
+            totalChanges: pr.additions + pr.deletions,
+            htmlUrl: pr.html_url,
+        };
+    } catch (error: any) {
+        if (error.status === 404) {
+            throw new Error(`Pull request #${pullNumber} not found`);
+        }
+        logger.error('Failed to get pull request diff', { owner, repo, pullNumber, error: error.message });
         throw error;
     }
 }
