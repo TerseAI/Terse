@@ -382,10 +382,13 @@ export async function listPullRequests(
             let untilDate: Date | null = null;
             
             if (since) {
-                const parsedSince = DateTime.fromISO(since.trim());
+                const trimmedSince = since.trim();
+                const parsedSince = DateTime.fromISO(trimmedSince);
                 if (parsedSince.isValid) {
-                    // Check if it's a date-only string (equals start of day, meaning no explicit time component)
-                    if (parsedSince.equals(parsedSince.startOf('day'))) {
+                    // Check if it's a date-only string (no 'T' separator in ISO format)
+                    // Date-only strings like "2024-01-15" should be normalized to start of day
+                    // Explicit datetime strings like "2024-01-15T00:00:00Z" should be used as-is
+                    if (!trimmedSince.includes('T')) {
                         // Date-only string: normalize to start of day (00:00:00)
                         sinceDate = parsedSince.startOf('day').toJSDate();
                     } else {
@@ -399,10 +402,13 @@ export async function listPullRequests(
             }
             
             if (until) {
-                const parsedUntil = DateTime.fromISO(until.trim());
+                const trimmedUntil = until.trim();
+                const parsedUntil = DateTime.fromISO(trimmedUntil);
                 if (parsedUntil.isValid) {
-                    // Check if it's a date-only string (equals start of day, meaning no explicit time component)
-                    if (parsedUntil.equals(parsedUntil.startOf('day'))) {
+                    // Check if it's a date-only string (no 'T' separator in ISO format)
+                    // Date-only strings like "2024-01-15" should be normalized to end of day
+                    // Explicit datetime strings like "2024-01-15T00:00:00Z" should be used as-is
+                    if (!trimmedUntil.includes('T')) {
                         // Date-only string: normalize to end of day (23:59:59.999)
                         untilDate = parsedUntil.endOf('day').toJSDate();
                     } else {
