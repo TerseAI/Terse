@@ -64,12 +64,13 @@ export const listGitHubPullRequestsTool = tool({
 - Track PR activity for specific repositories
 - Understand the development history and velocity
 
-The tool returns PR details including title, author, merge status, and dates.`,
+The tool returns PR details including title, author, merge status, and dates.
+Dates are specified in YYYY-MM-DD format (e.g., "2024-01-15"). The since date is interpreted as the start of that day (00:00:00), and the until date is interpreted as the end of that day (23:59:59).`,
     parameters: z.object({
         repository: z.string().describe('Repository in "owner/repo" format (e.g., "facebook/react"). Must be one of the configured repositories.'),
         state: z.enum(['open', 'closed', 'all']).describe('Filter by PR state. Use "closed" to see merged PRs, "open" for in-progress, or "all" for both.'),
-        since: z.union([z.string(), z.null()]).describe('Start of time window (ISO date string, e.g., "2024-01-01" or "2024-01-15T00:00:00Z"). Only PRs updated after this date are included. Use null for no start filter.'),
-        until: z.union([z.string(), z.null()]).describe('End of time window (ISO date string). Only PRs updated before this date are included. Use null for no end filter.'),
+        since: z.union([z.string(), z.null()]).describe('Start date in YYYY-MM-DD format (e.g., "2024-01-15"). Only PRs updated on or after this date (starting at 00:00:00) are included. Use null for no start filter.'),
+        until: z.union([z.string(), z.null()]).describe('End date in YYYY-MM-DD format (e.g., "2024-01-15"). Only PRs updated on or before this date (ending at 23:59:59) are included. Use null for no end filter.'),
         perPage: z.number().describe('Number of results to return (default: 20, max: 100)'),
     }),
     execute: async ({ repository, state, since, until, perPage = 20 }, runContext?: RunContext<any>) => {
