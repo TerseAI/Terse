@@ -10,7 +10,7 @@ class ChatAgent {
 
     constructor(
         private readonly chatInterface: ChatInterface,
-        private readonly chatId: string
+        chatId: string
     ) {
         this.memorySession = new RunHistoryChatMemorySession({
             sessionId: chatId,
