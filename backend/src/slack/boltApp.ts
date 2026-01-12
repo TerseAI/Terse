@@ -1,4 +1,4 @@
-import { App as SlackApp } from "@slack/bolt";
+import { App as SlackApp, Assistant } from "@slack/bolt";
 import ExpressReceiverModule from "@slack/bolt/dist/receivers/ExpressReceiver.js";
 // ESM wraps CommonJS default exports, so we need to access .default
 import type ExpressReceiverType from "@slack/bolt/dist/receivers/ExpressReceiver";
@@ -8,6 +8,7 @@ import { db } from "../prismaClient";
 import { SlackIntegrationManager, SlackMessageEvent } from "../integrations/SlackIntegration";
 import { ApprovalService } from "../services/ApprovalService";
 import logger from "../logger";
+import { Agent, run, user } from "@openai/agents";
 
 /**
  * Creates and configures the Slack Bolt app with ExpressReceiver
@@ -92,6 +93,26 @@ export async function setupSlackBolt() {
     } catch (error) {
       logger.error('Error processing Slack message:', { error });
     }
+  });
+
+  slack.event('app_mention', async ({ event, body, say, client }) => {
+    console.log('app_mention', event, body);
+    
+    // Add :eyes: reaction to the original message
+    try {
+      await client.reactions.add({
+        channel: event.channel,
+        timestamp: event.ts,
+        name: 'eyes',
+      });
+    } catch (error) {
+      logger.error('Error adding reaction to app_mention:', { error });
+    }
+    
+    await say({
+      text: 'Hello, how can I help you today?',
+      thread_ts: event.ts,
+    });
   });
 
   // Handle approve button clicks - process directly
@@ -558,6 +579,87 @@ export async function setupSlackBolt() {
   slack.action(/^(?!approval_(approve|reject|request_changes)_).*$/, async ({ ack }) => {
     await ack();
   });
+
+  // Set up Assistant for AI apps feature
+  const assistant = new Assistant({
+    threadStarted: async ({ event, logger, say, setSuggestedPrompts, saveThreadContext }) => {
+      try {
+        await say('Hi! I\'m Terse. How can I help you today?');
+        await saveThreadContext();
+        await setSuggestedPrompts({
+          title: 'Try these prompts:',
+          prompts: [
+            {
+              title: 'Get started',
+              message: 'What can you help me with?',
+            },
+          ],
+        });
+      } catch (error) {
+        logger.error('Error in threadStarted:', error);
+      }
+    },
+    userMessage: async ({ client, context, logger, message, getThreadContext, say, setTitle, setStatus }) => {
+      if (!('text' in message) || !('thread_ts' in message) || !message.text || !message.thread_ts) {
+        return;
+      }
+      const { channel, thread_ts } = message;
+      const { userId, teamId } = context;
+
+      try {
+        await setTitle(message.text);
+        await setStatus({
+          status: 'thinking...',
+          loading_messages: [
+            'Processing your request...',
+            'Getting things ready...',
+            'Almost there...',
+          ],
+        });
+
+        // Create a simple OpenAI Agents SDK agent
+        const agent = new Agent({
+          name: 'Terse Assistant',
+          instructions: 'You are a helpful assistant integrated with Slack. Be concise and friendly.',
+          model: 'gpt-4o',
+        });
+
+        // Run the agent with the user's message
+        const result = await run(agent, [user(message.text)], {
+          stream: true,
+        });
+
+        // Stream the response
+        const streamer = client.chatStream({
+          channel: channel,
+          recipient_team_id: teamId,
+          recipient_user_id: userId,
+          thread_ts: thread_ts,
+        });
+
+        for await (const chunk of result) {
+          // Handle the nested OpenAI SDK event structure
+          if (
+            chunk.type === 'raw_model_stream_event' &&
+            (chunk as any).data?.type === 'model' &&
+            (chunk as any).data?.event?.type === 'response.output_text.delta' &&
+            typeof (chunk as any).data?.event?.delta === 'string'
+          ) {
+            await streamer.append({
+              markdown_text: (chunk as any).data.event.delta,
+            });
+          }
+        }
+        await streamer.stop();
+      } catch (error) {
+        logger.error('Error in userMessage:', error);
+        await say({ text: `Sorry, something went wrong! ${error}` });
+      }
+    },
+  });
+
+  // Attach the assistant to the app
+  slack.assistant(assistant);
 
   // Initialize Bolt without binding a port (Express will handle that)
   await slack.init();
