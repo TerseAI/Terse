@@ -11,6 +11,7 @@ import { randomString } from '../../utility/strings';
 import { settings } from '../../config/settings';
 import { runnerFactory } from '../runner';
 import logger from '../../logger';
+import { IntegrationType } from '../../shared/Integrations';
 
 export interface EventFilterResult {
     isRelevant: boolean;
@@ -94,11 +95,19 @@ export async function filterEvent(
     event: InputEvent,
     channelPrompt: ChannelPrompt,
     streamingParams?: RunHistoryStreamingParams
-): Promise<{ result: EventFilterResult; stream: StreamedRunResult<Session, Agent<Session, any>> }> {
+): Promise<{ result: EventFilterResult }> {
+    if (event.integrationType === IntegrationType.CRON_JOB) {
+        return {
+            result: {
+                isRelevant: true, reason: 'Cron job event is relevant', confidence: 1
+            },
+        };
+    }
+    
     try {
         const currentTimeUtc = new Date().toISOString();
         const systemPrompt = buildFilterSystemPrompt(currentTimeUtc);
-        
+
         const agent = new Agent<Session, typeof filterOutputSchema>({
             name: 'Channel Event Filter',
             instructions: systemPrompt,
@@ -144,17 +153,17 @@ export async function filterEvent(
         if (streamingParams?.runId && streamingParams?.userId && streamingParams?.channelId) {
             const io = getRealtimeSocket();
             const userRoom = `user:${streamingParams.userId}`;
-            
+
             try {
                 for await (const modelEvent of transformAgentStreamToModelEvents(result)) {
                     // Skip TextDelta events from filter agent - we'll store the structured FilterResult instead
                     if (modelEvent.type === 'TextDelta') {
                         continue;
                     }
-                    
+
                     // Store event in database and get the ID
                     const eventId = await storeChatEvent(streamingParams.runId, modelEvent);
-                    
+
                     // Emit event via Socket.IO with timestamp and ID
                     if (io) {
                         const runHistoryModelEvent: RunHistoryModelEvent = {
@@ -195,7 +204,7 @@ export async function filterEvent(
                 step_id: randomString(15),
             };
             const filterEventId = await storeChatEvent(streamingParams.runId, filterResultEvent);
-            
+
             const io = getRealtimeSocket();
             if (io) {
                 const userRoom = `user:${streamingParams.userId}`;
@@ -212,8 +221,8 @@ export async function filterEvent(
                 io.to(userRoom).emit('channel:chat:event', payload);
             }
         }
-        logger.info(`Event filter result for ${event.integrationType}:`, {parsed});
-        return { result: parsed, stream: result };
+        logger.info(`Event filter result for ${event.integrationType}:`, { parsed });
+        return { result: parsed };
 
     } catch (error) {
         // Re-throw error to be handled by the caller (EventProcessor)

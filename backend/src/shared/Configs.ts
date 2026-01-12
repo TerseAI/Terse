@@ -13,6 +13,7 @@ export enum ConfigType {
     JIRA = 'jira',
     CONFLUENCE = 'confluence',
     POSTHOG = "POSTHOG",
+    TIME_TRIGGER = 'time_trigger',
 }
 
 // MARK: Config Metadata
@@ -126,6 +127,15 @@ export const PosthogConfigMetadata = {
     isKnowledgeBase: true
 } as const satisfies ConfigDetails;
 
+export const TimeTriggerConfigMetadata = {
+    configType: ConfigType.TIME_TRIGGER,
+    name: 'Time Trigger',
+    description: 'Run on a schedule (daily, weekly, etc.)',
+    isInput: true,
+    isOutput: false,
+    isKnowledgeBase: false,
+} as const satisfies ConfigDetails;
+
 export const GitHubKBConfigMetadata = {
     configType: ConfigType.GITHUB_KB,
     name: 'GitHub Codebase',
@@ -150,6 +160,7 @@ export const CONFIG_DETAILS: ConfigDetailsMap = {
     [ConfigType.JIRA]: JiraConfigMetadata,
     [ConfigType.CONFLUENCE]: ConfluenceConfigMetadata,
     [ConfigType.POSTHOG]: PosthogConfigMetadata,
+    [ConfigType.TIME_TRIGGER]: TimeTriggerConfigMetadata,
 } as const satisfies ConfigDetailsMap;
 
 export interface ConfigInstance {
@@ -439,7 +450,7 @@ export class ConfluenceConfig implements ConfigInstance {
 export class PosthogConfig implements ConfigInstance {
     integrationType: IntegrationType = IntegrationType.POSTHOG;
     configType: ConfigType = ConfigType.POSTHOG;
-    
+
     constructor(
         public integrationId: string,
         public projectId: string,
@@ -467,6 +478,30 @@ export class PosthogConfig implements ConfigInstance {
         }
         if (this.canReadSessionRecordings) {
             parts.push(`Can read session recordings: Yes`);
+        }
+        return parts.join('\n');
+    }
+}
+
+export class TimeTriggerConfig implements ConfigInstance {
+    integrationType: IntegrationType = IntegrationType.CRON_JOB;
+    configType: ConfigType = ConfigType.TIME_TRIGGER;
+    // System integration - no real integration ID needed
+    integrationId: string = 'system';
+
+    constructor(
+        public cronExpression: string,
+    ) {
+    }
+
+    isComplete(): boolean {
+        return !!this.cronExpression;
+    }
+
+    formatForAgent(): string {
+        const parts = [`Type: Time Trigger`];
+        if (this.cronExpression) {
+            parts.push(`Schedule (UTC): ${this.cronExpression}`);
         }
         return parts.join('\n');
     }
@@ -512,6 +547,7 @@ export type ConfigMetadataMap = EnsureExhaustiveMetadata<{
     [ConfigType.JIRA]: typeof JiraConfig;
     [ConfigType.CONFLUENCE]: typeof ConfluenceConfig;
     [ConfigType.POSTHOG]: typeof PosthogConfig;
+    [ConfigType.TIME_TRIGGER]: typeof TimeTriggerConfig;
 }>;
 
 export const CONFIG_METADATA: ConfigMetadataMap = {
@@ -527,4 +563,5 @@ export const CONFIG_METADATA: ConfigMetadataMap = {
     [ConfigType.JIRA]: JiraConfig,
     [ConfigType.CONFLUENCE]: ConfluenceConfig,
     [ConfigType.POSTHOG]: PosthogConfig,
+    [ConfigType.TIME_TRIGGER]: TimeTriggerConfig,
 } as const satisfies ConfigMetadataMap;

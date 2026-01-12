@@ -13,6 +13,7 @@ export function getInputConfigInclude() {
         github_config: true,
         gmail_config: true,
         figma_config: true,
+        time_trigger_config: true,
     } as const;
 }
 

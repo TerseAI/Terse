@@ -10,13 +10,14 @@ import {
     JiraIcon,
     ConfluenceIcon,
     JiraConfluenceIcon,
-    TerseIcon,
     PosthogIcon,
+    CalendarClockIcon,
 } from "@/components/icons/IntegrationIcons";
 
 export function IconForConfigType({ type }: { type: ConfigType }) {
     switch (type) {
         case ConfigType.GITHUB:
+        case ConfigType.GITHUB_KB:
             return <GithubIcon />;
         case ConfigType.LINEAR_INPUT:
         case ConfigType.LINEAR_OUTPUT:
@@ -36,8 +37,8 @@ export function IconForConfigType({ type }: { type: ConfigType }) {
             return <ConfluenceIcon />;
         case ConfigType.POSTHOG:
             return <PosthogIcon />;
-        case ConfigType.GITHUB_KB:
-            return <GithubIcon />;
+        case ConfigType.TIME_TRIGGER:
+            return <CalendarClockIcon />;        
         default:
             // Exhaustive check: TypeScript will error if any IntegrationType case is missing
             throw type satisfies never;
@@ -61,7 +62,8 @@ export function IconForIntegration({ integration }: { integration: IntegrationTy
         case IntegrationType.ATLASSIAN:
             return <JiraConfluenceIcon />;
         case IntegrationType.TERSE:
-            return <TerseIcon />;
+        case IntegrationType.CRON_JOB:
+            return <CalendarClockIcon />;
         case IntegrationType.POSTHOG:
             return <PosthogIcon />
         default:

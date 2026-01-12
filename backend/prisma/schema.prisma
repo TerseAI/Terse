@@ -500,15 +500,16 @@ model automation_inputs {
   automation automations @relation(fields: [automation_id], references: [id], onDelete: Cascade)
 
   // Configuration relations (one per integration type)
-  slack_config       automation_slack_configs?
-  notion_config      automation_notion_configs?
-  notion_page_config automation_notion_page_configs?
-  linear_config      automation_linear_configs?
-  jira_config        automation_jira_configs?
-  confluence_config  automation_confluence_configs?
-  github_config      automation_github_configs?
-  gmail_config       automation_gmail_configs?
-  figma_config       automation_figma_configs?
+  slack_config        automation_slack_configs?
+  notion_config       automation_notion_configs?
+  notion_page_config  automation_notion_page_configs?
+  linear_config       automation_linear_configs?
+  jira_config         automation_jira_configs?
+  confluence_config   automation_confluence_configs?
+  github_config       automation_github_configs?
+  gmail_config        automation_gmail_configs?
+  figma_config        automation_figma_configs?
+  time_trigger_config automation_time_trigger_configs?
 
   @@index([automation_id])
   @@index([config_type, integration_id])
@@ -549,7 +550,7 @@ model automation_knowledge_bases {
 
   automation automations @relation(fields: [automation_id], references: [id], onDelete: Cascade)
 
-  posthog_config automation_posthog_configs?
+  posthog_config   automation_posthog_configs?
   github_kb_config automation_github_kb_configs?
 
   @@index([automation_id])
@@ -571,9 +572,9 @@ model automation_posthog_configs {
 
 // GitHub Knowledge Base Configuration
 model automation_github_kb_configs {
-  id                           String  @id @default(cuid())
-  automation_knowledge_base_id String  @unique // FK to automation_knowledge_bases
-  repository_ids               Int[]   // GitHub repository IDs to search (from user_github_installation)
+  id                           String   @id @default(cuid())
+  automation_knowledge_base_id String   @unique // FK to automation_knowledge_bases
+  repository_ids               Int[] // GitHub repository IDs to search (from user_github_installation)
   repository_names             String[] // Repository full names (owner/repo) for display
 
   automation_knowledge_base automation_knowledge_bases @relation(fields: [automation_knowledge_base_id], references: [id], onDelete: Cascade)
@@ -752,6 +753,19 @@ model automation_figma_configs {
   @@index([team_id])
 }
 
+// Time Trigger Configuration
+model automation_time_trigger_configs {
+  id                  String @id @default(cuid())
+  automation_input_id String @unique // FK to automation_inputs
+
+  cron_expression String
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  automation_input automation_inputs @relation(fields: [automation_input_id], references: [id], onDelete: Cascade)
+}
+
 enum TicketEventType {
   TICKET_CREATED
   TICKET_UPDATED
@@ -780,6 +794,7 @@ enum IntegrationType {
   FIGMA
   TERSE
   POSTHOG
+  CRON_JOB
 }
 
 enum InputConfigType {
@@ -793,6 +808,7 @@ enum InputConfigType {
   JIRA
   CONFLUENCE
   POSTHOG
+  TIME_TRIGGER
 }
 
 enum OutputConfigType {
