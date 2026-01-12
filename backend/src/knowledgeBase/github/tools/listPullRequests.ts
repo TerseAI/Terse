@@ -4,9 +4,58 @@ import logger from "../../../logger";
 import { createGitHubClient, listPullRequests, parseRepoFullName } from "../githubApiClient";
 import { GitHubKBConfig } from "../../../shared/Configs";
 
-/**
- * Tool for listing pull requests in GitHub repositories within a time window.
- */
+// Helper functions
+const normalizePerPage = (perPage?: number): number => Math.min(perPage || 20, 100);
+
+const validateContext = (runContext?: RunContext<any>) => {
+    if (!runContext?.context) {
+        throw new Error("No context provided");
+    }
+
+    const githubKBConfig = runContext.context.githubKBConfig as GitHubKBConfig | undefined;
+    if (!githubKBConfig) {
+        throw new Error("GitHub KB config not found in context. Ensure GitHub is configured as a knowledge base.");
+    }
+
+    const accessToken = runContext.context.githubAccessToken as string | undefined;
+    if (!accessToken) {
+        throw new Error("GitHub access token not found in context.");
+    }
+
+    return { githubKBConfig, accessToken };
+};
+
+const validateRepository = (repository: string, repositoryNames: string[]) => {
+    if (!repositoryNames.includes(repository)) {
+        return {
+            success: false,
+            error: `Repository "${repository}" is not configured for this knowledge base.`,
+            configuredRepositories: repositoryNames,
+            tip: `Use one of the configured repositories: ${repositoryNames.join(', ')}`,
+        };
+    }
+    return null;
+};
+
+const formatTimeWindow = (since: string | null, until: string | null): string => {
+    if (!since && !until) return 'all time';
+    const parts: string[] = [];
+    if (since) parts.push(`from ${since}`);
+    if (until) parts.push(`until ${until}`);
+    return parts.join(' ');
+};
+
+const calculateSummary = (prs: Array<{ merged: boolean; state: string }>) => {
+    const mergedCount = prs.filter(pr => pr.merged).length;
+    const openCount = prs.filter(pr => pr.state === 'open').length;
+    return {
+        total: prs.length,
+        merged: mergedCount,
+        open: openCount,
+        closed: prs.length - openCount,
+    };
+};
+
 export const listGitHubPullRequestsTool = tool({
     name: 'listGitHubPullRequests',
     description: `List pull requests in GitHub repositories within a time window. Use this to:
@@ -15,41 +64,26 @@ export const listGitHubPullRequestsTool = tool({
 - Track PR activity for specific repositories
 - Understand the development history and velocity
 
-The tool returns PR details including title, author, merge status, and dates.`,
+The tool returns PR details including title, author, merge status, and dates.
+Dates are specified in YYYY-MM-DD format (e.g., "2024-01-15"). The since date is interpreted as the start of that day (00:00:00), and the until date is interpreted as the end of that day (23:59:59).`,
     parameters: z.object({
         repository: z.string().describe('Repository in "owner/repo" format (e.g., "facebook/react"). Must be one of the configured repositories.'),
         state: z.enum(['open', 'closed', 'all']).describe('Filter by PR state. Use "closed" to see merged PRs, "open" for in-progress, or "all" for both.'),
-        since: z.union([z.string(), z.null()]).describe('Start of time window (ISO date string, e.g., "2024-01-01" or "2024-01-15T00:00:00Z"). Only PRs updated after this date are included. Use null for no start filter.'),
-        until: z.union([z.string(), z.null()]).describe('End of time window (ISO date string). Only PRs updated before this date are included. Use null for no end filter.'),
+        since: z.union([z.string(), z.null()]).describe('Start date in YYYY-MM-DD format (e.g., "2024-01-15"). Only PRs updated on or after this date (starting at 00:00:00) are included. Use null for no start filter.'),
+        until: z.union([z.string(), z.null()]).describe('End date in YYYY-MM-DD format (e.g., "2024-01-15"). Only PRs updated on or before this date (ending at 23:59:59) are included. Use null for no end filter.'),
         perPage: z.number().describe('Number of results to return (default: 20, max: 100)'),
     }),
     execute: async ({ repository, state, since, until, perPage = 20 }, runContext?: RunContext<any>) => {
-        if (!runContext?.context) {
-            throw new Error("No context provided");
-        }
+        const { githubKBConfig, accessToken } = validateContext(runContext);
 
-        const githubKBConfig = runContext.context.githubKBConfig as GitHubKBConfig | undefined;
-        if (!githubKBConfig) {
-            throw new Error("GitHub KB config not found in context. Ensure GitHub is configured as a knowledge base.");
-        }
-
-        const accessToken = runContext.context.githubAccessToken as string | undefined;
-        if (!accessToken) {
-            throw new Error("GitHub access token not found in context.");
-        }
-
-        // Validate that the repository is in the configured list
-        if (!githubKBConfig.repositoryNames.includes(repository)) {
-            return {
-                success: false,
-                error: `Repository "${repository}" is not configured for this knowledge base.`,
-                configuredRepositories: githubKBConfig.repositoryNames,
-                tip: `Use one of the configured repositories: ${githubKBConfig.repositoryNames.join(', ')}`,
-            };
+        const repoValidationError = validateRepository(repository, githubKBConfig.repositoryNames);
+        if (repoValidationError) {
+            return repoValidationError;
         }
 
         const client = createGitHubClient(accessToken);
         const { owner, repo } = parseRepoFullName(repository);
+        const normalizedPerPage = normalizePerPage(perPage);
 
         const requestParams = {
             tool: 'listGitHubPullRequests',
@@ -59,7 +93,7 @@ The tool returns PR details including title, author, merge status, and dates.`,
             state,
             since,
             until,
-            perPage: Math.min(perPage || 20, 100),
+            perPage: normalizedPerPage,
         };
         logger.info('[GitHub KB] listGitHubPullRequests - Request', requestParams);
         logger.debug('[GitHub KB] listGitHubPullRequests - Full request params', { requestParams });
@@ -69,7 +103,7 @@ The tool returns PR details including title, author, merge status, and dates.`,
                 state,
                 since: since || undefined,
                 until: until || undefined,
-                perPage: Math.min(perPage || 20, 100),
+                perPage: normalizedPerPage,
             });
 
             logger.debug('[GitHub KB] listGitHubPullRequests - Raw API response', {
@@ -99,34 +133,25 @@ The tool returns PR details including title, author, merge status, and dates.`,
                 url: pr.htmlUrl,
             }));
 
-            const mergedCount = formattedResults.filter(pr => pr.merged).length;
-            const openCount = formattedResults.filter(pr => pr.state === 'open').length;
-
-            const timeWindowDesc = since || until 
-                ? `${since ? `from ${since}` : ''}${since && until ? ' ' : ''}${until ? `until ${until}` : ''}`
-                : 'all time';
+            const summary = calculateSummary(formattedResults);
+            const timeWindowDesc = formatTimeWindow(since, until);
 
             const response = {
                 success: true,
                 repository,
                 timeWindow: timeWindowDesc,
-                summary: {
-                    total: formattedResults.length,
-                    merged: mergedCount,
-                    open: openCount,
-                    closed: formattedResults.length - openCount,
-                },
+                summary,
                 pullRequests: formattedResults,
                 message: formattedResults.length === 0
                     ? `No pull requests found for ${repository} ${timeWindowDesc}.`
-                    : `Found ${formattedResults.length} pull requests (${mergedCount} merged, ${openCount} open) for ${repository} ${timeWindowDesc}.`,
+                    : `Found ${summary.total} pull requests (${summary.merged} merged, ${summary.open} open) for ${repository} ${timeWindowDesc}.`,
             };
 
             logger.info('[GitHub KB] listGitHubPullRequests - Response', {
                 success: true,
-                total: formattedResults.length,
-                merged: mergedCount,
-                open: openCount,
+                total: summary.total,
+                merged: summary.merged,
+                open: summary.open,
             });
             logger.debug('[GitHub KB] listGitHubPullRequests - Full response', { response });
 
