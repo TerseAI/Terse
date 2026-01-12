@@ -72,7 +72,7 @@ Dates are specified in YYYY-MM-DD format (e.g., "2024-01-15"). The since date is
         since: z.union([z.string(), z.null()]).describe('Start date in YYYY-MM-DD format (e.g., "2024-01-15"). Only PRs updated on or after this date (starting at 00:00:00) are included. Use null for no start filter.'),
         until: z.union([z.string(), z.null()]).describe('End date in YYYY-MM-DD format (e.g., "2024-01-15"). Only PRs updated on or before this date (ending at 23:59:59) are included. Use null for no end filter.'),
         perPage: z.number().describe('Number of results to return (default: 20, max: 100)'),
-        page: z.union([z.number(), z.null()]).describe('Page number for pagination (default: 1). Use this to fetch additional PRs if there are more than perPage results. Use null for page 1.'),
+        page: z.union([z.number().int().min(1), z.null()]).describe('Page number for pagination (default: 1). Use this to fetch additional PRs if there are more than perPage results. Use null for page 1. Must be a positive integer >= 1.'),
     }),
     execute: async ({ repository, state, since, until, perPage = 20, page }, runContext?: RunContext<any>) => {
         const { githubKBConfig, accessToken } = validateContext(runContext);
@@ -85,7 +85,7 @@ Dates are specified in YYYY-MM-DD format (e.g., "2024-01-15"). The since date is
         const client = createGitHubClient(accessToken);
         const { owner, repo } = parseRepoFullName(repository);
         const normalizedPerPage = normalizePerPage(perPage);
-        const pageNumber = page ?? 1;
+        const pageNumber = Math.max(1, page ?? 1);
 
         const requestParams = {
             tool: 'listGitHubPullRequests',

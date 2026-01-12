@@ -35,11 +35,11 @@ You can optionally provide high-level context about what you're looking for in t
     parameters: z.object({
         repository: z.string().describe('The repository in "owner/repo" format (e.g., "facebook/react"). Must be one of the configured repositories.'),
         pullNumber: z.number().describe('The pull request number (e.g., 123 for PR #123)'),
-        page: z.union([z.number(), z.null()]).describe('Page number for pagination (default: 1). Use this to fetch additional files if a PR has more than 100 files. Use null for page 1.'),
+        page: z.union([z.number().int().min(1), z.null()]).describe('Page number for pagination (default: 1). Use this to fetch additional files if a PR has more than 100 files. Use null for page 1. Must be a positive integer >= 1.'),
         context: z.union([z.string(), z.null()]).describe('Optional high-level context about what you\'re looking for in this PR. This helps the sub-agent focus its analysis. For example: "I need to understand the authentication changes" or "Focus on database migration changes". Use null if no specific context.'),
     }),
     execute: async ({ repository, pullNumber, page, context }, runContext?: RunContext<any>) => {
-        const pageNumber = page ?? 1;
+        const pageNumber = Math.max(1, page ?? 1);
         if (!runContext?.context) {
             throw new Error("No context provided");
         }
@@ -268,6 +268,36 @@ function buildSummarizerUserPrompt(prDiff: any, context?: string): string {
         .map((file: any) => `  - ${file.filename} (${file.status}): +${file.additions}/-${file.deletions} lines`)
         .join('\n');
 
+    // Check if this is a paginated view (page > 1 or hasMore indicates pagination is being used)
+    const isPaginated = prDiff.pagination && (prDiff.pagination.page > 1 || prDiff.pagination.hasMore);
+    
+    // If paginated, build a diff from the file patches in the current page and calculate per-page stats
+    let diffToUse: string;
+    let additionsToUse: number;
+    let deletionsToUse: number;
+    let paginationNote = '';
+
+    if (isPaginated) {
+        // Build diff from file patches in the current page
+        const patches = prDiff.filesChanged
+            .map((file: any) => file.patch)
+            .filter((patch: string | undefined) => patch !== undefined && patch !== null)
+            .join('\n');
+        
+        diffToUse = patches || '(Diff content not available for this page)';
+        
+        // Calculate per-page additions/deletions from files in current page
+        additionsToUse = prDiff.filesChanged.reduce((sum: number, file: any) => sum + file.additions, 0);
+        deletionsToUse = prDiff.filesChanged.reduce((sum: number, file: any) => sum + file.deletions, 0);
+        
+        paginationNote = `\n\nNOTE: This is a paginated view showing page ${prDiff.pagination.page} (${prDiff.filesChanged.length} files).${prDiff.pagination.hasMore ? ` More files are available on subsequent pages.` : ''}`;
+    } else {
+        // Not paginated, use the full diff and PR-wide totals
+        diffToUse = prDiff.diff;
+        additionsToUse = prDiff.additions;
+        deletionsToUse = prDiff.deletions;
+    }
+
     return `Please analyze and summarize the following pull request diff:
 
 PULL REQUEST INFORMATION:
@@ -276,17 +306,18 @@ PULL REQUEST INFORMATION:
 - State: ${prDiff.state}${prDiff.merged ? ' (merged)' : ''}
 - Base branch: ${prDiff.baseBranch}
 - Head branch: ${prDiff.headBranch}
-- Files changed: ${prDiff.filesChanged.length}
-- Total changes: +${prDiff.additions} additions, -${prDiff.deletions} deletions
+- Files changed: ${prDiff.filesChanged.length}${isPaginated ? ` (page ${prDiff.pagination.page} of files)` : ''}
+- Total changes: +${additionsToUse} additions, -${deletionsToUse} deletions${isPaginated ? ` (for this page only)` : ''}
 
 FILES CHANGED:
 ${filesList}
+${paginationNote}
 
 ${context ? `\nFOCUS AREA:\nThe parent agent is particularly interested in: ${context}\nPlease emphasize this in your analysis.\n` : ''}
 
-FULL DIFF:
+${isPaginated ? 'DIFF (FOR THIS PAGE OF FILES):' : 'FULL DIFF:'}
 \`\`\`diff
-${prDiff.diff}
+${diffToUse}
 \`\`\`
 
 Please provide a comprehensive but concise summary of this pull request, focusing on understanding the purpose and impact of the changes.`;

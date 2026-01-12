@@ -33,7 +33,7 @@ This is more precise than semantic search - use it when you know exactly what te
         fileExtension: z.union([z.string(), z.null()]).describe('Filter by file extension (e.g., "ts", "js", "py"). Do not include the dot. Use null to search all file types.'),
         path: z.union([z.string(), z.null()]).describe('Filter by directory path (e.g., "src/services" to only search in that directory). Use null to search everywhere.'),
         perPage: z.number().describe('Number of results to return (default: 20, max: 100)'),
-        page: z.union([z.number(), z.null()]).describe('Page number for pagination (default: 1). Use this to fetch additional results if there are more than perPage results. Use null for page 1.'),
+        page: z.union([z.number().int().min(1), z.null()]).describe('Page number for pagination (default: 1). Use this to fetch additional results if there are more than perPage results. Use null for page 1. Must be a positive integer >= 1.'),
     }),
     execute: async ({ pattern, fileExtension, path, perPage = 20, page }, runContext?: RunContext<any>) => {
         if (!runContext?.context) {
@@ -70,7 +70,7 @@ This is more precise than semantic search - use it when you know exactly what te
             query += ` path:${path}`;
         }
 
-        const pageNumber = page ?? 1;
+        const pageNumber = Math.max(1, page ?? 1);
         const normalizedPerPage = Math.min(perPage || 20, 100);
         const requestParams = {
             tool: 'grepGitHubCode',

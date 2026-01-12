@@ -36,7 +36,7 @@ Tips:
         filename: z.union([z.string(), z.null()]).describe('Filter by filename pattern (e.g., "*.test.ts" for test files, "*.config.*" for config files). Use null to search all files.'),
         path: z.union([z.string(), z.null()]).describe('Filter by path (e.g., "src/components" to only search in that directory). Use null to search everywhere.'),
         perPage: z.number().describe('Number of results to return (default: 10, max: 100)'),
-        page: z.union([z.number(), z.null()]).describe('Page number for pagination (default: 1). Use this to fetch additional results if there are more than perPage results. Use null for page 1.'),
+        page: z.union([z.number().int().min(1), z.null()]).describe('Page number for pagination (default: 1). Use this to fetch additional results if there are more than perPage results. Use null for page 1. Must be a positive integer >= 1.'),
     }),
     execute: async ({ query, language, filename, path, perPage = 10, page }, runContext?: RunContext<any>) => {
         if (!runContext?.context) {
@@ -71,7 +71,7 @@ Tips:
             enhancedQuery += ` path:${path}`;
         }
 
-        const pageNumber = page ?? 1;
+        const pageNumber = Math.max(1, page ?? 1);
         const normalizedPerPage = Math.min(perPage || 10, 100);
         const requestParams = {
             tool: 'searchGitHubCode',
