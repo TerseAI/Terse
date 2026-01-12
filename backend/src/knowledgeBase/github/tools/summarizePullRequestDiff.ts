@@ -179,9 +179,53 @@ You can optionally provide high-level context about what you're looking for in t
                 summary = textMessages || 'Unable to generate summary.';
             }
 
-            const paginationInfo = prDiff.pagination.hasMore
-                ? ` Page ${prDiff.pagination.page} of files (${prDiff.filesChanged.length} files shown). More files available - use page ${prDiff.pagination.page + 1} to see more.`
-                : ` Page ${prDiff.pagination.page} of files (${prDiff.filesChanged.length} files shown).`;
+            // Check if this is a paginated view (either on page > 1, or there are more pages available)
+            const isPaginated = prDiff.pagination.page > 1 || prDiff.pagination.hasMore;
+            
+            // Calculate page-level stats from files on current page
+            const pageAdditions = prDiff.filesChanged.reduce((sum: number, file: any) => sum + (file.additions || 0), 0);
+            const pageDeletions = prDiff.filesChanged.reduce((sum: number, file: any) => sum + (file.deletions || 0), 0);
+            const pageTotalChanges = pageAdditions + pageDeletions;
+            
+            // Build pagination info only when actually paginated
+            const paginationInfo = isPaginated
+                ? (prDiff.pagination.hasMore
+                    ? ` Page ${prDiff.pagination.page} of files (${prDiff.filesChanged.length} files shown). More files available - use page ${prDiff.pagination.page + 1} to see more.`
+                    : ` Page ${prDiff.pagination.page} of files (${prDiff.filesChanged.length} files shown).`)
+                : '';
+
+            // Build summary object with clear distinction between page-level and PR-wide stats
+            const summaryObject: any = {
+                filesChanged: prDiff.filesChanged.length,
+            };
+            
+            if (isPaginated) {
+                // When paginated, include both page-level and PR-wide stats
+                summaryObject.page = {
+                    filesChanged: prDiff.filesChanged.length,
+                    additions: pageAdditions,
+                    deletions: pageDeletions,
+                    totalChanges: pageTotalChanges,
+                };
+                summaryObject.prWide = {
+                    additions: prDiff.additions,
+                    deletions: prDiff.deletions,
+                    totalChanges: prDiff.totalChanges,
+                };
+            } else {
+                // When not paginated, use PR-wide stats (which are the same as page-level)
+                summaryObject.additions = prDiff.additions;
+                summaryObject.deletions = prDiff.deletions;
+                summaryObject.totalChanges = prDiff.totalChanges;
+            }
+
+            // Build message with clear distinction between page-level and PR-wide stats
+            let message: string;
+            if (isPaginated) {
+                message = `Summarized PR #${prDiff.number}: "${prDiff.title}".${paginationInfo} This page: ${pageAdditions} additions, ${pageDeletions} deletions. PR-wide totals: ${prDiff.additions} additions, ${prDiff.deletions} deletions.`;
+            } else {
+                message = `Summarized PR #${prDiff.number}: "${prDiff.title}". ${prDiff.additions} additions, ${prDiff.deletions} deletions.`;
+            }
 
             const response = {
                 success: true,
@@ -195,19 +239,14 @@ You can optionally provide high-level context about what you're looking for in t
                     headBranch: prDiff.headBranch,
                     url: prDiff.htmlUrl,
                 },
-                summary: {
-                    filesChanged: prDiff.filesChanged.length,
-                    additions: prDiff.additions,
-                    deletions: prDiff.deletions,
-                    totalChanges: prDiff.totalChanges,
-                },
+                summary: summaryObject,
                 pagination: {
                     page: prDiff.pagination.page,
                     perPage: prDiff.pagination.perPage,
                     hasMore: prDiff.pagination.hasMore,
                 },
                 analysis: summary, // The summarized analysis from the sub-agent
-                message: `Summarized PR #${prDiff.number}: "${prDiff.title}".${paginationInfo} ${prDiff.additions} additions, ${prDiff.deletions} deletions.`,
+                message,
             };
 
             logger.info('[GitHub KB] summarizeGitHubPullRequestDiff - Response', {
