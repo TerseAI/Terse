@@ -15,7 +15,6 @@ export interface ScheduleWebhookEvent {
     inputId: string;
     isManualTrigger?: boolean;
     manualContext?: string;
-    promptModifications?: string;
 }
 
 export class CronJobIntegrationManager implements
@@ -42,13 +41,12 @@ export class CronJobIntegrationManager implements
     }
 
     async processWebhookEvent(event: ScheduleWebhookEvent): Promise<void> {
-        const { inputId, isManualTrigger, manualContext, promptModifications } = event;
+        const { inputId, isManualTrigger, manualContext } = event;
 
         logger.info(isManualTrigger ? "🖱️ Processing manual trigger" : "⏰ Processing schedule trigger", {
             inputId,
             isManualTrigger,
             hasManualContext: !!manualContext,
-            hasPromptModifications: !!promptModifications
         });
 
         const channelInput = await db().automation_inputs.findUnique({
@@ -205,17 +203,13 @@ export class CronJobEvent extends InputEvent {
     }
 
     formatForChannelAgent(): string {
-        const { isManualTrigger, manualContext, promptModifications } = this.data;
+        const { isManualTrigger, manualContext } = this.data;
 
         if (isManualTrigger) {
             let message = `This is a manually triggered event for the channel input ${this.data.inputId}.`;
 
             if (manualContext) {
                 message += `\n\nUser provided context for this manual trigger:\n${manualContext}`;
-            }
-
-            if (promptModifications) {
-                message += `\n\nUser requested prompt modifications for this run:\n${promptModifications}`;
             }
 
             return message;
