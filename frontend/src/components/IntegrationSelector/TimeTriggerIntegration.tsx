@@ -2,7 +2,8 @@ import { useState } from "react";
 import { InputConfigSelectorProps } from "./types";
 import { ScheduleEditor, getCronDescription } from "../ScheduleEditor";
 import { TimeTriggerConfig } from "@/shared/Configs";
-import { ClockIcon, AlertTriangleIcon, PlayIcon } from "lucide-react";
+import { AlertTriangleIcon, PlayIcon } from "lucide-react";
+import { CalendarClockIcon } from "@/components/icons/IntegrationIcons";
 import { Button } from "@/components/ui/button";
 import { ManualTriggerDialog } from "../ManualTriggerDialog";
 
@@ -22,7 +23,9 @@ export function TimeTriggerIntegration({ input, variant, setConfig }: InputConfi
         }
         return (
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <ClockIcon className="size-3 text-primary shrink-0" />
+                <div className="size-3 text-primary shrink-0">
+                    <CalendarClockIcon />
+                </div>
                 {getCronDescription(existingConfig.cronExpression)}
             </div>
         );
