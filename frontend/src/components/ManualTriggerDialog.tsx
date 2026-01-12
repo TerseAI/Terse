@@ -27,7 +27,6 @@ export function ManualTriggerDialog({
     onTriggered,
 }: ManualTriggerDialogProps) {
     const [context, setContext] = useState("");
-    const [promptModifications, setPromptModifications] = useState("");
     const [isTriggering, setIsTriggering] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
@@ -38,8 +37,7 @@ export function ManualTriggerDialog({
         try {
             await BackendProvider.triggerManually(
                 inputId,
-                context.trim() || undefined,
-                promptModifications.trim() || undefined
+                context.trim() || undefined
             );
             onTriggered?.();
             handleClose();
@@ -53,7 +51,6 @@ export function ManualTriggerDialog({
 
     const handleClose = () => {
         setContext("");
-        setPromptModifications("");
         setError(null);
         onClose();
     };
@@ -82,22 +79,6 @@ export function ManualTriggerDialog({
                         />
                         <p className="text-xs text-muted-foreground">
                             Add context about why you're running this manually. This will be passed to the automation.
-                        </p>
-                    </div>
-
-                    <div className="space-y-2">
-                        <Label htmlFor="promptModifications">
-                            Prompt Modifications <span className="text-muted-foreground text-xs">(optional)</span>
-                        </Label>
-                        <Textarea
-                            id="promptModifications"
-                            placeholder="Any modifications to the prompt for this specific run..."
-                            value={promptModifications}
-                            onChange={(e) => setPromptModifications(e.target.value)}
-                            className="min-h-[80px]"
-                        />
-                        <p className="text-xs text-muted-foreground">
-                            Temporary changes to how the automation should behave for this run only.
                         </p>
                     </div>
 
