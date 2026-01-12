@@ -5,6 +5,7 @@ import EditableTextField from '../../../components/ui/EditableTextField';
 import { ChannelKnowledgeBase, ChannelNotificationSettings as ChannelNotificationSettingsType, ChannelUpdate, TransientChannelInput, TransientChannelOutput } from "@/shared/types";
 import { toast } from "sonner";
 import { getDefaultChannelName, toChannelInput, toChannelOutput, toChannelKnowledgeBase } from "@/utility/ChannelUtils";
+import { getNotionUrl } from "@/utility/notionUtils";
 import { useChannelCount } from "@/hooks/api/useChannelCount";
 import { useChannelMutations } from "@/hooks/api/useChannels";
 import { type KeyedMutator } from 'swr';
@@ -557,30 +558,6 @@ function Input({ input, inputs, setInputs, handleRemove }: { input: TransientCha
             </Dialog>
         </>
     )
-}
-
-function getNotionUrl(id: string, title?: string): string {
-    // Remove hyphens from UUID (Notion URLs use IDs without hyphens)
-    const idWithoutHyphens = id.replace(/-/g, '');
-    
-    // Create title slug if title is provided
-    let urlPath = idWithoutHyphens;
-    if (title) {
-        // Convert title to URL-friendly slug: lowercase, replace spaces/special chars with hyphens
-        const slug = title
-            .toLowerCase()
-            .trim()
-            .replace(/[^\w\s-]/g, '') // Remove special characters
-            .replace(/\s+/g, '-') // Replace spaces with hyphens
-            .replace(/-+/g, '-') // Replace multiple hyphens with single hyphen
-            .replace(/^-|-$/g, ''); // Remove leading/trailing hyphens
-        
-        if (slug) {
-            urlPath = `${slug}-${idWithoutHyphens}`;
-        }
-    }
-    
-    return `https://www.notion.so/native/${urlPath}?deepLinkOpenNewTab=true`;
 }
 
 function getOutputUrl(output: TransientChannelOutput | undefined): string | undefined {
