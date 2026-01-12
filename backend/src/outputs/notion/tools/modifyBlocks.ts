@@ -90,6 +90,10 @@ Example delete: "{\"operation\": \"delete\", \"block_id\": \"abc123\"}"`),
 
         const pageId = runContext.context.notionPageConfig.page_id as string;
         const pageName = runContext.context.notionPageConfig.page_name || 'Notion page';
+        const pageInfo = await notion.pages.retrieve({
+            page_id: pageId,
+        });
+        const pageUrl = 'url' in pageInfo ? pageInfo.url : undefined;
 
         try {
             if (op.operation === 'append') {
@@ -116,6 +120,7 @@ Example delete: "{\"operation\": \"delete\", \"block_id\": \"abc123\"}"`),
                     integration: IntegrationType.NOTION,
                     target: pageName,
                     details: `Added ${response.results.length} ${response.results.length === 1 ? 'item' : 'items'}: ${blockDescription}`,
+                    url: pageUrl,
                     type: 'create',
                     output_items: blockIds.map(blockId => ({
                         output_item_id: blockId,
@@ -159,6 +164,7 @@ Example delete: "{\"operation\": \"delete\", \"block_id\": \"abc123\"}"`),
                     target: pageName,
                     details: `Updated ${blockType}`,
                     type: 'update',
+                    url: pageUrl,
                     output_items: [{
                         output_item_id: response.id,
                         output_item_type: ConfigType.NOTION_PAGE
@@ -193,6 +199,7 @@ Example delete: "{\"operation\": \"delete\", \"block_id\": \"abc123\"}"`),
                     target: pageName,
                     details: 'Removed content block',
                     type: 'delete',
+                    url: pageUrl,
                     output_items: [{
                         output_item_id: response.id,
                         output_item_type: ConfigType.NOTION_PAGE
