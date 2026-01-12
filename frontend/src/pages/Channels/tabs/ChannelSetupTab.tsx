@@ -559,20 +559,41 @@ function Input({ input, inputs, setInputs, handleRemove }: { input: TransientCha
     )
 }
 
-function getNotionUrl(id: string): string {
-    // Notion URLs work with the ID directly (hyphens are fine)
-    return `https://www.notion.so/${id}`;
+function getNotionUrl(id: string, title?: string): string {
+    // Remove hyphens from UUID (Notion URLs use IDs without hyphens)
+    const idWithoutHyphens = id.replace(/-/g, '');
+    
+    // Create title slug if title is provided
+    let urlPath = idWithoutHyphens;
+    if (title) {
+        // Convert title to URL-friendly slug: lowercase, replace spaces/special chars with hyphens
+        const slug = title
+            .toLowerCase()
+            .trim()
+            .replace(/[^\w\s-]/g, '') // Remove special characters
+            .replace(/\s+/g, '-') // Replace spaces with hyphens
+            .replace(/-+/g, '-') // Replace multiple hyphens with single hyphen
+            .replace(/^-|-$/g, ''); // Remove leading/trailing hyphens
+        
+        if (slug) {
+            urlPath = `${slug}-${idWithoutHyphens}`;
+        }
+    }
+    
+    return `https://www.notion.so/native/${urlPath}?deepLinkOpenNewTab=true`;
 }
 
 function getOutputUrl(output: TransientChannelOutput | undefined): string | undefined {
     if (!output?.config) return undefined;
 
     if (output.configType === ConfigType.NOTION_DATABASE) {
-        const databaseId = (output.config as NotionConfig).databaseId;
-        return databaseId ? getNotionUrl(databaseId) : undefined;
+        const config = output.config as NotionConfig;
+        const databaseId = config.databaseId;
+        return databaseId ? getNotionUrl(databaseId, config.databaseName) : undefined;
     } else if (output.configType === ConfigType.NOTION_PAGE) {
-        const pageId = (output.config as NotionPageConfig).pageId;
-        return pageId ? getNotionUrl(pageId) : undefined;
+        const config = output.config as NotionPageConfig;
+        const pageId = config.pageId;
+        return pageId ? getNotionUrl(pageId, config.pageName) : undefined;
     }
 
     return undefined;

@@ -286,7 +286,7 @@ export class NotionConfig implements ConfigInstance {
 export class NotionPageConfig implements ConfigInstance {
     integrationType: IntegrationType = IntegrationType.NOTION;
     configType: ConfigType = ConfigType.NOTION_PAGE;
-
+    
     constructor(
         public integrationId: string,
         public pageId?: string,
