@@ -91,7 +91,7 @@ import {
 import { setupSlackBolt } from "./slack/boltApp";
 import logger from "./logger";
 import { getPosthogIntegrations, createOrUpdatePosthogIntegration, getPosthogProjects } from "./routes/posthog";
-import { handleScheduleWebhook } from "./routes/schedule";
+import { handleScheduleWebhook, handleManualTrigger } from "./routes/schedule";
 import { getTemplates } from "./routes/templates";
 
 export type Session = {
@@ -412,6 +412,11 @@ app.post("/webhooks/jira/:accountId", async (req, res) => {
 // MARK: SCHEDULE (Cloud Scheduler)
 app.post("/webhooks/schedule/:inputId", async (req, res) => {
   handleScheduleWebhook(req, res);
+});
+
+// Manual trigger endpoint (authenticated)
+app.post("/schedule/trigger/:inputId", authMiddleware, async (req, res) => {
+  handleManualTrigger(req, res);
 });
 
 // MARK: SLACK
