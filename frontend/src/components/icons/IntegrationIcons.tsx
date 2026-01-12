@@ -71,3 +71,11 @@ export function TerseIcon() {
 export function PosthogIcon() {
     return <img src="/posthog.png" alt="Posthog" className="w-full h-full object-contain" />;
 }
+
+export function CalendarClockIcon() {
+    return (
+        <svg className="w-full h-full text-[theme(text-primary)]" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M16 2v2h-8V2c0-.55-.45-1-1-1s-1 .45-1 1v2H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8.5c-.3-.6-.5-1.3-.5-2H4V10h16v2c.7 0 1.4.1 2 .3V6c0-1.1-.9-2-2-2h-2V2c0-.55-.45-1-1-1s-1 .45-1 1zm-4 9H8c-.55 0-1 .45-1 1s.45 1 1 1h4c.55 0 1-.45 1-1s-.45-1-1-1zm-5 4c-.55 0-1 .45-1 1s.45 1 1 1h2c.55 0 1-.45 1-1s-.45-1-1-1H7zm11-2c-2.76 0-5 2.24-5 5s2.24 5 5 5 5-2.24 5-5-2.24-5-5-5zm1.5 7.5L17 19V15.5c0-.28.22-.5.5-.5s.5.22.5.5V18.5l2 1.5c.23.17.28.5.11.73-.17.23-.5.28-.73.11z"/>
+        </svg>
+    );
+}

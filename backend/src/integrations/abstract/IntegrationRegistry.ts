@@ -1,4 +1,5 @@
 import { AtlassianIntegrationManager } from "../AtlassianIntegration";
+import { CronJobIntegrationManager } from "../CronJobIntegration";
 import { FigmaIntegrationManager } from "../FigmaIntegration";
 import { GithubIntegrationManager } from "../GithubIntegration";
 import { GmailIntegrationManager } from "../GmailIntegration";
@@ -12,9 +13,19 @@ import { PosthogIntegrationManager } from "../PosthogIntegration";
 
 type IntegrationWithInstallation = Integration<IntegrationInstance, any, IntegrationDetails> & (OAuthIntegrationInstallation<IntegrationType> | FormIntegrationInstallation<IntegrationType>);
 
+// System integrations that don't require user ownership validation
+const SYSTEM_INTEGRATION_TYPES: IntegrationType[] = [
+    IntegrationType.TERSE,
+    IntegrationType.CRON_JOB,
+];
+
+export function isSystemIntegration(integrationType: IntegrationType): boolean {
+    return SYSTEM_INTEGRATION_TYPES.includes(integrationType);
+}
 
 export const INTEGRATION_REGISTRY: Array<IntegrationWithInstallation> = [
     new AtlassianIntegrationManager(),
+    new CronJobIntegrationManager(),
     new FigmaIntegrationManager(),
     new GithubIntegrationManager(),
     new GmailIntegrationManager(),

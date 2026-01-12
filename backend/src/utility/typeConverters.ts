@@ -20,7 +20,8 @@ import {
     ConfluenceConfig,
     PosthogConfig,
     ConfigType,
-    GitHubKBConfig
+    GitHubKBConfig,
+    TimeTriggerConfig
 } from "../shared/Configs";
 
 export const convertIntegrationTypeToPrismaIntegrationType = (integrationType: IntegrationType): PrismaIntegrationType => {
@@ -43,6 +44,8 @@ export const convertIntegrationTypeToPrismaIntegrationType = (integrationType: I
             return PrismaIntegrationType.TERSE;
         case IntegrationType.POSTHOG:
             return PrismaIntegrationType.POSTHOG;
+        case IntegrationType.CRON_JOB:
+            return PrismaIntegrationType.CRON_JOB;
         default:
             throw integrationType satisfies never;
     }
@@ -72,6 +75,8 @@ export const convertPrismaIntegrationTypeToIntegrationType = (prismaIntegrationT
             return IntegrationType.TERSE;
         case PrismaIntegrationType.POSTHOG:
             return IntegrationType.POSTHOG;
+        case PrismaIntegrationType.CRON_JOB:
+            return IntegrationType.CRON_JOB;
         default:
             throw prismaIntegrationType satisfies never;
     }
@@ -101,6 +106,8 @@ export const convertIntegrationTypeToPrismaIntegrationTypeForRunHistory = (integ
             return PrismaIntegrationType.TERSE;
         case IntegrationType.POSTHOG:
             return PrismaIntegrationType.POSTHOG;
+        case IntegrationType.CRON_JOB:
+            return PrismaIntegrationType.CRON_JOB;
         default:
             throw integrationType satisfies never;
     }
@@ -131,6 +138,8 @@ export const convertPrismaIntegrationTypeToIntegrationTypeFromRunHistory = (pris
             return IntegrationType.TERSE;
         case PrismaIntegrationType.POSTHOG:
             return IntegrationType.POSTHOG;
+        case PrismaIntegrationType.CRON_JOB:
+            return IntegrationType.CRON_JOB;
         default:
             throw prismaIntegrationType satisfies never;
     }
@@ -212,6 +221,12 @@ export const convertPrismaConfigToConfigInstance = (channelInput: ChannelInputWi
         );
     }
 
+    if (channelInput.time_trigger_config) {
+        return new TimeTriggerConfig(
+            channelInput.time_trigger_config.cron_expression || ''
+        );
+    }
+
     // Type guard to ensure we implement conversion here
     switch (channelInput.config_type) {
         case InputConfigType.GMAIL:
@@ -224,6 +239,7 @@ export const convertPrismaConfigToConfigInstance = (channelInput: ChannelInputWi
         case InputConfigType.JIRA:
         case InputConfigType.CONFLUENCE:
         case InputConfigType.POSTHOG:
+        case InputConfigType.TIME_TRIGGER:
             break;
         default:
             throw channelInput.config_type satisfies never;
@@ -323,6 +339,8 @@ export const convertConfigTypeToInputConfigType = (configType: ConfigType): Inpu
             return InputConfigType.CONFLUENCE;
         case ConfigType.POSTHOG:
             return InputConfigType.POSTHOG;
+        case ConfigType.TIME_TRIGGER:
+            return InputConfigType.TIME_TRIGGER;
         case ConfigType.GITHUB_KB:
             // GitHub KB is a knowledge base config type, not an input config type
             throw new Error('GITHUB_KB is a knowledge base type, not an input type');
@@ -353,6 +371,8 @@ export const convertInputConfigTypeToConfigType = (inputConfigType: InputConfigT
             return ConfigType.CONFLUENCE;
         case InputConfigType.POSTHOG:
             return ConfigType.POSTHOG;
+        case InputConfigType.TIME_TRIGGER:
+            return ConfigType.TIME_TRIGGER;
         default:
             throw inputConfigType satisfies never;
     }
