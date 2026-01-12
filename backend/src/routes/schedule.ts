@@ -6,15 +6,14 @@ import { Session } from "../server";
 
 export interface ManualTriggerRequest {
     context?: string;
-    promptModifications?: string;
 }
 
 export async function handleManualTrigger(req: Request, res: Response) {
     const { inputId } = req.params;
-    const { context, promptModifications } = req.body as ManualTriggerRequest;
+    const { context } = req.body as ManualTriggerRequest;
     const session = req.session as Session;
 
-    logger.info("🖱️ Manual trigger received", { inputId, userId: session.user.id, hasContext: !!context, hasPromptModifications: !!promptModifications });
+    logger.info("🖱️ Manual trigger received", { inputId, userId: session.user.id, hasContext: !!context });
 
     if (!inputId) {
         logger.warn("⚠️  Manual trigger missing inputId");
@@ -31,7 +30,6 @@ export async function handleManualTrigger(req: Request, res: Response) {
         inputId,
         isManualTrigger: true,
         manualContext: context,
-        promptModifications: promptModifications,
     }).catch((error) => {
         logger.error("❌ Error processing manual trigger", { error, inputId });
     });

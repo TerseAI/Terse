@@ -332,9 +332,8 @@ interface BackendService {
      * Manually triggers a scheduled automation input
      * @param inputId - The ID of the time trigger input to trigger
      * @param context - Optional context explaining why the trigger is being run manually
-     * @param promptModifications - Optional modifications to the prompt for this specific run
      */
-    triggerManually(inputId: string, context?: string, promptModifications?: string): Promise<{ received: boolean; message: string }>;
+    triggerManually(inputId: string, context?: string): Promise<{ received: boolean; message: string }>;
 }
 
 export const BackendProvider: BackendService = {
@@ -930,10 +929,10 @@ export const BackendProvider: BackendService = {
             });
     },
 
-    triggerManually: (inputId: string, context?: string, promptModifications?: string) => {
+    triggerManually: (inputId: string, context?: string) => {
         return axios.post<{ received: boolean; message: string }>(
             `${backendBaseUrl}/schedule/trigger/${encodeURIComponent(inputId)}`,
-            { context, promptModifications },
+            { context },
             { withCredentials: true }
         )
             .then(response => response.data)
