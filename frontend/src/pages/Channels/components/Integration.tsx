@@ -11,8 +11,8 @@ import {
     ConfluenceIcon,
     JiraConfluenceIcon,
     PosthogIcon,
+    CalendarClockIcon,
 } from "@/components/icons/IntegrationIcons";
-import { ClockIcon } from "lucide-react";
 
 export function IconForConfigType({ type }: { type: ConfigType }) {
     switch (type) {
@@ -38,7 +38,7 @@ export function IconForConfigType({ type }: { type: ConfigType }) {
         case ConfigType.POSTHOG:
             return <PosthogIcon />;
         case ConfigType.TIME_TRIGGER:
-            return <ClockIcon className="w-full h-full text-[theme(text-primary)]" />;        
+            return <CalendarClockIcon />;        
         default:
             // Exhaustive check: TypeScript will error if any IntegrationType case is missing
             throw type satisfies never;
@@ -63,7 +63,7 @@ export function IconForIntegration({ integration }: { integration: IntegrationTy
             return <JiraConfluenceIcon />;
         case IntegrationType.TERSE:
         case IntegrationType.CRON_JOB:
-            return <ClockIcon />;
+            return <CalendarClockIcon />;
         case IntegrationType.POSTHOG:
             return <PosthogIcon />
         default:
