@@ -2,24 +2,24 @@ import axios from 'axios';
 import type { RunHistoryModelEvent, RunHistoryActionWithId } from "../shared/RunHistoryTypes";
 import {
     Channel,
-    ChannelsResponse, 
-    ChannelUpdate, 
-    ConfluenceResourcesResponse, 
-    GetGithubRepositoriesForIntegrationResponse, 
-    OAuthInstallationDetails, 
-    JiraCredentialsValidationResponse, 
+    ChannelsResponse,
+    ChannelUpdate,
+    ConfluenceResourcesResponse,
+    GetGithubRepositoriesForIntegrationResponse,
+    OAuthInstallationDetails,
+    JiraCredentialsValidationResponse,
     JiraResourcesResponse,
     LinearTeam,
-    NotionResourcesResponse, 
+    NotionResourcesResponse,
     PosthogProjectsResponse,
     RecentChannel,
     SlackChannelsResponse,
     StatsResponse,
     SlackUsersResponse,
-    ChannelTemplate, 
+    ChannelTemplate,
 } from "../shared/types";
 import { GenerateSurveyQuestionsRequest, GenerateSurveyQuestionsResponse, GenerateSurveyPromptRequest, GenerateSurveyPromptResponse } from "../shared/PromptBuilderTypes";
-import { 
+import {
     IntegrationType,
     IntegrationWithStatus,
     GmailIntegration,
@@ -442,9 +442,9 @@ export const BackendProvider: BackendService = {
             });
     },
 
-    getIntegrationInstallationDetails: <T extends IntegrationType> (integrationType: T, options?: InstallationOptionsFor<T>) => {
+    getIntegrationInstallationDetails: <T extends IntegrationType>(integrationType: T, options?: InstallationOptionsFor<T>) => {
         const params = new URLSearchParams();
-        if(options) {
+        if (options) {
             params.append('options', JSON.stringify(options));
         }
         const queryString = params.toString();
@@ -869,7 +869,7 @@ export const BackendProvider: BackendService = {
                 console.error('Error generating questions:', error);
                 throw error;
             });
-        },
+    },
 
     getNotificationDestinations: () => {
         return axios.get<NotificationDestination[]>(`${backendBaseUrl}/notification-destinations`, { withCredentials: true })
@@ -901,7 +901,7 @@ export const BackendProvider: BackendService = {
                 throw error;
             });
     },
-    
+
     updateNotificationDestination: (destination: NotificationDestination) => {
         return axios.put<NotificationDestination>(`${backendBaseUrl}/notification-destinations/${destination.id}`, destination, { withCredentials: true })
             .then(response => response.data)
