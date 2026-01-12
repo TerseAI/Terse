@@ -457,19 +457,18 @@ export async function listPullRequests(
         }));
 
         // Check if there are more pages by examining the Link header
-        // When date filtering is applied client-side, we need to be more conservative:
-        // only indicate more pages if we got a full page of filtered results AND the API has more pages
         const isDateFiltered = !!(since || until);
         let hasMore = false;
         const linkHeader = headers.link;
         const hasNextPage = !!(linkHeader && linkHeader.includes('rel="next"'));
         const gotFullPageFromAPI = data.length === perPage;
-        const gotFullPageOfFilteredResults = filteredPRs.length === perPage;
         
         if (isDateFiltered) {
-            // With client-side filtering, we can only confidently say there are more matching results
-            // if we got a full page of filtered results AND the API indicates more pages exist
-            hasMore = hasNextPage && gotFullPageOfFilteredResults;
+            // With client-side filtering, if the API has more pages, there could be matching results
+            // on those pages. We can't know without fetching them, so we indicate hasMore = true
+            // if the API has more pages. This ensures users don't miss results that might exist
+            // on subsequent pages, even if the current page had few matches after filtering.
+            hasMore = hasNextPage;
         } else {
             // Without filtering, use the standard logic
             if (hasNextPage) {
