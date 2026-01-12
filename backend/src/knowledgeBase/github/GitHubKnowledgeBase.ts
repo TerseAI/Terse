@@ -11,7 +11,7 @@ import { readGitHubFileTool } from "./tools/readFile";
 import { listGitHubDirectoryTool } from "./tools/listDirectory";
 import { listGitHubPullRequestsTool } from "./tools/listPullRequests";
 import { listGitHubCommitsTool } from "./tools/listCommits";
-import { readGitHubPullRequestDiffTool } from "./tools/readPullRequestDiff";
+import { summarizeGitHubPullRequestDiffTool } from "./tools/summarizePullRequestDiff";
 import { getGitHubAccessToken } from "./githubApiClient";
 import logger from "../../logger";
 
@@ -62,7 +62,7 @@ export class GitHubKnowledgeBase extends KnowledgeBase<GitHubKnowledgeBaseSessio
                 integration: IntegrationType.GITHUB
             },
             {
-                tool: readGitHubPullRequestDiffTool,
+                tool: summarizeGitHubPullRequestDiffTool,
                 isReadOnly: true,
                 integration: IntegrationType.GITHUB
             }
@@ -168,9 +168,13 @@ AVAILABLE TOOLS:
   Filter by date range, branch, file path, or author.
   Example: path "src/auth" to see commits affecting authentication code.
   
-• readGitHubPullRequestDiff: Read the full diff of a pull request. See all changes made in a PR.
+• summarizeGitHubPullRequestDiff: Summarize the diff of a pull request using an intelligent sub-agent. 
+  This tool launches a compact model that reads the full PR diff and provides a structured summary,
+  avoiding the need to load large diffs into the main context window. You can optionally provide
+  context about what you're looking for to help focus the analysis.
   Use after finding a PR with listGitHubPullRequests to understand what was changed.
-  Example: readGitHubPullRequestDiff with pullNumber 123 to see changes in PR #123.`);
+  Example: summarizeGitHubPullRequestDiff with pullNumber 123 to get a summary of PR #123.
+  Example with context: summarizeGitHubPullRequestDiff with pullNumber 123 and context "authentication changes".`);
 
         sections.push(`
 CODE EXPLORATION STRATEGY:

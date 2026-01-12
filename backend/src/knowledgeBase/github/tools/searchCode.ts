@@ -36,8 +36,9 @@ Tips:
         filename: z.union([z.string(), z.null()]).describe('Filter by filename pattern (e.g., "*.test.ts" for test files, "*.config.*" for config files). Use null to search all files.'),
         path: z.union([z.string(), z.null()]).describe('Filter by path (e.g., "src/components" to only search in that directory). Use null to search everywhere.'),
         perPage: z.number().describe('Number of results to return (default: 10, max: 100)'),
+        page: z.union([z.number().int().min(1), z.null()]).describe('Page number for pagination (default: 1). Use this to fetch additional results if there are more than perPage results. Use null for page 1. Must be a positive integer >= 1.'),
     }),
-    execute: async ({ query, language, filename, path, perPage = 10 }, runContext?: RunContext<any>) => {
+    execute: async ({ query, language, filename, path, perPage = 10, page }, runContext?: RunContext<any>) => {
         if (!runContext?.context) {
             throw new Error("No context provided");
         }
@@ -70,13 +71,16 @@ Tips:
             enhancedQuery += ` path:${path}`;
         }
 
+        const pageNumber = Math.max(1, page ?? 1);
+        const normalizedPerPage = Math.min(perPage || 10, 100);
         const requestParams = {
             tool: 'searchGitHubCode',
             query: enhancedQuery,
             originalQuery: query,
             filters: { language, filename, path },
             repositories: githubKBConfig.repositoryNames,
-            perPage: Math.min(perPage || 10, 100),
+            perPage: normalizedPerPage,
+            page: pageNumber,
         };
         logger.info('[GitHub KB] searchGitHubCode - Request', requestParams);
         logger.debug('[GitHub KB] searchGitHubCode - Full request params', { requestParams });
@@ -86,7 +90,7 @@ Tips:
                 client,
                 enhancedQuery,
                 githubKBConfig.repositoryNames,
-                { perPage: Math.min(perPage || 10, 100) }
+                { perPage: normalizedPerPage, page: pageNumber }
             );
 
             logger.debug('[GitHub KB] searchGitHubCode - Raw API response', {
@@ -113,16 +117,25 @@ Tips:
                 };
             });
 
+            const paginationInfo = results.pagination.hasMore
+                ? ` Page ${results.pagination.page} (${formattedResults.length} results shown). More results available - use page ${results.pagination.page + 1} to see more.`
+                : ` Page ${results.pagination.page} (${formattedResults.length} results shown).`;
+
             const response = {
                 success: true,
                 totalCount: results.totalCount,
                 resultsReturned: formattedResults.length,
                 query: enhancedQuery,
                 repositories: githubKBConfig.repositoryNames,
+                pagination: {
+                    page: results.pagination.page,
+                    perPage: results.pagination.perPage,
+                    hasMore: results.pagination.hasMore,
+                },
                 results: formattedResults,
                 message: results.totalCount === 0 
                     ? `No results found for "${query}". Try broadening your search or using different terms.`
-                    : `Found ${results.totalCount} results for "${query}". Showing top ${formattedResults.length}.`,
+                    : `Found ${results.totalCount} results for "${query}".${paginationInfo}`,
                 tip: formattedResults.length > 0 
                     ? 'Use readGitHubFile to read the full contents of any file that looks relevant.'
                     : 'Try searching for different terms, or use listGitHubDirectory to explore the repository structure.',

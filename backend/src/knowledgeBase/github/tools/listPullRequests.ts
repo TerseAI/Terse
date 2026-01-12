@@ -72,8 +72,9 @@ Dates are specified in YYYY-MM-DD format (e.g., "2024-01-15"). The since date is
         since: z.union([z.string(), z.null()]).describe('Start date in YYYY-MM-DD format (e.g., "2024-01-15"). Only PRs updated on or after this date (starting at 00:00:00) are included. Use null for no start filter.'),
         until: z.union([z.string(), z.null()]).describe('End date in YYYY-MM-DD format (e.g., "2024-01-15"). Only PRs updated on or before this date (ending at 23:59:59) are included. Use null for no end filter.'),
         perPage: z.number().describe('Number of results to return (default: 20, max: 100)'),
+        page: z.union([z.number().int().min(1), z.null()]).describe('Page number for pagination (default: 1). Use this to fetch additional PRs if there are more than perPage results. Use null for page 1. Must be a positive integer >= 1.'),
     }),
-    execute: async ({ repository, state, since, until, perPage = 20 }, runContext?: RunContext<any>) => {
+    execute: async ({ repository, state, since, until, perPage = 20, page }, runContext?: RunContext<any>) => {
         const { githubKBConfig, accessToken } = validateContext(runContext);
 
         const repoValidationError = validateRepository(repository, githubKBConfig.repositoryNames);
@@ -84,6 +85,7 @@ Dates are specified in YYYY-MM-DD format (e.g., "2024-01-15"). The since date is
         const client = createGitHubClient(accessToken);
         const { owner, repo } = parseRepoFullName(repository);
         const normalizedPerPage = normalizePerPage(perPage);
+        const pageNumber = Math.max(1, page ?? 1);
 
         const requestParams = {
             tool: 'listGitHubPullRequests',
@@ -94,6 +96,7 @@ Dates are specified in YYYY-MM-DD format (e.g., "2024-01-15"). The since date is
             since,
             until,
             perPage: normalizedPerPage,
+            page: pageNumber,
         };
         logger.info('[GitHub KB] listGitHubPullRequests - Request', requestParams);
         logger.debug('[GitHub KB] listGitHubPullRequests - Full request params', { requestParams });
@@ -104,6 +107,7 @@ Dates are specified in YYYY-MM-DD format (e.g., "2024-01-15"). The since date is
                 since: since || undefined,
                 until: until || undefined,
                 perPage: normalizedPerPage,
+                page: pageNumber,
             });
 
             logger.debug('[GitHub KB] listGitHubPullRequests - Raw API response', {
@@ -135,16 +139,24 @@ Dates are specified in YYYY-MM-DD format (e.g., "2024-01-15"). The since date is
 
             const summary = calculateSummary(formattedResults);
             const timeWindowDesc = formatTimeWindow(since, until);
+            const paginationInfo = results.pagination.hasMore
+                ? ` Page ${results.pagination.page} (${formattedResults.length} PRs shown). More PRs available - use page ${results.pagination.page + 1} to see more.`
+                : ` Page ${results.pagination.page} (${formattedResults.length} PRs shown).`;
 
             const response = {
                 success: true,
                 repository,
                 timeWindow: timeWindowDesc,
                 summary,
+                pagination: {
+                    page: results.pagination.page,
+                    perPage: results.pagination.perPage,
+                    hasMore: results.pagination.hasMore,
+                },
                 pullRequests: formattedResults,
                 message: formattedResults.length === 0
                     ? `No pull requests found for ${repository} ${timeWindowDesc}.`
-                    : `Found ${summary.total} pull requests (${summary.merged} merged, ${summary.open} open) for ${repository} ${timeWindowDesc}.`,
+                    : `Found ${summary.total} pull requests (${summary.merged} merged, ${summary.open} open) for ${repository} ${timeWindowDesc}.${paginationInfo}`,
             };
 
             logger.info('[GitHub KB] listGitHubPullRequests - Response', {
