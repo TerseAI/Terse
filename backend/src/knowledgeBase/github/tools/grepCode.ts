@@ -33,8 +33,9 @@ This is more precise than semantic search - use it when you know exactly what te
         fileExtension: z.union([z.string(), z.null()]).describe('Filter by file extension (e.g., "ts", "js", "py"). Do not include the dot. Use null to search all file types.'),
         path: z.union([z.string(), z.null()]).describe('Filter by directory path (e.g., "src/services" to only search in that directory). Use null to search everywhere.'),
         perPage: z.number().describe('Number of results to return (default: 20, max: 100)'),
+        page: z.union([z.number(), z.null()]).describe('Page number for pagination (default: 1). Use this to fetch additional results if there are more than perPage results. Use null for page 1.'),
     }),
-    execute: async ({ pattern, fileExtension, path, perPage = 20 }, runContext?: RunContext<any>) => {
+    execute: async ({ pattern, fileExtension, path, perPage = 20, page }, runContext?: RunContext<any>) => {
         if (!runContext?.context) {
             throw new Error("No context provided");
         }
@@ -69,13 +70,16 @@ This is more precise than semantic search - use it when you know exactly what te
             query += ` path:${path}`;
         }
 
+        const pageNumber = page ?? 1;
+        const normalizedPerPage = Math.min(perPage || 20, 100);
         const requestParams = {
             tool: 'grepGitHubCode',
             pattern,
             query,
             filters: { fileExtension, path },
             repositories: githubKBConfig.repositoryNames,
-            perPage: Math.min(perPage || 20, 100),
+            perPage: normalizedPerPage,
+            page: pageNumber,
         };
         logger.info('[GitHub KB] grepGitHubCode - Request', requestParams);
         logger.debug('[GitHub KB] grepGitHubCode - Full request params', { requestParams });
@@ -85,7 +89,7 @@ This is more precise than semantic search - use it when you know exactly what te
                 client,
                 query,
                 githubKBConfig.repositoryNames,
-                { perPage: Math.min(perPage || 20, 100) }
+                { perPage: normalizedPerPage, page: pageNumber }
             );
 
             logger.debug('[GitHub KB] grepGitHubCode - Raw API response', {
@@ -122,6 +126,10 @@ This is more precise than semantic search - use it when you know exactly what te
                 };
             });
 
+            const paginationInfo = results.pagination.hasMore
+                ? ` Page ${results.pagination.page} (${formattedResults.length} results shown). More results available - use page ${results.pagination.page + 1} to see more.`
+                : ` Page ${results.pagination.page} (${formattedResults.length} results shown).`;
+
             const response = {
                 success: true,
                 totalCount: results.totalCount,
@@ -129,10 +137,15 @@ This is more precise than semantic search - use it when you know exactly what te
                 pattern,
                 query,
                 repositories: githubKBConfig.repositoryNames,
+                pagination: {
+                    page: results.pagination.page,
+                    perPage: results.pagination.perPage,
+                    hasMore: results.pagination.hasMore,
+                },
                 results: formattedResults,
                 message: results.totalCount === 0 
                     ? `No exact matches found for "${pattern}". Try a different pattern or use searchGitHubCode for semantic search.`
-                    : `Found ${results.totalCount} files containing "${pattern}". Showing top ${formattedResults.length}.`,
+                    : `Found ${results.totalCount} files containing "${pattern}".${paginationInfo}`,
                 tip: formattedResults.length > 0 
                     ? 'Use readGitHubFile to see the full file contents and surrounding context.'
                     : 'Try a partial match or use searchGitHubCode for broader semantic search.',
