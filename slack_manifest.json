@@ -34,7 +34,8 @@
                 "im:history",
                 "im:write",
                 "mpim:history",
-                "mpim:write"
+                "mpim:write",
+                "assistant:write"
             ]
         }
     },
@@ -48,11 +49,14 @@
                 "message.mpim"
             ],
             "bot_events": [
+                "app_mention",
                 "app_uninstalled",
                 "message.channels",
                 "message.groups",
                 "message.im",
-                "message.mpim"
+                "message.mpim",
+                "assistant_thread_started",
+                "assistant_thread_context_changed"
             ]
         },
         "org_deploy_enabled": false,
