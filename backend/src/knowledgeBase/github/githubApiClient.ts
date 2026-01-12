@@ -88,7 +88,7 @@ export async function searchCode(
         perPage?: number;
         page?: number;
     } = {}
-): Promise<{ items: CodeSearchResult[]; totalCount: number }> {
+): Promise<{ items: CodeSearchResult[]; totalCount: number; pagination: { page: number; perPage: number; hasMore: boolean } }> {
     const { perPage = 30, page = 1 } = options;
     
     // Build the repo filter
@@ -96,7 +96,7 @@ export async function searchCode(
     const fullQuery = `${query} ${repoFilter}`;
     
     try {
-        const { data } = await client.search.code({
+        const { data, headers } = await client.search.code({
             q: fullQuery,
             per_page: perPage,
             page,
@@ -105,6 +105,18 @@ export async function searchCode(
                 accept: 'application/vnd.github.text-match+json',
             },
         });
+
+        // Check if there are more pages by examining the Link header
+        let hasMore = false;
+        const linkHeader = headers.link;
+        if (linkHeader && linkHeader.includes('rel="next"')) {
+            hasMore = true;
+        } else if (data.items.length === perPage) {
+            // If we got exactly perPage results, there might be more
+            // But without a Link header, we can't be certain, so we'll be conservative
+            // and assume there might be more if we got a full page
+            hasMore = true;
+        }
 
         return {
             totalCount: data.total_count,
@@ -123,6 +135,11 @@ export async function searchCode(
                     matches: match.matches,
                 })),
             })),
+            pagination: {
+                page,
+                perPage,
+                hasMore,
+            },
         };
     } catch (error: any) {
         if (error.status === 422) {
@@ -361,11 +378,11 @@ export async function listPullRequests(
         perPage?: number;
         page?: number;
     } = {}
-): Promise<{ items: PullRequestInfo[]; totalFetched: number }> {
+): Promise<{ items: PullRequestInfo[]; totalFetched: number; pagination: { page: number; perPage: number; hasMore: boolean } }> {
     const { state = 'all', since, until, perPage = 30, page = 1 } = options;
 
     try {
-        const { data } = await client.pulls.list({
+        const { data, headers } = await client.pulls.list({
             owner,
             repo,
             state,
@@ -439,9 +456,39 @@ export async function listPullRequests(
             headBranch: pr.head.ref,
         }));
 
+        // Check if there are more pages by examining the Link header
+        const isDateFiltered = !!(since || until);
+        let hasMore = false;
+        const linkHeader = headers.link;
+        const hasNextPage = !!(linkHeader && linkHeader.includes('rel="next"'));
+        const gotFullPageFromAPI = data.length === perPage;
+        
+        if (isDateFiltered) {
+            // With client-side filtering, if the API has more pages, there could be matching results
+            // on those pages. We can't know without fetching them, so we indicate hasMore = true
+            // if the API has more pages. This ensures users don't miss results that might exist
+            // on subsequent pages, even if the current page had few matches after filtering.
+            hasMore = hasNextPage;
+        } else {
+            // Without filtering, use the standard logic
+            if (hasNextPage) {
+                hasMore = true;
+            } else if (gotFullPageFromAPI) {
+                // If we got exactly perPage results, there might be more
+                // But without a Link header, we can't be certain, so we'll be conservative
+                // and assume there might be more if we got a full page
+                hasMore = true;
+            }
+        }
+
         return {
             items,
             totalFetched: items.length,
+            pagination: {
+                page,
+                perPage,
+                hasMore,
+            },
         };
     } catch (error: any) {
         logger.error('Failed to list pull requests', { owner, repo, error: error.message });
@@ -472,6 +519,11 @@ export interface PullRequestDiff {
     deletions: number;
     totalChanges: number;
     htmlUrl: string;
+    pagination: {
+        page: number;
+        perPage: number;
+        hasMore: boolean;
+    };
 }
 
 /**
@@ -481,8 +533,13 @@ export async function getPullRequestDiff(
     client: Octokit,
     owner: string,
     repo: string,
-    pullNumber: number
+    pullNumber: number,
+    options: {
+        page?: number;
+        perPage?: number;
+    } = {}
 ): Promise<PullRequestDiff> {
+    const { page = 1, perPage = 100 } = options;
     try {
         // Get PR details (without diff format)
         const { data: pr } = await client.pulls.get({
@@ -505,11 +562,26 @@ export async function getPullRequestDiff(
         const diff = diffResponse.data as unknown as string;
 
         // Get PR files to get detailed file information
-        const { data: files } = await client.pulls.listFiles({
+        // Fetch a single page of files (per_page: 100 is the maximum)
+        const { data: files, headers } = await client.pulls.listFiles({
             owner,
             repo,
             pull_number: pullNumber,
+            per_page: perPage,
+            page,
         });
+
+        // Check if there are more pages by examining the Link header
+        let hasMore = false;
+        const linkHeader = headers.link;
+        if (linkHeader && linkHeader.includes('rel="next"')) {
+            hasMore = true;
+        } else if (files.length === perPage) {
+            // If we got exactly perPage results, there might be more
+            // But without a Link header, we can't be certain, so we'll be conservative
+            // and assume there might be more if we got a full page
+            hasMore = true;
+        }
 
         const filesChanged = files.map((file) => ({
             filename: file.filename,
@@ -533,6 +605,11 @@ export async function getPullRequestDiff(
             deletions: pr.deletions,
             totalChanges: pr.additions + pr.deletions,
             htmlUrl: pr.html_url,
+            pagination: {
+                page,
+                perPage,
+                hasMore,
+            },
         };
     } catch (error: any) {
         if (error.status === 404) {
