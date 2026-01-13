@@ -24,7 +24,6 @@ class SlackChatInterface implements ChatInterface {
     }
 
     processStreamEvent(chatId: string, event: RunStreamEvent): void {
-        logger.info('Slack chat interface processStreamEvent:', { event });
     }
 
     processMessageEnd(chatId: string, finalOutput: string): void {
