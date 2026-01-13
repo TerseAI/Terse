@@ -3,8 +3,6 @@ import ChatInterface from "./ChatInterface";
 import { buildChatAgentSystemPrompt } from "./ChatAgentSystemPrompt";
 import { buildChatAgentTools } from "./ChatAgentTools";
 import { ChatMemorySession, recentHistoryCallback } from "../CustomMemorySession";
-import { getOrCreateChatSession } from "./chatSessionHelper";
-import { ChatSessionType } from "@prisma/client";
 import logger from "../../logger";
 
 class ChatAgent {
@@ -19,16 +17,10 @@ class ChatAgent {
         if (this.memorySession) {
             return this.memorySession;
         }
-
-        // Determine session type based on chat interface
-        const sessionType = this.chatInterface.name === 'Slack' ? ChatSessionType.SLACK_THREAD : ChatSessionType.DIRECT_CHAT;
-        
-        // Get or create the chat session
-        const chatSessionId = await getOrCreateChatSession(sessionType, this.chatId);
         
         // Create the memory session
         this.memorySession = new ChatMemorySession({
-            sessionId: chatSessionId,
+            sessionId: this.chatId,
         });
 
         return this.memorySession;

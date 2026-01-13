@@ -41,7 +41,6 @@ model users {
   github_app_tokens         github_app_tokens[]
   notification_destinations user_notification_destinations[]
   posthog_integrations      posthog_integrations[]
-  chat_sessions             chat_sessions[]
 }
 
 model github_repositories {
@@ -976,25 +975,6 @@ enum ChatSessionType {
   DIRECT_CHAT
 }
 
-// General chat sessions (not tied to run history records)
-model chat_sessions {
-  id           String          @id @default(cuid())
-  session_type ChatSessionType
-  external_id  String // External identifier (e.g., Slack thread timestamp)
-  user_id      String? // Optional user association
-  metadata     Json? // Optional metadata for storing additional context
-  created_at   DateTime        @default(now())
-  updated_at   DateTime        @updatedAt
-
-  user       users?            @relation(fields: [user_id], references: [id], onDelete: Cascade)
-  raw_events chat_raw_events[]
-
-  @@unique([session_type, external_id]) // Ensure one session per external_id per type
-  @@index([external_id])
-  @@index([user_id])
-  @@index([session_type])
-}
-
 // Raw AgentStreamEvent stored as JSON for general chat sessions
 model chat_raw_events {
   id              String   @id @default(cuid())
@@ -1002,8 +982,6 @@ model chat_raw_events {
   raw_event_json  Json // Raw AgentStreamEvent stored as JSON for easy loading into OpenAI agent history
   sequence_order  Int // Order of items within a session to preserve exact sequence
   created_at      DateTime @default(now())
-
-  chat_session chat_sessions @relation(fields: [chat_session_id], references: [id], onDelete: Cascade)
 
   @@index([chat_session_id])
   @@index([chat_session_id, sequence_order])
