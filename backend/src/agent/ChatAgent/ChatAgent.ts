@@ -10,14 +10,14 @@ class ChatAgent {
 
     constructor(
         private readonly chatInterface: ChatInterface,
-        chatId: string
+        private readonly chatId: string
     ) {
         this.memorySession = new RunHistoryChatMemorySession({
             sessionId: chatId,
         });
     }
 
-    async run(message: string): Promise<void> {
+    async run(message: string): Promise<string> {
         logger.info('Starting chat agent run for message in interface', { message, interface: this.chatInterface.name });
         const agent = new Agent<void, AgentOutputType>({
             name: 'Living Document Automator',
@@ -41,10 +41,15 @@ class ChatAgent {
         });
 
         for await (const event of result as AsyncIterable<RunStreamEvent>) {
-            this.chatInterface.processStreamEvent(event);
+            this.chatInterface.processStreamEvent(this.chatId, event);
         }
 
-        logger.info('Chat agent run completed');
+        const finalOutput = typeof result.finalOutput === 'string' ? result.finalOutput : '';
+        this.chatInterface.processMessageEnd(this.chatId, finalOutput);
+
+        logger.info('Chat agent run completed', { finalOutput });
+
+        return finalOutput;
     }
 }
 
