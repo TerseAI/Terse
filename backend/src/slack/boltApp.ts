@@ -60,11 +60,38 @@ export async function setupSlackBolt() {
   });
 
   // Process message events using our existing webhook handler
-  slack.message(async ({ event, body }) => {
+  slack.message(async ({ event, body, context, say, client }) => {
+
     try {
-      // Convert Bolt event to our SlackMessageEvent format
-      // Bolt's message event type is not exported, so we type it based on the structure
       const messageEvent = event as { channel: string; user?: string; text?: string; ts?: string; thread_ts?: string; bot_id?: string; subtype?: string; channel_type?: string };
+
+      // Check if message is in a thread (thread_ts is the root parent's timestamp)
+      const threadTs = messageEvent.thread_ts;
+      const isInThread = !!threadTs;
+
+      // If in a thread, not from a bot, and the thread started with an @mention of our bot,
+      // route to ChatAgent for conversational follow-up
+      if (isInThread && !messageEvent.bot_id && messageEvent.text && context.botUserId) {
+        const threadStartedByMention = await isThreadStartedByAppMention(
+          client,
+          messageEvent.channel,
+          threadTs,
+          context.botUserId
+        );
+
+        if (threadStartedByMention) {
+          logger.info('Thread reply in app_mention thread, routing to ChatAgent:', {
+            threadTs,
+            channel: messageEvent.channel,
+            text: messageEvent.text
+          });
+
+          const slackChatInterface = new SlackChatInterface(messageEvent.channel, say);
+          const chatAgent = new ChatAgent(slackChatInterface, threadTs);
+          await chatAgent.run(messageEvent.text);
+        }
+      }
+
       const slackMessageEvent: SlackMessageEvent = {
         type: "event_callback",
         team_id: body.team_id || "",
@@ -99,7 +126,7 @@ export async function setupSlackBolt() {
 
   slack.event('app_mention', async ({ event, body, say, client }) => {
     console.log('app_mention', event, body);
-    
+
     try {
       await client.reactions.add({
         channel: event.channel,
@@ -119,10 +146,11 @@ export async function setupSlackBolt() {
     const chatAgent = new ChatAgent(slackChatInterface, chatId);
 
     await chatAgent.run(message);
-    
-    await say({
-      text: 'Hello, how can I help you today?',
-      thread_ts: event.ts,
+
+    await client.reactions.remove({
+      channel: event.channel,
+      timestamp: event.ts,
+      name: 'eyes',
     });
   });
 
@@ -683,3 +711,29 @@ export async function setupSlackBolt() {
   };
 }
 
+async function isThreadStartedByAppMention(
+  client: { conversations: { replies: (args: { channel: string; ts: string; limit: number }) => Promise<{ messages?: Array<{ text?: string }> }> } },
+  channel: string,
+  threadTs: string,
+  botUserId: string
+): Promise<boolean> {
+  try {
+    // Fetch the root message of the thread
+    const replies = await client.conversations.replies({
+      channel,
+      ts: threadTs,
+      limit: 1, // We only need the root message
+    });
+
+    const rootMessage = replies.messages?.[0];
+    if (!rootMessage?.text) {
+      return false;
+    }
+
+    // Check if the root message mentions the bot (format: <@U1234567890>)
+    return rootMessage.text.includes(`<@${botUserId}>`);
+  } catch (error) {
+    logger.error('Error checking if thread started by app mention:', { error, channel, threadTs });
+    return false;
+  }
+}
