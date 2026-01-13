@@ -30,7 +30,7 @@ class SlackChatInterface implements ChatInterface {
     processMessageEnd(chatId: string, finalOutput: string): void {
         logger.info('Slack chat interface processMessageEnd');
         this.say({
-            text: 'Hello, how can I help you today?',
+            text: finalOutput,
             thread_ts: chatId,
         });
     }
