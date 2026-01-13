@@ -2,19 +2,36 @@ import { Agent, AgentOutputType, run, RunStreamEvent } from "@openai/agents";
 import ChatInterface from "./ChatInterface";
 import { buildChatAgentSystemPrompt } from "./ChatAgentSystemPrompt";
 import { buildChatAgentTools } from "./ChatAgentTools";
-import { RunHistoryChatMemorySession, recentHistoryCallback } from "../CustomMemorySession";
+import { ChatMemorySession, recentHistoryCallback } from "../CustomMemorySession";
+import { getOrCreateChatSession } from "./chatSessionHelper";
+import { ChatSessionType } from "@prisma/client";
 import logger from "../../logger";
 
 class ChatAgent {
-    private memorySession: RunHistoryChatMemorySession;
+    private memorySession: ChatMemorySession | null = null;
 
     constructor(
         private readonly chatInterface: ChatInterface,
-        private readonly chatId: string
-    ) {
-        this.memorySession = new RunHistoryChatMemorySession({
-            sessionId: chatId,
+        private readonly chatId: string // This is the external_id (e.g., Slack thread timestamp)
+    ) {}
+
+    private async getMemorySession(): Promise<ChatMemorySession> {
+        if (this.memorySession) {
+            return this.memorySession;
+        }
+
+        // Determine session type based on chat interface
+        const sessionType = this.chatInterface.name === 'Slack' ? ChatSessionType.SLACK_THREAD : ChatSessionType.DIRECT_CHAT;
+        
+        // Get or create the chat session
+        const chatSessionId = await getOrCreateChatSession(sessionType, this.chatId);
+        
+        // Create the memory session
+        this.memorySession = new ChatMemorySession({
+            sessionId: chatSessionId,
         });
+
+        return this.memorySession;
     }
 
     async run(message: string): Promise<string> {
@@ -26,6 +43,8 @@ class ChatAgent {
             tools: buildChatAgentTools(this.chatInterface),
         });
 
+        const memorySession = await this.getMemorySession();
+
         const result = await run(agent, [
             {
                 role: 'user',
@@ -36,7 +55,7 @@ class ChatAgent {
             context: {
                 chatInterface: this.chatInterface,
             },
-            session: this.memorySession,
+            session: memorySession,
             sessionInputCallback: recentHistoryCallback,
         });
 
