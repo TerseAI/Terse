@@ -1,4 +1,4 @@
-import { Integration, OAuthIntegrationInstallation } from "./abstract/Integration";
+import { Integration, OAuthIntegrationInstallation, ConfigurationFieldDefinition } from "./abstract/Integration";
 import { db } from "../prismaClient";
 import { NotionIntegration, NotionIntegrationMetadata } from "../shared/Integrations";
 import { OAuthInstallationDetails } from "../shared/types";
@@ -12,6 +12,10 @@ import logger from "../logger";
 export class NotionIntegrationManager implements Integration<NotionIntegration, never, typeof NotionIntegrationMetadata>, OAuthIntegrationInstallation<IntegrationType.NOTION> {
     constructor() { }
     integrationType: IntegrationType = IntegrationType.NOTION;
+
+    getConfigurationFields(): ConfigurationFieldDefinition[] {
+        return [];
+    }
 
     async getInstancesForUser(userId: string): Promise<NotionIntegration[]> {
         const notionIntegrations = await db().notion_integrations.findMany({
@@ -49,13 +53,16 @@ export class NotionIntegrationManager implements Integration<NotionIntegration, 
         throw new Error("Notion webhooks are not processed through this integration manager");
     }
 
-    async getInstallationUrl(userId: string): Promise<OAuthInstallationDetails> {
+    async getInstallationUrl(userId: string, options?: any, additionalStatePayload?: Record<string, string>): Promise<OAuthInstallationDetails> {
+        // Note: options parameter is required by interface but NotionIntegration uses NoInstallationOptions
+        // additionalStatePayload allows passing extra state variables (e.g., chat metadata for ChatAgent resumption)
         // Generate state token for security (prevents CSRF)
-        const state = jwt.sign(
-            { userId: userId, timestamp: Date.now() },
-            jwtSettings.secret,
-            { expiresIn: "10m" }
-        );
+        const statePayload: any = { userId: userId, timestamp: Date.now() };
+        // Merge any additional state payload variables
+        if (additionalStatePayload && typeof additionalStatePayload === 'object') {
+            Object.assign(statePayload, additionalStatePayload);
+        }
+        const state = jwt.sign(statePayload, jwtSettings.secret, { expiresIn: "10m" });
 
         const clientId = notionConfig.clientId;
         const redirectUri = notionConfig.redirectUri;
@@ -92,6 +99,9 @@ export class NotionIntegrationManager implements Integration<NotionIntegration, 
             const decoded = jwt.verify(state as string, jwtSettings.secret) as {
                 userId: string;
                 timestamp: number;
+                chatId?: string;
+                channel?: string;
+                integrationType?: string;
             };
 
             // Exchange authorization code for access token
@@ -129,8 +139,9 @@ export class NotionIntegrationManager implements Integration<NotionIntegration, 
                 },
             });
 
+            let integrationId: string;
             if (!existing) {
-                await db().notion_integrations.create({
+                const newIntegration = await db().notion_integrations.create({
                     data: {
                         user_id: decoded.userId,
                         workspace_id: workspace_id || null,
@@ -138,7 +149,7 @@ export class NotionIntegrationManager implements Integration<NotionIntegration, 
                         integration_token: access_token,
                     },
                 });
-
+                integrationId = newIntegration.id;
             } else {
                 // Update existing connection with new token (in case it was revoked and re-authorized)
                 await db().notion_integrations.update({
@@ -147,10 +158,23 @@ export class NotionIntegrationManager implements Integration<NotionIntegration, 
                         integration_token: access_token,
                     },
                 });
+                integrationId = existing.id;
                 logger.info("✅ Updated Notion connection token", { workspaceName: workspace_name || "Workspace", integrationId: existing.id, userId: decoded.userId });
             }
 
             logger.info("✅ Notion OAuth completed for user", { userId: decoded.userId, workspaceName: workspace_name || workspace_id });
+
+            // Emit integration completed task (includes full state payload for chat metadata detection)
+            // Lazy import to avoid circular dependency with IntegrationRegistry
+            const { integrationTaskQueue } = await import("./IntegrationTaskHandler");
+            const { IntegrationCompletedTask } = await import("./IntegrationCompletedTask");
+            integrationTaskQueue.emit(new IntegrationCompletedTask(
+                IntegrationType.NOTION,
+                integrationId,
+                decoded.userId,
+                decoded, // Full decoded JWT payload (may contain chat metadata)
+                new Date()
+            ));
 
             // Redirect to success page which will auto-close the popup
             res.redirect(`${urls.frontend}/oauth/success`);

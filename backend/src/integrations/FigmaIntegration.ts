@@ -1,10 +1,9 @@
-import { Integration, OAuthIntegrationInstallation } from "./abstract/Integration";
+import { Integration, OAuthIntegrationInstallation, ConfigurationFieldDefinition } from "./abstract/Integration";
 import { db } from "../prismaClient";
 import { User, ChannelInputWithConfigs } from "../types/prisma";
-import { figma_integrations, InputConfigType, IntegrationType as PrismaIntegrationType } from "@prisma/client";
+import { figma_integrations, InputConfigType } from "@prisma/client";
 import { generateWebhookPasscode } from "../utility/webhookSecrets";
 import { nodeEnv } from "../config/settings";
-import chalk from "chalk";
 import { EventProcessor } from "../agent/ChannelAgent/EventProcessor";
 import { RunHistoryTrigger } from "../shared/RunHistoryTypes";
 import { InputEvent } from "./abstract/InputEvent";
@@ -27,6 +26,10 @@ import logger, { runWithUserContext } from "../logger";
 export class FigmaIntegrationManager implements Integration<FigmaIntegration, FigmaWebhookEvent, typeof FigmaIntegrationMetadata>, OAuthIntegrationInstallation<IntegrationType.FIGMA> {
   constructor() { }
   integrationType: IntegrationType = IntegrationType.FIGMA;
+
+  getConfigurationFields(): ConfigurationFieldDefinition[] {
+    return [];
+  }
 
   async getInstancesForUser(userId: string): Promise<FigmaIntegration[]> {
     const integrations = await db().figma_integrations.findMany({
@@ -98,13 +101,14 @@ export class FigmaIntegrationManager implements Integration<FigmaIntegration, Fi
     }
   }
 
-  async getInstallationUrl(userId: string): Promise<OAuthInstallationDetails> {
+  async getInstallationUrl(userId: string, options?: any, additionalStatePayload?: Record<string, string>): Promise<OAuthInstallationDetails> {
     // Generate state token for security (prevents CSRF)
-    const state = jwt.sign(
-      { userId: userId, timestamp: Date.now() },
-      jwtConfig.secret,
-      { expiresIn: "10m" }
-    );
+    const statePayload: any = { userId: userId, timestamp: Date.now() };
+    // Merge any additional state payload variables
+    if (additionalStatePayload && typeof additionalStatePayload === 'object') {
+      Object.assign(statePayload, additionalStatePayload);
+    }
+    const state = jwt.sign(statePayload, jwtConfig.secret, { expiresIn: "10m" });
 
     const scope = "current_user:read,file_comments:read,file_content:read,file_metadata:read,file_versions:read,library_assets:read,library_content:read,team_library_content:read,file_dev_resources:read,projects:read,webhooks:read,webhooks:write";
 
@@ -200,8 +204,9 @@ export class FigmaIntegrationManager implements Integration<FigmaIntegration, Fi
         },
       });
 
+      let integrationId: string;
       if (!existing) {
-        await db().figma_integrations.create({
+        const newIntegration = await db().figma_integrations.create({
           data: {
             user_id: decoded.userId,
             figma_user_id: user_id_string,
@@ -211,6 +216,7 @@ export class FigmaIntegrationManager implements Integration<FigmaIntegration, Fi
             token_expiry: tokenExpiry,
           },
         });
+        integrationId = newIntegration.id;
         logger.info("✅ Created Figma connection for user", { userId: decoded.userId, figmaUserId: user_id_string, handle });
       } else {
         // Update existing connection with new token (in case it was revoked and re-authorized)
@@ -224,10 +230,23 @@ export class FigmaIntegrationManager implements Integration<FigmaIntegration, Fi
             token_expiry: tokenExpiry,
           },
         });
+        integrationId = existing.id;
         logger.info("✅ Updated Figma connection token for user", { userId: decoded.userId, figmaUserId: user_id_string, integrationId: existing.id });
       }
 
       logger.info("✅ Figma OAuth completed for user", { userId: decoded.userId, figmaUserId: user_id_string });
+
+      // Emit integration completed task (includes full state payload for chat metadata detection)
+      // Lazy import to avoid circular dependency with IntegrationRegistry
+      const { integrationTaskQueue } = await import("./IntegrationTaskHandler");
+      const { IntegrationCompletedTask } = await import("./IntegrationCompletedTask");
+      integrationTaskQueue.emit(new IntegrationCompletedTask(
+        IntegrationType.FIGMA,
+        integrationId,
+        decoded.userId,
+        decoded, // Full decoded JWT payload (may contain chat metadata)
+        new Date()
+      ));
 
       // Redirect to success page which will auto-close the popup
       res.redirect(`${urls.frontend}/oauth/success`);

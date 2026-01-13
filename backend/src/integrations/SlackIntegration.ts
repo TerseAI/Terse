@@ -1,6 +1,6 @@
 import { SlackChannelType, OAuthInstallationDetails } from "../shared/types";
 import { SlackInstallationOptions, SlackIntegration, SlackIntegrationMetadata } from "../shared/Integrations";
-import { Integration, OAuthIntegrationInstallation } from "./abstract/Integration";
+import { Integration, OAuthIntegrationInstallation, ConfigurationFieldDefinition } from "./abstract/Integration";
 import { Request, Response } from "express";
 import { slack as slackConfig, jwt as jwtConfig, urls } from '../config/settings';
 import crypto from 'crypto';
@@ -119,18 +119,35 @@ export class SlackIntegrationManager implements Integration<SlackIntegration, Sl
         }
     }
 
-    async getInstallationUrl(userId: string, options: SlackInstallationOptions): Promise<OAuthInstallationDetails> {
+    getConfigurationFields(): ConfigurationFieldDefinition[] {
+        return [
+            {
+                name: 'isBotUser',
+                type: 'radio',
+                label: 'User Type',
+                required: true,
+                options: [
+                    { label: 'Bot User', value: 'true' },
+                    { label: 'Regular User', value: 'false' },
+                ],
+                hint: 'Choose whether you want to connect as a bot user or a regular user.',
+            },
+        ];
+    }
+
+    async getInstallationUrl(userId: string, options: SlackInstallationOptions, additionalStatePayload?: Record<string, string>): Promise<OAuthInstallationDetails> {
         const client_id = slackConfig.clientId;
         const redirect_uri = slackConfig.oauthCallbackUrl;
         const isBotUser = options.isBotUser;
         const scope = "channels:history,channels:manage,groups:history,groups:write,im:history,im:write,mpim:history,mpim:write,channels:read,groups:read,mpim:read,im:read,users:read,chat:write";
         const user_scope = isBotUser ? "" : "channels:history,channels:read,groups:history,groups:read,im:history,im:read,mpim:history,mpim:read,users:read,channels:write,groups:write,mpim:write,im:write,chat:write";
-        // create JWT and attach to url as state, including isBotUser
-        const jwtToken = jwt.sign(
-            { userId: userId, isBotUser: isBotUser },
-            jwtConfig.secret,
-            { expiresIn: "7d" }
-        );
+        // create JWT and attach to url as state, including isBotUser and any additional state payload
+        const statePayload: any = { userId: userId, isBotUser: isBotUser };
+        // Merge any additional state payload variables
+        if (additionalStatePayload && typeof additionalStatePayload === 'object') {
+            Object.assign(statePayload, additionalStatePayload);
+        }
+        const jwtToken = jwt.sign(statePayload, jwtConfig.secret, { expiresIn: "7d" });
 
         const state = encodeURIComponent(jwtToken);
 
@@ -171,10 +188,10 @@ export class SlackIntegrationManager implements Integration<SlackIntegration, Sl
             return;
         }
 
-        // Decode the JWT to get isBotUser from the state
-        let decoded: { userId: string; isBotUser?: boolean };
+        // Decode the full JWT state payload (may contain chat metadata)
+        let decoded: any;
         try {
-            decoded = jwt.verify(state, jwtConfig.secret) as { userId: string; isBotUser?: boolean };
+            decoded = jwt.verify(state, jwtConfig.secret);
         } catch (error) {
             logger.error("Error decoding JWT state", { error });
             res.redirect(`${frontendUrl}/oauth/error`);
@@ -217,6 +234,10 @@ export class SlackIntegrationManager implements Integration<SlackIntegration, Sl
                 }
             });
 
+            // Calculate isUserType outside transaction so we can use it later
+            const tokenType = authed_user?.token_type;
+            const isUserType = tokenType === AuthedUserTokenType.user;
+
             await db().$transaction(async (tx) => {
                 if (slackIntegration) {
                     logger.info("Slack integration already exists, continuing with adding user relation", { teamId: team.id });
@@ -253,9 +274,6 @@ export class SlackIntegrationManager implements Integration<SlackIntegration, Sl
                     logger.error("Error opening chat", { authedUserId: authed_user.id });
                     throw new Error('Failed to open chat');
                 }
-
-                const tokenType = authed_user?.token_type
-                const isUserType = tokenType === AuthedUserTokenType.user;
 
                 const updatePayload: Partial<UserSlackIntegration> = isUserType ? {
                     authed_user_id: authed_user.id,
@@ -294,7 +312,34 @@ export class SlackIntegrationManager implements Integration<SlackIntegration, Sl
                 });
             });
 
-            logger.info("Slack OAuth completed successfully", { userId: user.id, teamId: team.id });
+            // Get the user_slack_integration ID after upsert
+            const userSlackIntegration = await db().user_slack_integrations.findFirst({
+                where: {
+                    user_id: user.id,
+                    slack_team_id: team.id,
+                    is_bot_user: !isUserType,
+                }
+            });
+
+            if (!userSlackIntegration) {
+                logger.error("Failed to find user_slack_integration after OAuth", { userId: user.id, teamId: team.id });
+                res.redirect(`${frontendUrl}/oauth/error`);
+                return;
+            }
+
+            // Emit integration completed task (includes full state payload for chat metadata detection)
+            // Lazy import to avoid circular dependency with IntegrationRegistry
+            const { integrationTaskQueue } = await import("./IntegrationTaskHandler");
+            const { IntegrationCompletedTask } = await import("./IntegrationCompletedTask");
+            integrationTaskQueue.emit(new IntegrationCompletedTask(
+                IntegrationType.SLACK,
+                userSlackIntegration.id,
+                decoded.userId,
+                decoded, // Full decoded JWT payload (may contain chat metadata)
+                new Date()
+            ));
+
+            logger.info("Slack OAuth completed successfully", { userId: user.id, teamId: team.id, integrationId: userSlackIntegration.id });
             res.redirect(`${frontendUrl}/oauth/success`);
         } catch (error) {
             logger.error('Error exchanging code for access token', { error });

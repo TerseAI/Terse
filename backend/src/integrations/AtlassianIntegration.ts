@@ -1,4 +1,4 @@
-import { Integration, OAuthIntegrationInstallation } from "./abstract/Integration";
+import { Integration, OAuthIntegrationInstallation, ConfigurationFieldDefinition } from "./abstract/Integration";
 import { db } from "../prismaClient";
 import { AtlassianIntegration, AtlassianIntegrationMetadata } from "../shared/Integrations";
 import { IntegrationType } from "../shared/Integrations";
@@ -7,7 +7,6 @@ import { OAuthInstallationDetails } from "../shared/types";
 import jwt from "jsonwebtoken";
 import { settings } from "../config/settings";
 import { Request, Response } from "express";
-import chalk from "chalk";
 import { urls} from "../config/settings";
 import { generateWebhookSecret } from "../utility/webhookSecrets";
 import { JiraWebhookPayload } from "../utility/JiraWebhookPayload";
@@ -25,13 +24,18 @@ export class AtlassianIntegrationManager implements Integration<AtlassianIntegra
     integrationType: IntegrationType = IntegrationType.ATLASSIAN;
     constructor() { }
 
-    async getInstallationUrl(userId: string): Promise<OAuthInstallationDetails> {
+    getConfigurationFields(): ConfigurationFieldDefinition[] {
+        return [];
+    }
+
+    async getInstallationUrl(userId: string, options?: any, additionalStatePayload?: Record<string, string>): Promise<OAuthInstallationDetails> {
         // Generate state token for security (prevents CSRF)
-        const state = jwt.sign(
-            { userId: userId, timestamp: Date.now() },
-            settings.jwt.secret,
-            { expiresIn: "10m" }
-        );
+        const statePayload: any = { userId: userId, timestamp: Date.now() };
+        // Merge any additional state payload variables
+        if (additionalStatePayload && typeof additionalStatePayload === 'object') {
+            Object.assign(statePayload, additionalStatePayload);
+        }
+        const state = jwt.sign(statePayload, settings.jwt.secret, { expiresIn: "10m" });
 
         const clientId = settings.atlassian.clientId;
         const redirectUri = settings.atlassian.callbackUrl;
@@ -231,8 +235,9 @@ export class AtlassianIntegrationManager implements Integration<AtlassianIntegra
                 logger.warn("⚠️  Could not determine accountId, skipping webhook creation");
             }
 
+            let integrationId: string;
             if (!existing) {
-                await db().atlassian_integrations.create({
+                const newIntegration = await db().atlassian_integrations.create({
                     data: {
                         user_id: decoded.userId,
                         jira_user_email: jiraUserEmail || "",
@@ -246,6 +251,7 @@ export class AtlassianIntegrationManager implements Integration<AtlassianIntegra
                         token_expiry: tokenExpiry,
                     },
                 });
+                integrationId = newIntegration.id;
                 logger.info("✅ Created Atlassian OAuth connection:", {siteName, webhookId: webhookId ? "with webhook" : "no webhook"});
             } else {
                 // Update existing connection with new token (in case it was revoked and re-authorized)
@@ -261,10 +267,23 @@ export class AtlassianIntegrationManager implements Integration<AtlassianIntegra
                         webhook_secret: webhookSecret || existing.webhook_secret,
                     },
                 });
+                integrationId = existing.id;
                 logger.info("✅ Updated Atlassian OAuth connection token:", {siteName, webhookId: webhookId ? "with webhook" : "no webhook"});
             }
 
             logger.info("✅ Atlassian OAuth completed for user:", {userId: decoded.userId});
+
+            // Emit integration completed task (includes full state payload for chat metadata detection)
+            // Lazy import to avoid circular dependency with IntegrationRegistry
+            const { integrationTaskQueue } = await import("./IntegrationTaskHandler");
+            const { IntegrationCompletedTask } = await import("./IntegrationCompletedTask");
+            integrationTaskQueue.emit(new IntegrationCompletedTask(
+                IntegrationType.ATLASSIAN,
+                integrationId,
+                decoded.userId,
+                decoded, // Full decoded JWT payload (may contain chat metadata)
+                new Date()
+            ));
 
             // Redirect to success page which will auto-close the popup
             res.redirect(`${urls.frontend}/oauth/success`);

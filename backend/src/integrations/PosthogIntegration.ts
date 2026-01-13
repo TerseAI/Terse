@@ -1,4 +1,4 @@
-import { FormIntegrationInstallation, Integration } from "./abstract/Integration";
+import { FormIntegrationInstallation, FormFieldDefinition, Integration } from "./abstract/Integration";
 import { db } from "../prismaClient";
 import { PosthogIntegration, PosthogIntegrationMetadata } from "../shared/Integrations";
 import { IntegrationType } from "../shared/Integrations";
@@ -58,6 +58,18 @@ export class PosthogIntegrationManager implements Integration<PosthogIntegration
     async teardownChannelInput(integrationId: string, automationInput: ChannelInputWithConfigs): Promise<void> {
     }
 
+    getFormFields(): FormFieldDefinition[] {
+        return [
+            {
+                name: 'apiKey',
+                type: 'password',
+                label: 'API Key',
+                placeholder: 'Enter your PostHog API key',
+                required: true,
+                hint: 'Your PostHog API key can be found in your PostHog account settings.',
+            },
+        ];
+    }
 
     async processFormSubmission(req: Request, res: Response): Promise<void> {
         if (!req.session?.user) {

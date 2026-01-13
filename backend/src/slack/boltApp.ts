@@ -11,6 +11,37 @@ import logger from "../logger";
 import { Agent, run, user } from "@openai/agents";
 import SlackChatInterface from "../agent/ChatAgent/SlackChatInterface";
 import ChatAgent from "../agent/ChatAgent/ChatAgent";
+import { INTEGRATION_REGISTRY } from "../integrations/abstract/IntegrationRegistry";
+import { isFormIntegrationInstallation, isOAuthIntegrationInstallation, FormFieldDefinition, ConfigurationFieldDefinition } from "../integrations/abstract/Integration";
+import { IntegrationType } from "../shared/Integrations";
+import jwt from "jsonwebtoken";
+import { jwt as jwtConfig } from "../config/settings";
+import { Request, Response } from "express";
+import { integrationFormTaskQueue } from "../integrations/IntegrationTaskHandler";
+import { IntegrationFormCompletedTask } from "../integrations/IntegrationFormCompletedTask";
+
+/**
+ * Gets the Terse user ID from a Slack user ID and team ID
+ */
+async function getUserIdFromSlackUser(slackUserId: string | undefined, teamId: string | undefined): Promise<string | undefined> {
+  if (!slackUserId || !teamId) {
+    return undefined;
+  }
+
+  try {
+    const userSlackIntegration = await db().user_slack_integrations.findFirst({
+      where: {
+        authed_user_id: slackUserId,
+        slack_team_id: teamId
+      },
+    });
+
+    return userSlackIntegration?.user_id;
+  } catch (error) {
+    logger.error('Error getting user ID from Slack user', { error, slackUserId, teamId });
+    return undefined;
+  }
+}
 
 /**
  * Creates and configures the Slack Bolt app with ExpressReceiver
@@ -79,16 +110,53 @@ export async function setupSlackBolt() {
           context.botUserId
         );
 
-        if (threadStartedByMention) {
+        if (threadStartedByMention && messageEvent.ts) {
           logger.info('Thread reply in app_mention thread, routing to ChatAgent:', {
             threadTs,
             channel: messageEvent.channel,
             text: messageEvent.text
           });
 
-          const slackChatInterface = new SlackChatInterface(messageEvent.channel, say);
-          const chatAgent = new ChatAgent(slackChatInterface, threadTs);
-          await chatAgent.run(messageEvent.text);
+          // Add eyes reaction to indicate we're processing the message
+          try {
+            await client.reactions.add({
+              channel: messageEvent.channel,
+              timestamp: messageEvent.ts,
+              name: 'eyes',
+            });
+          } catch (error) {
+            logger.error('Error adding reaction to thread message:', { error });
+          }
+
+          try {
+            console.log('messageEvent.user', messageEvent.user);
+            console.log('body.team_id', body.team_id);
+            // Get the user ID from the Slack user ID and team ID
+            const userId = await getUserIdFromSlackUser(messageEvent.user, body.team_id);
+            if (!userId) {
+              logger.warn('Could not find user ID for Slack user', { slackUserId: messageEvent.user, teamId: body.team_id });
+              await say({
+                text: 'Unable to identify your user account. Please ensure you have connected your Slack account to Terse.',
+                thread_ts: threadTs,
+              });
+              return;
+            }
+            const slackChatInterface = new SlackChatInterface(messageEvent.channel, say, userId);
+            slackChatInterface.setWebClient(client);
+            const chatAgent = new ChatAgent(slackChatInterface, threadTs, userId);
+            await chatAgent.run(messageEvent.text);
+          } finally {
+            // Remove eyes reaction when we've successfully responded
+            try {
+              await client.reactions.remove({
+                channel: messageEvent.channel,
+                timestamp: messageEvent.ts,
+                name: 'eyes',
+              });
+            } catch (error) {
+              logger.error('Error removing reaction from thread message:', { error });
+            }
+          }
         }
       }
 
@@ -141,16 +209,35 @@ export async function setupSlackBolt() {
     logger.info('app_mention message:', { message });
     logger.info('app_mention chat_id:', { chatId });
 
-    const slackChatInterface = new SlackChatInterface(event.channel, say);
-    const chatAgent = new ChatAgent(slackChatInterface, chatId);
+    try {
+      // Get the user ID from the Slack user ID and team ID
+      const userId = await getUserIdFromSlackUser(event.user, body.team_id);
+      if (!userId) {
+        logger.warn('Could not find user ID for Slack user', { slackUserId: event.user, teamId: body.team_id });
+        await say({
+          text: 'Unable to identify your user account. Please ensure you have connected your Slack account to Terse.',
+          thread_ts: chatId,
+        });
+        return;
+      }
 
-    await chatAgent.run(message);
+      const slackChatInterface = new SlackChatInterface(event.channel, say, userId);
+      slackChatInterface.setWebClient(client);
+      const chatAgent = new ChatAgent(slackChatInterface, chatId, userId);
 
-    await client.reactions.remove({
-      channel: event.channel,
-      timestamp: event.ts,
-      name: 'eyes',
-    });
+      await chatAgent.run(message);
+    } finally {
+      // Remove eyes reaction when we've successfully responded (or if there was an error)
+      try {
+        await client.reactions.remove({
+          channel: event.channel,
+          timestamp: event.ts,
+          name: 'eyes',
+        });
+      } catch (error) {
+        logger.error('Error removing reaction from app_mention:', { error });
+      }
+    }
   });
 
   // Handle approve button clicks - process directly
@@ -612,9 +699,686 @@ export async function setupSlackBolt() {
     await ack();
   });
 
+  // Handle integration form button clicks - open modal
+  slack.action(/^open_integration_form_(.+)$/, async ({ ack, body, action, respond, client }) => {
+    await ack();
+
+    try {
+      if (!('action_id' in action) || !('value' in action)) {
+        logger.error('[Slack Integration Form] Action does not have required properties');
+        await respond({ text: "Error: Invalid action format", response_type: "ephemeral" });
+        return;
+      }
+
+      const actionWithValue = action as { action_id: string; value: string };
+      const stateToken = actionWithValue.value;
+      const actionId = actionWithValue.action_id;
+      const match = actionId.match(/^open_integration_form_(.+)$/);
+      if (!match) {
+        logger.error(`[Slack Integration Form] Invalid action_id format: ${actionId}`);
+        await respond({ text: "Error: Invalid integration form request", response_type: "ephemeral" });
+        return;
+      }
+
+      const [, integrationType] = match;
+
+      // Decode state token
+      let statePayload: any;
+      try {
+        statePayload = jwt.verify(stateToken, jwtConfig.secret);
+      } catch (error) {
+        logger.error('[Slack Integration Form] Error decoding state token', { error });
+        await respond({ text: "Error: Invalid request data", response_type: "ephemeral" });
+        return;
+      }
+
+      // Extract message timestamp from action body to replace button message after form completion
+      const messageTs = (body as any).message?.ts;
+      if (messageTs) {
+        statePayload.messageTs = messageTs;
+      }
+
+      const userId = statePayload.userId;
+      if (!userId) {
+        logger.error('[Slack Integration Form] No userId in state payload');
+        await respond({ text: "Error: Invalid request data", response_type: "ephemeral" });
+        return;
+      }
+
+      // Remove JWT claims (exp, iat, nbf) before re-signing to avoid conflicts
+      const { exp, iat, nbf, ...payloadToSign } = statePayload;
+
+      // Re-sign state token with messageTs included
+      const updatedStateToken = jwt.sign(payloadToSign, jwtConfig.secret, { expiresIn: "7d" });
+
+      // Get integration manager
+      const integrationManager = INTEGRATION_REGISTRY.find(
+        (int) => int.integrationType === integrationType
+      );
+
+      if (!integrationManager) {
+        logger.error('[Slack Integration Form] Integration not found', { integrationType });
+        await respond({ text: `Error: Integration ${integrationType} not found`, response_type: "ephemeral" });
+        return;
+      }
+
+      if (!isFormIntegrationInstallation(integrationManager)) {
+        logger.error('[Slack Integration Form] Integration does not support form installation', { integrationType });
+        await respond({ text: `Error: Integration ${integrationType} does not support form installation`, response_type: "ephemeral" });
+        return;
+      }
+
+      // Get form fields
+      const formFields = integrationManager.getFormFields();
+      if (formFields.length === 0) {
+        logger.error('[Slack Integration Form] No form fields defined', { integrationType });
+        await respond({ text: "Error: No form fields defined for this integration", response_type: "ephemeral" });
+        return;
+      }
+
+      // Convert form fields to Slack blocks
+      const blocks = formFieldsToSlackBlocks(formFields);
+
+      // Get trigger_id
+      const triggerId = (body as any).trigger_id;
+      if (!triggerId) {
+        logger.error('[Slack Integration Form] No trigger_id in body');
+        await respond({ text: "Error: Unable to open form", response_type: "ephemeral" });
+        return;
+      }
+
+      // Open modal
+      await client.views.open({
+        trigger_id: triggerId,
+        view: {
+          type: 'modal',
+          callback_id: 'integration_form_submit',
+          title: {
+            type: 'plain_text',
+            text: `Connect ${integrationType}`,
+          },
+          submit: {
+            type: 'plain_text',
+            text: 'Connect',
+          },
+          close: {
+            type: 'plain_text',
+            text: 'Cancel',
+          },
+          private_metadata: updatedStateToken, // Store state token for view submission (includes messageTs)
+          blocks: blocks,
+        },
+      });
+    } catch (error) {
+      logger.error('[Slack Integration Form] Error opening form modal:', { error });
+      await respond({ text: "Error opening integration form. Please try again.", response_type: "ephemeral" });
+    }
+  });
+
+  // Handle integration form submission
+  slack.view('integration_form_submit', async ({ ack, body, view, client }) => {
+    // NOTE: Slack requires view submissions to be acknowledged within 3 seconds.
+    // Keep all DB/network work strictly after `ack()`.
+
+    // Extract form values (no awaits before ack)
+    const formValues: Record<string, string> = {};
+    const stateValues = view.state.values;
+    
+    // Extract values from each block
+    for (const blockId in stateValues) {
+      const block = stateValues[blockId];
+      for (const actionId in block) {
+        const action = block[actionId];
+        if ('value' in action && typeof action.value === 'string') {
+          formValues[actionId] = action.value;
+        }
+      }
+    }
+
+    // Extract state token from private metadata (synchronous JWT verify)
+    const stateToken = view.private_metadata;
+    let statePayload: any;
+    try {
+      statePayload = jwt.verify(stateToken, jwtConfig.secret);
+    } catch (error) {
+      logger.error('[Slack Integration Form] Error decoding state token in submission', { error });
+      await ack({
+        response_action: 'errors',
+        errors: {
+          [Object.keys(stateValues)[0] || 'form']: 'Invalid request data',
+        },
+      });
+      return;
+    }
+
+    const userId = statePayload.userId;
+    const integrationType = statePayload.integrationType as IntegrationType;
+
+    if (!userId || !integrationType) {
+      logger.error('[Slack Integration Form] Missing userId or integrationType in state payload');
+      await ack({
+        response_action: 'errors',
+        errors: {
+          [Object.keys(stateValues)[0] || 'form']: 'Invalid request data',
+        },
+      });
+      return;
+    }
+
+    // Get integration manager (synchronous)
+    const integrationManager = INTEGRATION_REGISTRY.find(
+      (int) => int.integrationType === integrationType
+    );
+
+    if (!integrationManager || !isFormIntegrationInstallation(integrationManager)) {
+      logger.error('[Slack Integration Form] Integration not found or does not support forms', { integrationType });
+      await ack({
+        response_action: 'errors',
+        errors: {
+          [Object.keys(stateValues)[0] || 'form']: 'Integration not found',
+        },
+      });
+      return;
+    }
+
+    // Validate required fields (synchronous)
+    const formFields = integrationManager.getFormFields();
+    const errors: Record<string, string> = {};
+    for (const field of formFields) {
+      if (field.required && !formValues[field.name]) {
+        errors[`${field.name}_block`] = `${field.label} is required`;
+      }
+    }
+
+    if (Object.keys(errors).length > 0) {
+      await ack({
+        response_action: 'errors',
+        errors: errors,
+      });
+      return;
+    }
+
+    // Ack immediately, then continue processing asynchronously
+    await ack();
+
+    void (async () => {
+      const submitterSlackUserId = (body as any)?.user?.id as string | undefined;
+
+      const notifySubmitter = async (text: string) => {
+        if (!submitterSlackUserId) return;
+        try {
+          const opened = await client.conversations.open({ users: submitterSlackUserId });
+          const dmChannelId = (opened as any)?.channel?.id as string | undefined;
+          if (!dmChannelId) return;
+          await client.chat.postMessage({ channel: dmChannelId, text });
+        } catch (error) {
+          logger.error('[Slack Integration Form] Failed to notify submitter:', { error });
+        }
+      };
+
+      try {
+        // Get user from database (now async after ack)
+        const user = await db().users.findUnique({
+          where: { id: userId },
+        });
+
+        if (!user) {
+          logger.error('[Slack Integration Form] User not found', { userId });
+          await notifySubmitter('Error: User not found');
+          return;
+        }
+
+        // Create mock Request/Response objects
+        const mockReq = {
+          session: { user: user },
+          body: formValues,
+        } as any as Request;
+
+        let responseData: any = null;
+        let responseStatus = 200;
+        const mockRes = {
+          status: (code: number) => {
+            responseStatus = code;
+            return mockRes;
+          },
+          json: (data: any) => {
+            responseData = data;
+            return mockRes;
+          },
+        } as any as Response;
+
+        // Call processFormSubmission
+        await integrationManager.processFormSubmission(mockReq, mockRes);
+
+        if (responseStatus !== 200) {
+          const errorMsg = responseData?.error || 'Failed to process integration';
+          logger.error('[Slack Integration Form] Form submission failed', { error: errorMsg, integrationType, userId });
+          await notifySubmitter(`Error: ${errorMsg}`);
+          return;
+        }
+
+        // Get integration ID by querying the database
+        const instances = await integrationManager.getInstancesForUser(userId);
+        if (instances.length === 0) {
+          logger.error('[Slack Integration Form] No integration instances found after submission', { integrationType, userId });
+          await notifySubmitter('Error: Integration was not created');
+          return;
+        }
+
+        // Use the first instance (for integrations like PostHog, there's typically one per user)
+        const integrationId = instances[0].id;
+
+        logger.info('[Slack Integration Form] Form submission successful', { integrationType, integrationId, userId });
+
+        // Emit integration form completed task
+        integrationFormTaskQueue.emit(new IntegrationFormCompletedTask(
+          integrationType,
+          integrationId,
+          userId,
+          statePayload,
+          new Date()
+        ));
+
+        await notifySubmitter(`${integrationType} integration has been successfully connected!`);
+      } catch (error) {
+        logger.error('[Slack Integration Form] Error processing form submission:', { error, integrationType, userId });
+        await notifySubmitter('Error processing integration form. Please try again.');
+      }
+    })();
+  });
+
+  // Handle integration configuration button clicks - open modal
+  slack.action(/^open_integration_config_(.+)$/, async ({ ack, body, action, respond, client }) => {
+    await ack();
+
+    try {
+      if (!('action_id' in action) || !('value' in action)) {
+        logger.error('[Slack Integration Config] Action does not have required properties');
+        await respond({ text: "Error: Invalid action format", response_type: "ephemeral" });
+        return;
+      }
+
+      const actionWithValue = action as { action_id: string; value: string };
+      const stateToken = actionWithValue.value;
+      const actionId = actionWithValue.action_id;
+      const match = actionId.match(/^open_integration_config_(.+)$/);
+      if (!match) {
+        logger.error(`[Slack Integration Config] Invalid action_id format: ${actionId}`);
+        await respond({ text: "Error: Invalid integration config request", response_type: "ephemeral" });
+        return;
+      }
+
+      const [, integrationType] = match;
+
+      // Decode state token
+      let statePayload: any;
+      try {
+        statePayload = jwt.verify(stateToken, jwtConfig.secret);
+      } catch (error) {
+        logger.error('[Slack Integration Config] Error decoding state token', { error });
+        await respond({ text: "Error: Invalid request data", response_type: "ephemeral" });
+        return;
+      }
+
+      // Extract message timestamp from action body to replace button message after OAuth completion
+      const messageTs = (body as any).message?.ts;
+      if (messageTs) {
+        statePayload.messageTs = messageTs;
+      }
+
+      const userId = statePayload.userId;
+      if (!userId) {
+        logger.error('[Slack Integration Config] No userId in state payload');
+        await respond({ text: "Error: Invalid request data", response_type: "ephemeral" });
+        return;
+      }
+
+      // Remove JWT claims (exp, iat, nbf) before re-signing to avoid conflicts
+      const { exp, iat, nbf, ...payloadToSign } = statePayload;
+
+      // Re-sign state token with messageTs included
+      const updatedStateToken = jwt.sign(payloadToSign, jwtConfig.secret, { expiresIn: "7d" });
+
+      // Get integration manager
+      const integrationManager = INTEGRATION_REGISTRY.find(
+        (int) => int.integrationType === integrationType
+      );
+
+      if (!integrationManager) {
+        logger.error('[Slack Integration Config] Integration not found', { integrationType });
+        await respond({ text: `Error: Integration ${integrationType} not found`, response_type: "ephemeral" });
+        return;
+      }
+
+      if (!isOAuthIntegrationInstallation(integrationManager)) {
+        logger.error('[Slack Integration Config] Integration does not support OAuth installation', { integrationType });
+        await respond({ text: `Error: Integration ${integrationType} does not support OAuth installation`, response_type: "ephemeral" });
+        return;
+      }
+
+      // Get configuration fields
+      const configFields = integrationManager.getConfigurationFields();
+      if (configFields.length === 0) {
+        logger.error('[Slack Integration Config] No configuration fields defined', { integrationType });
+        await respond({ text: "Error: No configuration fields defined for this integration", response_type: "ephemeral" });
+        return;
+      }
+
+      // Convert configuration fields to Slack blocks
+      const blocks = configurationFieldsToSlackBlocks(configFields);
+
+      // Get trigger_id
+      const triggerId = (body as any).trigger_id;
+      if (!triggerId) {
+        logger.error('[Slack Integration Config] No trigger_id in body');
+        await respond({ text: "Error: Unable to open configuration", response_type: "ephemeral" });
+        return;
+      }
+
+      // Open modal
+      await client.views.open({
+        trigger_id: triggerId,
+        view: {
+          type: 'modal',
+          callback_id: 'integration_config_submit',
+          title: {
+            type: 'plain_text',
+            text: `Configure ${integrationType}`,
+          },
+          submit: {
+            type: 'plain_text',
+            text: 'Continue',
+          },
+          close: {
+            type: 'plain_text',
+            text: 'Cancel',
+          },
+          private_metadata: updatedStateToken, // Store state token for view submission (includes messageTs)
+          blocks: blocks,
+        },
+      });
+    } catch (error) {
+      logger.error('[Slack Integration Config] Error opening configuration modal:', { error });
+      await respond({ text: "Error opening integration configuration. Please try again.", response_type: "ephemeral" });
+    }
+  });
+
+  // Handle integration configuration submission
+  slack.view('integration_config_submit', async ({ ack, body, view, client }) => {
+    // NOTE: Slack requires view submissions to be acknowledged within 3 seconds.
+    // Keep all DB/network work strictly after `ack()`.
+
+    // Extract configuration values (no awaits before ack)
+    const configValues: Record<string, string> = {};
+    const stateValues = view.state.values;
+    
+    // Extract values from each block (radio button selections)
+    for (const blockId in stateValues) {
+      const block = stateValues[blockId];
+      for (const actionId in block) {
+        const action = block[actionId];
+        // Radio buttons return selected_option
+        if ('selected_option' in action && action.selected_option && 'value' in action.selected_option) {
+          configValues[actionId] = action.selected_option.value as string;
+        }
+      }
+    }
+
+    // Extract state token from private metadata (synchronous JWT verify)
+    const stateToken = view.private_metadata;
+    let statePayload: any;
+    try {
+      statePayload = jwt.verify(stateToken, jwtConfig.secret);
+    } catch (error) {
+      logger.error('[Slack Integration Config] Error decoding state token in submission', { error });
+      await ack({
+        response_action: 'errors',
+        errors: {
+          [Object.keys(stateValues)[0] || 'config']: 'Invalid request data',
+        },
+      });
+      return;
+    }
+
+    const userId = statePayload.userId;
+    const integrationType = statePayload.integrationType as IntegrationType;
+
+    if (!userId || !integrationType) {
+      logger.error('[Slack Integration Config] Missing userId or integrationType in state payload');
+      await ack({
+        response_action: 'errors',
+        errors: {
+          [Object.keys(stateValues)[0] || 'config']: 'Invalid request data',
+        },
+      });
+      return;
+    }
+
+    // Get integration manager (synchronous)
+    const integrationManager = INTEGRATION_REGISTRY.find(
+      (int) => int.integrationType === integrationType
+    );
+
+    if (!integrationManager || !isOAuthIntegrationInstallation(integrationManager)) {
+      logger.error('[Slack Integration Config] Integration not found or does not support OAuth', { integrationType });
+      await ack({
+        response_action: 'errors',
+        errors: {
+          [Object.keys(stateValues)[0] || 'config']: 'Integration not found',
+        },
+      });
+      return;
+    }
+
+    // Validate required fields (synchronous)
+    const configFields = integrationManager.getConfigurationFields();
+    const errors: Record<string, string> = {};
+    for (const field of configFields) {
+      if (field.required && !configValues[field.name]) {
+        errors[`${field.name}_block`] = `${field.label} is required`;
+      }
+    }
+
+    if (Object.keys(errors).length > 0) {
+      await ack({
+        response_action: 'errors',
+        errors: errors,
+      });
+      return;
+    }
+
+    // Convert configuration values to options format (synchronous)
+    // For Slack, we need to convert isBotUser string to boolean
+    let options: any = undefined;
+    if (integrationType === IntegrationType.SLACK) {
+      const isBotUser = configValues['isBotUser'] === 'true';
+      options = { isBotUser };
+    }
+
+    // Generate OAuth URL synchronously (before ack)
+    // Pass additional state payload (chatId, channel, integrationType) to enable resuming ChatAgent after OAuth
+    const additionalStatePayload: Record<string, string> | undefined = statePayload.chatId && statePayload.channel ? {
+      chatId: statePayload.chatId,
+      channel: statePayload.channel,
+      integrationType: integrationType,
+      messageTs: statePayload.messageTs, // Include messageTs from config button if available
+    } : undefined;
+
+    const installationDetails = await integrationManager.getInstallationUrl(userId, options, additionalStatePayload);
+    const oauthUrl = installationDetails.oauthUrl;
+
+    // Store config values and state token in private_metadata for back button
+    const backButtonMetadata = {
+      stateToken: stateToken,
+      configValues: configValues,
+      integrationType: integrationType,
+    };
+    const backButtonMetadataToken = jwt.sign(backButtonMetadata, jwtConfig.secret, { expiresIn: "7d" });
+
+    // Update modal view with OAuth URL button and back button
+    await ack({
+      response_action: 'update',
+      view: {
+        type: 'modal',
+        title: {
+          type: 'plain_text',
+          text: `Connect ${integrationType}`,
+        },
+        close: {
+          type: 'plain_text',
+          text: 'Close',
+        },
+        private_metadata: backButtonMetadataToken,
+        blocks: [
+          {
+            type: 'section',
+            text: {
+              type: 'mrkdwn',
+              text: `Click the button below to authorize the integration:`,
+            },
+          },
+          {
+            type: 'actions',
+            elements: [
+              {
+                type: 'button',
+                text: {
+                  type: 'plain_text',
+                  text: `Connect ${integrationType}`,
+                  emoji: true,
+                },
+                url: oauthUrl,
+                style: 'primary',
+              },
+            ],
+          },
+          {
+            type: 'actions',
+            elements: [
+              {
+                type: 'button',
+                text: {
+                  type: 'plain_text',
+                  text: 'Back',
+                  emoji: true,
+                },
+                action_id: `back_to_config_${integrationType}`,
+              },
+            ],
+          },
+        ],
+      },
+    });
+  });
+
+  // Handle back button from OAuth URL view - restore configuration form
+  slack.action(/^back_to_config_(.+)$/, async ({ ack, body, action, client }) => {
+    await ack();
+
+    try {
+      if (!('action_id' in action)) {
+        logger.error('[Slack Integration Config] Back button action does not have required properties');
+        return;
+      }
+
+      const actionId = action.action_id;
+      const match = actionId.match(/^back_to_config_(.+)$/);
+      if (!match) {
+        logger.error(`[Slack Integration Config] Invalid back button action_id format: ${actionId}`);
+        return;
+      }
+
+      const [, integrationType] = match;
+
+      // Get view_id from body to update the modal
+      const viewId = (body as any).view?.id;
+      if (!viewId) {
+        logger.error('[Slack Integration Config] No view_id in back button body');
+        return;
+      }
+
+      // Get private_metadata from view
+      const privateMetadata = (body as any).view?.private_metadata;
+      if (!privateMetadata) {
+        logger.error('[Slack Integration Config] No private_metadata in back button view');
+        return;
+      }
+
+      // Decode back button metadata
+      let backButtonMetadata: any;
+      try {
+        backButtonMetadata = jwt.verify(privateMetadata, jwtConfig.secret);
+      } catch (error) {
+        logger.error('[Slack Integration Config] Error decoding back button metadata', { error });
+        return;
+      }
+
+      const stateToken = backButtonMetadata.stateToken;
+      const configValues = backButtonMetadata.configValues;
+
+      // Decode original state token
+      let statePayload: any;
+      try {
+        statePayload = jwt.verify(stateToken, jwtConfig.secret);
+      } catch (error) {
+        logger.error('[Slack Integration Config] Error decoding state token in back button', { error });
+        return;
+      }
+
+      // Get integration manager
+      const integrationManager = INTEGRATION_REGISTRY.find(
+        (int) => int.integrationType === integrationType
+      );
+
+      if (!integrationManager || !isOAuthIntegrationInstallation(integrationManager)) {
+        logger.error('[Slack Integration Config] Integration not found or does not support OAuth', { integrationType });
+        return;
+      }
+
+      // Get configuration fields
+      const configFields = integrationManager.getConfigurationFields();
+      if (configFields.length === 0) {
+        logger.error('[Slack Integration Config] No configuration fields defined', { integrationType });
+        return;
+      }
+
+      // Convert configuration fields to Slack blocks
+      const blocks = configurationFieldsToSlackBlocks(configFields);
+
+      // Remove JWT claims from state payload before re-signing
+      const { exp, iat, nbf, ...payloadToSign } = statePayload;
+      const updatedStateToken = jwt.sign(payloadToSign, jwtConfig.secret, { expiresIn: "7d" });
+
+      // Update modal view back to configuration form
+      await client.views.update({
+        view_id: viewId,
+        view: {
+          type: 'modal',
+          callback_id: 'integration_config_submit',
+          title: {
+            type: 'plain_text',
+            text: `Configure ${integrationType}`,
+          },
+          submit: {
+            type: 'plain_text',
+            text: 'Continue',
+          },
+          close: {
+            type: 'plain_text',
+            text: 'Cancel',
+          },
+          private_metadata: updatedStateToken,
+          blocks: blocks,
+        },
+      });
+    } catch (error) {
+      logger.error('[Slack Integration Config] Error handling back button:', { error });
+    }
+  });
+
   // Catch-all handler for any other action events to prevent timeout errors
   // This should be last so it doesn't interfere with specific handlers above
-  slack.action(/^(?!approval_(approve|reject|request_changes)_).*$/, async ({ ack }) => {
+  slack.action(/^(?!approval_(approve|reject|request_changes)_|open_integration_form_|open_integration_config_|back_to_config_).*$/, async ({ ack }) => {
     await ack();
   });
 
@@ -708,6 +1472,102 @@ export async function setupSlackBolt() {
     slack,
     receiver,
   };
+}
+
+/**
+ * Convert FormFieldDefinition array to Slack Block Kit input blocks
+ */
+function formFieldsToSlackBlocks(formFields: FormFieldDefinition[]): any[] {
+  const blocks: any[] = [];
+
+  for (const field of formFields) {
+    const block: any = {
+      type: 'input',
+      block_id: `${field.name}_block`,
+      label: {
+        type: 'plain_text',
+        text: field.label,
+      },
+      element: {
+        type: 'plain_text_input',
+        action_id: field.name,
+      },
+    };
+
+    // Set multiline for textarea fields
+    // Note: Slack doesn't support password fields natively, so password fields
+    // are treated as regular text inputs (the application handles security)
+    if (field.type === 'textarea') {
+      block.element.multiline = true;
+    }
+
+    // Add placeholder if provided
+    if (field.placeholder) {
+      block.element.placeholder = {
+        type: 'plain_text',
+        text: field.placeholder,
+      };
+    }
+
+    // Add hint if provided
+    if (field.hint) {
+      block.hint = {
+        type: 'plain_text',
+        text: field.hint,
+      };
+    }
+
+    blocks.push(block);
+  }
+
+  return blocks;
+}
+
+/**
+ * Convert ConfigurationFieldDefinition array to Slack Block Kit input blocks
+ */
+function configurationFieldsToSlackBlocks(configFields: ConfigurationFieldDefinition[]): any[] {
+  const blocks: any[] = [];
+
+  for (const field of configFields) {
+    if (field.type === 'radio') {
+      const block: any = {
+        type: 'input',
+        block_id: `${field.name}_block`,
+        label: {
+          type: 'plain_text',
+          text: field.label,
+        },
+        element: {
+          type: 'radio_buttons',
+          action_id: field.name,
+          options: field.options.map(opt => ({
+            value: opt.value,
+            text: {
+              type: 'plain_text',
+              text: opt.label,
+            },
+          })),
+        },
+      };
+
+      // Add hint if provided
+      if (field.hint) {
+        block.hint = {
+          type: 'plain_text',
+          text: field.hint,
+        };
+      }
+
+      blocks.push(block);
+    } else if (field.type === 'select') {
+      // Future: implement select field support
+      // For now, skip select fields or throw error
+      logger.warn('Select fields in configuration are not yet supported', { field });
+    }
+  }
+
+  return blocks;
 }
 
 async function isThreadStartedByAppMention(

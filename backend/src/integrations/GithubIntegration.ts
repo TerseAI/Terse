@@ -1,4 +1,4 @@
-import { Integration, OAuthIntegrationInstallation } from "./abstract/Integration";
+import { Integration, OAuthIntegrationInstallation, ConfigurationFieldDefinition } from "./abstract/Integration";
 import { db } from "../prismaClient";
 import { EventProcessor } from "../agent/ChannelAgent/EventProcessor";
 import { InputEvent } from "./abstract/InputEvent";
@@ -19,6 +19,10 @@ import logger, { runWithUserContext } from "../logger";
 export class GithubIntegrationManager implements Integration<GithubIntegration, GithubAppUnifiedEventRequest, typeof GithubIntegrationMetadata>, OAuthIntegrationInstallation<IntegrationType.GITHUB> {
     constructor() { }
     integrationType: IntegrationType = IntegrationType.GITHUB;
+
+    getConfigurationFields(): ConfigurationFieldDefinition[] {
+        return [];
+    }
 
     async getInstancesForUser(userId: string): Promise<GithubIntegration[]> {
         const userAccounts = await db().github_app_tokens.findMany({
@@ -68,11 +72,17 @@ export class GithubIntegrationManager implements Integration<GithubIntegration, 
         }
     }
 
-    async getInstallationUrl(userId: string): Promise<OAuthInstallationDetails> {
+    async getInstallationUrl(userId: string, options?: any, additionalStatePayload?: Record<string, string>): Promise<OAuthInstallationDetails> {
         const appName = githubApp.appName;
         const clientId = githubApp.clientId;
         const redirectUri = githubApp.integrateCallbackUrl;
-        const state = Buffer.from(userId).toString('base64');
+        // Generate state payload with user ID and any additional state variables
+        const statePayload: any = { userId: userId };
+        // Merge any additional state payload variables
+        if (additionalStatePayload && typeof additionalStatePayload === 'object') {
+            Object.assign(statePayload, additionalStatePayload);
+        }
+        const state = Buffer.from(JSON.stringify(statePayload)).toString('base64');
         const installationUrl: string = `https://github.com/apps/${appName}/installations/new?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&target_type=repositories&state=${state}`;
 
         return {
@@ -85,8 +95,9 @@ export class GithubIntegrationManager implements Integration<GithubIntegration, 
 
         logger.info("[GitHub Setup URL Installation]", { installationId: installation_id, setupAction: setup_action, hasState: !!state });
 
-        // extract user_id from state
-        const user_id = Buffer.from(state as string, 'base64').toString('utf-8');
+        // extract user_id and any additional state from state
+        const stateData = JSON.parse(Buffer.from(state as string, 'base64').toString('utf-8'));
+        const user_id = stateData.userId;
         const user: User | null = await db().users.findUnique({
             where: { id: user_id }
         });
@@ -107,7 +118,7 @@ export class GithubIntegrationManager implements Integration<GithubIntegration, 
 
         // create a new user_github_installation record
         // Note: account_name will be populated by the webhook callback if not already set
-        await db().user_github_installation.upsert({
+        const githubInstallation = await db().user_github_installation.upsert({
             where: { installation_id: installation_id_number },
             update: { user_id: user_id },
             create: { user_id: user_id, installation_id: installation_id_number }
@@ -123,6 +134,19 @@ export class GithubIntegrationManager implements Integration<GithubIntegration, 
         });
 
         logger.info("[GitHub Setup URL Installation] Upsert completed", { installationId: installation_id_number, userId: user_id });
+
+        // Emit integration completed task (includes full state payload for chat metadata detection)
+        // Note: GitHub uses base64-encoded JSON state, so we decode it and pass as statePayload
+        // Lazy import to avoid circular dependency with IntegrationRegistry
+        const { integrationTaskQueue } = await import("./IntegrationTaskHandler");
+        const { IntegrationCompletedTask } = await import("./IntegrationCompletedTask");
+        integrationTaskQueue.emit(new IntegrationCompletedTask(
+            IntegrationType.GITHUB,
+            githubInstallation.id, // Use user_github_installation.id as integrationId
+            user_id,
+            stateData, // Full decoded state payload (may contain chat metadata if extended)
+            new Date()
+        ));
 
         res.redirect(`${urls.frontend}/oauth/success`);
     }

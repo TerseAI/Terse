@@ -41,7 +41,7 @@
     "@opentelemetry/sdk-node": "^0.208.0",
     "@prisma/client": "^6.19.0",
     "@slack/bolt": "^4.6.0",
-    "@slack/web-api": "^7.9.3",
+    "@slack/web-api": "^7.13.0",
     "@socket.io/redis-adapter": "^8.3.0",
     "@turbopuffer/turbopuffer": "^1.10.0",
     "axios": "^1.10.0",
