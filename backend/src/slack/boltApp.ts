@@ -125,8 +125,7 @@ export async function setupSlackBolt() {
   });
 
   slack.event('app_mention', async ({ event, body, say, client }) => {
-    console.log('app_mention', event, body);
-
+    logger.info('Starting app_mention based ChatAgent run', { channel: event.channel, timestamp: event.ts });
     try {
       await client.reactions.add({
         channel: event.channel,
