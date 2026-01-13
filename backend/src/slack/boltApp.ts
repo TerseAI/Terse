@@ -9,6 +9,8 @@ import { SlackIntegrationManager, SlackMessageEvent } from "../integrations/Slac
 import { ApprovalService } from "../services/ApprovalService";
 import logger from "../logger";
 import { Agent, run, user } from "@openai/agents";
+import SlackChatInterface from "../agent/ChatAgent/SlackChatInterface";
+import ChatAgent from "../agent/ChatAgent/ChatAgent";
 
 /**
  * Creates and configures the Slack Bolt app with ExpressReceiver
@@ -98,7 +100,6 @@ export async function setupSlackBolt() {
   slack.event('app_mention', async ({ event, body, say, client }) => {
     console.log('app_mention', event, body);
     
-    // Add :eyes: reaction to the original message
     try {
       await client.reactions.add({
         channel: event.channel,
@@ -108,6 +109,16 @@ export async function setupSlackBolt() {
     } catch (error) {
       logger.error('Error adding reaction to app_mention:', { error });
     }
+
+    const message = event.text as string;
+    const chatId = event.ts as string; // Use the timestamp of the mention as the Chat ID!!!
+    logger.info('app_mention message:', { message });
+    logger.info('app_mention chat_id:', { chatId });
+
+    const slackChatInterface = new SlackChatInterface(event.channel, say);
+    const chatAgent = new ChatAgent(slackChatInterface, chatId);
+
+    await chatAgent.run(message);
     
     await say({
       text: 'Hello, how can I help you today?',
