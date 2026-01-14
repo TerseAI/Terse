@@ -111,8 +111,6 @@ export async function setupSlackBolt() {
           addEyesReaction(client, messageEvent);
 
           try {
-            console.log('messageEvent.user', messageEvent.user);
-            console.log('body.team_id', body.team_id);
             // Get the user ID from the Slack user ID and team ID
             const userId = await getUserIdFromSlackUser(messageEvent.user, body.team_id);
             if (!userId) {
@@ -123,8 +121,7 @@ export async function setupSlackBolt() {
               });
               return;
             }
-            const slackChatInterface = new SlackChatInterface(messageEvent.channel, say, userId);
-            slackChatInterface.setWebClient(client);
+            const slackChatInterface = new SlackChatInterface(messageEvent.channel, client, userId, threadTs);
             const chatAgent = new ChatAgent(slackChatInterface, threadTs, userId);
             await chatAgent.run(messageEvent.text);
           } finally {
@@ -191,8 +188,7 @@ export async function setupSlackBolt() {
         });
         return;
       }
-      const slackChatInterface = new SlackChatInterface(event.channel, say, userId);
-      slackChatInterface.setWebClient(client);
+      const slackChatInterface = new SlackChatInterface(event.channel, client, userId, chatId);
       const chatAgent = new ChatAgent(slackChatInterface, chatId, userId);
 
       await chatAgent.run(message);

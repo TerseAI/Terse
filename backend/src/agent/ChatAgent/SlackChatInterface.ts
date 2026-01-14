@@ -4,7 +4,6 @@ import { Channel } from "../../shared/types";
 import ChatInterface from "./ChatInterface";
 import { IntegrationType } from "../../shared/Integrations";
 import logger from "../../logger";
-import { SayFn } from "@slack/bolt";
 import { WebClient } from "@slack/web-api";
 import { INTEGRATION_REGISTRY } from "../../integrations/abstract/IntegrationRegistry";
 import { isFormIntegrationInstallation, isOAuthIntegrationInstallation } from "../../integrations/abstract/Integration";
@@ -14,23 +13,41 @@ import { createIntegrationConnectionMessage } from "../../slack/blockKitHelpers"
 class SlackChatInterface extends ChatInterface {
     name: string = 'Slack';
     private messageTsToReplace?: string;
-    private webClient?: WebClient;
+    private readonly webClient: WebClient;
 
     constructor(
-        private readonly channel: string, 
-        private readonly say: SayFn,
-        userId?: string
+        private readonly channel: string,
+        webClient: WebClient,
+        userId?: string,
+        sessionId?: string // thread_ts if in a thread
     ) {
-        super();
-        this.userId = userId;
+        super(sessionId, userId);
+        this.webClient = webClient;
+    }
+
+    /**
+     * Private helper method to send messages using webClient.
+     * Intelligently handles channel vs thread replies based on sessionId.
+     */
+    private async say(message: string | { text?: string; blocks?: any[]; thread_ts?: string; [key: string]: any }): Promise<void> {
+        const payload: any = typeof message === 'string'
+            ? { text: message }
+            : { ...message };
+
+        // If sessionId exists, we're in a thread - use it as thread_ts
+        // Allow explicit thread_ts to override if provided
+        if (this.sessionId && !payload.thread_ts) {
+            payload.thread_ts = this.sessionId;
+        }
+
+        await this.webClient.chat.postMessage({
+            channel: this.channel,
+            ...payload,
+        });
     }
 
     setMessageTsToReplace(messageTs: string): void {
         this.messageTsToReplace = messageTs;
-    }
-
-    setWebClient(client: WebClient): void {
-        this.webClient = client;
     }
 
     async buildPreview(draft: Channel): Promise<string> {

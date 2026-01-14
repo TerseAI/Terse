@@ -38,10 +38,6 @@ class ChatAgent {
 
         const memorySession = await this.getMemorySession();
 
-        // Set the sessionId and userId in the interface
-        this.chatInterface.setSessionId(this.sessionId);
-        this.chatInterface.setUserId(this.userId);
-
         const result = await run(agent, [
             {
                 role: 'user',

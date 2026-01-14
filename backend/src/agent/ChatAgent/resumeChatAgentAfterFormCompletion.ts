@@ -46,23 +46,8 @@ export async function resumeChatAgentAfterFormCompletion(
         // Create WebClient
         const client = initializeSlackWebClient(userSlackIntegration as any);
 
-        // Create a say function wrapper that uses WebClient
-        const say = async (message: string | { text?: string; blocks?: any[]; thread_ts?: string; [key: string]: any }) => {
-            const payload: any = typeof message === 'string' 
-                ? { text: message, thread_ts: chatId }
-                : { ...message, thread_ts: message.thread_ts || chatId };
-            
-            await client.chat.postMessage({
-                channel: channel,
-                ...payload,
-            });
-        };
-
         // Create SlackChatInterface
-        const slackChatInterface = new SlackChatInterface(channel, say as any, userId);
-        slackChatInterface.setSessionId(chatId);
-        slackChatInterface.setUserId(userId);
-        slackChatInterface.setWebClient(client);
+        const slackChatInterface = new SlackChatInterface(channel, client, userId, chatId);
         
         // If messageTs is provided, set it to replace the message instead of posting new one
         if (messageTs) {

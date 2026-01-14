@@ -5,14 +5,11 @@ import { Channel } from "../../shared/types";
 
 abstract class ChatInterface {
     abstract name: string;
-    protected sessionId: string | undefined;
-    protected userId: string | undefined;
+    protected readonly sessionId: string | undefined;
+    protected readonly userId: string | undefined;
 
-    setSessionId(sessionId: string): void {
+    constructor(sessionId?: string, userId?: string) {
         this.sessionId = sessionId;
-    }
-
-    setUserId(userId: string): void {
         this.userId = userId;
     }
 
