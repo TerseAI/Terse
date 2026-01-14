@@ -7,6 +7,7 @@ import { ConfluenceOutput } from "../ConfluenceOutput";
 import { ConfigInstance } from "../../shared/Configs";
 import { LinearTicketOutput } from "../linear/LinearTicketOutput";
 import { JiraTicketOutput } from "../jira/JiraTicketOutput";
+import { SlackOutput } from "../slack/SlackOutput";
 
 /**
  * Factory for creating Output instances based on IntegrationType.
@@ -19,7 +20,8 @@ export class OutputFactory {
         [OutputConfigType.NOTION_PAGE, () => new NotionPageOutput()],
         [OutputConfigType.CONFLUENCE, () => new ConfluenceOutput()],
         [OutputConfigType.LINEAR_TICKET, () => new LinearTicketOutput()],
-        [OutputConfigType.JIRA_TICKET, () => new JiraTicketOutput()]
+        [OutputConfigType.JIRA_TICKET, () => new JiraTicketOutput()],
+        [OutputConfigType.SLACK_CHANNEL, () => new SlackOutput()]
     ]);
 
     /**
