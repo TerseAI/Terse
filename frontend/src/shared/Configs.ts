@@ -4,6 +4,7 @@ export enum ConfigType {
     GMAIL = 'gmail',
     FIGMA = 'figma',
     SLACK = 'slack',
+    SLACK_OUTPUT = 'slack_output',
     NOTION_PAGE = 'notion_page',
     NOTION_DATABASE = 'notion_database',
     LINEAR_INPUT = 'linear_input',
@@ -51,6 +52,15 @@ export const SlackConfigMetadata = {
     description: 'Monitor messages in Slack channels or DMs',
     isInput: true,
     isOutput: false,
+    isKnowledgeBase: false,
+} as const satisfies ConfigDetails;
+
+export const SlackOutputConfigMetadata = {
+    configType: ConfigType.SLACK_OUTPUT,
+    name: 'Slack',
+    description: 'Send messages to Slack channels or DMs',
+    isInput: false,
+    isOutput: true,
     isKnowledgeBase: false,
 } as const satisfies ConfigDetails;
 
@@ -151,6 +161,7 @@ export const CONFIG_DETAILS: ConfigDetailsMap = {
     [ConfigType.GMAIL]: GmailConfigMetadata,
     [ConfigType.FIGMA]: FigmaConfigMetadata,
     [ConfigType.SLACK]: SlackConfigMetadata,
+    [ConfigType.SLACK_OUTPUT]: SlackOutputConfigMetadata,
     [ConfigType.NOTION_DATABASE]: NotionDatabaseConfigMetadata,
     [ConfigType.NOTION_PAGE]: NotionPageConfigMetadata,
     [ConfigType.LINEAR_INPUT]: LinearInputConfigMetadata,
@@ -252,6 +263,33 @@ export class SlackConfig implements ConfigInstance {
             parts.push(`Users: ${this.userIds.join(', ')}`);
         }
 
+        return parts.join('\n');
+    }
+};
+
+export class SlackOutputConfig implements ConfigInstance {
+    integrationType: IntegrationType = IntegrationType.SLACK;
+    configType: ConfigType = ConfigType.SLACK_OUTPUT;
+
+    constructor(
+        public integrationId: string,
+        public channelId?: string,
+        public channelName?: string,
+    ) {
+    }
+
+    isComplete(): boolean {
+        // Slack output is complete if channelId is set
+        return !!this.channelId;
+    }
+
+    formatForAgent(): string {
+        const parts = [`Type: Slack Output`, `Integration ID: ${this.integrationId}`];
+        if (this.channelName) {
+            parts.push(`Channel: ${this.channelName}`);
+        } else if (this.channelId) {
+            parts.push(`Channel ID: ${this.channelId}`);
+        }
         return parts.join('\n');
     }
 };
@@ -538,6 +576,7 @@ export type ConfigMetadataMap = EnsureExhaustiveMetadata<{
     [ConfigType.GMAIL]: typeof GmailConfig;
     [ConfigType.FIGMA]: typeof FigmaConfig;
     [ConfigType.SLACK]: typeof SlackConfig;
+    [ConfigType.SLACK_OUTPUT]: typeof SlackOutputConfig;
     [ConfigType.NOTION_PAGE]: typeof NotionPageConfig;
     [ConfigType.NOTION_DATABASE]: typeof NotionConfig;
     [ConfigType.LINEAR_INPUT]: typeof LinearInputConfig;
@@ -554,6 +593,7 @@ export const CONFIG_METADATA: ConfigMetadataMap = {
     [ConfigType.GMAIL]: GmailConfig,
     [ConfigType.FIGMA]: FigmaConfig,
     [ConfigType.SLACK]: SlackConfig,
+    [ConfigType.SLACK_OUTPUT]: SlackOutputConfig,
     [ConfigType.NOTION_PAGE]: NotionPageConfig,
     [ConfigType.NOTION_DATABASE]: NotionConfig,
     [ConfigType.LINEAR_INPUT]: LinearInputConfig,

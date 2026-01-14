@@ -1104,6 +1104,11 @@ export interface SlackMessageEvent {
     team_id: string;
     event_id?: string;
     authorizations?: SlackAuthorizations[];
+    // For top-level tokens_revoked events
+    tokens?: {
+        bot?: string[];
+        oauth?: string[];
+    };
 
     // The actual event data (for event_callback type)
     event?: {

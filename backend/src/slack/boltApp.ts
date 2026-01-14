@@ -8,7 +8,6 @@ import { db } from "../prismaClient";
 import { SlackIntegrationManager, SlackMessageEvent } from "../integrations/SlackIntegration";
 import { ApprovalService } from "../services/ApprovalService";
 import logger from "../logger";
-import { Agent, run, user } from "@openai/agents";
 import SlackChatInterface from "../agent/ChatAgent/SlackChatInterface";
 import ChatAgent from "../agent/ChatAgent/ChatAgent";
 import { INTEGRATION_REGISTRY } from "../integrations/abstract/IntegrationRegistry";
@@ -1327,86 +1326,59 @@ export async function setupSlackBolt() {
     await ack();
   });
 
-  // Set up Assistant for AI apps feature
-  const assistant = new Assistant({
-    threadStarted: async ({ event, logger, say, setSuggestedPrompts, saveThreadContext }) => {
-      try {
-        await say('Hi! I\'m Terse. How can I help you today?');
-        await saveThreadContext();
-        await setSuggestedPrompts({
-          title: 'Try these prompts:',
-          prompts: [
-            {
-              title: 'Get started',
-              message: 'What can you help me with?',
-            },
-          ],
-        });
-      } catch (error) {
-        logger.error('Error in threadStarted:', error);
-      }
-    },
-    userMessage: async ({ client, context, logger, message, getThreadContext, say, setTitle, setStatus }) => {
-      if (!('text' in message) || !('thread_ts' in message) || !message.text || !message.thread_ts) {
+  // Handle app_uninstalled event
+  slack.event('app_uninstalled', async ({ body }) => {
+    try {
+      const teamId = body.team_id;
+      if (!teamId) {
+        logger.error('app_uninstalled event missing team_id', { body });
         return;
       }
-      const { channel, thread_ts } = message;
-      const { userId, teamId } = context;
 
-      try {
-        await setTitle(message.text);
-        await setStatus({
-          status: 'thinking...',
-          loading_messages: [
-            'Processing your request...',
-            'Getting things ready...',
-            'Almost there...',
-          ],
-        });
+      // Format as SlackMessageEvent to match existing webhook handler format
+      const slackMessageEvent: SlackMessageEvent = {
+        type: 'app_uninstalled',
+        team_id: teamId,
+      };
 
-        // Create a simple OpenAI Agents SDK agent
-        const agent = new Agent({
-          name: 'Terse Assistant',
-          instructions: 'You are a helpful assistant integrated with Slack. Be concise and friendly.',
-          model: 'gpt-4o',
-        });
-
-        // Run the agent with the user's message
-        const result = await run(agent, [user(message.text)], {
-          stream: true,
-        });
-
-        // Stream the response
-        const streamer = client.chatStream({
-          channel: channel,
-          recipient_team_id: teamId,
-          recipient_user_id: userId,
-          thread_ts: thread_ts,
-        });
-
-        for await (const chunk of result) {
-          // Handle the nested OpenAI SDK event structure
-          if (
-            chunk.type === 'raw_model_stream_event' &&
-            (chunk as any).data?.type === 'model' &&
-            (chunk as any).data?.event?.type === 'response.output_text.delta' &&
-            typeof (chunk as any).data?.event?.delta === 'string'
-          ) {
-            await streamer.append({
-              markdown_text: (chunk as any).data.event.delta,
-            });
-          }
-        }
-        await streamer.stop();
-      } catch (error) {
-        logger.error('Error in userMessage:', error);
-        await say({ text: `Sorry, something went wrong! ${error}` });
-      }
-    },
+      // Process with SlackIntegrationManager
+      const slackIntegrationManager = new SlackIntegrationManager();
+      await slackIntegrationManager.processWebhookEvent(slackMessageEvent);
+      logger.info('Successfully processed app_uninstalled event', { teamId });
+    } catch (error) {
+      logger.error('Error processing app_uninstalled event:', { error, body });
+    }
   });
 
-  // Attach the assistant to the app
-  slack.assistant(assistant);
+  // Handle tokens_revoked event
+  slack.event('tokens_revoked', async ({ body }) => {
+    try {
+      const teamId = body.team_id;
+      if (!teamId) {
+        logger.error('tokens_revoked event missing team_id', { body });
+        return;
+      }
+
+      // Extract tokens from the event body
+      // Slack sends tokens_revoked with tokens.bot and tokens.oauth arrays
+      const tokens = (body as any).tokens as { bot?: string[]; oauth?: string[] } | undefined;
+
+      // Format as SlackMessageEvent to match existing webhook handler format
+      const slackMessageEvent: SlackMessageEvent = {
+        type: 'tokens_revoked',
+        team_id: teamId,
+        tokens: tokens,
+      };
+
+      // Process with SlackIntegrationManager
+      const slackIntegrationManager = new SlackIntegrationManager();
+      await slackIntegrationManager.processWebhookEvent(slackMessageEvent);
+      logger.info('Successfully processed tokens_revoked event', { teamId, tokenCounts: { bot: tokens?.bot?.length || 0, oauth: tokens?.oauth?.length || 0 } });
+    } catch (error) {
+      logger.error('Error processing tokens_revoked event:', { error, body });
+    }
+  });
+>>>>>>> c173e07069c3bb74e0d648da0dec2178050d0e5c
 
   // Initialize Bolt without binding a port (Express will handle that)
   await slack.init();
