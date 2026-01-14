@@ -16,6 +16,8 @@ import { RunHistoryTrigger } from "../shared/RunHistoryTypes";
 import { EventProcessor } from "../agent/ChannelAgent/EventProcessor";
 import logger, { runWithUserContext } from "../logger";
 import { createOAuthStateToken } from "../utility/oauth";
+import { integrationTaskQueue } from "./IntegrationTaskQueues";
+import { IntegrationCompletedTask } from "./IntegrationCompletedTask";
 
 export class LinearIntegrationManager implements Integration<LinearIntegration, LinearWebhookPayload, typeof LinearIntegrationMetadata>, OAuthIntegrationInstallation<IntegrationType.LINEAR> {
     constructor() { }
@@ -267,9 +269,6 @@ export class LinearIntegrationManager implements Integration<LinearIntegration, 
             logger.info("✅ Linear OAuth completed for user", { userId: decoded.userId, workspaceName: organization.name });
 
             // Emit integration completed task (includes full state payload for chat metadata detection)
-            // Lazy import to avoid circular dependency with IntegrationRegistry
-            const { integrationTaskQueue } = await import("./IntegrationTaskHandler");
-            const { IntegrationCompletedTask } = await import("./IntegrationCompletedTask");
             integrationTaskQueue.emit(new IntegrationCompletedTask(
                 IntegrationType.LINEAR,
                 integrationId,

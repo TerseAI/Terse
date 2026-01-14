@@ -9,6 +9,8 @@ import { Request, Response } from "express";
 import { IntegrationType, InstallationOptionsFor, AdditionalStateParams } from "../shared/Integrations";
 import logger from "../logger";
 import { createOAuthStateToken } from "../utility/oauth";
+import { integrationTaskQueue } from "./IntegrationTaskQueues";
+import { IntegrationCompletedTask } from "./IntegrationCompletedTask";
 
 export class NotionIntegrationManager implements Integration<NotionIntegration, never, typeof NotionIntegrationMetadata>, OAuthIntegrationInstallation<IntegrationType.NOTION> {
     constructor() { }
@@ -165,9 +167,6 @@ export class NotionIntegrationManager implements Integration<NotionIntegration, 
             logger.info("✅ Notion OAuth completed for user", { userId: decoded.userId, workspaceName: workspace_name || workspace_id });
 
             // Emit integration completed task (includes full state payload for chat metadata detection)
-            // Lazy import to avoid circular dependency with IntegrationRegistry
-            const { integrationTaskQueue } = await import("./IntegrationTaskHandler");
-            const { IntegrationCompletedTask } = await import("./IntegrationCompletedTask");
             integrationTaskQueue.emit(new IntegrationCompletedTask(
                 IntegrationType.NOTION,
                 integrationId,

@@ -1,6 +1,6 @@
-import { EventEmitterTaskQueue } from '../tasks/abstract/eventEmitterTasks';
 import { IntegrationCompletedTask } from './IntegrationCompletedTask';
 import { IntegrationFormCompletedTask } from './IntegrationFormCompletedTask';
+import { integrationTaskQueue, integrationFormTaskQueue } from './IntegrationTaskQueues';
 import { resumeChatAgentAfterOAuth } from '../agent/ChatAgent/resumeChatAgentAfterOAuth';
 import { resumeChatAgentAfterFormCompletion } from '../agent/ChatAgent/resumeChatAgentAfterFormCompletion';
 import logger from '../logger';
@@ -8,16 +8,6 @@ import { IntegrationType } from '../shared/Integrations';
 
 const INTEGRATION_COMPLETED_TASK_NAME = 'INTEGRATION_COMPLETED_TASK' as const;
 const INTEGRATION_FORM_COMPLETED_TASK_NAME = 'INTEGRATION_FORM_COMPLETED_TASK' as const;
-
-/**
- * Task queue for integration-related events
- */
-export const integrationTaskQueue = new EventEmitterTaskQueue<IntegrationCompletedTask>();
-
-/**
- * Task queue for integration form completion events
- */
-export const integrationFormTaskQueue = new EventEmitterTaskQueue<IntegrationFormCompletedTask>();
 
 /**
  * Checks if the state payload contains chat metadata indicating

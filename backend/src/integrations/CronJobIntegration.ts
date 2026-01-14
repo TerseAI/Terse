@@ -1,4 +1,4 @@
-import { FormIntegrationInstallation, Integration } from "./abstract/Integration";
+import { FormFieldDefinition, FormIntegrationInstallation, Integration } from "./abstract/Integration";
 import { CronJobIntegrationMetadata, IntegrationInstance, IntegrationType } from "../shared/Integrations";
 import { ChannelInputWithConfigs } from "../types/prisma";
 import { Request, Response } from "express";
@@ -24,6 +24,10 @@ export class CronJobIntegrationManager implements
     private schedulerClient: SchedulerClient | null = null;
 
     constructor() { }
+
+    getFormFields(): FormFieldDefinition[] {
+        return [];
+    }
 
     private getSchedulerClient(): SchedulerClient {
         if (!this.schedulerClient) {

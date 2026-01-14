@@ -15,6 +15,8 @@ import { InputConfigType } from "@prisma/client";
 import axios, { AxiosResponse } from "axios";
 import { GithubAppUser } from "../routes/GithubTypes";
 import logger, { runWithUserContext } from "../logger";
+import { integrationTaskQueue } from "./IntegrationTaskQueues";
+import { IntegrationCompletedTask } from "./IntegrationCompletedTask";
 
 export class GithubIntegrationManager implements Integration<GithubIntegration, GithubAppUnifiedEventRequest, typeof GithubIntegrationMetadata>, OAuthIntegrationInstallation<IntegrationType.GITHUB> {
     constructor() { }
@@ -137,9 +139,6 @@ export class GithubIntegrationManager implements Integration<GithubIntegration, 
 
         // Emit integration completed task (includes full state payload for chat metadata detection)
         // Note: GitHub uses base64-encoded JSON state, so we decode it and pass as statePayload
-        // Lazy import to avoid circular dependency with IntegrationRegistry
-        const { integrationTaskQueue } = await import("./IntegrationTaskHandler");
-        const { IntegrationCompletedTask } = await import("./IntegrationCompletedTask");
         integrationTaskQueue.emit(new IntegrationCompletedTask(
             IntegrationType.GITHUB,
             githubInstallation.id, // Use user_github_installation.id as integrationId

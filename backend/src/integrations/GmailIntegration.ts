@@ -14,6 +14,8 @@ import { RunHistoryTrigger } from "../shared/RunHistoryTypes";
 import { InputEvent } from "./abstract/InputEvent";
 import { Request, Response } from "express";
 import logger, { runWithUserContext } from "../logger";
+import { integrationTaskQueue } from "./IntegrationTaskQueues";
+import { IntegrationCompletedTask } from "./IntegrationCompletedTask";
 
 
 // OAuth2 scopes for Gmail
@@ -305,9 +307,6 @@ export class GmailIntegrationManager implements Integration<GmailIntegration, Gm
             logger.info(`Gmail integration activated for ${emailAddress}`, { emailAddress, userId });
 
             // Emit integration completed task (includes full state payload for chat metadata detection)
-            // Lazy import to avoid circular dependency with IntegrationRegistry
-            const { integrationTaskQueue } = await import("./IntegrationTaskHandler");
-            const { IntegrationCompletedTask } = await import("./IntegrationCompletedTask");
             integrationTaskQueue.emit(new IntegrationCompletedTask(
                 IntegrationType.GMAIL,
                 integration.id,

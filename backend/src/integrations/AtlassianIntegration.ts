@@ -16,6 +16,8 @@ import { RunHistoryTrigger } from "../shared/RunHistoryTypes";
 import { EventProcessor } from "../agent/ChannelAgent/EventProcessor";
 import logger, { runWithUserContext } from "../logger";
 import { createOAuthStateToken } from "../utility/oauth";
+import { integrationTaskQueue } from "./IntegrationTaskQueues";
+import { IntegrationCompletedTask } from "./IntegrationCompletedTask";
 
 const OAUTH_TOKEN_REFRESH_THRESHOLD_MS = 1000 * 60 * 30; // 30 minutes (expires access token after 1 hour)
 
@@ -274,9 +276,6 @@ export class AtlassianIntegrationManager implements Integration<AtlassianIntegra
             logger.info("✅ Atlassian OAuth completed for user:", {userId: decoded.userId});
 
             // Emit integration completed task (includes full state payload for chat metadata detection)
-            // Lazy import to avoid circular dependency with IntegrationRegistry
-            const { integrationTaskQueue } = await import("./IntegrationTaskHandler");
-            const { IntegrationCompletedTask } = await import("./IntegrationCompletedTask");
             integrationTaskQueue.emit(new IntegrationCompletedTask(
                 IntegrationType.ATLASSIAN,
                 integrationId,

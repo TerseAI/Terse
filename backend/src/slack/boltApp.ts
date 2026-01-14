@@ -17,7 +17,7 @@ import { IntegrationType } from "../shared/Integrations";
 import jwt from "jsonwebtoken";
 import { jwt as jwtConfig } from "../config/settings";
 import { Request, Response } from "express";
-import { integrationFormTaskQueue } from "../integrations/IntegrationTaskHandler";
+import { integrationFormTaskQueue } from "../integrations/IntegrationTaskQueues";
 import { IntegrationFormCompletedTask } from "../integrations/IntegrationFormCompletedTask";
 import { createFeedbackModal, createFormModal, createOAuthModal, formFieldsToSlackBlocks, configurationFieldsToSlackBlocks } from "./blockKitHelpers";
 import { createOAuthStateToken } from "../utility/oauth";

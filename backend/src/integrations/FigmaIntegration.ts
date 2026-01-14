@@ -23,6 +23,8 @@ import { figma as figmaConfig, jwt as jwtConfig, urls, OAUTH_TOKEN_REFRESH_THRES
 import { Request, Response } from "express";
 import logger, { runWithUserContext } from "../logger";
 import { createOAuthStateToken } from "../utility/oauth";
+import { integrationTaskQueue } from "./IntegrationTaskQueues";
+import { IntegrationCompletedTask } from "./IntegrationCompletedTask";
 
 export class FigmaIntegrationManager implements Integration<FigmaIntegration, FigmaWebhookEvent, typeof FigmaIntegrationMetadata>, OAuthIntegrationInstallation<IntegrationType.FIGMA> {
   constructor() { }
@@ -237,9 +239,6 @@ export class FigmaIntegrationManager implements Integration<FigmaIntegration, Fi
       logger.info("✅ Figma OAuth completed for user", { userId: decoded.userId, figmaUserId: user_id_string });
 
       // Emit integration completed task (includes full state payload for chat metadata detection)
-      // Lazy import to avoid circular dependency with IntegrationRegistry
-      const { integrationTaskQueue } = await import("./IntegrationTaskHandler");
-      const { IntegrationCompletedTask } = await import("./IntegrationCompletedTask");
       integrationTaskQueue.emit(new IntegrationCompletedTask(
         IntegrationType.FIGMA,
         integrationId,

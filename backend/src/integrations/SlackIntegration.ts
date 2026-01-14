@@ -28,6 +28,8 @@ import {
   SlackFile,
   SlackMessageImage,
 } from "../slack/blockKitHelpers";
+import { integrationTaskQueue } from "./IntegrationTaskQueues";
+import { IntegrationCompletedTask } from "./IntegrationCompletedTask";
 
 export class SlackIntegrationManager implements Integration<SlackIntegration, SlackMessageEvent, typeof SlackIntegrationMetadata>, OAuthIntegrationInstallation<IntegrationType.SLACK> {
     constructor() { }
@@ -339,9 +341,6 @@ export class SlackIntegrationManager implements Integration<SlackIntegration, Sl
             }
 
             // Emit integration completed task (includes full state payload for chat metadata detection)
-            // Lazy import to avoid circular dependency with IntegrationRegistry
-            const { integrationTaskQueue } = await import("./IntegrationTaskHandler");
-            const { IntegrationCompletedTask } = await import("./IntegrationCompletedTask");
             integrationTaskQueue.emit(new IntegrationCompletedTask(
                 IntegrationType.SLACK,
                 userSlackIntegration.id,
