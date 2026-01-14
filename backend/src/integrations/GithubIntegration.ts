@@ -17,6 +17,7 @@ import { GithubAppUser } from "../routes/GithubTypes";
 import logger, { runWithUserContext } from "../logger";
 import { integrationTaskQueue } from "./IntegrationTaskQueues";
 import { IntegrationCompletedTask } from "./IntegrationCompletedTask";
+import { createOAuthStateToken, decodeOAuthStateToken, OAuthStatePayload, OAuthStateEncodingFormat } from "../utility/oauth";
 
 export class GithubIntegrationManager implements Integration<GithubIntegration, GithubAppUnifiedEventRequest, typeof GithubIntegrationMetadata>, OAuthIntegrationInstallation<IntegrationType.GITHUB> {
     constructor() { }
@@ -78,13 +79,14 @@ export class GithubIntegrationManager implements Integration<GithubIntegration, 
         const appName = githubApp.appName;
         const clientId = githubApp.clientId;
         const redirectUri = githubApp.integrateCallbackUrl;
-        // Generate state payload with user ID and any additional state variables
-        const statePayload: any = { userId: userId };
-        // Merge any additional state payload variables
-        if (additionalStatePayload && typeof additionalStatePayload === 'object') {
-            Object.assign(statePayload, additionalStatePayload);
-        }
-        const state = Buffer.from(JSON.stringify(statePayload)).toString('base64');
+        
+        // Generate state token using helper function (handles merging and encoding)
+        const state = createOAuthStateToken({
+            userId,
+            additionalStatePayload,
+            encodingFormat: OAuthStateEncodingFormat.BASE64,
+        });
+        
         const installationUrl: string = `https://github.com/apps/${appName}/installations/new?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&target_type=repositories&state=${state}`;
 
         return {
@@ -97,8 +99,8 @@ export class GithubIntegrationManager implements Integration<GithubIntegration, 
 
         logger.info("[GitHub Setup URL Installation]", { installationId: installation_id, setupAction: setup_action, hasState: !!state });
 
-        // extract user_id and any additional state from state
-        const stateData = JSON.parse(Buffer.from(state as string, 'base64').toString('utf-8'));
+        // Decode state using helper function
+        const stateData = decodeOAuthStateToken(state as string);
         const user_id = stateData.userId;
         const user: User | null = await db().users.findUnique({
             where: { id: user_id }

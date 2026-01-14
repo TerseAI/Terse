@@ -16,6 +16,7 @@ import { Request, Response } from "express";
 import logger, { runWithUserContext } from "../logger";
 import { integrationTaskQueue } from "./IntegrationTaskQueues";
 import { IntegrationCompletedTask } from "./IntegrationCompletedTask";
+import { createOAuthStateToken, decodeOAuthStateToken, OAuthStatePayload, OAuthStateEncodingFormat } from "../utility/oauth";
 
 
 // OAuth2 scopes for Gmail
@@ -188,16 +189,16 @@ export class GmailIntegrationManager implements Integration<GmailIntegration, Gm
     async getInstallationUrl(userId: string, options?: InstallationOptionsFor<IntegrationType.GMAIL>, additionalStatePayload?: AdditionalStateParams): Promise<OAuthInstallationDetails> {
         const oauth2Client = getOAuth2Client();
 
-        // Generate state for security (include user ID and any additional state variables)
-        const statePayload: any = {
-            userId: userId,
-            random: crypto.randomBytes(16).toString("hex"),
-        };
-        // Merge any additional state payload variables
-        if (additionalStatePayload && typeof additionalStatePayload === 'object') {
-            Object.assign(statePayload, additionalStatePayload);
-        }
-        const state = Buffer.from(JSON.stringify(statePayload)).toString("base64");
+        // Generate state token using helper function (handles merging and encoding)
+        // Include random for CSRF protection
+        const state = createOAuthStateToken({
+            userId,
+            additionalFields: {
+                random: crypto.randomBytes(16).toString("hex"),
+            },
+            additionalStatePayload,
+            encodingFormat: OAuthStateEncodingFormat.BASE64,
+        });
 
         const authUrl = oauth2Client.generateAuthUrl({
             access_type: "offline", // Get refresh token
@@ -221,8 +222,8 @@ export class GmailIntegrationManager implements Integration<GmailIntegration, Gm
         }
 
         try {
-            // Decode state to get user ID
-            const stateData = JSON.parse(Buffer.from(state, "base64").toString());
+            // Decode state using helper function
+            const stateData = decodeOAuthStateToken(state);
             const userId = stateData.userId;
 
             if (!userId) {

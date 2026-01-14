@@ -1,6 +1,7 @@
-import type { KnownBlock, Button, ModalView, TextObject, RichTextElement } from "@slack/types";
+import type { KnownBlock, Button, ModalView, TextObject, RichTextElement, GenericMessageEvent, AppMentionEvent } from "@slack/types";
 import { FormFieldDefinition, ConfigurationFieldDefinition } from "../integrations/abstract/Integration";
 import logger from "../logger";
+import { WebClient } from "@slack/web-api";
 
 
 
@@ -20,7 +21,7 @@ export function createSectionBlock(
       })),
     };
   }
-  
+
   return {
     type: 'section',
     text: {
@@ -99,7 +100,7 @@ export function createIntegrationConnectionMessage(
   }
 ): KnownBlock[] {
   const blocks: KnownBlock[] = [];
-  
+
   let sectionText: string;
   let buttonText: string;
   let actionId: string;
@@ -819,9 +820,9 @@ function extractTextFromContextActionsBlock(block: KnownBlock): string {
     } else if (element.type === 'icon_button') {
       // Extract button text
       if (element.text) {
-      const text = typeof element.text === 'string' 
-        ? element.text 
-        : (element.text as TextObject)?.text || '';
+        const text = typeof element.text === 'string'
+          ? element.text
+          : (element.text as TextObject)?.text || '';
         if (text) {
           parts.push(text);
         }
@@ -878,8 +879,8 @@ function extractTextFromContextBlock(block: KnownBlock): string {
   for (const element of block.elements) {
     if (element.type === 'mrkdwn' || element.type === 'plain_text') {
       const elem = element as any;
-      const text = typeof elem.text === 'string' 
-        ? elem.text 
+      const text = typeof elem.text === 'string'
+        ? elem.text
         : elem.text?.text || '';
       if (text) {
         parts.push(text);
@@ -986,7 +987,7 @@ export function extractTextFromAttachments(attachments: SlackAttachment[]): stri
 
     // Add title (often the main content identifier)
     if (attachment.title) {
-      const titleText = attachment.title_link 
+      const titleText = attachment.title_link
         ? `${attachment.title} (${attachment.title_link})`
         : attachment.title;
       attachmentParts.push(titleText);
@@ -1155,18 +1156,18 @@ function extractImagesFromFiles(files: SlackFile[]): SlackMessageImage[] {
   for (const file of files) {
     // Check if it's an image file
     const isImage = (file.mimetype && imageMimeTypes.includes(file.mimetype)) ||
-                   (file.filetype && imageFileTypes.includes(file.filetype.toLowerCase()));
+      (file.filetype && imageFileTypes.includes(file.filetype.toLowerCase()));
 
     if (!isImage) continue;
 
     // Get the best available URL (prefer larger versions for quality)
     const url = file.url_private ||
-               file.thumb_1024 ||
-               file.thumb_960 ||
-               file.thumb_800 ||
-               file.thumb_720 ||
-               file.thumb_480 ||
-               file.thumb_360;
+      file.thumb_1024 ||
+      file.thumb_960 ||
+      file.thumb_800 ||
+      file.thumb_720 ||
+      file.thumb_480 ||
+      file.thumb_360;
 
     if (url) {
       images.push({
@@ -1181,4 +1182,29 @@ function extractImagesFromFiles(files: SlackFile[]): SlackMessageImage[] {
   }
 
   return images;
+}
+
+
+export async function addEyesReaction(client: WebClient, messageEvent: AppMentionEvent | GenericMessageEvent) {
+  try {
+    await client.reactions.add({
+      channel: messageEvent.channel,
+      timestamp: messageEvent.ts,
+      name: 'eyes',
+    });
+  } catch (error) {
+    logger.error('Error adding reaction to thread message:', { error });
+  }
+}
+
+export async function removeEyesReaction(client: WebClient, messageEvent: AppMentionEvent | GenericMessageEvent) {
+  try {
+    await client.reactions.remove({
+      channel: messageEvent.channel,
+      timestamp: messageEvent.ts,
+      name: 'eyes',
+    });
+  } catch (error) {
+    logger.error('Error removing reaction from thread message:', { error });
+  }
 }

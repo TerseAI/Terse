@@ -19,30 +19,20 @@ import { jwt as jwtConfig } from "../config/settings";
 import { Request, Response } from "express";
 import { integrationFormTaskQueue } from "../integrations/IntegrationTaskQueues";
 import { IntegrationFormCompletedTask } from "../integrations/IntegrationFormCompletedTask";
-import { createFeedbackModal, createFormModal, createOAuthModal, formFieldsToSlackBlocks, configurationFieldsToSlackBlocks } from "./blockKitHelpers";
-import { createOAuthStateToken } from "../utility/oauth";
-
+import { createFeedbackModal, createFormModal, createOAuthModal, formFieldsToSlackBlocks, configurationFieldsToSlackBlocks, removeEyesReaction, addEyesReaction } from "./blockKitHelpers";
+import { createOAuthStateToken, OAuthStatePayload } from "../utility/oauth";
+import { AppMentionEvent, GenericMessageEvent, MessageEvent } from "@slack/types";
 /**
  * Gets the Terse user ID from a Slack user ID and team ID
  */
-async function getUserIdFromSlackUser(slackUserId: string | undefined, teamId: string | undefined): Promise<string | undefined> {
-  if (!slackUserId || !teamId) {
-    return undefined;
-  }
-
-  try {
-    const userSlackIntegration = await db().user_slack_integrations.findFirst({
-      where: {
-        authed_user_id: slackUserId,
-        slack_team_id: teamId
-      },
-    });
-
-    return userSlackIntegration?.user_id;
-  } catch (error) {
-    logger.error('Error getting user ID from Slack user', { error, slackUserId, teamId });
-    return undefined;
-  }
+async function getUserIdFromSlackUser(slackUserId: string, teamId: string): Promise<string | undefined> {
+  const userSlackIntegration = await db().user_slack_integrations.findFirst({
+    where: {
+      authed_user_id: slackUserId,
+      slack_team_id: teamId
+    },
+  });
+  return userSlackIntegration?.user_id;
 }
 
 /**
@@ -96,8 +86,7 @@ export async function setupSlackBolt() {
   slack.message(async ({ event, body, context, say, client }) => {
 
     try {
-      const messageEvent = event as { channel: string; user?: string; text?: string; ts?: string; thread_ts?: string; bot_id?: string; subtype?: string; channel_type?: string };
-
+      const messageEvent = event as GenericMessageEvent;
       // Check if message is in a thread (thread_ts is the root parent's timestamp)
       const threadTs = messageEvent.thread_ts;
       const isInThread = !!threadTs;
@@ -119,16 +108,7 @@ export async function setupSlackBolt() {
             text: messageEvent.text
           });
 
-          // Add eyes reaction to indicate we're processing the message
-          try {
-            await client.reactions.add({
-              channel: messageEvent.channel,
-              timestamp: messageEvent.ts,
-              name: 'eyes',
-            });
-          } catch (error) {
-            logger.error('Error adding reaction to thread message:', { error });
-          }
+          addEyesReaction(client, messageEvent);
 
           try {
             console.log('messageEvent.user', messageEvent.user);
@@ -148,16 +128,7 @@ export async function setupSlackBolt() {
             const chatAgent = new ChatAgent(slackChatInterface, threadTs, userId);
             await chatAgent.run(messageEvent.text);
           } finally {
-            // Remove eyes reaction when we've successfully responded
-            try {
-              await client.reactions.remove({
-                channel: messageEvent.channel,
-                timestamp: messageEvent.ts,
-                name: 'eyes',
-              });
-            } catch (error) {
-              logger.error('Error removing reaction from thread message:', { error });
-            }
+            removeEyesReaction(client, messageEvent);
           }
         }
       }
@@ -196,23 +167,21 @@ export async function setupSlackBolt() {
 
   slack.event('app_mention', async ({ event, body, say, client }) => {
     logger.info('Starting app_mention based ChatAgent run', { channel: event.channel, timestamp: event.ts });
-    try {
-      await client.reactions.add({
-        channel: event.channel,
-        timestamp: event.ts,
-        name: 'eyes',
-      });
-    } catch (error) {
-      logger.error('Error adding reaction to app_mention:', { error });
-    }
+    addEyesReaction(client, event as AppMentionEvent);
 
     const message = event.text as string;
     const chatId = event.ts as string; // Use the timestamp of the mention as the Chat ID!!!
-    logger.info('app_mention message:', { message });
-    logger.info('app_mention chat_id:', { chatId });
 
     try {
       // Get the user ID from the Slack user ID and team ID
+      if (!event.user || !body.team_id) {
+        logger.warn('Could not find user ID for Slack user', { slackUserId: event.user, teamId: body.team_id });
+        await say({
+          text: 'Unable to identify your user account. Please ensure you have connected your Slack account to Terse.',
+          thread_ts: chatId,
+        });
+        return;
+      }
       const userId = await getUserIdFromSlackUser(event.user, body.team_id);
       if (!userId) {
         logger.warn('Could not find user ID for Slack user', { slackUserId: event.user, teamId: body.team_id });
@@ -222,23 +191,13 @@ export async function setupSlackBolt() {
         });
         return;
       }
-
       const slackChatInterface = new SlackChatInterface(event.channel, say, userId);
       slackChatInterface.setWebClient(client);
       const chatAgent = new ChatAgent(slackChatInterface, chatId, userId);
 
       await chatAgent.run(message);
     } finally {
-      // Remove eyes reaction when we've successfully responded (or if there was an error)
-      try {
-        await client.reactions.remove({
-          channel: event.channel,
-          timestamp: event.ts,
-          name: 'eyes',
-        });
-      } catch (error) {
-        logger.error('Error removing reaction from app_mention:', { error });
-      }
+      removeEyesReaction(client, event as AppMentionEvent);
     }
   });
 
@@ -694,9 +653,9 @@ export async function setupSlackBolt() {
       const [, integrationType] = match;
 
       // Decode state token
-      let statePayload: any;
+      let statePayload: OAuthStatePayload;
       try {
-        statePayload = jwt.verify(stateToken, jwtConfig.secret);
+        statePayload = jwt.verify(stateToken, jwtConfig.secret) as OAuthStatePayload;
       } catch (error) {
         logger.error('[Slack Integration Form] Error decoding state token', { error });
         await respond({ text: "Error: Invalid request data", response_type: "ephemeral" });
@@ -790,7 +749,7 @@ export async function setupSlackBolt() {
     // Extract form values (no awaits before ack)
     const formValues: Record<string, string> = {};
     const stateValues = view.state.values;
-    
+
     // Extract values from each block
     for (const blockId in stateValues) {
       const block = stateValues[blockId];
@@ -804,9 +763,9 @@ export async function setupSlackBolt() {
 
     // Extract state token from private metadata (synchronous JWT verify)
     const stateToken = view.private_metadata;
-    let statePayload: any;
+    let statePayload: OAuthStatePayload;
     try {
-      statePayload = jwt.verify(stateToken, jwtConfig.secret);
+      statePayload = jwt.verify(stateToken, jwtConfig.secret) as OAuthStatePayload;
     } catch (error) {
       logger.error('[Slack Integration Form] Error decoding state token in submission', { error });
       await ack({
@@ -978,9 +937,9 @@ export async function setupSlackBolt() {
       const [, integrationType] = match;
 
       // Decode state token
-      let statePayload: any;
+      let statePayload: OAuthStatePayload;
       try {
-        statePayload = jwt.verify(stateToken, jwtConfig.secret);
+        statePayload = jwt.verify(stateToken, jwtConfig.secret) as OAuthStatePayload;
       } catch (error) {
         logger.error('[Slack Integration Config] Error decoding state token', { error });
         await respond({ text: "Error: Invalid request data", response_type: "ephemeral" });
@@ -1076,9 +1035,9 @@ export async function setupSlackBolt() {
   ): Promise<{ success: boolean; ackResponse?: any; error?: string }> {
     // Extract state token from private metadata (synchronous JWT verify)
     const stateToken = view.private_metadata;
-    let statePayload: any;
+    let statePayload: OAuthStatePayload;
     try {
-      statePayload = jwt.verify(stateToken, jwtConfig.secret);
+      statePayload = jwt.verify(stateToken, jwtConfig.secret) as OAuthStatePayload;
     } catch (error) {
       logger.error('[Slack Integration Config] Error decoding state token in submission', { error });
       return {
@@ -1159,7 +1118,7 @@ export async function setupSlackBolt() {
       chatId: statePayload.chatId,
       channel: statePayload.channel,
       integrationType: integrationType,
-      messageTs: statePayload.messageTs, // Include messageTs from config button if available
+      ...(statePayload.messageTs && { messageTs: statePayload.messageTs }), // Include messageTs from config button if available
     } : undefined;
 
     const installationDetails = await integrationManager.getInstallationUrl(userId, options, additionalStatePayload);
@@ -1195,7 +1154,7 @@ export async function setupSlackBolt() {
     // Extract configuration values (no awaits before ack)
     const configValues: Record<string, string> = {};
     const stateValues = view.state.values;
-    
+
     // Extract values from each block (radio button selections)
     for (const blockId in stateValues) {
       const block = stateValues[blockId];
@@ -1209,7 +1168,7 @@ export async function setupSlackBolt() {
     }
 
     const result = await handleOAuthInstallationFromConfigForm(view, configValues);
-    
+
     if (!result.success) {
       await ack(result.ackResponse!);
       return;
@@ -1261,12 +1220,11 @@ export async function setupSlackBolt() {
       }
 
       const stateToken = backButtonMetadata.stateToken;
-      const configValues = backButtonMetadata.configValues;
 
       // Decode original state token
-      let statePayload: any;
+      let statePayload: OAuthStatePayload;
       try {
-        statePayload = jwt.verify(stateToken, jwtConfig.secret);
+        statePayload = jwt.verify(stateToken, jwtConfig.secret) as OAuthStatePayload;
       } catch (error) {
         logger.error('[Slack Integration Config] Error decoding state token in back button', { error });
         return;

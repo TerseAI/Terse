@@ -5,6 +5,7 @@ import { resumeChatAgentAfterOAuth } from '../agent/ChatAgent/resumeChatAgentAft
 import { resumeChatAgentAfterFormCompletion } from '../agent/ChatAgent/resumeChatAgentAfterFormCompletion';
 import logger from '../logger';
 import { IntegrationType } from '../shared/Integrations';
+import { OAuthStatePayload } from '../utility/oauth';
 
 const INTEGRATION_COMPLETED_TASK_NAME = 'INTEGRATION_COMPLETED_TASK' as const;
 const INTEGRATION_FORM_COMPLETED_TASK_NAME = 'INTEGRATION_FORM_COMPLETED_TASK' as const;
@@ -13,7 +14,7 @@ const INTEGRATION_FORM_COMPLETED_TASK_NAME = 'INTEGRATION_FORM_COMPLETED_TASK' a
  * Checks if the state payload contains chat metadata indicating
  * this OAuth flow was initiated from ChatAgent
  */
-function hasChatMetadata(statePayload: any): boolean {
+function hasChatMetadata(statePayload: OAuthStatePayload): boolean {
     return !!(
         statePayload &&
         typeof statePayload === 'object' &&
@@ -44,8 +45,8 @@ integrationTaskQueue.addListener({
                 // Resume ChatAgent conversation asynchronously
                 await resumeChatAgentAfterOAuth(
                     task.userId,
-                    task.statePayload.chatId,
-                    task.statePayload.channel,
+                    task.statePayload.chatId!,
+                    task.statePayload.channel!,
                     task.statePayload.integrationType as IntegrationType,
                     task.integrationId,
                     task.statePayload.messageTs
@@ -97,8 +98,8 @@ integrationFormTaskQueue.addListener({
                 // Resume ChatAgent conversation asynchronously
                 await resumeChatAgentAfterFormCompletion(
                     task.userId,
-                    task.statePayload.chatId,
-                    task.statePayload.channel,
+                    task.statePayload.chatId!,
+                    task.statePayload.channel!,
                     task.statePayload.integrationType as IntegrationType,
                     task.integrationId,
                     task.statePayload.messageTs
