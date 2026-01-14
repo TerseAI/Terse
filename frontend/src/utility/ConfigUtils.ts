@@ -1,4 +1,4 @@
-import { ConfigInstance, ConfigType, GmailConfig, FigmaConfig, SlackConfig, NotionConfig, NotionPageConfig, LinearInputConfig, LinearOutputConfig, GitHubConfig, JiraConfig, ConfluenceConfig, PosthogConfig, TimeTriggerConfig, GitHubKBConfig } from '@/shared/Configs';
+import { ConfigInstance, ConfigType, GmailConfig, FigmaConfig, SlackConfig, SlackOutputConfig, NotionConfig, NotionPageConfig, LinearInputConfig, LinearOutputConfig, GitHubConfig, JiraConfig, ConfluenceConfig, PosthogConfig, TimeTriggerConfig, GitHubKBConfig } from '@/shared/Configs';
 
 
 /**
@@ -108,6 +108,12 @@ export function deserializeConfig(jsonConfig: any): ConfigInstance {
                 integrationId,
                 jsonConfig.repositoryIds || [],
                 jsonConfig.repositoryNames || []
+            );
+        case ConfigType.SLACK_OUTPUT:
+            return new SlackOutputConfig(
+                integrationId,
+                jsonConfig.channelId,
+                jsonConfig.channelName
             );
 
         default:
