@@ -1,6 +1,6 @@
 import { INTEGRATION_METADATA, IntegrationType } from "../../shared/Integrations";
 import { getUserActiveIntegrations } from "../../routes/integrations";
-import { CONFIG_DETAILS, ConfigType } from "../../shared/Configs";
+import { CONFIG_DETAILS, CONFIG_METADATA, ConfigType, ConfigInstance } from "../../shared/Configs";
 
 
 export async function buildChatAgentSystemPrompt(userId: string): Promise<string> {
@@ -124,14 +124,33 @@ ${requirements}`;
 
     ### Config-Specific Guidance
 
-    - **Slack**: If user mentions specific channels or users, use searchConfigOptions to find them. Validate channel access with validateConfigValue. User can specify either a channelId OR set listenToUserDms=true. Optionally include userIds array.
-    - **Figma**: User may provide URLs - use validateConfigValue to extract fileKey/teamId from URLs and verify access. Both fileKey and teamId are required.
-    - **GitHub / GitHub KB**: Repositories are required for knowledge base. Use searchConfigOptions to list available repos if user doesn't specify. Validate repositoryIds with validateConfigValue.
-    - **Notion Page / Database**: Use searchConfigOptions to search for pages/databases by title. Validate pageId/databaseId with validateConfigValue. User may provide URLs - extract IDs from URLs.
-    - **TimeTrigger**: Parse natural language (e.g., 'every Sunday at 9am') into cron expression. Validate cron syntax. Format: cron expression (e.g., "0 9 * * 0" for Sunday 9am UTC).
-    - **Linear**: Use searchConfigOptions to find teams/projects. Validate teamId/projectId.
-    - **Jira/Confluence**: Use searchConfigOptions to find projects/spaces/pages. Validate IDs.
-    - **Gmail**: Only requires integrationId - no additional configuration needed.
+    ${Object.entries(CONFIG_METADATA).map(([configType, ConfigClass]) => {
+        const details = CONFIG_DETAILS[configType as ConfigType];
+        const completion = ConfigClass.getCompletionGuidance();
+        const search = ConfigClass.getSearchGuidance();
+        const validation = ConfigClass.getValidationGuidance();
+        
+        // Combine all guidance parts, filtering out "no-op" messages
+        const guidanceParts: string[] = [];
+        
+        if (completion && !completion.toLowerCase().includes('no additional configuration needed') && !completion.toLowerCase().includes('only requires integrationid')) {
+            guidanceParts.push(completion);
+        }
+        
+        if (search && !search.toLowerCase().includes('no search needed')) {
+            guidanceParts.push(search);
+        }
+        
+        if (validation && !validation.toLowerCase().includes('no validation needed')) {
+            guidanceParts.push(validation);
+        }
+        
+        const guidance = guidanceParts.length > 0 
+            ? guidanceParts.join('. ') 
+            : 'No additional configuration needed';
+        
+        return `- **${details.name}**: ${guidance}`;
+    }).join('\n')}
 
     ### Conversational Configuration Flow
 
@@ -240,19 +259,11 @@ ${requirements}`;
 
     When creating a Channel object for the createChannel tool, construct plain objects (not class instances) with these structures:
 
-    - **TimeTriggerConfig**: \`{ integrationType: "cron_job", configType: "time_trigger", integrationId: "system", cronExpression: "0 9 * * 0" }\`
-    - **SlackConfig**: \`{ integrationType: "slack", configType: "slack", integrationId: "...", channelId?: "...", channelName?: "...", listenToUserDms: false, userIds?: [...] }\`
-    - **FigmaConfig**: \`{ integrationType: "figma", configType: "figma", integrationId: "...", fileKey: "...", fileName: "...", teamId: "..." }\`
-    - **GitHubConfig**: \`{ integrationType: "github", configType: "github", integrationId: "...", repositoryIds: [...] }\`
-    - **GitHubKBConfig**: \`{ integrationType: "github", configType: "github_kb", integrationId: "...", repositoryIds: [...], repositoryNames: [...] }\`
-    - **NotionPageConfig**: \`{ integrationType: "notion", configType: "notion_page", integrationId: "...", pageId: "...", pageName?: "..." }\`
-    - **NotionConfig**: \`{ integrationType: "notion", configType: "notion_database", integrationId: "...", databaseId: "...", databaseName?: "..." }\`
-    - **LinearInputConfig**: \`{ integrationType: "linear", configType: "linear_input", integrationId: "...", projectId?: "...", projectName?: "..." }\`
-    - **LinearOutputConfig**: \`{ integrationType: "linear", configType: "linear_output", integrationId: "...", teamId: "...", teamName?: "..." }\`
-    - **JiraConfig**: \`{ integrationType: "atlassian", configType: "jira", integrationId: "...", projectKey?: "...", projectId?: "..." }\`
-    - **ConfluenceConfig**: \`{ integrationType: "atlassian", configType: "confluence", integrationId: "...", spaceName: "...", spaceId: "...", pageId: "...", pageName: "..." }\`
-    - **PosthogConfig**: \`{ integrationType: "posthog", configType: "POSTHOG", integrationId: "...", projectId: "...", projectName?: "...", canReadLogs?: boolean, canReadSessionRecordings?: boolean }\`
-    - **GmailConfig**: \`{ integrationType: "gmail", configType: "gmail", integrationId: "..." }\`
+    ${Object.entries(CONFIG_METADATA).map(([configType, ConfigClass]) => {
+        const details = CONFIG_DETAILS[configType as ConfigType];
+        const example = ConfigClass.getExampleConfigStructure();
+        return `- **${details.name}**: \`${example}\``;
+    }).join('\n')}
 
     **Channel structure for createChannel tool**:
     \`\`\`json
@@ -307,65 +318,24 @@ ${requirements}`;
 }
 
 function getConfigRequirements(configType: ConfigType): string {
-    // Map config types to their requirements based on ConfigInstance classes
-    const requirements: Record<ConfigType, string> = {
-        [ConfigType.SLACK]: `- Required: Either channelId (string) OR listenToUserDms (boolean)
-- Optional: userIds (array of strings)
-- Use searchConfigOptions to find channels/users
-- Use validateConfigValue to verify channel IDs and user IDs`,
-        
-        [ConfigType.FIGMA]: `- Required: fileKey (string), teamId (string)
-- Optional: fileName (string, display name)
-- User may provide Figma URLs - validate and extract fileKey/teamId
-- Use validateConfigValue to verify file and team access`,
-        
-        [ConfigType.GITHUB]: `- Required: repositoryIds (array of numbers)
-- Use searchConfigOptions to list repositories
-- Use validateConfigValue to verify repository IDs`,
-        
-        [ConfigType.GITHUB_KB]: `- Required: repositoryIds (array of numbers), repositoryNames (array of strings)
-- Use searchConfigOptions to list repositories
-- Use validateConfigValue to verify repository IDs`,
-        
-        [ConfigType.NOTION_PAGE]: `- Required: pageId (string)
-- Optional: pageName (string, display name)
-- Use searchConfigOptions to search pages by title
-- Use validateConfigValue to verify page ID or extract from URL`,
-        
-        [ConfigType.NOTION_DATABASE]: `- Required: databaseId (string)
-- Optional: databaseName (string, display name)
-- Use searchConfigOptions to search databases by title
-- Use validateConfigValue to verify database ID or extract from URL`,
-        
-        [ConfigType.LINEAR_INPUT]: `- Optional: projectId (string), projectName (string)
-- Use searchConfigOptions to find projects
-- Use validateConfigValue to verify project ID`,
-        
-        [ConfigType.LINEAR_OUTPUT]: `- Required: teamId (string)
-- Optional: teamName (string)
-- Use searchConfigOptions to find teams
-- Use validateConfigValue to verify team ID`,
-        
-        [ConfigType.JIRA]: `- Optional: projectKey (string), projectId (string)
-- Use searchConfigOptions to find projects
-- Use validateConfigValue to verify project`,
-        
-        [ConfigType.CONFLUENCE]: `- Required: spaceId (string), pageId (string)
-- Optional: spaceName (string), pageName (string)
-- Use searchConfigOptions to find spaces/pages
-- Use validateConfigValue to verify IDs`,
-        
-        [ConfigType.POSTHOG]: `- Required: projectId (string)
-- Optional: projectName (string), canReadLogs (boolean), canReadSessionRecordings (boolean)
-- Use searchConfigOptions to find projects
-- Use validateConfigValue to verify project ID`,
-        
-        [ConfigType.TIME_TRIGGER]: `- Required: cronExpression (string)
-- Parse natural language to cron (e.g., "every Sunday at 9am" → "0 9 * * 0")
-- Validate cron syntax with validateConfigValue`,
-        
-        [ConfigType.GMAIL]: `- Only requires integrationId - no additional configuration needed`,
-    };
+    // Get the config class to access static guidance methods
+    const ConfigClass = CONFIG_METADATA[configType];
 
-    return requirements[configType] || '- Configuration requirements not specified';
+    // Call static methods directly without creating instances
+    const completion = ConfigClass.getCompletionGuidance();
+    const search = ConfigClass.getSearchGuidance();
+    const validation = ConfigClass.getValidationGuidance();
+
+    const parts: string[] = [];
+    if (completion) {
+        parts.push(`- ${completion}`);
+    }
+    if (search) {
+        parts.push(`- ${search}`);
+    }
+    if (validation) {
+        parts.push(`- ${validation}`);
+    }
+
+    return parts.join('\n') || '- Configuration requirements not specified';
 }   

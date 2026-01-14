@@ -5,7 +5,7 @@ import { parsePageParams } from "../utility/pagination";
 import { ChannelWithInputRelations, PrismaTransaction, ChannelWithRelations, ChannelWithNotificationSettingsRelations, RunHistoryActionType } from "../types/prisma";
 import { IntegrationType } from "../shared/Integrations";
 import { convertConfigTypeToInputConfigType, convertConfigTypeToOutputConfigType, convertConfigTypeToKnowledgeBaseConfigType, convertPrismaConfigToConfigInstance, convertPrismaOutputConfigToConfigInstance, convertPrismaKnowledgeBaseConfigToConfigInstance } from "../utility/typeConverters";
-import { ConfigInstance, PosthogConfig, ConfigType } from "../shared/Configs";
+import { ConfigInstance } from "../shared/Configs";
 import { getInputConfigInclude, getOutputConfigInclude, getKnowledgeBaseConfigInclude } from "../utility/prismaIncludes";
 import { INPUT_REGISTRY } from "../inputs/InputRegistry";
 import { INTEGRATION_REGISTRY, isSystemIntegration } from "../integrations/abstract/IntegrationRegistry";
@@ -425,35 +425,6 @@ export async function createChannelInternal(
             name: newChannel.name,
         };
     });
-
-    // Setup channel inputs (webhooks, etc.)
-    for (const input of inputs) {
-        const integrationType = input.config.integrationType;
-        if (!integrationType) continue;
-
-        const integrationId = input.config.integrationId || 'system';
-        const integration = INTEGRATION_REGISTRY.find(int => int.integrationType === integrationType);
-        if (integration) {
-            try {
-                // Get the input record to pass to setupChannelInput
-                const inputRecord = await prisma.automation_inputs.findFirst({
-                    where: {
-                        automation_id: channel.id,
-                        integration_id: integrationId,
-                        config_type: convertConfigTypeToInputConfigType(input.config.configType),
-                    },
-                    include: getInputConfigInclude(input.config.configType),
-                });
-
-                if (inputRecord) {
-                    await integration.setupChannelInput(integrationId, inputRecord as any);
-                }
-            } catch (error) {
-                logger.error(`Error setting up channel input for ${integrationType}`, { error, integrationId, channelId: channel.id });
-                // Continue with other inputs even if one fails
-            }
-        }
-    }
 
     // Emit cache invalidation
     emitCacheInvalidationWithKey(['channels', userId]);

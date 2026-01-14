@@ -258,8 +258,6 @@ class SlackChatInterface extends ChatInterface {
             // Setup channel inputs (webhooks, etc.)
             const { db } = await import('../../prismaClient');
             const { getInputConfigInclude } = await import('../../utility/prismaIncludes');
-            const { convertPrismaConfigToConfigInstance } = await import('../../utility/typeConverters');
-            const { INTEGRATION_REGISTRY } = await import('../../integrations/abstract/IntegrationRegistry');
             const { setupChannelInputs } = await import('../../routes/channels');
 
             const prisma = db();

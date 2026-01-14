@@ -199,6 +199,22 @@ export class GmailConfig implements ConfigInstance {
     formatForAgent(): string {
         return `Type: Gmail\nIntegration ID: ${this.integrationId}`;
     }
+
+    static getCompletionGuidance(): string {
+        return 'Only requires integrationId - no additional configuration needed';
+    }
+
+    static getSearchGuidance(): string {
+        return 'No search needed - Gmail config requires no additional options';
+    }
+
+    static getValidationGuidance(): string {
+        return 'No validation needed - Gmail config requires no additional fields';
+    }
+
+    static getExampleConfigStructure(): string {
+        return `{ integrationType: "gmail", configType: "gmail", integrationId: "..." }`;
+    }
 };
 
 export class FigmaConfig implements ConfigInstance {
@@ -227,6 +243,22 @@ export class FigmaConfig implements ConfigInstance {
             parts.push(`File Key: ${this.fileKey}`);
         }
         return parts.join('\n');
+    }
+
+    static getCompletionGuidance(): string {
+        return 'Required: fileKey (string), teamId (string). Optional: fileName (string, display name)';
+    }
+
+    static getSearchGuidance(): string {
+        return 'User may provide Figma URLs - validate and extract fileKey/teamId from URLs';
+    }
+
+    static getValidationGuidance(): string {
+        return 'Use validateConfigValue to verify file and team access. User may provide Figma URLs - validate and extract fileKey/teamId';
+    }
+
+    static getExampleConfigStructure(): string {
+        return `{ integrationType: "figma", configType: "figma", integrationId: "...", fileKey: "...", fileName: "...", teamId: "..." }`;
     }
 };
 // Typed config per integration type
@@ -265,6 +297,22 @@ export class SlackConfig implements ConfigInstance {
 
         return parts.join('\n');
     }
+
+    static getCompletionGuidance(): string {
+        return 'Required: Either channelId (string) OR listenToUserDms (boolean). Optional: userIds (array of strings)';
+    }
+
+    static getSearchGuidance(): string {
+        return 'Use searchConfigOptions to find channels/users by name';
+    }
+
+    static getValidationGuidance(): string {
+        return 'Use validateConfigValue to verify channel IDs and user IDs';
+    }
+
+    static getExampleConfigStructure(): string {
+        return `{ integrationType: "slack", configType: "slack", integrationId: "...", channelId?: "...", channelName?: "...", listenToUserDms: false, userIds?: [...] }`;
+    }
 };
 
 export class SlackOutputConfig implements ConfigInstance {
@@ -291,6 +339,22 @@ export class SlackOutputConfig implements ConfigInstance {
             parts.push(`Channel ID: ${this.channelId}`);
         }
         return parts.join('\n');
+    }
+
+    static getCompletionGuidance(): string {
+        return 'Required: channelId (string). Optional: channelName (string, display name)';
+    }
+
+    static getSearchGuidance(): string {
+        return 'Use searchConfigOptions to find channels by name';
+    }
+
+    static getValidationGuidance(): string {
+        return 'Use validateConfigValue to verify channel IDs';
+    }
+
+    static getExampleConfigStructure(): string {
+        return `{ integrationType: "slack", configType: "slack_output", integrationId: "...", channelId?: "...", channelName?: "..." }`;
     }
 };
 
@@ -319,6 +383,22 @@ export class NotionConfig implements ConfigInstance {
         }
         return parts.join('\n');
     }
+
+    static getCompletionGuidance(): string {
+        return 'Required: databaseId (string). Optional: databaseName (string, display name)';
+    }
+
+    static getSearchGuidance(): string {
+        return 'Use searchConfigOptions to search databases by title';
+    }
+
+    static getValidationGuidance(): string {
+        return 'Use validateConfigValue to verify database ID or extract from URL';
+    }
+
+    static getExampleConfigStructure(): string {
+        return `{ integrationType: "notion", configType: "notion_database", integrationId: "...", databaseId: "...", databaseName?: "..." }`;
+    }
 };
 
 export class NotionPageConfig implements ConfigInstance {
@@ -346,6 +426,22 @@ export class NotionPageConfig implements ConfigInstance {
         }
         return parts.join('\n');
     }
+
+    static getCompletionGuidance(): string {
+        return 'Required: pageId (string). Optional: pageName (string, display name)';
+    }
+
+    static getSearchGuidance(): string {
+        return 'Use searchConfigOptions to search pages by title';
+    }
+
+    static getValidationGuidance(): string {
+        return 'Use validateConfigValue to verify page ID or extract from URL';
+    }
+
+    static getExampleConfigStructure(): string {
+        return `{ integrationType: "notion", configType: "notion_page", integrationId: "...", pageId: "...", pageName?: "..." }`;
+    }
 };
 
 export class LinearInputConfig implements ConfigInstance {
@@ -371,6 +467,22 @@ export class LinearInputConfig implements ConfigInstance {
             parts.push(`Project ID: ${this.projectId}`);
         }
         return parts.join('\n');
+    }
+
+    static getCompletionGuidance(): string {
+        return 'Optional: projectId (string), projectName (string)';
+    }
+
+    static getSearchGuidance(): string {
+        return 'Use searchConfigOptions to find projects';
+    }
+
+    static getValidationGuidance(): string {
+        return 'Use validateConfigValue to verify project ID';
+    }
+
+    static getExampleConfigStructure(): string {
+        return `{ integrationType: "linear", configType: "linear_input", integrationId: "...", projectId?: "...", projectName?: "..." }`;
     }
 }
 
@@ -398,6 +510,22 @@ export class LinearOutputConfig implements ConfigInstance {
         }
         return parts.join('\n');
     }
+
+    static getCompletionGuidance(): string {
+        return 'Required: teamId (string). Optional: teamName (string)';
+    }
+
+    static getSearchGuidance(): string {
+        return 'Use searchConfigOptions to find teams';
+    }
+
+    static getValidationGuidance(): string {
+        return 'Use validateConfigValue to verify team ID';
+    }
+
+    static getExampleConfigStructure(): string {
+        return `{ integrationType: "linear", configType: "linear_output", integrationId: "...", teamId: "...", teamName?: "..." }`;
+    }
 }
 
 
@@ -423,6 +551,22 @@ export class GitHubConfig implements ConfigInstance {
             parts.push(`Repositories: ${this.repositoryIds.join(', ')}`);
         }
         return parts.join('\n');
+    }
+
+    static getCompletionGuidance(): string {
+        return 'Required: repositoryIds (array of numbers)';
+    }
+
+    static getSearchGuidance(): string {
+        return 'Use searchConfigOptions to list repositories';
+    }
+
+    static getValidationGuidance(): string {
+        return 'Use validateConfigValue to verify repository IDs';
+    }
+
+    static getExampleConfigStructure(): string {
+        return `{ integrationType: "github", configType: "github", integrationId: "...", repositoryIds: [...] }`;
     }
 };
 
@@ -450,6 +594,22 @@ export class JiraConfig implements ConfigInstance {
             parts.push(`Project ID: ${this.projectId}`);
         }
         return parts.join('\n');
+    }
+
+    static getCompletionGuidance(): string {
+        return 'Optional: projectKey (string), projectId (string)';
+    }
+
+    static getSearchGuidance(): string {
+        return 'Use searchConfigOptions to find projects';
+    }
+
+    static getValidationGuidance(): string {
+        return 'Use validateConfigValue to verify project';
+    }
+
+    static getExampleConfigStructure(): string {
+        return `{ integrationType: "atlassian", configType: "jira", integrationId: "...", projectKey?: "...", projectId?: "..." }`;
     }
 };
 
@@ -482,6 +642,22 @@ export class ConfluenceConfig implements ConfigInstance {
             parts.push(`Page ID: ${this.pageId}`);
         }
         return parts.join('\n');
+    }
+
+    static getCompletionGuidance(): string {
+        return 'Required: spaceId (string), pageId (string). Optional: spaceName (string), pageName (string)';
+    }
+
+    static getSearchGuidance(): string {
+        return 'Use searchConfigOptions to find spaces/pages';
+    }
+
+    static getValidationGuidance(): string {
+        return 'Use validateConfigValue to verify IDs';
+    }
+
+    static getExampleConfigStructure(): string {
+        return `{ integrationType: "atlassian", configType: "confluence", integrationId: "...", spaceName: "...", spaceId: "...", pageId: "...", pageName: "..." }`;
     }
 };
 
@@ -519,6 +695,22 @@ export class PosthogConfig implements ConfigInstance {
         }
         return parts.join('\n');
     }
+
+    static getCompletionGuidance(): string {
+        return 'Required: projectId (string). Optional: projectName (string), canReadLogs (boolean), canReadSessionRecordings (boolean)';
+    }
+
+    static getSearchGuidance(): string {
+        return 'Use searchConfigOptions to find projects';
+    }
+
+    static getValidationGuidance(): string {
+        return 'Use validateConfigValue to verify project ID';
+    }
+
+    static getExampleConfigStructure(): string {
+        return `{ integrationType: "posthog", configType: "POSTHOG", integrationId: "...", projectId: "...", projectName?: "...", canReadLogs?: boolean, canReadSessionRecordings?: boolean }`;
+    }
 }
 
 export class TimeTriggerConfig implements ConfigInstance {
@@ -543,6 +735,22 @@ export class TimeTriggerConfig implements ConfigInstance {
         }
         return parts.join('\n');
     }
+
+    static getCompletionGuidance(): string {
+        return 'Required: cronExpression (string). Parse natural language to cron (e.g., "every Sunday at 9am" → "0 9 * * 0")';
+    }
+
+    static getSearchGuidance(): string {
+        return 'No search needed - TimeTrigger uses cron expressions';
+    }
+
+    static getValidationGuidance(): string {
+        return 'Validate cron syntax with validateConfigValue';
+    }
+
+    static getExampleConfigStructure(): string {
+        return `{ integrationType: "cron_job", configType: "time_trigger", integrationId: "system", cronExpression: "0 9 * * 0" }`;
+    }
 }
 
 export class GitHubKBConfig implements ConfigInstance {
@@ -566,6 +774,22 @@ export class GitHubKBConfig implements ConfigInstance {
             parts.push(`Repositories: ${this.repositoryNames.join(', ')}`);
         }
         return parts.join('\n');
+    }
+
+    static getCompletionGuidance(): string {
+        return 'Required: repositoryIds (array of numbers), repositoryNames (array of strings)';
+    }
+
+    static getSearchGuidance(): string {
+        return 'Use searchConfigOptions to list repositories';
+    }
+
+    static getValidationGuidance(): string {
+        return 'Use validateConfigValue to verify repository IDs';
+    }
+
+    static getExampleConfigStructure(): string {
+        return `{ integrationType: "github", configType: "github_kb", integrationId: "...", repositoryIds: [...], repositoryNames: [...] }`;
     }
 }
 
