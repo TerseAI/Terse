@@ -23,6 +23,7 @@ export function IconForConfigType({ type }: { type: ConfigType }) {
         case ConfigType.LINEAR_OUTPUT:
             return <LinearIcon />;
         case ConfigType.SLACK:
+        case ConfigType.SLACK_OUTPUT:
             return <SlackIcon />;
         case ConfigType.GMAIL:
             return <GmailIcon />;

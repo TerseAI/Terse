@@ -817,6 +817,7 @@ enum OutputConfigType {
   CONFLUENCE
   LINEAR_TICKET
   JIRA_TICKET
+  SLACK_CHANNEL
 }
 
 enum KnowledgeBaseConfigType {

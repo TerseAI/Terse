@@ -2,6 +2,7 @@ import { InputConfigSelectorProps } from './types';
 import { GmailIntegration } from './GmailIntegration';
 import { NotionIntegration } from './NotionIntegration';
 import { SlackIntegration } from './SlackIntegration';
+import { SlackOutputIntegration } from './SlackOutputIntegration';
 import { GitHubIntegration } from './GitHubIntegration';
 import { FigmaIntegration } from './FigmaIntegration';
 import { ConfluenceIntegration } from './ConfluenceIntegration';
@@ -29,6 +30,15 @@ export function IntegrationSelector(props: InputConfigSelectorProps) {
         case ConfigType.SLACK:
             return (
                 <SlackIntegration
+                    input={props.input}
+                    variant={props.variant}
+                    setConfig={props.setConfig}
+                />
+            );
+
+        case ConfigType.SLACK_OUTPUT:
+            return (
+                <SlackOutputIntegration
                     input={props.input}
                     variant={props.variant}
                     setConfig={props.setConfig}
