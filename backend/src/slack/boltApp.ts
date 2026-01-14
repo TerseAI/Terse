@@ -12,11 +12,10 @@ import { Agent, run, user } from "@openai/agents";
 import SlackChatInterface from "../agent/ChatAgent/SlackChatInterface";
 import ChatAgent from "../agent/ChatAgent/ChatAgent";
 import { INTEGRATION_REGISTRY } from "../integrations/abstract/IntegrationRegistry";
-import { isFormIntegrationInstallation, isOAuthIntegrationInstallation, FormFieldDefinition, ConfigurationFieldDefinition } from "../integrations/abstract/Integration";
+import { isFormIntegrationInstallation, isOAuthIntegrationInstallation, FormFieldDefinition, ConfigurationFieldDefinition, FormSubmissionInput } from "../integrations/abstract/Integration";
 import { IntegrationType } from "../shared/Integrations";
 import jwt from "jsonwebtoken";
 import { jwt as jwtConfig } from "../config/settings";
-import { Request, Response } from "express";
 import { integrationFormTaskQueue } from "../integrations/IntegrationTaskQueues";
 import { IntegrationFormCompletedTask } from "../integrations/IntegrationFormCompletedTask";
 import { createFeedbackModal, createFormModal, createOAuthModal, formFieldsToSlackBlocks, configurationFieldsToSlackBlocks, removeEyesReaction, addEyesReaction } from "./blockKitHelpers";
@@ -850,30 +849,17 @@ export async function setupSlackBolt() {
           return;
         }
 
-        // Create mock Request/Response objects
-        const mockReq = {
-          session: { user: user },
-          body: formValues,
-        } as any as Request;
+        // Create clean form submission input
+        const input: FormSubmissionInput = {
+          userId: userId,
+          formValues: formValues,
+        };
 
-        let responseData: any = null;
-        let responseStatus = 200;
-        const mockRes = {
-          status: (code: number) => {
-            responseStatus = code;
-            return mockRes;
-          },
-          json: (data: any) => {
-            responseData = data;
-            return mockRes;
-          },
-        } as any as Response;
+        // Call processFormSubmission with clean input
+        const result = await integrationManager.processFormSubmission(input);
 
-        // Call processFormSubmission
-        await integrationManager.processFormSubmission(mockReq, mockRes);
-
-        if (responseStatus !== 200) {
-          const errorMsg = responseData?.error || 'Failed to process integration';
+        if (!result.success) {
+          const errorMsg = result.error || 'Failed to process integration';
           logger.error('[Slack Integration Form] Form submission failed', { error: errorMsg, integrationType, userId });
           await notifySubmitter(`Error: ${errorMsg}`);
           return;

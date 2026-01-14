@@ -6,10 +6,12 @@ import { GmailIntegrationManager } from "../GmailIntegration";
 import { LinearIntegrationManager } from "../LinearIntegration";
 import { NotionIntegrationManager } from "../NotionIntegration";
 import { SlackIntegrationManager } from "../SlackIntegration";
-import { Integration } from "./Integration";
+import { FormIntegrationInstallation, Integration, OAuthIntegrationInstallation } from "./Integration";
 import { IntegrationInstance, IntegrationDetails, IntegrationType } from "../../shared/Integrations";
 import { PosthogIntegrationManager } from "../PosthogIntegration";
 
+
+type IntegrationWithInstallation = Integration<IntegrationInstance, any, IntegrationDetails> & (OAuthIntegrationInstallation<IntegrationType> | FormIntegrationInstallation<IntegrationType>);
 
 // System integrations that don't require user ownership validation
 const SYSTEM_INTEGRATION_TYPES: IntegrationType[] = [
@@ -21,7 +23,7 @@ export function isSystemIntegration(integrationType: IntegrationType): boolean {
     return SYSTEM_INTEGRATION_TYPES.includes(integrationType);
 }
 
-export const INTEGRATION_REGISTRY: Array<Integration<IntegrationInstance, any, IntegrationDetails>> = [
+export const INTEGRATION_REGISTRY: Array<IntegrationWithInstallation> = [
     new AtlassianIntegrationManager(),
     new CronJobIntegrationManager(),
     new FigmaIntegrationManager(),

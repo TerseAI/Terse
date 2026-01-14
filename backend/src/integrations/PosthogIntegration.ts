@@ -1,9 +1,8 @@
-import { FormIntegrationInstallation, FormFieldDefinition, Integration } from "./abstract/Integration";
+import { FormIntegrationInstallation, FormFieldDefinition, Integration, FormSubmissionInput, FormSubmissionResult } from "./abstract/Integration";
 import { db } from "../prismaClient";
 import { PosthogIntegration, PosthogIntegrationMetadata } from "../shared/Integrations";
 import { IntegrationType } from "../shared/Integrations";
 import { ChannelInputWithConfigs } from "../types/prisma";
-import { Request, Response } from "express";
 import logger from "../logger";
 
 export class PosthogIntegrationManager implements Integration<PosthogIntegration, never, typeof PosthogIntegrationMetadata>, FormIntegrationInstallation<IntegrationType.POSTHOG> {
@@ -71,17 +70,16 @@ export class PosthogIntegrationManager implements Integration<PosthogIntegration
         ];
     }
 
-    async processFormSubmission(req: Request, res: Response): Promise<void> {
-        if (!req.session?.user) {
-            res.status(401).json({ error: 'Unauthorized' });
-            return;
-        }
-
-        const { apiKey } = req.body;
+    async processFormSubmission(input: FormSubmissionInput): Promise<FormSubmissionResult> {
+        const { userId, formValues } = input;
+        const { apiKey } = formValues;
 
         if (!apiKey || typeof apiKey !== 'string') {
-            res.status(400).json({ error: 'API key is required' });
-            return;
+            return {
+                success: false,
+                error: 'API key is required',
+                statusCode: 400,
+            };
         }
 
         try {
@@ -100,11 +98,14 @@ export class PosthogIntegrationManager implements Integration<PosthogIntegration
                     status: validationResponse.status,
                     error: errorText 
                 });
-                res.status(400).json({ 
+                return {
+                    success: false,
                     error: 'Invalid API key',
-                    details: validationResponse.status === 401 ? 'Authentication failed' : 'API key validation failed'
-                });
-                return;
+                    statusCode: 400,
+                    data: {
+                        details: validationResponse.status === 401 ? 'Authentication failed' : 'API key validation failed'
+                    }
+                };
             }
 
             const userData = await validationResponse.json();
@@ -114,8 +115,6 @@ export class PosthogIntegrationManager implements Integration<PosthogIntegration
             // Organization may be in organization.name, organization_name, or similar
             const userEmail = userData.email || userData.user?.email || userData.user_email || null;
             const orgName = userData.organization?.name || userData.organization_name || userData.org_name || userData.organization?.organization_name || null;
-
-            const userId = req.session.user.id;
 
             // Check if integration already exists for this user
             const existing = await db().posthog_integrations.findFirst({
@@ -154,14 +153,21 @@ export class PosthogIntegrationManager implements Integration<PosthogIntegration
                 });
             }
 
-            res.status(200).json({ 
+            return {
                 success: true,
-                email: userEmail,
-                orgName: orgName,
-            });
+                statusCode: 200,
+                data: {
+                    email: userEmail,
+                    orgName: orgName,
+                },
+            };
         } catch (error) {
             logger.error('Error processing Posthog form submission', { error });
-            res.status(500).json({ error: 'Failed to process integration' });
+            return {
+                success: false,
+                error: 'Failed to process integration',
+                statusCode: 500,
+            };
         }
     }
 

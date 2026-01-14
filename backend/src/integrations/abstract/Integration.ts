@@ -25,9 +25,21 @@ export interface FormFieldDefinition {
     hint?: string;
 }
 
+export interface FormSubmissionInput {
+    userId: string;
+    formValues: Record<string, string>;
+}
+
+export interface FormSubmissionResult {
+    success: boolean;
+    data?: any;
+    error?: string;
+    statusCode?: number;
+}
+
 export interface FormIntegrationInstallation<T extends IntegrationType> {
     getFormFields(): FormFieldDefinition[];
-    processFormSubmission(req: Request, res: Response): Promise<void>;
+    processFormSubmission(input: FormSubmissionInput): Promise<FormSubmissionResult>;
 }
 
 export type ConfigurationFieldType = 'radio' | 'select';
@@ -77,4 +89,20 @@ export function isFormIntegrationInstallation<T extends IntegrationType>(
         'processFormSubmission' in obj &&
         typeof obj.processFormSubmission === 'function'
     );
+}
+
+/**
+ * Parse form submission input from an Express Request object.
+ * Extracts userId from session and formValues from body.
+ * Returns null if user is not authenticated.
+ */
+export function parseFormSubmissionFromRequest(req: Request): FormSubmissionInput | null {
+    if (!req.session?.user) {
+        return null;
+    }
+
+    return {
+        userId: req.session.user.id,
+        formValues: req.body || {},
+    };
 }
