@@ -559,6 +559,59 @@ export async function setupSlackBolt() {
     await ack();
   });
 
+  // Handle app_uninstalled event
+  slack.event('app_uninstalled', async ({ body }) => {
+    try {
+      const teamId = body.team_id;
+      if (!teamId) {
+        logger.error('app_uninstalled event missing team_id', { body });
+        return;
+      }
+
+      // Format as SlackMessageEvent to match existing webhook handler format
+      const slackMessageEvent: SlackMessageEvent = {
+        type: 'app_uninstalled',
+        team_id: teamId,
+      };
+
+      // Process with SlackIntegrationManager
+      const slackIntegrationManager = new SlackIntegrationManager();
+      await slackIntegrationManager.processWebhookEvent(slackMessageEvent);
+      logger.info('Successfully processed app_uninstalled event', { teamId });
+    } catch (error) {
+      logger.error('Error processing app_uninstalled event:', { error, body });
+    }
+  });
+
+  // Handle tokens_revoked event
+  slack.event('tokens_revoked', async ({ body }) => {
+    try {
+      const teamId = body.team_id;
+      if (!teamId) {
+        logger.error('tokens_revoked event missing team_id', { body });
+        return;
+      }
+
+      // Extract tokens from the event body
+      // Slack sends tokens_revoked with tokens.bot and tokens.oauth arrays
+      const tokens = (body as any).tokens as { bot?: string[]; oauth?: string[] } | undefined;
+
+      // Format as SlackMessageEvent to match existing webhook handler format
+      const slackMessageEvent: SlackMessageEvent = {
+        type: 'tokens_revoked',
+        team_id: teamId,
+        tokens: tokens,
+      };
+
+      // Process with SlackIntegrationManager
+      const slackIntegrationManager = new SlackIntegrationManager();
+      await slackIntegrationManager.processWebhookEvent(slackMessageEvent);
+      logger.info('Successfully processed tokens_revoked event', { teamId, tokenCounts: { bot: tokens?.bot?.length || 0, oauth: tokens?.oauth?.length || 0 } });
+    } catch (error) {
+      logger.error('Error processing tokens_revoked event:', { error, body });
+    }
+  });
+
   // Initialize Bolt without binding a port (Express will handle that)
   await slack.init();
 
