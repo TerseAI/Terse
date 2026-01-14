@@ -85,7 +85,6 @@ async function upsertNotificationSettings(
 
 // GET /channels - List all channels with pagination
 export async function getUserChannels(req: Request, res: Response) {
-    logger.debug('Getting user channels', { req: JSON.stringify(req.body, null, 2) });
     if (!req.session?.user) {
         res.status(401).json({ error: 'Unauthorized' });
         return;
@@ -149,8 +148,6 @@ export async function getUserChannels(req: Request, res: Response) {
                 totalPages: Math.ceil(total / pageSize)
             }
         };
-
-        logger.debug('Channels response', { response: JSON.stringify(response, null, 2) });
 
         res.status(200).json(response);
     } catch (error) {
