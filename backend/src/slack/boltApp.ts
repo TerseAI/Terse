@@ -19,7 +19,7 @@ import { integrationFormTaskQueue } from "../integrations/IntegrationTaskQueues"
 import { IntegrationFormCompletedTask } from "../integrations/IntegrationFormCompletedTask";
 import { createFeedbackModal, createFormModal, createOAuthModal, formFieldsToSlackBlocks, configurationFieldsToSlackBlocks, removeEyesReaction, addEyesReaction, createProcessingModal, createSuccessModal, createErrorModal } from "./blockKitHelpers";
 import { createOAuthStateToken, OAuthStatePayload } from "../utility/oauth";
-import { AppMentionEvent, GenericMessageEvent, MessageEvent, ModalView } from "@slack/types";
+import { AppMentionEvent, GenericMessageEvent, ModalView } from "@slack/types";
 /**
  * Gets the Terse user ID from a Slack user ID and team ID
  */
