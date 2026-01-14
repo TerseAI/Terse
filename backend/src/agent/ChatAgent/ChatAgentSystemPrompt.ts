@@ -14,18 +14,13 @@ export async function buildChatAgentSystemPrompt(userId: string): Promise<string
 
     // Get user's existing integrations
     let existingIntegrationsList = '';
-    try {
-        const activeIntegrationTypes = await getUserActiveIntegrations(userId);
-        if (activeIntegrationTypes.length > 0) {
-            const integrationNames = activeIntegrationTypes
-                .map(type => INTEGRATION_METADATA[type]?.name || type)
-                .join('\n- ');
-            existingIntegrationsList = `\n- ${integrationNames}`;
-        } else {
-            existingIntegrationsList = '\nYou currently have no integrations connected.';
-        }
-    } catch (error) {
-        // If there's an error fetching integrations, just show empty list
+    const activeIntegrationTypes = await getUserActiveIntegrations(userId);
+    if (activeIntegrationTypes.length > 0) {
+        const integrationNames = activeIntegrationTypes
+            .map(type => INTEGRATION_METADATA[type]?.name || type)
+            .join('\n- ');
+        existingIntegrationsList = `\n- ${integrationNames}`;
+    } else {
         existingIntegrationsList = '\nYou currently have no integrations connected.';
     }
 

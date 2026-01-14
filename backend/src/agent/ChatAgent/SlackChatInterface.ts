@@ -231,6 +231,7 @@ class SlackChatInterface extends ChatInterface {
     }
 
     async promptForConfig(config: ConfigType): Promise<string> {
+        logger.info('Slack chat interface promptForConfig', { config });
         return '';
     }
 

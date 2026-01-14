@@ -30,7 +30,7 @@ class ChatAgent {
     async run(message: string): Promise<string> {
         logger.info('Starting chat agent run for message in interface', { message, interface: this.chatInterface.name });
         const agent = new Agent<void, AgentOutputType>({
-            name: 'Living Document Automator',
+            name: 'Terse Automation Assistant',
             instructions: await buildChatAgentSystemPrompt(this.userId),
             model: 'gpt-5.2',
             tools: buildChatAgentTools(this.chatInterface),
