@@ -30,7 +30,7 @@ BEST PRACTICES:
 - Use threading for follow-up messages when appropriate`,
     parameters: z.object({
         message: z.string().describe("The message content to send. Supports Slack mrkdwn formatting."),
-        thread_ts: z.string().optional().describe("Optional thread timestamp to reply to an existing thread. If provided, the message will be posted as a reply in that thread."),
+        thread_ts: z.string().nullable().optional().describe("Optional thread timestamp to reply to an existing thread. If provided, the message will be posted as a reply in that thread."),
     }),
     execute: async (args, runContext?: RunContext<SlackChannelSession>) => {
         if (!runContext?.context) {
@@ -66,7 +66,7 @@ BEST PRACTICES:
             const result = await client.chat.postMessage({
                 channel: channelId,
                 text: message,
-                thread_ts: thread_ts,
+                thread_ts: thread_ts || undefined,
                 unfurl_links: true,
                 unfurl_media: true,
             });

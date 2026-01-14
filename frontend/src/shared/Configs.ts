@@ -275,7 +275,6 @@ export class SlackOutputConfig implements ConfigInstance {
         public integrationId: string,
         public channelId?: string,
         public channelName?: string,
-        public isDm: boolean = false, // Whether this is a DM channel
     ) {
     }
 
@@ -286,9 +285,7 @@ export class SlackOutputConfig implements ConfigInstance {
 
     formatForAgent(): string {
         const parts = [`Type: Slack Output`, `Integration ID: ${this.integrationId}`];
-        if (this.isDm) {
-            parts.push(`DM to: ${this.channelName || this.channelId}`);
-        } else if (this.channelName) {
+        if (this.channelName) {
             parts.push(`Channel: ${this.channelName}`);
         } else if (this.channelId) {
             parts.push(`Channel ID: ${this.channelId}`);
