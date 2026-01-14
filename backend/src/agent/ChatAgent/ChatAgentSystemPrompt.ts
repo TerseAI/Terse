@@ -1,7 +1,6 @@
 import { INTEGRATION_METADATA, IntegrationType } from "../../shared/Integrations";
 import { getUserActiveIntegrations } from "../../routes/integrations";
 
-
 export async function buildChatAgentSystemPrompt(userId: string): Promise<string> {
 
     const integrationMetadata = Object.values(INTEGRATION_METADATA);

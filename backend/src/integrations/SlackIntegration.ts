@@ -153,8 +153,8 @@ export class SlackIntegrationManager implements Integration<SlackIntegration, Sl
         const client_id = slackConfig.clientId;
         const redirect_uri = slackConfig.oauthCallbackUrl;
         const isBotUser = options.isBotUser;
-        const scope = "channels:history,channels:manage,groups:history,groups:write,im:history,im:write,mpim:history,mpim:write,channels:read,groups:read,mpim:read,im:read,users:read,chat:write";
-        const user_scope = isBotUser ? "" : "channels:history,channels:read,groups:history,groups:read,im:history,im:read,mpim:history,mpim:read,users:read,channels:write,groups:write,mpim:write,im:write,chat:write";
+        const scope = "channels:history,channels:manage,groups:history,groups:write,im:history,im:write,mpim:history,mpim:write,channels:read,groups:read,mpim:read,im:read,users:read,chat:write,app_mentions:read,reactions:read,reactions:write";
+        const user_scope = isBotUser ? "" : "channels:history,channels:read,groups:history,groups:read,im:history,im:read,mpim:history,mpim:read,users:read,channels:write,groups:write,mpim:write,im:write,chat:write,reactions:read,reactions:write";
         // create JWT and attach to url as state, including isBotUser and any additional state payload
         const state = createOAuthStateToken({
             userId,

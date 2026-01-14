@@ -197,6 +197,7 @@ class SlackChatInterface extends ChatInterface {
     }
 
     async promptForIntegration(integration: IntegrationType): Promise<string> {
+        logger.info('Slack chat interface promptForIntegration', { integration, userId: this.userId });
         if (!this.userId) {
             logger.error('Cannot prompt for integration: userId is not available');
             return 'Unable to get authorization URL. Please ensure you are properly authenticated.';
@@ -241,7 +242,7 @@ class SlackChatInterface extends ChatInterface {
     }
 
     async processMessageEnd(sessionId: string, finalOutput: string): Promise<void> {
-        logger.info('Slack chat interface processMessageEnd', { messageTsToReplace: this.messageTsToReplace });
+        logger.info('Slack chat interface processMessageEnd. Final output:', { messageTsToReplace: this.messageTsToReplace, finalOutput });
         
         // If we have a message timestamp to replace and WebClient, update the message instead of posting new one
         if (this.messageTsToReplace && this.webClient) {
