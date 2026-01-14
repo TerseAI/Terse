@@ -243,7 +243,7 @@ export class FigmaIntegrationManager implements Integration<FigmaIntegration, Fi
         IntegrationType.FIGMA,
         integrationId,
         decoded.userId,
-        decoded, // Full decoded JWT payload (may contain chat metadata)
+        decoded,
         new Date()
       ));
 

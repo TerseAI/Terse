@@ -11,7 +11,7 @@ export class IntegrationFormCompletedTask implements Task {
         public integrationType: IntegrationType,
         public integrationId: string,
         public userId: string,
-        public statePayload: OAuthStatePayload, // Decoded JWT state token (may contain chat metadata)
+        public statePayload: OAuthStatePayload, 
         public timestamp: Date = new Date()
     ) {}
 }

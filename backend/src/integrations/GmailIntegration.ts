@@ -312,7 +312,7 @@ export class GmailIntegrationManager implements Integration<GmailIntegration, Gm
                 IntegrationType.GMAIL,
                 integration.id,
                 userId,
-                stateData, // Full decoded state payload (may contain chat metadata)
+                stateData,
                 new Date()
             ));
 

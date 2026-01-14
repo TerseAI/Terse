@@ -18,9 +18,9 @@ import jwt from "jsonwebtoken";
 import { jwt as jwtConfig } from "../config/settings";
 import { integrationFormTaskQueue } from "../integrations/IntegrationTaskQueues";
 import { IntegrationFormCompletedTask } from "../integrations/IntegrationFormCompletedTask";
-import { createFeedbackModal, createFormModal, createOAuthModal, formFieldsToSlackBlocks, configurationFieldsToSlackBlocks, removeEyesReaction, addEyesReaction } from "./blockKitHelpers";
+import { createFeedbackModal, createFormModal, createOAuthModal, formFieldsToSlackBlocks, configurationFieldsToSlackBlocks, removeEyesReaction, addEyesReaction, createProcessingModal, createSuccessModal, createErrorModal } from "./blockKitHelpers";
 import { createOAuthStateToken, OAuthStatePayload } from "../utility/oauth";
-import { AppMentionEvent, GenericMessageEvent, MessageEvent } from "@slack/types";
+import { AppMentionEvent, GenericMessageEvent, MessageEvent, ModalView } from "@slack/types";
 /**
  * Gets the Terse user ID from a Slack user ID and team ID
  */
@@ -736,6 +736,106 @@ export async function setupSlackBolt() {
     }
   });
 
+  // Helper function to process form submission after ack
+  async function processIntegrationFormSubmission(
+    client: any,
+    viewId: string | undefined,
+    userId: string,
+    integrationType: IntegrationType,
+    formValues: Record<string, string>,
+    stateToken: string,
+    statePayload: OAuthStatePayload,
+    integrationManager: any
+  ) {
+    const updateModal = async (newView: ModalView) => {
+      if (!viewId) return;
+      try {
+        await client.views.update({
+          view_id: viewId,
+          view: newView,
+        });
+      } catch (error) {
+        logger.error('[Slack Integration Form] Failed to update modal:', { error });
+      }
+    };
+
+    try {
+      // Get user from database
+      const user = await db().users.findUnique({
+        where: { id: userId },
+      });
+
+      if (!user) {
+        logger.error('[Slack Integration Form] User not found', { userId });
+        await updateModal(createErrorModal({
+          integrationType: integrationType,
+          errorMessage: 'User not found',
+          privateMetadata: stateToken,
+        }));
+        return;
+      }
+
+      // Create clean form submission input
+      const input: FormSubmissionInput = {
+        userId: userId,
+        formValues: formValues,
+      };
+
+      // Call processFormSubmission with clean input
+      const result = await integrationManager.processFormSubmission(input);
+
+      if (!result.success) {
+        const errorMsg = result.error || 'Failed to process integration';
+        logger.error('[Slack Integration Form] Form submission failed', { error: errorMsg, integrationType, userId });
+        await updateModal(createErrorModal({
+          integrationType: integrationType,
+          errorMessage: errorMsg,
+          privateMetadata: stateToken,
+        }));
+        return;
+      }
+
+      // Get integration ID by querying the database
+      const instances = await integrationManager.getInstancesForUser(userId);
+      if (instances.length === 0) {
+        logger.error('[Slack Integration Form] No integration instances found after submission', { integrationType, userId });
+        await updateModal(createErrorModal({
+          integrationType: integrationType,
+          errorMessage: 'Integration was not created',
+          privateMetadata: stateToken,
+        }));
+        return;
+      }
+
+      // Use the first instance (for integrations like PostHog, there's typically one per user)
+      const integrationId = instances[0].id;
+
+      logger.info('[Slack Integration Form] Form submission successful', { integrationType, integrationId, userId });
+
+      // Emit integration form completed task
+      integrationFormTaskQueue.emit(new IntegrationFormCompletedTask(
+        integrationType,
+        integrationId,
+        userId,
+        statePayload,
+        new Date()
+      ));
+
+      // Update modal with success message
+      await updateModal(createSuccessModal({
+        integrationType: integrationType,
+        privateMetadata: stateToken,
+      }));
+    } catch (error) {
+      logger.error('[Slack Integration Form] Error processing form submission:', { error, integrationType, userId });
+      await updateModal(createErrorModal({
+        integrationType: integrationType,
+        errorMessage: 'Error processing integration form. Please try again.',
+        privateMetadata: stateToken,
+      }));
+    }
+  }
+
   // Handle integration form submission
   slack.view('integration_form_submit', async ({ ack, body, view, client }) => {
     // NOTE: Slack requires view submissions to be acknowledged within 3 seconds.
@@ -819,80 +919,29 @@ export async function setupSlackBolt() {
       return;
     }
 
-    // Ack immediately, then continue processing asynchronously
-    await ack();
+    // Ack with processing state modal
+    await ack({
+      response_action: 'update',
+      view: createProcessingModal({
+        integrationType: integrationType,
+        privateMetadata: stateToken,
+      }),
+    });
 
-    void (async () => {
-      const submitterSlackUserId = (body as any)?.user?.id as string | undefined;
-
-      const notifySubmitter = async (text: string) => {
-        if (!submitterSlackUserId) return;
-        try {
-          const opened = await client.conversations.open({ users: submitterSlackUserId });
-          const dmChannelId = (opened as any)?.channel?.id as string | undefined;
-          if (!dmChannelId) return;
-          await client.chat.postMessage({ channel: dmChannelId, text });
-        } catch (error) {
-          logger.error('[Slack Integration Form] Failed to notify submitter:', { error });
-        }
-      };
-
-      try {
-        // Get user from database (now async after ack)
-        const user = await db().users.findUnique({
-          where: { id: userId },
-        });
-
-        if (!user) {
-          logger.error('[Slack Integration Form] User not found', { userId });
-          await notifySubmitter('Error: User not found');
-          return;
-        }
-
-        // Create clean form submission input
-        const input: FormSubmissionInput = {
-          userId: userId,
-          formValues: formValues,
-        };
-
-        // Call processFormSubmission with clean input
-        const result = await integrationManager.processFormSubmission(input);
-
-        if (!result.success) {
-          const errorMsg = result.error || 'Failed to process integration';
-          logger.error('[Slack Integration Form] Form submission failed', { error: errorMsg, integrationType, userId });
-          await notifySubmitter(`Error: ${errorMsg}`);
-          return;
-        }
-
-        // Get integration ID by querying the database
-        const instances = await integrationManager.getInstancesForUser(userId);
-        if (instances.length === 0) {
-          logger.error('[Slack Integration Form] No integration instances found after submission', { integrationType, userId });
-          await notifySubmitter('Error: Integration was not created');
-          return;
-        }
-
-        // Use the first instance (for integrations like PostHog, there's typically one per user)
-        const integrationId = instances[0].id;
-
-        logger.info('[Slack Integration Form] Form submission successful', { integrationType, integrationId, userId });
-
-        // Emit integration form completed task
-        integrationFormTaskQueue.emit(new IntegrationFormCompletedTask(
-          integrationType,
-          integrationId,
-          userId,
-          statePayload,
-          new Date()
-        ));
-
-        await notifySubmitter(`${integrationType} integration has been successfully connected!`);
-      } catch (error) {
-        logger.error('[Slack Integration Form] Error processing form submission:', { error, integrationType, userId });
-        await notifySubmitter('Error processing integration form. Please try again.');
-      }
-    })();
+    // Process form submission asynchronously (fire and forget)
+    const viewId = (body as any)?.view?.id as string | undefined;
+    processIntegrationFormSubmission(
+      client,
+      viewId,
+      userId,
+      integrationType,
+      formValues,
+      stateToken,
+      statePayload,
+      integrationManager
+    ).catch(error => {
+      logger.error('[Slack Integration Form] Unhandled error in form submission:', { error });
+    });
   });
 
   // Handle integration configuration button clicks - open modal

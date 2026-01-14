@@ -145,7 +145,7 @@ export class GithubIntegrationManager implements Integration<GithubIntegration, 
             IntegrationType.GITHUB,
             githubInstallation.id, // Use user_github_installation.id as integrationId
             user_id,
-            stateData, // Full decoded state payload (may contain chat metadata if extended)
+            stateData,
             new Date()
         ));
 

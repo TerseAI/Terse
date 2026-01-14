@@ -273,7 +273,7 @@ export class LinearIntegrationManager implements Integration<LinearIntegration, 
                 IntegrationType.LINEAR,
                 integrationId,
                 decoded.userId,
-                decoded, // Full decoded JWT payload (may contain chat metadata)
+                decoded,
                 new Date()
             ));
 

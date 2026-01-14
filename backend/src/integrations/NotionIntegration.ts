@@ -171,7 +171,7 @@ export class NotionIntegrationManager implements Integration<NotionIntegration, 
                 IntegrationType.NOTION,
                 integrationId,
                 decoded.userId,
-                decoded, // Full decoded JWT payload (may contain chat metadata)
+                decoded,
                 new Date()
             ));
 

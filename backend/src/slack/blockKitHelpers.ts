@@ -427,6 +427,82 @@ export function createOAuthModal(options: {
 }
 
 /**
+ * Creates a processing state modal view
+ */
+export function createProcessingModal(options: {
+  integrationType: string;
+  privateMetadata: string;
+}): ModalView {
+  return {
+    type: 'modal',
+    title: {
+      type: 'plain_text',
+      text: `Connecting ${options.integrationType}`,
+    },
+    close: {
+      type: 'plain_text',
+      text: 'Close',
+    },
+    private_metadata: options.privateMetadata,
+    blocks: [
+      createSectionBlock('⏳ Processing your request...'),
+    ],
+  };
+}
+
+/**
+ * Creates a success state modal view
+ */
+export function createSuccessModal(options: {
+  integrationType: string;
+  privateMetadata: string;
+}): ModalView {
+  return {
+    type: 'modal',
+    title: {
+      type: 'plain_text',
+      text: `✅ ${options.integrationType} Connected`,
+    },
+    close: {
+      type: 'plain_text',
+      text: 'Close',
+    },
+    private_metadata: options.privateMetadata,
+    blocks: [
+      createSectionBlock(`✅ Your ${options.integrationType} integration has been successfully connected!`),
+      createSectionBlock('You can now close this window.'),
+    ],
+  };
+}
+
+/**
+ * Creates an error state modal view
+ */
+export function createErrorModal(options: {
+  integrationType: string;
+  errorMessage: string;
+  privateMetadata: string;
+}): ModalView {
+  return {
+    type: 'modal',
+    title: {
+      type: 'plain_text',
+      text: `❌ Connection Failed`,
+    },
+    close: {
+      type: 'plain_text',
+      text: 'Close',
+    },
+    private_metadata: options.privateMetadata,
+    blocks: [
+      createSectionBlock(`❌ Failed to connect ${options.integrationType}`),
+      createSectionBlock(`*Error:* ${options.errorMessage}`),
+      createSectionBlock('Please check your credentials and try again.'),
+    ],
+  };
+}
+
+/**
  * Convert FormFieldDefinition array to Slack Block Kit input blocks
  */
 export function formFieldsToSlackBlocks(formFields: FormFieldDefinition[]): KnownBlock[] {
