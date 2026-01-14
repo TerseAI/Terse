@@ -559,6 +559,30 @@ export async function setupSlackBolt() {
     await ack();
   });
 
+  // Handle app_uninstalled event
+  slack.event('app_uninstalled', async ({ body }) => {
+    try {
+      const teamId = body.team_id;
+      if (!teamId) {
+        logger.error('app_uninstalled event missing team_id', { body });
+        return;
+      }
+
+      // Format as SlackMessageEvent to match existing webhook handler format
+      const slackMessageEvent: SlackMessageEvent = {
+        type: 'app_uninstalled',
+        team_id: teamId,
+      };
+
+      // Process with SlackIntegrationManager
+      const slackIntegrationManager = new SlackIntegrationManager();
+      await slackIntegrationManager.processWebhookEvent(slackMessageEvent);
+      logger.info('Successfully processed app_uninstalled event', { teamId });
+    } catch (error) {
+      logger.error('Error processing app_uninstalled event:', { error, body });
+    }
+  });
+
   // Initialize Bolt without binding a port (Express will handle that)
   await slack.init();
 

@@ -3,9 +3,8 @@ import { db } from "../prismaClient";
 import { SlackChannelsResponse, SlackChannel, SlackUsersResponse } from "../shared/types";
 import { WebClient, LogLevel } from "@slack/web-api";
 import { Member as SlackUser } from "@slack/web-api/dist/types/response/UsersListResponse";
-import chalk from "chalk";
 import { User, UserSlackIntegrationWithUser } from "../types/prisma";
-import { SlackIntegrationManager, isValidSlackSig, SlackMessageEvent } from '../integrations/SlackIntegration';
+import { SlackIntegrationManager } from '../integrations/SlackIntegration';
 import logger from "../logger";
 
 // MARK: - Route Handlers
@@ -76,50 +75,6 @@ export async function slackOAuthCallback(req: Request, res: Response) {
 
 const getToken = (integration: UserSlackIntegrationWithUser) => {
   return integration.authed_user_access_token || integration.slack_integration.access_token;
-}
-
-/**
- * Handle incoming Slack webhook events
- * Validates signature, parses JSON, handles URL verification, and processes events
- */
-export async function handleSlackWebhook(req: Request, res: Response): Promise<void> {
-  // Validate Slack signature
-  const isValid = isValidSlackSig(req);
-
-  if (!isValid) {
-    logger.warn('❌ [SLACK WEBHOOK] Invalid signature - returning 400');
-    res.sendStatus(400);
-    return;
-  }
-
-  // Parse JSON from raw body (req.body is a Buffer from express.raw())
-  // Express.raw() gives us a Buffer, which we convert to string and parse as JSON
-  let body: SlackMessageEvent;
-  try {
-    const rawBody = req.body as Buffer;
-    body = JSON.parse(rawBody.toString('utf8')) as unknown as SlackMessageEvent;
-  } catch (error) {
-    logger.error('Failed to parse Slack event body', { error });
-    res.sendStatus(400);
-    return;
-  }
-
-  // Handle URL verification challenge (must respond immediately)
-  if (body.type === 'url_verification') {
-    const challenge = (body as unknown as { challenge: string }).challenge;
-    res.send(challenge);
-    return;
-  }
-
-  // IMPORTANT: Acknowledge to Slack immediately (within 3 seconds)
-  // Process the event asynchronously in the background to avoid timeouts and retries
-  res.sendStatus(200);
-
-  // Process the event asynchronously
-  const slackIntegrationManager = new SlackIntegrationManager();
-  slackIntegrationManager.processWebhookEvent(body).catch((error) => {
-    logger.error('Error processing Slack webhook event', { error });
-  });
 }
 
 /**
