@@ -6,15 +6,7 @@ import logger from "../../logger";
 import { initializeSlackWebClient } from "../../integrations/SlackIntegration";
 import { IntegrationType } from "../../shared/Integrations";
 
-/**
- * Resumes ChatAgent conversation after successful OAuth installation
- * @param userId - The user ID
- * @param chatId - The chat/thread timestamp (used as sessionId)
- * @param channel - The Slack channel ID
- * @param integrationType - The integration type that was connected
- * @param integrationId - The ID of the integration that was created/updated
- * @param messageTs - Optional message timestamp to replace instead of posting new message
- */
+
 export async function resumeChatAgentAfterOAuth(
     userId: string,
     chatId: string,

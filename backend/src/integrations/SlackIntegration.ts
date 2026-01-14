@@ -201,7 +201,7 @@ export class SlackIntegrationManager implements Integration<SlackIntegration, Sl
             return;
         }
 
-        // Decode the full JWT state payload (may contain chat metadata)
+        // Decode the full JWT state payload
         let decoded: any;
         try {
             decoded = jwt.verify(state, jwtConfig.secret);
@@ -345,7 +345,7 @@ export class SlackIntegrationManager implements Integration<SlackIntegration, Sl
                 IntegrationType.SLACK,
                 userSlackIntegration.id,
                 decoded.userId,
-                decoded, // Full decoded JWT payload (may contain chat metadata)
+                decoded, 
                 new Date()
             ));
 
