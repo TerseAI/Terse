@@ -11,6 +11,7 @@ import {
     GmailConfig, 
     FigmaConfig, 
     SlackConfig, 
+    SlackOutputConfig,
     NotionConfig, 
     NotionPageConfig, 
     LinearInputConfig, 
@@ -299,6 +300,14 @@ export const convertPrismaOutputConfigToConfigInstance = (channelOutput: Channel
         );
     }
 
+    if (channelOutput.slack_config) {
+        return new SlackOutputConfig(
+            integrationId,
+            channelOutput.slack_config.channel_id || undefined,
+            channelOutput.slack_config.channel_name || undefined
+        );
+    }
+
     // Type guard to ensure we implement conversion here
     switch (channelOutput.config_type) {
         case OutputConfigType.NOTION_PAGE:
@@ -306,6 +315,7 @@ export const convertPrismaOutputConfigToConfigInstance = (channelOutput: Channel
         case OutputConfigType.CONFLUENCE:
         case OutputConfigType.LINEAR_TICKET:
         case OutputConfigType.JIRA_TICKET:
+        case OutputConfigType.SLACK_CHANNEL:
             break;
         default:
             throw channelOutput.config_type satisfies never;
@@ -344,6 +354,9 @@ export const convertConfigTypeToInputConfigType = (configType: ConfigType): Inpu
         case ConfigType.GITHUB_KB:
             // GitHub KB is a knowledge base config type, not an input config type
             throw new Error('GITHUB_KB is a knowledge base type, not an input type');
+        case ConfigType.SLACK_OUTPUT:
+            // SLACK_OUTPUT is an output config type, not an input config type
+            throw new Error('SLACK_OUTPUT is an output type, not an input type');
         default:
             throw configType satisfies never;
     }
@@ -394,6 +407,8 @@ export const convertConfigTypeToOutputConfigType = (configType: ConfigType): Out
             return OutputConfigType.LINEAR_TICKET;
         case ConfigType.JIRA:
             return OutputConfigType.JIRA_TICKET;
+        case ConfigType.SLACK_OUTPUT:
+            return OutputConfigType.SLACK_CHANNEL;
         default:
             throw new Error(`ConfigType ${configType} is not a valid output config type. Supported output config types are: NOTION_PAGE, NOTION_DATABASE, CONFLUENCE, LINEAR.`);
     }
@@ -414,6 +429,8 @@ export const convertOutputConfigTypeToIntegrationType = (outputConfigType: Outpu
             return IntegrationType.LINEAR;
         case OutputConfigType.JIRA_TICKET:
             return IntegrationType.ATLASSIAN;
+        case OutputConfigType.SLACK_CHANNEL:
+            return IntegrationType.SLACK;
         default:
             throw outputConfigType satisfies never;
     }
