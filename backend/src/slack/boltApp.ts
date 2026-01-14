@@ -1,4 +1,4 @@
-import { App as SlackApp, Assistant } from "@slack/bolt";
+import { App as SlackApp } from "@slack/bolt";
 import ExpressReceiverModule from "@slack/bolt/dist/receivers/ExpressReceiver.js";
 // ESM wraps CommonJS default exports, so we need to access .default
 import type ExpressReceiverType from "@slack/bolt/dist/receivers/ExpressReceiver";
@@ -1378,8 +1378,7 @@ export async function setupSlackBolt() {
       logger.error('Error processing tokens_revoked event:', { error, body });
     }
   });
->>>>>>> c173e07069c3bb74e0d648da0dec2178050d0e5c
-
+  
   // Initialize Bolt without binding a port (Express will handle that)
   await slack.init();
 
