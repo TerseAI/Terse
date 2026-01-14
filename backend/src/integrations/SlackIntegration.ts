@@ -1,6 +1,6 @@
 import { SlackChannelType, OAuthInstallationDetails } from "../shared/types";
 import { SlackInstallationOptions, SlackIntegration, SlackIntegrationMetadata, IntegrationType, InstallationOptionsFor, AdditionalStateParams } from "../shared/Integrations";
-import { Integration, OAuthIntegrationInstallation, ConfigurationFieldDefinition } from "./abstract/Integration";
+import { Integration, OAuthIntegrationInstallation, ConfigurationFieldDefinition, ConfigSearchProvider, ConfigSearchOptions, ConfigSearchResult, ConfigValidationOptions, ConfigValidationResult } from "./abstract/Integration";
 import { Request, Response } from "express";
 import { slack as slackConfig, jwt as jwtConfig, urls } from '../config/settings';
 import crypto from 'crypto';
@@ -30,10 +30,254 @@ import {
 } from "../slack/blockKitHelpers";
 import { integrationTaskQueue } from "./IntegrationTaskQueues";
 import { IntegrationCompletedTask } from "./IntegrationCompletedTask";
+import { ConfigType } from "../shared/Configs";
+
+class SlackConfigSearchProvider implements ConfigSearchProvider {
+    constructor(private integrationManager: SlackIntegrationManager) {}
+
+    async searchConfigOptions(options: ConfigSearchOptions): Promise<{
+        results: ConfigSearchResult[];
+        hasMore: boolean;
+        totalCount?: number;
+    }> {
+        if (options.configType !== ConfigType.SLACK) {
+            return { results: [], hasMore: false };
+        }
+
+        // Get the integration
+        const userSlackIntegration = await db().user_slack_integrations.findUnique({
+            where: { id: options.integrationId },
+            include: { slack_integration: true, user: true }
+        });
+
+        if (!userSlackIntegration || !userSlackIntegration.slack_integration || !userSlackIntegration.user) {
+            throw new Error(`Slack integration ${options.integrationId} not found`);
+        }
+
+        const token = userSlackIntegration.authed_user_access_token || userSlackIntegration.slack_integration.access_token;
+        const isBotUser = userSlackIntegration.is_bot_user;
+        const client = new WebClient(token, { logLevel: LogLevel.ERROR });
+
+        const limit = options.limit || 100;
+        const page = options.page || 1;
+        const offset = (page - 1) * limit;
+
+        const results: ConfigSearchResult[] = [];
+
+        // Search channels
+        if (!options.searchQuery || options.searchQuery.toLowerCase().includes('channel')) {
+            const [publicChannels, privateChannels, mpimChannels] = await Promise.all([
+                client.conversations.list({
+                    types: "public_channel",
+                    exclude_archived: true,
+                    limit: 1000,
+                }),
+                client.conversations.list({
+                    types: "private_channel",
+                    exclude_archived: true,
+                    limit: 1000,
+                }),
+                client.conversations.list({
+                    types: "mpim",
+                    exclude_archived: true,
+                    limit: 1000,
+                })
+            ]);
+
+            const allChannels: Array<{ id: string; name: string; is_private: boolean; is_mpim: boolean; is_member?: boolean }> = [];
+
+            if (publicChannels.ok && publicChannels.channels) {
+                for (const channel of publicChannels.channels) {
+                    if (channel.id && channel.name && (!isBotUser || channel.is_member)) {
+                        allChannels.push({
+                            id: channel.id,
+                            name: channel.name,
+                            is_private: false,
+                            is_mpim: false,
+                            is_member: channel.is_member
+                        });
+                    }
+                }
+            }
+
+            if (privateChannels.ok && privateChannels.channels) {
+                for (const channel of privateChannels.channels) {
+                    if (channel.id && channel.name) {
+                        allChannels.push({
+                            id: channel.id,
+                            name: channel.name,
+                            is_private: true,
+                            is_mpim: false,
+                            is_member: channel.is_member
+                        });
+                    }
+                }
+            }
+
+            if (mpimChannels.ok && mpimChannels.channels) {
+                for (const channel of mpimChannels.channels) {
+                    if (channel.id && channel.name) {
+                        allChannels.push({
+                            id: channel.id,
+                            name: channel.name,
+                            is_private: true,
+                            is_mpim: true,
+                            is_member: channel.is_member
+                        });
+                    }
+                }
+            }
+
+            // Filter by search query if provided
+            let filteredChannels = allChannels;
+            if (options.searchQuery && !options.searchQuery.toLowerCase().includes('channel')) {
+                const query = options.searchQuery.toLowerCase();
+                filteredChannels = allChannels.filter(ch => 
+                    ch.name.toLowerCase().includes(query) || ch.id.toLowerCase().includes(query)
+                );
+            }
+
+            // Sort and paginate
+            filteredChannels.sort((a, b) => a.name.localeCompare(b.name));
+            const paginatedChannels = filteredChannels.slice(offset, offset + limit);
+
+            for (const channel of paginatedChannels) {
+                results.push({
+                    id: channel.id,
+                    label: channel.name,
+                    description: channel.is_mpim ? 'Group DM' : (channel.is_private ? 'Private channel' : 'Public channel'),
+                    metadata: {
+                        channelType: channel.is_mpim ? 'mpim' : (channel.is_private ? 'private' : 'public'),
+                        isPrivate: channel.is_private,
+                        isMPIM: channel.is_mpim
+                    }
+                });
+            }
+        }
+
+        // Search users (only if not bot user and search query suggests users)
+        if (!isBotUser && (!options.searchQuery || options.searchQuery.toLowerCase().includes('user'))) {
+            const usersRes = await client.users.list({});
+            if (usersRes.ok && usersRes.members) {
+                let filteredUsers = usersRes.members.filter(member => 
+                    member.id && member.name && !member.is_bot && !member.deleted
+                );
+
+                // Filter by search query if provided
+                if (options.searchQuery && !options.searchQuery.toLowerCase().includes('user')) {
+                    const query = options.searchQuery.toLowerCase();
+                    filteredUsers = filteredUsers.filter(user => 
+                        user.name?.toLowerCase().includes(query) ||
+                        user.real_name?.toLowerCase().includes(query) ||
+                        user.profile?.email?.toLowerCase().includes(query) ||
+                        user.id.toLowerCase().includes(query)
+                    );
+                }
+
+                // Sort and paginate
+                filteredUsers.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+                const paginatedUsers = filteredUsers.slice(offset, offset + limit);
+
+                for (const user of paginatedUsers) {
+                    if (user.id && user.name) {
+                        results.push({
+                            id: user.id,
+                            label: user.real_name || user.name,
+                            description: user.profile?.email || user.name,
+                            metadata: {
+                                email: user.profile?.email,
+                                displayName: user.profile?.display_name
+                            }
+                        });
+                    }
+                }
+            }
+        }
+
+        const hasMore = results.length >= limit;
+
+        return {
+            results,
+            hasMore,
+            totalCount: results.length
+        };
+    }
+
+    async validateConfigValue(options: ConfigValidationOptions): Promise<ConfigValidationResult> {
+        if (options.configType !== ConfigType.SLACK) {
+            return { valid: false, error: 'Invalid config type for Slack' };
+        }
+
+        // Get the integration
+        const userSlackIntegration = await db().user_slack_integrations.findUnique({
+            where: { id: options.integrationId },
+            include: { slack_integration: true, user: true }
+        });
+
+        if (!userSlackIntegration || !userSlackIntegration.slack_integration) {
+            return { valid: false, error: `Slack integration ${options.integrationId} not found` };
+        }
+
+        const token = userSlackIntegration.authed_user_access_token || userSlackIntegration.slack_integration.access_token;
+        const isBotUser = userSlackIntegration.is_bot_user;
+        const client = new WebClient(token, { logLevel: LogLevel.ERROR });
+
+        if (options.field === 'channelId') {
+            try {
+                const result = await client.conversations.info({ channel: options.value });
+                if (result.ok && result.channel) {
+                    // Check if user has access (for private channels)
+                    if (result.channel.is_private && !result.channel.is_member && isBotUser) {
+                        return { valid: false, error: 'Bot does not have access to this private channel' };
+                    }
+                    return { 
+                        valid: true, 
+                        normalizedValue: result.channel.id,
+                        metadata: { name: result.channel.name }
+                    };
+                }
+                return { valid: false, error: 'Channel not found' };
+            } catch (error: any) {
+                return { valid: false, error: error.message || 'Failed to validate channel' };
+            }
+        }
+
+        if (options.field === 'userIds') {
+            const userIds = Array.isArray(options.value) ? options.value : [options.value];
+            const invalidUsers: string[] = [];
+
+            for (const userId of userIds) {
+                try {
+                    const result = await client.users.info({ user: userId });
+                    if (!result.ok || !result.user || result.user.deleted || result.user.is_bot) {
+                        invalidUsers.push(userId);
+                    }
+                } catch (error) {
+                    invalidUsers.push(userId);
+                }
+            }
+
+            if (invalidUsers.length > 0) {
+                return { valid: false, error: `Invalid user IDs: ${invalidUsers.join(', ')}` };
+            }
+
+            return { valid: true, normalizedValue: userIds };
+        }
+
+        if (options.field === 'listenToUserDms') {
+            // Boolean validation - always valid
+            return { valid: true, normalizedValue: Boolean(options.value) };
+        }
+
+        return { valid: false, error: `Unknown field: ${options.field}` };
+    }
+}
 
 export class SlackIntegrationManager implements Integration<SlackIntegration, SlackMessageEvent, typeof SlackIntegrationMetadata>, OAuthIntegrationInstallation<IntegrationType.SLACK> {
     constructor() { }
     integrationType: IntegrationType = IntegrationType.SLACK;
+    
+    configSearchProvider: ConfigSearchProvider = new SlackConfigSearchProvider(this);
 
     async getInstancesForUser(userId: string): Promise<SlackIntegration[]> {
         const userSlackIntegrations = await db().user_slack_integrations.findMany({

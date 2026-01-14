@@ -1,4 +1,4 @@
-import { Integration, OAuthIntegrationInstallation, ConfigurationFieldDefinition } from "./abstract/Integration";
+import { Integration, OAuthIntegrationInstallation, ConfigurationFieldDefinition, ConfigSearchProvider, ConfigSearchOptions, ConfigSearchResult, ConfigValidationOptions, ConfigValidationResult } from "./abstract/Integration";
 import { db } from "../prismaClient";
 import { User, ChannelInputWithConfigs } from "../types/prisma";
 import { figma_integrations, InputConfigType } from "@prisma/client";
@@ -25,10 +25,187 @@ import logger, { runWithUserContext } from "../logger";
 import { createOAuthStateToken } from "../utility/oauth";
 import { integrationTaskQueue } from "./IntegrationTaskQueues";
 import { IntegrationCompletedTask } from "./IntegrationCompletedTask";
+import { ConfigType } from "../shared/Configs";
+
+class FigmaConfigSearchProvider implements ConfigSearchProvider {
+    constructor(private integrationManager: FigmaIntegrationManager) {}
+
+    async searchConfigOptions(options: ConfigSearchOptions): Promise<{
+        results: ConfigSearchResult[];
+        hasMore: boolean;
+        totalCount?: number;
+    }> {
+        if (options.configType !== ConfigType.FIGMA) {
+            return { results: [], hasMore: false };
+        }
+
+        // Figma API doesn't provide a good way to list all files/teams
+        // So we return empty results and rely on validation of user-provided URLs/IDs
+        // In the future, we could cache recently accessed files/teams
+        return { results: [], hasMore: false };
+    }
+
+    async validateConfigValue(options: ConfigValidationOptions): Promise<ConfigValidationResult> {
+        if (options.configType !== ConfigType.FIGMA) {
+            return { valid: false, error: 'Invalid config type for Figma' };
+        }
+
+        // Get access token
+        const accessToken = await this.integrationManager.getAccessToken(options.integrationId);
+        if (!accessToken) {
+            return { valid: false, error: `Could not get access token for Figma integration ${options.integrationId}` };
+        }
+
+        if (options.field === 'fileKey') {
+            const fileKey = String(options.value);
+            
+            try {
+                // Validate file exists and user has access
+                const response = await fetch(`https://api.figma.com/v1/files/${fileKey}`, {
+                    headers: {
+                        'Authorization': `Bearer ${accessToken}`,
+                    },
+                });
+
+                if (!response.ok) {
+                    if (response.status === 403) {
+                        return { valid: false, error: 'File not accessible - check permissions' };
+                    }
+                    if (response.status === 404) {
+                        return { valid: false, error: 'File not found' };
+                    }
+                    return { valid: false, error: `Failed to validate file: ${response.statusText}` };
+                }
+
+                const fileData = await response.json();
+                return { 
+                    valid: true, 
+                    normalizedValue: fileKey,
+                    metadata: { 
+                        name: fileData.name,
+                        lastModified: fileData.lastModified
+                    }
+                };
+            } catch (error: any) {
+                return { valid: false, error: error.message || 'Failed to validate file' };
+            }
+        }
+
+        if (options.field === 'teamId') {
+            const teamId = String(options.value);
+            
+            try {
+                // Validate team exists and user is member
+                const response = await fetch(`https://api.figma.com/v1/teams/${teamId}`, {
+                    headers: {
+                        'Authorization': `Bearer ${accessToken}`,
+                    },
+                });
+
+                if (!response.ok) {
+                    if (response.status === 403) {
+                        return { valid: false, error: 'Team not accessible - check permissions' };
+                    }
+                    if (response.status === 404) {
+                        return { valid: false, error: 'Team not found' };
+                    }
+                    return { valid: false, error: `Failed to validate team: ${response.statusText}` };
+                }
+
+                const teamData = await response.json();
+                return { 
+                    valid: true, 
+                    normalizedValue: teamId,
+                    metadata: { 
+                        name: teamData.name
+                    }
+                };
+            } catch (error: any) {
+                return { valid: false, error: error.message || 'Failed to validate team' };
+            }
+        }
+
+        // Validate URLs - extract fileKey/teamId from Figma URLs
+        if (options.field === 'fileUrl' || options.field === 'teamUrl') {
+            const url = String(options.value);
+            
+            // Extract file key from various Figma URL formats
+            // https://www.figma.com/file/{fileKey}/...
+            // https://www.figma.com/design/{fileKey}/...
+            // https://www.figma.com/files/team/...?fuid={fileKey}
+            const fileKeyMatch = url.match(/figma\.com\/(?:file|design)\/([a-zA-Z0-9]+)/) || 
+                                url.match(/[?&]fuid=([a-zA-Z0-9]+)/);
+            
+            // Extract team ID from team URLs
+            // https://www.figma.com/files/team/{teamId}/...
+            const teamIdMatch = url.match(/figma\.com\/files\/team\/([a-zA-Z0-9]+)/);
+
+            if (options.field === 'fileUrl' && fileKeyMatch) {
+                const fileKey = fileKeyMatch[1];
+                return await this.validateConfigValue({
+                    ...options,
+                    field: 'fileKey',
+                    value: fileKey
+                });
+            }
+
+            if (options.field === 'teamUrl' && teamIdMatch) {
+                const teamId = teamIdMatch[1];
+                return await this.validateConfigValue({
+                    ...options,
+                    field: 'teamId',
+                    value: teamId
+                });
+            }
+
+            // If URL contains both, try to extract both
+            if (fileKeyMatch && teamIdMatch) {
+                const fileKey = fileKeyMatch[1];
+                const teamId = teamIdMatch[1];
+                
+                // Validate both
+                const fileValidation = await this.validateConfigValue({
+                    ...options,
+                    field: 'fileKey',
+                    value: fileKey
+                });
+                
+                if (!fileValidation.valid) {
+                    return fileValidation;
+                }
+
+                const teamValidation = await this.validateConfigValue({
+                    ...options,
+                    field: 'teamId',
+                    value: teamId
+                });
+
+                if (!teamValidation.valid) {
+                    return teamValidation;
+                }
+
+                return { 
+                    valid: true, 
+                    normalizedValue: { fileKey, teamId },
+                    metadata: {
+                        ...fileValidation.metadata,
+                        ...teamValidation.metadata
+                    }
+                };
+            }
+
+            return { valid: false, error: 'Invalid Figma URL format - could not extract file key or team ID' };
+        }
+
+        return { valid: false, error: `Unknown field: ${options.field}` };
+    }
+}
 
 export class FigmaIntegrationManager implements Integration<FigmaIntegration, FigmaWebhookEvent, typeof FigmaIntegrationMetadata>, OAuthIntegrationInstallation<IntegrationType.FIGMA> {
   constructor() { }
   integrationType: IntegrationType = IntegrationType.FIGMA;
+  
+  configSearchProvider: ConfigSearchProvider = new FigmaConfigSearchProvider(this);
 
   getConfigurationFields(): ConfigurationFieldDefinition[] {
     return [];

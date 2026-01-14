@@ -16,6 +16,7 @@ abstract class ChatInterface {
     abstract buildPreview(draft: Channel): Promise<string>;
     abstract promptForIntegration(integration: IntegrationType): Promise<string>; 
     abstract promptForConfig(config: ConfigType): Promise<string>;
+    abstract createChannel(channel: Channel): Promise<string>;
     abstract processStreamEvent(sessionId: string, event: RunStreamEvent): void;
     abstract processMessageEnd(sessionId: string, finalOutput: string): Promise<void>;
 }

@@ -1,4 +1,4 @@
-import { Integration, OAuthIntegrationInstallation, ConfigurationFieldDefinition } from "./abstract/Integration";
+import { Integration, OAuthIntegrationInstallation, ConfigurationFieldDefinition, ConfigSearchProvider, ConfigSearchOptions, ConfigSearchResult, ConfigValidationOptions, ConfigValidationResult } from "./abstract/Integration";
 import { db } from "../prismaClient";
 import { NotionIntegration, NotionIntegrationMetadata } from "../shared/Integrations";
 import { OAuthInstallationDetails } from "../shared/types";
@@ -11,10 +11,146 @@ import logger from "../logger";
 import { createOAuthStateToken } from "../utility/oauth";
 import { integrationTaskQueue } from "./IntegrationTaskQueues";
 import { IntegrationCompletedTask } from "./IntegrationCompletedTask";
+import { ConfigType } from "../shared/Configs";
+import { Client } from "@notionhq/client";
+import { extractPageTitle } from "../utility/notion";
+
+class NotionConfigSearchProvider implements ConfigSearchProvider {
+    constructor(private integrationManager: NotionIntegrationManager) {}
+
+    async searchConfigOptions(options: ConfigSearchOptions): Promise<{
+        results: ConfigSearchResult[];
+        hasMore: boolean;
+        totalCount?: number;
+    }> {
+        if (options.configType !== ConfigType.NOTION_PAGE && options.configType !== ConfigType.NOTION_DATABASE) {
+            return { results: [], hasMore: false };
+        }
+
+        // Get access token
+        const accessToken = await this.integrationManager.getAccessToken(options.integrationId);
+        if (!accessToken) {
+            throw new Error(`Could not get access token for Notion integration ${options.integrationId}`);
+        }
+
+        const notionClient = new Client({ auth: accessToken });
+
+        // Determine filter based on config type
+        const filter = options.configType === ConfigType.NOTION_PAGE
+            ? { property: "object" as const, value: "page" as const }
+            : { property: "object" as const, value: "data_source" as const };
+
+        const limit = options.limit || 100;
+        const page = options.page || 1;
+        const startCursor = page > 1 ? undefined : undefined; // Notion uses cursor-based pagination
+
+        const searchOptions: Parameters<typeof notionClient.search>[0] = {
+            query: options.searchQuery || "",
+            page_size: limit,
+            filter,
+        };
+
+        const searchResponse = await notionClient.search(searchOptions);
+
+        const results: ConfigSearchResult[] = searchResponse.results
+            .map((result: any): ConfigSearchResult | null => {
+                if (result.object === 'data_source') {
+                    return {
+                        id: result.id,
+                        label: result.title?.[0]?.plain_text || "Untitled Database",
+                        description: result.url,
+                        metadata: { type: 'database', url: result.url }
+                    };
+                } else if (result.object === 'page') {
+                    return {
+                        id: result.id,
+                        label: extractPageTitle(result),
+                        description: 'url' in result ? result.url : undefined,
+                        metadata: { type: 'page', url: 'url' in result ? result.url : undefined }
+                    };
+                }
+                return null;
+            })
+            .filter((r): r is ConfigSearchResult => r !== null);
+
+        return {
+            results,
+            hasMore: searchResponse.has_more || false,
+            totalCount: results.length
+        };
+    }
+
+    async validateConfigValue(options: ConfigValidationOptions): Promise<ConfigValidationResult> {
+        if (options.configType !== ConfigType.NOTION_PAGE && options.configType !== ConfigType.NOTION_DATABASE) {
+            return { valid: false, error: 'Invalid config type for Notion' };
+        }
+
+        // Get access token
+        const accessToken = await this.integrationManager.getAccessToken(options.integrationId);
+        if (!accessToken) {
+            return { valid: false, error: `Could not get access token for Notion integration ${options.integrationId}` };
+        }
+
+        const notionClient = new Client({ auth: accessToken });
+
+        if (options.field === 'pageId' || options.field === 'databaseId') {
+            const pageId = String(options.value).replace(/-/g, '');
+            
+            try {
+                // Try to retrieve the page/database
+                if (options.configType === ConfigType.NOTION_PAGE) {
+                    const page = await notionClient.pages.retrieve({ page_id: pageId });
+                    return { 
+                        valid: true, 
+                        normalizedValue: page.id,
+                        metadata: { title: extractPageTitle(page as any) }
+                    };
+                } else {
+                    const database = await notionClient.databases.retrieve({ database_id: pageId });
+                    const title = (database as any).title?.[0]?.plain_text || "Untitled Database";
+                    return { 
+                        valid: true, 
+                        normalizedValue: database.id,
+                        metadata: { title }
+                    };
+                }
+            } catch (error: any) {
+                if (error.code === 'object_not_found') {
+                    return { valid: false, error: 'Page or database not found or not accessible' };
+                }
+                return { valid: false, error: error.message || 'Failed to validate page/database' };
+            }
+        }
+
+        // Validate URLs - extract ID from Notion URLs
+        if (options.field === 'pageUrl' || options.field === 'databaseUrl') {
+            const url = String(options.value);
+            const match = url.match(/notion\.so\/([a-zA-Z0-9]+)/);
+            if (match) {
+                const pageId = match[1];
+                // Convert to UUID format if needed
+                const uuidFormat = pageId.length === 32 
+                    ? `${pageId.slice(0, 8)}-${pageId.slice(8, 12)}-${pageId.slice(12, 16)}-${pageId.slice(16, 20)}-${pageId.slice(20)}`
+                    : pageId;
+                
+                return await this.validateConfigValue({
+                    ...options,
+                    field: options.configType === ConfigType.NOTION_PAGE ? 'pageId' : 'databaseId',
+                    value: uuidFormat
+                });
+            }
+            return { valid: false, error: 'Invalid Notion URL format' };
+        }
+
+        return { valid: false, error: `Unknown field: ${options.field}` };
+    }
+}
 
 export class NotionIntegrationManager implements Integration<NotionIntegration, never, typeof NotionIntegrationMetadata>, OAuthIntegrationInstallation<IntegrationType.NOTION> {
     constructor() { }
     integrationType: IntegrationType = IntegrationType.NOTION;
+    
+    configSearchProvider: ConfigSearchProvider = new NotionConfigSearchProvider(this);
 
     getConfigurationFields(): ConfigurationFieldDefinition[] {
         return [];

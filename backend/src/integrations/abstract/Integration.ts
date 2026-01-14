@@ -2,6 +2,7 @@ import { OAuthInstallationDetails } from "../../shared/types";
 import { IntegrationInstance, IntegrationDetails, IntegrationType, InstallationOptionsFor, AdditionalStateParams } from "../../shared/Integrations";
 import { ChannelInputWithConfigs } from "../../types/prisma";
 import { Request, Response } from "express";
+import { ConfigType } from "../../shared/Configs";
 
 // This ensures T is a valid Prisma model type
 export interface Integration<T extends IntegrationInstance, W, M extends IntegrationDetails>  {
@@ -12,6 +13,9 @@ export interface Integration<T extends IntegrationInstance, W, M extends Integra
     deleteInstallation(integrationId: string): Promise<void>;
     setupChannelInput(integrationId: string, channelInput: ChannelInputWithConfigs): Promise<void>;
     teardownChannelInput(integrationId: string, channelInput: ChannelInputWithConfigs): Promise<void>;
+    
+    // Optional: If integration supports config search/validation
+    configSearchProvider?: ConfigSearchProvider;
 }
 
 export type FormFieldType = 'text' | 'password' | 'textarea';
@@ -105,4 +109,53 @@ export function parseFormSubmissionFromRequest(req: Request): FormSubmissionInpu
         userId: req.session.user.id,
         formValues: req.body || {},
     };
+}
+
+// MARK: Config Search/Validation Interfaces
+
+export interface ConfigSearchResult {
+    id: string;
+    label: string;
+    description?: string;
+    metadata?: Record<string, any>;
+}
+
+export interface ConfigValidationResult {
+    valid: boolean;
+    error?: string;
+    normalizedValue?: any; // For cases where we transform the input
+    metadata?: Record<string, any>; // Additional information about the validated value
+}
+
+export interface ConfigSearchOptions {
+    configType: ConfigType;
+    integrationId: string;
+    searchQuery?: string;
+    page?: number;
+    limit?: number;
+}
+
+export interface ConfigValidationOptions {
+    configType: ConfigType;
+    integrationId: string;
+    field: string; // e.g., 'channelId', 'fileKey', 'repositoryId'
+    value: any;
+}
+
+export interface ConfigSearchProvider {
+    /**
+     * Search for config options (e.g., channels, repos, pages)
+     * Returns paginated results
+     */
+    searchConfigOptions(options: ConfigSearchOptions): Promise<{
+        results: ConfigSearchResult[];
+        hasMore: boolean;
+        totalCount?: number;
+    }>;
+
+    /**
+     * Validate a specific config value (e.g., URL, ID, name)
+     * Returns whether valid and any normalized value
+     */
+    validateConfigValue(options: ConfigValidationOptions): Promise<ConfigValidationResult>;
 }

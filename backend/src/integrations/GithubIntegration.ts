@@ -1,4 +1,4 @@
-import { Integration, OAuthIntegrationInstallation, ConfigurationFieldDefinition } from "./abstract/Integration";
+import { Integration, OAuthIntegrationInstallation, ConfigurationFieldDefinition, ConfigSearchProvider, ConfigSearchOptions, ConfigSearchResult, ConfigValidationOptions, ConfigValidationResult } from "./abstract/Integration";
 import { db } from "../prismaClient";
 import { EventProcessor } from "../agent/ChannelAgent/EventProcessor";
 import { InputEvent } from "./abstract/InputEvent";
@@ -18,10 +18,155 @@ import logger, { runWithUserContext } from "../logger";
 import { integrationTaskQueue } from "./IntegrationTaskQueues";
 import { IntegrationCompletedTask } from "./IntegrationCompletedTask";
 import { createOAuthStateToken, decodeOAuthStateToken, OAuthStatePayload, OAuthStateEncodingFormat } from "../utility/oauth";
+import { ConfigType } from "../shared/Configs";
+
+class GithubConfigSearchProvider implements ConfigSearchProvider {
+    constructor(private integrationManager: GithubIntegrationManager) {}
+
+    async searchConfigOptions(options: ConfigSearchOptions): Promise<{
+        results: ConfigSearchResult[];
+        hasMore: boolean;
+        totalCount?: number;
+    }> {
+        if (options.configType !== ConfigType.GITHUB && options.configType !== ConfigType.GITHUB_KB) {
+            return { results: [], hasMore: false };
+        }
+
+        // integrationId is the user_github_installation.id (string), not installation_id
+        // First try to find by id (user_github_installation.id)
+        let userInstallation = await db().user_github_installation.findUnique({
+            where: { id: options.integrationId },
+            include: { user: true }
+        });
+
+        // If not found by id, it might be an installation_id (legacy or different format)
+        if (!userInstallation) {
+            const installationId = parseInt(options.integrationId, 10);
+            if (!isNaN(installationId)) {
+                userInstallation = await db().user_github_installation.findUnique({
+                    where: { installation_id: installationId },
+                    include: { user: true }
+                });
+            }
+        }
+
+        if (!userInstallation || !userInstallation.user_id) {
+            throw new Error(`GitHub installation ${options.integrationId} not found or not associated with a user`);
+        }
+
+        const installationId = userInstallation.installation_id;
+
+        // Get user's GitHub token
+        const userToken = await db().github_app_tokens.findFirst({
+            where: { user_id: userInstallation.user_id }
+        });
+
+        if (!userToken) {
+            throw new Error(`No GitHub token found for user ${userInstallation.user_id}`);
+        }
+
+        // Fetch repositories
+        const repositories = await getAppInstallationRepositories(userToken.access_token, installationId);
+
+        // Filter by search query if provided
+        let filteredRepos = repositories;
+        if (options.searchQuery) {
+            const query = options.searchQuery.toLowerCase();
+            filteredRepos = repositories.filter(repo => 
+                repo.name.toLowerCase().includes(query) ||
+                repo.full_name.toLowerCase().includes(query) ||
+                repo.description?.toLowerCase().includes(query)
+            );
+        }
+
+        // Sort and paginate
+        filteredRepos.sort((a, b) => a.name.localeCompare(b.name));
+        const limit = options.limit || 100;
+        const page = options.page || 1;
+        const offset = (page - 1) * limit;
+        const paginatedRepos = filteredRepos.slice(offset, offset + limit);
+
+        const results: ConfigSearchResult[] = paginatedRepos.map(repo => ({
+            id: repo.id.toString(),
+            label: repo.full_name,
+            description: repo.description || undefined,
+            metadata: {
+                name: repo.name,
+                owner: repo.owner?.login || repo.full_name.split('/')[0],
+                private: repo.private,
+                defaultBranch: repo.default_branch
+            }
+        }));
+
+        return {
+            results,
+            hasMore: filteredRepos.length > offset + limit,
+            totalCount: filteredRepos.length
+        };
+    }
+
+    async validateConfigValue(options: ConfigValidationOptions): Promise<ConfigValidationResult> {
+        if (options.configType !== ConfigType.GITHUB && options.configType !== ConfigType.GITHUB_KB) {
+            return { valid: false, error: 'Invalid config type for GitHub' };
+        }
+
+        // integrationId is the user_github_installation.id (string), not installation_id
+        // First try to find by id (user_github_installation.id)
+        let userInstallation = await db().user_github_installation.findUnique({
+            where: { id: options.integrationId },
+            include: { user: true }
+        });
+
+        // If not found by id, it might be an installation_id (legacy or different format)
+        if (!userInstallation) {
+            const installationId = parseInt(options.integrationId, 10);
+            if (!isNaN(installationId)) {
+                userInstallation = await db().user_github_installation.findUnique({
+                    where: { installation_id: installationId },
+                    include: { user: true }
+                });
+            }
+        }
+
+        if (!userInstallation || !userInstallation.user_id) {
+            return { valid: false, error: `GitHub installation ${options.integrationId} not found` };
+        }
+
+        const installationId = userInstallation.installation_id;
+
+        const userToken = await db().github_app_tokens.findFirst({
+            where: { user_id: userInstallation.user_id }
+        });
+
+        if (!userToken) {
+            return { valid: false, error: `No GitHub token found for user` };
+        }
+
+        if (options.field === 'repositoryIds') {
+            const repositoryIds = Array.isArray(options.value) ? options.value : [options.value];
+            const repoIds = repositoryIds.map(id => parseInt(String(id), 10)).filter(id => !isNaN(id));
+
+            // Fetch all repositories for this installation
+            const repositories = await getAppInstallationRepositories(userToken.access_token, installationId);
+            const availableRepoIds = repositories.map(r => r.id);
+
+            const invalidIds = repoIds.filter(id => !availableRepoIds.includes(id));
+            if (invalidIds.length > 0) {
+                return { valid: false, error: `Repository IDs not accessible: ${invalidIds.join(', ')}` };
+            }
+
+            return { valid: true, normalizedValue: repoIds };
+        }
+
+        return { valid: false, error: `Unknown field: ${options.field}` };
+    }
+}
 
 export class GithubIntegrationManager implements Integration<GithubIntegration, GithubAppUnifiedEventRequest, typeof GithubIntegrationMetadata>, OAuthIntegrationInstallation<IntegrationType.GITHUB> {
     constructor() { }
     integrationType: IntegrationType = IntegrationType.GITHUB;
+    
+    configSearchProvider: ConfigSearchProvider = new GithubConfigSearchProvider(this);
 
     getConfigurationFields(): ConfigurationFieldDefinition[] {
         return [];

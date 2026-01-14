@@ -51,7 +51,8 @@ class SlackChatInterface extends ChatInterface {
     }
 
     async buildPreview(draft: Channel): Promise<string> {
-        return '';
+        const { formatChannelPreview } = await import('./PreviewFormatter');
+        return formatChannelPreview(draft);
     }
 
     private async handleFormIntegrationInstallation(integration: IntegrationType): Promise<string> {
@@ -231,7 +232,55 @@ class SlackChatInterface extends ChatInterface {
     }
 
     async promptForConfig(config: ConfigType): Promise<string> {
+        // Stub implementation - agent uses regular text messages for configuration
         return '';
+    }
+
+    async createChannel(channel: Channel): Promise<string> {
+        if (!this.userId) {
+            logger.error('Cannot create channel: userId is not available');
+            return 'Unable to create channel. Please ensure you are properly authenticated.';
+        }
+
+        try {
+            const { createChannelInternal } = await import('../../routes/channels');
+            const result = await createChannelInternal(this.userId, {
+                name: channel.name,
+                inputs: channel.inputs,
+                output: channel.output,
+                knowledgeBases: channel.knowledgeBases,
+                prompt: channel.prompt,
+                isActive: channel.isActive,
+                requireApproval: channel.requireApproval,
+                notificationSettings: channel.notificationSettings
+            });
+
+            // Setup channel inputs (webhooks, etc.)
+            const { db } = await import('../../prismaClient');
+            const { getInputConfigInclude } = await import('../../utility/prismaIncludes');
+            const { convertPrismaConfigToConfigInstance } = await import('../../utility/typeConverters');
+            const { INTEGRATION_REGISTRY } = await import('../../integrations/abstract/IntegrationRegistry');
+            const { setupChannelInputs } = await import('../../routes/channels');
+
+            const prisma = db();
+            const channelWithRelations = await prisma.automations.findFirst({
+                where: { id: result.id },
+                include: {
+                    inputs: {
+                        include: getInputConfigInclude()
+                    },
+                }
+            });
+
+            if (channelWithRelations) {
+                await setupChannelInputs(channelWithRelations);
+            }
+
+            return `✅ Successfully created automation "${result.name}" (ID: ${result.id}). The automation is now active and will run according to its configuration.`;
+        } catch (error: any) {
+            logger.error('Error creating channel from ChatAgent', { error, userId: this.userId });
+            return `Failed to create channel: ${error.message || 'Unknown error'}`;
+        }
     }
 
     processStreamEvent(sessionId: string, event: RunStreamEvent): void {
