@@ -2,7 +2,7 @@ import { Integration, OAuthIntegrationInstallation, ConfigurationFieldDefinition
 import { db } from "../prismaClient";
 import { EventProcessor } from "../agent/ChannelAgent/EventProcessor";
 import { InputEvent } from "./abstract/InputEvent";
-import { GithubIntegration, GithubIntegrationMetadata, IntegrationType } from "../shared/Integrations";
+import { GithubIntegration, GithubIntegrationMetadata, IntegrationType, InstallationOptionsFor, AdditionalStateParams } from "../shared/Integrations";
 import { GithubAppInstallationRepository, GithubAppInstallationRepositoryResponse, GithubAppInstallationResponse, GithubAppUnifiedEventRequest } from "../routes/GithubTypes";
 import { resolveUsersForGithubInstallation } from "../routes/github";
 import { User } from "../types/prisma";
@@ -72,7 +72,7 @@ export class GithubIntegrationManager implements Integration<GithubIntegration, 
         }
     }
 
-    async getInstallationUrl(userId: string, options?: any, additionalStatePayload?: Record<string, string>): Promise<OAuthInstallationDetails> {
+    async getInstallationUrl(userId: string, options?: InstallationOptionsFor<IntegrationType.GITHUB>, additionalStatePayload?: AdditionalStateParams): Promise<OAuthInstallationDetails> {
         const appName = githubApp.appName;
         const clientId = githubApp.clientId;
         const redirectUri = githubApp.integrateCallbackUrl;

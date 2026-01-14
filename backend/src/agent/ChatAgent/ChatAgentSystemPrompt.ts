@@ -6,6 +6,8 @@ export async function buildChatAgentSystemPrompt(userId: string): Promise<string
 
     const integrationMetadata = Object.values(INTEGRATION_METADATA);
 
+    // Excluding these integrations from the list of integrations that we have to
+    // setup a connection for.
     const excludedIntegrations = [IntegrationType.TERSE, IntegrationType.CRON_JOB];
     const integrationList = integrationMetadata.filter(metadata => !excludedIntegrations.includes(metadata.type))
     const integrationDescriptions = integrationList.map(metadata => `${metadata.name} - Description: ${metadata.description} - Input: ${metadata.isInput} - Output: ${metadata.isOutput} - Knowledge Base: ${metadata.isKnowledgeBase}`).join('\n');

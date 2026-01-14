@@ -1,7 +1,7 @@
 import { Integration, OAuthIntegrationInstallation, ConfigurationFieldDefinition } from "./abstract/Integration";
 import { db } from "../prismaClient";
 import { LinearIntegration, LinearIntegrationMetadata } from "../shared/Integrations";
-import { IntegrationType } from "../shared/Integrations";
+import { IntegrationType, InstallationOptionsFor, AdditionalStateParams } from "../shared/Integrations";
 import { ChannelInputWithConfigs } from "../types/prisma";
 import { OAuthInstallationDetails } from "../shared/types";
 import jwt from "jsonwebtoken";
@@ -15,6 +15,7 @@ import { InputConfigType } from "@prisma/client";
 import { RunHistoryTrigger } from "../shared/RunHistoryTypes";
 import { EventProcessor } from "../agent/ChannelAgent/EventProcessor";
 import logger, { runWithUserContext } from "../logger";
+import { createOAuthStateToken } from "../utility/oauth";
 
 export class LinearIntegrationManager implements Integration<LinearIntegration, LinearWebhookPayload, typeof LinearIntegrationMetadata>, OAuthIntegrationInstallation<IntegrationType.LINEAR> {
     constructor() { }
@@ -136,14 +137,13 @@ export class LinearIntegrationManager implements Integration<LinearIntegration, 
         }
     }
 
-    async getInstallationUrl(userId: string, options?: any, additionalStatePayload?: Record<string, string>): Promise<OAuthInstallationDetails> {
+    async getInstallationUrl(userId: string, options?: InstallationOptionsFor<IntegrationType.LINEAR>, additionalStatePayload?: AdditionalStateParams): Promise<OAuthInstallationDetails> {
         // Generate state token for security (prevents CSRF)
-        const statePayload: any = { userId: userId, timestamp: Date.now() };
-        // Merge any additional state payload variables
-        if (additionalStatePayload && typeof additionalStatePayload === 'object') {
-            Object.assign(statePayload, additionalStatePayload);
-        }
-        const state = jwt.sign(statePayload, settings.jwt.secret, { expiresIn: "10m" });
+        const state = createOAuthStateToken({
+            userId,
+            additionalFields: { timestamp: Date.now() },
+            additionalStatePayload,
+        });
 
         const clientId = settings.linear.clientId;
         const redirectUri = settings.linear.oauthCallbackUrl;

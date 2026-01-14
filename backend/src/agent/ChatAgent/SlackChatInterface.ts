@@ -8,8 +8,8 @@ import { SayFn } from "@slack/bolt";
 import { WebClient } from "@slack/web-api";
 import { INTEGRATION_REGISTRY } from "../../integrations/abstract/IntegrationRegistry";
 import { isFormIntegrationInstallation, isOAuthIntegrationInstallation } from "../../integrations/abstract/Integration";
-import jwt from "jsonwebtoken";
-import { jwt as jwtConfig } from "../../config/settings";
+import { createOAuthStateToken } from "../../utility/oauth";
+import { createIntegrationConnectionMessage } from "../../slack/blockKitHelpers";
 
 class SlackChatInterface extends ChatInterface {
     name: string = 'Slack';
@@ -37,6 +37,148 @@ class SlackChatInterface extends ChatInterface {
         return '';
     }
 
+    private async handleFormIntegrationInstallation(integration: IntegrationType): Promise<string> {
+        try {
+            // Create state payload with chat metadata
+            const additionalStatePayload: Record<string, string> | undefined = this.sessionId && this.channel ? {
+                chatId: this.sessionId,
+                channel: this.channel,
+            } : undefined;
+            
+            const stateToken = createOAuthStateToken({
+                userId: this.userId!,
+                additionalFields: { integrationType: integration },
+                additionalStatePayload,
+                expiresIn: "7d",
+            });
+
+            // Send a message with a button to open the form modal
+            const messagePayload: any = {
+                text: `Click the button below to connect ${integration}:`,
+                blocks: createIntegrationConnectionMessage(integration, 'form', {
+                    stateToken,
+                    actionIdPrefix: `open_integration_form_${integration}`,
+                }),
+            };
+
+            // Add thread_ts if sessionId is available (for thread replies)
+            if (this.sessionId) {
+                messagePayload.thread_ts = this.sessionId;
+            }
+
+            await this.say(messagePayload);
+
+            return `I've sent you a button to connect ${integration}. Click it to fill out the integration form.`;
+        } catch (error) {
+            logger.error('Error preparing form integration', { error, integration, userId: this.userId });
+            return `Failed to prepare integration form for ${integration}. Please try again.`;
+        }
+    }
+
+
+    private async handleOAuthIntegrationWithConfig(integration: IntegrationType): Promise<string> {
+        try {
+            // Configuration required - send button to open configuration modal
+            const additionalStatePayload: Record<string, string> | undefined = this.sessionId && this.channel ? {
+                chatId: this.sessionId,
+                channel: this.channel,
+            } : undefined;
+            
+            const stateToken = createOAuthStateToken({
+                userId: this.userId!,
+                additionalFields: { integrationType: integration },
+                additionalStatePayload,
+                expiresIn: "7d",
+            });
+
+            // Send a message with a button to open the configuration modal
+            const messagePayload: any = {
+                text: `Click the button below to connect ${integration}:`,
+                blocks: createIntegrationConnectionMessage(integration, 'config', {
+                    stateToken,
+                    actionIdPrefix: `open_integration_config_${integration}`,
+                }),
+            };
+
+            // Add thread_ts if sessionId is available (for thread replies)
+            if (this.sessionId) {
+                messagePayload.thread_ts = this.sessionId;
+            }
+
+            await this.say(messagePayload);
+
+            return `I've sent you a button to configure ${integration}. Click it to set up the integration.`;
+        } catch (error) {
+            logger.error('Error preparing OAuth integration with config', { error, integration, userId: this.userId });
+            return `Failed to prepare configuration for ${integration}. Please try again.`;
+        }
+    }
+
+    private async handleOAuthIntegrationWithoutConfig(integration: IntegrationType, integrationManager: any): Promise<string> {
+        try {
+            // If WebClient is available, post preliminary message first to get timestamp
+            let preliminaryMessageTs: string | undefined;
+            if (this.webClient && this.sessionId && this.channel) {
+                try {
+                    // Post preliminary message to get timestamp
+                    const preliminaryResult = await this.webClient.chat.postMessage({
+                        channel: this.channel,
+                        thread_ts: this.sessionId,
+                        text: 'Generating button...',
+                    });
+                    preliminaryMessageTs = preliminaryResult.ts;
+                } catch (error) {
+                    logger.error('Failed to post preliminary message for OAuth button', { error, integration, userId: this.userId });
+                    // Continue with normal flow
+                }
+            }
+
+            // Pass additional state payload (sessionId, channel, integrationType, messageTs) to enable resuming ChatAgent after OAuth
+            const additionalStatePayload: Record<string, string> | undefined = this.sessionId && this.channel ? {
+                chatId: this.sessionId,
+                channel: this.channel,
+                integrationType: integration,
+                ...(preliminaryMessageTs ? { messageTs: preliminaryMessageTs } : {}),
+            } : undefined;
+            const installationDetails = await integrationManager.getInstallationUrl(this.userId, undefined, additionalStatePayload);
+            const oauthUrl = installationDetails.oauthUrl;
+
+            // Send a message with a button block containing the OAuth URL
+            const messagePayload: any = {
+                text: `Click the button below to connect ${integration}:`,
+                blocks: createIntegrationConnectionMessage(integration, 'oauth', {
+                    oauthUrl,
+                }),
+            };
+
+            // Add thread_ts if sessionId is available (for thread replies)
+            if (this.sessionId) {
+                messagePayload.thread_ts = this.sessionId;
+            }
+
+            // If we have a preliminary message, update it; otherwise post new message
+            if (preliminaryMessageTs && this.webClient) {
+                try {
+                    await this.webClient.chat.update({
+                        channel: this.channel,
+                        ts: preliminaryMessageTs,
+                        ...messagePayload,
+                    });
+                } catch (error) {
+                    logger.error('Failed to update preliminary message, falling back to posting new message', { error, integration, userId: this.userId });
+                    await this.say(messagePayload);
+                }
+            } else {
+                await this.say(messagePayload);
+            }
+
+            return `I've sent you a button to connect ${integration}. Click it to start the authorization process.`;
+        } catch (error) {
+            logger.error('Error getting installation URL', { error, integration, userId: this.userId });
+            return `Failed to get authorization URL for ${integration}. Please try again.`;
+        }
+    }
+
     async promptForIntegration(integration: IntegrationType): Promise<string> {
         if (!this.userId) {
             logger.error('Cannot prompt for integration: userId is not available');
@@ -53,202 +195,19 @@ class SlackChatInterface extends ChatInterface {
         }
 
         if (isFormIntegrationInstallation(integrationManager)) {
-            try {
-                // Create state payload with chat metadata
-                const statePayload: any = {
-                    userId: this.userId,
-                    integrationType: integration,
-                };
-                if (this.sessionId && this.channel) {
-                    statePayload.chatId = this.sessionId;
-                    statePayload.channel = this.channel;
-                }
-                const stateToken = jwt.sign(statePayload, jwtConfig.secret, { expiresIn: "7d" });
-
-                // Send a message with a button to open the form modal
-                const messagePayload: any = {
-                    text: `Click the button below to connect ${integration}:`,
-                    blocks: [
-                        {
-                            type: 'section',
-                            text: {
-                                type: 'mrkdwn',
-                                text: `To connect *${integration}*, click the button below to fill out the integration form:`,
-                            },
-                        },
-                        {
-                            type: 'actions',
-                            elements: [
-                                {
-                                    type: 'button',
-                                    text: {
-                                        type: 'plain_text',
-                                        text: `Connect ${integration}`,
-                                        emoji: true,
-                                    },
-                                    action_id: `open_integration_form_${integration}`,
-                                    value: stateToken,
-                                    style: 'primary',
-                                },
-                            ],
-                        },
-                    ],
-                };
-
-                // Add thread_ts if sessionId is available (for thread replies)
-                if (this.sessionId) {
-                    messagePayload.thread_ts = this.sessionId;
-                }
-
-                await this.say(messagePayload);
-
-                return `I've sent you a button to connect ${integration}. Click it to fill out the integration form.`;
-            } catch (error) {
-                logger.error('Error preparing form integration', { error, integration, userId: this.userId });
-                return `Failed to prepare integration form for ${integration}. Please try again.`;
-            }
+            return await this.handleFormIntegrationInstallation(integration);
         }
 
         if (isOAuthIntegrationInstallation(integrationManager)) {
-            try {
-                // Check if this OAuth integration requires configuration
-                const configFields = integrationManager.getConfigurationFields();
-                
-                if (configFields.length > 0) {
-                    // Configuration required - send button to open configuration modal
-                    const statePayload: any = {
-                        userId: this.userId,
-                        integrationType: integration,
-                    };
-                    if (this.sessionId && this.channel) {
-                        statePayload.chatId = this.sessionId;
-                        statePayload.channel = this.channel;
-                    }
-                    const stateToken = jwt.sign(statePayload, jwtConfig.secret, { expiresIn: "7d" });
-
-                    // Send a message with a button to open the configuration modal
-                    const messagePayload: any = {
-                        text: `Click the button below to connect ${integration}:`,
-                        blocks: [
-                            {
-                                type: 'section',
-                                text: {
-                                    type: 'mrkdwn',
-                                    text: `To connect *${integration}*, click the button below to configure the integration:`,
-                                },
-                            },
-                            {
-                                type: 'actions',
-                                elements: [
-                                    {
-                                        type: 'button',
-                                        text: {
-                                            type: 'plain_text',
-                                            text: `Configure ${integration}`,
-                                            emoji: true,
-                                        },
-                                        action_id: `open_integration_config_${integration}`,
-                                        value: stateToken,
-                                        style: 'primary',
-                                    },
-                                ],
-                            },
-                        ],
-                    };
-
-                    // Add thread_ts if sessionId is available (for thread replies)
-                    if (this.sessionId) {
-                        messagePayload.thread_ts = this.sessionId;
-                    }
-
-                    await this.say(messagePayload);
-
-                    return `I've sent you a button to configure ${integration}. Click it to set up the integration.`;
-                }
-
-                // No configuration needed - proceed with existing OAuth flow
-                // If WebClient is available, post preliminary message first to get timestamp
-                let preliminaryMessageTs: string | undefined;
-                if (this.webClient && this.sessionId && this.channel) {
-                    try {
-                        // Post preliminary message to get timestamp
-                        const preliminaryResult = await this.webClient.chat.postMessage({
-                            channel: this.channel,
-                            thread_ts: this.sessionId,
-                            text: 'Generating button...',
-                        });
-                        preliminaryMessageTs = preliminaryResult.ts;
-                    } catch (error) {
-                        logger.error('Failed to post preliminary message for OAuth button', { error, integration, userId: this.userId });
-                        // Continue with normal flow
-                    }
-                }
-
-                // Pass additional state payload (sessionId, channel, integrationType, messageTs) to enable resuming ChatAgent after OAuth
-                const additionalStatePayload: Record<string, string> | undefined = this.sessionId && this.channel ? {
-                    chatId: this.sessionId,
-                    channel: this.channel,
-                    integrationType: integration,
-                    ...(preliminaryMessageTs ? { messageTs: preliminaryMessageTs } : {}),
-                } : undefined;
-                const installationDetails = await integrationManager.getInstallationUrl(this.userId, undefined, additionalStatePayload);
-                const oauthUrl = installationDetails.oauthUrl;
-
-                // Send a message with a button block containing the OAuth URL
-                const messagePayload: any = {
-                    text: `Click the button below to connect ${integration}:`,
-                    blocks: [
-                        {
-                            type: 'section',
-                            text: {
-                                type: 'mrkdwn',
-                                text: `To connect *${integration}*, click the button below to authorize the integration:`,
-                            },
-                        },
-                        {
-                            type: 'actions',
-                            elements: [
-                                {
-                                    type: 'button',
-                                    text: {
-                                        type: 'plain_text',
-                                        text: `Connect ${integration}`,
-                                        emoji: true,
-                                    },
-                                    url: oauthUrl,
-                                    style: 'primary',
-                                },
-                            ],
-                        },
-                    ],
-                };
-
-                // Add thread_ts if sessionId is available (for thread replies)
-                if (this.sessionId) {
-                    messagePayload.thread_ts = this.sessionId;
-                }
-
-                // If we have a preliminary message, update it; otherwise post new message
-                if (preliminaryMessageTs && this.webClient) {
-                    try {
-                        await this.webClient.chat.update({
-                            channel: this.channel,
-                            ts: preliminaryMessageTs,
-                            ...messagePayload,
-                        });
-                    } catch (error) {
-                        logger.error('Failed to update preliminary message, falling back to posting new message', { error, integration, userId: this.userId });
-                        await this.say(messagePayload);
-                    }
-                } else {
-                    await this.say(messagePayload);
-                }
-
-                return `I've sent you a button to connect ${integration}. Click it to start the authorization process.`;
-            } catch (error) {
-                logger.error('Error getting installation URL', { error, integration, userId: this.userId });
-                return `Failed to get authorization URL for ${integration}. Please try again.`;
+            // Check if this OAuth integration requires configuration
+            const configFields = integrationManager.getConfigurationFields();
+            
+            if (configFields.length > 0) {
+                return await this.handleOAuthIntegrationWithConfig(integration);
             }
+
+            // No configuration needed - proceed with existing OAuth flow
+            return await this.handleOAuthIntegrationWithoutConfig(integration, integrationManager);
         }
 
         return `Integration ${integration} does not support installation.`;
@@ -259,6 +218,7 @@ class SlackChatInterface extends ChatInterface {
     }
 
     processStreamEvent(sessionId: string, event: RunStreamEvent): void {
+        // Keep this commented out for now, very spammy.
         //logger.debug('Slack chat interface processStreamEvent:', { event });
     }
 

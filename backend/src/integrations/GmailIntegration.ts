@@ -3,7 +3,7 @@ import crypto from "crypto";
 import { db } from "../prismaClient";
 import { ChannelInputWithConfigs, GmailIntegration as PrismaGmailIntegration, User } from "../types/prisma";
 import { OAuthInstallationDetails } from "../shared/types";
-import { GmailIntegration, GmailIntegrationMetadata, IntegrationType } from "../shared/Integrations";
+import { GmailIntegration, GmailIntegrationMetadata, IntegrationType, InstallationOptionsFor, AdditionalStateParams } from "../shared/Integrations";
 import chalk from "chalk";
 import { gmail_v1, google } from "googleapis";
 import { OAuth2Client } from "google-auth-library";
@@ -183,7 +183,7 @@ export class GmailIntegrationManager implements Integration<GmailIntegration, Gm
         }
     }
     
-    async getInstallationUrl(userId: string, options?: any, additionalStatePayload?: Record<string, string>): Promise<OAuthInstallationDetails> {
+    async getInstallationUrl(userId: string, options?: InstallationOptionsFor<IntegrationType.GMAIL>, additionalStatePayload?: AdditionalStateParams): Promise<OAuthInstallationDetails> {
         const oauth2Client = getOAuth2Client();
 
         // Generate state for security (include user ID and any additional state variables)

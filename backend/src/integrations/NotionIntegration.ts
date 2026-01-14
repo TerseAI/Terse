@@ -6,8 +6,9 @@ import { ChannelInputWithConfigs } from "../types/prisma";
 import jwt from "jsonwebtoken";
 import { notion as notionConfig, jwt as jwtSettings, urls } from "../config/settings";
 import { Request, Response } from "express";
-import { IntegrationType } from "../shared/Integrations";
+import { IntegrationType, InstallationOptionsFor, AdditionalStateParams } from "../shared/Integrations";
 import logger from "../logger";
+import { createOAuthStateToken } from "../utility/oauth";
 
 export class NotionIntegrationManager implements Integration<NotionIntegration, never, typeof NotionIntegrationMetadata>, OAuthIntegrationInstallation<IntegrationType.NOTION> {
     constructor() { }
@@ -53,16 +54,15 @@ export class NotionIntegrationManager implements Integration<NotionIntegration, 
         throw new Error("Notion webhooks are not processed through this integration manager");
     }
 
-    async getInstallationUrl(userId: string, options?: any, additionalStatePayload?: Record<string, string>): Promise<OAuthInstallationDetails> {
+    async getInstallationUrl(userId: string, options?: InstallationOptionsFor<IntegrationType.NOTION>, additionalStatePayload?: AdditionalStateParams): Promise<OAuthInstallationDetails> {
         // Note: options parameter is required by interface but NotionIntegration uses NoInstallationOptions
         // additionalStatePayload allows passing extra state variables (e.g., chat metadata for ChatAgent resumption)
         // Generate state token for security (prevents CSRF)
-        const statePayload: any = { userId: userId, timestamp: Date.now() };
-        // Merge any additional state payload variables
-        if (additionalStatePayload && typeof additionalStatePayload === 'object') {
-            Object.assign(statePayload, additionalStatePayload);
-        }
-        const state = jwt.sign(statePayload, jwtSettings.secret, { expiresIn: "10m" });
+        const state = createOAuthStateToken({
+            userId,
+            additionalFields: { timestamp: Date.now() },
+            additionalStatePayload,
+        });
 
         const clientId = notionConfig.clientId;
         const redirectUri = notionConfig.redirectUri;

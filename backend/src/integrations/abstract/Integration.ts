@@ -1,5 +1,5 @@
 import { OAuthInstallationDetails } from "../../shared/types";
-import { IntegrationInstance, IntegrationDetails, IntegrationType, InstallationOptionsFor } from "../../shared/Integrations";
+import { IntegrationInstance, IntegrationDetails, IntegrationType, InstallationOptionsFor, AdditionalStateParams } from "../../shared/Integrations";
 import { ChannelInputWithConfigs } from "../../types/prisma";
 import { Request, Response } from "express";
 
@@ -47,7 +47,7 @@ export interface ConfigurationFieldDefinition {
 }
 
 export interface OAuthIntegrationInstallation<T extends IntegrationType> {
-    getInstallationUrl(userId: string, options?: InstallationOptionsFor<T>, additionalStatePayload?: Record<string, string>): Promise<OAuthInstallationDetails>;
+    getInstallationUrl(userId: string, options?: InstallationOptionsFor<T>, additionalStatePayload?: AdditionalStateParams): Promise<OAuthInstallationDetails>;
     processInstallationCallback(req: Request, res: Response): Promise<void>;
     refreshToken(integrationId: string): Promise<boolean>;
     getAccessToken(integrationId: string): Promise<string | null>;

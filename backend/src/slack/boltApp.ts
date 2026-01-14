@@ -19,6 +19,8 @@ import { jwt as jwtConfig } from "../config/settings";
 import { Request, Response } from "express";
 import { integrationFormTaskQueue } from "../integrations/IntegrationTaskHandler";
 import { IntegrationFormCompletedTask } from "../integrations/IntegrationFormCompletedTask";
+import { createFeedbackModal, createFormModal, createOAuthModal, formFieldsToSlackBlocks, configurationFieldsToSlackBlocks } from "./blockKitHelpers";
+import { createOAuthStateToken } from "../utility/oauth";
 
 /**
  * Gets the Terse user ID from a Slack user ID and team ID
@@ -418,47 +420,16 @@ export async function setupSlackBolt() {
       await client.views.open({
         trigger_id: triggerId,
         view: {
-          type: 'modal',
+          ...createFeedbackModal({
+            title: 'Request Changes',
+            submitText: 'Submit',
+            cancelText: 'Cancel',
+            privateMetadata: JSON.stringify({ runId, stepId }),
+            blockId: 'feedback_block',
+            actionId: 'feedback',
+            placeholder: 'Enter your feedback...',
+          }),
           callback_id: 'request_changes_modal_submit',
-          title: {
-            type: 'plain_text',
-            text: 'Request Changes',
-          },
-          submit: {
-            type: 'plain_text',
-            text: 'Submit',
-          },
-          close: {
-            type: 'plain_text',
-            text: 'Cancel',
-          },
-          private_metadata: JSON.stringify({ runId, stepId }),
-          blocks: [
-            {
-              type: 'section',
-              text: {
-                type: 'mrkdwn',
-                text: 'Please provide feedback on what changes you would like the agent to make.',
-              },
-            },
-            {
-              type: 'input',
-              block_id: 'feedback_block',
-              element: {
-                type: 'plain_text_input',
-                action_id: 'feedback',
-                multiline: true,
-                placeholder: {
-                  type: 'plain_text',
-                  text: 'Enter your feedback...',
-                },
-              },
-              label: {
-                type: 'plain_text',
-                text: 'Feedback',
-              },
-            },
-          ],
         },
       });
     } catch (error) {
@@ -746,10 +717,14 @@ export async function setupSlackBolt() {
       }
 
       // Remove JWT claims (exp, iat, nbf) before re-signing to avoid conflicts
-      const { exp, iat, nbf, ...payloadToSign } = statePayload;
+      const { exp, iat, nbf, userId: _, ...additionalFields } = statePayload;
 
       // Re-sign state token with messageTs included
-      const updatedStateToken = jwt.sign(payloadToSign, jwtConfig.secret, { expiresIn: "7d" });
+      const updatedStateToken = createOAuthStateToken({
+        userId,
+        additionalFields,
+        expiresIn: "7d",
+      });
 
       // Get integration manager
       const integrationManager = INTEGRATION_REGISTRY.find(
@@ -791,22 +766,14 @@ export async function setupSlackBolt() {
       await client.views.open({
         trigger_id: triggerId,
         view: {
-          type: 'modal',
+          ...createFormModal({
+            title: `Connect ${integrationType}`,
+            submitText: 'Connect',
+            cancelText: 'Cancel',
+            privateMetadata: updatedStateToken, // Store state token for view submission (includes messageTs)
+            blocks: blocks,
+          }),
           callback_id: 'integration_form_submit',
-          title: {
-            type: 'plain_text',
-            text: `Connect ${integrationType}`,
-          },
-          submit: {
-            type: 'plain_text',
-            text: 'Connect',
-          },
-          close: {
-            type: 'plain_text',
-            text: 'Cancel',
-          },
-          private_metadata: updatedStateToken, // Store state token for view submission (includes messageTs)
-          blocks: blocks,
         },
       });
     } catch (error) {
@@ -1034,10 +1001,14 @@ export async function setupSlackBolt() {
       }
 
       // Remove JWT claims (exp, iat, nbf) before re-signing to avoid conflicts
-      const { exp, iat, nbf, ...payloadToSign } = statePayload;
+      const { exp, iat, nbf, userId: _, ...additionalFields } = statePayload;
 
       // Re-sign state token with messageTs included
-      const updatedStateToken = jwt.sign(payloadToSign, jwtConfig.secret, { expiresIn: "7d" });
+      const updatedStateToken = createOAuthStateToken({
+        userId,
+        additionalFields,
+        expiresIn: "7d",
+      });
 
       // Get integration manager
       const integrationManager = INTEGRATION_REGISTRY.find(
@@ -1079,22 +1050,14 @@ export async function setupSlackBolt() {
       await client.views.open({
         trigger_id: triggerId,
         view: {
-          type: 'modal',
+          ...createFormModal({
+            title: `Configure ${integrationType}`,
+            submitText: 'Continue',
+            cancelText: 'Cancel',
+            privateMetadata: updatedStateToken, // Store state token for view submission (includes messageTs)
+            blocks: blocks,
+          }),
           callback_id: 'integration_config_submit',
-          title: {
-            type: 'plain_text',
-            text: `Configure ${integrationType}`,
-          },
-          submit: {
-            type: 'plain_text',
-            text: 'Continue',
-          },
-          close: {
-            type: 'plain_text',
-            text: 'Cancel',
-          },
-          private_metadata: updatedStateToken, // Store state token for view submission (includes messageTs)
-          blocks: blocks,
         },
       });
     } catch (error) {
@@ -1103,27 +1066,14 @@ export async function setupSlackBolt() {
     }
   });
 
-  // Handle integration configuration submission
-  slack.view('integration_config_submit', async ({ ack, body, view, client }) => {
-    // NOTE: Slack requires view submissions to be acknowledged within 3 seconds.
-    // Keep all DB/network work strictly after `ack()`.
-
-    // Extract configuration values (no awaits before ack)
-    const configValues: Record<string, string> = {};
-    const stateValues = view.state.values;
-    
-    // Extract values from each block (radio button selections)
-    for (const blockId in stateValues) {
-      const block = stateValues[blockId];
-      for (const actionId in block) {
-        const action = block[actionId];
-        // Radio buttons return selected_option
-        if ('selected_option' in action && action.selected_option && 'value' in action.selected_option) {
-          configValues[actionId] = action.selected_option.value as string;
-        }
-      }
-    }
-
+  /**
+   * Handles OAuth installation after configuration form submission.
+   * Validates configuration, generates OAuth URL, and updates the modal with OAuth button.
+   */
+  async function handleOAuthInstallationFromConfigForm(
+    view: any,
+    configValues: Record<string, string>
+  ): Promise<{ success: boolean; ackResponse?: any; error?: string }> {
     // Extract state token from private metadata (synchronous JWT verify)
     const stateToken = view.private_metadata;
     let statePayload: any;
@@ -1131,13 +1081,15 @@ export async function setupSlackBolt() {
       statePayload = jwt.verify(stateToken, jwtConfig.secret);
     } catch (error) {
       logger.error('[Slack Integration Config] Error decoding state token in submission', { error });
-      await ack({
-        response_action: 'errors',
-        errors: {
-          [Object.keys(stateValues)[0] || 'config']: 'Invalid request data',
+      return {
+        success: false,
+        ackResponse: {
+          response_action: 'errors',
+          errors: {
+            [Object.keys(view.state.values)[0] || 'config']: 'Invalid request data',
+          },
         },
-      });
-      return;
+      };
     }
 
     const userId = statePayload.userId;
@@ -1145,13 +1097,15 @@ export async function setupSlackBolt() {
 
     if (!userId || !integrationType) {
       logger.error('[Slack Integration Config] Missing userId or integrationType in state payload');
-      await ack({
-        response_action: 'errors',
-        errors: {
-          [Object.keys(stateValues)[0] || 'config']: 'Invalid request data',
+      return {
+        success: false,
+        ackResponse: {
+          response_action: 'errors',
+          errors: {
+            [Object.keys(view.state.values)[0] || 'config']: 'Invalid request data',
+          },
         },
-      });
-      return;
+      };
     }
 
     // Get integration manager (synchronous)
@@ -1161,13 +1115,15 @@ export async function setupSlackBolt() {
 
     if (!integrationManager || !isOAuthIntegrationInstallation(integrationManager)) {
       logger.error('[Slack Integration Config] Integration not found or does not support OAuth', { integrationType });
-      await ack({
-        response_action: 'errors',
-        errors: {
-          [Object.keys(stateValues)[0] || 'config']: 'Integration not found',
+      return {
+        success: false,
+        ackResponse: {
+          response_action: 'errors',
+          errors: {
+            [Object.keys(view.state.values)[0] || 'config']: 'Integration not found',
+          },
         },
-      });
-      return;
+      };
     }
 
     // Validate required fields (synchronous)
@@ -1180,11 +1136,13 @@ export async function setupSlackBolt() {
     }
 
     if (Object.keys(errors).length > 0) {
-      await ack({
-        response_action: 'errors',
-        errors: errors,
-      });
-      return;
+      return {
+        success: false,
+        ackResponse: {
+          response_action: 'errors',
+          errors: errors,
+        },
+      };
     }
 
     // Convert configuration values to options format (synchronous)
@@ -1216,59 +1174,48 @@ export async function setupSlackBolt() {
     const backButtonMetadataToken = jwt.sign(backButtonMetadata, jwtConfig.secret, { expiresIn: "7d" });
 
     // Update modal view with OAuth URL button and back button
-    await ack({
-      response_action: 'update',
-      view: {
-        type: 'modal',
-        title: {
-          type: 'plain_text',
-          text: `Connect ${integrationType}`,
-        },
-        close: {
-          type: 'plain_text',
-          text: 'Close',
-        },
-        private_metadata: backButtonMetadataToken,
-        blocks: [
-          {
-            type: 'section',
-            text: {
-              type: 'mrkdwn',
-              text: `Click the button below to authorize the integration:`,
-            },
-          },
-          {
-            type: 'actions',
-            elements: [
-              {
-                type: 'button',
-                text: {
-                  type: 'plain_text',
-                  text: `Connect ${integrationType}`,
-                  emoji: true,
-                },
-                url: oauthUrl,
-                style: 'primary',
-              },
-            ],
-          },
-          {
-            type: 'actions',
-            elements: [
-              {
-                type: 'button',
-                text: {
-                  type: 'plain_text',
-                  text: 'Back',
-                  emoji: true,
-                },
-                action_id: `back_to_config_${integrationType}`,
-              },
-            ],
-          },
-        ],
+    return {
+      success: true,
+      ackResponse: {
+        response_action: 'update',
+        view: createOAuthModal({
+          integrationType,
+          oauthUrl,
+          backButtonMetadata: backButtonMetadataToken,
+        }),
       },
-    });
+    };
+  }
+
+  // Handle integration configuration submission
+  slack.view('integration_config_submit', async ({ ack, body, view, client }) => {
+    // NOTE: Slack requires view submissions to be acknowledged within 3 seconds.
+    // Keep all DB/network work strictly after `ack()`.
+
+    // Extract configuration values (no awaits before ack)
+    const configValues: Record<string, string> = {};
+    const stateValues = view.state.values;
+    
+    // Extract values from each block (radio button selections)
+    for (const blockId in stateValues) {
+      const block = stateValues[blockId];
+      for (const actionId in block) {
+        const action = block[actionId];
+        // Radio buttons return selected_option
+        if ('selected_option' in action && action.selected_option && 'value' in action.selected_option) {
+          configValues[actionId] = action.selected_option.value as string;
+        }
+      }
+    }
+
+    const result = await handleOAuthInstallationFromConfigForm(view, configValues);
+    
+    if (!result.success) {
+      await ack(result.ackResponse!);
+      return;
+    }
+
+    await ack(result.ackResponse!);
   });
 
   // Handle back button from OAuth URL view - restore configuration form
@@ -1346,8 +1293,17 @@ export async function setupSlackBolt() {
       const blocks = configurationFieldsToSlackBlocks(configFields);
 
       // Remove JWT claims from state payload before re-signing
-      const { exp, iat, nbf, ...payloadToSign } = statePayload;
-      const updatedStateToken = jwt.sign(payloadToSign, jwtConfig.secret, { expiresIn: "7d" });
+      const userId = statePayload.userId;
+      if (!userId) {
+        logger.error('[Slack Integration Config] No userId in state payload');
+        return;
+      }
+      const { exp, iat, nbf, userId: _, ...additionalFields } = statePayload;
+      const updatedStateToken = createOAuthStateToken({
+        userId,
+        additionalFields,
+        expiresIn: "7d",
+      });
 
       // Update modal view back to configuration form
       await client.views.update({
@@ -1472,102 +1428,6 @@ export async function setupSlackBolt() {
     slack,
     receiver,
   };
-}
-
-/**
- * Convert FormFieldDefinition array to Slack Block Kit input blocks
- */
-function formFieldsToSlackBlocks(formFields: FormFieldDefinition[]): any[] {
-  const blocks: any[] = [];
-
-  for (const field of formFields) {
-    const block: any = {
-      type: 'input',
-      block_id: `${field.name}_block`,
-      label: {
-        type: 'plain_text',
-        text: field.label,
-      },
-      element: {
-        type: 'plain_text_input',
-        action_id: field.name,
-      },
-    };
-
-    // Set multiline for textarea fields
-    // Note: Slack doesn't support password fields natively, so password fields
-    // are treated as regular text inputs (the application handles security)
-    if (field.type === 'textarea') {
-      block.element.multiline = true;
-    }
-
-    // Add placeholder if provided
-    if (field.placeholder) {
-      block.element.placeholder = {
-        type: 'plain_text',
-        text: field.placeholder,
-      };
-    }
-
-    // Add hint if provided
-    if (field.hint) {
-      block.hint = {
-        type: 'plain_text',
-        text: field.hint,
-      };
-    }
-
-    blocks.push(block);
-  }
-
-  return blocks;
-}
-
-/**
- * Convert ConfigurationFieldDefinition array to Slack Block Kit input blocks
- */
-function configurationFieldsToSlackBlocks(configFields: ConfigurationFieldDefinition[]): any[] {
-  const blocks: any[] = [];
-
-  for (const field of configFields) {
-    if (field.type === 'radio') {
-      const block: any = {
-        type: 'input',
-        block_id: `${field.name}_block`,
-        label: {
-          type: 'plain_text',
-          text: field.label,
-        },
-        element: {
-          type: 'radio_buttons',
-          action_id: field.name,
-          options: field.options.map(opt => ({
-            value: opt.value,
-            text: {
-              type: 'plain_text',
-              text: opt.label,
-            },
-          })),
-        },
-      };
-
-      // Add hint if provided
-      if (field.hint) {
-        block.hint = {
-          type: 'plain_text',
-          text: field.hint,
-        };
-      }
-
-      blocks.push(block);
-    } else if (field.type === 'select') {
-      // Future: implement select field support
-      // For now, skip select fields or throw error
-      logger.warn('Select fields in configuration are not yet supported', { field });
-    }
-  }
-
-  return blocks;
 }
 
 async function isThreadStartedByAppMention(

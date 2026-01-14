@@ -17,11 +17,12 @@ import {
   FigmaApiComment,
   OAuthInstallationDetails,
 } from "../shared/types";
-import { FigmaIntegration, FigmaIntegrationMetadata, IntegrationType } from "../shared/Integrations";
+import { FigmaIntegration, FigmaIntegrationMetadata, IntegrationType, InstallationOptionsFor, AdditionalStateParams } from "../shared/Integrations";
 import jwt from "jsonwebtoken";
 import { figma as figmaConfig, jwt as jwtConfig, urls, OAUTH_TOKEN_REFRESH_THRESHOLD_MS } from "../config/settings";
 import { Request, Response } from "express";
 import logger, { runWithUserContext } from "../logger";
+import { createOAuthStateToken } from "../utility/oauth";
 
 export class FigmaIntegrationManager implements Integration<FigmaIntegration, FigmaWebhookEvent, typeof FigmaIntegrationMetadata>, OAuthIntegrationInstallation<IntegrationType.FIGMA> {
   constructor() { }
@@ -101,14 +102,13 @@ export class FigmaIntegrationManager implements Integration<FigmaIntegration, Fi
     }
   }
 
-  async getInstallationUrl(userId: string, options?: any, additionalStatePayload?: Record<string, string>): Promise<OAuthInstallationDetails> {
+  async getInstallationUrl(userId: string, options?: InstallationOptionsFor<IntegrationType.FIGMA>, additionalStatePayload?: AdditionalStateParams): Promise<OAuthInstallationDetails> {
     // Generate state token for security (prevents CSRF)
-    const statePayload: any = { userId: userId, timestamp: Date.now() };
-    // Merge any additional state payload variables
-    if (additionalStatePayload && typeof additionalStatePayload === 'object') {
-      Object.assign(statePayload, additionalStatePayload);
-    }
-    const state = jwt.sign(statePayload, jwtConfig.secret, { expiresIn: "10m" });
+    const state = createOAuthStateToken({
+      userId,
+      additionalFields: { timestamp: Date.now() },
+      additionalStatePayload,
+    });
 
     const scope = "current_user:read,file_comments:read,file_content:read,file_metadata:read,file_versions:read,library_assets:read,library_content:read,team_library_content:read,file_dev_resources:read,projects:read,webhooks:read,webhooks:write";
 
