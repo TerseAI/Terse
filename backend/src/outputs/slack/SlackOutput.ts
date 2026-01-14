@@ -80,6 +80,8 @@ const SLACK_OUTPUT_INSTRUCTIONS = `
 
 You have access to post messages to Slack. Use the slack_send_message tool to communicate results, updates, or reports.
 
+The user will not be able to respond to the message you send. So never include a call to action in the message. No prompts, no questions.
+
 ### Message Guidelines:
 1. **Be concise**: Keep messages focused and actionable
 2. **Use formatting**: Leverage Slack's mrkdwn for readability
