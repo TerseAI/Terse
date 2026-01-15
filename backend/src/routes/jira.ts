@@ -110,73 +110,8 @@ export async function getJiraResources(req: Request, res: Response) {
     }
 
     try {
-        // Get the integration
-        const integration = await db().atlassian_integrations.findFirst({
-            where: {
-                id: integrationId,
-                user_id: user.id,
-            },
-        });
-
-        if (!integration) {
-            return res.status(404).json({ success: false, error: 'Integration not found' });
-        }
-
-        if (!integration.cloud_id) {
-            return res.status(400).json({ success: false, error: 'Integration missing cloud_id' });
-        }
-
-        // Get valid access token (handles refresh automatically)
-        const manager = new AtlassianIntegrationManager();
-        const accessToken = await manager.getAccessToken(integrationId);
-        if (!accessToken) {
-            return res.status(400).json({ success: false, error: 'Could not get valid access token' });
-        }
-
-        const cloudId = integration.cloud_id;
-        const baseUrl = integration.base_url;
-
-        // Fetch all projects using OAuth token
-        let projects: Array<{ id: string; key: string; name: string; projectTypeKey: string }> = [];
-
-        // Fetch projects
-        try {
-            const projectsResponse = await fetch(
-                `https://api.atlassian.com/ex/jira/${cloudId}/rest/api/3/project`,
-                {
-                    method: 'GET',
-                    headers: {
-                        'Authorization': `Bearer ${accessToken}`,
-                        'Accept': 'application/json',
-                    },
-                }
-            );
-
-            if (projectsResponse.ok) {
-                const projectsData = await projectsResponse.json();
-                projects = projectsData.map((p: any) => ({
-                    id: p.id,
-                    key: p.key,
-                    name: p.name,
-                    projectTypeKey: p.projectTypeKey || 'software',
-                }));
-            }
-        } catch (error) {
-            logger.warn('⚠️  Could not fetch projects:', { error });
-            return res.status(500).json({
-                success: false,
-                error: 'Failed to fetch projects',
-            });
-        }
-
-        return res.status(200).json({
-            success: true,
-            resources: {
-                projects: projects,
-                baseUrl: baseUrl,
-                cloudId: cloudId,
-            },
-        });
+        const response = await fetchJiraResources(user.id, integrationId);
+        return res.status(200).json(response);
     } catch (error: any) {
         logger.error('Error fetching Jira resources:', { error });
         return res.status(500).json({
@@ -184,4 +119,67 @@ export async function getJiraResources(req: Request, res: Response) {
             error: error.message || 'Failed to fetch Jira resources',
         });
     }
+}
+
+export async function fetchJiraResources(userId: string, integrationId: string) {
+    const integration = await db().atlassian_integrations.findFirst({
+        where: {
+            id: integrationId,
+            user_id: userId,
+        },
+    });
+
+    if (!integration) {
+        throw new Error('Integration not found');
+    }
+
+    if (!integration.cloud_id) {
+        throw new Error('Integration missing cloud_id');
+    }
+
+    const manager = new AtlassianIntegrationManager();
+    const accessToken = await manager.getAccessToken(integrationId);
+    if (!accessToken) {
+        throw new Error('Could not get valid access token');
+    }
+
+    const cloudId = integration.cloud_id;
+    const baseUrl = integration.base_url;
+
+    let projects: Array<{ id: string; key: string; name: string; projectTypeKey: string }> = [];
+
+    try {
+        const projectsResponse = await fetch(
+            `https://api.atlassian.com/ex/jira/${cloudId}/rest/api/3/project`,
+            {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${accessToken}`,
+                    'Accept': 'application/json',
+                },
+            }
+        );
+
+        if (projectsResponse.ok) {
+            const projectsData = await projectsResponse.json();
+            projects = projectsData.map((p: any) => ({
+                id: p.id,
+                key: p.key,
+                name: p.name,
+                projectTypeKey: p.projectTypeKey || 'software',
+            }));
+        }
+    } catch (error) {
+        logger.warn('⚠️  Could not fetch projects:', { error });
+        throw new Error('Failed to fetch projects');
+    }
+
+    return {
+        success: true,
+        resources: {
+            projects: projects,
+            baseUrl: baseUrl,
+            cloudId: cloudId,
+        },
+    };
 }

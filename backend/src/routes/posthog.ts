@@ -64,74 +64,7 @@ export const getPosthogProjects = async (req: Request, res: Response) => {
     const search = (req.query.search as string) || "";
 
     try {
-        // Verify user owns this integration
-        const integration = await db().posthog_integrations.findFirst({
-            where: {
-                id: integrationId,
-                user_id: user.id,
-            },
-        });
-
-        if (!integration) {
-            return res.status(404).json({ error: "Posthog integration not found" });
-        }
-
-        // Fetch projects from Posthog API
-        // Posthog API endpoint: GET /api/projects/
-        const apiUrl = 'https://us.posthog.com/api/projects/';
-        const response = await fetch(apiUrl, {
-            method: 'GET',
-            headers: {
-                'Authorization': `Bearer ${integration.api_key}`,
-                'Content-Type': 'application/json',
-            },
-        });
-
-        if (!response.ok) {
-            const errorText = await response.text();
-            logger.error('Posthog API error fetching projects', {
-                status: response.status,
-                error: errorText,
-            });
-            return res.status(response.status).json({
-                error: "Failed to fetch projects from Posthog",
-                details: response.status === 401 ? 'Invalid API key' : errorText
-            });
-        }
-
-        const data = await response.json();
-        
-        // Posthog API returns results in different formats depending on version
-        // Handle both array and paginated response formats
-        let projects = Array.isArray(data) ? data : (data.results || data.data || []);
-        
-        // Filter by search term if provided
-        if (search) {
-            const searchLower = search.toLowerCase();
-            projects = projects.filter((project: any) => 
-                project.name?.toLowerCase().includes(searchLower) ||
-                project.id?.toString().toLowerCase().includes(searchLower)
-            );
-        }
-
-        // Map to our PosthogProject type
-        const mappedProjects = projects.map((project: any) => ({
-            id: project.id?.toString() || project.uuid || '',
-            name: project.name || 'Unnamed Project',
-            organization_id: project.organization_id || project.organization?.id || undefined,
-        })).filter((project: any) => project.id); // Filter out projects without IDs
-
-        // Sort alphabetically when no search term
-        if (!search) {
-            mappedProjects.sort((a: { name: string }, b: { name: string }) => 
-                a.name.localeCompare(b.name, undefined, { sensitivity: 'base' })
-            );
-        }
-
-        const responseData: PosthogProjectsResponse = {
-            projects: mappedProjects,
-        };
-
+        const responseData = await fetchPosthogProjects(user.id, integrationId, search);
         res.status(200).json(responseData);
     } catch (error: any) {
         logger.error('Error fetching Posthog projects:', { error });
@@ -140,4 +73,66 @@ export const getPosthogProjects = async (req: Request, res: Response) => {
             details: error.message
         });
     }
+};
+
+export const fetchPosthogProjects = async (
+    userId: string,
+    integrationId: string,
+    search: string = ""
+): Promise<PosthogProjectsResponse> => {
+    const integration = await db().posthog_integrations.findFirst({
+        where: {
+            id: integrationId,
+            user_id: userId,
+        },
+    });
+
+    if (!integration) {
+        throw new Error("Posthog integration not found");
+    }
+
+    const apiUrl = 'https://us.posthog.com/api/projects/';
+    const response = await fetch(apiUrl, {
+        method: 'GET',
+        headers: {
+            'Authorization': `Bearer ${integration.api_key}`,
+            'Content-Type': 'application/json',
+        },
+    });
+
+    if (!response.ok) {
+        const errorText = await response.text();
+        logger.error('Posthog API error fetching projects', {
+            status: response.status,
+            error: errorText,
+        });
+        throw new Error(response.status === 401 ? 'Invalid API key' : errorText);
+    }
+
+    const data = await response.json();
+    let projects = Array.isArray(data) ? data : (data.results || data.data || []);
+    
+    if (search) {
+        const searchLower = search.toLowerCase();
+        projects = projects.filter((project: any) => 
+            project.name?.toLowerCase().includes(searchLower) ||
+            project.id?.toString().toLowerCase().includes(searchLower)
+        );
+    }
+
+    const mappedProjects = projects.map((project: any) => ({
+        id: project.id?.toString() || project.uuid || '',
+        name: project.name || 'Unnamed Project',
+        organization_id: project.organization_id || project.organization?.id || undefined,
+    })).filter((project: any) => project.id);
+
+    if (!search) {
+        mappedProjects.sort((a: { name: string }, b: { name: string }) => 
+            a.name.localeCompare(b.name, undefined, { sensitivity: 'base' })
+        );
+    }
+
+    return {
+        projects: mappedProjects,
+    };
 };

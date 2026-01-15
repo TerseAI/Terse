@@ -14,7 +14,7 @@ import { emitCacheInvalidationWithKey } from "../realtimeSocket";
 import logger from "../logger";
 import { KnowledgeBaseFactory } from "../knowledgeBase/abstract/KnowledgeBaseFactory";
 
-type ChannelDraft = Omit<Channel, "id"> & { id?: string };
+export type ChannelDraft = Omit<Channel, "id"> & { id?: string };
 
 async function createInputConfig(
     tx: PrismaTransaction,
