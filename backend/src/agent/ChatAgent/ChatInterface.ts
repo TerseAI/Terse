@@ -1,7 +1,7 @@
-import { Agent, AgentOutputType, RunStreamEvent, StreamedRunResult } from "@openai/agents";
+import { RunStreamEvent } from "@openai/agents";
 import { ConfigType } from "../../shared/Configs";
 import { IntegrationType } from "../../shared/Integrations";
-import { Channel } from "../../shared/types";
+import { ChannelDraft } from "../../routes/channels";
 
 abstract class ChatInterface {
     abstract name: string;
@@ -13,7 +13,7 @@ abstract class ChatInterface {
         this.userId = userId;
     }
 
-    abstract buildPreview(draft: Channel): Promise<string>;
+    abstract buildPreview(draft: ChannelDraft): Promise<string>;
     abstract promptForIntegration(integration: IntegrationType): Promise<string>; 
     abstract promptForConfig(config: ConfigType): Promise<string>;
     abstract processStreamEvent(sessionId: string, event: RunStreamEvent): void;

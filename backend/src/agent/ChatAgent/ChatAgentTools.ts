@@ -33,7 +33,7 @@ export function buildChatAgentTools(chatInterface: ChatInterface): Tool<ChatAgen
     return [
         tool({
             name: 'buildPreview',
-            description: 'Build a preview of the draft',
+            description: 'Build a preview of the draft. Call this before calling applyChannel.',
             parameters: z.object({
                 draft: z.string().describe('The draft to build a preview of'),
             }),
@@ -71,17 +71,18 @@ export function buildChatAgentTools(chatInterface: ChatInterface): Tool<ChatAgen
         }), 
         tool({
             name: 'fetchResourcesForIntegration',
-            description: 'Call this when you need to see what configs you have access too. This will return Display names and cononcial IDs you can use for the Channel object in the applyChannel toll',
+            description: 'Call this when you need to see what configs you have access to. It returns display names and canonical IDs you can use for the Channel object in applyChannel. IMPORTANT: Do not add integrations unless the user explicitly asked for them.',
             parameters: z.object({
                 integrationType: z.nativeEnum(IntegrationType).describe('The integration type to fetch resources for'),
+                query: z.string().nullable().describe('Optional query to filter resources by name/title'),
             }),
-            execute: async ({ integrationType }: { integrationType: IntegrationType }, runContext?: RunContext<ChatAgentContext>): Promise<string> => {
-                logger.info('Fetching resources for integration type', { integrationType });
+            execute: async ({ integrationType, query }: { integrationType: IntegrationType; query: string | null }, runContext?: RunContext<ChatAgentContext>): Promise<string> => {
+                logger.info('Fetching resources for integration type', { integrationType, query });
                 const userId = runContext?.context?.userId;
                 if (!userId) {
                     throw new Error("User ID is required to fetch resources");
                 }
-                return await fetchResourcesForIntegrationType(integrationType, userId);
+                return await fetchResourcesForIntegrationType(integrationType, userId, query ?? undefined);
             },
         }),
     ];
@@ -297,8 +298,19 @@ function toChannelDraft(channel: ChannelSchemaInput): ChannelDraft {
 
 async function fetchResourcesForIntegrationType(
     integrationType: IntegrationType,
-    userId: string
+    userId: string,
+    query?: string
 ): Promise<string> {
+    const normalizedQuery = query?.trim().toLowerCase();
+    const matchesQuery = (value: string | undefined | null): boolean => {
+        if (!normalizedQuery) {
+            return true;
+        }
+        if (!value) {
+            return false;
+        }
+        return value.toLowerCase().includes(normalizedQuery);
+    };
     switch (integrationType) {
         case IntegrationType.GITHUB: {
             const manager = new GithubIntegrationManager();
@@ -312,7 +324,10 @@ async function fetchResourcesForIntegrationType(
                     userId,
                     String(installationId)
                 );
-                return { integration, repositories: response.repositories };
+                const repositories = normalizedQuery
+                    ? response.repositories.filter(repo => matchesQuery(`${repo.owner}/${repo.name}`) || matchesQuery(repo.name))
+                    : response.repositories;
+                return { integration, repositories };
             }));
             return JSON.stringify({ integrations, resources });
         }
@@ -321,7 +336,10 @@ async function fetchResourcesForIntegrationType(
             const integrations = await manager.getInstancesForUser(userId);
             const resources = await Promise.all(integrations.map(async (integration) => {
                 const response = await fetchSlackChannelsForIntegration(userId, integration.id);
-                return { integration, channels: response.channels };
+                const channels = normalizedQuery
+                    ? response.channels.filter(channel => matchesQuery(channel.name))
+                    : response.channels;
+                return { integration, channels };
             }));
             return JSON.stringify({ integrations, resources });
         }
@@ -329,7 +347,7 @@ async function fetchResourcesForIntegrationType(
             const manager = new NotionIntegrationManager();
             const integrations = await manager.getInstancesForUser(userId);
             const resources = await Promise.all(integrations.map(async (integration) => {
-                const response = await fetchNotionResources(userId, integration.id, "");
+                const response = await fetchNotionResources(userId, integration.id, query ?? "");
                 return { integration, resources: response.resources };
             }));
             return JSON.stringify({ integrations, resources });
@@ -339,10 +357,15 @@ async function fetchResourcesForIntegrationType(
             const integrations = await manager.getInstancesForUser(userId);
             const jira = await Promise.all(integrations.map(async (integration) => {
                 const response = await fetchJiraResources(userId, integration.id);
-                return { integration, resources: response };
+                const projects = response.resources?.projects ?? [];
+                const filteredProjects = normalizedQuery
+                    ? projects.filter((project: { name?: string; key?: string }) =>
+                        matchesQuery(project.name) || matchesQuery(project.key))
+                    : projects;
+                return { integration, resources: { ...response.resources, projects: filteredProjects } };
             }));
             const confluence = await Promise.all(integrations.map(async (integration) => {
-                const response = await fetchConfluenceResources(userId, integration.id, "");
+                const response = await fetchConfluenceResources(userId, integration.id, query ?? "");
                 return { integration, resources: response };
             }));
             return JSON.stringify({ integrations, jira, confluence });
@@ -352,7 +375,10 @@ async function fetchResourcesForIntegrationType(
             const integrations = await manager.getInstancesForUser(userId);
             const resources = await Promise.all(integrations.map(async (integration) => {
                 const response = await fetchLinearTeams(userId, integration.id);
-                return { integration, teams: response };
+                const teams = normalizedQuery
+                    ? response.filter(team => matchesQuery(team.name) || matchesQuery(team.key))
+                    : response;
+                return { integration, teams };
             }));
             return JSON.stringify({ integrations, resources });
         }
@@ -360,7 +386,7 @@ async function fetchResourcesForIntegrationType(
             const manager = new PosthogIntegrationManager();
             const integrations = await manager.getInstancesForUser(userId);
             const resources = await Promise.all(integrations.map(async (integration) => {
-                const response = await fetchPosthogProjects(userId, integration.id, "");
+                const response = await fetchPosthogProjects(userId, integration.id, query ?? "");
                 return { integration, projects: response.projects ?? response };
             }));
             return JSON.stringify({ integrations, resources });
