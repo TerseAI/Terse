@@ -114,27 +114,30 @@ export class DatadogKnowledgeBase extends KnowledgeBase<DatadogKnowledgeBaseSess
         });
     }
 
-    async validateConfig(config: DatadogConfig): Promise<boolean> {
+    async validateConfig(knowledgeBase: DatadogConfig, userId: string): Promise<void> {
         // Check that the config is complete
-        if (!config.isComplete()) {
-            return false;
+        if (!knowledgeBase.isComplete()) {
+            throw new Error('Datadog config is incomplete: integrationId is required');
         }
 
         // Check that the integration exists
         const integration = await db().datadog_integrations.findUnique({
-            where: { id: config.integrationId },
+            where: { id: knowledgeBase.integrationId },
         });
 
         if (!integration) {
-            return false;
+            throw new Error(`Datadog integration not found: ${knowledgeBase.integrationId}`);
+        }
+
+        // Validate that the integration belongs to the user
+        if (integration.user_id !== userId) {
+            throw new Error(`Datadog integration does not belong to user: ${userId}`);
         }
 
         // Validate that defaultIndexes is a valid array
-        if (config.defaultIndexes && !Array.isArray(config.defaultIndexes)) {
-            return false;
+        if (knowledgeBase.defaultIndexes && !Array.isArray(knowledgeBase.defaultIndexes)) {
+            throw new Error('Datadog config defaultIndexes must be an array');
         }
-
-        return true;
     }
 
     /**
