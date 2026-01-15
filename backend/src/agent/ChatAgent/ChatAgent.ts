@@ -29,9 +29,10 @@ class ChatAgent {
 
     async run(message: string): Promise<string> {
         logger.info('Starting chat agent run for message in interface', { message, interface: this.chatInterface.name });
+        const userTimezone = await this.chatInterface.getUserTimezone();
         const agent = new Agent<ChatAgentContext, AgentOutputType>({
             name: 'Terse Automation Assistant',
-            instructions: await buildChatAgentSystemPrompt(this.userId),
+            instructions: await buildChatAgentSystemPrompt(this.userId, userTimezone),
             model: 'gpt-5.2',
             tools: buildChatAgentTools(this.chatInterface),
         });

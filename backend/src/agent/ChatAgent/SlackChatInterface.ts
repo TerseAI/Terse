@@ -15,15 +15,32 @@ class SlackChatInterface extends ChatInterface {
     name: string = 'Slack';
     private messageTsToReplace?: string;
     private readonly webClient: WebClient;
+    private readonly slackUserId?: string;
 
     constructor(
         private readonly channel: string,
         webClient: WebClient,
         userId?: string,
+        slackUserId?: string,
         sessionId?: string // thread_ts if in a thread
     ) {
         super(sessionId, userId);
         this.webClient = webClient;
+        this.slackUserId = slackUserId;
+    }
+
+    async getUserTimezone(): Promise<string | null> {
+        if (!this.slackUserId) {
+            return null;
+        }
+        try {
+            const result = await this.webClient.users.info({ user: this.slackUserId });
+            const tz = (result as { user?: { tz?: string } }).user?.tz;
+            return tz || null;
+        } catch (error) {
+            logger.warn('Failed to fetch Slack user timezone', { error, slackUserId: this.slackUserId });
+            return null;
+        }
     }
 
     /**

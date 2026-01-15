@@ -1,7 +1,8 @@
 import { INTEGRATION_METADATA, IntegrationInstance, IntegrationType } from "../../shared/Integrations";
 import { INTEGRATION_REGISTRY, isSystemIntegration } from "../../integrations/abstract/IntegrationRegistry";
+import { db } from "../../prismaClient";
 
-export async function buildChatAgentSystemPrompt(userId: string): Promise<string> {
+export async function buildChatAgentSystemPrompt(userId: string, userTimezone?: string | null): Promise<string> {
 
     const integrationMetadata = Object.values(INTEGRATION_METADATA);
 
@@ -10,6 +11,19 @@ export async function buildChatAgentSystemPrompt(userId: string): Promise<string
     const excludedIntegrations = [IntegrationType.TERSE, IntegrationType.CRON_JOB];
     const integrationList = integrationMetadata.filter(metadata => !excludedIntegrations.includes(metadata.type))
     const integrationDescriptions = integrationList.map(metadata => `${metadata.name} - Description: ${metadata.description} - Input: ${metadata.isInput} - Output: ${metadata.isOutput} - Knowledge Base: ${metadata.isKnowledgeBase}`).join('\n');
+
+    const userRecord = await db().users.findUnique({
+        where: { id: userId },
+        select: {
+            email: true,
+            display_name: true,
+        },
+    });
+    const currentTimeUtc = new Date().toISOString();
+    const currentDateUtc = currentTimeUtc.split("T")[0];
+    const resolvedTimezone = userTimezone || "UTC";
+    const currentTimeLocal = formatCurrentTimeForTimezone(resolvedTimezone);
+    const currentDateLocal = currentTimeLocal ? currentTimeLocal.split("T")[0] : null;
 
     // Get user's existing integrations
     const integrationInstanceDescriptions = (await Promise.all(
@@ -62,6 +76,16 @@ export async function buildChatAgentSystemPrompt(userId: string): Promise<string
     - If the user asks you something that is not related to the automation creation process, please politely recommend
     to them what you specialize in and that you are not able to help with that.
 
+    ## Current User Context
+
+    User: ${userRecord?.display_name || "Unknown"} (${userRecord?.email || "Unknown"})
+    User ID: ${userId}
+    User Timezone: ${resolvedTimezone}
+    Current Date (User TZ): ${currentDateLocal ?? "Unavailable"}
+    Current Date/Time (User TZ): ${currentTimeLocal ?? "Unavailable"}
+    Current Date (UTC): ${currentDateUtc}
+    Current Date/Time (UTC): ${currentTimeUtc}
+
     ## User's Existing Integrations
 
     You currently have the following integrations connected:${existingIntegrationsList}
@@ -81,3 +105,14 @@ export async function buildChatAgentSystemPrompt(userId: string): Promise<string
     Your goal is to call the applyChannel tool to configure the integration. That tool call will allow to persist and apply the automation. Once that is called and it saves successfully, you should thank the user and ask them if they have any other automations they want to create just let you know. They may then prompt you to try creating something else and the loop continues.
     `;
 }   
+
+function formatCurrentTimeForTimezone(timezone: string): string | null {
+    try {
+        return new Date().toLocaleString("sv-SE", {
+            timeZone: timezone,
+            hour12: false,
+        }).replace(" ", "T");
+    } catch {
+        return null;
+    }
+}
