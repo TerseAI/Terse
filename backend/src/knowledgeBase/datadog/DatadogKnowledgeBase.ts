@@ -114,6 +114,29 @@ export class DatadogKnowledgeBase extends KnowledgeBase<DatadogKnowledgeBaseSess
         });
     }
 
+    async validateConfig(config: DatadogConfig): Promise<boolean> {
+        // Check that the config is complete
+        if (!config.isComplete()) {
+            return false;
+        }
+
+        // Check that the integration exists
+        const integration = await db().datadog_integrations.findUnique({
+            where: { id: config.integrationId },
+        });
+
+        if (!integration) {
+            return false;
+        }
+
+        // Validate that defaultIndexes is a valid array
+        if (config.defaultIndexes && !Array.isArray(config.defaultIndexes)) {
+            return false;
+        }
+
+        return true;
+    }
+
     /**
      * Returns system instructions for Datadog knowledge base.
      * Provides guidance on when and how to use Datadog tools.
