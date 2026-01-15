@@ -5,4 +5,5 @@ export interface InputConfigSelectorProps {
     input: TransientChannelInput;
     variant: 'card' | 'dialog';
     setConfig: (config: ConfigInstance) => void;
+    canManualTrigger?: boolean;
 }

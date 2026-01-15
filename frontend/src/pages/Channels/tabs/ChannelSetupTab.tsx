@@ -341,7 +341,12 @@ export default function ChannelSetupTab({
                     <div className="h-full min-h-0 overflow-y-auto pr-1">
                         {activeSection === 'triggers' && (
                             <div className="max-w-3xl flex flex-col gap-4">
-                                <InputLayout inputs={inputs} setInputs={setInputs} isIncomplete={triggersIncomplete} />
+                                <InputLayout
+                                    inputs={inputs}
+                                    setInputs={setInputs}
+                                    isIncomplete={triggersIncomplete}
+                                    canManualTrigger={Boolean(channelId)}
+                                />
                             </div>
                         )}
 
@@ -434,7 +439,17 @@ function WarningIcon({ content }: { content: string }) {
     );
 }
 
-function InputLayout({ inputs, setInputs, isIncomplete }: { inputs: TransientChannelInput[], setInputs: (inputs: TransientChannelInput[]) => void, isIncomplete: boolean }) {
+function InputLayout({
+    inputs,
+    setInputs,
+    isIncomplete,
+    canManualTrigger,
+}: {
+    inputs: TransientChannelInput[];
+    setInputs: (inputs: TransientChannelInput[]) => void;
+    isIncomplete: boolean;
+    canManualTrigger: boolean;
+}) {
     const [showAddModal, setShowAddModal] = useState(false);
 
     const handleSelectPlatform = (config: ConfigType) => {
@@ -461,7 +476,14 @@ function InputLayout({ inputs, setInputs, isIncomplete }: { inputs: TransientCha
             </div>
             <div className="grid grid-cols-[repeat(auto-fill,minmax(10rem,1fr))] gap-4 items-stretch">
                 {inputs.map((input) => (
-                    <Input key={input.id} input={input} inputs={inputs} setInputs={setInputs} handleRemove={handleRemove} />
+                    <Input
+                        key={input.id}
+                        input={input}
+                        inputs={inputs}
+                        setInputs={setInputs}
+                        handleRemove={handleRemove}
+                        canManualTrigger={canManualTrigger}
+                    />
                 ))}
                 <Button variant="outline" onClick={() => setShowAddModal(true)} className="w-full aspect-square h-auto">
                     <PlusIcon className={cn("size-5", inputs.length > 0 ? "text-primary" : "text-muted-foreground")} />
@@ -476,7 +498,19 @@ function InputLayout({ inputs, setInputs, isIncomplete }: { inputs: TransientCha
     )
 }
 
-function Input({ input, inputs, setInputs, handleRemove }: { input: TransientChannelInput, inputs: TransientChannelInput[], setInputs: (inputs: TransientChannelInput[]) => void, handleRemove: (id: string) => void }) {
+function Input({
+    input,
+    inputs,
+    setInputs,
+    handleRemove,
+    canManualTrigger,
+}: {
+    input: TransientChannelInput;
+    inputs: TransientChannelInput[];
+    setInputs: (inputs: TransientChannelInput[]) => void;
+    handleRemove: (id: string) => void;
+    canManualTrigger: boolean;
+}) {
     const isPlaceholder = input.config === undefined;
     const needsConfiguration = !input.config || !input.config.isComplete();
     const [showDetailsDialog, setShowDetailsDialog] = useState(false);
@@ -487,6 +521,7 @@ function Input({ input, inputs, setInputs, handleRemove }: { input: TransientCha
         input: input,
         setConfig: (config: ConfigInstance) => setInputs(inputs.map(i => i.id === input.id ? { ...i, config, configType: config.configType } : i)),
         variant: "card",
+        canManualTrigger,
     };
 
     let cardContent;

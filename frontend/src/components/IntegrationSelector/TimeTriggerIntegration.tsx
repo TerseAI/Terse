@@ -7,10 +7,11 @@ import { CalendarClockIcon } from "@/components/icons/IntegrationIcons";
 import { Button } from "@/components/ui/button";
 import { ManualTriggerDialog } from "../ManualTriggerDialog";
 
-export function TimeTriggerIntegration({ input, variant, setConfig }: InputConfigSelectorProps) {
+export function TimeTriggerIntegration({ input, variant, setConfig, canManualTrigger }: InputConfigSelectorProps) {
     const existingConfig = input.config as TimeTriggerConfig | undefined;
     const hasSchedule = existingConfig?.cronExpression?.trim();
     const [showManualTrigger, setShowManualTrigger] = useState(false);
+    const isManualTriggerAvailable = Boolean(canManualTrigger);
 
     if (variant === 'card') {
         if (!hasSchedule || !existingConfig) {
@@ -40,7 +41,7 @@ export function TimeTriggerIntegration({ input, variant, setConfig }: InputConfi
                 }
             />
 
-            {hasSchedule && (
+            {hasSchedule && isManualTriggerAvailable && (
                 <div className="pt-2 border-t border-border/50">
                     <Button
                         variant="outline"
