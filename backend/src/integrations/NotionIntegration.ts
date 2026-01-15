@@ -36,6 +36,17 @@ export class NotionIntegrationManager implements Integration<NotionIntegration, 
         }));
     }
 
+    formatIntegrationInstanceForAgent(instance: NotionIntegration): string {
+        const details: string[] = [];
+        if (instance.workspaceName) {
+            details.push(`workspace "${instance.workspaceName}"`);
+        } else if (instance.workspaceId) {
+            details.push(`workspaceId ${instance.workspaceId}`);
+        }
+        const detailText = details.length ? ` (${details.join(", ")})` : "";
+        return `Notion${detailText} [id: ${instance.id}]`;
+    }
+
     async getAllActiveInstances(): Promise<NotionIntegration[]> {
         const notionIntegrations = await db().notion_integrations.findMany({
             select: {

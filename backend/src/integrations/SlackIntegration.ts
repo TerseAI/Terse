@@ -52,6 +52,21 @@ export class SlackIntegrationManager implements Integration<SlackIntegration, Sl
         }));
     }
 
+    formatIntegrationInstanceForAgent(instance: SlackIntegration): string {
+        const details: string[] = [];
+        if (instance.teamName) {
+            details.push(`team "${instance.teamName}"`);
+        }
+        if (instance.teamId) {
+            details.push(`teamId ${instance.teamId}`);
+        }
+        if (instance.isBotUser !== undefined) {
+            details.push(instance.isBotUser ? "bot user" : "user token");
+        }
+        const detailText = details.length ? ` (${details.join(", ")})` : "";
+        return `Slack${detailText} [id: ${instance.id}]`;
+    }
+
     async getAllActiveInstances(): Promise<SlackIntegration[]> {
         const userSlackIntegrations = await db().user_slack_integrations.findMany({
             include: {

@@ -48,6 +48,18 @@ export class FigmaIntegrationManager implements Integration<FigmaIntegration, Fi
     }));
   }
 
+  formatIntegrationInstanceForAgent(instance: FigmaIntegration): string {
+    const details: string[] = [];
+    if (instance.handle) {
+      details.push(`handle "${instance.handle}"`);
+    }
+    if (instance.figma_user_id) {
+      details.push(`userId ${instance.figma_user_id}`);
+    }
+    const detailText = details.length ? ` (${details.join(", ")})` : "";
+    return `Figma${detailText} [id: ${instance.id}]`;
+  }
+
   async getAllActiveInstances(): Promise<FigmaIntegration[]> {
     const integrations = await db().figma_integrations.findMany({
       select: {

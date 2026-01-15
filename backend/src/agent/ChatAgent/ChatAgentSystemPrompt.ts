@@ -1,5 +1,5 @@
 import { INTEGRATION_METADATA, IntegrationType } from "../../shared/Integrations";
-import { getUserActiveIntegrations } from "../../routes/integrations";
+import { INTEGRATION_REGISTRY } from "../../integrations/abstract/IntegrationRegistry";
 
 export async function buildChatAgentSystemPrompt(userId: string): Promise<string> {
 
@@ -13,12 +13,15 @@ export async function buildChatAgentSystemPrompt(userId: string): Promise<string
 
     // Get user's existing integrations
     let existingIntegrationsList = '';
-    const activeIntegrationTypes = await getUserActiveIntegrations(userId);
-    if (activeIntegrationTypes.length > 0) {
-        const integrationNames = activeIntegrationTypes
-            .map(type => INTEGRATION_METADATA[type]?.name || type)
-            .join('\n- ');
-        existingIntegrationsList = `\n- ${integrationNames}`;
+    const integrationInstanceDescriptions = (await Promise.all(
+        INTEGRATION_REGISTRY.map(async (integration) => {
+            const instances = await integration.getInstancesForUser(userId);
+            return instances.map(instance => integration.formatIntegrationInstanceForAgent(instance));
+        })
+    )).flat();
+
+    if (integrationInstanceDescriptions.length > 0) {
+        existingIntegrationsList = `\n- ${integrationInstanceDescriptions.join('\n- ')}`;
     } else {
         existingIntegrationsList = '\nYou currently have no integrations connected.';
     }

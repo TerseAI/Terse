@@ -42,6 +42,15 @@ export class LinearIntegrationManager implements Integration<LinearIntegration, 
         }));
     }
 
+    formatIntegrationInstanceForAgent(instance: LinearIntegration): string {
+        const details: string[] = [];
+        if (instance.workspaceName) {
+            details.push(`workspace "${instance.workspaceName}"`);
+        }
+        const detailText = details.length ? ` (${details.join(", ")})` : "";
+        return `Linear${detailText} [id: ${instance.id}]`;
+    }
+
     async getAllActiveInstances(): Promise<LinearIntegration[]> {
         const integrations = await db().linear_integrations.findMany({
             select: {
