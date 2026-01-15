@@ -17,37 +17,43 @@ import { KnowledgeBaseFactory } from "../knowledgeBase/abstract/KnowledgeBaseFac
 async function createInputConfig(
     tx: PrismaTransaction,
     inputId: string,
-    config: ChannelInput
+    config: ChannelInput,
+    userId: string
 ): Promise<void> {
     logger.debug('🔵 [INPUT CONFIG] config', { inputId, config: JSON.stringify(config, null, 2) });
     const input = INPUT_REGISTRY.find(input => input.configType === config.config.configType);
     if (!input) {
         throw new Error(`Input not found for integration type: ${config.config.configType}`);
     }
+    await input.validateConfig(config.config, userId);
     await input.addInputToChannel(tx, inputId, config.config);
 }
 
 async function createOutputConfig(
     tx: PrismaTransaction,
     outputId: string,
-    config: ConfigInstance
+    config: ConfigInstance,
+    userId: string
 ): Promise<void> {
     const output = OutputFactory.OUTPUT_REGISTRY.get(convertConfigTypeToOutputConfigType(config.configType));
     if (!output) {
         throw new Error(`Output not found for integration type: ${config.configType}`);
     }
+    await output().validateConfig(config, userId);
     await output().addOutputToChannel(tx, outputId, config);
 }
 
 async function createKnowledgeBaseConfig(
     tx: PrismaTransaction,
     knowledgeBaseId: string,
-    config: ConfigInstance
+    config: ConfigInstance,
+    userId: string
 ): Promise<void> {
     const knowledgeBase = KnowledgeBaseFactory.KNOWLEDGE_BASE_REGISTRY.get(convertConfigTypeToKnowledgeBaseConfigType(config.configType));
     if (!knowledgeBase) {
         throw new Error(`Knowledge base not found for integration type: ${config.configType}`);
     }
+    await knowledgeBase().validateConfig(config, userId);
     await knowledgeBase().addKnowledgeBaseToChannel(tx, knowledgeBaseId, config);
 }
 
@@ -349,7 +355,7 @@ export async function createChannel(req: Request, res: Response) {
                 });
 
                 // Create config record if provided
-                await createInputConfig(tx, newInput.id, input);
+                await createInputConfig(tx, newInput.id, input, userId);
             }
 
             // Create output
@@ -378,7 +384,7 @@ export async function createChannel(req: Request, res: Response) {
             });
 
             // Create config record if provided
-            await createOutputConfig(tx, newOutput.id, output.config);
+            await createOutputConfig(tx, newOutput.id, output.config, userId);
 
             // Create knowledge bases if provided
             if (knowledgeBases && knowledgeBases.length > 0) {
@@ -407,7 +413,7 @@ export async function createChannel(req: Request, res: Response) {
                         }
                     });
                     
-                    await createKnowledgeBaseConfig(tx, newKnowledgeBase.id, kb.config);
+                    await createKnowledgeBaseConfig(tx, newKnowledgeBase.id, kb.config, userId);
                 }
             }
 
@@ -539,7 +545,7 @@ export async function updateChannel(req: Request, res: Response) {
                     });
 
                     // Create config record if provided
-                    await createInputConfig(tx, newInput.id, input);
+                    await createInputConfig(tx, newInput.id, input, userId);
                 }
             }
 
@@ -581,7 +587,7 @@ export async function updateChannel(req: Request, res: Response) {
                 });
 
                 // Create config record if provided
-                await createOutputConfig(tx, newOutput.id, output.config);
+                await createOutputConfig(tx, newOutput.id, output.config, userId);
             }
 
             // Update knowledge bases if provided
@@ -619,7 +625,7 @@ export async function updateChannel(req: Request, res: Response) {
                         });
 
                         // Create config record
-                        await createKnowledgeBaseConfig(tx, newKnowledgeBase.id, kb.config);
+                        await createKnowledgeBaseConfig(tx, newKnowledgeBase.id, kb.config, userId);
                     }
                 }
             }
