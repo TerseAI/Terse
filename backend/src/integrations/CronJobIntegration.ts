@@ -1,7 +1,6 @@
-import { FormIntegrationInstallation, Integration } from "./abstract/Integration";
+import { FormFieldDefinition, FormIntegrationInstallation, Integration, FormSubmissionInput, FormSubmissionResult } from "./abstract/Integration";
 import { CronJobIntegrationMetadata, IntegrationInstance, IntegrationType } from "../shared/Integrations";
 import { ChannelInputWithConfigs } from "../types/prisma";
-import { Request, Response } from "express";
 import logger, { runWithUserContext } from "../logger";
 import { createSchedulerClient, SchedulerClient } from "../utility/schedulerClient";
 import { settings } from "../config/settings";
@@ -24,6 +23,10 @@ export class CronJobIntegrationManager implements
     private schedulerClient: SchedulerClient | null = null;
 
     constructor() { }
+
+    getFormFields(): FormFieldDefinition[] {
+        return [];
+    }
 
     private getSchedulerClient(): SchedulerClient {
         if (!this.schedulerClient) {
@@ -178,8 +181,12 @@ export class CronJobIntegrationManager implements
         });
     }
 
-    async processFormSubmission(_req: Request, res: Response): Promise<void> {
-        res.status(400).json({ error: "CronJob is a system integration and cannot be installed" });
+    async processFormSubmission(_input: FormSubmissionInput): Promise<FormSubmissionResult> {
+        return {
+            success: false,
+            error: "CronJob is a system integration and cannot be installed",
+            statusCode: 400,
+        };
     }
 
     private getJobIdForInput(inputId: string): string {

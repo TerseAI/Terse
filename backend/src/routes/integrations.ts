@@ -42,7 +42,7 @@ const getInstallationInformation = async (integration: IntegrationType, userId: 
     }
     
     if (isOAuthIntegrationInstallation<typeof integration>(integrationInstance)) {
-        return await integrationInstance.getInstallationUrl(userId, options);
+        return await integrationInstance.getInstallationUrl(userId, options, undefined);
     }
     
     throw new Error(`Integration ${integration} does not support installation`);
@@ -55,13 +55,12 @@ export async function getAllIntegrations(req: Request, res: Response) {
     }
     const userId = req.session.user.id;
 
-    const hasInstancesResults = await Promise.all(
-        INTEGRATION_REGISTRY.map(integration => integrationHasInstances(integration, userId))
-    );
+    const activeIntegrationTypes = await getUserActiveIntegrations(userId);
+    const activeIntegrationSet = new Set(activeIntegrationTypes);
 
-    const integrations: IntegrationWithStatus[] = INTEGRATION_REGISTRY.map((integration, index) => ({
+    const integrations: IntegrationWithStatus[] = INTEGRATION_REGISTRY.map((integration) => ({
         integrationType: integration.integrationType,
-        isActive: hasInstancesResults[index],
+        isActive: activeIntegrationSet.has(integration.integrationType),
     }));
 
     res.json(integrations);
@@ -75,17 +74,26 @@ export async function getActiveIntegrations(req: Request, res: Response) {
     }
     const userId = req.session.user.id;
 
-    const hasInstancesResults = await Promise.all(
-        INTEGRATION_REGISTRY.map(integration => integrationHasInstances(integration, userId))
-    );
-
-    const activeIntegrations: IntegrationType[] = INTEGRATION_REGISTRY
-        .filter((_, index) => hasInstancesResults[index])
-        .map(integration => integration.integrationType);
+    const activeIntegrations = await getUserActiveIntegrations(userId);
 
     res.json(activeIntegrations);
 }
 
 async function integrationHasInstances(integration: Integration<IntegrationInstance, any, IntegrationDetails>, userId: string): Promise<boolean> {
     return (await integration.getInstancesForUser(userId)).length > 0;
+}
+
+/**
+ * Gets all active integration types for a user
+ * @param userId - The user ID to query integrations for
+ * @returns Array of IntegrationType that the user has active instances for
+ */
+export async function getUserActiveIntegrations(userId: string): Promise<IntegrationType[]> {
+    const hasInstancesResults = await Promise.all(
+        INTEGRATION_REGISTRY.map(integration => integrationHasInstances(integration, userId))
+    );
+    
+    return INTEGRATION_REGISTRY
+        .filter((_, index) => hasInstancesResults[index])
+        .map(integration => integration.integrationType);
 }

@@ -1,7 +1,7 @@
-import { Integration, OAuthIntegrationInstallation } from "./abstract/Integration";
+import { Integration, OAuthIntegrationInstallation, ConfigurationFieldDefinition } from "./abstract/Integration";
 import { db } from "../prismaClient";
 import { LinearIntegration, LinearIntegrationMetadata } from "../shared/Integrations";
-import { IntegrationType } from "../shared/Integrations";
+import { IntegrationType, InstallationOptionsFor, AdditionalStateParams } from "../shared/Integrations";
 import { ChannelInputWithConfigs } from "../types/prisma";
 import { OAuthInstallationDetails } from "../shared/types";
 import jwt from "jsonwebtoken";
@@ -15,10 +15,17 @@ import { InputConfigType } from "@prisma/client";
 import { RunHistoryTrigger } from "../shared/RunHistoryTypes";
 import { EventProcessor } from "../agent/ChannelAgent/EventProcessor";
 import logger, { runWithUserContext } from "../logger";
+import { createOAuthStateToken } from "../utility/oauth";
+import { integrationTaskQueue } from "./IntegrationTaskQueues";
+import { IntegrationCompletedTask } from "./IntegrationCompletedTask";
 
 export class LinearIntegrationManager implements Integration<LinearIntegration, LinearWebhookPayload, typeof LinearIntegrationMetadata>, OAuthIntegrationInstallation<IntegrationType.LINEAR> {
     constructor() { }
     integrationType: IntegrationType = IntegrationType.LINEAR;
+
+    getConfigurationFields(): ConfigurationFieldDefinition[] {
+        return [];
+    }
 
     async getInstancesForUser(userId: string): Promise<LinearIntegration[]> {
         const linearIntegrations = await db().linear_integrations.findMany({
@@ -132,13 +139,13 @@ export class LinearIntegrationManager implements Integration<LinearIntegration, 
         }
     }
 
-    async getInstallationUrl(userId: string): Promise<OAuthInstallationDetails> {
+    async getInstallationUrl(userId: string, options?: InstallationOptionsFor<IntegrationType.LINEAR>, additionalStatePayload?: AdditionalStateParams): Promise<OAuthInstallationDetails> {
         // Generate state token for security (prevents CSRF)
-        const state = jwt.sign(
-            { userId: userId, timestamp: Date.now() },
-            settings.jwt.secret,
-            { expiresIn: "10m" }
-        );
+        const state = createOAuthStateToken({
+            userId,
+            additionalFields: { timestamp: Date.now() },
+            additionalStatePayload,
+        });
 
         const clientId = settings.linear.clientId;
         const redirectUri = settings.linear.oauthCallbackUrl;
@@ -230,8 +237,9 @@ export class LinearIntegrationManager implements Integration<LinearIntegration, 
                 },
             });
 
+            let integrationId: string;
             if (!existing) {
-                await db().linear_integrations.create({
+                const newIntegration = await db().linear_integrations.create({
                     data: {
                         user_id: decoded.userId,
                         linear_user_id: linearUser.id,
@@ -242,6 +250,7 @@ export class LinearIntegrationManager implements Integration<LinearIntegration, 
                         token_expiry: tokenExpiry,
                     },
                 });
+                integrationId = newIntegration.id;
                 logger.info("✅ Created Linear OAuth connection", { workspaceName: organization.name, userId: decoded.userId });
             } else {
                 // Update existing connection with new token (in case it was revoked and re-authorized)
@@ -253,10 +262,20 @@ export class LinearIntegrationManager implements Integration<LinearIntegration, 
                         token_expiry: tokenExpiry
                     },
                 });
+                integrationId = existing.id;
                 logger.info("✅ Updated Linear OAuth connection token", { workspaceName: organization.name, integrationId: existing.id, userId: decoded.userId });
             }
 
             logger.info("✅ Linear OAuth completed for user", { userId: decoded.userId, workspaceName: organization.name });
+
+            // Emit integration completed task (includes full state payload for chat metadata detection)
+            integrationTaskQueue.emit(new IntegrationCompletedTask(
+                IntegrationType.LINEAR,
+                integrationId,
+                decoded.userId,
+                decoded,
+                new Date()
+            ));
 
             // Redirect to success page which will auto-close the popup
             res.redirect(`${urls.frontend}/oauth/success`);

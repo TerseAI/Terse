@@ -22,10 +22,10 @@ export function buildChatAgentTools(chatInterface: ChatInterface): Tool<void>[] 
             name: 'promptForIntegration',
             description: 'Prompt for an integration',
             parameters: z.object({
-                integration: z.string().describe('The integration to prompt for'),
+                integration: z.nativeEnum(IntegrationType).describe('The integration to prompt for'),
             }),
-            execute: async ({ integration }: { integration: string }, runContext?: RunContext<void>): Promise<string> => {
-                return await chatInterface.promptForIntegration(parseIntegration(integration));
+            execute: async ({ integration }: { integration: IntegrationType }, runContext?: RunContext<void>): Promise<string> => {
+                return await chatInterface.promptForIntegration(integration);
             },
         }),
         tool({
@@ -43,10 +43,6 @@ export function buildChatAgentTools(chatInterface: ChatInterface): Tool<void>[] 
 
 function parseChannel(draft: string): Channel {
     return JSON.parse(draft) as Channel;
-}
-
-function parseIntegration(integration: string): IntegrationType {
-    return integration as IntegrationType;
 }
 
 function parseConfig(config: string): ConfigType {

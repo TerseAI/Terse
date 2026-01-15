@@ -1,5 +1,5 @@
 import { OAuthInstallationDetails } from "../../shared/types";
-import { IntegrationInstance, IntegrationDetails, IntegrationType, InstallationOptionsFor } from "../../shared/Integrations";
+import { IntegrationInstance, IntegrationDetails, IntegrationType, InstallationOptionsFor, AdditionalStateParams } from "../../shared/Integrations";
 import { ChannelInputWithConfigs } from "../../types/prisma";
 import { Request, Response } from "express";
 
@@ -14,15 +14,56 @@ export interface Integration<T extends IntegrationInstance, W, M extends Integra
     teardownChannelInput(integrationId: string, channelInput: ChannelInputWithConfigs): Promise<void>;
 }
 
-export interface OAuthIntegrationInstallation<T extends IntegrationType> {
-    getInstallationUrl(userId: string, options: InstallationOptionsFor<T>): Promise<OAuthInstallationDetails>;
-    processInstallationCallback(req: Request, res: Response): Promise<void>;
-    refreshToken(integrationId: string): Promise<boolean>;
-    getAccessToken(integrationId: string): Promise<string | null>;
+export type FormFieldType = 'text' | 'password' | 'textarea';
+
+export interface FormFieldDefinition {
+    name: string;
+    type: FormFieldType;
+    label: string;
+    placeholder?: string;
+    required?: boolean;
+    hint?: string;
+}
+
+export interface FormSubmissionInput {
+    userId: string;
+    formValues: Record<string, string>;
+}
+
+export interface FormSubmissionResult {
+    success: boolean;
+    data?: any;
+    error?: string;
+    statusCode?: number;
 }
 
 export interface FormIntegrationInstallation<T extends IntegrationType> {
-    processFormSubmission(req: Request, res: Response): Promise<void>;
+    getFormFields(): FormFieldDefinition[];
+    processFormSubmission(input: FormSubmissionInput): Promise<FormSubmissionResult>;
+}
+
+export type ConfigurationFieldType = 'radio' | 'select';
+
+export interface ConfigurationOption {
+    label: string;
+    value: string;
+}
+
+export interface ConfigurationFieldDefinition {
+    name: string;
+    type: ConfigurationFieldType;
+    label: string;
+    options: ConfigurationOption[]; // Required for radio and select fields
+    required?: boolean;
+    hint?: string;
+}
+
+export interface OAuthIntegrationInstallation<T extends IntegrationType> {
+    getInstallationUrl(userId: string, options?: InstallationOptionsFor<T>, additionalStatePayload?: AdditionalStateParams): Promise<OAuthInstallationDetails>;
+    processInstallationCallback(req: Request, res: Response): Promise<void>;
+    refreshToken(integrationId: string): Promise<boolean>;
+    getAccessToken(integrationId: string): Promise<string | null>;
+    getConfigurationFields(): ConfigurationFieldDefinition[];
 }
 
 // Type guards
@@ -35,4 +76,33 @@ export function isOAuthIntegrationInstallation<T extends IntegrationType>(
         'getInstallationUrl' in obj &&
         typeof obj.getInstallationUrl === 'function'
     );
+}
+
+export function isFormIntegrationInstallation<T extends IntegrationType>(
+    obj: any
+): obj is FormIntegrationInstallation<T> {
+    return (
+        obj !== null &&
+        typeof obj === 'object' &&
+        'getFormFields' in obj &&
+        typeof obj.getFormFields === 'function' &&
+        'processFormSubmission' in obj &&
+        typeof obj.processFormSubmission === 'function'
+    );
+}
+
+/**
+ * Parse form submission input from an Express Request object.
+ * Extracts userId from session and formValues from body.
+ * Returns null if user is not authenticated.
+ */
+export function parseFormSubmissionFromRequest(req: Request): FormSubmissionInput | null {
+    if (!req.session?.user) {
+        return null;
+    }
+
+    return {
+        userId: req.session.user.id,
+        formValues: req.body || {},
+    };
 }

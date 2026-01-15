@@ -47,9 +47,12 @@ importers:
       '@slack/bolt':
         specifier: ^4.6.0
         version: 4.6.0(@types/express@5.0.3)
+      '@slack/types':
+        specifier: ^2.19.0
+        version: 2.19.0
       '@slack/web-api':
-        specifier: ^7.9.3
-        version: 7.9.3
+        specifier: ^7.13.0
+        version: 7.13.0
       '@socket.io/redis-adapter':
         specifier: ^8.3.0
         version: 8.3.0(socket.io-adapter@2.5.5)
@@ -762,20 +765,12 @@ packages:
     resolution: {integrity: sha512-VaapvmrAifeFLAFaDPfGhEwwunTKsI6bQhYzxRXw7BSujZUae5sANO76WqlVsLXuhVtCVrBWPiS2snAQR2RHJQ==}
     engines: {node: '>= 18', npm: '>= 8.6.0'}
 
-  '@slack/types@2.15.0':
-    resolution: {integrity: sha512-livb1gyG3J8ATLBJ3KjZfjHpTRz9btY1m5cgNuXxWJbhwRB1Gwb8Ly6XLJm2Sy1W6h+vLgqIHg7IwKrF1C1Szg==}
-    engines: {node: '>= 12.13.0', npm: '>= 6.12.0'}
-
   '@slack/types@2.19.0':
     resolution: {integrity: sha512-7+QZ38HGcNh/b/7MpvPG6jnw7mliV6UmrquJLqgdxkzJgQEYUcEztvFWRU49z0x4vthF0ixL5lTK601AXrS8IA==}
     engines: {node: '>= 12.13.0', npm: '>= 6.12.0'}
 
   '@slack/web-api@7.13.0':
     resolution: {integrity: sha512-ERcExbWrnkDN8ovoWWe6Wgt/usanj1dWUd18dJLpctUI4mlPS0nKt81Joh8VI+OPbNnY1lIilVt9gdMBD9U2ig==}
-    engines: {node: '>= 18', npm: '>= 8.6.0'}
-
-  '@slack/web-api@7.9.3':
-    resolution: {integrity: sha512-xjnoldVJyoUe61Ltqjr2UVYBolcsTpp5ottqzSI3l41UCaJgHSHIOpGuYps+nhLFvDfGGpDGUeQ7BWiq3+ypqA==}
     engines: {node: '>= 18', npm: '>= 8.6.0'}
 
   '@socket.io/component-emitter@3.1.2':
@@ -3167,8 +3162,6 @@ snapshots:
       - debug
       - utf-8-validate
 
-  '@slack/types@2.15.0': {}
-
   '@slack/types@2.19.0': {}
 
   '@slack/web-api@7.13.0':
@@ -3178,23 +3171,6 @@ snapshots:
       '@types/node': 24.3.0
       '@types/retry': 0.12.0
       axios: 1.13.2
-      eventemitter3: 5.0.1
-      form-data: 4.0.4
-      is-electron: 2.2.2
-      is-stream: 2.0.1
-      p-queue: 6.6.2
-      p-retry: 4.6.2
-      retry: 0.13.1
-    transitivePeerDependencies:
-      - debug
-
-  '@slack/web-api@7.9.3':
-    dependencies:
-      '@slack/logger': 4.0.0
-      '@slack/types': 2.15.0
-      '@types/node': 24.3.0
-      '@types/retry': 0.12.0
-      axios: 1.11.0
       eventemitter3: 5.0.1
       form-data: 4.0.4
       is-electron: 2.2.2
