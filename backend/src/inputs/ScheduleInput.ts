@@ -7,6 +7,12 @@ export class ScheduleInput implements Input<TimeTriggerConfig> {
 
     constructor() {}
 
+    async validateConfig(input: TimeTriggerConfig, _userId: string): Promise<void> {
+        if (!input.cronExpression) {
+            throw new Error('Invalid input config for time_trigger: missing cronExpression');
+        }
+    }
+
     async addInputToChannel(tx: PrismaTransaction, automationInputId: string, input: TimeTriggerConfig): Promise<void> {
         await tx.automation_time_trigger_configs.create({
             data: {

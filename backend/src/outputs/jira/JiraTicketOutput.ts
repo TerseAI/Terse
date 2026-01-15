@@ -59,6 +59,10 @@ export class JiraTicketOutput extends Output<JiraTicketSession, JiraConfig> {
         };
     }
 
+    async validateConfig(_output: JiraConfig, _userId: string): Promise<void> {
+        // No additional config validation beyond integration ownership.
+    }
+
     async addOutputToChannel(tx: PrismaTransaction, channelOutputId: string, output: JiraConfig): Promise<void> {
         await tx.automation_jira_configs.create({
             data: {

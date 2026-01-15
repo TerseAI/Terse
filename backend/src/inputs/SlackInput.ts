@@ -11,6 +11,12 @@ export class SlackInput implements Input<SlackConfig> {
         this.integrationManager = new SlackIntegrationManager();
     }
 
+    async validateConfig(input: SlackConfig, _userId: string): Promise<void> {
+        if (!input.channelId && !input.listenToUserDms) {
+            throw new Error('Invalid input config for slack: requires channelId or listenToUserDms=true');
+        }
+    }
+
     async addInputToChannel(tx: PrismaTransaction, channelInputId: string, input: SlackConfig): Promise<void> {
         await tx.automation_slack_configs.create({
             data: {
