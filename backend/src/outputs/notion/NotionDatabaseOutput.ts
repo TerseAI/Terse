@@ -7,6 +7,8 @@ import { NotionConfig } from "../../shared/Configs";
 import { OutputConfigType } from "@prisma/client";
 import { notionQueryDatabaseTool, notionModifyPageTool, notionGetSchemaTool } from "./tools";
 import { IntegrationType } from "../../shared/Integrations";
+import { NotionIntegrationManager } from "../../integrations/NotionIntegration";
+import logger from "../../logger";
 
 export interface NotionDatabaseSession extends Session {
     notionIntegration: NotionIntegration; // Top level integration record
@@ -45,8 +47,22 @@ export class NotionDatabaseOutput extends Output<NotionDatabaseSession, NotionCo
             throw new Error(`Notion config for channel output ${channelOutputConfig.id} not found`);
         }
 
+        const manager = new NotionIntegrationManager();
+        const accessToken = await manager.getAccessToken(integration.id);
+        if (!accessToken) {
+            logger.error("Failed to fetch Notion access token for database output", {
+                integrationId: integration.id,
+                userId: user.id,
+                workspaceId: integration.workspace_id,
+            });
+            throw new Error(`Notion integration ${integrationId} could not provide an access token`);
+        }
+
         return {
-            notionIntegration: integration,
+            notionIntegration: {
+                ...integration,
+                integration_token: accessToken,
+            },
             notionConfig: notionConfig,
             user: user,
             isUserInitiated: true,
@@ -122,4 +138,3 @@ This workflow ensures you work with the database correctly and prevents duplicat
 `;
     }
 }
-

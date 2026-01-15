@@ -274,6 +274,8 @@ model notion_integrations {
   workspace_id      String?
   workspace_name    String?
   integration_token String
+  refresh_token     String?
+  access_token_expires_at DateTime?
   created_at        DateTime @default(now())
   updated_at        DateTime @updatedAt
 

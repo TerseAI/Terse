@@ -4,7 +4,7 @@ import { NotionIntegration, NotionIntegrationMetadata } from "../shared/Integrat
 import { OAuthInstallationDetails } from "../shared/types";
 import { ChannelInputWithConfigs } from "../types/prisma";
 import jwt from "jsonwebtoken";
-import { notion as notionConfig, jwt as jwtSettings, urls } from "../config/settings";
+import { notion as notionConfig, jwt as jwtSettings, urls, OAUTH_TOKEN_REFRESH_THRESHOLD_MS } from "../config/settings";
 import { Request, Response } from "express";
 import { IntegrationType } from "../shared/Integrations";
 import logger from "../logger";
@@ -117,9 +117,19 @@ export class NotionIntegrationManager implements Integration<NotionIntegration, 
             }
 
             const tokenData = await tokenResponse.json();
-            const { access_token, workspace_id, workspace_name } = tokenData;
+            const { access_token, workspace_id, workspace_name, refresh_token, expires_in } = tokenData;
+
+            const accessTokenExpiresAt = typeof expires_in === "number"
+                ? new Date(Date.now() + (expires_in * 1000))
+                : null;
 
             logger.info("🔑 Received Notion access token for user", { userId: decoded.userId, workspaceName: workspace_name || workspace_id });
+            if (!refresh_token) {
+                logger.warn("Notion OAuth response missing refresh token", {
+                    userId: decoded.userId,
+                    workspaceName: workspace_name || workspace_id,
+                });
+            }
 
             // Check if a connection for this workspace already exists
             const existing = await db().notion_integrations.findFirst({
@@ -136,6 +146,8 @@ export class NotionIntegrationManager implements Integration<NotionIntegration, 
                         workspace_id: workspace_id || null,
                         workspace_name: workspace_name || null,
                         integration_token: access_token,
+                        refresh_token: refresh_token || null,
+                        access_token_expires_at: accessTokenExpiresAt,
                     },
                 });
 
@@ -145,6 +157,8 @@ export class NotionIntegrationManager implements Integration<NotionIntegration, 
                     where: { id: existing.id },
                     data: {
                         integration_token: access_token,
+                        refresh_token: refresh_token || existing.refresh_token,
+                        access_token_expires_at: accessTokenExpiresAt,
                     },
                 });
                 logger.info("✅ Updated Notion connection token", { workspaceName: workspace_name || "Workspace", integrationId: existing.id, userId: decoded.userId });
@@ -175,9 +189,93 @@ export class NotionIntegrationManager implements Integration<NotionIntegration, 
     }
 
     async refreshToken(integrationId: string): Promise<boolean> {
-        // Notion OAuth doesn't use refresh tokens - tokens are long-lived
-        // Return false to indicate no refresh was needed/performed
-        return false;
+        try {
+            const integration = await db().notion_integrations.findUnique({
+                where: { id: integrationId },
+                select: {
+                    id: true,
+                    user_id: true,
+                    workspace_id: true,
+                    workspace_name: true,
+                    refresh_token: true,
+                    access_token_expires_at: true,
+                },
+            });
+
+            if (!integration) {
+                logger.warn("Notion integration not found for refresh", { integrationId });
+                return false;
+            }
+
+            if (!integration.refresh_token) {
+                logger.warn("No refresh token available for Notion integration", {
+                    integrationId,
+                    userId: integration.user_id,
+                    workspaceId: integration.workspace_id,
+                });
+                return false;
+            }
+
+            const tokenResponse = await fetch("https://api.notion.com/v1/oauth/token", {
+                method: "POST",
+                headers: {
+                    Authorization: `Basic ${Buffer.from(
+                        `${notionConfig.clientId}:${notionConfig.clientSecret}`
+                    ).toString("base64")}`,
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    grant_type: "refresh_token",
+                    refresh_token: integration.refresh_token,
+                }),
+            });
+
+            if (!tokenResponse.ok) {
+                const errorText = await tokenResponse.text();
+                logger.error("Notion token refresh failed", {
+                    error: errorText,
+                    integrationId,
+                    userId: integration.user_id,
+                    workspaceId: integration.workspace_id,
+                });
+                return false;
+            }
+
+            const tokenData = await tokenResponse.json();
+            const { access_token, refresh_token, expires_in } = tokenData;
+
+            if (!access_token) {
+                logger.error("Notion refresh response missing access token", {
+                    integrationId,
+                    userId: integration.user_id,
+                    workspaceId: integration.workspace_id,
+                });
+                return false;
+            }
+
+            const accessTokenExpiresAt = typeof expires_in === "number"
+                ? new Date(Date.now() + (expires_in * 1000))
+                : integration.access_token_expires_at;
+
+            await db().notion_integrations.update({
+                where: { id: integrationId },
+                data: {
+                    integration_token: access_token,
+                    refresh_token: refresh_token || integration.refresh_token,
+                    access_token_expires_at: accessTokenExpiresAt,
+                },
+            });
+
+            logger.info("✅ Refreshed Notion access token", {
+                integrationId,
+                userId: integration.user_id,
+                workspaceId: integration.workspace_id,
+            });
+            return true;
+        } catch (error) {
+            logger.error("Error refreshing Notion access token", { error, integrationId });
+            return false;
+        }
     }
 
     async getAccessToken(integrationId: string): Promise<string | null> {
@@ -186,6 +284,11 @@ export class NotionIntegrationManager implements Integration<NotionIntegration, 
                 where: { id: integrationId },
                 select: {
                     integration_token: true,
+                    refresh_token: true,
+                    access_token_expires_at: true,
+                    user_id: true,
+                    workspace_id: true,
+                    workspace_name: true,
                 },
             });
 
@@ -194,7 +297,44 @@ export class NotionIntegrationManager implements Integration<NotionIntegration, 
                 return null;
             }
 
-            // Notion tokens are long-lived and don't expire, so just return the token
+            const now = new Date();
+            if (
+                integration.access_token_expires_at &&
+                integration.access_token_expires_at <= new Date(now.getTime() + OAUTH_TOKEN_REFRESH_THRESHOLD_MS)
+            ) {
+                logger.info("Notion access token expiring soon, refreshing", {
+                    integrationId,
+                    userId: integration.user_id,
+                    workspaceId: integration.workspace_id,
+                });
+
+                if (!integration.refresh_token) {
+                    logger.error("Notion integration missing refresh token when refresh is required", {
+                        integrationId,
+                        userId: integration.user_id,
+                        workspaceId: integration.workspace_id,
+                    });
+                    return integration.integration_token || null;
+                }
+
+                const refreshed = await this.refreshToken(integrationId);
+                if (!refreshed) {
+                    logger.error("Notion access token refresh failed", {
+                        integrationId,
+                        userId: integration.user_id,
+                        workspaceId: integration.workspace_id,
+                    });
+                    return integration.integration_token || null;
+                }
+
+                const updatedIntegration = await db().notion_integrations.findUnique({
+                    where: { id: integrationId },
+                    select: { integration_token: true },
+                });
+
+                return updatedIntegration?.integration_token || null;
+            }
+
             return integration.integration_token || null;
         } catch (error) {
             logger.error(`Error getting Notion access token for integration ${integrationId}`, { error, integrationId });
@@ -202,4 +342,3 @@ export class NotionIntegrationManager implements Integration<NotionIntegration, 
         }
     }
 }
-

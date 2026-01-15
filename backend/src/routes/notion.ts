@@ -64,6 +64,11 @@ export const getNotionResources = async (req: Request, res: Response) => {
     const manager = new NotionIntegrationManager();
     const accessToken = await manager.getAccessToken(integrationId);
     if (!accessToken) {
+      logger.error("Failed to resolve Notion access token for resource search", {
+        integrationId,
+        userId: user.id,
+        workspaceId: integration.workspace_id,
+      });
       return res.status(400).json({ error: "Could not get valid access token" });
     }
 

@@ -8,6 +8,8 @@ import { OutputConfigType } from "@prisma/client";
 import { NotionPageConfig } from "../../shared/Configs";
 import { notionQueryPageTool, notionModifyBlocksTool, fetchRelatedEventsTool } from "./tools";
 import { IntegrationType } from "../../shared/Integrations";
+import { NotionIntegrationManager } from "../../integrations/NotionIntegration";
+import logger from "../../logger";
 
 export interface NotionPageSession extends Session {
     notionIntegration: NotionIntegration; // Top level integration record
@@ -45,7 +47,26 @@ export class NotionPageOutput extends Output<NotionPageSession, NotionPageConfig
             throw new Error(`Notion page config for automation output ${channelOutputConfig.id} not found`);
         }
 
-        return { notionIntegration: integration, notionPageConfig: notionPageConfig, user: user, isUserInitiated: true };
+        const manager = new NotionIntegrationManager();
+        const accessToken = await manager.getAccessToken(integration.id);
+        if (!accessToken) {
+            logger.error("Failed to fetch Notion access token for page output", {
+                integrationId: integration.id,
+                userId: user.id,
+                workspaceId: integration.workspace_id,
+            });
+            throw new Error(`Notion integration ${integrationId} could not provide an access token`);
+        }
+
+        return {
+            notionIntegration: {
+                ...integration,
+                integration_token: accessToken,
+            },
+            notionPageConfig: notionPageConfig,
+            user: user,
+            isUserInitiated: true,
+        };
     }
 
     async addOutputToChannel(tx: PrismaTransaction, channelOutputId: string, output: NotionPageConfig): Promise<void> {
