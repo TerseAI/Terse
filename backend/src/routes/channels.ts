@@ -286,7 +286,7 @@ export async function createChannel(req: Request, res: Response) {
     }
 
     const userId = req.session.user.id;
-    const { name, inputs, output, knowledgeBases, prompt, isActive = true, requireApproval = false, notificationSettings } = req.body as ChannelUpdate;
+    const { name, inputs, output, knowledgeBases, prompt, isActive = true, requireApproval = false, notificationSettings } = req.body as Channel;
     logger.debug("Output from frontend", { output: JSON.stringify(output, null, 2), userId });
     logger.debug("Inputs from frontend", { inputs: JSON.stringify(inputs, null, 2), userId });
     logger.debug("Knowledge bases from frontend", { knowledgeBases: JSON.stringify(knowledgeBases, null, 2), userId });
