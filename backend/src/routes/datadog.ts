@@ -2,27 +2,7 @@ import { Request, Response } from "express";
 import { DatadogIntegrationManager } from "../integrations/DatadogIntegration";
 import { db } from "../prismaClient";
 import logger from "../logger";
-
-// Map region to Datadog site configuration
-function getDatadogSite(region: string): string {
-    const regionMap: Record<string, string> = {
-        'us': 'datadoghq.com',
-        'eu': 'datadoghq.eu',
-        'us3': 'us3.datadoghq.com',
-        'us5': 'us5.datadoghq.com',
-        'ap1': 'ap1.datadoghq.com',
-    };
-    return regionMap[region.toLowerCase()] || 'datadoghq.com';
-}
-
-// Get API base URL from region
-function getDatadogApiUrl(region: string): string {
-    const site = getDatadogSite(region);
-    if (site === 'datadoghq.com') {
-        return 'https://api.datadoghq.com';
-    }
-    return `https://api.${site}`;
-}
+import { getDatadogApiUrl } from "../utility/datadog";
 
 export async function getDatadogIntegrations(req: Request, res: Response) {
     if (!req.session?.user) {
