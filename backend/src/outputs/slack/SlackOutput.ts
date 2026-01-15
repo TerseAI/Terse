@@ -58,6 +58,12 @@ export class SlackOutput extends Output<SlackChannelSession, SlackOutputConfig> 
         };
     }
 
+    async validateConfig(output: SlackOutputConfig, _userId: string): Promise<void> {
+        if (!output.channelId) {
+            throw new Error('Invalid output config for slack_output: missing channelId');
+        }
+    }
+
     async addOutputToChannel(tx: PrismaTransaction, channelOutputId: string, output: SlackOutputConfig): Promise<void> {
         await tx.automation_slack_configs.create({
             data: {

@@ -98,10 +98,16 @@ export class PosthogKnowledgeBase extends KnowledgeBase<PosthogKnowledgeBaseSess
         return session;
     }
 
-    async addKnowledgeBaseToChannel(tx: PrismaTransaction, channelKnowledgeBaseId: string, knowledgeBase: PosthogConfig): Promise<void> {
+    async validateConfig(knowledgeBase: PosthogConfig, _userId: string): Promise<void> {
         if (!knowledgeBase.projectId) {
-            throw new Error('Posthog config requires projectId');
+            throw new Error('Invalid knowledge base config for posthog: missing projectId');
         }
+        if (!knowledgeBase.canReadLogs && !knowledgeBase.canReadSessionRecordings) {
+            throw new Error('Invalid knowledge base config for posthog: requires canReadLogs or canReadSessionRecordings');
+        }
+    }
+
+    async addKnowledgeBaseToChannel(tx: PrismaTransaction, channelKnowledgeBaseId: string, knowledgeBase: PosthogConfig): Promise<void> {
         // Use unchecked input to bypass relation checks
         await tx.automation_posthog_configs.create({
             data: {

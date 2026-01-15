@@ -14,6 +14,15 @@ export class FigmaInput implements Input<FigmaConfig> {
         this.integrationManager = new FigmaIntegrationManager();
     }
 
+    async validateConfig(input: FigmaConfig, _userId: string): Promise<void> {
+        const missing: string[] = [];
+        if (!input.fileKey) missing.push('fileKey');
+        if (!input.teamId) missing.push('teamId');
+        if (missing.length > 0) {
+            throw new Error(`Invalid input config for figma: missing ${missing.join(' and ')}`);
+        }
+    }
+
     async addInputToChannel(tx: PrismaTransaction, channelInputId: string, input: FigmaConfig): Promise<void> {
         await tx.automation_figma_configs.create({
             data: {

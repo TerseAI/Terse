@@ -11,6 +11,10 @@ export class GmailInput implements Input<GmailConfig> {
         this.integrationManager = new GmailIntegrationManager();
     }
 
+    async validateConfig(_input: GmailConfig, _userId: string): Promise<void> {
+        // No additional config validation beyond integration ownership.
+    }
+
     async addInputToChannel(tx: PrismaTransaction, channelInputId: string, input: GmailConfig): Promise<void> {
         await tx.automation_gmail_configs.create({
             data: {

@@ -48,6 +48,12 @@ export class NotionPageOutput extends Output<NotionPageSession, NotionPageConfig
         return { notionIntegration: integration, notionPageConfig: notionPageConfig, user: user, isUserInitiated: true };
     }
 
+    async validateConfig(output: NotionPageConfig, _userId: string): Promise<void> {
+        if (!output.pageId) {
+            throw new Error('Invalid output config for notion_page: missing pageId');
+        }
+    }
+
     async addOutputToChannel(tx: PrismaTransaction, channelOutputId: string, output: NotionPageConfig): Promise<void> {
         await tx.automation_notion_page_configs.create({
             data: {
