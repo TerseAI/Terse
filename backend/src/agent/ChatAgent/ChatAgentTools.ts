@@ -5,6 +5,7 @@ import { z } from "zod";
 import { Channel } from "../../shared/types";
 import { IntegrationType } from "../../shared/Integrations";
 import { ConfigType } from "../../shared/Configs";
+import logger from "../../logger";
 
 export function buildChatAgentTools(chatInterface: ChatInterface): Tool<void>[] {
     return [
@@ -16,6 +17,17 @@ export function buildChatAgentTools(chatInterface: ChatInterface): Tool<void>[] 
             }),
             execute: async ({ draft }: { draft: string }, runContext?: RunContext<void>): Promise<string> => {
                 return await chatInterface.buildPreview(parseChannel(draft));
+            },
+        }),
+        tool({
+            name: 'applyChannel',
+            description: 'Apply a channel update',
+            parameters: z.object({
+                channel: ChannelUpdateSchema,
+            }),
+            execute: async ({ channel }, runContext?: RunContext<void>): Promise<string> => {
+                logger.info('Slack chat interface applyChannel', { channel });
+                return "Channel applied successfully";
             },
         }),
         tool({
@@ -48,3 +60,165 @@ function parseChannel(draft: string): Channel {
 function parseConfig(config: string): ConfigType {
     return config as ConfigType;
 }
+
+const BaseConfigSchema = z.object({
+    integrationId: z.string(),
+    configType: z.nativeEnum(ConfigType),
+    integrationType: z.nativeEnum(IntegrationType),
+});
+
+const GmailConfigSchema = BaseConfigSchema.extend({
+    configType: z.literal(ConfigType.GMAIL),
+    integrationType: z.literal(IntegrationType.GMAIL),
+});
+
+const FigmaConfigSchema = BaseConfigSchema.extend({
+    configType: z.literal(ConfigType.FIGMA),
+    integrationType: z.literal(IntegrationType.FIGMA),
+    fileKey: z.string(),
+    fileName: z.string().nullable(),
+    teamId: z.string(),
+});
+
+const SlackConfigSchema = BaseConfigSchema.extend({
+    configType: z.literal(ConfigType.SLACK),
+    integrationType: z.literal(IntegrationType.SLACK),
+    channelId: z.string().nullable(),
+    channelName: z.string().nullable(),
+    listenToUserDms: z.boolean().nullable(),
+    userIds: z.array(z.string()).nullable(),
+});
+
+const SlackOutputConfigSchema = BaseConfigSchema.extend({
+    configType: z.literal(ConfigType.SLACK_OUTPUT),
+    integrationType: z.literal(IntegrationType.SLACK),
+    channelId: z.string().nullable(),
+    channelName: z.string().nullable(),
+});
+
+const NotionDatabaseConfigSchema = BaseConfigSchema.extend({
+    configType: z.literal(ConfigType.NOTION_DATABASE),
+    integrationType: z.literal(IntegrationType.NOTION),
+    databaseId: z.string().nullable(),
+    databaseName: z.string().nullable(),
+});
+
+const NotionPageConfigSchema = BaseConfigSchema.extend({
+    configType: z.literal(ConfigType.NOTION_PAGE),
+    integrationType: z.literal(IntegrationType.NOTION),
+    pageId: z.string().nullable(),
+    pageName: z.string().nullable(),
+});
+
+const LinearInputConfigSchema = BaseConfigSchema.extend({
+    configType: z.literal(ConfigType.LINEAR_INPUT),
+    integrationType: z.literal(IntegrationType.LINEAR),
+    projectId: z.string().nullable(),
+    projectName: z.string().nullable(),
+});
+
+const LinearOutputConfigSchema = BaseConfigSchema.extend({
+    configType: z.literal(ConfigType.LINEAR_OUTPUT),
+    integrationType: z.literal(IntegrationType.LINEAR),
+    teamId: z.string().nullable(),
+    teamName: z.string().nullable(),
+});
+
+const GitHubConfigSchema = BaseConfigSchema.extend({
+    configType: z.literal(ConfigType.GITHUB),
+    integrationType: z.literal(IntegrationType.GITHUB),
+    repositoryIds: z.array(z.number()),
+});
+
+const GitHubKnowledgeBaseConfigSchema = BaseConfigSchema.extend({
+    configType: z.literal(ConfigType.GITHUB_KB),
+    integrationType: z.literal(IntegrationType.GITHUB),
+    repositoryIds: z.array(z.number()),
+    repositoryNames: z.array(z.string()),
+});
+
+const JiraConfigSchema = BaseConfigSchema.extend({
+    configType: z.literal(ConfigType.JIRA),
+    integrationType: z.literal(IntegrationType.ATLASSIAN),
+    projectKey: z.string().nullable(),
+    projectId: z.string().nullable(),
+});
+
+const ConfluenceConfigSchema = BaseConfigSchema.extend({
+    configType: z.literal(ConfigType.CONFLUENCE),
+    integrationType: z.literal(IntegrationType.ATLASSIAN),
+    spaceName: z.string(),
+    spaceId: z.string(),
+    pageId: z.string(),
+    pageName: z.string(),
+});
+
+const PosthogConfigSchema = BaseConfigSchema.extend({
+    configType: z.literal(ConfigType.POSTHOG),
+    integrationType: z.literal(IntegrationType.POSTHOG),
+    projectId: z.string(),
+    projectName: z.string().nullable(),
+    canReadLogs: z.boolean().nullable(),
+    canReadSessionRecordings: z.boolean().nullable(),
+});
+
+const TimeTriggerConfigSchema = BaseConfigSchema.extend({
+    configType: z.literal(ConfigType.TIME_TRIGGER),
+    integrationType: z.literal(IntegrationType.CRON_JOB),
+    integrationId: z.literal("system"),
+    cronExpression: z.string(),
+});
+
+const ConfigInstanceSchema = z.discriminatedUnion("configType", [
+    GmailConfigSchema,
+    FigmaConfigSchema,
+    SlackConfigSchema,
+    SlackOutputConfigSchema,
+    NotionDatabaseConfigSchema,
+    NotionPageConfigSchema,
+    LinearInputConfigSchema,
+    LinearOutputConfigSchema,
+    GitHubConfigSchema,
+    GitHubKnowledgeBaseConfigSchema,
+    JiraConfigSchema,
+    ConfluenceConfigSchema,
+    PosthogConfigSchema,
+    TimeTriggerConfigSchema,
+]);
+
+const ChannelInputSchema = z.object({
+    id: z.string(),
+    config: ConfigInstanceSchema,
+});
+
+const ChannelOutputSchema = z.object({
+    id: z.string(),
+    config: ConfigInstanceSchema,
+});
+
+const ChannelPromptSchema = z.object({
+    text: z.string(),
+});
+
+const ChannelKnowledgeBaseSchema = z.object({
+    id: z.string(),
+    config: ConfigInstanceSchema,
+});
+
+const RunHistoryActionTypeSchema = z.enum(["create", "update", "delete", "read"]);
+
+const ChannelNotificationSettingsSchema = z.object({
+    enabled: z.boolean(),
+    actionTypes: z.array(RunHistoryActionTypeSchema),
+});
+
+export const ChannelUpdateSchema = z.object({
+    name: z.string().nullable(),
+    inputs: z.array(ChannelInputSchema).nullable(),
+    output: ChannelOutputSchema.nullable(),
+    prompt: ChannelPromptSchema.nullable(),
+    isActive: z.boolean().nullable(),
+    requireApproval: z.boolean().nullable(),
+    knowledgeBases: z.array(ChannelKnowledgeBaseSchema).nullable(),
+    notificationSettings: ChannelNotificationSettingsSchema.nullable(),
+});

@@ -53,7 +53,7 @@ class SlackChatInterface extends ChatInterface {
     async buildPreview(draft: Channel): Promise<string> {
         return '';
     }
-
+    
     private async handleFormIntegrationInstallation(integration: IntegrationType): Promise<string> {
         try {
             // Create state payload with chat metadata
