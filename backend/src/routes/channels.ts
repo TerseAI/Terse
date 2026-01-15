@@ -366,9 +366,7 @@ export async function createChannel(req: Request, res: Response) {
             }
 
             logger.debug("Output integration ID", { outputIntegrationId, userId });
-
             logger.debug("Output integration type", { outputIntegrationType, userId });
-
             logger.debug("Creating new output", { output: JSON.stringify(output, null, 2), userId });
 
             const newOutput = await tx.automation_outputs.create({
