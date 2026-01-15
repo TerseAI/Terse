@@ -1,12 +1,14 @@
 import { Session } from "../../server";
 import { ChannelKnowledgeBaseWithConfigs, PrismaTransaction, User } from "../../types/prisma";
 import { KnowledgeBaseConfigType } from "@prisma/client";
-import { ConfigInstance, DatadogConfig } from "../../shared/Configs";
+import { DatadogConfig } from "../../shared/Configs";
 import { IntegrationType } from "../../shared/Integrations";
 import { ToolboxEntry } from "../../outputs/abstract/Output";
 import { KnowledgeBase } from "../abstract/KnowledgeBase";
 import { searchDatadogLogsTool } from "./tools/searchLogs";
 import { searchRumEventsTool } from "./tools/searchRumEvents";
+import { listRumEventsTool } from "./tools/listRumEvents";
+import { aggregateRumEventsTool } from "./tools/aggregateRumEvents";
 import { db } from "../../prismaClient";
 import logger from "../../logger";
 
@@ -31,7 +33,17 @@ export class DatadogKnowledgeBase extends KnowledgeBase<DatadogKnowledgeBaseSess
                 integration: IntegrationType.DATADOG
             },
             {
+                tool: listRumEventsTool,
+                isReadOnly: true,
+                integration: IntegrationType.DATADOG
+            },
+            {
                 tool: searchRumEventsTool,
+                isReadOnly: true,
+                integration: IntegrationType.DATADOG
+            },
+            {
+                tool: aggregateRumEventsTool,
                 isReadOnly: true,
                 integration: IntegrationType.DATADOG
             }
@@ -123,20 +135,49 @@ AVAILABLE TOOLS:
   Supports pagination (cursor parameter) and sorting.
   USE FOR: Backend/server-side logs, infrastructure logs, application logs, service-level events.
 
+• listRumEvents: List Datadog RUM (Real User Monitoring) events using the simple GET endpoint.
+  Returns recent RUM events including sessions, views, actions, errors, resources, and long tasks.
+  Supports basic filtering via query string, time range, pagination, and sorting.
+  USE FOR: Discovery and exploration - when it's ambiguous what you should be querying on.
+  Use this first to discover what RUM events exist and understand available event types, 
+  attributes, and patterns before crafting specific search queries. Great for exploration.
+
 • searchRumEvents: Query Datadog RUM (Real User Monitoring) events with flexible filtering.
   Can filter by query string (Datadog RUM search syntax), time range, or combinations.
   Returns RUM events including sessions, views, actions, errors, resources, and long tasks.
-  Supports pagination (cursor parameter) and sorting.
+  Supports pagination (cursor parameter), sorting, and timezone-aware queries.
   USE FOR: Frontend/user behavior, browser/mobile app errors, user sessions, page views, 
   user actions (clicks, inputs), frontend performance issues, client-side errors.
+  Use when you know exactly what you're looking for and need individual events or detailed event data.
+
+• aggregateRumEvents: Aggregate Datadog RUM events into computed metrics and timeseries.
+  Computes metrics like percentiles (pc90, pc95, pc99), averages, sums, min, max, cardinality.
+  Can group by facets (e.g., view name, service, browser) to see breakdowns.
+  Supports filtering with RUM search syntax.
+  USE FOR: Performance analysis (page load times, response times), error rates by dimension,
+  user behavior patterns, trending metrics over time, comparing metrics across different groups
+  (e.g., browser types, services, page views). Use when you need aggregated statistics or trends
+  rather than individual events.
 
 WHEN TO USE WHICH TOOL:
 - Use searchDatadogLogs for backend issues: API errors, server crashes, database problems, 
   service-to-service communication issues, infrastructure problems.
-- Use searchRumEvents for frontend issues: Browser errors, user-reported UI problems, 
-  page load issues, frontend performance problems, user journey analysis, client-side crashes.
-- Use BOTH when investigating end-to-end issues: Start with RUM events to see what the user 
-  experienced, then check logs to find corresponding backend issues. Match timestamps to correlate.
+- Use listRumEvents for discovery: When it's ambiguous what you should be querying on, use this 
+  first to explore what RUM events exist. See what event types, attributes, and patterns are available.
+  This helps you understand the data before crafting specific queries. Use for quick access to recent events.
+- Use searchRumEvents for targeted queries: When you know exactly what you're looking for and need 
+  more control (timezone support, complex filtering). Use for frontend issues: Browser errors, 
+  user-reported UI problems, page load issues, frontend performance problems, user journey analysis, 
+  client-side crashes. Use when you need to see specific events (e.g., a particular error, a specific user session).
+- Use aggregateRumEvents for analytics: Performance trends (e.g., "average page load time"), 
+  error rates (e.g., "errors per view"), distributions (e.g., "pc95 of load time by page"), 
+  comparisons (e.g., "performance by browser type"). Use when you need aggregated metrics,
+  not individual events.
+- RECOMMENDED WORKFLOW: Start with listRumEvents to discover available events, then use searchRumEvents 
+  with specific queries based on what you found. For analytics, use aggregateRumEvents to understand 
+  trends, then drill down with searchRumEvents to investigate specific issues.
+- Use BOTH RUM and logs when investigating end-to-end issues: Start with RUM events to see what 
+  the user experienced, then check logs to find corresponding backend issues. Match timestamps to correlate.
 
 INVESTIGATION STRATEGY:
 Investigate like a human engineer would - be thorough and iterative, not superficial.
@@ -170,20 +211,32 @@ Investigate like a human engineer would - be thorough and iterative, not superfi
    - Multiple conditions: @type:error AND @error.source:(console OR network)
    - Example: @type:view AND @view.url:*checkout* AND @view.loading_time:>3000
 
-5. FILTER BY TIME RANGES:
+5. USE AGGREGATION FOR ANALYTICS (aggregateRumEvents):
+   - Common aggregations: pc90, pc95, pc99 (percentiles), avg (average), sum, min, max, cardinality
+   - Common metrics: @view.time_spent, @view.loading_time, @duration, @action.loading_time
+   - Group by facets: @view.name (page/route), @view.url, @service, @browser.name, @os.name
+   - Examples:
+     * "pc95(@view.loading_time) grouped by @view.name" - Find slowest pages by 95th percentile
+     * "avg(@view.time_spent) grouped by @browser.name" - Compare time spent by browser
+     * "count() grouped by @type" - Count events by type (errors, views, actions)
+     * "avg(@view.loading_time) where @type:view" - Average page load time across all views
+   - Use "total" type for overall aggregates, "timeseries" for time-bucketed results
+   - Group by multiple facets to create multi-dimensional breakdowns
+
+6. FILTER BY TIME RANGES:
    - Use ISO8601 format for precise time filtering
    - Example: from="2020-09-17T11:48:36+01:00", to="2020-09-17T12:48:36+01:00"
    - Or use relative times like "now-1h" or "now-15m" for the from parameter
    - For RUM events, relative times are often more useful for recent user activity
 
-6. CROSS-REFERENCE DATA:
+7. CROSS-REFERENCE DATA:
    - Look for patterns across multiple log entries or RUM events
    - Match timestamps between RUM events and logs to find correlations
    - If a RUM error occurred at time T, check logs around time T for backend issues
    - If logs show an API error, check RUM events around that time to see user impact
    - Check tags and custom attributes for context
 
-7. UNDERSTAND RUM EVENT TYPES:
+8. UNDERSTAND RUM EVENT TYPES:
    - session: User session data (session ID, type, duration, replay availability)
    - view: Page/view information (view name, URL, load time, time spent)
    - action: User actions (clicks, inputs, custom actions)
@@ -191,7 +244,7 @@ Investigate like a human engineer would - be thorough and iterative, not superfi
    - resource: Network resources (API calls, images, scripts, status codes, durations)
    - long_task: Long-running tasks that block the main thread (performance issues)
 
-8. KNOW WHEN TO STOP:
+9. KNOW WHEN TO STOP:
    - You've reviewed data across the relevant timeframe
    - You've checked multiple indexes (for logs) or event types (for RUM)
    - You've cross-referenced between RUM events and logs if investigating end-to-end issues
@@ -215,6 +268,21 @@ When citing RUM EVENT evidence:
 - For views: Include view name, URL, and load time
 - For actions: Include action type and target
 - Include a link to Datadog RUM Explorer if available
+
+When citing RUM AGGREGATION evidence:
+- Include the aggregation function and metric (e.g., "pc95(@view.loading_time)")
+- Include the grouping dimension if applicable (e.g., "grouped by @view.name")
+- Include the computed values for each group
+- Include the time range and filter query used
+- Compare values across groups to highlight differences
+- Include a link to Datadog RUM Explorer if available
+
+Example of GOOD aggregation report:
+"Aggregation of pc95(@view.loading_time) for the last hour grouped by @view.name shows:
+- /dashboard: 2847ms (95th percentile)
+- /checkout: 5234ms (95th percentile) - significantly slower
+- /products: 1234ms (95th percentile)
+The /checkout page is 2x slower than other pages and should be investigated."
 
 Example of GOOD report with RUM events:
 "Found RUM error at 2020-05-26T13:36:14Z in session 'abc123': 
