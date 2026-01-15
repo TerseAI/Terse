@@ -68,7 +68,7 @@ export const searchRumEventsTool = tool({
             const rumApi = new v2.RUMApi(configuration);
 
             // Build request body for RUM events search
-            const requestBody: v2.RUMEventsRequest = {
+            const requestBody: v2.RUMSearchEventsRequest = {
                 filter: {
                     from: from,
                     query: query || undefined,

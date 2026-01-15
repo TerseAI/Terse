@@ -2,11 +2,13 @@ import { DatadogConfig } from "@/shared/Configs";
 import { KnowledgeBaseSelectorProps } from "./KnowledgeBaseSelector";
 import { useDatadogIntegrations } from "@/hooks/api/useDatadogIntegrations";
 import { useDatadogIndexes } from "@/hooks/api/useDatadogIndexes";
+import type { DatadogIndex } from "@/shared/types";
 import { BackendProvider } from "@/services/backend";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { Plus, AlertTriangleIcon, Eye, EyeOff, Info } from "lucide-react";
 import { useState } from "react";
@@ -188,7 +190,7 @@ export function DatadogKnowledgeBaseIntegration({ knowledgeBase, variant, setCon
                                 id="apiKey"
                                 type={showApiKey ? "text" : "password"}
                                 value={apiKey}
-                                onChange={(e) => setApiKey(e.target.value)}
+                                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setApiKey(e.target.value)}
                                 placeholder="Enter your Datadog API key"
                                 disabled={isSubmitting}
                                 required
@@ -241,7 +243,7 @@ export function DatadogKnowledgeBaseIntegration({ knowledgeBase, variant, setCon
                                 id="appKey"
                                 type={showAppKey ? "text" : "password"}
                                 value={appKey}
-                                onChange={(e) => setAppKey(e.target.value)}
+                                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setAppKey(e.target.value)}
                                 placeholder="Enter your Datadog Application key"
                                 disabled={isSubmitting}
                                 required
@@ -312,11 +314,6 @@ export function DatadogKnowledgeBaseIntegration({ knowledgeBase, variant, setCon
         setConfig(newDatadogConfig);
     };
 
-    const selectedIntegration = integrations.find(i => i.id === selectedIntegrationId);
-    const regionLabel = selectedIntegration 
-        ? DATADOG_REGIONS.find(r => r.value === selectedIntegration.region)?.label || selectedIntegration.region.toUpperCase()
-        : null;
-
     return (
         <div className="space-y-4">
             <div className="space-y-2">
@@ -380,7 +377,7 @@ export function DatadogKnowledgeBaseIntegration({ knowledgeBase, variant, setCon
                         </p>
                     ) : (
                         <div className="space-y-2 max-h-48 overflow-y-auto border rounded-md p-3">
-                            {indexes.map((index) => {
+                            {indexes.map((index: DatadogIndex) => {
                                 const isSelected = datadogConfig.defaultIndexes?.includes(index.id) || false;
                                 return (
                                     <div key={index.id} className="flex items-center space-x-2">

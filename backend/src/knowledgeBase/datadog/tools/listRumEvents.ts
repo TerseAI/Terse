@@ -70,8 +70,8 @@ export const listRumEventsTool = tool({
             // Build request parameters for GET endpoint (query string format)
             const params: v2.RUMApiListRUMEventsRequest = {
                 filterQuery: query || undefined,
-                filterFrom: from || undefined,
-                filterTo: to || undefined,
+                filterFrom: from ? new Date(from) : undefined,
+                filterTo: to ? new Date(to) : undefined,
                 sort: sort as 'timestamp' | '-timestamp',
                 pageCursor: pageCursor || undefined,
                 pageLimit: Math.min(limit, 1000), // Datadog max is 1000
