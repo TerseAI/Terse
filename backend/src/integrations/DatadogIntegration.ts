@@ -117,19 +117,15 @@ export class DatadogIntegrationManager implements Integration<DatadogIntegration
             const userId = req.session.user.id;
             const normalizedRegion = region.toLowerCase();
 
-            // Check if integration with the exact same credentials already exists for this user
-            // This allows users to have multiple integrations with different API keys, APP keys, or regions
+            // Check if integration already exists for this user
             const existing = await db().datadog_integrations.findFirst({
                 where: { 
                     user_id: userId,
-                    api_key: apiKey,
-                    app_key: appKey,
-                    region: normalizedRegion,
                 },
             });
 
             if (existing) {
-                // Update existing integration if exact same credentials
+                // Update existing integration with new credentials
                 await db().datadog_integrations.update({
                     where: { id: existing.id },
                     data: {
@@ -144,7 +140,7 @@ export class DatadogIntegrationManager implements Integration<DatadogIntegration
                     region: normalizedRegion
                 });
             } else {
-                // Create new integration - allows multiple integrations per user with different keys/regions
+                // Create new integration
                 const integration = await db().datadog_integrations.create({
                     data: {
                         user_id: userId,
