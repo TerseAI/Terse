@@ -72,6 +72,23 @@ export function PosthogIcon() {
     return <img src="/posthog.png" alt="Posthog" className="w-full h-full object-contain" />;
 }
 
+export function DatadogIcon() {
+    return (
+        <>
+            <img 
+                src="/dd_icon_rgb.png" 
+                alt="Datadog" 
+                className="w-full h-full object-contain dark:hidden" 
+            />
+            <img 
+                src="/dd_icon_white.png" 
+                alt="Datadog" 
+                className="w-full h-full object-contain hidden dark:block" 
+            />
+        </>
+    );
+}
+
 export function CalendarClockIcon() {
     return (
         <svg className="w-full h-full text-[theme(text-primary)]" viewBox="0 0 24 24" fill="currentColor">

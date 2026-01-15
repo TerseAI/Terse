@@ -41,6 +41,7 @@ model users {
   github_app_tokens         github_app_tokens[]
   notification_destinations user_notification_destinations[]
   posthog_integrations      posthog_integrations[]
+  datadog_integrations      datadog_integrations[]
 }
 
 model github_repositories {
@@ -381,6 +382,20 @@ model posthog_integrations {
   @@index([user_id])
 }
 
+model datadog_integrations {
+  id         String   @id @default(cuid())
+  user_id    String
+  api_key    String
+  app_key    String
+  region     String
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  user users @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id])
+}
+
 // Activity Feed - Starting with GitHub Events
 model activity_events {
   id                   String          @id @default(cuid())
@@ -552,6 +567,7 @@ model automation_knowledge_bases {
 
   posthog_config   automation_posthog_configs?
   github_kb_config automation_github_kb_configs?
+  datadog_config   automation_datadog_configs?
 
   @@index([automation_id])
   @@index([config_type, integration_id])
@@ -578,6 +594,18 @@ model automation_github_kb_configs {
   repository_names             String[] // Repository full names (owner/repo) for display
 
   automation_knowledge_base automation_knowledge_bases @relation(fields: [automation_knowledge_base_id], references: [id], onDelete: Cascade)
+}
+
+// Datadog Knowledge Base Configuration
+model automation_datadog_configs {
+  id                           String   @id @default(cuid())
+  automation_knowledge_base_id String   @unique // FK to automation_knowledge_bases
+  default_indexes              String[] @default(["main"]) // Default log indexes to search, stored as JSON array
+  can_read_logs                Boolean  @default(true)
+
+  automation_knowledge_base automation_knowledge_bases @relation(fields: [automation_knowledge_base_id], references: [id], onDelete: Cascade)
+
+  @@index([default_indexes])
 }
 
 // Automation Configuration Tables - Typed config per integration type
@@ -795,6 +823,7 @@ enum IntegrationType {
   TERSE
   POSTHOG
   CRON_JOB
+  DATADOG
 }
 
 enum InputConfigType {
@@ -823,6 +852,7 @@ enum OutputConfigType {
 enum KnowledgeBaseConfigType {
   POSTHOG
   GITHUB
+  DATADOG
 }
 
 // Run History enums to mirror backend/shared RunHistoryTypes

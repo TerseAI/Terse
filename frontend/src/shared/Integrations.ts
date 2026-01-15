@@ -9,6 +9,7 @@ export enum IntegrationType {
     FIGMA = 'figma',
     TERSE = 'terse',
     POSTHOG = 'posthog',
+    DATADOG = 'datadog',
     CRON_JOB = 'cron_job',
 }
 
@@ -104,6 +105,15 @@ export const PosthogIntegrationMetadata = {
     isKnowledgeBase: true,
 } as const satisfies IntegrationDetails;
 
+export const DatadogIntegrationMetadata = {
+    type: IntegrationType.DATADOG,
+    name: 'Datadog',
+    description: 'Search logs in Datadog',
+    isInput: false,
+    isOutput: false,
+    isKnowledgeBase: true,
+} as const satisfies IntegrationDetails;
+
 export const CronJobIntegrationMetadata = {
     type: IntegrationType.CRON_JOB,
     name: 'Scheduled Jobs',
@@ -125,6 +135,7 @@ export const INTEGRATION_METADATA: IntegrationMetadataMap = {
     [IntegrationType.FIGMA]: FigmaIntegrationMetadata,
     [IntegrationType.TERSE]: TerseIntegrationMetadata,
     [IntegrationType.POSTHOG]: PosthogIntegrationMetadata,
+    [IntegrationType.DATADOG]: DatadogIntegrationMetadata,
     [IntegrationType.CRON_JOB]: CronJobIntegrationMetadata,
 } as const satisfies IntegrationMetadataMap;
 
@@ -152,6 +163,7 @@ export type IntegrationInstallationOptions = EnsureExhaustiveInstallationOptions
     [IntegrationType.FIGMA]: NoInstallationOptions;
     [IntegrationType.TERSE]: NoInstallationOptions;
     [IntegrationType.POSTHOG]: NoInstallationOptions;
+    [IntegrationType.DATADOG]: NoInstallationOptions;
     [IntegrationType.CRON_JOB]: NoInstallationOptions;
 }> 
 
@@ -209,6 +221,11 @@ export interface PosthogIntegration extends IntegrationInstance {
     id: string;
     email: string | null;
     orgName: string | null;
+};
+
+export interface DatadogIntegration extends IntegrationInstance {
+    id: string;
+    region: string;
 };
 
 export interface IntegrationWithStatus {

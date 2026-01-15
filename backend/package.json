@@ -39,6 +39,7 @@
     "@opentelemetry/resources": "^2.2.0",
     "@opentelemetry/sdk-logs": "^0.208.0",
     "@opentelemetry/sdk-node": "^0.208.0",
+    "@datadog/datadog-api-client": "^1.51.0",
     "@prisma/client": "^6.19.0",
     "@slack/bolt": "^4.6.0",
     "@slack/web-api": "^7.9.3",

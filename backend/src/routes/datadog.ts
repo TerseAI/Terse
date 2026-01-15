@@ -1,0 +1,153 @@
+import { Request, Response } from "express";
+import { DatadogIntegrationManager } from "../integrations/DatadogIntegration";
+import { db } from "../prismaClient";
+import logger from "../logger";
+
+// Map region to Datadog site configuration
+function getDatadogSite(region: string): string {
+    const regionMap: Record<string, string> = {
+        'us': 'datadoghq.com',
+        'eu': 'datadoghq.eu',
+        'us3': 'us3.datadoghq.com',
+        'us5': 'us5.datadoghq.com',
+        'ap1': 'ap1.datadoghq.com',
+    };
+    return regionMap[region.toLowerCase()] || 'datadoghq.com';
+}
+
+// Get API base URL from region
+function getDatadogApiUrl(region: string): string {
+    const site = getDatadogSite(region);
+    if (site === 'datadoghq.com') {
+        return 'https://api.datadoghq.com';
+    }
+    return `https://api.${site}`;
+}
+
+export async function getDatadogIntegrations(req: Request, res: Response) {
+    if (!req.session?.user) {
+        res.status(401).json({ error: 'Unauthorized' });
+        return;
+    }
+  
+    try {
+        const manager = new DatadogIntegrationManager();
+        const integrations = await manager.getInstancesForUser(req.session.user.id);
+        res.status(200).json(integrations);
+    } catch (error) {
+        logger.error('Error fetching Datadog integrations:', { error });
+        res.status(500).json({ error: 'Failed to fetch Datadog integrations' });
+    }
+}
+
+export async function createOrUpdateDatadogIntegration(req: Request, res: Response) {
+    if (!req.session?.user) {
+        res.status(401).json({ error: 'Unauthorized' });
+        return;
+    }
+
+    try {
+        const manager = new DatadogIntegrationManager();
+        await manager.processFormSubmission(req, res);
+    } catch (error) {
+        logger.error('Error creating/updating Datadog integration:', { error });
+        res.status(500).json({ error: 'Failed to process integration' });
+    }
+}
+
+// Get Datadog indexes for an integration
+export const getDatadogIndexes = async (req: Request, res: Response) => {
+    const user = req.session?.user;
+    if (!user) {
+        return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const integrationId = req.query.integrationId as string;
+    if (!integrationId) {
+        return res.status(400).json({ error: "integrationId is required" });
+    }
+
+    // Optional: include disabled indexes
+    const includeDisabled = req.query.includeDisabled === 'true';
+
+    try {
+        // Verify user owns this integration
+        const integration = await db().datadog_integrations.findFirst({
+            where: {
+                id: integrationId,
+                user_id: user.id,
+            },
+        });
+
+        if (!integration) {
+            return res.status(404).json({ error: "Datadog integration not found" });
+        }
+
+        // Fetch indexes from Datadog API
+        // Datadog API endpoint: GET /api/v1/logs/config/indexes
+        const apiUrl = getDatadogApiUrl(integration.region);
+        const response = await fetch(`${apiUrl}/api/v1/logs/config/indexes`, {
+            method: 'GET',
+            headers: {
+                'DD-API-KEY': integration.api_key,
+                'DD-APPLICATION-KEY': integration.app_key,
+                'Content-Type': 'application/json',
+            },
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            logger.error('Datadog API error fetching indexes', {
+                status: response.status,
+                error: errorText,
+                integrationId,
+            });
+            
+            if (response.status === 401 || response.status === 403) {
+                return res.status(response.status).json({
+                    error: "Failed to fetch indexes from Datadog",
+                    details: response.status === 401 ? 'Invalid API key or APP key' : 'Missing logs_read_config permission'
+                });
+            }
+            
+            return res.status(response.status).json({
+                error: "Failed to fetch indexes from Datadog",
+                details: errorText
+            });
+        }
+
+        const data = await response.json();
+        
+        // Datadog API returns an array of index objects
+        let indexes = Array.isArray(data) ? data : (data.indexes || data.data || []);
+        
+        // Filter to only enabled indexes by default
+        if (!includeDisabled) {
+            indexes = indexes.filter((index: any) => index.is_enabled !== false);
+        }
+
+        // Map to our format
+        const mappedIndexes = indexes.map((index: any) => ({
+            id: index.name || index.id || '',
+            name: index.name || 'Unnamed Index',
+            isEnabled: index.is_enabled !== false,
+            dailyLimit: index.daily_limit || undefined,
+            retentionDays: index.num_retention_days || undefined,
+        })).filter((index: any) => index.id); // Filter out indexes without IDs
+
+        // Sort alphabetically
+        mappedIndexes.sort((a: { name: string }, b: { name: string }) => 
+            a.name.localeCompare(b.name, undefined, { sensitivity: 'base' })
+        );
+
+        res.status(200).json({
+            indexes: mappedIndexes,
+        });
+    } catch (error: any) {
+        logger.error('Error fetching Datadog indexes:', { error, integrationId });
+        res.status(500).json({
+            error: "Failed to fetch indexes",
+            details: error.message
+        });
+    }
+};
