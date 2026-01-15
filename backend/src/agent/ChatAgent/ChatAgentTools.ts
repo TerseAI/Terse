@@ -201,7 +201,7 @@ const TimeTriggerConfigSchema = BaseConfigSchema.extend({
     configType: z.literal(ConfigType.TIME_TRIGGER),
     integrationType: z.literal(IntegrationType.CRON_JOB),
     integrationId: z.literal("system"),
-    cronExpression: z.string(),
+    cronExpression: z.string().describe('ALL TIMES ARE IN UTC. The cron expression to schedule the automation. Must be a valid cron expression. Use this format: "minute hour day-of-month month day-of-week"'),
 });
 
 const InputConfigSchema = z.discriminatedUnion("configType", [

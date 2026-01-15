@@ -18,6 +18,10 @@ abstract class ChatInterface {
     abstract promptForConfig(config: ConfigType): Promise<string>;
     abstract processStreamEvent(sessionId: string, event: RunStreamEvent): void;
     abstract processMessageEnd(sessionId: string, finalOutput: string): Promise<void>;
+
+    async getUserTimezone(): Promise<string | null> {
+        return null;
+    }
 }
 
 export default ChatInterface;

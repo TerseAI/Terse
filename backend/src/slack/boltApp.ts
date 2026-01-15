@@ -119,7 +119,7 @@ export async function setupSlackBolt() {
               });
               return;
             }
-            const slackChatInterface = new SlackChatInterface(messageEvent.channel, client, userId, threadTs);
+            const slackChatInterface = new SlackChatInterface(messageEvent.channel, client, userId, messageEvent.user, threadTs);
             const chatAgent = new ChatAgent(slackChatInterface, threadTs, userId);
             await chatAgent.run(messageEvent.text);
           } finally {
@@ -186,7 +186,7 @@ export async function setupSlackBolt() {
         });
         return;
       }
-      const slackChatInterface = new SlackChatInterface(event.channel, client, userId, chatId);
+      const slackChatInterface = new SlackChatInterface(event.channel, client, userId, event.user, chatId);
       const chatAgent = new ChatAgent(slackChatInterface, chatId, userId);
 
       await chatAgent.run(message);

@@ -1,5 +1,4 @@
 import { db } from "../../prismaClient";
-import { WebClient } from "@slack/web-api";
 import SlackChatInterface from "./SlackChatInterface";
 import ChatAgent from "./ChatAgent";
 import logger from "../../logger";
@@ -36,10 +35,16 @@ export async function resumeChatAgentAfterFormCompletion(
         }
 
         // Create WebClient
-        const client = initializeSlackWebClient(userSlackIntegration as any);
+        const client = initializeSlackWebClient(userSlackIntegration);
 
         // Create SlackChatInterface
-        const slackChatInterface = new SlackChatInterface(channel, client, userId, chatId);
+        const slackChatInterface = new SlackChatInterface(
+            channel,
+            client,
+            userId,
+            userSlackIntegration.authed_user_id,
+            chatId
+        );
         
         // If messageTs is provided, set it to replace the message instead of posting new one
         if (messageTs) {
