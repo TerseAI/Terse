@@ -5,12 +5,19 @@ import { Channel } from "../../shared/types";
 
 abstract class ChatInterface {
     abstract name: string;
+    protected readonly sessionId: string | undefined;
+    protected readonly userId: string | undefined;
+
+    constructor(sessionId?: string, userId?: string) {
+        this.sessionId = sessionId;
+        this.userId = userId;
+    }
 
     abstract buildPreview(draft: Channel): Promise<string>;
     abstract promptForIntegration(integration: IntegrationType): Promise<string>; 
     abstract promptForConfig(config: ConfigType): Promise<string>;
-    abstract processStreamEvent(chatId: string, event: RunStreamEvent): void;
-    abstract processMessageEnd(chatId: string, finalOutput: string): void;
+    abstract processStreamEvent(sessionId: string, event: RunStreamEvent): void;
+    abstract processMessageEnd(sessionId: string, finalOutput: string): Promise<void>;
 }
 
 export default ChatInterface;

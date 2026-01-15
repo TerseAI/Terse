@@ -140,6 +140,8 @@ export interface SlackInstallationOptions {
 
 export type NoInstallationOptions = Record<string, never>;
 
+export type AdditionalStateParams = Record<string, string>;
+
 type EnsureExhaustiveInstallationOptions<T extends Record<IntegrationType, NoInstallationOptions | SlackInstallationOptions>> = T;
 
 export type IntegrationInstallationOptions = EnsureExhaustiveInstallationOptions<{

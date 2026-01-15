@@ -10,7 +10,8 @@ class ChatAgent {
 
     constructor(
         private readonly chatInterface: ChatInterface,
-        private readonly chatId: string // This is the external_id (e.g., Slack thread timestamp)
+        private readonly sessionId: string, // This is the external_id (e.g., Slack thread timestamp)
+        private readonly userId: string // Required userId for interfaces
     ) {}
 
     private async getMemorySession(): Promise<ChatMemorySession> {
@@ -20,7 +21,7 @@ class ChatAgent {
         
         // Create the memory session
         this.memorySession = new ChatMemorySession({
-            sessionId: this.chatId,
+            sessionId: this.sessionId,
         });
 
         return this.memorySession;
@@ -29,8 +30,8 @@ class ChatAgent {
     async run(message: string): Promise<string> {
         logger.info('Starting chat agent run for message in interface', { message, interface: this.chatInterface.name });
         const agent = new Agent<void, AgentOutputType>({
-            name: 'Living Document Automator',
-            instructions: await buildChatAgentSystemPrompt(),
+            name: 'Terse Automation Assistant',
+            instructions: await buildChatAgentSystemPrompt(this.userId),
             model: 'gpt-5.2',
             tools: buildChatAgentTools(this.chatInterface),
         });
@@ -52,11 +53,11 @@ class ChatAgent {
         });
 
         for await (const event of result as AsyncIterable<RunStreamEvent>) {
-            this.chatInterface.processStreamEvent(this.chatId, event);
+            this.chatInterface.processStreamEvent(this.sessionId, event);
         }
 
         const finalOutput = typeof result.finalOutput === 'string' ? result.finalOutput : '';
-        this.chatInterface.processMessageEnd(this.chatId, finalOutput);
+        await this.chatInterface.processMessageEnd(this.sessionId, finalOutput);
 
         logger.info('Chat agent run completed', { finalOutput });
 

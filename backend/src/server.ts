@@ -93,6 +93,7 @@ import logger from "./logger";
 import { getPosthogIntegrations, createOrUpdatePosthogIntegration, getPosthogProjects } from "./routes/posthog";
 import { handleScheduleWebhook, handleManualTrigger } from "./routes/schedule";
 import { getTemplates } from "./routes/templates";
+import "./integrations/IntegrationTaskHandler"; // Import to trigger listener registration
 
 export type Session = {
   user: User;
