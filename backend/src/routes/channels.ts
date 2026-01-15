@@ -14,6 +14,8 @@ import { emitCacheInvalidationWithKey } from "../realtimeSocket";
 import logger from "../logger";
 import { KnowledgeBaseFactory } from "../knowledgeBase/abstract/KnowledgeBaseFactory";
 
+type ChannelDraft = Omit<Channel, "id"> & { id?: string };
+
 async function createInputConfig(
     tx: PrismaTransaction,
     inputId: string,
@@ -87,6 +89,160 @@ async function upsertNotificationSettings(
             action_types: settings.actionTypes,
         },
     });
+}
+
+export async function applyChannelForUser(userId: string, draft: ChannelDraft): Promise<{ id: string }> {
+    const { name, inputs, output, knowledgeBases, prompt, isActive = true, requireApproval = false, notificationSettings } = draft;
+    logger.debug("Output from frontend", { output: JSON.stringify(output, null, 2), userId });
+    logger.debug("Inputs from frontend", { inputs: JSON.stringify(inputs, null, 2), userId });
+    logger.debug("Knowledge bases from frontend", { knowledgeBases: JSON.stringify(knowledgeBases, null, 2), userId });
+    logger.debug("Notification settings from frontend", { notificationSettings: JSON.stringify(notificationSettings, null, 2), userId });
+
+    // Validate request
+    if (!name || !inputs || inputs.length === 0 || !output || !prompt?.text) {
+        throw new Error('Invalid request: missing required fields');
+    }
+
+    const prisma = db();
+
+    // Create new channel
+    const channel = await prisma.$transaction(async (tx) => {
+        // Create channel
+        const newChannel = await tx.automations.create({
+            data: {
+                user_id: userId,
+                name,
+                is_active: isActive,
+                require_approval: requireApproval
+            }
+        });
+
+        // Create prompt
+        await tx.automation_prompts.create({
+            data: {
+                automation_id: newChannel.id,
+                content: prompt.text
+            }
+        });
+
+        // Create inputs
+        for (const input of inputs) {
+            const integrationType = input.config.integrationType
+            if (!integrationType) {
+                throw new Error(`Unknown integration type: ${input.config.integrationType}`);
+            }
+
+            // Validate that user owns the integration (system integrations skip validation)
+            const integrationId = input.config.integrationId;
+            if (!integrationId && !isSystemIntegration(integrationType)) {
+                throw new Error(`Integration ID is required for ${input.config.integrationType}`);
+            }
+
+            const isOwner = await validateUserOwnsIntegration(userId, integrationType, integrationId || 'system');
+            if (!isOwner) {
+                throw new Error(`Integration ${input.config.integrationType} not found or not owned by user`);
+            }
+
+            const newInput = await tx.automation_inputs.create({
+                data: {
+                    automation_id: newChannel.id,
+                    config_type: convertConfigTypeToInputConfigType(input.config.configType),
+                    // System integrations use 'system' as a sentinel integration ID
+                    integration_id: integrationId || 'system'
+                }
+            });
+
+            // Create config record if provided
+            await createInputConfig(tx, newInput.id, input, userId);
+        }
+
+        // Create output
+        const outputIntegrationType = output.config.integrationType;
+        const outputConfigType = output.config.configType;
+
+        const outputIntegrationId = output.config.integrationId;
+        if (!outputIntegrationId) {
+            throw new Error(`Integration ID is required for ${output.config.integrationType}`);
+        }
+        const isOwner = await validateUserOwnsIntegration(userId, outputIntegrationType, outputIntegrationId);
+        if (!isOwner) {
+            throw new Error(`Integration ${output.config.integrationType} not found or not owned by user`);
+        }
+
+        logger.debug("Output integration ID", { outputIntegrationId, userId });
+        logger.debug("Output integration type", { outputIntegrationType, userId });
+        logger.debug("Creating new output", { output: JSON.stringify(output, null, 2), userId });
+
+        const newOutput = await tx.automation_outputs.create({
+            data: {
+                automation_id: newChannel.id,
+                config_type: convertConfigTypeToOutputConfigType(outputConfigType),
+                integration_id: outputIntegrationId
+            }
+        });
+
+        // Create config record if provided
+        await createOutputConfig(tx, newOutput.id, output.config, userId);
+
+        // Create knowledge bases if provided
+        if (knowledgeBases && knowledgeBases.length > 0) {
+            for (const kb of knowledgeBases) {
+                const integrationType = kb.config.integrationType;
+                if (!integrationType) {
+                    throw new Error(`Unknown integration type: ${kb.config.integrationType}`);
+                }
+
+                // Validate that user owns the integration
+                const integrationId = kb.config.integrationId;
+                if (!integrationId) {
+                    throw new Error(`Integration ID is required for ${kb.config.integrationType}`);
+                }
+
+                const isOwner = await validateUserOwnsIntegration(userId, integrationType, integrationId);
+                if (!isOwner) {
+                    throw new Error(`Integration ${kb.config.integrationType} not found or not owned by user`);
+                }
+
+                const newKnowledgeBase = await tx.automation_knowledge_bases.create({
+                    data: {
+                        automation_id: newChannel.id,
+                        config_type: convertConfigTypeToKnowledgeBaseConfigType(kb.config.configType),
+                        integration_id: integrationId
+                    }
+                });
+                
+                await createKnowledgeBaseConfig(tx, newKnowledgeBase.id, kb.config, userId);
+            }
+        }
+
+        // Create notification settings if provided
+        if (notificationSettings) {
+            await upsertNotificationSettings(tx, newChannel.id, notificationSettings);
+        }
+
+        return newChannel;
+    });
+
+    const channelWithRelations: ChannelWithInputRelations | null = await prisma.automations.findFirst({
+        where: { id: channel.id },
+        include: {
+            inputs: {
+                include: getInputConfigInclude()
+            },
+        }
+    });
+
+    if (!channelWithRelations) {
+        throw new Error(`Channel not found: ${channel.id}`);
+    }
+
+    // Set up channel inputs (e.g., create webhooks for Figma)
+    await setupChannelInputs(channelWithRelations);
+
+    // Invalidate recent channels cache
+    emitCacheInvalidationWithKey(userId, 'recentChannels');
+
+    return { id: channel.id };
 }
 
 // GET /channels - List all channels with pagination
@@ -293,161 +449,28 @@ export async function createChannel(req: Request, res: Response) {
 
     const userId = req.session.user.id;
     const { name, inputs, output, knowledgeBases, prompt, isActive = true, requireApproval = false, notificationSettings } = req.body as Channel;
-    logger.debug("Output from frontend", { output: JSON.stringify(output, null, 2), userId });
-    logger.debug("Inputs from frontend", { inputs: JSON.stringify(inputs, null, 2), userId });
-    logger.debug("Knowledge bases from frontend", { knowledgeBases: JSON.stringify(knowledgeBases, null, 2), userId });
-    logger.debug("Notification settings from frontend", { notificationSettings: JSON.stringify(notificationSettings, null, 2), userId });
-
-    // Validate request
-    if (!name || !inputs || inputs.length === 0 || !output || !prompt?.text) {
-        res.status(400).json({ error: 'Invalid request: missing required fields' });
-        return;
-    }
 
     try {
-        const prisma = db();
-
-        // Create new channel
-        const channel = await prisma.$transaction(async (tx) => {
-            // Create channel
-            const newChannel = await tx.automations.create({
-                data: {
-                    user_id: userId,
-                    name,
-                    is_active: isActive,
-                    require_approval: requireApproval
-                }
-            });
-
-            // Create prompt
-            await tx.automation_prompts.create({
-                data: {
-                    automation_id: newChannel.id,
-                    content: prompt.text
-                }
-            });
-
-            // Create inputs
-            for (const input of inputs) {
-                const integrationType = input.config.integrationType
-                if (!integrationType) {
-                    throw new Error(`Unknown integration type: ${input.config.integrationType}`);
-                }
-
-                // Validate that user owns the integration (system integrations skip validation)
-                const integrationId = input.config.integrationId;
-                if (!integrationId && !isSystemIntegration(integrationType)) {
-                    throw new Error(`Integration ID is required for ${input.config.integrationType}`);
-                }
-
-                const isOwner = await validateUserOwnsIntegration(userId, integrationType, integrationId || 'system');
-                if (!isOwner) {
-                    throw new Error(`Integration ${input.config.integrationType} not found or not owned by user`);
-                }
-
-                const newInput = await tx.automation_inputs.create({
-                    data: {
-                        automation_id: newChannel.id,
-                        config_type: convertConfigTypeToInputConfigType(input.config.configType),
-                        // System integrations use 'system' as a sentinel integration ID
-                        integration_id: integrationId || 'system'
-                    }
-                });
-
-                // Create config record if provided
-                await createInputConfig(tx, newInput.id, input, userId);
-            }
-
-            // Create output
-            const outputIntegrationType = output.config.integrationType;
-            const outputConfigType = output.config.configType;
-
-            const outputIntegrationId = output.config.integrationId;
-            if (!outputIntegrationId) {
-                throw new Error(`Integration ID is required for ${output.config.integrationType}`);
-            }
-            const isOwner = await validateUserOwnsIntegration(userId, outputIntegrationType, outputIntegrationId);
-            if (!isOwner) {
-                throw new Error(`Integration ${output.config.integrationType} not found or not owned by user`);
-            }
-
-            logger.debug("Output integration ID", { outputIntegrationId, userId });
-            logger.debug("Output integration type", { outputIntegrationType, userId });
-            logger.debug("Creating new output", { output: JSON.stringify(output, null, 2), userId });
-
-            const newOutput = await tx.automation_outputs.create({
-                data: {
-                    automation_id: newChannel.id,
-                    config_type: convertConfigTypeToOutputConfigType(outputConfigType),
-                    integration_id: outputIntegrationId
-                }
-            });
-
-            // Create config record if provided
-            await createOutputConfig(tx, newOutput.id, output.config, userId);
-
-            // Create knowledge bases if provided
-            if (knowledgeBases && knowledgeBases.length > 0) {
-                for (const kb of knowledgeBases) {
-                    const integrationType = kb.config.integrationType;
-                    if (!integrationType) {
-                        throw new Error(`Unknown integration type: ${kb.config.integrationType}`);
-                    }
-
-                    // Validate that user owns the integration
-                    const integrationId = kb.config.integrationId;
-                    if (!integrationId) {
-                        throw new Error(`Integration ID is required for ${kb.config.integrationType}`);
-                    }
-
-                    const isOwner = await validateUserOwnsIntegration(userId, integrationType, integrationId);
-                    if (!isOwner) {
-                        throw new Error(`Integration ${kb.config.integrationType} not found or not owned by user`);
-                    }
-
-                    const newKnowledgeBase = await tx.automation_knowledge_bases.create({
-                        data: {
-                            automation_id: newChannel.id,
-                            config_type: convertConfigTypeToKnowledgeBaseConfigType(kb.config.configType),
-                            integration_id: integrationId
-                        }
-                    });
-                    
-                    await createKnowledgeBaseConfig(tx, newKnowledgeBase.id, kb.config, userId);
-                }
-            }
-
-            // Create notification settings if provided
-            if (notificationSettings) {
-                await upsertNotificationSettings(tx, newChannel.id, notificationSettings);
-            }
-
-            return newChannel;
+        const { id } = await applyChannelForUser(userId, {
+            name,
+            inputs,
+            output,
+            knowledgeBases,
+            prompt,
+            isActive,
+            requireApproval,
+            notificationSettings,
         });
 
-        const channelWithRelations: ChannelWithInputRelations | null = await prisma.automations.findFirst({
-            where: { id: channel.id },
-            include: {
-                inputs: {
-                    include: getInputConfigInclude()
-                },
-            }
-        });
-
-        if (!channelWithRelations) {
-            throw new Error(`Channel not found: ${channel.id}`);
-        }
-
-        // Set up channel inputs (e.g., create webhooks for Figma)
-        await setupChannelInputs(channelWithRelations);
-
-        // Invalidate recent channels cache
-        emitCacheInvalidationWithKey(userId, 'recentChannels');
-
-        res.status(201).json({ success: true, id: channel.id });
+        res.status(201).json({ success: true, id });
     } catch (error) {
         logger.error('Error creating channel', { error, userId });
-        res.status(500).json({ error: 'Failed to create channel', details: (error as Error).message });
+        const details = (error as Error).message;
+        if (details === 'Invalid request: missing required fields') {
+            res.status(400).json({ error: details });
+            return;
+        }
+        res.status(500).json({ error: 'Failed to create channel', details });
     }
 }
 

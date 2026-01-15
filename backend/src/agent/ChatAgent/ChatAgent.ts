@@ -1,7 +1,7 @@
 import { Agent, AgentOutputType, run, RunStreamEvent } from "@openai/agents";
 import ChatInterface from "./ChatInterface";
 import { buildChatAgentSystemPrompt } from "./ChatAgentSystemPrompt";
-import { buildChatAgentTools } from "./ChatAgentTools";
+import { buildChatAgentTools, type ChatAgentContext } from "./ChatAgentTools";
 import { ChatMemorySession, recentHistoryCallback } from "../CustomMemorySession";
 import logger from "../../logger";
 
@@ -29,7 +29,7 @@ class ChatAgent {
 
     async run(message: string): Promise<string> {
         logger.info('Starting chat agent run for message in interface', { message, interface: this.chatInterface.name });
-        const agent = new Agent<void, AgentOutputType>({
+        const agent = new Agent<ChatAgentContext, AgentOutputType>({
             name: 'Terse Automation Assistant',
             instructions: await buildChatAgentSystemPrompt(this.userId),
             model: 'gpt-5.2',
@@ -47,6 +47,7 @@ class ChatAgent {
             stream: true,
             context: {
                 chatInterface: this.chatInterface,
+                userId: this.userId,
             },
             session: memorySession,
             sessionInputCallback: recentHistoryCallback,

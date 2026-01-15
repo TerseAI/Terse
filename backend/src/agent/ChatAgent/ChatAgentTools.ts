@@ -6,8 +6,14 @@ import { Channel } from "../../shared/types";
 import { IntegrationType } from "../../shared/Integrations";
 import { ConfigType } from "../../shared/Configs";
 import logger from "../../logger";
+import { applyChannelForUser } from "../../routes/channels";
 
-export function buildChatAgentTools(chatInterface: ChatInterface): Tool<void>[] {
+export type ChatAgentContext = {
+    chatInterface: ChatInterface;
+    userId: string;
+};
+
+export function buildChatAgentTools(chatInterface: ChatInterface): Tool<ChatAgentContext>[] {
     return [
         tool({
             name: 'buildPreview',
@@ -15,19 +21,26 @@ export function buildChatAgentTools(chatInterface: ChatInterface): Tool<void>[] 
             parameters: z.object({
                 draft: z.string().describe('The draft to build a preview of'),
             }),
-            execute: async ({ draft }: { draft: string }, runContext?: RunContext<void>): Promise<string> => {
+            execute: async ({ draft }: { draft: string }, runContext?: RunContext<ChatAgentContext>): Promise<string> => {
                 return await chatInterface.buildPreview(parseChannel(draft));
             },
         }),
         tool({
             name: 'applyChannel',
-            description: 'Apply a channel update',
+            description: 'Once you have all the information you need, you can use this tool to persist and apply the automation.',
             parameters: z.object({
-                channel: ChannelUpdateSchema,
+                channel: ChannelSchema,
             }),
-            execute: async ({ channel }, runContext?: RunContext<void>): Promise<string> => {
+            execute: async ({ channel }, runContext?: RunContext<ChatAgentContext>): Promise<string> => {
                 logger.info('Slack chat interface applyChannel', { channel });
-                return "Channel applied successfully";
+                const userId = runContext?.context?.userId;
+                if (!userId) {
+                    throw new Error("User ID is required to apply channel");
+                }
+
+                const { id: _id, ...draft } = channel;
+                const { id } = await applyChannelForUser(userId, draft as unknown as Omit<Channel, "id">);
+                return `Channel applied successfully (${id})`;
             },
         }),
         tool({
@@ -36,7 +49,7 @@ export function buildChatAgentTools(chatInterface: ChatInterface): Tool<void>[] 
             parameters: z.object({
                 integration: z.nativeEnum(IntegrationType).describe('The integration to prompt for'),
             }),
-            execute: async ({ integration }: { integration: IntegrationType }, runContext?: RunContext<void>): Promise<string> => {
+            execute: async ({ integration }: { integration: IntegrationType }, runContext?: RunContext<ChatAgentContext>): Promise<string> => {
                 return await chatInterface.promptForIntegration(integration);
             },
         }),
@@ -212,13 +225,15 @@ const ChannelNotificationSettingsSchema = z.object({
     actionTypes: z.array(RunHistoryActionTypeSchema),
 });
 
-export const ChannelUpdateSchema = z.object({
-    name: z.string().nullable(),
-    inputs: z.array(ChannelInputSchema).nullable(),
-    output: ChannelOutputSchema.nullable(),
-    prompt: ChannelPromptSchema.nullable(),
-    isActive: z.boolean().nullable(),
-    requireApproval: z.boolean().nullable(),
-    knowledgeBases: z.array(ChannelKnowledgeBaseSchema).nullable(),
-    notificationSettings: ChannelNotificationSettingsSchema.nullable(),
+export const ChannelSchema = z.object({
+    id: z.string(),
+    name: z.string(),
+    isActive: z.boolean(),
+    requireApproval: z.boolean(),
+    prompt: ChannelPromptSchema,
+    inputs: z.array(ChannelInputSchema),
+    output: ChannelOutputSchema,
+    knowledgeBases: z.array(ChannelKnowledgeBaseSchema).optional(),
+    notificationSettings: ChannelNotificationSettingsSchema.optional(),
+    updatedAt: z.string().optional(),
 });
