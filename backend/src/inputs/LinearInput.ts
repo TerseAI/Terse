@@ -11,6 +11,10 @@ export class LinearInput implements Input<LinearInputConfig> {
         this.integrationManager = new LinearIntegrationManager();
     }
 
+    async validateConfig(_input: LinearInputConfig, _userId: string): Promise<void> {
+        // No additional config validation beyond integration ownership.
+    }
+
     async addInputToChannel(tx: PrismaTransaction, channelInputId: string, input: LinearInputConfig): Promise<void> {
         await tx.automation_linear_configs.create({
             data: {
