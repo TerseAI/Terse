@@ -39,6 +39,10 @@ export class CronJobIntegrationManager implements
         return [];
     }
 
+    formatIntegrationInstanceForAgent(_instance: IntegrationInstance): string {
+        return `This is a cron job integration. It is always supported by default.`;
+    }
+
     async getAllActiveInstances(): Promise<IntegrationInstance[]> {
         return [];
     }

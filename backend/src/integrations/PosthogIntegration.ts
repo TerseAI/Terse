@@ -25,6 +25,18 @@ export class PosthogIntegrationManager implements Integration<PosthogIntegration
         }));
     }
 
+    formatIntegrationInstanceForAgent(instance: PosthogIntegration): string {
+        const details: string[] = [];
+        if (instance.orgName) {
+            details.push(`org "${instance.orgName}"`);
+        }
+        if (instance.email) {
+            details.push(`email ${instance.email}`);
+        }
+        const detailText = details.length ? ` (${details.join(", ")})` : "";
+        return `Posthog${detailText} [id: ${instance.id}]`;
+    }
+
     async getAllActiveInstances(): Promise<PosthogIntegration[]> {
         const posthogIntegrations = await db().posthog_integrations.findMany({
             select: {

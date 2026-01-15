@@ -313,6 +313,25 @@ export class AtlassianIntegrationManager implements Integration<AtlassianIntegra
         }));
     }
 
+    formatIntegrationInstanceForAgent(instance: AtlassianIntegration): string {
+        const details: string[] = [];
+        if (instance.siteName) {
+            details.push(`site "${instance.siteName}"`);
+        } else if (instance.baseUrl) {
+            details.push(`site ${instance.baseUrl}`);
+        }
+        if (instance.email) {
+            details.push(`email ${instance.email}`);
+        }
+        if (instance.projectKey) {
+            details.push(`project ${instance.projectKey}`);
+        } else if (instance.projectName) {
+            details.push(`project "${instance.projectName}"`);
+        }
+        const detailText = details.length ? ` (${details.join(", ")})` : "";
+        return `Atlassian${detailText} [id: ${instance.id}]`;
+    }
+
     async getAllActiveInstances(): Promise<AtlassianIntegration[]> {
         const integrations = await db().atlassian_integrations.findMany({
             select: {

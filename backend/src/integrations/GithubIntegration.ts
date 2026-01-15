@@ -42,6 +42,18 @@ export class GithubIntegrationManager implements Integration<GithubIntegration, 
         return installations.flat();
     }
 
+    formatIntegrationInstanceForAgent(instance: GithubIntegration): string {
+        const details: string[] = [];
+        if (instance.account_name) {
+            details.push(`account "${instance.account_name}"`);
+        }
+        if (instance.installation_id) {
+            details.push(`installationId ${instance.installation_id}`);
+        }
+        const detailText = details.length ? ` (${details.join(", ")})` : "";
+        return `Github${detailText} [id: ${instance.id}]`;
+    }
+
     async getAllActiveInstances(): Promise<GithubIntegration[]> {
         const userGithubInstallations = await db().user_github_installation.findMany({
             select: {

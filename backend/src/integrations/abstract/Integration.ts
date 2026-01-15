@@ -7,6 +7,7 @@ import { Request, Response } from "express";
 export interface Integration<T extends IntegrationInstance, W, M extends IntegrationDetails>  {
     integrationType: IntegrationType;
     getInstancesForUser(userId: string): Promise<T[]>;
+    formatIntegrationInstanceForAgent(instance: T): string;
     getAllActiveInstances(): Promise<T[]>;
     processWebhookEvent(event: W): Promise<void>;
     deleteInstallation(integrationId: string): Promise<void>;

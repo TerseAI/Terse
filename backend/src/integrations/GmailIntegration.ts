@@ -52,6 +52,15 @@ export class GmailIntegrationManager implements Integration<GmailIntegration, Gm
         }));
     }
 
+    formatIntegrationInstanceForAgent(instance: GmailIntegration): string {
+        const details: string[] = [];
+        if (instance.email) {
+            details.push(`email ${instance.email}`);
+        }
+        const detailText = details.length ? ` (${details.join(", ")})` : "";
+        return `Gmail${detailText} [id: ${instance.id}]`;
+    }
+
     async getAllActiveInstances(): Promise<GmailIntegration[]> {
         const integrations = await db().gmail_integrations.findMany({
             where: { is_active: true },
