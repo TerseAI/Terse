@@ -1,5 +1,5 @@
-import { INTEGRATION_METADATA, IntegrationType } from "../../shared/Integrations";
-import { INTEGRATION_REGISTRY } from "../../integrations/abstract/IntegrationRegistry";
+import { INTEGRATION_METADATA, IntegrationInstance, IntegrationType } from "../../shared/Integrations";
+import { INTEGRATION_REGISTRY, isSystemIntegration } from "../../integrations/abstract/IntegrationRegistry";
 
 export async function buildChatAgentSystemPrompt(userId: string): Promise<string> {
 
@@ -12,19 +12,23 @@ export async function buildChatAgentSystemPrompt(userId: string): Promise<string
     const integrationDescriptions = integrationList.map(metadata => `${metadata.name} - Description: ${metadata.description} - Input: ${metadata.isInput} - Output: ${metadata.isOutput} - Knowledge Base: ${metadata.isKnowledgeBase}`).join('\n');
 
     // Get user's existing integrations
-    let existingIntegrationsList = '';
     const integrationInstanceDescriptions = (await Promise.all(
         INTEGRATION_REGISTRY.map(async (integration) => {
             const instances = await integration.getInstancesForUser(userId);
-            return instances.map(instance => integration.formatIntegrationInstanceForAgent(instance));
+            const formattedInstances = instances.map(instance => integration.formatIntegrationInstanceForAgent(instance));
+
+            if (formattedInstances.length === 0 && isSystemIntegration(integration.integrationType)) {
+                const placeholderInstance: IntegrationInstance = { id: "system" };
+                return [integration.formatIntegrationInstanceForAgent(placeholderInstance)];
+            }
+
+            return formattedInstances;
         })
     )).flat();
 
-    if (integrationInstanceDescriptions.length > 0) {
-        existingIntegrationsList = `\n- ${integrationInstanceDescriptions.join('\n- ')}`;
-    } else {
-        existingIntegrationsList = '\nYou currently have no integrations connected.';
-    }
+    const existingIntegrationsList = integrationInstanceDescriptions.length > 0
+        ? `\n- ${integrationInstanceDescriptions.join('\n- ')}`
+        : '\nYou currently have no integrations connected.';
 
     return `
 
