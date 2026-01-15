@@ -189,7 +189,9 @@ export async function setupSlackBolt() {
       const slackChatInterface = new SlackChatInterface(event.channel, client, userId, event.user, chatId);
       const chatAgent = new ChatAgent(slackChatInterface, chatId, userId);
 
-      await chatAgent.run(message);
+      const messageWithContext = await buildSlackChannelContextMessage(client, message, event.channel);
+
+      await chatAgent.run(messageWithContext);
     } finally {
       removeEyesReaction(client, event as AppMentionEvent);
     }
@@ -1388,6 +1390,26 @@ export async function setupSlackBolt() {
     slack,
     receiver,
   };
+}
+
+async function buildSlackChannelContextMessage(
+  client: SlackApp['client'],
+  message: string,
+  channelId: string
+): Promise<string> {
+  let channelName: string | undefined;
+  try {
+    const channelInfo = await client.conversations.info({ channel: channelId });
+    channelName = (channelInfo.channel as { name?: string } | undefined)?.name;
+  } catch (error) {
+    logger.warn("Failed to fetch Slack channel info for chat context", {
+      error,
+      channelId,
+    });
+  }
+
+  const channelLabel = channelName ? `#${channelName}` : "this channel";
+  return `Message from the ${channelLabel} channel in Slack:\n\n${message}\n\nChannel ID: ${channelId}`;
 }
 
 async function isThreadStartedByAppMention(
