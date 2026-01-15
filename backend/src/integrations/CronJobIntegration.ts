@@ -113,7 +113,7 @@ export class CronJobIntegrationManager implements
         });
     }
 
-    async deleteInstallation(_integrationId: string): Promise<void> {}
+    async deleteInstallation(_integrationId: string): Promise<void> { }
 
     async setupChannelInput(_integrationId: string, channelInput: ChannelInputWithConfigs): Promise<void> {
         if (!channelInput.time_trigger_config) {
@@ -170,14 +170,39 @@ export class CronJobIntegrationManager implements
         }
 
         const scheduler = this.getSchedulerClient();
-        const jobId = this.getJobIdForInput(channelInput.id);
+        let jobId: string | null = null;
+        try {
+            jobId = this.getJobIdForInput(channelInput.id);
+            logger.info("Deleting Cloud Scheduler job", { inputId: channelInput.id, jobId });
+        } catch (error) {
+            logger.error("❌ Failed to delete Cloud Scheduler job", {
+                inputId: channelInput.id,
+            });
+            return;
+        }
 
         if (!jobId) {
             console.warn("No job ID found for input", { inputId: channelInput.id });
             return;
         }
 
-        await scheduler.delete(jobId);
+        try {
+            await scheduler.delete(jobId);
+        } catch (error) {
+            if (isSchedulerJobNotFoundError(error)) {
+                logger.info("ℹ️  Scheduler job already removed", {
+                    inputId: channelInput.id,
+                    jobId,
+                });
+                return;
+            }
+
+            logger.error("❌ Failed to delete Cloud Scheduler job", {
+                inputId: channelInput.id,
+                jobId,
+            });
+            throw error;
+        }
 
         logger.info("✅ Deleted Cloud Scheduler job for time trigger", {
             inputId: channelInput.id,
@@ -201,6 +226,19 @@ export class CronJobIntegrationManager implements
         const baseUrl = settings.urls.backend;
         return `${baseUrl}/webhooks/schedule/${inputId}`;
     }
+}
+
+function isSchedulerJobNotFoundError(error: unknown): boolean {
+    if (!error) {
+        return false;
+    }
+
+    const anyError = error as { code?: number; message?: string };
+    if (anyError.code === 5) {
+        return true;
+    }
+
+    return typeof anyError.message === "string" && anyError.message.includes("NOT_FOUND");
 }
 
 
