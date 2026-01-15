@@ -28,16 +28,16 @@ export function buildChatAgentTools(chatInterface: ChatInterface): Tool<void>[] 
                 return await chatInterface.promptForIntegration(integration);
             },
         }),
-        tool({
-            name: 'promptForConfig',
-            description: 'Prompt for a config',
-            parameters: z.object({
-                config: z.string().describe('The config to prompt for'),
-            }),
-            execute: async ({ config }: { config: string }, runContext?: RunContext<void>): Promise<string> => {
-                return await chatInterface.promptForConfig(parseConfig(config));
-            },
-        }),
+        // tool({
+        //     name: 'promptForConfig',
+        //     description: 'Prompt for a config',
+        //     parameters: z.object({
+        //         config: z.string().describe('The config to prompt for'),
+        //     }),
+        //     execute: async ({ config }: { config: string }, runContext?: RunContext<void>): Promise<string> => {
+        //         return await chatInterface.promptForConfig(parseConfig(config));
+        //     },
+        // }),
     ];
 }
 
