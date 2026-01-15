@@ -52,6 +52,13 @@ export class NotionDatabaseOutput extends Output<NotionDatabaseSession, NotionCo
             isUserInitiated: true,
         };
     }
+
+    async validateConfig(output: NotionConfig, _userId: string): Promise<void> {
+        if (!output.databaseId) {
+            throw new Error('Invalid output config for notion_database: missing databaseId');
+        }
+    }
+
     async addOutputToChannel(tx: PrismaTransaction, channelOutputId: string, output: NotionConfig): Promise<void> {
         await tx.automation_notion_configs.create({
             data: {

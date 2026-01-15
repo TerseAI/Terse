@@ -21,6 +21,8 @@ export abstract class KnowledgeBase<T extends Session, KBConfig extends ConfigIn
         user: User
     ): Promise<T>;
 
+    abstract validateConfig(knowledgeBase: KBConfig, userId: string): Promise<void>;
+
     abstract addKnowledgeBaseToChannel(tx: PrismaTransaction, channelKnowledgeBaseId: string, knowledgeBase: KBConfig): Promise<void>;
 
     /**

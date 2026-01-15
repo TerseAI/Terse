@@ -70,6 +70,12 @@ export class ConfluenceOutput extends Output<ConfluenceSession, ConfluenceConfig
         };
     }
 
+    async validateConfig(output: ConfluenceConfig, _userId: string): Promise<void> {
+        if (!output.pageId) {
+            throw new Error('Invalid output config for confluence: missing pageId');
+        }
+    }
+
     async addOutputToChannel(tx: PrismaTransaction, channelOutputId: string, output: ConfluenceConfig): Promise<void> {
         await tx.automation_confluence_configs.create({
             data: {
