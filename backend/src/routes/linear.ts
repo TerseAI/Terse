@@ -113,39 +113,39 @@ export async function getLinearTeams(req: Request, res: Response) {
     }
 
     try {
-        // Verify user owns this integration
-        const integration = await db().linear_integrations.findFirst({
-            where: {
-                id: integrationId,
-                user_id: user.id,
-            },
-        });
-
-        if (!integration) {
-            return res.status(404).json({ error: "Linear integration not found" });
-        }
-
-        // Get valid access token (handles refresh automatically)
-        const manager = new LinearIntegrationManager();
-        const accessToken = await manager.getAccessToken(integrationId);
-        if (!accessToken) {
-            return res.status(400).json({ error: "Could not get valid access token" });
-        }
-
-        // Fetch teams from Linear API
-        const adapter = new LinearAdapter(accessToken);
-        const teams = await adapter.getTeams();
-
-        const teamsResponse: LinearTeam[] = teams.map(team => ({
-            id: team.id,
-            name: team.name,
-            key: team.key,
-        }));
-
-        res.status(200).json(teamsResponse);
+        const response = await fetchLinearTeams(user.id, integrationId);
+        res.status(200).json(response);
     } catch (error: unknown) {
         logger.error('Error fetching Linear teams:', { error });
         const errorMessage = error instanceof Error ? error.message : 'Failed to fetch Linear teams';
         res.status(500).json({ error: errorMessage });
     }
+}
+
+export async function fetchLinearTeams(userId: string, integrationId: string): Promise<LinearTeam[]> {
+    const integration = await db().linear_integrations.findFirst({
+        where: {
+            id: integrationId,
+            user_id: userId,
+        },
+    });
+
+    if (!integration) {
+        throw new Error("Linear integration not found");
+    }
+
+    const manager = new LinearIntegrationManager();
+    const accessToken = await manager.getAccessToken(integrationId);
+    if (!accessToken) {
+        throw new Error("Could not get valid access token");
+    }
+
+    const adapter = new LinearAdapter(accessToken);
+    const teams = await adapter.getTeams();
+
+    return teams.map(team => ({
+        id: team.id,
+        name: team.name,
+        key: team.key,
+    }));
 }

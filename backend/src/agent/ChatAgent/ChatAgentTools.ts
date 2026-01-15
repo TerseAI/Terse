@@ -7,6 +7,22 @@ import { IntegrationType } from "../../shared/Integrations";
 import { ConfigType } from "../../shared/Configs";
 import logger from "../../logger";
 import { applyChannelForUser } from "../../routes/channels";
+import type { ChannelDraft } from "../../routes/channels";
+import type { ConfigInstance } from "../../shared/Configs";
+import { GithubIntegrationManager } from "../../integrations/GithubIntegration";
+import { SlackIntegrationManager } from "../../integrations/SlackIntegration";
+import { NotionIntegrationManager } from "../../integrations/NotionIntegration";
+import { AtlassianIntegrationManager } from "../../integrations/AtlassianIntegration";
+import { LinearIntegrationManager } from "../../integrations/LinearIntegration";
+import { PosthogIntegrationManager } from "../../integrations/PosthogIntegration";
+import { fetchGithubRepositoriesForIntegration } from "../../routes/github";
+import { fetchSlackChannelsForIntegration } from "../../routes/slack";
+import { fetchNotionResources } from "../../routes/notion";
+import { fetchConfluenceResources } from "../../routes/confluence";
+import { fetchJiraResources } from "../../routes/jira";
+import { fetchLinearTeams } from "../../routes/linear";
+import { fetchPosthogProjects } from "../../routes/posthog";
+import { uuidv4 } from "zod/v4";
 
 export type ChatAgentContext = {
     chatInterface: ChatInterface;
@@ -38,8 +54,8 @@ export function buildChatAgentTools(chatInterface: ChatInterface): Tool<ChatAgen
                     throw new Error("User ID is required to apply channel");
                 }
 
-                const { id: _id, ...draft } = channel;
-                const { id } = await applyChannelForUser(userId, draft as unknown as Omit<Channel, "id">);
+                const draft = toChannelDraft(channel);
+                const { id } = await applyChannelForUser(userId, draft);
                 return `Channel applied successfully (${id})`;
             },
         }),
@@ -52,17 +68,22 @@ export function buildChatAgentTools(chatInterface: ChatInterface): Tool<ChatAgen
             execute: async ({ integration }: { integration: IntegrationType }, runContext?: RunContext<ChatAgentContext>): Promise<string> => {
                 return await chatInterface.promptForIntegration(integration);
             },
+        }), 
+        tool({
+            name: 'fetchResourcesForIntegration',
+            description: 'Call this when you need to see what configs you have access too. This will return Display names and cononcial IDs you can use for the Channel object in the applyChannel toll',
+            parameters: z.object({
+                integrationType: z.nativeEnum(IntegrationType).describe('The integration type to fetch resources for'),
+            }),
+            execute: async ({ integrationType }: { integrationType: IntegrationType }, runContext?: RunContext<ChatAgentContext>): Promise<string> => {
+                logger.info('Fetching resources for integration type', { integrationType });
+                const userId = runContext?.context?.userId;
+                if (!userId) {
+                    throw new Error("User ID is required to fetch resources");
+                }
+                return await fetchResourcesForIntegrationType(integrationType, userId);
+            },
         }),
-        // tool({
-        //     name: 'promptForConfig',
-        //     description: 'Prompt for a config',
-        //     parameters: z.object({
-        //         config: z.string().describe('The config to prompt for'),
-        //     }),
-        //     execute: async ({ config }: { config: string }, runContext?: RunContext<void>): Promise<string> => {
-        //         return await chatInterface.promptForConfig(parseConfig(config));
-        //     },
-        // }),
     ];
 }
 
@@ -182,31 +203,36 @@ const TimeTriggerConfigSchema = BaseConfigSchema.extend({
     cronExpression: z.string(),
 });
 
-const ConfigInstanceSchema = z.discriminatedUnion("configType", [
+const InputConfigSchema = z.discriminatedUnion("configType", [
     GmailConfigSchema,
     FigmaConfigSchema,
     SlackConfigSchema,
-    SlackOutputConfigSchema,
-    NotionDatabaseConfigSchema,
-    NotionPageConfigSchema,
     LinearInputConfigSchema,
-    LinearOutputConfigSchema,
     GitHubConfigSchema,
-    GitHubKnowledgeBaseConfigSchema,
     JiraConfigSchema,
-    ConfluenceConfigSchema,
-    PosthogConfigSchema,
     TimeTriggerConfigSchema,
 ]);
 
+const OutputConfigSchema = z.discriminatedUnion("configType", [
+    SlackOutputConfigSchema,
+    NotionDatabaseConfigSchema,
+    NotionPageConfigSchema,
+    LinearOutputConfigSchema,
+    JiraConfigSchema,
+    ConfluenceConfigSchema,
+]);
+
+const KnowledgeBaseConfigSchema = z.discriminatedUnion("configType", [
+    GitHubKnowledgeBaseConfigSchema,
+    PosthogConfigSchema,
+]);
+
 const ChannelInputSchema = z.object({
-    id: z.string(),
-    config: ConfigInstanceSchema,
+    config: InputConfigSchema,
 });
 
 const ChannelOutputSchema = z.object({
-    id: z.string(),
-    config: ConfigInstanceSchema,
+    config: OutputConfigSchema,
 });
 
 const ChannelPromptSchema = z.object({
@@ -214,8 +240,7 @@ const ChannelPromptSchema = z.object({
 });
 
 const ChannelKnowledgeBaseSchema = z.object({
-    id: z.string(),
-    config: ConfigInstanceSchema,
+    config: KnowledgeBaseConfigSchema,
 });
 
 const RunHistoryActionTypeSchema = z.enum(["create", "update", "delete", "read"]);
@@ -226,14 +251,125 @@ const ChannelNotificationSettingsSchema = z.object({
 });
 
 export const ChannelSchema = z.object({
-    id: z.string(),
     name: z.string(),
     isActive: z.boolean(),
     requireApproval: z.boolean(),
     prompt: ChannelPromptSchema,
     inputs: z.array(ChannelInputSchema),
     output: ChannelOutputSchema,
-    knowledgeBases: z.array(ChannelKnowledgeBaseSchema).optional(),
-    notificationSettings: ChannelNotificationSettingsSchema.optional(),
-    updatedAt: z.string().optional(),
+    knowledgeBases: z.array(ChannelKnowledgeBaseSchema).nullable(),
+    notificationSettings: ChannelNotificationSettingsSchema.nullable(),
+    updatedAt: z.string().nullable(),
 });
+
+type ChannelSchemaInput = z.infer<typeof ChannelSchema>;
+
+function toConfigInstance<T extends Record<string, any>>(config: T): T & ConfigInstance {
+    return {
+        ...config,
+        isComplete: () => true,
+        formatForAgent: () => '',
+    } as T & ConfigInstance;
+}
+
+function toChannelDraft(channel: ChannelSchemaInput): ChannelDraft {
+    return {
+        ...channel,
+        inputs: channel.inputs.map((input) => ({
+            id: uuidv4().toString(),
+            ...input,
+            config: toConfigInstance(input.config),
+        })),
+        output: {
+            id: uuidv4().toString(),
+            ...channel.output,
+            config: toConfigInstance(channel.output.config),
+        },
+        knowledgeBases: channel.knowledgeBases?.map((kb) => ({
+            id: uuidv4().toString(),
+            ...kb,
+            config: toConfigInstance(kb.config),
+        })) ?? undefined,
+        notificationSettings: channel.notificationSettings ?? undefined,
+        updatedAt: channel.updatedAt ?? undefined,
+    };
+}
+
+async function fetchResourcesForIntegrationType(
+    integrationType: IntegrationType,
+    userId: string
+): Promise<string> {
+    switch (integrationType) {
+        case IntegrationType.GITHUB: {
+            const manager = new GithubIntegrationManager();
+            const integrations = await manager.getInstancesForUser(userId);
+            const resources = await Promise.all(integrations.map(async (integration) => {
+                const installationId = integration.installation_id ?? Number(integration.id);
+                if (!installationId) {
+                    return { integration, repositories: [] };
+                }
+                const response = await fetchGithubRepositoriesForIntegration(
+                    userId,
+                    String(installationId)
+                );
+                return { integration, repositories: response.repositories };
+            }));
+            return JSON.stringify({ integrations, resources });
+        }
+        case IntegrationType.SLACK: {
+            const manager = new SlackIntegrationManager();
+            const integrations = await manager.getInstancesForUser(userId);
+            const resources = await Promise.all(integrations.map(async (integration) => {
+                const response = await fetchSlackChannelsForIntegration(userId, integration.id);
+                return { integration, channels: response.channels };
+            }));
+            return JSON.stringify({ integrations, resources });
+        }
+        case IntegrationType.NOTION: {
+            const manager = new NotionIntegrationManager();
+            const integrations = await manager.getInstancesForUser(userId);
+            const resources = await Promise.all(integrations.map(async (integration) => {
+                const response = await fetchNotionResources(userId, integration.id, "");
+                return { integration, resources: response.resources };
+            }));
+            return JSON.stringify({ integrations, resources });
+        }
+        case IntegrationType.ATLASSIAN: {
+            const manager = new AtlassianIntegrationManager();
+            const integrations = await manager.getInstancesForUser(userId);
+            const jira = await Promise.all(integrations.map(async (integration) => {
+                const response = await fetchJiraResources(userId, integration.id);
+                return { integration, resources: response };
+            }));
+            const confluence = await Promise.all(integrations.map(async (integration) => {
+                const response = await fetchConfluenceResources(userId, integration.id, "");
+                return { integration, resources: response };
+            }));
+            return JSON.stringify({ integrations, jira, confluence });
+        }
+        case IntegrationType.LINEAR: {
+            const manager = new LinearIntegrationManager();
+            const integrations = await manager.getInstancesForUser(userId);
+            const resources = await Promise.all(integrations.map(async (integration) => {
+                const response = await fetchLinearTeams(userId, integration.id);
+                return { integration, teams: response };
+            }));
+            return JSON.stringify({ integrations, resources });
+        }
+        case IntegrationType.POSTHOG: {
+            const manager = new PosthogIntegrationManager();
+            const integrations = await manager.getInstancesForUser(userId);
+            const resources = await Promise.all(integrations.map(async (integration) => {
+                const response = await fetchPosthogProjects(userId, integration.id, "");
+                return { integration, projects: response.projects ?? response };
+            }));
+            return JSON.stringify({ integrations, resources });
+        }
+        case IntegrationType.GMAIL:
+        case IntegrationType.FIGMA:
+        case IntegrationType.CRON_JOB:
+        case IntegrationType.TERSE:
+        default:
+            return JSON.stringify("This is a system integration. No config is needed.");
+    }
+}
