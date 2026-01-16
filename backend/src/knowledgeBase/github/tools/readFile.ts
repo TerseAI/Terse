@@ -6,6 +6,7 @@ import { GitHubKBConfig } from "../../../shared/Configs";
 import { IntegrationType } from "../../../shared/Integrations";
 import { RunHistoryActionType } from "@prisma/client";
 import { SessionWithTracking } from "../../../agent/ChannelAgent/ChannelAgent";
+import { GitHubKnowledgeBaseSession } from "../GitHubKnowledgeBase";
 
 /**
  * Tool for reading file contents from GitHub repositories.
@@ -26,7 +27,7 @@ Note: This reads from the default branch (main/master). Large files may be trunc
         startLine: z.union([z.number(), z.null()]).describe('Start reading from this line number (1-indexed). Use with endLine for partial file reads. Use null to start from beginning.'),
         endLine: z.union([z.number(), z.null()]).describe('Stop reading at this line number (1-indexed, inclusive). Use with startLine for partial file reads. Use null to read to end.'),
     }),
-    execute: async ({ repository, path, startLine, endLine }, runContext?: RunContext<SessionWithTracking<any>>) => {
+    execute: async ({ repository, path, startLine, endLine }, runContext?: RunContext<SessionWithTracking<GitHubKnowledgeBaseSession>>) => {
         if (!runContext?.context) {
             throw new Error("No context provided");
         }

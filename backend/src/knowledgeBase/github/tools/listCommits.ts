@@ -6,6 +6,7 @@ import { GitHubKBConfig } from "../../../shared/Configs";
 import { IntegrationType } from "../../../shared/Integrations";
 import { RunHistoryActionType } from "@prisma/client";
 import { SessionWithTracking } from "../../../agent/ChannelAgent/ChannelAgent";
+import { GitHubKnowledgeBaseSession } from "../GitHubKnowledgeBase";
 
 /**
  * Tool for listing commits in GitHub repositories within a time window.
@@ -29,7 +30,7 @@ The tool returns commit details including message, author, date, and SHA.`,
         author: z.union([z.string(), z.null()]).describe('Filter commits by author (GitHub username or email). Use null for all authors.'),
         perPage: z.number().describe('Number of results to return (default: 30, max: 100)'),
     }),
-    execute: async ({ repository, since, until, branch, path, author, perPage = 30 }, runContext?: RunContext<SessionWithTracking<any>>) => {
+    execute: async ({ repository, since, until, branch, path, author, perPage = 30 }, runContext?: RunContext<SessionWithTracking<GitHubKnowledgeBaseSession>>) => {
         if (!runContext?.context) {
             throw new Error("No context provided");
         }

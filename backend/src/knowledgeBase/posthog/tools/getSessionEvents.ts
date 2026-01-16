@@ -7,6 +7,7 @@ import { PostHogSessionService, SessionEventsResult } from "./eventDecoder.js";
 import { IntegrationType } from "../../../shared/Integrations.js";
 import { RunHistoryActionType } from "@prisma/client";
 import { SessionWithTracking } from "../../../agent/ChannelAgent/ChannelAgent.js";
+import { PosthogKnowledgeBaseSession } from "../PosthogKnowledgeBase.js";
 
 /**
  * Tool for fetching and decoding PostHog session replay events.
@@ -21,7 +22,7 @@ export const getSessionEventsTool = tool({
         startSeconds: z.union([z.number().min(0), z.null()]).describe('Optional: Start time in seconds from the beginning of the session. If not provided, starts from the beginning.'),
         endSeconds: z.union([z.number().min(0), z.null()]).describe('Optional: End time in seconds from the beginning of the session. If not provided, goes until the end.'),
     }),
-    execute: async ({ sessionId, startSeconds, endSeconds }, runContext?: RunContext<SessionWithTracking<any>>) => {
+    execute: async ({ sessionId, startSeconds, endSeconds }, runContext?: RunContext<SessionWithTracking<PosthogKnowledgeBaseSession>>) => {
         if (!runContext?.context) {
             throw new Error("No context provided");
         }

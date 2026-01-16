@@ -6,6 +6,7 @@ import { GitHubKBConfig } from "../../../shared/Configs";
 import { IntegrationType } from "../../../shared/Integrations";
 import { RunHistoryActionType } from "@prisma/client";
 import { SessionWithTracking } from "../../../agent/ChannelAgent/ChannelAgent";
+import { GitHubKnowledgeBaseSession } from "../GitHubKnowledgeBase";
 
 /**
  * Tool for semantic code search in GitHub repositories.
@@ -41,7 +42,7 @@ Tips:
         perPage: z.number().describe('Number of results to return (default: 10, max: 100)'),
         page: z.union([z.number().int().min(1), z.null()]).describe('Page number for pagination (default: 1). Use this to fetch additional results if there are more than perPage results. Use null for page 1. Must be a positive integer >= 1.'),
     }),
-    execute: async ({ query, language, filename, path, perPage = 10, page }, runContext?: RunContext<SessionWithTracking<any>>) => {
+    execute: async ({ query, language, filename, path, perPage = 10, page }, runContext?: RunContext<SessionWithTracking<GitHubKnowledgeBaseSession>>) => {
         if (!runContext?.context) {
             throw new Error("No context provided");
         }

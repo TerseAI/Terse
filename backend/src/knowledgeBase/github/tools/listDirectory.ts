@@ -6,6 +6,7 @@ import { GitHubKBConfig } from "../../../shared/Configs";
 import { IntegrationType } from "../../../shared/Integrations";
 import { RunHistoryActionType } from "@prisma/client";
 import { SessionWithTracking } from "../../../agent/ChannelAgent/ChannelAgent";
+import { GitHubKnowledgeBaseSession } from "../GitHubKnowledgeBase";
 
 /**
  * Tool for listing directory contents in GitHub repositories.
@@ -25,7 +26,7 @@ Start with the root directory (empty path) to see the top-level structure, then 
         path: z.string().describe('The directory path to list (e.g., "src/components"). Use empty string "" for root directory.'),
         recursive: z.boolean().describe('If true, list all files recursively (can be large for big repos). Use false for single-level listing.'),
     }),
-    execute: async ({ repository, path = '', recursive = false }, runContext?: RunContext<SessionWithTracking<any>>) => {
+    execute: async ({ repository, path = '', recursive = false }, runContext?: RunContext<SessionWithTracking<GitHubKnowledgeBaseSession>>) => {
         if (!runContext?.context) {
             throw new Error("No context provided");
         }

@@ -6,11 +6,12 @@ import { GitHubKBConfig } from "../../../shared/Configs";
 import { IntegrationType } from "../../../shared/Integrations";
 import { RunHistoryActionType } from "@prisma/client";
 import { SessionWithTracking } from "../../../agent/ChannelAgent/ChannelAgent";
+import { GitHubKnowledgeBaseSession } from "../GitHubKnowledgeBase";
 
 // Helper functions
 const normalizePerPage = (perPage?: number): number => Math.min(perPage || 20, 100);
 
-const validateContext = (runContext: RunContext<SessionWithTracking<any>>) => {
+const validateContext = (runContext: RunContext<SessionWithTracking<GitHubKnowledgeBaseSession>>) => {
     const githubKBConfig = runContext.context.githubKBConfig as GitHubKBConfig | undefined;
     if (!githubKBConfig) {
         throw new Error("GitHub KB config not found in context. Ensure GitHub is configured as a knowledge base.");
@@ -73,7 +74,7 @@ Dates are specified in YYYY-MM-DD format (e.g., "2024-01-15"). The since date is
         perPage: z.number().describe('Number of results to return (default: 20, max: 100)'),
         page: z.union([z.number().int().min(1), z.null()]).describe('Page number for pagination (default: 1). Use this to fetch additional PRs if there are more than perPage results. Use null for page 1. Must be a positive integer >= 1.'),
     }),
-    execute: async ({ repository, state, since, until, perPage = 20, page }, runContext?: RunContext<SessionWithTracking<any>>) => {
+    execute: async ({ repository, state, since, until, perPage = 20, page }, runContext?: RunContext<SessionWithTracking<GitHubKnowledgeBaseSession>>) => {
         if (!runContext?.context) {
             throw new Error("No context provided");
         }
