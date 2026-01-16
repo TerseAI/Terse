@@ -1,6 +1,5 @@
 import { RunStreamEvent } from "@openai/agents";
 import { ConfigType } from "../../shared/Configs";
-import { Channel } from "../../shared/types";
 import ChatInterface from "./ChatInterface";
 import { IntegrationType } from "../../shared/Integrations";
 import logger from "../../logger";
@@ -43,10 +42,7 @@ class SlackChatInterface extends ChatInterface {
         }
     }
 
-    /**
-     * Private helper method to send messages using webClient.
-     * Intelligently handles channel vs thread replies based on sessionId.
-     */
+
     private async say(message: string | SlackMessagePayload): Promise<void> {
         const payload: SlackMessagePayload = typeof message === 'string'
             ? { text: message }
@@ -488,10 +484,6 @@ function formatConfigSummary(config: ConfigSummaryInput): string {
         default:
             parts.push(`*${configType}* (${integrationType})`);
             break;
-    }
-
-    if (configData.integrationId) {
-        parts.push(`integrationId: ${configData.integrationId}`);
     }
 
     return parts.join(' · ');
