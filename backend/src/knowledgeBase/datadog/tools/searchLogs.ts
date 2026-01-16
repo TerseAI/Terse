@@ -20,7 +20,7 @@ export const searchDatadogLogsTool = tool({
         to: z.union([z.string(), z.null()]).optional().describe('Optional: End time for filtering (ISO8601 format). If not provided, defaults to current time.'),
         limit: z.number().default(50).describe('Maximum number of log entries to return (default: 50)'),
         cursor: z.union([z.string(), z.null()]).optional().describe('Optional: Pagination cursor from previous response to get next page of results.'),
-        sort: z.enum(['timestamp', '-timestamp']).default('timestamp').describe('Sort order: "timestamp" (ascending) or "-timestamp" (descending, default).'),
+        sort: z.enum(['timestamp', '-timestamp']).default('timestamp').describe('Sort order: "timestamp" (ascending, default) or "-timestamp" (descending).'),
     }),
     execute: async ({ query, indexes, from, to, limit = 50, cursor, sort = 'timestamp' }, runContext?: RunContext<any>) => {
         if (!runContext?.context) {

@@ -44,3 +44,18 @@ export function getDatadogAppUrl(region: string): string {
     }
     return `https://app.${site}`;
 }
+
+export function parseDatadogTimeString(timeString: string): Date {
+    // Reject relative time formats - this endpoint only supports ISO8601 dates
+    if (timeString.startsWith('now')) {
+        throw new Error(`Relative time formats like "now-15m" are not supported. Please use ISO8601 format (e.g., "2020-09-17T11:48:36+01:00")`);
+    }
+    
+    // Try to parse as ISO8601 date
+    const date = new Date(timeString);
+    if (isNaN(date.getTime())) {
+        throw new Error(`Invalid date format: ${timeString}. Expected ISO8601 format (e.g., "2020-09-17T11:48:36+01:00")`);
+    }
+    
+    return date;
+}

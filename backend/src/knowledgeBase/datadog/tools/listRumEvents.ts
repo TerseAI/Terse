@@ -4,7 +4,7 @@ import { client, v2 } from "@datadog/datadog-api-client";
 import logger from "../../../logger";
 import { db } from "../../../prismaClient";
 import { DatadogConfig } from "../../../shared/Configs";
-import { getDatadogSite, getDatadogAppUrl } from "../../../utility/datadog";
+import { getDatadogSite, getDatadogAppUrl, parseDatadogTimeString } from "../../../utility/datadog";
 
 /**
  * Tool for listing Datadog RUM events using the simple GET endpoint.
@@ -17,8 +17,8 @@ export const listRumEventsTool = tool({
     description: 'List Datadog RUM (Real User Monitoring) events using the simple GET endpoint. Returns recent RUM events data (sessions, views, actions, errors, resources, long tasks). Use this to discover what RUM events exist, especially when it\'s ambiguous what you should be querying on. Great for exploration before crafting specific search queries. This is simpler than searchRumEvents and is optimized for quick access to recent events.',
     parameters: z.object({
         query: z.union([z.string(), z.null()]).optional().describe('Optional: Datadog RUM search query syntax to filter events (e.g., "@type:session AND @session.type:user", "@type:view"). Can be omitted to get recent events without filtering.'),
-        from: z.union([z.string(), z.null()]).optional().describe('Optional: Minimum timestamp for filtering (ISO8601 format or relative like "now-15m"). If not provided, retrieves recent events.'),
-        to: z.union([z.string(), z.null()]).optional().describe('Optional: Maximum timestamp for filtering (ISO8601 format). If not provided, defaults to current time.'),
+        from: z.union([z.string(), z.null()]).optional().describe('Optional: Minimum timestamp for filtering (ISO8601 format only, e.g., "2020-09-17T11:48:36+01:00"). If not provided, retrieves recent events.'),
+        to: z.union([z.string(), z.null()]).optional().describe('Optional: Maximum timestamp for filtering (ISO8601 format only, e.g., "2020-09-17T11:48:36+01:00"). If not provided, defaults to current time.'),
         limit: z.number().default(25).describe('Maximum number of RUM events to return (default: 25, max: 1000)'),
         pageCursor: z.union([z.string(), z.null()]).optional().describe('Optional: Pagination cursor from previous response to get next page of results.'),
         sort: z.enum(['timestamp', '-timestamp']).default('timestamp').describe('Sort order: "timestamp" (ascending) or "-timestamp" (descending, default).'),
@@ -68,10 +68,11 @@ export const listRumEventsTool = tool({
             const rumApi = new v2.RUMApi(configuration);
 
             // Build request parameters for GET endpoint (query string format)
+            // Only ISO8601 date strings are supported (not relative time formats like "now-15m")
             const params: v2.RUMApiListRUMEventsRequest = {
                 filterQuery: query || undefined,
-                filterFrom: from ? new Date(from) : undefined,
-                filterTo: to ? new Date(to) : undefined,
+                filterFrom: from ? parseDatadogTimeString(from) : undefined,
+                filterTo: to ? parseDatadogTimeString(to) : undefined,
                 sort: sort as 'timestamp' | '-timestamp',
                 pageCursor: pageCursor || undefined,
                 pageLimit: Math.min(limit, 1000), // Datadog max is 1000
