@@ -4,8 +4,8 @@ import { Channel, ChannelInput, ChannelsResponse, ChannelNotificationSettings, C
 import { parsePageParams } from "../utility/pagination";
 import { ChannelWithInputRelations, PrismaTransaction, ChannelWithRelations, ChannelWithNotificationSettingsRelations, RunHistoryActionType } from "../types/prisma";
 import { IntegrationType } from "../shared/Integrations";
-import { convertConfigTypeToInputConfigType, convertConfigTypeToOutputConfigType, convertConfigTypeToKnowledgeBaseConfigType, convertPrismaConfigToConfigInstance, convertPrismaOutputConfigToConfigInstance, convertPrismaKnowledgeBaseConfigToConfigInstance } from "../utility/typeConverters";
-import { ConfigInstance, PosthogConfig, ConfigType } from "../shared/Configs";
+import { convertConfigTypeToInputConfigType, convertConfigTypeToOutputConfigType, convertConfigTypeToKnowledgeBaseConfigType, convertPrismaConfigToConfigInstance, convertPrismaOutputConfigToConfigInstance, convertPrismaKnowledgeBaseConfigToConfigInstance, convertPlainObjectToKnowledgeBaseConfigInstance } from "../utility/typeConverters";
+import { ConfigInstance, ConfigType } from "../shared/Configs";
 import { getInputConfigInclude, getOutputConfigInclude, getKnowledgeBaseConfigInclude } from "../utility/prismaIncludes";
 import { INPUT_REGISTRY } from "../inputs/InputRegistry";
 import { INTEGRATION_REGISTRY, isSystemIntegration } from "../integrations/abstract/IntegrationRegistry";
@@ -46,15 +46,18 @@ async function createOutputConfig(
 async function createKnowledgeBaseConfig(
     tx: PrismaTransaction,
     knowledgeBaseId: string,
-    config: ConfigInstance,
+    config: ConfigInstance | any,
     userId: string
 ): Promise<void> {
-    const knowledgeBase = KnowledgeBaseFactory.KNOWLEDGE_BASE_REGISTRY.get(convertConfigTypeToKnowledgeBaseConfigType(config.configType));
+    // Convert plain object to proper instance if needed
+    const configInstance = convertPlainObjectToKnowledgeBaseConfigInstance(config);
+    
+    const knowledgeBase = KnowledgeBaseFactory.KNOWLEDGE_BASE_REGISTRY.get(convertConfigTypeToKnowledgeBaseConfigType(configInstance.configType));
     if (!knowledgeBase) {
-        throw new Error(`Knowledge base not found for integration type: ${config.configType}`);
+        throw new Error(`Knowledge base not found for integration type: ${configInstance.configType}`);
     }
-    await knowledgeBase().validateConfig(config, userId);
-    await knowledgeBase().addKnowledgeBaseToChannel(tx, knowledgeBaseId, config);
+    await knowledgeBase().validateConfig(configInstance, userId);
+    await knowledgeBase().addKnowledgeBaseToChannel(tx, knowledgeBaseId, configInstance);
 }
 
 async function validateUserOwnsIntegration(userId: string, integrationType: IntegrationType, integrationId: string): Promise<boolean> {

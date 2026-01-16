@@ -504,3 +504,40 @@ export const convertPrismaKnowledgeBaseConfigToConfigInstance = (channelKnowledg
 
     throw new Error(`Unsupported knowledge base config type: ${channelKnowledgeBase.config_type}`);
 }
+
+/**
+ * Converts a plain object config (from request body JSON) to a proper ConfigInstance.
+ * This is needed because JSON deserialization creates plain objects, not class instances.
+ * If the config is already an instance (has isComplete method), returns it as-is.
+ */
+export const convertPlainObjectToKnowledgeBaseConfigInstance = (config: any): ConfigInstance => {
+    // If it's already an instance (has isComplete method), return as-is
+    if (typeof config.isComplete === 'function') {
+        return config as ConfigInstance;
+    }
+
+    // Convert plain object to proper instance based on configType
+    switch (config.configType) {
+        case ConfigType.DATADOG:
+            return new DatadogConfig(
+                config.integrationId,
+                config.defaultIndexes || ["main"]
+            );
+        case ConfigType.POSTHOG:
+            return new PosthogConfig(
+                config.integrationId,
+                config.projectId,
+                config.projectName,
+                config.canReadLogs || false,
+                config.canReadSessionRecordings || false
+            );
+        case ConfigType.GITHUB_KB:
+            return new GitHubKBConfig(
+                config.integrationId,
+                config.repositoryIds || [],
+                config.repositoryNames || []
+            );
+        default:
+            throw new Error(`Unsupported knowledge base config type: ${config.configType}`);
+    }
+}
