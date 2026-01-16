@@ -14,8 +14,8 @@ export type ChannelNotificationSettingsProps = {
 };
 
 function ChannelNotificationSettings({ settings, onChange }: ChannelNotificationSettingsProps) {
-    const { notificationDestinations, isValidating } = useNotificationDestinations();
-    const hasNoDestinations = !isValidating && (!notificationDestinations || notificationDestinations.length === 0);
+    const { notificationDestinations, isLoading } = useNotificationDestinations();
+    const hasNoDestinations = !isLoading && (!notificationDestinations || notificationDestinations.length === 0);
 
     const handleToggleEnabled = (enabled: boolean) => {
         onChange({ ...settings, enabled });
