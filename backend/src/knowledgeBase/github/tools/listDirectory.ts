@@ -202,7 +202,7 @@ Start with the root directory (empty path) to see the top-level structure, then 
                 // Track the action
                 const repoInfo = await getRepositoryInfo(client, owner, repo);
                 const defaultBranch = repoInfo?.defaultBranch || 'HEAD';
-                runContext?.context?.trackAction({
+                runContext.context.trackAction({
                     action: 'Listed GitHub directory',
                     integration: IntegrationType.GITHUB,
                     target: repository,
