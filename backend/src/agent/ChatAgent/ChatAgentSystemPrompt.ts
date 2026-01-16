@@ -97,6 +97,7 @@ export async function buildChatAgentSystemPrompt(userId: string, userTimezone?: 
     - IMPORTANT: After calling the promptForIntegration tool, do NOT send any additional messages to the user. The tool itself already sends a message with an OAuth button to the user. Simply wait silently for the user to complete the OAuth flow. The tool's return value is for your internal reference only - do not repeat it or send it as a message to the user.
     - CRITICAL: Only include integrations that the user explicitly asked for. Do not add extra triggers, skills, or knowledge bases "just because they are available". If multiple triggers are possible, ask the user to choose instead of adding more than one.
     - CRITICAL: Never include an input config unless all required fields are known. If any required fields are missing (e.g., Slack channel or DM preference), ask a clarifying question instead of guessing.
+    - CRITICAL: For time-trigger (cron) inputs, always set integrationId to "system".
 
     ## How to use the applyChannel tool:
     - Call the buildPreview tool before calling the applyChannel tool. This will build a preview of the automation and send it to the user.
