@@ -101,9 +101,11 @@ export function buildChatAgentTools(chatInterface: ChatInterface): Tool<ChatAgen
 const NonEmptyString = z.string().min(1);
 
 const BaseConfigSchema = z.object({
-    integrationId: NonEmptyString,
-    configType: z.nativeEnum(ConfigType),
-    integrationType: z.nativeEnum(IntegrationType),
+    integrationId: NonEmptyString.describe(
+        'Integration instance ID. Use the ID from the user’s connected integrations. Use "system" only for TIME_TRIGGER configs.'
+    ),
+    configType: z.nativeEnum(ConfigType).describe('The config type for this input/output/knowledge base.'),
+    integrationType: z.nativeEnum(IntegrationType).describe('The integration provider type (must match configType).'),
 }).strict();
 
 const GmailConfigSchema = BaseConfigSchema.extend({
@@ -208,6 +210,18 @@ const TimeTriggerConfigSchema = BaseConfigSchema.extend({
     cronExpression: z.string().describe('ALL TIMES ARE IN UTC. The cron expression to schedule the automation. Must be a valid cron expression. Use this format: "minute hour day-of-month month day-of-week"'),
 });
 
+function enforceNonSystemIntegrationId(
+    config: { configType: ConfigType; integrationId?: string },
+    ctx: z.RefinementCtx
+): void {
+    if (config.configType !== ConfigType.TIME_TRIGGER && config.integrationId === "system") {
+        ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: 'integrationId must not be "system" unless configType is TIME_TRIGGER.',
+        });
+    }
+}
+
 const InputConfigSchema = z.discriminatedUnion("configType", [
     GmailConfigSchema,
     FigmaConfigSchema,
@@ -217,6 +231,7 @@ const InputConfigSchema = z.discriminatedUnion("configType", [
     JiraConfigSchema,
     TimeTriggerConfigSchema,
 ]).superRefine((value, ctx) => {
+    enforceNonSystemIntegrationId(value, ctx);
     if (value.configType === ConfigType.SLACK) {
         const hasChannel = typeof value.channelId === "string" && value.channelId.trim().length > 0;
         const listensToDms = value.listenToUserDms === true;
@@ -236,12 +251,16 @@ const OutputConfigSchema = z.discriminatedUnion("configType", [
     LinearOutputConfigSchema,
     JiraConfigSchema,
     ConfluenceConfigSchema,
-]);
+]).superRefine((value, ctx) => {
+    enforceNonSystemIntegrationId(value, ctx);
+});
 
 const KnowledgeBaseConfigSchema = z.discriminatedUnion("configType", [
     GitHubKnowledgeBaseConfigSchema,
     PosthogConfigSchema,
-]);
+]).superRefine((value, ctx) => {
+    enforceNonSystemIntegrationId(value, ctx);
+});
 
 const ChannelInputSchema = z.object({
     config: InputConfigSchema,
