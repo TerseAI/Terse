@@ -3,6 +3,9 @@ import { z } from "zod";
 import logger from "../../../logger";
 import { createGitHubClient, searchCode } from "../githubApiClient";
 import { GitHubKBConfig } from "../../../shared/Configs";
+import { IntegrationType } from "../../../shared/Integrations";
+import { RunHistoryActionType } from "@prisma/client";
+import { SessionWithTracking } from "../../../agent/ChannelAgent/ChannelAgent";
 
 /**
  * Tool for grep-style exact text search in GitHub repositories.
@@ -35,7 +38,7 @@ This is more precise than semantic search - use it when you know exactly what te
         perPage: z.number().describe('Number of results to return (default: 20, max: 100)'),
         page: z.union([z.number().int().min(1), z.null()]).describe('Page number for pagination (default: 1). Use this to fetch additional results if there are more than perPage results. Use null for page 1. Must be a positive integer >= 1.'),
     }),
-    execute: async ({ pattern, fileExtension, path, perPage = 20, page }, runContext?: RunContext<any>) => {
+    execute: async ({ pattern, fileExtension, path, perPage = 20, page }, runContext?: RunContext<SessionWithTracking<any>>) => {
         if (!runContext?.context) {
             throw new Error("No context provided");
         }
@@ -157,6 +160,17 @@ This is more precise than semantic search - use it when you know exactly what te
                 resultsReturned: formattedResults.length,
             });
             logger.debug('[GitHub KB] grepGitHubCode - Full response', { response });
+
+            // Track the action
+            runContext.context.trackAction({
+                action: 'Searched GitHub code (exact match)',
+                integration: IntegrationType.GITHUB,
+                target: githubKBConfig.repositoryNames.join(', '),
+                details: `Exact text search for "${pattern}": Found ${results.totalCount} file(s) containing pattern${results.pagination.hasMore ? ` (showing page ${results.pagination.page})` : ''}`,
+                url: `https://github.com/search?q=${encodeURIComponent(query)}&type=code`,
+                type: RunHistoryActionType.read,
+                isReadOnly: true,
+            });
 
             return response;
         } catch (error: any) {

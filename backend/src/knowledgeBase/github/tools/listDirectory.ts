@@ -3,6 +3,9 @@ import { z } from "zod";
 import logger from "../../../logger";
 import { createGitHubClient, listDirectory, parseRepoFullName, getRepositoryInfo, getTree, getBranch } from "../githubApiClient";
 import { GitHubKBConfig } from "../../../shared/Configs";
+import { IntegrationType } from "../../../shared/Integrations";
+import { RunHistoryActionType } from "@prisma/client";
+import { SessionWithTracking } from "../../../agent/ChannelAgent/ChannelAgent";
 
 /**
  * Tool for listing directory contents in GitHub repositories.
@@ -22,7 +25,7 @@ Start with the root directory (empty path) to see the top-level structure, then 
         path: z.string().describe('The directory path to list (e.g., "src/components"). Use empty string "" for root directory.'),
         recursive: z.boolean().describe('If true, list all files recursively (can be large for big repos). Use false for single-level listing.'),
     }),
-    execute: async ({ repository, path = '', recursive = false }, runContext?: RunContext<any>) => {
+    execute: async ({ repository, path = '', recursive = false }, runContext?: RunContext<SessionWithTracking<any>>) => {
         if (!runContext?.context) {
             throw new Error("No context provided");
         }
@@ -143,6 +146,17 @@ Start with the root directory (empty path) to see the top-level structure, then 
                 });
                 logger.debug('[GitHub KB] listGitHubDirectory - Full response', { response });
 
+                // Track the action
+                runContext.context.trackAction({
+                    action: 'Listed GitHub directory',
+                    integration: IntegrationType.GITHUB,
+                    target: repository,
+                    details: `Listed directory "${path || '(root)'}" recursively: ${formattedItems.length} item(s) (${directories.size} directory/ies, ${files.length} file(s))`,
+                    url: `https://github.com/${owner}/${repo}/tree/${repoInfo.defaultBranch}/${path || ''}`,
+                    type: RunHistoryActionType.read,
+                    isReadOnly: true,
+                });
+
                 return response;
             } else {
                 // Use Contents API for non-recursive listing
@@ -191,6 +205,19 @@ Start with the root directory (empty path) to see the top-level structure, then 
                     fileCount: files.length,
                 });
                 logger.debug('[GitHub KB] listGitHubDirectory - Full response', { response });
+
+                // Track the action
+                const repoInfo = await getRepositoryInfo(client, owner, repo);
+                const defaultBranch = repoInfo?.defaultBranch || 'HEAD';
+                runContext?.context?.trackAction({
+                    action: 'Listed GitHub directory',
+                    integration: IntegrationType.GITHUB,
+                    target: repository,
+                    details: `Listed directory "${path || '(root)'}": ${entries.length} item(s) (${directories.length} directory/ies, ${files.length} file(s))`,
+                    url: `https://github.com/${owner}/${repo}/tree/${defaultBranch}/${path || ''}`,
+                    type: RunHistoryActionType.read,
+                    isReadOnly: true,
+                });
 
                 return response;
             }

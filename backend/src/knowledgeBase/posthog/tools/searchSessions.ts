@@ -3,6 +3,9 @@ import { z } from "zod";
 import logger from "../../../logger";
 import { db } from "../../../prismaClient";
 import { PosthogConfig } from "../../../shared/Configs";
+import { IntegrationType } from "../../../shared/Integrations";
+import { RunHistoryActionType } from "@prisma/client";
+import { SessionWithTracking } from "../../../agent/ChannelAgent/ChannelAgent";
 
 /**
  * Tool for querying PostHog session recordings for a specific user.
@@ -19,7 +22,7 @@ export const searchSessionsTool = tool({
         dateFrom: z.union([z.string(), z.null()]).describe('Start date for filtering (ISO format or relative like "-7d"). If not provided and last7Days is true, defaults to 7 days ago. If not provided and last7Days is false, no date restriction is applied.'),
         dateTo: z.union([z.string(), z.null()]).describe('End date for filtering (ISO format or relative like "now"). If not provided, defaults to now.'),
     }),
-    execute: async ({ userEmail, limit = 10, offset = 0, last7Days = false, dateFrom, dateTo }, runContext?: RunContext<any>) => {
+    execute: async ({ userEmail, limit = 10, offset = 0, last7Days = false, dateFrom, dateTo }, runContext?: RunContext<SessionWithTracking<any>>) => {
         if (!runContext?.context) {
             throw new Error("No context provided");
         }
@@ -221,7 +224,7 @@ export const searchSessionsTool = tool({
             // Build link to session recordings UI
             const sessionsLink = `${posthogHost}/replay?person=${encodeURIComponent(personId)}`;
 
-            return {
+            const response = {
                 success: true,
                 userEmail,
                 projectId,
@@ -241,6 +244,19 @@ export const searchSessionsTool = tool({
                 },
                 message: `Found ${formattedSessions.length} session recording(s) for ${userEmail} (showing ${offset + 1}-${offset + formattedSessions.length} of ${totalCount}). View sessions: ${sessionsLink}`
             };
+
+            // Track the action
+            runContext.context.trackAction({
+                action: 'Searched PostHog sessions',
+                integration: IntegrationType.POSTHOG,
+                target: userEmail,
+                details: `Found ${formattedSessions.length} session recording(s) for user${dateFromValue ? ` from ${dateFromValue}` : ''}${dateToValue ? ` to ${dateToValue}` : ''} (${totalCount} total)`,
+                url: sessionsLink,
+                type: RunHistoryActionType.read,
+                isReadOnly: true,
+            });
+
+            return response;
         } catch (error: any) {
             logger.error('Error querying PostHog sessions', { error, userEmail, projectId });
             throw new Error(`Failed to query PostHog sessions: ${error.message || 'Unknown error'}`);

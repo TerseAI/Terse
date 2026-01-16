@@ -4,6 +4,9 @@ import logger from "../../../logger.js";
 import { db } from "../../../prismaClient.js";
 import { PosthogConfig } from "../../../shared/Configs.js";
 import { PostHogSessionService, SessionEventsResult } from "./eventDecoder.js";
+import { IntegrationType } from "../../../shared/Integrations.js";
+import { RunHistoryActionType } from "@prisma/client";
+import { SessionWithTracking } from "../../../agent/ChannelAgent/ChannelAgent.js";
 
 /**
  * Tool for fetching and decoding PostHog session replay events.
@@ -18,7 +21,7 @@ export const getSessionEventsTool = tool({
         startSeconds: z.union([z.number().min(0), z.null()]).describe('Optional: Start time in seconds from the beginning of the session. If not provided, starts from the beginning.'),
         endSeconds: z.union([z.number().min(0), z.null()]).describe('Optional: End time in seconds from the beginning of the session. If not provided, goes until the end.'),
     }),
-    execute: async ({ sessionId, startSeconds, endSeconds }, runContext?: RunContext<any>) => {
+    execute: async ({ sessionId, startSeconds, endSeconds }, runContext?: RunContext<SessionWithTracking<any>>) => {
         if (!runContext?.context) {
             throw new Error("No context provided");
         }
@@ -72,7 +75,7 @@ export const getSessionEventsTool = tool({
             });
 
             // Format the response for the AI
-            return {
+            const response = {
                 success: true,
                 sessionId: result.sessionId,
                 sessionUrl: result.sessionUrl,
@@ -91,6 +94,19 @@ export const getSessionEventsTool = tool({
                 consoleLogs: result.consoleLogs,
                 message: `Retrieved ${result.events.length} meaningful events and ${result.consoleLogs.length} console logs from session. View full session: ${result.sessionUrl}`,
             };
+
+            // Track the action
+            runContext.context.trackAction({
+                action: 'Retrieved PostHog session events',
+                integration: IntegrationType.POSTHOG,
+                target: sessionId,
+                details: `Retrieved ${result.events.length} event(s) from session${startSeconds !== null || endSeconds !== null ? ` (time window: ${startSeconds ?? 0}s - ${endSeconds ?? result.duration ?? 'end'}s)` : ''}`,
+                url: result.sessionUrl,
+                type: RunHistoryActionType.read,
+                isReadOnly: true,
+            });
+
+            return response;
         } catch (error: any) {
             logger.error('Error fetching PostHog session events', { 
                 error, 

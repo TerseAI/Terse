@@ -1,8 +1,11 @@
 import { RunContext, tool } from "@openai/agents";
 import { z } from "zod";
 import logger from "../../../logger";
-import { createGitHubClient, searchCode, parseRepoFullName, getFileContents } from "../githubApiClient";
+import { createGitHubClient, searchCode } from "../githubApiClient";
 import { GitHubKBConfig } from "../../../shared/Configs";
+import { IntegrationType } from "../../../shared/Integrations";
+import { RunHistoryActionType } from "@prisma/client";
+import { SessionWithTracking } from "../../../agent/ChannelAgent/ChannelAgent";
 
 /**
  * Tool for semantic code search in GitHub repositories.
@@ -38,7 +41,7 @@ Tips:
         perPage: z.number().describe('Number of results to return (default: 10, max: 100)'),
         page: z.union([z.number().int().min(1), z.null()]).describe('Page number for pagination (default: 1). Use this to fetch additional results if there are more than perPage results. Use null for page 1. Must be a positive integer >= 1.'),
     }),
-    execute: async ({ query, language, filename, path, perPage = 10, page }, runContext?: RunContext<any>) => {
+    execute: async ({ query, language, filename, path, perPage = 10, page }, runContext?: RunContext<SessionWithTracking<any>>) => {
         if (!runContext?.context) {
             throw new Error("No context provided");
         }
@@ -147,6 +150,17 @@ Tips:
                 resultsReturned: formattedResults.length,
             });
             logger.debug('[GitHub KB] searchGitHubCode - Full response', { response });
+
+            // Track the action
+            runContext.context.trackAction({
+                action: 'Searched GitHub code',
+                integration: IntegrationType.GITHUB,
+                target: githubKBConfig.repositoryNames.join(', '),
+                details: `Semantic search for "${query}": Found ${results.totalCount} result(s)${results.pagination.hasMore ? ` (showing page ${results.pagination.page})` : ''}`,
+                url: `https://github.com/search?q=${encodeURIComponent(enhancedQuery)}&type=code`,
+                type: RunHistoryActionType.read,
+                isReadOnly: true,
+            });
 
             return response;
         } catch (error: any) {

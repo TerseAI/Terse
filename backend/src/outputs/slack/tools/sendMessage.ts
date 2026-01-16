@@ -4,6 +4,9 @@ import { WebClient } from "@slack/web-api";
 import { db } from "../../../prismaClient";
 import { SlackChannelSession } from "../SlackOutput";
 import logger from "../../../logger";
+import { IntegrationType } from "../../../shared/Integrations";
+import { RunHistoryActionType } from "@prisma/client";
+import { SessionWithTracking } from "../../../agent/ChannelAgent/ChannelAgent";
 
 /**
  * Tool for sending messages to Slack channels or DMs.
@@ -32,7 +35,7 @@ BEST PRACTICES:
         message: z.string().describe("The message content to send. Supports Slack mrkdwn formatting."),
         thread_ts: z.string().nullable().optional().describe("Optional thread timestamp to reply to an existing thread. If provided, the message will be posted as a reply in that thread."),
     }),
-    execute: async (args, runContext?: RunContext<SlackChannelSession>) => {
+    execute: async (args, runContext?: RunContext<SessionWithTracking<SlackChannelSession>>) => {
         if (!runContext?.context) {
             throw new Error("No context provided");
         }
@@ -77,6 +80,20 @@ BEST PRACTICES:
 
             const channelName = session.slackConfig.channel_name || channelId;
             const messagePreview = message.length > 100 ? message.substring(0, 100) + '...' : message;
+            
+            // Build Slack message permalink URL
+            const messageTs = result.ts?.replace('.', '') || '';
+            const slackPermalink = `https://${slackIntegration.team_name || 'slack'}.slack.com/archives/${channelId}/p${messageTs}`;
+            
+            // Track the action
+            runContext.context.trackAction({
+                action: 'Sent Slack message',
+                integration: IntegrationType.SLACK,
+                target: channelName,
+                details: `Sent message to ${channelName}${thread_ts ? ' (thread reply)' : ''}: "${messagePreview}"`,
+                url: slackPermalink,
+                type: RunHistoryActionType.create,
+            });
             
             logger.info(`[Slack Output] Message sent to ${channelName}`, { 
                 channelId,
