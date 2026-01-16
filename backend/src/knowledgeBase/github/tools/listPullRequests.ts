@@ -3,26 +3,17 @@ import { z } from "zod";
 import logger from "../../../logger";
 import { createGitHubClient, listPullRequests, parseRepoFullName } from "../githubApiClient";
 import { GitHubKBConfig } from "../../../shared/Configs";
+import { IntegrationType } from "../../../shared/Integrations";
+import { RunHistoryActionType } from "@prisma/client";
+import { SessionWithTracking } from "../../../agent/ChannelAgent/ChannelAgent";
+import { GitHubKnowledgeBaseSession } from "../GitHubKnowledgeBase";
 
 // Helper functions
 const normalizePerPage = (perPage?: number): number => Math.min(perPage || 20, 100);
 
-const validateContext = (runContext?: RunContext<any>) => {
-    if (!runContext?.context) {
-        throw new Error("No context provided");
-    }
-
-    const githubKBConfig = runContext.context.githubKBConfig as GitHubKBConfig | undefined;
-    if (!githubKBConfig) {
-        throw new Error("GitHub KB config not found in context. Ensure GitHub is configured as a knowledge base.");
-    }
-
-    const accessToken = runContext.context.githubAccessToken as string | undefined;
-    if (!accessToken) {
-        throw new Error("GitHub access token not found in context.");
-    }
-
-    return { githubKBConfig, accessToken };
+const validateContext = (runContext: RunContext<SessionWithTracking<GitHubKnowledgeBaseSession>>) => {
+    const { githubKBConfig, githubAccessToken } = runContext.context;
+    return { githubKBConfig, githubAccessToken };
 };
 
 const validateRepository = (repository: string, repositoryNames: string[]) => {
@@ -74,15 +65,18 @@ Dates are specified in YYYY-MM-DD format (e.g., "2024-01-15"). The since date is
         perPage: z.number().describe('Number of results to return (default: 20, max: 100)'),
         page: z.union([z.number().int().min(1), z.null()]).describe('Page number for pagination (default: 1). Use this to fetch additional PRs if there are more than perPage results. Use null for page 1. Must be a positive integer >= 1.'),
     }),
-    execute: async ({ repository, state, since, until, perPage = 20, page }, runContext?: RunContext<any>) => {
-        const { githubKBConfig, accessToken } = validateContext(runContext);
+    execute: async ({ repository, state, since, until, perPage = 20, page }, runContext?: RunContext<SessionWithTracking<GitHubKnowledgeBaseSession>>) => {
+        if (!runContext?.context) {
+            throw new Error("No context provided");
+        }
+        const { githubKBConfig, githubAccessToken } = validateContext(runContext);
 
         const repoValidationError = validateRepository(repository, githubKBConfig.repositoryNames);
         if (repoValidationError) {
             return repoValidationError;
         }
 
-        const client = createGitHubClient(accessToken);
+        const client = createGitHubClient(githubAccessToken);
         const { owner, repo } = parseRepoFullName(repository);
         const normalizedPerPage = normalizePerPage(perPage);
         const pageNumber = Math.max(1, page ?? 1);
@@ -166,6 +160,17 @@ Dates are specified in YYYY-MM-DD format (e.g., "2024-01-15"). The since date is
                 open: summary.open,
             });
             logger.debug('[GitHub KB] listGitHubPullRequests - Full response', { response });
+
+            // Track the action
+            runContext.context.trackAction({
+                action: 'Listed GitHub pull requests',
+                integration: IntegrationType.GITHUB,
+                target: repository,
+                details: `Listed ${formattedResults.length} PR(s)${state ? ` with state: ${state}` : ''}${results.pagination.hasMore ? ' (more available)' : ''}`,
+                url: `https://github.com/${owner}/${repo}/pulls${state ? `?state=${state}` : ''}`,
+                type: RunHistoryActionType.read,
+                isReadOnly: true,
+            });
 
             return response;
         } catch (error: any) {

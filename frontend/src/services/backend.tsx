@@ -841,7 +841,7 @@ export const BackendProvider: BackendService = {
             });
     },
 
-    createChannel: (data: ChannelUpdate) => {
+    createChannel: (data: Channel) => {
         return axios.post<{ success: boolean; id: string }>(`${backendBaseUrl}/channels`,
             data,
             { withCredentials: true }

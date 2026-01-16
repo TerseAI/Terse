@@ -1,3 +1,4 @@
+import { Tool } from "@openai/agents";
 import { Session } from "../../server";
 import { ChannelKnowledgeBaseWithConfigs, PrismaTransaction, User } from "../../types/prisma";
 import { KnowledgeBaseConfigType } from "@prisma/client";
@@ -14,6 +15,7 @@ import { listGitHubCommitsTool } from "./tools/listCommits";
 import { summarizeGitHubPullRequestDiffTool } from "./tools/summarizePullRequestDiff";
 import { getGitHubAccessToken } from "./githubApiClient";
 import logger from "../../logger";
+import { validateGithubRepositoryIds } from "../../integrations/githubValidation";
 
 /**
  * Session type for GitHub knowledge base.
@@ -32,37 +34,37 @@ export class GitHubKnowledgeBase extends KnowledgeBase<GitHubKnowledgeBaseSessio
     constructor() {
         const toolbox: ToolboxEntry[] = [
             {
-                tool: searchGitHubCodeTool,
+                tool: searchGitHubCodeTool as Tool,
                 isReadOnly: true,
                 integration: IntegrationType.GITHUB
             },
             {
-                tool: grepGitHubCodeTool,
+                tool: grepGitHubCodeTool as Tool,
                 isReadOnly: true,
                 integration: IntegrationType.GITHUB
             },
             {
-                tool: readGitHubFileTool,
+                tool: readGitHubFileTool as Tool,
                 isReadOnly: true,
                 integration: IntegrationType.GITHUB
             },
             {
-                tool: listGitHubDirectoryTool,
+                tool: listGitHubDirectoryTool as Tool,
                 isReadOnly: true,
                 integration: IntegrationType.GITHUB
             },
             {
-                tool: listGitHubPullRequestsTool,
+                tool: listGitHubPullRequestsTool as Tool,
                 isReadOnly: true,
                 integration: IntegrationType.GITHUB
             },
             {
-                tool: listGitHubCommitsTool,
+                tool: listGitHubCommitsTool as Tool,
                 isReadOnly: true,
                 integration: IntegrationType.GITHUB
             },
             {
-                tool: summarizeGitHubPullRequestDiffTool,
+                tool: summarizeGitHubPullRequestDiffTool as Tool,
                 isReadOnly: true,
                 integration: IntegrationType.GITHUB
             }
@@ -118,11 +120,17 @@ export class GitHubKnowledgeBase extends KnowledgeBase<GitHubKnowledgeBaseSessio
         return session;
     }
 
-    async addKnowledgeBaseToChannel(tx: PrismaTransaction, channelKnowledgeBaseId: string, knowledgeBase: GitHubKBConfig): Promise<void> {
-        if (knowledgeBase.repositoryIds.length === 0) {
-            throw new Error('GitHub KB config requires at least one repository');
-        }
+    async validateConfig(knowledgeBase: GitHubKBConfig, userId: string): Promise<void> {
+        await validateGithubRepositoryIds({
+            userId,
+            integrationId: knowledgeBase.integrationId,
+            repositoryIds: knowledgeBase.repositoryIds,
+            configTypeLabel: 'github_kb',
+            contextLabel: 'knowledge base',
+        });
+    }
 
+    async addKnowledgeBaseToChannel(tx: PrismaTransaction, channelKnowledgeBaseId: string, knowledgeBase: GitHubKBConfig): Promise<void> {
         await tx.automation_github_kb_configs.create({
             data: {
                 automation_knowledge_base_id: channelKnowledgeBaseId,

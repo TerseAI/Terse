@@ -6,7 +6,7 @@ import { db } from "../prismaClient";
 import { RunContext, Tool, tool } from "@openai/agents";
 import { z } from "zod";
 import chalk from "chalk";
-import { OutputConfigType } from "@prisma/client";
+import { OutputConfigType, RunHistoryActionType } from "@prisma/client";
 import { ConfluenceConfig } from "../shared/Configs";
 import { SessionWithTracking } from "../agent/ChannelAgent/ChannelAgent";
 import { formatError, needsApproval } from "../tools/toolUtils";
@@ -70,6 +70,12 @@ export class ConfluenceOutput extends Output<ConfluenceSession, ConfluenceConfig
         };
     }
 
+    async validateConfig(output: ConfluenceConfig, _userId: string): Promise<void> {
+        if (!output.pageId) {
+            throw new Error('Invalid output config for confluence: missing pageId');
+        }
+    }
+
     async addOutputToChannel(tx: PrismaTransaction, channelOutputId: string, output: ConfluenceConfig): Promise<void> {
         await tx.automation_confluence_configs.create({
             data: {
@@ -97,7 +103,7 @@ This tool returns the current state of the Confluence page including all metadat
     parameters: z.object({
         // No parameters needed - returns complete page information from configuration
     }),
-    execute: async ({ }, runContext?: RunContext<ConfluenceSession>) => {
+    execute: async ({ }, runContext?: RunContext<SessionWithTracking<ConfluenceSession>>) => {
         logger.debug("Executing confluence_query_page tool");
         if (!runContext?.context) {
             throw new Error("No context provided");
@@ -123,10 +129,25 @@ This tool returns the current state of the Confluence page including all metadat
             const body = extractBodyContent(pageInfo);
             const { ancestors, descendants } = extractAncestorsAndDescendants(pageInfo);
 
+            const body_text = body.storage?.value || body.view?.value || body.export_view?.value || '';
+            const pageName = metadata.title || runContext.context.confluenceConfig.page_name || pageId;
+
+            // Track the action
+            const pageUrl = `https://${runContext.context.atlassianIntegration.baseUrl}/wiki${pageInfo._links?.webui || ''}`;
+            runContext.context.trackAction({
+                action: 'Queried Confluence page',
+                integration: IntegrationType.ATLASSIAN,
+                target: pageName,
+                details: `Retrieved page content: ${body_text.length} characters, ${ancestors.length} ancestor(s), ${descendants.length} descendant(s)`,
+                url: pageUrl,
+                type: RunHistoryActionType.read,
+                isReadOnly: true,
+            });
+
             return {
                 ...metadata,
                 body: body,
-                body_text: body.storage?.value || body.view?.value || body.export_view?.value || '',
+                body_text: body_text,
                 ancestors: ancestors,
                 descendants: descendants,
                 ancestors_count: ancestors.length,

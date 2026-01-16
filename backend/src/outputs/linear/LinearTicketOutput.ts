@@ -50,6 +50,12 @@ export class LinearTicketOutput extends Output<LinearTicketSession, LinearOutput
         return { linearIntegration: integration, linearConfig: linearConfigRecord, user: user, isUserInitiated: true };
     }
 
+    async validateConfig(output: LinearOutputConfig, _userId: string): Promise<void> {
+        if (!output.teamId) {
+            throw new Error('Invalid output config for linear_output: missing teamId');
+        }
+    }
+
     async addOutputToChannel(tx: PrismaTransaction, channelOutputId: string, output: LinearOutputConfig): Promise<void> {
         await tx.automation_linear_configs.create({
             data: {

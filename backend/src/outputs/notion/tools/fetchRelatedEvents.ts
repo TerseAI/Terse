@@ -5,6 +5,8 @@ import { SessionWithTracking } from "../../../agent/ChannelAgent/ChannelAgent";
 import { NotionPageSession } from "../NotionPageOutput";
 import { AttributionStore } from "../../../rag/AttributionStore";
 import logger from "../../../logger";
+import { IntegrationType } from "../../../shared/Integrations";
+import { RunHistoryActionType } from "@prisma/client";
 
 /**
  * Fetches events that are related to a specific Notion block.
@@ -64,6 +66,17 @@ The tool returns the source events (e.g., Slack messages, emails) that led to th
             const eventsText = formattedEvents.join('\n\n---\n\n');
 
             logger.info('Successfully fetched and formatted events', { block_id, userId: runContext?.context?.user.display_name, events_count: hydratedEvents.length });
+
+            // Track the action
+            runContext.context.trackAction({
+                action: 'Fetched related events',
+                integration: IntegrationType.NOTION,
+                target: block_id,
+                details: `Retrieved ${hydratedEvents.length} related event(s) for Notion block${hydratedEvents.length === 0 ? ' (no events found)' : ''}`,
+                url: undefined,
+                type: RunHistoryActionType.read,
+                isReadOnly: true,
+            });
 
             return {
                 success: true,

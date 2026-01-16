@@ -3,6 +3,10 @@ import { z } from "zod";
 import logger from "../../../logger";
 import { db } from "../../../prismaClient";
 import { PosthogConfig } from "../../../shared/Configs";
+import { IntegrationType } from "../../../shared/Integrations";
+import { RunHistoryActionType } from "@prisma/client";
+import { SessionWithTracking } from "../../../agent/ChannelAgent/ChannelAgent";
+import { PosthogKnowledgeBaseSession } from "../PosthogKnowledgeBase";
 
 /**
  * Tool for querying PostHog logs with flexible filtering options.
@@ -21,24 +25,15 @@ export const searchLogsTool = tool({
         dateFrom: z.union([z.string(), z.null()]).describe('Start date for filtering (ISO format or relative like "-7d"). If not provided and last7Days is true, defaults to 7 days ago. If not provided and last7Days is false, no date restriction is applied.'),
         dateTo: z.union([z.string(), z.null()]).describe('End date for filtering (ISO format or relative like "now"). If not provided, defaults to now.'),
     }),
-    execute: async ({ userEmail, severityLevels, messageSearch, limit = 50, offset = 0, last7Days = false, dateFrom, dateTo }, runContext?: RunContext<any>) => {
+    execute: async ({ userEmail, severityLevels, messageSearch, limit = 50, offset = 0, last7Days = false, dateFrom, dateTo }, runContext?: RunContext<SessionWithTracking<PosthogKnowledgeBaseSession>>) => {
         if (!runContext?.context) {
             throw new Error("No context provided");
         }
 
-        // Get PostHog config from context - must be set by the knowledge base session
-        const posthogConfig = runContext.context.posthogConfig as PosthogConfig | undefined;
-        if (!posthogConfig) {
-            throw new Error("PostHog config not found in context. Ensure PostHog is configured as a knowledge base.");
-        }
+        const { posthogConfig, user } = runContext.context;
 
         if (!posthogConfig.canReadLogs) {
             throw new Error("PostHog logs access is not enabled for this knowledge base.");
-        }
-
-        const user = runContext.context.user;
-        if (!user) {
-            throw new Error("User not found in context");
         }
 
         // Normalize null to undefined for easier handling
@@ -126,7 +121,7 @@ export const searchLogsTool = tool({
                 },
             };
             
-            const response = await fetch(logsQueryUrl, {
+            const fetchResponse = await fetch(logsQueryUrl, {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${posthogApiKey}`,
@@ -135,10 +130,10 @@ export const searchLogsTool = tool({
                 body: JSON.stringify(requestBody),
             });
 
-            if (!response.ok) {
-                const errorText = await response.text();
+            if (!fetchResponse.ok) {
+                const errorText = await fetchResponse.text();
                 logger.error('PostHog logs API error', {
-                    status: response.status,
+                    status: fetchResponse.status,
                     error: errorText,
                     userEmail: normalizedUserEmail,
                     severityLevels: normalizedSeverityLevels,
@@ -146,18 +141,18 @@ export const searchLogsTool = tool({
                     projectId
                 });
                 
-                if (response.status === 401) {
+                if (fetchResponse.status === 401) {
                     throw new Error('PostHog API key is invalid or expired. Please update your PostHog integration.');
-                } else if (response.status === 403) {
+                } else if (fetchResponse.status === 403) {
                     throw new Error('PostHog API key does not have logs:read permission. Please ensure your API key has the correct scope.');
-                } else if (response.status === 404) {
+                } else if (fetchResponse.status === 404) {
                     throw new Error(`PostHog project ${projectId} not found. Please verify the project ID in your configuration.`);
                 }
                 
                 throw new Error(`Failed to query PostHog logs: ${errorText}`);
             }
 
-            const logsData = await response.json();
+            const logsData = await fetchResponse.json();
             
             // Build link to logs UI
             const logsLink = `${posthogHost}/project/${projectId}/logs`;
@@ -205,7 +200,7 @@ export const searchLogsTool = tool({
                 ? filterDescriptions.join(', ') 
                 : 'no filters';
 
-            return {
+            const response = {
                 success: true,
                 userEmail: normalizedUserEmail || null,
                 severityLevels: normalizedSeverityLevels || null,
@@ -223,6 +218,20 @@ export const searchLogsTool = tool({
                 },
                 message: `Found ${formattedLogs.length} log entries filtered by ${filterDescription} (showing ${offset + 1}-${offset + formattedLogs.length}${hasMore ? ', more available' : ''}). View all logs: ${logsLink}`
             };
+
+            // Track the action
+            const queryDesc = normalizedMessageSearch ? ` matching "${normalizedMessageSearch}"` : '';
+            runContext.context.trackAction({
+                action: 'Searched PostHog logs',
+                integration: IntegrationType.POSTHOG,
+                target: posthogConfig.projectId,
+                details: `Searched event logs: Found ${formattedLogs.length} event(s)${queryDesc}${dateFromValue ? ` from ${dateFromValue}` : ''}${dateTo ? ` to ${dateTo}` : ''}`,
+                url: `https://us.posthog.com/insights`,
+                type: RunHistoryActionType.read,
+                isReadOnly: true,
+            });
+
+            return response;
         } catch (error: any) {
             logger.error('Error querying PostHog logs', { error, userEmail: normalizedUserEmail, severityLevels: normalizedSeverityLevels, messageSearch: normalizedMessageSearch, projectId });
             throw new Error(`Failed to query PostHog logs: ${error.message || 'Unknown error'}`);

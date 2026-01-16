@@ -3,6 +3,10 @@ import { z } from "zod";
 import logger from "../../../logger";
 import { createGitHubClient, getFileContents, parseRepoFullName } from "../githubApiClient";
 import { GitHubKBConfig } from "../../../shared/Configs";
+import { IntegrationType } from "../../../shared/Integrations";
+import { RunHistoryActionType } from "@prisma/client";
+import { SessionWithTracking } from "../../../agent/ChannelAgent/ChannelAgent";
+import { GitHubKnowledgeBaseSession } from "../GitHubKnowledgeBase";
 
 /**
  * Tool for reading file contents from GitHub repositories.
@@ -23,20 +27,12 @@ Note: This reads from the default branch (main/master). Large files may be trunc
         startLine: z.union([z.number(), z.null()]).describe('Start reading from this line number (1-indexed). Use with endLine for partial file reads. Use null to start from beginning.'),
         endLine: z.union([z.number(), z.null()]).describe('Stop reading at this line number (1-indexed, inclusive). Use with startLine for partial file reads. Use null to read to end.'),
     }),
-    execute: async ({ repository, path, startLine, endLine }, runContext?: RunContext<any>) => {
+    execute: async ({ repository, path, startLine, endLine }, runContext?: RunContext<SessionWithTracking<GitHubKnowledgeBaseSession>>) => {
         if (!runContext?.context) {
             throw new Error("No context provided");
         }
 
-        const githubKBConfig = runContext.context.githubKBConfig as GitHubKBConfig | undefined;
-        if (!githubKBConfig) {
-            throw new Error("GitHub KB config not found in context. Ensure GitHub is configured as a knowledge base.");
-        }
-
-        const accessToken = runContext.context.githubAccessToken as string | undefined;
-        if (!accessToken) {
-            throw new Error("GitHub access token not found in context.");
-        }
+        const { githubKBConfig, githubAccessToken } = runContext.context;
 
         // Validate that the repository is in the configured list
         if (!githubKBConfig.repositoryNames.includes(repository)) {
@@ -48,7 +44,7 @@ Note: This reads from the default branch (main/master). Large files may be trunc
             };
         }
 
-        const client = createGitHubClient(accessToken);
+        const client = createGitHubClient(githubAccessToken);
         const { owner, repo } = parseRepoFullName(repository);
 
         const requestParams = {
@@ -127,6 +123,17 @@ Note: This reads from the default branch (main/master). Large files may be trunc
             logger.debug('[GitHub KB] readGitHubFile - Full response (excluding content)', {
                 ...response,
                 content: `[${finalContent.length} chars]`,
+            });
+
+            // Track the action
+            runContext.context.trackAction({
+                action: 'Read GitHub file',
+                integration: IntegrationType.GITHUB,
+                target: repository,
+                details: `Read file "${path}"${startLine && endLine ? ` (lines ${displayedLines.start}-${displayedLines.end})` : ''} (${totalLines} total lines${isTruncated ? ', truncated' : ''})`,
+                url: fileContent.htmlUrl,
+                type: RunHistoryActionType.read,
+                isReadOnly: true,
             });
 
             return response;
