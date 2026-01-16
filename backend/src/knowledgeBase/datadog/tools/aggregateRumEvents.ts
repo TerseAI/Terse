@@ -20,8 +20,8 @@ export const aggregateRumEventsTool = tool({
         from: z.string().describe('Start time for filtering (ISO8601 format like "2020-09-17T11:48:36+01:00" or relative like "now-15m"). Required parameter.'),
         to: z.union([z.string(), z.null()]).describe('Optional: End time for filtering (ISO8601 format). If not provided, defaults to "now".'),
         compute: z.array(z.object({
-            aggregation: z.enum(['pc90', 'pc95', 'pc99', 'avg', 'sum', 'min', 'max', 'cardinality']).describe('Aggregation function: pc90/pc95/pc99 (percentiles), avg, sum, min, max, cardinality (unique count).'),
-            metric: z.string().describe('Metric to compute on (e.g., "@view.time_spent", "@view.loading_time", "@duration").'),
+            aggregation: z.enum(['count', 'pc90', 'pc95', 'pc99', 'avg', 'sum', 'min', 'max', 'cardinality']).describe('Aggregation function: count (total events), pc90/pc95/pc99 (percentiles), avg, sum, min, max, cardinality (unique count).'),
+            metric: z.string().describe('Metric to compute on (e.g., "@view.time_spent", "@view.loading_time", "@duration"). For count aggregation, you can use "*" or omit the metric to count all events.'),
             type: z.enum(['total', 'timeseries']).default('total').describe('Type of computation: "total" for overall aggregate, "timeseries" for time-bucketed results.'),
         })).describe('Array of metrics to compute. At least one compute is required.'),
         groupBy: z.union([z.array(z.object({

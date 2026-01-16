@@ -238,7 +238,7 @@ Investigate like a human engineer would - be thorough and iterative, not superfi
    - Example: @type:view AND @view.url:*checkout* AND @view.loading_time:>3000
 
 5. USE AGGREGATION FOR ANALYTICS (aggregateRumEvents):
-   - Common aggregations: pc90, pc95, pc99 (percentiles), avg (average), sum, min, max, cardinality
+   - Common aggregations: count (total events), pc90, pc95, pc99 (percentiles), avg (average), sum, min, max, cardinality (unique count)
    - Common metrics: @view.time_spent, @view.loading_time, @duration, @action.loading_time
    - Group by facets: @view.name (page/route), @view.url, @service, @browser.name, @os.name
    - Examples:
