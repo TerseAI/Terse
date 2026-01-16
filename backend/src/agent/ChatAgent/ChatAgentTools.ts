@@ -2,7 +2,6 @@ import { Tool } from "@openai/agents-core";
 import { RunContext, tool } from "@openai/agents";
 import ChatInterface from "./ChatInterface";
 import { z } from "zod";
-import { Channel } from "../../shared/types";
 import { IntegrationType } from "../../shared/Integrations";
 import { ConfigType } from "../../shared/Configs";
 import logger from "../../logger";
@@ -97,14 +96,6 @@ export function buildChatAgentTools(chatInterface: ChatInterface): Tool<ChatAgen
             },
         }),
     ];
-}
-
-function parseChannel(draft: string): Channel {
-    return JSON.parse(draft) as Channel;
-}
-
-function parseConfig(config: string): ConfigType {
-    return config as ConfigType;
 }
 
 const NonEmptyString = z.string().min(1);
