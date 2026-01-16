@@ -85,12 +85,6 @@ export class DatadogKnowledgeBase extends KnowledgeBase<DatadogKnowledgeBaseSess
                 : ["main"]
         );
 
-        if (!datadogConfig.can_read_logs) {
-            logger.warn('Datadog knowledge base configured but logs read permission is disabled', {
-                integrationId
-            });
-        }
-
         // Create the session with Datadog config
         const session: DatadogKnowledgeBaseSession = {
             user,
@@ -109,7 +103,6 @@ export class DatadogKnowledgeBase extends KnowledgeBase<DatadogKnowledgeBaseSess
                 default_indexes: knowledgeBase.defaultIndexes && knowledgeBase.defaultIndexes.length > 0 
                     ? knowledgeBase.defaultIndexes 
                     : ["main"],
-                can_read_logs: true,
             }
         });
     }

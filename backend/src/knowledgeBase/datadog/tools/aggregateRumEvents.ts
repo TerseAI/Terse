@@ -4,7 +4,9 @@ import { client, v2 } from "@datadog/datadog-api-client";
 import logger from "../../../logger";
 import { db } from "../../../prismaClient";
 import { DatadogConfig } from "../../../shared/Configs";
-import { getDatadogSite, getDatadogAppUrl } from "../../../utility/datadog";
+import { getDatadogSite, getDatadogRumDeepLink } from "../../../utility/datadog";
+import { IntegrationType } from "../../../shared/Integrations";
+import { RunHistoryActionType } from "@prisma/client";
 
 /**
  * Tool for aggregating Datadog RUM events into computed metrics and timeseries.
@@ -159,9 +161,8 @@ export const aggregateRumEventsTool = tool({
                 return formatted;
             });
 
-            // Build link to Datadog RUM UI
-            const appUrl = getDatadogAppUrl(region);
-            const rumLink = `${appUrl}/rum/explorer`;
+            // Build deep link to Datadog RUM UI with query parameters
+            const rumLink = getDatadogRumDeepLink(region, query, from, to);
 
             // Determine if there are more results available
             const nextCursor = meta?.page?.after || null;
@@ -192,7 +193,17 @@ export const aggregateRumEventsTool = tool({
 
             // Summary of results
             const bucketCount = formattedBuckets.length;
-            const totalComputes = compute.length;
+
+            // Track the action
+            runContext.context.trackAction({
+                action: 'Aggregated Datadog RUM events',
+                integration: IntegrationType.DATADOG,
+                target: 'RUM events',
+                details: `Computed ${computeDescriptions} on RUM events (${filterDescription}) ${groupByDescription}. Found ${bucketCount} bucket${bucketCount !== 1 ? 's' : ''}${hasMore ? ' (more available)' : ''}`,
+                url: rumLink,
+                type: RunHistoryActionType.read,
+                isReadOnly: true,
+            });
 
             return {
                 success: true,

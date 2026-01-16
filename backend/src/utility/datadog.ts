@@ -59,3 +59,63 @@ export function parseDatadogTimeString(timeString: string): Date {
     
     return date;
 }
+
+/**
+ * Build a deep link to Datadog Logs Explorer with query parameters.
+ * @param region Region code (us, eu, us3, us5, ap1)
+ * @param query Optional log search query
+ * @param from Optional start time (ISO8601 or relative like "now-1h")
+ * @param to Optional end time (ISO8601 or relative like "now")
+ * @returns Deep link URL to Datadog Logs Explorer with filters applied
+ */
+export function getDatadogLogsDeepLink(
+    region: string,
+    query?: string | null,
+    from?: string | null,
+    to?: string | null
+): string {
+    const appUrl = getDatadogAppUrl(region);
+    const url = new URL(`${appUrl}/logs`);
+    
+    if (query) {
+        url.searchParams.set('query', query);
+    }
+    if (from) {
+        url.searchParams.set('from', from);
+    }
+    if (to) {
+        url.searchParams.set('to', to);
+    }
+    
+    return url.toString();
+}
+
+/**
+ * Build a deep link to Datadog RUM Explorer with query parameters.
+ * @param region Region code (us, eu, us3, us5, ap1)
+ * @param query Optional RUM search query
+ * @param from Optional start time (ISO8601 or relative like "now-15m")
+ * @param to Optional end time (ISO8601 or relative like "now")
+ * @returns Deep link URL to Datadog RUM Explorer with filters applied
+ */
+export function getDatadogRumDeepLink(
+    region: string,
+    query?: string | null,
+    from?: string | null,
+    to?: string | null
+): string {
+    const appUrl = getDatadogAppUrl(region);
+    const url = new URL(`${appUrl}/rum/explorer`);
+    
+    if (query) {
+        url.searchParams.set('query', query);
+    }
+    if (from) {
+        url.searchParams.set('from', from);
+    }
+    if (to) {
+        url.searchParams.set('to', to);
+    }
+    
+    return url.toString();
+}

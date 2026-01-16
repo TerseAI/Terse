@@ -4,7 +4,9 @@ import { client, v2 } from "@datadog/datadog-api-client";
 import logger from "../../../logger";
 import { db } from "../../../prismaClient";
 import { DatadogConfig } from "../../../shared/Configs";
-import { getDatadogSite, getDatadogAppUrl } from "../../../utility/datadog";
+import { getDatadogSite, getDatadogLogsDeepLink } from "../../../utility/datadog";
+import { IntegrationType } from "../../../shared/Integrations";
+import { RunHistoryActionType } from "@prisma/client";
 
 /**
  * Tool for querying Datadog logs with flexible filtering options.
@@ -121,9 +123,8 @@ export const searchDatadogLogsTool = tool({
                 };
             });
 
-            // Build link to Datadog logs UI
-            const appUrl = getDatadogAppUrl(region);
-            const logsLink = `${appUrl}/logs`;
+            // Build deep link to Datadog logs UI with query parameters
+            const logsLink = getDatadogLogsDeepLink(region, query, from, to);
 
             // Determine if there are more results available
             const nextCursor = meta?.page?.after || null;
@@ -150,6 +151,17 @@ export const searchDatadogLogsTool = tool({
             // Include warnings if present
             const warnings = meta?.warnings || [];
             const warningMessages = warnings.map((w: any) => `${w.title}: ${w.detail}`).join('; ');
+
+            // Track the action
+            runContext.context.trackAction({
+                action: 'Searched Datadog logs',
+                integration: IntegrationType.DATADOG,
+                target: indexesToUse.length > 0 ? `Datadog logs (indexes: ${indexesToUse.join(', ')})` : 'Datadog logs',
+                details: `Found ${formattedLogs.length} log entry${formattedLogs.length !== 1 ? 's' : ''} with ${filterDescription}${hasMore ? ' (more available)' : ''}`,
+                url: logsLink,
+                type: RunHistoryActionType.read,
+                isReadOnly: true,
+            });
 
             return {
                 success: true,
