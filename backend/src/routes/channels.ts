@@ -46,7 +46,7 @@ async function createOutputConfig(
 async function createKnowledgeBaseConfig(
     tx: PrismaTransaction,
     knowledgeBaseId: string,
-    config: ConfigInstance
+    config: ConfigInstance,
     userId: string
 ): Promise<void> {
     // Convert plain object to proper instance if needed
