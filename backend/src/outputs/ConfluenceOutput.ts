@@ -707,7 +707,7 @@ function stripHtmlTags(html: string): string {
 const CONFLUENCE_FOOTER_INSTRUCTIONS = `
 ## TERSE FOOTER REQUIREMENT
 
-You MUST always ensure a **Terse Footer** exists at the very bottom of the Confluence page after any update. This footer provides transparency about when and how the page was last updated by Terse.
+You MUST always ensure a **Terse Footer** exists at the very bottom of the Confluence page after any update unless the user specifies otherwise. This footer provides transparency about when and how the page was last updated by Terse.
 
 **IMPORTANT**: If the user provides custom footer formatting instructions in their USER_INSTRUCTIONS, use their format instead of the default format below. User instructions take precedence.
 
