@@ -93,7 +93,6 @@ export const listRumEventsTool = tool({
             // Parse response
             const eventsData = response.data || [];
             const meta = response.meta;
-            const links = response.links;
 
             // Format RUM event entries - RUM events have different structures based on type
             const formattedEvents = eventsData.map((event: any) => {
