@@ -110,5 +110,4 @@ Where:
 - If a Terse footer already exists (identified by text starting with "Updated by Terse" or matching user's custom format), UPDATE it with the new values rather than creating a duplicate
 - The footer must ALWAYS be at the very end of the page content
 - Use the bullet separator (•) between each metadata item (unless user specifies otherwise)
-- **CRITICAL**: For the event count, use the event position number from the RUNTIME CONTEXT section (e.g., if it says "This is event #3 processed by this automation", use "3 events"). DO NOT count the individual events in the EVENT block - use the total event position from RUNTIME CONTEXT.
 `.trim();
