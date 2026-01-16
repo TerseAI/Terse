@@ -44,21 +44,13 @@ This is more precise than semantic search - use it when you know exactly what te
             throw new Error("No context provided");
         }
 
-        const githubKBConfig = runContext.context.githubKBConfig as GitHubKBConfig | undefined;
-        if (!githubKBConfig) {
-            throw new Error("GitHub KB config not found in context. Ensure GitHub is configured as a knowledge base.");
-        }
-
-        const accessToken = runContext.context.githubAccessToken as string | undefined;
-        if (!accessToken) {
-            throw new Error("GitHub access token not found in context.");
-        }
+        const { githubKBConfig, githubAccessToken } = runContext.context;
 
         if (githubKBConfig.repositoryNames.length === 0) {
             throw new Error("No repositories configured for this knowledge base.");
         }
 
-        const client = createGitHubClient(accessToken);
+        const client = createGitHubClient(githubAccessToken);
 
         // Build query - wrap in quotes for exact match if not already quoted
         let query = pattern;

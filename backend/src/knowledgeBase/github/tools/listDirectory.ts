@@ -31,15 +31,7 @@ Start with the root directory (empty path) to see the top-level structure, then 
             throw new Error("No context provided");
         }
 
-        const githubKBConfig = runContext.context.githubKBConfig as GitHubKBConfig | undefined;
-        if (!githubKBConfig) {
-            throw new Error("GitHub KB config not found in context. Ensure GitHub is configured as a knowledge base.");
-        }
-
-        const accessToken = runContext.context.githubAccessToken as string | undefined;
-        if (!accessToken) {
-            throw new Error("GitHub access token not found in context.");
-        }
+        const { githubKBConfig, githubAccessToken } = runContext.context;
 
         // Validate that the repository is in the configured list
         if (!githubKBConfig.repositoryNames.includes(repository)) {
@@ -51,7 +43,7 @@ Start with the root directory (empty path) to see the top-level structure, then 
             };
         }
 
-        const client = createGitHubClient(accessToken);
+        const client = createGitHubClient(githubAccessToken);
         const { owner, repo } = parseRepoFullName(repository);
 
         const requestParams = {

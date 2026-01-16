@@ -27,11 +27,7 @@ export const getSessionEventsTool = tool({
             throw new Error("No context provided");
         }
 
-        // Get PostHog config from context
-        const posthogConfig = runContext.context.posthogConfig as PosthogConfig | undefined;
-        if (!posthogConfig) {
-            throw new Error("PostHog config not found in context. Ensure PostHog is configured as a knowledge base.");
-        }
+        const { posthogConfig } = runContext.context;
 
         if (!posthogConfig.canReadSessionRecordings) {
             throw new Error("PostHog session recordings access is not enabled for this knowledge base.");

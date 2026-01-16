@@ -47,21 +47,13 @@ Tips:
             throw new Error("No context provided");
         }
 
-        const githubKBConfig = runContext.context.githubKBConfig as GitHubKBConfig | undefined;
-        if (!githubKBConfig) {
-            throw new Error("GitHub KB config not found in context. Ensure GitHub is configured as a knowledge base.");
-        }
-
-        const accessToken = runContext.context.githubAccessToken as string | undefined;
-        if (!accessToken) {
-            throw new Error("GitHub access token not found in context.");
-        }
+        const { githubKBConfig, githubAccessToken } = runContext.context;
 
         if (githubKBConfig.repositoryNames.length === 0) {
             throw new Error("No repositories configured for this knowledge base.");
         }
 
-        const client = createGitHubClient(accessToken);
+        const client = createGitHubClient(githubAccessToken);
 
         // Build enhanced query with optional filters
         let enhancedQuery = query;

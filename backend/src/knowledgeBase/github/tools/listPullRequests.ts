@@ -12,17 +12,8 @@ import { GitHubKnowledgeBaseSession } from "../GitHubKnowledgeBase";
 const normalizePerPage = (perPage?: number): number => Math.min(perPage || 20, 100);
 
 const validateContext = (runContext: RunContext<SessionWithTracking<GitHubKnowledgeBaseSession>>) => {
-    const githubKBConfig = runContext.context.githubKBConfig as GitHubKBConfig | undefined;
-    if (!githubKBConfig) {
-        throw new Error("GitHub KB config not found in context. Ensure GitHub is configured as a knowledge base.");
-    }
-
-    const accessToken = runContext.context.githubAccessToken as string | undefined;
-    if (!accessToken) {
-        throw new Error("GitHub access token not found in context.");
-    }
-
-    return { githubKBConfig, accessToken };
+    const { githubKBConfig, githubAccessToken } = runContext.context;
+    return { githubKBConfig, githubAccessToken };
 };
 
 const validateRepository = (repository: string, repositoryNames: string[]) => {
@@ -78,14 +69,14 @@ Dates are specified in YYYY-MM-DD format (e.g., "2024-01-15"). The since date is
         if (!runContext?.context) {
             throw new Error("No context provided");
         }
-        const { githubKBConfig, accessToken } = validateContext(runContext);
+        const { githubKBConfig, githubAccessToken } = validateContext(runContext);
 
         const repoValidationError = validateRepository(repository, githubKBConfig.repositoryNames);
         if (repoValidationError) {
             return repoValidationError;
         }
 
-        const client = createGitHubClient(accessToken);
+        const client = createGitHubClient(githubAccessToken);
         const { owner, repo } = parseRepoFullName(repository);
         const normalizedPerPage = normalizePerPage(perPage);
         const pageNumber = Math.max(1, page ?? 1);
