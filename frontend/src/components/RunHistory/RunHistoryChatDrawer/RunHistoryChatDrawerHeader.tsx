@@ -1,6 +1,6 @@
 import { IconForIntegration } from '@/pages/Channels/components/Integration';
 import { RunHistoryStatus, RunHistoryTrigger } from '@/shared/RunHistoryTypes';
-import { ExternalLink, ChevronLeft, ChevronRight, Maximize2, Minimize2 } from 'lucide-react';
+import { ExternalLink, ChevronLeft, ChevronRight, Maximize2, Minimize2, FileText } from 'lucide-react';
 import RunHistoryStatusBadge from '../RunHistoryStatusBadge';
 import { Button } from '@/components/ui/button';
 import { RunHistoryRecord } from '@/shared/RunHistoryTypes';
@@ -14,6 +14,7 @@ type Props = {
     onNavigate?: (runId: string) => void;
     isFullscreen: boolean;
     onFullscreenChange: (fullscreen: boolean) => void;
+    outputUrl?: string;
 };
 
 export default function RunHistoryChatDrawerHeader({
@@ -25,6 +26,7 @@ export default function RunHistoryChatDrawerHeader({
     onNavigate,
     isFullscreen,
     onFullscreenChange,
+    outputUrl,
 }: Props) {
     const canGoPrevious = runs && currentRunIndex !== undefined && currentRunIndex > 0;
     const canGoNext = runs && currentRunIndex !== undefined && currentRunIndex < runs.length - 1;
@@ -104,6 +106,22 @@ export default function RunHistoryChatDrawerHeader({
                                 <ChevronRight className="w-4 h-4" />
                             </Button>
                         </div>
+                    )}
+                    {outputUrl && (
+                        <a
+                            href={outputUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            title="Open output document"
+                        >
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 w-8 p-0"
+                            >
+                                <FileText className="w-4 h-4" />
+                            </Button>
+                        </a>
                     )}
                     <Button
                         variant="ghost"

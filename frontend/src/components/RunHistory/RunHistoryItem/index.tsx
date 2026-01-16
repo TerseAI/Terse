@@ -70,6 +70,7 @@ export default function RunHistoryItem({
             </div>
             <RunHistoryChatDrawer
                 runId={run.id}
+                channelId={run.channelId}
                 isOpen={isDrawerOpen}
                 onOpenChange={handleDrawerClose}
                 status={run.status}

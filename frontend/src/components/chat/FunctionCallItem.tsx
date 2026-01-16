@@ -10,6 +10,14 @@ import { EntityType } from "../../shared/Entities";
 import { FunctionCallEvent } from "./Turn";
 import { Button } from "../ui/button";
 
+// Convert snake_case tool names to readable format
+function formatToolName(name: string): string {
+    if (!name) return name;
+    return name
+        .replace(/_/g, ' ')
+        .replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
 interface FunctionCallItemProps {
     call: FunctionCallEvent;
     isTurnFailure?: boolean;
@@ -198,7 +206,7 @@ export default function FunctionCallItem({ call, isTurnFailure = false, index, o
                                 )}
                                 <div className="text-sm flex-1 text-left min-w-0 overflow-hidden">
                                     <span className="truncate block">
-                                        {call.name}
+                                        {formatToolName(call.name)}
                                         {call.isWaitingForApproval && (
                                             <span className="text-yellow-500 ml-1">(waiting for approval)</span>
                                         )}

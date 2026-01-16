@@ -7,9 +7,9 @@ import { Skeleton } from "../components/ui/skeleton";
 import { AddNotificationDestination } from "../components/Notifications/AddNotificationDestination";
 
 function NotificationsPage() {
-    const { notificationDestinations, isError, isValidating } = useNotificationDestinations();
+    const { notificationDestinations, isError, isLoading } = useNotificationDestinations();
 
-    if (isValidating) {
+    if (isLoading) {
         return <LoadingNotificationChannelList />;
     }
 

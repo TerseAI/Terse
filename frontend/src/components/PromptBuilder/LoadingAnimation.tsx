@@ -36,9 +36,9 @@ export function LoadingAnimation({ message }: LoadingAnimationProps) {
                     {displayMessage}
                 </p>
                 <div className="flex items-center justify-center gap-1">
-                    <div className="h-1.5 w-1.5 rounded-full bg-primary animate-bounce [animation-delay:-0.3s]" />
-                    <div className="h-1.5 w-1.5 rounded-full bg-primary animate-bounce [animation-delay:-0.15s]" />
-                    <div className="h-1.5 w-1.5 rounded-full bg-primary animate-bounce" />
+                    <div className="h-1.5 w-1.5 rounded-full bg-accent-primary animate-bounce [animation-delay:-0.3s]" />
+                    <div className="h-1.5 w-1.5 rounded-full bg-accent-secondary animate-bounce [animation-delay:-0.15s]" />
+                    <div className="h-1.5 w-1.5 rounded-full bg-accent-tertiary animate-bounce" />
                 </div>
             </div>
         </div>

@@ -212,6 +212,11 @@ export const InputCard = forwardRef<HTMLDivElement, {
                         <DialogTitle>{needsConfiguration ? "Configure Integration" : "Integration Details"}</DialogTitle>
                     </DialogHeader>
                     <IntegrationSelector {...selectorProps} variant="dialog" />
+                    <div className="flex justify-end pt-4 border-t border-border">
+                        <Button onClick={() => setShowDetailsDialog(false)}>
+                            Done
+                        </Button>
+                    </div>
                 </DialogContent>
             </Dialog>
         </>

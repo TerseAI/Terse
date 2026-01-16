@@ -114,8 +114,19 @@ export function InstructionsEditor({ prompt, setPrompt, channelInputs, channelOu
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                 <DialogContent className="sm:max-w-2xl h-[80vh] flex flex-col">
                     <DialogHeader>
-                        <DialogTitle className="flex items-center gap-2">
-                            Prompt
+                        <DialogTitle className="flex items-center justify-between w-full">
+                            <span>Prompt</span>
+                            <div className="flex items-center gap-2">
+                                <Switch
+                                    id="markdown-toggle-dialog"
+                                    checked={showMarkdown}
+                                    onCheckedChange={setShowMarkdown}
+                                    disabled={!prompt?.text || prompt.text.trim() === ''}
+                                />
+                                <Label htmlFor="markdown-toggle-dialog" className="text-sm font-normal text-muted-foreground cursor-pointer">
+                                    Markdown
+                                </Label>
+                            </div>
                         </DialogTitle>
                     </DialogHeader>
                     {showMarkdown && prompt?.text ? (

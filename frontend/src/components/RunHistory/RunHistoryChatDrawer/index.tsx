@@ -8,9 +8,14 @@ import { cn } from '@/lib/utils';
 import RunHistoryChatDrawerHeader from './RunHistoryChatDrawerHeader';
 import RunHistoryChatAdapter from './RunHistoryChatAdapter';
 import { Chat, type ChatHandle } from '@/components/chat/Chat';
+import { useChannel } from '@/hooks/api/useChannels';
+import { getNotionUrl } from '@/utility/notionUtils';
+import { ConfigType, NotionConfig, NotionPageConfig } from '@/shared/Configs';
+import { ChannelOutput } from '@/shared/types';
 
 type Props = {
     runId: string;
+    channelId: string;
     isOpen: boolean;
     onOpenChange: (open: boolean) => void;
     status: RunHistoryStatus;
@@ -24,8 +29,25 @@ type Props = {
     isInitialOpen?: boolean;
 };
 
+function getOutputUrl(output: ChannelOutput | undefined): string | undefined {
+    if (!output?.config) return undefined;
+
+    if (output.config.configType === ConfigType.NOTION_DATABASE) {
+        const config = output.config as NotionConfig;
+        const databaseId = config.databaseId;
+        return databaseId ? getNotionUrl(databaseId, config.databaseName) : undefined;
+    } else if (output.config.configType === ConfigType.NOTION_PAGE) {
+        const config = output.config as NotionPageConfig;
+        const pageId = config.pageId;
+        return pageId ? getNotionUrl(pageId, config.pageName) : undefined;
+    }
+
+    return undefined;
+}
+
 export default function RunHistoryChatDrawer({
     runId,
+    channelId,
     isOpen,
     onOpenChange,
     status,
@@ -41,7 +63,11 @@ export default function RunHistoryChatDrawer({
     const [internalFullscreen, setInternalFullscreen] = useState(false);
     const prevRunIdRef = useRef<string | null>(null);
     const chatRef = useRef<ChatHandle>(null);
-    
+
+    // Fetch channel data to get output URL
+    const { channel } = useChannel(isOpen ? channelId : null);
+    const outputUrl = getOutputUrl(channel?.output);
+
     const isFullscreen = onFullscreenChange ? externalIsFullscreen : internalFullscreen;
     const isActuallyInitialOpen = isInitialOpen && (prevRunIdRef.current === null || prevRunIdRef.current !== runId);
     
@@ -91,6 +117,7 @@ export default function RunHistoryChatDrawer({
                                         onNavigate={onNavigate}
                                         isFullscreen={isFullscreen}
                                         onFullscreenChange={handleFullscreenChange}
+                                        outputUrl={outputUrl}
                                     />
                                     <div className={cn(
                                         "flex-1 overflow-hidden min-h-0 bg-background select-text",

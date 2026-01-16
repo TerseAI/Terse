@@ -78,6 +78,7 @@ export function Step2Survey({
                                                 <div
                                                     key={option}
                                                     className="flex items-center gap-3 hover:bg-accent p-2 rounded-md cursor-pointer"
+                                                    onClick={() => onAnswerChange(idx, option, question.type)}
                                                 >
                                                     <RadioGroupItem value={option} id={optionId} />
                                                     <Label htmlFor={optionId} className="text-sm cursor-pointer">

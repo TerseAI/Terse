@@ -554,6 +554,11 @@ function Input({ input, inputs, setInputs, handleRemove }: { input: TransientCha
                         <DialogTitle>{needsConfiguration ? "Configure Integration" : "Integration Details"}</DialogTitle>
                     </DialogHeader>
                     <IntegrationSelector {...selectorProps} variant="dialog" />
+                    <div className="flex justify-end pt-4 border-t border-border">
+                        <Button onClick={() => setShowDetailsDialog(false)}>
+                            Done
+                        </Button>
+                    </div>
                 </DialogContent>
             </Dialog>
         </>
@@ -787,6 +792,11 @@ function KnowledgeBaseCard({ knowledgeBase, knowledgeBases, setKnowledgeBases, h
                         <DialogTitle>{needsConfiguration ? "Configure Knowledge Base" : "Knowledge Base Details"}</DialogTitle>
                     </DialogHeader>
                     <KnowledgeBaseSelector {...selectorProps} variant="dialog" />
+                    <div className="flex justify-end pt-4 border-t border-border">
+                        <Button onClick={() => setShowDetailsDialog(false)}>
+                            Done
+                        </Button>
+                    </div>
                 </DialogContent>
             </Dialog>
         </>

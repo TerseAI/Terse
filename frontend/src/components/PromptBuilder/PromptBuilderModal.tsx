@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Sparkles } from "lucide-react";
 import { BackendProvider } from "@/services/backend";
 import { SurveyQuestion, GenerateSurveyQuestionsRequest, GenerateSurveyPromptRequest, SurveyConfigContext, SurveyAnswers, SurveyWriteInAnswers, SKIP_OPTION } from "@/shared/PromptBuilderTypes";
 import { PromptBuilderModalProps } from "./types";
@@ -225,7 +224,6 @@ export function PromptBuilderModal({
             <DialogContent className="w-[50%] max-w-none sm:max-w-none max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2">
-                        <Sparkles className="h-5 w-5" />
                         Prompt Builder
                         <span className="text-sm font-normal text-muted-foreground">
                             Step {currentStep} of 3
@@ -249,8 +247,8 @@ export function PromptBuilderModal({
                     nextButtonText="Next"
                     disableStepIndicators={false}
                     stepCircleContainerClassName="!max-w-none !border-none !shadow-none"
-                    stepContainerClassName="!p-8"
-                    footerClassName="!pb-4"
+                    stepContainerClassName="!p-4"
+                    footerClassName="!pb-2 !pt-0"
                     nextButtonProps={{
                         disabled: 
                             (currentStep === 1 && (!description.trim() || isLoadingQuestions)) ||
