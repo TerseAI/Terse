@@ -35,10 +35,16 @@ export function buildChatAgentTools(chatInterface: ChatInterface): Tool<ChatAgen
             name: 'buildPreview',
             description: 'Build a preview of the draft. Call this before calling applyChannel.',
             parameters: z.object({
-                draft: z.string().describe('The draft to build a preview of'),
+                draft: ChannelSchema,
             }),
-            execute: async ({ draft }: { draft: string }, runContext?: RunContext<ChatAgentContext>): Promise<string> => {
-                return await chatInterface.buildPreview(parseChannel(draft));
+            execute: async ({ draft: channel }: { draft: ChannelSchemaInput }, runContext?: RunContext<ChatAgentContext>): Promise<string> => {
+                try {
+                    const draft = toChannelDraft(channel);
+                    return await chatInterface.buildPreview(draft);
+                } catch (error) {
+                    logger.error('buildPreview failed', { error, userId: runContext?.context?.userId, channel });
+                    throw error;
+                }
             },
         }),
         tool({
@@ -54,9 +60,14 @@ export function buildChatAgentTools(chatInterface: ChatInterface): Tool<ChatAgen
                     throw new Error("User ID is required to apply channel");
                 }
 
-                const draft = toChannelDraft(channel);
-                const { id } = await applyChannelForUser(userId, draft);
-                return `Channel applied successfully (${id})`;
+                try {
+                    const draft = toChannelDraft(channel);
+                    const { id } = await applyChannelForUser(userId, draft);
+                    return `Channel applied successfully (${id})`;
+                } catch (error) {
+                    logger.error('applyChannel failed', { error, userId, channel });
+                    throw error;
+                }
             },
         }),
         tool({
@@ -96,11 +107,13 @@ function parseConfig(config: string): ConfigType {
     return config as ConfigType;
 }
 
+const NonEmptyString = z.string().min(1);
+
 const BaseConfigSchema = z.object({
-    integrationId: z.string(),
+    integrationId: NonEmptyString,
     configType: z.nativeEnum(ConfigType),
     integrationType: z.nativeEnum(IntegrationType),
-});
+}).strict();
 
 const GmailConfigSchema = BaseConfigSchema.extend({
     configType: z.literal(ConfigType.GMAIL),
@@ -110,88 +123,88 @@ const GmailConfigSchema = BaseConfigSchema.extend({
 const FigmaConfigSchema = BaseConfigSchema.extend({
     configType: z.literal(ConfigType.FIGMA),
     integrationType: z.literal(IntegrationType.FIGMA),
-    fileKey: z.string(),
+    fileKey: NonEmptyString,
     fileName: z.string().nullable(),
-    teamId: z.string(),
+    teamId: NonEmptyString,
 });
 
 const SlackConfigSchema = BaseConfigSchema.extend({
     configType: z.literal(ConfigType.SLACK),
     integrationType: z.literal(IntegrationType.SLACK),
-    channelId: z.string().nullable(),
-    channelName: z.string().nullable(),
+    channelId: NonEmptyString.nullable(),
+    channelName: NonEmptyString.nullable(),
     listenToUserDms: z.boolean().nullable(),
-    userIds: z.array(z.string()).nullable(),
+    userIds: z.array(NonEmptyString).nullable(),
 });
 
 const SlackOutputConfigSchema = BaseConfigSchema.extend({
     configType: z.literal(ConfigType.SLACK_OUTPUT),
     integrationType: z.literal(IntegrationType.SLACK),
-    channelId: z.string().nullable(),
-    channelName: z.string().nullable(),
+    channelId: NonEmptyString.nullable(),
+    channelName: NonEmptyString.nullable(),
 });
 
 const NotionDatabaseConfigSchema = BaseConfigSchema.extend({
     configType: z.literal(ConfigType.NOTION_DATABASE),
     integrationType: z.literal(IntegrationType.NOTION),
-    databaseId: z.string().nullable(),
+    databaseId: NonEmptyString.nullable(),
     databaseName: z.string().nullable(),
 });
 
 const NotionPageConfigSchema = BaseConfigSchema.extend({
     configType: z.literal(ConfigType.NOTION_PAGE),
     integrationType: z.literal(IntegrationType.NOTION),
-    pageId: z.string().nullable(),
+    pageId: NonEmptyString.nullable(),
     pageName: z.string().nullable(),
 });
 
 const LinearInputConfigSchema = BaseConfigSchema.extend({
     configType: z.literal(ConfigType.LINEAR_INPUT),
     integrationType: z.literal(IntegrationType.LINEAR),
-    projectId: z.string().nullable(),
+    projectId: NonEmptyString.nullable(),
     projectName: z.string().nullable(),
 });
 
 const LinearOutputConfigSchema = BaseConfigSchema.extend({
     configType: z.literal(ConfigType.LINEAR_OUTPUT),
     integrationType: z.literal(IntegrationType.LINEAR),
-    teamId: z.string().nullable(),
+    teamId: NonEmptyString.nullable(),
     teamName: z.string().nullable(),
 });
 
 const GitHubConfigSchema = BaseConfigSchema.extend({
     configType: z.literal(ConfigType.GITHUB),
     integrationType: z.literal(IntegrationType.GITHUB),
-    repositoryIds: z.array(z.number()),
+    repositoryIds: z.array(z.number()).min(1),
 });
 
 const GitHubKnowledgeBaseConfigSchema = BaseConfigSchema.extend({
     configType: z.literal(ConfigType.GITHUB_KB),
     integrationType: z.literal(IntegrationType.GITHUB),
-    repositoryIds: z.array(z.number()),
-    repositoryNames: z.array(z.string()),
+    repositoryIds: z.array(z.number()).min(1),
+    repositoryNames: z.array(NonEmptyString).min(1),
 });
 
 const JiraConfigSchema = BaseConfigSchema.extend({
     configType: z.literal(ConfigType.JIRA),
     integrationType: z.literal(IntegrationType.ATLASSIAN),
-    projectKey: z.string().nullable(),
-    projectId: z.string().nullable(),
+    projectKey: NonEmptyString.nullable(),
+    projectId: NonEmptyString.nullable(),
 });
 
 const ConfluenceConfigSchema = BaseConfigSchema.extend({
     configType: z.literal(ConfigType.CONFLUENCE),
     integrationType: z.literal(IntegrationType.ATLASSIAN),
-    spaceName: z.string(),
-    spaceId: z.string(),
-    pageId: z.string(),
-    pageName: z.string(),
+    spaceName: NonEmptyString,
+    spaceId: NonEmptyString,
+    pageId: NonEmptyString,
+    pageName: NonEmptyString,
 });
 
 const PosthogConfigSchema = BaseConfigSchema.extend({
     configType: z.literal(ConfigType.POSTHOG),
     integrationType: z.literal(IntegrationType.POSTHOG),
-    projectId: z.string(),
+    projectId: NonEmptyString,
     projectName: z.string().nullable(),
     canReadLogs: z.boolean().nullable(),
     canReadSessionRecordings: z.boolean().nullable(),
@@ -212,7 +225,18 @@ const InputConfigSchema = z.discriminatedUnion("configType", [
     GitHubConfigSchema,
     JiraConfigSchema,
     TimeTriggerConfigSchema,
-]);
+]).superRefine((value, ctx) => {
+    if (value.configType === ConfigType.SLACK) {
+        const hasChannel = typeof value.channelId === "string" && value.channelId.trim().length > 0;
+        const listensToDms = value.listenToUserDms === true;
+        if (!hasChannel && !listensToDms) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: "Slack input requires a channelId or listenToUserDms=true.",
+            });
+        }
+    }
+});
 
 const OutputConfigSchema = z.discriminatedUnion("configType", [
     SlackOutputConfigSchema,
@@ -230,38 +254,38 @@ const KnowledgeBaseConfigSchema = z.discriminatedUnion("configType", [
 
 const ChannelInputSchema = z.object({
     config: InputConfigSchema,
-});
+}).strict();
 
 const ChannelOutputSchema = z.object({
     config: OutputConfigSchema,
-});
+}).strict();
 
 const ChannelPromptSchema = z.object({
-    text: z.string(),
-});
+    text: NonEmptyString,
+}).strict();
 
 const ChannelKnowledgeBaseSchema = z.object({
     config: KnowledgeBaseConfigSchema,
-});
+}).strict();
 
 const RunHistoryActionTypeSchema = z.enum(["create", "update", "delete", "read"]);
 
 const ChannelNotificationSettingsSchema = z.object({
     enabled: z.boolean(),
     actionTypes: z.array(RunHistoryActionTypeSchema),
-});
+}).strict();
 
 export const ChannelSchema = z.object({
-    name: z.string(),
+    name: NonEmptyString,
     isActive: z.boolean(),
     requireApproval: z.boolean(),
     prompt: ChannelPromptSchema,
-    inputs: z.array(ChannelInputSchema),
+    inputs: z.array(ChannelInputSchema).min(1),
     output: ChannelOutputSchema,
     knowledgeBases: z.array(ChannelKnowledgeBaseSchema).nullable(),
     notificationSettings: ChannelNotificationSettingsSchema.nullable(),
     updatedAt: z.string().nullable(),
-});
+}).strict();
 
 type ChannelSchemaInput = z.infer<typeof ChannelSchema>;
 
@@ -273,23 +297,35 @@ function toConfigInstance<T extends Record<string, any>>(config: T): T & ConfigI
     } as T & ConfigInstance;
 }
 
+function normalizeConfig<T extends Record<string, any>>(config: T): T {
+    if (config.configType === ConfigType.TIME_TRIGGER) {
+        return {
+            ...config,
+            integrationId: "system",
+            integrationType: IntegrationType.CRON_JOB,
+            configType: ConfigType.TIME_TRIGGER,
+        } as T;
+    }
+    return config;
+}
+
 function toChannelDraft(channel: ChannelSchemaInput): ChannelDraft {
     return {
         ...channel,
         inputs: channel.inputs.map((input) => ({
             id: uuidv4().toString(),
             ...input,
-            config: toConfigInstance(input.config),
+            config: toConfigInstance(normalizeConfig(input.config)),
         })),
         output: {
             id: uuidv4().toString(),
             ...channel.output,
-            config: toConfigInstance(channel.output.config),
+            config: toConfigInstance(normalizeConfig(channel.output.config)),
         },
         knowledgeBases: channel.knowledgeBases?.map((kb) => ({
             id: uuidv4().toString(),
             ...kb,
-            config: toConfigInstance(kb.config),
+            config: toConfigInstance(normalizeConfig(kb.config)),
         })) ?? undefined,
         notificationSettings: channel.notificationSettings ?? undefined,
         updatedAt: channel.updatedAt ?? undefined,
