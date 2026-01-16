@@ -144,7 +144,10 @@ export const searchDatadogLogsTool = tool({
             });
 
             // Build deep link to Datadog logs UI with query parameters
-            const logsLink = getDatadogLogsDeepLink(region, query, from, to);
+            // If time window is not provided, default to last hour for a useful link
+            const linkFrom = from || 'now-1h';
+            const linkTo = to || 'now';
+            const logsLink = getDatadogLogsDeepLink(region, query, linkFrom, linkTo);
 
             // Determine if there are more results available
             const nextCursor = meta?.page?.after || null;

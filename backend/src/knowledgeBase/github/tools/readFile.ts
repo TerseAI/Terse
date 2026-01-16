@@ -99,11 +99,21 @@ Note: This reads from the default branch (main/master). Large files may be trunc
                 finalContent = numberedContent.substring(0, 100000) + '\n... (file truncated, use startLine/endLine to read specific sections)';
             }
 
+            // Build URL with line number if startLine is provided
+            let fileUrl = fileContent.htmlUrl;
+            if (startLine !== null && startLine !== undefined) {
+                if (endLine !== null && endLine !== undefined && endLine !== startLine) {
+                    fileUrl = `${fileContent.htmlUrl}#L${startLine}-L${endLine}`;
+                } else {
+                    fileUrl = `${fileContent.htmlUrl}#L${startLine}`;
+                }
+            }
+
             const response = {
                 success: true,
                 repository,
                 path,
-                url: fileContent.htmlUrl,
+                url: fileUrl,
                 totalLines,
                 displayedLines: `${displayedLines.start}-${displayedLines.end}`,
                 size: fileContent.size,
@@ -131,7 +141,7 @@ Note: This reads from the default branch (main/master). Large files may be trunc
                 integration: IntegrationType.GITHUB,
                 target: repository,
                 details: `Read file "${path}"${startLine && endLine ? ` (lines ${displayedLines.start}-${displayedLines.end})` : ''} (${totalLines} total lines${isTruncated ? ', truncated' : ''})`,
-                url: fileContent.htmlUrl,
+                url: fileUrl,
                 type: RunHistoryActionType.read,
                 isReadOnly: true,
             });

@@ -144,13 +144,18 @@ Tips:
             });
             logger.debug('[GitHub KB] searchGitHubCode - Full response', { response });
 
+            // Build URL with repository filter
+            const repoFilter = githubKBConfig.repositoryNames.map(repo => `repo:${repo}`).join(' ');
+            const urlQuery = `${enhancedQuery} ${repoFilter}`;
+            const searchUrl = `https://github.com/search?q=${encodeURIComponent(urlQuery)}&type=code`;
+
             // Track the action
             runContext.context.trackAction({
                 action: 'Searched GitHub code',
                 integration: IntegrationType.GITHUB,
                 target: githubKBConfig.repositoryNames.join(', '),
                 details: `Semantic search for "${query}": Found ${results.totalCount} result(s)${results.pagination.hasMore ? ` (showing page ${results.pagination.page})` : ''}`,
-                url: `https://github.com/search?q=${encodeURIComponent(enhancedQuery)}&type=code`,
+                url: searchUrl,
                 type: RunHistoryActionType.read,
                 isReadOnly: true,
             });
