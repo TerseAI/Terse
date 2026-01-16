@@ -127,11 +127,6 @@ export function GitHubIntegration({
             {/* GitHub-specific repository selector */}
             {selectedIntegrationId && selectedIntegration && (
                 <div className="mt-3 pt-3 border-t border-border">
-                    {(!currentConfig?.repositoryIds || currentConfig.repositoryIds.length === 0) && (
-                        <p className="text-sm text-muted-foreground mb-3">
-                            Select repositories to monitor
-                        </p>
-                    )}
                     <GithubResourceSelector
                         installationId={selectedIntegration.installation_id}
                         selectedRepositoryIds={currentConfig?.repositoryIds || []}
