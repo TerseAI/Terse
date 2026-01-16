@@ -60,6 +60,16 @@ export const aggregateRumEventsTool = tool({
 
         // Validate compute array
         if (!compute || compute.length === 0) {
+            logger.warn('[Datadog] aggregateRumEvents - Validation failed', {
+                tool: 'aggregateRumEvents',
+                error: 'At least one compute metric is required',
+                providedParams: {
+                    compute: compute?.length || 0,
+                    groupBy: groupBy?.length || 0,
+                    from,
+                    to: to || null
+                }
+            });
             throw new Error("At least one compute metric is required");
         }
 
@@ -131,6 +141,32 @@ export const aggregateRumEventsTool = tool({
                 region 
             });
 
+            // Log full request context (debug level)
+            logger.debug('[Datadog] aggregateRumEvents - Request details', {
+                tool: 'aggregateRumEvents',
+                integrationId: datadogConfig.integrationId,
+                userId: user.id,
+                requestParams: {
+                    query: query || null,
+                    from,
+                    to: to || 'now',
+                    compute: compute.map(c => ({
+                        aggregation: c.aggregation,
+                        metric: c.metric,
+                        type: c.type
+                    })),
+                    groupBy: groupBy?.map(gb => ({
+                        facet: gb.facet,
+                        limit: gb.limit || 10,
+                        total: gb.total || false
+                    })) || null,
+                    timezone,
+                    pageLimit: Math.min(pageLimit ?? 25, 1000)
+                },
+                region,
+                site
+            });
+
             // Call Datadog RUM API
             const response = await rumApi.aggregateRUMEvents({ body: requestBody });
 
@@ -194,6 +230,39 @@ export const aggregateRumEventsTool = tool({
             // Summary of results
             const bucketCount = formattedBuckets.length;
 
+            // Log success response (info level - summary)
+            logger.info('[Datadog] aggregateRumEvents - Success', {
+                bucketCount,
+                computeDescriptions,
+                groupByDescription,
+                hasMore,
+                filterDescription,
+                region
+            });
+
+            // Log detailed response metadata (debug level)
+            logger.debug('[Datadog] aggregateRumEvents - Response details', {
+                bucketCount,
+                pagination: {
+                    limit: Math.min(pageLimit ?? 25, 1000),
+                    nextCursor: nextCursor ? 'present' : 'none',
+                    hasMore
+                },
+                warnings: warnings.length,
+                meta: {
+                    elapsed: meta?.elapsed,
+                    requestId: meta?.requestId,
+                    status: meta?.status
+                },
+                deepLink: rumLink,
+                computeDescriptions,
+                groupByDescription,
+                sampleBuckets: formattedBuckets.slice(0, 3).map(bucket => ({
+                    by: bucket.by,
+                    computeCount: Object.keys(bucket.computes).length
+                }))
+            });
+
             // Track the action
             runContext.context.trackAction({
                 action: 'Aggregated Datadog RUM events',
@@ -230,12 +299,21 @@ export const aggregateRumEventsTool = tool({
                 message: `Computed ${computeDescriptions} on RUM events (${filterDescription}) ${groupByDescription}. Found ${bucketCount} bucket${bucketCount !== 1 ? 's' : ''}${hasMore ? ' (more available)' : ''}. View in Datadog: ${rumLink}${warnings.length > 0 ? `\nWarnings: ${warningMessages}` : ''}`
             };
         } catch (error: any) {
-            logger.error('Error aggregating Datadog RUM events', { 
-                error, 
-                query, 
-                from, 
-                to, 
-                region 
+            logger.error('[Datadog] aggregateRumEvents - Error', { 
+                error: error.message,
+                errorStatus: error.status,
+                errorCode: error.code,
+                requestParams: {
+                    query, 
+                    from, 
+                    to: to || 'now',
+                    computeCount: compute?.length || 0,
+                    groupByCount: groupBy?.length || 0,
+                    timezone,
+                    pageLimit,
+                    region
+                },
+                stack: error.stack
             });
             
             // Handle specific error cases

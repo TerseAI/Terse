@@ -95,6 +95,24 @@ export const searchRumEventsTool = tool({
                 region 
             });
 
+            // Log full request context (debug level)
+            logger.debug('[Datadog] searchRumEvents - Request details', {
+                tool: 'searchRumEvents',
+                integrationId: datadogConfig.integrationId,
+                userId: user.id,
+                requestParams: {
+                    query: query || null,
+                    from,
+                    to: to || 'now',
+                    limit: Math.min(limit, 1000),
+                    sort,
+                    timezone,
+                    pageCursor: pageCursor ? 'present' : 'none'
+                },
+                region,
+                site
+            });
+
             // Call Datadog RUM API
             const response = await rumApi.searchRUMEvents({ body: requestBody });
 
@@ -209,6 +227,40 @@ export const searchRumEventsTool = tool({
                 .map(([type, count]) => `${count} ${type}`)
                 .join(', ');
 
+            // Log success response (info level - summary)
+            logger.info('[Datadog] searchRumEvents - Success', {
+                resultCount: formattedEvents.length,
+                eventsByType,
+                hasMore,
+                filterDescription,
+                region
+            });
+
+            // Log detailed response metadata (debug level)
+            logger.debug('[Datadog] searchRumEvents - Response details', {
+                resultCount: formattedEvents.length,
+                eventsByType,
+                pagination: {
+                    limit: Math.min(limit, 1000),
+                    cursor: pageCursor ? 'present' : 'none',
+                    nextCursor: nextCursor ? 'present' : 'none',
+                    hasMore
+                },
+                warnings: warnings.length,
+                meta: {
+                    elapsed: meta?.elapsed,
+                    requestId: meta?.requestId,
+                    status: meta?.status
+                },
+                deepLink: rumLink,
+                sampleResults: formattedEvents.slice(0, 3).map(event => ({
+                    id: event.id,
+                    type: event.type,
+                    timestamp: event.timestamp,
+                    service: event.service
+                }))
+            });
+
             // Track the action
             runContext.context.trackAction({
                 action: 'Searched Datadog RUM events',
@@ -238,12 +290,21 @@ export const searchRumEventsTool = tool({
                 message: `Found ${formattedEvents.length} RUM event${formattedEvents.length !== 1 ? 's' : ''} (${typeSummary}) filtered by ${filterDescription}${hasMore ? ' (more available)' : ''}. View events: ${rumLink}${warnings.length > 0 ? `\nWarnings: ${warningMessages}` : ''}`
             };
         } catch (error: any) {
-            logger.error('Error querying Datadog RUM events', { 
-                error, 
-                query, 
-                from, 
-                to, 
-                region 
+            logger.error('[Datadog] searchRumEvents - Error', { 
+                error: error.message,
+                errorStatus: error.status,
+                errorCode: error.code,
+                requestParams: {
+                    query, 
+                    from, 
+                    to,
+                    limit,
+                    sort,
+                    timezone,
+                    pageCursor: pageCursor ? 'present' : 'none',
+                    region
+                },
+                stack: error.stack
             });
             
             // Handle specific error cases

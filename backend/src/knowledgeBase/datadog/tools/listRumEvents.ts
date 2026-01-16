@@ -71,10 +71,45 @@ export const listRumEventsTool = tool({
 
             // Build request parameters for GET endpoint (query string format)
             // Only ISO8601 date strings are supported (not relative time formats like "now-15m")
+            let parsedFrom: Date | undefined;
+            let parsedTo: Date | undefined;
+            
+            if (from) {
+                try {
+                    parsedFrom = parseDatadogTimeString(from);
+                    logger.debug('[Datadog] listRumEvents - Parsed time string', {
+                        original: from,
+                        parsed: parsedFrom.toISOString()
+                    });
+                } catch (parseError: any) {
+                    logger.warn('[Datadog] listRumEvents - Time string parse error', {
+                        original: from,
+                        error: parseError.message
+                    });
+                    throw parseError;
+                }
+            }
+            
+            if (to) {
+                try {
+                    parsedTo = parseDatadogTimeString(to);
+                    logger.debug('[Datadog] listRumEvents - Parsed time string', {
+                        original: to,
+                        parsed: parsedTo.toISOString()
+                    });
+                } catch (parseError: any) {
+                    logger.warn('[Datadog] listRumEvents - Time string parse error', {
+                        original: to,
+                        error: parseError.message
+                    });
+                    throw parseError;
+                }
+            }
+
             const params: v2.RUMApiListRUMEventsRequest = {
                 filterQuery: query || undefined,
-                filterFrom: from ? parseDatadogTimeString(from) : undefined,
-                filterTo: to ? parseDatadogTimeString(to) : undefined,
+                filterFrom: parsedFrom,
+                filterTo: parsedTo,
                 sort: sort as 'timestamp' | '-timestamp',
                 pageCursor: pageCursor || undefined,
                 pageLimit: Math.min(limit, 1000), // Datadog max is 1000
@@ -87,6 +122,25 @@ export const listRumEventsTool = tool({
                 limit, 
                 cursor: pageCursor ? 'present' : 'none',
                 region 
+            });
+
+            // Log full request context (debug level)
+            logger.debug('[Datadog] listRumEvents - Request details', {
+                tool: 'listRumEvents',
+                integrationId: datadogConfig.integrationId,
+                userId: user.id,
+                requestParams: {
+                    query: query || null,
+                    from,
+                    to,
+                    parsedFrom: parsedFrom?.toISOString(),
+                    parsedTo: parsedTo?.toISOString(),
+                    limit: Math.min(limit, 1000),
+                    sort,
+                    pageCursor: pageCursor ? 'present' : 'none'
+                },
+                region,
+                site
             });
 
             // Call Datadog RUM API GET endpoint
@@ -206,6 +260,40 @@ export const listRumEventsTool = tool({
                 .map(([type, count]) => `${count} ${type}`)
                 .join(', ');
 
+            // Log success response (info level - summary)
+            logger.info('[Datadog] listRumEvents - Success', {
+                resultCount: formattedEvents.length,
+                eventsByType,
+                hasMore,
+                filterDescription,
+                region
+            });
+
+            // Log detailed response metadata (debug level)
+            logger.debug('[Datadog] listRumEvents - Response details', {
+                resultCount: formattedEvents.length,
+                eventsByType,
+                pagination: {
+                    limit: Math.min(limit, 1000),
+                    cursor: pageCursor ? 'present' : 'none',
+                    nextCursor: nextCursor ? 'present' : 'none',
+                    hasMore
+                },
+                warnings: warnings.length,
+                meta: {
+                    elapsed: meta?.elapsed,
+                    requestId: meta?.requestId,
+                    status: meta?.status
+                },
+                deepLink: rumLink,
+                sampleResults: formattedEvents.slice(0, 3).map(event => ({
+                    id: event.id,
+                    type: event.type,
+                    timestamp: event.timestamp,
+                    service: event.service
+                }))
+            });
+
             // Track the action
             runContext.context.trackAction({
                 action: 'Listed Datadog RUM events',
@@ -235,12 +323,20 @@ export const listRumEventsTool = tool({
                 message: `Found ${formattedEvents.length} RUM event${formattedEvents.length !== 1 ? 's' : ''} (${typeSummary}) with ${filterDescription}${hasMore ? ' (more available)' : ''}. View events: ${rumLink}${warnings.length > 0 ? `\nWarnings: ${warningMessages}` : ''}`
             };
         } catch (error: any) {
-            logger.error('Error listing Datadog RUM events', { 
-                error, 
-                query, 
-                from, 
-                to, 
-                region 
+            logger.error('[Datadog] listRumEvents - Error', { 
+                error: error.message,
+                errorStatus: error.status,
+                errorCode: error.code,
+                requestParams: {
+                    query, 
+                    from, 
+                    to,
+                    limit,
+                    sort,
+                    pageCursor: pageCursor ? 'present' : 'none',
+                    region
+                },
+                stack: error.stack
             });
             
             // Handle specific error cases

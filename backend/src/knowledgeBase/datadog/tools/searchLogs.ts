@@ -100,6 +100,26 @@ export const searchDatadogLogsTool = tool({
                 region 
             });
 
+            // Log full request context (debug level)
+            logger.debug('[Datadog] searchDatadogLogs - Request details', {
+                tool: 'searchDatadogLogs',
+                integrationId: datadogConfig.integrationId,
+                userId: user.id,
+                requestParams: {
+                    query: query || null,
+                    indexes: indexesToUse,
+                    providedIndexes: indexes,
+                    defaultIndexes: datadogConfig.defaultIndexes,
+                    from,
+                    to,
+                    limit: Math.min(limit, 1000),
+                    sort,
+                    cursor: cursor ? 'present' : 'none'
+                },
+                region,
+                site
+            });
+
             // Call Datadog API
             const response = await logsApi.listLogs({ body: requestBody });
 
@@ -152,6 +172,39 @@ export const searchDatadogLogsTool = tool({
             const warnings = meta?.warnings || [];
             const warningMessages = warnings.map((w: any) => `${w.title}: ${w.detail}`).join('; ');
 
+            // Log success response (info level - summary)
+            logger.info('[Datadog] searchDatadogLogs - Success', {
+                resultCount: formattedLogs.length,
+                hasMore,
+                filterDescription,
+                region
+            });
+
+            // Log detailed response metadata (debug level)
+            logger.debug('[Datadog] searchDatadogLogs - Response details', {
+                resultCount: formattedLogs.length,
+                pagination: {
+                    limit: Math.min(limit, 1000),
+                    cursor: cursor ? 'present' : 'none',
+                    nextCursor: nextCursor ? 'present' : 'none',
+                    hasMore
+                },
+                warnings: warnings.length,
+                meta: {
+                    elapsed: meta?.elapsed,
+                    requestId: meta?.requestId,
+                    status: meta?.status
+                },
+                deepLink: logsLink,
+                sampleResults: formattedLogs.slice(0, 3).map(log => ({
+                    id: log.id,
+                    timestamp: log.timestamp,
+                    service: log.service,
+                    status: log.status,
+                    host: log.host
+                }))
+            });
+
             // Track the action
             runContext.context.trackAction({
                 action: 'Searched Datadog logs',
@@ -181,13 +234,21 @@ export const searchDatadogLogsTool = tool({
                 message: `Found ${formattedLogs.length} log entries filtered by ${filterDescription}${hasMore ? ' (more available)' : ''}. View logs: ${logsLink}${warnings.length > 0 ? `\nWarnings: ${warningMessages}` : ''}`
             };
         } catch (error: any) {
-            logger.error('Error querying Datadog logs', { 
-                error, 
-                query, 
-                indexes: indexesToUse, 
-                from, 
-                to, 
-                region 
+            logger.error('[Datadog] searchDatadogLogs - Error', { 
+                error: error.message,
+                errorStatus: error.status,
+                errorCode: error.code,
+                requestParams: {
+                    query, 
+                    indexes: indexesToUse, 
+                    from, 
+                    to,
+                    limit,
+                    sort,
+                    cursor: cursor ? 'present' : 'none',
+                    region
+                },
+                stack: error.stack
             });
             
             // Handle specific error cases
