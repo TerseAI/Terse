@@ -1,4 +1,4 @@
-import { Plus, AlertTriangleIcon } from 'lucide-react';
+import { Plus, AlertTriangleIcon, Info } from 'lucide-react';
 import { Button } from '../ui/button';
 import DropdownSelect from '../ui/DropdownSelect';
 import { IntegrationType, GithubIntegration as GithubIntegrationType } from "@/shared/Integrations"
@@ -10,6 +10,7 @@ import { useOAuthConnection } from '@/hooks/useOAuthConnection';
 import { useIntegrationId } from '@/hooks/useIntegrationId';
 import { StatusOption } from '../ui/DropdownSelect';
 import { ConfigType } from '@/shared/Configs';
+import { Tooltip, TooltipTrigger, TooltipContent } from '../ui/tooltip';
 
 export function GitHubIntegration({
     input,
@@ -141,6 +142,39 @@ export function GitHubIntegration({
                             );
                             setConfig(updatedConfig);
                         }}
+                        customLabel={
+                            <div className="flex items-center gap-1.5">
+                                <label className="text-xs font-medium text-muted-foreground">
+                                    Select Repositories
+                                </label>
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <button
+                                            type="button"
+                                            className="text-muted-foreground hover:text-foreground transition-colors"
+                                            onClick={(e) => e.preventDefault()}
+                                        >
+                                            <Info className="w-3.5 h-3.5" />
+                                        </button>
+                                    </TooltipTrigger>
+                                    <TooltipContent side="right" className="max-w-xs">
+                                        <div className="flex flex-col gap-1.5">
+                                            <p className="font-medium mb-1">Monitored GitHub Events</p>
+                                            <p className="text-xs">
+                                                We monitor the following events from your selected repositories:
+                                            </p>
+                                            <ul className="text-xs mt-1 space-y-0.5 list-disc list-inside">
+                                                <li><strong>Push</strong> - Commits pushed to branches</li>
+                                                <li><strong>Pull Request Opened</strong> - When a PR is created</li>
+                                                <li><strong>Pull Request Updated</strong> - When a PR receives new commits</li>
+                                                <li><strong>Pull Request Merged/Closed</strong> - When a PR is merged or closed</li>
+                                                <li><strong>Issues Opened</strong> - When an issue is created</li>
+                                            </ul>
+                                        </div>
+                                    </TooltipContent>
+                                </Tooltip>
+                            </div>
+                        }
                     />
                 </div>
             )}
