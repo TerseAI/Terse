@@ -10,7 +10,7 @@ import { IntegrationType } from "../../../shared/Integrations";
  */
 export const listLaunchDarklyFlagsTool = tool({
     name: 'listLaunchDarklyFlags',
-    description: 'List all feature flags for the configured project with their enabled/disabled states per environment. Returns flag key, name, and on/off state for each configured environment. Use summary=true for quick overview, summary=false for full details.',
+    description: 'List all feature flags with enabled/disabled states per environment. Use summary=true for quick overview, summary=false for full details.',
     parameters: z.object({
         summary: z.boolean().default(true).describe('If true, return only flag key, name, and on/off state per environment. If false, return full flag details.'),
         filter: z.union([z.string(), z.null()]).optional().describe('Optional: Filter flags by name/key containing this text.'),

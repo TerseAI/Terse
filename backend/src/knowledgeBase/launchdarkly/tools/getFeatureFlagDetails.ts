@@ -11,7 +11,7 @@ import { IntegrationType } from "../../../shared/Integrations";
  */
 export const getLaunchDarklyFlagDetailsTool = tool({
     name: 'getLaunchDarklyFlagDetails',
-    description: 'Get detailed information about a specific feature flag, including targeting rules, rollout strategies, and variations. Optionally includes change history over a time window. Returns flag metadata, per-environment configuration (on state, targeting rules, fallthrough strategy, off variation), and optionally recent changes.',
+    description: 'Get detailed information about a specific feature flag including targeting rules, rollout strategies, variations, and per-environment configuration. Optionally includes change history when includeHistory=true.',
     parameters: z.object({
         flagKey: z.string().describe('The flag key to retrieve.'),
         environmentKey: z.union([z.string(), z.null()]).optional().describe('Optional: Specific environment to get details for (if not provided, returns all configured environments).'),

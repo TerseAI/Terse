@@ -123,38 +123,17 @@ export class LaunchDarklyKnowledgeBase extends KnowledgeBase<LaunchDarklyKnowled
         sections.push(`Project: ${launchDarklyConfig.projectKey}`);
         sections.push(`Environments: ${launchDarklyConfig.environmentKeys.join(', ')}`);
 
-        // Available tools section
+        // Usage strategy
         sections.push(`
-AVAILABLE TOOLS:
-- listLaunchDarklyFlags: List all feature flags with their on/off state per environment.
-  Use summary=true for quick overview, summary=false for full details.
+WORKFLOW:
+- Start with listLaunchDarklyFlags (summary=true) for quick overview
+- Use getLaunchDarklyFlagDetails for specific flags needing deep-dive
+- Set includeHistory=true when investigating timeline of changes
 
-- getLaunchDarklyFlagDetails: Get detailed information about a specific flag including
-  targeting rules, rollout strategies, and variations.
-  Set includeHistory=true with optional before/after dates to also get change history over a time window.
-
-USAGE GUIDELINES:
-1. START WITH OVERVIEW:
-   - Use listLaunchDarklyFlags with summary=true to get a quick view of all flags
-   - This shows which flags are enabled/disabled in each environment
-
-2. INVESTIGATE SPECIFIC FLAGS:
-   - Use getLaunchDarklyFlagDetails for deep-dive on specific flags
-   - Check targeting rules and rollout strategies when debugging issues
-   - Set includeHistory=true to see recent changes over a time window
-
-3. ANSWERING COMMON QUESTIONS:
-   - "Is flag X enabled in production?" → listLaunchDarklyFlags or getLaunchDarklyFlagDetails
-   - "What flags are enabled in staging?" → listLaunchDarklyFlags with filter
-   - "Show me all flags with tag Y" → listLaunchDarklyFlags with tags filter
-   - "When was flag X enabled?" → getLaunchDarklyFlagDetails with includeHistory=true
-   - "What changes were made to flag X last week?" → getLaunchDarklyFlagDetails with includeHistory=true and after date
-
-4. BEST PRACTICES:
-   - Always specify which environment you're referring to (production, staging, etc.)
-   - Link to the LaunchDarkly UI for users to view/edit flags directly
-   - When discussing flag state, clarify if you're talking about current state vs targeting rules
-   - Use includeHistory=true to understand the timeline of changes when investigating issues`);
+BEST PRACTICES:
+- Always specify which environment you're referring to
+- Link to LaunchDarkly UI for users to view/edit flags directly
+- Clarify current state vs targeting rules when discussing flag behavior`);
 
         return sections.join('\n');
     }
