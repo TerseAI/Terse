@@ -1,15 +1,13 @@
 import { RunStreamEvent } from "@openai/agents";
-import { CONFIG_DETAILS, ConfigType } from "../../shared/Configs";
+import { ConfigType } from "../../shared/Configs";
 import ChatInterface from "./ChatInterface";
 import { IntegrationType } from "../../shared/Integrations";
-import cronstrue from "cronstrue";
 import logger from "../../logger";
 import { Block, ChatPostMessageArguments, ChatUpdateArguments, KnownBlock, WebClient } from "@slack/web-api";
 import { INTEGRATION_REGISTRY } from "../../integrations/abstract/IntegrationRegistry";
 import { isFormIntegrationInstallation, isOAuthIntegrationInstallation, OAuthIntegrationInstallation } from "../../integrations/abstract/Integration";
 import { createOAuthStateToken } from "../../utility/oauth";
 import { createActionBlock, createButton, createIntegrationConnectionMessage } from "../../slack/blockKitHelpers";
-import { ChannelDraft } from "../../routes/channels";
 
 class SlackChatInterface extends ChatInterface {
     name: string = 'Slack';
@@ -66,71 +64,6 @@ class SlackChatInterface extends ChatInterface {
 
     setMessageTsToReplace(messageTs: string): void {
         this.messageTsToReplace = messageTs;
-    }
-
-    async buildPreview(draft: ChannelDraft): Promise<string> {
-        const blocks: SlackBlock[] = [];
-        const title = draft.name?.trim() || "Untitled Automation";
-        const status = draft.isActive ? "Active" : "Paused";
-        const approval = draft.requireApproval ? "Requires approval" : "No approval";
-        const timezone = (await this.getUserTimezone()) ?? "UTC";
-
-        blocks.push(makeHeaderBlock(`Preview: ${title}`));
-
-        blocks.push(makeContextBlock([
-            `*Status:* ${status}`,
-            `*Approval:* ${approval}`,
-        ]));
-
-        blocks.push(makeDividerBlock());
-
-        blocks.push(makeSectionBlock("*Inputs*"));
-
-        if (!draft.inputs || draft.inputs.length === 0) {
-            blocks.push(makeSectionBlock("_No inputs configured yet._"));
-        } else {
-            draft.inputs.forEach((input, index) => {
-                const summary = formatConfigSummary(input.config as unknown as ConfigSummaryInput, timezone);
-                blocks.push(makeSectionBlock(`• *${index + 1}.* ${summary}`));
-            });
-        }
-
-        blocks.push(makeDividerBlock());
-
-        blocks.push(makeSectionBlock("*Output*"));
-
-        if (!draft.output) {
-            blocks.push(makeSectionBlock("_No output configured yet._"));
-        } else {
-            blocks.push(makeSectionBlock(formatConfigSummary(draft.output.config as unknown as ConfigSummaryInput, timezone)));
-        }
-
-        blocks.push(makeDividerBlock());
-
-        blocks.push(makeSectionBlock("*Knowledge Bases*"));
-
-        if (!draft.knowledgeBases || draft.knowledgeBases.length === 0) {
-            blocks.push(makeSectionBlock("_No knowledge bases configured._"));
-        } else {
-            draft.knowledgeBases.forEach((kb, index) => {
-                const summary = formatConfigSummary(kb.config as unknown as ConfigSummaryInput, timezone);
-                blocks.push(makeSectionBlock(`• *${index + 1}.* ${summary}`));
-            });
-        }
-
-        blocks.push(makeDividerBlock());
-
-        blocks.push(makeSectionBlock("*Prompt*"));
-
-        const promptText = draft.prompt?.text?.trim();
-        blocks.push(makeSectionBlock(promptText ? truncateText(promptText, 100) : "_No prompt provided._"));
-
-        await this.say({
-            text: `Preview for ${title}`,
-            blocks
-        });
-
-        return "Preview sent.";
     }
 
     async buildButton(label: string, url: string): Promise<void> {
@@ -378,47 +311,6 @@ type SlackMessagePayload = {
     thread_ts?: string;
 };
 
-type ConfigSummaryInput = Record<string, unknown> & {
-    configType?: ConfigType;
-    integrationType?: IntegrationType;
-    integrationId?: string;
-    repositoryIds?: number[];
-    repositoryNames?: string[];
-    channelName?: string;
-    channelId?: string;
-    listenToUserDms?: boolean;
-    fileName?: string;
-    fileKey?: string;
-    teamId?: string;
-    databaseName?: string;
-    databaseId?: string;
-    pageName?: string;
-    pageId?: string;
-    projectName?: string;
-    projectId?: string;
-    projectKey?: string;
-    spaceName?: string;
-    cronExpression?: string;
-};
-
-function makeHeaderBlock(text: string): KnownBlock {
-    return {
-        type: "header",
-        text: { type: "plain_text", text },
-    };
-}
-
-function makeContextBlock(texts: string[]): KnownBlock {
-    return {
-        type: "context",
-        elements: texts.map((text) => ({ type: "mrkdwn", text })),
-    };
-}
-
-function makeDividerBlock(): KnownBlock {
-    return { type: "divider" };
-}
-
 function makeSectionBlock(text: string): KnownBlock {
     return {
         type: "section",
@@ -449,91 +341,4 @@ function slugifyActionId(value: string): string {
         .replace(/[^a-z0-9]+/g, "_")
         .replace(/^_+|_+$/g, "")
         .slice(0, 50) || "button";
-}
-
-function formatCronDescription(cronExpression: string, timezone: string): string {
-    if (!cronExpression.trim()) {
-        return "No schedule configured";
-    }
-
-    try {
-        return `${cronstrue.toString(cronExpression)} (${timezone})`;
-    } catch {
-        return "Invalid schedule";
-    }
-}
-
-function formatConfigSummary(config: ConfigSummaryInput, timezone: string): string {
-    const configData = config;
-    const configType = configData.configType ?? ConfigType.GMAIL;
-    const configLabel = CONFIG_DETAILS[configType]?.name ?? configType;
-    const parts: string[] = [];
-
-    switch (configType) {
-        case ConfigType.TIME_TRIGGER:
-            parts.push(`*${configLabel}*`);
-            parts.push(`Schedule: ${formatCronDescription(config.cronExpression ?? "", timezone)}`);
-            break;
-        case ConfigType.FIGMA:
-            parts.push(`*${configLabel}*`);
-            if (config.fileName) parts.push(`file: ${config.fileName}`);
-            break;
-        case ConfigType.SLACK:
-        case ConfigType.SLACK_OUTPUT:
-            parts.push(`*${configLabel}*`);
-            if (config.channelName) parts.push(`channel: ${config.channelName}`);
-            if (config.listenToUserDms) parts.push(`DMs: yes`);
-            break;
-        case ConfigType.GITHUB:
-        case ConfigType.GITHUB_KB:
-            parts.push(`*${configLabel}*`);
-            if (Array.isArray(config.repositoryIds) && config.repositoryIds.length > 0) {
-                parts.push(`repos: ${config.repositoryNames?.join(', ')}`);
-            }
-            if (Array.isArray(config.repositoryNames) && config.repositoryNames.length > 0) {
-                parts.push(`names: ${config.repositoryNames.join(', ')}`);
-            }
-            break;
-        case ConfigType.NOTION_DATABASE:
-            parts.push(`*${configLabel}*`);
-            if (config.databaseName) parts.push(`database: ${config.databaseName}`);
-            break;
-        case ConfigType.NOTION_PAGE:
-            parts.push(`*${configLabel}*`);
-            if (config.pageName) parts.push(`page: ${config.pageName}`);
-            break;
-        case ConfigType.LINEAR_INPUT:
-            parts.push(`*${configLabel}*`);
-            if (config.projectName) parts.push(`project: ${config.projectName}`);
-            break;
-        case ConfigType.LINEAR_OUTPUT:
-            parts.push(`*${configLabel}*`);
-            if (config.teamName) parts.push(`team: ${config.teamName}`);
-            break;
-        case ConfigType.CONFLUENCE:
-            parts.push(`*${configLabel}*`);
-            if (config.spaceName) parts.push(`space: ${config.spaceName}`);
-            if (config.pageName) parts.push(`page: ${config.pageName}`);
-            break;
-        case ConfigType.JIRA:
-            parts.push(`*${configLabel}*`);
-            if (config.projectKey) parts.push(`projectKey: ${config.projectKey}`);
-            break;
-        case ConfigType.POSTHOG:
-            parts.push(`*${configLabel}*`);
-            if (config.projectName) parts.push(`project: ${config.projectName}`);
-            break;
-        default:
-            parts.push(`*${configLabel}*`);
-            break;
-    }
-
-    return parts.join(' · ');
-}
-
-function truncateText(text: string, maxLength: number): string {
-    if (text.length <= maxLength) {
-        return text;
-    }
-    return `${text.slice(0, maxLength - 3)}...`;
 }
