@@ -2,6 +2,7 @@ import { RunStreamEvent } from "@openai/agents";
 import { ConfigType } from "../../shared/Configs";
 import ChatInterface from "./ChatInterface";
 import { IntegrationType } from "../../shared/Integrations";
+import cronstrue from "cronstrue";
 import logger from "../../logger";
 import { Block, ChatPostMessageArguments, ChatUpdateArguments, KnownBlock, WebClient } from "@slack/web-api";
 import { INTEGRATION_REGISTRY } from "../../integrations/abstract/IntegrationRegistry";
@@ -411,6 +412,18 @@ function makeSectionBlock(text: string): KnownBlock {
     };
 }
 
+function formatCronDescription(cronExpression: string): string {
+    if (!cronExpression.trim()) {
+        return "No schedule configured";
+    }
+
+    try {
+        return `${cronstrue.toString(cronExpression)} (UTC)`;
+    } catch {
+        return "Invalid schedule";
+    }
+}
+
 function formatConfigSummary(config: ConfigSummaryInput): string {
     const configData = config;
     const configType = configData.configType ?? ConfigType.GMAIL;
@@ -420,7 +433,7 @@ function formatConfigSummary(config: ConfigSummaryInput): string {
     switch (configType) {
         case ConfigType.TIME_TRIGGER:
             parts.push(`*${configType}* (${integrationType})`);
-            if (config.cronExpression) parts.push(`cron: \`${config.cronExpression}\``);
+            parts.push(formatCronDescription(config.cronExpression ?? ""));
             break;
         case ConfigType.FIGMA:
             parts.push(`*${configType}* (${integrationType})`);
