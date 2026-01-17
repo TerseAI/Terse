@@ -14,15 +14,15 @@ import { RunHistoryActionType } from "@prisma/client";
  */
 export const searchDatadogLogsTool = tool({
     name: 'searchDatadogLogs',
-    description: 'Query Datadog logs with flexible filtering. Returns logs data and a link to view logs in Datadog. You can filter by query string (Datadog log search syntax), indexes, time range, or combinations. Use this when you need to investigate errors, events, or search logs in Datadog.',
+    description: 'Query Datadog logs. Filter by query string, indexes, time range. Returns logs with timestamps, status, messages, hosts, services, tags.',
     parameters: z.object({
-        query: z.union([z.string(), z.null()]).optional().describe('Optional: Datadog log search query syntax (e.g., "host:Test*", "service:web AND @status:error"). See Datadog log search syntax documentation.'),
-        indexes: z.union([z.array(z.string()), z.null()]).optional().describe('Optional: Array of log indexes to search (e.g., ["main", "custom-index"]). If not provided, uses default indexes from configuration.'),
-        from: z.union([z.string(), z.null()]).optional().describe('Optional: Start time for filtering (ISO8601 format like "2020-09-17T11:48:36+01:00" or relative like "now-1h"). If not provided, no start time restriction is applied.'),
-        to: z.union([z.string(), z.null()]).optional().describe('Optional: End time for filtering (ISO8601 format). If not provided, defaults to current time.'),
+        query: z.union([z.string(), z.null()]).optional().describe('Datadog log search query (e.g., service:web AND @status:error)'),
+        indexes: z.union([z.array(z.string()), z.null()]).optional().describe('Log indexes to search (e.g., ["main"]). Defaults to config indexes if not provided.'),
+        from: z.union([z.string(), z.null()]).optional().describe('Start time (ISO8601 or relative like "now-1h")'),
+        to: z.union([z.string(), z.null()]).optional().describe('End time (ISO8601). Defaults to now if not provided.'),
         limit: z.number().default(50).describe('Maximum number of log entries to return (default: 50)'),
-        cursor: z.union([z.string(), z.null()]).optional().describe('Optional: Pagination cursor from previous response to get next page of results.'),
-        sort: z.enum(['timestamp', '-timestamp']).default('timestamp').describe('Sort order: "timestamp" (ascending, default) or "-timestamp" (descending).'),
+        cursor: z.union([z.string(), z.null()]).optional().describe('Pagination cursor from previous response'),
+        sort: z.enum(['timestamp', '-timestamp']).default('timestamp').describe('Sort order: "timestamp" (ascending) or "-timestamp" (descending)'),
     }),
     execute: async ({ query, indexes, from, to, limit = 50, cursor, sort = 'timestamp' }, runContext?: RunContext<any>) => {
         if (!runContext?.context) {

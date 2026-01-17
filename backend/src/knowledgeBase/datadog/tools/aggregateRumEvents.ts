@@ -16,23 +16,23 @@ import { RunHistoryActionType } from "@prisma/client";
  */
 export const aggregateRumEventsTool = tool({
     name: 'aggregateRumEvents',
-    description: 'Aggregate Datadog RUM events into computed metrics and timeseries. Returns aggregated data with computed metrics (percentiles, averages, sums, etc.) grouped by facets. Use this to analyze performance trends (e.g., page load times), error rates, user behavior patterns, or any aggregated metrics over RUM events. This is useful for understanding trends, averages, and distributions rather than individual events.',
+    description: 'Aggregate Datadog RUM events into metrics. Compute percentiles, averages, sums, etc. Group by facets for breakdowns. Use for performance trends and error rates.',
     parameters: z.object({
-        query: z.union([z.string(), z.null()]).describe('Optional: Datadog RUM search query syntax to filter events before aggregation (e.g., "@type:view AND @session.type:user", "@type:error").'),
-        from: z.string().describe('Start time for filtering (ISO8601 format like "2020-09-17T11:48:36+01:00" or relative like "now-15m"). Required parameter.'),
-        to: z.union([z.string(), z.null()]).describe('Optional: End time for filtering (ISO8601 format). If not provided, defaults to "now".'),
+        query: z.union([z.string(), z.null()]).describe('Datadog RUM search query to filter events before aggregation (e.g., @type:view)'),
+        from: z.string().describe('Start time (ISO8601 or relative like "now-15m")'),
+        to: z.union([z.string(), z.null()]).describe('End time (ISO8601). Defaults to "now" if not provided.'),
         compute: z.array(z.object({
-            aggregation: z.enum(['count', 'pc90', 'pc95', 'pc99', 'avg', 'sum', 'min', 'max', 'cardinality']).describe('Aggregation function: count (total events), pc90/pc95/pc99 (percentiles), avg, sum, min, max, cardinality (unique count).'),
-            metric: z.string().describe('Metric to compute on (e.g., "@view.time_spent", "@view.loading_time", "@duration"). For count aggregation, you can use "*" or omit the metric to count all events.'),
-            type: z.enum(['total', 'timeseries']).default('total').describe('Type of computation: "total" for overall aggregate, "timeseries" for time-bucketed results.'),
-        })).describe('Array of metrics to compute. At least one compute is required.'),
+            aggregation: z.enum(['count', 'pc90', 'pc95', 'pc99', 'avg', 'sum', 'min', 'max', 'cardinality']).describe('Aggregation: count, pc90/pc95/pc99, avg, sum, min, max, cardinality'),
+            metric: z.string().describe('Metric to compute (e.g., @view.loading_time, @duration). Use "*" for count of all events.'),
+            type: z.enum(['total', 'timeseries']).default('total').describe('Computation type: "total" (overall) or "timeseries" (time-bucketed)'),
+        })).describe('Array of metrics to compute. At least one required.'),
         groupBy: z.union([z.array(z.object({
-            facet: z.string().describe('Facet to group by (e.g., "@view.name", "@view.url", "@service", "@browser.name").'),
-            limit: z.number().default(10).describe('Maximum number of groups to return (default: 10).'),
-            total: z.boolean().default(false).describe('Whether to include a "total" group with all events combined (default: false).'),
-        })), z.null()]).describe('Optional: Array of facets to group results by. Results will be grouped by all specified facets.'),
-        timezone: z.string().default('GMT').describe('Optional: Timezone for time-based queries (default: "GMT").'),
-        pageLimit: z.number().default(25).describe('Optional: Maximum number of buckets to return (default: 25).'),
+            facet: z.string().describe('Facet to group by (e.g., @view.name, @service, @browser.name)'),
+            limit: z.number().default(10).describe('Maximum number of groups to return (default: 10)'),
+            total: z.boolean().default(false).describe('Include "total" group with all events combined (default: false)'),
+        })), z.null()]).describe('Facets to group results by'),
+        timezone: z.string().default('GMT').describe('Timezone for time-based queries (default: "GMT")'),
+        pageLimit: z.number().default(25).describe('Maximum number of buckets to return (default: 25)'),
     }),
     execute: async ({ 
         query, 

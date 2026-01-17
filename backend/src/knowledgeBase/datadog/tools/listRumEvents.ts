@@ -16,14 +16,14 @@ import { RunHistoryActionType } from "@prisma/client";
  */
 export const listRumEventsTool = tool({
     name: 'listRumEvents',
-    description: 'List Datadog RUM (Real User Monitoring) events using the simple GET endpoint. Returns recent RUM events data (sessions, views, actions, errors, resources, long tasks). Use this to discover what RUM events exist, especially when it\'s ambiguous what you should be querying on. Great for exploration before crafting specific search queries. This is simpler than searchRumEvents and is optimized for quick access to recent events.',
+    description: 'List recent Datadog RUM events. Use for discovery when unsure what to query. Returns sessions, views, actions, errors, resources, long tasks.',
     parameters: z.object({
-        query: z.union([z.string(), z.null()]).optional().describe('Optional: Datadog RUM search query syntax to filter events (e.g., "@type:session AND @session.type:user", "@type:view"). Can be omitted to get recent events without filtering.'),
-        from: z.union([z.string(), z.null()]).optional().describe('Optional: Minimum timestamp for filtering (ISO8601 format only, e.g., "2020-09-17T11:48:36+01:00"). If not provided, retrieves recent events.'),
-        to: z.union([z.string(), z.null()]).optional().describe('Optional: Maximum timestamp for filtering (ISO8601 format only, e.g., "2020-09-17T11:48:36+01:00"). If not provided, defaults to current time.'),
+        query: z.union([z.string(), z.null()]).optional().describe('Datadog RUM search query to filter events (e.g., @type:view)'),
+        from: z.union([z.string(), z.null()]).optional().describe('Minimum timestamp (ISO8601 only, e.g., "2020-09-17T11:48:36+01:00")'),
+        to: z.union([z.string(), z.null()]).optional().describe('Maximum timestamp (ISO8601 only). Defaults to now if not provided.'),
         limit: z.number().default(25).describe('Maximum number of RUM events to return (default: 25, max: 1000)'),
-        pageCursor: z.union([z.string(), z.null()]).optional().describe('Optional: Pagination cursor from previous response to get next page of results.'),
-        sort: z.enum(['timestamp', '-timestamp']).default('timestamp').describe('Sort order: "timestamp" (ascending) or "-timestamp" (descending, default).'),
+        pageCursor: z.union([z.string(), z.null()]).optional().describe('Pagination cursor from previous response'),
+        sort: z.enum(['timestamp', '-timestamp']).default('timestamp').describe('Sort order: "timestamp" (ascending) or "-timestamp" (descending)'),
     }),
     execute: async ({ query, from, to, limit = 25, pageCursor, sort = 'timestamp' }, runContext?: RunContext<any>) => {
         if (!runContext?.context) {

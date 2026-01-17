@@ -15,15 +15,15 @@ import { RunHistoryActionType } from "@prisma/client";
  */
 export const searchRumEventsTool = tool({
     name: 'searchRumEvents',
-    description: 'Query Datadog RUM (Real User Monitoring) events with flexible filtering. Returns RUM events data (sessions, views, actions, errors, resources, long tasks) and a link to view events in Datadog. You can filter by query string (Datadog RUM search syntax), time range, or combinations. Use this when you need to investigate frontend issues, user behavior, performance problems, or browser/mobile app errors.',
+    description: 'Query Datadog RUM events. Filter by query string, time range. Returns sessions, views, actions, errors, resources, long tasks.',
     parameters: z.object({
-        query: z.union([z.string(), z.null()]).optional().describe('Optional: Datadog RUM search query syntax (e.g., "@type:session AND @session.type:user", "@type:view", "@type:error", "@view.name:/dashboard"). See Datadog RUM search syntax documentation.'),
-        from: z.string().describe('Start time for filtering (ISO8601 format like "2020-09-17T11:48:36+01:00" or relative like "now-15m"). Required parameter.'),
-        to: z.union([z.string(), z.null()]).optional().describe('Optional: End time for filtering (ISO8601 format). If not provided, defaults to "now".'),
+        query: z.union([z.string(), z.null()]).optional().describe('Datadog RUM search query (e.g., @type:error AND @error.source:network)'),
+        from: z.string().describe('Start time (ISO8601 or relative like "now-15m")'),
+        to: z.union([z.string(), z.null()]).optional().describe('End time (ISO8601). Defaults to "now" if not provided.'),
         limit: z.number().default(25).describe('Maximum number of RUM events to return (default: 25, max: 1000)'),
-        pageCursor: z.union([z.string(), z.null()]).optional().describe('Optional: Pagination cursor from previous response to get next page of results.'),
-        sort: z.enum(['timestamp', '-timestamp']).default('timestamp').describe('Sort order: "timestamp" (ascending) or "-timestamp" (descending, default).'),
-        timezone: z.string().default('GMT').describe('Optional: Timezone for time-based queries (default: "GMT").'),
+        pageCursor: z.union([z.string(), z.null()]).optional().describe('Pagination cursor from previous response'),
+        sort: z.enum(['timestamp', '-timestamp']).default('timestamp').describe('Sort order: "timestamp" (ascending) or "-timestamp" (descending)'),
+        timezone: z.string().default('GMT').describe('Timezone for time-based queries (default: "GMT")'),
     }),
     execute: async ({ query, from, to = 'now', limit = 25, pageCursor, sort = 'timestamp', timezone = 'GMT' }, runContext?: RunContext<any>) => {
         if (!runContext?.context) {
