@@ -1,6 +1,6 @@
 import { tool, RunContext } from "@openai/agents";
 import { z } from "zod";
-import { WebClient } from "@slack/web-api";
+import { WebClient, KnownBlock } from "@slack/web-api";
 import { db } from "../../../prismaClient";
 import { SlackChannelSession } from "../SlackOutput";
 import logger from "../../../logger";
@@ -11,26 +11,11 @@ import logger from "../../../logger";
  */
 export const slackSendMessageTool = tool({
     name: "slack_send_message",
-    description: `Send a message to the configured Slack channel or DM. Use this tool to post updates, reports, or responses to Slack. The message will be sent as the Terse bot.
-
-FORMATTING GUIDE:
-- Use Slack's mrkdwn format for rich text
-- *bold* for emphasis
-- _italic_ for secondary emphasis
-- \`code\` for inline code
-- \`\`\`code block\`\`\` for multi-line code
-- <url|text> for links
-- Use bullet points (•) for lists
-- Use emoji sparingly for visual appeal
-
-BEST PRACTICES:
-- Keep messages concise and actionable
-- Structure information with headers and sections
-- Include relevant links when available
-- Use threading for follow-up messages when appropriate`,
+    description: `Send message to Slack channel. Supports plain text (mrkdwn) or Block Kit (JSON blocks).`,
     parameters: z.object({
-        message: z.string().describe("The message content to send. Supports Slack mrkdwn formatting."),
-        thread_ts: z.string().nullable().optional().describe("Optional thread timestamp to reply to an existing thread. If provided, the message will be posted as a reply in that thread."),
+        message: z.string().describe("Message content (mrkdwn). Used as fallback for Block Kit or main message."),
+        thread_ts: z.string().nullable().optional().describe("Thread timestamp to reply to existing thread"),
+        blocks: z.string().nullable().optional().describe("Block Kit JSON array string for interactive messages with buttons, structured layouts"),
     }),
     execute: async (args, runContext?: RunContext<SlackChannelSession>) => {
         if (!runContext?.context) {
@@ -42,11 +27,35 @@ BEST PRACTICES:
             throw new Error("Slack session is not properly configured");
         }
 
-        const { message, thread_ts } = args;
+        const { message, thread_ts, blocks: blocksJson } = args;
         const channelId = session.slackConfig.channel_id;
 
         if (!channelId) {
             throw new Error("No channel configured for this Slack output");
+        }
+
+        // Parse and validate Block Kit blocks if provided
+        let blocks: KnownBlock[] | undefined;
+        if (blocksJson) {
+            try {
+                const parsed = JSON.parse(blocksJson);
+                if (!Array.isArray(parsed)) {
+                    throw new Error("Blocks must be a JSON array");
+                }
+                // Basic validation: ensure each block has a type
+                for (const block of parsed) {
+                    if (!block || typeof block !== 'object' || !block.type) {
+                        throw new Error("Each block must be an object with a 'type' property");
+                    }
+                }
+                blocks = parsed as KnownBlock[];
+            } catch (error: any) {
+                logger.error(`[Slack Output] Invalid Block Kit JSON`, { 
+                    error: error.message,
+                    blocksJson: blocksJson.substring(0, 200), // Log first 200 chars for debugging
+                });
+                throw new Error(`Invalid Block Kit JSON: ${error.message}. Blocks must be a valid JSON array of Block Kit blocks.`);
+            }
         }
 
         try {
@@ -66,6 +75,7 @@ BEST PRACTICES:
             const result = await client.chat.postMessage({
                 channel: channelId,
                 text: message,
+                blocks: blocks,
                 thread_ts: thread_ts || undefined,
                 unfurl_links: true,
                 unfurl_media: true,
@@ -77,11 +87,14 @@ BEST PRACTICES:
 
             const channelName = session.slackConfig.channel_name || channelId;
             const messagePreview = message.length > 100 ? message.substring(0, 100) + '...' : message;
+            const messageType = blocks ? 'Block Kit' : 'text';
             
-            logger.info(`[Slack Output] Message sent to ${channelName}`, { 
+            logger.info(`[Slack Output] ${messageType} message sent to ${channelName}`, { 
                 channelId,
                 messageTs: result.ts,
                 threadTs: thread_ts,
+                hasBlocks: !!blocks,
+                blocksCount: blocks?.length,
             });
 
             return {
@@ -89,7 +102,8 @@ BEST PRACTICES:
                 message_ts: result.ts,
                 channel: channelName,
                 thread_ts: thread_ts || result.ts,
-                summary: `Message sent to ${channelName}: "${messagePreview}"`,
+                summary: `${messageType} message sent to ${channelName}: "${messagePreview}"`,
+                has_blocks: !!blocks,
             };
         } catch (error: any) {
             logger.error(`[Slack Output] Failed to send message`, { 

@@ -15,6 +15,8 @@ import {
     SelectTrigger,
     SelectValue,
 } from "./ui/select";
+import { Tooltip, TooltipTrigger, TooltipContent } from "./ui/tooltip";
+import { Info } from "lucide-react";
 
 interface SlackChannelSelectorProps {
     integrationId: string;
@@ -23,6 +25,7 @@ interface SlackChannelSelectorProps {
     selectedUserIds?: string[];
     showListenToDMsOption?: boolean; // Only show DM option for user tokens
     showUserFilter?: boolean; // Only show user filter for user tokens
+    isBotToken?: boolean; // Whether this is a bot token (vs user token)
     onSelectChannel: (channelId: string, channelName?: string) => void;
     onListenToUserDmsChange: (listenToUserDms: boolean) => void;
     onSelectUsers: (userIds: string[]) => void;
@@ -35,6 +38,7 @@ export function SlackConfigurationSelector({
     selectedUserIds = [],
     showListenToDMsOption = false,
     showUserFilter = false,
+    isBotToken = true, // Default to true (bot) for backward compatibility
     onSelectChannel: onSelect,
     onListenToUserDmsChange,
     onSelectUsers
@@ -180,12 +184,36 @@ export function SlackConfigurationSelector({
     const publicChannels = channels.filter(ch => !ch.isPrivate && !ch.isArchived);
     const privateChannels = channels.filter(ch => ch.isPrivate && !ch.isArchived);
 
+    const isIncomplete = !selectedChannelId && !listenToUserDms;
+    
     return (
         <div className="space-y-2">
             <div className="flex items-center justify-between">
-                <label className="text-xs font-medium text-[theme(text-secondary)]">
-                    Select Channel or DMs
-                </label>
+                <div className="flex items-center gap-1.5">
+                    <label className="text-xs font-medium text-[theme(text-secondary)]">
+                        Select Channel or DMs
+                        <span className="text-red-500 ml-1">*</span>
+                    </label>
+                    {isBotToken && (
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <button
+                                    type="button"
+                                    className="text-muted-foreground hover:text-foreground transition-colors"
+                                    onClick={(e) => e.preventDefault()}
+                                >
+                                    <Info className="w-3.5 h-3.5" />
+                                </button>
+                            </TooltipTrigger>
+                            <TooltipContent side="right" className="max-w-xs">
+                                <p>
+                                    When using a bot token, you need to add the bot to the channel first. 
+                                    The bot must be a member of the channel to receive messages.
+                                </p>
+                            </TooltipContent>
+                        </Tooltip>
+                    )}
+                </div>
                 <RefreshButton
                     onClick={handleChannelsRefresh}
                     isRefreshing={isValidating && !isLoading}
@@ -197,8 +225,8 @@ export function SlackConfigurationSelector({
                 value={getSelectValue()}
                 onValueChange={handleChannelSelect}
             >
-                <SelectTrigger className="w-full">
-                    <SelectValue placeholder="-- Select a channel or DMs --" />
+                <SelectTrigger className={`w-full ${isIncomplete ? 'border-amber-300 dark:border-amber-700 focus:border-amber-400 dark:focus:border-amber-600' : ''}`}>
+                    <SelectValue placeholder="-- Select a channel or DMs (required) --" />
                 </SelectTrigger>
                 <SelectContent>
                     {publicChannels.length > 0 && (
@@ -238,6 +266,11 @@ export function SlackConfigurationSelector({
                 <div className="text-xs text-foreground-muted">
                     {channels.length} channel{channels.length !== 1 ? 's' : ''} available
                 </div>
+            )}
+            {isIncomplete && (
+                <p className="text-xs text-amber-600 dark:text-amber-500">
+                    ⚠️ Please select a channel {showListenToDMsOption ? 'or enable DM listening' : ''} to continue
+                </p>
             )}
 
             {/* User selector - show for both channels and DMs, but only for user tokens */}

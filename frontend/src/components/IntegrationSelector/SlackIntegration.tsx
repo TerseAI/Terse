@@ -165,13 +165,24 @@ export function SlackIntegration({
             {selectedIntegrationId && (() => {
                 const selectedIntegration = integrations.find((integration: SlackIntegrationType) => integration.id === selectedIntegrationId);
                 const isBotUser = selectedIntegration?.isBotUser ?? true; // Default to true (bot) if not specified
+                const isIncomplete = !currentConfig?.isComplete();
                 
                 return (
                     <div className="mt-3 pt-3 border-t border-border">
-                        {!currentConfig?.isComplete() && (
-                            <p className="text-sm text-muted-foreground mb-3">
-                                Select a channel or enable DM listening
-                            </p>
+                        {isIncomplete && (
+                            <div className="mb-3 p-3 rounded-md border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/30">
+                                <div className="flex items-start gap-2">
+                                    <AlertTriangleIcon className="w-4 h-4 text-amber-600 dark:text-amber-500 mt-0.5 flex-shrink-0" />
+                                    <div className="flex-1">
+                                        <p className="text-sm font-medium text-amber-800 dark:text-amber-200 mb-1">
+                                            Channel or DMs Required
+                                        </p>
+                                        <p className="text-xs text-amber-700 dark:text-amber-300">
+                                            You must select a channel {isBotUser ? '' : 'or enable DM listening'} to use this integration.
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
                         )}
                         <SlackConfigurationSelector
                             integrationId={selectedIntegrationId}
@@ -180,6 +191,7 @@ export function SlackIntegration({
                             listenToUserDms={currentConfig?.listenToUserDms}
                             showListenToDMsOption={!isBotUser}
                             showUserFilter={!isBotUser}
+                            isBotToken={isBotUser}
                             onSelectChannel={(channelId, channelName) => {
                                 const hasChannel = channelId && channelId.trim() !== '';
                                 const updatedConfig = new SlackConfig(
