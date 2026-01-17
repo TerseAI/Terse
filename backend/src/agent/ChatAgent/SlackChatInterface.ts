@@ -122,7 +122,7 @@ class SlackChatInterface extends ChatInterface {
         blocks.push(makeSectionBlock("*Prompt*"));
 
         const promptText = draft.prompt?.text?.trim();
-        blocks.push(makeSectionBlock(promptText ? truncateText(promptText, 600) : "_No prompt provided._"));
+        blocks.push(makeSectionBlock(promptText ? truncateText(promptText, 100) : "_No prompt provided._"));
 
         await this.say({
             text: `Preview for ${title}`,
