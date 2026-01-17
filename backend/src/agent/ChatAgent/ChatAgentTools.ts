@@ -5,7 +5,7 @@ import { z } from "zod";
 import { IntegrationType } from "../../shared/Integrations";
 import { ConfigType } from "../../shared/Configs";
 import logger from "../../logger";
-import { applyChannelForUser } from "../../routes/channels";
+import { applyChannelForUser, updateChannelForUser } from "../../routes/channels";
 import type { ChannelDraft } from "../../routes/channels";
 import type { ConfigInstance } from "../../shared/Configs";
 import { GithubIntegrationManager } from "../../integrations/GithubIntegration";
@@ -34,12 +34,13 @@ export function buildChatAgentTools(chatInterface: ChatInterface): Tool<ChatAgen
     return [
         tool({
             name: 'applyChannel',
-            description: 'Once you have all the information you need, you can use this tool to persist and apply the automation.',
+            description: 'Once you have all the information you need, you can use this tool to persist and apply the automation. You can use this to create and update channels. If you are creating, just leave the id empty.',
             parameters: z.object({
                 channel: ChannelSchema,
+                id: z.string().nullable().describe('The ID of the channel to update. If not provided, a new channel will be created.'),
             }),
-            execute: async ({ channel }, runContext?: RunContext<ChatAgentContext>): Promise<string> => {
-                logger.info('Slack chat interface applyChannel', { channel });
+            execute: async ({ channel, id }, runContext?: RunContext<ChatAgentContext>): Promise<string> => {
+                logger.info('Slack chat interface applyChannel', { channel, id });
                 const userId = runContext?.context?.userId;
                 if (!userId) {
                     throw new Error("User ID is required to apply channel");
@@ -47,9 +48,11 @@ export function buildChatAgentTools(chatInterface: ChatInterface): Tool<ChatAgen
 
                 try {
                     const draft = toChannelDraft(channel);
-                    const { id } = await applyChannelForUser(userId, draft);
-                    await chatInterface.buildButton("View Automation", `${frontendUrl}/app/channels/${id}`);
-                    return `Channel applied successfully (${id})`;
+                    const result = id
+                        ? await updateChannelForUser(userId, id, draft)
+                        : await applyChannelForUser(userId, draft);
+                    await chatInterface.buildButton("View Automation", `${frontendUrl}/app/channels/${result.id}`);
+                    return `Channel applied successfully (${result.id})`;
                 } catch (error) {
                     logger.error('applyChannel failed', { error, userId, channel });
                     throw error;
