@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import { RefreshCw } from "lucide-react";
 import { Button } from "./ui/button";
 import { useGithubResources } from "@/hooks/api/useGithubResources";
@@ -8,12 +8,16 @@ interface GithubResourceSelectorProps {
     installationId: number | null | undefined;
     selectedRepositoryIds?: number[];
     onSelect: (repositoryIds: number[]) => void;
+    hideLabel?: boolean;
+    customLabel?: React.ReactNode;
 }
 
 export function GithubResourceSelector({
     installationId,
     selectedRepositoryIds = [],
-    onSelect
+    onSelect,
+    hideLabel = false,
+    customLabel
 }: GithubResourceSelectorProps) {
     const { repositories, isLoading, isError, error, isValidating, mutate } = useGithubResources(installationId);
     const [isRefreshing, setIsRefreshing] = useState(false);
@@ -71,21 +75,25 @@ export function GithubResourceSelector({
 
     return (
         <div className="space-y-2">
-            <div className="flex items-center justify-between">
-                <label className="text-xs font-medium text-muted-foreground">
-                    Select Repositories
-                </label>
-                <Button
-                    onClick={handleRefresh}
-                    disabled={isRefreshing || isValidating}
-                    variant="ghost"
-                    size="sm"
-                    title="Refresh repository list"
-                >
-                    <RefreshCw className={`w-3 h-3 mr-1 ${(isRefreshing || isValidating) ? 'animate-spin' : ''}`} />
-                    Refresh
-                </Button>
-            </div>
+            {(!hideLabel || customLabel) && (
+                <div className="flex items-center justify-between">
+                    {customLabel || (
+                        <label className="text-xs font-medium text-muted-foreground">
+                            Select Repositories
+                        </label>
+                    )}
+                    <Button
+                        onClick={handleRefresh}
+                        disabled={isRefreshing || isValidating}
+                        variant="ghost"
+                        size="sm"
+                        title="Refresh repository list"
+                    >
+                        <RefreshCw className={`w-3 h-3 mr-1 ${(isRefreshing || isValidating) ? 'animate-spin' : ''}`} />
+                        Refresh
+                    </Button>
+                </div>
+            )}
             <MultiSelect
                 options={repositories.map((repo) => ({
                     id: repo.id,
