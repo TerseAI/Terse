@@ -105,7 +105,6 @@ export async function buildChatAgentSystemPrompt(userId: string, userTimezone?: 
     - CRITICAL: For all other configs, integrationId must be the Integration_Id of the connected app instance (e.g., the specific GitHub, Posthog, Slack integration). Do NOT use "system" for GitHub, Posthog, or any non-cron config.
 
     ## How to use the applyChannel tool:
-    - Call the buildPreview tool before calling the applyChannel tool. This will build a preview of the automation and send it to the user.
     - The applyChannel tool will persist and apply the automation.
     - Once the automation is persisted and applied, you should thank the user and ask them if they have any other automations they want to create just let you know. They may then prompt you to try creating something else and the loop continues.
     

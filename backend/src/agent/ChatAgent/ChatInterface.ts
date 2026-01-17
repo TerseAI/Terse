@@ -13,11 +13,12 @@ abstract class ChatInterface {
         this.userId = userId;
     }
 
-    abstract buildPreview(draft: ChannelDraft): Promise<string>;
+    // abstract buildPreview(draft: ChannelDraft): Promise<string>;
     abstract promptForIntegration(integration: IntegrationType): Promise<string>; 
     abstract promptForConfig(config: ConfigType): Promise<string>;
     abstract processStreamEvent(sessionId: string, event: RunStreamEvent): void;
     abstract processMessageEnd(sessionId: string, finalOutput: string): Promise<void>;
+    abstract buildButton(label: string, url: string): Promise<void>;
 
     async getUserTimezone(): Promise<string | null> {
         return null;

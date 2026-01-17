@@ -28,11 +28,13 @@ export type ChatAgentContext = {
     userId: string;
 };
 
+const frontendUrl = process.env.FRONTEND_URL;
+
 export function buildChatAgentTools(chatInterface: ChatInterface): Tool<ChatAgentContext>[] {
     return [
         // tool({
         //     name: 'buildPreview',
-        //     description: 'Build a preview of the draft. Call this before calling applyChannel.',
+        //     description: 'Allows for presenting an Automation. Can be a draft or a fully applied automation. Only call this if the user asks for a preview of an automation',
         //     parameters: z.object({
         //         draft: ChannelSchema,
         //     }),
@@ -62,6 +64,7 @@ export function buildChatAgentTools(chatInterface: ChatInterface): Tool<ChatAgen
                 try {
                     const draft = toChannelDraft(channel);
                     const { id } = await applyChannelForUser(userId, draft);
+                    await chatInterface.buildButton("View Automation", `${frontendUrl}/app/automations/${id}`);
                     return `Channel applied successfully (${id})`;
                 } catch (error) {
                     logger.error('applyChannel failed', { error, userId, channel });
