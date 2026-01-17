@@ -61,7 +61,7 @@ export function buildChatAgentTools(chatInterface: ChatInterface): Tool<ChatAgen
         }),
         tool({
             name: 'promptForIntegration',
-            description: 'Prompt for an integration',
+            description: 'Prompt for an integration. You can also call this if the user needs to re-configure an integration. Ex: Add repos to github or more pages to Notion.',
             parameters: z.object({
                 integration: z.nativeEnum(IntegrationType).describe('The integration to prompt for'),
             }),
