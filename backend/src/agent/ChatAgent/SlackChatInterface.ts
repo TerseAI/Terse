@@ -425,14 +425,11 @@ function formatConfigSummary(config: ConfigSummaryInput): string {
         case ConfigType.FIGMA:
             parts.push(`*${configType}* (${integrationType})`);
             if (config.fileName) parts.push(`file: ${config.fileName}`);
-            if (config.fileKey) parts.push(`fileKey: ${config.fileKey}`);
-            if (config.teamId) parts.push(`teamId: ${config.teamId}`);
             break;
         case ConfigType.SLACK:
         case ConfigType.SLACK_OUTPUT:
             parts.push(`*${configType}* (${integrationType})`);
             if (config.channelName) parts.push(`channel: ${config.channelName}`);
-            if (config.channelId) parts.push(`channelId: ${config.channelId}`);
             if (config.listenToUserDms) parts.push(`DMs: yes`);
             break;
         case ConfigType.GITHUB:
@@ -448,38 +445,31 @@ function formatConfigSummary(config: ConfigSummaryInput): string {
         case ConfigType.NOTION_DATABASE:
             parts.push(`*${configType}* (${integrationType})`);
             if (config.databaseName) parts.push(`database: ${config.databaseName}`);
-            if (config.databaseId) parts.push(`databaseId: ${config.databaseId}`);
             break;
         case ConfigType.NOTION_PAGE:
             parts.push(`*${configType}* (${integrationType})`);
             if (config.pageName) parts.push(`page: ${config.pageName}`);
-            if (config.pageId) parts.push(`pageId: ${config.pageId}`);
             break;
         case ConfigType.LINEAR_INPUT:
             parts.push(`*${configType}* (${integrationType})`);
             if (config.projectName) parts.push(`project: ${config.projectName}`);
-            if (config.projectId) parts.push(`projectId: ${config.projectId}`);
             break;
         case ConfigType.LINEAR_OUTPUT:
             parts.push(`*${configType}* (${integrationType})`);
-            if (config.teamId) parts.push(`teamId: ${config.teamId}`);
             if (config.teamName) parts.push(`team: ${config.teamName}`);
             break;
         case ConfigType.CONFLUENCE:
             parts.push(`*${configType}* (${integrationType})`);
             if (config.spaceName) parts.push(`space: ${config.spaceName}`);
             if (config.pageName) parts.push(`page: ${config.pageName}`);
-            if (config.pageId) parts.push(`pageId: ${config.pageId}`);
             break;
         case ConfigType.JIRA:
             parts.push(`*${configType}* (${integrationType})`);
             if (config.projectKey) parts.push(`projectKey: ${config.projectKey}`);
-            if (config.projectId) parts.push(`projectId: ${config.projectId}`);
             break;
         case ConfigType.POSTHOG:
             parts.push(`*${configType}* (${integrationType})`);
             if (config.projectName) parts.push(`project: ${config.projectName}`);
-            if (config.projectId) parts.push(`projectId: ${config.projectId}`);
             break;
         default:
             parts.push(`*${configType}* (${integrationType})`);
