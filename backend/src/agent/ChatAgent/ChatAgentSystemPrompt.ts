@@ -66,6 +66,10 @@ export async function buildChatAgentSystemPrompt(userId: string, userTimezone?: 
 
     ${integrationDescriptions}
 
+    ## General guidelines:
+    NEVER SHOW IDs of things. No one wants to see IDs. Wether it's slack channel ids, github repository ids, etc.
+    Always show times in the user's timezone.
+
     ## Goal of the chat
 
     The goal of the chat with the user is to help them create and automation successfully. The user should specify
