@@ -2,6 +2,7 @@ import { TransientKnowledgeBase } from "@/shared/types";
 import { ConfigInstance, ConfigType } from "@/shared/Configs";
 import { PostHogKnowledgeBaseIntegration } from "./PostHogKnowledgeBaseIntegration";
 import { GitHubKnowledgeBaseIntegration } from "./GitHubKnowledgeBaseIntegration";
+import { LaunchDarklyKnowledgeBaseIntegration } from "./LaunchDarklyKnowledgeBaseIntegration";
 
 export interface KnowledgeBaseSelectorProps {
     knowledgeBase: TransientKnowledgeBase;
@@ -15,6 +16,8 @@ export function KnowledgeBaseSelector(props: KnowledgeBaseSelectorProps) {
             return <PostHogKnowledgeBaseIntegration {...props} />;
         case ConfigType.GITHUB_KB:
             return <GitHubKnowledgeBaseIntegration {...props} />;
+        case ConfigType.LAUNCHDARKLY:
+            return <LaunchDarklyKnowledgeBaseIntegration {...props} />;
 
         default:
             throw new Error(`Unsupported knowledge base config type: ${props.knowledgeBase.configType}`);

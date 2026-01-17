@@ -22,7 +22,8 @@ import {
     PosthogConfig,
     ConfigType,
     GitHubKBConfig,
-    TimeTriggerConfig
+    TimeTriggerConfig,
+    LaunchDarklyConfig
 } from "../shared/Configs";
 
 export const convertIntegrationTypeToPrismaIntegrationType = (integrationType: IntegrationType): PrismaIntegrationType => {
@@ -47,6 +48,8 @@ export const convertIntegrationTypeToPrismaIntegrationType = (integrationType: I
             return PrismaIntegrationType.POSTHOG;
         case IntegrationType.CRON_JOB:
             return PrismaIntegrationType.CRON_JOB;
+        case IntegrationType.LAUNCHDARKLY:
+            return PrismaIntegrationType.LAUNCHDARKLY;
         default:
             throw integrationType satisfies never;
     }
@@ -78,6 +81,8 @@ export const convertPrismaIntegrationTypeToIntegrationType = (prismaIntegrationT
             return IntegrationType.POSTHOG;
         case PrismaIntegrationType.CRON_JOB:
             return IntegrationType.CRON_JOB;
+        case PrismaIntegrationType.LAUNCHDARKLY:
+            return IntegrationType.LAUNCHDARKLY;
         default:
             throw prismaIntegrationType satisfies never;
     }
@@ -109,6 +114,8 @@ export const convertIntegrationTypeToPrismaIntegrationTypeForRunHistory = (integ
             return PrismaIntegrationType.POSTHOG;
         case IntegrationType.CRON_JOB:
             return PrismaIntegrationType.CRON_JOB;
+        case IntegrationType.LAUNCHDARKLY:
+            return PrismaIntegrationType.LAUNCHDARKLY;
         default:
             throw integrationType satisfies never;
     }
@@ -141,6 +148,8 @@ export const convertPrismaIntegrationTypeToIntegrationTypeFromRunHistory = (pris
             return IntegrationType.POSTHOG;
         case PrismaIntegrationType.CRON_JOB:
             return IntegrationType.CRON_JOB;
+        case PrismaIntegrationType.LAUNCHDARKLY:
+            return IntegrationType.LAUNCHDARKLY;
         default:
             throw prismaIntegrationType satisfies never;
     }
@@ -354,6 +363,9 @@ export const convertConfigTypeToInputConfigType = (configType: ConfigType): Inpu
         case ConfigType.GITHUB_KB:
             // GitHub KB is a knowledge base config type, not an input config type
             throw new Error('GITHUB_KB is a knowledge base type, not an input type');
+        case ConfigType.LAUNCHDARKLY:
+            // LaunchDarkly is a knowledge base config type, not an input config type
+            throw new Error('LAUNCHDARKLY is a knowledge base type, not an input type');
         case ConfigType.SLACK_OUTPUT:
             // SLACK_OUTPUT is an output config type, not an input config type
             throw new Error('SLACK_OUTPUT is an output type, not an input type');
@@ -438,7 +450,7 @@ export const convertOutputConfigTypeToIntegrationType = (outputConfigType: Outpu
 
 /**
  * Converts ConfigType to KnowledgeBaseConfigType.
- * Only POSTHOG is currently supported as a knowledge base config type.
+ * Only POSTHOG, GITHUB_KB, and LAUNCHDARKLY are currently supported as knowledge base config types.
  */
 export const convertConfigTypeToKnowledgeBaseConfigType = (configType: ConfigType): KnowledgeBaseConfigType => {
     switch (configType) {
@@ -446,8 +458,10 @@ export const convertConfigTypeToKnowledgeBaseConfigType = (configType: ConfigTyp
             return KnowledgeBaseConfigType.POSTHOG;
         case ConfigType.GITHUB_KB:
             return KnowledgeBaseConfigType.GITHUB;
+        case ConfigType.LAUNCHDARKLY:
+            return KnowledgeBaseConfigType.LAUNCHDARKLY;
         default:
-            throw new Error(`ConfigType ${configType} is not a valid knowledge base config type. Supported knowledge base config types are: POSTHOG.`);
+            throw new Error(`ConfigType ${configType} is not a valid knowledge base config type. Supported knowledge base config types are: POSTHOG, GITHUB_KB, LAUNCHDARKLY.`);
     }
 }
 
@@ -476,6 +490,18 @@ export const convertPrismaKnowledgeBaseConfigToConfigInstance = (channelKnowledg
             integrationId,
             channelKnowledgeBase.github_kb_config.repository_ids || [],
             channelKnowledgeBase.github_kb_config.repository_names || []
+        );
+    }
+
+    if (channelKnowledgeBase.launchdarkly_config) {
+        const launchdarklyIntegration = channelKnowledgeBase.launchdarkly_config;
+        if (!launchdarklyIntegration.project_key) {
+            throw new Error('LaunchDarkly config requires project_key');
+        }
+        return new LaunchDarklyConfig(
+            integrationId,
+            launchdarklyIntegration.project_key,
+            launchdarklyIntegration.environment_keys || []
         );
     }
 

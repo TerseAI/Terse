@@ -31,6 +31,7 @@ import {
     NotionIntegration,
     InstallationOptionsFor,
     PosthogIntegration,
+    LaunchDarklyIntegration,
 } from "../shared/Integrations";
 import { User } from "../types/User";
 import { GetRunHistoryParams, GetRunHistoryResponse } from '../shared/RunHistoryTypes';
@@ -225,6 +226,16 @@ interface BackendService {
      * Creates or updates a Posthog integration with API key
      */
     createOrUpdatePosthogIntegration(apiKey: string): Promise<{ success: boolean; email: string | null; orgName: string | null }>;
+
+    /**
+     * Gets all LaunchDarkly integrations for the current user
+     */
+    getLaunchDarklyIntegrations(): Promise<LaunchDarklyIntegration[]>;
+
+    /**
+     * Creates or updates a LaunchDarkly integration with API key
+     */
+    createOrUpdateLaunchDarklyIntegration(apiKey: string): Promise<{ success: boolean; email: string | null }>;
 
     /**
      * Gets Posthog projects for an integration
@@ -646,6 +657,28 @@ export const BackendProvider: BackendService = {
             .then(response => response.data)
             .catch(error => {
                 console.error('Error creating/updating Posthog integration:', error);
+                throw error;
+            });
+    },
+
+    getLaunchDarklyIntegrations: () => {
+        return axios.get<LaunchDarklyIntegration[]>(`${backendBaseUrl}/launchdarkly/integrations`, { withCredentials: true })
+            .then(response => response.data)
+            .catch(error => {
+                console.error('Error getting LaunchDarkly integrations:', error);
+                throw error;
+            });
+    },
+
+    createOrUpdateLaunchDarklyIntegration: (apiKey: string) => {
+        return axios.post<{ success: boolean; email: string | null }>(
+            `${backendBaseUrl}/launchdarkly/integrations`,
+            { apiKey },
+            { withCredentials: true }
+        )
+            .then(response => response.data)
+            .catch(error => {
+                console.error('Error creating/updating LaunchDarkly integration:', error);
                 throw error;
             });
     },

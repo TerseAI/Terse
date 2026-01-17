@@ -41,6 +41,7 @@ model users {
   github_app_tokens         github_app_tokens[]
   notification_destinations user_notification_destinations[]
   posthog_integrations      posthog_integrations[]
+  launchdarkly_integrations launchdarkly_integrations[]
 }
 
 model github_repositories {
@@ -381,6 +382,21 @@ model posthog_integrations {
   @@index([user_id])
 }
 
+// LaunchDarkly Integration
+model launchdarkly_integrations {
+  id         String   @id @default(cuid())
+  user_id    String
+  api_key    String
+  user_email String?
+  token_name String?
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  user users @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id])
+}
+
 // Activity Feed - Starting with GitHub Events
 model activity_events {
   id                   String          @id @default(cuid())
@@ -550,8 +566,9 @@ model automation_knowledge_bases {
 
   automation automations @relation(fields: [automation_id], references: [id], onDelete: Cascade)
 
-  posthog_config   automation_posthog_configs?
-  github_kb_config automation_github_kb_configs?
+  posthog_config        automation_posthog_configs?
+  github_kb_config      automation_github_kb_configs?
+  launchdarkly_config   automation_launchdarkly_configs?
 
   @@index([automation_id])
   @@index([config_type, integration_id])
@@ -578,6 +595,18 @@ model automation_github_kb_configs {
   repository_names             String[] // Repository full names (owner/repo) for display
 
   automation_knowledge_base automation_knowledge_bases @relation(fields: [automation_knowledge_base_id], references: [id], onDelete: Cascade)
+}
+
+// LaunchDarkly Knowledge Base Configuration
+model automation_launchdarkly_configs {
+  id                           String   @id @default(cuid())
+  automation_knowledge_base_id String   @unique
+  project_key                  String   // LaunchDarkly project key (required)
+  environment_keys             String[] // Array of environment keys to monitor (e.g., ["production", "staging"])
+
+  automation_knowledge_base automation_knowledge_bases @relation(fields: [automation_knowledge_base_id], references: [id], onDelete: Cascade)
+
+  @@index([project_key])
 }
 
 // Automation Configuration Tables - Typed config per integration type
@@ -795,6 +824,7 @@ enum IntegrationType {
   TERSE
   POSTHOG
   CRON_JOB
+  LAUNCHDARKLY
 }
 
 enum InputConfigType {
@@ -823,6 +853,7 @@ enum OutputConfigType {
 enum KnowledgeBaseConfigType {
   POSTHOG
   GITHUB
+  LAUNCHDARKLY
 }
 
 // Run History enums to mirror backend/shared RunHistoryTypes

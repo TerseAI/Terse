@@ -9,6 +9,7 @@ import { SlackIntegrationManager } from "../SlackIntegration";
 import { FormIntegrationInstallation, Integration, OAuthIntegrationInstallation } from "./Integration";
 import { IntegrationInstance, IntegrationDetails, IntegrationType } from "../../shared/Integrations";
 import { PosthogIntegrationManager } from "../PosthogIntegration";
+import { LaunchDarklyIntegrationManager } from "../LaunchDarklyIntegration";
 
 
 type IntegrationWithInstallation = Integration<IntegrationInstance, any, IntegrationDetails> & (OAuthIntegrationInstallation<IntegrationType> | FormIntegrationInstallation<IntegrationType>);
@@ -32,5 +33,6 @@ export const INTEGRATION_REGISTRY: Array<IntegrationWithInstallation> = [
     new LinearIntegrationManager(),
     new NotionIntegrationManager(),
     new SlackIntegrationManager(),
-    new PosthogIntegrationManager()
+    new PosthogIntegrationManager(),
+    new LaunchDarklyIntegrationManager()
 ]

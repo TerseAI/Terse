@@ -120,6 +120,7 @@ export type ChannelKnowledgeBaseWithConfigs = Prisma.automation_knowledge_basesG
   include: {
     posthog_config: true;
     github_kb_config: true;
+    launchdarkly_config: true;
   };
 }>;
 

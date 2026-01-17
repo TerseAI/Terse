@@ -12,6 +12,7 @@ import {
     JiraConfluenceIcon,
     PosthogIcon,
     CalendarClockIcon,
+    LaunchDarklyIcon,
 } from "@/components/icons/IntegrationIcons";
 
 export function IconForConfigType({ type }: { type: ConfigType }) {
@@ -38,6 +39,8 @@ export function IconForConfigType({ type }: { type: ConfigType }) {
             return <ConfluenceIcon />;
         case ConfigType.POSTHOG:
             return <PosthogIcon />;
+        case ConfigType.LAUNCHDARKLY:
+            return <LaunchDarklyIcon />;
         case ConfigType.TIME_TRIGGER:
             return <CalendarClockIcon />;        
         default:
@@ -66,7 +69,9 @@ export function IconForIntegration({ integration }: { integration: IntegrationTy
         case IntegrationType.CRON_JOB:
             return <CalendarClockIcon />;
         case IntegrationType.POSTHOG:
-            return <PosthogIcon />
+            return <PosthogIcon />;
+        case IntegrationType.LAUNCHDARKLY:
+            return <LaunchDarklyIcon />;
         default:
             throw integration satisfies never;
     }
