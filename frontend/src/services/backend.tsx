@@ -12,6 +12,8 @@ import {
     LinearTeam,
     NotionResourcesResponse,
     PosthogProjectsResponse,
+    LaunchDarklyProjectsResponse,
+    LaunchDarklyEnvironmentsResponse,
     RecentChannel,
     SlackChannelsResponse,
     StatsResponse,
@@ -236,6 +238,19 @@ interface BackendService {
      * Creates or updates a LaunchDarkly integration with API key
      */
     createOrUpdateLaunchDarklyIntegration(apiKey: string): Promise<{ success: boolean; email: string | null }>;
+
+    /**
+     * Gets LaunchDarkly projects for an integration
+     * @param integrationId - The LaunchDarkly integration ID
+     */
+    getLaunchDarklyProjects(integrationId: string): Promise<LaunchDarklyProjectsResponse>;
+
+    /**
+     * Gets LaunchDarkly environments for a project
+     * @param integrationId - The LaunchDarkly integration ID
+     * @param projectKey - The LaunchDarkly project key
+     */
+    getLaunchDarklyEnvironments(integrationId: string, projectKey: string): Promise<LaunchDarklyEnvironmentsResponse>;
 
     /**
      * Gets Posthog projects for an integration
@@ -679,6 +694,30 @@ export const BackendProvider: BackendService = {
             .then(response => response.data)
             .catch(error => {
                 console.error('Error creating/updating LaunchDarkly integration:', error);
+                throw error;
+            });
+    },
+
+    getLaunchDarklyProjects: (integrationId: string) => {
+        return axios.get<LaunchDarklyProjectsResponse>(
+            `${backendBaseUrl}/launchdarkly/integrations/${encodeURIComponent(integrationId)}/projects`,
+            { withCredentials: true }
+        )
+            .then(response => response.data)
+            .catch(error => {
+                console.error('Error fetching LaunchDarkly projects:', error);
+                throw error;
+            });
+    },
+
+    getLaunchDarklyEnvironments: (integrationId: string, projectKey: string) => {
+        return axios.get<LaunchDarklyEnvironmentsResponse>(
+            `${backendBaseUrl}/launchdarkly/integrations/${encodeURIComponent(integrationId)}/projects/${encodeURIComponent(projectKey)}/environments`,
+            { withCredentials: true }
+        )
+            .then(response => response.data)
+            .catch(error => {
+                console.error('Error fetching LaunchDarkly environments:', error);
                 throw error;
             });
     },

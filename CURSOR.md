@@ -112,6 +112,8 @@ Before writing any code, complete these planning steps:
    - Identify validation endpoint (e.g., `/api/v2/members/me` for LaunchDarkly)
    - List required API endpoints
    - Note any special headers or authentication formats
+   - **Identify endpoints for fetching selectable options** (e.g., projects, environments, workspaces) - users should never have to manually type IDs or keys
+   - **Identify what human-readable information is available** (e.g., token names, workspace names, project names) - avoid showing IDs to users
 
 3. **Database Schema Planning**
    - Identify required Prisma models:
@@ -227,6 +229,12 @@ Execute these steps **in order**, running builds after each major section:
 
 - [ ] If knowledge base: Add `{integration}_config: true;` to `ChannelKnowledgeBaseWithConfigs` include object
 
+#### 7b. Backend Prisma Includes (`backend/src/utility/prismaIncludes.ts`)
+
+- [ ] **CRITICAL: If knowledge base**, add `{integration}_config: true;` to `getKnowledgeBaseConfigInclude()` function
+  - This ensures the config relation is included when fetching channels
+  - Without this, `convertPrismaKnowledgeBaseConfigToConfigInstance` will throw "Unsupported knowledge base config type" errors
+
 #### 8. Frontend Services (`frontend/src/services/backend.tsx`)
 
 - [ ] Add integration type import
@@ -254,6 +262,7 @@ Execute these steps **in order**, running builds after each major section:
   - Follow pattern from `PosthogIntegrationCard.tsx` or similar
   - Include form for connecting/updating API key (if form-based auth)
   - Display list of connected integrations
+  - **Show human-readable names** (e.g., token names, workspace names) - never show IDs to users
   - Show loading states with skeletons
   - Handle errors appropriately
   - Use appropriate icon (from lucide-react or custom)
@@ -265,7 +274,9 @@ Execute these steps **in order**, running builds after each major section:
 - [ ] **Knowledge Base Integration Component** (`frontend/src/pages/Channels/components/`):
   - Create component for configuring knowledge base
   - Handle API key input (if form-based)
-  - Handle config fields (project key, environments, etc.)
+  - **Query API for selectable options** (e.g., projects, environments, workspaces) - use Select dropdowns instead of text inputs
+  - **Never expect users to know IDs or keys** - fetch them from the API and present as selectable options
+  - Handle config fields with Select components populated from API responses
   - Call `setConfig()` when fields change
 
 #### 12. Frontend Config Utils (`frontend/src/utility/ConfigUtils.ts`)
@@ -321,6 +332,9 @@ cd frontend && pnpm run build
 9. ❌ **Missing Prisma types update** - `ChannelKnowledgeBaseWithConfigs` must include new config type
 10. ❌ **Not calling `trackAction`** - All knowledge base tools must track successful runs
 11. ❌ **Not following existing patterns** - Study PostHog/GitHub implementations first
+12. ❌ **Expecting users to type IDs or keys** - Always query the API and present selectable options (e.g., projects, environments) in Select dropdowns instead of text inputs
+13. ❌ **Showing IDs to users** - Always show human-readable names (token names, workspace names, project names) instead of integration IDs or database IDs
+14. ❌ **Missing Prisma config include** - For knowledge bases, must add `{integration}_config: true` to `getKnowledgeBaseConfigInclude()` in `prismaIncludes.ts`, otherwise channels will fail to load with "Unsupported knowledge base config type" errors
 
 ### Key Reminders
 

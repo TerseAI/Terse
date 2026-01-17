@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { Plus, AlertTriangleIcon, Eye, EyeOff, Info } from "lucide-react";
 import { useState } from "react";
+import useSWR from "swr";
 import {
     Select,
     SelectContent,
@@ -32,6 +33,19 @@ export function LaunchDarklyKnowledgeBaseIntegration({ knowledgeBase, variant, s
     // Form state for configuration
     const [projectKey, setProjectKey] = useState(launchdarklyConfig.projectKey || '');
     const [environmentKeys, setEnvironmentKeys] = useState<string[]>(launchdarklyConfig.environmentKeys || []);
+
+    // Fetch projects when integration is selected
+    const { data: projectsData, isLoading: isLoadingProjects } = useSWR(
+        selectedIntegrationId ? ['launchdarkly-projects', selectedIntegrationId] : null,
+        () => BackendProvider.getLaunchDarklyProjects(selectedIntegrationId!)
+    );
+
+    // Fetch environments when project is selected
+    const { data: environmentsData, isLoading: isLoadingEnvironments } = useSWR(
+        selectedIntegrationId && projectKey ? ['launchdarkly-environments', selectedIntegrationId, projectKey] : null,
+        () => BackendProvider.getLaunchDarklyEnvironments(selectedIntegrationId!, projectKey)
+    );
+
 
     const handleConnect = () => {
         setShowConnectForm(true);
@@ -64,23 +78,22 @@ export function LaunchDarklyKnowledgeBaseIntegration({ knowledgeBase, variant, s
     // Handle project key change
     const handleProjectKeyChange = (value: string) => {
         setProjectKey(value);
+        setEnvironmentKeys([]); // Clear environments when project changes
         const newConfig = new LaunchDarklyConfig(
             selectedIntegrationId || '',
             value,
-            environmentKeys
+            []
         );
         setConfig(newConfig);
     };
 
-    // Handle environment keys change
-    const handleEnvironmentKeysChange = (value: string) => {
-        // Parse comma-separated values
-        const keys = value.split(',').map(k => k.trim()).filter(k => k.length > 0);
-        setEnvironmentKeys(keys);
+    // Handle environment key selection (multi-select)
+    const handleEnvironmentKeysChange = (selectedKeys: string[]) => {
+        setEnvironmentKeys(selectedKeys);
         const newConfig = new LaunchDarklyConfig(
             selectedIntegrationId || '',
             projectKey,
-            keys
+            selectedKeys
         );
         setConfig(newConfig);
     };
@@ -224,7 +237,7 @@ export function LaunchDarklyKnowledgeBaseIntegration({ knowledgeBase, variant, s
                     <SelectContent>
                         {integrations.map((integration) => (
                             <SelectItem key={integration.id} value={integration.id}>
-                                {integration.email || integration.id}
+                                {integration.tokenName || integration.email || "LaunchDarkly"}
                             </SelectItem>
                         ))}
                     </SelectContent>
@@ -244,39 +257,73 @@ export function LaunchDarklyKnowledgeBaseIntegration({ knowledgeBase, variant, s
             {selectedIntegrationId && (
                 <>
                     <div className="space-y-2">
-                        <Label htmlFor="projectKey">Project Key <span className="text-destructive">*</span></Label>
-                        <Input
-                            id="projectKey"
-                            value={projectKey}
-                            onChange={(e) => handleProjectKeyChange(e.target.value)}
-                            placeholder="e.g., default-project"
-                            required
-                        />
-                        {!projectKey && (
+                        <Label>Project <span className="text-destructive">*</span></Label>
+                        {isLoadingProjects ? (
+                            <Skeleton className="h-10 w-full" />
+                        ) : (
+                            <Select
+                                value={projectKey}
+                                onValueChange={handleProjectKeyChange}
+                                disabled={isLoadingProjects}
+                            >
+                                <SelectTrigger className="w-full">
+                                    <SelectValue placeholder="Select a project" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {projectsData?.projects.map((project) => (
+                                        <SelectItem key={project.key} value={project.key}>
+                                            {project.name}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        )}
+                        {!projectKey && !isLoadingProjects && (
                             <p className="text-sm text-muted-foreground">
-                                Please enter a project key to continue
+                                Please select a project to continue
                             </p>
                         )}
                     </div>
 
-                    <div className="space-y-2">
-                        <Label htmlFor="environmentKeys">Environments <span className="text-destructive">*</span></Label>
-                        <Input
-                            id="environmentKeys"
-                            value={environmentKeys.join(', ')}
-                            onChange={(e) => handleEnvironmentKeysChange(e.target.value)}
-                            placeholder="e.g., production, staging, development"
-                            required
-                        />
-                        <p className="text-sm text-muted-foreground">
-                            Enter environment keys separated by commas (e.g., production, staging)
-                        </p>
-                        {environmentKeys.length === 0 && (
-                            <p className="text-sm text-destructive">
-                                Please enter at least one environment key
-                            </p>
-                        )}
-                    </div>
+                    {projectKey && (
+                        <div className="space-y-2">
+                            <Label>Environments <span className="text-destructive">*</span></Label>
+                            {isLoadingEnvironments ? (
+                                <Skeleton className="h-10 w-full" />
+                            ) : (
+                                <div className="space-y-2">
+                                    {environmentsData?.environments.map((env) => {
+                                        const isSelected = environmentKeys.includes(env.key);
+                                        return (
+                                            <div key={env.key} className="flex items-center space-x-2">
+                                                <input
+                                                    type="checkbox"
+                                                    id={`env-${env.key}`}
+                                                    checked={isSelected}
+                                                    onChange={(e) => {
+                                                        if (e.target.checked) {
+                                                            handleEnvironmentKeysChange([...environmentKeys, env.key]);
+                                                        } else {
+                                                            handleEnvironmentKeysChange(environmentKeys.filter(k => k !== env.key));
+                                                        }
+                                                    }}
+                                                    className="h-4 w-4 rounded border-gray-300"
+                                                />
+                                                <label htmlFor={`env-${env.key}`} className="text-sm cursor-pointer">
+                                                    {env.name}
+                                                </label>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
+                            {environmentKeys.length === 0 && !isLoadingEnvironments && (
+                                <p className="text-sm text-destructive">
+                                    Please select at least one environment
+                                </p>
+                            )}
+                        </div>
+                    )}
                 </>
             )}
         </div>

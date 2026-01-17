@@ -91,7 +91,7 @@ import {
 import { setupSlackBolt } from "./slack/boltApp";
 import logger from "./logger";
 import { getPosthogIntegrations, createOrUpdatePosthogIntegration, getPosthogProjects } from "./routes/posthog";
-import { getLaunchDarklyIntegrations, createOrUpdateLaunchDarklyIntegration } from "./routes/launchdarkly";
+import { getLaunchDarklyIntegrations, createOrUpdateLaunchDarklyIntegration, getLaunchDarklyProjects, getLaunchDarklyEnvironments } from "./routes/launchdarkly";
 import { handleScheduleWebhook, handleManualTrigger } from "./routes/schedule";
 import { getTemplates } from "./routes/templates";
 
@@ -464,6 +464,14 @@ app.get("/launchdarkly/integrations", authMiddleware, async (req, res) => {
 
 app.post("/launchdarkly/integrations", authMiddleware, async (req, res) => {
   createOrUpdateLaunchDarklyIntegration(req, res);
+});
+
+app.get("/launchdarkly/integrations/:integrationId/projects", authMiddleware, async (req, res) => {
+  getLaunchDarklyProjects(req, res);
+});
+
+app.get("/launchdarkly/integrations/:integrationId/projects/:projectKey/environments", authMiddleware, async (req, res) => {
+  getLaunchDarklyEnvironments(req, res);
 });
 
 // MARK: CHANNELS

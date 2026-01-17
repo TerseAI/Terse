@@ -34,3 +34,136 @@ export async function createOrUpdateLaunchDarklyIntegration(req: Request, res: R
         res.status(500).json({ error: 'Failed to process integration' });
     }
 }
+
+export async function getLaunchDarklyProjects(req: Request, res: Response) {
+    if (!req.session?.user) {
+        res.status(401).json({ error: 'Unauthorized' });
+        return;
+    }
+
+    const { integrationId } = req.params;
+
+    if (!integrationId) {
+        res.status(400).json({ error: 'integrationId is required' });
+        return;
+    }
+
+    try {
+        const integration = await db().launchdarkly_integrations.findUnique({
+            where: { id: integrationId },
+            select: { api_key: true, user_id: true },
+        });
+
+        if (!integration) {
+            res.status(404).json({ error: 'Integration not found' });
+            return;
+        }
+
+        // Verify the integration belongs to the user
+        if (integration.user_id !== req.session.user.id) {
+            res.status(403).json({ error: 'Forbidden' });
+            return;
+        }
+
+        // Fetch projects from LaunchDarkly API
+        const response = await fetch('https://app.launchdarkly.com/api/v2/projects', {
+            method: 'GET',
+            headers: {
+                'Authorization': integration.api_key,
+                'Content-Type': 'application/json',
+            },
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            logger.error('Failed to fetch LaunchDarkly projects', { 
+                integrationId, 
+                status: response.status, 
+                error: errorText 
+            });
+            res.status(response.status).json({ error: 'Failed to fetch projects from LaunchDarkly' });
+            return;
+        }
+
+        const projectsData = await response.json();
+        const projects = Array.isArray(projectsData) ? projectsData : (projectsData.items || projectsData.projects || []);
+        
+        // Return projects with key and name
+        const projectsList = projects.map((p: any) => ({
+            key: p.key || p._id,
+            name: p.name || p.key || 'Unnamed Project',
+        }));
+
+        res.status(200).json({ projects: projectsList });
+    } catch (error) {
+        logger.error('Error fetching LaunchDarkly projects:', { error, integrationId });
+        res.status(500).json({ error: 'Failed to fetch projects' });
+    }
+}
+
+export async function getLaunchDarklyEnvironments(req: Request, res: Response) {
+    if (!req.session?.user) {
+        res.status(401).json({ error: 'Unauthorized' });
+        return;
+    }
+
+    const { integrationId, projectKey } = req.params;
+
+    if (!integrationId || !projectKey) {
+        res.status(400).json({ error: 'integrationId and projectKey are required' });
+        return;
+    }
+
+    try {
+        const integration = await db().launchdarkly_integrations.findUnique({
+            where: { id: integrationId },
+            select: { api_key: true, user_id: true },
+        });
+
+        if (!integration) {
+            res.status(404).json({ error: 'Integration not found' });
+            return;
+        }
+
+        // Verify the integration belongs to the user
+        if (integration.user_id !== req.session.user.id) {
+            res.status(403).json({ error: 'Forbidden' });
+            return;
+        }
+
+        // Fetch environments from LaunchDarkly API
+        const response = await fetch(`https://app.launchdarkly.com/api/v2/projects/${projectKey}/environments`, {
+            method: 'GET',
+            headers: {
+                'Authorization': integration.api_key,
+                'Content-Type': 'application/json',
+            },
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            logger.error('Failed to fetch LaunchDarkly environments', { 
+                integrationId, 
+                projectKey,
+                status: response.status, 
+                error: errorText 
+            });
+            res.status(response.status).json({ error: 'Failed to fetch environments from LaunchDarkly' });
+            return;
+        }
+
+        const environmentsData = await response.json();
+        const environments = Array.isArray(environmentsData) ? environmentsData : (environmentsData.items || environmentsData.environments || []);
+        
+        // Return environments with key and name
+        const environmentsList = environments.map((e: any) => ({
+            key: e.key || e._id,
+            name: e.name || e.key || 'Unnamed Environment',
+        }));
+
+        res.status(200).json({ environments: environmentsList });
+    } catch (error) {
+        logger.error('Error fetching LaunchDarkly environments:', { error, integrationId, projectKey });
+        res.status(500).json({ error: 'Failed to fetch environments' });
+    }
+}

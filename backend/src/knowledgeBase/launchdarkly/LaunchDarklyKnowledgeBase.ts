@@ -1,13 +1,12 @@
 import { Session } from "../../server";
 import { ChannelKnowledgeBaseWithConfigs, PrismaTransaction, User } from "../../types/prisma";
 import { KnowledgeBaseConfigType } from "@prisma/client";
-import { ConfigInstance, LaunchDarklyConfig } from "../../shared/Configs";
+import { LaunchDarklyConfig } from "../../shared/Configs";
 import { IntegrationType } from "../../shared/Integrations";
 import { ToolboxEntry } from "../../outputs/abstract/Output";
 import { KnowledgeBase } from "../abstract/KnowledgeBase";
 import { listLaunchDarklyFlagsTool } from "./tools/listFeatureFlags";
 import { getLaunchDarklyFlagDetailsTool } from "./tools/getFeatureFlagDetails";
-import { getLaunchDarklyFlagHistoryTool } from "./tools/getFeatureFlagHistory";
 import { db } from "../../prismaClient";
 import logger from "../../logger";
 
@@ -33,11 +32,6 @@ export class LaunchDarklyKnowledgeBase extends KnowledgeBase<LaunchDarklyKnowled
             },
             {
                 tool: getLaunchDarklyFlagDetailsTool,
-                isReadOnly: true,
-                integration: IntegrationType.LAUNCHDARKLY
-            },
-            {
-                tool: getLaunchDarklyFlagHistoryTool,
                 isReadOnly: true,
                 integration: IntegrationType.LAUNCHDARKLY
             }
@@ -137,9 +131,7 @@ AVAILABLE TOOLS:
 
 - getLaunchDarklyFlagDetails: Get detailed information about a specific flag including
   targeting rules, rollout strategies, and variations.
-
-- getLaunchDarklyFlagHistory: Search audit logs for changes to feature flags over time.
-  Use this to understand when flags were enabled/disabled, targeting rules changed, or other modifications occurred.
+  Set includeHistory=true with optional before/after dates to also get change history over a time window.
 
 USAGE GUIDELINES:
 1. START WITH OVERVIEW:
@@ -149,19 +141,20 @@ USAGE GUIDELINES:
 2. INVESTIGATE SPECIFIC FLAGS:
    - Use getLaunchDarklyFlagDetails for deep-dive on specific flags
    - Check targeting rules and rollout strategies when debugging issues
+   - Set includeHistory=true to see recent changes over a time window
 
 3. ANSWERING COMMON QUESTIONS:
-   - "Is flag X enabled in production?" → listLaunchDarklyFlags or getFlagDetails
+   - "Is flag X enabled in production?" → listLaunchDarklyFlags or getLaunchDarklyFlagDetails
    - "What flags are enabled in staging?" → listLaunchDarklyFlags with filter
    - "Show me all flags with tag Y" → listLaunchDarklyFlags with tags filter
-   - "When was flag X enabled?" → getLaunchDarklyFlagHistory with flagKey
-   - "What changes were made to flags last week?" → getLaunchDarklyFlagHistory with after date
+   - "When was flag X enabled?" → getLaunchDarklyFlagDetails with includeHistory=true
+   - "What changes were made to flag X last week?" → getLaunchDarklyFlagDetails with includeHistory=true and after date
 
 4. BEST PRACTICES:
    - Always specify which environment you're referring to (production, staging, etc.)
    - Link to the LaunchDarkly UI for users to view/edit flags directly
    - When discussing flag state, clarify if you're talking about current state vs targeting rules
-   - Use getLaunchDarklyFlagHistory to understand the timeline of changes when investigating issues`);
+   - Use includeHistory=true to understand the timeline of changes when investigating issues`);
 
         return sections.join('\n');
     }
