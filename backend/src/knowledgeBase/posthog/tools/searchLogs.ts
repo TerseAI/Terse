@@ -226,7 +226,7 @@ export const searchLogsTool = tool({
                 integration: IntegrationType.POSTHOG,
                 target: posthogConfig.projectId,
                 details: `Searched event logs: Found ${formattedLogs.length} event(s)${queryDesc}${dateFromValue ? ` from ${dateFromValue}` : ''}${dateTo ? ` to ${dateTo}` : ''}`,
-                url: `https://us.posthog.com/insights`,
+                url: logsLink,
                 type: RunHistoryActionType.read,
                 isReadOnly: true,
             });
