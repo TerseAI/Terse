@@ -200,6 +200,9 @@ Execute these steps **in order**, running builds after each major section:
 - [ ] Implement `validateConfig()`
 - [ ] Implement `addKnowledgeBaseToChannel()`
 - [ ] Implement `getSystemInstructions()`
+  - **Avoid repetition**: Tool descriptions are already available to the LLM, so don't duplicate them in system instructions
+  - System instructions should focus on workflow, strategy, and best practices—not re-describe what tools do
+  - Keep system instructions concise (~15-20 lines) focusing on when to use which tool and how
 - [ ] Create tool files in `tools/` directory
 - [ ] Each tool must call `runContext.context.trackAction()` on success
 - [ ] Add to `KnowledgeBaseFactory.ts` registry
@@ -339,6 +342,7 @@ cd frontend && pnpm run build
 ### Key Reminders
 
 - **Tool descriptions should be concise** - Single-line descriptions for agent tools
+- **Avoid repetition between tools and system prompts** - Tool descriptions are already available to the LLM, so system instructions should focus on workflow/strategy, not re-describe tools
 - **Always call `trackAction`** - Every successful tool execution must be tracked
 - **Create session-specific types** - Knowledge bases need custom session interfaces (e.g., `LaunchDarklyKnowledgeBaseSession`)
 - **Icons can be images** - Use JPEG/PNG in `public/` if SVG isn't available
