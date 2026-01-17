@@ -8,7 +8,7 @@ import { Block, ChatPostMessageArguments, ChatUpdateArguments, KnownBlock, WebCl
 import { INTEGRATION_REGISTRY } from "../../integrations/abstract/IntegrationRegistry";
 import { isFormIntegrationInstallation, isOAuthIntegrationInstallation, OAuthIntegrationInstallation } from "../../integrations/abstract/Integration";
 import { createOAuthStateToken } from "../../utility/oauth";
-import { createIntegrationConnectionMessage } from "../../slack/blockKitHelpers";
+import { createActionBlock, createButton, createIntegrationConnectionMessage } from "../../slack/blockKitHelpers";
 import { ChannelDraft } from "../../routes/channels";
 
 class SlackChatInterface extends ChatInterface {
@@ -131,6 +131,16 @@ class SlackChatInterface extends ChatInterface {
         });
 
         return "Preview sent.";
+    }
+
+    async buildButton(label: string, url: string): Promise<void> {
+        const actionId = `open_url_${slugifyActionId(label)}`;
+        const button = createButton(label, actionId, { url });
+        const blocks = [createActionBlock([button])];
+        await this.say({
+            text: label,
+            blocks,
+        });
     }
     
     private async handleFormIntegrationInstallation(integration: IntegrationType): Promise<string> {
@@ -431,6 +441,14 @@ function normalizeSlackMrkdwn(text: string): string {
         .replace(/\*\*(.+?)\*\*/g, "*$1*")
         .replace(/__(.+?)__/g, "_$1_")
         .replace(/(^|\n)\s*-\s+/g, "$1• ");
+}
+
+function slugifyActionId(value: string): string {
+    return value
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "_")
+        .replace(/^_+|_+$/g, "")
+        .slice(0, 50) || "button";
 }
 
 function formatCronDescription(cronExpression: string, timezone: string): string {
