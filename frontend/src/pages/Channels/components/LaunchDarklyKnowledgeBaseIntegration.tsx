@@ -2,6 +2,7 @@ import { LaunchDarklyConfig } from "@/shared/Configs";
 import { KnowledgeBaseSelectorProps } from "./KnowledgeBaseSelector";
 import { useLaunchdarklyIntegrations } from "@/hooks/api/useLaunchdarklyIntegrations";
 import { BackendProvider } from "@/services/backend";
+import { LaunchDarklyProject, LaunchDarklyEnvironment } from "@/shared/types";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
@@ -270,7 +271,7 @@ export function LaunchDarklyKnowledgeBaseIntegration({ knowledgeBase, variant, s
                                     <SelectValue placeholder="Select a project" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    {projectsData?.projects.map((project) => (
+                                    {projectsData?.projects.map((project: LaunchDarklyProject) => (
                                         <SelectItem key={project.key} value={project.key}>
                                             {project.name}
                                         </SelectItem>
@@ -292,7 +293,7 @@ export function LaunchDarklyKnowledgeBaseIntegration({ knowledgeBase, variant, s
                                 <Skeleton className="h-10 w-full" />
                             ) : (
                                 <div className="space-y-2">
-                                    {environmentsData?.environments.map((env) => {
+                                    {environmentsData?.environments.map((env: LaunchDarklyEnvironment) => {
                                         const isSelected = environmentKeys.includes(env.key);
                                         return (
                                             <div key={env.key} className="flex items-center space-x-2">
