@@ -11,49 +11,11 @@ import logger from "../../../logger";
  */
 export const slackSendMessageTool = tool({
     name: "slack_send_message",
-    description: `Send a message to the configured Slack channel or DM. Use this tool to post updates, reports, or responses to Slack. The message will be sent as the Terse bot.
-
-You can send messages in two ways:
-1. **Plain text**: Simple text messages with mrkdwn formatting
-2. **Block Kit**: Rich, interactive messages with buttons, structured layouts, and dynamic content
-
-FORMATTING GUIDE (Plain Text):
-- Use Slack's mrkdwn format for rich text
-- *bold* for emphasis
-- _italic_ for secondary emphasis
-- \`code\` for inline code
-- \`\`\`code block\`\`\` for multi-line code
-- <url|text> for links
-- Use bullet points (•) for lists
-- Use emoji sparingly for visual appeal
-
-BLOCK KIT GUIDE:
-Block Kit allows you to create rich, interactive messages with:
-- **Buttons**: Interactive buttons that can open URLs (e.g., dashboards) or trigger actions
-- **Structured layouts**: Section blocks with fields for organized information
-- **Visual elements**: Dividers, images, headers for better presentation
-
-When to use Block Kit:
-- When you need interactive buttons (e.g., "Open Dashboard" button)
-- When presenting structured data (metrics, reports with fields)
-- When you want better visual organization than plain text
-- When you need to provide quick actions to users
-
-When to use plain text:
-- Simple notifications or updates
-- Short messages that don't need structure
-- When you don't need interactive elements
-
-BEST PRACTICES:
-- Keep messages concise and actionable
-- Structure information with headers and sections
-- Include relevant links when available
-- Use threading for follow-up messages when appropriate
-- For Block Kit: Always provide a fallback text message`,
+    description: `Send message to Slack channel. Supports plain text (mrkdwn) or Block Kit (JSON blocks).`,
     parameters: z.object({
-        message: z.string().describe("The message content to send. Supports Slack mrkdwn formatting. This is used as fallback text when blocks are provided, or as the main message when blocks are not provided."),
-        thread_ts: z.string().nullable().optional().describe("Optional thread timestamp to reply to an existing thread. If provided, the message will be posted as a reply in that thread."),
-        blocks: z.string().nullable().optional().describe("Optional Block Kit JSON array as a string. Use this for rich, interactive messages with buttons, structured layouts, and dynamic content. Must be a valid JSON array of Block Kit blocks. Example: '[{\"type\":\"section\",\"text\":{\"type\":\"mrkdwn\",\"text\":\"*Report*\"}},{\"type\":\"actions\",\"elements\":[{\"type\":\"button\",\"text\":{\"type\":\"plain_text\",\"text\":\"Open Dashboard\"},\"url\":\"https://example.com/dashboard\",\"action_id\":\"open_dashboard\"}]}]'"),
+        message: z.string().describe("Message content (mrkdwn). Used as fallback for Block Kit or main message."),
+        thread_ts: z.string().nullable().optional().describe("Thread timestamp to reply to existing thread"),
+        blocks: z.string().nullable().optional().describe("Block Kit JSON array string for interactive messages with buttons, structured layouts"),
     }),
     execute: async (args, runContext?: RunContext<SlackChannelSession>) => {
         if (!runContext?.context) {
