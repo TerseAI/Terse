@@ -1,5 +1,5 @@
 import { RunStreamEvent } from "@openai/agents";
-import { ConfigType } from "../../shared/Configs";
+import { CONFIG_DETAILS, ConfigType } from "../../shared/Configs";
 import ChatInterface from "./ChatInterface";
 import { IntegrationType } from "../../shared/Integrations";
 import cronstrue from "cronstrue";
@@ -73,6 +73,7 @@ class SlackChatInterface extends ChatInterface {
         const title = draft.name?.trim() || "Untitled Automation";
         const status = draft.isActive ? "Active" : "Paused";
         const approval = draft.requireApproval ? "Requires approval" : "No approval";
+        const timezone = (await this.getUserTimezone()) ?? "UTC";
 
         blocks.push(makeHeaderBlock(`Preview: ${title}`));
 
@@ -89,7 +90,7 @@ class SlackChatInterface extends ChatInterface {
             blocks.push(makeSectionBlock("_No inputs configured yet._"));
         } else {
             draft.inputs.forEach((input, index) => {
-                const summary = formatConfigSummary(input.config as unknown as ConfigSummaryInput);
+                const summary = formatConfigSummary(input.config as unknown as ConfigSummaryInput, timezone);
                 blocks.push(makeSectionBlock(`• *${index + 1}.* ${summary}`));
             });
         }
@@ -101,7 +102,7 @@ class SlackChatInterface extends ChatInterface {
         if (!draft.output) {
             blocks.push(makeSectionBlock("_No output configured yet._"));
         } else {
-            blocks.push(makeSectionBlock(formatConfigSummary(draft.output.config as unknown as ConfigSummaryInput)));
+            blocks.push(makeSectionBlock(formatConfigSummary(draft.output.config as unknown as ConfigSummaryInput, timezone)));
         }
 
         blocks.push(makeDividerBlock());
@@ -112,7 +113,7 @@ class SlackChatInterface extends ChatInterface {
             blocks.push(makeSectionBlock("_No knowledge bases configured._"));
         } else {
             draft.knowledgeBases.forEach((kb, index) => {
-                const summary = formatConfigSummary(kb.config as unknown as ConfigSummaryInput);
+                const summary = formatConfigSummary(kb.config as unknown as ConfigSummaryInput, timezone);
                 blocks.push(makeSectionBlock(`• *${index + 1}.* ${summary}`));
             });
         }
@@ -329,6 +330,7 @@ class SlackChatInterface extends ChatInterface {
 
     async processMessageEnd(sessionId: string, finalOutput: string): Promise<void> {
         logger.info('Slack chat interface processMessageEnd. Final output:', { messageTsToReplace: this.messageTsToReplace, finalOutput });
+        const blocks = buildRichTextBlocks(finalOutput);
         
         // If we have a message timestamp to replace and WebClient, update the message instead of posting new one
         if (this.messageTsToReplace && this.webClient) {
@@ -337,6 +339,7 @@ class SlackChatInterface extends ChatInterface {
                     channel: this.channel,
                     ts: this.messageTsToReplace,
                     text: finalOutput,
+                    blocks,
                 });
                 logger.info('Successfully replaced message', { messageTs: this.messageTsToReplace });
                 return;
@@ -349,6 +352,7 @@ class SlackChatInterface extends ChatInterface {
         // Default behavior: post new message
         this.say({
             text: finalOutput,
+            blocks,
             thread_ts: sessionId,
         });
     }
@@ -412,80 +416,97 @@ function makeSectionBlock(text: string): KnownBlock {
     };
 }
 
-function formatCronDescription(cronExpression: string): string {
+function buildRichTextBlocks(text: string): KnownBlock[] {
+    const trimmed = text.trim();
+    if (!trimmed) {
+        return [makeSectionBlock("_No response._")];
+    }
+    const normalized = normalizeSlackMrkdwn(trimmed);
+    const paragraphs = normalized.split(/\n{2,}/).map((paragraph) => paragraph.trim());
+    return paragraphs.map((paragraph) => makeSectionBlock(paragraph));
+}
+
+function normalizeSlackMrkdwn(text: string): string {
+    return text
+        .replace(/\*\*(.+?)\*\*/g, "*$1*")
+        .replace(/__(.+?)__/g, "_$1_")
+        .replace(/(^|\n)\s*-\s+/g, "$1• ");
+}
+
+function formatCronDescription(cronExpression: string, timezone: string): string {
     if (!cronExpression.trim()) {
         return "No schedule configured";
     }
 
     try {
-        return `${cronstrue.toString(cronExpression)} (UTC)`;
+        return `${cronstrue.toString(cronExpression)} (${timezone})`;
     } catch {
         return "Invalid schedule";
     }
 }
 
-function formatConfigSummary(config: ConfigSummaryInput): string {
+function formatConfigSummary(config: ConfigSummaryInput, timezone: string): string {
     const configData = config;
     const configType = configData.configType ?? ConfigType.GMAIL;
-    const integrationType = configData.integrationType ?? IntegrationType.TERSE;
+    const configLabel = CONFIG_DETAILS[configType]?.name ?? configType;
     const parts: string[] = [];
 
     switch (configType) {
         case ConfigType.TIME_TRIGGER:
-            parts.push(`*${configType}* (${integrationType})`);
-            parts.push(formatCronDescription(config.cronExpression ?? ""));
+            parts.push(`*${configLabel}*`);
+            parts.push(`Schedule: ${formatCronDescription(config.cronExpression ?? "", timezone)}`);
             break;
         case ConfigType.FIGMA:
-            parts.push(`*${configType}* (${integrationType})`);
+            parts.push(`*${configLabel}*`);
             if (config.fileName) parts.push(`file: ${config.fileName}`);
             break;
         case ConfigType.SLACK:
         case ConfigType.SLACK_OUTPUT:
-            parts.push(`*${configType}* (${integrationType})`);
+            parts.push(`*${configLabel}*`);
             if (config.channelName) parts.push(`channel: ${config.channelName}`);
             if (config.listenToUserDms) parts.push(`DMs: yes`);
             break;
         case ConfigType.GITHUB:
         case ConfigType.GITHUB_KB:
-            parts.push(`*${configType}* (${integrationType})`);
+            parts.push(`*${configLabel}*`);
             if (Array.isArray(config.repositoryIds) && config.repositoryIds.length > 0) {
-                parts.push(`repos: ${config.repositoryIds.join(', ')}`);
+                parts.push(`repos: ${config.repositoryNames?.join(', ')}`);
             }
             if (Array.isArray(config.repositoryNames) && config.repositoryNames.length > 0) {
                 parts.push(`names: ${config.repositoryNames.join(', ')}`);
             }
             break;
         case ConfigType.NOTION_DATABASE:
-            parts.push(`*${configType}* (${integrationType})`);
+            parts.push(`*${configLabel}*`);
             if (config.databaseName) parts.push(`database: ${config.databaseName}`);
             break;
         case ConfigType.NOTION_PAGE:
-            parts.push(`*${configType}* (${integrationType})`);
+            parts.push(`*${configLabel}*`);
             if (config.pageName) parts.push(`page: ${config.pageName}`);
             break;
         case ConfigType.LINEAR_INPUT:
-            parts.push(`*${configType}* (${integrationType})`);
+            parts.push(`*${configLabel}*`);
             if (config.projectName) parts.push(`project: ${config.projectName}`);
             break;
         case ConfigType.LINEAR_OUTPUT:
-            parts.push(`*${configType}* (${integrationType})`);
+            parts.push(`*${configLabel}*`);
             if (config.teamName) parts.push(`team: ${config.teamName}`);
             break;
         case ConfigType.CONFLUENCE:
-            parts.push(`*${configType}* (${integrationType})`);
+            parts.push(`*${configLabel}*`);
             if (config.spaceName) parts.push(`space: ${config.spaceName}`);
             if (config.pageName) parts.push(`page: ${config.pageName}`);
             break;
         case ConfigType.JIRA:
-            parts.push(`*${configType}* (${integrationType})`);
+            parts.push(`*${configLabel}*`);
             if (config.projectKey) parts.push(`projectKey: ${config.projectKey}`);
             break;
         case ConfigType.POSTHOG:
-            parts.push(`*${configType}* (${integrationType})`);
+            parts.push(`*${configLabel}*`);
             if (config.projectName) parts.push(`project: ${config.projectName}`);
             break;
         default:
-            parts.push(`*${configType}* (${integrationType})`);
+            parts.push(`*${configLabel}*`);
             break;
     }
 

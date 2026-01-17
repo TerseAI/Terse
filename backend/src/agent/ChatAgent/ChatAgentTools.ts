@@ -30,22 +30,22 @@ export type ChatAgentContext = {
 
 export function buildChatAgentTools(chatInterface: ChatInterface): Tool<ChatAgentContext>[] {
     return [
-        tool({
-            name: 'buildPreview',
-            description: 'Build a preview of the draft. Call this before calling applyChannel.',
-            parameters: z.object({
-                draft: ChannelSchema,
-            }),
-            execute: async ({ draft: channel }: { draft: ChannelSchemaInput }, runContext?: RunContext<ChatAgentContext>): Promise<string> => {
-                try {
-                    const draft = toChannelDraft(channel);
-                    return await chatInterface.buildPreview(draft);
-                } catch (error) {
-                    logger.error('buildPreview failed', { error, userId: runContext?.context?.userId, channel });
-                    throw error;
-                }
-            },
-        }),
+        // tool({
+        //     name: 'buildPreview',
+        //     description: 'Build a preview of the draft. Call this before calling applyChannel.',
+        //     parameters: z.object({
+        //         draft: ChannelSchema,
+        //     }),
+        //     execute: async ({ draft: channel }: { draft: ChannelSchemaInput }, runContext?: RunContext<ChatAgentContext>): Promise<string> => {
+        //         try {
+        //             const draft = toChannelDraft(channel);
+        //             return await chatInterface.buildPreview(draft);
+        //         } catch (error) {
+        //             logger.error('buildPreview failed', { error, userId: runContext?.context?.userId, channel });
+        //             throw error;
+        //         }
+        //     },
+        // }),
         tool({
             name: 'applyChannel',
             description: 'Once you have all the information you need, you can use this tool to persist and apply the automation.',
