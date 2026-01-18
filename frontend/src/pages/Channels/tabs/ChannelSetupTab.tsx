@@ -366,7 +366,7 @@ export default function ChannelSetupTab({
                         )}
 
                         {activeSection === 'skills' && (
-                            <div className="max-w-3xl flex flex-col gap-4">
+                            <div className="max-w-3xl flex flex-col gap-4 pr-6">
                                 <OutputLayout output={output} setOutput={setOutput} isIncomplete={skillsIncomplete} />
                             </div>
                         )}
