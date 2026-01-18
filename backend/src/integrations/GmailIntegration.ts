@@ -1,9 +1,9 @@
-import { Integration, OAuthIntegrationInstallation } from "./abstract/Integration";
+import { Integration, OAuthIntegrationInstallation, ConfigurationFieldDefinition } from "./abstract/Integration";
 import crypto from "crypto";
 import { db } from "../prismaClient";
 import { ChannelInputWithConfigs, GmailIntegration as PrismaGmailIntegration, User } from "../types/prisma";
 import { OAuthInstallationDetails } from "../shared/types";
-import { GmailIntegration, GmailIntegrationMetadata, IntegrationType } from "../shared/Integrations";
+import { GmailIntegration, GmailIntegrationMetadata, IntegrationType, InstallationOptionsFor, AdditionalStateParams } from "../shared/Integrations";
 import chalk from "chalk";
 import { gmail_v1, google } from "googleapis";
 import { OAuth2Client } from "google-auth-library";
@@ -14,6 +14,9 @@ import { RunHistoryTrigger } from "../shared/RunHistoryTypes";
 import { InputEvent } from "./abstract/InputEvent";
 import { Request, Response } from "express";
 import logger, { runWithUserContext } from "../logger";
+import { integrationTaskQueue } from "./IntegrationTaskQueues";
+import { IntegrationCompletedTask } from "./IntegrationCompletedTask";
+import { createOAuthStateToken, decodeOAuthStateToken, OAuthStatePayload, OAuthStateEncodingFormat } from "../utility/oauth";
 
 
 // OAuth2 scopes for Gmail
@@ -22,6 +25,10 @@ const SCOPES = ["https://www.googleapis.com/auth/gmail.readonly"];
 export class GmailIntegrationManager implements Integration<GmailIntegration, GmailWebhookEvent, typeof GmailIntegrationMetadata>, OAuthIntegrationInstallation<IntegrationType.GMAIL> {
     constructor() { }
     integrationType: IntegrationType = IntegrationType.GMAIL;
+
+    getConfigurationFields(): ConfigurationFieldDefinition[] {
+        return [];
+    }
 
     async getInstancesForUser(userId: string): Promise<GmailIntegration[]> {
         const prisma = db();
@@ -43,6 +50,15 @@ export class GmailIntegrationManager implements Integration<GmailIntegration, Gm
             historyId: gi.history_id,
             watchExpiration: gi.watch_expiration,
         }));
+    }
+
+    formatIntegrationInstanceForAgent(instance: GmailIntegration): string {
+        const details: string[] = [];
+        if (instance.email) {
+            details.push(`email ${instance.email}`);
+        }
+        const detailText = details.length ? ` (${details.join(", ")})` : "";
+        return `Gmail${detailText} [id: ${instance.id}]`;
     }
 
     async getAllActiveInstances(): Promise<GmailIntegration[]> {
@@ -179,16 +195,19 @@ export class GmailIntegrationManager implements Integration<GmailIntegration, Gm
         }
     }
     
-    async getInstallationUrl(userId: string): Promise<OAuthInstallationDetails> {
+    async getInstallationUrl(userId: string, options?: InstallationOptionsFor<IntegrationType.GMAIL>, additionalStatePayload?: AdditionalStateParams): Promise<OAuthInstallationDetails> {
         const oauth2Client = getOAuth2Client();
 
-        // Generate state for security (include user ID)
-        const state = Buffer.from(
-        JSON.stringify({
-            userId: userId,
-            random: crypto.randomBytes(16).toString("hex"),
-        })
-        ).toString("base64");
+        // Generate state token using helper function (handles merging and encoding)
+        // Include random for CSRF protection
+        const state = createOAuthStateToken({
+            userId,
+            additionalFields: {
+                random: crypto.randomBytes(16).toString("hex"),
+            },
+            additionalStatePayload,
+            encodingFormat: OAuthStateEncodingFormat.BASE64,
+        });
 
         const authUrl = oauth2Client.generateAuthUrl({
             access_type: "offline", // Get refresh token
@@ -212,8 +231,8 @@ export class GmailIntegrationManager implements Integration<GmailIntegration, Gm
         }
 
         try {
-            // Decode state to get user ID
-            const stateData = JSON.parse(Buffer.from(state, "base64").toString());
+            // Decode state using helper function
+            const stateData = decodeOAuthStateToken(state);
             const userId = stateData.userId;
 
             if (!userId) {
@@ -266,7 +285,7 @@ export class GmailIntegrationManager implements Integration<GmailIntegration, Gm
                 : new Date(Date.now() + 3600 * 1000); // Default 1 hour
 
             // Store in database and set is_active to true
-            await db().gmail_integrations.upsert({
+            const integration = await db().gmail_integrations.upsert({
                 where: {
                     user_id_email: {
                         user_id: userId,
@@ -296,6 +315,15 @@ export class GmailIntegrationManager implements Integration<GmailIntegration, Gm
             });
 
             logger.info(`Gmail integration activated for ${emailAddress}`, { emailAddress, userId });
+
+            // Emit integration completed task (includes full state payload for chat metadata detection)
+            integrationTaskQueue.emit(new IntegrationCompletedTask(
+                IntegrationType.GMAIL,
+                integration.id,
+                userId,
+                stateData,
+                new Date()
+            ));
 
             // Redirect to success page which will auto-close the popup
             res.redirect(`${urls.frontend}/oauth/success`);

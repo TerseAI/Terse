@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import { DatadogIntegrationManager } from "../integrations/DatadogIntegration";
+import { parseFormSubmissionFromRequest } from "../integrations/abstract/Integration";
 import { db } from "../prismaClient";
 import logger from "../logger";
 import { getDatadogApiUrl } from "../utility/datadog";
@@ -27,8 +28,14 @@ export async function createOrUpdateDatadogIntegration(req: Request, res: Respon
     }
 
     try {
+        const input = parseFormSubmissionFromRequest(req);
+        if (!input) {
+            res.status(401).json({ error: 'Unauthorized' });
+            return;
+        }
         const manager = new DatadogIntegrationManager();
-        await manager.processFormSubmission(req, res);
+        const result = await manager.processFormSubmission(input);
+        res.status(result.statusCode ?? (result.success ? 200 : 400)).json(result);
     } catch (error) {
         logger.error('Error creating/updating Datadog integration:', { error });
         res.status(500).json({ error: 'Failed to process integration' });

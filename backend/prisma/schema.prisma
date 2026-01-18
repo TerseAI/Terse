@@ -999,6 +999,25 @@ model run_history_raw_events {
   @@index([created_at])
 }
 
+// Chat session types for general chats (not tied to run history)
+enum ChatSessionType {
+  SLACK_THREAD
+  DIRECT_CHAT
+}
+
+// Raw AgentStreamEvent stored as JSON for general chat sessions
+model chat_raw_events {
+  id              String   @id @default(cuid())
+  chat_session_id String
+  raw_event_json  Json // Raw AgentStreamEvent stored as JSON for easy loading into OpenAI agent history
+  sequence_order  Int // Order of items within a session to preserve exact sequence
+  created_at      DateTime @default(now())
+
+  @@index([chat_session_id])
+  @@index([chat_session_id, sequence_order])
+  @@index([created_at])
+}
+
 // MARK: - Notifications
 
 model automation_notification_settings {

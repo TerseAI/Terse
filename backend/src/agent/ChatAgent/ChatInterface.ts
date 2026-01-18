@@ -1,15 +1,28 @@
-import { Agent, AgentOutputType, RunStreamEvent, StreamedRunResult } from "@openai/agents";
+import { RunStreamEvent } from "@openai/agents";
 import { ConfigType } from "../../shared/Configs";
 import { IntegrationType } from "../../shared/Integrations";
-import { Channel } from "../../shared/types";
+import { ChannelDraft } from "../../routes/channels";
 
 abstract class ChatInterface {
     abstract name: string;
-    
-    abstract buildPreview(draft: Channel): Promise<string>;
+    protected readonly sessionId: string | undefined;
+    protected readonly userId: string | undefined;
+
+    constructor(sessionId?: string, userId?: string) {
+        this.sessionId = sessionId;
+        this.userId = userId;
+    }
+
+    // abstract buildPreview(draft: ChannelDraft): Promise<string>;
     abstract promptForIntegration(integration: IntegrationType): Promise<string>; 
     abstract promptForConfig(config: ConfigType): Promise<string>;
-    abstract processStreamEvent(event: RunStreamEvent): void;
+    abstract processStreamEvent(sessionId: string, event: RunStreamEvent): void;
+    abstract processMessageEnd(sessionId: string, finalOutput: string): Promise<void>;
+    abstract buildButton(label: string, url: string): Promise<void>;
+
+    async getUserTimezone(): Promise<string | null> {
+        return null;
+    }
 }
 
 export default ChatInterface;

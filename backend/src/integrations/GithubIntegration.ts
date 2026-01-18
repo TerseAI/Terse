@@ -1,8 +1,8 @@
-import { Integration, OAuthIntegrationInstallation } from "./abstract/Integration";
+import { Integration, OAuthIntegrationInstallation, ConfigurationFieldDefinition } from "./abstract/Integration";
 import { db } from "../prismaClient";
 import { EventProcessor } from "../agent/ChannelAgent/EventProcessor";
 import { InputEvent } from "./abstract/InputEvent";
-import { GithubIntegration, GithubIntegrationMetadata, IntegrationType } from "../shared/Integrations";
+import { GithubIntegration, GithubIntegrationMetadata, IntegrationType, InstallationOptionsFor, AdditionalStateParams } from "../shared/Integrations";
 import { GithubAppInstallationRepository, GithubAppInstallationRepositoryResponse, GithubAppInstallationResponse, GithubAppUnifiedEventRequest } from "../routes/GithubTypes";
 import { resolveUsersForGithubInstallation } from "../routes/github";
 import { User } from "../types/prisma";
@@ -15,10 +15,17 @@ import { InputConfigType } from "@prisma/client";
 import axios, { AxiosResponse } from "axios";
 import { GithubAppUser } from "../routes/GithubTypes";
 import logger, { runWithUserContext } from "../logger";
+import { integrationTaskQueue } from "./IntegrationTaskQueues";
+import { IntegrationCompletedTask } from "./IntegrationCompletedTask";
+import { createOAuthStateToken, decodeOAuthStateToken, OAuthStatePayload, OAuthStateEncodingFormat } from "../utility/oauth";
 
 export class GithubIntegrationManager implements Integration<GithubIntegration, GithubAppUnifiedEventRequest, typeof GithubIntegrationMetadata>, OAuthIntegrationInstallation<IntegrationType.GITHUB> {
     constructor() { }
     integrationType: IntegrationType = IntegrationType.GITHUB;
+
+    getConfigurationFields(): ConfigurationFieldDefinition[] {
+        return [];
+    }
 
     async getInstancesForUser(userId: string): Promise<GithubIntegration[]> {
         const userAccounts = await db().github_app_tokens.findMany({
@@ -33,6 +40,18 @@ export class GithubIntegrationManager implements Integration<GithubIntegration, 
             }));
         }));
         return installations.flat();
+    }
+
+    formatIntegrationInstanceForAgent(instance: GithubIntegration): string {
+        const details: string[] = [];
+        if (instance.account_name) {
+            details.push(`account "${instance.account_name}"`);
+        }
+        if (instance.installation_id) {
+            details.push(`installationId ${instance.installation_id}`);
+        }
+        const detailText = details.length ? ` (${details.join(", ")})` : "";
+        return `Github${detailText} [id: ${instance.id}]`;
     }
 
     async getAllActiveInstances(): Promise<GithubIntegration[]> {
@@ -68,11 +87,18 @@ export class GithubIntegrationManager implements Integration<GithubIntegration, 
         }
     }
 
-    async getInstallationUrl(userId: string): Promise<OAuthInstallationDetails> {
+    async getInstallationUrl(userId: string, options?: InstallationOptionsFor<IntegrationType.GITHUB>, additionalStatePayload?: AdditionalStateParams): Promise<OAuthInstallationDetails> {
         const appName = githubApp.appName;
         const clientId = githubApp.clientId;
         const redirectUri = githubApp.integrateCallbackUrl;
-        const state = Buffer.from(userId).toString('base64');
+        
+        // Generate state token using helper function (handles merging and encoding)
+        const state = createOAuthStateToken({
+            userId,
+            additionalStatePayload,
+            encodingFormat: OAuthStateEncodingFormat.BASE64,
+        });
+        
         const installationUrl: string = `https://github.com/apps/${appName}/installations/new?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&target_type=repositories&state=${state}`;
 
         return {
@@ -85,8 +111,9 @@ export class GithubIntegrationManager implements Integration<GithubIntegration, 
 
         logger.info("[GitHub Setup URL Installation]", { installationId: installation_id, setupAction: setup_action, hasState: !!state });
 
-        // extract user_id from state
-        const user_id = Buffer.from(state as string, 'base64').toString('utf-8');
+        // Decode state using helper function
+        const stateData = decodeOAuthStateToken(state as string);
+        const user_id = stateData.userId;
         const user: User | null = await db().users.findUnique({
             where: { id: user_id }
         });
@@ -107,7 +134,7 @@ export class GithubIntegrationManager implements Integration<GithubIntegration, 
 
         // create a new user_github_installation record
         // Note: account_name will be populated by the webhook callback if not already set
-        await db().user_github_installation.upsert({
+        const githubInstallation = await db().user_github_installation.upsert({
             where: { installation_id: installation_id_number },
             update: { user_id: user_id },
             create: { user_id: user_id, installation_id: installation_id_number }
@@ -123,6 +150,16 @@ export class GithubIntegrationManager implements Integration<GithubIntegration, 
         });
 
         logger.info("[GitHub Setup URL Installation] Upsert completed", { installationId: installation_id_number, userId: user_id });
+
+        // Emit integration completed task (includes full state payload for chat metadata detection)
+        // Note: GitHub uses base64-encoded JSON state, so we decode it and pass as statePayload
+        integrationTaskQueue.emit(new IntegrationCompletedTask(
+            IntegrationType.GITHUB,
+            githubInstallation.id, // Use user_github_installation.id as integrationId
+            user_id,
+            stateData,
+            new Date()
+        ));
 
         res.redirect(`${urls.frontend}/oauth/success`);
     }
