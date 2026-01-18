@@ -88,6 +88,18 @@ export type PosthogProjectsResponse = {
   projects: PosthogProject[];
 };
 
+export type DatadogIndex = {
+  id: string;
+  name: string;
+  isEnabled: boolean;
+  dailyLimit?: number;
+  retentionDays?: number;
+};
+
+export type DatadogIndexesResponse = {
+  indexes: DatadogIndex[];
+};
+
 export type SlackChannel = {
   id: string;
   name: string;

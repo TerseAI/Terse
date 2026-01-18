@@ -1,3 +1,4 @@
+import { Tool } from "@openai/agents";
 import { Session } from "../../server";
 import { ChannelKnowledgeBaseWithConfigs, PrismaTransaction, User } from "../../types/prisma";
 import { KnowledgeBaseConfigType } from "@prisma/client";
@@ -33,37 +34,37 @@ export class GitHubKnowledgeBase extends KnowledgeBase<GitHubKnowledgeBaseSessio
     constructor() {
         const toolbox: ToolboxEntry[] = [
             {
-                tool: searchGitHubCodeTool,
+                tool: searchGitHubCodeTool as Tool,
                 isReadOnly: true,
                 integration: IntegrationType.GITHUB
             },
             {
-                tool: grepGitHubCodeTool,
+                tool: grepGitHubCodeTool as Tool,
                 isReadOnly: true,
                 integration: IntegrationType.GITHUB
             },
             {
-                tool: readGitHubFileTool,
+                tool: readGitHubFileTool as Tool,
                 isReadOnly: true,
                 integration: IntegrationType.GITHUB
             },
             {
-                tool: listGitHubDirectoryTool,
+                tool: listGitHubDirectoryTool as Tool,
                 isReadOnly: true,
                 integration: IntegrationType.GITHUB
             },
             {
-                tool: listGitHubPullRequestsTool,
+                tool: listGitHubPullRequestsTool as Tool,
                 isReadOnly: true,
                 integration: IntegrationType.GITHUB
             },
             {
-                tool: listGitHubCommitsTool,
+                tool: listGitHubCommitsTool as Tool,
                 isReadOnly: true,
                 integration: IntegrationType.GITHUB
             },
             {
-                tool: summarizeGitHubPullRequestDiffTool,
+                tool: summarizeGitHubPullRequestDiffTool as Tool,
                 isReadOnly: true,
                 integration: IntegrationType.GITHUB
             }
