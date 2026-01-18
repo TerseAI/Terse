@@ -1,15 +1,43 @@
-import { FormIntegrationInstallation, Integration } from "./abstract/Integration";
+import { FormFieldDefinition, FormIntegrationInstallation, FormSubmissionInput, FormSubmissionResult, Integration } from "./abstract/Integration";
 import { db } from "../prismaClient";
 import { DatadogIntegration, DatadogIntegrationMetadata } from "../shared/Integrations";
 import { IntegrationType } from "../shared/Integrations";
 import { ChannelInputWithConfigs } from "../types/prisma";
-import { Request, Response } from "express";
 import logger from "../logger";
 import { getDatadogApiUrl } from "../utility/datadog";
 
 export class DatadogIntegrationManager implements Integration<DatadogIntegration, never, typeof DatadogIntegrationMetadata>, FormIntegrationInstallation<IntegrationType.DATADOG> {
     constructor() { }
     integrationType: IntegrationType = IntegrationType.DATADOG;
+
+    getFormFields(): FormFieldDefinition[] {
+        return [
+            {
+                name: 'apiKey',
+                type: 'password',
+                label: 'API Key',
+                placeholder: 'Enter your Datadog API key',
+                required: true,
+                hint: 'Find this in Datadog under Organization Settings → API Keys.',
+            },
+            {
+                name: 'appKey',
+                type: 'password',
+                label: 'Application Key',
+                placeholder: 'Enter your Datadog application key',
+                required: true,
+                hint: 'Find this in Datadog under Organization Settings → Application Keys.',
+            },
+            {
+                name: 'region',
+                type: 'text',
+                label: 'Region',
+                placeholder: 'us, eu, us3, us5, ap1',
+                required: true,
+                hint: 'Use the Datadog site region where your account lives.',
+            },
+        ];
+    }
 
     async getInstancesForUser(userId: string): Promise<DatadogIntegration[]> {
         const datadogIntegrations = await db().datadog_integrations.findMany({
@@ -23,6 +51,11 @@ export class DatadogIntegrationManager implements Integration<DatadogIntegration
             id: di.id,
             region: di.region,
         }));
+    }
+
+    formatIntegrationInstanceForAgent(instance: DatadogIntegration): string {
+        const regionLabel = instance.region ? ` (${instance.region})` : "";
+        return `Datadog${regionLabel} [id: ${instance.id}]`;
     }
 
     async getAllActiveInstances(): Promise<DatadogIntegration[]> {
@@ -55,37 +88,45 @@ export class DatadogIntegrationManager implements Integration<DatadogIntegration
     async teardownChannelInput(integrationId: string, automationInput: ChannelInputWithConfigs): Promise<void> {
     }
 
-    async processFormSubmission(req: Request, res: Response): Promise<void> {
-        if (!req.session?.user) {
-            res.status(401).json({ error: 'Unauthorized' });
-            return;
-        }
-
-        const { apiKey, appKey, region } = req.body;
+    async processFormSubmission(input: FormSubmissionInput): Promise<FormSubmissionResult> {
+        const { userId, formValues } = input;
+        const { apiKey, appKey, region } = formValues;
 
         if (!apiKey || typeof apiKey !== 'string') {
-            res.status(400).json({ error: 'API key is required' });
-            return;
+            return {
+                success: false,
+                error: 'API key is required',
+                statusCode: 400,
+            };
         }
 
         if (!appKey || typeof appKey !== 'string') {
-            res.status(400).json({ error: 'APP key is required' });
-            return;
+            return {
+                success: false,
+                error: 'APP key is required',
+                statusCode: 400,
+            };
         }
 
         if (!region || typeof region !== 'string') {
-            res.status(400).json({ error: 'Region is required' });
-            return;
+            return {
+                success: false,
+                error: 'Region is required',
+                statusCode: 400,
+            };
         }
 
         // Validate region
         const validRegions = ['us', 'eu', 'us3', 'us5', 'ap1'];
         if (!validRegions.includes(region.toLowerCase())) {
-            res.status(400).json({ 
+            return {
+                success: false,
                 error: 'Invalid region',
-                details: `Region must be one of: ${validRegions.join(', ')}`
-            });
-            return;
+                statusCode: 400,
+                data: {
+                    details: `Region must be one of: ${validRegions.join(', ')}`
+                },
+            };
         }
 
         try {
@@ -102,19 +143,20 @@ export class DatadogIntegrationManager implements Integration<DatadogIntegration
 
             if (!validationResponse.ok) {
                 const errorText = await validationResponse.text();
-                logger.error('Datadog API key validation failed', { 
+                logger.error('Datadog API key validation failed', {
                     status: validationResponse.status,
                     error: errorText,
                     region
                 });
-                res.status(400).json({ 
+                return {
+                    success: false,
                     error: 'Invalid API key or APP key',
-                    details: validationResponse.status === 403 ? 'Authentication failed' : 'API key validation failed'
-                });
-                return;
+                    statusCode: 400,
+                    data: {
+                        details: validationResponse.status === 403 ? 'Authentication failed' : 'API key validation failed'
+                    },
+                };
             }
-
-            const userId = req.session.user.id;
             const normalizedRegion = region.toLowerCase();
 
             // Check if integration already exists for this user
@@ -156,13 +198,20 @@ export class DatadogIntegrationManager implements Integration<DatadogIntegration
                 });
             }
 
-            res.status(200).json({ 
+            return {
                 success: true,
-                region: normalizedRegion,
-            });
+                statusCode: 200,
+                data: {
+                    region: normalizedRegion,
+                },
+            };
         } catch (error) {
             logger.error('Error processing Datadog form submission', { error });
-            res.status(500).json({ error: 'Failed to process integration' });
+            return {
+                success: false,
+                error: 'Failed to process integration',
+                statusCode: 500,
+            };
         }
     }
 }
