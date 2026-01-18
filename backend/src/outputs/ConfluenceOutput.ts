@@ -722,15 +722,14 @@ function stripHtmlTags(html: string): string {
 const CONFLUENCE_FOOTER_INSTRUCTIONS = `
 ## TERSE FOOTER REQUIREMENT
 
-You MUST always ensure a **Terse Footer** exists at the very bottom of the Confluence page after any update. This footer provides transparency about when and how the page was last updated by Terse.
+You MUST always ensure a **Terse Footer** exists at the very bottom of the Confluence page after any update unless the user specifies otherwise. This footer provides transparency about when and how the page was last updated by Terse.
 
 **IMPORTANT**: If the user provides custom footer formatting instructions in their USER_INSTRUCTIONS, use their format instead of the default format below. User instructions take precedence.
 
 ### Default Footer Content
 The footer must include:
 1. **Last Updated**: A human-readable timestamp of when this update was made (use the current time from the CURRENT TIME section)
-2. **Events Processed**: The total event position number from the RUNTIME CONTEXT section (e.g., "3 events" if RUNTIME CONTEXT says "This is event #3")
-3. **Status**: The outcome of the update - use "✓ Success" if changes were made successfully, "⊘ No changes needed" if no updates were required, or "✗ Failed" if something went wrong
+2. **Status**: The outcome of the update - use "✓ Success" if changes were made successfully, "⊘ No changes needed" if no updates were required, or "✗ Failed" if something went wrong
 
 ### Confluence Storage Format
 Use this exact XHTML structure for the footer (adapt the values accordingly):
@@ -747,10 +746,6 @@ Use this exact XHTML structure for the footer (adapt the values accordingly):
           <td>December 6, 2024 at 3:45 PM UTC</td>
         </tr>
         <tr>
-          <td><strong>Events Processed</strong></td>
-          <td>12 events</td>
-        </tr>
-        <tr>
           <td><strong>Status</strong></td>
           <td>✓ Success</td>
         </tr>
@@ -765,5 +760,4 @@ Use this exact XHTML structure for the footer (adapt the values accordingly):
 - The footer must ALWAYS be at the very end of the page content
 - Use the info macro (blue background) for visual distinction (unless user specifies otherwise)
 - Format the timestamp in a human-friendly way (e.g., "December 6, 2024 at 3:45 PM UTC")
-- **CRITICAL**: For the "Events Processed" field, use the event position number from the RUNTIME CONTEXT section (e.g., if it says "This is event #3 processed by this automation", use "3 events"). DO NOT count the individual events in the EVENT block - use the total event position from RUNTIME CONTEXT.
 `.trim();
