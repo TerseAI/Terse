@@ -3,6 +3,10 @@ import { z } from "zod";
 import logger from "../../../logger";
 import { createGitHubClient, listCommits, parseRepoFullName } from "../githubApiClient";
 import { GitHubKBConfig } from "../../../shared/Configs";
+import { IntegrationType } from "../../../shared/Integrations";
+import { RunHistoryActionType } from "@prisma/client";
+import { SessionWithTracking } from "../../../agent/ChannelAgent/ChannelAgent";
+import { GitHubKnowledgeBaseSession } from "../GitHubKnowledgeBase";
 
 /**
  * Tool for listing commits in GitHub repositories within a time window.
@@ -26,20 +30,12 @@ The tool returns commit details including message, author, date, and SHA.`,
         author: z.union([z.string(), z.null()]).describe('Filter commits by author (GitHub username or email). Use null for all authors.'),
         perPage: z.number().describe('Number of results to return (default: 30, max: 100)'),
     }),
-    execute: async ({ repository, since, until, branch, path, author, perPage = 30 }, runContext?: RunContext<any>) => {
+    execute: async ({ repository, since, until, branch, path, author, perPage = 30 }, runContext?: RunContext<SessionWithTracking<GitHubKnowledgeBaseSession>>) => {
         if (!runContext?.context) {
             throw new Error("No context provided");
         }
 
-        const githubKBConfig = runContext.context.githubKBConfig as GitHubKBConfig | undefined;
-        if (!githubKBConfig) {
-            throw new Error("GitHub KB config not found in context. Ensure GitHub is configured as a knowledge base.");
-        }
-
-        const accessToken = runContext.context.githubAccessToken as string | undefined;
-        if (!accessToken) {
-            throw new Error("GitHub access token not found in context.");
-        }
+        const { githubKBConfig, githubAccessToken } = runContext.context;
 
         // Validate that the repository is in the configured list
         if (!githubKBConfig.repositoryNames.includes(repository)) {
@@ -51,7 +47,7 @@ The tool returns commit details including message, author, date, and SHA.`,
             };
         }
 
-        const client = createGitHubClient(accessToken);
+        const client = createGitHubClient(githubAccessToken);
         const { owner, repo } = parseRepoFullName(repository);
 
         const requestParams = {
@@ -140,6 +136,17 @@ The tool returns commit details including message, author, date, and SHA.`,
                 authorCount: Object.keys(authorCounts).length,
             });
             logger.debug('[GitHub KB] listGitHubCommits - Full response', { response });
+
+            // Track the action
+            runContext.context.trackAction({
+                action: 'Listed GitHub commits',
+                integration: IntegrationType.GITHUB,
+                target: repository,
+                details: `Listed ${formattedResults.length} commit(s)${branch ? ` on branch ${branch}` : ' on default branch'}${timeWindowDesc !== 'recent' ? ` (${timeWindowDesc})` : ''}`,
+                url: `https://github.com/${owner}/${repo}/commits/${branch || 'HEAD'}`,
+                type: RunHistoryActionType.read,
+                isReadOnly: true,
+            });
 
             return response;
         } catch (error: any) {

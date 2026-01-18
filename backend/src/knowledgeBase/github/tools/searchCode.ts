@@ -1,8 +1,12 @@
 import { RunContext, tool } from "@openai/agents";
 import { z } from "zod";
 import logger from "../../../logger";
-import { createGitHubClient, searchCode, parseRepoFullName, getFileContents } from "../githubApiClient";
+import { createGitHubClient, searchCode } from "../githubApiClient";
 import { GitHubKBConfig } from "../../../shared/Configs";
+import { IntegrationType } from "../../../shared/Integrations";
+import { RunHistoryActionType } from "@prisma/client";
+import { SessionWithTracking } from "../../../agent/ChannelAgent/ChannelAgent";
+import { GitHubKnowledgeBaseSession } from "../GitHubKnowledgeBase";
 
 /**
  * Tool for semantic code search in GitHub repositories.
@@ -38,26 +42,18 @@ Tips:
         perPage: z.number().describe('Number of results to return (default: 10, max: 100)'),
         page: z.union([z.number().int().min(1), z.null()]).describe('Page number for pagination (default: 1). Use this to fetch additional results if there are more than perPage results. Use null for page 1. Must be a positive integer >= 1.'),
     }),
-    execute: async ({ query, language, filename, path, perPage = 10, page }, runContext?: RunContext<any>) => {
+    execute: async ({ query, language, filename, path, perPage = 10, page }, runContext?: RunContext<SessionWithTracking<GitHubKnowledgeBaseSession>>) => {
         if (!runContext?.context) {
             throw new Error("No context provided");
         }
 
-        const githubKBConfig = runContext.context.githubKBConfig as GitHubKBConfig | undefined;
-        if (!githubKBConfig) {
-            throw new Error("GitHub KB config not found in context. Ensure GitHub is configured as a knowledge base.");
-        }
-
-        const accessToken = runContext.context.githubAccessToken as string | undefined;
-        if (!accessToken) {
-            throw new Error("GitHub access token not found in context.");
-        }
+        const { githubKBConfig, githubAccessToken } = runContext.context;
 
         if (githubKBConfig.repositoryNames.length === 0) {
             throw new Error("No repositories configured for this knowledge base.");
         }
 
-        const client = createGitHubClient(accessToken);
+        const client = createGitHubClient(githubAccessToken);
 
         // Build enhanced query with optional filters
         let enhancedQuery = query;
@@ -147,6 +143,22 @@ Tips:
                 resultsReturned: formattedResults.length,
             });
             logger.debug('[GitHub KB] searchGitHubCode - Full response', { response });
+
+            // Build URL with repository filter
+            const repoFilter = githubKBConfig.repositoryNames.map(repo => `repo:${repo}`).join(' ');
+            const urlQuery = `${enhancedQuery} ${repoFilter}`;
+            const searchUrl = `https://github.com/search?q=${encodeURIComponent(urlQuery)}&type=code`;
+
+            // Track the action
+            runContext.context.trackAction({
+                action: 'Searched GitHub code',
+                integration: IntegrationType.GITHUB,
+                target: githubKBConfig.repositoryNames.join(', '),
+                details: `Semantic search for "${query}": Found ${results.totalCount} result(s)${results.pagination.hasMore ? ` (showing page ${results.pagination.page})` : ''}`,
+                url: searchUrl,
+                type: RunHistoryActionType.read,
+                isReadOnly: true,
+            });
 
             return response;
         } catch (error: any) {

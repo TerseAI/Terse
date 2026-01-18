@@ -22,6 +22,7 @@ import {
     PosthogConfig,
     ConfigType,
     GitHubKBConfig,
+    DatadogConfig,
     TimeTriggerConfig
 } from "../shared/Configs";
 
@@ -47,6 +48,8 @@ export const convertIntegrationTypeToPrismaIntegrationType = (integrationType: I
             return PrismaIntegrationType.POSTHOG;
         case IntegrationType.CRON_JOB:
             return PrismaIntegrationType.CRON_JOB;
+        case IntegrationType.DATADOG:
+            return PrismaIntegrationType.DATADOG;
         default:
             throw integrationType satisfies never;
     }
@@ -78,6 +81,8 @@ export const convertPrismaIntegrationTypeToIntegrationType = (prismaIntegrationT
             return IntegrationType.POSTHOG;
         case PrismaIntegrationType.CRON_JOB:
             return IntegrationType.CRON_JOB;
+        case PrismaIntegrationType.DATADOG:
+            return IntegrationType.DATADOG;
         default:
             throw prismaIntegrationType satisfies never;
     }
@@ -109,6 +114,8 @@ export const convertIntegrationTypeToPrismaIntegrationTypeForRunHistory = (integ
             return PrismaIntegrationType.POSTHOG;
         case IntegrationType.CRON_JOB:
             return PrismaIntegrationType.CRON_JOB;
+        case IntegrationType.DATADOG:
+            return PrismaIntegrationType.DATADOG;
         default:
             throw integrationType satisfies never;
     }
@@ -141,6 +148,8 @@ export const convertPrismaIntegrationTypeToIntegrationTypeFromRunHistory = (pris
             return IntegrationType.POSTHOG;
         case PrismaIntegrationType.CRON_JOB:
             return IntegrationType.CRON_JOB;
+        case PrismaIntegrationType.DATADOG:
+            return IntegrationType.DATADOG;
         default:
             throw prismaIntegrationType satisfies never;
     }
@@ -357,6 +366,8 @@ export const convertConfigTypeToInputConfigType = (configType: ConfigType): Inpu
         case ConfigType.SLACK_OUTPUT:
             // SLACK_OUTPUT is an output config type, not an input config type
             throw new Error('SLACK_OUTPUT is an output type, not an input type');
+        case ConfigType.DATADOG:
+            throw new Error('DATADOG is not an input config type');
         default:
             throw configType satisfies never;
     }
@@ -438,7 +449,7 @@ export const convertOutputConfigTypeToIntegrationType = (outputConfigType: Outpu
 
 /**
  * Converts ConfigType to KnowledgeBaseConfigType.
- * Only POSTHOG is currently supported as a knowledge base config type.
+ * Supported knowledge base config types: POSTHOG, GITHUB_KB, DATADOG.
  */
 export const convertConfigTypeToKnowledgeBaseConfigType = (configType: ConfigType): KnowledgeBaseConfigType => {
     switch (configType) {
@@ -446,8 +457,10 @@ export const convertConfigTypeToKnowledgeBaseConfigType = (configType: ConfigTyp
             return KnowledgeBaseConfigType.POSTHOG;
         case ConfigType.GITHUB_KB:
             return KnowledgeBaseConfigType.GITHUB;
+        case ConfigType.DATADOG:
+            return KnowledgeBaseConfigType.DATADOG;
         default:
-            throw new Error(`ConfigType ${configType} is not a valid knowledge base config type. Supported knowledge base config types are: POSTHOG.`);
+            throw new Error(`ConfigType ${configType} is not a valid knowledge base config type. Supported knowledge base config types are: POSTHOG, GITHUB_KB, DATADOG.`);
     }
 }
 
@@ -479,5 +492,52 @@ export const convertPrismaKnowledgeBaseConfigToConfigInstance = (channelKnowledg
         );
     }
 
+    if (channelKnowledgeBase.datadog_config) {
+        const datadogConfig = channelKnowledgeBase.datadog_config;
+        return new DatadogConfig(
+            integrationId,
+            datadogConfig.default_indexes && datadogConfig.default_indexes.length > 0
+                ? datadogConfig.default_indexes
+                : ["main"]
+        );
+    }
+
     throw new Error(`Unsupported knowledge base config type: ${channelKnowledgeBase.config_type}`);
+}
+
+/**
+ * Converts a plain object config (from request body JSON) to a proper ConfigInstance.
+ * This is needed because JSON deserialization creates plain objects, not class instances.
+ * If the config is already an instance (has isComplete method), returns it as-is.
+ */
+export const convertPlainObjectToKnowledgeBaseConfigInstance = (config: any): ConfigInstance => {
+    // If it's already an instance (has isComplete method), return as-is
+    if (typeof config.isComplete === 'function') {
+        return config as ConfigInstance;
+    }
+
+    // Convert plain object to proper instance based on configType
+    switch (config.configType) {
+        case ConfigType.DATADOG:
+            return new DatadogConfig(
+                config.integrationId,
+                config.defaultIndexes || ["main"]
+            );
+        case ConfigType.POSTHOG:
+            return new PosthogConfig(
+                config.integrationId,
+                config.projectId,
+                config.projectName,
+                config.canReadLogs || false,
+                config.canReadSessionRecordings || false
+            );
+        case ConfigType.GITHUB_KB:
+            return new GitHubKBConfig(
+                config.integrationId,
+                config.repositoryIds || [],
+                config.repositoryNames || []
+            );
+        default:
+            throw new Error(`Unsupported knowledge base config type: ${config.configType}`);
+    }
 }
