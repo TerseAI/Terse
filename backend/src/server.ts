@@ -94,6 +94,7 @@ import { getPosthogIntegrations, createOrUpdatePosthogIntegration, getPosthogPro
 import { getDatadogIntegrations, createOrUpdateDatadogIntegration, getDatadogIndexes } from "./routes/datadog";
 import { handleScheduleWebhook, handleManualTrigger } from "./routes/schedule";
 import { getTemplates } from "./routes/templates";
+import "./integrations/IntegrationTaskHandler"; // Import to trigger listener registration
 
 export type Session = {
   user: User;

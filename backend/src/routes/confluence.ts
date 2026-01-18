@@ -23,6 +23,74 @@ export async function getConfluenceIntegrations(req: Request, res: Response) {
     }
 }
 
+export async function fetchConfluenceResources(
+    userId: string,
+    integrationId: string,
+    search: string = ""
+): Promise<{ success: true; resources: ConfluencePage[]; total: number }> {
+    if (!integrationId) {
+        throw new Error('integrationId is required');
+    }
+
+    const oauthIntegration = await db().atlassian_integrations.findFirst({
+        where: {
+            id: integrationId,
+            user_id: userId,
+        },
+    });
+
+    if (!oauthIntegration) {
+        throw new Error('Integration not found');
+    }
+
+    const cloudId = oauthIntegration.cloud_id;
+
+    if (!cloudId) {
+        throw new Error('Integration missing cloud ID');
+    }
+
+    const manager = new AtlassianIntegrationManager();
+    const accessToken = await manager.getAccessToken(integrationId);
+    if (!accessToken) {
+        throw new Error('Could not get valid access token');
+    }
+
+    // Use Confluence Search API with CQL query
+    const searchUrl = `https://api.atlassian.com/ex/confluence/${cloudId}/wiki/rest/api/search`;
+    const cql = search ? `type=page AND title ~ "${search}"` : `type=page`;
+    const params = new URLSearchParams({
+        cql,
+        limit: '100',
+    });
+
+    const searchResponse = await fetch(`${searchUrl}?${params.toString()}`, {
+        method: 'GET',
+        headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'Accept': 'application/json',
+        },
+    });
+
+    if (!searchResponse.ok) {
+        const errorText = await searchResponse.text();
+        logger.error('Confluence Search API error:', { status: searchResponse.status, errorText });
+        throw new Error(`Confluence Search API error: ${searchResponse.status} ${searchResponse.statusText} - ${errorText}`);
+    }
+
+    const searchData = await searchResponse.json() as ConfluenceSearchResponse;
+    let resources = mapSearchResultsToConfluencePages(searchData.results || []);
+    
+    if (!search) {
+        resources = resources.sort((a, b) => a.title.localeCompare(b.title, undefined, { sensitivity: 'base' }));
+    }
+
+    return {
+        success: true,
+        resources,
+        total: resources.length,
+    };
+}
+
 export async function getConfluenceResources(req: Request, res: Response) {
     const user = req.session?.user;
     if (!user) {
@@ -34,72 +102,11 @@ export async function getConfluenceResources(req: Request, res: Response) {
         return res.status(400).json({ success: false, error: 'integrationId is required' });
     }
 
-    // Search term is optional - empty returns all pages
     const search = (req.query.search as string) || "";
 
-    // Check OAuth integrations first
-    const oauthIntegration = await db().atlassian_integrations.findFirst({
-        where: {
-            id: integrationId,
-            user_id: user.id,
-        },
-    });
-
-    if (!oauthIntegration) {
-        return res.status(404).json({ success: false, error: 'Integration not found' });
-    }
-
-    // Get cloudId from integration
-    const cloudId = oauthIntegration.cloud_id;
-
-    if (!cloudId) {
-        return res.status(400).json({ success: false, error: 'Integration missing cloud ID' });
-    }
-
-    // Get valid access token (handles refresh automatically)
-    const manager = new AtlassianIntegrationManager();
-    const accessToken = await manager.getAccessToken(integrationId);
-    if (!accessToken) {
-        return res.status(400).json({ success: false, error: 'Could not get valid access token' });
-    }
-
     try {
-        // Use Confluence Search API with CQL query
-        const searchUrl = `https://api.atlassian.com/ex/confluence/${cloudId}/wiki/rest/api/search`;
-        // If search term provided, filter by title; otherwise return all pages
-        const cql = search ? `type=page AND title ~ "${search}"` : `type=page`;
-        const params = new URLSearchParams({
-            cql,
-            limit: '100',
-        });
-
-        const searchResponse = await fetch(`${searchUrl}?${params.toString()}`, {
-            method: 'GET',
-            headers: {
-                'Authorization': `Bearer ${accessToken}`,
-                'Accept': 'application/json',
-            },
-        });
-
-        if (!searchResponse.ok) {
-            const errorText = await searchResponse.text();
-            logger.error('Confluence Search API error:', { status: searchResponse.status, errorText });
-            throw new Error(`Confluence Search API error: ${searchResponse.status} ${searchResponse.statusText} - ${errorText}`);
-        }
-
-        const searchData = await searchResponse.json() as ConfluenceSearchResponse;
-        let resources = mapSearchResultsToConfluencePages(searchData.results || []);
-        
-        // Only sort alphabetically when no search term - otherwise preserve platform's relevance ranking
-        if (!search) {
-            resources = resources.sort((a, b) => a.title.localeCompare(b.title, undefined, { sensitivity: 'base' }));
-        }
-
-        return res.status(200).json({
-            success: true,
-            resources,
-            total: resources.length,
-        });
+        const response = await fetchConfluenceResources(user.id, integrationId, search);
+        return res.status(200).json(response);
     } catch (error: any) {
         logger.error('Error searching Confluence resources:', { error });
         return res.status(500).json({

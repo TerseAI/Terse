@@ -1,6 +1,5 @@
 import type { AgentInputItem, Session } from '@openai/agents-core';
 import { db } from '../prismaClient';
-import chalk from 'chalk';
 import { RunHistoryRawEventWithRelations } from '../types/prisma';
 import { RunHistoryMemory } from '../rag/runHistoryRag/indexer';
 import { RAGNamespace } from '../types/rag';
@@ -13,9 +12,17 @@ interface RunHistoryChatMemorySessionOptions {
   filterIncompleteToolCalls?: boolean;
 }
 
+interface ChatMemorySessionOptions {
+  sessionId: string; // chat_session_id from chat_sessions table
+  skipSave?: boolean;
+  filterIncompleteToolCalls?: boolean;
+}
+
 /**
  * Inspired by the CustomMemorySession in the OpenAI agents library
  * https://openai.github.io/openai-agents-js/guides/sessions/#bring-your-own-storage
+ * 
+ * Session implementation for run history records (uses run_history_raw_events table)
  */
 export class RunHistoryChatMemorySession implements Session {
   private readonly sessionId: string;
@@ -119,6 +126,118 @@ export class RunHistoryChatMemorySession implements Session {
     await prisma.run_history_raw_events.deleteMany({
       where: {
         run_history_record_id: this.sessionId
+      }
+    })
+  }
+}
+
+/**
+ * Session implementation for general chat sessions (uses chat_raw_events table)
+ * For chats not tied to run history records (e.g., Slack threads, direct chats)
+ */
+export class ChatMemorySession implements Session {
+  private readonly sessionId: string;
+  private readonly skipSave: boolean;
+  private readonly filterIncompleteToolCalls: boolean;
+  
+  constructor(
+    options: ChatMemorySessionOptions
+  ) {
+    this.sessionId = options.sessionId
+    this.skipSave = options.skipSave ?? false;
+    this.filterIncompleteToolCalls = options.filterIncompleteToolCalls ?? false;
+  }
+
+  async getSessionId(): Promise<string> {
+    return this.sessionId;
+  }
+
+  async getItems(limit?: number): Promise<AgentInputItem[]> {
+    const prisma = db()
+    const items = await prisma.chat_raw_events.findMany({
+      where: {
+        chat_session_id: this.sessionId
+      },
+      orderBy: [
+        { sequence_order: 'asc' },
+        { created_at: 'asc' }, // Fallback for items without sequence_order (backward compatibility)
+      ],
+      take: limit,
+      select: {
+        raw_event_json: true
+      }
+    })
+    const rawEvents = items.map(item => item.raw_event_json as AgentInputItem);
+    const filteredEvents = filterReasoningItems(rawEvents);
+    const deduplicatedEvents = deduplicateItemsById(filteredEvents);
+    const filteredToolCallEvents = this.filterIncompleteToolCalls ? filterToolCallEvents(deduplicatedEvents) : deduplicatedEvents;
+    return filteredToolCallEvents.map(cloneAgentItem);
+  }
+
+  async addItems(items: AgentInputItem[]): Promise<void> {
+    if (this.skipSave) return;
+    if (items.length === 0) return;
+    const prisma = db()
+
+    // Get the current max sequence_order for this session to continue from there
+    const maxSequence = await prisma.chat_raw_events.findFirst({
+      where: {
+        chat_session_id: this.sessionId
+      },
+      orderBy: {
+        sequence_order: 'desc'
+      },
+      select: {
+        sequence_order: true
+      }
+    });
+
+    const startSequence = maxSequence?.sequence_order ?? -1;
+
+    const eventRecords = items.map((item, index) => {
+      return {
+        chat_session_id: this.sessionId,
+        raw_event_json: item as any,
+        sequence_order: startSequence + index + 1,
+      }
+    });
+
+    await prisma.chat_raw_events.createMany({
+      data: eventRecords,
+    });
+  }
+
+  async popItem(): Promise<AgentInputItem | undefined> {
+    if (this.skipSave) return undefined;
+    const prisma = db()
+    const lastEvent = await prisma.chat_raw_events.findFirst({
+      where: {
+        chat_session_id: this.sessionId
+      },
+      orderBy: [
+        { sequence_order: 'desc' },
+        { created_at: 'desc' }, // Fallback for items without sequence_order (backward compatibility)
+      ]
+    })
+    if (!lastEvent) {
+      return undefined;
+    }
+    const rawEvent = lastEvent.raw_event_json as AgentInputItem;
+    const cloned = cloneAgentItem(rawEvent);
+    await prisma.chat_raw_events.delete({
+      where: {
+        id: lastEvent.id
+      }
+    })
+    return cloned;
+  }
+
+  async clearSession(): Promise<void> {
+    if (this.skipSave) return;
+    const prisma = db()
+    await prisma.chat_raw_events.deleteMany({
+      where: {
+        chat_session_id: this.sessionId
       }
     })
   }
