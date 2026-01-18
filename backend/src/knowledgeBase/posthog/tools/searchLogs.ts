@@ -175,9 +175,9 @@ export const searchLogsTool = tool({
             const formattedLogs = sortedLogs.map((log: any) => ({
                 id: log.id || log.log_id || log.uuid,
                 timestamp: log.timestamp || log.created_at || log.time,
-                level: log.level || log.severity || 'info',
-                message: log.message || log.content || log.text || '',
-                service: log.service || log.service_name || log.source,
+                level: log.level || log.severity || log.severity_text || 'info',
+                message: log.body || log.message || log.content || log.text || '',
+                service: log.service || log.service_name || log.source || log.resource_attributes?.['service.name'] || 'unknown',
                 attributes: log.attributes || log.properties || {},
             }));
 

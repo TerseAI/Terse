@@ -82,32 +82,25 @@ export class SlackOutput extends Output<SlackChannelSession, SlackOutputConfig> 
 }
 
 const SLACK_OUTPUT_INSTRUCTIONS = `
-## SLACK OUTPUT
+=== SLACK OUTPUT ===
 
-You have access to post messages to Slack. Use the slack_send_message tool to communicate results, updates, or reports.
+TOOL:
+- slack_send_message: Send messages to Slack channel. Supports plain text (mrkdwn) or Block Kit (buttons, structured layouts).
 
-The user will not be able to respond to the message you send. So never include a call to action in the message. No prompts, no questions.
+MESSAGE TYPES:
+- Plain text: Simple notifications, short updates. Use \`message\` parameter only.
+- Block Kit: Interactive buttons, structured data, reports. Use \`message\` (fallback) + \`blocks\` (JSON array).
 
-### Message Guidelines:
-1. **Be concise**: Keep messages focused and actionable
-2. **Use formatting**: Leverage Slack's mrkdwn for readability
-   - *bold* for emphasis
-   - \`code\` for technical terms
-   - Bullet points for lists
-3. **Structure information**: Use clear sections and headers for longer messages
-4. **Include context**: Reference relevant details from the automation trigger
-5. **Add links**: When referencing external resources, include clickable links
+WHEN TO USE:
+- Plain text → Simple notifications, short updates, no interactive elements needed
+- Block Kit → Need buttons (e.g., dashboard links), structured data/metrics, better visual organization
 
-### Example Message Structure:
-\`\`\`
-*Summary Title*
+FORMATTING (mrkdwn):
+*bold* _italic_ \`code\` \`\`\`code block\`\`\` <url|text> • bullets
 
-Key findings or updates here.
-
-• Point 1
-• Point 2
-• Point 3
-
-<link|View Details>
-\`\`\`
+BEST PRACTICES:
+- Always provide \`message\` (fallback text for Block Kit)
+- No calls to action (user can't respond)
+- Keep concise and actionable
+- Include relevant links
 `.trim();
