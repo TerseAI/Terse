@@ -37,6 +37,10 @@ export const slackSendMessageTool = tool({
             throw new Error("No channel configured for this Slack output");
         }
 
+        // Use thread_ts from parameter if provided
+        // The AI should extract thread_ts from the Slack event context in formatForChannelAgent
+        const effectiveThreadTs = thread_ts;
+
         // Parse and validate Block Kit blocks if provided
         let blocks: KnownBlock[] | undefined;
         if (blocksJson) {
@@ -79,7 +83,7 @@ export const slackSendMessageTool = tool({
                 channel: channelId,
                 text: message,
                 blocks: blocks,
-                thread_ts: thread_ts || undefined,
+                thread_ts: effectiveThreadTs || undefined,
                 unfurl_links: true,
                 unfurl_media: true,
             });
@@ -101,7 +105,7 @@ export const slackSendMessageTool = tool({
                 action: 'Sent Slack message',
                 integration: IntegrationType.SLACK,
                 target: channelName,
-                details: `Sent message to ${channelName}${thread_ts ? ' (thread reply)' : ''}: "${messagePreview}"`,
+                details: `Sent message to ${channelName}${effectiveThreadTs ? ' (thread reply)' : ''}: "${messagePreview}"`,
                 url: slackPermalink,
                 type: RunHistoryActionType.create,
             });
@@ -109,7 +113,7 @@ export const slackSendMessageTool = tool({
             logger.info(`[Slack Output] Message sent to ${channelName}`, { 
                 channelId,
                 messageTs: result.ts,
-                threadTs: thread_ts,
+                threadTs: effectiveThreadTs,
                 hasBlocks: !!blocks,
                 blocksCount: blocks?.length,
             });
@@ -118,7 +122,7 @@ export const slackSendMessageTool = tool({
                 success: true,
                 message_ts: result.ts,
                 channel: channelName,
-                thread_ts: thread_ts || result.ts,
+                thread_ts: effectiveThreadTs || result.ts,
                 summary: `${messageType} message sent to ${channelName}: "${messagePreview}"`,
                 has_blocks: !!blocks,
             };

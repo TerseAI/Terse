@@ -178,7 +178,8 @@ export const convertPrismaConfigToConfigInstance = (channelInput: ChannelInputWi
             channelInput.slack_config.channel_id || undefined,
             channelInput.slack_config.channel_name || undefined,
             channelInput.slack_config.listen_to_user_dms || false,
-            channelInput.slack_config.user_ids || undefined
+            channelInput.slack_config.user_ids || undefined,
+            channelInput.slack_config.acknowledge_with_emoji || false
         );
     }
 
@@ -366,6 +367,9 @@ export const convertConfigTypeToInputConfigType = (configType: ConfigType): Inpu
         case ConfigType.SLACK_OUTPUT:
             // SLACK_OUTPUT is an output config type, not an input config type
             throw new Error('SLACK_OUTPUT is an output type, not an input type');
+        case ConfigType.GMAIL_OUTPUT:
+            // GMAIL_OUTPUT is an output config type, not an input config type
+            throw new Error('GMAIL_OUTPUT is an output type, not an input type');
         case ConfigType.DATADOG:
             throw new Error('DATADOG is not an input config type');
         default:
@@ -420,8 +424,10 @@ export const convertConfigTypeToOutputConfigType = (configType: ConfigType): Out
             return OutputConfigType.JIRA_TICKET;
         case ConfigType.SLACK_OUTPUT:
             return OutputConfigType.SLACK_CHANNEL;
+        case ConfigType.GMAIL_OUTPUT:
+            return OutputConfigType.GMAIL;
         default:
-            throw new Error(`ConfigType ${configType} is not a valid output config type. Supported output config types are: NOTION_PAGE, NOTION_DATABASE, CONFLUENCE, LINEAR.`);
+            throw new Error(`ConfigType ${configType} is not a valid output config type. Supported output config types are: NOTION_PAGE, NOTION_DATABASE, CONFLUENCE, LINEAR, JIRA, SLACK_OUTPUT, GMAIL_OUTPUT.`);
     }
 }
 
@@ -442,6 +448,8 @@ export const convertOutputConfigTypeToIntegrationType = (outputConfigType: Outpu
             return IntegrationType.ATLASSIAN;
         case OutputConfigType.SLACK_CHANNEL:
             return IntegrationType.SLACK;
+        case OutputConfigType.GMAIL:
+            return IntegrationType.GMAIL;
         default:
             throw outputConfigType satisfies never;
     }

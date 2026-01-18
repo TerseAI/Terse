@@ -20,7 +20,10 @@ import { createOAuthStateToken, decodeOAuthStateToken, OAuthStatePayload, OAuthS
 
 
 // OAuth2 scopes for Gmail
-const SCOPES = ["https://www.googleapis.com/auth/gmail.readonly"];
+const SCOPES = [
+    "https://www.googleapis.com/auth/gmail.readonly",
+    "https://www.googleapis.com/auth/gmail.send"
+];
 
 export class GmailIntegrationManager implements Integration<GmailIntegration, GmailWebhookEvent, typeof GmailIntegrationMetadata>, OAuthIntegrationInstallation<IntegrationType.GMAIL> {
     constructor() { }
@@ -468,6 +471,10 @@ export class GmailEvent extends InputEvent {
     }
 
     formatForChannelAgent(): string {
+        const threadInfo = this.data.threadId 
+            ? `\n        Thread ID: ${this.data.threadId}\n        Message ID: ${this.data.id || this.data.messageId || 'N/A'}`
+            : '';
+        
         return `
         Incoming Email Event.
 
@@ -476,7 +483,7 @@ export class GmailEvent extends InputEvent {
         From: ${this.data.from}
         To: ${this.data.to}
         Date: ${this.data.date}
-        Message ID: ${this.data.messageId}
+        Message ID: ${this.data.messageId}${threadInfo}
         Body: ${this.data.body}
         Snippet: ${this.data.snippet}
         `;

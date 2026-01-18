@@ -23,6 +23,23 @@ export function formatChannelOutputForAgent(output: ChannelOutput | ChannelOutpu
     }
 }
 
+export function formatChannelOutputsForAgent(outputs: (ChannelOutput | ChannelOutputWithConfigs)[]): string {
+    if (outputs.length === 0) {
+        return 'No outputs configured';
+    }
+
+    if (outputs.length === 1) {
+        return formatChannelOutputForAgent(outputs[0]);
+    }
+
+    return outputs
+        .map((output, index) => {
+            const formatted = formatChannelOutputForAgent(output);
+            return `Output ${index + 1}:\n${formatted.split('\n').map(line => `  ${line}`).join('\n')}`;
+        })
+        .join('\n\n');
+}
+
 export function formatChannelInputsForAgent(inputs: (ChannelInput | ChannelInputWithConfigs)[]): string {
     if (inputs.length === 0) {
         return 'No inputs configured';

@@ -52,10 +52,10 @@ export function useChannels(params: ChannelListArgs = {}) {
                         ...input,
                         config: deserializeConfig(input.config)
                     })),
-                    output: {
-                        ...channel.output,
-                        config: deserializeConfig(channel.output.config)
-                    },
+                    outputs: channel.outputs.map(output => ({
+                        ...output,
+                        config: deserializeConfig(output.config)
+                    })),
                     knowledgeBases: channel.knowledgeBases?.map(kb => ({
                         ...kb,
                         config: deserializeConfig(kb.config)
@@ -92,10 +92,10 @@ export function useChannel(id: string | null) {
                     ...input,
                     config: deserializeConfig(input.config)
                 })),
-                output: {
-                    ...channel.output,
-                    config: deserializeConfig(channel.output.config)
-                },
+                outputs: channel.outputs.map(output => ({
+                    ...output,
+                    config: deserializeConfig(output.config)
+                })),
                 knowledgeBases: channel.knowledgeBases?.map(kb => ({
                     ...kb,
                     config: deserializeConfig(kb.config)
@@ -170,10 +170,10 @@ export function useChannelMutations() {
                                 ...input,
                                 config: deserializeConfig(input.config)
                             })),
-                            output: {
-                                ...channel.output,
-                                config: deserializeConfig(channel.output.config)
-                            },
+                            outputs: channel.outputs.map(output => ({
+                                ...output,
+                                config: deserializeConfig(output.config)
+                            })),
                             knowledgeBases: channel.knowledgeBases?.map(kb => ({
                                 ...kb,
                                 config: deserializeConfig(kb.config)

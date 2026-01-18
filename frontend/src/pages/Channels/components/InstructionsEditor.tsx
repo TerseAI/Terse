@@ -33,11 +33,11 @@ interface InstructionsEditorProps {
     prompt: ChannelPrompt | undefined;
     setPrompt: (prompt: ChannelPrompt | undefined) => void;
     channelInputs: ChannelInput[];
-    channelOutput: ChannelOutput | undefined;
+    channelOutputs: ChannelOutput[];
     isIncomplete?: boolean;
 }
 
-export function InstructionsEditor({ prompt, setPrompt, channelInputs, channelOutput, isIncomplete }: InstructionsEditorProps) {
+export function InstructionsEditor({ prompt, setPrompt, channelInputs, channelOutputs, isIncomplete }: InstructionsEditorProps) {
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [showPromptBuilder, setShowPromptBuilder] = useState(false);
     const [showMarkdown, setShowMarkdown] = useState(false);
@@ -140,7 +140,7 @@ export function InstructionsEditor({ prompt, setPrompt, channelInputs, channelOu
                 isOpen={showPromptBuilder}
                 onClose={() => setShowPromptBuilder(false)}
                 inputs={channelInputs}
-                output={channelOutput}
+                outputs={channelOutputs}
                 existingPrompt={prompt?.text}
                 onPromptGenerated={(generatedPrompt) => {
                     setPrompt({ ...prompt, text: generatedPrompt });

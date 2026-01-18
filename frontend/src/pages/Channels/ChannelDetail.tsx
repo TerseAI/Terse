@@ -32,7 +32,7 @@ function ChannelDetail() {
     // Local state for editing - use transient types for the editing interface
     const [name, setName] = useState<string | null>(null);
     const [inputs, setInputs] = useState<TransientChannelInput[]>([]);
-    const [output, setOutput] = useState<TransientChannelOutput | undefined>(undefined);
+    const [outputs, setOutputs] = useState<TransientChannelOutput[]>([]);
     const [knowledgeBases, setKnowledgeBases] = useState<TransientKnowledgeBase[]>([]);
     const [prompt, setPrompt] = useState<ChannelPrompt | undefined>(undefined);
     const [isActive, setIsActive] = useState<boolean>(true);
@@ -53,7 +53,7 @@ function ChannelDetail() {
                 setIsActive(templateHydratedState.isActive);
                 setRequireApproval(templateHydratedState.requireApproval);
                 setInputs(templateHydratedState.inputs);
-                setOutput(templateHydratedState.output);
+                setOutputs(templateHydratedState.outputs || []);
                 setKnowledgeBases(templateHydratedState.knowledgeBases);
                 setNotificationSettings(templateHydratedState.notificationSettings);
                 setTemplateHydrated(templateId);
@@ -66,7 +66,7 @@ function ChannelDetail() {
                 if (!templateId) {
                     setName(null);
                     setInputs([]);
-                    setOutput(undefined);
+                    setOutputs([]);
                     setKnowledgeBases([]);
                     setPrompt(undefined);
                     setIsActive(true);
@@ -77,7 +77,7 @@ function ChannelDetail() {
         } else if (channel) {
             setName(channel.name);
             setInputs(channel.inputs.map(toTransientChannelInput));
-            setOutput(channel.output ? toTransientChannelOutput(channel.output) : undefined);
+            setOutputs(channel.outputs ? channel.outputs.map(toTransientChannelOutput) : []);
             setKnowledgeBases(channel.knowledgeBases?.map(toTransientKnowledgeBase) || []);
             setPrompt(channel.prompt);
             setIsActive(channel.isActive);
@@ -105,15 +105,15 @@ function ChannelDetail() {
     const isLoading = isFetching || (!!templateId && (isLoadingTemplates || !templateFound || templateHydrated !== templateId));
 
     // Prepare props for child components
-    // Note: inputs and output are already in TransientChannelInput/Output format
+    // Note: inputs and outputs are already in TransientChannelInput/Output format
     const channelProps: ChannelSetupTabProps = {
         channelId,
         name,
         setName,
         inputs,
         setInputs,
-        output,
-        setOutput,
+        outputs,
+        setOutputs,
         knowledgeBases,
         setKnowledgeBases,
         prompt,

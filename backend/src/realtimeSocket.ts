@@ -8,9 +8,10 @@ import { SendModelRequest, ModelEvent, ModelRequest, ToolApprovalResponse } from
 import { db } from "./prismaClient";
 import { ChannelAgent } from "./agent/ChannelAgent/ChannelAgent";
 import { RunContext } from "./agent/ChannelAgent/SystemPromptBuilder";
-import { ChannelWithRelations, ChannelKnowledgeBaseWithConfigs } from "./types/prisma";
+import { ChannelWithRelations, ChannelKnowledgeBaseWithConfigs, ChannelOutputWithConfigs } from "./types/prisma";
 import { getInputConfigInclude, getOutputConfigInclude, getKnowledgeBaseConfigInclude } from './utility/prismaIncludes';
 import { OutputFactory } from "./outputs/abstract/OutputFactory";
+import { Output } from "./outputs/abstract/Output";
 import { KnowledgeBaseFactory } from "./knowledgeBase/abstract/KnowledgeBaseFactory";
 import { KnowledgeBase } from "./knowledgeBase/abstract/KnowledgeBase";
 import { ConfigInstance } from "./shared/Configs";
@@ -172,7 +173,7 @@ export async function initializeRealtimeSocket(server: HttpServer): Promise<Serv
                     inputs: {
                         include: getInputConfigInclude()
                     },
-                    output: {
+                    outputs: {
                         include: getOutputConfigInclude()
                     },
                     knowledge_bases: {
@@ -181,12 +182,13 @@ export async function initializeRealtimeSocket(server: HttpServer): Promise<Serv
                 }
             })
 
-            if (!channel) {
-                logger.error(`[channel:chat:message] Channel not found for automation id: ${runRecord.automation.id}`, { automationId: runRecord.automation.id, userId });
+            if (!channel || !channel.outputs || channel.outputs.length === 0) {
+                logger.error(`[channel:chat:message] Channel not found or has no outputs for automation id: ${runRecord.automation.id}`, { automationId: runRecord.automation.id, userId });
                 return;
             }
 
-            const outputIntegration = channel.output;
+            // Get the first output for chat (can be extended to handle multiple outputs)
+            const outputIntegration = channel.outputs[0];
             if (!outputIntegration) {
                 logger.error(`[channel:chat:message] No output integration found for channel: ${channel.id}`, { channelId: channel.id, userId });
                 return;
@@ -210,19 +212,41 @@ export async function initializeRealtimeSocket(server: HttpServer): Promise<Serv
             }
             
 
-            // Use output's config-aware session creation (no hardcoded config extraction)
-            // Each output type knows how to fetch its own integration and extract its config
-            let session: Session;
-            try {
-                session = await output.createSessionFromConfig(
-                    outputIntegration.integration_id,
-                    outputIntegration,
-                    user
-                );
-            } catch (error) {
-                logger.error(`[channel:chat:message] Failed to create session`, { error, channelId: channel.id, userId });
+            // Create output instances and sessions for all outputs
+            const outputs: Output<Session, ConfigInstance>[] = [];
+            const outputSessions: Session[] = [];
+            const outputChannelConfigs: ChannelOutputWithConfigs[] = [];
+
+            for (const outIntegration of channel.outputs) {
+                const out = OutputFactory.createOutput(outIntegration.config_type);
+                if (!out) {
+                    logger.error(`[channel:chat:message] Output type ${outIntegration.config_type} is not supported`, { configType: outIntegration.config_type });
+                    continue;
+                }
+
+                try {
+                    const outSession = await out.createSessionFromConfig(
+                        outIntegration.integration_id,
+                        outIntegration,
+                        user
+                    );
+
+                    outputs.push(out);
+                    outputSessions.push(outSession);
+                    outputChannelConfigs.push(outIntegration);
+                } catch (error) {
+                    logger.error(`[channel:chat:message] Failed to create session for output ${outIntegration.config_type}`, { error, configType: outIntegration.config_type });
+                    continue;
+                }
+            }
+
+            if (outputs.length === 0) {
+                logger.error(`[channel:chat:message] Failed to create any output sessions for channel: ${channel.id}`, { channelId: channel.id });
                 return;
             }
+
+            // Use the first output session as the primary session
+            const session = outputSessions[0];
 
             const userMessage = message.user_message;
 
@@ -245,7 +269,7 @@ export async function initializeRealtimeSocket(server: HttpServer): Promise<Serv
             const { knowledgeBases, channelConfigs } = createKnowledgeBases(channel.knowledge_bases || []);
 
             const runContext: RunContext = { runId };
-            const channelAgent = new ChannelAgent(session, output, knowledgeBases, channelConfigs, channel, runContext);
+            const channelAgent = new ChannelAgent(session, outputs, outputSessions, outputChannelConfigs, knowledgeBases, channelConfigs, channel, runContext);
             await channelAgent.initializeAgent();
             
             let result;

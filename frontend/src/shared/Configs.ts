@@ -2,6 +2,7 @@ import { IntegrationType } from "./Integrations";
 
 export enum ConfigType {
     GMAIL = 'gmail',
+    GMAIL_OUTPUT = 'gmail_output',
     FIGMA = 'figma',
     SLACK = 'slack',
     SLACK_OUTPUT = 'slack_output',
@@ -60,6 +61,15 @@ export const SlackOutputConfigMetadata = {
     configType: ConfigType.SLACK_OUTPUT,
     name: 'Slack',
     description: 'Send messages to Slack channels or DMs',
+    isInput: false,
+    isOutput: true,
+    isKnowledgeBase: false,
+} as const satisfies ConfigDetails;
+
+export const GmailOutputConfigMetadata = {
+    configType: ConfigType.GMAIL_OUTPUT,
+    name: 'Gmail',
+    description: 'Send emails via Gmail',
     isInput: false,
     isOutput: true,
     isKnowledgeBase: false,
@@ -169,6 +179,7 @@ export type ConfigDetailsMap = Record<ConfigType, ConfigDetails>;
 
 export const CONFIG_DETAILS: ConfigDetailsMap = {
     [ConfigType.GMAIL]: GmailConfigMetadata,
+    [ConfigType.GMAIL_OUTPUT]: GmailOutputConfigMetadata,
     [ConfigType.FIGMA]: FigmaConfigMetadata,
     [ConfigType.SLACK]: SlackConfigMetadata,
     [ConfigType.SLACK_OUTPUT]: SlackOutputConfigMetadata,
@@ -251,6 +262,7 @@ export class SlackConfig implements ConfigInstance {
         public channelName?: string,
         public listenToUserDms: boolean = false,
         public userIds?: string[],
+        public acknowledgeWithEmoji: boolean = false,
     ) {
     }
 
@@ -302,6 +314,25 @@ export class SlackOutputConfig implements ConfigInstance {
             parts.push(`Channel ID: ${this.channelId}`);
         }
         return parts.join('\n');
+    }
+};
+
+export class GmailOutputConfig implements ConfigInstance {
+    integrationType: IntegrationType = IntegrationType.GMAIL;
+    configType: ConfigType = ConfigType.GMAIL_OUTPUT;
+
+    constructor(
+        public integrationId: string,
+    ) {
+    }
+
+    isComplete(): boolean {
+        // Gmail output only requires integrationId
+        return true;
+    }
+
+    formatForAgent(): string {
+        return `Type: Gmail Output\nIntegration ID: ${this.integrationId}`;
     }
 };
 
@@ -608,6 +639,7 @@ type EnsureExhaustiveMetadata<T extends Record<ConfigType, new (...args: any[]) 
 
 export type ConfigMetadataMap = EnsureExhaustiveMetadata<{
     [ConfigType.GMAIL]: typeof GmailConfig;
+    [ConfigType.GMAIL_OUTPUT]: typeof GmailOutputConfig;
     [ConfigType.FIGMA]: typeof FigmaConfig;
     [ConfigType.SLACK]: typeof SlackConfig;
     [ConfigType.SLACK_OUTPUT]: typeof SlackOutputConfig;
@@ -626,6 +658,7 @@ export type ConfigMetadataMap = EnsureExhaustiveMetadata<{
 
 export const CONFIG_METADATA: ConfigMetadataMap = {
     [ConfigType.GMAIL]: GmailConfig,
+    [ConfigType.GMAIL_OUTPUT]: GmailOutputConfig,
     [ConfigType.FIGMA]: FigmaConfig,
     [ConfigType.SLACK]: SlackConfig,
     [ConfigType.SLACK_OUTPUT]: SlackOutputConfig,

@@ -10,7 +10,10 @@ import { InputConfigType } from "@prisma/client";
 import logger from "../logger";
 
 // OAuth2 scopes for Gmail
-const SCOPES = ["https://www.googleapis.com/auth/gmail.readonly"];
+const SCOPES = [
+    "https://www.googleapis.com/auth/gmail.readonly",
+    "https://www.googleapis.com/auth/gmail.send"
+];
 
 
 export async function getGmailIntegrations(req: Request, res: Response) {

@@ -7,7 +7,7 @@ const openai = new OpenAI({ apiKey: openaiConfig.apiKey });
 
 export async function generateSurveyQuestions(request: GenerateSurveyQuestionsRequest): Promise<SurveyQuestion[]> {
   try {
-    const configContext = formatConfigContext(request.inputConfigs, request.outputConfig);
+    const configContext = formatConfigContext(request.inputConfigs, request.outputConfigs);
     
     const systemPrompt = `You are an expert at understanding automation workflows and helping users create effective prompts for AI agents.
 
@@ -17,7 +17,7 @@ IMPORTANT: Do not include any integration IDs, database IDs, channel IDs, or oth
 
 Context:
 - Input Sources: ${request.inputConfigs?.length || 0} configured
-- Output Destination: ${request.outputConfig ? request.outputConfig.type : 'Not configured'}
+- Output Destinations: ${request.outputConfigs && request.outputConfigs.length > 0 ? `${request.outputConfigs.length} configured (${request.outputConfigs.map(c => c.type).join(', ')})` : 'Not configured'}
 ${configContext}
 ${request.existingPrompt ? `- Existing Prompt: ${request.existingPrompt}` : '- No existing prompt'}
 

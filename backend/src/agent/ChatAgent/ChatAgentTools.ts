@@ -281,7 +281,7 @@ export const ChannelSchema = z.object({
     requireApproval: z.boolean(),
     prompt: ChannelPromptSchema,
     inputs: z.array(ChannelInputSchema).min(1),
-    output: ChannelOutputSchema,
+    outputs: z.array(ChannelOutputSchema).min(1),
     knowledgeBases: z.array(ChannelKnowledgeBaseSchema).nullable(),
     notificationSettings: ChannelNotificationSettingsSchema.nullable(),
     updatedAt: z.string().nullable(),
@@ -317,11 +317,11 @@ function toChannelDraft(channel: ChannelSchemaInput): ChannelDraft {
             ...input,
             config: toConfigInstance(normalizeConfig(input.config)),
         })),
-        output: {
+        outputs: channel.outputs.map((output) => ({
             id: uuidv4().toString(),
-            ...channel.output,
-            config: toConfigInstance(normalizeConfig(channel.output.config)),
-        },
+            ...output,
+            config: toConfigInstance(normalizeConfig(output.config)),
+        })),
         knowledgeBases: channel.knowledgeBases?.map((kb) => ({
             id: uuidv4().toString(),
             ...kb,

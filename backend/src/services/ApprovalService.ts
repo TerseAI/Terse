@@ -1,7 +1,8 @@
 import { db } from "../prismaClient";
-import { ChannelWithRelations, ChannelKnowledgeBaseWithConfigs } from "../types/prisma";
+import { ChannelWithRelations, ChannelKnowledgeBaseWithConfigs, ChannelOutputWithConfigs } from "../types/prisma";
 import { getInputConfigInclude, getOutputConfigInclude, getKnowledgeBaseConfigInclude } from "../utility/prismaIncludes";
 import { OutputFactory } from "../outputs/abstract/OutputFactory";
+import { Output } from "../outputs/abstract/Output";
 import { KnowledgeBaseFactory } from "../knowledgeBase/abstract/KnowledgeBaseFactory";
 import { KnowledgeBase } from "../knowledgeBase/abstract/KnowledgeBase";
 import { ConfigInstance } from "../shared/Configs";
@@ -61,7 +62,7 @@ export class ApprovalService {
                 inputs: {
                     include: getInputConfigInclude(),
                 },
-                output: {
+                outputs: {
                     include: getOutputConfigInclude(),
                 },
                 knowledge_bases: {
@@ -70,27 +71,22 @@ export class ApprovalService {
             },
         })
 
-        if (!channel) {
-            throw new Error(`Channel not found for automation id: ${runRecord.automation.id}`);
+        if (!channel || !channel.outputs || channel.outputs.length === 0) {
+            throw new Error(`Channel not found or has no outputs for automation id: ${runRecord.automation.id}`);
         }
 
         return { runRecord, channel };
     }
 
-    private static async createOutputAndSession(
+    private static async createOutputsAndSessions(
         channel: ChannelWithRelations,
         userId: string
-    ): Promise<{ output: ReturnType<typeof OutputFactory.createOutput>; session: Session }> {
+    ): Promise<{ outputs: Output<Session, ConfigInstance>[]; sessions: Session[]; outputChannelConfigs: ChannelOutputWithConfigs[] }> {
         const prisma = db();
         
-        const outputIntegration = channel.output;
-        if (!outputIntegration) {
-            throw new Error(`No output integration found for channel: ${channel.id}`);
-        }
-
-        const output = OutputFactory.createOutput(outputIntegration.config_type);
-        if (!output) {
-            throw new Error(`Output type ${outputIntegration.config_type} is not supported`);
+        const outputIntegrations = channel.outputs || [];
+        if (outputIntegrations.length === 0) {
+            throw new Error(`No output integrations found for channel: ${channel.id}`);
         }
 
         const user = await prisma.users.findUnique({
@@ -101,18 +97,33 @@ export class ApprovalService {
             throw new Error(`User not found for userId: ${userId}`);
         }
 
-        let session: Session;
-        try {
-            session = await output.createSessionFromConfig(
-                outputIntegration.integration_id,
-                outputIntegration,
-                user
-            );
-        } catch (error) {
-            throw new Error(`Failed to create session: ${error}`);
+        const outputs: Output<Session, ConfigInstance>[] = [];
+        const sessions: Session[] = [];
+        const outputChannelConfigs: ChannelOutputWithConfigs[] = [];
+
+        for (const outputIntegration of outputIntegrations) {
+            const output = OutputFactory.createOutput(outputIntegration.config_type);
+            if (!output) {
+                throw new Error(`Output type ${outputIntegration.config_type} is not supported`);
+            }
+
+            let session: Session;
+            try {
+                session = await output.createSessionFromConfig(
+                    outputIntegration.integration_id,
+                    outputIntegration,
+                    user
+                );
+            } catch (error) {
+                throw new Error(`Failed to create session for output ${outputIntegration.config_type}: ${error}`);
+            }
+
+            outputs.push(output);
+            sessions.push(session);
+            outputChannelConfigs.push(outputIntegration);
         }
 
-        return { output, session };
+        return { outputs, sessions, outputChannelConfigs };
     }
 
     private static createKnowledgeBases(
@@ -271,12 +282,14 @@ export class ApprovalService {
                 logger.info(`[ApprovalService] Stored rejection reason for runId: ${runId}, stepId: ${stepId}`);
             }
 
-            // Create output and session
-            const outputAndSession = await this.createOutputAndSession(channel, userId);
-            if (!outputAndSession.output) {
-                throw new Error(`Output type not supported`);
+            // Create outputs and sessions
+            const { outputs, sessions, outputChannelConfigs } = await this.createOutputsAndSessions(channel, userId);
+            if (!outputs || outputs.length === 0) {
+                throw new Error(`Failed to create output sessions`);
             }
-            const { output, session } = outputAndSession;
+
+            // Use the first output session as the primary session
+            const session = sessions[0];
 
             // Create knowledge bases from channel configuration
             const { knowledgeBases, channelConfigs } = this.createKnowledgeBases(channel.knowledge_bases || []);
@@ -302,7 +315,7 @@ export class ApprovalService {
 
             // Create channel agent and resume from pending approval
             const runContext = { runId };
-            const channelAgent = new ChannelAgent(session, output, knowledgeBases, channelConfigs, channel, runContext);
+            const channelAgent = new ChannelAgent(session, outputs, sessions, outputChannelConfigs, knowledgeBases, channelConfigs, channel, runContext);
             await channelAgent.initializeAgent();
 
             const decision: 'approve' | 'reject' = approved ? 'approve' : 'reject';

@@ -14,7 +14,7 @@ export function PromptBuilderModal({
     isOpen,
     onClose,
     inputs,
-    output,
+    outputs,
     existingPrompt,
     onPromptGenerated
 }: PromptBuilderModalProps) {
@@ -29,16 +29,16 @@ export function PromptBuilderModal({
     const [currentStep, setCurrentStep] = useState(1);
     const [completedSteps, setCompletedSteps] = useState<Set<1 | 2 | 3>>(new Set());
 
-    const prepareConfigContext = (): { inputConfigs?: SurveyConfigContext[]; outputConfig?: SurveyConfigContext } => {
+    const prepareConfigContext = (): { inputConfigs?: SurveyConfigContext[]; outputConfigs?: SurveyConfigContext[] } => {
         const inputConfigs: SurveyConfigContext[] = inputs.map(input => ({
             type: input.config.configType
         }));
         
-        const outputConfig: SurveyConfigContext | undefined = output ? {
+        const outputConfigs: SurveyConfigContext[] = outputs.map(output => ({
             type: output.config.configType
-        } : undefined;
+        }));
 
-        return { inputConfigs, outputConfig };
+        return { inputConfigs, outputConfigs: outputConfigs.length > 0 ? outputConfigs : undefined };
     };
 
     // Check if all questions are answered
@@ -62,13 +62,13 @@ export function PromptBuilderModal({
         setError(null);
         
         try {
-            const { inputConfigs, outputConfig } = prepareConfigContext();
+            const { inputConfigs, outputConfigs } = prepareConfigContext();
 
             const request: GenerateSurveyQuestionsRequest = {
                 description: description.trim(),
                 existingPrompt,
                 inputConfigs,
-                outputConfig
+                outputConfigs
             };
 
             const response = await BackendProvider.generatePromptBuilderQuestions(request);
@@ -95,7 +95,7 @@ export function PromptBuilderModal({
         setError(null);
         
         try {
-            const { inputConfigs, outputConfig } = prepareConfigContext();
+            const { inputConfigs, outputConfigs } = prepareConfigContext();
 
             const request: GenerateSurveyPromptRequest = {
                 description: description.trim(),
@@ -104,7 +104,7 @@ export function PromptBuilderModal({
                 writeInAnswers,
                 existingPrompt,
                 inputConfigs,
-                outputConfig
+                outputConfigs
             };
 
             const response = await BackendProvider.generatePromptBuilderPrompt(request);

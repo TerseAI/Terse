@@ -2,7 +2,7 @@ import { SurveyConfigContext, SurveyQuestion, GenerateSurveyPromptRequest, SKIP_
 
 export function formatConfigContext(
     inputConfigs?: SurveyConfigContext[],
-    outputConfig?: SurveyConfigContext
+    outputConfigs?: SurveyConfigContext[]
 ): string {
     let context = '';
 
@@ -13,8 +13,11 @@ export function formatConfigContext(
         });
     }
 
-    if (outputConfig) {
-        context += `Output Destination: ${outputConfig.type}\n`;
+    if (outputConfigs && outputConfigs.length > 0) {
+        context += 'Output Destinations:\n';
+        outputConfigs.forEach((config, idx) => {
+            context += `  ${idx + 1}. ${config.type}\n`;
+        });
     }
 
     return context || 'No integrations configured yet.';

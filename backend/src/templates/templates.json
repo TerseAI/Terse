@@ -19,12 +19,14 @@
         }
       }
     ],
-    "output": {
-      "config": {
-        "configType": "notion_database",
-        "integrationType": "notion"
+    "outputs": [
+      {
+        "config": {
+          "configType": "notion_database",
+          "integrationType": "notion"
+        }
       }
-    },
+    ],
     "requireApproval": false,
     "isActive": true
   },
@@ -42,12 +44,14 @@
         }
       }
     ],
-    "output": {
-      "config": {
-        "configType": "linear_output",
-        "integrationType": "linear"
+    "outputs": [
+      {
+        "config": {
+          "configType": "linear_output",
+          "integrationType": "linear"
+        }
       }
-    },
+    ],
     "knowledgeBases": [
       {
         "config": {
@@ -73,12 +77,14 @@
         }
       }
     ],
-    "output": {
-      "config": {
-        "configType": "notion_page",
-        "integrationType": "notion"
+    "outputs": [
+      {
+        "config": {
+          "configType": "notion_page",
+          "integrationType": "notion"
+        }
       }
-    },
+    ],
     "requireApproval": false,
     "isActive": true
   },
@@ -96,12 +102,14 @@
         }
       }
     ],
-    "output": {
-      "config": {
-        "configType": "confluence",
-        "integrationType": "atlassian"
+    "outputs": [
+      {
+        "config": {
+          "configType": "confluence",
+          "integrationType": "atlassian"
+        }
       }
-    },
+    ],
     "requireApproval": false,
     "isActive": true
   },
@@ -128,12 +136,14 @@
         }
       }
     ],
-    "output": {
-      "config": {
-        "configType": "slack_output",
-        "integrationType": "slack"
+    "outputs": [
+      {
+        "config": {
+          "configType": "slack_output",
+          "integrationType": "slack"
+        }
       }
-    },
+    ],
     "requireApproval": false,
     "isActive": true
   }

@@ -467,15 +467,19 @@ export class SlackEvent extends InputEvent implements Identifiable {
             ? `\n        Images: ${images.length} image(s) attached` 
             : '';
         
+        const threadInfo = this.data.threadTimestamp 
+            ? `\n        Thread Timestamp: ${this.data.threadTimestamp}\n        Channel ID: ${this.data.channelId}`
+            : '';
+        
         return `
         Incoming Slack Message Event.
 
         Slack Event:
         Channel: ${this.data.channelName || this.data.channelId}
+        Channel ID: ${this.data.channelId}
         User: ${this.data.userName || this.data.userId}
         Message: ${messageText}
-        Timestamp: ${this.data.timestamp}
-        ${this.data.threadTimestamp ? `Thread: ${this.data.threadTimestamp}` : ''}
+        Timestamp: ${this.data.timestamp}${threadInfo}
         Team ID: ${this.data.teamId}${imageNote}
         ${blockContent ? `
         Rich Content (from blocks):
@@ -522,6 +526,7 @@ export class SlackEvent extends InputEvent implements Identifiable {
         const isDM = this.data.channelType === SlackChannelType.IM;
         return `Slack Event: ${isDM ? 'DM' : this.data.channelName || this.data.channelId} - ${this.data.userName || this.data.userId}}`;
     }
+
 
     matchesChannelInput(channelInput: ChannelInputWithConfigs): boolean {
         // Check if integration type matches
@@ -897,6 +902,16 @@ async function handleSlackMessage(event: SlackMessageEvent, teamId: string, auth
         // Create SlackEvent once
         const slackEvent = new SlackEvent(slackEventData);
 
+        // Check if any matching channel input has acknowledge_with_emoji enabled
+        // and add eyes emoji reaction if needed
+        await addEmojiReactionIfEnabled(
+            client,
+            messageEvent,
+            channelType,
+            workspaceUserIntegrations,
+            teamId
+        );
+
         // Process the event against automations for all users in this workspace
         // This ensures messages from any workspace user can trigger automations
         let totalMatches = 0;
@@ -974,6 +989,93 @@ export function initializeSlackWebClient(integration: UserSlackIntegrationWithUs
      return new WebClient(token, {
          logLevel: LogLevel.INFO
      });
+}
+
+/**
+ * Helper function to add eyes emoji reaction if any matching channel input has acknowledge_with_emoji enabled
+ */
+async function addEmojiReactionIfEnabled(
+    client: WebClient,
+    messageEvent: { channel?: string; user?: string; ts?: string },
+    channelType: SlackChannelType | undefined,
+    workspaceUserIntegrations: UserSlackIntegrationWithUser[],
+    teamId: string
+): Promise<void> {
+    if (!channelType) {
+        return; // Can't determine channel type, skip emoji reaction
+    }
+    try {
+        const isDM = channelType === SlackChannelType.IM;
+        const workspaceUserIds = workspaceUserIntegrations.map(usi => usi.user_id);
+
+        // Build query conditions for matching configs
+        const whereConditions: any = {
+            automation_input_id: { not: null }, // Only input configs
+            acknowledge_with_emoji: true,
+            automation_input: {
+                automation: {
+                    user_id: { in: workspaceUserIds },
+                    is_active: true,
+                },
+            },
+        };
+
+        // Match by channel OR by listen_to_user_dms for DMs
+        if (isDM) {
+            whereConditions.OR = [
+                { listen_to_user_dms: true },
+            ];
+        } else {
+            whereConditions.channel_id = messageEvent.channel;
+        }
+
+        const matchingSlackConfigs = await db().automation_slack_configs.findMany({
+            where: whereConditions,
+            include: {
+                automation_input: {
+                    include: {
+                        automation: true,
+                    },
+                },
+            },
+        });
+
+        // Check user filter if applicable
+        const shouldAddReaction = matchingSlackConfigs.some(config => {
+            // If user_ids filter is set, check if message user matches
+            if (config.user_ids && config.user_ids.length > 0) {
+                return config.user_ids.includes(messageEvent.user!);
+            }
+            return true; // No user filter, so match
+        });
+
+        if (shouldAddReaction && messageEvent.ts) {
+            // Add eyes emoji reaction using the same client we used for fetching data
+            try {
+                await client.reactions.add({
+                    channel: messageEvent.channel!,
+                    timestamp: messageEvent.ts,
+                    name: 'eyes',
+                });
+                logger.debug(`Added eyes emoji reaction to message`, { 
+                    channel: messageEvent.channel, 
+                    messageTs: messageEvent.ts,
+                    teamId 
+                });
+            } catch (reactionError) {
+                // Log but don't fail - reaction is non-critical
+                logger.warn(`Failed to add eyes emoji reaction`, { 
+                    error: reactionError, 
+                    channel: messageEvent.channel, 
+                    messageTs: messageEvent.ts,
+                    teamId 
+                });
+            }
+        }
+    } catch (error) {
+        // Log but don't fail - emoji reaction is non-critical
+        logger.warn(`Error checking for emoji acknowledge setting`, { error, teamId });
+    }
 }
 
 

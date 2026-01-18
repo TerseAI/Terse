@@ -820,10 +820,10 @@ export const BackendProvider: BackendService = {
                         ...input,
                         config: deserializeConfig(input.config)
                     })),
-                    output: {
-                        ...channel.output,
-                        config: deserializeConfig(channel.output.config)
-                    }
+                    outputs: channel.outputs.map(output => ({
+                        ...output,
+                        config: deserializeConfig(output.config)
+                    }))
                 }));
             })
             .catch(error => {

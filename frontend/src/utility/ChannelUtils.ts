@@ -3,7 +3,7 @@ import { ChannelInput, ChannelOutput, TransientChannelInput, TransientChannelOut
 export function getDefaultChannelName(
     totalCount: number = 0
 ): string {
-    // If inputs or output are empty, generate "Automation #x"
+    // If inputs or outputs are empty, generate "Automation #x"
     return `Automation #${totalCount + 1}`;
 }
 
@@ -57,6 +57,23 @@ export function toChannelOutput(output: TransientChannelOutput | undefined): Cha
         id: output.id,
         config: output.config,
     };
+}
+
+/**
+ * Converts array of TransientAutomationOutput to AutomationOutput array
+ * Only converts if config is present (filters out incomplete outputs)
+ */
+export function toChannelOutputs(outputs: TransientChannelOutput[]): ChannelOutput[] {
+    return outputs
+        .map(output => toChannelOutput(output))
+        .filter((output): output is ChannelOutput => output !== undefined);
+}
+
+/**
+ * Converts array of AutomationOutput to TransientAutomationOutput array
+ */
+export function toTransientChannelOutputs(outputs: ChannelOutput[]): TransientChannelOutput[] {
+    return outputs.map(output => toTransientChannelOutput(output));
 }
 
 /**

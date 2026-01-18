@@ -28,7 +28,7 @@ export interface GenerateSurveyQuestionsRequest {
   description: string;
   existingPrompt?: string;
   inputConfigs?: SurveyConfigContext[];
-  outputConfig?: SurveyConfigContext;
+  outputConfigs?: SurveyConfigContext[];
 }
 
 export interface GenerateSurveyQuestionsResponse {
@@ -42,7 +42,7 @@ export interface GenerateSurveyPromptRequest {
   writeInAnswers?: SurveyWriteInAnswers;
   existingPrompt?: string;
   inputConfigs?: SurveyConfigContext[];
-  outputConfig?: SurveyConfigContext;
+  outputConfigs?: SurveyConfigContext[];
 }
 
 export interface GenerateSurveyPromptResponse {

@@ -18,7 +18,8 @@ export interface RunContext {
 export interface SystemPromptBuilderDependencies<T extends Session, TConfig extends ConfigInstance, K extends Session, KBConfig extends ConfigInstance> {
     session: T;
     channel: ChannelWithRelations;
-    output: Output<T, TConfig>;
+    outputs: Output<Session, ConfigInstance>[];
+    outputSessions: Session[];
     knowledgeBases?: KnowledgeBase<K, KBConfig>[];
     knowledgeBaseSessions?: K[];
 }
@@ -59,6 +60,7 @@ export class SystemPromptBuilder<T extends Session, TConfig extends ConfigInstan
     withSimilarEventsSection(inputEvent: InputEvent): this {
         return this.withSection(() => this.buildSimilarEventsSection(inputEvent));
     }
+
 
     async build(): Promise<string> {
         const results = await Promise.all(this.sections.map(fn => fn()));
@@ -136,12 +138,22 @@ This is event #${eventPosition} processed by this automation.`
     }
 
     private buildOutputInstructions(): Section | null {
-        const instructions = this.deps.output.getSystemInstructions(this.deps.session);
-        if (!instructions) return null;
+        // Combine instructions from all outputs
+        const instructionsList = this.deps.outputs
+            .map((output, index) => {
+                const session = this.deps.outputSessions[index];
+                if (!session) return null;
+                return output.getSystemInstructions(session);
+            })
+            .filter((instructions): instructions is string => instructions !== null && instructions !== '');
+
+        if (instructionsList.length === 0) return null;
+
+        const combinedInstructions = instructionsList.join('\n\n');
 
         return {
             header: 'OUTPUT-SPECIFIC INSTRUCTIONS',
-            content: instructions
+            content: combinedInstructions
         };
     }
 
@@ -263,6 +275,7 @@ Use these examples as reference for understanding the user's intent and how simi
             return null;
         }
     }
+
 }
 
 // =========================================================================

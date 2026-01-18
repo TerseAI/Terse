@@ -60,5 +60,6 @@ export abstract class InputEvent {
         }
         return null;
     }
+
 }
 

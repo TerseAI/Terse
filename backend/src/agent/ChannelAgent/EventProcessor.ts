@@ -1,8 +1,9 @@
 import chalk from 'chalk';
 import { db } from '../../prismaClient';
-import { Channel, ChannelWithRelations, User, ChannelKnowledgeBaseWithConfigs } from '../../types/prisma';
+import { Channel, ChannelWithRelations, User, ChannelKnowledgeBaseWithConfigs, ChannelOutputWithConfigs } from '../../types/prisma';
 import { InputEvent } from '../../integrations/abstract/InputEvent';
 import { OutputFactory } from '../../outputs/abstract/OutputFactory';
+import { Output } from '../../outputs/abstract/Output';
 import { ChannelAgent, SessionWithTracking } from './ChannelAgent';
 import { filterEvent } from './EventFilter';
 import { createRunRecord, finalizeRunStatus, markRunFailed, markRunProcessed, markRunSkipped, appendRunAction } from './runHistory';
@@ -17,6 +18,8 @@ import { ConfigInstance } from '../../shared/Configs';
 import { RunHistoryAction } from '../../shared/RunHistoryTypes';
 import { RunContext } from './SystemPromptBuilder';
 import logger from '../../logger';
+import { IntegrationType } from '../../shared/Integrations';
+import { OutputConfigType } from '@prisma/client';
 
 // The job of this class is to take an Input Event, and check if it's a match for an Channel.
 // It will then create a Session, and summon the Channel Agent with the create user data.
@@ -63,7 +66,7 @@ export class EventProcessor {
                 inputs: {
                     include: getInputConfigInclude()
                 },
-                output: {
+                outputs: {
                     include: getOutputConfigInclude()
                 },
                 knowledge_bases: {
@@ -144,35 +147,48 @@ export class EventProcessor {
         emitCacheInvalidationWithWildcard(this.user.id, 'runHistory', channel.id);
         emitCacheInvalidationWithKey(this.user.id, 'recentChannels');
 
-        // Get the output from channel relations (already fetched with config)
-        const outputIntegration = channel.output;
+        // Get the outputs from channel relations (already fetched with config)
+        const outputIntegrations = channel.outputs || [];
 
-        if (!outputIntegration) {
-            return new ProcessorResult(false, "No output integration found for this channel", channel);
+        if (!outputIntegrations || outputIntegrations.length === 0) {
+            return new ProcessorResult(false, "No output integrations found for this channel", channel);
         }
 
-        // Use OutputFactory to create output based on config type (no hardcoded Notion logic)
-        const output = OutputFactory.createOutput(outputIntegration.config_type);
-        if (!output) {
-            return new ProcessorResult(false, `Output type ${outputIntegration.config_type} is not supported`, channel);
+        // Create output instances and sessions for all outputs
+        const outputs: Output<Session, ConfigInstance>[] = [];
+        const outputSessions: Session[] = [];
+        const outputChannelConfigs: ChannelOutputWithConfigs[] = [];
+
+        for (const outputIntegration of outputIntegrations) {
+            // Use OutputFactory to create output based on config type (no hardcoded Notion logic)
+            const output = OutputFactory.createOutput(outputIntegration.config_type);
+            if (!output) {
+                return new ProcessorResult(false, `Output type ${outputIntegration.config_type} is not supported`, channel);
+            }
+
+            // Use output's config-aware session creation (no hardcoded config extraction)
+            // Each output type knows how to fetch its own integration and extract its config
+            try {
+                const session = await output.createSessionFromConfig(
+                    outputIntegration.integration_id,
+                    outputIntegration,
+                    this.user
+                );
+
+                outputs.push(output);
+                outputSessions.push(session);
+                outputChannelConfigs.push(outputIntegration);
+            } catch (error) {
+                return new ProcessorResult(
+                    false,
+                    `Failed to create session for output ${outputIntegration.config_type}: ${error instanceof Error ? error.message : 'Unknown error'}`,
+                    channel
+                );
+            }
         }
 
-        // Use output's config-aware session creation (no hardcoded config extraction)
-        // Each output type knows how to fetch its own integration and extract its config
-        let session: Session;
-        try {
-            session = await output.createSessionFromConfig(
-                outputIntegration.integration_id,
-                outputIntegration,
-                this.user
-            );
-        } catch (error) {
-            return new ProcessorResult(
-                false,
-                `Failed to create session: ${error instanceof Error ? error.message : 'Unknown error'}`,
-                channel
-            );
-        }
+        // Use the first output session as the primary session (for compatibility with existing code)
+        const session = outputSessions[0];
 
         // Filter the event using AI to see if it's relevant to this channel
         let filterResult;
@@ -230,9 +246,9 @@ export class EventProcessor {
         // Create knowledge bases from channel configuration
         const { knowledgeBases, channelConfigs } = this.createKnowledgeBases(channel.knowledge_bases || []);
 
-        // Create channel agent with the session and output
+        // Create channel agent with the sessions and outputs
         const runContext: RunContext = { runId };
-        const channelAgent = new ChannelAgent(session, output, knowledgeBases, channelConfigs, channel, runContext);
+        const channelAgent = new ChannelAgent(session, outputs, outputSessions, outputChannelConfigs, knowledgeBases, channelConfigs, channel, runContext);
         channelAgent.setInputEvent(this.inputEvent);
 
         // Run the channel agent with streaming parameters

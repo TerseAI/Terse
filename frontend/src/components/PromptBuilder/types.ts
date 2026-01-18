@@ -5,7 +5,7 @@ export interface PromptBuilderModalProps {
     isOpen: boolean;
     onClose: () => void;
     inputs: ChannelInput[];
-    output: ChannelOutput | undefined;
+    outputs: ChannelOutput[];
     existingPrompt?: string;
     onPromptGenerated?: (prompt: string) => void;
 }

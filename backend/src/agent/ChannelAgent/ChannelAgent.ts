@@ -3,10 +3,10 @@ import { Session } from '../../server';
 import { SystemPromptBuilder, RunContext, SystemPromptBuilderDependencies } from './SystemPromptBuilder';
 import { InputEvent } from '../../integrations/abstract/InputEvent';
 import { Output } from '../../outputs/abstract/Output';
-import { ChannelInput, ChannelOutput, ChannelWithRelations } from '../../types/prisma';
+import { ChannelInput, ChannelOutput, ChannelWithRelations, ChannelOutputWithConfigs } from '../../types/prisma';
 import { ConfigInstance } from '../../shared/Configs';
 import { settings } from '../../config/settings';
-import { formatChannelInputsForAgent, formatChannelOutputForAgent } from './formatContext';
+import { formatChannelInputsForAgent, formatChannelOutputForAgent, formatChannelOutputsForAgent } from './formatContext';
 import { UserFormatter } from '../../utility/UserFormatter';
 import { transformAgentStreamToModelEvents } from '../streaming';
 import { getRealtimeSocket } from '../../realtimeSocket';
@@ -39,7 +39,9 @@ export class ChannelAgent<
     private session: T;
     private inputEvent: InputEvent | null = null;
     private channel: ChannelWithRelations;
-    private output: Output<T, TConfig>;
+    private outputs: Output<Session, ConfigInstance>[];
+    private outputSessions: Session[];
+    private outputChannelConfigs: ChannelOutputWithConfigs[];
     private knowledgeBases: KnowledgeBase<K, KBConfig>[];
     private knowledgeBaseChannelConfigs: ChannelKnowledgeBaseWithConfigs[];
     private knowledgeBaseSessions: K[] = [];
@@ -54,7 +56,9 @@ export class ChannelAgent<
 
     constructor(
         session: T,
-        output: Output<T, TConfig>,
+        outputs: Output<Session, ConfigInstance>[],
+        outputSessions: Session[],
+        outputChannelConfigs: ChannelOutputWithConfigs[],
         knowledgeBases: KnowledgeBase<K, KBConfig>[],
         knowledgeBaseChannelConfigs: ChannelKnowledgeBaseWithConfigs[],
         channel: ChannelWithRelations,
@@ -64,14 +68,22 @@ export class ChannelAgent<
         if (knowledgeBases.length !== knowledgeBaseChannelConfigs.length) {
             throw new Error(`Mismatch between knowledge base instances (${knowledgeBases.length}) and channel configs (${knowledgeBaseChannelConfigs.length})`);
         }
+        if (outputs.length !== outputSessions.length || outputs.length !== outputChannelConfigs.length) {
+            throw new Error(`Mismatch between output instances (${outputs.length}), sessions (${outputSessions.length}), and configs (${outputChannelConfigs.length})`);
+        }
+        if (outputs.length === 0) {
+            throw new Error(`At least one output is required`);
+        }
 
         this.session = session;
-        this.output = output;
+        this.outputs = outputs;
+        this.outputSessions = outputSessions;
+        this.outputChannelConfigs = outputChannelConfigs;
         this.knowledgeBases = knowledgeBases;
         this.knowledgeBaseChannelConfigs = knowledgeBaseChannelConfigs;
         this.channel = channel;
         this.tools = [
-            ...output.toolbox.map(entry => entry.tool),
+            ...outputs.flatMap(output => output.toolbox.map(entry => entry.tool)),
             ...knowledgeBases.flatMap(kb => kb.toolbox.map(entry => entry.tool))
         ];
 
@@ -359,11 +371,13 @@ export class ChannelAgent<
     }
 
     private buildToolMetadataMap(): void {
-        // Populate metadata from output toolbox
-        this.output.toolbox.forEach(entry => {
-            this.toolMetadataMap.set(entry.tool.name, {
-                integration: entry.integration,
-                isReadOnly: entry.isReadOnly,
+        // Populate metadata from all output toolboxes
+        this.outputs.forEach(output => {
+            output.toolbox.forEach(entry => {
+                this.toolMetadataMap.set(entry.tool.name, {
+                    integration: entry.integration,
+                    isReadOnly: entry.isReadOnly,
+                });
             });
         });
 
@@ -405,7 +419,8 @@ export class ChannelAgent<
         const deps: SystemPromptBuilderDependencies<T, TConfig, K, KBConfig> = {
             session: this.session,
             channel: this.channel,
-            output: this.output,
+            outputs: this.outputs,
+            outputSessions: this.outputSessions,
             knowledgeBases: this.knowledgeBases,
             knowledgeBaseSessions: this.knowledgeBaseSessions,
         };
@@ -424,8 +439,12 @@ export class ChannelAgent<
     }
 
     private getToolContext(): SessionWithTracking<T & K> {
-        return {
+        const baseContext = {
             ...this.session,
+            ...this.outputSessions.reduce(
+                (acc, outputSession) => ({ ...acc, ...outputSession }),
+                {} as Session
+            ),
             ...this.knowledgeBaseSessions.reduce(
                 (acc, kbSession) => ({ ...acc, ...kbSession }),
                 {} as K
@@ -435,6 +454,9 @@ export class ChannelAgent<
                 requireApproval: this.channel.require_approval ?? false,
             },
         };
+
+
+        return baseContext;
     }
 
     private buildUserMessage(inputEvent: InputEvent): (AgentInputText | AgentInputImage)[] {
@@ -466,7 +488,7 @@ ${formatChannelInputsForAgent(this.channel.inputs as ChannelInput[])}
 </CHANNEL_INPUTS>
 
 <OUTPUT_DESTINATION>
-${formatChannelOutputForAgent(this.channel.output as ChannelOutput)}
+${formatChannelOutputsForAgent(this.channel.outputs as ChannelOutput[])}
 </OUTPUT_DESTINATION>
 
 <EVENT>
