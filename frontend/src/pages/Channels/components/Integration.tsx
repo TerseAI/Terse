@@ -43,6 +43,8 @@ export function IconForConfigType({ type }: { type: ConfigType }) {
             return <CalendarClockIcon />;
         case ConfigType.DATADOG:
             return <DatadogIcon />;
+        case ConfigType.GMAIL_OUTPUT:
+            return <GmailIcon />;
         default:
             // Exhaustive check: TypeScript will error if any IntegrationType case is missing
             throw type satisfies never;

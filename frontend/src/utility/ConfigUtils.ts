@@ -1,4 +1,4 @@
-import { ConfigInstance, ConfigType, GmailConfig, FigmaConfig, SlackConfig, SlackOutputConfig, NotionConfig, NotionPageConfig, LinearInputConfig, LinearOutputConfig, GitHubConfig, JiraConfig, ConfluenceConfig, PosthogConfig, TimeTriggerConfig, GitHubKBConfig, DatadogConfig } from '@/shared/Configs';
+import { ConfigInstance, ConfigType, GmailConfig, FigmaConfig, SlackConfig, SlackOutputConfig, NotionConfig, NotionPageConfig, LinearInputConfig, LinearOutputConfig, GitHubConfig, JiraConfig, ConfluenceConfig, PosthogConfig, TimeTriggerConfig, GitHubKBConfig, DatadogConfig, GmailOutputConfig } from '@/shared/Configs';
 
 
 /**
@@ -121,7 +121,10 @@ export function deserializeConfig(jsonConfig: any): ConfigInstance {
                 integrationId,
                 jsonConfig.defaultIndexes || []
             );
-
+        case ConfigType.GMAIL_OUTPUT:
+            return new GmailOutputConfig(
+                integrationId
+            );
         default:
             const _exhaustive: never = configType;
             throw new Error(`Unknown config type: ${_exhaustive}`);

@@ -6,7 +6,7 @@ import { db } from "../prismaClient";
 import { GmailIntegration} from "../types/prisma";
 import { gmail as gmailConfig, urls, cloudScheduler, OAUTH_TOKEN_REFRESH_THRESHOLD_MS } from "../config/settings";
 import { getOAuth2Client, GmailIntegrationManager, GmailWebhookEvent } from "../integrations/GmailIntegration";
-import { InputConfigType } from "@prisma/client";
+import { InputConfigType, OutputConfigType } from "@prisma/client";
 import logger from "../logger";
 
 // OAuth2 scopes for Gmail
@@ -90,8 +90,13 @@ export async function deleteGmailIntegration(req: Request, res: Response) {
       },
     });
 
-    // Note: Gmail is not a valid output type (only NOTION_PAGE, NOTION_DATABASE, CONFLUENCE are supported)
-    // No channel outputs to delete for Gmail integrations
+    // Clean up channel outputs that reference this Gmail integration
+    await db().automation_outputs.deleteMany({
+      where: {
+        config_type: OutputConfigType.GMAIL,
+        integration_id: integration.id,
+      },
+    });
 
     // Set is_active to false instead of deleting
     await db().gmail_integrations.update({

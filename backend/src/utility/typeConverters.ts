@@ -9,6 +9,7 @@ import { ChannelInputWithConfigs, ChannelOutputWithConfigs, ChannelKnowledgeBase
 import { 
     ConfigInstance, 
     GmailConfig, 
+    GmailOutputConfig,
     FigmaConfig, 
     SlackConfig, 
     SlackOutputConfig,
@@ -318,6 +319,10 @@ export const convertPrismaOutputConfigToConfigInstance = (channelOutput: Channel
         );
     }
 
+    if (channelOutput.gmail_config) {
+        return new GmailOutputConfig(integrationId);
+    }
+
     // Type guard to ensure we implement conversion here
     switch (channelOutput.config_type) {
         case OutputConfigType.NOTION_PAGE:
@@ -326,6 +331,7 @@ export const convertPrismaOutputConfigToConfigInstance = (channelOutput: Channel
         case OutputConfigType.LINEAR_TICKET:
         case OutputConfigType.JIRA_TICKET:
         case OutputConfigType.SLACK_CHANNEL:
+        case OutputConfigType.GMAIL:
             break;
         default:
             throw channelOutput.config_type satisfies never;
