@@ -9,6 +9,7 @@ import GithubIntegrationCard from "./GithubIntegrationCard";
 import AtlassianIntegrationCard from "./AtlassianIntegrationCard";
 import FigmaIntegrationCard from "./FigmaIntegrationCard";
 import PosthogIntegrationCard from "./PosthogIntegrationCard";
+import DatadogIntegrationCard from "./DatadogIntegrationCard";
 
 function IntegrationCard({ integration, isActive = true }: { integration: IntegrationType; isActive?: boolean }) {
     const cardClassName = "min-w-sm max-w-sm";
@@ -48,6 +49,10 @@ function IntegrationCard({ integration, isActive = true }: { integration: Integr
         case IntegrationType.POSTHOG:
             return (
                 <PosthogIntegrationCard className={cardClassName} isActive={isActive} />
+            );
+        case IntegrationType.DATADOG:
+            return (
+                <DatadogIntegrationCard className={cardClassName} isActive={isActive} />
             );
         default:
             // Exhaustive check: TypeScript will error if any IntegrationType case is missing

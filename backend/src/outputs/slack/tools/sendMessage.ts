@@ -4,6 +4,9 @@ import { WebClient, KnownBlock } from "@slack/web-api";
 import { db } from "../../../prismaClient";
 import { SlackChannelSession } from "../SlackOutput";
 import logger from "../../../logger";
+import { IntegrationType } from "../../../shared/Integrations";
+import { RunHistoryActionType } from "@prisma/client";
+import { SessionWithTracking } from "../../../agent/ChannelAgent/ChannelAgent";
 
 /**
  * Tool for sending messages to Slack channels or DMs.
@@ -17,7 +20,7 @@ export const slackSendMessageTool = tool({
         thread_ts: z.string().nullable().optional().describe("Thread timestamp to reply to existing thread"),
         blocks: z.string().nullable().optional().describe("Block Kit JSON array string for interactive messages with buttons, structured layouts"),
     }),
-    execute: async (args, runContext?: RunContext<SlackChannelSession>) => {
+    execute: async (args, runContext?: RunContext<SessionWithTracking<SlackChannelSession>>) => {
         if (!runContext?.context) {
             throw new Error("No context provided");
         }
@@ -89,7 +92,21 @@ export const slackSendMessageTool = tool({
             const messagePreview = message.length > 100 ? message.substring(0, 100) + '...' : message;
             const messageType = blocks ? 'Block Kit' : 'text';
             
-            logger.info(`[Slack Output] ${messageType} message sent to ${channelName}`, { 
+            // Build Slack message permalink URL
+            const messageTs = result.ts?.replace('.', '') || '';
+            const slackPermalink = `https://${slackIntegration.team_name || 'slack'}.slack.com/archives/${channelId}/p${messageTs}`;
+            
+            // Track the action
+            runContext.context.trackAction({
+                action: 'Sent Slack message',
+                integration: IntegrationType.SLACK,
+                target: channelName,
+                details: `Sent message to ${channelName}${thread_ts ? ' (thread reply)' : ''}: "${messagePreview}"`,
+                url: slackPermalink,
+                type: RunHistoryActionType.create,
+            });
+            
+            logger.info(`[Slack Output] Message sent to ${channelName}`, { 
                 channelId,
                 messageTs: result.ts,
                 threadTs: thread_ts,

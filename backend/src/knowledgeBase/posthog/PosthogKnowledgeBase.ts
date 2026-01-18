@@ -1,3 +1,4 @@
+import { Tool } from "@openai/agents";
 import { Session } from "../../server";
 import { ChannelKnowledgeBaseWithConfigs, PrismaTransaction, User } from "../../types/prisma";
 import { KnowledgeBaseConfigType } from "@prisma/client";
@@ -27,17 +28,17 @@ export class PosthogKnowledgeBase extends KnowledgeBase<PosthogKnowledgeBaseSess
     constructor() {
         const toolbox: ToolboxEntry[] = [
             {
-                tool: searchLogsTool,
+                tool: searchLogsTool as Tool,
                 isReadOnly: true,
                 integration: IntegrationType.POSTHOG
             },
             {
-                tool: searchSessionsTool,
+                tool: searchSessionsTool as Tool,
                 isReadOnly: true,
                 integration: IntegrationType.POSTHOG
             },
             {
-                tool: getSessionEventsTool,
+                tool: getSessionEventsTool as Tool,
                 isReadOnly: true,
                 integration: IntegrationType.POSTHOG
             }
