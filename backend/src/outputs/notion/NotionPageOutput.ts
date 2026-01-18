@@ -83,12 +83,11 @@ The footer consists of two blocks:
 1. **Divider block** - to visually separate the footer from main content
 2. **Heading 3 block** - with the following format:
 
-\`Updated by Terse 🫶 • Last sync: Dec 6, 2025 • Based on 7 events\`
+\`Updated by Terse 🫶 • Last sync: Dec 6, 2025 \`
 
 Where:
 - "Terse" should be a clickable link to https://useterse.ai
 - The date should be formatted as "Mon D, YYYY" (e.g., "Dec 6, 2025")
-- The event count should use the event position number from the RUNTIME CONTEXT section (e.g., "3" if RUNTIME CONTEXT says "This is event #3")
 
 ### Example using the modify blocks tool:
 \`\`\`json
@@ -100,7 +99,7 @@ Where:
       "rich_text": [
         { "type": "text", "text": { "content": "Updated by " } },
         { "type": "text", "text": { "content": "Terse", "link": { "url": "https://useterse.ai" } } },
-        { "type": "text", "text": { "content": " 🫶 • Last sync: Dec 6, 2025 • Based on 7 events" } }
+        { "type": "text", "text": { "content": " 🫶 • Last sync: Dec 6, 2025 " } }
       ] 
     } 
   }
@@ -111,5 +110,4 @@ Where:
 - If a Terse footer already exists (identified by text starting with "Updated by Terse" or matching user's custom format), UPDATE it with the new values rather than creating a duplicate
 - The footer must ALWAYS be at the very end of the page content
 - Use the bullet separator (•) between each metadata item (unless user specifies otherwise)
-- **CRITICAL**: For the event count, use the event position number from the RUNTIME CONTEXT section (e.g., if it says "This is event #3 processed by this automation", use "3 events"). DO NOT count the individual events in the EVENT block - use the total event position from RUNTIME CONTEXT.
 `.trim();
