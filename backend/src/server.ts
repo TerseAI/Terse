@@ -92,8 +92,10 @@ import { setupSlackBolt } from "./slack/boltApp";
 import logger from "./logger";
 import { getPosthogIntegrations, createOrUpdatePosthogIntegration, getPosthogProjects } from "./routes/posthog";
 import { getLaunchDarklyIntegrations, createOrUpdateLaunchDarklyIntegration, getLaunchDarklyProjects, getLaunchDarklyEnvironments } from "./routes/launchdarkly";
+import { getDatadogIntegrations, createOrUpdateDatadogIntegration, getDatadogIndexes } from "./routes/datadog";
 import { handleScheduleWebhook, handleManualTrigger } from "./routes/schedule";
 import { getTemplates } from "./routes/templates";
+import "./integrations/IntegrationTaskHandler"; // Import to trigger listener registration
 
 export type Session = {
   user: User;
@@ -472,6 +474,20 @@ app.get("/launchdarkly/integrations/:integrationId/projects", authMiddleware, as
 
 app.get("/launchdarkly/integrations/:integrationId/projects/:projectKey/environments", authMiddleware, async (req, res) => {
   getLaunchDarklyEnvironments(req, res);
+});
+
+// MARK: DATADOG
+
+app.get("/datadog/integrations", authMiddleware, async (req, res) => {
+  getDatadogIntegrations(req, res);
+});
+
+app.post("/datadog/integrations", authMiddleware, async (req, res) => {
+  createOrUpdateDatadogIntegration(req, res);
+});
+
+app.get("/datadog/indexes", authMiddleware, async (req, res) => {
+  getDatadogIndexes(req, res);
 });
 
 // MARK: CHANNELS

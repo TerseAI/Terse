@@ -5,6 +5,7 @@ import { ConfigInstance } from "../../shared/Configs";
 import { PosthogKnowledgeBase } from "../posthog/PosthogKnowledgeBase";
 import { GitHubKnowledgeBase } from "../github/GitHubKnowledgeBase";
 import { LaunchDarklyKnowledgeBase } from "../launchdarkly/LaunchDarklyKnowledgeBase";
+import { DatadogKnowledgeBase } from "../datadog/DatadogKnowledgeBase";
 
 /**
  * Factory for creating KnowledgeBase instances based on KnowledgeBaseConfigType.
@@ -16,6 +17,7 @@ export class KnowledgeBaseFactory {
         [KnowledgeBaseConfigType.POSTHOG, () => new PosthogKnowledgeBase()],
         [KnowledgeBaseConfigType.GITHUB, () => new GitHubKnowledgeBase()],
         [KnowledgeBaseConfigType.LAUNCHDARKLY, () => new LaunchDarklyKnowledgeBase()],
+        [KnowledgeBaseConfigType.DATADOG, () => new DatadogKnowledgeBase()],
     ]);
 
     /**

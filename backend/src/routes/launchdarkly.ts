@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import { LaunchDarklyIntegrationManager } from "../integrations/LaunchDarklyIntegration";
 import { db } from "../prismaClient";
 import logger from "../logger";
+import { parseFormSubmissionFromRequest } from "../integrations/abstract/Integration";
 
 
 export async function getLaunchDarklyIntegrations(req: Request, res: Response) {
@@ -21,14 +22,25 @@ export async function getLaunchDarklyIntegrations(req: Request, res: Response) {
 }
 
 export async function createOrUpdateLaunchDarklyIntegration(req: Request, res: Response) {
-    if (!req.session?.user) {
+    const input = parseFormSubmissionFromRequest(req);
+    if (!input) {
         res.status(401).json({ error: 'Unauthorized' });
         return;
     }
 
     try {
         const manager = new LaunchDarklyIntegrationManager();
-        await manager.processFormSubmission(req, res);
+        const result = await manager.processFormSubmission(input);
+        
+        if (!result.success) {
+            res.status(result.statusCode || 500).json({ 
+                error: result.error || 'Failed to process integration',
+                ...(result.data || {})
+            });
+            return;
+        }
+
+        res.status(result.statusCode || 200).json(result.data || { success: true });
     } catch (error) {
         logger.error('Error creating/updating LaunchDarkly integration:', { error });
         res.status(500).json({ error: 'Failed to process integration' });

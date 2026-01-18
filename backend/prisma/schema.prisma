@@ -42,6 +42,7 @@ model users {
   notification_destinations user_notification_destinations[]
   posthog_integrations      posthog_integrations[]
   launchdarkly_integrations launchdarkly_integrations[]
+  datadog_integrations      datadog_integrations[]
 }
 
 model github_repositories {
@@ -395,6 +396,20 @@ model launchdarkly_integrations {
   user users @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
   @@index([user_id])
+}  
+
+model datadog_integrations {
+  id         String   @id @default(cuid())
+  user_id    String
+  api_key    String
+  app_key    String
+  region     String
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  user users @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id])
 }
 
 // Activity Feed - Starting with GitHub Events
@@ -568,7 +583,9 @@ model automation_knowledge_bases {
 
   posthog_config        automation_posthog_configs?
   github_kb_config      automation_github_kb_configs?
+  datadog_config        automation_datadog_configs?
   launchdarkly_config   automation_launchdarkly_configs?
+
 
   @@index([automation_id])
   @@index([config_type, integration_id])
@@ -597,7 +614,6 @@ model automation_github_kb_configs {
   automation_knowledge_base automation_knowledge_bases @relation(fields: [automation_knowledge_base_id], references: [id], onDelete: Cascade)
 }
 
-// LaunchDarkly Knowledge Base Configuration
 model automation_launchdarkly_configs {
   id                           String   @id @default(cuid())
   automation_knowledge_base_id String   @unique
@@ -607,6 +623,16 @@ model automation_launchdarkly_configs {
   automation_knowledge_base automation_knowledge_bases @relation(fields: [automation_knowledge_base_id], references: [id], onDelete: Cascade)
 
   @@index([project_key])
+}
+
+model automation_datadog_configs {
+  id                           String   @id @default(cuid())
+  automation_knowledge_base_id String   @unique // FK to automation_knowledge_bases
+  default_indexes              String[] @default(["main"]) // Default log indexes to search, stored as JSON array
+
+  automation_knowledge_base automation_knowledge_bases @relation(fields: [automation_knowledge_base_id], references: [id], onDelete: Cascade)
+
+  @@index([default_indexes])
 }
 
 // Automation Configuration Tables - Typed config per integration type
@@ -825,6 +851,7 @@ enum IntegrationType {
   POSTHOG
   CRON_JOB
   LAUNCHDARKLY
+  DATADOG
 }
 
 enum InputConfigType {
@@ -854,6 +881,7 @@ enum KnowledgeBaseConfigType {
   POSTHOG
   GITHUB
   LAUNCHDARKLY
+  DATADOG
 }
 
 // Run History enums to mirror backend/shared RunHistoryTypes
@@ -998,6 +1026,25 @@ model run_history_raw_events {
 
   @@index([run_history_record_id])
   @@index([run_history_record_id, sequence_order])
+  @@index([created_at])
+}
+
+// Chat session types for general chats (not tied to run history)
+enum ChatSessionType {
+  SLACK_THREAD
+  DIRECT_CHAT
+}
+
+// Raw AgentStreamEvent stored as JSON for general chat sessions
+model chat_raw_events {
+  id              String   @id @default(cuid())
+  chat_session_id String
+  raw_event_json  Json // Raw AgentStreamEvent stored as JSON for easy loading into OpenAI agent history
+  sequence_order  Int // Order of items within a session to preserve exact sequence
+  created_at      DateTime @default(now())
+
+  @@index([chat_session_id])
+  @@index([chat_session_id, sequence_order])
   @@index([created_at])
 }
 

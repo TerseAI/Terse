@@ -14,6 +14,7 @@ import {
     PosthogProjectsResponse,
     LaunchDarklyProjectsResponse,
     LaunchDarklyEnvironmentsResponse,
+    DatadogIndexesResponse,
     RecentChannel,
     SlackChannelsResponse,
     StatsResponse,
@@ -34,6 +35,7 @@ import {
     InstallationOptionsFor,
     PosthogIntegration,
     LaunchDarklyIntegration,
+    DatadogIntegration,
 } from "../shared/Integrations";
 import { User } from "../types/User";
 import { GetRunHistoryParams, GetRunHistoryResponse } from '../shared/RunHistoryTypes';
@@ -251,6 +253,22 @@ interface BackendService {
      * @param projectKey - The LaunchDarkly project key
      */
     getLaunchDarklyEnvironments(integrationId: string, projectKey: string): Promise<LaunchDarklyEnvironmentsResponse>;
+
+    /**
+     * Gets all Datadog integrations for the current user
+     */
+    getDatadogIntegrations(): Promise<DatadogIntegration[]>;
+
+    /**
+     * Creates or updates a Datadog integration with API key, APP key, and region
+     */
+    createOrUpdateDatadogIntegration(apiKey: string, appKey: string, region: string): Promise<{ success: boolean; region: string }>;
+
+    /**
+     * Gets Datadog log indexes for an integration
+     * @param integrationId - The Datadog integration ID
+     */
+    getDatadogIndexes(integrationId: string): Promise<DatadogIndexesResponse>;
 
     /**
      * Gets Posthog projects for an integration
@@ -685,6 +703,15 @@ export const BackendProvider: BackendService = {
             });
     },
 
+    getDatadogIntegrations: () => {
+        return axios.get<DatadogIntegration[]>(`${backendBaseUrl}/datadog/integrations`, { withCredentials: true })
+            .then(response => response.data)
+            .catch(error => {
+                console.error('Error getting Datadog integrations:', error);
+                throw error;
+            });
+    },
+
     createOrUpdateLaunchDarklyIntegration: (apiKey: string) => {
         return axios.post<{ success: boolean; email: string | null }>(
             `${backendBaseUrl}/launchdarkly/integrations`,
@@ -694,6 +721,19 @@ export const BackendProvider: BackendService = {
             .then(response => response.data)
             .catch(error => {
                 console.error('Error creating/updating LaunchDarkly integration:', error);
+                throw error;
+            });
+    },
+
+    createOrUpdateDatadogIntegration: (apiKey: string, appKey: string, region: string) => {
+        return axios.post<{ success: boolean; region: string }>(
+            `${backendBaseUrl}/datadog/integrations`,
+            { apiKey, appKey, region },
+            { withCredentials: true }
+        )
+            .then(response => response.data)
+            .catch(error => {
+                console.error('Error creating/updating Datadog integration:', error);
                 throw error;
             });
     },
@@ -718,6 +758,21 @@ export const BackendProvider: BackendService = {
             .then(response => response.data)
             .catch(error => {
                 console.error('Error fetching LaunchDarkly environments:', error);
+                throw error;
+            });
+    },
+
+    getDatadogIndexes: (integrationId: string) => {
+        return axios.get<DatadogIndexesResponse>(
+            `${backendBaseUrl}/datadog/indexes`,
+            { 
+                params: { integrationId },
+                withCredentials: true 
+            }
+        )
+            .then(response => response.data)
+            .catch(error => {
+                console.error('Error getting Datadog indexes:', error);
                 throw error;
             });
     },

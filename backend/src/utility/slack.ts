@@ -4,6 +4,7 @@ import { RunHistoryAction } from "../shared/RunHistoryTypes";
 import { initializeSlackWebClient } from "../integrations/SlackIntegration";
 import { settings } from "../config/settings";
 import logger from "../logger";
+import { createNotificationMessage, createApprovalMessage, createUpdatedApprovalMessage } from "../slack/blockKitHelpers";
 
 export interface SlackMessage {
     text: string;
@@ -82,43 +83,13 @@ export function formatNotificationMessage(runAction: RunHistoryAction, context: 
 
     const text = `${context.channelName} - ${actionEmoji} ${runAction.action} - ${runAction.target}`;
     
-    const blocks: KnownBlock[] = [
-        {
-            type: 'section',
-            text: {
-                type: 'mrkdwn',
-                text: `*${runAction.action}* - ${actionEmoji} ${runAction.target}`,
-            },
-        },
-    ];
-
-    if (runAction.details) {
-        blocks.push({
-            type: 'section',
-            text: {
-                type: 'mrkdwn',
-                text: runAction.details,
-            },
-        });
-    }
-
-    if (runAction.url) {
-        blocks.push({
-            type: 'actions',
-            elements: [
-                {
-                    type: 'button',
-                    text: {
-                        type: 'plain_text',
-                        text: 'View',
-                        emoji: true,
-                    },
-                    url: runAction.url,
-                    action_id: 'view_action',
-                },
-            ],
-        });
-    }
+    const blocks = createNotificationMessage({
+        action: runAction.action,
+        target: runAction.target,
+        emoji: actionEmoji,
+        details: runAction.details,
+        url: runAction.url,
+    });
 
     return { text, blocks };
 }
@@ -156,79 +127,13 @@ export async function sendSlackApprovalMessage(
         runHistoryLink = `${frontendUrl}/app/channels/${automationId}?tab=history&runId=${runId}`;
     }
 
-    const blocks: KnownBlock[] = [
-        {
-            type: 'section' as const,
-            text: {
-                type: 'mrkdwn' as const,
-                text: `You have a new approval request:\n*<${runHistoryLink || '#'}|${channelName} - Action pending approval>*`,
-            },
-        },
-        {
-            type: 'section' as const,
-            fields: [
-                {
-                    type: 'mrkdwn' as const,
-                    text: `*Channel:*\n${channelName}`,
-                },
-                {
-                    type: 'mrkdwn' as const,
-                    text: `*Status:*\n:clock1: Pending approval`,
-                },
-                {
-                    type: 'mrkdwn' as const,
-                    text: `*Action:*\n${summary}`,
-                }
-            ],
-        },
-        {
-            type: 'actions' as const,
-            elements: [
-                {
-                    type: 'button' as const,
-                    text: {
-                        type: 'plain_text' as const,
-                        emoji: true,
-                        text: 'Approve',
-                    },
-                    style: 'primary' as const,
-                    action_id: `approval_approve_${runId}__${stepId}`,
-                    value: 'approve',
-                },
-                {
-                    type: 'button' as const,
-                    text: {
-                        type: 'plain_text' as const,
-                        emoji: true,
-                        text: 'Request Changes',
-                    },
-                    action_id: `approval_request_changes_${runId}__${stepId}`,
-                    value: 'request_changes',
-                },
-                {
-                    type: 'button' as const,
-                    text: {
-                        type: 'plain_text' as const,
-                        emoji: true,
-                        text: 'Reject',
-                    },
-                    style: 'danger' as const,
-                    action_id: `approval_reject_${runId}__${stepId}`,
-                    value: 'reject',
-                },
-                ...(runHistoryLink ? [{
-                    type: 'button' as const,
-                    text: {
-                        type: 'plain_text' as const,
-                        emoji: true,
-                        text: 'View Details',
-                    },
-                    url: runHistoryLink,
-                    action_id: 'view_run_history',
-                }] : []),
-            ],
-        },
-    ];
+    const blocks = createApprovalMessage({
+        channelName,
+        summary,
+        runId,
+        stepId,
+        runHistoryLink,
+    });
 
     const text = `Approval Request: ${summary} - ${channelName}`;
 
@@ -333,71 +238,15 @@ export async function updateSlackApprovalMessage(
         runHistoryLink = `${frontendUrl}/app/channels/${automationId}?tab=history&runId=${runId}`;
     }
 
-    const blocks: KnownBlock[] = [
-        {
-            type: 'section' as const,
-            text: {
-                type: 'mrkdwn' as const,
-                text: `Approval request ${
-                    status === 'approved'
-                        ? 'approved'
-                        : status === 'rejected'
-                            ? 'rejected'
-                            : status === 'changes_requested'
-                                ? 'has changes requested'
-                                : status === 'failed'
-                                    ? 'failed'
-                                    : 'is being processed'
-                }:\n*<${runHistoryLink || '#'}|${channelName} - ${statusText}>*`,
-            },
-        },
-        {
-            type: 'section' as const,
-            fields: [
-                {
-                    type: 'mrkdwn' as const,
-                    text: `*Channel:*\n${channelName}`,
-                },
-                {
-                    type: 'mrkdwn' as const,
-                    text: `*Status:*\n${statusEmoji} ${statusText}`,
-                },
-                {
-                    type: 'mrkdwn' as const,
-                    text: `*Action:*\n${summary}`,
-                },
-            ],
-        },
-    ];
-
-    // Add rejection reason / feedback section if available
-    if ((status === 'rejected' || status === 'changes_requested') && rejectionReason) {
-        const feedbackLabel = status === 'changes_requested' ? 'Feedback' : 'Rejection Reason';
-        blocks.push({
-            type: 'section' as const,
-            text: {
-                type: 'mrkdwn' as const,
-                text: `*${feedbackLabel}:*\n${rejectionReason}`,
-            },
-        });
-    }
-
-    // Add view run history button if link is available
-    if (runHistoryLink) {
-        blocks.push({
-            type: 'actions' as const,
-            elements: [{
-                type: 'button' as const,
-                text: {
-                    type: 'plain_text' as const,
-                    emoji: true,
-                    text: 'View Run History',
-                },
-                url: runHistoryLink,
-                action_id: 'view_run_history',
-            }],
-        });
-    }
+    const blocks = createUpdatedApprovalMessage({
+        channelName,
+        summary,
+        status,
+        statusEmoji,
+        statusText,
+        runHistoryLink,
+        rejectionReason: rejectionReason || undefined,
+    });
 
     const text = `${statusText}: ${summary} - ${channelName}`;
 

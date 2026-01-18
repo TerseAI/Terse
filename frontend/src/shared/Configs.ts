@@ -14,6 +14,7 @@ export enum ConfigType {
     JIRA = 'jira',
     CONFLUENCE = 'confluence',
     POSTHOG = "POSTHOG",
+    DATADOG = "DATADOG",
     TIME_TRIGGER = 'time_trigger',
     LAUNCHDARKLY = 'launchdarkly',
 }
@@ -138,6 +139,15 @@ export const PosthogConfigMetadata = {
     isKnowledgeBase: true
 } as const satisfies ConfigDetails;
 
+export const DatadogConfigMetadata = {
+    configType: ConfigType.DATADOG,
+    name: 'Datadog',
+    description: 'Search logs in Datadog',
+    isInput: false,
+    isOutput: false,
+    isKnowledgeBase: true
+} as const satisfies ConfigDetails;
+
 export const TimeTriggerConfigMetadata = {
     configType: ConfigType.TIME_TRIGGER,
     name: 'Time Trigger',
@@ -181,6 +191,7 @@ export const CONFIG_DETAILS: ConfigDetailsMap = {
     [ConfigType.JIRA]: JiraConfigMetadata,
     [ConfigType.CONFLUENCE]: ConfluenceConfigMetadata,
     [ConfigType.POSTHOG]: PosthogConfigMetadata,
+    [ConfigType.DATADOG]: DatadogConfigMetadata,
     [ConfigType.TIME_TRIGGER]: TimeTriggerConfigMetadata,
     [ConfigType.LAUNCHDARKLY]: LaunchDarklyConfigMetadata,
 } as const satisfies ConfigDetailsMap;
@@ -532,6 +543,29 @@ export class PosthogConfig implements ConfigInstance {
     }
 }
 
+export class DatadogConfig implements ConfigInstance {
+    integrationType: IntegrationType = IntegrationType.DATADOG;
+    configType: ConfigType = ConfigType.DATADOG;
+
+    constructor(
+        public integrationId: string,
+        public defaultIndexes: string[] = ["main"]
+    ) {
+    }
+
+    isComplete(): boolean {
+        return !!this.integrationId;
+    }
+
+    formatForAgent(): string {
+        const parts = [`Type: Datadog`, `Integration ID: ${this.integrationId}`];
+        if (this.defaultIndexes && this.defaultIndexes.length > 0) {
+            parts.push(`Default indexes: ${this.defaultIndexes.join(', ')}`);
+        }
+        return parts.join('\n');
+    }
+}
+
 export class TimeTriggerConfig implements ConfigInstance {
     integrationType: IntegrationType = IntegrationType.CRON_JOB;
     configType: ConfigType = ConfigType.TIME_TRIGGER;
@@ -623,6 +657,7 @@ export type ConfigMetadataMap = EnsureExhaustiveMetadata<{
     [ConfigType.JIRA]: typeof JiraConfig;
     [ConfigType.CONFLUENCE]: typeof ConfluenceConfig;
     [ConfigType.POSTHOG]: typeof PosthogConfig;
+    [ConfigType.DATADOG]: typeof DatadogConfig;
     [ConfigType.TIME_TRIGGER]: typeof TimeTriggerConfig;
     [ConfigType.LAUNCHDARKLY]: typeof LaunchDarklyConfig;
 }>;
@@ -641,6 +676,7 @@ export const CONFIG_METADATA: ConfigMetadataMap = {
     [ConfigType.JIRA]: JiraConfig,
     [ConfigType.CONFLUENCE]: ConfluenceConfig,
     [ConfigType.POSTHOG]: PosthogConfig,
+    [ConfigType.DATADOG]: DatadogConfig,
     [ConfigType.TIME_TRIGGER]: TimeTriggerConfig,
     [ConfigType.LAUNCHDARKLY]: LaunchDarklyConfig,
 } as const satisfies ConfigMetadataMap;

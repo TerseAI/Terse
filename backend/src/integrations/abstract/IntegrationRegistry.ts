@@ -10,6 +10,7 @@ import { FormIntegrationInstallation, Integration, OAuthIntegrationInstallation 
 import { IntegrationInstance, IntegrationDetails, IntegrationType } from "../../shared/Integrations";
 import { PosthogIntegrationManager } from "../PosthogIntegration";
 import { LaunchDarklyIntegrationManager } from "../LaunchDarklyIntegration";
+import { DatadogIntegrationManager } from "../DatadogIntegration";
 
 
 type IntegrationWithInstallation = Integration<IntegrationInstance, any, IntegrationDetails> & (OAuthIntegrationInstallation<IntegrationType> | FormIntegrationInstallation<IntegrationType>);
@@ -34,5 +35,6 @@ export const INTEGRATION_REGISTRY: Array<IntegrationWithInstallation> = [
     new NotionIntegrationManager(),
     new SlackIntegrationManager(),
     new PosthogIntegrationManager(),
-    new LaunchDarklyIntegrationManager()
+    new LaunchDarklyIntegrationManager(),
+    new DatadogIntegrationManager()
 ]

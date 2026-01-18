@@ -179,43 +179,59 @@ export async function githubAppUnifiedEvent(req: Request, res: Response) {
     }
 }
 
+type RouteError = Error & { statusCode?: number };
+
+function createRouteError(message: string, statusCode: number): RouteError {
+    const error = new Error(message) as RouteError;
+    error.statusCode = statusCode;
+    return error;
+}
+
+export async function fetchGithubRepositoriesForIntegration(
+    userId: string,
+    installationId: string
+): Promise<GetGithubRepositoriesForIntegrationResponse> {
+    if (!installationId) {
+        throw createRouteError('Installation ID is required', 400);
+    }
+
+    const accessToken = await db().github_app_tokens.findFirst({ where: { user_id: userId } });
+    if (!accessToken) {
+        throw createRouteError('Unauthorized', 401);
+    }
+
+    const installations = await getAppInstallationsForUser(accessToken.access_token);
+    const targetInstallation = installations.installations.find(installation => installation.id === Number(installationId));
+    if (!targetInstallation) {
+        throw createRouteError('Installation not found', 404);
+    }
+
+    const installationRepositories: GithubAppInstallationRepository[] = await getAppInstallationRepositories(accessToken.access_token, targetInstallation.id);
+
+    return {
+        repositories: installationRepositories.map(r => ({
+            id: r.id,
+            name: r.name,
+            owner: r.owner.login
+        }))
+    };
+}
+
 export async function getGithubRepositoriesForIntegration(req: Request, res: Response) {
     if (!req.session?.user) {
         res.status(401).json({ message: 'Unauthorized' });
         return;
     }
 
-    // get installation id from query params
     const installationId = req.query.installation_id as string;
-    if (!installationId) {
-        res.status(400).json({ message: 'Installation ID is required' });
-        return;
+
+    try {
+        const result = await fetchGithubRepositoriesForIntegration(req.session.user.id, installationId);
+        res.status(200).json(result);
+    } catch (error) {
+        const routeError = error as RouteError;
+        res.status(routeError.statusCode || 500).json({ message: routeError.message || 'Failed to fetch repositories' });
     }
-
-    const user = req.session.user;
-    const accessToken = await db().github_app_tokens.findFirst({ where: { user_id: user.id } });
-    if (!accessToken) {
-        res.status(401).json({ message: 'Unauthorized' });
-        return;
-    }
-
-    const installations = await getAppInstallationsForUser(accessToken.access_token);
-    const targetInstallation = installations.installations.find(installation => installation.id === Number(installationId));
-    if (!targetInstallation) {
-        res.status(404).json({ message: 'Installation not found' });
-        return;
-    }
-
-    const installationRepositories: GithubAppInstallationRepository[] = await getAppInstallationRepositories(accessToken.access_token, targetInstallation.id);
-
-    const result: GetGithubRepositoriesForIntegrationResponse = {
-        repositories: installationRepositories.map(r => ({
-            id: r.id,
-            name: r.name,
-            owner: r.owner.login
-        }))
-    };    
-    res.status(200).json(result);
 }
 
 export async function processRepository(

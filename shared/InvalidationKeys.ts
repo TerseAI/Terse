@@ -35,7 +35,11 @@ export const posthogIntegrationsKey = (): readonly [string] => {
 
 export const launchdarklyIntegrationsKey = (): readonly [string] => {
     return ['launchdarklyIntegrations'] as const;
-};``
+};
+
+export const datadogIntegrationsKey = (): readonly [string] => {
+    return ['datadogIntegrations'] as const;
+};
 
 export const githubRepositoriesKey = (installationId: number | null | undefined): readonly [string, number] | null => {
     if (!installationId) {

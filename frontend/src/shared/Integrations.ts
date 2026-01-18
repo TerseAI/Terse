@@ -9,6 +9,7 @@ export enum IntegrationType {
     FIGMA = 'figma',
     TERSE = 'terse',
     POSTHOG = 'posthog',
+    DATADOG = 'datadog',
     CRON_JOB = 'cron_job',
     LAUNCHDARKLY = 'launchdarkly',
 }
@@ -105,6 +106,15 @@ export const PosthogIntegrationMetadata = {
     isKnowledgeBase: true,
 } as const satisfies IntegrationDetails;
 
+export const DatadogIntegrationMetadata = {
+    type: IntegrationType.DATADOG,
+    name: 'Datadog',
+    description: 'Search logs in Datadog',
+    isInput: false,
+    isOutput: false,
+    isKnowledgeBase: true,
+} as const satisfies IntegrationDetails;
+
 export const CronJobIntegrationMetadata = {
     type: IntegrationType.CRON_JOB,
     name: 'Scheduled Jobs',
@@ -135,6 +145,7 @@ export const INTEGRATION_METADATA: IntegrationMetadataMap = {
     [IntegrationType.FIGMA]: FigmaIntegrationMetadata,
     [IntegrationType.TERSE]: TerseIntegrationMetadata,
     [IntegrationType.POSTHOG]: PosthogIntegrationMetadata,
+    [IntegrationType.DATADOG]: DatadogIntegrationMetadata,
     [IntegrationType.CRON_JOB]: CronJobIntegrationMetadata,
     [IntegrationType.LAUNCHDARKLY]: LaunchDarklyIntegrationMetadata,
 } as const satisfies IntegrationMetadataMap;
@@ -151,6 +162,8 @@ export interface SlackInstallationOptions {
 
 export type NoInstallationOptions = Record<string, never>;
 
+export type AdditionalStateParams = Record<string, string>;
+
 type EnsureExhaustiveInstallationOptions<T extends Record<IntegrationType, NoInstallationOptions | SlackInstallationOptions>> = T;
 
 export type IntegrationInstallationOptions = EnsureExhaustiveInstallationOptions<{
@@ -163,6 +176,7 @@ export type IntegrationInstallationOptions = EnsureExhaustiveInstallationOptions
     [IntegrationType.FIGMA]: NoInstallationOptions;
     [IntegrationType.TERSE]: NoInstallationOptions;
     [IntegrationType.POSTHOG]: NoInstallationOptions;
+    [IntegrationType.DATADOG]: NoInstallationOptions;
     [IntegrationType.CRON_JOB]: NoInstallationOptions;
     [IntegrationType.LAUNCHDARKLY]: NoInstallationOptions;
 }> 
@@ -227,6 +241,10 @@ export interface LaunchDarklyIntegration extends IntegrationInstance {
     id: string;
     email: string | null;
     tokenName: string | null;
+};
+export interface DatadogIntegration extends IntegrationInstance {
+    id: string;
+    region: string;
 };
 
 export interface IntegrationWithStatus {

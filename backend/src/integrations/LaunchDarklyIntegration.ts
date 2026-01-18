@@ -1,9 +1,8 @@
-import { FormIntegrationInstallation, Integration } from "./abstract/Integration";
+import { FormIntegrationInstallation, Integration, FormFieldDefinition, FormSubmissionInput, FormSubmissionResult } from "./abstract/Integration";
 import { db } from "../prismaClient";
 import { LaunchDarklyIntegration, LaunchDarklyIntegrationMetadata } from "../shared/Integrations";
 import { IntegrationType } from "../shared/Integrations";
 import { ChannelInputWithConfigs } from "../types/prisma";
-import { Request, Response } from "express";
 import logger from "../logger";
 
 export class LaunchDarklyIntegrationManager implements Integration<LaunchDarklyIntegration, never, typeof LaunchDarklyIntegrationMetadata>, FormIntegrationInstallation<IntegrationType.LAUNCHDARKLY> {
@@ -24,6 +23,18 @@ export class LaunchDarklyIntegrationManager implements Integration<LaunchDarklyI
             email: li.user_email || null,
             tokenName: li.token_name || null,
         }));
+    }
+
+    formatIntegrationInstanceForAgent(instance: LaunchDarklyIntegration): string {
+        const details: string[] = [];
+        if (instance.tokenName) {
+            details.push(`token "${instance.tokenName}"`);
+        }
+        if (instance.email) {
+            details.push(`email ${instance.email}`);
+        }
+        const detailText = details.length ? ` (${details.join(", ")})` : "";
+        return `LaunchDarkly${detailText} [id: ${instance.id}]`;
     }
 
     async getAllActiveInstances(): Promise<LaunchDarklyIntegration[]> {
@@ -58,18 +69,29 @@ export class LaunchDarklyIntegrationManager implements Integration<LaunchDarklyI
     async teardownChannelInput(integrationId: string, automationInput: ChannelInputWithConfigs): Promise<void> {
     }
 
+    getFormFields(): FormFieldDefinition[] {
+        return [
+            {
+                name: 'apiKey',
+                type: 'password',
+                label: 'API Key',
+                placeholder: 'Enter your LaunchDarkly API key',
+                required: true,
+                hint: 'Your LaunchDarkly API key (service token or access token). Find this in LaunchDarkly under Account Settings → Authorization → Tokens.',
+            },
+        ];
+    }
 
-    async processFormSubmission(req: Request, res: Response): Promise<void> {
-        if (!req.session?.user) {
-            res.status(401).json({ error: 'Unauthorized' });
-            return;
-        }
-
-        const { apiKey } = req.body;
+    async processFormSubmission(input: FormSubmissionInput): Promise<FormSubmissionResult> {
+        const { userId, formValues } = input;
+        const { apiKey } = formValues;
 
         if (!apiKey || typeof apiKey !== 'string') {
-            res.status(400).json({ error: 'API key is required' });
-            return;
+            return {
+                success: false,
+                error: 'API key is required',
+                statusCode: 400,
+            };
         }
 
         try {
@@ -88,16 +110,18 @@ export class LaunchDarklyIntegrationManager implements Integration<LaunchDarklyI
             if (validationResponse.status === 401) {
                 const errorText = await validationResponse.text();
                 logger.error('LaunchDarkly API key validation failed', { 
-                    userId: req.session.user.id,
-                    userEmail: req.session.user.email,
+                    userId,
                     status: validationResponse.status,
                     error: errorText 
                 });
-                res.status(400).json({ 
+                return {
+                    success: false,
                     error: 'Invalid API key',
-                    details: 'Authentication failed'
-                });
-                return;
+                    statusCode: 400,
+                    data: {
+                        details: 'Authentication failed'
+                    },
+                };
             }
 
             // Token is valid (200 or 403)
@@ -138,8 +162,6 @@ export class LaunchDarklyIntegrationManager implements Integration<LaunchDarklyI
             // Both service tokens and access tokens work with this endpoint
             const userEmail: string | null = null;
 
-            const userId = req.session.user.id;
-
             // Check if integration already exists for this user
             const existing = await db().launchdarkly_integrations.findFirst({
                 where: { user_id: userId },
@@ -179,14 +201,21 @@ export class LaunchDarklyIntegrationManager implements Integration<LaunchDarklyI
                 });
             }
 
-            res.status(200).json({ 
+            return {
                 success: true,
-                email: userEmail,
-                tokenName: tokenName,
-            });
+                statusCode: 200,
+                data: {
+                    email: userEmail,
+                    tokenName: tokenName,
+                },
+            };
         } catch (error) {
             logger.error('Error processing LaunchDarkly form submission', { error });
-            res.status(500).json({ error: 'Failed to process integration' });
+            return {
+                success: false,
+                error: 'Failed to process integration',
+                statusCode: 500,
+            };
         }
     }
 
