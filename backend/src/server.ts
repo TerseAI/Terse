@@ -91,6 +91,7 @@ import {
 import { setupSlackBolt } from "./slack/boltApp";
 import logger from "./logger";
 import { getPosthogIntegrations, createOrUpdatePosthogIntegration, getPosthogProjects } from "./routes/posthog";
+import { getDatadogIntegrations, createOrUpdateDatadogIntegration, getDatadogIndexes } from "./routes/datadog";
 import { handleScheduleWebhook, handleManualTrigger } from "./routes/schedule";
 import { getTemplates } from "./routes/templates";
 import "./integrations/IntegrationTaskHandler"; // Import to trigger listener registration
@@ -454,6 +455,20 @@ app.post("/posthog/integrations", authMiddleware, async (req, res) => {
 
 app.get("/posthog/projects", authMiddleware, async (req, res) => {
   getPosthogProjects(req, res);
+});
+
+// MARK: DATADOG
+
+app.get("/datadog/integrations", authMiddleware, async (req, res) => {
+  getDatadogIntegrations(req, res);
+});
+
+app.post("/datadog/integrations", authMiddleware, async (req, res) => {
+  createOrUpdateDatadogIntegration(req, res);
+});
+
+app.get("/datadog/indexes", authMiddleware, async (req, res) => {
+  getDatadogIndexes(req, res);
 });
 
 // MARK: CHANNELS

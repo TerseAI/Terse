@@ -12,6 +12,7 @@ import {
     JiraConfluenceIcon,
     PosthogIcon,
     CalendarClockIcon,
+    DatadogIcon,
 } from "@/components/icons/IntegrationIcons";
 
 export function IconForConfigType({ type }: { type: ConfigType }) {
@@ -39,7 +40,9 @@ export function IconForConfigType({ type }: { type: ConfigType }) {
         case ConfigType.POSTHOG:
             return <PosthogIcon />;
         case ConfigType.TIME_TRIGGER:
-            return <CalendarClockIcon />;        
+            return <CalendarClockIcon />;
+        case ConfigType.DATADOG:
+            return <DatadogIcon />;
         default:
             // Exhaustive check: TypeScript will error if any IntegrationType case is missing
             throw type satisfies never;
@@ -67,6 +70,8 @@ export function IconForIntegration({ integration }: { integration: IntegrationTy
             return <CalendarClockIcon />;
         case IntegrationType.POSTHOG:
             return <PosthogIcon />
+        case IntegrationType.DATADOG:
+            return <DatadogIcon />
         default:
             throw integration satisfies never;
     }

@@ -7,6 +7,10 @@ import { GitHubKBConfig } from "../../../shared/Configs";
 import { Session } from "../../../server";
 import { runnerFactory } from "../../../agent/runner";
 import { settings } from "../../../config/settings";
+import { IntegrationType } from "../../../shared/Integrations";
+import { RunHistoryActionType } from "@prisma/client";
+import { SessionWithTracking } from "../../../agent/ChannelAgent/ChannelAgent";
+import { GitHubKnowledgeBaseSession } from "../GitHubKnowledgeBase";
 
 /**
  * Tool for summarizing pull request diffs using a compact sub-agent.
@@ -38,21 +42,13 @@ You can optionally provide high-level context about what you're looking for in t
         page: z.union([z.number().int().min(1), z.null()]).describe('Page number for pagination (default: 1). Use this to fetch additional files if a PR has more than 100 files. Use null for page 1. Must be a positive integer >= 1.'),
         context: z.union([z.string(), z.null()]).describe('Optional high-level context about what you\'re looking for in this PR. This helps the sub-agent focus its analysis. For example: "I need to understand the authentication changes" or "Focus on database migration changes". Use null if no specific context.'),
     }),
-    execute: async ({ repository, pullNumber, page, context }, runContext?: RunContext<any>) => {
+    execute: async ({ repository, pullNumber, page, context }, runContext?: RunContext<SessionWithTracking<GitHubKnowledgeBaseSession>>) => {
         const pageNumber = Math.max(1, page ?? 1);
         if (!runContext?.context) {
             throw new Error("No context provided");
         }
 
-        const githubKBConfig = runContext.context.githubKBConfig as GitHubKBConfig | undefined;
-        if (!githubKBConfig) {
-            throw new Error("GitHub KB config not found in context. Ensure GitHub is configured as a knowledge base.");
-        }
-
-        const accessToken = runContext.context.githubAccessToken as string | undefined;
-        if (!accessToken) {
-            throw new Error("GitHub access token not found in context.");
-        }
+        const { githubKBConfig, githubAccessToken } = runContext.context;
 
         // Validate that the repository is in the configured list
         if (!githubKBConfig.repositoryNames.includes(repository)) {
@@ -64,7 +60,7 @@ You can optionally provide high-level context about what you're looking for in t
             };
         }
 
-        const client = createGitHubClient(accessToken);
+        const client = createGitHubClient(githubAccessToken);
         const { owner, repo } = parseRepoFullName(repository);
 
         const requestParams = {
@@ -258,6 +254,20 @@ You can optionally provide high-level context about what you're looking for in t
                 page: prDiff.pagination.page,
                 hasMore: prDiff.pagination.hasMore,
                 summaryLength: summary.length,
+            });
+
+            // Track the action
+            const fileCount = prDiff.filesChanged.length;
+            const additions = isPaginated ? pageAdditions : prDiff.additions;
+            const deletions = isPaginated ? pageDeletions : prDiff.deletions;
+            runContext.context.trackAction({
+                action: 'Summarized GitHub PR diff',
+                integration: IntegrationType.GITHUB,
+                target: `${owner}/${repo}`,
+                details: `Summarized PR #${prDiff.number}: ${fileCount} file(s) changed, ${additions}+/${deletions}- lines`,
+                url: prDiff.htmlUrl,
+                type: RunHistoryActionType.read,
+                isReadOnly: true,
             });
 
             return response;
