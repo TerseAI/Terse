@@ -114,15 +114,24 @@
     "inputs": [
       {
         "config": {
-          "configType": "github",
+          "configType": "time_trigger",
+          "integrationType": "cron_job",
+          "cronExpression": "0 9 * * *"
+        }
+      }
+    ],
+    "knowledgeBases": [
+      {
+        "config": {
+          "configType": "github_kb",
           "integrationType": "github"
         }
       }
     ],
     "output": {
       "config": {
-        "configType": "notion_page",
-        "integrationType": "notion"
+        "configType": "slack_output",
+        "integrationType": "slack"
       }
     },
     "requireApproval": false,
