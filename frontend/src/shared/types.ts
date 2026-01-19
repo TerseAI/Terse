@@ -88,6 +88,24 @@ export type PosthogProjectsResponse = {
   projects: PosthogProject[];
 };
 
+export type LaunchDarklyProject = {
+  key: string;
+  name: string;
+};
+
+export type LaunchDarklyProjectsResponse = {
+  projects: LaunchDarklyProject[];
+};
+
+export type LaunchDarklyEnvironment = {
+  key: string;
+  name: string;
+};
+
+export type LaunchDarklyEnvironmentsResponse = {
+  environments: LaunchDarklyEnvironment[];
+};
+
 export type DatadogIndex = {
   id: string;
   name: string;

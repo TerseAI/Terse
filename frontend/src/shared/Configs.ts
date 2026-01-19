@@ -17,6 +17,7 @@ export enum ConfigType {
     POSTHOG = "POSTHOG",
     DATADOG = "DATADOG",
     TIME_TRIGGER = 'time_trigger',
+    LAUNCHDARKLY = 'launchdarkly',
 }
 
 // MARK: Config Metadata
@@ -175,6 +176,15 @@ export const GitHubKBConfigMetadata = {
     isKnowledgeBase: true,
 } as const satisfies ConfigDetails;
 
+export const LaunchDarklyConfigMetadata = {
+    configType: ConfigType.LAUNCHDARKLY,
+    name: 'LaunchDarkly',
+    description: 'Query feature flags',
+    isInput: false,
+    isOutput: false,
+    isKnowledgeBase: true,
+} as const satisfies ConfigDetails;
+
 export type ConfigDetailsMap = Record<ConfigType, ConfigDetails>;
 
 export const CONFIG_DETAILS: ConfigDetailsMap = {
@@ -194,6 +204,7 @@ export const CONFIG_DETAILS: ConfigDetailsMap = {
     [ConfigType.POSTHOG]: PosthogConfigMetadata,
     [ConfigType.DATADOG]: DatadogConfigMetadata,
     [ConfigType.TIME_TRIGGER]: TimeTriggerConfigMetadata,
+    [ConfigType.LAUNCHDARKLY]: LaunchDarklyConfigMetadata,
 } as const satisfies ConfigDetailsMap;
 
 export interface ConfigInstance {
@@ -634,6 +645,32 @@ export class GitHubKBConfig implements ConfigInstance {
     }
 }
 
+export class LaunchDarklyConfig implements ConfigInstance {
+    integrationType: IntegrationType = IntegrationType.LAUNCHDARKLY;
+    configType: ConfigType = ConfigType.LAUNCHDARKLY;
+
+    constructor(
+        public integrationId: string,
+        public projectKey: string,
+        public environmentKeys: string[], // ["production", "staging"]
+    ) {}
+
+    isComplete(): boolean {
+        return !!(this.projectKey && this.environmentKeys.length > 0);
+    }
+
+    formatForAgent(): string {
+        const parts = [`Type: LaunchDarkly`, `Integration ID: ${this.integrationId}`];
+        if (this.projectKey) {
+            parts.push(`Project Key: ${this.projectKey}`);
+        }
+        if (this.environmentKeys.length > 0) {
+            parts.push(`Environments: ${this.environmentKeys.join(', ')}`);
+        }
+        return parts.join('\n');
+    }
+}
+
 // To be studied Later!!
 type EnsureExhaustiveMetadata<T extends Record<ConfigType, new (...args: any[]) => ConfigInstance>> = T;
 
@@ -654,6 +691,7 @@ export type ConfigMetadataMap = EnsureExhaustiveMetadata<{
     [ConfigType.POSTHOG]: typeof PosthogConfig;
     [ConfigType.DATADOG]: typeof DatadogConfig;
     [ConfigType.TIME_TRIGGER]: typeof TimeTriggerConfig;
+    [ConfigType.LAUNCHDARKLY]: typeof LaunchDarklyConfig;
 }>;
 
 export const CONFIG_METADATA: ConfigMetadataMap = {
@@ -673,4 +711,5 @@ export const CONFIG_METADATA: ConfigMetadataMap = {
     [ConfigType.POSTHOG]: PosthogConfig,
     [ConfigType.DATADOG]: DatadogConfig,
     [ConfigType.TIME_TRIGGER]: TimeTriggerConfig,
+    [ConfigType.LAUNCHDARKLY]: LaunchDarklyConfig,
 } as const satisfies ConfigMetadataMap;

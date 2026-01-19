@@ -96,3 +96,7 @@ export function CalendarClockIcon() {
         </svg>
     );
 }
+
+export function LaunchDarklyIcon() {
+    return <img src="/launchdarkly.jpeg" alt="LaunchDarkly" className="w-full h-full object-contain" />;
+}

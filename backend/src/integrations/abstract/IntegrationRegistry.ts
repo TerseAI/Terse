@@ -9,6 +9,7 @@ import { SlackIntegrationManager } from "../SlackIntegration";
 import { FormIntegrationInstallation, Integration, OAuthIntegrationInstallation } from "./Integration";
 import { IntegrationInstance, IntegrationDetails, IntegrationType } from "../../shared/Integrations";
 import { PosthogIntegrationManager } from "../PosthogIntegration";
+import { LaunchDarklyIntegrationManager } from "../LaunchDarklyIntegration";
 import { DatadogIntegrationManager } from "../DatadogIntegration";
 
 
@@ -34,5 +35,6 @@ export const INTEGRATION_REGISTRY: Array<IntegrationWithInstallation> = [
     new NotionIntegrationManager(),
     new SlackIntegrationManager(),
     new PosthogIntegrationManager(),
+    new LaunchDarklyIntegrationManager(),
     new DatadogIntegrationManager()
 ]

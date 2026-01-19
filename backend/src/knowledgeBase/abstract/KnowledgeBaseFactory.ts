@@ -4,6 +4,7 @@ import { Session } from "../../server";
 import { ConfigInstance } from "../../shared/Configs";
 import { PosthogKnowledgeBase } from "../posthog/PosthogKnowledgeBase";
 import { GitHubKnowledgeBase } from "../github/GitHubKnowledgeBase";
+import { LaunchDarklyKnowledgeBase } from "../launchdarkly/LaunchDarklyKnowledgeBase";
 import { DatadogKnowledgeBase } from "../datadog/DatadogKnowledgeBase";
 
 /**
@@ -15,6 +16,7 @@ export class KnowledgeBaseFactory {
     public static readonly KNOWLEDGE_BASE_REGISTRY: Map<KnowledgeBaseConfigType, () => KnowledgeBase<Session, ConfigInstance>> = new Map<KnowledgeBaseConfigType, () => KnowledgeBase<Session, ConfigInstance>>([
         [KnowledgeBaseConfigType.POSTHOG, () => new PosthogKnowledgeBase()],
         [KnowledgeBaseConfigType.GITHUB, () => new GitHubKnowledgeBase()],
+        [KnowledgeBaseConfigType.LAUNCHDARKLY, () => new LaunchDarklyKnowledgeBase()],
         [KnowledgeBaseConfigType.DATADOG, () => new DatadogKnowledgeBase()],
     ]);
 

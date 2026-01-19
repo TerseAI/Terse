@@ -33,6 +33,10 @@ export const posthogIntegrationsKey = (): readonly [string] => {
     return ['posthogIntegrations'] as const;
 };
 
+export const launchdarklyIntegrationsKey = (): readonly [string] => {
+    return ['launchdarklyIntegrations'] as const;
+};
+
 export const datadogIntegrationsKey = (): readonly [string] => {
     return ['datadogIntegrations'] as const;
 };
