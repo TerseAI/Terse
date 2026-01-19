@@ -105,9 +105,8 @@ export class LaunchDarklyIntegrationManager implements Integration<LaunchDarklyI
                 },
             });
 
-            // 200 (success) or 403 (valid token but insufficient permissions) both indicate valid authentication
-            // Only 401 indicates invalid token
-            if (validationResponse.status === 401) {
+            // Reject all non-2xx responses
+            if (!validationResponse.ok) {
                 const errorText = await validationResponse.text();
                 logger.error('LaunchDarkly API key validation failed', { 
                     userId,
@@ -116,15 +115,15 @@ export class LaunchDarklyIntegrationManager implements Integration<LaunchDarklyI
                 });
                 return {
                     success: false,
-                    error: 'Invalid API key',
+                    error: validationResponse.status === 401 ? 'Invalid API key' : 'API key validation failed',
                     statusCode: 400,
                     data: {
-                        details: 'Authentication failed'
+                        details: validationResponse.status === 401 ? 'Authentication failed' : `API returned status ${validationResponse.status}`
                     },
                 };
             }
 
-            // Token is valid (200 or 403)
+            // Token is valid (200)
             // Try to get token name from /api/v2/tokens endpoint
             let tokenName: string | null = null;
             try {
