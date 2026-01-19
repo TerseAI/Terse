@@ -90,6 +90,263 @@ pnpm exec prisma studio
 - **Integration**: A connected third-party service (Slack, Notion, GitHub, etc.)
 - **Input**: Event source that triggers the agent (e.g., Slack message, GitHub PR)
 - **Output**: Destination where the agent writes (e.g., Notion database, Linear)
+- **Knowledge Base**: A data source that agents can query for context (e.g., PostHog, GitHub, LaunchDarkly)
+
+## Integration Setup Guide
+
+This guide covers the complete process of adding a new integration to Terse. **Follow this checklist in order** to avoid missing critical steps.
+
+### Planning Stage (CRITICAL - Do This First)
+
+Before writing any code, complete these planning steps:
+
+1. **Study Existing Patterns**
+   - Find a similar integration (e.g., PostHog for knowledge bases, GitHub for knowledge bases, Slack for OAuth)
+   - Review the integration manager implementation
+   - Review the knowledge base implementation (if applicable)
+   - Review the frontend components
+   - **Understand the pattern before deviating**
+
+2. **API Research**
+   - Document authentication method (API key, OAuth, etc.)
+   - Identify validation endpoint (e.g., `/api/v2/members/me` for LaunchDarkly)
+   - List required API endpoints
+   - Note any special headers or authentication formats
+   - **Identify endpoints for fetching selectable options** (e.g., projects, environments, workspaces) - users should never have to manually type IDs or keys
+   - **Identify what human-readable information is available** (e.g., token names, workspace names, project names) - avoid showing IDs to users
+
+3. **Database Schema Planning**
+   - Identify required Prisma models:
+     - `{integration}_integrations` table (for storing credentials)
+     - `automation_{integration}_configs` table (if knowledge base or input/output)
+   - Determine which enums need updating:
+     - `IntegrationType` enum
+     - `KnowledgeBaseConfigType` enum (if knowledge base)
+     - `InputConfigType` enum (if input)
+     - `OutputConfigType` enum (if output)
+
+4. **Shared Types Planning**
+   - Plan `IntegrationType` addition in `shared/Integrations.ts`
+   - Plan `ConfigType` addition in `shared/Configs.ts`
+   - Design the `Config` class (extends `ConfigInstance`)
+   - Plan integration metadata object
+
+5. **Type Converter Planning**
+   - **ALL 4 integration type converters** in `backend/src/utility/typeConverters.ts`:
+     - `convertIntegrationTypeToPrismaIntegrationType()`
+     - `convertPrismaIntegrationTypeToIntegrationType()`
+     - `convertIntegrationTypeToPrismaIntegrationTypeForRunHistory()`
+     - `convertPrismaIntegrationTypeToIntegrationTypeFromRunHistory()`
+   - If knowledge base: `convertConfigTypeToKnowledgeBaseConfigType()`
+   - If knowledge base: `convertPrismaKnowledgeBaseConfigToConfigInstance()`
+   - If input: `convertPrismaConfigToConfigInstance()` (add case)
+   - If output: `convertPrismaOutputConfigToConfigInstance()` (add case)
+
+6. **Frontend Planning**
+   - Integration card component (or return `null` if not needed)
+   - Knowledge base selector component (if knowledge base)
+   - SWR hook for fetching integrations
+   - Invalidation key function
+   - Icon component (SVG or image)
+   - ConfigUtils deserialization case
+
+### Execution Checklist
+
+Execute these steps **in order**, running builds after each major section:
+
+#### 1. Database Schema (`backend/prisma/schema.prisma`)
+
+- [ ] Add `{integration}_integrations` model (if storing credentials)
+- [ ] Add `automation_{integration}_configs` model (if knowledge base/input/output)
+- [ ] Add to `IntegrationType` enum
+- [ ] Add to `KnowledgeBaseConfigType` enum (if knowledge base)
+- [ ] Add relations to `users` model (if integration table)
+- [ ] Add relations to `automation_knowledge_bases` model (if knowledge base config)
+- [ ] Run `pnpm exec prisma generate` from `/backend`
+- [ ] Run `pnpm exec prisma migrate dev --name add_{integration}_integration`
+
+#### 2. Shared Types (`shared/`)
+
+- [ ] Add to `IntegrationType` enum in `shared/Integrations.ts`
+- [ ] Add integration metadata object in `shared/Integrations.ts`
+- [ ] Update `INTEGRATION_METADATA` map
+- [ ] Update `IntegrationInstallationOptions` type
+- [ ] Add integration interface (if needed)
+- [ ] Add to `ConfigType` enum in `shared/Configs.ts`
+- [ ] Add config metadata object in `shared/Configs.ts`
+- [ ] Update `CONFIG_DETAILS` map
+- [ ] Create `{Integration}Config` class extending `ConfigInstance`
+- [ ] Update `CONFIG_METADATA` map
+- [ ] **Run `node scripts/copy-shared.js` from root** (CRITICAL - don't skip!)
+
+#### 3. Backend Integration Manager (`backend/src/integrations/`)
+
+- [ ] Create `{Integration}Integration.ts` file
+- [ ] Implement `Integration` interface
+- [ ] Implement `FormIntegrationInstallation` or `OAuthIntegrationInstallation` interface
+- [ ] Implement `getInstancesForUser()`
+- [ ] Implement `getAllActiveInstances()`
+- [ ] Implement `processFormSubmission()` or OAuth handlers
+- [ ] Implement `deleteInstallation()`
+- [ ] Add to `IntegrationRegistry.ts`
+
+#### 4. Backend Knowledge Base (if applicable) (`backend/src/knowledgeBase/`)
+
+- [ ] Create `{integration}/` directory
+- [ ] Create `{Integration}KnowledgeBase.ts` extending `KnowledgeBase`
+- [ ] Define session interface extending `Session`
+- [ ] Register tools in constructor
+- [ ] Implement `createSessionFromConfig()`
+- [ ] Implement `validateConfig()`
+- [ ] Implement `addKnowledgeBaseToChannel()`
+- [ ] Implement `getSystemInstructions()`
+  - **Avoid repetition**: Tool descriptions are already available to the LLM, so don't duplicate them in system instructions
+  - System instructions should focus on workflow, strategy, and best practices—not re-describe what tools do
+  - Keep system instructions concise (~15-20 lines) focusing on when to use which tool and how
+- [ ] Create tool files in `tools/` directory
+- [ ] Each tool must call `runContext.context.trackAction()` on success
+- [ ] Add to `KnowledgeBaseFactory.ts` registry
+
+#### 5. Backend Routes (`backend/src/routes/`)
+
+- [ ] Create `{integration}.ts` route file (if needed)
+- [ ] Implement GET endpoint for fetching integrations
+- [ ] Implement POST endpoint for creating/updating integration
+- [ ] Register routes in `server.ts`
+
+#### 6. Backend Type Converters (`backend/src/utility/typeConverters.ts`)
+
+**CRITICAL: This is the most commonly missed step!**
+
+- [ ] Import new `Config` class at top
+- [ ] Add case to `convertIntegrationTypeToPrismaIntegrationType()`
+- [ ] Add case to `convertPrismaIntegrationTypeToIntegrationType()`
+- [ ] Add case to `convertIntegrationTypeToPrismaIntegrationTypeForRunHistory()`
+- [ ] Add case to `convertPrismaIntegrationTypeToIntegrationTypeFromRunHistory()`
+- [ ] If knowledge base: Add case to `convertConfigTypeToKnowledgeBaseConfigType()`
+- [ ] If knowledge base: Add case to `convertPrismaKnowledgeBaseConfigToConfigInstance()`
+- [ ] If input: Add case to `convertPrismaConfigToConfigInstance()`
+- [ ] If output: Add case to `convertPrismaOutputConfigToConfigInstance()`
+
+#### 7. Backend Prisma Types (`backend/src/types/prisma.ts`)
+
+- [ ] If knowledge base: Add `{integration}_config: true;` to `ChannelKnowledgeBaseWithConfigs` include object
+
+#### 7b. Backend Prisma Includes (`backend/src/utility/prismaIncludes.ts`)
+
+- [ ] **CRITICAL: If knowledge base**, add `{integration}_config: true;` to `getKnowledgeBaseConfigInclude()` function
+  - This ensures the config relation is included when fetching channels
+  - Without this, `convertPrismaKnowledgeBaseConfigToConfigInstance` will throw "Unsupported knowledge base config type" errors
+
+#### 8. Frontend Services (`frontend/src/services/backend.tsx`)
+
+- [ ] Add integration type import
+- [ ] Add `get{Integration}Integrations()` method to interface and implementation
+- [ ] Add `createOrUpdate{Integration}Integration()` method (if form-based)
+
+#### 9. Frontend Hooks (`frontend/src/hooks/api/`)
+
+- [ ] Create `use{Integration}Integrations.ts` hook
+- [ ] Use SWR pattern with invalidation key
+- [ ] Follow pattern from `usePosthogIntegrations.ts` or similar
+
+#### 10. Frontend Invalidation Keys (`frontend/src/shared/InvalidationKeys.ts`)
+
+- [ ] Add `{integration}IntegrationsKey()` function
+- [ ] Follow pattern: `return ['{integration}Integrations'] as const;`
+
+#### 11. Frontend Components
+
+- [ ] **Integration Card** (`frontend/src/components/Integrations/IntegrationCard.tsx`):
+  - Add case to switch statement
+  - Return component or `null` if not needed
+- [ ] **Integration Card Component** (`frontend/src/components/Integrations/{Integration}IntegrationCard.tsx`):
+  - Create dedicated integration card component (if needed)
+  - Follow pattern from `PosthogIntegrationCard.tsx` or similar
+  - Include form for connecting/updating API key (if form-based auth)
+  - Display list of connected integrations
+  - **Show human-readable names** (e.g., token names, workspace names) - never show IDs to users
+  - Show loading states with skeletons
+  - Handle errors appropriately
+  - Use appropriate icon (from lucide-react or custom)
+  - Add tooltip with link to API keys page (if applicable)
+  - Import and use in `IntegrationCard.tsx`
+- [ ] **Knowledge Base Selector** (`frontend/src/pages/Channels/components/KnowledgeBaseSelector.tsx`):
+  - Add case for new config type
+  - Render knowledge base integration component
+- [ ] **Knowledge Base Integration Component** (`frontend/src/pages/Channels/components/`):
+  - Create component for configuring knowledge base
+  - Handle API key input (if form-based)
+  - **Query API for selectable options** (e.g., projects, environments, workspaces) - use Select dropdowns instead of text inputs
+  - **Never expect users to know IDs or keys** - fetch them from the API and present as selectable options
+  - Handle config fields with Select components populated from API responses
+  - Call `setConfig()` when fields change
+
+#### 12. Frontend Config Utils (`frontend/src/utility/ConfigUtils.ts`)
+
+**CRITICAL: This is commonly missed!**
+
+- [ ] Import new `Config` class
+- [ ] Add case to `deserializeConfig()` switch statement
+- [ ] Instantiate config class with proper parameters
+
+#### 13. Frontend Icons (`frontend/src/components/icons/IntegrationIcons.tsx`)
+
+- [ ] Add icon component (SVG or image)
+- [ ] Update `IconForConfigType` switch (if knowledge base)
+- [ ] Update `IconForIntegration` switch
+- [ ] If using image, ensure file exists in `public/` directory
+
+#### 14. Frontend Integration Mapping (`frontend/src/pages/Channels/components/Integration.tsx`)
+
+- [ ] Add case to `IconForConfigType` switch
+- [ ] Add case to `IconForIntegration` switch
+
+### Verification Steps
+
+After completing all steps, **always run these verification commands**:
+
+```bash
+# 1. Copy shared types (if you modified shared/)
+node scripts/copy-shared.js
+
+# 2. Generate Prisma client (if you modified schema)
+cd backend && pnpm exec prisma generate
+
+# 3. Build backend
+cd backend && pnpm run build
+
+# 4. Build frontend
+cd frontend && pnpm run build
+```
+
+**Do not skip the build steps!** They catch type errors that would otherwise cause runtime failures.
+
+### Common Mistakes to Avoid
+
+1. ❌ **Forgetting type converters** - All 4 integration type converters + knowledge base converters must be updated
+2. ❌ **Skipping `copy-shared.js`** - Shared types must be copied after modification
+3. ❌ **Skipping Prisma generate** - Prisma client must be regenerated after schema changes
+4. ❌ **Missing ConfigUtils deserialization** - Frontend needs to deserialize configs from JSON
+5. ❌ **Missing IntegrationCard case** - Even if returning `null`, the case must exist
+6. ❌ **Missing Integration Card Component** - For form-based integrations (API key auth), create a dedicated integration card component following the `PosthogIntegrationCard.tsx` pattern. Include form handling, loading states, error handling, and integration display.
+7. ❌ **Missing invalidation key** - SWR hooks need invalidation keys
+8. ❌ **Not running builds** - Always build both frontend and backend to catch errors
+9. ❌ **Missing Prisma types update** - `ChannelKnowledgeBaseWithConfigs` must include new config type
+10. ❌ **Not calling `trackAction`** - All knowledge base tools must track successful runs
+11. ❌ **Not following existing patterns** - Study PostHog/GitHub implementations first
+12. ❌ **Expecting users to type IDs or keys** - Always query the API and present selectable options (e.g., projects, environments) in Select dropdowns instead of text inputs
+13. ❌ **Showing IDs to users** - Always show human-readable names (token names, workspace names, project names) instead of integration IDs or database IDs
+14. ❌ **Missing Prisma config include** - For knowledge bases, must add `{integration}_config: true` to `getKnowledgeBaseConfigInclude()` in `prismaIncludes.ts`, otherwise channels will fail to load with "Unsupported knowledge base config type" errors
+
+### Key Reminders
+
+- **Tool descriptions should be concise** - Single-line descriptions for agent tools
+- **Avoid repetition between tools and system prompts** - Tool descriptions are already available to the LLM, so system instructions should focus on workflow/strategy, not re-describe tools
+- **Always call `trackAction`** - Every successful tool execution must be tracked
+- **Create session-specific types** - Knowledge bases need custom session interfaces (e.g., `LaunchDarklyKnowledgeBaseSession`)
+- **Icons can be images** - Use JPEG/PNG in `public/` if SVG isn't available
+- **Type safety is critical** - TypeScript exhaustive checks will catch missing cases
 ## Code Style Guidelines
 
 ### General

@@ -22,8 +22,9 @@ import {
     PosthogConfig,
     ConfigType,
     GitHubKBConfig,
+    TimeTriggerConfig,
+    LaunchDarklyConfig,
     DatadogConfig,
-    TimeTriggerConfig
 } from "../shared/Configs";
 
 export const convertIntegrationTypeToPrismaIntegrationType = (integrationType: IntegrationType): PrismaIntegrationType => {
@@ -48,6 +49,8 @@ export const convertIntegrationTypeToPrismaIntegrationType = (integrationType: I
             return PrismaIntegrationType.POSTHOG;
         case IntegrationType.CRON_JOB:
             return PrismaIntegrationType.CRON_JOB;
+        case IntegrationType.LAUNCHDARKLY:
+            return PrismaIntegrationType.LAUNCHDARKLY;
         case IntegrationType.DATADOG:
             return PrismaIntegrationType.DATADOG;
         default:
@@ -81,6 +84,8 @@ export const convertPrismaIntegrationTypeToIntegrationType = (prismaIntegrationT
             return IntegrationType.POSTHOG;
         case PrismaIntegrationType.CRON_JOB:
             return IntegrationType.CRON_JOB;
+        case PrismaIntegrationType.LAUNCHDARKLY:
+            return IntegrationType.LAUNCHDARKLY;
         case PrismaIntegrationType.DATADOG:
             return IntegrationType.DATADOG;
         default:
@@ -114,6 +119,8 @@ export const convertIntegrationTypeToPrismaIntegrationTypeForRunHistory = (integ
             return PrismaIntegrationType.POSTHOG;
         case IntegrationType.CRON_JOB:
             return PrismaIntegrationType.CRON_JOB;
+        case IntegrationType.LAUNCHDARKLY:
+            return PrismaIntegrationType.LAUNCHDARKLY;
         case IntegrationType.DATADOG:
             return PrismaIntegrationType.DATADOG;
         default:
@@ -148,6 +155,8 @@ export const convertPrismaIntegrationTypeToIntegrationTypeFromRunHistory = (pris
             return IntegrationType.POSTHOG;
         case PrismaIntegrationType.CRON_JOB:
             return IntegrationType.CRON_JOB;
+        case PrismaIntegrationType.LAUNCHDARKLY:
+            return IntegrationType.LAUNCHDARKLY;
         case PrismaIntegrationType.DATADOG:
             return IntegrationType.DATADOG;
         default:
@@ -363,6 +372,9 @@ export const convertConfigTypeToInputConfigType = (configType: ConfigType): Inpu
         case ConfigType.GITHUB_KB:
             // GitHub KB is a knowledge base config type, not an input config type
             throw new Error('GITHUB_KB is a knowledge base type, not an input type');
+        case ConfigType.LAUNCHDARKLY:
+            // LaunchDarkly is a knowledge base config type, not an input config type
+            throw new Error('LAUNCHDARKLY is a knowledge base type, not an input type');
         case ConfigType.SLACK_OUTPUT:
             // SLACK_OUTPUT is an output config type, not an input config type
             throw new Error('SLACK_OUTPUT is an output type, not an input type');
@@ -447,16 +459,14 @@ export const convertOutputConfigTypeToIntegrationType = (outputConfigType: Outpu
     }
 }
 
-/**
- * Converts ConfigType to KnowledgeBaseConfigType.
- * Supported knowledge base config types: POSTHOG, GITHUB_KB, DATADOG.
- */
 export const convertConfigTypeToKnowledgeBaseConfigType = (configType: ConfigType): KnowledgeBaseConfigType => {
     switch (configType) {
         case ConfigType.POSTHOG:
             return KnowledgeBaseConfigType.POSTHOG;
         case ConfigType.GITHUB_KB:
             return KnowledgeBaseConfigType.GITHUB;
+        case ConfigType.LAUNCHDARKLY:
+            return KnowledgeBaseConfigType.LAUNCHDARKLY;
         case ConfigType.DATADOG:
             return KnowledgeBaseConfigType.DATADOG;
         default:
@@ -489,6 +499,18 @@ export const convertPrismaKnowledgeBaseConfigToConfigInstance = (channelKnowledg
             integrationId,
             channelKnowledgeBase.github_kb_config.repository_ids || [],
             channelKnowledgeBase.github_kb_config.repository_names || []
+        );
+    }
+
+    if (channelKnowledgeBase.launchdarkly_config) {
+        const launchdarklyIntegration = channelKnowledgeBase.launchdarkly_config;
+        if (!launchdarklyIntegration.project_key) {
+            throw new Error('LaunchDarkly config requires project_key');
+        }
+        return new LaunchDarklyConfig(
+            integrationId,
+            launchdarklyIntegration.project_key,
+            launchdarklyIntegration.environment_keys || []
         );
     }
 

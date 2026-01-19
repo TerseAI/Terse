@@ -1,4 +1,4 @@
-import { ConfigInstance, ConfigType, GmailConfig, FigmaConfig, SlackConfig, SlackOutputConfig, NotionConfig, NotionPageConfig, LinearInputConfig, LinearOutputConfig, GitHubConfig, JiraConfig, ConfluenceConfig, PosthogConfig, TimeTriggerConfig, GitHubKBConfig, DatadogConfig } from '@/shared/Configs';
+import { ConfigInstance, ConfigType, GmailConfig, FigmaConfig, SlackConfig, SlackOutputConfig, NotionConfig, NotionPageConfig, LinearInputConfig, LinearOutputConfig, GitHubConfig, JiraConfig, ConfluenceConfig, PosthogConfig, TimeTriggerConfig, GitHubKBConfig, LaunchDarklyConfig, DatadogConfig } from '@/shared/Configs';
 
 
 /**
@@ -114,6 +114,12 @@ export function deserializeConfig(jsonConfig: any): ConfigInstance {
                 integrationId,
                 jsonConfig.channelId,
                 jsonConfig.channelName
+            );
+        case ConfigType.LAUNCHDARKLY:
+            return new LaunchDarklyConfig(
+                integrationId,
+                jsonConfig.projectKey || '',
+                jsonConfig.environmentKeys || []
             );
         case ConfigType.DATADOG:
             return new DatadogConfig(

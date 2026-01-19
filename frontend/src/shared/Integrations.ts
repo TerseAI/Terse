@@ -11,6 +11,7 @@ export enum IntegrationType {
     POSTHOG = 'posthog',
     DATADOG = 'datadog',
     CRON_JOB = 'cron_job',
+    LAUNCHDARKLY = 'launchdarkly',
 }
 
 // MARK: Integration Metadata
@@ -123,6 +124,15 @@ export const CronJobIntegrationMetadata = {
     isKnowledgeBase: false,
 } as const satisfies IntegrationDetails;
 
+export const LaunchDarklyIntegrationMetadata = {
+    type: IntegrationType.LAUNCHDARKLY,
+    name: 'LaunchDarkly',
+    description: 'Track feature flags',
+    isInput: false,
+    isOutput: false,
+    isKnowledgeBase: true,
+} as const satisfies IntegrationDetails;
+
 export type IntegrationMetadataMap = Record<IntegrationType, IntegrationDetails>; // Allow indexing with any IntegrationType
 
 export const INTEGRATION_METADATA: IntegrationMetadataMap = {
@@ -137,6 +147,7 @@ export const INTEGRATION_METADATA: IntegrationMetadataMap = {
     [IntegrationType.POSTHOG]: PosthogIntegrationMetadata,
     [IntegrationType.DATADOG]: DatadogIntegrationMetadata,
     [IntegrationType.CRON_JOB]: CronJobIntegrationMetadata,
+    [IntegrationType.LAUNCHDARKLY]: LaunchDarklyIntegrationMetadata,
 } as const satisfies IntegrationMetadataMap;
 
 // MARK: Integration Details
@@ -167,6 +178,7 @@ export type IntegrationInstallationOptions = EnsureExhaustiveInstallationOptions
     [IntegrationType.POSTHOG]: NoInstallationOptions;
     [IntegrationType.DATADOG]: NoInstallationOptions;
     [IntegrationType.CRON_JOB]: NoInstallationOptions;
+    [IntegrationType.LAUNCHDARKLY]: NoInstallationOptions;
 }> 
 
 export type InstallationOptionsFor<T extends IntegrationType> = IntegrationInstallationOptions[T];
@@ -225,6 +237,11 @@ export interface PosthogIntegration extends IntegrationInstance {
     orgName: string | null;
 };
 
+export interface LaunchDarklyIntegration extends IntegrationInstance {
+    id: string;
+    email: string | null;
+    tokenName: string | null;
+};
 export interface DatadogIntegration extends IntegrationInstance {
     id: string;
     region: string;

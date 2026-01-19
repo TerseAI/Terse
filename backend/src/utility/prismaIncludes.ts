@@ -42,6 +42,7 @@ export function getKnowledgeBaseConfigInclude() {
     return {
         posthog_config: true,
         github_kb_config: true,
+        launchdarkly_config: true,
         datadog_config: true,
     } as const;
 }
