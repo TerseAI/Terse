@@ -431,7 +431,7 @@ export class ChannelAgent<
         const fullSystemPrompt = await builder.build();
 
         this.agent = new Agent<SessionWithTracking<T & K>, AgentOutputType>({
-            name: 'Living Document Automator',
+            name: 'Automation Agent',
             instructions: fullSystemPrompt,
             model: this.chooseModel(),
             tools: this.tools,

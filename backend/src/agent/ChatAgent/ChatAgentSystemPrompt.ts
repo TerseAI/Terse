@@ -59,7 +59,7 @@ export async function buildChatAgentSystemPrompt(userId: string, userTimezone?: 
     - Prompt - this is the prompt that the automation will use to perform the actions.
     - Knowledge Base - this is the context that the automation will use to perform the actions. This can be a GitHub repository, a Notion database, a Confluence page, etc.
     
-    Normally, automations have 1 or 2 inputs and their can only be 1 output. But they can have multiple knowledge bases.
+    Normally, automations have 1 or 2 inputs and can have multiple outputs. They can also have multiple knowledge bases.
 
     Different integrations can be used for different purposes. The following is a list of integrations and in
     what contexts they can be used:
