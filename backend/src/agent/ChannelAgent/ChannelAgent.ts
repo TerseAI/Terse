@@ -43,8 +43,8 @@ export class ChannelAgent<
     private knowledgeBases: KnowledgeBase<Session, KBConfig>[];
     private knowledgeBaseChannelConfigs: ChannelKnowledgeBaseWithConfigs[];
     private knowledgeBaseSessions: Session[] = [];
-    private agent?: Agent<SessionWithTracking<Session>, AgentOutputType>;
-    private tools: Tool<SessionWithTracking<Session>>[] = [];
+    private agent?: Agent<ChannelAgentSession, AgentOutputType>;
+    private tools: Tool<ChannelAgentSession>[] = [];
     private runContext: RunContext;
     private toolMetadataMap: Map<string, ToolMetadata> = new Map();
     private pendingActions: RunHistoryAction[] = [];
@@ -102,7 +102,7 @@ export class ChannelAgent<
         this.notificationManager = new NotificationManager(this.user, channel);
     }
 
-    async run(streamingParams?: RunHistoryStreamingParams): Promise<ApprovalResult<SessionWithTracking<Session>, Agent<SessionWithTracking<Session>, AgentOutputType>>> {
+    async run(streamingParams?: RunHistoryStreamingParams): Promise<ApprovalResult<ChannelAgentSession, Agent<ChannelAgentSession, AgentOutputType>>> {
         if (!this.inputEvent) {
             throw new Error("No input event set. Call setInputEvent() before run()");
         }
@@ -141,7 +141,7 @@ export class ChannelAgent<
         return await this.buildResult(result, streamingParams);
     }
 
-    async userMessageRun(userMessage: string, streamingParams?: RunHistoryStreamingParams): Promise<ApprovalResult<SessionWithTracking<Session>, Agent<SessionWithTracking<Session>, AgentOutputType>>> {
+    async userMessageRun(userMessage: string, streamingParams?: RunHistoryStreamingParams): Promise<ApprovalResult<ChannelAgentSession, Agent<ChannelAgentSession, AgentOutputType>>> {
         await this.initializeAgent();
 
         if (!this.agent) {
@@ -181,7 +181,7 @@ export class ChannelAgent<
         streamingParams?: RunHistoryStreamingParams,
         rejectionReason?: string,
         hardReject?: boolean
-    ): Promise<ApprovalResult<SessionWithTracking<Session>, Agent<SessionWithTracking<Session>, AgentOutputType>>> {
+    ): Promise<ApprovalResult<ChannelAgentSession, Agent<ChannelAgentSession, AgentOutputType>>> {
         await this.initializeAgent();
 
         if (!this.agent) {
@@ -200,7 +200,7 @@ export class ChannelAgent<
         }
 
         // Deserialize the state first
-        const state = await RunState.fromString<SessionWithTracking<Session>, Agent<SessionWithTracking<Session>, AgentOutputType>>(this.agent, pendingState.serializedState);
+        const state = await RunState.fromString<ChannelAgentSession, Agent<ChannelAgentSession, AgentOutputType>>(this.agent, pendingState.serializedState);
 
         // Find the interruption from the stored interruptions array
         // We stored the full interruption objects, so we can use them directly
@@ -301,7 +301,7 @@ export class ChannelAgent<
 
         // Bug in the SDK where functions are not serialized properly.
         // This is a workaround to get the context to work.
-        const unifiedContext: SessionWithTracking<Session> = {
+        const unifiedContext: ChannelAgentSession = {
             ...toolContext,
             ...state._context,
         }
@@ -432,7 +432,7 @@ export class ChannelAgent<
 
         const fullSystemPrompt = await builder.build();
 
-        this.agent = new Agent<SessionWithTracking<T & K>, AgentOutputType>({
+        this.agent = new Agent<ChannelAgentSession, AgentOutputType>({
             name: 'Automation Agent',
             instructions: fullSystemPrompt,
             model: this.chooseModel(),
@@ -440,7 +440,7 @@ export class ChannelAgent<
         });
     }
 
-    private getToolContext(): SessionWithTracking<Session> {
+    private getToolContext(): ChannelAgentSession {
         // Merge all output sessions and knowledge base sessions together
         // Since sessions can be different types (GmailSession, NotionPageSession, etc.),
         // we merge them into a single Session object with all properties
@@ -453,7 +453,7 @@ export class ChannelAgent<
         );
         
         // Add tracking properties
-        const baseContext: SessionWithTracking<Session> = {
+        const baseContext: ChannelAgentSession = {
             ...mergedSessions,
             trackAction: (action: RunHistoryAction) => this.queueAction(action),
             channel: {
@@ -567,7 +567,7 @@ ${inputEvent.formatForChannelAgent()}
     private async buildResult(
         result: any,
         streamingParams?: RunHistoryStreamingParams
-    ): Promise<ApprovalResult<SessionWithTracking<Session>, Agent<SessionWithTracking<Session>, AgentOutputType>>> {
+    ): Promise<ApprovalResult<ChannelAgentSession, Agent<ChannelAgentSession, AgentOutputType>>> {
         const hasInterruptions = result.interruptions && result.interruptions.length > 0;
 
         if (hasInterruptions) {
@@ -675,6 +675,9 @@ export type SessionWithTracking<T extends Session> = T & {
         requireApproval: boolean;
     };
 }
+
+// Type alias for the common case in ChannelAgent where we merge multiple session types
+export type ChannelAgentSession = SessionWithTracking<Session>;
 
 export type ApprovalResult<T extends Session, AgentType extends Agent<T, AgentOutputType>> =
     | { status: 'completed'; result: RunResult<T, AgentType> }

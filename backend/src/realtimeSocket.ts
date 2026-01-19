@@ -187,20 +187,6 @@ export async function initializeRealtimeSocket(server: HttpServer): Promise<Serv
                 return;
             }
 
-            // Get the first output for chat (can be extended to handle multiple outputs)
-            const outputIntegration = channel.outputs[0];
-            if (!outputIntegration) {
-                logger.error(`[channel:chat:message] No output integration found for channel: ${channel.id}`, { channelId: channel.id, userId });
-                return;
-            }
-
-            // Use OutputFactory to create output based on config type (no hardcoded Notion logic)
-            const output = OutputFactory.createOutput(outputIntegration.config_type);
-            if (!output) {
-                logger.error(`[channel:chat:message] Output type ${outputIntegration.config_type} is not supported for channel: ${channel.id}`, { configType: outputIntegration.config_type, channelId: channel.id, userId });
-                return;
-            }
-
             const user = await prisma.users.findUnique({
                 where: {
                     id: userId
