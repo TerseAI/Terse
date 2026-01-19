@@ -559,6 +559,12 @@ export const convertPlainObjectToKnowledgeBaseConfigInstance = (config: any): Co
                 config.repositoryIds || [],
                 config.repositoryNames || []
             );
+        case ConfigType.LAUNCHDARKLY:
+            return new LaunchDarklyConfig(
+                config.integrationId,
+                config.projectKey,
+                config.environmentKeys || []
+            );
         default:
             throw new Error(`Unsupported knowledge base config type: ${config.configType}`);
     }
