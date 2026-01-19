@@ -245,9 +245,6 @@ export async function initializeRealtimeSocket(server: HttpServer): Promise<Serv
                 return;
             }
 
-            // Use the first output session as the primary session
-            const session = outputSessions[0];
-
             const userMessage = message.user_message;
 
             // Ensure run status is 'in_progress' so streaming works
@@ -269,7 +266,7 @@ export async function initializeRealtimeSocket(server: HttpServer): Promise<Serv
             const { knowledgeBases, channelConfigs } = createKnowledgeBases(channel.knowledge_bases || []);
 
             const runContext: RunContext = { runId };
-            const channelAgent = new ChannelAgent(session, outputs, outputSessions, outputChannelConfigs, knowledgeBases, channelConfigs, channel, runContext);
+            const channelAgent = new ChannelAgent(outputs, outputSessions, outputChannelConfigs, knowledgeBases, channelConfigs, channel, runContext);
             await channelAgent.initializeAgent();
             
             let result;

@@ -2,7 +2,6 @@ import { Plus, AlertTriangleIcon } from 'lucide-react';
 import { Button } from '../ui/button';
 import DropdownSelect from '../ui/DropdownSelect';
 import { SlackConfigurationSelector } from '../SlackChannelSelector';
-import { Checkbox } from '../ui/checkbox';
 import { IntegrationType, SlackIntegration as SlackIntegrationType } from "@/shared/Integrations"
 import { SlackConfig } from '../../shared/Configs';
 import { InputConfigSelectorProps } from './types';
@@ -48,8 +47,7 @@ export function SlackIntegration({
                 currentConfig?.channelId,
                 currentConfig?.channelName,
                 currentConfig?.listenToUserDms ?? false,
-                currentConfig?.userIds,
-                currentConfig?.acknowledgeWithEmoji ?? false
+                currentConfig?.userIds
             );
             setConfig(updatedConfig);
         }
@@ -201,8 +199,7 @@ export function SlackIntegration({
                                     hasChannel ? channelId : undefined,
                                     hasChannel ? channelName : undefined,
                                     hasChannel ? false : currentConfig?.listenToUserDms,
-                                    currentConfig?.userIds,
-                                    currentConfig?.acknowledgeWithEmoji ?? false
+                                    currentConfig?.userIds
                                 );
                                 setConfig(updatedConfig);
                             }}
@@ -212,8 +209,7 @@ export function SlackIntegration({
                                     listenToUserDms ? undefined : currentConfig?.channelId,
                                     listenToUserDms ? undefined : currentConfig?.channelName,
                                     listenToUserDms,
-                                    currentConfig?.userIds,
-                                    currentConfig?.acknowledgeWithEmoji ?? false
+                                    currentConfig?.userIds
                                 );
                                 setConfig(updatedConfig);
                             }}
@@ -223,35 +219,11 @@ export function SlackIntegration({
                                     currentConfig?.channelId,
                                     currentConfig?.channelName,
                                     currentConfig?.listenToUserDms,
-                                    userIds,
-                                    currentConfig?.acknowledgeWithEmoji ?? false
+                                    userIds
                                 );
                                 setConfig(updatedConfig);
                             }}
                         />
-                        <div className="mt-3 flex items-center space-x-2">
-                            <Checkbox
-                                id="acknowledge-with-emoji"
-                                checked={currentConfig?.acknowledgeWithEmoji ?? false}
-                                onCheckedChange={(checked) => {
-                                    const updatedConfig = new SlackConfig(
-                                        selectedIntegrationId,
-                                        currentConfig?.channelId,
-                                        currentConfig?.channelName,
-                                        currentConfig?.listenToUserDms ?? false,
-                                        currentConfig?.userIds,
-                                        checked === true
-                                    );
-                                    setConfig(updatedConfig);
-                                }}
-                            />
-                            <label
-                                htmlFor="acknowledge-with-emoji"
-                                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
-                            >
-                                Acknowledge messages with 👀 emoji
-                            </label>
-                        </div>
                     </div>
                 );
             })()}

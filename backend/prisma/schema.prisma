@@ -647,7 +647,6 @@ model automation_slack_configs {
   channel_name       String? // Channel display name (for UI, optional)
   listen_to_user_dms Boolean  @default(false) // This integration should include listening to user DMs
   user_ids           String[] // User IDs to listen to
-  acknowledge_with_emoji Boolean @default(false) // Acknowledge incoming messages with eyes emoji
 
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt

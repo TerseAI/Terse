@@ -17,7 +17,6 @@ export interface RunContext {
 }
 
 export interface SystemPromptBuilderDependencies<T extends Session, TConfig extends ConfigInstance, K extends Session, KBConfig extends ConfigInstance> {
-    session: T;
     channel: ChannelWithRelations;
     outputs: Output<Session, ConfigInstance>[];
     outputSessions: Session[];

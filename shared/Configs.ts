@@ -273,7 +273,6 @@ export class SlackConfig implements ConfigInstance {
         public channelName?: string,
         public listenToUserDms: boolean = false,
         public userIds?: string[],
-        public acknowledgeWithEmoji: boolean = false,
     ) {
     }
 

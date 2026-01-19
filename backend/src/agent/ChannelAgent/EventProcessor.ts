@@ -160,7 +160,7 @@ export class EventProcessor {
         const outputChannelConfigs: ChannelOutputWithConfigs[] = [];
 
         for (const outputIntegration of outputIntegrations) {
-            // Use OutputFactory to create output based on config type (no hardcoded Notion logic)
+            // Use OutputFactory to create output based on config type
             const output = OutputFactory.createOutput(outputIntegration.config_type);
             if (!output) {
                 return new ProcessorResult(false, `Output type ${outputIntegration.config_type} is not supported`, channel);
@@ -186,9 +186,6 @@ export class EventProcessor {
                 );
             }
         }
-
-        // Use the first output session as the primary session (for compatibility with existing code)
-        const session = outputSessions[0];
 
         // Filter the event using AI to see if it's relevant to this channel
         let filterResult;
@@ -248,7 +245,7 @@ export class EventProcessor {
 
         // Create channel agent with the sessions and outputs
         const runContext: RunContext = { runId };
-        const channelAgent = new ChannelAgent(session, outputs, outputSessions, outputChannelConfigs, knowledgeBases, channelConfigs, channel, runContext);
+        const channelAgent = new ChannelAgent(outputs, outputSessions, outputChannelConfigs, knowledgeBases, channelConfigs, channel, runContext);
         channelAgent.setInputEvent(this.inputEvent);
 
         // Run the channel agent with streaming parameters
@@ -277,7 +274,8 @@ export class EventProcessor {
 
         if (result.status === 'completed') {
             logger.info(`Channel "${channel.name}" completed:`, { finalOutput: result.result.finalOutput });
-            return persistRunResult(runId, result.result, session, channel, result);
+            const user = outputSessions[0].user;
+            return persistRunResult(runId, result.result, user, channel, result);
         } else {
             logger.info(`Channel "${channel.name}" awaiting approval:`);
             return new ProcessorResult<SessionWithTracking<Session>>(false, "Channel awaiting approval", channel, result);
@@ -288,7 +286,7 @@ export class EventProcessor {
 async function persistRunResult<T extends Session>(
     runId: string,
     result: RunResult<SessionWithTracking<T>, Agent<SessionWithTracking<T>, AgentOutputType>>,
-    session: T,
+    user: User,
     channel: Channel,
     approvalResult?: ApprovalResult<SessionWithTracking<T>, Agent<SessionWithTracking<T>, AgentOutputType>> | null
 ): Promise<ProcessorResult<SessionWithTracking<T>>> {
@@ -297,7 +295,7 @@ async function persistRunResult<T extends Session>(
     try {
         await finalizeRunStatus(runId, hasFinalOutput ? 'success' : 'failed');
         // Invalidate all run history queries for this channel when status changes
-        emitCacheInvalidationWithWildcard(session.user.id, 'runHistory', channel.id);
+        emitCacheInvalidationWithWildcard(user.id, 'runHistory', channel.id);
     } catch (e) {
         logger.error('Failed to finalize run status', { error: e, runId, channelId: channel.id });
     }
@@ -311,16 +309,16 @@ async function persistRunResult<T extends Session>(
     );
 }
 
-export async function persistRunAction<T extends Session>(
+export async function persistRunAction(
     runId: string,
     channel: Channel,
-    session: T,
+    user: User,
     action: RunHistoryAction,
 ): Promise<string | undefined> {
     try {
         const actionId = await appendRunAction(runId, action);
-        emitCacheInvalidationWithWildcard(session.user.id, 'runHistory', channel.id);
-        emitCacheInvalidationWithKey(session.user.id, 'recentActions');
+        emitCacheInvalidationWithWildcard(user.id, 'runHistory', channel.id);
+        emitCacheInvalidationWithKey(user.id, 'recentActions');
         return actionId;
     } catch (e) {
         logger.error('Failed to append run action', { error: e, runId, channelId: channel.id });

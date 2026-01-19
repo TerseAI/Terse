@@ -288,9 +288,6 @@ export class ApprovalService {
                 throw new Error(`Failed to create output sessions`);
             }
 
-            // Use the first output session as the primary session
-            const session = sessions[0];
-
             // Create knowledge bases from channel configuration
             const { knowledgeBases, channelConfigs } = this.createKnowledgeBases(channel.knowledge_bases || []);
 
@@ -315,7 +312,7 @@ export class ApprovalService {
 
             // Create channel agent and resume from pending approval
             const runContext = { runId };
-            const channelAgent = new ChannelAgent(session, outputs, sessions, outputChannelConfigs, knowledgeBases, channelConfigs, channel, runContext);
+            const channelAgent = new ChannelAgent(outputs, sessions, outputChannelConfigs, knowledgeBases, channelConfigs, channel, runContext);
             await channelAgent.initializeAgent();
 
             const decision: 'approve' | 'reject' = approved ? 'approve' : 'reject';

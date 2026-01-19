@@ -24,7 +24,7 @@ import { persistOutputAttributions, removeOutputAttributions } from './persistOu
 import logger from '../../logger';
 import { RunHistoryActionType } from '@prisma/client';
 import { KnowledgeBase } from '../../knowledgeBase/abstract/KnowledgeBase';
-import { ChannelKnowledgeBaseWithConfigs } from '../../types/prisma';
+import { ChannelKnowledgeBaseWithConfigs, User } from '../../types/prisma';
 
 // Types from @openai/agents SDK for content items
 type AgentInputText = protocol.InputText;
@@ -36,7 +36,7 @@ export class ChannelAgent<
     TConfig extends ConfigInstance,
     KBConfig extends ConfigInstance
 > {
-    private session: T;
+    private user: User;
     private inputEvent: InputEvent | null = null;
     private channel: ChannelWithRelations;
     private outputs: Output<Session, ConfigInstance>[];
@@ -55,7 +55,6 @@ export class ChannelAgent<
     private notificationManager: NotificationManager;
 
     constructor(
-        session: T,
         outputs: Output<Session, ConfigInstance>[],
         outputSessions: Session[],
         outputChannelConfigs: ChannelOutputWithConfigs[],
@@ -75,7 +74,13 @@ export class ChannelAgent<
             throw new Error(`At least one output is required`);
         }
 
-        this.session = session;
+        // Extract user from first output session (assume all sessions share the same user)
+        const firstUser = outputSessions[0]?.user;
+        if (!firstUser) {
+            throw new Error(`First output session must have a user`);
+        }
+
+        this.user = firstUser;
         this.outputs = outputs;
         this.outputSessions = outputSessions;
         this.outputChannelConfigs = outputChannelConfigs;
@@ -96,7 +101,7 @@ export class ChannelAgent<
             throw new Error("Max turns must be greater than 0");
         }
         this.maxTurns = maxTurns;
-        this.notificationManager = new NotificationManager(session.user, channel);
+        this.notificationManager = new NotificationManager(this.user, channel);
     }
 
     async run(streamingParams?: RunHistoryStreamingParams): Promise<ApprovalResult<SessionWithTracking<T>, Agent<SessionWithTracking<T>, AgentOutputType>>> {
@@ -116,7 +121,7 @@ export class ChannelAgent<
         const runner = runnerFactory({
             channelId: this.channel.id,
             runId: this.runContext.runId,
-            userId: this.session.user.id,
+            userId: this.user.id,
             env: settings.nodeEnv,
         })
 
@@ -150,7 +155,7 @@ export class ChannelAgent<
         const runner = runnerFactory({
             channelId: this.channel.id,
             runId: this.runContext.runId,
-            userId: this.session.user.id,
+            userId: this.user.id,
             env: settings.nodeEnv,
         })
         const result = await runner.run(this.agent, userHistory, {
@@ -291,7 +296,7 @@ export class ChannelAgent<
         const runner = runnerFactory({
             channelId: this.channel.id,
             runId: this.runContext.runId,
-            userId: this.session.user.id,
+            userId: this.user.id,
             env: settings.nodeEnv,
         });
         const toolContext = this.getToolContext();
@@ -331,7 +336,7 @@ export class ChannelAgent<
         const isReadOnly = toolMetadata?.isReadOnly ?? true;
 
         for (const action of this.pendingActions) {
-            const actionId = await persistRunAction(this.runContext.runId, this.channel, this.session, {
+            const actionId = await persistRunAction(this.runContext.runId, this.channel, this.user, {
                 ...action,
                 step_id: stepId,
                 isReadOnly,
@@ -411,13 +416,12 @@ export class ChannelAgent<
                 return kb.createSessionFromConfig(
                     channelKnowledgeBase.integration_id,
                     channelKnowledgeBase,
-                    this.session.user
+                    this.user
                 );
             })
         );
 
         const deps: SystemPromptBuilderDependencies<T, TConfig, K, KBConfig> = {
-            session: this.session,
             channel: this.channel,
             outputs: this.outputs,
             outputSessions: this.outputSessions,
@@ -440,7 +444,6 @@ export class ChannelAgent<
 
     private getToolContext(): SessionWithTracking<T & K> {
         const baseContext = {
-            ...this.session,
             ...this.outputSessions.reduce(
                 (acc, outputSession) => ({ ...acc, ...outputSession }),
                 {} as Session
@@ -455,8 +458,9 @@ export class ChannelAgent<
             },
         };
 
-
-        return baseContext;
+        // Type assertion: The merged sessions are compatible with T & K since all sessions extend Session
+        // T is kept for backward compatibility with return types, but we no longer have a primary session
+        return baseContext as unknown as SessionWithTracking<T & K>;
     }
 
     private buildUserMessage(inputEvent: InputEvent): (AgentInputText | AgentInputImage)[] {
@@ -476,7 +480,7 @@ export class ChannelAgent<
     private buildTextContent(inputEvent: InputEvent): string {
         return `
 <USER_CONTEXT>
-${UserFormatter.formatForAgent(this.session.user)}
+${UserFormatter.formatForAgent(this.user)}
 </USER_CONTEXT>
 
 <USER_INSTRUCTIONS>
