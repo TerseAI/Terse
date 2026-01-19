@@ -31,9 +31,8 @@ export function LaunchDarklyKnowledgeBaseIntegration({ knowledgeBase, variant, s
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    // Form state for configuration
-    const [projectKey, setProjectKey] = useState(launchdarklyConfig.projectKey || '');
-    const [environmentKeys, setEnvironmentKeys] = useState<string[]>(launchdarklyConfig.environmentKeys || []);
+    const projectKey = launchdarklyConfig.projectKey || '';
+    const environmentKeys = launchdarklyConfig.environmentKeys || [];
 
     // Fetch projects when integration is selected
     const { data: projectsData, isLoading: isLoadingProjects } = useSWR(
@@ -78,8 +77,7 @@ export function LaunchDarklyKnowledgeBaseIntegration({ knowledgeBase, variant, s
 
     // Handle project key change
     const handleProjectKeyChange = (value: string) => {
-        setProjectKey(value);
-        setEnvironmentKeys([]); // Clear environments when project changes
+        // Clear environments when project changes
         const newConfig = new LaunchDarklyConfig(
             selectedIntegrationId || '',
             value,
@@ -90,7 +88,6 @@ export function LaunchDarklyKnowledgeBaseIntegration({ knowledgeBase, variant, s
 
     // Handle environment key selection (multi-select)
     const handleEnvironmentKeysChange = (selectedKeys: string[]) => {
-        setEnvironmentKeys(selectedKeys);
         const newConfig = new LaunchDarklyConfig(
             selectedIntegrationId || '',
             projectKey,
@@ -219,8 +216,6 @@ export function LaunchDarklyKnowledgeBaseIntegration({ knowledgeBase, variant, s
             '', // Clear project when integration changes
             [] // Clear environments when integration changes
         );
-        setProjectKey('');
-        setEnvironmentKeys([]);
         setConfig(newConfig);
     };
 
