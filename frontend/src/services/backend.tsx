@@ -12,6 +12,8 @@ import {
     LinearTeam,
     NotionResourcesResponse,
     PosthogProjectsResponse,
+    LaunchDarklyProjectsResponse,
+    LaunchDarklyEnvironmentsResponse,
     DatadogIndexesResponse,
     RecentChannel,
     SlackChannelsResponse,
@@ -32,6 +34,7 @@ import {
     NotionIntegration,
     InstallationOptionsFor,
     PosthogIntegration,
+    LaunchDarklyIntegration,
     DatadogIntegration,
 } from "../shared/Integrations";
 import { User } from "../types/User";
@@ -227,6 +230,29 @@ interface BackendService {
      * Creates or updates a Posthog integration with API key
      */
     createOrUpdatePosthogIntegration(apiKey: string): Promise<{ success: boolean; email: string | null; orgName: string | null }>;
+
+    /**
+     * Gets all LaunchDarkly integrations for the current user
+     */
+    getLaunchDarklyIntegrations(): Promise<LaunchDarklyIntegration[]>;
+
+    /**
+     * Creates or updates a LaunchDarkly integration with API key
+     */
+    createOrUpdateLaunchDarklyIntegration(apiKey: string): Promise<{ success: boolean; email: string | null }>;
+
+    /**
+     * Gets LaunchDarkly projects for an integration
+     * @param integrationId - The LaunchDarkly integration ID
+     */
+    getLaunchDarklyProjects(integrationId: string): Promise<LaunchDarklyProjectsResponse>;
+
+    /**
+     * Gets LaunchDarkly environments for a project
+     * @param integrationId - The LaunchDarkly integration ID
+     * @param projectKey - The LaunchDarkly project key
+     */
+    getLaunchDarklyEnvironments(integrationId: string, projectKey: string): Promise<LaunchDarklyEnvironmentsResponse>;
 
     /**
      * Gets all Datadog integrations for the current user
@@ -668,11 +694,33 @@ export const BackendProvider: BackendService = {
             });
     },
 
+    getLaunchDarklyIntegrations: () => {
+        return axios.get<LaunchDarklyIntegration[]>(`${backendBaseUrl}/launchdarkly/integrations`, { withCredentials: true })
+            .then(response => response.data)
+            .catch(error => {
+                console.error('Error getting LaunchDarkly integrations:', error);
+                throw error;
+            });
+    },
+
     getDatadogIntegrations: () => {
         return axios.get<DatadogIntegration[]>(`${backendBaseUrl}/datadog/integrations`, { withCredentials: true })
             .then(response => response.data)
             .catch(error => {
                 console.error('Error getting Datadog integrations:', error);
+                throw error;
+            });
+    },
+
+    createOrUpdateLaunchDarklyIntegration: (apiKey: string) => {
+        return axios.post<{ success: boolean; email: string | null }>(
+            `${backendBaseUrl}/launchdarkly/integrations`,
+            { apiKey },
+            { withCredentials: true }
+        )
+            .then(response => response.data)
+            .catch(error => {
+                console.error('Error creating/updating LaunchDarkly integration:', error);
                 throw error;
             });
     },
@@ -686,6 +734,30 @@ export const BackendProvider: BackendService = {
             .then(response => response.data)
             .catch(error => {
                 console.error('Error creating/updating Datadog integration:', error);
+                throw error;
+            });
+    },
+
+    getLaunchDarklyProjects: (integrationId: string) => {
+        return axios.get<LaunchDarklyProjectsResponse>(
+            `${backendBaseUrl}/launchdarkly/integrations/${encodeURIComponent(integrationId)}/projects`,
+            { withCredentials: true }
+        )
+            .then(response => response.data)
+            .catch(error => {
+                console.error('Error fetching LaunchDarkly projects:', error);
+                throw error;
+            });
+    },
+
+    getLaunchDarklyEnvironments: (integrationId: string, projectKey: string) => {
+        return axios.get<LaunchDarklyEnvironmentsResponse>(
+            `${backendBaseUrl}/launchdarkly/integrations/${encodeURIComponent(integrationId)}/projects/${encodeURIComponent(projectKey)}/environments`,
+            { withCredentials: true }
+        )
+            .then(response => response.data)
+            .catch(error => {
+                console.error('Error fetching LaunchDarkly environments:', error);
                 throw error;
             });
     },

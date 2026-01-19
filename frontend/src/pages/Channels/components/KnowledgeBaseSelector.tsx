@@ -2,6 +2,7 @@ import { TransientKnowledgeBase } from "@/shared/types";
 import { ConfigInstance, ConfigType } from "@/shared/Configs";
 import { PostHogKnowledgeBaseIntegration } from "./PostHogKnowledgeBaseIntegration";
 import { GitHubKnowledgeBaseIntegration } from "./GitHubKnowledgeBaseIntegration";
+import { LaunchDarklyKnowledgeBaseIntegration } from "./LaunchDarklyKnowledgeBaseIntegration";
 import { DatadogKnowledgeBaseIntegration } from "./DatadogKnowledgeBaseIntegration";
 
 export interface KnowledgeBaseSelectorProps {
@@ -16,6 +17,8 @@ export function KnowledgeBaseSelector(props: KnowledgeBaseSelectorProps) {
             return <PostHogKnowledgeBaseIntegration {...props} />;
         case ConfigType.GITHUB_KB:
             return <GitHubKnowledgeBaseIntegration {...props} />;
+        case ConfigType.LAUNCHDARKLY:
+            return <LaunchDarklyKnowledgeBaseIntegration {...props} />;
         case ConfigType.DATADOG:
             return <DatadogKnowledgeBaseIntegration {...props} />;
 

@@ -9,6 +9,7 @@ import GithubIntegrationCard from "./GithubIntegrationCard";
 import AtlassianIntegrationCard from "./AtlassianIntegrationCard";
 import FigmaIntegrationCard from "./FigmaIntegrationCard";
 import PosthogIntegrationCard from "./PosthogIntegrationCard";
+import LaunchDarklyIntegrationCard from "./LaunchDarklyIntegrationCard";
 import DatadogIntegrationCard from "./DatadogIntegrationCard";
 
 function IntegrationCard({ integration, isActive = true }: { integration: IntegrationType; isActive?: boolean }) {
@@ -49,6 +50,10 @@ function IntegrationCard({ integration, isActive = true }: { integration: Integr
         case IntegrationType.POSTHOG:
             return (
                 <PosthogIntegrationCard className={cardClassName} isActive={isActive} />
+            );
+        case IntegrationType.LAUNCHDARKLY:
+            return (
+                <LaunchDarklyIntegrationCard className={cardClassName} isActive={isActive} />
             );
         case IntegrationType.DATADOG:
             return (
