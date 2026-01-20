@@ -10,18 +10,6 @@ import { Session } from "../../../server";
 // Helper functions
 const normalizePerPage = (perPage?: number): number => Math.min(perPage || 20, 100);
 
-const validateRepository = (repository: string, repositoryNames: string[]) => {
-    if (!repositoryNames.includes(repository)) {
-        return {
-            success: false,
-            error: `Repository "${repository}" is not configured for this knowledge base.`,
-            configuredRepositories: repositoryNames,
-            tip: `Use one of the configured repositories: ${repositoryNames.join(', ')}`,
-        };
-    }
-    return null;
-};
-
 const formatTimeWindow = (since: string | null, until: string | null): string => {
     if (!since && !until) return 'all time';
     const parts: string[] = [];

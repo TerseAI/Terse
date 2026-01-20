@@ -98,7 +98,7 @@ BEFORE USING THIS TOOL:
         integrationId: z.string().describe('The integration ID of the Atlassian/Jira integration to use.'),
         title: z.string().describe('The issue title/summary. This is required.'),
         description: z.string().nullable().optional().describe('The issue description in plain text or markdown format.'),
-        projectKey: z.string().nullable().optional().describe('The Jira project key (e.g., "PROJ", "TEAM"). If not provided, will use the project configured in the Jira output settings.'),
+        projectKey: z.string().describe('The Jira project key (e.g., "PROJ", "TEAM"). This is required.'),
         issueType: z.string().nullable().optional().describe('The Jira issue type (e.g., "Task", "Bug", "Story", "Epic", "Subtask", "Improvement", "New Feature")').default('Task'),
         assignee: z.union([z.object({
             email: z.string().describe('The assignee email'),
@@ -151,11 +151,8 @@ BEFORE USING THIS TOOL:
         const cloudId = integration.cloud_id;
         const baseUrl = integration.base_url;
 
-        // Determine project key - use provided one or fallback to config
-        const finalProjectKey = projectKey || null;
-        if (!finalProjectKey) {
-            throw new Error('Project key is required. Please provide the projectKey parameter or configure it in the Jira output settings.');
-        }
+        // Project key is required (enforced by schema)
+        const finalProjectKey = projectKey;
 
         try {
             // Build the issue fields
