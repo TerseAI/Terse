@@ -1,7 +1,8 @@
 #!/bin/bash
 
-# Script to start cloudflared tunnel, update .env with BACKEND_URL, and optionally start backend server
+# Script to start Smee tunnel, update .env with BACKEND_URL, and optionally start backend server
 # Usage: ./dev-with-tunnel.sh [--tunnel-only|-t]
+# Requires SMEE_URL to be set in .env file or as an environment variable (e.g., https://smee.io/your-channel)
 
 set -e
 
@@ -15,90 +16,113 @@ fi
 GREEN='\033[0;32m'
 BLUE='\033[0;34m'
 YELLOW='\033[1;33m'
+RED='\033[0;31m'
 NC='\033[0m' # No Color
 
 # Get the backend directory (parent of scripts directory)
 BACKEND_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 ENV_FILE="$BACKEND_DIR/.env"
 
-echo -e "${BLUE}🚀 Starting cloudflared tunnel...${NC}"
+# Function to update or add a variable in .env file
+update_env_var() {
+    local VAR_NAME="$1"
+    local VAR_VALUE="$2"
+    
+    if [ -f "$ENV_FILE" ]; then
+        if grep -q "^${VAR_NAME}=" "$ENV_FILE"; then
+            # Update existing variable
+            if [[ "$OSTYPE" == "darwin"* ]]; then
+                # macOS
+                sed -i '' "s|^${VAR_NAME}=.*|${VAR_NAME}=${VAR_VALUE}|" "$ENV_FILE"
+            else
+                # Linux
+                sed -i "s|^${VAR_NAME}=.*|${VAR_NAME}=${VAR_VALUE}|" "$ENV_FILE"
+            fi
+        else
+            # Append variable to .env
+            echo "" >> "$ENV_FILE"
+            echo "${VAR_NAME}=${VAR_VALUE}" >> "$ENV_FILE"
+        fi
+    else
+        # Create .env file if it doesn't exist
+        echo "${VAR_NAME}=${VAR_VALUE}" > "$ENV_FILE"
+    fi
+}
 
-# Start cloudflared tunnel in the background and capture output
-# Redirect both stdout and stderr to the log file
-cloudflared tunnel --url http://localhost:3001 > /tmp/cloudflared.log 2>&1 &
-TUNNEL_PID=$!
+# Try to read SMEE_URL from environment variable first (takes precedence), then from .env file
+# Check environment variable first (takes precedence) - use printenv to avoid local variable shadowing
+SMEE_URL=$(printenv SMEE_URL 2>/dev/null)
 
-# Give cloudflared a moment to start
+# If not set in environment, try reading from .env file
+if [ -z "$SMEE_URL" ] && [ -f "$ENV_FILE" ]; then
+    # Read SMEE_URL from .env file (handle quoted and unquoted values)
+    ENV_SMEE_URL=$(grep "^SMEE_URL=" "$ENV_FILE" 2>/dev/null | cut -d '=' -f2- | sed 's/^["'\'']//; s/["'\'']$//' | xargs)
+    if [ -n "$ENV_SMEE_URL" ]; then
+        SMEE_URL="$ENV_SMEE_URL"
+    fi
+fi
+
+# If still not set, show error
+if [ -z "$SMEE_URL" ]; then
+    echo -e "${RED}❌ Error: SMEE_URL is not set${NC}"
+    echo -e "${YELLOW}Please set SMEE_URL in your .env file or as an environment variable${NC}"
+    echo -e "${YELLOW}Example: SMEE_URL=https://smee.io/your-channel${NC}"
+    echo -e "${YELLOW}You can create a new channel at https://smee.io/new${NC}"
+    exit 1
+fi
+
+# Validate SMEE_URL format
+if [[ ! "$SMEE_URL" =~ ^https://smee\.io/ ]]; then
+    echo -e "${RED}❌ Error: SMEE_URL must be a valid Smee URL (e.g., https://smee.io/your-channel)${NC}"
+    exit 1
+fi
+
+# Save SMEE_URL to .env file so it persists
+update_env_var "SMEE_URL" "$SMEE_URL"
+
+echo -e "${BLUE}🚀 Starting Smee tunnel...${NC}"
+echo -e "${BLUE}📡 Smee URL: ${SMEE_URL}${NC}"
+echo -e "${BLUE}🎯 Target: http://localhost:3001${NC}"
+
+# Start smee in the background
+# Using pnpm exec to run smee from devDependencies (v4+ uses 'smee' command)
+cd "$BACKEND_DIR"
+if command -v pnpm >/dev/null 2>&1 && pnpm exec --help >/dev/null 2>&1; then
+    pnpm exec smee -u "$SMEE_URL" -t http://localhost:3001 > /tmp/smee.log 2>&1 &
+else
+    npx --yes smee-client -u "$SMEE_URL" -t http://localhost:3001 > /tmp/smee.log 2>&1 &
+fi
+SMEE_PID=$!
+
+# Give smee a moment to start
 sleep 2
 
 # Function to cleanup on exit
 cleanup() {
-    echo -e "\n${YELLOW}🛑 Shutting down cloudflared tunnel...${NC}"
-    kill $TUNNEL_PID 2>/dev/null || true
+    echo -e "\n${YELLOW}🛑 Shutting down Smee tunnel...${NC}"
+    kill $SMEE_PID 2>/dev/null || true
     exit
 }
 
 # Trap Ctrl+C and cleanup
 trap cleanup INT TERM
 
-# Wait for tunnel URL to appear in the output
-echo -e "${BLUE}⏳ Waiting for tunnel URL...${NC}"
-TUNNEL_URL=""
-MAX_ATTEMPTS=30
-ATTEMPT=0
-
-while [ -z "$TUNNEL_URL" ] && [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
-    sleep 1
-    ATTEMPT=$((ATTEMPT + 1))
-    
-    # Try to extract URL from log file
-    # Cloudflared outputs URLs like: https://xxxx-xx-xx-xx-xx.trycloudflare.com
-    # Use strings to handle any binary characters in the log file
-    if [ -f /tmp/cloudflared.log ]; then
-        # First try to find URL after "Your quick Tunnel has been created" message
-        TUNNEL_URL=$(strings /tmp/cloudflared.log 2>/dev/null | grep -A 1 "Your quick Tunnel has been created" | grep -oE 'https://[a-zA-Z0-9-]+\.trycloudflare\.com' | head -n 1)
-        
-        # Fallback: try to find any URL in the log
-        if [ -z "$TUNNEL_URL" ]; then
-            TUNNEL_URL=$(strings /tmp/cloudflared.log 2>/dev/null | grep -oE 'https://[a-zA-Z0-9-]+\.trycloudflare\.com' | head -n 1)
-        fi
-    fi
-done
-
-if [ -z "$TUNNEL_URL" ]; then
-    echo -e "${YELLOW}⚠️  Could not extract tunnel URL from cloudflared output${NC}"
-    echo -e "${YELLOW}Last 20 lines of cloudflared output:${NC}"
-    tail -n 20 /tmp/cloudflared.log 2>/dev/null || echo "No log file found"
-    cleanup
+# Check if smee process is still running
+if ! kill -0 $SMEE_PID 2>/dev/null; then
+    echo -e "${RED}❌ Error: Smee tunnel failed to start${NC}"
+    echo -e "${YELLOW}Last 20 lines of Smee output:${NC}"
+    tail -n 20 /tmp/smee.log 2>/dev/null || echo "No log file found"
     exit 1
 fi
 
-echo -e "${GREEN}✅ Tunnel URL: ${TUNNEL_URL}${NC}"
+echo -e "${GREEN}✅ Smee tunnel is running${NC}"
 
-# Update .env file
-if [ -f "$ENV_FILE" ]; then
-    # Check if BACKEND_URL already exists in .env
-    if grep -q "^BACKEND_URL=" "$ENV_FILE"; then
-        # Update existing BACKEND_URL
-        if [[ "$OSTYPE" == "darwin"* ]]; then
-            # macOS
-            sed -i '' "s|^BACKEND_URL=.*|BACKEND_URL=$TUNNEL_URL|" "$ENV_FILE"
-        else
-            # Linux
-            sed -i "s|^BACKEND_URL=.*|BACKEND_URL=$TUNNEL_URL|" "$ENV_FILE"
-        fi
-        echo -e "${GREEN}✅ Updated BACKEND_URL in .env${NC}"
-    else
-        # Append BACKEND_URL to .env
-        echo "" >> "$ENV_FILE"
-        echo "BACKEND_URL=$TUNNEL_URL" >> "$ENV_FILE"
-        echo -e "${GREEN}✅ Added BACKEND_URL to .env${NC}"
-    fi
-else
-    # Create .env file if it doesn't exist
-    echo "BACKEND_URL=$TUNNEL_URL" > "$ENV_FILE"
-    echo -e "${GREEN}✅ Created .env file with BACKEND_URL${NC}"
-fi
+# Use SMEE_URL as the BACKEND_URL (this is the public URL that services should use)
+TUNNEL_URL="$SMEE_URL"
+
+# Update BACKEND_URL in .env file
+update_env_var "BACKEND_URL" "$TUNNEL_URL"
+echo -e "${GREEN}✅ Updated BACKEND_URL in .env${NC}"
 
 echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo -e "${GREEN}🌐 Backend URL: ${TUNNEL_URL}${NC}"
@@ -109,7 +133,7 @@ if [ "$TUNNEL_ONLY" = true ]; then
     echo -e "${GREEN}✅ Tunnel is running. Press Ctrl+C to stop.${NC}"
     echo ""
     # Keep the script running and wait for the tunnel process or Ctrl+C
-    wait $TUNNEL_PID || true
+    wait $SMEE_PID || true
     cleanup
 else
     echo -e "${BLUE}🚀 Starting backend server...${NC}"
@@ -117,8 +141,8 @@ else
     
     # Start the backend server
     cd "$BACKEND_DIR"
-    npm run dev
+    pnpm run dev
     
-    # Cleanup when npm run dev exits
+    # Cleanup when pnpm run dev exits
     cleanup
 fi
