@@ -74,10 +74,26 @@ export class ChannelAgent<
         this.knowledgeBases = knowledgeBases;
         this.knowledgeBaseChannelConfigs = knowledgeBaseChannelConfigs;
         this.channel = channel;
-        this.tools = [
-            ...outputs.flatMap(output => output.toolbox.map(entry => entry.tool)),
-            ...knowledgeBases.flatMap(kb => kb.toolbox.map(entry => entry.tool))
-        ];
+        
+        // Collect all tools and deduplicate by name to avoid duplicate registrations
+        // when multiple outputs/knowledge bases of the same type are configured
+        const toolsMap = new Map<string, Tool<SessionWithTracking<T>>>();
+        
+        // Add tools from outputs (later entries override earlier ones if same name)
+        outputs.forEach(output => {
+            output.toolbox.forEach(entry => {
+                toolsMap.set(entry.tool.name, entry.tool);
+            });
+        });
+        
+        // Add tools from knowledge bases (later entries override earlier ones if same name)
+        knowledgeBases.forEach(kb => {
+            kb.toolbox.forEach(entry => {
+                toolsMap.set(entry.tool.name, entry.tool);
+            });
+        });
+        
+        this.tools = Array.from(toolsMap.values());
 
         this.runContext = runContext;
         this.buildToolMetadataMap();
