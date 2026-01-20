@@ -479,6 +479,7 @@ export class GmailEvent extends InputEvent {
         To: ${this.data.to}
         Date: ${this.data.date}
         Message ID: ${this.data.messageId}
+        Thread ID: ${this.data.threadId}
         Body: ${this.data.body}
         Snippet: ${this.data.snippet}
         `;

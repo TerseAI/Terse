@@ -8,6 +8,7 @@ import { IntegrationType } from "../../../shared/Integrations";
 import { RunHistoryActionType } from "@prisma/client";
 import { SessionWithTracking } from "../../../agent/ChannelAgent/ChannelAgent";
 import { getOAuth2Client, GmailIntegrationManager } from "../../../integrations/GmailIntegration";
+import { formatError, needsApproval } from "../../../tools/toolUtils";
 
 /**
  * Tool for sending emails or replying to email threads via Gmail.
@@ -15,15 +16,16 @@ import { getOAuth2Client, GmailIntegrationManager } from "../../../integrations/
  */
 export const gmailSendEmailTool = tool({
     name: "gmail_send_email",
-    description: `Send email or reply to an existing email thread via Gmail. Use thread_id to reply to an existing thread, or omit it to send a new email.`,
+    description: `Send email or reply to an existing email thread via Gmail. Use thread_id (the Gmail Thread ID, not the Message-ID) to reply to an existing thread, or omit it to send a new email.`,
     parameters: z.object({
         to: z.string().describe("Recipient email address(es). Multiple addresses can be comma-separated."),
         subject: z.string().describe("Email subject line"),
         body: z.string().describe("Email body content (plain text)"),
-        thread_id: z.string().nullable().optional().describe("Gmail thread ID to reply to. Omit for new emails."),
+        thread_id: z.string().nullable().optional().describe("Gmail Thread ID (numeric string from the email event, NOT the Message-ID header). Omit for new emails."),
         cc: z.string().nullable().optional().describe("CC recipient email address(es). Multiple addresses can be comma-separated."),
         bcc: z.string().nullable().optional().describe("BCC recipient email address(es). Multiple addresses can be comma-separated."),
     }),
+    needsApproval,
     execute: async (args, runContext?: RunContext<SessionWithTracking<GmailSession>>) => {
         if (!runContext?.context) {
             throw new Error("No context provided");
