@@ -30,7 +30,7 @@ export const searchSessionsTool = tool({
             throw new Error("No context provided");
         }
 
-        if (canReadSessionRecordings === false) {
+        if (canReadSessionRecordings !== true) {
             throw new Error("PostHog session recordings access is not enabled for this knowledge base.");
         }
 

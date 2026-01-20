@@ -87,7 +87,8 @@ This tool returns the current state of the Confluence page including all metadat
         }
 
         const manager = new AtlassianIntegrationManager();
-        const accessToken = await manager.getAccessToken(integrationId);
+        const userId = runContext.context.user.id;
+        const accessToken = await manager.getAccessToken(integrationId, userId);
         if (!accessToken) {
             throw new Error(`Atlassian integration not found or access denied for integrationId: ${integrationId}`);
         }
@@ -100,6 +101,10 @@ This tool returns the current state of the Confluence page including all metadat
 
         if (!integration || !integration.cloud_id) {
             throw new Error(`Atlassian integration cloud ID not found for integrationId: ${integrationId}`);
+        }
+
+        if (!integration.base_url) {
+            throw new Error(`No base_url found in Atlassian integration for integrationId: ${integrationId}`);
         }
 
         const cloudId = integration.cloud_id;
@@ -174,7 +179,8 @@ To find the correct position, first call confluence_query_page to see the page c
         }
 
         const manager = new AtlassianIntegrationManager();
-        const accessToken = await manager.getAccessToken(integrationId);
+        const userId = runContext.context.user.id;
+        const accessToken = await manager.getAccessToken(integrationId, userId);
         if (!accessToken) {
             throw new Error(`Atlassian integration not found or access denied for integrationId: ${integrationId}`);
         }
