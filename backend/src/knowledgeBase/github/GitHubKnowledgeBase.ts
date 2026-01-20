@@ -225,14 +225,4 @@ When explaining code to the user:
 
         return sections.join('\n');
     }
-
-    formatForAvailableConfigurationsSection(config: { integrationId: string, channelKnowledgeBase: ChannelKnowledgeBaseWithConfigs }): string {
-        const { integrationId, channelKnowledgeBase } = config;
-        if (!channelKnowledgeBase.github_kb_config) {
-            throw new Error('GitHub KB config not found');
-        }
-        const repositoryNames = channelKnowledgeBase.github_kb_config.repository_names;
-        const details = `Repositories: ${repositoryNames.join(', ')}`;
-        return `Integration ID: ${integrationId}, Type: ${channelKnowledgeBase.config_type}, ${details}`;
-    }
 }

@@ -57,15 +57,4 @@ export class JiraTicketOutput extends Output<JiraConfig> {
         
         return sections.join('\n');
     }
-
-    formatForAvailableConfigurationsSection(config: { integrationId: string, channelOutput: ChannelOutputWithConfigs }): string {
-        const { integrationId, channelOutput } = config;
-        if (!channelOutput.jira_config) {
-            throw new Error('Jira config not found');
-        }
-        const projectKey = channelOutput.jira_config.project_key;
-        const projectId = channelOutput.jira_config.project_id;
-        const details = projectKey ? `Project: ${projectKey}` : (projectId ? `Project: ${projectId}` : 'Project: N/A');
-        return `Integration ID: ${integrationId}, Type: ${channelOutput.config_type}, ${details}`;
-    }
 }

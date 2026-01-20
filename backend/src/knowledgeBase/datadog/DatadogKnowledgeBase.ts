@@ -145,14 +145,4 @@ Summarize with citations: specific entries/events with timestamps and IDs, patte
 
         return sections.join('\n');
     }
-
-    formatForAvailableConfigurationsSection(config: { integrationId: string, channelKnowledgeBase: ChannelKnowledgeBaseWithConfigs }): string {
-        const { integrationId, channelKnowledgeBase } = config;
-        if (!channelKnowledgeBase.datadog_config) {
-            throw new Error('Datadog config not found');
-        }
-        const defaultIndexes = channelKnowledgeBase.datadog_config.default_indexes || ["main"];
-        const details = `Default indexes: ${defaultIndexes.join(', ')}`;
-        return `Integration ID: ${integrationId}, Type: ${channelKnowledgeBase.config_type}, ${details}`;
-    }
 }

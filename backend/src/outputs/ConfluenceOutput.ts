@@ -67,17 +67,6 @@ export class ConfluenceOutput extends Output<ConfluenceConfig> {
         
         return sections.join('\n');
     }
-
-    formatForAvailableConfigurationsSection(config: { integrationId: string, channelOutput: ChannelOutputWithConfigs }): string {
-        const { integrationId, channelOutput } = config;
-        if (!channelOutput.confluence_config) {
-            throw new Error('Confluence config not found');
-        }
-        const pageName = channelOutput.confluence_config.page_name;
-        const pageId = channelOutput.confluence_config.page_id;
-        const details = pageName ? `Page: ${pageName}` : `Page: ${pageId}`;
-        return `Integration ID: ${integrationId}, Type: ${channelOutput.config_type}, ${details}`;
-    }
 }
 
 // MARK: - Tools

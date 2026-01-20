@@ -96,15 +96,4 @@ BEST PRACTICES:
 
         return sections.join('\n');
     }
-
-    formatForAvailableConfigurationsSection(config: { integrationId: string, channelKnowledgeBase: ChannelKnowledgeBaseWithConfigs }): string {
-        const { integrationId, channelKnowledgeBase } = config;
-        if (!channelKnowledgeBase.launchdarkly_config) {
-            throw new Error('LaunchDarkly config not found');
-        }
-        const projectKey = channelKnowledgeBase.launchdarkly_config.project_key;
-        const environmentKeys = channelKnowledgeBase.launchdarkly_config.environment_keys;
-        const details = `Project: ${projectKey}, Environments: ${environmentKeys.join(', ')}`;
-        return `Integration ID: ${integrationId}, Type: ${channelKnowledgeBase.config_type}, ${details}`;
-    }
 }
