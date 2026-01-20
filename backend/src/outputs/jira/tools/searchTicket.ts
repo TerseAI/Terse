@@ -1,13 +1,13 @@
 import { RunContext, tool } from "@openai/agents";
 import { z } from "zod";
 import { IntegrationType } from "../../../shared/Integrations";
-import { JiraTicketSession } from "../JiraTicketOutput";
 import { SessionWithTracking } from "../../../agent/ChannelAgent/ChannelAgent";
 import { RunHistoryActionType } from "@prisma/client";
 import { formatError } from "../../../tools/toolUtils";
 import logger from "../../../logger";
 import { AtlassianIntegrationManager } from "../../../integrations/AtlassianIntegration";
 import { db } from "../../../prismaClient";
+import { Session } from "../../../server";
 
 export const jiraSearchTicketTool = tool({
     name: 'jira_search_ticket',
@@ -25,6 +25,7 @@ JQL EXAMPLES:
 - By status: "status = 'In Progress'"
 - Combined: "project = PROJ AND status = 'In Progress' AND text ~ 'bug'"`,
     parameters: z.object({
+        integrationId: z.string().describe('The integration ID of the Atlassian/Jira integration to use.'),
         jql: z.string().nullable().optional().describe('JQL (Jira Query Language) query to search for issues. If not provided, will search all issues.'),
         text: z.string().nullable().optional().describe('Text to search for in issue titles and descriptions. If provided, will be converted to JQL: text ~ "search term"'),
         projectKey: z.string().nullable().optional().describe('Filter by Jira project key (e.g., "PROJ", "TEAM")'),
@@ -34,6 +35,7 @@ JQL EXAMPLES:
         nextPageToken: z.string().nullable().optional().describe('Token from a previous search response to retrieve the next page of results. Use the nextPageToken value from the previous response to paginate through all results.'),
     }),
     execute: async ({ 
+        integrationId,
         jql,
         text,
         projectKey,
@@ -41,39 +43,33 @@ JQL EXAMPLES:
         status,
         limit = 50,
         nextPageToken,
-    }, runContext?: RunContext<SessionWithTracking<JiraTicketSession>>) => {
-        logger.debug('🛠️ Executing jira_search_ticket tool', { jql, text, projectKey, assigneeEmail, status, limit, nextPageToken });
+    }, runContext?: RunContext<SessionWithTracking<Session>>) => {
+        logger.debug('🛠️ Executing jira_search_ticket tool', { integrationId, jql, text, projectKey, assigneeEmail, status, limit, nextPageToken });
 
         if (!runContext?.context) {
             throw new Error("No context provided");
         }
 
-        // Get the integration details
-        const integrationId = runContext.context.jiraIntegration.id;
         const integrationManager = new AtlassianIntegrationManager();
         
         // Get valid access token
         const accessToken = await integrationManager.getAccessToken(integrationId);
         if (!accessToken) {
-            throw new Error("No valid access token found for Jira integration");
+            throw new Error(`Atlassian integration not found or access denied for integrationId: ${integrationId}`);
         }
 
-        // Get cloud_id from the integration
+        // Get cloud_id and base_url from the integration
         const integration = await db().atlassian_integrations.findUnique({
             where: { id: integrationId },
-            select: { cloud_id: true },
+            select: { cloud_id: true, base_url: true, jira_user_email: true },
         });
 
         if (!integration || !integration.cloud_id) {
-            throw new Error("No cloud_id found in Jira integration");
+            throw new Error(`Atlassian integration details not found for integrationId: ${integrationId}`);
         }
 
         const cloudId = integration.cloud_id;
-        const baseUrl = runContext.context.jiraIntegration.baseUrl;
-
-        if (!baseUrl) {
-            throw new Error("No base_url found in Jira integration");
-        }
+        const baseUrl = integration.base_url;
 
         try {
             // Build JQL query

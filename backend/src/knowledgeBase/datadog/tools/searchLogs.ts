@@ -2,11 +2,12 @@ import { RunContext, tool } from "@openai/agents";
 import { z } from "zod";
 import { client, v2 } from "@datadog/datadog-api-client";
 import logger from "../../../logger";
-import { db } from "../../../prismaClient";
-import { DatadogConfig } from "../../../shared/Configs";
 import { getDatadogSite, getDatadogLogsDeepLink } from "../../../utility/datadog";
 import { IntegrationType } from "../../../shared/Integrations";
 import { RunHistoryActionType } from "@prisma/client";
+import { Session } from "../../../server";
+import { SessionWithTracking } from "../../../agent/ChannelAgent/ChannelAgent";
+import { getDatadogCredentialsByIntegrationId } from "../datadogApiClient";
 
 /**
  * Tool for querying Datadog logs with flexible filtering options.
@@ -16,49 +17,34 @@ export const searchDatadogLogsTool = tool({
     name: 'searchDatadogLogs',
     description: 'Query Datadog logs. Filter by query string, indexes, time range. Returns logs with timestamps, status, messages, hosts, services, tags.',
     parameters: z.object({
+        integrationId: z.string().describe('The integration ID of the Datadog knowledge base to use.'),
+        defaultIndexes: z.array(z.string()).optional().describe('Default log indexes to search (e.g., ["main"]). Falls back to ["main"] if not provided.'),
         query: z.union([z.string(), z.null()]).optional().describe('Datadog log search query (e.g., service:web AND @status:error)'),
-        indexes: z.union([z.array(z.string()), z.null()]).optional().describe('Log indexes to search (e.g., ["main"]). Defaults to config indexes if not provided.'),
+        indexes: z.union([z.array(z.string()), z.null()]).optional().describe('Log indexes to search (e.g., ["main"]). Defaults to defaultIndexes if not provided.'),
         from: z.union([z.string(), z.null()]).optional().describe('Start time (ISO8601 or relative like "now-1h")'),
         to: z.union([z.string(), z.null()]).optional().describe('End time (ISO8601). Defaults to now if not provided.'),
         limit: z.number().default(50).describe('Maximum number of log entries to return (default: 50)'),
         cursor: z.union([z.string(), z.null()]).optional().describe('Pagination cursor from previous response'),
         sort: z.enum(['timestamp', '-timestamp']).default('timestamp').describe('Sort order: "timestamp" (ascending) or "-timestamp" (descending)'),
     }),
-    execute: async ({ query, indexes, from, to, limit = 50, cursor, sort = 'timestamp' }, runContext?: RunContext<any>) => {
+    execute: async ({ integrationId, defaultIndexes, query, indexes, from, to, limit = 50, cursor, sort = 'timestamp' }, runContext?: RunContext<SessionWithTracking<Session>>) => {
         if (!runContext?.context) {
             throw new Error("No context provided");
         }
 
-        // Get Datadog config from context - must be set by the knowledge base session
-        const datadogConfig = runContext.context.datadogConfig as DatadogConfig | undefined;
-        if (!datadogConfig) {
-            throw new Error("Datadog config not found in context. Ensure Datadog is configured as a knowledge base.");
+        const credentials = await getDatadogCredentialsByIntegrationId(integrationId, runContext.context.user.id);
+        if (!credentials) {
+            throw new Error(`Datadog integration not found or access denied for integrationId: ${integrationId}`);
         }
 
-        const user = runContext.context.user;
-        if (!user) {
-            throw new Error("User not found in context");
-        }
-
-        // Get Datadog integration
-        const integration = await db().datadog_integrations.findUnique({
-            where: { id: datadogConfig.integrationId },
-        });
-
-        if (!integration) {
-            throw new Error(`Datadog integration not found: ${datadogConfig.integrationId}`);
-        }
-
-        const apiKey = integration.api_key;
-        const appKey = integration.app_key;
-        const region = integration.region;
+        const { apiKey, appKey, region } = credentials;
         const site = getDatadogSite(region);
 
-        // Use default indexes from config if not provided
+        // Use indexes parameter if provided, otherwise use defaultIndexes, otherwise fallback to ["main"]
         const indexesToUse = indexes && indexes.length > 0 
             ? indexes 
-            : (datadogConfig.defaultIndexes && datadogConfig.defaultIndexes.length > 0 
-                ? datadogConfig.defaultIndexes 
+            : (defaultIndexes && defaultIndexes.length > 0 
+                ? defaultIndexes 
                 : ["main"]);
 
         try {
@@ -103,13 +89,13 @@ export const searchDatadogLogsTool = tool({
             // Log full request context (debug level)
             logger.debug('[Datadog] searchDatadogLogs - Request details', {
                 tool: 'searchDatadogLogs',
-                integrationId: datadogConfig.integrationId,
-                userId: user.id,
+                integrationId,
+                userId: runContext.context.user.id,
                 requestParams: {
                     query: query || null,
                     indexes: indexesToUse,
                     providedIndexes: indexes,
-                    defaultIndexes: datadogConfig.defaultIndexes,
+                    defaultIndexes: defaultIndexes,
                     from,
                     to,
                     limit: Math.min(limit, 1000),

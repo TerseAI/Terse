@@ -2,11 +2,11 @@ import { tool, RunContext } from "@openai/agents";
 import { z } from "zod";
 import { WebClient, KnownBlock } from "@slack/web-api";
 import { db } from "../../../prismaClient";
-import { SlackChannelSession } from "../SlackOutput";
 import logger from "../../../logger";
 import { IntegrationType } from "../../../shared/Integrations";
 import { RunHistoryActionType } from "@prisma/client";
 import { SessionWithTracking } from "../../../agent/ChannelAgent/ChannelAgent";
+import { Session } from "../../../server";
 
 /**
  * Tool for sending messages to Slack channels or DMs.
@@ -16,26 +16,17 @@ export const slackSendMessageTool = tool({
     name: "slack_send_message",
     description: `Send message to Slack channel. Supports plain text (mrkdwn) or Block Kit (JSON blocks).`,
     parameters: z.object({
+        integrationId: z.string().describe('The integration ID of the Slack workspace to use.'),
+        channelId: z.string().describe('The Slack channel ID to send the message to.'),
         message: z.string().describe("Message content (mrkdwn). Used as fallback for Block Kit or main message."),
         thread_ts: z.string().nullable().optional().describe("Thread timestamp to reply to existing thread"),
         blocks: z.string().nullable().optional().describe("Block Kit JSON array string for interactive messages with buttons, structured layouts"),
     }),
-    execute: async (args, runContext?: RunContext<SessionWithTracking<SlackChannelSession>>) => {
+    execute: async ({ integrationId, channelId, message, thread_ts, blocks: blocksJson }, runContext?: RunContext<SessionWithTracking<Session>>) => {
         if (!runContext?.context) {
             throw new Error("No context provided");
         }
-        const session = runContext.context;
-        
-        if (!session.slackIntegration || !session.slackConfig) {
-            throw new Error("Slack session is not properly configured");
-        }
 
-        const { message, thread_ts, blocks: blocksJson } = args;
-        const channelId = session.slackConfig.channel_id;
-
-        if (!channelId) {
-            throw new Error("No channel configured for this Slack output");
-        }
 
         // Parse and validate Block Kit blocks if provided
         let blocks: KnownBlock[] | undefined;
@@ -62,15 +53,27 @@ export const slackSendMessageTool = tool({
         }
 
         try {
+            // Get user slack integration to find team_id
+            const userSlackIntegration = await db().user_slack_integrations.findUnique({
+                where: { id: integrationId },
+                include: {
+                    slack_integration: true
+                }
+            });
+
+            if (!userSlackIntegration) {
+                throw new Error(`Slack integration not found: ${integrationId}`);
+            }
+
             // Get the workspace token
             const slackIntegration = await db().slack_integrations.findFirst({
                 where: {
-                    team_id: session.slackIntegration.slack_team_id,
+                    team_id: userSlackIntegration.slack_team_id,
                 },
             });
 
             if (!slackIntegration) {
-                throw new Error(`Slack workspace integration not found for team ${session.slackIntegration.slack_team_id}`);
+                throw new Error(`Slack workspace integration not found for team ${userSlackIntegration.slack_team_id}`);
             }
 
             const client = new WebClient(slackIntegration.access_token);
@@ -88,13 +91,13 @@ export const slackSendMessageTool = tool({
                 throw new Error(`Failed to send message: ${result.error}`);
             }
 
-            const channelName = session.slackConfig.channel_name || channelId;
+            const channelName = channelId;
             const messagePreview = message.length > 100 ? message.substring(0, 100) + '...' : message;
             const messageType = blocks ? 'Block Kit' : 'text';
             
             // Build Slack message permalink URL
             const messageTs = result.ts?.replace('.', '') || '';
-            const slackPermalink = `https://${slackIntegration.team_name || 'slack'}.slack.com/archives/${channelId}/p${messageTs}`;
+            const slackPermalink = `https://${userSlackIntegration.slack_integration.team_name || 'slack'}.slack.com/archives/${channelId}/p${messageTs}`;
             
             // Track the action
             runContext.context.trackAction({

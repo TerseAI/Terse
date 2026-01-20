@@ -1,12 +1,11 @@
 import { RunContext, tool } from "@openai/agents";
 import { z } from "zod";
 import logger from "../../../logger";
-import { createGitHubClient, getFileContents, parseRepoFullName } from "../githubApiClient";
-import { GitHubKBConfig } from "../../../shared/Configs";
+import { createGitHubClient, getFileContents, parseRepoFullName, getGitHubAccessTokenByIntegrationId } from "../githubApiClient";
 import { IntegrationType } from "../../../shared/Integrations";
 import { RunHistoryActionType } from "@prisma/client";
 import { SessionWithTracking } from "../../../agent/ChannelAgent/ChannelAgent";
-import { GitHubKnowledgeBaseSession } from "../GitHubKnowledgeBase";
+import { Session } from "../../../server";
 
 /**
  * Tool for reading file contents from GitHub repositories.
@@ -22,29 +21,23 @@ export const readGitHubFileTool = tool({
 
 Note: This reads from the default branch (main/master). Large files may be truncated.`,
     parameters: z.object({
+        integrationId: z.string().describe('The integration ID of the GitHub knowledge base to use. Required when multiple GitHub knowledge bases are configured.'),
         repository: z.string().describe('The repository in "owner/repo" format (e.g., "facebook/react"). Must be one of the configured repositories.'),
         path: z.string().describe('The file path within the repository (e.g., "src/components/Button.tsx" or "README.md")'),
         startLine: z.union([z.number(), z.null()]).describe('Start reading from this line number (1-indexed). Use with endLine for partial file reads. Use null to start from beginning.'),
         endLine: z.union([z.number(), z.null()]).describe('Stop reading at this line number (1-indexed, inclusive). Use with startLine for partial file reads. Use null to read to end.'),
     }),
-    execute: async ({ repository, path, startLine, endLine }, runContext?: RunContext<SessionWithTracking<GitHubKnowledgeBaseSession>>) => {
+    execute: async ({ integrationId, repository, path, startLine, endLine }, runContext?: RunContext<SessionWithTracking<Session>>) => {
         if (!runContext?.context) {
             throw new Error("No context provided");
         }
 
-        const { githubKBConfig, githubAccessToken } = runContext.context;
-
-        // Validate that the repository is in the configured list
-        if (!githubKBConfig.repositoryNames.includes(repository)) {
-            return {
-                success: false,
-                error: `Repository "${repository}" is not configured for this knowledge base.`,
-                configuredRepositories: githubKBConfig.repositoryNames,
-                tip: 'Use one of the configured repositories listed above.',
-            };
+        const accessToken = await getGitHubAccessTokenByIntegrationId(integrationId, runContext.context.user.id);
+        if (!accessToken) {
+            throw new Error(`GitHub integration not found or access denied for integrationId: ${integrationId}`);
         }
 
-        const client = createGitHubClient(githubAccessToken);
+        const client = createGitHubClient(accessToken);
         const { owner, repo } = parseRepoFullName(repository);
 
         const requestParams = {

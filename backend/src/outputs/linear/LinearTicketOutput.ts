@@ -1,7 +1,6 @@
 
 import { Tool } from "@openai/agents";
-import { ChannelOutput, ChannelLinearConfig, LinearIntegration, PrismaTransaction, User } from "../../types/prisma";
-import { Session } from "../../server";
+import { ChannelOutputWithConfigs, PrismaTransaction, User } from "../../types/prisma";
 import { Output, ToolboxEntry } from "../abstract/Output";
 import { db } from "../../prismaClient";
 import { OutputConfigType } from "@prisma/client";
@@ -11,12 +10,7 @@ import { linearUpdateTicketTool } from "./tools/updateTicket";
 import { linearCreateTicketTool } from "./tools/createTicket";
 import { IntegrationType } from "../../shared/Integrations";
 
-export interface LinearTicketSession extends Session {
-    linearIntegration: LinearIntegration; // Top level integration record
-    linearConfig: ChannelLinearConfig; // Configuration for the Specific Linear Ticket
-}
-
-export class LinearTicketOutput extends Output<LinearTicketSession, LinearOutputConfig> {
+export class LinearTicketOutput extends Output<LinearOutputConfig> {
     constructor() {
         const toolbox: ToolboxEntry[] = [
             { tool: linearSearchTicketTool as Tool, isReadOnly: true, integration: IntegrationType.LINEAR },
@@ -26,29 +20,6 @@ export class LinearTicketOutput extends Output<LinearTicketSession, LinearOutput
         super(OutputConfigType.LINEAR_TICKET, toolbox);
     }
 
-    async createSessionFromConfig(
-        integrationId: string,
-        channelOutputConfig: ChannelOutput,
-        user: User
-    ): Promise<LinearTicketSession> {
-        const integration = await db().linear_integrations.findFirst({
-            where: { id: integrationId }
-        });
-
-        if (!integration) {
-            throw new Error(`Linear integration ${integrationId} not found`);
-        }
-
-        const linearConfigRecord = await db().automation_linear_configs.findFirst({
-            where: { automation_output_id: channelOutputConfig.id }
-        });
-
-        if (!linearConfigRecord) {
-            throw new Error(`Linear config for automation output ${channelOutputConfig.id} not found`);
-        }
-
-        return { linearIntegration: integration, linearConfig: linearConfigRecord, user: user, isUserInitiated: true };
-    }
 
     async validateConfig(output: LinearOutputConfig, _userId: string): Promise<void> {
         if (!output.teamId) {
@@ -64,5 +35,42 @@ export class LinearTicketOutput extends Output<LinearTicketSession, LinearOutput
                 team_name: output.teamName || null
             },
         });
+    }
+
+    getSystemInstructions(configs: Array<{ integrationId: string, channelOutput: ChannelOutputWithConfigs }>): string {
+        if (configs.length === 0) {
+            throw new Error('No Linear configs provided');
+        }
+        
+        const sections: string[] = [];
+        sections.push('=== LINEAR TICKET OUTPUT ===');
+        
+        // List all available configurations
+        const configList: string[] = [];
+        for (const config of configs) {
+            const { integrationId, channelOutput } = config;
+            if (!channelOutput.linear_config) {
+                throw new Error('Linear config not found');
+            }
+            const teamId = channelOutput.linear_config.team_id;
+            const teamName = channelOutput.linear_config.team_name;
+            configList.push(`  • Integration ID: ${integrationId} - Team: ${teamName || teamId || 'N/A'}`);
+        }
+        sections.push('Available configurations:');
+        sections.push(configList.join('\n'));
+        sections.push('\nWhen calling Linear tools, you MUST include the `integrationId` parameter matching one of the integration IDs listed above.');
+        
+        return sections.join('\n');
+    }
+
+    formatForAvailableConfigurationsSection(config: { integrationId: string, channelOutput: ChannelOutputWithConfigs }): string {
+        const { integrationId, channelOutput } = config;
+        if (!channelOutput.linear_config) {
+            throw new Error('Linear config not found');
+        }
+        const teamName = channelOutput.linear_config.team_name;
+        const teamId = channelOutput.linear_config.team_id;
+        const details = teamName ? `Team: ${teamName}` : (teamId ? `Team: ${teamId}` : 'Team: N/A');
+        return `Integration ID: ${integrationId}, Type: ${channelOutput.config_type}, ${details}`;
     }
 }

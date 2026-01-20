@@ -2,12 +2,13 @@ import { RunContext, tool } from "@openai/agents";
 import { z } from "zod";
 import { LinearClient } from "@linear/sdk";
 import { IntegrationType } from "../../../shared/Integrations";
-import { LinearTicketSession } from "../LinearTicketOutput";
 import { SessionWithTracking } from "../../../agent/ChannelAgent/ChannelAgent";
 import type { IssueUpdateInput } from "@linear/sdk/dist/_generated_documents";
 import { RunHistoryActionType } from "@prisma/client";
 import { formatError, needsApproval } from "../../../tools/toolUtils";
 import logger from "../../../logger";
+import { Session } from "../../../server";
+import { LinearIntegrationManager } from "../../../integrations/LinearIntegration";
 
 export const linearUpdateTicketTool = tool({
     name: 'linear_update_ticket',
@@ -26,6 +27,7 @@ COMMON UPDATE OPERATIONS:
 - Set due date: Use dueDate in format "YYYY-MM-DD" (TimelessDate format)
 - Update description: Set description (supports markdown format)`,
     parameters: z.object({
+        integrationId: z.string().describe('The integration ID of the Linear integration to use.'),
         issueId: z.string().describe('The ID of the Linear issue to update. Use linear_search_ticket or linear_get_ticket to find the issue ID.'),
         title: z.string().nullable().optional().describe('The issue title.'),
         description: z.string().nullable().optional().describe('The issue description in markdown format.'),
@@ -46,6 +48,7 @@ COMMON UPDATE OPERATIONS:
     }),
     needsApproval,
     execute: async ({ 
+        integrationId,
         issueId, 
         title, 
         description, 
@@ -63,17 +66,17 @@ COMMON UPDATE OPERATIONS:
         estimate, 
         subscriberIds, 
         trashed 
-    }, runContext?: RunContext<SessionWithTracking<LinearTicketSession>>) => {
-        logger.debug('🛠️ Executing linear_update_ticket tool', { issueId, updates: { title, description, stateId, assigneeId, priority, dueDate, labelIds, addedLabelIds, removedLabelIds, projectId, projectMilestoneId, teamId, parentId, estimate, subscriberIds, trashed } });
+    }, runContext?: RunContext<SessionWithTracking<Session>>) => {
+        logger.debug('🛠️ Executing linear_update_ticket tool', { integrationId, issueId, updates: { title, description, stateId, assigneeId, priority, dueDate, labelIds, addedLabelIds, removedLabelIds, projectId, projectMilestoneId, teamId, parentId, estimate, subscriberIds, trashed } });
 
         if (!runContext?.context) {
             throw new Error("No context provided");
         }
 
-        // Get the OAuth token from the Linear integration
-        const accessToken = runContext.context.linearIntegration.access_token;
+        const manager = new LinearIntegrationManager();
+        const accessToken = await manager.getAccessToken(integrationId);
         if (!accessToken) {
-            throw new Error("No access token found in Linear integration");
+            throw new Error(`Linear integration not found or access denied for integrationId: ${integrationId}`);
         }
 
         // Initialize Linear client with OAuth token

@@ -1,13 +1,13 @@
 import { RunContext, tool } from "@openai/agents";
 import { z } from "zod";
 import { IntegrationType } from "../../../shared/Integrations";
-import { JiraTicketSession } from "../JiraTicketOutput";
 import { SessionWithTracking } from "../../../agent/ChannelAgent/ChannelAgent";
 import { RunHistoryActionType } from "@prisma/client";
 import { formatError, needsApproval } from "../../../tools/toolUtils";
 import logger from "../../../logger";
 import { AtlassianIntegrationManager } from "../../../integrations/AtlassianIntegration";
 import { db } from "../../../prismaClient";
+import { Session } from "../../../server";
 
 // Atlassian Document Format (ADF) interfaces
 interface ADFText {
@@ -95,9 +95,10 @@ OPTIONAL FIELDS:
 BEFORE USING THIS TOOL:
 - Ensure you have the correct projectKey for the project where you want to create the issue`,
     parameters: z.object({
+        integrationId: z.string().describe('The integration ID of the Atlassian/Jira integration to use.'),
         title: z.string().describe('The issue title/summary. This is required.'),
         description: z.string().nullable().optional().describe('The issue description in plain text or markdown format.'),
-        projectKey: z.string().describe('The Jira project key (e.g., "PROJ", "TEAM"). This is required.'),
+        projectKey: z.string().nullable().optional().describe('The Jira project key (e.g., "PROJ", "TEAM"). If not provided, will use the project configured in the Jira output settings.'),
         issueType: z.string().nullable().optional().describe('The Jira issue type (e.g., "Task", "Bug", "Story", "Epic", "Subtask", "Improvement", "New Feature")').default('Task'),
         assignee: z.union([z.object({
             email: z.string().describe('The assignee email'),
@@ -108,6 +109,7 @@ BEFORE USING THIS TOOL:
     }),
     needsApproval,
     execute: async ({ 
+        integrationId,
         title,
         description,
         projectKey,
@@ -116,7 +118,7 @@ BEFORE USING THIS TOOL:
         priority,
         labels,
         dueDate,
-    }, runContext?: RunContext<SessionWithTracking<JiraTicketSession>>) => {
+    }, runContext?: RunContext<SessionWithTracking<Session>>) => {
         logger.debug('🛠️ Executing jira_create_ticket tool', { title, projectKey, issueType, otherFields: { description, assignee, priority, labels, dueDate } });
 
         if (!runContext?.context) {
@@ -124,7 +126,6 @@ BEFORE USING THIS TOOL:
         }
 
         // Get the integration details
-        const integrationId = runContext.context.jiraIntegration.id;
         const integrationManager = new AtlassianIntegrationManager();
         
         // Get valid access token
@@ -150,11 +151,17 @@ BEFORE USING THIS TOOL:
         const cloudId = integration.cloud_id;
         const baseUrl = integration.base_url;
 
+        // Determine project key - use provided one or fallback to config
+        const finalProjectKey = projectKey || null;
+        if (!finalProjectKey) {
+            throw new Error('Project key is required. Please provide the projectKey parameter or configure it in the Jira output settings.');
+        }
+
         try {
             // Build the issue fields
             const fields: Record<string, any> = {
                 summary: title,
-                project: { key: projectKey },
+                project: { key: finalProjectKey },
                 issuetype: { name: issueType },
             };
 

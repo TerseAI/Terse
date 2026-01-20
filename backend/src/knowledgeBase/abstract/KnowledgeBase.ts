@@ -1,12 +1,11 @@
 // MARK: - Output Integrations
 
-import { Session } from "../../server";
-import { ChannelKnowledgeBase, PrismaTransaction, User } from "../../types/prisma";
+import { ChannelKnowledgeBaseWithConfigs, PrismaTransaction, User } from "../../types/prisma";
 import { KnowledgeBaseConfigType } from "@prisma/client";
 import { ConfigInstance } from "../../shared/Configs";
 import { ToolboxEntry } from "../../outputs/abstract/Output";
 
-export abstract class KnowledgeBase<T extends Session, KBConfig extends ConfigInstance> {
+export abstract class KnowledgeBase<KBConfig extends ConfigInstance> {
     integration: KnowledgeBaseConfigType;
     readonly toolbox: readonly ToolboxEntry[];
 
@@ -15,12 +14,6 @@ export abstract class KnowledgeBase<T extends Session, KBConfig extends ConfigIn
         this.toolbox = [...toolbox]
     }
 
-    abstract createSessionFromConfig(
-        integrationId: string, // Integration ID to fetch from database
-        channelKnowledgeBase: ChannelKnowledgeBase | null, // ChannelOutput with loaded config relations
-        user: User
-    ): Promise<T>;
-
     abstract validateConfig(knowledgeBase: KBConfig, userId: string): Promise<void>;
 
     abstract addKnowledgeBaseToChannel(tx: PrismaTransaction, channelKnowledgeBaseId: string, knowledgeBase: KBConfig): Promise<void>;
@@ -28,10 +21,17 @@ export abstract class KnowledgeBase<T extends Session, KBConfig extends ConfigIn
     /**
      * Returns output-specific system instructions that will be appended to the base system prompt.
      * Override this method in subclasses to provide output-specific guidance.
-     * @param session The session context
+     * @param configs Array of configuration objects, each containing integrationId and channelKnowledgeBase with all config relations loaded.
+     *                 All configs of this knowledge base type will be provided so the AI can choose which to use for each tool call.
      * @returns Additional system instructions as a string
      */
-    getSystemInstructions(session: T): string {
-        return '';
-    }
+    abstract getSystemInstructions(configs: Array<{ integrationId: string, channelKnowledgeBase: ChannelKnowledgeBaseWithConfigs }>): string;
+
+    /**
+     * Formats this knowledge base configuration for the "Available Configurations" section of the system prompt.
+     * Each knowledge base type knows how to format its own details.
+     * @param config Configuration object with integrationId and channelKnowledgeBase
+     * @returns Formatted string like "Integration ID: X, Type: Y, Details: Z"
+     */
+    abstract formatForAvailableConfigurationsSection(config: { integrationId: string, channelKnowledgeBase: ChannelKnowledgeBaseWithConfigs }): string;
 }

@@ -1,9 +1,10 @@
 import { RunContext, tool } from "@openai/agents";
 import { z } from "zod";
 import logger from "../../../logger";
-import { db } from "../../../prismaClient";
-import { LaunchDarklyConfig } from "../../../shared/Configs";
 import { IntegrationType } from "../../../shared/Integrations";
+import { Session } from "../../../server";
+import { SessionWithTracking } from "../../../agent/ChannelAgent/ChannelAgent";
+import { getLaunchDarklyApiKeyByIntegrationId } from "../launchdarklyApiClient";
 
 /**
  * Tool for listing LaunchDarkly feature flags with their enabled/disabled states per environment.
@@ -12,12 +13,18 @@ export const listLaunchDarklyFlagsTool = tool({
     name: 'listLaunchDarklyFlags',
     description: 'List all feature flags with enabled/disabled states per environment. Use summary=true for quick overview, summary=false for full details.',
     parameters: z.object({
+        integrationId: z.string().describe('The integration ID of the LaunchDarkly knowledge base to use.'),
+        projectKey: z.string().describe('The LaunchDarkly project key.'),
+        environmentKeys: z.array(z.string()).describe('Array of environment keys to query.'),
         summary: z.boolean().default(true).describe('If true, return only flag key, name, and on/off state per environment. If false, return full flag details.'),
         filter: z.union([z.string(), z.null()]).optional().describe('Optional: Filter flags by name/key containing this text.'),
         tags: z.union([z.array(z.string()), z.null()]).optional().describe('Optional: Filter flags by tags.'),
     }),
-    execute: async ({ summary = true, filter, tags }, runContext?: RunContext<any>) => {
+    execute: async ({ integrationId, projectKey, environmentKeys, summary = true, filter, tags }, runContext?: RunContext<SessionWithTracking<Session>>) => {
         logger.info('[LaunchDarkly] listFeatureFlags - Tool called', {
+            integrationId,
+            projectKey,
+            environmentKeys,
             summary,
             filter,
             tags
@@ -28,46 +35,11 @@ export const listLaunchDarklyFlagsTool = tool({
             throw new Error("No context provided");
         }
 
-        // Get LaunchDarkly config from context - must be set by the knowledge base session
-        const launchDarklyConfig = runContext.context.launchDarklyConfig as LaunchDarklyConfig | undefined;
-        if (!launchDarklyConfig) {
-            logger.error('[LaunchDarkly] listFeatureFlags - LaunchDarkly config not found in context');
-            throw new Error("LaunchDarkly config not found in context. Ensure LaunchDarkly is configured as a knowledge base.");
+        const apiKey = await getLaunchDarklyApiKeyByIntegrationId(integrationId, runContext.context.user.id);
+        if (!apiKey) {
+            throw new Error(`LaunchDarkly integration not found or access denied for integrationId: ${integrationId}`);
         }
 
-        logger.debug('[LaunchDarkly] listFeatureFlags - Config loaded', {
-            integrationId: launchDarklyConfig.integrationId,
-            projectKey: launchDarklyConfig.projectKey,
-            environmentKeys: launchDarklyConfig.environmentKeys
-        });
-
-        const user = runContext.context.user;
-        if (!user) {
-            logger.error('[LaunchDarkly] listFeatureFlags - User not found in context');
-            throw new Error("User not found in context");
-        }
-
-        // Get LaunchDarkly integration
-        const integration = await db().launchdarkly_integrations.findUnique({
-            where: { id: launchDarklyConfig.integrationId },
-        });
-
-        if (!integration) {
-            logger.error('[LaunchDarkly] listFeatureFlags - Integration not found', {
-                integrationId: launchDarklyConfig.integrationId
-            });
-            throw new Error(`LaunchDarkly integration not found: ${launchDarklyConfig.integrationId}`);
-        }
-
-        logger.debug('[LaunchDarkly] listFeatureFlags - Integration loaded', {
-            integrationId: integration.id,
-            hasApiKey: !!integration.api_key,
-            apiKeyLength: integration.api_key?.length || 0
-        });
-
-        const apiKey = integration.api_key;
-        const projectKey = launchDarklyConfig.projectKey;
-        const environmentKeys = launchDarklyConfig.environmentKeys;
         const launchDarklyHost = 'https://app.launchdarkly.com';
 
         try {

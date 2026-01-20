@@ -1,7 +1,5 @@
 import { Tool } from "@openai/agents";
-import { ChannelOutput, PrismaTransaction, User, UserSlackIntegration } from "../../types/prisma";
-import { automation_slack_configs } from "@prisma/client";
-import { Session } from "../../server";
+import { ChannelOutputWithConfigs, PrismaTransaction, User } from "../../types/prisma";
 import { Output, ToolboxEntry } from "../abstract/Output";
 import { db } from "../../prismaClient";
 import { OutputConfigType } from "@prisma/client";
@@ -9,12 +7,7 @@ import { SlackOutputConfig } from "../../shared/Configs";
 import { slackSendMessageTool } from "./tools/sendMessage";
 import { IntegrationType } from "../../shared/Integrations";
 
-export interface SlackChannelSession extends Session {
-    slackIntegration: UserSlackIntegration; // User's Slack integration record
-    slackConfig: automation_slack_configs; // Configuration for the Slack channel/DM
-}
-
-export class SlackOutput extends Output<SlackChannelSession, SlackOutputConfig> {
+export class SlackOutput extends Output<SlackOutputConfig> {
     constructor() {
         const toolbox: ToolboxEntry[] = [
             { tool: slackSendMessageTool as Tool, isReadOnly: false, integration: IntegrationType.SLACK },
@@ -22,41 +15,6 @@ export class SlackOutput extends Output<SlackChannelSession, SlackOutputConfig> 
         super(OutputConfigType.SLACK_CHANNEL, toolbox);
     }
 
-    async createSessionFromConfig(
-        integrationId: string,
-        channelOutputConfig: ChannelOutput,
-        user: User
-    ): Promise<SlackChannelSession> {
-        // For Slack, integrationId is the user_slack_integrations.id
-        const userSlackIntegration = await db().user_slack_integrations.findFirst({
-            where: { 
-                id: integrationId,
-                user_id: user.id,
-            },
-            include: {
-                slack_integration: true,
-            },
-        });
-
-        if (!userSlackIntegration) {
-            throw new Error(`Slack integration ${integrationId} not found for user`);
-        }
-
-        const slackConfigRecord = await db().automation_slack_configs.findFirst({
-            where: { automation_output_id: channelOutputConfig.id }
-        });
-
-        if (!slackConfigRecord) {
-            throw new Error(`Slack config for automation output ${channelOutputConfig.id} not found`);
-        }
-
-        return { 
-            slackIntegration: userSlackIntegration, 
-            slackConfig: slackConfigRecord, 
-            user: user, 
-            isUserInitiated: true 
-        };
-    }
 
     async validateConfig(output: SlackOutputConfig, _userId: string): Promise<void> {
         if (!output.channelId) {
@@ -76,8 +34,41 @@ export class SlackOutput extends Output<SlackChannelSession, SlackOutputConfig> 
         });
     }
 
-    getSystemInstructions(_session: SlackChannelSession): string {
-        return SLACK_OUTPUT_INSTRUCTIONS;
+    getSystemInstructions(configs: Array<{ integrationId: string, channelOutput: ChannelOutputWithConfigs }>): string {
+        if (configs.length === 0) {
+            throw new Error('No Slack configs provided');
+        }
+        
+        const sections: string[] = [];
+        
+        // List all available configurations
+        const configList: string[] = [];
+        for (const config of configs) {
+            const { integrationId, channelOutput } = config;
+            if (!channelOutput.slack_config) {
+                throw new Error('Slack config not found');
+            }
+            const channelId = channelOutput.slack_config.channel_id;
+            const channelName = channelOutput.slack_config.channel_name;
+            configList.push(`  • Integration ID: ${integrationId} - Channel: ${channelName || channelId}`);
+        }
+        sections.push('Available configurations:');
+        sections.push(configList.join('\n'));
+        sections.push('\nWhen calling Slack tools, you MUST include the `integrationId` and `channelId` parameters matching one of the configurations listed above.');
+        sections.push('\n' + SLACK_OUTPUT_INSTRUCTIONS);
+        
+        return sections.join('\n');
+    }
+
+    formatForAvailableConfigurationsSection(config: { integrationId: string, channelOutput: ChannelOutputWithConfigs }): string {
+        const { integrationId, channelOutput } = config;
+        if (!channelOutput.slack_config) {
+            throw new Error('Slack config not found');
+        }
+        const channelName = channelOutput.slack_config.channel_name;
+        const channelId = channelOutput.slack_config.channel_id;
+        const details = channelName ? `Channel: ${channelName}` : (channelId ? `Channel: ${channelId}` : '');
+        return `Integration ID: ${integrationId}, Type: ${channelOutput.config_type}${details ? `, ${details}` : ''}`;
     }
 }
 

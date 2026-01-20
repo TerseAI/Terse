@@ -1,20 +1,14 @@
 import { RunContext, tool } from "@openai/agents";
 import { z } from "zod";
 import logger from "../../../logger";
-import { createGitHubClient, listPullRequests, parseRepoFullName } from "../githubApiClient";
-import { GitHubKBConfig } from "../../../shared/Configs";
+import { createGitHubClient, listPullRequests, parseRepoFullName, getGitHubAccessTokenByIntegrationId } from "../githubApiClient";
 import { IntegrationType } from "../../../shared/Integrations";
 import { RunHistoryActionType } from "@prisma/client";
 import { SessionWithTracking } from "../../../agent/ChannelAgent/ChannelAgent";
-import { GitHubKnowledgeBaseSession } from "../GitHubKnowledgeBase";
+import { Session } from "../../../server";
 
 // Helper functions
 const normalizePerPage = (perPage?: number): number => Math.min(perPage || 20, 100);
-
-const validateContext = (runContext: RunContext<SessionWithTracking<GitHubKnowledgeBaseSession>>) => {
-    const { githubKBConfig, githubAccessToken } = runContext.context;
-    return { githubKBConfig, githubAccessToken };
-};
 
 const validateRepository = (repository: string, repositoryNames: string[]) => {
     if (!repositoryNames.includes(repository)) {
@@ -58,6 +52,7 @@ export const listGitHubPullRequestsTool = tool({
 The tool returns PR details including title, author, merge status, and dates.
 Dates are specified in YYYY-MM-DD format (e.g., "2024-01-15"). The since date is interpreted as the start of that day (00:00:00), and the until date is interpreted as the end of that day (23:59:59).`,
     parameters: z.object({
+        integrationId: z.string().describe('The integration ID of the GitHub knowledge base to use. Required when multiple GitHub knowledge bases are configured.'),
         repository: z.string().describe('Repository in "owner/repo" format (e.g., "facebook/react"). Must be one of the configured repositories.'),
         state: z.enum(['open', 'closed', 'all']).describe('Filter by PR state. Use "closed" to see merged PRs, "open" for in-progress, or "all" for both.'),
         since: z.union([z.string(), z.null()]).describe('Start date in YYYY-MM-DD format (e.g., "2024-01-15"). Only PRs updated on or after this date (starting at 00:00:00) are included. Use null for no start filter.'),
@@ -65,18 +60,17 @@ Dates are specified in YYYY-MM-DD format (e.g., "2024-01-15"). The since date is
         perPage: z.number().describe('Number of results to return (default: 20, max: 100)'),
         page: z.union([z.number().int().min(1), z.null()]).describe('Page number for pagination (default: 1). Use this to fetch additional PRs if there are more than perPage results. Use null for page 1. Must be a positive integer >= 1.'),
     }),
-    execute: async ({ repository, state, since, until, perPage = 20, page }, runContext?: RunContext<SessionWithTracking<GitHubKnowledgeBaseSession>>) => {
+    execute: async ({ integrationId, repository, state, since, until, perPage = 20, page }, runContext?: RunContext<SessionWithTracking<Session>>) => {
         if (!runContext?.context) {
             throw new Error("No context provided");
         }
-        const { githubKBConfig, githubAccessToken } = validateContext(runContext);
 
-        const repoValidationError = validateRepository(repository, githubKBConfig.repositoryNames);
-        if (repoValidationError) {
-            return repoValidationError;
+        const accessToken = await getGitHubAccessTokenByIntegrationId(integrationId, runContext.context.user.id);
+        if (!accessToken) {
+            throw new Error(`GitHub integration not found or access denied for integrationId: ${integrationId}`);
         }
 
-        const client = createGitHubClient(githubAccessToken);
+        const client = createGitHubClient(accessToken);
         const { owner, repo } = parseRepoFullName(repository);
         const normalizedPerPage = normalizePerPage(perPage);
         const pageNumber = Math.max(1, page ?? 1);

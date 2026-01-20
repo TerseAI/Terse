@@ -497,7 +497,7 @@ model automations {
   user                       users                             @relation(fields: [user_id], references: [id], onDelete: Cascade)
   prompt                     automation_prompts?
   inputs                     automation_inputs[]
-  output                     automation_outputs?
+  outputs                    automation_outputs[]
   run_history_records        run_history_records[]
   directiveRecords           directive_records[]
   notification_settings      automation_notification_settings?
@@ -546,16 +546,18 @@ model automation_inputs {
   @@index([config_type, integration_id])
 }
 
-// Single output per automation
+// Multiple outputs per automation
 model automation_outputs {
   id             String           @id @default(cuid())
-  automation_id  String           @unique
+  automation_id  String
   config_type    OutputConfigType
   integration_id String
   created_at     DateTime         @default(now())
   updated_at     DateTime         @updatedAt
 
   automation automations @relation(fields: [automation_id], references: [id], onDelete: Cascade)
+
+  @@index([automation_id])
 
   // Configuration relations (one per integration type)
   slack_config       automation_slack_configs?

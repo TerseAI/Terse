@@ -1,12 +1,11 @@
 import { RunContext, tool } from "@openai/agents";
 import { z } from "zod";
 import logger from "../../../logger";
-import { db } from "../../../prismaClient";
-import { PosthogConfig } from "../../../shared/Configs";
 import { IntegrationType } from "../../../shared/Integrations";
 import { RunHistoryActionType } from "@prisma/client";
 import { SessionWithTracking } from "../../../agent/ChannelAgent/ChannelAgent";
-import { PosthogKnowledgeBaseSession } from "../PosthogKnowledgeBase";
+import { Session } from "../../../server";
+import { getPosthogApiKeyByIntegrationId } from "../posthogApiClient";
 
 /**
  * Tool for querying PostHog logs with flexible filtering options.
@@ -16,6 +15,9 @@ export const searchLogsTool = tool({
     name: 'searchPosthogLogs',
     description: 'Query PostHog logs with flexible filtering. Returns logs data and a link to view logs in PostHog. You can filter by user email, log severity levels (error, warn, info, debug), message text search, or combinations. At least one filter (user email, severity levels, or message search) should be provided to avoid overly broad queries. Use this when you need to investigate user activity, errors, or events in PostHog logs.',
     parameters: z.object({
+        integrationId: z.string().describe('The integration ID of the PostHog knowledge base to use.'),
+        projectId: z.string().describe('The PostHog project ID.'),
+        canReadLogs: z.boolean().optional().describe('Whether logs access is enabled for this knowledge base.'),
         userEmail: z.union([z.string(), z.null()]).optional().describe('Optional: User email to filter logs by (e.g., "user@example.com").'),
         severityLevels: z.union([z.array(z.enum(['error', 'warn', 'info', 'debug'])), z.null()]).describe('Optional: Array of log severity levels to filter by (e.g., ["error", "warn"]). If not provided, all severity levels are included.'),
         messageSearch: z.union([z.string(), z.null()]).describe('Optional: Text to search for within log messages. Searches are case-insensitive and match partial text.'),
@@ -25,14 +27,12 @@ export const searchLogsTool = tool({
         dateFrom: z.union([z.string(), z.null()]).describe('Start date for filtering (ISO format or relative like "-7d"). If not provided and last7Days is true, defaults to 7 days ago. If not provided and last7Days is false, no date restriction is applied.'),
         dateTo: z.union([z.string(), z.null()]).describe('End date for filtering (ISO format or relative like "now"). If not provided, defaults to now.'),
     }),
-    execute: async ({ userEmail, severityLevels, messageSearch, limit = 50, offset = 0, last7Days = false, dateFrom, dateTo }, runContext?: RunContext<SessionWithTracking<PosthogKnowledgeBaseSession>>) => {
+    execute: async ({ integrationId, projectId, canReadLogs, userEmail, severityLevels, messageSearch, limit = 50, offset = 0, last7Days = false, dateFrom, dateTo }, runContext?: RunContext<SessionWithTracking<Session>>) => {
         if (!runContext?.context) {
             throw new Error("No context provided");
         }
 
-        const { posthogConfig, user } = runContext.context;
-
-        if (!posthogConfig.canReadLogs) {
+        if (canReadLogs === false) {
             throw new Error("PostHog logs access is not enabled for this knowledge base.");
         }
 
@@ -50,17 +50,11 @@ export const searchLogsTool = tool({
             throw new Error("At least one filter must be provided: userEmail, severityLevels, or messageSearch.");
         }
 
-        // Get PostHog integration
-        const integration = await db().posthog_integrations.findUnique({
-            where: { id: posthogConfig.integrationId },
-        });
-
-        if (!integration) {
-            throw new Error(`PostHog integration not found: ${posthogConfig.integrationId}`);
+        const posthogApiKey = await getPosthogApiKeyByIntegrationId(integrationId, runContext.context.user.id);
+        if (!posthogApiKey) {
+            throw new Error(`PostHog integration not found or access denied for integrationId: ${integrationId}`);
         }
 
-        const posthogApiKey = integration.api_key;
-        const projectId = posthogConfig.projectId;
         const posthogHost = 'https://us.posthog.com';
 
         try {
@@ -224,7 +218,7 @@ export const searchLogsTool = tool({
             runContext.context.trackAction({
                 action: 'Searched PostHog logs',
                 integration: IntegrationType.POSTHOG,
-                target: posthogConfig.projectId,
+                target: projectId,
                 details: `Searched event logs: Found ${formattedLogs.length} event(s)${queryDesc}${dateFromValue ? ` from ${dateFromValue}` : ''}${dateTo ? ` to ${dateTo}` : ''}`,
                 url: logsLink,
                 type: RunHistoryActionType.read,

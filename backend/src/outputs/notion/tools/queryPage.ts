@@ -1,12 +1,13 @@
 import { RunContext, tool } from "@openai/agents";
 import { z } from "zod";
 import { Client } from '@notionhq/client';
-import { NotionPageSession } from "../NotionPageOutput";
 import { GetPageResponse, PageObjectResponse } from "@notionhq/client/build/src/api-endpoints";
 import { IntegrationType } from "../../../shared/Integrations";
 import { SessionWithTracking } from "../../../agent/ChannelAgent/ChannelAgent";
 import { formatError } from "../../../tools/toolUtils";
 import logger from "../../../logger";
+import { Session } from "../../../server";
+import { NotionIntegrationManager } from "../../../integrations/NotionIntegration";
 
 // Helper function to extract readable values from Notion page property objects
 function extractPagePropertyValue(property: any): any {
@@ -233,19 +234,24 @@ export const notionQueryPageTool = tool({
 
 This tool returns the current state of the page including all properties, metadata, and content blocks.`,
     parameters: z.object({
-        // No parameters needed - returns complete page information
+        integrationId: z.string().describe('The integration ID of the Notion workspace to use.'),
+        pageId: z.string().describe('The Notion page ID to query.'),
     }),
-    execute: async ({ }, runContext?: RunContext<SessionWithTracking<NotionPageSession>>) => {
+    execute: async ({ integrationId, pageId }, runContext?: RunContext<SessionWithTracking<Session>>) => {
         logger.debug("Executing notion_query_page tool");
         if (!runContext?.context) {
             throw new Error("No context provided");
         }
 
-        const notion = new Client({
-            auth: runContext.context.notionIntegration.integration_token,
-        });
+        const manager = new NotionIntegrationManager();
+        const accessToken = await manager.getAccessToken(integrationId);
+        if (!accessToken) {
+            throw new Error(`Notion integration not found or access denied for integrationId: ${integrationId}`);
+        }
 
-        const pageId = runContext.context.notionPageConfig.page_id as string;
+        const notion = new Client({
+            auth: accessToken,
+        });
 
         // Fetch page metadata
         const pageInfo: GetPageResponse = await notion.pages.retrieve({
@@ -275,7 +281,11 @@ This tool returns the current state of the page including all properties, metada
         }
 
         // Push run action to track the API calls
-        const pageName = runContext.context.notionPageConfig.page_name || 'Notion page';
+        const pageName = isFullPage(pageInfo) && 'properties' in pageInfo 
+            ? (pageInfo.properties.title && 'title' in pageInfo.properties.title 
+                ? pageInfo.properties.title.title.map((t: any) => t.plain_text).join('') 
+                : 'Notion page')
+            : 'Notion page';
         runContext.context.trackAction({
             action: 'Retrieved page',
             integration: IntegrationType.NOTION,
