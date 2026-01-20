@@ -875,6 +875,7 @@ enum OutputConfigType {
   LINEAR_TICKET
   JIRA_TICKET
   SLACK_CHANNEL
+  GMAIL
 }
 
 enum KnowledgeBaseConfigType {
