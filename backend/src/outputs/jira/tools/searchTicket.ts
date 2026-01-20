@@ -52,8 +52,9 @@ JQL EXAMPLES:
 
         const integrationManager = new AtlassianIntegrationManager();
         
-        // Get valid access token
-        const accessToken = await integrationManager.getAccessToken(integrationId);
+        // Get valid access token with user ownership validation
+        const userId = runContext.context.user.id;
+        const accessToken = await integrationManager.getAccessToken(integrationId, userId);
         if (!accessToken) {
             throw new Error(`Atlassian integration not found or access denied for integrationId: ${integrationId}`);
         }
@@ -66,6 +67,10 @@ JQL EXAMPLES:
 
         if (!integration || !integration.cloud_id) {
             throw new Error(`Atlassian integration details not found for integrationId: ${integrationId}`);
+        }
+
+        if (!integration.base_url) {
+            throw new Error(`No base_url found in Atlassian integration for integrationId: ${integrationId}`);
         }
 
         const cloudId = integration.cloud_id;

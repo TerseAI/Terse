@@ -128,8 +128,9 @@ BEFORE USING THIS TOOL:
         // Get the integration details
         const integrationManager = new AtlassianIntegrationManager();
         
-        // Get valid access token
-        const accessToken = await integrationManager.getAccessToken(integrationId);
+        // Get valid access token with user ownership validation
+        const userId = runContext.context.user.id;
+        const accessToken = await integrationManager.getAccessToken(integrationId, userId);
         if (!accessToken) {
             throw new Error("No valid access token found for Jira integration");
         }

@@ -32,7 +32,7 @@ export const searchLogsTool = tool({
             throw new Error("No context provided");
         }
 
-        if (canReadLogs === false) {
+        if (canReadLogs !== true) {
             throw new Error("PostHog logs access is not enabled for this knowledge base.");
         }
 

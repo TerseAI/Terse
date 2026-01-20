@@ -741,7 +741,7 @@ export class AtlassianIntegrationManager implements Integration<AtlassianIntegra
 
     // MARK: - Helper Methods
 
-    async getAccessToken(integrationId: string): Promise<string | null> {
+    async getAccessToken(integrationId: string, userId?: string): Promise<string | null> {
         try {
             const integration = await db().atlassian_integrations.findUnique({
                 where: { id: integrationId },
@@ -749,6 +749,12 @@ export class AtlassianIntegrationManager implements Integration<AtlassianIntegra
 
             if (!integration) {
                 logger.error(`Atlassian integration ${integrationId} not found`, { integrationId });
+                return null;
+            }
+
+            // Validate that the integration belongs to the user if userId is provided
+            if (userId && integration.user_id !== userId) {
+                logger.warn('Atlassian integration does not belong to user', { integrationId, userId, tokenUserId: integration.user_id });
                 return null;
             }
 
