@@ -10,6 +10,7 @@ import type { AgentInputItem } from '@openai/agents-core';
 import logger from '../../logger';
 import { KnowledgeBase } from '../../knowledgeBase/abstract/KnowledgeBase';
 import { RunHistoryStatus } from '@prisma/client';
+import { settings } from '../../config/settings';
 
 export interface RunContext {
     runId: string;
@@ -49,6 +50,7 @@ export class SystemPromptBuilder<T extends Session, TConfig extends ConfigInstan
             .withSection(() => this.buildCoreInstructions())
             .withSection(() => this.buildRunContextSection())
             .withSection(() => this.buildDirectivesSection())
+            .withSection(() => this.buildDeepLinkingSection())
             .withSection(() => this.buildOutputInstructions())
             .withSection(() => this.buildKnowledgeBaseInstructions());
     }
@@ -207,6 +209,47 @@ This is event #${eventPosition} processed by this automation.`
 ${directivesList}
 
 Follow these directives in addition to the USER INSTRUCTIONS provided in each message. If a directive conflicts with a specific request in a message, the message takes precedence for that interaction only.`
+        };
+    }
+
+    private buildDeepLinkingSection(): Section {
+        const frontendUrl = settings.urls.frontend;
+        const channelId = this.deps.channel.id;
+        const runId = this.runContext.runId;
+
+        const channelLink = `${frontendUrl}/app/channels/${channelId}`;
+        const channelHistoryLink = `${frontendUrl}/app/channels/${channelId}?tab=history`;
+        const specificRunLink = `${frontendUrl}/app/channels/${channelId}?tab=history&runId=${runId}`;
+
+        return {
+            header: 'DEEP LINKING TO TERSE APPLICATION',
+            content: `You can create links to specific pages within the Terse application to help users navigate to relevant content.
+
+BASE URL: ${frontendUrl}
+The base URL is automatically determined from the environment (localhost for development, app.useterse.ai for production).
+
+AVAILABLE LINK TYPES:
+
+1. Channel Detail Page:
+   Format: ${frontendUrl}/app/channels/{channelId}
+   Example: ${channelLink}
+   Use when: Referencing a specific automation/channel
+
+2. Run History (Channel Activity Tab):
+   Format: ${frontendUrl}/app/channels/{channelId}?tab=history
+   Example: ${channelHistoryLink}
+   Use when: Directing users to view all runs for a channel
+
+3. Specific Run History:
+   Format: ${frontendUrl}/app/channels/{channelId}?tab=history&runId={runId}
+   Example: ${specificRunLink}
+   Use when: Referencing a specific run execution
+
+CURRENT CONTEXT:
+- Channel ID: ${channelId}
+- Current Run ID: ${runId}
+
+When explicitly asked by the user, include these links in your responses to help users navigate to relevant parts of the application. For example, you might include a link to the current run's history when explaining what actions were taken, or link to the channel page when referencing the automation configuration.`
         };
     }
 
