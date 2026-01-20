@@ -379,7 +379,7 @@ export class ChannelAgent<
     }
 
     private chooseModel(): string {
-        return settings.nodeEnv === 'development' ? 'gpt-5.2' : 'gpt-5.2';
+        return 'gpt-5.2';
     }
 
     async initializeAgent(): Promise<void> {
