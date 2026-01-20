@@ -24,14 +24,6 @@ export abstract class Output<TConfig extends ConfigInstance> {
     abstract addOutputToChannel(tx: PrismaTransaction, channelOutputId: string, output: TConfig): Promise<void>;
 
     abstract getSystemInstructions(configs: ChannelOutputWithConfigs[]): string;
-
-    /**
-     * Formats this output configuration for the "Available Configurations" section of the system prompt.
-     * Each output type knows how to format its own details.
-     * @param config Configuration object with integrationId and channelOutput
-     * @returns Formatted string like "Integration ID: X, Type: Y, Details: Z"
-     */
-    abstract formatForAvailableConfigurationsSection(config: { integrationId: string, channelOutput: ChannelOutputWithConfigs }): string;
 }
 
 export const defaultToolbox: readonly ToolboxEntry[] = [

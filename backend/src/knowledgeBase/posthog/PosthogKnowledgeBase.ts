@@ -221,16 +221,5 @@ Always summarize your investigation with citations:
 
         return sections.join('\n');
     }
-
-    formatForAvailableConfigurationsSection(config: { integrationId: string, channelKnowledgeBase: ChannelKnowledgeBaseWithConfigs }): string {
-        const { integrationId, channelKnowledgeBase } = config;
-        if (!channelKnowledgeBase.posthog_config) {
-            throw new Error('PostHog config not found');
-        }
-        const projectName = channelKnowledgeBase.posthog_config.project_name;
-        const projectId = channelKnowledgeBase.posthog_config.project_id;
-        const details = `Project: ${projectName || projectId}`;
-        return `Integration ID: ${integrationId}, Type: ${channelKnowledgeBase.config_type}, ${details}`;
-    }
 }
 

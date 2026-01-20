@@ -60,17 +60,6 @@ export class NotionPageOutput extends Output<NotionPageConfig> {
         
         return sections.join('\n');
     }
-
-    formatForAvailableConfigurationsSection(config: { integrationId: string, channelOutput: ChannelOutputWithConfigs }): string {
-        const { integrationId, channelOutput } = config;
-        if (!channelOutput.notion_page_config) {
-            throw new Error('Notion page config not found');
-        }
-        const pageName = channelOutput.notion_page_config.page_name;
-        const pageId = channelOutput.notion_page_config.page_id;
-        const details = pageName ? `Page: ${pageName}` : `Page: ${pageId}`;
-        return `Integration ID: ${integrationId}, Type: ${channelOutput.config_type}, ${details}`;
-    }
 }
 
 // MARK: - Footer Instructions

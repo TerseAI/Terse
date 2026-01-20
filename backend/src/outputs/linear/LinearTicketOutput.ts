@@ -61,15 +61,4 @@ export class LinearTicketOutput extends Output<LinearOutputConfig> {
         
         return sections.join('\n');
     }
-
-    formatForAvailableConfigurationsSection(config: { integrationId: string, channelOutput: ChannelOutputWithConfigs }): string {
-        const { integrationId, channelOutput } = config;
-        if (!channelOutput.linear_config) {
-            throw new Error('Linear config not found');
-        }
-        const teamName = channelOutput.linear_config.team_name;
-        const teamId = channelOutput.linear_config.team_id;
-        const details = teamName ? `Team: ${teamName}` : (teamId ? `Team: ${teamId}` : 'Team: N/A');
-        return `Integration ID: ${integrationId}, Type: ${channelOutput.config_type}, ${details}`;
-    }
 }

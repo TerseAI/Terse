@@ -58,17 +58,6 @@ export class SlackOutput extends Output<SlackOutputConfig> {
         
         return sections.join('\n');
     }
-
-    formatForAvailableConfigurationsSection(config: { integrationId: string, channelOutput: ChannelOutputWithConfigs }): string {
-        const { integrationId, channelOutput } = config;
-        if (!channelOutput.slack_config) {
-            throw new Error('Slack config not found');
-        }
-        const channelName = channelOutput.slack_config.channel_name;
-        const channelId = channelOutput.slack_config.channel_id;
-        const details = channelName ? `Channel: ${channelName}` : (channelId ? `Channel: ${channelId}` : '');
-        return `Integration ID: ${integrationId}, Type: ${channelOutput.config_type}${details ? `, ${details}` : ''}`;
-    }
 }
 
 const SLACK_OUTPUT_INSTRUCTIONS = `

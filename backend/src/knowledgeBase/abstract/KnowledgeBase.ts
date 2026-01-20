@@ -26,12 +26,4 @@ export abstract class KnowledgeBase<KBConfig extends ConfigInstance> {
      * @returns Additional system instructions as a string
      */
     abstract getSystemInstructions(configs: ChannelKnowledgeBaseWithConfigs[]): string;
-
-    /**
-     * Formats this knowledge base configuration for the "Available Configurations" section of the system prompt.
-     * Each knowledge base type knows how to format its own details.
-     * @param config Configuration object with integrationId and channelKnowledgeBase
-     * @returns Formatted string like "Integration ID: X, Type: Y, Details: Z"
-     */
-    abstract formatForAvailableConfigurationsSection(config: { integrationId: string, channelKnowledgeBase: ChannelKnowledgeBaseWithConfigs }): string;
 }

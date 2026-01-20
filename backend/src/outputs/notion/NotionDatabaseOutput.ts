@@ -115,16 +115,5 @@ This workflow ensures you work with the database correctly and prevents duplicat
         
         return sections.join('\n');
     }
-
-    formatForAvailableConfigurationsSection(config: { integrationId: string, channelOutput: ChannelOutputWithConfigs }): string {
-        const { integrationId, channelOutput } = config;
-        if (!channelOutput.notion_config) {
-            throw new Error('Notion database config not found');
-        }
-        const databaseName = channelOutput.notion_config.database_name;
-        const databaseId = channelOutput.notion_config.database_id;
-        const details = databaseName ? `Database: ${databaseName}` : `Database: ${databaseId}`;
-        return `Integration ID: ${integrationId}, Type: ${channelOutput.config_type}, ${details}`;
-    }
 }
 
