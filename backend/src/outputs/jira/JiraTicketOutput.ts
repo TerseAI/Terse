@@ -49,7 +49,7 @@ export class JiraTicketOutput extends Output<JiraConfig> {
             }
             const projectKey = config.jira_config.project_key;
             const projectId = config.jira_config.project_id;
-            configList.push(`  • Integration ID: ${config.integration_id} - Project: ${projectKey || projectId || 'N/A'}`);
+            configList.push(`  • Integration ID: ${config.integration_id} - Project Key: ${projectKey || 'N/A'}, Project ID: ${projectId || 'N/A'}`);
         }
         sections.push('Available configurations:');
         sections.push(configList.join('\n'));

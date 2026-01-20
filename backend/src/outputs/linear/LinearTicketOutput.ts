@@ -53,7 +53,7 @@ export class LinearTicketOutput extends Output<LinearOutputConfig> {
             }
             const teamId = config.linear_config.team_id;
             const teamName = config.linear_config.team_name;
-            configList.push(`  • Integration ID: ${config.integration_id} - Team Name: ${teamName} Team ID: ${teamId}`);
+            configList.push(`  • Integration ID: ${config.integration_id} - Team Name: ${teamName || 'N/A'}, Team ID: ${teamId || 'N/A'}`);
         }
         sections.push('Available configurations:');
         sections.push(configList.join('\n'));

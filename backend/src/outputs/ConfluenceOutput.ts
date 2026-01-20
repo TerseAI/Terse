@@ -59,7 +59,7 @@ export class ConfluenceOutput extends Output<ConfluenceConfig> {
             }
             const pageId = config.confluence_config.page_id;
             const pageName = config.confluence_config.page_name;
-            configList.push(`  • Integration ID: ${config.integration_id} - Page: ${pageName || pageId}`);
+            configList.push(`  • Integration ID: ${config.integration_id} - Page Name: ${pageName || 'N/A'}, Page ID: ${pageId || 'N/A'}`);
         }
         sections.push('Available configurations:');
         sections.push(configList.join('\n'));

@@ -90,7 +90,7 @@ export class PosthogKnowledgeBase extends KnowledgeBase<PosthogConfig> {
             const permissions = [];
             if (canReadLogs) permissions.push('logs');
             if (canReadSessionRecordings) permissions.push('session recordings');
-            configList.push(`  • Integration ID: ${config.integration_id} - Project: ${projectName || projectId} (${permissions.join(', ')})`);
+            configList.push(`  • Integration ID: ${config.integration_id} - Project Name: ${projectName || 'N/A'}, Project ID: ${projectId || 'N/A'} (${permissions.join(', ')})`);
         }
         sections.push('Available configurations:');
         sections.push(configList.join('\n'));
