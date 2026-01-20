@@ -23,7 +23,7 @@ export abstract class Output<TConfig extends ConfigInstance> {
 
     abstract addOutputToChannel(tx: PrismaTransaction, channelOutputId: string, output: TConfig): Promise<void>;
 
-    abstract getSystemInstructions(configs: Array<{ integrationId: string, channelOutput: ChannelOutputWithConfigs }>): string;
+    abstract getSystemInstructions(configs: ChannelOutputWithConfigs[]): string;
 
     /**
      * Formats this output configuration for the "Available Configurations" section of the system prompt.

@@ -87,9 +87,9 @@ function SaveChannelButton({
     // Each integration reports its own completeness
     const isComplete =
         inputs.length > 0 &&
-        inputs.every(i => i.config != null && i.config.isComplete()) &&
+        inputs.every(i => i != null && i.config != null && i.config.isComplete()) &&
         outputs.length > 0 &&
-        outputs.every(o => o.config != null && o.config.isComplete()) &&
+        outputs.every(o => o != null && o.config != null && o.config.isComplete()) &&
         !!prompt?.text; // Ensure prompt is not empty
 
     const isEditMode = !!channelId;
@@ -176,25 +176,25 @@ export default function ChannelSetupTab({
     const { totalCount } = useChannelCount();
     const defaultName = getDefaultChannelName(totalCount);
 
-    const channelInputs = inputs.map(toChannelInput).filter((i): i is ChannelInput => i !== null);
-    const channelOutputs = outputs.map(toChannelOutput).filter((o): o is ChannelOutput => o !== null);
-    const channelKnowledgeBases = knowledgeBases.map(toChannelKnowledgeBase).filter((kb): kb is ChannelKnowledgeBase => kb !== null);
+    const channelInputs = inputs.map(toChannelInput).filter((i): i is ChannelInput => i != null);
+    const channelOutputs = outputs.map(toChannelOutput).filter((o): o is ChannelOutput => o != null);
+    const channelKnowledgeBases = knowledgeBases.map(toChannelKnowledgeBase).filter((kb): kb is ChannelKnowledgeBase => kb != null);
 
     type SetupSection = 'triggers' | 'knowledgeBase' | 'prompt' | 'skills' | 'alerts';
     const [activeSection, setActiveSection] = useState<SetupSection>('triggers');
 
     const triggersIncomplete =
-        inputs.length === 0 || inputs.some((i) => !i.config || !i.config.isComplete());
-    const knowledgeBaseIncomplete = knowledgeBases.some((kb) => !kb.config || !kb.config.isComplete());
+        inputs.length === 0 || inputs.some((i) => !i || !i.config || !i.config.isComplete());
+    const knowledgeBaseIncomplete = knowledgeBases.some((kb) => !kb || !kb.config || !kb.config.isComplete());
     const promptIncomplete = !prompt?.text || prompt.text.trim() === '';
-    const skillsIncomplete = outputs.length === 0 || outputs.some((o) => !o.config || !o.config.isComplete());
+    const skillsIncomplete = outputs.length === 0 || outputs.some((o) => !o || !o.config || !o.config.isComplete());
 
     // Check if automation is complete (same logic as SaveChannelButton)
     const isComplete =
         inputs.length > 0 &&
-        inputs.every(i => i.config != null && i.config.isComplete()) &&
+        inputs.every(i => i != null && i.config != null && i.config.isComplete()) &&
         outputs.length > 0 &&
-        outputs.every(o => o.config != null && o.config.isComplete()) &&
+        outputs.every(o => o != null && o.config != null && o.config.isComplete()) &&
         !!prompt?.text;
 
     // Create a minimal channel-like object for AppsList

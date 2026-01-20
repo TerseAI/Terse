@@ -37,7 +37,7 @@ export class LinearTicketOutput extends Output<LinearOutputConfig> {
         });
     }
 
-    getSystemInstructions(configs: Array<{ integrationId: string, channelOutput: ChannelOutputWithConfigs }>): string {
+    getSystemInstructions(configs: ChannelOutputWithConfigs[]): string {
         if (configs.length === 0) {
             throw new Error('No Linear configs provided');
         }
@@ -48,13 +48,12 @@ export class LinearTicketOutput extends Output<LinearOutputConfig> {
         // List all available configurations
         const configList: string[] = [];
         for (const config of configs) {
-            const { integrationId, channelOutput } = config;
-            if (!channelOutput.linear_config) {
+            if (!config.linear_config) {
                 throw new Error('Linear config not found');
             }
-            const teamId = channelOutput.linear_config.team_id;
-            const teamName = channelOutput.linear_config.team_name;
-            configList.push(`  • Integration ID: ${integrationId} - Team: ${teamName || teamId || 'N/A'}`);
+            const teamId = config.linear_config.team_id;
+            const teamName = config.linear_config.team_name;
+            configList.push(`  • Integration ID: ${config.integration_id} - Team Name: ${teamName} Team ID: ${teamId}`);
         }
         sections.push('Available configurations:');
         sections.push(configList.join('\n'));

@@ -34,7 +34,7 @@ export class SlackOutput extends Output<SlackOutputConfig> {
         });
     }
 
-    getSystemInstructions(configs: Array<{ integrationId: string, channelOutput: ChannelOutputWithConfigs }>): string {
+    getSystemInstructions(configs: ChannelOutputWithConfigs[]): string {
         if (configs.length === 0) {
             throw new Error('No Slack configs provided');
         }
@@ -44,13 +44,12 @@ export class SlackOutput extends Output<SlackOutputConfig> {
         // List all available configurations
         const configList: string[] = [];
         for (const config of configs) {
-            const { integrationId, channelOutput } = config;
-            if (!channelOutput.slack_config) {
+            if (!config.slack_config) {
                 throw new Error('Slack config not found');
             }
-            const channelId = channelOutput.slack_config.channel_id;
-            const channelName = channelOutput.slack_config.channel_name;
-            configList.push(`  • Integration ID: ${integrationId} - Channel: ${channelName || channelId}`);
+            const channelId = config.slack_config.channel_id;
+            const channelName = config.slack_config.channel_name;
+            configList.push(`  • Integration ID: ${config.integration_id} - Channel: ${channelName || channelId}`);
         }
         sections.push('Available configurations:');
         sections.push(configList.join('\n'));

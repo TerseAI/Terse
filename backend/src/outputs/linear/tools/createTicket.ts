@@ -9,6 +9,7 @@ import { formatError, needsApproval } from "../../../tools/toolUtils";
 import logger from "../../../logger";
 import { Session } from "../../../server";
 import { LinearIntegrationManager } from "../../../integrations/LinearIntegration";
+import { ChannelOutputWithConfigs } from "../../../types/prisma";
 
 export const linearCreateTicketTool = tool({
     name: 'linear_create_ticket',
