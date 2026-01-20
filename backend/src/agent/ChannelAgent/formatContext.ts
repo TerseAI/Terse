@@ -1,5 +1,5 @@
-import { ChannelInput, ChannelOutput, ChannelInputWithConfigs, ChannelOutputWithConfigs } from '../../types/prisma';
-import { convertPrismaConfigToConfigInstance, convertPrismaOutputConfigToConfigInstance } from '../../utility/typeConverters';
+import { ChannelInput, ChannelOutput, ChannelInputWithConfigs, ChannelOutputWithConfigs, ChannelKnowledgeBaseWithConfigs } from '../../types/prisma';
+import { convertPrismaConfigToConfigInstance, convertPrismaOutputConfigToConfigInstance, convertPrismaKnowledgeBaseConfigToConfigInstance } from '../../utility/typeConverters';
 import logger from '../../logger';
 
 export function formatChannelInputForAgent(input: ChannelInput | ChannelInputWithConfigs): string {
@@ -53,6 +53,33 @@ export function formatChannelOutputsForAgent(outputs: ChannelOutputWithConfigs[]
         .map((output, index) => {
             const formatted = formatChannelOutputForAgent(output);
             return `Output ${index + 1}:\n${formatted.split('\n').map(line => `  ${line}`).join('\n')}`;
+        })
+        .join('\n\n');
+}
+
+export function formatChannelKnowledgeBaseForAgent(knowledgeBase: ChannelKnowledgeBaseWithConfigs): string {
+    try {
+        const configInstance = convertPrismaKnowledgeBaseConfigToConfigInstance(knowledgeBase);
+        return configInstance.formatForAgent();
+    } catch (error) {
+        logger.warn('Failed to convert channel knowledge base to ConfigInstance', { error, configType: knowledgeBase.config_type, knowledgeBaseId: knowledgeBase.id });
+        return `Type: ${knowledgeBase.config_type}`;
+    }
+}
+
+export function formatChannelKnowledgeBasesForAgent(knowledgeBases: ChannelKnowledgeBaseWithConfigs[]): string {
+    if (knowledgeBases.length === 0) {
+        return 'No knowledge bases configured';
+    }
+
+    if (knowledgeBases.length === 1) {
+        return formatChannelKnowledgeBaseForAgent(knowledgeBases[0]);
+    }
+
+    return knowledgeBases
+        .map((kb, index) => {
+            const formatted = formatChannelKnowledgeBaseForAgent(kb);
+            return `Knowledge Base ${index + 1}:\n${formatted.split('\n').map(line => `  ${line}`).join('\n')}`;
         })
         .join('\n\n');
 }

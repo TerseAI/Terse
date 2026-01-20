@@ -6,7 +6,7 @@ import { Output } from '../../outputs/abstract/Output';
 import { ChannelInput, ChannelOutput, ChannelWithRelations } from '../../types/prisma';
 import { ConfigInstance } from '../../shared/Configs';
 import { settings } from '../../config/settings';
-import { formatChannelInputsForAgent, formatChannelOutputsForAgent } from './formatContext';
+import { formatChannelInputsForAgent } from './formatContext';
 import { UserFormatter } from '../../utility/UserFormatter';
 import { transformAgentStreamToModelEvents } from '../streaming';
 import { getRealtimeSocket } from '../../realtimeSocket';
@@ -389,42 +389,16 @@ export class ChannelAgent<
     }
 
     async initializeAgent(): Promise<void> {
-        // Build knowledge base configs array
-        const knowledgeBaseConfigs = this.knowledgeBaseChannelConfigs.map((kbConfig) => {
-            // Verify the types match as a sanity check
-            const kb = this.knowledgeBases.find(k => k.integration === kbConfig.config_type);
-            if (!kb) {
-                throw new Error(`Knowledge base instance not found for config type: ${kbConfig.config_type}`);
-            }
-            return {
-                integrationId: kbConfig.integration_id,
-                channelKnowledgeBase: kbConfig
-            };
-        });
-
-        // Build output configs array
-        const outputConfigs = this.outputChannelConfigs.map((outputConfig) => {
-            // Verify the types match as a sanity check
-            const output = this.outputs.find(o => o.integration === outputConfig.config_type);
-            if (!output) {
-                throw new Error(`Output instance not found for config type: ${outputConfig.config_type}`);
-            }
-            return {
-                integrationId: outputConfig.integration_id,
-                channelOutput: outputConfig
-            };
-        });
-
         const deps: SystemPromptBuilderDependencies<T, TConfig, KBConfig> = {
             session: this.session,
             channel: this.channel,
             outputs: this.outputs,
+            outputConfigs: this.outputChannelConfigs,
             knowledgeBases: this.knowledgeBases,
-            knowledgeBaseConfigs: knowledgeBaseConfigs,
-            outputConfigs: outputConfigs,
+            knowledgeBaseConfigs: this.knowledgeBaseChannelConfigs,
         };
 
-        const builder = new SystemPromptBuilder(deps, this.runContext)
+        const builder = new SystemPromptBuilder<T, TConfig, KBConfig>(deps, this.runContext)
             .withStandardSections();
 
         const fullSystemPrompt = await builder.build();
@@ -472,12 +446,8 @@ ${this.channel.prompt?.content || 'No instructions provided'}
 </USER_INSTRUCTIONS>
 
 <CHANNEL_INPUTS>
-${formatChannelInputsForAgent(this.channel.inputs as ChannelInput[])}
+${formatChannelInputsForAgent(this.channel.inputs)}
 </CHANNEL_INPUTS>
-
-<OUTPUT_DESTINATIONS>
-${formatChannelOutputsForAgent(this.outputChannelConfigs)}
-</OUTPUT_DESTINATIONS>
 
 <EVENT>
 ${inputEvent.formatForChannelAgent()}

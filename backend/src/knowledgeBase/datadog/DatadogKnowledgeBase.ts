@@ -89,7 +89,7 @@ export class DatadogKnowledgeBase extends KnowledgeBase<DatadogConfig> {
      * Returns system instructions for Datadog knowledge base.
      * Provides guidance on when and how to use Datadog tools.
      */
-    getSystemInstructions(configs: Array<{ integrationId: string, channelKnowledgeBase: ChannelKnowledgeBaseWithConfigs }>): string {
+    getSystemInstructions(configs: ChannelKnowledgeBaseWithConfigs[]): string {
         if (configs.length === 0) {
             throw new Error('No Datadog KB configs provided');
         }
@@ -102,12 +102,11 @@ export class DatadogKnowledgeBase extends KnowledgeBase<DatadogConfig> {
         // List all available configurations
         const configList: string[] = [];
         for (const config of configs) {
-            const { integrationId, channelKnowledgeBase } = config;
-            if (!channelKnowledgeBase.datadog_config) {
+            if (!config.datadog_config) {
                 throw new Error('Datadog config not found');
             }
-            const defaultIndexes = channelKnowledgeBase.datadog_config.default_indexes || ["main"];
-            configList.push(`  • Integration ID: ${integrationId} - Default indexes: ${defaultIndexes.join(', ')}`);
+            const defaultIndexes = config.datadog_config.default_indexes || ["main"];
+            configList.push(`  • Integration ID: ${config.integration_id} - Default indexes: ${defaultIndexes.join(', ')}`);
         }
         sections.push('Available configurations:');
         sections.push(configList.join('\n'));

@@ -58,7 +58,7 @@ export class LaunchDarklyKnowledgeBase extends KnowledgeBase<LaunchDarklyConfig>
      * Returns system instructions for LaunchDarkly knowledge base.
      * Provides guidance on how to use LaunchDarkly tools effectively.
      */
-    getSystemInstructions(configs: Array<{ integrationId: string, channelKnowledgeBase: ChannelKnowledgeBaseWithConfigs }>): string {
+    getSystemInstructions(configs: ChannelKnowledgeBaseWithConfigs[]): string {
         if (configs.length === 0) {
             throw new Error('No LaunchDarkly KB configs provided');
         }
@@ -71,13 +71,12 @@ export class LaunchDarklyKnowledgeBase extends KnowledgeBase<LaunchDarklyConfig>
         // List all available configurations
         const configList: string[] = [];
         for (const config of configs) {
-            const { integrationId, channelKnowledgeBase } = config;
-            if (!channelKnowledgeBase.launchdarkly_config) {
+            if (!config.launchdarkly_config) {
                 throw new Error('LaunchDarkly config not found');
             }
-            const projectKey = channelKnowledgeBase.launchdarkly_config.project_key;
-            const environmentKeys = channelKnowledgeBase.launchdarkly_config.environment_keys;
-            configList.push(`  • Integration ID: ${integrationId} - Project: ${projectKey}, Environments: ${environmentKeys.join(', ')}`);
+            const projectKey = config.launchdarkly_config.project_key;
+            const environmentKeys = config.launchdarkly_config.environment_keys;
+            configList.push(`  • Integration ID: ${config.integration_id} - Project: ${projectKey}, Environments: ${environmentKeys.join(', ')}`);
         }
         sections.push('Available configurations:');
         sections.push(configList.join('\n'));

@@ -35,7 +35,7 @@ export class NotionPageOutput extends Output<NotionPageConfig> {
         });
     }
 
-    getSystemInstructions(configs: Array<{ integrationId: string, channelOutput: ChannelOutputWithConfigs }>): string {
+    getSystemInstructions(configs: ChannelOutputWithConfigs[]): string {
         if (configs.length === 0) {
             throw new Error('No Notion page configs provided');
         }
@@ -46,13 +46,12 @@ export class NotionPageOutput extends Output<NotionPageConfig> {
         // List all available configurations
         const configList: string[] = [];
         for (const config of configs) {
-            const { integrationId, channelOutput } = config;
-            if (!channelOutput.notion_page_config) {
+            if (!config.notion_page_config) {
                 throw new Error('Notion page config not found');
             }
-            const pageId = channelOutput.notion_page_config.page_id;
-            const pageName = channelOutput.notion_page_config.page_name;
-            configList.push(`  • Integration ID: ${integrationId} - Page: ${pageName || pageId}`);
+            const pageId = config.notion_page_config.page_id;
+            const pageName = config.notion_page_config.page_name;
+            configList.push(`  • Integration ID: ${config.integration_id} - Page: ${pageName || pageId}`);
         }
         sections.push('Available configurations:');
         sections.push(configList.join('\n'));

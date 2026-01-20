@@ -43,7 +43,7 @@ export class ConfluenceOutput extends Output<ConfluenceConfig> {
         });
     }
 
-    getSystemInstructions(configs: Array<{ integrationId: string, channelOutput: ChannelOutputWithConfigs }>): string {
+    getSystemInstructions(configs: ChannelOutputWithConfigs[]): string {
         if (configs.length === 0) {
             throw new Error('No Confluence configs provided');
         }
@@ -54,13 +54,12 @@ export class ConfluenceOutput extends Output<ConfluenceConfig> {
         // List all available configurations
         const configList: string[] = [];
         for (const config of configs) {
-            const { integrationId, channelOutput } = config;
-            if (!channelOutput.confluence_config) {
+            if (!config.confluence_config) {
                 throw new Error('Confluence config not found');
             }
-            const pageId = channelOutput.confluence_config.page_id;
-            const pageName = channelOutput.confluence_config.page_name;
-            configList.push(`  • Integration ID: ${integrationId} - Page: ${pageName || pageId}`);
+            const pageId = config.confluence_config.page_id;
+            const pageName = config.confluence_config.page_name;
+            configList.push(`  • Integration ID: ${config.integration_id} - Page: ${pageName || pageId}`);
         }
         sections.push('Available configurations:');
         sections.push(configList.join('\n'));

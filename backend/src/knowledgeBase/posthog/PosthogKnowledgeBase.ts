@@ -67,7 +67,7 @@ export class PosthogKnowledgeBase extends KnowledgeBase<PosthogConfig> {
      * Returns system instructions for PostHog knowledge base.
      * Provides guidance on when and how to use PostHog tools with an investigative mindset.
      */
-    getSystemInstructions(configs: Array<{ integrationId: string, channelKnowledgeBase: ChannelKnowledgeBaseWithConfigs }>): string {
+    getSystemInstructions(configs: ChannelKnowledgeBaseWithConfigs[]): string {
         if (configs.length === 0) {
             throw new Error('No PostHog KB configs provided');
         }
@@ -80,18 +80,17 @@ export class PosthogKnowledgeBase extends KnowledgeBase<PosthogConfig> {
         // List all available configurations
         const configList: string[] = [];
         for (const config of configs) {
-            const { integrationId, channelKnowledgeBase } = config;
-            if (!channelKnowledgeBase.posthog_config) {
+            if (!config.posthog_config) {
                 throw new Error('PostHog config not found');
             }
-            const projectId = channelKnowledgeBase.posthog_config.project_id;
-            const projectName = channelKnowledgeBase.posthog_config.project_name;
-            const canReadLogs = channelKnowledgeBase.posthog_config.can_read_logs;
-            const canReadSessionRecordings = channelKnowledgeBase.posthog_config.can_read_session_recordings;
+            const projectId = config.posthog_config.project_id;
+            const projectName = config.posthog_config.project_name;
+            const canReadLogs = config.posthog_config.can_read_logs;
+            const canReadSessionRecordings = config.posthog_config.can_read_session_recordings;
             const permissions = [];
             if (canReadLogs) permissions.push('logs');
             if (canReadSessionRecordings) permissions.push('session recordings');
-            configList.push(`  • Integration ID: ${integrationId} - Project: ${projectName || projectId} (${permissions.join(', ')})`);
+            configList.push(`  • Integration ID: ${config.integration_id} - Project: ${projectName || projectId} (${permissions.join(', ')})`);
         }
         sections.push('Available configurations:');
         sections.push(configList.join('\n'));
@@ -99,8 +98,8 @@ export class PosthogKnowledgeBase extends KnowledgeBase<PosthogConfig> {
         
         // Use first config for tool availability (they should all have same tools if same type)
         const firstConfig = configs[0];
-        const canReadLogs = firstConfig.channelKnowledgeBase.posthog_config?.can_read_logs ?? false;
-        const canReadSessionRecordings = firstConfig.channelKnowledgeBase.posthog_config?.can_read_session_recordings ?? false;
+        const canReadLogs = firstConfig.posthog_config?.can_read_logs ?? false;
+        const canReadSessionRecordings = firstConfig.posthog_config?.can_read_session_recordings ?? false;
 
         // Available tools section
         const toolDescriptions: string[] = [];
@@ -112,7 +111,7 @@ export class PosthogKnowledgeBase extends KnowledgeBase<PosthogConfig> {
                 'Supports pagination (offset parameter) and date filtering.'
             );
         }
-        if (canReadSessionRecordings || configs.some(c => c.channelKnowledgeBase.posthog_config?.can_read_session_recordings)) {
+        if (canReadSessionRecordings || configs.some(c => c.posthog_config?.can_read_session_recordings)) {
             toolDescriptions.push(
                 '• searchPosthogSessions: Find session recordings for a user by email. ' +
                 'Returns session IDs, timestamps, duration, and replay URLs.'

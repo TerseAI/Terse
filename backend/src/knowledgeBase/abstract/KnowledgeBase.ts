@@ -25,7 +25,7 @@ export abstract class KnowledgeBase<KBConfig extends ConfigInstance> {
      *                 All configs of this knowledge base type will be provided so the AI can choose which to use for each tool call.
      * @returns Additional system instructions as a string
      */
-    abstract getSystemInstructions(configs: Array<{ integrationId: string, channelKnowledgeBase: ChannelKnowledgeBaseWithConfigs }>): string;
+    abstract getSystemInstructions(configs: ChannelKnowledgeBaseWithConfigs[]): string;
 
     /**
      * Formats this knowledge base configuration for the "Available Configurations" section of the system prompt.

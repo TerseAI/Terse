@@ -34,7 +34,7 @@ export class NotionDatabaseOutput extends Output<NotionConfig> {
         });
     }
 
-    getSystemInstructions(configs: Array<{ integrationId: string, channelOutput: ChannelOutputWithConfigs }>): string {
+    getSystemInstructions(configs: ChannelOutputWithConfigs[]): string {
         if (configs.length === 0) {
             throw new Error('No Notion database configs provided');
         }
@@ -45,13 +45,12 @@ export class NotionDatabaseOutput extends Output<NotionConfig> {
         // List all available configurations
         const configList: string[] = [];
         for (const config of configs) {
-            const { integrationId, channelOutput } = config;
-            if (!channelOutput.notion_config) {
+            if (!config.notion_config) {
                 throw new Error('Notion database config not found');
             }
-            const databaseId = channelOutput.notion_config.database_id;
-            const databaseName = channelOutput.notion_config.database_name;
-            configList.push(`  • Integration ID: ${integrationId} - Database: ${databaseName || databaseId}`);
+            const databaseId = config.notion_config.database_id;
+            const databaseName = config.notion_config.database_name;
+            configList.push(`  • Integration ID: ${config.integration_id} - Database: ${databaseName || databaseId}`);
         }
         sections.push('Available configurations:');
         sections.push(configList.join('\n'));

@@ -88,7 +88,7 @@ export class GitHubKnowledgeBase extends KnowledgeBase<GitHubKBConfig> {
      * Returns system instructions for GitHub knowledge base.
      * Provides guidance on how to effectively explore and understand codebases.
      */
-    getSystemInstructions(configs: Array<{ integrationId: string, channelKnowledgeBase: ChannelKnowledgeBaseWithConfigs }>): string {
+    getSystemInstructions(configs: ChannelKnowledgeBaseWithConfigs[]): string {
         if (configs.length === 0) {
             throw new Error('No GitHub KB configs provided');
         }
@@ -101,12 +101,11 @@ export class GitHubKnowledgeBase extends KnowledgeBase<GitHubKBConfig> {
         // List all available configurations
         const configList: string[] = [];
         for (const config of configs) {
-            const { integrationId, channelKnowledgeBase } = config;
-            if (!channelKnowledgeBase.github_kb_config) {
+            if (!config.github_kb_config) {
                 throw new Error('GitHub KB config not found');
             }
-            const repositoryNames = channelKnowledgeBase.github_kb_config.repository_names;
-            configList.push(`  • Integration ID: ${integrationId} - Repositories: ${repositoryNames.join(', ')}`);
+            const repositoryNames = config.github_kb_config.repository_names;
+            configList.push(`  • Integration ID: ${config.integration_id} - Repositories: ${repositoryNames.join(', ')}`);
         }
         sections.push('Available configurations:');
         sections.push(configList.join('\n'));

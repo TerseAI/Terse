@@ -33,7 +33,7 @@ export class JiraTicketOutput extends Output<JiraConfig> {
         });
     }
 
-    getSystemInstructions(configs: Array<{ integrationId: string, channelOutput: ChannelOutputWithConfigs }>): string {
+    getSystemInstructions(configs: ChannelOutputWithConfigs[]): string {
         if (configs.length === 0) {
             throw new Error('No Jira configs provided');
         }
@@ -44,13 +44,12 @@ export class JiraTicketOutput extends Output<JiraConfig> {
         // List all available configurations
         const configList: string[] = [];
         for (const config of configs) {
-            const { integrationId, channelOutput } = config;
-            if (!channelOutput.jira_config) {
+            if (!config.jira_config) {
                 throw new Error('Jira config not found');
             }
-            const projectKey = channelOutput.jira_config.project_key;
-            const projectId = channelOutput.jira_config.project_id;
-            configList.push(`  • Integration ID: ${integrationId} - Project: ${projectKey || projectId || 'N/A'}`);
+            const projectKey = config.jira_config.project_key;
+            const projectId = config.jira_config.project_id;
+            configList.push(`  • Integration ID: ${config.integration_id} - Project: ${projectKey || projectId || 'N/A'}`);
         }
         sections.push('Available configurations:');
         sections.push(configList.join('\n'));
