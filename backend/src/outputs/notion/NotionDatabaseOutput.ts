@@ -50,7 +50,7 @@ export class NotionDatabaseOutput extends Output<NotionConfig> {
             }
             const databaseId = config.notion_config.database_id;
             const databaseName = config.notion_config.database_name;
-            configList.push(`  • Integration ID: ${config.integration_id} - Database: ${databaseName || databaseId}`);
+            configList.push(`  • Integration ID: ${config.integration_id} - Database Name: ${databaseName || 'N/A'}, Database ID: ${databaseId || 'N/A'}`);
         }
         sections.push('Available configurations:');
         sections.push(configList.join('\n'));

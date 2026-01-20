@@ -104,8 +104,13 @@ export class GitHubKnowledgeBase extends KnowledgeBase<GitHubKBConfig> {
             if (!config.github_kb_config) {
                 throw new Error('GitHub KB config not found');
             }
-            const repositoryNames = config.github_kb_config.repository_names;
-            configList.push(`  • Integration ID: ${config.integration_id} - Repositories: ${repositoryNames.join(', ')}`);
+            const repositoryNames = config.github_kb_config.repository_names || [];
+            const repositoryIds = config.github_kb_config.repository_ids || [];
+            const repoDetails = repositoryNames.map((name, idx) => {
+                const id = repositoryIds[idx] || 'N/A';
+                return `${name} (ID: ${id})`;
+            }).join(', ');
+            configList.push(`  • Integration ID: ${config.integration_id} - Repositories: ${repoDetails || 'N/A'}`);
         }
         sections.push('Available configurations:');
         sections.push(configList.join('\n'));

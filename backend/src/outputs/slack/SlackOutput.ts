@@ -49,7 +49,7 @@ export class SlackOutput extends Output<SlackOutputConfig> {
             }
             const channelId = config.slack_config.channel_id;
             const channelName = config.slack_config.channel_name;
-            configList.push(`  • Integration ID: ${config.integration_id} - Channel: ${channelName || channelId}`);
+            configList.push(`  • Integration ID: ${config.integration_id} - Channel Name: ${channelName || 'N/A'}, Channel ID: ${channelId || 'N/A'}`);
         }
         sections.push('Available configurations:');
         sections.push(configList.join('\n'));
