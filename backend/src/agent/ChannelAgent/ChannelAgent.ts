@@ -6,7 +6,7 @@ import { Output } from '../../outputs/abstract/Output';
 import { ChannelInput, ChannelOutput, ChannelWithRelations } from '../../types/prisma';
 import { ConfigInstance } from '../../shared/Configs';
 import { settings } from '../../config/settings';
-import { formatChannelInputsForAgent, formatChannelOutputForAgent } from './formatContext';
+import { formatChannelInputsForAgent, formatChannelOutputsForAgent } from './formatContext';
 import { UserFormatter } from '../../utility/UserFormatter';
 import { transformAgentStreamToModelEvents } from '../streaming';
 import { getRealtimeSocket } from '../../realtimeSocket';
@@ -24,7 +24,7 @@ import { persistOutputAttributions, removeOutputAttributions } from './persistOu
 import logger from '../../logger';
 import { RunHistoryActionType } from '@prisma/client';
 import { KnowledgeBase } from '../../knowledgeBase/abstract/KnowledgeBase';
-import { ChannelKnowledgeBaseWithConfigs } from '../../types/prisma';
+import { ChannelKnowledgeBaseWithConfigs, ChannelOutputWithConfigs } from '../../types/prisma';
 
 // Types from @openai/agents SDK for content items
 type AgentInputText = protocol.InputText;
@@ -32,19 +32,18 @@ type AgentInputImage = protocol.InputImage;
 
 export class ChannelAgent<
     T extends Session,
-    K extends Session,
     TConfig extends ConfigInstance,
     KBConfig extends ConfigInstance
 > {
     private session: T;
     private inputEvent: InputEvent | null = null;
     private channel: ChannelWithRelations;
-    private output: Output<T, TConfig>;
-    private knowledgeBases: KnowledgeBase<K, KBConfig>[];
+    private outputs: Output<TConfig>[];
+    private outputChannelConfigs: ChannelOutputWithConfigs[];
+    private knowledgeBases: KnowledgeBase<KBConfig>[];
     private knowledgeBaseChannelConfigs: ChannelKnowledgeBaseWithConfigs[];
-    private knowledgeBaseSessions: K[] = [];
-    private agent?: Agent<SessionWithTracking<T & K>, AgentOutputType>;
-    private tools: Tool<SessionWithTracking<T & K>>[] = [];
+    private agent?: Agent<SessionWithTracking<T>, AgentOutputType>;
+    private tools: Tool<SessionWithTracking<T>>[] = [];
     private runContext: RunContext;
     private toolMetadataMap: Map<string, ToolMetadata> = new Map();
     private pendingActions: RunHistoryAction[] = [];
@@ -54,8 +53,9 @@ export class ChannelAgent<
 
     constructor(
         session: T,
-        output: Output<T, TConfig>,
-        knowledgeBases: KnowledgeBase<K, KBConfig>[],
+        outputs: Output<TConfig>[],
+        outputChannelConfigs: ChannelOutputWithConfigs[],
+        knowledgeBases: KnowledgeBase<KBConfig>[],
         knowledgeBaseChannelConfigs: ChannelKnowledgeBaseWithConfigs[],
         channel: ChannelWithRelations,
         runContext: RunContext,
@@ -64,14 +64,18 @@ export class ChannelAgent<
         if (knowledgeBases.length !== knowledgeBaseChannelConfigs.length) {
             throw new Error(`Mismatch between knowledge base instances (${knowledgeBases.length}) and channel configs (${knowledgeBaseChannelConfigs.length})`);
         }
+        if (outputs.length !== outputChannelConfigs.length) {
+            throw new Error(`Mismatch between output instances (${outputs.length}) and channel configs (${outputChannelConfigs.length})`);
+        }
 
         this.session = session;
-        this.output = output;
+        this.outputs = outputs;
+        this.outputChannelConfigs = outputChannelConfigs;
         this.knowledgeBases = knowledgeBases;
         this.knowledgeBaseChannelConfigs = knowledgeBaseChannelConfigs;
         this.channel = channel;
         this.tools = [
-            ...output.toolbox.map(entry => entry.tool),
+            ...outputs.flatMap(output => output.toolbox.map(entry => entry.tool)),
             ...knowledgeBases.flatMap(kb => kb.toolbox.map(entry => entry.tool))
         ];
 
@@ -185,7 +189,7 @@ export class ChannelAgent<
         }
 
         // Deserialize the state first
-        const state = await RunState.fromString<SessionWithTracking<T & K>, Agent<SessionWithTracking<T & K>, AgentOutputType>>(this.agent, pendingState.serializedState);
+        const state = await RunState.fromString<SessionWithTracking<T>, Agent<SessionWithTracking<T>, AgentOutputType>>(this.agent, pendingState.serializedState);
 
         // Find the interruption from the stored interruptions array
         // We stored the full interruption objects, so we can use them directly
@@ -286,7 +290,7 @@ export class ChannelAgent<
 
         // Bug in the SDK where functions are not serialized properly.
         // This is a workaround to get the context to work.
-        const unifiedContext: SessionWithTracking<T & K> = {
+        const unifiedContext: SessionWithTracking<T> = {
             ...toolContext,
             ...state._context,
         }
@@ -359,11 +363,13 @@ export class ChannelAgent<
     }
 
     private buildToolMetadataMap(): void {
-        // Populate metadata from output toolbox
-        this.output.toolbox.forEach(entry => {
-            this.toolMetadataMap.set(entry.tool.name, {
-                integration: entry.integration,
-                isReadOnly: entry.isReadOnly,
+        // Populate metadata from all output toolboxes
+        this.outputs.forEach(output => {
+            output.toolbox.forEach(entry => {
+                this.toolMetadataMap.set(entry.tool.name, {
+                    integration: entry.integration,
+                    isReadOnly: entry.isReadOnly,
+                });
             });
         });
 
@@ -383,31 +389,39 @@ export class ChannelAgent<
     }
 
     async initializeAgent(): Promise<void> {
-        // Pair each knowledge base instance with its corresponding channel config by index
-        this.knowledgeBaseSessions = await Promise.all(
-            this.knowledgeBases.map((kb, index) => {
-                const channelKnowledgeBase = this.knowledgeBaseChannelConfigs[index];
-                if (!channelKnowledgeBase) {
-                    throw new Error(`Channel knowledge base config not found at index ${index} for ${kb.integration}`);
-                }
-                // Verify the types match as a sanity check
-                if (channelKnowledgeBase.config_type !== kb.integration) {
-                    throw new Error(`Type mismatch: knowledge base at index ${index} is ${kb.integration} but channel config is ${channelKnowledgeBase.config_type}`);
-                }
-                return kb.createSessionFromConfig(
-                    channelKnowledgeBase.integration_id,
-                    channelKnowledgeBase,
-                    this.session.user
-                );
-            })
-        );
+        // Build knowledge base configs array
+        const knowledgeBaseConfigs = this.knowledgeBaseChannelConfigs.map((kbConfig) => {
+            // Verify the types match as a sanity check
+            const kb = this.knowledgeBases.find(k => k.integration === kbConfig.config_type);
+            if (!kb) {
+                throw new Error(`Knowledge base instance not found for config type: ${kbConfig.config_type}`);
+            }
+            return {
+                integrationId: kbConfig.integration_id,
+                channelKnowledgeBase: kbConfig
+            };
+        });
 
-        const deps: SystemPromptBuilderDependencies<T, TConfig, K, KBConfig> = {
+        // Build output configs array
+        const outputConfigs = this.outputChannelConfigs.map((outputConfig) => {
+            // Verify the types match as a sanity check
+            const output = this.outputs.find(o => o.integration === outputConfig.config_type);
+            if (!output) {
+                throw new Error(`Output instance not found for config type: ${outputConfig.config_type}`);
+            }
+            return {
+                integrationId: outputConfig.integration_id,
+                channelOutput: outputConfig
+            };
+        });
+
+        const deps: SystemPromptBuilderDependencies<T, TConfig, KBConfig> = {
             session: this.session,
             channel: this.channel,
-            output: this.output,
+            outputs: this.outputs,
             knowledgeBases: this.knowledgeBases,
-            knowledgeBaseSessions: this.knowledgeBaseSessions,
+            knowledgeBaseConfigs: knowledgeBaseConfigs,
+            outputConfigs: outputConfigs,
         };
 
         const builder = new SystemPromptBuilder(deps, this.runContext)
@@ -415,7 +429,7 @@ export class ChannelAgent<
 
         const fullSystemPrompt = await builder.build();
 
-        this.agent = new Agent<SessionWithTracking<T & K>, AgentOutputType>({
+        this.agent = new Agent<SessionWithTracking<T>, AgentOutputType>({
             name: 'Living Document Automator',
             instructions: fullSystemPrompt,
             model: this.chooseModel(),
@@ -423,13 +437,9 @@ export class ChannelAgent<
         });
     }
 
-    private getToolContext(): SessionWithTracking<T & K> {
+    private getToolContext(): SessionWithTracking<T> {
         return {
             ...this.session,
-            ...this.knowledgeBaseSessions.reduce(
-                (acc, kbSession) => ({ ...acc, ...kbSession }),
-                {} as K
-            ),
             trackAction: (action: RunHistoryAction) => this.queueAction(action),
             channel: {
                 requireApproval: this.channel.require_approval ?? false,
@@ -465,9 +475,9 @@ ${this.channel.prompt?.content || 'No instructions provided'}
 ${formatChannelInputsForAgent(this.channel.inputs as ChannelInput[])}
 </CHANNEL_INPUTS>
 
-<OUTPUT_DESTINATION>
-${formatChannelOutputForAgent(this.channel.output as ChannelOutput)}
-</OUTPUT_DESTINATION>
+<OUTPUT_DESTINATIONS>
+${formatChannelOutputsForAgent(this.outputChannelConfigs)}
+</OUTPUT_DESTINATIONS>
 
 <EVENT>
 ${inputEvent.formatForChannelAgent()}

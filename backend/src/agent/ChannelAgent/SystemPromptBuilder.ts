@@ -1,5 +1,5 @@
 import { Session } from '../../server';
-import { ChannelWithRelations } from '../../types/prisma';
+import { ChannelWithRelations, ChannelKnowledgeBaseWithConfigs, ChannelOutputWithConfigs } from '../../types/prisma';
 import { Output } from '../../outputs/abstract/Output';
 import { ConfigInstance } from '../../shared/Configs';
 import { db } from '../../prismaClient';
@@ -16,12 +16,13 @@ export interface RunContext {
     runId: string;
 }
 
-export interface SystemPromptBuilderDependencies<T extends Session, TConfig extends ConfigInstance, K extends Session, KBConfig extends ConfigInstance> {
+export interface SystemPromptBuilderDependencies<T extends Session, TConfig extends ConfigInstance, KBConfig extends ConfigInstance> {
     session: T;
     channel: ChannelWithRelations;
-    output: Output<T, TConfig>;
-    knowledgeBases?: KnowledgeBase<K, KBConfig>[];
-    knowledgeBaseSessions?: K[];
+    outputs: Output<TConfig>[];
+    knowledgeBases?: KnowledgeBase<KBConfig>[];
+    knowledgeBaseConfigs?: Array<{ integrationId: string, channelKnowledgeBase: ChannelKnowledgeBaseWithConfigs }>;
+    outputConfigs?: Array<{ integrationId: string, channelOutput: ChannelOutputWithConfigs }>;
 }
 
 interface Section {
@@ -31,11 +32,11 @@ interface Section {
 
 type SectionBuilder = () => Section | null | Promise<Section | null>;
 
-export class SystemPromptBuilder<T extends Session, TConfig extends ConfigInstance, K extends Session, KBConfig extends ConfigInstance> {
+export class SystemPromptBuilder<T extends Session, TConfig extends ConfigInstance, KBConfig extends ConfigInstance> {
     private sections: SectionBuilder[] = [];
 
     constructor(
-        private deps: SystemPromptBuilderDependencies<T, TConfig, K, KBConfig>,
+        private deps: SystemPromptBuilderDependencies<T, TConfig, KBConfig>,
         private runContext: RunContext
     ) { }
 
@@ -51,6 +52,7 @@ export class SystemPromptBuilder<T extends Session, TConfig extends ConfigInstan
             .withSection(() => this.buildRunContextSection())
             .withSection(() => this.buildDirectivesSection())
             .withSection(() => this.buildDeepLinkingSection())
+            .withSection(() => this.buildAvailableConfigurationsSection())
             .withSection(() => this.buildOutputInstructions())
             .withSection(() => this.buildKnowledgeBaseInstructions());
     }
@@ -138,31 +140,76 @@ This is event #${eventPosition} processed by this automation.`
     }
 
     private buildOutputInstructions(): Section | null {
-        const instructions = this.deps.output.getSystemInstructions(this.deps.session);
-        if (!instructions) return null;
+        if (!this.deps.outputConfigs || !this.deps.outputs || 
+            this.deps.outputConfigs.length === 0 || this.deps.outputs.length === 0) {
+            return null;
+        }
+
+        // Group configs by config_type
+        const configsByType = new Map<string, Array<{ integrationId: string, channelOutput: ChannelOutputWithConfigs }>>();
+        for (const config of this.deps.outputConfigs) {
+            const configType = config.channelOutput.config_type;
+            if (!configsByType.has(configType)) {
+                configsByType.set(configType, []);
+            }
+            configsByType.get(configType)!.push({
+                integrationId: config.integrationId,
+                channelOutput: config.channelOutput
+            });
+        }
+
+        // For each type, find the matching output instance and pass all configs of that type
+        const instructions: string[] = [];
+        for (const [configType, configs] of configsByType.entries()) {
+            const output = this.deps.outputs.find(o => o.integration === configType);
+            if (output && configs.length > 0) {
+                const outputInstructions = output.getSystemInstructions(configs);
+                if (outputInstructions) {
+                    instructions.push(outputInstructions);
+                }
+            }
+        }
+
+        if (instructions.length === 0) {
+            return null;
+        }
 
         return {
             header: 'OUTPUT-SPECIFIC INSTRUCTIONS',
-            content: instructions
+            content: instructions.join('\n\n')
         };
     }
 
     private buildKnowledgeBaseInstructions(): Section | null {
-        if (!this.deps.knowledgeBases || !this.deps.knowledgeBaseSessions || 
-            this.deps.knowledgeBases.length === 0 || this.deps.knowledgeBaseSessions.length === 0) {
+        if (!this.deps.knowledgeBases || !this.deps.knowledgeBaseConfigs || 
+            this.deps.knowledgeBases.length === 0 || this.deps.knowledgeBaseConfigs.length === 0) {
             return null;
         }
 
-        const instructions = this.deps.knowledgeBases.reduce<string[]>((acc, kb, i) => {
-            const kbSession = this.deps.knowledgeBaseSessions?.[i];
-            if (kb && kbSession) {
-                const kbInstructions = kb.getSystemInstructions(kbSession);
+        // Group configs by config_type
+        const configsByType = new Map<string, Array<{ integrationId: string, channelKnowledgeBase: ChannelKnowledgeBaseWithConfigs }>>();
+        for (const config of this.deps.knowledgeBaseConfigs) {
+            const configType = config.channelKnowledgeBase.config_type;
+            if (!configsByType.has(configType)) {
+                configsByType.set(configType, []);
+            }
+            configsByType.get(configType)!.push({
+                integrationId: config.integrationId,
+                channelKnowledgeBase: config.channelKnowledgeBase
+            });
+        }
+
+        // For each type, find the matching KB instance and pass all configs of that type
+        const instructions: string[] = [];
+        for (const [configType, configs] of configsByType.entries()) {
+            const kb = this.deps.knowledgeBases?.find(k => k.integration === configType);
+            if (kb && configs.length > 0) {
+                const kbInstructions = kb.getSystemInstructions(configs);
                 if (kbInstructions) {
-                    acc.push(kbInstructions);
+                    instructions.push(kbInstructions);
                 }
             }
-            return acc;
-        }, []);
+        }
 
         if (instructions.length === 0) {
             return null;
@@ -171,6 +218,43 @@ This is event #${eventPosition} processed by this automation.`
         return {
             header: 'KNOWLEDGE BASE INSTRUCTIONS',
             content: instructions.join('\n\n')
+        };
+    }
+
+    private buildAvailableConfigurationsSection(): Section | null {
+        const configs: string[] = [];
+
+        // List knowledge base configurations
+        if (this.deps.knowledgeBaseConfigs && this.deps.knowledgeBaseConfigs.length > 0) {
+            configs.push('KNOWLEDGE BASES:');
+            for (const config of this.deps.knowledgeBaseConfigs) {
+                const kb = this.deps.knowledgeBases?.find(k => k.integration === config.channelKnowledgeBase.config_type);
+                if (!kb) continue;
+
+                const formatted = kb.formatForAvailableConfigurationsSection(config);
+                configs.push(`  - ${formatted}`);
+            }
+        }
+
+        // List output configurations
+        if (this.deps.outputConfigs && this.deps.outputConfigs.length > 0) {
+            configs.push('\nOUTPUTS:');
+            for (const config of this.deps.outputConfigs) {
+                const output = this.deps.outputs.find(o => o.integration === config.channelOutput.config_type);
+                if (!output) continue;
+
+                const formatted = output.formatForAvailableConfigurationsSection(config);
+                configs.push(`  - ${formatted}`);
+            }
+        }
+
+        if (configs.length === 0) {
+            return null;
+        }
+
+        return {
+            header: 'AVAILABLE CONFIGURATIONS',
+            content: configs.join('\n') + '\n\nUse the integration IDs listed above when calling tools. Each integration ID corresponds to a specific connection/workspace.'
         };
     }
 

@@ -1,7 +1,6 @@
 
 import { Tool } from "@openai/agents";
-import { ChannelNotionPageConfig, ChannelOutput, NotionIntegration, PrismaTransaction, User } from "../../types/prisma";
-import { Session } from "../../server";
+import { ChannelOutputWithConfigs, PrismaTransaction, User } from "../../types/prisma";
 import { Output, ToolboxEntry } from "../abstract/Output";
 import { db } from "../../prismaClient";
 import { OutputConfigType } from "@prisma/client";
@@ -9,12 +8,7 @@ import { NotionPageConfig } from "../../shared/Configs";
 import { notionQueryPageTool, notionModifyBlocksTool, fetchRelatedEventsTool } from "./tools";
 import { IntegrationType } from "../../shared/Integrations";
 
-export interface NotionPageSession extends Session {
-    notionIntegration: NotionIntegration; // Top level integration record
-    notionPageConfig: ChannelNotionPageConfig; // Configuration for the Specific Notion Page
-}
-
-export class NotionPageOutput extends Output<NotionPageSession, NotionPageConfig> {
+export class NotionPageOutput extends Output<NotionPageConfig> {
     constructor() {
         const toolbox: ToolboxEntry[] = [
             { tool: notionQueryPageTool as Tool, isReadOnly: true, integration: IntegrationType.NOTION },
@@ -24,29 +18,6 @@ export class NotionPageOutput extends Output<NotionPageSession, NotionPageConfig
         super(OutputConfigType.NOTION_PAGE, toolbox);
     }
 
-    async createSessionFromConfig(
-        integrationId: string,
-        channelOutputConfig: ChannelOutput,
-        user: User
-    ): Promise<NotionPageSession> {
-        const integration = await db().notion_integrations.findFirst({
-            where: { id: integrationId }
-        });
-
-        if (!integration) {
-            throw new Error(`Notion integration ${integrationId} not found`);
-        }
-
-        const notionPageConfig: ChannelNotionPageConfig | null = await db().automation_notion_page_configs.findFirst({
-            where: { automation_output_id: channelOutputConfig.id }
-        });
-
-        if (!notionPageConfig) {
-            throw new Error(`Notion page config for automation output ${channelOutputConfig.id} not found`);
-        }
-
-        return { notionIntegration: integration, notionPageConfig: notionPageConfig, user: user, isUserInitiated: true };
-    }
 
     async validateConfig(output: NotionPageConfig, _userId: string): Promise<void> {
         if (!output.pageId) {
@@ -64,8 +35,42 @@ export class NotionPageOutput extends Output<NotionPageSession, NotionPageConfig
         });
     }
 
-    getSystemInstructions(_session: NotionPageSession): string {
-        return NOTION_PAGE_FOOTER_INSTRUCTIONS;
+    getSystemInstructions(configs: Array<{ integrationId: string, channelOutput: ChannelOutputWithConfigs }>): string {
+        if (configs.length === 0) {
+            throw new Error('No Notion page configs provided');
+        }
+        
+        const sections: string[] = [];
+        sections.push('=== NOTION PAGE OUTPUT ===');
+        
+        // List all available configurations
+        const configList: string[] = [];
+        for (const config of configs) {
+            const { integrationId, channelOutput } = config;
+            if (!channelOutput.notion_page_config) {
+                throw new Error('Notion page config not found');
+            }
+            const pageId = channelOutput.notion_page_config.page_id;
+            const pageName = channelOutput.notion_page_config.page_name;
+            configList.push(`  • Integration ID: ${integrationId} - Page: ${pageName || pageId}`);
+        }
+        sections.push('Available configurations:');
+        sections.push(configList.join('\n'));
+        sections.push('\nWhen calling Notion page tools, you MUST include the `integrationId` and `pageId` parameters matching one of the configurations listed above.');
+        sections.push('\n' + NOTION_PAGE_FOOTER_INSTRUCTIONS);
+        
+        return sections.join('\n');
+    }
+
+    formatForAvailableConfigurationsSection(config: { integrationId: string, channelOutput: ChannelOutputWithConfigs }): string {
+        const { integrationId, channelOutput } = config;
+        if (!channelOutput.notion_page_config) {
+            throw new Error('Notion page config not found');
+        }
+        const pageName = channelOutput.notion_page_config.page_name;
+        const pageId = channelOutput.notion_page_config.page_id;
+        const details = pageName ? `Page: ${pageName}` : `Page: ${pageId}`;
+        return `Integration ID: ${integrationId}, Type: ${channelOutput.config_type}, ${details}`;
     }
 }
 

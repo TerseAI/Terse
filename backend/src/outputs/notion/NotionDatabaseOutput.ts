@@ -1,19 +1,13 @@
 import { Output, ToolboxEntry } from "../abstract/Output";
 import { Tool } from "@openai/agents";
-import { Session } from "../../server";
-import { NotionIntegration, ChannelOutput, User, ChannelNotionConfig, PrismaTransaction } from "../../types/prisma";
+import { ChannelOutputWithConfigs, PrismaTransaction } from "../../types/prisma";
 import { db } from "../../prismaClient";
 import { NotionConfig } from "../../shared/Configs";
 import { OutputConfigType } from "@prisma/client";
 import { notionQueryDatabaseTool, notionModifyPageTool, notionGetSchemaTool } from "./tools";
 import { IntegrationType } from "../../shared/Integrations";
 
-export interface NotionDatabaseSession extends Session {
-    notionIntegration: NotionIntegration; // Top level integration record
-    notionConfig: ChannelNotionConfig; // Configuration for the Specific Notion Database
-}
-
-export class NotionDatabaseOutput extends Output<NotionDatabaseSession, NotionConfig> {
+export class NotionDatabaseOutput extends Output<NotionConfig> {
     constructor() {
         const toolbox: ToolboxEntry[] = [
             { tool: notionGetSchemaTool as Tool, isReadOnly: true, integration: IntegrationType.NOTION },
@@ -23,35 +17,6 @@ export class NotionDatabaseOutput extends Output<NotionDatabaseSession, NotionCo
         super(OutputConfigType.NOTION_DATABASE, toolbox);
     }
 
-    async createSessionFromConfig(
-        integrationId: string,
-        channelOutputConfig: ChannelOutput,
-        user: User
-    ): Promise<NotionDatabaseSession> {
-        // NotionOutput knows how to fetch its own integration
-        const integration = await db().notion_integrations.findFirst({
-            where: { id: integrationId }
-        });
-
-        if (!integration) {
-            throw new Error(`Notion integration ${integrationId} not found`);
-        }
-
-        const notionConfig: ChannelNotionConfig | null = await db().automation_notion_configs.findFirst({
-            where: { automation_output_id: channelOutputConfig.id }
-        });
-
-        if (!notionConfig) {
-            throw new Error(`Notion config for channel output ${channelOutputConfig.id} not found`);
-        }
-
-        return {
-            notionIntegration: integration,
-            notionConfig: notionConfig,
-            user: user,
-            isUserInitiated: true,
-        };
-    }
 
     async validateConfig(output: NotionConfig, _userId: string): Promise<void> {
         if (!output.databaseId) {
@@ -69,8 +34,29 @@ export class NotionDatabaseOutput extends Output<NotionDatabaseSession, NotionCo
         });
     }
 
-    getSystemInstructions(session: NotionDatabaseSession): string {
-        return `
+    getSystemInstructions(configs: Array<{ integrationId: string, channelOutput: ChannelOutputWithConfigs }>): string {
+        if (configs.length === 0) {
+            throw new Error('No Notion database configs provided');
+        }
+        
+        const sections: string[] = [];
+        sections.push('=== NOTION DATABASE OUTPUT ===');
+        
+        // List all available configurations
+        const configList: string[] = [];
+        for (const config of configs) {
+            const { integrationId, channelOutput } = config;
+            if (!channelOutput.notion_config) {
+                throw new Error('Notion database config not found');
+            }
+            const databaseId = channelOutput.notion_config.database_id;
+            const databaseName = channelOutput.notion_config.database_name;
+            configList.push(`  • Integration ID: ${integrationId} - Database: ${databaseName || databaseId}`);
+        }
+        sections.push('Available configurations:');
+        sections.push(configList.join('\n'));
+        sections.push('\nWhen calling Notion database tools, you MUST include the `integrationId` and `databaseId` parameters matching one of the configurations listed above.');
+        sections.push(`
 ==========================
 NOTION DATABASE OUTPUT INSTRUCTIONS
 ==========================
@@ -126,7 +112,20 @@ QUERY STRATEGY:
 - Extract key keywords from the content you're trying to match (e.g., ticket titles, project names) and search for those keywords
 
 This workflow ensures you work with the database correctly and prevents duplicate entries.
-`;
+`);
+        
+        return sections.join('\n');
+    }
+
+    formatForAvailableConfigurationsSection(config: { integrationId: string, channelOutput: ChannelOutputWithConfigs }): string {
+        const { integrationId, channelOutput } = config;
+        if (!channelOutput.notion_config) {
+            throw new Error('Notion database config not found');
+        }
+        const databaseName = channelOutput.notion_config.database_name;
+        const databaseId = channelOutput.notion_config.database_id;
+        const details = databaseName ? `Database: ${databaseName}` : `Database: ${databaseId}`;
+        return `Integration ID: ${integrationId}, Type: ${channelOutput.config_type}, ${details}`;
     }
 }
 

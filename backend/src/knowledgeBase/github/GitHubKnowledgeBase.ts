@@ -13,24 +13,14 @@ import { listGitHubDirectoryTool } from "./tools/listDirectory";
 import { listGitHubPullRequestsTool } from "./tools/listPullRequests";
 import { listGitHubCommitsTool } from "./tools/listCommits";
 import { summarizeGitHubPullRequestDiffTool } from "./tools/summarizePullRequestDiff";
-import { getGitHubAccessToken } from "./githubApiClient";
 import logger from "../../logger";
 import { validateGithubRepositoryIds } from "../../integrations/githubValidation";
-
-/**
- * Session type for GitHub knowledge base.
- * Extends the base Session with GitHub-specific configuration.
- */
-export interface GitHubKnowledgeBaseSession extends Session {
-    githubKBConfig: GitHubKBConfig;
-    githubAccessToken: string;
-}
 
 /**
  * GitHub Knowledge Base implementation.
  * Provides tools for searching, reading, and exploring GitHub repositories.
  */
-export class GitHubKnowledgeBase extends KnowledgeBase<GitHubKnowledgeBaseSession, GitHubKBConfig> {
+export class GitHubKnowledgeBase extends KnowledgeBase<GitHubKBConfig> {
     constructor() {
         const toolbox: ToolboxEntry[] = [
             {
@@ -73,52 +63,6 @@ export class GitHubKnowledgeBase extends KnowledgeBase<GitHubKnowledgeBaseSessio
         super(KnowledgeBaseConfigType.GITHUB, toolbox);
     }
 
-    /**
-     * Creates a GitHub knowledge base session from the configuration.
-     * Loads the GitHub integration and configures the session with credentials.
-     */
-    async createSessionFromConfig(
-        integrationId: string,
-        channelKnowledgeBase: ChannelKnowledgeBaseWithConfigs,
-        user: User
-    ): Promise<GitHubKnowledgeBaseSession> {
-        // Load the GitHub KB config from the channel knowledge base
-        if (!channelKnowledgeBase.github_kb_config) {
-            throw new Error('GitHub KB config not found in channel knowledge base');
-        }
-
-        const githubKBConfig = channelKnowledgeBase.github_kb_config;
-
-        // Get the user's GitHub access token
-        const accessToken = await getGitHubAccessToken(user.id);
-        if (!accessToken) {
-            throw new Error('No GitHub access token found for user. Please reconnect your GitHub integration.');
-        }
-
-        // Create the GitHubKBConfig instance
-        const config = new GitHubKBConfig(
-            integrationId,
-            githubKBConfig.repository_ids,
-            githubKBConfig.repository_names
-        );
-
-        // Verify that repositories are configured
-        if (!config.isComplete()) {
-            logger.warn('GitHub knowledge base configured but no repositories selected', {
-                integrationId,
-            });
-        }
-
-        // Create the session with GitHub config
-        const session: GitHubKnowledgeBaseSession = {
-            user,
-            isUserInitiated: true,
-            githubKBConfig: config,
-            githubAccessToken: accessToken,
-        };
-
-        return session;
-    }
 
     async validateConfig(knowledgeBase: GitHubKBConfig, userId: string): Promise<void> {
         await validateGithubRepositoryIds({
@@ -144,13 +88,29 @@ export class GitHubKnowledgeBase extends KnowledgeBase<GitHubKnowledgeBaseSessio
      * Returns system instructions for GitHub knowledge base.
      * Provides guidance on how to effectively explore and understand codebases.
      */
-    getSystemInstructions(session: GitHubKnowledgeBaseSession): string {
-        const { githubKBConfig } = session;
+    getSystemInstructions(configs: Array<{ integrationId: string, channelKnowledgeBase: ChannelKnowledgeBaseWithConfigs }>): string {
+        if (configs.length === 0) {
+            throw new Error('No GitHub KB configs provided');
+        }
+        
         const sections: string[] = [];
 
         // Header
         sections.push('=== GITHUB CODEBASE KNOWLEDGE BASE ===');
-        sections.push(`Repositories: ${githubKBConfig.repositoryNames.join(', ')}`);
+        
+        // List all available configurations
+        const configList: string[] = [];
+        for (const config of configs) {
+            const { integrationId, channelKnowledgeBase } = config;
+            if (!channelKnowledgeBase.github_kb_config) {
+                throw new Error('GitHub KB config not found');
+            }
+            const repositoryNames = channelKnowledgeBase.github_kb_config.repository_names;
+            configList.push(`  • Integration ID: ${integrationId} - Repositories: ${repositoryNames.join(', ')}`);
+        }
+        sections.push('Available configurations:');
+        sections.push(configList.join('\n'));
+        sections.push('\nWhen calling GitHub tools, you MUST include the `integrationId` parameter matching one of the integration IDs listed above.');
 
         // Available tools section
         sections.push(`
@@ -260,5 +220,15 @@ When explaining code to the user:
 - Suggest next areas to explore if relevant`);
 
         return sections.join('\n');
+    }
+
+    formatForAvailableConfigurationsSection(config: { integrationId: string, channelKnowledgeBase: ChannelKnowledgeBaseWithConfigs }): string {
+        const { integrationId, channelKnowledgeBase } = config;
+        if (!channelKnowledgeBase.github_kb_config) {
+            throw new Error('GitHub KB config not found');
+        }
+        const repositoryNames = channelKnowledgeBase.github_kb_config.repository_names;
+        const details = `Repositories: ${repositoryNames.join(', ')}`;
+        return `Integration ID: ${integrationId}, Type: ${channelKnowledgeBase.config_type}, ${details}`;
     }
 }

@@ -1,11 +1,12 @@
 import { RunContext, tool } from "@openai/agents";
 import { z } from "zod";
 import { Client } from '@notionhq/client';
-import { NotionDatabaseSession } from "../NotionDatabaseOutput";
 import { IntegrationType } from "../../../shared/Integrations";
 import { SessionWithTracking } from "../../../agent/ChannelAgent/ChannelAgent";
 import { formatError } from "../../../tools/toolUtils";
 import logger from "../../../logger";
+import { Session } from "../../../server";
+import { NotionIntegrationManager } from "../../../integrations/NotionIntegration";
 
 // Helper function to extract readable values from Notion property objects
 function extractPropertyValue(property: any): any {
@@ -78,6 +79,8 @@ FILTER_PROPERTIES:
 
 NOTE: This tool does NOT return the database schema. Use notion_get_schema if you need schema information.`,
     parameters: z.object({
+        integrationId: z.string().describe('The integration ID of the Notion workspace to use.'),
+        databaseId: z.string().describe('The Notion database ID (data source ID) to query.'),
         filter_properties: z.array(z.string()).nullable().optional().describe('Array of property names or IDs to include in results. Only these properties will be returned, improving performance. Use property names from the database schema.'),
         filter: z.string().nullable().optional().describe(`JSON string with filter object to query pages matching specific criteria. Supports complex filtering with AND/OR logic, property filters, and timestamp filters.
 
@@ -210,20 +213,25 @@ EXAMPLES:
         start_cursor: z.string().nullable().optional().describe('Cursor from previous response to fetch next page. Use next_cursor from response when has_more is true.'),
         result_type: z.enum(['page', 'data_source']).nullable().optional().describe('Filter results to only pages or data sources. Only relevant for wiki databases.'),
     }),
-    execute: async ({ filter_properties, filter, page_size, start_cursor, result_type }, runContext?: RunContext<SessionWithTracking<NotionDatabaseSession>>) => {
-        logger.debug("Executing notion_query_database tool with filters", { filter_properties, filter, page_size, start_cursor });
+    execute: async ({ integrationId, databaseId, filter_properties, filter, page_size, start_cursor, result_type }, runContext?: RunContext<SessionWithTracking<Session>>) => {
+        logger.debug("Executing notion_query_database tool with filters", { integrationId, databaseId, filter_properties, filter, page_size, start_cursor });
         if (!runContext?.context) {
             throw new Error("No context provided");
         }
 
-        const notion = new Client({
-            auth: runContext.context.notionIntegration.integration_token,
-        });
+        const manager = new NotionIntegrationManager();
+        const accessToken = await manager.getAccessToken(integrationId);
+        if (!accessToken) {
+            throw new Error(`Notion integration not found or access denied for integrationId: ${integrationId}`);
+        }
 
+        const notion = new Client({
+            auth: accessToken,
+        });
 
         // Build query parameters
         const queryParams: any = {
-            data_source_id: runContext.context.notionConfig.database_id,
+            data_source_id: databaseId,
         };
 
         if (filter_properties && filter_properties.length > 0) {
@@ -266,9 +274,10 @@ EXAMPLES:
 
         // Retrieve data source info to get the database URL
         const dataSourceInfo = await notion.dataSources.retrieve({
-            data_source_id: runContext.context.notionConfig.database_id,
+            data_source_id: databaseId,
         });
-        const databaseUrl = 'url' in dataSourceInfo ? dataSourceInfo.url : undefined;
+        const databaseUrl = 'url' in dataSourceInfo ? (dataSourceInfo.url as string | undefined) : undefined;
+        const databaseName: string = 'name' in dataSourceInfo ? (dataSourceInfo.name as string) : 'Unknown Database';
 
         // Convert to readable format
         const pages = response.results.map((page: any) => {
@@ -290,14 +299,13 @@ EXAMPLES:
         }).filter(Boolean);
 
         // Push run action to track the API call
-        const databaseName = runContext.context.notionConfig.database_name || 'Unknown Database';
         const filterDescription = filter ? 'with filters' : 'without filters';
         runContext.context.trackAction({
             action: 'Queried database',
             integration: IntegrationType.NOTION,
             target: databaseName,
             details: `Queried database ${filterDescription} and retrieved ${pages.length} ${pages.length === 1 ? 'page' : 'pages'}`,
-            url: databaseUrl,
+            url: databaseUrl as string | undefined,
             type: 'read',
         });
 

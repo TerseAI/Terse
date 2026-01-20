@@ -2,12 +2,13 @@ import { RunContext, tool } from "@openai/agents";
 import { z } from "zod";
 import { LinearClient } from "@linear/sdk";
 import { IntegrationType } from "../../../shared/Integrations";
-import { LinearTicketSession } from "../LinearTicketOutput";
 import { SessionWithTracking } from "../../../agent/ChannelAgent/ChannelAgent";
 import type { IssueCreateInput } from "@linear/sdk/dist/_generated_documents";
 import { RunHistoryActionType } from "@prisma/client";
 import { formatError, needsApproval } from "../../../tools/toolUtils";
 import logger from "../../../logger";
+import { Session } from "../../../server";
+import { LinearIntegrationManager } from "../../../integrations/LinearIntegration";
 
 export const linearCreateTicketTool = tool({
     name: 'linear_create_ticket',
@@ -34,8 +35,9 @@ BEFORE USING THIS TOOL:
 - Use linear_search_ticket to find team IDs, state IDs, and other IDs you might need
 - Ensure you have the correct teamId for the team where you want to create the issue`,
     parameters: z.object({
-        title: z.string().describe('The issue title. This is required.'),
+        integrationId: z.string().describe('The integration ID of the Linear workspace to use.'),
         teamId: z.string().nullable().optional().describe('The ID of the team to create the issue in. If not provided, will use the team configured in the Linear output settings. Use linear_search_ticket to find available teams.'),
+        title: z.string().describe('The issue title. This is required.'),
         description: z.string().nullable().optional().describe('The issue description in markdown format.'),
         stateId: z.string().nullable().optional().describe('The ID of the team state to set as initial state (e.g., "In Progress", "Todo"). Use linear_search_ticket to find available state IDs.'),
         assigneeId: z.string().nullable().optional().describe('The ID of the user to assign the issue to.'),
@@ -50,8 +52,9 @@ BEFORE USING THIS TOOL:
     }),
     needsApproval,
     execute: async ({ 
-        title, 
+        integrationId,
         teamId,
+        title, 
         description, 
         stateId, 
         assigneeId, 
@@ -63,17 +66,17 @@ BEFORE USING THIS TOOL:
         parentId, 
         estimate, 
         subscriberIds
-    }, runContext?: RunContext<SessionWithTracking<LinearTicketSession>>) => {
-        logger.debug('🛠️ Executing linear_create_ticket tool', { title, teamId: teamId || 'not provided', otherFields: { description, stateId, assigneeId, priority, dueDate, labelIds, projectId, projectMilestoneId, parentId, estimate, subscriberIds } });
+    }, runContext?: RunContext<SessionWithTracking<Session>>) => {
+        logger.debug('🛠️ Executing linear_create_ticket tool', { integrationId, title, teamId: teamId || 'not provided', otherFields: { description, stateId, assigneeId, priority, dueDate, labelIds, projectId, projectMilestoneId, parentId, estimate, subscriberIds } });
 
         if (!runContext?.context) {
             throw new Error("No context provided");
         }
 
-        // Get the OAuth token from the Linear integration
-        const accessToken = runContext.context.linearIntegration.access_token;
+        const manager = new LinearIntegrationManager();
+        const accessToken = await manager.getAccessToken(integrationId);
         if (!accessToken) {
-            throw new Error("No access token found in Linear integration");
+            throw new Error(`Linear integration not found or access denied for integrationId: ${integrationId}`);
         }
 
         // Initialize Linear client with OAuth token
@@ -82,8 +85,15 @@ BEFORE USING THIS TOOL:
         });
 
         try {
-            // Use teamId from config if not provided in the tool call
-            const finalTeamId = teamId || runContext.context.linearConfig.team_id;
+            // Use teamId from parameter, or get from config if available
+            let finalTeamId = teamId;
+            if (!finalTeamId) {
+                // Try to get from config if available
+                const channelOutput = (runContext.context as any).channelOutput;
+                if (channelOutput?.linear_config?.team_id) {
+                    finalTeamId = channelOutput.linear_config.team_id;
+                }
+            }
             if (!finalTeamId) {
                 return {
                     success: false,

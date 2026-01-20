@@ -1,12 +1,11 @@
 import { RunContext, tool } from "@openai/agents";
 import { z } from "zod";
 import logger from "../../../logger";
-import { createGitHubClient, searchCode } from "../githubApiClient";
-import { GitHubKBConfig } from "../../../shared/Configs";
+import { createGitHubClient, searchCode, getGitHubAccessTokenByIntegrationId } from "../githubApiClient";
 import { IntegrationType } from "../../../shared/Integrations";
 import { RunHistoryActionType } from "@prisma/client";
 import { SessionWithTracking } from "../../../agent/ChannelAgent/ChannelAgent";
-import { GitHubKnowledgeBaseSession } from "../GitHubKnowledgeBase";
+import { Session } from "../../../server";
 
 /**
  * Tool for semantic code search in GitHub repositories.
@@ -35,6 +34,8 @@ Tips:
 - Use natural language or domain terms
 - Combine multiple terms for more specific results`,
     parameters: z.object({
+        integrationId: z.string().describe('The integration ID of the GitHub knowledge base to use. Required when multiple GitHub knowledge bases are configured.'),
+        repositoryNames: z.array(z.string()).describe('Array of repository full names (owner/repo format) to search in.'),
         query: z.string().describe('The search query. Use natural language or code-specific terms. Examples: "authentication middleware", "class UserRepository", "handleSubmit form validation"'),
         language: z.union([z.string(), z.null()]).describe('Filter by programming language (e.g., "typescript", "python", "javascript"). Use null to search all languages.'),
         filename: z.union([z.string(), z.null()]).describe('Filter by filename pattern (e.g., "*.test.ts" for test files, "*.config.*" for config files). Use null to search all files.'),
@@ -42,18 +43,21 @@ Tips:
         perPage: z.number().describe('Number of results to return (default: 10, max: 100)'),
         page: z.union([z.number().int().min(1), z.null()]).describe('Page number for pagination (default: 1). Use this to fetch additional results if there are more than perPage results. Use null for page 1. Must be a positive integer >= 1.'),
     }),
-    execute: async ({ query, language, filename, path, perPage = 10, page }, runContext?: RunContext<SessionWithTracking<GitHubKnowledgeBaseSession>>) => {
+    execute: async ({ integrationId, repositoryNames, query, language, filename, path, perPage = 10, page }, runContext?: RunContext<SessionWithTracking<Session>>) => {
         if (!runContext?.context) {
             throw new Error("No context provided");
         }
 
-        const { githubKBConfig, githubAccessToken } = runContext.context;
-
-        if (githubKBConfig.repositoryNames.length === 0) {
-            throw new Error("No repositories configured for this knowledge base.");
+        if (repositoryNames.length === 0) {
+            throw new Error("No repositories provided. The repositoryNames parameter must contain at least one repository.");
         }
 
-        const client = createGitHubClient(githubAccessToken);
+        const accessToken = await getGitHubAccessTokenByIntegrationId(integrationId, runContext.context.user.id);
+        if (!accessToken) {
+            throw new Error(`GitHub integration not found or access denied for integrationId: ${integrationId}`);
+        }
+
+        const client = createGitHubClient(accessToken);
 
         // Build enhanced query with optional filters
         let enhancedQuery = query;
@@ -74,7 +78,7 @@ Tips:
             query: enhancedQuery,
             originalQuery: query,
             filters: { language, filename, path },
-            repositories: githubKBConfig.repositoryNames,
+            repositories: repositoryNames,
             perPage: normalizedPerPage,
             page: pageNumber,
         };
@@ -85,7 +89,7 @@ Tips:
             const results = await searchCode(
                 client,
                 enhancedQuery,
-                githubKBConfig.repositoryNames,
+                repositoryNames,
                 { perPage: normalizedPerPage, page: pageNumber }
             );
 
@@ -122,7 +126,7 @@ Tips:
                 totalCount: results.totalCount,
                 resultsReturned: formattedResults.length,
                 query: enhancedQuery,
-                repositories: githubKBConfig.repositoryNames,
+                repositories: repositoryNames,
                 pagination: {
                     page: results.pagination.page,
                     perPage: results.pagination.perPage,
@@ -145,7 +149,7 @@ Tips:
             logger.debug('[GitHub KB] searchGitHubCode - Full response', { response });
 
             // Build URL with repository filter
-            const repoFilter = githubKBConfig.repositoryNames.map(repo => `repo:${repo}`).join(' ');
+            const repoFilter = repositoryNames.map(repo => `repo:${repo}`).join(' ');
             const urlQuery = `${enhancedQuery} ${repoFilter}`;
             const searchUrl = `https://github.com/search?q=${encodeURIComponent(urlQuery)}&type=code`;
 
@@ -153,7 +157,7 @@ Tips:
             runContext.context.trackAction({
                 action: 'Searched GitHub code',
                 integration: IntegrationType.GITHUB,
-                target: githubKBConfig.repositoryNames.join(', '),
+                target: repositoryNames.join(', '),
                 details: `Semantic search for "${query}": Found ${results.totalCount} result(s)${results.pagination.hasMore ? ` (showing page ${results.pagination.page})` : ''}`,
                 url: searchUrl,
                 type: RunHistoryActionType.read,

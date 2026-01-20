@@ -1,12 +1,11 @@
 import { RunContext, tool } from "@openai/agents";
 import { z } from "zod";
 import logger from "../../../logger";
-import { createGitHubClient, listDirectory, parseRepoFullName, getRepositoryInfo, getTree, getBranch } from "../githubApiClient";
-import { GitHubKBConfig } from "../../../shared/Configs";
+import { createGitHubClient, listDirectory, parseRepoFullName, getRepositoryInfo, getTree, getBranch, getGitHubAccessTokenByIntegrationId } from "../githubApiClient";
 import { IntegrationType } from "../../../shared/Integrations";
 import { RunHistoryActionType } from "@prisma/client";
 import { SessionWithTracking } from "../../../agent/ChannelAgent/ChannelAgent";
-import { GitHubKnowledgeBaseSession } from "../GitHubKnowledgeBase";
+import { Session } from "../../../server";
 
 /**
  * Tool for listing directory contents in GitHub repositories.
@@ -22,28 +21,22 @@ export const listGitHubDirectoryTool = tool({
 
 Start with the root directory (empty path) to see the top-level structure, then drill down into interesting directories.`,
     parameters: z.object({
+        integrationId: z.string().describe('The integration ID of the GitHub knowledge base to use. Required when multiple GitHub knowledge bases are configured.'),
         repository: z.string().describe('The repository in "owner/repo" format (e.g., "facebook/react"). Must be one of the configured repositories.'),
         path: z.string().describe('The directory path to list (e.g., "src/components"). Use empty string "" for root directory.'),
         recursive: z.boolean().describe('If true, list all files recursively (can be large for big repos). Use false for single-level listing.'),
     }),
-    execute: async ({ repository, path = '', recursive = false }, runContext?: RunContext<SessionWithTracking<GitHubKnowledgeBaseSession>>) => {
+    execute: async ({ integrationId, repository, path = '', recursive = false }, runContext?: RunContext<SessionWithTracking<Session>>) => {
         if (!runContext?.context) {
             throw new Error("No context provided");
         }
 
-        const { githubKBConfig, githubAccessToken } = runContext.context;
-
-        // Validate that the repository is in the configured list
-        if (!githubKBConfig.repositoryNames.includes(repository)) {
-            return {
-                success: false,
-                error: `Repository "${repository}" is not configured for this knowledge base.`,
-                configuredRepositories: githubKBConfig.repositoryNames,
-                tip: 'Use one of the configured repositories listed above.',
-            };
+        const accessToken = await getGitHubAccessTokenByIntegrationId(integrationId, runContext.context.user.id);
+        if (!accessToken) {
+            throw new Error(`GitHub integration not found or access denied for integrationId: ${integrationId}`);
         }
 
-        const client = createGitHubClient(githubAccessToken);
+        const client = createGitHubClient(accessToken);
         const { owner, repo } = parseRepoFullName(repository);
 
         const requestParams = {

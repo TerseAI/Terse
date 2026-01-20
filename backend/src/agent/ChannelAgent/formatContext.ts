@@ -39,3 +39,20 @@ export function formatChannelInputsForAgent(inputs: (ChannelInput | ChannelInput
         })
         .join('\n\n');
 }
+
+export function formatChannelOutputsForAgent(outputs: ChannelOutputWithConfigs[]): string {
+    if (outputs.length === 0) {
+        return 'No outputs configured';
+    }
+
+    if (outputs.length === 1) {
+        return formatChannelOutputForAgent(outputs[0]);
+    }
+
+    return outputs
+        .map((output, index) => {
+            const formatted = formatChannelOutputForAgent(output);
+            return `Output ${index + 1}:\n${formatted.split('\n').map(line => `  ${line}`).join('\n')}`;
+        })
+        .join('\n\n');
+}

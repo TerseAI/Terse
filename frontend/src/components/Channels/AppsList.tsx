@@ -23,10 +23,18 @@ export function AppsList({ channel }: AppsListProps) {
         knowledgeBaseIntegrationCounts.set(kb.config.integrationType, count + 1);
     });
 
-    const outputIntegration = channel.output?.config?.integrationType;
+    // Count output integrations using a hashmap
+    const outputIntegrationCounts = new Map<IntegrationType, number>();
+    if (channel.outputs && channel.outputs.length > 0) {
+        channel.outputs.forEach(output => {
+            const count = outputIntegrationCounts.get(output.config.integrationType) || 0;
+            outputIntegrationCounts.set(output.config.integrationType, count + 1);
+        });
+    }
+    
     const hasInputs = inputIntegrationCounts.size > 0;
     const hasKnowledgeBases = knowledgeBaseIntegrationCounts.size > 0;
-    const hasOutput = !!outputIntegration;
+    const hasOutput = outputIntegrationCounts.size > 0;
 
     return (
         <div className="flex items-center gap-1.5">
@@ -74,14 +82,22 @@ export function AppsList({ channel }: AppsListProps) {
                 <ChevronRight className="w-3 h-3 text-muted-foreground mx-0.5" />
             )}
             
-            {/* Output */}
-            {outputIntegration && (
-                <div className="flex items-center">
-                    <div className="w-7 h-7 flex items-center justify-center rounded bg-card p-1" title={capitalize(outputIntegration)}>
-                        <IconForIntegration integration={outputIntegration} />
+            {/* Outputs */}
+            {Array.from(outputIntegrationCounts.entries()).map(([integration, count], idx) => (
+                <div key={idx} className="flex items-center">
+                    <div
+                        className="relative w-7 h-7 flex items-center justify-center rounded bg-card p-1"
+                        title={capitalize(integration)}
+                    >
+                        <IconForIntegration integration={integration} />
+                        {count > 1 && (
+                            <sup className="absolute -top-1.5 -right-1.5 text-[9px] font-mono tabular-nums leading-none z-10 text-primary-foreground rounded-full w-4 h-4 flex items-center justify-center shadow-md backdrop-blur-sm">
+                                {count}
+                            </sup>
+                        )}
                     </div>
                 </div>
-            )}
+            ))}
         </div>
     );
 }

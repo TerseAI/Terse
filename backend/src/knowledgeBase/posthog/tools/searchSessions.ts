@@ -1,12 +1,11 @@
 import { RunContext, tool } from "@openai/agents";
 import { z } from "zod";
 import logger from "../../../logger";
-import { db } from "../../../prismaClient";
-import { PosthogConfig } from "../../../shared/Configs";
 import { IntegrationType } from "../../../shared/Integrations";
 import { RunHistoryActionType } from "@prisma/client";
 import { SessionWithTracking } from "../../../agent/ChannelAgent/ChannelAgent";
-import { PosthogKnowledgeBaseSession } from "../PosthogKnowledgeBase";
+import { Session } from "../../../server";
+import { getPosthogApiKeyByIntegrationId } from "../posthogApiClient";
 
 /**
  * Tool for querying PostHog session recordings for a specific user.
@@ -16,6 +15,9 @@ export const searchSessionsTool = tool({
     name: 'searchPosthogSessions',
     description: 'Query PostHog session recordings for a specific user by their email address. Returns session recordings data and links to view sessions in PostHog. Use this when you need to replay user sessions, investigate user behavior, or understand how users interact with the application. Returns the most recent session recordings first.',
     parameters: z.object({
+        integrationId: z.string().describe('The integration ID of the PostHog knowledge base to use.'),
+        projectId: z.string().describe('The PostHog project ID.'),
+        canReadSessionRecordings: z.boolean().optional().describe('Whether session recordings access is enabled for this knowledge base.'),
         userEmail: z.string().email().describe('The email address of the user to query session recordings for. Must be a valid email address.'),
         limit: z.number().default(10).describe('Maximum number of session recordings to return (default: 10, max: 100)'),
         offset: z.number().default(0).describe('Offset for pagination (default: 0)'),
@@ -23,28 +25,20 @@ export const searchSessionsTool = tool({
         dateFrom: z.union([z.string(), z.null()]).describe('Start date for filtering (ISO format or relative like "-7d"). If not provided and last7Days is true, defaults to 7 days ago. If not provided and last7Days is false, no date restriction is applied.'),
         dateTo: z.union([z.string(), z.null()]).describe('End date for filtering (ISO format or relative like "now"). If not provided, defaults to now.'),
     }),
-    execute: async ({ userEmail, limit = 10, offset = 0, last7Days = false, dateFrom, dateTo }, runContext?: RunContext<SessionWithTracking<PosthogKnowledgeBaseSession>>) => {
+    execute: async ({ integrationId, projectId, canReadSessionRecordings, userEmail, limit = 10, offset = 0, last7Days = false, dateFrom, dateTo }, runContext?: RunContext<SessionWithTracking<Session>>) => {
         if (!runContext?.context) {
             throw new Error("No context provided");
         }
 
-        const { posthogConfig, user } = runContext.context;
-
-        if (!posthogConfig.canReadSessionRecordings) {
+        if (canReadSessionRecordings === false) {
             throw new Error("PostHog session recordings access is not enabled for this knowledge base.");
         }
 
-        // Get PostHog integration
-        const integration = await db().posthog_integrations.findUnique({
-            where: { id: posthogConfig.integrationId },
-        });
-
-        if (!integration) {
-            throw new Error(`PostHog integration not found: ${posthogConfig.integrationId}`);
+        const posthogApiKey = await getPosthogApiKeyByIntegrationId(integrationId, runContext.context.user.id);
+        if (!posthogApiKey) {
+            throw new Error(`PostHog integration not found or access denied for integrationId: ${integrationId}`);
         }
 
-        const posthogApiKey = integration.api_key;
-        const projectId = posthogConfig.projectId;
         const posthogHost = 'https://us.posthog.com';
 
         try {

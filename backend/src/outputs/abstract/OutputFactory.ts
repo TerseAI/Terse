@@ -2,7 +2,6 @@ import { OutputConfigType } from "@prisma/client";
 import { Output } from "./Output";
 import { NotionDatabaseOutput } from "../notion/NotionDatabaseOutput";
 import { NotionPageOutput } from "../notion/NotionPageOutput";
-import { Session } from "../../server";
 import { ConfluenceOutput } from "../ConfluenceOutput";
 import { ConfigInstance } from "../../shared/Configs";
 import { LinearTicketOutput } from "../linear/LinearTicketOutput";
@@ -15,7 +14,7 @@ import { SlackOutput } from "../slack/SlackOutput";
  * No switch statements - each output type is registered independently.
  */
 export class OutputFactory {
-    public static readonly OUTPUT_REGISTRY: Map<OutputConfigType, () => Output<Session, ConfigInstance>> = new Map<OutputConfigType, () => Output<Session, ConfigInstance>>([
+    public static readonly OUTPUT_REGISTRY: Map<OutputConfigType, () => Output<ConfigInstance>> = new Map<OutputConfigType, () => Output<ConfigInstance>>([
         [OutputConfigType.NOTION_DATABASE, () => new NotionDatabaseOutput()],
         [OutputConfigType.NOTION_PAGE, () => new NotionPageOutput()],
         [OutputConfigType.CONFLUENCE, () => new ConfluenceOutput()],
@@ -29,7 +28,7 @@ export class OutputFactory {
      * @param integrationType The integration type to create an output for
      * @returns An Output instance, or null if the integration type is not supported
      */
-    static createOutput(integrationType: OutputConfigType): Output<Session, ConfigInstance> | null {
+    static createOutput(integrationType: OutputConfigType): Output<ConfigInstance> | null {
         const factory = this.OUTPUT_REGISTRY.get(integrationType);
         if (!factory) {
             return null;

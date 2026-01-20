@@ -2,11 +2,12 @@ import { RunContext, tool } from "@openai/agents";
 import { z } from "zod";
 import { client, v2 } from "@datadog/datadog-api-client";
 import logger from "../../../logger";
-import { db } from "../../../prismaClient";
-import { DatadogConfig } from "../../../shared/Configs";
 import { getDatadogSite, getDatadogRumDeepLink } from "../../../utility/datadog";
 import { IntegrationType } from "../../../shared/Integrations";
 import { RunHistoryActionType } from "@prisma/client";
+import { Session } from "../../../server";
+import { SessionWithTracking } from "../../../agent/ChannelAgent/ChannelAgent";
+import { getDatadogCredentialsByIntegrationId } from "../datadogApiClient";
 
 /**
  * Tool for aggregating Datadog RUM events into computed metrics and timeseries.
@@ -33,8 +34,10 @@ export const aggregateRumEventsTool = tool({
         })), z.null()]).describe('Facets to group results by'),
         timezone: z.string().default('GMT').describe('Timezone for time-based queries (default: "GMT")'),
         pageLimit: z.number().default(25).describe('Maximum number of buckets to return (default: 25)'),
+        integrationId: z.string().describe('The integration ID of the Datadog knowledge base to use.'),
     }),
     execute: async ({ 
+        integrationId,
         query, 
         from, 
         to, 
@@ -42,20 +45,9 @@ export const aggregateRumEventsTool = tool({
         groupBy,
         timezone, 
         pageLimit 
-    }, runContext?: RunContext<any>) => {
+    }, runContext?: RunContext<SessionWithTracking<Session>>) => {
         if (!runContext?.context) {
             throw new Error("No context provided");
-        }
-
-        // Get Datadog config from context - must be set by the knowledge base session
-        const datadogConfig = runContext.context.datadogConfig as DatadogConfig | undefined;
-        if (!datadogConfig) {
-            throw new Error("Datadog config not found in context. Ensure Datadog is configured as a knowledge base.");
-        }
-
-        const user = runContext.context.user;
-        if (!user) {
-            throw new Error("User not found in context");
         }
 
         // Validate compute array
@@ -73,18 +65,12 @@ export const aggregateRumEventsTool = tool({
             throw new Error("At least one compute metric is required");
         }
 
-        // Get Datadog integration
-        const integration = await db().datadog_integrations.findUnique({
-            where: { id: datadogConfig.integrationId },
-        });
-
-        if (!integration) {
-            throw new Error(`Datadog integration not found: ${datadogConfig.integrationId}`);
+        const credentials = await getDatadogCredentialsByIntegrationId(integrationId, runContext.context.user.id);
+        if (!credentials) {
+            throw new Error(`Datadog integration not found or access denied for integrationId: ${integrationId}`);
         }
 
-        const apiKey = integration.api_key;
-        const appKey = integration.app_key;
-        const region = integration.region;
+        const { apiKey, appKey, region } = credentials;
         const site = getDatadogSite(region);
 
         try {
@@ -144,8 +130,8 @@ export const aggregateRumEventsTool = tool({
             // Log full request context (debug level)
             logger.debug('[Datadog] aggregateRumEvents - Request details', {
                 tool: 'aggregateRumEvents',
-                integrationId: datadogConfig.integrationId,
-                userId: user.id,
+                integrationId,
+                userId: runContext.context.user.id,
                 requestParams: {
                     query: query || null,
                     from,

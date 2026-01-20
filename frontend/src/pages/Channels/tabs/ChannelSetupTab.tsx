@@ -5,21 +5,20 @@ import EditableTextField from '../../../components/ui/EditableTextField';
 import { ChannelKnowledgeBase, ChannelNotificationSettings as ChannelNotificationSettingsType, ChannelUpdate, TransientChannelInput, TransientChannelOutput } from "@/shared/types";
 import { toast } from "sonner";
 import { getDefaultChannelName, toChannelInput, toChannelOutput, toChannelKnowledgeBase } from "@/utility/ChannelUtils";
-import { getNotionUrl } from "@/utility/notionUtils";
 import { useChannelCount } from "@/hooks/api/useChannelCount";
 import { useChannelMutations } from "@/hooks/api/useChannels";
 import { type KeyedMutator } from 'swr';
 import { Channel, ChannelInput, ChannelOutput, ChannelPrompt, TransientKnowledgeBase } from "@/shared/types";
 import { AddInputModal } from "../components/AddInputModal";
 import { AddKnowledgeBaseModal } from "../components/AddKnowledgeBaseModal";
+import { AddOutputModal } from "../components/AddOutputModal";
 import { KnowledgeBaseSelector } from "../components/KnowledgeBaseSelector";
-import { CONFIG_DETAILS, ConfigInstance, ConfigType, NotionConfig, NotionPageConfig } from "../../../shared/Configs";
+import { CONFIG_DETAILS, ConfigInstance, ConfigType } from "../../../shared/Configs";
 import { v4 as uuidv4 } from 'uuid';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../../../components/ui/dialog";
 import { InputConfigSelectorProps, IntegrationSelector } from "../../../components/IntegrationSelector";
-import { AlertTriangleIcon, PlusIcon, XIcon, Zap, FileText, Wrench, Bell, Info, Database, ExternalLink } from "lucide-react";
+import { AlertTriangleIcon, PlusIcon, XIcon, Zap, FileText, Wrench, Bell, Info, Database } from "lucide-react";
 import { cn } from "../../../lib/utils";
-import { OutputToolSetPicker } from "../components/OutputToolSetPicker";
 import { Badge } from "../../../components/ui/badge";
 import { SectionHeader } from "@/components/ui/section-header";
 import ChannelNotificationSettings from "../ChannelNotificationSettings";
@@ -35,8 +34,8 @@ export type ChannelSetupTabProps = {
     setName: (name: string) => void;
     inputs: TransientChannelInput[];
     setInputs: (inputs: TransientChannelInput[]) => void;
-    output: TransientChannelOutput | undefined;
-    setOutput: (output: TransientChannelOutput | undefined) => void;
+    outputs: TransientChannelOutput[];
+    setOutputs: (outputs: TransientChannelOutput[]) => void;
     knowledgeBases: TransientKnowledgeBase[];
     setKnowledgeBases: (knowledgeBases: TransientKnowledgeBase[]) => void;
     prompt: ChannelPrompt | undefined;
@@ -57,7 +56,7 @@ function SaveChannelButton({
     channelId,
     name,
     inputs,
-    output,
+    outputs,
     knowledgeBases,
     prompt,
     isActive,
@@ -70,7 +69,7 @@ function SaveChannelButton({
     channelId: string | null;
     name: string | null;
     inputs: ChannelInput[];
-    output: ChannelOutput | undefined;
+    outputs: ChannelOutput[];
     knowledgeBases: ChannelKnowledgeBase[];
     prompt: ChannelPrompt | undefined;
     isActive: boolean;
@@ -89,20 +88,21 @@ function SaveChannelButton({
     const isComplete =
         inputs.length > 0 &&
         inputs.every(i => i.config != null && i.config.isComplete()) &&
-        !!output && output.config.isComplete() &&
+        outputs.length > 0 &&
+        outputs.every(o => o.config != null && o.config.isComplete()) &&
         !!prompt?.text; // Ensure prompt is not empty
 
     const isEditMode = !!channelId;
 
     const handleSave = async () => {
-        if (!isComplete || !inputs.length || !output) return;
+        if (!isComplete || !inputs.length || !outputs.length) return;
 
         setIsSaving(true);
         try {
             const channelData: ChannelUpdate = {
                 name: name || defaultName || '',
                 inputs,
-                output,
+                outputs,
                 knowledgeBases,
                 prompt,
                 isActive,
@@ -117,7 +117,7 @@ function SaveChannelButton({
                     data: channelData,
                     mutateChannel: mutate,
                 });
-            } else if (isComplete && channelData.output && channelData.inputs && channelData.inputs.length > 0) {
+            } else if (isComplete && channelData.outputs && channelData.outputs.length > 0 && channelData.inputs && channelData.inputs.length > 0) {
                 // Create new channel
                 const creation = await createChannel(channelData);
 
@@ -159,11 +159,11 @@ export default function ChannelSetupTab({
     name,
     setName,
     inputs,
-    output,
+    outputs,
     knowledgeBases,
     prompt,
     setInputs,
-    setOutput,
+    setOutputs,
     setKnowledgeBases,
     setPrompt,
     isActive,
@@ -177,7 +177,7 @@ export default function ChannelSetupTab({
     const defaultName = getDefaultChannelName(totalCount);
 
     const channelInputs = inputs.map(toChannelInput).filter((i): i is ChannelInput => i !== null);
-    const channelOutput = toChannelOutput(output);
+    const channelOutputs = outputs.map(toChannelOutput).filter((o): o is ChannelOutput => o !== null);
     const channelKnowledgeBases = knowledgeBases.map(toChannelKnowledgeBase).filter((kb): kb is ChannelKnowledgeBase => kb !== null);
 
     type SetupSection = 'triggers' | 'knowledgeBase' | 'prompt' | 'skills' | 'alerts';
@@ -187,25 +187,26 @@ export default function ChannelSetupTab({
         inputs.length === 0 || inputs.some((i) => !i.config || !i.config.isComplete());
     const knowledgeBaseIncomplete = knowledgeBases.some((kb) => !kb.config || !kb.config.isComplete());
     const promptIncomplete = !prompt?.text || prompt.text.trim() === '';
-    const skillsIncomplete = !output || !output.config || !output.config.isComplete();
+    const skillsIncomplete = outputs.length === 0 || outputs.some((o) => !o.config || !o.config.isComplete());
 
     // Check if automation is complete (same logic as SaveChannelButton)
     const isComplete =
         inputs.length > 0 &&
         inputs.every(i => i.config != null && i.config.isComplete()) &&
-        !!output && output.config && output.config.isComplete() &&
+        outputs.length > 0 &&
+        outputs.every(o => o.config != null && o.config.isComplete()) &&
         !!prompt?.text;
 
     // Create a minimal channel-like object for AppsList
-    // Only create if we have an output (required by Channel type)
-    const channelForAppsList = channelOutput ? {
+    // Only create if we have outputs (required by Channel type)
+    const channelForAppsList = channelOutputs.length > 0 ? {
         id: channelId || '',
         name: name || defaultName || '',
         isActive,
         requireApproval,
         prompt: prompt || { text: '' },
         inputs: channelInputs,
-        output: channelOutput,
+        outputs: channelOutputs,
         knowledgeBases: channelKnowledgeBases,
         notificationSettings,
     } : null;
@@ -220,7 +221,7 @@ export default function ChannelSetupTab({
                             channelId={channelId}
                             name={name}
                             inputs={channelInputs}
-                            output={channelOutput}
+                            outputs={channelOutputs}
                             knowledgeBases={channelKnowledgeBases}
                             prompt={prompt}
                             isActive={isActive}
@@ -358,7 +359,7 @@ export default function ChannelSetupTab({
                                         prompt={prompt}
                                         setPrompt={setPrompt}
                                         channelInputs={channelInputs}
-                                        channelOutput={channelOutput}
+                                        channelOutput={channelOutputs.length > 0 ? channelOutputs[0] : undefined}
                                         isIncomplete={promptIncomplete}
                                     />
                                 </div>
@@ -367,7 +368,7 @@ export default function ChannelSetupTab({
 
                         {activeSection === 'skills' && (
                             <div className="max-w-3xl flex flex-col gap-4 pr-6">
-                                <OutputLayout output={output} setOutput={setOutput} isIncomplete={skillsIncomplete} />
+                                <OutputLayout outputs={outputs} setOutputs={setOutputs} isIncomplete={skillsIncomplete} />
                             </div>
                         )}
 
@@ -560,107 +561,130 @@ function Input({ input, inputs, setInputs, handleRemove }: { input: TransientCha
     )
 }
 
-function getOutputUrl(output: TransientChannelOutput | undefined): string | undefined {
-    if (!output?.config) return undefined;
+function OutputLayout({ outputs, setOutputs, isIncomplete }: { outputs: TransientChannelOutput[], setOutputs: (outputs: TransientChannelOutput[]) => void, isIncomplete: boolean }) {
+    const [showAddModal, setShowAddModal] = useState(false);
 
-    if (output.configType === ConfigType.NOTION_DATABASE) {
-        const config = output.config as NotionConfig;
-        const databaseId = config.databaseId;
-        return databaseId ? getNotionUrl(databaseId, config.databaseName) : undefined;
-    } else if (output.configType === ConfigType.NOTION_PAGE) {
-        const config = output.config as NotionPageConfig;
-        const pageId = config.pageId;
-        return pageId ? getNotionUrl(pageId, config.pageName) : undefined;
-    }
-
-    return undefined;
-}
-
-function OutputLayout({ output, setOutput, isIncomplete }: { output: TransientChannelOutput | undefined, setOutput: (output: TransientChannelOutput | undefined) => void, isIncomplete: boolean }) {
-    const handleSelectPlatform = (configType: ConfigType) => {
-        // Clear all configs when switching platform (new integration type)
+    const handleSelectOutput = (configType: ConfigType) => {
+        const newOutputId = uuidv4();
         const newOutput: TransientChannelOutput = {
-            id: uuidv4(),
+            id: newOutputId,
             config: undefined,
             configType: configType,
         };
-        setOutput(newOutput);
+        const newOutputs = [...outputs, newOutput];
+        setOutputs(newOutputs);
+        setShowAddModal(false);
     };
 
-    const onSelect = (config: ConfigInstance) => {
-        setOutput({ id: output?.id || uuidv4(), config: config, configType: config.configType });
+    const handleRemove = (id: string) => {
+        setOutputs(outputs.filter(output => output.id !== id));
     };
 
-    const needsConfiguration = !output || !output.config || !output.config.isComplete();
-    const outputUrl = getOutputUrl(output);
-
-    let cardContent;
-    if (!output) {
-        cardContent = (
-            <OutputToolSetPicker onSelectIntegration={handleSelectPlatform} />
-        )
-    } else {
-        cardContent = (
-            <IntegrationSelector input={output} variant="dialog" setConfig={onSelect} />
-        );
-    }
-
-    let headerContent;
-    if (output) {
-        const skillName = CONFIG_DETAILS[output.configType].name;
-        headerContent = (
-            <div className="flex flex-row gap-4 items-center flex-wrap">
-                <div className="flex items-center gap-2">
-                    <SectionHeader>{skillName}</SectionHeader>
-                    <SectionInfoIcon
-                        isIncomplete={isIncomplete}
-                        alertMessage="Select a skill destination and complete its configuration to remove this warning."
-                        infoMessage="Skills define where the AI will continuously update content. Choose a destination like Notion, Linear, or Slack where updates will be posted."
-                    />
-                </div>
-                <div className="flex items-center gap-2">
-                    {outputUrl && (
-                        <a
-                            href={outputUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
-                        >
-                            <ExternalLink className="h-4 w-4" />
-                        </a>
-                    )}
-                    {needsConfiguration && (
-                        <Badge variant="outline" className="border-yellow-500 text-yellow-600 dark:text-yellow-500">
-                            Needs Configuration
-                        </Badge>
-                    )}
-                    <Button variant="outline" size="sm" onClick={() => setOutput(undefined)}>
-                        Change skill
-                    </Button>
-                </div>
-            </div>
-        );
-    } else {
-        headerContent = (
-            <div className="flex items-center gap-2">
+    return (
+        <div className="flex flex-col gap-3">
+            <div className="flex flex-row gap-2 items-center mb-2">
                 <SectionHeader>Skills</SectionHeader>
                 <SectionInfoIcon
                     isIncomplete={isIncomplete}
-                    alertMessage="Select a skill destination and complete its configuration to remove this warning."
-                    infoMessage="Skills define where the AI will continuously update content. Choose a destination like Notion, Linear, or Slack where updates will be posted."
+                    alertMessage="Select at least one skill destination and complete its configuration to remove this warning."
+                    infoMessage="Skills define where the AI will continuously update content. Choose destinations like Notion, Linear, or Slack where updates will be posted."
                 />
+            </div>
+            <div className="grid grid-cols-[repeat(auto-fill,minmax(10rem,1fr))] gap-4 items-stretch">
+                {outputs.map((output) => (
+                    <OutputCard key={output.id} output={output} outputs={outputs} setOutputs={setOutputs} handleRemove={handleRemove} />
+                ))}
+                <Button variant="outline" onClick={() => setShowAddModal(true)} className="w-full aspect-square h-auto">
+                    <PlusIcon className={cn("size-5", outputs.length > 0 ? "text-primary" : "text-muted-foreground")} />
+                </Button>
+                <AddOutputModal
+                    isOpen={showAddModal}
+                    onClose={() => setShowAddModal(false)}
+                    onSelectOutput={handleSelectOutput}
+                />
+            </div>
+        </div>
+    )
+}
+
+function OutputCard({ output, outputs, setOutputs, handleRemove }: { output: TransientChannelOutput, outputs: TransientChannelOutput[], setOutputs: (outputs: TransientChannelOutput[]) => void, handleRemove: (id: string) => void }) {
+    const [showDetailsDialog, setShowDetailsDialog] = useState(false);
+    const isPlaceholder = output.config === undefined;
+    const needsConfiguration = !output.config || !output.config.isComplete();
+
+    const selectorProps: InputConfigSelectorProps = {
+        input: output,
+        setConfig: (config: ConfigInstance) => setOutputs(outputs.map(o => o.id === output.id ? { ...o, config, configType: config.configType } : o)),
+        variant: "card",
+    };
+
+    let cardContent;
+    if (isPlaceholder) {
+        cardContent = (
+            <div
+                className="w-full aspect-square px-4 pb-4 pt-1 border rounded-lg cursor-pointer hover:bg-accent/30 transition-colors flex flex-col gap-2"
+                onClick={() => setShowDetailsDialog(true)}
+            >
+                <div className="flex flex-row justify-between items-center gap-2">
+                    <div className="min-w-0 flex-1 text-sm font-medium leading-none truncate">
+                        {CONFIG_DETAILS[output.configType].name}
+                    </div>
+                    <Button variant="ghost" size="icon-sm" onClick={(e) => { e.stopPropagation(); handleRemove(output.id); }} className="hover:text-destructive">
+                        <XIcon />
+                    </Button>
+                </div>
+
+                <div className="flex-1 flex items-center justify-center">
+                    <div className="size-16">
+                        <IconForConfigType type={output.configType} />
+                    </div>
+                </div>
+
+                <Badge variant="outline" className="mt-auto self-center max-w-full px-3 py-1 border-yellow-500 text-yellow-600 dark:text-yellow-500 whitespace-normal text-center">
+                    <IntegrationSelector {...selectorProps} variant="card" />
+                </Badge>
+            </div>
+        );
+    } else {
+        cardContent = (
+            <div
+                className="w-full aspect-square px-4 pb-4 pt-2 border rounded-lg cursor-pointer hover:bg-accent/30 transition-colors flex flex-col gap-2"
+                onClick={() => setShowDetailsDialog(true)}
+            >
+                <div className="flex flex-row justify-between items-center gap-2">
+                    <div className="min-w-0 flex-1 text-sm font-medium leading-none truncate">
+                        {CONFIG_DETAILS[output.configType].name}
+                    </div>
+                    <Button variant="ghost" size="icon-sm" onClick={(e) => { e.stopPropagation(); handleRemove(output.id); }} className="hover:text-destructive">
+                        <XIcon />
+                    </Button>
+                </div>
+
+                <div className="flex-1 flex items-center justify-center">
+                    <div className="w-16 h-16">
+                        <IconForConfigType type={output.configType} />
+                    </div>
+                </div>
+
+                <Badge variant="outline" className="mt-auto self-center max-w-full px-3 py-1 whitespace-normal text-center">
+                    <IntegrationSelector {...selectorProps} variant="card" />
+                </Badge>
             </div>
         );
     }
 
     return (
         <>
-            <div className="flex flex-col gap-4 mb-4">
-                {headerContent}
-            </div>
-            <div className="flex flex-row gap-2">
-                {cardContent}
-            </div>
+            {cardContent}
+
+            <Dialog open={showDetailsDialog} onOpenChange={setShowDetailsDialog}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>{needsConfiguration ? "Configure Skill" : "Skill Details"}</DialogTitle>
+                    </DialogHeader>
+                    <IntegrationSelector {...selectorProps} variant="dialog" />
+                </DialogContent>
+            </Dialog>
         </>
     )
 }
