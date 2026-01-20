@@ -85,6 +85,7 @@
     "@types/pg": "^8.15.4",
     "@types/ws": "^8.18.1",
     "prisma": "^6.19.0",
+    "smee-client": "^4.4.3",
     "ts-node-dev": "^2.0.0",
     "typescript": "^5.8.3"
   }
