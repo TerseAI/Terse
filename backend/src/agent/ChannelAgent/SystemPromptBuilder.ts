@@ -52,9 +52,8 @@ export class SystemPromptBuilder<T extends Session, TConfig extends ConfigInstan
             .withSection(() => this.buildRunContextSection())
             .withSection(() => this.buildDirectivesSection())
             .withSection(() => this.buildDeepLinkingSection())
-            .withSection(() => this.buildAvailableConfigurationsSection())
-            .withSection(() => this.buildOutputInstructions())
-            .withSection(() => this.buildKnowledgeBaseInstructions());
+            .withSection(() => this.buildOutputsSection())
+            .withSection(() => this.buildKnowledgeBasesSection());
     }
 
     /**
@@ -139,14 +138,12 @@ This is event #${eventPosition} processed by this automation.`
         };
     }
 
-    private buildOutputInstructions(): Section | null {
-        if (!this.deps.outputConfigs || !this.deps.outputs || 
-            this.deps.outputConfigs.length === 0 || this.deps.outputs.length === 0) {
-            return null;
+    private groupOutputConfigsByType(): Map<string, Array<{ integrationId: string, channelOutput: ChannelOutputWithConfigs }>> {
+        const configsByType = new Map<string, Array<{ integrationId: string, channelOutput: ChannelOutputWithConfigs }>>();
+        if (!this.deps.outputConfigs) {
+            return configsByType;
         }
 
-        // Group configs by config_type
-        const configsByType = new Map<string, Array<{ integrationId: string, channelOutput: ChannelOutputWithConfigs }>>();
         for (const config of this.deps.outputConfigs) {
             const configType = config.channelOutput.config_type;
             if (!configsByType.has(configType)) {
@@ -158,36 +155,15 @@ This is event #${eventPosition} processed by this automation.`
             });
         }
 
-        // For each type, find the matching output instance and pass all configs of that type
-        const instructions: string[] = [];
-        for (const [configType, configs] of configsByType.entries()) {
-            const output = this.deps.outputs.find(o => o.integration === configType);
-            if (output && configs.length > 0) {
-                const outputInstructions = output.getSystemInstructions(configs);
-                if (outputInstructions) {
-                    instructions.push(outputInstructions);
-                }
-            }
-        }
-
-        if (instructions.length === 0) {
-            return null;
-        }
-
-        return {
-            header: 'OUTPUT-SPECIFIC INSTRUCTIONS',
-            content: instructions.join('\n\n')
-        };
+        return configsByType;
     }
 
-    private buildKnowledgeBaseInstructions(): Section | null {
-        if (!this.deps.knowledgeBases || !this.deps.knowledgeBaseConfigs || 
-            this.deps.knowledgeBases.length === 0 || this.deps.knowledgeBaseConfigs.length === 0) {
-            return null;
+    private groupKnowledgeBaseConfigsByType(): Map<string, Array<{ integrationId: string, channelKnowledgeBase: ChannelKnowledgeBaseWithConfigs }>> {
+        const configsByType = new Map<string, Array<{ integrationId: string, channelKnowledgeBase: ChannelKnowledgeBaseWithConfigs }>>();
+        if (!this.deps.knowledgeBaseConfigs) {
+            return configsByType;
         }
 
-        // Group configs by config_type
-        const configsByType = new Map<string, Array<{ integrationId: string, channelKnowledgeBase: ChannelKnowledgeBaseWithConfigs }>>();
         for (const config of this.deps.knowledgeBaseConfigs) {
             const configType = config.channelKnowledgeBase.config_type;
             if (!configsByType.has(configType)) {
@@ -199,64 +175,124 @@ This is event #${eventPosition} processed by this automation.`
             });
         }
 
-        // For each type, find the matching KB instance and pass all configs of that type
-        const instructions: string[] = [];
-        for (const [configType, configs] of configsByType.entries()) {
-            const kb = this.deps.knowledgeBases?.find(k => k.integration === configType);
-            if (kb && configs.length > 0) {
-                const kbInstructions = kb.getSystemInstructions(configs);
-                if (kbInstructions) {
-                    instructions.push(kbInstructions);
-                }
+        return configsByType;
+    }
+
+    private buildConnectionInformation(
+        integrationIds: string,
+        configList: string[]
+    ): string[] {
+        const connectionInfo: string[] = [];
+        connectionInfo.push('Connection Information:');
+        connectionInfo.push(`Integration IDs: ${integrationIds}`);
+        connectionInfo.push('');
+        connectionInfo.push('Available configurations:');
+        connectionInfo.push(configList.join('\n'));
+        connectionInfo.push('');
+        connectionInfo.push('Use the integration IDs listed above when calling tools. Each integration ID corresponds to a specific connection/workspace.');
+        return connectionInfo;
+    }
+
+    private buildTypeSection(
+        header: string,
+        instructions: string | null,
+        connectionInfo: string[]
+    ): string {
+        const section: string[] = [];
+        section.push(header);
+        
+        if (instructions) {
+            section.push(instructions);
+            section.push('');
+        }
+        
+        section.push(...connectionInfo);
+        
+        return section.join('\n');
+    }
+
+    private buildTypeSections<TConfig extends { integrationId: string }, TInstance>(
+        configsByType: Map<string, TConfig[]>,
+        findInstance: (configType: string) => TInstance | undefined,
+        getInstructions: (instance: TInstance, configs: TConfig[]) => string,
+        formatConfig: (instance: TInstance, config: TConfig) => string,
+        formatHeader: (configType: string) => string
+    ): string[] {
+        const sections: string[] = [];
+
+        Array.from(configsByType.entries()).forEach(([configType, configs]) => {
+            const instance = findInstance(configType);
+            if (!instance || configs.length === 0) {
+                return;
             }
+
+            const integrationIds = configs.map(c => c.integrationId).join(', ');
+            const configList = configs.map(config => `  • ${formatConfig(instance, config)}`);
+            const instructions = getInstructions(instance, configs);
+            const connectionInfo = this.buildConnectionInformation(integrationIds, configList);
+            
+            const typeSection = this.buildTypeSection(
+                formatHeader(configType),
+                instructions,
+                connectionInfo
+            );
+
+            sections.push(typeSection);
+        });
+
+        return sections;
+    }
+
+    private buildOutputsSection(): Section | null {
+        if (!this.deps.outputConfigs || !this.deps.outputs || 
+            this.deps.outputConfigs.length === 0 || this.deps.outputs.length === 0) {
+            return null;
         }
 
-        if (instructions.length === 0) {
+        const configsByType = this.groupOutputConfigsByType();
+        const outputSections = this.buildTypeSections(
+            configsByType,
+            (configType) => this.deps.outputs.find(o => o.integration === configType),
+            (output, configs) => output.getSystemInstructions(configs),
+            (output, config) => output.formatForAvailableConfigurationsSection(config),
+            (configType) => `=== ${configType} OUTPUT ===`
+        );
+
+        if (outputSections.length === 0) {
             return null;
         }
 
         return {
-            header: 'KNOWLEDGE BASE INSTRUCTIONS',
-            content: instructions.join('\n\n')
+            header: 'OUTPUTS',
+            content: outputSections.join('\n\n')
         };
     }
 
-    private buildAvailableConfigurationsSection(): Section | null {
-        const configs: string[] = [];
-
-        // List knowledge base configurations
-        if (this.deps.knowledgeBaseConfigs && this.deps.knowledgeBaseConfigs.length > 0) {
-            configs.push('KNOWLEDGE BASES:');
-            for (const config of this.deps.knowledgeBaseConfigs) {
-                const kb = this.deps.knowledgeBases?.find(k => k.integration === config.channelKnowledgeBase.config_type);
-                if (!kb) continue;
-
-                const formatted = kb.formatForAvailableConfigurationsSection(config);
-                configs.push(`  - ${formatted}`);
-            }
+    private buildKnowledgeBasesSection(): Section | null {
+        if (!this.deps.knowledgeBases || !this.deps.knowledgeBaseConfigs || 
+            this.deps.knowledgeBases.length === 0 || this.deps.knowledgeBaseConfigs.length === 0) {
+            return null;
         }
 
-        // List output configurations
-        if (this.deps.outputConfigs && this.deps.outputConfigs.length > 0) {
-            configs.push('\nOUTPUTS:');
-            for (const config of this.deps.outputConfigs) {
-                const output = this.deps.outputs.find(o => o.integration === config.channelOutput.config_type);
-                if (!output) continue;
+        const configsByType = this.groupKnowledgeBaseConfigsByType();
+        const kbSections = this.buildTypeSections(
+            configsByType,
+            (configType) => this.deps.knowledgeBases?.find(k => k.integration === configType),
+            (kb, configs) => kb.getSystemInstructions(configs),
+            (kb, config) => kb.formatForAvailableConfigurationsSection(config),
+            (configType) => `=== ${configType} KNOWLEDGE BASE ===`
+        );
 
-                const formatted = output.formatForAvailableConfigurationsSection(config);
-                configs.push(`  - ${formatted}`);
-            }
-        }
-
-        if (configs.length === 0) {
+        if (kbSections.length === 0) {
             return null;
         }
 
         return {
-            header: 'AVAILABLE CONFIGURATIONS',
-            content: configs.join('\n') + '\n\nUse the integration IDs listed above when calling tools. Each integration ID corresponds to a specific connection/workspace.'
+            header: 'KNOWLEDGE BASES',
+            content: kbSections.join('\n\n')
         };
     }
+
 
     private buildCoreInstructions(): Section {
         return {
