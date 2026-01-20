@@ -11,6 +11,7 @@ import { RunContext } from "./agent/ChannelAgent/SystemPromptBuilder";
 import { ChannelWithRelations, ChannelKnowledgeBaseWithConfigs, ChannelOutputWithConfigs } from "./types/prisma";
 import { getInputConfigInclude, getOutputConfigInclude, getKnowledgeBaseConfigInclude } from './utility/prismaIncludes';
 import { OutputFactory } from "./outputs/abstract/OutputFactory";
+import { Output } from "./outputs/abstract/Output";
 import { KnowledgeBaseFactory } from "./knowledgeBase/abstract/KnowledgeBaseFactory";
 import { KnowledgeBase } from "./knowledgeBase/abstract/KnowledgeBase";
 import { ConfigInstance } from "./shared/Configs";
@@ -192,7 +193,7 @@ export async function initializeRealtimeSocket(server: HttpServer): Promise<Serv
             }
 
             // Create outputs from channel configuration
-            const outputs: ReturnType<typeof OutputFactory.createOutput>[] = [];
+            const outputs: Output<ConfigInstance>[] = [];
             const outputChannelConfigs: ChannelOutputWithConfigs[] = [];
             for (const outputIntegration of channel.outputs) {
                 const output = OutputFactory.createOutput(outputIntegration.config_type);
@@ -203,9 +204,6 @@ export async function initializeRealtimeSocket(server: HttpServer): Promise<Serv
                 outputs.push(output);
                 outputChannelConfigs.push(outputIntegration as ChannelOutputWithConfigs);
             }
-
-            // Filter out any null outputs (shouldn't happen due to check above, but TypeScript needs this)
-            const validOutputs = outputs.filter((o): o is NonNullable<typeof o> => o !== null);
 
             const user = await prisma.users.findUnique({
                 where: {
@@ -245,7 +243,7 @@ export async function initializeRealtimeSocket(server: HttpServer): Promise<Serv
             const { knowledgeBases, channelConfigs } = createKnowledgeBases(channel.knowledge_bases || []);
 
             const runContext: RunContext = { runId };
-            const channelAgent = new ChannelAgent(session, validOutputs, outputChannelConfigs, knowledgeBases, channelConfigs, channel, runContext);
+            const channelAgent = new ChannelAgent(session, outputs, outputChannelConfigs, knowledgeBases, channelConfigs, channel, runContext);
             await channelAgent.initializeAgent();
             
             let result;

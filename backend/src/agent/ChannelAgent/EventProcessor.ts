@@ -3,6 +3,7 @@ import { db } from '../../prismaClient';
 import { Channel, ChannelWithRelations, User, ChannelKnowledgeBaseWithConfigs, ChannelOutputWithConfigs } from '../../types/prisma';
 import { InputEvent } from '../../integrations/abstract/InputEvent';
 import { OutputFactory } from '../../outputs/abstract/OutputFactory';
+import { Output } from '../../outputs/abstract/Output';
 import { ChannelAgent, SessionWithTracking } from './ChannelAgent';
 import { filterEvent } from './EventFilter';
 import { createRunRecord, finalizeRunStatus, markRunFailed, markRunProcessed, markRunSkipped, appendRunAction } from './runHistory';
@@ -150,7 +151,7 @@ export class EventProcessor {
         }
 
         // Create outputs from channel configuration
-        const outputs: ReturnType<typeof OutputFactory.createOutput>[] = [];
+        const outputs: Output<ConfigInstance>[] = [];
         const outputChannelConfigs: ChannelOutputWithConfigs[] = [];
         for (const outputIntegration of channel.outputs) {
             const output = OutputFactory.createOutput(outputIntegration.config_type);
@@ -160,9 +161,6 @@ export class EventProcessor {
             outputs.push(output);
             outputChannelConfigs.push(outputIntegration as ChannelOutputWithConfigs);
         }
-
-        // Filter out any null outputs (shouldn't happen due to check above, but TypeScript needs this)
-        const validOutputs = outputs.filter((o): o is NonNullable<typeof o> => o !== null);
 
         // Create base session for ChannelAgent
         const session: Session = {
@@ -228,7 +226,7 @@ export class EventProcessor {
 
         // Create channel agent with the session and outputs
         const runContext: RunContext = { runId };
-        const channelAgent = new ChannelAgent(session, validOutputs, outputChannelConfigs, knowledgeBases, channelConfigs, channel, runContext);
+        const channelAgent = new ChannelAgent(session, outputs, outputChannelConfigs, knowledgeBases, channelConfigs, channel, runContext);
         channelAgent.setInputEvent(this.inputEvent);
 
         // Run the channel agent with streaming parameters
