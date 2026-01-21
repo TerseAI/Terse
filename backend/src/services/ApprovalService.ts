@@ -1,5 +1,5 @@
 import { db } from "../prismaClient";
-import { ChannelWithRelations, ChannelKnowledgeBaseWithConfigs } from "../types/prisma";
+import { AgentWithRelations, AgentKnowledgeBaseWithConfigs } from "../types/prisma";
 import { getInputConfigInclude, getOutputConfigInclude, getKnowledgeBaseConfigInclude } from "../utility/prismaIncludes";
 import { OutputFactory } from "../outputs/abstract/OutputFactory";
 import { KnowledgeBaseFactory } from "../knowledgeBase/abstract/KnowledgeBaseFactory";
@@ -38,7 +38,7 @@ export type ApprovalResult = {
 export class ApprovalService {
     private static async validateUserAccess(runId: string, userId: string): Promise<{
         runRecord: { id: string; status: string; automation: { id: string; user_id: string } };
-        channel: ChannelWithRelations;
+        agent: AgentWithRelations;
     }> {
         const prisma = db();
         
@@ -51,7 +51,7 @@ export class ApprovalService {
             throw new Error(`User ${userId} does not have access to run ${runId}`);
         }
 
-        const channel = await prisma.automations.findUnique({
+        const agent = await prisma.automations.findUnique({
             where: {
                 id: runRecord.automation.id,
                 user_id: userId,
@@ -70,22 +70,22 @@ export class ApprovalService {
             },
         })
 
-        if (!channel) {
-            throw new Error(`Channel not found for automation id: ${runRecord.automation.id}`);
+        if (!agent) {
+            throw new Error(`Agent not found for automation id: ${runRecord.automation.id}`);
         }
 
-        return { runRecord, channel };
+        return { runRecord, agent };
     }
 
     private static async createOutputAndSession(
-        channel: ChannelWithRelations,
+        agent: AgentWithRelations,
         userId: string
     ): Promise<{ output: ReturnType<typeof OutputFactory.createOutput>; session: Session }> {
         const prisma = db();
         
-        const outputIntegration = channel.output;
+        const outputIntegration = agent.output;
         if (!outputIntegration) {
-            throw new Error(`No output integration found for channel: ${channel.id}`);
+            throw new Error(`No output integration found for agent: ${agent.id}`);
         }
 
         const output = OutputFactory.createOutput(outputIntegration.config_type);
@@ -116,30 +116,30 @@ export class ApprovalService {
     }
 
     private static createKnowledgeBases(
-        channelKnowledgeBases: ChannelWithRelations['knowledge_bases']
-    ): { knowledgeBases: KnowledgeBase<Session, ConfigInstance>[]; channelConfigs: ChannelKnowledgeBaseWithConfigs[] } {
-        if (!channelKnowledgeBases || channelKnowledgeBases.length === 0) {
-            return { knowledgeBases: [], channelConfigs: [] };
+        agentKnowledgeBases: AgentWithRelations['knowledge_bases']
+    ): { knowledgeBases: KnowledgeBase<Session, ConfigInstance>[]; agentConfigs: AgentKnowledgeBaseWithConfigs[] } {
+        if (!agentKnowledgeBases || agentKnowledgeBases.length === 0) {
+            return { knowledgeBases: [], agentConfigs: [] };
         }
 
-        // Create knowledge base instances and maintain pairing with channel configs
+        // Create knowledge base instances and maintain pairing with agent configs
         const knowledgeBases: KnowledgeBase<Session, ConfigInstance>[] = [];
-        const channelConfigs: ChannelKnowledgeBaseWithConfigs[] = [];
+        const agentConfigs: AgentKnowledgeBaseWithConfigs[] = [];
         
-        for (const channelKnowledgeBase of channelKnowledgeBases) {
-            const kb = KnowledgeBaseFactory.createKnowledgeBase(channelKnowledgeBase.config_type);
+        for (const agentKnowledgeBase of agentKnowledgeBases) {
+            const kb = KnowledgeBaseFactory.createKnowledgeBase(agentKnowledgeBase.config_type);
             if (kb) {
                 knowledgeBases.push(kb);
-                channelConfigs.push(channelKnowledgeBase as ChannelKnowledgeBaseWithConfigs);
+                agentConfigs.push(agentKnowledgeBase as AgentKnowledgeBaseWithConfigs);
             }
         }
         
-        return { knowledgeBases, channelConfigs };
+        return { knowledgeBases, agentConfigs };
     }
 
     /**
      * Updates Slack notification for an approval request.
-     * Handles fetching approval message, cached summary, channel info, and updating both Slack message and database.
+     * Handles fetching approval message, cached summary, agent info, and updating both Slack message and database.
      */
     private static async updateSlackNotification(
         runId: string,
@@ -188,7 +188,7 @@ export class ApprovalService {
                 });
             }
 
-            // Get channel info for deep link
+            // Get agent info for deep link
             const runRecord = await prisma.run_history_records.findUnique({
                 where: { id: runId },
                 include: { automation: true },
@@ -199,12 +199,12 @@ export class ApprovalService {
                 return;
             }
 
-            const channel = await prisma.automations.findUnique({
+            const agent = await prisma.automations.findUnique({
                 where: { id: runRecord.automation.id },
             });
 
-            if (!channel) {
-                logger.error(`[ApprovalService] Channel not found for automation id: ${runRecord.automation.id}`);
+            if (!agent) {
+                logger.error(`[ApprovalService] Agent not found for automation id: ${runRecord.automation.id}`);
                 return;
             }
 
@@ -215,8 +215,8 @@ export class ApprovalService {
                 approvalMessage.slack_message_ts,
                 status,
                 approvalSummary,
-                channel.name,
-                channel.id,
+                agent.name,
+                agent.id,
                 runId,
                 stepId
             );
@@ -249,12 +249,12 @@ export class ApprovalService {
         logger.info(`[ApprovalService] Processing approval for runId: ${runId}, stepId: ${stepId}, approved: ${approved}, hardReject: ${hardReject}`);
 
         // Keep minimal state outside the try so the catch can update Slack if we already flipped it to "processing".
-        let channelIdForSlack: string | null = null;
+        let agentIdForSlack: string | null = null;
         let slackMarkedProcessing = false;
         try {
-            // Validate user access and load channel
-            const { runRecord, channel } = await this.validateUserAccess(runId, userId);
-            channelIdForSlack = channel.id;
+            // Validate user access and load agent
+            const { runRecord, agent } = await this.validateUserAccess(runId, userId);
+            agentIdForSlack = agent.id;
 
             // Store rejection reason in database if provided (for request changes flow)
             if (!approved && rejectionReason) {
@@ -272,14 +272,14 @@ export class ApprovalService {
             }
 
             // Create output and session
-            const outputAndSession = await this.createOutputAndSession(channel, userId);
+            const outputAndSession = await this.createOutputAndSession(agent, userId);
             if (!outputAndSession.output) {
                 throw new Error(`Output type not supported`);
             }
             const { output, session } = outputAndSession;
 
-            // Create knowledge bases from channel configuration
-            const { knowledgeBases, channelConfigs } = this.createKnowledgeBases(channel.knowledge_bases || []);
+            // Create knowledge bases from agent configuration
+            const { knowledgeBases, agentConfigs } = this.createKnowledgeBases(agent.knowledge_bases || []);
 
             // Ensure run status is 'in_progress' for streaming
             if (runRecord.status !== 'in_progress') {
@@ -287,7 +287,7 @@ export class ApprovalService {
             }
 
             // Update Slack notification to processing state
-            await this.updateSlackNotification(runId, stepId, 'processing', userId, channel.id);
+            await this.updateSlackNotification(runId, stepId, 'processing', userId, agent.id);
             slackMarkedProcessing = true;
 
             // Store the approval response event
@@ -297,12 +297,12 @@ export class ApprovalService {
                 approved: approved,
             };
             await storeChatEvent(runId, toolApprovalResponseEvent);
-            emitCacheInvalidationWithWildcard(userId, 'runHistory', channel.id);
+            emitCacheInvalidationWithWildcard(userId, 'runHistory', agent.id);
             emitCacheInvalidationWithWildcard(userId, 'chatHistory', runId);
 
-            // Create channel agent and resume from pending approval
+            // Create agent and resume from pending approval
             const runContext = { runId };
-            const channelAgent = new ChannelAgent(session, output, knowledgeBases, channelConfigs, channel, runContext);
+            const channelAgent = new ChannelAgent(session, output, knowledgeBases, agentConfigs, agent, runContext);
             await channelAgent.initializeAgent();
 
             const decision: 'approve' | 'reject' = approved ? 'approve' : 'reject';
@@ -312,7 +312,7 @@ export class ApprovalService {
                 {
                     runId,
                     userId: userId,
-                    channelId: channel.id,
+                    agentId: agent.id,
                 },
                 rejectionReason,
                 hardReject
@@ -326,13 +326,13 @@ export class ApprovalService {
                 const hasFinalOutput = Boolean(result.result?.finalOutput);
                 try {
                     await finalizeRunStatus(runId, hasFinalOutput ? 'success' : 'failed');
-                    emitCacheInvalidationWithWildcard(userId, 'runHistory', channel.id);
+                    emitCacheInvalidationWithWildcard(userId, 'runHistory', agent.id);
                 } catch (e) {
                     logger.error('Failed to finalize run status', { error: e });
                 }
 
                 // Update Slack notification to final approved/rejected state
-                await this.updateSlackNotification(runId, stepId, finalSlackStatus, userId, channel.id);
+                await this.updateSlackNotification(runId, stepId, finalSlackStatus, userId, agent.id);
 
                 logger.info(`[ApprovalService] Successfully processed approval for runId: ${runId}, stepId: ${stepId}`);
                 return {
@@ -342,9 +342,9 @@ export class ApprovalService {
             }
 
             if (result.status === 'awaiting_approval') {
-                await this.updateSlackNotification(runId, stepId, finalSlackStatus, userId, channel.id);
+                await this.updateSlackNotification(runId, stepId, finalSlackStatus, userId, agent.id);
 
-                emitCacheInvalidationWithWildcard(userId, 'runHistory', channel.id);
+                emitCacheInvalidationWithWildcard(userId, 'runHistory', agent.id);
                 emitCacheInvalidationWithWildcard(userId, 'chatHistory', runId);
 
                 logger.info(
@@ -363,7 +363,7 @@ export class ApprovalService {
                 stepId,
                 status: (result as any)?.status,
             });
-            await this.updateSlackNotification(runId, stepId, finalSlackStatus, userId, channel.id);
+            await this.updateSlackNotification(runId, stepId, finalSlackStatus, userId, agent.id);
             return {
                 status: 'failed' as const,
                 error: `Unexpected agent status after resuming: ${(result as any)?.status ?? 'unknown'}`,
@@ -373,17 +373,17 @@ export class ApprovalService {
             logger.error(`[ApprovalService] Error processing approval: ${errorMessage}`, { error });
 
             // If we've already told Slack we're "processing", make sure we also tell Slack we failed.
-            if (slackMarkedProcessing && channelIdForSlack) {
-                await this.updateSlackNotification(runId, stepId, 'failed', userId, channelIdForSlack);
+            if (slackMarkedProcessing && agentIdForSlack) {
+                await this.updateSlackNotification(runId, stepId, 'failed', userId, agentIdForSlack);
             }
 
             try {
                 await markRunFailed(runId, errorMessage, 'agent');
-                // runHistory cache keys are scoped by channelId (not runId). chatHistory is scoped by runId.
-                if (channelIdForSlack) {
-                    emitCacheInvalidationWithWildcard(userId, 'runHistory', channelIdForSlack);
+                // runHistory cache keys are scoped by agentId (not runId). chatHistory is scoped by runId.
+                if (agentIdForSlack) {
+                    emitCacheInvalidationWithWildcard(userId, 'runHistory', agentIdForSlack);
                 } else {
-                    logger.warn('[ApprovalService] Missing channel id; cannot invalidate runHistory cache', {
+                    logger.warn('[ApprovalService] Missing agent id; cannot invalidate runHistory cache', {
                         userId,
                         runId,
                         stepId,

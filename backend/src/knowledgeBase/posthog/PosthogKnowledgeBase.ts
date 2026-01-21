@@ -1,6 +1,6 @@
 import { Tool } from "@openai/agents";
 import { Session } from "../../server";
-import { ChannelKnowledgeBaseWithConfigs, PrismaTransaction, User } from "../../types/prisma";
+import { AgentKnowledgeBaseWithConfigs, PrismaTransaction, User } from "../../types/prisma";
 import { KnowledgeBaseConfigType } from "@prisma/client";
 import { ConfigInstance, PosthogConfig } from "../../shared/Configs";
 import { IntegrationType } from "../../shared/Integrations";
@@ -53,7 +53,7 @@ export class PosthogKnowledgeBase extends KnowledgeBase<PosthogKnowledgeBaseSess
      */
     async createSessionFromConfig(
         integrationId: string,
-        channelKnowledgeBase: ChannelKnowledgeBaseWithConfigs,
+        agentKnowledgeBase: AgentKnowledgeBaseWithConfigs,
         user: User
     ): Promise<PosthogKnowledgeBaseSession> {
         // Load the PostHog integration
@@ -66,11 +66,11 @@ export class PosthogKnowledgeBase extends KnowledgeBase<PosthogKnowledgeBaseSess
         }
 
         // Load the PostHog config from the channel knowledge base
-        if (!channelKnowledgeBase.posthog_config) {
+        if (!agentKnowledgeBase.posthog_config) {
             throw new Error('PostHog config not found in channel knowledge base');
         }
 
-        const posthogConfig = channelKnowledgeBase.posthog_config;
+        const posthogConfig = agentKnowledgeBase.posthog_config;
 
         // Create the PostHog config instance
         const config = new PosthogConfig(
@@ -108,11 +108,11 @@ export class PosthogKnowledgeBase extends KnowledgeBase<PosthogKnowledgeBaseSess
         }
     }
 
-    async addKnowledgeBaseToChannel(tx: PrismaTransaction, channelKnowledgeBaseId: string, knowledgeBase: PosthogConfig): Promise<void> {
+    async addKnowledgeBaseToAgent(tx: PrismaTransaction, agentKnowledgeBaseId: string, knowledgeBase: PosthogConfig): Promise<void> {
         // Use unchecked input to bypass relation checks
         await tx.automation_posthog_configs.create({
             data: {
-                automation_knowledge_base_id: channelKnowledgeBaseId,
+                automation_knowledge_base_id: agentKnowledgeBaseId,
                 project_id: knowledgeBase.projectId,
                 project_name: knowledgeBase.projectName || null,
                 can_read_logs: knowledgeBase.canReadLogs ?? false,

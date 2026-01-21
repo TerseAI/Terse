@@ -74,27 +74,21 @@ export type SubActivityCommitAssociation = sub_activity_commit_associations;
 
 export type GmailIntegration = gmail_integrations;
 
-// Keep old names for database compatibility, but export as Channel types
-export type Automation = automations;
-export type Channel = automations; // Alias for rebranding
+export type Agent = automations;
 
 export type UserNotificationDestination = user_notification_destinations;
-export type AutomationNotificationSettings = automation_notification_settings;
+export type AgentNotificationSettings = automation_notification_settings;
 
-export type AutomationPrompt = automation_prompts;
-export type ChannelPrompt = automation_prompts; // Alias for rebranding
+export type AgentPrompt = automation_prompts;
 
-export type AutomationInput = automation_inputs;
-export type ChannelInput = automation_inputs; // Alias for rebranding
+export type AgentInput = automation_inputs;
 
 export type DirectiveRecord = directive_records;
 
 export type ApprovalSlackMessage = approval_slack_messages;
 
-export type ChannelNotificationSettings = automation_notification_settings;
-
-// Extended type for ChannelInput with all config relations included
-export type AutomationInputWithConfigs = Prisma.automation_inputsGetPayload<{
+// Extended type for AgentInput with all config relations included
+export type AgentInputWithConfigs = Prisma.automation_inputsGetPayload<{
   include: {
     slack_config: true;
     notion_config: true;
@@ -108,15 +102,13 @@ export type AutomationInputWithConfigs = Prisma.automation_inputsGetPayload<{
     time_trigger_config: true;
   };
 }>;
-export type ChannelInputWithConfigs = AutomationInputWithConfigs; // Alias for rebranding
 
-export type AutomationOutput = automation_outputs;
-export type ChannelOutput = automation_outputs; // Alias for rebranding
+export type AgentOutput = automation_outputs;
 
-export type ChannelKnowledgeBase = automation_knowledge_bases;
+export type AgentKnowledgeBase = automation_knowledge_bases;
 
-// Extended type for ChannelKnowledgeBase with all config relations included
-export type ChannelKnowledgeBaseWithConfigs = Prisma.automation_knowledge_basesGetPayload<{
+// Extended type for AgentKnowledgeBase with all config relations included
+export type AgentKnowledgeBaseWithConfigs = Prisma.automation_knowledge_basesGetPayload<{
   include: {
     posthog_config: true;
     github_kb_config: true;
@@ -125,9 +117,8 @@ export type ChannelKnowledgeBaseWithConfigs = Prisma.automation_knowledge_basesG
   };
 }>;
 
-
-// Extended type for ChannelOutput with all config relations included
-export type AutomationOutputWithConfigs = Prisma.automation_outputsGetPayload<{
+// Extended type for AgentOutput with all config relations included
+export type AgentOutputWithConfigs = Prisma.automation_outputsGetPayload<{
   include: {
     slack_config: true;
     notion_config: true;
@@ -140,25 +131,20 @@ export type AutomationOutputWithConfigs = Prisma.automation_outputsGetPayload<{
     figma_config: true;
   };
 }>;
-export type ChannelOutputWithConfigs = AutomationOutputWithConfigs; // Alias for rebranding
 
 export type NotionIntegration = notion_integrations;
 
-export type AutomationNotionConfig = automation_notion_configs;
-export type ChannelNotionConfig = automation_notion_configs; // Alias for rebranding
+export type AgentNotionConfig = automation_notion_configs;
 
-export type AutomationNotionPageConfig = automation_notion_page_configs;
-export type ChannelNotionPageConfig = automation_notion_page_configs; // Alias for rebranding
+export type AgentNotionPageConfig = automation_notion_page_configs;
 
-export type AutomationConfluenceConfig = automation_confluence_configs;
-export type ChannelConfluenceConfig = automation_confluence_configs; // Alias for rebranding
+export type AgentConfluenceConfig = automation_confluence_configs;
 
-export type AutomationLinearConfig = automation_linear_configs;
-export type ChannelLinearConfig = automation_linear_configs; // Alias for rebranding
+export type AgentLinearConfig = automation_linear_configs;
 
-export type ChannelJiraConfig = automation_jira_configs;
+export type AgentJiraConfig = automation_jira_configs;
 
-export type AutomationWithInputRelations = Prisma.automationsGetPayload<{
+export type AgentWithInputRelations = Prisma.automationsGetPayload<{
   include: {
     inputs: { 
       include: {
@@ -176,9 +162,8 @@ export type AutomationWithInputRelations = Prisma.automationsGetPayload<{
     };
   }
 }>;
-export type ChannelWithInputRelations = AutomationWithInputRelations; // Alias for rebranding
 
-export type AutomationWithOutputRelations = Prisma.automationsGetPayload<{
+export type AgentWithOutputRelations = Prisma.automationsGetPayload<{
   include: {
     output: {
       include: {
@@ -195,23 +180,20 @@ export type AutomationWithOutputRelations = Prisma.automationsGetPayload<{
     };
   }
 }>;
-export type ChannelWithOutputRelations = AutomationWithOutputRelations; // Alias for rebranding
 
-export type AutomationWithPromptRelations = Prisma.automationsGetPayload<{
+export type AgentWithPromptRelations = Prisma.automationsGetPayload<{
   include: {
     prompt: true;
   }
 }>;
-export type ChannelWithPromptRelations = AutomationWithPromptRelations; // Alias for rebranding
 
-export type AutomationWithNotificationSettingsRelations = Prisma.automationsGetPayload<{
+export type AgentWithNotificationSettingsRelations = Prisma.automationsGetPayload<{
   include: {
     notification_settings: true;
   }
 }>;
-export type ChannelWithNotificationSettingsRelations = AutomationWithNotificationSettingsRelations; // Alias for rebranding
 
-export type AutomationWithKnowledgeBaseRelations = Prisma.automationsGetPayload<{
+export type AgentWithKnowledgeBaseRelations = Prisma.automationsGetPayload<{
   include: {
     knowledge_bases: {
       include: {
@@ -221,10 +203,8 @@ export type AutomationWithKnowledgeBaseRelations = Prisma.automationsGetPayload<
     };
   };
 }>;
-export type ChannelWithKnowledgeBaseRelations = AutomationWithKnowledgeBaseRelations;
 
-export type AutomationWithRelations = AutomationWithInputRelations & AutomationWithOutputRelations & AutomationWithPromptRelations & Partial<AutomationWithKnowledgeBaseRelations>;
-export type ChannelWithRelations = ChannelWithInputRelations & ChannelWithOutputRelations & ChannelWithPromptRelations & Partial<ChannelWithKnowledgeBaseRelations>;
+export type AgentWithRelations = AgentWithInputRelations & AgentWithOutputRelations & AgentWithPromptRelations & Partial<AgentWithKnowledgeBaseRelations>;
 
 // Extract the transaction type from PrismaClient
 export type PrismaTransaction = Parameters<Parameters<PrismaClient['$transaction']>[0]>[0];

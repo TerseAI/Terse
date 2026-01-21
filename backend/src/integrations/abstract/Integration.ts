@@ -1,6 +1,6 @@
 import { OAuthInstallationDetails } from "../../shared/types";
 import { IntegrationInstance, IntegrationDetails, IntegrationType, InstallationOptionsFor, AdditionalStateParams } from "../../shared/Integrations";
-import { ChannelInputWithConfigs } from "../../types/prisma";
+import { AgentInputWithConfigs } from "../../types/prisma";
 import { Request, Response } from "express";
 
 // This ensures T is a valid Prisma model type
@@ -11,8 +11,8 @@ export interface Integration<T extends IntegrationInstance, W, M extends Integra
     getAllActiveInstances(): Promise<T[]>;
     processWebhookEvent(event: W): Promise<void>;
     deleteInstallation(integrationId: string): Promise<void>;
-    setupChannelInput(integrationId: string, channelInput: ChannelInputWithConfigs): Promise<void>;
-    teardownChannelInput(integrationId: string, channelInput: ChannelInputWithConfigs): Promise<void>;
+    setupAgentInput(integrationId: string, agentInput: AgentInputWithConfigs): Promise<void>;
+    teardownAgentInput(integrationId: string, agentInput: AgentInputWithConfigs): Promise<void>;
 }
 
 export type FormFieldType = 'text' | 'password' | 'textarea';

@@ -1,6 +1,6 @@
 import { FormFieldDefinition, FormIntegrationInstallation, Integration, FormSubmissionInput, FormSubmissionResult } from "./abstract/Integration";
 import { CronJobIntegrationMetadata, IntegrationInstance, IntegrationType } from "../shared/Integrations";
-import { ChannelInputWithConfigs } from "../types/prisma";
+import { AgentInputWithConfigs } from "../types/prisma";
 import logger, { runWithUserContext } from "../logger";
 import { createSchedulerClient, SchedulerClient } from "../utility/schedulerClient";
 import { settings } from "../config/settings";
@@ -56,40 +56,40 @@ export class CronJobIntegrationManager implements
             hasManualContext: !!manualContext,
         });
 
-        const channelInput = await db().automation_inputs.findUnique({
+        const agentInput = await db().automation_inputs.findUnique({
             where: { id: inputId },
             include: {
                 automation: true,
                 time_trigger_config: true,
             },
         });
-        if (!channelInput) {
-            logger.warn("⚠️  Schedule trigger: channel input not found", { inputId });
+        if (!agentInput) {
+            logger.warn("⚠️  Schedule trigger: agent trigger not found", { inputId });
             return;
         }
 
-        if (!channelInput.time_trigger_config) {
+        if (!agentInput.time_trigger_config) {
             logger.warn("⚠️  Schedule trigger: no time trigger config", { inputId });
             return;
         }
 
-        const channel = channelInput.automation;
-        if (!channel) {
-            logger.warn("⚠️  Schedule trigger: channel not found", { inputId });
+        const agent = agentInput.automation;
+        if (!agent) {
+            logger.warn("⚠️  Schedule trigger: agent not found", { inputId });
             return;
         }
 
-        if (!channel.is_active) {
-            logger.info("ℹ️  Schedule triggered but channel is inactive", {
+        if (!agent.is_active) {
+            logger.info("ℹ️  Schedule triggered but agent is inactive", {
                 inputId,
-                channelId: channel.id,
-                channelName: channel.name
+                agentId: agent.id,
+                agentName: agent.name
             });
             return;
         }
 
         const user = await db().users.findUnique({
-            where: { id: channelInput.automation.user_id },
+            where: { id: agentInput.automation.user_id },
         });
 
         if (!user) {
@@ -99,9 +99,9 @@ export class CronJobIntegrationManager implements
 
         logger.info(isManualTrigger ? "✅ Manual trigger processed" : "✅ Schedule trigger processed", {
             inputId,
-            channelId: channel.id,
-            channelName: channel.name,
-            cronExpression: channelInput.time_trigger_config.cron_expression,
+            agentId: agent.id,
+            agentName: agent.name,
+            cronExpression: agentInput.time_trigger_config.cron_expression,
             isManualTrigger,
         });
 
@@ -115,31 +115,31 @@ export class CronJobIntegrationManager implements
 
     async deleteInstallation(_integrationId: string): Promise<void> { }
 
-    async setupChannelInput(_integrationId: string, channelInput: ChannelInputWithConfigs): Promise<void> {
-        if (!channelInput.time_trigger_config) {
-            logger.warn("⚠️  No time_trigger_config found for channel input, skipping scheduler setup", {
-                inputId: channelInput.id,
+    async setupAgentInput(_integrationId: string, agentInput: AgentInputWithConfigs): Promise<void> {
+        if (!agentInput.time_trigger_config) {
+            logger.warn("⚠️  No time_trigger_config found for agent trigger, skipping scheduler setup", {
+                inputId: agentInput.id,
             });
             return;
         }
 
-        const cronExpression = channelInput.time_trigger_config.cron_expression;
+        const cronExpression = agentInput.time_trigger_config.cron_expression;
         if (!cronExpression) {
             logger.warn("⚠️  No cron expression configured, skipping scheduler setup", {
-                inputId: channelInput.id,
+                inputId: agentInput.id,
             });
             return;
         }
 
         try {
             const scheduler = this.getSchedulerClient();
-            const jobId = this.getJobIdForInput(channelInput.id);
-            const webhookUrl = this.getWebhookUrl(channelInput.id);
+            const jobId = this.getJobIdForInput(agentInput.id);
+            const webhookUrl = this.getWebhookUrl(agentInput.id);
 
             const existingJob = await scheduler.get(jobId);
             if (existingJob) {
-                logger.info("✅ Scheduler job already exists for channel input", {
-                    inputId: channelInput.id,
+                logger.info("✅ Scheduler job already exists for agent trigger", {
+                    inputId: agentInput.id,
                     jobId,
                     schedule: existingJob.schedule,
                 });
@@ -149,7 +149,7 @@ export class CronJobIntegrationManager implements
             const job = await scheduler.create(jobId, cronExpression, webhookUrl);
 
             logger.info("✅ Created Cloud Scheduler job for time trigger", {
-                inputId: channelInput.id,
+                inputId: agentInput.id,
                 jobId: job.id,
                 schedule: job.schedule,
                 url: job.url,
@@ -157,32 +157,32 @@ export class CronJobIntegrationManager implements
         } catch (error) {
             logger.error("❌ Failed to create Cloud Scheduler job", {
                 error,
-                inputId: channelInput.id,
+                inputId: agentInput.id,
                 cronExpression,
             });
             throw error;
         }
     }
 
-    async teardownChannelInput(_integrationId: string, channelInput: ChannelInputWithConfigs): Promise<void> {
-        if (!channelInput.time_trigger_config) {
+    async teardownAgentInput(_integrationId: string, agentInput: AgentInputWithConfigs): Promise<void> {
+        if (!agentInput.time_trigger_config) {
             return;
         }
 
         const scheduler = this.getSchedulerClient();
         let jobId: string | null = null;
         try {
-            jobId = this.getJobIdForInput(channelInput.id);
-            logger.info("Deleting Cloud Scheduler job", { inputId: channelInput.id, jobId });
+            jobId = this.getJobIdForInput(agentInput.id);
+            logger.info("Deleting Cloud Scheduler job", { inputId: agentInput.id, jobId });
         } catch (error) {
             logger.error("❌ Failed to delete Cloud Scheduler job", {
-                inputId: channelInput.id,
+                inputId: agentInput.id,
             });
             return;
         }
 
         if (!jobId) {
-            console.warn("No job ID found for input", { inputId: channelInput.id });
+            console.warn("No job ID found for input", { inputId: agentInput.id });
             return;
         }
 
@@ -191,21 +191,21 @@ export class CronJobIntegrationManager implements
         } catch (error) {
             if (isSchedulerJobNotFoundError(error)) {
                 logger.info("ℹ️  Scheduler job already removed", {
-                    inputId: channelInput.id,
+                    inputId: agentInput.id,
                     jobId,
                 });
                 return;
             }
 
             logger.error("❌ Failed to delete Cloud Scheduler job", {
-                inputId: channelInput.id,
+                inputId: agentInput.id,
                 jobId,
             });
             throw error;
         }
 
         logger.info("✅ Deleted Cloud Scheduler job for time trigger", {
-            inputId: channelInput.id,
+            inputId: agentInput.id,
             jobId,
         });
     }
@@ -251,11 +251,11 @@ export class CronJobEvent extends InputEvent {
         this.data = data;
     }
 
-    formatForChannelAgent(): string {
+    formatForAgent(): string {
         const { isManualTrigger, manualContext } = this.data;
 
         if (isManualTrigger) {
-            let message = `This is a manually triggered event for the channel input ${this.data.inputId}.`;
+            let message = `This is a manually triggered event for the agent trigger ${this.data.inputId}.`;
 
             if (manualContext) {
                 message += `\n\nUser provided context for this manual trigger:\n${manualContext}`;
@@ -264,15 +264,15 @@ export class CronJobEvent extends InputEvent {
             return message;
         }
 
-        return `This is a scheduled event for the channel input ${this.data.inputId}. The channel input is configured to run at the following cron expression.`;
+        return `This is a scheduled event for the agent trigger ${this.data.inputId}. The agent trigger is configured to run at the following cron expression.`;
     }
 
     debugLog(): string {
         return this.data.isManualTrigger ? `Manual Trigger` : `Scheduled Event`;
     }
 
-    matchesChannelInput(channelInput: ChannelInputWithConfigs): boolean {
-        if (channelInput.config_type !== InputConfigType.TIME_TRIGGER) {
+    matchesAgentInput(agentInput: AgentInputWithConfigs): boolean {
+        if (agentInput.config_type !== InputConfigType.TIME_TRIGGER) {
             return false;
         }
 

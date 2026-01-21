@@ -23,12 +23,12 @@ import {
   googleLoginURL,
 } from "./routes/auth/googleAuth";
 import {
-  createChannel,
-  deleteChannel,
-  getRecentChannels,
-  getUserChannel,
-  getUserChannels,
-  updateChannel,
+  createAgent,
+  deleteAgent,
+  getRecentAgents,
+  getUserAgent,
+  getUserAgents,
+  updateAgent,
 } from "./routes/channels";
 import {
   getInstallationUrl,
@@ -260,7 +260,7 @@ app.get("/run-history/actions", authMiddleware, async (req, res) => {
   getRunHistoryActions(req, res);
 });
 
-app.get("/run-history/:channelId", authMiddleware, async (req, res) => {
+app.get("/run-history/:agentId", authMiddleware, async (req, res) => {
   getRunHistory(req, res);
 });
 
@@ -491,30 +491,30 @@ app.get("/datadog/indexes", authMiddleware, async (req, res) => {
   getDatadogIndexes(req, res);
 });
 
-// MARK: CHANNELS
+// MARK: AGENTS (API endpoints still use /channels for backward compatibility)
 
 app.get("/channels", authMiddleware, async (req, res) => {
-  getUserChannels(req, res);
+  getUserAgents(req, res);
 });
 
 app.get("/channels/recent", authMiddleware, async (req, res) => {
-  getRecentChannels(req, res);
+  getRecentAgents(req, res);
 });
 
 app.get("/channels/:id", authMiddleware, async (req, res) => {
-  getUserChannel(req, res);
+  getUserAgent(req, res);
 });
 
 app.post("/channels", authMiddleware, async (req, res) => {
-  createChannel(req, res);
+  createAgent(req, res);
 });
 
 app.patch("/channels/:id", authMiddleware, async (req, res) => {
-  updateChannel(req, res);
+  updateAgent(req, res);
 });
 
 app.delete("/channels/:id", authMiddleware, async (req, res) => {
-  deleteChannel(req, res);
+  deleteAgent(req, res);
 });
 
 // MARK: TEMPLATES

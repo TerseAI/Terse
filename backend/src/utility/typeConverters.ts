@@ -5,7 +5,7 @@ import {
     OutputConfigType,
     KnowledgeBaseConfigType,
 } from "@prisma/client";
-import { ChannelInputWithConfigs, ChannelOutputWithConfigs, ChannelKnowledgeBaseWithConfigs } from "../types/prisma";
+import { AgentInputWithConfigs, AgentOutputWithConfigs, AgentKnowledgeBaseWithConfigs } from "../types/prisma";
 import { 
     ConfigInstance, 
     GmailConfig, 
@@ -165,90 +165,90 @@ export const convertPrismaIntegrationTypeToIntegrationTypeFromRunHistory = (pris
     }
 }
 
-export const convertPrismaConfigToConfigInstance = (channelInput: ChannelInputWithConfigs): ConfigInstance => {
-    const integrationId = channelInput.integration_id;
+export const convertPrismaConfigToConfigInstance = (agentInput: AgentInputWithConfigs): ConfigInstance => {
+    const integrationId = agentInput.integration_id;
 
     // Determine which config is present and create the appropriate ConfigInstance
-    if (channelInput.gmail_config) {
+    if (agentInput.gmail_config) {
         return new GmailConfig(integrationId);
     }
 
-    if (channelInput.figma_config) {
+    if (agentInput.figma_config) {
         return new FigmaConfig(
             integrationId,
-            channelInput.figma_config.file_key,
-            channelInput.figma_config.file_name || '',
-            channelInput.figma_config.team_id || ''
+            agentInput.figma_config.file_key,
+            agentInput.figma_config.file_name || '',
+            agentInput.figma_config.team_id || ''
         );
     }
 
-    if (channelInput.slack_config) {
+    if (agentInput.slack_config) {
         return new SlackConfig(
             integrationId,
-            channelInput.slack_config.channel_id || undefined,
-            channelInput.slack_config.channel_name || undefined,
-            channelInput.slack_config.listen_to_user_dms || false,
-            channelInput.slack_config.user_ids || undefined
+            agentInput.slack_config.channel_id || undefined,
+            agentInput.slack_config.channel_name || undefined,
+            agentInput.slack_config.listen_to_user_dms || false,
+            agentInput.slack_config.user_ids || undefined
         );
     }
 
-    if (channelInput.notion_page_config) {
+    if (agentInput.notion_page_config) {
         return new NotionPageConfig(
             integrationId,
-            channelInput.notion_page_config.page_id || undefined,
-            channelInput.notion_page_config.page_name || undefined
+            agentInput.notion_page_config.page_id || undefined,
+            agentInput.notion_page_config.page_name || undefined
         );
     }
 
-    if (channelInput.notion_config) {
+    if (agentInput.notion_config) {
         return new NotionConfig(
             integrationId,
-            channelInput.notion_config.database_id || undefined,
-            channelInput.notion_config.database_name || undefined
+            agentInput.notion_config.database_id || undefined,
+            agentInput.notion_config.database_name || undefined
         );
     }
 
-    if (channelInput.linear_config) {
+    if (agentInput.linear_config) {
         return new LinearInputConfig(
             integrationId,
-            channelInput.linear_config.team_id || undefined,
-            channelInput.linear_config.team_name || undefined
+            agentInput.linear_config.team_id || undefined,
+            agentInput.linear_config.team_name || undefined
         );
     }
 
-    if (channelInput.github_config) {
+    if (agentInput.github_config) {
         return new GitHubConfig(
             integrationId,
-            channelInput.github_config.repository_ids || []
+            agentInput.github_config.repository_ids || []
         );
     }
 
-    if (channelInput.jira_config) {
+    if (agentInput.jira_config) {
         return new JiraConfig(
             integrationId,
-            channelInput.jira_config.project_key || undefined,
-            channelInput.jira_config.project_id || undefined
+            agentInput.jira_config.project_key || undefined,
+            agentInput.jira_config.project_id || undefined
         );
     }
 
-    if (channelInput.confluence_config) {
+    if (agentInput.confluence_config) {
         return new ConfluenceConfig(
             integrationId,
-            channelInput.confluence_config.space_name || '',
-            channelInput.confluence_config.space_id || '',
-            channelInput.confluence_config.page_id || '',
-            channelInput.confluence_config.page_name || ''
+            agentInput.confluence_config.space_name || '',
+            agentInput.confluence_config.space_id || '',
+            agentInput.confluence_config.page_id || '',
+            agentInput.confluence_config.page_name || ''
         );
     }
 
-    if (channelInput.time_trigger_config) {
+    if (agentInput.time_trigger_config) {
         return new TimeTriggerConfig(
-            channelInput.time_trigger_config.cron_expression || ''
+            agentInput.time_trigger_config.cron_expression || ''
         );
     }
 
     // Type guard to ensure we implement conversion here
-    switch (channelInput.config_type) {
+    switch (agentInput.config_type) {
         case InputConfigType.GMAIL:
         case InputConfigType.FIGMA:
         case InputConfigType.SLACK:
@@ -262,77 +262,77 @@ export const convertPrismaConfigToConfigInstance = (channelInput: ChannelInputWi
         case InputConfigType.TIME_TRIGGER:
             break;
         default:
-            throw channelInput.config_type satisfies never;
+            throw agentInput.config_type satisfies never;
     }
 
-    throw new Error(`No config found for channel input ${channelInput.id}`);
+    throw new Error(`No config found for channel input ${agentInput.id}`);
 }
 
 /**
- * Converts a ChannelOutput with configs to a ConfigInstance.
+ * Converts an AutomationOutput with configs to a ConfigInstance.
  * Similar to convertPrismaConfigToConfigInstance but for outputs.
  */
-export const convertPrismaOutputConfigToConfigInstance = (channelOutput: ChannelOutputWithConfigs): ConfigInstance => {
-    const integrationId = channelOutput.integration_id;
+export const convertPrismaOutputConfigToConfigInstance = (agentOutput: AgentOutputWithConfigs): ConfigInstance => {
+    const integrationId = agentOutput.integration_id;
 
     // Determine which config is present and create the appropriate ConfigInstance
     // Note: Outputs only support NOTION_PAGE, NOTION_DATABASE, and CONFLUENCE
-    if (channelOutput.notion_page_config) {
+    if (agentOutput.notion_page_config) {
         return new NotionPageConfig(
             integrationId,
-            channelOutput.notion_page_config.page_id || undefined,
-            channelOutput.notion_page_config.page_name || undefined
+            agentOutput.notion_page_config.page_id || undefined,
+            agentOutput.notion_page_config.page_name || undefined
         );
     }
 
-    if (channelOutput.notion_config) {
+    if (agentOutput.notion_config) {
         return new NotionConfig(
             integrationId,
-            channelOutput.notion_config.database_id || undefined,
-            channelOutput.notion_config.database_name || undefined
+            agentOutput.notion_config.database_id || undefined,
+            agentOutput.notion_config.database_name || undefined
         );
     }
 
-    if (channelOutput.confluence_config) {
+    if (agentOutput.confluence_config) {
         return new ConfluenceConfig(
             integrationId,
-            channelOutput.confluence_config.space_name || '',
-            channelOutput.confluence_config.space_id || '',
-            channelOutput.confluence_config.page_id || '',
-            channelOutput.confluence_config.page_name || ''
+            agentOutput.confluence_config.space_name || '',
+            agentOutput.confluence_config.space_id || '',
+            agentOutput.confluence_config.page_id || '',
+            agentOutput.confluence_config.page_name || ''
         );
     }
 
-    if (channelOutput.linear_config) {
+    if (agentOutput.linear_config) {
         return new LinearOutputConfig(
             integrationId,
-            channelOutput.linear_config.team_id || undefined,
-            channelOutput.linear_config.team_name || undefined
+            agentOutput.linear_config.team_id || undefined,
+            agentOutput.linear_config.team_name || undefined
         );
     }
 
-    if (channelOutput.jira_config) {
+    if (agentOutput.jira_config) {
         return new JiraConfig(
             integrationId,
-            channelOutput.jira_config.project_key || undefined,
-            channelOutput.jira_config.project_id || undefined
+            agentOutput.jira_config.project_key || undefined,
+            agentOutput.jira_config.project_id || undefined
         );
     }
 
-    if (channelOutput.slack_config) {
+    if (agentOutput.slack_config) {
         return new SlackOutputConfig(
             integrationId,
-            channelOutput.slack_config.channel_id || undefined,
-            channelOutput.slack_config.channel_name || undefined
+            agentOutput.slack_config.channel_id || undefined,
+            agentOutput.slack_config.channel_name || undefined
         );
     }
 
-    if (channelOutput.gmail_config) {
+    if (agentOutput.gmail_config) {
         return new GmailOutputConfig(integrationId);
     }
 
     // Type guard to ensure we implement conversion here
-    switch (channelOutput.config_type) {
+    switch (agentOutput.config_type) {
         case OutputConfigType.NOTION_PAGE:
         case OutputConfigType.NOTION_DATABASE:
         case OutputConfigType.CONFLUENCE:
@@ -342,10 +342,10 @@ export const convertPrismaOutputConfigToConfigInstance = (channelOutput: Channel
         case OutputConfigType.GMAIL:
             break;
         default:
-            throw channelOutput.config_type satisfies never;
+            throw agentOutput.config_type satisfies never;
     }
 
-    throw new Error(`No config found for channel output ${channelOutput.id}`);
+    throw new Error(`No config found for automation output ${agentOutput.id}`);
 }
 
 // ConfigType converters
@@ -376,17 +376,17 @@ export const convertConfigTypeToInputConfigType = (configType: ConfigType): Inpu
         case ConfigType.TIME_TRIGGER:
             return InputConfigType.TIME_TRIGGER;
         case ConfigType.GITHUB_KB:
-            // GitHub KB is a knowledge base config type, not an input config type
-            throw new Error('GITHUB_KB is a knowledge base type, not an input type');
+            // GitHub KB is a knowledge base config type, not a trigger config type
+            throw new Error('GITHUB_KB is a knowledge base type, not a trigger type');
         case ConfigType.LAUNCHDARKLY:
-            // LaunchDarkly is a knowledge base config type, not an input config type
-            throw new Error('LAUNCHDARKLY is a knowledge base type, not an input type');
+            // LaunchDarkly is a knowledge base config type, not a trigger config type
+            throw new Error('LAUNCHDARKLY is a knowledge base type, not a trigger type');
         case ConfigType.SLACK_OUTPUT:
-            // SLACK_OUTPUT is an output config type, not an input config type
-            throw new Error('SLACK_OUTPUT is an output type, not an input type');
+            // SLACK_OUTPUT is an output config type, not a trigger config type
+            throw new Error('SLACK_OUTPUT is an output type, not a trigger type');
         case ConfigType.GMAIL_OUTPUT:
-            // GMAIL_OUTPUT is an output config type, not an input config type
-            throw new Error('GMAIL_OUTPUT is an output type, not an input type');
+            // GMAIL_OUTPUT is an output config type, not a trigger config type
+            throw new Error('GMAIL_OUTPUT is an output type, not a trigger type');
         case ConfigType.DATADOG:
             throw new Error('DATADOG is not an input config type');
         default:
@@ -488,13 +488,13 @@ export const convertConfigTypeToKnowledgeBaseConfigType = (configType: ConfigTyp
 }
 
 /**
- * Converts a ChannelKnowledgeBase with configs to a ConfigInstance.
+ * Converts an AgentKnowledgeBase with configs to a ConfigInstance.
  */
-export const convertPrismaKnowledgeBaseConfigToConfigInstance = (channelKnowledgeBase: ChannelKnowledgeBaseWithConfigs): ConfigInstance => {
-    const integrationId = channelKnowledgeBase.integration_id;
+export const convertPrismaKnowledgeBaseConfigToConfigInstance = (agentKnowledgeBase: AgentKnowledgeBaseWithConfigs): ConfigInstance => {
+    const integrationId = agentKnowledgeBase.integration_id;
 
-    if (channelKnowledgeBase.posthog_config) {
-        const posthogIntegration = channelKnowledgeBase.posthog_config;
+    if (agentKnowledgeBase.posthog_config) {
+        const posthogIntegration = agentKnowledgeBase.posthog_config;
         if (!posthogIntegration.project_id) {
             throw new Error('Posthog config requires project_id');
         }
@@ -507,16 +507,16 @@ export const convertPrismaKnowledgeBaseConfigToConfigInstance = (channelKnowledg
         );
     }
 
-    if (channelKnowledgeBase.github_kb_config) {
+    if (agentKnowledgeBase.github_kb_config) {
         return new GitHubKBConfig(
             integrationId,
-            channelKnowledgeBase.github_kb_config.repository_ids || [],
-            channelKnowledgeBase.github_kb_config.repository_names || []
+            agentKnowledgeBase.github_kb_config.repository_ids || [],
+            agentKnowledgeBase.github_kb_config.repository_names || []
         );
     }
 
-    if (channelKnowledgeBase.launchdarkly_config) {
-        const launchdarklyIntegration = channelKnowledgeBase.launchdarkly_config;
+    if (agentKnowledgeBase.launchdarkly_config) {
+        const launchdarklyIntegration = agentKnowledgeBase.launchdarkly_config;
         if (!launchdarklyIntegration.project_key) {
             throw new Error('LaunchDarkly config requires project_key');
         }
@@ -527,8 +527,8 @@ export const convertPrismaKnowledgeBaseConfigToConfigInstance = (channelKnowledg
         );
     }
 
-    if (channelKnowledgeBase.datadog_config) {
-        const datadogConfig = channelKnowledgeBase.datadog_config;
+    if (agentKnowledgeBase.datadog_config) {
+        const datadogConfig = agentKnowledgeBase.datadog_config;
         return new DatadogConfig(
             integrationId,
             datadogConfig.default_indexes && datadogConfig.default_indexes.length > 0
@@ -537,7 +537,7 @@ export const convertPrismaKnowledgeBaseConfigToConfigInstance = (channelKnowledg
         );
     }
 
-    throw new Error(`Unsupported knowledge base config type: ${channelKnowledgeBase.config_type}`);
+    throw new Error(`Unsupported knowledge base config type: ${agentKnowledgeBase.config_type}`);
 }
 
 /**

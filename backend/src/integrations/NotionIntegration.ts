@@ -2,7 +2,7 @@ import { Integration, OAuthIntegrationInstallation, ConfigurationFieldDefinition
 import { db } from "../prismaClient";
 import { NotionIntegration, NotionIntegrationMetadata } from "../shared/Integrations";
 import { OAuthInstallationDetails } from "../shared/types";
-import { ChannelInputWithConfigs } from "../types/prisma";
+import { AgentInputWithConfigs } from "../types/prisma";
 import jwt from "jsonwebtoken";
 import { notion as notionConfig, jwt as jwtSettings, urls } from "../config/settings";
 import { Request, Response } from "express";
@@ -198,12 +198,12 @@ export class NotionIntegrationManager implements Integration<NotionIntegration, 
         return Promise.resolve();
     }
 
-    async setupChannelInput(integrationId: string, automationInput: ChannelInputWithConfigs): Promise<void> {
+    async setupAgentInput(integrationId: string, agentInput: AgentInputWithConfigs): Promise<void> {
         // Notion doesn't require any setup for automation inputs
         // Webhooks are managed at the integration level
     }
 
-    async teardownChannelInput(integrationId: string, automationInput: ChannelInputWithConfigs): Promise<void> {
+    async teardownAgentInput(integrationId: string, agentInput: AgentInputWithConfigs): Promise<void> {
         // Notion doesn't require any teardown for automation inputs
         // Webhooks are managed at the integration level
     }

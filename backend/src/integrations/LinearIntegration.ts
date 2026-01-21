@@ -2,7 +2,7 @@ import { Integration, OAuthIntegrationInstallation, ConfigurationFieldDefinition
 import { db } from "../prismaClient";
 import { LinearIntegration, LinearIntegrationMetadata } from "../shared/Integrations";
 import { IntegrationType, InstallationOptionsFor, AdditionalStateParams } from "../shared/Integrations";
-import { ChannelInputWithConfigs } from "../types/prisma";
+import { AgentInputWithConfigs } from "../types/prisma";
 import { OAuthInstallationDetails } from "../shared/types";
 import jwt from "jsonwebtoken";
 import { settings, OAUTH_TOKEN_REFRESH_THRESHOLD_MS } from "../config/settings";
@@ -298,13 +298,13 @@ export class LinearIntegrationManager implements Integration<LinearIntegration, 
         return Promise.resolve();
     }
 
-    async setupChannelInput(integrationId: string, channelInput: ChannelInputWithConfigs): Promise<void> {
-        // Linear doesn't require any setup for channel inputs
+    async setupAgentInput(integrationId: string, agentInput: AgentInputWithConfigs): Promise<void> {
+        // Linear doesn't require any setup for agent triggers
         // Webhooks are managed at the integration level
     }
 
-    async teardownChannelInput(integrationId: string, channelInput: ChannelInputWithConfigs): Promise<void> {
-        // Linear doesn't require any teardown for channel inputs
+    async teardownAgentInput(integrationId: string, agentInput: AgentInputWithConfigs): Promise<void> {
+        // Linear doesn't require any teardown for agent triggers
         // Webhooks are managed at the integration level
     }
 
@@ -452,7 +452,7 @@ export class LinearEvent extends InputEvent {
         this.integrationId = integrationId;
     }
 
-    formatForChannelAgent(): string {
+    formatForAgent(): string {
         const indentMultiline = (text: string): string =>
             text
                 .split('\n')
@@ -527,10 +527,10 @@ export class LinearEvent extends InputEvent {
         return `Linear ${this.data.type} Event: ${this.data.action}`;
     }
 
-    matchesChannelInput(channelInput: ChannelInputWithConfigs): boolean {
-        logger.debug(`Checking if Linear event matches channel input: ${channelInput.config_type}`, { configType: channelInput.config_type, eventType: this.data.type, action: this.data.action });
+    matchesAgentInput(agentInput: AgentInputWithConfigs): boolean {
+        logger.debug(`Checking if Linear event matches agent trigger: ${agentInput.config_type}`, { configType: agentInput.config_type, eventType: this.data.type, action: this.data.action });
         // Check if integration type matches
-        if (channelInput.config_type !== InputConfigType.LINEAR) {
+        if (agentInput.config_type !== InputConfigType.LINEAR) {
             return false;
         }
 

@@ -1,5 +1,5 @@
 import { Tool } from "@openai/agents";
-import { ChannelOutput, PrismaTransaction, User, UserSlackIntegration } from "../../types/prisma";
+import { AgentOutput, PrismaTransaction, User, UserSlackIntegration } from "../../types/prisma";
 import { automation_slack_configs } from "@prisma/client";
 import { Session } from "../../server";
 import { Output, ToolboxEntry } from "../abstract/Output";
@@ -24,7 +24,7 @@ export class SlackOutput extends Output<SlackChannelSession, SlackOutputConfig> 
 
     async createSessionFromConfig(
         integrationId: string,
-        channelOutputConfig: ChannelOutput,
+        agentOutputConfig: AgentOutput,
         user: User
     ): Promise<SlackChannelSession> {
         // For Slack, integrationId is the user_slack_integrations.id
@@ -43,11 +43,11 @@ export class SlackOutput extends Output<SlackChannelSession, SlackOutputConfig> 
         }
 
         const slackConfigRecord = await db().automation_slack_configs.findFirst({
-            where: { automation_output_id: channelOutputConfig.id }
+            where: { automation_output_id: agentOutputConfig.id }
         });
 
         if (!slackConfigRecord) {
-            throw new Error(`Slack config for automation output ${channelOutputConfig.id} not found`);
+            throw new Error(`Slack config for automation output ${agentOutputConfig.id} not found`);
         }
 
         return { 
@@ -64,10 +64,10 @@ export class SlackOutput extends Output<SlackChannelSession, SlackOutputConfig> 
         }
     }
 
-    async addOutputToChannel(tx: PrismaTransaction, channelOutputId: string, output: SlackOutputConfig): Promise<void> {
+    async addOutputToAgent(tx: PrismaTransaction, agentOutputId: string, output: SlackOutputConfig): Promise<void> {
         await tx.automation_slack_configs.create({
             data: {
-                automation_output_id: channelOutputId,
+                automation_output_id: agentOutputId,
                 channel_id: output.channelId || null,
                 channel_name: output.channelName || null,
                 listen_to_user_dms: false, // Not applicable for outputs

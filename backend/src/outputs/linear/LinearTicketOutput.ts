@@ -1,6 +1,6 @@
 
 import { Tool } from "@openai/agents";
-import { ChannelOutput, ChannelLinearConfig, LinearIntegration, PrismaTransaction, User } from "../../types/prisma";
+import { AgentOutput, AgentLinearConfig, LinearIntegration, PrismaTransaction, User } from "../../types/prisma";
 import { Session } from "../../server";
 import { Output, ToolboxEntry } from "../abstract/Output";
 import { db } from "../../prismaClient";
@@ -13,7 +13,7 @@ import { IntegrationType } from "../../shared/Integrations";
 
 export interface LinearTicketSession extends Session {
     linearIntegration: LinearIntegration; // Top level integration record
-    linearConfig: ChannelLinearConfig; // Configuration for the Specific Linear Ticket
+    linearConfig: AgentLinearConfig; // Configuration for the Specific Linear Ticket
 }
 
 export class LinearTicketOutput extends Output<LinearTicketSession, LinearOutputConfig> {
@@ -28,7 +28,7 @@ export class LinearTicketOutput extends Output<LinearTicketSession, LinearOutput
 
     async createSessionFromConfig(
         integrationId: string,
-        channelOutputConfig: ChannelOutput,
+        agentOutputConfig: AgentOutput,
         user: User
     ): Promise<LinearTicketSession> {
         const integration = await db().linear_integrations.findFirst({
@@ -40,11 +40,11 @@ export class LinearTicketOutput extends Output<LinearTicketSession, LinearOutput
         }
 
         const linearConfigRecord = await db().automation_linear_configs.findFirst({
-            where: { automation_output_id: channelOutputConfig.id }
+            where: { automation_output_id: agentOutputConfig.id }
         });
 
         if (!linearConfigRecord) {
-            throw new Error(`Linear config for automation output ${channelOutputConfig.id} not found`);
+            throw new Error(`Linear config for automation output ${agentOutputConfig.id} not found`);
         }
 
         return { linearIntegration: integration, linearConfig: linearConfigRecord, user: user, isUserInitiated: true };
@@ -56,10 +56,10 @@ export class LinearTicketOutput extends Output<LinearTicketSession, LinearOutput
         }
     }
 
-    async addOutputToChannel(tx: PrismaTransaction, channelOutputId: string, output: LinearOutputConfig): Promise<void> {
+    async addOutputToAgent(tx: PrismaTransaction, agentOutputId: string, output: LinearOutputConfig): Promise<void> {
         await tx.automation_linear_configs.create({
             data: {
-                automation_output_id: channelOutputId,
+                automation_output_id: agentOutputId,
                 team_id: output.teamId || null,
                 team_name: output.teamName || null
             },

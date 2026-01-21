@@ -1,7 +1,7 @@
 // MARK: - Output Integrations
 
 import { Session } from "../../server";
-import { ChannelKnowledgeBase, PrismaTransaction, User } from "../../types/prisma";
+import { AgentKnowledgeBase, PrismaTransaction, User } from "../../types/prisma";
 import { KnowledgeBaseConfigType } from "@prisma/client";
 import { ConfigInstance } from "../../shared/Configs";
 import { ToolboxEntry } from "../../outputs/abstract/Output";
@@ -17,13 +17,13 @@ export abstract class KnowledgeBase<T extends Session, KBConfig extends ConfigIn
 
     abstract createSessionFromConfig(
         integrationId: string, // Integration ID to fetch from database
-        channelKnowledgeBase: ChannelKnowledgeBase | null, // ChannelOutput with loaded config relations
+        agentKnowledgeBase: AgentKnowledgeBase | null, // AgentOutput with loaded config relations
         user: User
     ): Promise<T>;
 
     abstract validateConfig(knowledgeBase: KBConfig, userId: string): Promise<void>;
 
-    abstract addKnowledgeBaseToChannel(tx: PrismaTransaction, channelKnowledgeBaseId: string, knowledgeBase: KBConfig): Promise<void>;
+    abstract addKnowledgeBaseToAgent(tx: PrismaTransaction, agentKnowledgeBaseId: string, knowledgeBase: KBConfig): Promise<void>;
 
     /**
      * Returns output-specific system instructions that will be appended to the base system prompt.

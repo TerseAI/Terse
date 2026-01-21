@@ -6,7 +6,7 @@ import { GithubIntegration, GithubIntegrationMetadata, IntegrationType, Installa
 import { GithubAppInstallationRepository, GithubAppInstallationRepositoryResponse, GithubAppInstallationResponse, GithubAppUnifiedEventRequest } from "../routes/GithubTypes";
 import { resolveUsersForGithubInstallation } from "../routes/github";
 import { User } from "../types/prisma";
-import { ChannelInputWithConfigs } from "../types/prisma";
+import { AgentInputWithConfigs } from "../types/prisma";
 import { RunHistoryTrigger } from "../shared/RunHistoryTypes";
 import { OAuthInstallationDetails } from "../shared/types";
 import { githubApp, urls } from "../config/settings";
@@ -168,13 +168,13 @@ export class GithubIntegrationManager implements Integration<GithubIntegration, 
         return Promise.resolve();
     }
 
-    async setupChannelInput(integrationId: string, channelInput: ChannelInputWithConfigs): Promise<void> {
-        // GitHub doesn't require any setup for channel inputs
+    async setupAgentInput(integrationId: string, agentInput: AgentInputWithConfigs): Promise<void> {
+        // GitHub doesn't require any setup for agent triggers
         // Webhooks are managed at the integration level
     }
 
-    async teardownChannelInput(integrationId: string, channelInput: ChannelInputWithConfigs): Promise<void> {
-        // GitHub doesn't require any teardown for channel inputs
+    async teardownAgentInput(integrationId: string, agentInput: AgentInputWithConfigs): Promise<void> {
+        // GitHub doesn't require any teardown for agent triggers
         // Webhooks are managed at the integration level
     }
 
@@ -222,7 +222,7 @@ export class GithubEvent extends InputEvent {
         this.data = data;
     }
 
-    formatForChannelAgent(): string {
+    formatForAgent(): string {
         const indentMultiline = (text: string): string =>
             text
                 .split('\n')
@@ -338,15 +338,15 @@ export class GithubEvent extends InputEvent {
         return `GitHub Event: ${this.data.eventType} - ${this.data.repositoryName} - ${this.data.username}`;
     }
 
-    matchesChannelInput(channelInput: ChannelInputWithConfigs): boolean {
-        if (channelInput.config_type !== InputConfigType.GITHUB) {
+    matchesAgentInput(agentInput: AgentInputWithConfigs): boolean {
+        if (agentInput.config_type !== InputConfigType.GITHUB) {
             return false;
         }
-        const githubConfig = channelInput.github_config;
+        const githubConfig = agentInput.github_config;
 
         // Make sure the repository is in the list of repositories configured for the channel
         if (!githubConfig?.repository_ids.includes(this.data.repository.id)) {
-            logger.debug('GithubEvent matchesChannelInput - repository not found in channel', { repositoryId: this.data.repository.id, repositoryIds: githubConfig?.repository_ids, channelInputId: channelInput.id });
+            logger.debug('GithubEvent matchesAgentInput - repository not found in agent', { repositoryId: this.data.repository.id, repositoryIds: githubConfig?.repository_ids, agentInputId: agentInput.id });
             return false;
         }
 

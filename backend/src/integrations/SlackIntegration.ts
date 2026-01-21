@@ -9,7 +9,7 @@ import { EventProcessor } from "../agent/ChannelAgent/EventProcessor";
 import { db } from "../prismaClient";
 import { LogLevel, WebClient } from "@slack/web-api";
 import { RunHistoryTrigger } from "../shared/RunHistoryTypes";
-import { ChannelInputWithConfigs, UserSlackIntegration, UserSlackIntegrationWithUser } from "../types/prisma";
+import { AgentInputWithConfigs, UserSlackIntegration, UserSlackIntegrationWithUser } from "../types/prisma";
 import { InputEvent } from "./abstract/InputEvent";
 import jwt from "jsonwebtoken";
 import axios from "axios";
@@ -393,12 +393,12 @@ export class SlackIntegrationManager implements Integration<SlackIntegration, Sl
         return Promise.resolve();
     }
 
-    async setupChannelInput(integrationId: string, channelInput: ChannelInputWithConfigs): Promise<void> {
+    async setupAgentInput(integrationId: string, agentInput: AgentInputWithConfigs): Promise<void> {
         // Slack doesn't require any setup for channel inputs
         // Webhooks are managed at the integration level
     }
 
-    async teardownChannelInput(integrationId: string, channelInput: ChannelInputWithConfigs): Promise<void> {
+    async teardownAgentInput(integrationId: string, agentInput: AgentInputWithConfigs): Promise<void> {
         // Slack doesn't require any teardown for channel inputs
         // Webhooks are managed at the integration level
     }
@@ -448,7 +448,7 @@ export class SlackEvent extends InputEvent implements Identifiable {
         this.entityId = data.permalink || '';
     }
 
-    formatForChannelAgent(): string {
+    formatForAgent(): string {
         // Extract rich content from blocks and attachments (used by third-party apps)
         const blockContent = this.data.blocks 
             ? extractTextFromBlocks(this.data.blocks) 
@@ -523,15 +523,15 @@ export class SlackEvent extends InputEvent implements Identifiable {
         return `Slack Event: ${isDM ? 'DM' : this.data.channelName || this.data.channelId} - ${this.data.userName || this.data.userId}}`;
     }
 
-    matchesChannelInput(channelInput: ChannelInputWithConfigs): boolean {
+    matchesAgentInput(agentInput: AgentInputWithConfigs): boolean {
         // Check if integration type matches
-        if (channelInput.config_type !== InputConfigType.SLACK) {
+        if (agentInput.config_type !== InputConfigType.SLACK) {
             return false;
         }
 
-        // If channelInput has slack_config with channel_id, filter by channel
+        // If agentInput has slack_config with channel_id, filter by channel
         // Otherwise, all Slack events match (no channel filtering)
-        const slackConfig = channelInput.slack_config;
+        const slackConfig = agentInput.slack_config;
         if (!slackConfig) {
             return false;
         }
@@ -908,14 +908,14 @@ async function handleSlackMessage(event: SlackMessageEvent, teamId: string, auth
                     const results = await eventProcessor.process();
 
                     // Log results for this user
-                    if (results.length > 0 && results.some(r => r.success || r.channel !== null)) {
-                        totalMatches += results.filter(r => r.success || r.channel !== null).length;
-                        logger.info(`User ${userSlackIntegration.user.email}: ${results.length} automation(s) matched`, { userId: userSlackIntegration.user.id, email: userSlackIntegration.user.email, resultsCount: results.length, teamId });
+                    if (results.length > 0 && results.some(r => r.success || r.agent !== null)) {
+                        totalMatches += results.filter(r => r.success || r.agent !== null).length;
+                        logger.info(`User ${userSlackIntegration.user.email}: ${results.length} agent(s) matched`, { userId: userSlackIntegration.user.id, email: userSlackIntegration.user.email, resultsCount: results.length, teamId });
                         for (const result of results) {
                             if (result.success) {
-                                logger.debug(`  ✓ Channel "${result.channel?.name}" processed successfully`, { channelName: result.channel?.name, userId: userSlackIntegration.user.id });
-                            } else if (result.channel) {
-                                logger.warn(`  ⚠ Channel "${result.channel?.name}": ${result.message}`, { channelName: result.channel?.name, message: result.message, userId: userSlackIntegration.user.id });
+                                logger.debug(`  ✓ Agent "${result.agent?.name}" processed successfully`, { agentName: result.agent?.name, userId: userSlackIntegration.user.id });
+                            } else if (result.agent) {
+                                logger.warn(`  ⚠ Agent "${result.agent?.name}": ${result.message}`, { agentName: result.agent?.name, message: result.message, userId: userSlackIntegration.user.id });
                             }
                         }
                     }

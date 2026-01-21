@@ -57,7 +57,7 @@ export type RunHistoryDecision = {
 
 export type RunHistoryRecord = {
     id: string;
-    channelId: string;
+    agentId: string;
     timestamp: string;
     trigger: RunHistoryTrigger;
     filtered: boolean;
@@ -86,14 +86,14 @@ export type RunHistoryModelEvent = ModelEvent & { id: string; timestamp?: string
 
 export type RunHistoryModelSocketEvent = {
     runId: string;
-    channelId: string;
+    agentId: string;
     runHistoryModelEvent: RunHistoryModelEvent;
 };
 
 export type RunHistoryStreamingParams = {
     runId?: string;
     userId?: string;
-    channelId?: string;
+    agentId?: string;
 };
 
 export type RunHistoryStreamingParamsWithCallback = RunHistoryStreamingParams & {

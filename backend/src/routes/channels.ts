@@ -1,8 +1,8 @@
 import { Request, Response } from "express";
 import { db } from "../prismaClient";
-import { Channel, ChannelInput, ChannelsResponse, ChannelNotificationSettings, ChannelUpdate, ChannelKnowledgeBase } from "../shared/types";
+import { Agent, AgentInput, AgentsResponse, AgentNotificationSettings, AgentUpdate, AgentKnowledgeBase } from "../shared/types";
 import { parsePageParams } from "../utility/pagination";
-import { ChannelWithInputRelations, PrismaTransaction, ChannelWithRelations, ChannelWithNotificationSettingsRelations, RunHistoryActionType } from "../types/prisma";
+import { AgentWithInputRelations, PrismaTransaction, AgentWithRelations, AgentWithNotificationSettingsRelations, RunHistoryActionType } from "../types/prisma";
 import { IntegrationType } from "../shared/Integrations";
 import { convertConfigTypeToInputConfigType, convertConfigTypeToOutputConfigType, convertConfigTypeToKnowledgeBaseConfigType, convertPrismaConfigToConfigInstance, convertPrismaOutputConfigToConfigInstance, convertPrismaKnowledgeBaseConfigToConfigInstance, convertPlainObjectToKnowledgeBaseConfigInstance } from "../utility/typeConverters";
 import { ConfigInstance, ConfigType } from "../shared/Configs";
@@ -14,12 +14,12 @@ import { emitCacheInvalidationWithKey } from "../realtimeSocket";
 import logger from "../logger";
 import { KnowledgeBaseFactory } from "../knowledgeBase/abstract/KnowledgeBaseFactory";
 
-export type ChannelDraft = Omit<Channel, "id"> & { id?: string };
+export type AgentDraft = Omit<Agent, "id"> & { id?: string };
 
 async function createInputConfig(
     tx: PrismaTransaction,
     inputId: string,
-    config: ChannelInput,
+    config: AgentInput,
     userId: string
 ): Promise<void> {
     logger.debug('🔵 [INPUT CONFIG] config', { inputId, config: JSON.stringify(config, null, 2) });
@@ -42,7 +42,7 @@ async function createOutputConfig(
         throw new Error(`Output not found for integration type: ${config.configType}`);
     }
     await output().validateConfig(config, userId);
-    await output().addOutputToChannel(tx, outputId, config);
+    await output().addOutputToAgent(tx, outputId, config);
 }
 
 async function createKnowledgeBaseConfig(
@@ -59,7 +59,7 @@ async function createKnowledgeBaseConfig(
         throw new Error(`Knowledge base not found for integration type: ${configInstance.configType}`);
     }
     await knowledgeBase().validateConfig(configInstance, userId);
-    await knowledgeBase().addKnowledgeBaseToChannel(tx, knowledgeBaseId, configInstance);
+    await knowledgeBase().addKnowledgeBaseToAgent(tx, knowledgeBaseId, configInstance);
 }
 
 async function validateUserOwnsIntegration(userId: string, integrationType: IntegrationType, integrationId: string): Promise<boolean> {
@@ -77,24 +77,24 @@ async function validateUserOwnsIntegration(userId: string, integrationType: Inte
 
 async function upsertNotificationSettings(
     tx: PrismaTransaction,
-    automationId: string,
-    settings: ChannelNotificationSettings
+    agentId: string,
+    settings: AgentNotificationSettings
 ): Promise<void> {
     await tx.automation_notification_settings.upsert({
-        where: { automation_id: automationId },
+        where: { automation_id: agentId },
         update: {
             enabled: settings.enabled,
             action_types: settings.actionTypes,
         },
         create: {
-            automation_id: automationId,
+            automation_id: agentId,
             enabled: settings.enabled,
             action_types: settings.actionTypes,
         },
     });
 }
 
-export async function applyChannelForUser(userId: string, draft: ChannelDraft): Promise<{ id: string }> {
+export async function applyAgentForUser(userId: string, draft: AgentDraft): Promise<{ id: string }> {
     const { name, inputs, output, knowledgeBases, prompt, isActive = true, requireApproval = false, notificationSettings } = draft;
     logger.debug("Output from frontend", { output: JSON.stringify(output, null, 2), userId });
     logger.debug("Inputs from frontend", { inputs: JSON.stringify(inputs, null, 2), userId });
@@ -108,10 +108,10 @@ export async function applyChannelForUser(userId: string, draft: ChannelDraft): 
 
     const prisma = db();
 
-    // Create new channel
-    const channel = await prisma.$transaction(async (tx) => {
-        // Create channel
-        const newChannel = await tx.automations.create({
+    // Create new agent
+    const agent = await prisma.$transaction(async (tx) => {
+        // Create agent
+        const newAgent = await tx.automations.create({
             data: {
                 user_id: userId,
                 name,
@@ -123,7 +123,7 @@ export async function applyChannelForUser(userId: string, draft: ChannelDraft): 
         // Create prompt
         await tx.automation_prompts.create({
             data: {
-                automation_id: newChannel.id,
+                automation_id: newAgent.id,
                 content: prompt.text
             }
         });
@@ -148,7 +148,7 @@ export async function applyChannelForUser(userId: string, draft: ChannelDraft): 
 
             const newInput = await tx.automation_inputs.create({
                 data: {
-                    automation_id: newChannel.id,
+                    automation_id: newAgent.id,
                     config_type: convertConfigTypeToInputConfigType(input.config.configType),
                     // System integrations use 'system' as a sentinel integration ID
                     integration_id: integrationId || 'system'
@@ -178,7 +178,7 @@ export async function applyChannelForUser(userId: string, draft: ChannelDraft): 
 
         const newOutput = await tx.automation_outputs.create({
             data: {
-                automation_id: newChannel.id,
+                automation_id: newAgent.id,
                 config_type: convertConfigTypeToOutputConfigType(outputConfigType),
                 integration_id: outputIntegrationId
             }
@@ -208,7 +208,7 @@ export async function applyChannelForUser(userId: string, draft: ChannelDraft): 
 
                 const newKnowledgeBase = await tx.automation_knowledge_bases.create({
                     data: {
-                        automation_id: newChannel.id,
+                        automation_id: newAgent.id,
                         config_type: convertConfigTypeToKnowledgeBaseConfigType(kb.config.configType),
                         integration_id: integrationId
                     }
@@ -220,14 +220,14 @@ export async function applyChannelForUser(userId: string, draft: ChannelDraft): 
 
         // Create notification settings if provided
         if (notificationSettings) {
-            await upsertNotificationSettings(tx, newChannel.id, notificationSettings);
+            await upsertNotificationSettings(tx, newAgent.id, notificationSettings);
         }
 
-        return newChannel;
+        return newAgent;
     });
 
-    const channelWithRelations: ChannelWithInputRelations | null = await prisma.automations.findFirst({
-        where: { id: channel.id },
+    const agentWithRelations: AgentWithInputRelations | null = await prisma.automations.findFirst({
+        where: { id: agent.id },
         include: {
             inputs: {
                 include: getInputConfigInclude()
@@ -235,30 +235,30 @@ export async function applyChannelForUser(userId: string, draft: ChannelDraft): 
         }
     });
 
-    if (!channelWithRelations) {
-        throw new Error(`Channel not found: ${channel.id}`);
+    if (!agentWithRelations) {
+        throw new Error(`Agent not found: ${agent.id}`);
     }
 
-    // Set up channel inputs (e.g., create webhooks for Figma)
-    await setupChannelInputs(channelWithRelations);
+    // Set up agent inputs (e.g., create webhooks for Figma)
+    await setupAgentInputs(agentWithRelations);
 
-    // Invalidate recent channels cache
+    // Invalidate recent agents cache
     emitCacheInvalidationWithKey(userId, 'recentChannels');
 
-    return { id: channel.id };
+    return { id: agent.id };
 }
 
-export async function updateChannelForUser(
+export async function updateAgentForUser(
     userId: string,
-    channelId: string,
-    update: Partial<ChannelUpdate>
+    agentId: string,
+    update: Partial<AgentUpdate>
 ): Promise<{ id: string }> {
     const { name, inputs, output, knowledgeBases, prompt, isActive, requireApproval, notificationSettings } = update;
 
     const prisma = db();
-    const existingChannel: ChannelWithInputRelations | null = await prisma.automations.findFirst({
+    const existingAgent: AgentWithInputRelations | null = await prisma.automations.findFirst({
         where: {
-            id: channelId,
+            id: agentId,
             user_id: userId
         },
         include: {
@@ -268,8 +268,8 @@ export async function updateChannelForUser(
         }
     });
 
-    if (!existingChannel) {
-        throw new Error('Channel not found');
+    if (!existingAgent) {
+        throw new Error('Agent not found');
     }
 
     // Update channel in transaction
@@ -277,7 +277,7 @@ export async function updateChannelForUser(
         // Update basic fields if provided
         if (name !== undefined || isActive !== undefined || requireApproval !== undefined) {
             await tx.automations.update({
-                where: { id: channelId },
+                where: { id: agentId },
                 data: {
                     ...(name !== undefined && { name }),
                     ...(isActive !== undefined && { is_active: isActive }),
@@ -289,10 +289,10 @@ export async function updateChannelForUser(
         // Update prompt if provided
         if (prompt?.text) {
             await tx.automation_prompts.upsert({
-                where: { automation_id: channelId },
+                where: { automation_id: agentId },
                 update: { content: prompt.text },
                 create: {
-                    automation_id: channelId,
+                    automation_id: agentId,
                     content: prompt.text
                 }
             });
@@ -302,11 +302,11 @@ export async function updateChannelForUser(
         if (inputs && inputs.length > 0) {
             // Delete old inputs (configs cascade delete)
             await tx.automation_inputs.deleteMany({
-                where: { automation_id: channelId }
+                where: { automation_id: agentId }
             });
 
             // Tear down old inputs (e.g., delete webhooks for Figma)
-            await tearDownChannelInputs(existingChannel);
+            await tearDownAgentInputs(existingAgent);
 
             // Create new inputs
             for (const input of inputs) {
@@ -328,7 +328,7 @@ export async function updateChannelForUser(
 
                 const newInput = await tx.automation_inputs.create({
                     data: {
-                        automation_id: channelId,
+                        automation_id: agentId,
                         config_type: convertConfigTypeToInputConfigType(input.config.configType),
                         // System integrations use 'system' as a sentinel integration ID
                         integration_id: integrationId || 'system'
@@ -360,18 +360,18 @@ export async function updateChannelForUser(
 
             // Delete old output (configs cascade delete)
             const existingOutput = await tx.automation_outputs.findUnique({
-                where: { automation_id: channelId }
+                where: { automation_id: agentId }
             });
             if (existingOutput) {
                 await tx.automation_outputs.delete({
-                    where: { automation_id: channelId }
+                    where: { automation_id: agentId }
                 });
             }
 
             // Create new output
             const newOutput = await tx.automation_outputs.create({
                 data: {
-                    automation_id: channelId,
+                    automation_id: agentId,
                     config_type: convertConfigTypeToOutputConfigType(outputConfigType),
                     integration_id: outputIntegrationId
                 }
@@ -385,7 +385,7 @@ export async function updateChannelForUser(
         if (knowledgeBases !== undefined) {
             // Delete old knowledge bases if exists (configs cascade delete)
             await tx.automation_knowledge_bases.deleteMany({
-                where: { automation_id: channelId }
+                where: { automation_id: agentId }
             });
 
             // Create new knowledge bases if provided
@@ -409,7 +409,7 @@ export async function updateChannelForUser(
 
                     const newKnowledgeBase = await tx.automation_knowledge_bases.create({
                         data: {
-                            automation_id: channelId,
+                            automation_id: agentId,
                             config_type: convertConfigTypeToKnowledgeBaseConfigType(kb.config.configType),
                             integration_id: integrationId
                         }
@@ -423,12 +423,12 @@ export async function updateChannelForUser(
 
         // Update notification settings if provided
         if (notificationSettings) {
-            await upsertNotificationSettings(tx, channelId, notificationSettings);
+            await upsertNotificationSettings(tx, agentId, notificationSettings);
         }
     });
 
-    const channelWithInputRelations: ChannelWithInputRelations | null = await prisma.automations.findFirst({
-        where: { id: channelId },
+    const agentWithInputRelations: AgentWithInputRelations | null = await prisma.automations.findFirst({
+        where: { id: agentId },
         include: {
             inputs: {
                 include: getInputConfigInclude()
@@ -436,21 +436,21 @@ export async function updateChannelForUser(
         }
     });
 
-    if (!channelWithInputRelations) {
-        throw new Error(`Channel not found: ${channelId}`);
+    if (!agentWithInputRelations) {
+        throw new Error(`Agent not found: ${agentId}`);
     }
 
-    // Set up channel inputs (e.g., create webhooks for Figma)
-    await setupChannelInputs(channelWithInputRelations);
+    // Set up agent inputs (e.g., create webhooks for Figma)
+    await setupAgentInputs(agentWithInputRelations);
 
-    // Invalidate recent channels cache
+    // Invalidate recent agents cache
     emitCacheInvalidationWithKey(userId, 'recentChannels');
 
-    return { id: channelId };
+    return { id: agentId };
 }
 
-// GET /channels - List all channels with pagination
-export async function getUserChannels(req: Request, res: Response) {
+// GET /channels - List all agents with pagination
+export async function getUserAgents(req: Request, res: Response) {
     if (!req.session?.user) {
         res.status(401).json({ error: 'Unauthorized' });
         return;
@@ -480,7 +480,7 @@ export async function getUserChannels(req: Request, res: Response) {
         const total = await prisma.automations.count({ where });
 
         // Get paginated results
-        const channels: ChannelWithRelations[] = await prisma.automations.findMany({
+        const agents: AgentWithRelations[] = await prisma.automations.findMany({
             where,
             include: {
                 prompt: true,
@@ -500,13 +500,13 @@ export async function getUserChannels(req: Request, res: Response) {
             take
         });
 
-        if (channels.length > 0 && !channels.some(channel => channel.output)) {
-            throw new Error(`Channel output not found`);
+        if (agents.length > 0 && !agents.some(agent => agent.output)) {
+            throw new Error(`Agent output not found`);
         }
 
         // Transform the data to match frontend format
-        const response: ChannelsResponse = {
-            channels: channels.map(channel => transformChannelToFrontendFormat(channel)),
+        const response: AgentsResponse = {
+            agents: agents.map(agent => transformAgentToFrontendFormat(agent)),
             pagination: {
                 page,
                 limit: pageSize,
@@ -517,8 +517,8 @@ export async function getUserChannels(req: Request, res: Response) {
 
         res.status(200).json(response);
     } catch (error) {
-        logger.error('Error fetching channels', { error, userId });
-        res.status(500).json({ error: 'Failed to fetch channels' });
+        logger.error('Error fetching agents', { error, userId });
+        res.status(500).json({ error: 'Failed to fetch agents' });
     }
 }
 
@@ -528,8 +528,8 @@ interface LastEventRow {
     last_timestamp: Date;
 }
 
-// GET /channels/recent - Get recently modified channels with last event processed time
-export async function getRecentChannels(req: Request, res: Response) {
+// GET /channels/recent - Get recently modified agents with last event processed time
+export async function getRecentAgents(req: Request, res: Response) {
     if (!req.session?.user) {
         res.status(401).json({ error: 'Unauthorized' });
         return;
@@ -541,9 +541,9 @@ export async function getRecentChannels(req: Request, res: Response) {
     try {
         const prisma = db();
 
-        // Run channels query and last event timestamps query in parallel
-        const [channels, lastEventRows] = await Promise.all([
-            // Query 1: Get recently modified channels (without run_history_records)
+        // Run agents query and last event timestamps query in parallel
+        const [agents, lastEventRows] = await Promise.all([
+            // Query 1: Get recently modified agents (without run_history_records)
             prisma.automations.findMany({
                 where: {
                     user_id: userId,
@@ -562,7 +562,7 @@ export async function getRecentChannels(req: Request, res: Response) {
             },
                 orderBy: { updated_at: 'desc' },
                 take: limit
-            }) as Promise<ChannelWithRelations[]>,
+            }) as Promise<AgentWithRelations[]>,
             
             // Query 2: Get last event timestamps using raw SQL with MAX() aggregation
             // This is more efficient than correlated subqueries
@@ -582,36 +582,36 @@ export async function getRecentChannels(req: Request, res: Response) {
         }
 
         // Transform the data to match frontend format with timestamps
-        const response = channels.map(channel => {
-            const lastEventTimestamp = lastEventMap.get(channel.id);
+        const response = agents.map(agent => {
+            const lastEventTimestamp = lastEventMap.get(agent.id);
             return {
-                ...transformChannelToFrontendFormat(channel),
-                updatedAt: channel.updated_at.toISOString(),
+                ...transformAgentToFrontendFormat(agent),
+                updatedAt: agent.updated_at.toISOString(),
                 lastEventProcessedAt: lastEventTimestamp ? lastEventTimestamp.toISOString() : null,
             };
         });
 
         res.status(200).json(response);
     } catch (error) {
-        logger.error('Error fetching recent channels', { error, userId });
-        res.status(500).json({ error: 'Failed to fetch recent channels' });
+        logger.error('Error fetching recent agents', { error, userId });
+        res.status(500).json({ error: 'Failed to fetch recent agents' });
     }
 }
 
-// GET /channels/:id - Get single channel by ID
-export async function getUserChannel(req: Request, res: Response) {
+// GET /channels/:id - Get single agent by ID
+export async function getUserAgent(req: Request, res: Response) {
     if (!req.session?.user) {
         res.status(401).json({ error: 'Unauthorized' });
         return;
     }
 
     const userId = req.session.user.id;
-    const channelId = req.params.id;
+    const agentId = req.params.id;
 
     try {
-        const channel: ChannelWithRelations & ChannelWithNotificationSettingsRelations | null = await db().automations.findFirst({
+        const agent: AgentWithRelations & AgentWithNotificationSettingsRelations | null = await db().automations.findFirst({
             where: {
-                id: channelId,
+                id: agentId,
                 user_id: userId
             },
             include: {
@@ -629,33 +629,33 @@ export async function getUserChannel(req: Request, res: Response) {
             }
         });
 
-        if (!channel || !channel.output) {
-            res.status(404).json({ error: 'Channel not found' });
+        if (!agent || !agent.output) {
+            res.status(404).json({ error: 'Agent not found' });
             return;
         }
 
         // Transform the data to match frontend format
-        const response: Channel = transformChannelToFrontendFormat(channel);
+        const response: Agent = transformAgentToFrontendFormat(agent);
 
         res.status(200).json(response);
     } catch (error) {
-        logger.error('Error fetching channel', { error, userId, channelId });
-        res.status(500).json({ error: 'Failed to fetch channel' });
+        logger.error('Error fetching agent', { error, userId, agentId });
+        res.status(500).json({ error: 'Failed to fetch agent' });
     }
 }
 
-// POST /channels - Create a new channel
-export async function createChannel(req: Request, res: Response) {
+// POST /channels - Create a new agent
+export async function createAgent(req: Request, res: Response) {
     if (!req.session?.user) {
         res.status(401).json({ error: 'Unauthorized' });
         return;
     }
 
     const userId = req.session.user.id;
-    const { name, inputs, output, knowledgeBases, prompt, isActive = true, requireApproval = false, notificationSettings } = req.body as Channel;
+    const { name, inputs, output, knowledgeBases, prompt, isActive = true, requireApproval = false, notificationSettings } = req.body as Agent;
 
     try {
-        const { id } = await applyChannelForUser(userId, {
+        const { id } = await applyAgentForUser(userId, {
             name,
             inputs,
             output,
@@ -668,53 +668,53 @@ export async function createChannel(req: Request, res: Response) {
 
         res.status(201).json({ success: true, id });
     } catch (error) {
-        logger.error('Error creating channel', { error, userId });
+        logger.error('Error creating agent', { error, userId });
         const details = (error as Error).message;
         if (details === 'Invalid request: missing required fields') {
             res.status(400).json({ error: details });
             return;
         }
-        res.status(500).json({ error: 'Failed to create channel', details });
+        res.status(500).json({ error: 'Failed to create agent', details });
     }
 }
 
-// PATCH /channels/:id - Update an existing channel
-export async function updateChannel(req: Request, res: Response) {
+// PATCH /channels/:id - Update an existing agent
+export async function updateAgent(req: Request, res: Response) {
     if (!req.session?.user) {
         res.status(401).json({ error: 'Unauthorized' });
         return;
     }
 
     const userId = req.session.user.id;
-    const channelId = req.params.id;
-    const update = req.body as Partial<ChannelUpdate>;
+    const agentId = req.params.id;
+    const update = req.body as Partial<AgentUpdate>;
 
     try {
-        const { id } = await updateChannelForUser(userId, channelId, update);
+        const { id } = await updateAgentForUser(userId, agentId, update);
         res.status(200).json({ success: true, id });
     } catch (error) {
-        logger.error('Error updating channel', { error, userId, channelId });
-        res.status(500).json({ error: 'Failed to update channel', details: (error as Error).message });
+        logger.error('Error updating agent', { error, userId, agentId });
+        res.status(500).json({ error: 'Failed to update agent', details: (error as Error).message });
     }
 }
 
-// DELETE /channels/:id - Delete an channel
-export async function deleteChannel(req: Request, res: Response) {
+// DELETE /channels/:id - Delete an agent
+export async function deleteAgent(req: Request, res: Response) {
     if (!req.session?.user) {
         res.status(401).json({ error: 'Unauthorized' });
         return;
     }
 
     const userId = req.session.user.id;
-    const channelId = req.params.id;
+    const agentId = req.params.id;
 
     try {
         const prisma = db();
 
-        // Check if channel exists and belongs to user
-        const existingChannel: ChannelWithInputRelations | null = await prisma.automations.findFirst({
+        // Check if agent exists and belongs to user
+        const existingAgent: AgentWithInputRelations | null = await prisma.automations.findFirst({
             where: {
-                id: channelId,
+                id: agentId,
                 user_id: userId
             },
             include: {
@@ -724,63 +724,63 @@ export async function deleteChannel(req: Request, res: Response) {
             }
         });
 
-        if (!existingChannel) {
-            res.status(404).json({ error: 'Channel not found' });
+        if (!existingAgent) {
+            res.status(404).json({ error: 'Agent not found' });
             return;
         }
 
-        // Tear down channel inputs (e.g., delete webhooks for Figma)
-        await tearDownChannelInputs(existingChannel);
+        // Tear down agent inputs (e.g., delete webhooks for Figma)
+        await tearDownAgentInputs(existingAgent);
 
-        // Delete channel (cascade will delete related records)
+        // Delete agent (cascade will delete related records)
         await prisma.automations.delete({
-            where: { id: channelId }
+            where: { id: agentId }
         });
 
-        // Invalidate recent channels cache
-        emitCacheInvalidationWithKey(userId, 'recentChannels');
+        // Invalidate recent agents cache
+        emitCacheInvalidationWithKey(userId, 'recentAgents');
 
-        res.status(200).json({ success: true, message: 'Channel deleted successfully' });
+        res.status(200).json({ success: true, message: 'Agent deleted successfully' });
     } catch (error) {
-        logger.error('Error deleting channel', { error, userId, channelId });
-        res.status(500).json({ error: 'Failed to delete channel', details: (error as Error).message });
+        logger.error('Error deleting agent', { error, userId, agentId });
+        res.status(500).json({ error: 'Failed to delete agent', details: (error as Error).message });
     }
 }
 
-// Helper function to transform ChannelWithRelations to frontend Channel format
-function transformChannelToFrontendFormat(channel: ChannelWithRelations & Partial<ChannelWithNotificationSettingsRelations>): Channel {
-    if (!channel.output) {
-        throw new Error(`Channel output not found for channel ${channel.id}`);
+// Helper function to transform AgentWithRelations to frontend Agent format
+function transformAgentToFrontendFormat(agent: AgentWithRelations & Partial<AgentWithNotificationSettingsRelations>): Agent {
+    if (!agent.output) {
+        throw new Error(`Agent output not found for agent ${agent.id}`);
     }
 
     return {
-        id: channel.id,
-        name: channel.name,
-        isActive: channel.is_active,
-        requireApproval: channel.require_approval ?? false,
-        prompt: channel.prompt ? { text: channel.prompt.content } : { text: '' },
-        inputs: channel.inputs.map(input => ({
+        id: agent.id,
+        name: agent.name,
+        isActive: agent.is_active,
+        requireApproval: agent.require_approval ?? false,
+        prompt: agent.prompt ? { text: agent.prompt.content } : { text: '' },
+        inputs: agent.inputs.map(input => ({
             id: input.id,
             config: convertPrismaConfigToConfigInstance(input)
         })),
         output: {
-            id: channel.output.id,
-            config: convertPrismaOutputConfigToConfigInstance(channel.output),
+            id: agent.output.id,
+            config: convertPrismaOutputConfigToConfigInstance(agent.output),
         },
-        knowledgeBases: (channel as any).knowledge_bases && (channel as any).knowledge_bases.length > 0 ? (channel as any).knowledge_bases.map((kb: any) => ({
+        knowledgeBases: (agent as any).knowledge_bases && (agent as any).knowledge_bases.length > 0 ? (agent as any).knowledge_bases.map((kb: any) => ({
             id: kb.id,
             config: convertPrismaKnowledgeBaseConfigToConfigInstance(kb),
         })) : undefined,
-        notificationSettings: channel.notification_settings ? {
-            enabled: channel.notification_settings.enabled,
-            actionTypes: channel.notification_settings.action_types,
+        notificationSettings: agent.notification_settings ? {
+            enabled: agent.notification_settings.enabled,
+            actionTypes: agent.notification_settings.action_types,
         } : undefined,
-        updatedAt: channel.updated_at.toISOString(),
+        updatedAt: agent.updated_at.toISOString(),
     };
 }
 
-async function setupChannelInputs(channel: ChannelWithInputRelations): Promise<void> {
-    for (const input of channel.inputs) {
+async function setupAgentInputs(agent: AgentWithInputRelations): Promise<void> {
+    for (const input of agent.inputs) {
         try {
             // Convert prisma config to shared config instance to get integration type
             const configInstance = convertPrismaConfigToConfigInstance(input);
@@ -792,9 +792,9 @@ async function setupChannelInputs(channel: ChannelWithInputRelations): Promise<v
             );
 
             if (integration) {
-                await integration.setupChannelInput(input.integration_id, input);
+                await integration.setupAgentInput(input.integration_id, input);
                 logger.info(
-                    `✅ Setup completed for ${input.config_type} input (ID: ${input.id})`,
+                    `✅ Setup completed for ${input.config_type} trigger (ID: ${input.id})`,
                     { configType: input.config_type, inputId: input.id, integrationId: input.integration_id }
                 );
             } else {
@@ -805,7 +805,7 @@ async function setupChannelInputs(channel: ChannelWithInputRelations): Promise<v
             }
         } catch (error) {
             logger.error(
-                `❌ Error setting up ${input.config_type} input (ID: ${input.id})`,
+                `❌ Error setting up ${input.config_type} trigger (ID: ${input.id})`,
                 { error, configType: input.config_type, inputId: input.id }
             );
         }
@@ -813,11 +813,11 @@ async function setupChannelInputs(channel: ChannelWithInputRelations): Promise<v
 }
 
 /**
- * Tears down setup for all inputs in an channel by calling teardownChannelInput on each integration.
- * Called before an channel is deleted.
+ * Tears down setup for all triggers in an agent by calling teardownAgentInput on each integration.
+ * Called before an agent is deleted.
  */
-async function tearDownChannelInputs(channel: ChannelWithInputRelations): Promise<void> {
-    for (const input of channel.inputs) {
+async function tearDownAgentInputs(agent: AgentWithInputRelations): Promise<void> {
+    for (const input of agent.inputs) {
         try {
             // Convert prisma config to shared config instance to get integration type
             const configInstance = convertPrismaConfigToConfigInstance(input);
@@ -829,9 +829,9 @@ async function tearDownChannelInputs(channel: ChannelWithInputRelations): Promis
             );
 
             if (integration) {
-                await integration.teardownChannelInput(input.integration_id, input);
+                await integration.teardownAgentInput(input.integration_id, input);
                 logger.info(
-                    `✅ Teardown completed for ${input.config_type} input`,
+                    `✅ Teardown completed for ${input.config_type} trigger`,
                     { configType: input.config_type, inputId: input.id, integrationId: input.integration_id }
                 );
             } else {

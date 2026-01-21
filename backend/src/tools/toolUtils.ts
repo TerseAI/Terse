@@ -49,6 +49,6 @@ export type ErrorContext = {
 export async function needsApproval(context?: RunContext<unknown>): Promise<boolean> {
     // Type guard: safely access channel.requireApproval from SessionWithTracking
     const sessionWithTracking = context?.context as SessionWithTracking<Session> | undefined;
-    return sessionWithTracking?.channel?.requireApproval ?? false;
+    return sessionWithTracking?.agent?.requireApproval ?? false;
 }
 

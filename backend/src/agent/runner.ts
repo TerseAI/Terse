@@ -2,7 +2,7 @@ import { Runner } from "@openai/agents-core";
 
 
 type RunnerConfig = {
-    channelId: string;
+    agentId: string;
     runId: string;
     userId: string;
     env: string;
@@ -16,7 +16,7 @@ type RunnerConfig = {
 export function runnerFactory(config: RunnerConfig): Runner {
     return new Runner({
         traceMetadata: {
-            channelId: config.channelId,
+            channelId: config.agentId, // Keep channelId in traceMetadata for backward compatibility with UI
             runId: config.runId,
             userId: config.userId,
             env: config.env,

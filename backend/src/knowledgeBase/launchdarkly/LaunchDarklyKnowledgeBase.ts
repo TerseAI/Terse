@@ -1,5 +1,5 @@
 import { Session } from "../../server";
-import { ChannelKnowledgeBaseWithConfigs, PrismaTransaction, User } from "../../types/prisma";
+import { AgentKnowledgeBaseWithConfigs, PrismaTransaction, User } from "../../types/prisma";
 import { KnowledgeBaseConfigType } from "@prisma/client";
 import { LaunchDarklyConfig } from "../../shared/Configs";
 import { IntegrationType } from "../../shared/Integrations";
@@ -46,7 +46,7 @@ export class LaunchDarklyKnowledgeBase extends KnowledgeBase<LaunchDarklyKnowled
      */
     async createSessionFromConfig(
         integrationId: string,
-        channelKnowledgeBase: ChannelKnowledgeBaseWithConfigs,
+        agentKnowledgeBase: AgentKnowledgeBaseWithConfigs,
         user: User
     ): Promise<LaunchDarklyKnowledgeBaseSession> {
         // Load the LaunchDarkly integration
@@ -59,11 +59,11 @@ export class LaunchDarklyKnowledgeBase extends KnowledgeBase<LaunchDarklyKnowled
         }
 
         // Load the LaunchDarkly config from the channel knowledge base
-        if (!channelKnowledgeBase.launchdarkly_config) {
+        if (!agentKnowledgeBase.launchdarkly_config) {
             throw new Error('LaunchDarkly config not found in channel knowledge base');
         }
 
-        const launchdarklyConfig = channelKnowledgeBase.launchdarkly_config;
+        const launchdarklyConfig = agentKnowledgeBase.launchdarkly_config;
 
         // Create the LaunchDarkly config instance
         const config = new LaunchDarklyConfig(
@@ -100,10 +100,10 @@ export class LaunchDarklyKnowledgeBase extends KnowledgeBase<LaunchDarklyKnowled
         }
     }
 
-    async addKnowledgeBaseToChannel(tx: PrismaTransaction, channelKnowledgeBaseId: string, knowledgeBase: LaunchDarklyConfig): Promise<void> {
+    async addKnowledgeBaseToAgent(tx: PrismaTransaction, agentKnowledgeBaseId: string, knowledgeBase: LaunchDarklyConfig): Promise<void> {
         await tx.automation_launchdarkly_configs.create({
             data: {
-                automation_knowledge_base_id: channelKnowledgeBaseId,
+                automation_knowledge_base_id: agentKnowledgeBaseId,
                 project_key: knowledgeBase.projectKey,
                 environment_keys: knowledgeBase.environmentKeys,
             }

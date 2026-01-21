@@ -8,7 +8,7 @@ import { SendModelRequest, ModelEvent, ModelRequest, ToolApprovalResponse } from
 import { db } from "./prismaClient";
 import { ChannelAgent } from "./agent/ChannelAgent/ChannelAgent";
 import { RunContext } from "./agent/ChannelAgent/SystemPromptBuilder";
-import { ChannelWithRelations, ChannelKnowledgeBaseWithConfigs } from "./types/prisma";
+import { AgentWithRelations, AgentKnowledgeBaseWithConfigs } from "./types/prisma";
 import { getInputConfigInclude, getOutputConfigInclude, getKnowledgeBaseConfigInclude } from './utility/prismaIncludes';
 import { OutputFactory } from "./outputs/abstract/OutputFactory";
 import { KnowledgeBaseFactory } from "./knowledgeBase/abstract/KnowledgeBaseFactory";
@@ -30,25 +30,25 @@ let pub: ReturnType<typeof createClient> | null = null;
 let sub: ReturnType<typeof createClient> | null = null;
 
 function createKnowledgeBases(
-    channelKnowledgeBases: ChannelWithRelations['knowledge_bases']
-): { knowledgeBases: KnowledgeBase<Session, ConfigInstance>[]; channelConfigs: ChannelKnowledgeBaseWithConfigs[] } {
-    if (!channelKnowledgeBases || channelKnowledgeBases.length === 0) {
-        return { knowledgeBases: [], channelConfigs: [] };
+    agentKnowledgeBases: AgentWithRelations['knowledge_bases']
+): { knowledgeBases: KnowledgeBase<Session, ConfigInstance>[]; agentConfigs: AgentKnowledgeBaseWithConfigs[] } {
+    if (!agentKnowledgeBases || agentKnowledgeBases.length === 0) {
+        return { knowledgeBases: [], agentConfigs: [] };
     }
 
-    // Create knowledge base instances and maintain pairing with channel configs
+    // Create knowledge base instances and maintain pairing with agent configs
     const knowledgeBases: KnowledgeBase<Session, ConfigInstance>[] = [];
-    const channelConfigs: ChannelKnowledgeBaseWithConfigs[] = [];
+    const agentConfigs: AgentKnowledgeBaseWithConfigs[] = [];
     
-    for (const channelKnowledgeBase of channelKnowledgeBases) {
-        const kb = KnowledgeBaseFactory.createKnowledgeBase(channelKnowledgeBase.config_type);
+    for (const agentKnowledgeBase of agentKnowledgeBases) {
+        const kb = KnowledgeBaseFactory.createKnowledgeBase(agentKnowledgeBase.config_type);
         if (kb) {
             knowledgeBases.push(kb);
-            channelConfigs.push(channelKnowledgeBase as ChannelKnowledgeBaseWithConfigs);
+            agentConfigs.push(agentKnowledgeBase as AgentKnowledgeBaseWithConfigs);
         }
     }
     
-    return { knowledgeBases, channelConfigs };
+    return { knowledgeBases, agentConfigs };
 }
 
 export async function initializeRealtimeSocket(server: HttpServer): Promise<Server> {
@@ -162,7 +162,7 @@ export async function initializeRealtimeSocket(server: HttpServer): Promise<Serv
                 return;
             }
 
-            const channel: ChannelWithRelations | null = await prisma.automations.findUnique({
+            const agent: AgentWithRelations | null = await prisma.automations.findUnique({
                 where: {
                     id: runRecord.automation.id,
                     user_id: userId
@@ -181,21 +181,21 @@ export async function initializeRealtimeSocket(server: HttpServer): Promise<Serv
                 }
             })
 
-            if (!channel) {
-                logger.error(`[channel:chat:message] Channel not found for automation id: ${runRecord.automation.id}`, { automationId: runRecord.automation.id, userId });
+            if (!agent) {
+                logger.error(`[channel:chat:message] Agent not found for automation id: ${runRecord.automation.id}`, { automationId: runRecord.automation.id, userId });
                 return;
             }
 
-            const outputIntegration = channel.output;
+            const outputIntegration = agent.output;
             if (!outputIntegration) {
-                logger.error(`[channel:chat:message] No output integration found for channel: ${channel.id}`, { channelId: channel.id, userId });
+                logger.error(`[channel:chat:message] No output integration found for agent: ${agent.id}`, { agentId: agent.id, userId });
                 return;
             }
 
             // Use OutputFactory to create output based on config type (no hardcoded Notion logic)
             const output = OutputFactory.createOutput(outputIntegration.config_type);
             if (!output) {
-                logger.error(`[channel:chat:message] Output type ${outputIntegration.config_type} is not supported for channel: ${channel.id}`, { configType: outputIntegration.config_type, channelId: channel.id, userId });
+                logger.error(`[channel:chat:message] Output type ${outputIntegration.config_type} is not supported for agent: ${agent.id}`, { configType: outputIntegration.config_type, agentId: agent.id, userId });
                 return;
             }
 
@@ -220,7 +220,7 @@ export async function initializeRealtimeSocket(server: HttpServer): Promise<Serv
                     user
                 );
             } catch (error) {
-                logger.error(`[channel:chat:message] Failed to create session`, { error, channelId: channel.id, userId });
+                logger.error(`[channel:chat:message] Failed to create session`, { error, agentId: agent.id, userId });
                 return;
             }
 
@@ -238,14 +238,14 @@ export async function initializeRealtimeSocket(server: HttpServer): Promise<Serv
                 message: userMessage,
             };
             const userMessageEventId = await storeChatEvent(runId, userMessageEvent);
-            emitCacheInvalidationWithWildcard(user.id, 'runHistory', channel.id);
+            emitCacheInvalidationWithWildcard(user.id, 'runHistory', agent.id);
             emitCacheInvalidationWithWildcard(user.id, 'chatHistory', runId);
 
-            // Create knowledge bases from channel configuration
-            const { knowledgeBases, channelConfigs } = createKnowledgeBases(channel.knowledge_bases || []);
+            // Create knowledge bases from agent configuration
+            const { knowledgeBases, agentConfigs } = createKnowledgeBases(agent.knowledge_bases || []);
 
             const runContext: RunContext = { runId };
-            const channelAgent = new ChannelAgent(session, output, knowledgeBases, channelConfigs, channel, runContext);
+            const channelAgent = new ChannelAgent(session, output, knowledgeBases, agentConfigs, agent, runContext);
             await channelAgent.initializeAgent();
             
             let result;
@@ -253,16 +253,16 @@ export async function initializeRealtimeSocket(server: HttpServer): Promise<Serv
                 result = await channelAgent.userMessageRun(userMessage, {
                     runId,
                     userId: userId,
-                    channelId: channel.id,
+                    agentId: agent.id,
                 });
             } catch (error) {
                 // Log the error and update run history
                 const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-                logger.error(`[channel:chat:message] Error running channel agent: ${errorMessage}`, { error, runId, channelId: channel.id, userId });
+                logger.error(`[channel:chat:message] Error running agent: ${errorMessage}`, { error, runId, agentId: agent.id, userId });
                 
                 try {
                     await markRunFailed(runId, errorMessage, 'agent');
-                    emitCacheInvalidationWithWildcard(userId, 'runHistory', channel.id);
+                    emitCacheInvalidationWithWildcard(userId, 'runHistory', agent.id);
                 } catch (e) {
                     logger.error('Failed to mark run as failed', { error: e, runId });
                 }
@@ -274,14 +274,14 @@ export async function initializeRealtimeSocket(server: HttpServer): Promise<Serv
                 const hasFinalOutput = Boolean(result.result?.finalOutput);
                 try {
                     await finalizeRunStatus(runId, hasFinalOutput ? 'success' : 'failed');
-                    emitCacheInvalidationWithWildcard(userId, 'runHistory', channel.id);
+                    emitCacheInvalidationWithWildcard(userId, 'runHistory', agent.id);
                 } catch (e) {
                     logger.error('Failed to finalize run status', { error: e, runId });
                 }
             }
 
             directiveTaskQueue.emit(new DirectiveTask(
-                channel.id,
+                agent.id,
                 runId,
                 userMessageEventId,
                 userId,

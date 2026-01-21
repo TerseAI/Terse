@@ -2,7 +2,7 @@ import { Integration, OAuthIntegrationInstallation, ConfigurationFieldDefinition
 import { db } from "../prismaClient";
 import { AtlassianIntegration, AtlassianIntegrationMetadata } from "../shared/Integrations";
 import { IntegrationType, InstallationOptionsFor, AdditionalStateParams } from "../shared/Integrations";
-import { ChannelInputWithConfigs } from "../types/prisma";
+import { AgentInputWithConfigs } from "../types/prisma";
 import { OAuthInstallationDetails } from "../shared/types";
 import jwt from "jsonwebtoken";
 import { settings } from "../config/settings";
@@ -476,7 +476,7 @@ export class AtlassianIntegrationManager implements Integration<AtlassianIntegra
         }
     }
 
-    async setupChannelInput(integrationId: string, automationInput: ChannelInputWithConfigs): Promise<void> {
+    async setupAgentInput(integrationId: string, agentInput: AgentInputWithConfigs): Promise<void> {
         try {
             // Get the integration
             const integration = await db().atlassian_integrations.findUnique({
@@ -645,7 +645,7 @@ export class AtlassianIntegrationManager implements Integration<AtlassianIntegra
         }
     }
 
-    async teardownChannelInput(integrationId: string, automationInput: ChannelInputWithConfigs): Promise<void> {
+    async teardownAgentInput(integrationId: string, agentInput: AgentInputWithConfigs): Promise<void> {
         try {
             // Get the integration
             const integration = await db().atlassian_integrations.findUnique({
@@ -657,13 +657,13 @@ export class AtlassianIntegrationManager implements Integration<AtlassianIntegra
                 return;
             }
 
-            // Check if there are other automations using this integration
-            // Query for automations with this integration_id, excluding the current automation
+            // Check if there are other agents using this integration
+            // Query for agents with this integration_id, excluding the current agent
             const otherAutomations = await db().automation_inputs.findMany({
                 where: {
                     integration_id: integrationId,
                     automation_id: {
-                        not: automationInput.automation_id,
+                        not: agentInput.automation_id,
                     },
                     config_type: InputConfigType.JIRA,
                 },
@@ -963,7 +963,7 @@ export class JiraEvent extends InputEvent {
         this.integrationId = integrationId;
     }
 
-    formatForChannelAgent(): string {
+    formatForAgent(): string {
         const indentMultiline = (text: string): string =>
             text
                 .split('\n')
@@ -1064,15 +1064,15 @@ export class JiraEvent extends InputEvent {
         return `Jira ${this.data.webhookEvent}`;
     }
 
-    matchesChannelInput(automationInput: ChannelInputWithConfigs): boolean {
-        logger.debug(`Checking if Jira event matches automation input: ${automationInput.config_type}`, { configType: automationInput.config_type });
+    matchesAgentInput(agentInput: AgentInputWithConfigs): boolean {
+        logger.debug(`Checking if Jira event matches agent trigger: ${agentInput.config_type}`, { configType: agentInput.config_type });
         // Check if integration type matches
-        if (automationInput.config_type !== InputConfigType.JIRA) {
+        if (agentInput.config_type !== InputConfigType.JIRA) {
             return false;
         }
 
         // Get the Jira config if it exists
-        const jiraConfig = automationInput.jira_config;
+        const jiraConfig = agentInput.jira_config;
 
         // If no project filter is configured, match all Jira events
         if (!jiraConfig || (!jiraConfig.project_key && !jiraConfig.project_id)) {

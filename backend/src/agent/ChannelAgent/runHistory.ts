@@ -10,14 +10,14 @@ import { RunHistoryActionType } from "../../types/prisma";
 export type RunTrigger = RunHistoryTrigger;
 
 export async function createRunRecord(params: {
-    channelId: string;
+    agentId: string;
     trigger: RunTrigger;
 }): Promise<string> {
-    const { channelId, trigger } = params;
+    const { agentId, trigger } = params;
     const prisma = db();
     const record = await prisma.run_history_records.create({
         data: {
-            automation_id: channelId, // Database column is still automation_id
+            automation_id: agentId, // Database column is still automation_id
             event: trigger.event,
             trigger_integration: convertIntegrationTypeToPrismaIntegrationTypeForRunHistory(trigger.integration),
             trigger_source: trigger.source,

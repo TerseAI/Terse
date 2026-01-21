@@ -1,6 +1,6 @@
 import chalk from 'chalk';
 import { db } from '../../prismaClient';
-import { Channel, ChannelWithRelations, User, ChannelKnowledgeBaseWithConfigs } from '../../types/prisma';
+import { Agent as PrismaAgent, AgentWithRelations, User, AgentKnowledgeBaseWithConfigs } from '../../types/prisma';
 import { InputEvent } from '../../integrations/abstract/InputEvent';
 import { OutputFactory } from '../../outputs/abstract/OutputFactory';
 import { ChannelAgent, SessionWithTracking } from './ChannelAgent';
@@ -18,19 +18,19 @@ import { RunHistoryAction } from '../../shared/RunHistoryTypes';
 import { RunContext } from './SystemPromptBuilder';
 import logger from '../../logger';
 
-// The job of this class is to take an Input Event, and check if it's a match for an Channel.
-// It will then create a Session, and summon the Channel Agent with the create user data.
+// The job of this class is to take an Input Event, and check if it's a match for an Agent.
+// It will then create a Session, and summon the Agent with the create user data.
 
 export class ProcessorResult<T extends Session = SessionWithTracking<Session>> {
     success: boolean;
     message: string;
-    channel: Channel | null;
+    agent: PrismaAgent | null;
     approvalResult?: ApprovalResult<SessionWithTracking<T>, Agent<SessionWithTracking<T>, AgentOutputType>> | null;
 
-    constructor(success: boolean, message: string, channel: Channel | null, approvalResult?: ApprovalResult<SessionWithTracking<T>, Agent<SessionWithTracking<T>, AgentOutputType>> | null) {
+    constructor(success: boolean, message: string, agent: PrismaAgent | null, approvalResult?: ApprovalResult<SessionWithTracking<T>, Agent<SessionWithTracking<T>, AgentOutputType>> | null) {
         this.success = success;
         this.message = message;
-        this.channel = channel;
+        this.agent = agent;
         this.approvalResult = approvalResult;
     }
 }
@@ -52,8 +52,8 @@ export class EventProcessor {
         // Get integration type from event itself (no hardcoded checks)
         const integrationType = this.inputEvent.integrationType;
 
-        // Find all active channels for this user (already includes all config relations)
-        const channels: ChannelWithRelations[] = await db().automations.findMany({
+        // Find all active agents for this user (already includes all config relations)
+        const agents: AgentWithRelations[] = await db().automations.findMany({
             where: {
                 user_id: this.user.id,
                 is_active: true,
@@ -72,33 +72,33 @@ export class EventProcessor {
             }
         })
 
-        if (channels.length === 0) {
-            return [new ProcessorResult(false, "No channels found for this user", null)];
+        if (agents.length === 0) {
+            return [new ProcessorResult(false, "No agents found for this user", null)];
         }
 
-        // Filter channels using event's own filtering method
+        // Filter agents using event's own filtering method
         // Each event type handles its own matching logic (no switch statements)
-        const matchingChannels = channels.filter(channel =>
-            channel.inputs.some(input => this.inputEvent.matchesChannelInput(input))
+        const matchingAgents = agents.filter(agent =>
+            agent.inputs.some(input => this.inputEvent.matchesAgentInput(input))
         );
 
-        if (matchingChannels.length === 0) {
-            return [new ProcessorResult(false, `No channels match this ${integrationType} event`, null)];
+        if (matchingAgents.length === 0) {
+            return [new ProcessorResult(false, `No agents match this ${integrationType} event`, null)];
         }
 
-        logger.info(`Found ${matchingChannels.length} matching channel(s) for ${integrationType} event`);
+        logger.info(`Found ${matchingAgents.length} matching agent(s) for ${integrationType} event`);
 
-        // Process each matching channel
-        for (const channel of matchingChannels) {
+        // Process each matching agent
+        for (const agent of matchingAgents) {
             try {
-                const result = await this.processChannel(channel);
+                const result = await this.processAgent(agent);
                 results.push(result);
             } catch (error) {
-                logger.error(`Error processing channel ${channel.id}`, { error, channelId: channel.id, channelName: channel.name });
+                logger.error(`Error processing agent ${agent.id}`, { error, agentId: agent.id, agentName: agent.name });
                 results.push(new ProcessorResult(
                     false,
-                    `Error processing channel: ${error instanceof Error ? error.message : 'Unknown error'}`,
-                    channel
+                    `Error processing agent: ${error instanceof Error ? error.message : 'Unknown error'}`,
+                    agent
                 ));
             }
         }
@@ -107,54 +107,54 @@ export class EventProcessor {
     }
 
     private createKnowledgeBases(
-        channelKnowledgeBases: ChannelWithRelations['knowledge_bases']
-    ): { knowledgeBases: KnowledgeBase<Session, ConfigInstance>[]; channelConfigs: ChannelKnowledgeBaseWithConfigs[] } {
-        if (!channelKnowledgeBases || channelKnowledgeBases.length === 0) {
-            return { knowledgeBases: [], channelConfigs: [] };
+        agentKnowledgeBases: AgentWithRelations['knowledge_bases']
+    ): { knowledgeBases: KnowledgeBase<Session, ConfigInstance>[]; agentConfigs: AgentKnowledgeBaseWithConfigs[] } {
+        if (!agentKnowledgeBases || agentKnowledgeBases.length === 0) {
+            return { knowledgeBases: [], agentConfigs: [] };
         }
 
-        // Create knowledge base instances and maintain pairing with channel configs
+        // Create knowledge base instances and maintain pairing with agent configs
         const knowledgeBases: KnowledgeBase<Session, ConfigInstance>[] = [];
-        const channelConfigs: ChannelKnowledgeBaseWithConfigs[] = [];
+        const agentConfigs: AgentKnowledgeBaseWithConfigs[] = [];
         
-        for (const channelKnowledgeBase of channelKnowledgeBases) {
-            const kb = KnowledgeBaseFactory.createKnowledgeBase(channelKnowledgeBase.config_type);
+        for (const agentKnowledgeBase of agentKnowledgeBases) {
+            const kb = KnowledgeBaseFactory.createKnowledgeBase(agentKnowledgeBase.config_type);
             if (kb) {
                 knowledgeBases.push(kb);
-                channelConfigs.push(channelKnowledgeBase as ChannelKnowledgeBaseWithConfigs);
+                agentConfigs.push(agentKnowledgeBase as AgentKnowledgeBaseWithConfigs);
             }
         }
         
-        return { knowledgeBases, channelConfigs };
+        return { knowledgeBases, agentConfigs };
     }
 
-    private async processChannel(channel: ChannelWithRelations): Promise<ProcessorResult> {
-        logger.info(`Processing channel: ${channel.name} (${channel.id})`);
+    private async processAgent(agent: AgentWithRelations): Promise<ProcessorResult> {
+        logger.info(`Processing agent: ${agent.name} (${agent.id})`);
 
-        if (!channel.prompt) {
-            return new ProcessorResult(false, "No prompt found for this channel", channel);
+        if (!agent.prompt) {
+            return new ProcessorResult(false, "No prompt found for this agent", agent);
         }
 
         // Initialize run history record with trigger details
         const trigger = this.inputEvent.createTriggerMetadata();
         const runId = await createRunRecord({
-            channelId: channel.id,
+            agentId: agent.id,
             trigger,
         });
-        emitCacheInvalidationWithWildcard(this.user.id, 'runHistory', channel.id);
-        emitCacheInvalidationWithKey(this.user.id, 'recentChannels');
+        emitCacheInvalidationWithWildcard(this.user.id, 'runHistory', agent.id);
+        emitCacheInvalidationWithKey(this.user.id, 'recentAgents');
 
-        // Get the output from channel relations (already fetched with config)
-        const outputIntegration = channel.output;
+        // Get the output from agent relations (already fetched with config)
+        const outputIntegration = agent.output;
 
         if (!outputIntegration) {
-            return new ProcessorResult(false, "No output integration found for this channel", channel);
+            return new ProcessorResult(false, "No output integration found for this agent", agent);
         }
 
         // Use OutputFactory to create output based on config type (no hardcoded Notion logic)
         const output = OutputFactory.createOutput(outputIntegration.config_type);
         if (!output) {
-            return new ProcessorResult(false, `Output type ${outputIntegration.config_type} is not supported`, channel);
+            return new ProcessorResult(false, `Output type ${outputIntegration.config_type} is not supported`, agent);
         }
 
         // Use output's config-aware session creation (no hardcoded config extraction)
@@ -170,20 +170,20 @@ export class EventProcessor {
             return new ProcessorResult(
                 false,
                 `Failed to create session: ${error instanceof Error ? error.message : 'Unknown error'}`,
-                channel
+                agent
             );
         }
 
-        // Filter the event using AI to see if it's relevant to this channel
+        // Filter the event using AI to see if it's relevant to this agent
         let filterResult;
         try {
             const filterResponse = await filterEvent(
                 this.inputEvent,
-                channel.prompt,
+                agent.prompt,
                 {
                     runId,
                     userId: this.user.id,
-                    channelId: channel.id,
+                    agentId: agent.id,
                 }
             );
 
@@ -191,68 +191,68 @@ export class EventProcessor {
         } catch (error) {
             // Log the error and update run history
             const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-            logger.error(`Error filtering event for channel "${channel.name}"`, { error, channelId: channel.id, channelName: channel.name, runId });
+            logger.error(`Error filtering event for agent "${agent.name}"`, { error, agentId: agent.id, agentName: agent.name, runId });
 
             try {
                 await markRunFailed(runId, errorMessage, 'filter');
-                emitCacheInvalidationWithWildcard(this.user.id, 'runHistory', channel.id);
+                emitCacheInvalidationWithWildcard(this.user.id, 'runHistory', agent.id);
             } catch (e) {
-                logger.error('Failed to mark run as failed', { error: e, runId, channelId: channel.id });
+                logger.error('Failed to mark run as failed', { error: e, runId, agentId: agent.id });
             }
 
             return new ProcessorResult(
                 false,
                 `Error during filtering: ${errorMessage}`,
-                channel
+                agent
             );
         }
 
         if (!filterResult.isRelevant) {
-            logger.info(`Event is not relevant to channel "${channel.name}": ${filterResult.reason}`);
+            logger.info(`Event is not relevant to agent "${agent.name}": ${filterResult.reason}`);
             try {
                 await markRunSkipped(runId, filterResult.reason);
                 // Emit cache invalidation to update UI
-                emitCacheInvalidationWithWildcard(this.user.id, 'runHistory', channel.id);
+                emitCacheInvalidationWithWildcard(this.user.id, 'runHistory', agent.id);
             } catch (e) {
-                logger.error('Failed to mark run skipped', { error: e, runId, channelId: channel.id });
+                logger.error('Failed to mark run skipped', { error: e, runId, agentId: agent.id });
             }
-            return new ProcessorResult(false, `Not relevant: ${filterResult.reason}`, channel);
+            return new ProcessorResult(false, `Not relevant: ${filterResult.reason}`, agent);
         }
 
         try {
             await markRunProcessed(runId, filterResult.reason);
         } catch (e) {
-            logger.error('Failed to mark run processed', { error: e, runId, channelId: channel.id });
+            logger.error('Failed to mark run processed', { error: e, runId, agentId: agent.id });
         }
 
-        logger.info(`Event is relevant to channel "${channel.name}"`);
+        logger.info(`Event is relevant to agent "${agent.name}"`);
 
-        // Create knowledge bases from channel configuration
-        const { knowledgeBases, channelConfigs } = this.createKnowledgeBases(channel.knowledge_bases || []);
+        // Create knowledge bases from agent configuration
+        const { knowledgeBases, agentConfigs } = this.createKnowledgeBases(agent.knowledge_bases || []);
 
-        // Create channel agent with the session and output
+        // Create agent with the session and output
         const runContext: RunContext = { runId };
-        const channelAgent = new ChannelAgent(session, output, knowledgeBases, channelConfigs, channel, runContext);
+        const channelAgent = new ChannelAgent(session, output, knowledgeBases, agentConfigs, agent, runContext);
         channelAgent.setInputEvent(this.inputEvent);
 
-        // Run the channel agent with streaming parameters
+        // Run the agent with streaming parameters
         let result: ApprovalResult<SessionWithTracking<Session>, Agent<SessionWithTracking<Session>, AgentOutputType>>;
         try {
             result = await channelAgent.run({
                 runId,
                 userId: this.user.id,
-                channelId: channel.id,
+                agentId: agent.id,
             });
         } catch (error) {
             // Log the error and update run history
             const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-            logger.error(`Error running channel agent for "${channel.name}"`, { error, channelId: channel.id, channelName: channel.name, runId });
+            logger.error(`Error running agent for "${agent.name}"`, { error, agentId: agent.id, agentName: agent.name, runId });
 
             try {
                 await markRunFailed(runId, errorMessage, 'agent');
-                emitCacheInvalidationWithWildcard(this.user.id, 'runHistory', channel.id);
+                emitCacheInvalidationWithWildcard(this.user.id, 'runHistory', agent.id);
             } catch (e) {
-                logger.error('Failed to mark run as failed', { error, runId, channelId: channel.id });
+                logger.error('Failed to mark run as failed', { error, runId, agentId: agent.id });
             }
 
             // Re-throw to be caught by outer try-catch
@@ -260,11 +260,11 @@ export class EventProcessor {
         }
 
         if (result.status === 'completed') {
-            logger.info(`Channel "${channel.name}" completed:`, { finalOutput: result.result.finalOutput });
-            return persistRunResult(runId, result.result, session, channel, result);
+            logger.info(`Agent "${agent.name}" completed:`, { finalOutput: result.result.finalOutput });
+            return persistRunResult(runId, result.result, session, agent, result);
         } else {
-            logger.info(`Channel "${channel.name}" awaiting approval:`);
-            return new ProcessorResult<SessionWithTracking<Session>>(false, "Channel awaiting approval", channel, result);
+            logger.info(`Agent "${agent.name}" awaiting approval:`);
+            return new ProcessorResult<SessionWithTracking<Session>>(false, "Agent awaiting approval", agent, result);
         }
     }
 }
@@ -273,41 +273,41 @@ async function persistRunResult<T extends Session>(
     runId: string,
     result: RunResult<SessionWithTracking<T>, Agent<SessionWithTracking<T>, AgentOutputType>>,
     session: T,
-    channel: Channel,
+    agent: PrismaAgent,
     approvalResult?: ApprovalResult<SessionWithTracking<T>, Agent<SessionWithTracking<T>, AgentOutputType>> | null
 ): Promise<ProcessorResult<SessionWithTracking<T>>> {
     // Finalize run status
     const hasFinalOutput = Boolean(result.finalOutput);
     try {
         await finalizeRunStatus(runId, hasFinalOutput ? 'success' : 'failed');
-        // Invalidate all run history queries for this channel when status changes
-        emitCacheInvalidationWithWildcard(session.user.id, 'runHistory', channel.id);
+        // Invalidate all run history queries for this agent when status changes
+        emitCacheInvalidationWithWildcard(session.user.id, 'runHistory', agent.id);
     } catch (e) {
-        logger.error('Failed to finalize run status', { error: e, runId, channelId: channel.id });
+        logger.error('Failed to finalize run status', { error: e, runId, agentId: agent.id });
     }
 
     const finalOutput = typeof result.finalOutput === 'string' ? result.finalOutput : '';
     return new ProcessorResult<SessionWithTracking<T>>(
         hasFinalOutput,
         finalOutput,
-        channel,
+        agent,
         approvalResult
     );
 }
 
 export async function persistRunAction<T extends Session>(
     runId: string,
-    channel: Channel,
+    agent: PrismaAgent,
     session: T,
     action: RunHistoryAction,
 ): Promise<string | undefined> {
     try {
         const actionId = await appendRunAction(runId, action);
-        emitCacheInvalidationWithWildcard(session.user.id, 'runHistory', channel.id);
+        emitCacheInvalidationWithWildcard(session.user.id, 'runHistory', agent.id);
         emitCacheInvalidationWithKey(session.user.id, 'recentActions');
         return actionId;
     } catch (e) {
-        logger.error('Failed to append run action', { error: e, runId, channelId: channel.id });
+        logger.error('Failed to append run action', { error: e, runId, agentId: agent.id });
     }
     return undefined;
 }

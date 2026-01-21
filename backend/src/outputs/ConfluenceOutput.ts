@@ -1,5 +1,5 @@
 import { AtlassianIntegration, IntegrationType } from "../shared/Integrations";
-import { ChannelOutput, User, ChannelConfluenceConfig, PrismaTransaction } from "../types/prisma";
+import { AgentOutput, User, AgentConfluenceConfig, PrismaTransaction } from "../types/prisma";
 import { Session } from "../server";
 import { Output, ToolboxEntry } from "./abstract/Output";
 import { db } from "../prismaClient";
@@ -16,7 +16,7 @@ import logger from "../logger";
 
 export interface ConfluenceSession extends Session {
     atlassianIntegration: AtlassianIntegration; // Top level integration record
-    confluenceConfig: ChannelConfluenceConfig; // Configuration for the Specific Confluence Database
+    confluenceConfig: AgentConfluenceConfig; // Configuration for the Specific Confluence Database
     apiToken: string; // API token stored separately (not in shared type for security)
     cloudId?: string; // Cloud ID for OAuth API gateway access
 }
@@ -32,7 +32,7 @@ export class ConfluenceOutput extends Output<ConfluenceSession, ConfluenceConfig
 
     async createSessionFromConfig(
         integrationId: string,
-        channelOutputConfig: ChannelOutput,
+        agentOutputConfig: AgentOutput,
         user: User
     ): Promise<ConfluenceSession> {
         // Fetch OAuth integration
@@ -46,11 +46,11 @@ export class ConfluenceOutput extends Output<ConfluenceSession, ConfluenceConfig
 
         // Fetch Confluence configuration
         const confluenceConfig = await db().automation_confluence_configs.findFirst({
-            where: { automation_output_id: channelOutputConfig.id }
+            where: { automation_output_id: agentOutputConfig.id }
         });
 
         if (!confluenceConfig) {
-            throw new Error(`Confluence config for automation output ${channelOutputConfig.id} not found`);
+            throw new Error(`Confluence config for automation output ${agentOutputConfig.id} not found`);
         }
 
         // Build Atlassian integration object
@@ -76,10 +76,10 @@ export class ConfluenceOutput extends Output<ConfluenceSession, ConfluenceConfig
         }
     }
 
-    async addOutputToChannel(tx: PrismaTransaction, channelOutputId: string, output: ConfluenceConfig): Promise<void> {
+    async addOutputToAgent(tx: PrismaTransaction, agentOutputId: string, output: ConfluenceConfig): Promise<void> {
         await tx.automation_confluence_configs.create({
             data: {
-                automation_output_id: channelOutputId,
+                automation_output_id: agentOutputId,
                 space_name: output.spaceName,
                 space_id: output.spaceId,
                 page_id: output.pageId,

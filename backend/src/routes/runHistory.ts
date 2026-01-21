@@ -67,7 +67,7 @@ export async function getRunHistory(req: Request, res: Response) {
     // Transform Prisma rows (snake_case) to API format (camelCase)
     const items: RunHistoryRecord[] = rows.map((runRecord: RunHistoryRecordWithActions) => ({
       id: runRecord.id,
-      channelId: runRecord.automation_id, // Database column is automation_id, but API uses channelId
+      agentId: runRecord.automation_id, // Database column is automation_id, but API uses agentId
       timestamp: runRecord.timestamp.toISOString(),
       trigger: {
         event: runRecord.event,

@@ -1,6 +1,6 @@
 
 import { Tool } from "@openai/agents";
-import { ChannelNotionPageConfig, ChannelOutput, NotionIntegration, PrismaTransaction, User } from "../../types/prisma";
+import { AgentNotionPageConfig, AgentOutput, NotionIntegration, PrismaTransaction, User } from "../../types/prisma";
 import { Session } from "../../server";
 import { Output, ToolboxEntry } from "../abstract/Output";
 import { db } from "../../prismaClient";
@@ -11,7 +11,7 @@ import { IntegrationType } from "../../shared/Integrations";
 
 export interface NotionPageSession extends Session {
     notionIntegration: NotionIntegration; // Top level integration record
-    notionPageConfig: ChannelNotionPageConfig; // Configuration for the Specific Notion Page
+    notionPageConfig: AgentNotionPageConfig; // Configuration for the Specific Notion Page
 }
 
 export class NotionPageOutput extends Output<NotionPageSession, NotionPageConfig> {
@@ -26,7 +26,7 @@ export class NotionPageOutput extends Output<NotionPageSession, NotionPageConfig
 
     async createSessionFromConfig(
         integrationId: string,
-        channelOutputConfig: ChannelOutput,
+        agentOutputConfig: AgentOutput,
         user: User
     ): Promise<NotionPageSession> {
         const integration = await db().notion_integrations.findFirst({
@@ -37,12 +37,12 @@ export class NotionPageOutput extends Output<NotionPageSession, NotionPageConfig
             throw new Error(`Notion integration ${integrationId} not found`);
         }
 
-        const notionPageConfig: ChannelNotionPageConfig | null = await db().automation_notion_page_configs.findFirst({
-            where: { automation_output_id: channelOutputConfig.id }
+        const notionPageConfig: AgentNotionPageConfig | null = await db().automation_notion_page_configs.findFirst({
+            where: { automation_output_id: agentOutputConfig.id }
         });
 
         if (!notionPageConfig) {
-            throw new Error(`Notion page config for automation output ${channelOutputConfig.id} not found`);
+            throw new Error(`Notion page config for automation output ${agentOutputConfig.id} not found`);
         }
 
         return { notionIntegration: integration, notionPageConfig: notionPageConfig, user: user, isUserInitiated: true };
@@ -54,10 +54,10 @@ export class NotionPageOutput extends Output<NotionPageSession, NotionPageConfig
         }
     }
 
-    async addOutputToChannel(tx: PrismaTransaction, channelOutputId: string, output: NotionPageConfig): Promise<void> {
+    async addOutputToAgent(tx: PrismaTransaction, agentOutputId: string, output: NotionPageConfig): Promise<void> {
         await tx.automation_notion_page_configs.create({
             data: {
-                automation_output_id: channelOutputId,
+                automation_output_id: agentOutputId,
                 page_id: output.pageId || '',
                 page_name: output.pageName || '',
             },

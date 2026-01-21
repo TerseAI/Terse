@@ -1,5 +1,5 @@
 import { Tool } from "@openai/agents";
-import { ChannelOutput, ChannelJiraConfig, PrismaTransaction, User } from "../../types/prisma";
+import { AgentOutput, AgentJiraConfig, PrismaTransaction, User } from "../../types/prisma";
 import { Session } from "../../server";
 import { Output, ToolboxEntry } from "../abstract/Output";
 import { db } from "../../prismaClient";
@@ -12,7 +12,7 @@ import { jiraCreateTicketTool } from "./tools/createTicket";
 
 export interface JiraTicketSession extends Session {
     jiraIntegration: AtlassianIntegration; // Top level integration record
-    jiraConfig: ChannelJiraConfig; // Configuration for the Specific Jira Ticket
+    jiraConfig: AgentJiraConfig; // Configuration for the Specific Jira Ticket
 }
 
 export class JiraTicketOutput extends Output<JiraTicketSession, JiraConfig> {
@@ -27,7 +27,7 @@ export class JiraTicketOutput extends Output<JiraTicketSession, JiraConfig> {
 
     async createSessionFromConfig(
         integrationId: string,
-        channelOutputConfig: ChannelOutput,
+        agentOutputConfig: AgentOutput,
         user: User
     ): Promise<JiraTicketSession> {
         const integration = await db().atlassian_integrations.findFirst({
@@ -39,11 +39,11 @@ export class JiraTicketOutput extends Output<JiraTicketSession, JiraConfig> {
         }
 
         const jiraConfigRecord = await db().automation_jira_configs.findFirst({
-            where: { automation_output_id: channelOutputConfig.id }
+            where: { automation_output_id: agentOutputConfig.id }
         });
 
         if (!jiraConfigRecord) {
-            throw new Error(`Jira config for automation output ${channelOutputConfig.id} not found`);
+            throw new Error(`Jira config for automation output ${agentOutputConfig.id} not found`);
         }
 
         return { 
@@ -63,10 +63,10 @@ export class JiraTicketOutput extends Output<JiraTicketSession, JiraConfig> {
         // No additional config validation beyond integration ownership.
     }
 
-    async addOutputToChannel(tx: PrismaTransaction, channelOutputId: string, output: JiraConfig): Promise<void> {
+    async addOutputToAgent(tx: PrismaTransaction, agentOutputId: string, output: JiraConfig): Promise<void> {
         await tx.automation_jira_configs.create({
             data: {
-                automation_output_id: channelOutputId,
+                automation_output_id: agentOutputId,
                 project_key: output.projectKey || null,
                 project_id: output.projectId || null,
             },

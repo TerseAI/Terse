@@ -46,7 +46,7 @@ Do not include any markdown formatting, code blocks, or explanations. Only retur
 export async function generateApprovalSummary(
     runId: string,
     userId: string,
-    channelId: string,
+    agentId: string,
     stepId: string
 ): Promise<ApprovalSummaryClassificationType> {
     const prisma = db();
@@ -154,7 +154,7 @@ Return the single-sentence "I'm going to ..." approvalSummary.`;
     const runner = runnerFactory({
         runId: runId,
         userId: userId,
-        channelId: channelId,
+        agentId: agentId,
         env: settings.nodeEnv,
     });
     const result = await runner.run(approvalSummaryAgent, [{ role: 'user', content: userPrompt }], {

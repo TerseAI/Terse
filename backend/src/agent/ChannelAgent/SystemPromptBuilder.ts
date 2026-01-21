@@ -1,5 +1,5 @@
 import { Session } from '../../server';
-import { ChannelWithRelations } from '../../types/prisma';
+import { AgentWithRelations } from '../../types/prisma';
 import { Output } from '../../outputs/abstract/Output';
 import { ConfigInstance } from '../../shared/Configs';
 import { db } from '../../prismaClient';
@@ -18,7 +18,7 @@ export interface RunContext {
 
 export interface SystemPromptBuilderDependencies<T extends Session, TConfig extends ConfigInstance, K extends Session, KBConfig extends ConfigInstance> {
     session: T;
-    channel: ChannelWithRelations;
+    agent: AgentWithRelations;
     output: Output<T, TConfig>;
     knowledgeBases?: KnowledgeBase<K, KBConfig>[];
     knowledgeBaseSessions?: K[];
@@ -185,7 +185,7 @@ This is event #${eventPosition} processed by this automation.`
         const prisma = db();
         const directives = await prisma.directive_records.findMany({
             where: {
-                automation_id: this.deps.channel.id,
+                automation_id: this.deps.agent.id,
                 is_active: true,
             },
             orderBy: {
@@ -214,12 +214,12 @@ Follow these directives in addition to the USER INSTRUCTIONS provided in each me
 
     private buildDeepLinkingSection(): Section {
         const frontendUrl = settings.urls.frontend;
-        const channelId = this.deps.channel.id;
+        const agentId = this.deps.agent.id;
         const runId = this.runContext.runId;
 
-        const channelLink = `${frontendUrl}/app/channels/${channelId}`;
-        const channelHistoryLink = `${frontendUrl}/app/channels/${channelId}?tab=history`;
-        const specificRunLink = `${frontendUrl}/app/channels/${channelId}?tab=history&runId=${runId}`;
+        const agentLink = `${frontendUrl}/app/channels/${agentId}`;
+        const agentHistoryLink = `${frontendUrl}/app/channels/${agentId}?tab=history`;
+        const specificRunLink = `${frontendUrl}/app/channels/${agentId}?tab=history&runId=${runId}`;
 
         return {
             header: 'DEEP LINKING TO TERSE APPLICATION',
@@ -230,23 +230,23 @@ The base URL is automatically determined from the environment (localhost for dev
 
 AVAILABLE LINK TYPES:
 
-1. Channel Detail Page:
-   Format: ${frontendUrl}/app/channels/{channelId}
-   Example: ${channelLink}
-   Use when: Referencing a specific automation/channel
+1. Agent Detail Page:
+   Format: ${frontendUrl}/app/channels/{agentId}
+   Example: ${agentLink}
+   Use when: Referencing a specific agent
 
-2. Run History (Channel Activity Tab):
-   Format: ${frontendUrl}/app/channels/{channelId}?tab=history
-   Example: ${channelHistoryLink}
-   Use when: Directing users to view all runs for a channel
+2. Run History (Agent Activity Tab):
+   Format: ${frontendUrl}/app/channels/{agentId}?tab=history
+   Example: ${agentHistoryLink}
+   Use when: Directing users to view all runs for an agent
 
 3. Specific Run History:
-   Format: ${frontendUrl}/app/channels/{channelId}?tab=history&runId={runId}
+   Format: ${frontendUrl}/app/channels/{agentId}?tab=history&runId={runId}
    Example: ${specificRunLink}
    Use when: Referencing a specific run execution
 
 CURRENT CONTEXT:
-- Channel ID: ${channelId}
+- Agent ID: ${agentId}
 - Current Run ID: ${runId}
 
 When explicitly asked by the user, include these links in your responses to help users navigate to relevant parts of the application. For example, you might include a link to the current run's history when explaining what actions were taken, or link to the channel page when referencing the automation configuration.`
@@ -256,19 +256,19 @@ When explicitly asked by the user, include these links in your responses to help
     private async buildSimilarEventsSection(inputEvent: InputEvent): Promise<Section | null> {
         try {
             // Extract searchable content from the current input event
-            const currentEventContent = inputEvent.formatForChannelAgent();
+            const currentEventContent = inputEvent.formatForAgent();
 
             if (!currentEventContent || !currentEventContent.trim()) {
                 return null;
             }
 
-            const channelId = this.deps.channel.id;
-            const runHistoryMemory = new RunHistoryMemory(this.deps.channel.user_id);
+            const agentId = this.deps.agent.id;
+            const runHistoryMemory = new RunHistoryMemory(this.deps.agent.user_id);
 
             // Find similar past input events (top 5)
             const similarEvents = await runHistoryMemory.findSimilarInputEvents(
                 currentEventContent,
-                channelId,
+                agentId,
                 5
             );
 
@@ -282,14 +282,14 @@ When explicitly asked by the user, include these links in your responses to help
                     ? JSON.parse(event.raw_event_json) as AgentInputItem
                     : event.raw_event_json as AgentInputItem;
                 const content = extractConversationContent(rawEvent);
-                const eventChannelId = event.run_history_record?.automation?.id || channelId || 'N/A';
+                const eventAgentId = event.run_history_record?.automation?.id || agentId || 'N/A';
                 const date = event.created_at.toISOString().split('T')[0];
-                return { content, channelId: eventChannelId, date };
+                return { content, agentId: eventAgentId, date };
             });
 
             const similarEventsList = eventContents.map((event, index) => `
 ${index + 1}. ${event.content}
-   (Channel: ${event.channelId}, Date: ${event.date})
+   (Agent: ${event.agentId}, Date: ${event.date})
 `).join('\n');
 
             return {
@@ -301,7 +301,7 @@ ${similarEventsList}
 Use these examples as reference for understanding the user's intent and how similar requests were processed in the past.`
             };
         } catch (error) {
-            logger.error('Error fetching similar past input events', { error, channelId: this.deps.channel.id, runId: this.runContext.runId });
+            logger.error('Error fetching similar past input events', { error, agentId: this.deps.agent.id, runId: this.runContext.runId });
             // Return null to continue without similar events if there's an error
             return null;
         }

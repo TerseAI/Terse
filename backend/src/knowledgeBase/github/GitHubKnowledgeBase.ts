@@ -1,6 +1,6 @@
 import { Tool } from "@openai/agents";
 import { Session } from "../../server";
-import { ChannelKnowledgeBaseWithConfigs, PrismaTransaction, User } from "../../types/prisma";
+import { AgentKnowledgeBaseWithConfigs, PrismaTransaction, User } from "../../types/prisma";
 import { KnowledgeBaseConfigType } from "@prisma/client";
 import { GitHubKBConfig } from "../../shared/Configs";
 import { IntegrationType } from "../../shared/Integrations";
@@ -79,15 +79,15 @@ export class GitHubKnowledgeBase extends KnowledgeBase<GitHubKnowledgeBaseSessio
      */
     async createSessionFromConfig(
         integrationId: string,
-        channelKnowledgeBase: ChannelKnowledgeBaseWithConfigs,
+        agentKnowledgeBase: AgentKnowledgeBaseWithConfigs,
         user: User
     ): Promise<GitHubKnowledgeBaseSession> {
         // Load the GitHub KB config from the channel knowledge base
-        if (!channelKnowledgeBase.github_kb_config) {
+        if (!agentKnowledgeBase.github_kb_config) {
             throw new Error('GitHub KB config not found in channel knowledge base');
         }
 
-        const githubKBConfig = channelKnowledgeBase.github_kb_config;
+        const githubKBConfig = agentKnowledgeBase.github_kb_config;
 
         // Get the user's GitHub access token
         const accessToken = await getGitHubAccessToken(user.id);
@@ -130,10 +130,10 @@ export class GitHubKnowledgeBase extends KnowledgeBase<GitHubKnowledgeBaseSessio
         });
     }
 
-    async addKnowledgeBaseToChannel(tx: PrismaTransaction, channelKnowledgeBaseId: string, knowledgeBase: GitHubKBConfig): Promise<void> {
+    async addKnowledgeBaseToAgent(tx: PrismaTransaction, agentKnowledgeBaseId: string, knowledgeBase: GitHubKBConfig): Promise<void> {
         await tx.automation_github_kb_configs.create({
             data: {
-                automation_knowledge_base_id: channelKnowledgeBaseId,
+                automation_knowledge_base_id: agentKnowledgeBaseId,
                 repository_ids: knowledgeBase.repositoryIds,
                 repository_names: knowledgeBase.repositoryNames,
             }

@@ -74,13 +74,13 @@ export class StreamEventEmitter {
     private io: Server | null;
     private userRoom: string;
     private runId: string;
-    private channelId: string;
+    private agentId: string;
 
     constructor(io: Server | null, params: RunHistoryStreamingParams) {
         this.io = io;
         this.userRoom = `user:${params.userId}`;
         this.runId = params.runId!;
-        this.channelId = params.channelId!;
+        this.agentId = params.agentId!;
     }
 
     emitTextDelta(event: TextDeltaEvent, timestamp: string, eventId: string = ''): void {
@@ -94,7 +94,7 @@ export class StreamEventEmitter {
 
         const payload: RunHistoryModelSocketEvent = {
             runId: this.runId,
-            channelId: this.channelId,
+            agentId: this.agentId,
             runHistoryModelEvent,
         };
 
@@ -113,7 +113,7 @@ export class StreamEventEmitter {
 
             const payload: RunHistoryModelSocketEvent = {
                 runId: this.runId,
-                channelId: this.channelId,
+                agentId: this.agentId,
                 runHistoryModelEvent,
             };
             this.io.to(this.userRoom).emit('channel:chat:event', payload);
@@ -133,7 +133,7 @@ export async function processModelEventStream(
     const emitter = new StreamEventEmitter(options.io, {
         runId,
         userId: options.userId,
-        channelId: options.channelId,
+        agentId: options.agentId,
     });
 
     try {
@@ -149,7 +149,7 @@ export async function processModelEventStream(
         // Finalize any remaining steps at the end of the stream
         await aggregator.commitLastTextDeltaStep();
     } catch (error) {
-        logger.error('Error processing model event stream', { error, runId: options.runId, userId: options.userId, channelId: options.channelId });
+        logger.error('Error processing model event stream', { error, runId: options.runId, userId: options.userId, agentId: options.agentId });
     }
 }
 
@@ -186,6 +186,6 @@ type AccumulatedDelta = {
 export interface StreamProcessorOptions {
     runId: string;
     userId: string;
-    channelId: string;
+    agentId: string;
     io: Server | null;
 }

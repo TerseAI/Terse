@@ -2,7 +2,7 @@ import { FormFieldDefinition, FormIntegrationInstallation, FormSubmissionInput, 
 import { db } from "../prismaClient";
 import { DatadogIntegration, DatadogIntegrationMetadata } from "../shared/Integrations";
 import { IntegrationType } from "../shared/Integrations";
-import { ChannelInputWithConfigs } from "../types/prisma";
+import { AgentInputWithConfigs } from "../types/prisma";
 import logger from "../logger";
 import { getDatadogApiUrl } from "../utility/datadog";
 
@@ -81,11 +81,11 @@ export class DatadogIntegrationManager implements Integration<DatadogIntegration
         return Promise.resolve();
     }
 
-    async setupChannelInput(integrationId: string, automationInput: ChannelInputWithConfigs): Promise<void> {
+    async setupAgentInput(integrationId: string, agentInput: AgentInputWithConfigs): Promise<void> {
 
     }
 
-    async teardownChannelInput(integrationId: string, automationInput: ChannelInputWithConfigs): Promise<void> {
+    async teardownAgentInput(integrationId: string, agentInput: AgentInputWithConfigs): Promise<void> {
     }
 
     async processFormSubmission(input: FormSubmissionInput): Promise<FormSubmissionResult> {

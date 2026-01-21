@@ -1,5 +1,5 @@
 import { Session } from "../../server";
-import { ChannelKnowledgeBaseWithConfigs, PrismaTransaction, User } from "../../types/prisma";
+import { AgentKnowledgeBaseWithConfigs, PrismaTransaction, User } from "../../types/prisma";
 import { KnowledgeBaseConfigType } from "@prisma/client";
 import { DatadogConfig } from "../../shared/Configs";
 import { IntegrationType } from "../../shared/Integrations";
@@ -58,7 +58,7 @@ export class DatadogKnowledgeBase extends KnowledgeBase<DatadogKnowledgeBaseSess
      */
     async createSessionFromConfig(
         integrationId: string,
-        channelKnowledgeBase: ChannelKnowledgeBaseWithConfigs,
+        agentKnowledgeBase: AgentKnowledgeBaseWithConfigs,
         user: User
     ): Promise<DatadogKnowledgeBaseSession> {
         // Load the Datadog integration
@@ -70,12 +70,12 @@ export class DatadogKnowledgeBase extends KnowledgeBase<DatadogKnowledgeBaseSess
             throw new Error(`Datadog integration not found: ${integrationId}`);
         }
 
-        // Load the Datadog config from the channel knowledge base
-        if (!channelKnowledgeBase.datadog_config) {
-            throw new Error('Datadog config not found in channel knowledge base');
+        // Load the Datadog config from the agent knowledge base
+        if (!agentKnowledgeBase.datadog_config) {
+            throw new Error('Datadog config not found in agent knowledge base');
         }
 
-        const datadogConfig = channelKnowledgeBase.datadog_config;
+        const datadogConfig = agentKnowledgeBase.datadog_config;
 
         // Create the Datadog config instance
         const config = new DatadogConfig(
@@ -95,11 +95,11 @@ export class DatadogKnowledgeBase extends KnowledgeBase<DatadogKnowledgeBaseSess
         return session;
     }
 
-    async addKnowledgeBaseToChannel(tx: PrismaTransaction, channelKnowledgeBaseId: string, knowledgeBase: DatadogConfig): Promise<void> {
+    async addKnowledgeBaseToAgent(tx: PrismaTransaction, agentKnowledgeBaseId: string, knowledgeBase: DatadogConfig): Promise<void> {
         // Use unchecked input to bypass relation checks
         await tx.automation_datadog_configs.create({
             data: {
-                automation_knowledge_base_id: channelKnowledgeBaseId,
+                automation_knowledge_base_id: agentKnowledgeBaseId,
                 default_indexes: knowledgeBase.defaultIndexes && knowledgeBase.defaultIndexes.length > 0 
                     ? knowledgeBase.defaultIndexes 
                     : ["main"],

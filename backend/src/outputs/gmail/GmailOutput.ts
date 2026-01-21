@@ -1,5 +1,5 @@
 import { Tool } from "@openai/agents";
-import { ChannelOutput, PrismaTransaction, User, GmailIntegration } from "../../types/prisma";
+import { AgentOutput, PrismaTransaction, User, GmailIntegration } from "../../types/prisma";
 import { automation_gmail_configs } from "@prisma/client";
 import { Session } from "../../server";
 import { Output, ToolboxEntry } from "../abstract/Output";
@@ -24,7 +24,7 @@ export class GmailOutput extends Output<GmailSession, GmailOutputConfig> {
 
     async createSessionFromConfig(
         integrationId: string,
-        channelOutputConfig: ChannelOutput,
+        agentOutputConfig: AgentOutput,
         user: User
     ): Promise<GmailSession> {
         // For Gmail, integrationId is the gmail_integrations.id
@@ -41,11 +41,11 @@ export class GmailOutput extends Output<GmailSession, GmailOutputConfig> {
         }
 
         const gmailConfigRecord = await db().automation_gmail_configs.findFirst({
-            where: { automation_output_id: channelOutputConfig.id }
+            where: { automation_output_id: agentOutputConfig.id }
         });
 
         if (!gmailConfigRecord) {
-            throw new Error(`Gmail config for automation output ${channelOutputConfig.id} not found`);
+            throw new Error(`Gmail config for automation output ${agentOutputConfig.id} not found`);
         }
 
         return { 
@@ -62,10 +62,10 @@ export class GmailOutput extends Output<GmailSession, GmailOutputConfig> {
         }
     }
 
-    async addOutputToChannel(tx: PrismaTransaction, channelOutputId: string, _output: GmailOutputConfig): Promise<void> {
+    async addOutputToAgent(tx: PrismaTransaction, agentOutputId: string, _output: GmailOutputConfig): Promise<void> {
         await tx.automation_gmail_configs.create({
             data: {
-                automation_output_id: channelOutputId,
+                automation_output_id: agentOutputId,
             },
         });
     }

@@ -1,7 +1,7 @@
 import { Integration, OAuthIntegrationInstallation, ConfigurationFieldDefinition } from "./abstract/Integration";
 import crypto from "crypto";
 import { db } from "../prismaClient";
-import { ChannelInputWithConfigs, GmailIntegration as PrismaGmailIntegration, User } from "../types/prisma";
+import { AgentInputWithConfigs, GmailIntegration as PrismaGmailIntegration, User } from "../types/prisma";
 import { OAuthInstallationDetails } from "../shared/types";
 import { GmailIntegration, GmailIntegrationMetadata, IntegrationType, InstallationOptionsFor, AdditionalStateParams } from "../shared/Integrations";
 import { gmail_v1, google } from "googleapis";
@@ -164,10 +164,10 @@ export class GmailIntegrationManager implements Integration<GmailIntegration, Gm
                         let hasSuccess = false;
                         for (const result of results) {
                             if (result.success) {
-                                logger.info(`Email processed successfully by channel: ${result.channel?.name || 'unknown'}`, { channelName: result.channel?.name, integrationId: integration.id, messageId: parsedEmail.id });
+                                logger.info(`Email processed successfully by agent: ${result.agent?.name || 'unknown'}`, { agentName: result.agent?.name, integrationId: integration.id, messageId: parsedEmail.id });
                                 hasSuccess = true;
                             } else {
-                                logger.debug(`Channel "${result.channel?.name || 'unknown'}" skipped: ${result.message}`, { channelName: result.channel?.name, message: result.message, integrationId: integration.id });
+                                logger.debug(`Agent "${result.agent?.name || 'unknown'}" skipped: ${result.message}`, { agentName: result.agent?.name, message: result.message, integrationId: integration.id });
                             }
                         }
 
@@ -339,13 +339,13 @@ export class GmailIntegrationManager implements Integration<GmailIntegration, Gm
         return Promise.resolve();
     }
 
-    async setupChannelInput(integrationId: string, channelInput: ChannelInputWithConfigs): Promise<void> {
-        // Gmail doesn't require any setup for channel inputs
+    async setupAgentInput(integrationId: string, agentInput: AgentInputWithConfigs): Promise<void> {
+        // Gmail doesn't require any setup for agent triggers
         // Webhooks are managed at the integration level
     }
 
-    async teardownChannelInput(integrationId: string, channelInput: ChannelInputWithConfigs): Promise<void> {
-        // Gmail doesn't require any teardown for channel inputs
+    async teardownAgentInput(integrationId: string, agentInput: AgentInputWithConfigs): Promise<void> {
+        // Gmail doesn't require any teardown for agent triggers
         // Webhooks are managed at the integration level
     }
 
@@ -469,7 +469,7 @@ export class GmailEvent extends InputEvent {
         this.integrationId = integrationId;
     }
 
-    formatForChannelAgent(): string {
+    formatForAgent(): string {
         return `
         Incoming Email Event.
 
@@ -489,22 +489,22 @@ export class GmailEvent extends InputEvent {
         return `Gmail Event: ${this.data.subject} message ID: ${this.data.messageId}`;
     }
 
-    matchesChannelInput(channelInput: ChannelInputWithConfigs): boolean {
+    matchesAgentInput(agentInput: AgentInputWithConfigs): boolean {
         // Check if integration type matches
-        if (channelInput.config_type !== InputConfigType.GMAIL) {
+        if (agentInput.config_type !== InputConfigType.GMAIL) {
             return false;
         }
 
-        // If the event is not in the INBOX, it doesn't match the channel input
+        // If the event is not in the INBOX, it doesn't match the agent trigger
         if (!this.data.labelIds.includes('INBOX')) {
             logger.debug(`Skipping email ${this.data.messageId} because it is not in the INBOX with label ids: ${this.data.labelIds}`, { messageId: this.data.messageId, labelIds: this.data.labelIds });
             return false;
         }
 
-        // If integrationId is set, it must match the automation's integration_id
-        // This ensures automations are only triggered by emails from their configured integration
-        if (this.integrationId && channelInput.integration_id !== this.integrationId) {
-            logger.debug(`Skipping email ${this.data.messageId} - integration ID mismatch: event from ${this.integrationId}, channel expects ${channelInput.integration_id}`, { messageId: this.data.messageId, eventIntegrationId: this.integrationId, channelIntegrationId: channelInput.integration_id });
+        // If integrationId is set, it must match the agent's integration_id
+        // This ensures agents are only triggered by emails from their configured integration
+        if (this.integrationId && agentInput.integration_id !== this.integrationId) {
+            logger.debug(`Skipping email ${this.data.messageId} - integration ID mismatch: event from ${this.integrationId}, agent expects ${agentInput.integration_id}`, { messageId: this.data.messageId, eventIntegrationId: this.integrationId, agentIntegrationId: agentInput.integration_id });
             return false;
         }
 

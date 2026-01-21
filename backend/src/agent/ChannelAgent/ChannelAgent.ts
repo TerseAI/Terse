@@ -3,10 +3,10 @@ import { Session } from '../../server';
 import { SystemPromptBuilder, RunContext, SystemPromptBuilderDependencies } from './SystemPromptBuilder';
 import { InputEvent } from '../../integrations/abstract/InputEvent';
 import { Output } from '../../outputs/abstract/Output';
-import { ChannelInput, ChannelOutput, ChannelWithRelations } from '../../types/prisma';
+import { AgentInput, AgentOutput, AgentWithRelations } from '../../types/prisma';
 import { ConfigInstance } from '../../shared/Configs';
 import { settings } from '../../config/settings';
-import { formatChannelInputsForAgent, formatChannelOutputForAgent } from './formatContext';
+import { formatAgentInputsForAgent, formatAgentOutputForAgent } from './formatContext';
 import { UserFormatter } from '../../utility/UserFormatter';
 import { transformAgentStreamToModelEvents } from '../streaming';
 import { getRealtimeSocket } from '../../realtimeSocket';
@@ -24,7 +24,7 @@ import { persistOutputAttributions, removeOutputAttributions } from './persistOu
 import logger from '../../logger';
 import { RunHistoryActionType } from '@prisma/client';
 import { KnowledgeBase } from '../../knowledgeBase/abstract/KnowledgeBase';
-import { ChannelKnowledgeBaseWithConfigs } from '../../types/prisma';
+import { AgentKnowledgeBaseWithConfigs } from '../../types/prisma';
 
 // Types from @openai/agents SDK for content items
 type AgentInputText = protocol.InputText;
@@ -38,12 +38,12 @@ export class ChannelAgent<
 > {
     private session: T;
     private inputEvent: InputEvent | null = null;
-    private channel: ChannelWithRelations;
+    private agentConfig: AgentWithRelations;
     private output: Output<T, TConfig>;
     private knowledgeBases: KnowledgeBase<K, KBConfig>[];
-    private knowledgeBaseChannelConfigs: ChannelKnowledgeBaseWithConfigs[];
+    private knowledgeBaseAgentConfigs: AgentKnowledgeBaseWithConfigs[];
     private knowledgeBaseSessions: K[] = [];
-    private agent?: Agent<SessionWithTracking<T & K>, AgentOutputType>;
+    private openaiAgent?: Agent<SessionWithTracking<T & K>, AgentOutputType>;
     private tools: Tool<SessionWithTracking<T & K>>[] = [];
     private runContext: RunContext;
     private toolMetadataMap: Map<string, ToolMetadata> = new Map();
@@ -56,20 +56,20 @@ export class ChannelAgent<
         session: T,
         output: Output<T, TConfig>,
         knowledgeBases: KnowledgeBase<K, KBConfig>[],
-        knowledgeBaseChannelConfigs: ChannelKnowledgeBaseWithConfigs[],
-        channel: ChannelWithRelations,
+        knowledgeBaseAgentConfigs: AgentKnowledgeBaseWithConfigs[],
+        agent: AgentWithRelations,
         runContext: RunContext,
         maxTurns: number = 50
     ) {
-        if (knowledgeBases.length !== knowledgeBaseChannelConfigs.length) {
-            throw new Error(`Mismatch between knowledge base instances (${knowledgeBases.length}) and channel configs (${knowledgeBaseChannelConfigs.length})`);
+        if (knowledgeBases.length !== knowledgeBaseAgentConfigs.length) {
+            throw new Error(`Mismatch between knowledge base instances (${knowledgeBases.length}) and agent configs (${knowledgeBaseAgentConfigs.length})`);
         }
 
         this.session = session;
         this.output = output;
         this.knowledgeBases = knowledgeBases;
-        this.knowledgeBaseChannelConfigs = knowledgeBaseChannelConfigs;
-        this.channel = channel;
+        this.knowledgeBaseAgentConfigs = knowledgeBaseAgentConfigs;
+        this.agentConfig = agent;
         this.tools = [
             ...output.toolbox.map(entry => entry.tool),
             ...knowledgeBases.flatMap(kb => kb.toolbox.map(entry => entry.tool))
@@ -84,7 +84,7 @@ export class ChannelAgent<
             throw new Error("Max turns must be greater than 0");
         }
         this.maxTurns = maxTurns;
-        this.notificationManager = new NotificationManager(session.user, channel);
+        this.notificationManager = new NotificationManager(session.user, agent);
     }
 
     async run(streamingParams?: RunHistoryStreamingParams): Promise<ApprovalResult<SessionWithTracking<T>, Agent<SessionWithTracking<T>, AgentOutputType>>> {
@@ -94,7 +94,7 @@ export class ChannelAgent<
 
         await this.initializeAgent();
 
-        if (!this.agent) {
+        if (!this.openaiAgent) {
             throw new Error("Agent not initialized. Call initializeAgent() before run()");
         }
 
@@ -102,7 +102,7 @@ export class ChannelAgent<
         const userHistory: AgentInputItem[] = this.buildUserHistory(userMessage);
 
         const runner = runnerFactory({
-            channelId: this.channel.id,
+            agentId: this.agentConfig.id,
             runId: this.runContext.runId,
             userId: this.session.user.id,
             env: settings.nodeEnv,
@@ -111,7 +111,7 @@ export class ChannelAgent<
         logger.info("User history build to be sent to agent", { userHistory: JSON.stringify(userHistory, null, 2) });
 
         const result = await runner.run(
-            this.agent,
+            this.openaiAgent!,
             userHistory,
             {
                 context: this.getToolContext(),
@@ -129,19 +129,19 @@ export class ChannelAgent<
     async userMessageRun(userMessage: string, streamingParams?: RunHistoryStreamingParams): Promise<ApprovalResult<SessionWithTracking<T>, Agent<SessionWithTracking<T>, AgentOutputType>>> {
         await this.initializeAgent();
 
-        if (!this.agent) {
+        if (!this.openaiAgent) {
             throw new Error("Agent not initialized. Call initializeAgent() before run()");
         }
 
         const userHistory = this.buildUserHistory(userMessage);
 
         const runner = runnerFactory({
-            channelId: this.channel.id,
+            agentId: this.agentConfig.id,
             runId: this.runContext.runId,
             userId: this.session.user.id,
             env: settings.nodeEnv,
         })
-        const result = await runner.run(this.agent, userHistory, {
+        const result = await runner.run(this.openaiAgent!, userHistory, {
             context: this.getToolContext(),
             stream: true,
             session: this.memorySession,
@@ -169,7 +169,7 @@ export class ChannelAgent<
     ): Promise<ApprovalResult<SessionWithTracking<T>, Agent<SessionWithTracking<T>, AgentOutputType>>> {
         await this.initializeAgent();
 
-        if (!this.agent) {
+        if (!this.openaiAgent) {
             throw new Error("Agent not initialized. Call initializeAgent() before resumeFromPendingApproval()");
         }
 
@@ -185,7 +185,7 @@ export class ChannelAgent<
         }
 
         // Deserialize the state first
-        const state = await RunState.fromString<SessionWithTracking<T & K>, Agent<SessionWithTracking<T & K>, AgentOutputType>>(this.agent, pendingState.serializedState);
+        const state = await RunState.fromString<SessionWithTracking<T & K>, Agent<SessionWithTracking<T & K>, AgentOutputType>>(this.openaiAgent!, pendingState.serializedState);
 
         // Find the interruption from the stored interruptions array
         // We stored the full interruption objects, so we can use them directly
@@ -277,7 +277,7 @@ export class ChannelAgent<
 
         // Resume execution
         const runner = runnerFactory({
-            channelId: this.channel.id,
+            agentId: this.agentConfig.id,
             runId: this.runContext.runId,
             userId: this.session.user.id,
             env: settings.nodeEnv,
@@ -292,7 +292,7 @@ export class ChannelAgent<
         }
         state._context.context = unifiedContext;
 
-        const result = await runner.run(this.agent, state, {
+        const result = await runner.run(this.openaiAgent!, state, {
             context: toolContext,
             stream: true,
             session: this.memorySession,
@@ -319,7 +319,7 @@ export class ChannelAgent<
         const isReadOnly = toolMetadata?.isReadOnly ?? true;
 
         for (const action of this.pendingActions) {
-            const actionId = await persistRunAction(this.runContext.runId, this.channel, this.session, {
+            const actionId = await persistRunAction(this.runContext.runId, this.agentConfig, this.session, {
                 ...action,
                 step_id: stepId,
                 isReadOnly,
@@ -341,12 +341,12 @@ export class ChannelAgent<
             if (sourceItemRef && action.output_items && action.output_items.length > 0 && !isReadOnly) {
                 if (action.type === RunHistoryActionType.delete) {
                     await removeOutputAttributions(
-                        this.channel.id,
+                        this.agentConfig.id,
                         action
                     );
                 } else { // if we create or update, we persist
                     await persistOutputAttributions(
-                        this.channel.id,
+                        this.agentConfig.id,
                         sourceItemRef,
                         action
                     );
@@ -383,20 +383,20 @@ export class ChannelAgent<
     }
 
     async initializeAgent(): Promise<void> {
-        // Pair each knowledge base instance with its corresponding channel config by index
+        // Pair each knowledge base instance with its corresponding agent config by index
         this.knowledgeBaseSessions = await Promise.all(
             this.knowledgeBases.map((kb, index) => {
-                const channelKnowledgeBase = this.knowledgeBaseChannelConfigs[index];
-                if (!channelKnowledgeBase) {
-                    throw new Error(`Channel knowledge base config not found at index ${index} for ${kb.integration}`);
+                const agentKnowledgeBaseConfig = this.knowledgeBaseAgentConfigs[index];
+                if (!agentKnowledgeBaseConfig) {
+                    throw new Error(`Agent knowledge base config not found at index ${index} for ${kb.integration}`);
                 }
                 // Verify the types match as a sanity check
-                if (channelKnowledgeBase.config_type !== kb.integration) {
-                    throw new Error(`Type mismatch: knowledge base at index ${index} is ${kb.integration} but channel config is ${channelKnowledgeBase.config_type}`);
+                if (agentKnowledgeBaseConfig.config_type !== kb.integration) {
+                    throw new Error(`Type mismatch: knowledge base at index ${index} is ${kb.integration} but agent config is ${agentKnowledgeBaseConfig.config_type}`);
                 }
                 return kb.createSessionFromConfig(
-                    channelKnowledgeBase.integration_id,
-                    channelKnowledgeBase,
+                    agentKnowledgeBaseConfig.integration_id,
+                    agentKnowledgeBaseConfig,
                     this.session.user
                 );
             })
@@ -404,7 +404,7 @@ export class ChannelAgent<
 
         const deps: SystemPromptBuilderDependencies<T, TConfig, K, KBConfig> = {
             session: this.session,
-            channel: this.channel,
+            agent: this.agentConfig,
             output: this.output,
             knowledgeBases: this.knowledgeBases,
             knowledgeBaseSessions: this.knowledgeBaseSessions,
@@ -415,7 +415,7 @@ export class ChannelAgent<
 
         const fullSystemPrompt = await builder.build();
 
-        this.agent = new Agent<SessionWithTracking<T & K>, AgentOutputType>({
+        this.openaiAgent = new Agent<SessionWithTracking<T & K>, AgentOutputType>({
             name: 'Living Document Automator',
             instructions: fullSystemPrompt,
             model: this.chooseModel(),
@@ -431,8 +431,8 @@ export class ChannelAgent<
                 {} as K
             ),
             trackAction: (action: RunHistoryAction) => this.queueAction(action),
-            channel: {
-                requireApproval: this.channel.require_approval ?? false,
+            agent: {
+                requireApproval: this.agentConfig.require_approval ?? false,
             },
         };
     }
@@ -458,19 +458,19 @@ ${UserFormatter.formatForAgent(this.session.user)}
 </USER_CONTEXT>
 
 <USER_INSTRUCTIONS>
-${this.channel.prompt?.content || 'No instructions provided'}
+${this.agentConfig.prompt?.content || 'No instructions provided'}
 </USER_INSTRUCTIONS>
 
-<CHANNEL_INPUTS>
-${formatChannelInputsForAgent(this.channel.inputs as ChannelInput[])}
-</CHANNEL_INPUTS>
+<AGENT_TRIGGERS>
+${formatAgentInputsForAgent(this.agentConfig.inputs as AgentInput[])}
+</AGENT_TRIGGERS>
 
 <OUTPUT_DESTINATION>
-${formatChannelOutputForAgent(this.channel.output as ChannelOutput)}
+${formatAgentOutputForAgent(this.agentConfig.output as AgentOutput)}
 </OUTPUT_DESTINATION>
 
 <EVENT>
-${inputEvent.formatForChannelAgent()}
+${inputEvent.formatForAgent()}
 </EVENT>
         `.trim();
     }
@@ -489,7 +489,7 @@ ${inputEvent.formatForChannelAgent()}
     }
 
     private shouldEnableStreaming(params?: RunHistoryStreamingParams): boolean {
-        return !!(params?.runId && params?.userId && params?.channelId);
+        return !!(params?.runId && params?.userId && params?.agentId);
     }
 
     private async processWithStreaming<TSession extends Session = Session, TAgent extends Agent<any, any> = Agent<Session, any>>(
@@ -506,7 +506,7 @@ ${inputEvent.formatForChannelAgent()}
         await processModelEventStream(eventStream, {
             runId: streamingParams.runId!,
             userId: streamingParams.userId!,
-            channelId: streamingParams.channelId!,
+            agentId: streamingParams.agentId!,
             io,
         });
     }
@@ -597,7 +597,7 @@ ${inputEvent.formatForChannelAgent()}
                         };
                         const payload: RunHistoryModelSocketEvent = {
                             runId: streamingParams.runId!,
-                            channelId: streamingParams.channelId!,
+                            agentId: streamingParams.agentId!,
                             runHistoryModelEvent,
                         };
                         io.to(`user:${streamingParams.userId}`).emit('channel:chat:event', payload);
@@ -644,7 +644,7 @@ ${inputEvent.formatForChannelAgent()}
 
 export type SessionWithTracking<T extends Session> = T & {
     trackAction(action: RunHistoryAction): void;
-    channel: {
+    agent: {
         requireApproval: boolean;
     };
 }

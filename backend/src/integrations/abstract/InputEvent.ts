@@ -1,5 +1,5 @@
 import { IntegrationType } from "../../shared/Integrations";
-import { ChannelInputWithConfigs } from "../../types/prisma";
+import { AgentInputWithConfigs } from "../../types/prisma";
 import { RunHistoryTrigger } from "../../shared/RunHistoryTypes";
 import { Identifiable } from "../../rag/Hydrator";
 
@@ -11,18 +11,18 @@ export abstract class InputEvent {
     }
 
     // This method will be used to format the Event into the format expected by the LLM. MUST BE A STRING
-    abstract formatForChannelAgent(): string;
+    abstract formatForAgent(): string;
 
     // Use this for formatting how we log this
     abstract debugLog(): string;
 
     /**
-     * Check if this event matches the given channel input.
+     * Check if this event matches the given agent trigger.
      * Each event subclass implements its own filtering logic.
-     * @param channelInput The channel input to check against (with config relations loaded)
-     * @returns true if this event matches the channel input
+     * @param agentInput The agent trigger to check against (with config relations loaded)
+     * @returns true if this event matches the agent trigger
      */
-    abstract matchesChannelInput(channelInput: ChannelInputWithConfigs): boolean;
+    abstract matchesAgentInput(agentInput: AgentInputWithConfigs): boolean;
 
     /**
      * Create trigger metadata for run history.

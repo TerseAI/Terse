@@ -2,7 +2,7 @@ import { FormIntegrationInstallation, FormFieldDefinition, Integration, FormSubm
 import { db } from "../prismaClient";
 import { PosthogIntegration, PosthogIntegrationMetadata } from "../shared/Integrations";
 import { IntegrationType } from "../shared/Integrations";
-import { ChannelInputWithConfigs } from "../types/prisma";
+import { AgentInputWithConfigs } from "../types/prisma";
 import logger from "../logger";
 
 export class PosthogIntegrationManager implements Integration<PosthogIntegration, never, typeof PosthogIntegrationMetadata>, FormIntegrationInstallation<IntegrationType.POSTHOG> {
@@ -62,11 +62,11 @@ export class PosthogIntegrationManager implements Integration<PosthogIntegration
         return Promise.resolve();
     }
 
-    async setupChannelInput(integrationId: string, automationInput: ChannelInputWithConfigs): Promise<void> {
+    async setupAgentInput(integrationId: string, agentInput: AgentInputWithConfigs): Promise<void> {
 
     }
 
-    async teardownChannelInput(integrationId: string, automationInput: ChannelInputWithConfigs): Promise<void> {
+    async teardownAgentInput(integrationId: string, agentInput: AgentInputWithConfigs): Promise<void> {
     }
 
     getFormFields(): FormFieldDefinition[] {

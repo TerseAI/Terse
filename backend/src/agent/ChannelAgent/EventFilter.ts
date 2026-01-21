@@ -1,6 +1,6 @@
 import { Agent, AgentInputItem, run, StreamedRunResult, AgentOutputType } from '@openai/agents';
 import { InputEvent } from "../../integrations/abstract/InputEvent";
-import { ChannelPrompt } from "../../types/prisma";
+import { AgentPrompt } from "../../types/prisma";
 import { Session } from "../../server";
 import { transformAgentStreamToModelEvents } from '../streaming';
 import { z } from "zod";
@@ -93,7 +93,7 @@ You may provide additional context and analysis in your text response, but you M
  */
 export async function filterEvent(
     event: InputEvent,
-    channelPrompt: ChannelPrompt,
+    agentPrompt: AgentPrompt,
     streamingParams?: RunHistoryStreamingParams
 ): Promise<{ result: EventFilterResult }> {
     if (event.integrationType === IntegrationType.CRON_JOB) {
@@ -127,15 +127,15 @@ export async function filterEvent(
                     {
                         type: 'input_text',
                         text: buildFilterUserPrompt(
-                            channelPrompt.content || 'No specific instructions provided',
-                            event.formatForChannelAgent()
+                            agentPrompt.content || 'No specific instructions provided',
+                            event.formatForAgent()
                         )
                     }
                 ]
             }
         ];
         const runner = runnerFactory({
-            channelId: streamingParams?.channelId || '',
+            agentId: streamingParams?.agentId || '',
             runId: streamingParams?.runId || '',
             userId: streamingParams?.userId || '',
             env: settings.nodeEnv,
@@ -150,7 +150,7 @@ export async function filterEvent(
         }
 
         // Handle streaming and channel management if streamingParams are provided
-        if (streamingParams?.runId && streamingParams?.userId && streamingParams?.channelId) {
+        if (streamingParams?.runId && streamingParams?.userId && streamingParams?.agentId) {
             const io = getRealtimeSocket();
             const userRoom = `user:${streamingParams.userId}`;
 
@@ -173,14 +173,14 @@ export async function filterEvent(
                         };
                         const payload: RunHistoryModelSocketEvent = {
                             runId: streamingParams.runId,
-                            channelId: streamingParams.channelId,
+                            agentId: streamingParams.agentId,
                             runHistoryModelEvent,
                         };
                         io.to(userRoom).emit('channel:chat:event', payload);
                     }
                 }
             } catch (error) {
-                logger.error('Error streaming filter events', { error, runId: streamingParams.runId, channelId: streamingParams.channelId });
+                logger.error('Error streaming filter events', { error, runId: streamingParams.runId, agentId: streamingParams.agentId });
                 // Continue with parsing even if streaming fails
             }
         }
@@ -195,7 +195,7 @@ export async function filterEvent(
         parsed.confidence = Math.max(0, Math.min(1, parsed.confidence));
 
         // Store and emit the filter result event if streamingParams are provided
-        if (streamingParams?.runId && streamingParams?.userId && streamingParams?.channelId) {
+        if (streamingParams?.runId && streamingParams?.userId && streamingParams?.agentId) {
             const filterResultEvent = {
                 type: 'FilterResult' as const,
                 isRelevant: parsed.isRelevant,
@@ -215,7 +215,7 @@ export async function filterEvent(
                 };
                 const payload: RunHistoryModelSocketEvent = {
                     runId: streamingParams.runId,
-                    channelId: streamingParams.channelId,
+                    agentId: streamingParams.agentId,
                     runHistoryModelEvent,
                 };
                 io.to(userRoom).emit('channel:chat:event', payload);

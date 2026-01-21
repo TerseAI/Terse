@@ -236,14 +236,14 @@ async function main() {
                             if (result.success) {
                                 console.log(chalk.green('✓ Success'));
                                 console.log(chalk.gray('Message:'), result.message);
-                                if (result.channel) {
-                                    console.log(chalk.gray('Channel:'), result.channel.name);
+                                if (result.agent) {
+                                    console.log(chalk.gray('Agent:'), result.agent.name);
                                 }
                             } else {
                                 console.log(chalk.red('✗ Failed'));
                                 console.log(chalk.gray('Message:'), result.message);
-                                if (result.channel) {
-                                    console.log(chalk.gray('Channel:'), result.channel.name);
+                                if (result.agent) {
+                                    console.log(chalk.gray('Agent:'), result.agent.name);
                                 }
                             }
                         }
