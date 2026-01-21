@@ -400,7 +400,6 @@ export type ChannelTemplate = {
     inputs: TemplateInput[];
     outputs: TemplateOutput[];
     knowledgeBases?: TemplateKnowledgeBase[];
-    requireApproval: boolean;
     isActive: boolean;
 };
 
@@ -408,7 +407,7 @@ export type Channel = {
     id: string;
     name: string;
     isActive: boolean;
-    requireApproval: boolean;
+    toolApprovalSettings?: Array<{ toolName: string; requiresApproval: boolean }>;
     prompt: ChannelPrompt;
     inputs: ChannelInput[];
     outputs: ChannelOutput[];
@@ -428,7 +427,7 @@ export type ChannelUpdate = {
     outputs?: ChannelOutput[];
     prompt?: ChannelPrompt;
     isActive?: boolean;
-    requireApproval?: boolean;
+    toolApprovalSettings?: Array<{ toolName: string; requiresApproval: boolean }>;
     knowledgeBases?: ChannelKnowledgeBase[];
     notificationSettings?: ChannelNotificationSettings;
 };

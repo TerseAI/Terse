@@ -42,8 +42,6 @@ export type ChannelSetupTabProps = {
     setPrompt: (prompt: ChannelPrompt | undefined) => void;
     isActive: boolean;
     setIsActive: (isActive: boolean) => void;
-    requireApproval: boolean;
-    setRequireApproval: (requireApproval: boolean) => void;
     toolApprovalSettings: Array<{ toolName: string; requiresApproval: boolean }>;
     setToolApprovalSettings: (settings: Array<{ toolName: string; requiresApproval: boolean }>) => void;
     notificationSettings: ChannelNotificationSettingsType;
@@ -62,7 +60,7 @@ function SaveChannelButton({
     knowledgeBases,
     prompt,
     isActive,
-    requireApproval,
+    toolApprovalSettings,
     notificationSettings,
     mutate,
     onSaveSuccess
@@ -75,7 +73,6 @@ function SaveChannelButton({
     knowledgeBases: ChannelKnowledgeBase[];
     prompt: ChannelPrompt | undefined;
     isActive: boolean;
-    requireApproval: boolean;
     toolApprovalSettings: Array<{ toolName: string; requiresApproval: boolean }>;
     notificationSettings: ChannelNotificationSettingsType;
     mutate: KeyedMutator<Channel>;
@@ -109,7 +106,6 @@ function SaveChannelButton({
                 knowledgeBases,
                 prompt,
                 isActive,
-                requireApproval,
                 toolApprovalSettings,
                 notificationSettings
             };
@@ -171,8 +167,6 @@ export default function ChannelSetupTab({
     setKnowledgeBases,
     setPrompt,
     isActive,
-    requireApproval,
-    setRequireApproval,
     toolApprovalSettings,
     setToolApprovalSettings,
     notificationSettings,
@@ -209,7 +203,6 @@ export default function ChannelSetupTab({
         id: channelId || '',
         name: name || defaultName || '',
         isActive,
-        requireApproval,
         prompt: prompt || { text: '' },
         inputs: channelInputs,
         outputs: channelOutputs,
@@ -231,7 +224,7 @@ export default function ChannelSetupTab({
                             knowledgeBases={channelKnowledgeBases}
                             prompt={prompt}
                             isActive={isActive}
-                            requireApproval={requireApproval}
+                            toolApprovalSettings={toolApprovalSettings}
                             notificationSettings={notificationSettings}
                             mutate={mutate}
                         />
@@ -392,7 +385,6 @@ export default function ChannelSetupTab({
                                 <ChannelApprovalSettings 
                                     outputs={outputs} 
                                     toolApprovalSettings={toolApprovalSettings || []} 
-                                    requireApproval={requireApproval}
                                     onChange={setToolApprovalSettings} 
                                 />
                                 <ChannelNotificationSettings settings={notificationSettings} onChange={setNotificationSettings} />

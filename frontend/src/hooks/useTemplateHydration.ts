@@ -7,7 +7,6 @@ export interface HydratedTemplateState {
     name: string | null;
     prompt: ChannelPrompt | undefined;
     isActive: boolean;
-    requireApproval: boolean;
     inputs: TransientChannelInput[];
     outputs: TransientChannelOutput[];
     knowledgeBases: TransientKnowledgeBase[];
@@ -69,7 +68,6 @@ export function useTemplateHydration(
             name: template.name,
             prompt: template.prompt,
             isActive: template.isActive,
-            requireApproval: template.requireApproval,
             inputs: transientInputs,
             outputs: transientOutputs,
             knowledgeBases: transientKBs,

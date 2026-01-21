@@ -409,6 +409,7 @@ export type Channel = {
     name: string;
     isActive: boolean;
     requireApproval: boolean;
+    toolApprovalSettings?: Array<{ toolName: string; requiresApproval: boolean }>;
     prompt: ChannelPrompt;
     inputs: ChannelInput[];
     outputs: ChannelOutput[];
@@ -429,6 +430,7 @@ export type ChannelUpdate = {
     prompt?: ChannelPrompt;
     isActive?: boolean;
     requireApproval?: boolean;
+    toolApprovalSettings?: Array<{ toolName: string; requiresApproval: boolean }>;
     knowledgeBases?: ChannelKnowledgeBase[];
     notificationSettings?: ChannelNotificationSettings;
 };

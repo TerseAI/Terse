@@ -6,15 +6,13 @@ import { TransientChannelOutput } from "@/shared/types";
 export type ChannelApprovalSettingsProps = {
     outputs: TransientChannelOutput[];
     toolApprovalSettings: Array<{ toolName: string; requiresApproval: boolean }>;
-    requireApproval?: boolean; // Legacy boolean flag
     onChange: (toolApprovalSettings: Array<{ toolName: string; requiresApproval: boolean }>) => void;
 };
 
-function ChannelApprovalSettings({ outputs, toolApprovalSettings, requireApproval = false, onChange }: ChannelApprovalSettingsProps) {
+function ChannelApprovalSettings({ outputs, toolApprovalSettings, onChange }: ChannelApprovalSettingsProps) {
     const [availableTools, setAvailableTools] = useState<AvailableTool[]>([]);
     const [isLoading, setIsLoading] = useState(false);
     const [selectedTools, setSelectedTools] = useState<Set<string>>(new Set());
-    const [hasMigratedLegacy, setHasMigratedLegacy] = useState(false);
 
     // Initialize selected tools from props
     useEffect(() => {
@@ -26,22 +24,6 @@ function ChannelApprovalSettings({ outputs, toolApprovalSettings, requireApprova
         });
         setSelectedTools(selected);
     }, [toolApprovalSettings]);
-
-    // Migrate from legacy requireApproval when tools are loaded
-    useEffect(() => {
-        // Legacy case: requireApproval is true but no toolApprovalSettings (empty array)
-        // Auto-select all available tools
-        if (requireApproval && 
-            toolApprovalSettings.length === 0 && 
-            availableTools.length > 0 && 
-            !hasMigratedLegacy) {
-            const allToolNames = availableTools.map(tool => tool.name);
-            setSelectedTools(new Set(allToolNames));
-            setHasMigratedLegacy(true);
-            // Notify parent of the migration
-            onChange(availableTools.map(tool => ({ toolName: tool.name, requiresApproval: true })));
-        }
-    }, [requireApproval, toolApprovalSettings.length, availableTools, hasMigratedLegacy, onChange]);
 
     // Derive integration types from configured outputs (only complete ones)
     const integrationTypes = useMemo(() => {

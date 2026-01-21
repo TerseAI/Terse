@@ -36,7 +36,6 @@ function ChannelDetail() {
     const [knowledgeBases, setKnowledgeBases] = useState<TransientKnowledgeBase[]>([]);
     const [prompt, setPrompt] = useState<ChannelPrompt | undefined>(undefined);
     const [isActive, setIsActive] = useState<boolean>(true);
-    const [requireApproval, setRequireApproval] = useState<boolean>(false);
     const [toolApprovalSettings, setToolApprovalSettings] = useState<Array<{ toolName: string; requiresApproval: boolean }>>([]);
     const [notificationSettings, setNotificationSettings] = useState<ChannelNotificationSettings>({
         enabled: false,
@@ -52,7 +51,6 @@ function ChannelDetail() {
                 setName(templateHydratedState.name);
                 setPrompt(templateHydratedState.prompt);
                 setIsActive(templateHydratedState.isActive);
-                setRequireApproval(templateHydratedState.requireApproval);
                 setToolApprovalSettings([]);
                 setInputs(templateHydratedState.inputs);
                 setOutputs(templateHydratedState.outputs);
@@ -72,7 +70,6 @@ function ChannelDetail() {
                     setKnowledgeBases([]);
                     setPrompt(undefined);
                     setIsActive(true);
-                    setRequireApproval(false);
                     setToolApprovalSettings([]);
                     setNotificationSettings({ enabled: false, actionTypes: [] });
                 }
@@ -84,7 +81,6 @@ function ChannelDetail() {
             setKnowledgeBases(channel.knowledgeBases?.map(toTransientKnowledgeBase) || []);
             setPrompt(channel.prompt);
             setIsActive(channel.isActive);
-            setRequireApproval(channel.requireApproval ?? false);
             setToolApprovalSettings(channel.toolApprovalSettings || []);
             setNotificationSettings(channel.notificationSettings ?? { enabled: false, actionTypes: [] });
         }
@@ -124,8 +120,6 @@ function ChannelDetail() {
         setPrompt,
         isActive,
         setIsActive,
-        requireApproval,
-        setRequireApproval,
         toolApprovalSettings,
         setToolApprovalSettings,
         notificationSettings,
