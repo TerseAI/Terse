@@ -217,58 +217,21 @@ When explicitly asked by the user, include these links in your responses to help
         };
     }
 
-    private groupOutputsByType(): Map<string, Output<TConfig>[]> {
-        const outputsByType = new Map<string, Output<TConfig>[]>();
-        if (!this.deps.outputs) {
-            return outputsByType;
-        }
-
-        for (const output of this.deps.outputs) {
-            const outputType = output.integration;
-            if (!outputsByType.has(outputType)) {
-                outputsByType.set(outputType, []);
-            }
-            outputsByType.get(outputType)!.push(output);
-        }
-
-        return outputsByType;
-    }
-
-    private groupKnowledgeBasesByType(): Map<string, KnowledgeBase<KBConfig>[]> {
-        const kbsByType = new Map<string, KnowledgeBase<KBConfig>[]>();
-        if (!this.deps.knowledgeBases) {
-            return kbsByType;
-        }
-
-        for (const kb of this.deps.knowledgeBases) {
-            const kbType = kb.integration;
-            if (!kbsByType.has(kbType)) {
-                kbsByType.set(kbType, []);
-            }
-            kbsByType.get(kbType)!.push(kb);
-        }
-
-        return kbsByType;
-    }
-
     private buildOutputsSection(): Section | null {
         if (!this.deps.outputs || this.deps.outputs.length === 0) {
             return null;
         }
 
-        const outputsByType = this.groupOutputsByType();
         const outputSections: string[] = [];
 
-        Array.from(outputsByType.entries()).forEach(([outputType, outputs]) => {
-            // All outputs of the same type should have the same configs, so we can use the first one
-            const output = outputs[0];
+        for (const output of this.deps.outputs) {
             if (!output || output.configs.length === 0) {
-                return;
+                continue;
             }
 
             const instructions = output.getSystemInstructions();
             outputSections.push(instructions);
-        });
+        }
 
         if (outputSections.length === 0) {
             return null;
@@ -285,19 +248,16 @@ When explicitly asked by the user, include these links in your responses to help
             return null;
         }
 
-        const kbsByType = this.groupKnowledgeBasesByType();
         const kbSections: string[] = [];
 
-        Array.from(kbsByType.entries()).forEach(([kbType, kbs]) => {
-            // All knowledge bases of the same type should have the same configs, so we can use the first one
-            const kb = kbs[0];
+        for (const kb of this.deps.knowledgeBases) {
             if (!kb || kb.configs.length === 0) {
-                return;
+                continue;
             }
 
             const instructions = kb.getSystemInstructions();
             kbSections.push(instructions);
-        });
+        }
 
         if (kbSections.length === 0) {
             return null;

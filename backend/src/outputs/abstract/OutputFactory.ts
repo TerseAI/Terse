@@ -24,11 +24,6 @@ export class OutputFactory {
         [OutputConfigType.SLACK_CHANNEL, () => new SlackOutput()]
     ]);
 
-    /**
-     * Create an Output instance for the given integration type.
-     * @param integrationType The integration type to create an output for
-     * @returns An Output instance, or null if the integration type is not supported
-     */
     static createOutput(integrationType: OutputConfigType): Output<ConfigInstance> | null {
         const factory = this.OUTPUT_REGISTRY.get(integrationType);
         if (!factory) {
@@ -37,12 +32,6 @@ export class OutputFactory {
         return factory();
     }
 
-    /**
-     * Create an Output instance for the given integration type with configs attached.
-     * @param configType The integration type to create an output for
-     * @param configs Array of channel output configs for this output type
-     * @returns An Output instance with configs set, or null if the integration type is not supported
-     */
     static createOutputWithConfigs(configType: OutputConfigType, configs: ChannelOutputWithConfigs[]): Output<ConfigInstance> | null {
         const output = this.createOutput(configType);
         if (!output) {
@@ -52,13 +41,6 @@ export class OutputFactory {
         return output;
     }
 
-    /**
-     * Create Output instances from a channel's output configurations.
-     * Groups configs by type and creates one instance per type with all configs of that type.
-     * @param channel Channel with outputs relation loaded
-     * @returns Array of Output instances, one per unique output type
-     * @throws Error if no outputs found or if an output type is not supported
-     */
     static createOutputsFromChannel(channel: ChannelWithRelations): Output<ConfigInstance>[] {
         if (!channel.outputs || channel.outputs.length === 0) {
             throw new Error(`No output integrations found for channel: ${channel.id}`);
@@ -85,14 +67,5 @@ export class OutputFactory {
         }
 
         return outputs;
-    }
-
-    /**
-     * Check if an integration type is supported as an output.
-     * @param integrationType The integration type to check
-     * @returns true if the integration type is supported as an output
-     */
-    static isSupported(integrationType: OutputConfigType): boolean {
-        return this.OUTPUT_REGISTRY.has(integrationType);
     }
 }
