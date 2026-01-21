@@ -68,8 +68,8 @@ The tool returns the source events (e.g., Slack messages, emails) that led to th
 
             logger.info('Successfully fetched and formatted events', { block_id, userId: runContext?.context?.user.display_name, events_count: hydratedEvents.length });
 
-            // Track the action
-            runContext.context.trackAction({
+            // Return action as part of the result
+            const action = {
                 action: 'Fetched related events',
                 integration: IntegrationType.NOTION,
                 target: block_id,
@@ -77,11 +77,12 @@ The tool returns the source events (e.g., Slack messages, emails) that led to th
                 url: undefined,
                 type: RunHistoryActionType.read,
                 isReadOnly: true,
-            });
+            };
 
             return {
                 success: true,
                 events_count: hydratedEvents.length,
+                actions: [action],
                 events: eventsText,
                 message: `Found ${hydratedEvents.length} related event(s). These events provide context about why this block was created or modified. Use this information to make informed decisions about modifications.`,
             };

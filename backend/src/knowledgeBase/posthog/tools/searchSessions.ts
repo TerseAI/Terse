@@ -231,8 +231,8 @@ export const searchSessionsTool = tool({
                 message: `Found ${formattedSessions.length} session recording(s) for ${userEmail} (showing ${offset + 1}-${offset + formattedSessions.length} of ${totalCount}). View sessions: ${sessionsLink}`
             };
 
-            // Track the action
-            runContext.context.trackAction({
+            // Return action as part of the result
+            const action = {
                 action: 'Searched PostHog sessions',
                 integration: IntegrationType.POSTHOG,
                 target: userEmail,
@@ -240,9 +240,12 @@ export const searchSessionsTool = tool({
                 url: sessionsLink,
                 type: RunHistoryActionType.read,
                 isReadOnly: true,
-            });
+            };
 
-            return response;
+            return {
+                ...response,
+                actions: [action],
+            };
         } catch (error: any) {
             logger.error('Error querying PostHog sessions', { error, userEmail, projectId });
             throw new Error(`Failed to query PostHog sessions: ${error.message || 'Unknown error'}`);

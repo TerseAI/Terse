@@ -143,8 +143,8 @@ Dates are specified in YYYY-MM-DD format (e.g., "2024-01-15"). The since date is
             });
             logger.debug('[GitHub KB] listGitHubPullRequests - Full response', { response });
 
-            // Track the action
-            runContext.context.trackAction({
+            // Return action as part of the result
+            const action = {
                 action: 'Listed GitHub pull requests',
                 integration: IntegrationType.GITHUB,
                 target: repository,
@@ -152,9 +152,12 @@ Dates are specified in YYYY-MM-DD format (e.g., "2024-01-15"). The since date is
                 url: `https://github.com/${owner}/${repo}/pulls${state ? `?state=${state}` : ''}`,
                 type: RunHistoryActionType.read,
                 isReadOnly: true,
-            });
+            };
 
-            return response;
+            return {
+                ...response,
+                actions: [action],
+            };
         } catch (error: any) {
             logger.error('[GitHub KB] listGitHubPullRequests - Failed', { 
                 repository, 

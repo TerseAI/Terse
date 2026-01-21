@@ -220,18 +220,19 @@ JQL EXAMPLES:
                 };
             });
 
-            // Track the action
-            runContext.context.trackAction({
+            // Return action as part of the result
+            const action = {
                 action: 'Searched tickets',
                 integration: IntegrationType.ATLASSIAN,
                 target: 'Jira workspace',
                 details: `Found ${issues.length} issue(s) matching search criteria${total > issues.length ? ` (${total} total)` : ''}`,
                 type: RunHistoryActionType.read,
-            });
+            };
 
             return {
                 success: true,
                 issues: issues,
+                actions: [action],
                 count: issues.length,
                 total: total,
                 maxResults: maxResultsResult,

@@ -158,8 +158,8 @@ This is more precise than semantic search - use it when you know exactly what te
             });
             logger.debug('[GitHub KB] grepGitHubCode - Full response', { response });
 
-            // Track the action
-            runContext.context.trackAction({
+            // Return action as part of the result
+            const action = {
                 action: 'Searched GitHub code (exact match)',
                 integration: IntegrationType.GITHUB,
                 target: repositoryNames.join(', '),
@@ -167,9 +167,12 @@ This is more precise than semantic search - use it when you know exactly what te
                 url: `https://github.com/search?q=${encodeURIComponent(query)}&type=code`,
                 type: RunHistoryActionType.read,
                 isReadOnly: true,
-            });
+            };
 
-            return response;
+            return {
+                ...response,
+                actions: [action],
+            };
         } catch (error: any) {
             logger.error('[GitHub KB] grepGitHubCode - Failed', { 
                 pattern, 

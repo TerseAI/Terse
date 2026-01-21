@@ -90,18 +90,19 @@ Use this tool to find existing Linear issues before creating new ones or to look
             const hasNextPage = pageInfo.hasNextPage || false;
             const endCursor = pageInfo.endCursor || null;
 
-            // Track the action
-            runContext.context.trackAction({
+            // Return action as part of the result
+            const action = {
                 action: 'Searched tickets',
                 integration: IntegrationType.LINEAR,
                 target: 'Linear workspace',
                 details: `Found ${results.length} issue(s) matching "${issueDescription}"${hasNextPage ? ' (more available)' : ''}`,
                 type: RunHistoryActionType.read,
-            });
+            };
 
             return {
                 success: true,
                 issues: results,
+                actions: [action],
                 count: results.length,
                 query: issueDescription,
                 pagination: {

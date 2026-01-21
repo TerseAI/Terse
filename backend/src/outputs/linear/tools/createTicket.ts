@@ -159,19 +159,25 @@ BEFORE USING THIS TOOL:
                 updatedAt: createdIssue.updatedAt,
             };
 
-            // Track the action
-            runContext.context.trackAction({
+            // Return action as part of the result
+            const action = {
                 action: 'Created ticket',
                 integration: IntegrationType.LINEAR,
                 target: createdIssue.identifier,
                 details: `Created issue: ${title}`,
                 url: createdIssue.url,
                 type: RunHistoryActionType.create,
+            };
+            
+            logger.debug('[linear_create_ticket] Returning action in result', {
+                userId: runContext?.context?.user?.id || 'unknown',
+                action,
             });
 
             return {
                 success: true,
                 issue: issueData,
+                actions: [action],
             };
         } catch (error: unknown) {
             const errorMessage = await formatError(runContext!, error);

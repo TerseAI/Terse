@@ -211,8 +211,8 @@ export const listLaunchDarklyFlagsTool = tool({
                 flagsLink = `${flagsLink}?q=${encodeURIComponent(filter)}`;
             }
 
-            // Track the action
-            runContext.context.trackAction({
+            // Return action as part of the result
+            const action = {
                 action: 'Listed feature flags',
                 integration: IntegrationType.LAUNCHDARKLY,
                 target: `Project: ${projectKey}`,
@@ -220,7 +220,7 @@ export const listLaunchDarklyFlagsTool = tool({
                 url: flagsLink,
                 type: 'read',
                 isReadOnly: true,
-            });
+            };
 
             logger.info('[LaunchDarkly] listFeatureFlags - Success', {
                 projectKey,
@@ -231,6 +231,7 @@ export const listLaunchDarklyFlagsTool = tool({
 
             return {
                 success: true,
+                actions: [action],
                 projectKey,
                 totalFlags: formattedFlags.length,
                 flags: formattedFlags,

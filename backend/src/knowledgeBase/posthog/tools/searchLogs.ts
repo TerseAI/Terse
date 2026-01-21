@@ -213,9 +213,9 @@ export const searchLogsTool = tool({
                 message: `Found ${formattedLogs.length} log entries filtered by ${filterDescription} (showing ${offset + 1}-${offset + formattedLogs.length}${hasMore ? ', more available' : ''}). View all logs: ${logsLink}`
             };
 
-            // Track the action
+            // Return action as part of the result
             const queryDesc = normalizedMessageSearch ? ` matching "${normalizedMessageSearch}"` : '';
-            runContext.context.trackAction({
+            const action = {
                 action: 'Searched PostHog logs',
                 integration: IntegrationType.POSTHOG,
                 target: projectId,
@@ -223,9 +223,12 @@ export const searchLogsTool = tool({
                 url: logsLink,
                 type: RunHistoryActionType.read,
                 isReadOnly: true,
-            });
+            };
 
-            return response;
+            return {
+                ...response,
+                actions: [action],
+            };
         } catch (error: any) {
             logger.error('Error querying PostHog logs', { error, userEmail: normalizedUserEmail, severityLevels: normalizedSeverityLevels, messageSearch: normalizedMessageSearch, projectId });
             throw new Error(`Failed to query PostHog logs: ${error.message || 'Unknown error'}`);

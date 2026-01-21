@@ -123,14 +123,19 @@ export const slackSendMessageTool = tool({
             const messageTs = result.ts?.replace('.', '') || '';
             const slackPermalink = `https://${userSlackIntegration.slack_integration.team_name || 'slack'}.slack.com/archives/${channelId}/p${messageTs}`;
             
-            // Track the action
-            runContext.context.trackAction({
+            // Return action as part of the result
+            const action = {
                 action: 'Sent Slack message',
                 integration: IntegrationType.SLACK,
                 target: channelName,
                 details: `Sent message to ${channelName}${thread_ts ? ' (thread reply)' : ''}: "${messagePreview}"`,
                 url: slackPermalink,
                 type: RunHistoryActionType.create,
+            };
+            
+            logger.debug('[slack_send_message] Returning action in result', {
+                userId: runContext?.context?.user?.id || 'unknown',
+                action,
             });
             
             logger.info(`[Slack Output] Message sent to ${channelName}`, { 
@@ -148,6 +153,7 @@ export const slackSendMessageTool = tool({
                 thread_ts: thread_ts || result.ts,
                 summary: `${messageType} message sent to ${channelName}: "${messagePreview}"`,
                 has_blocks: !!blocks,
+                actions: [action],
             };
         } catch (error: any) {
             logger.error(`[Slack Output] Failed to send message`, { 

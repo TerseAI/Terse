@@ -269,19 +269,25 @@ BEFORE USING THIS TOOL:
                 updatedAt: fullIssue?.fields?.updated || new Date().toISOString(),
             };
 
-            // Track the action
-            runContext.context.trackAction({
+            // Return action as part of the result
+            const action = {
                 action: 'Created ticket',
                 integration: IntegrationType.ATLASSIAN,
                 target: createdIssue.key,
                 details: `Created issue: ${title}`,
                 url: issueData.url,
                 type: RunHistoryActionType.create,
+            };
+            
+            logger.debug('[jira_create_ticket] Returning action in result', {
+                userId: runContext?.context?.user?.id || 'unknown',
+                action,
             });
 
             return {
                 success: true,
                 issue: issueData,
+                actions: [action],
             };
         } catch (error: unknown) {
             const errorMessage = await formatError(runContext!, error);

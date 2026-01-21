@@ -127,9 +127,9 @@ This tool returns the current state of the Confluence page including all metadat
             const body_text = body.storage?.value || body.view?.value || body.export_view?.value || '';
             const pageNameDisplay = metadata.title || pageId;
 
-            // Track the action
+            // Return action as part of the result
             const pageUrl = `https://${baseUrl}/wiki${pageInfo._links?.webui || ''}`;
-            runContext.context.trackAction({
+            const action = {
                 action: 'Queried Confluence page',
                 integration: IntegrationType.ATLASSIAN,
                 target: pageNameDisplay,
@@ -137,11 +137,12 @@ This tool returns the current state of the Confluence page including all metadat
                 url: pageUrl,
                 type: RunHistoryActionType.read,
                 isReadOnly: true,
-            });
+            };
 
             return {
                 ...metadata,
                 body: body,
+                actions: [action],
                 body_text: body_text,
                 ancestors: ancestors,
                 descendants: descendants,
@@ -294,17 +295,18 @@ To find the correct position, first call confluence_query_page to see the page c
             const commentPreview = comment_text.length > 60 
                 ? comment_text.substring(0, 60) + '...' 
                 : comment_text;
-            runContext.context.trackAction({
+            const action = {
                 action: 'Added Inline comment',
                 integration: IntegrationType.ATLASSIAN,
                 target: pageNameDisplay,
                 details: commentPreview,
                 type: 'create',
-            });
+            };
 
             return {
                 success: true,
                 comment_id: commentResponse.id,
+                actions: [action],
                 comment_text: comment_text,
                 position: {
                     start: startPos,

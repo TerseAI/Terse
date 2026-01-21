@@ -286,14 +286,14 @@ This tool returns the current state of the page including all properties, metada
                 ? pageInfo.properties.title.title.map((t: any) => t.plain_text).join('') 
                 : 'Notion page')
             : 'Notion page';
-        runContext.context.trackAction({
+        const action = {
             action: 'Retrieved page',
             integration: IntegrationType.NOTION,
             target: pageName,
             details: `Retrieved page with ${blocks.length} ${blocks.length === 1 ? 'block' : 'blocks'}`,
             url: isFullPage(pageInfo) && 'url' in pageInfo ? pageInfo.url : undefined,
             type: 'read',
-        });
+        };
 
         // Extract comprehensive metadata
         const metadata: any = {
@@ -327,6 +327,7 @@ This tool returns the current state of the page including all properties, metada
         return {
             ...metadata,
             properties: properties,
+            actions: [action],
             properties_raw: isFullPage(pageInfo) ? pageInfo.properties : undefined, // Include raw properties for reference
             blocks: blocks,
             blocks_count: blocks.length,

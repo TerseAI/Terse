@@ -86,8 +86,8 @@ export const getSessionEventsTool = tool({
                 message: `Retrieved ${result.events.length} meaningful events and ${result.consoleLogs.length} console logs from session. View full session: ${result.sessionUrl}`,
             };
 
-            // Track the action
-            runContext.context.trackAction({
+            // Return action as part of the result
+            const action = {
                 action: 'Retrieved PostHog session events',
                 integration: IntegrationType.POSTHOG,
                 target: sessionId,
@@ -95,9 +95,12 @@ export const getSessionEventsTool = tool({
                 url: result.sessionUrl,
                 type: RunHistoryActionType.read,
                 isReadOnly: true,
-            });
+            };
 
-            return response;
+            return {
+                ...response,
+                actions: [action],
+            };
         } catch (error: any) {
             logger.error('Error fetching PostHog session events', { 
                 error, 

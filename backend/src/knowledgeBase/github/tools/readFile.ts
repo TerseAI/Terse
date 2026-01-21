@@ -128,8 +128,8 @@ Note: This reads from the default branch (main/master). Large files may be trunc
                 content: `[${finalContent.length} chars]`,
             });
 
-            // Track the action
-            runContext.context.trackAction({
+            // Return action as part of the result
+            const action = {
                 action: 'Read GitHub file',
                 integration: IntegrationType.GITHUB,
                 target: repository,
@@ -137,9 +137,12 @@ Note: This reads from the default branch (main/master). Large files may be trunc
                 url: fileUrl,
                 type: RunHistoryActionType.read,
                 isReadOnly: true,
-            });
+            };
 
-            return response;
+            return {
+                ...response,
+                actions: [action],
+            };
         } catch (error: any) {
             logger.error('[GitHub KB] readGitHubFile - Failed', { 
                 repository, 
