@@ -142,7 +142,6 @@ CITING:
 
 REPORTING:
 Summarize with citations: specific entries/events with timestamps and IDs, patterns observed, what was ruled out, next steps.`);
-
         return sections.join('\n');
     }
 }

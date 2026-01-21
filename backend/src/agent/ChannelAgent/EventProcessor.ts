@@ -1,6 +1,5 @@
-import chalk from 'chalk';
 import { db } from '../../prismaClient';
-import { Agent as PrismaAgent, AgentWithRelations, User, AgentKnowledgeBaseWithConfigs } from '../../types/prisma';
+import { Agent as PrismaAgent, AgentWithRelations, User } from '../../types/prisma';
 import { InputEvent } from '../../integrations/abstract/InputEvent';
 import { OutputFactory } from '../../outputs/abstract/OutputFactory';
 import { Output } from '../../outputs/abstract/Output';
@@ -107,28 +106,6 @@ export class EventProcessor {
         return results;
     }
 
-    private createKnowledgeBases(
-        agentKnowledgeBases: AgentWithRelations['knowledge_bases']
-    ): { knowledgeBases: KnowledgeBase<ConfigInstance>[]; agentConfigs: AgentKnowledgeBaseWithConfigs[] } {
-        if (!agentKnowledgeBases || agentKnowledgeBases.length === 0) {
-            return { knowledgeBases: [], agentConfigs: [] };
-        }
-
-        // Create knowledge base instances and maintain pairing with agent configs
-        const knowledgeBases: KnowledgeBase<ConfigInstance>[] = [];
-        const agentConfigs: AgentKnowledgeBaseWithConfigs[] = [];
-        
-        for (const agentKnowledgeBase of agentKnowledgeBases) {
-            const kb = KnowledgeBaseFactory.createKnowledgeBase(agentKnowledgeBase.config_type);
-            if (kb) {
-                knowledgeBases.push(kb);
-                agentConfigs.push(agentKnowledgeBase as AgentKnowledgeBaseWithConfigs);
-            }
-        }
-        
-        return { knowledgeBases, agentConfigs };
-    }
-
     private async processAgent(agent: AgentWithRelations): Promise<ProcessorResult> {
         logger.info(`Processing agent: ${agent.name} (${agent.id})`);
 
@@ -219,7 +196,7 @@ export class EventProcessor {
         logger.info(`Event is relevant to agent "${agent.name}"`);
 
         // Create knowledge bases from agent configuration
-        const { knowledgeBases } = this.createKnowledgeBases(agent.knowledge_bases || []);
+        const knowledgeBases = KnowledgeBaseFactory.createKnowledgeBasesFromAgent(agent.knowledge_bases || []);
 
         // Create agent with the session and outputs
         const runContext: RunContext = { runId };

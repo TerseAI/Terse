@@ -8,7 +8,7 @@ import { SendModelRequest, ModelEvent, ModelRequest, ToolApprovalResponse } from
 import { db } from "./prismaClient";
 import { ChannelAgent } from "./agent/ChannelAgent/ChannelAgent";
 import { RunContext } from "./agent/ChannelAgent/SystemPromptBuilder";
-import { AgentWithRelations, AgentKnowledgeBaseWithConfigs } from "./types/prisma";
+import { AgentWithRelations } from "./types/prisma";
 import { getInputConfigInclude, getOutputConfigInclude, getKnowledgeBaseConfigInclude } from './utility/prismaIncludes';
 import { OutputFactory } from "./outputs/abstract/OutputFactory";
 import { Output } from "./outputs/abstract/Output";
@@ -29,28 +29,6 @@ interface AuthenticatedSocket extends Socket {
 let io: Server | null = null;
 let pub: ReturnType<typeof createClient> | null = null;
 let sub: ReturnType<typeof createClient> | null = null;
-
-function createKnowledgeBases(
-    agentKnowledgeBases: AgentWithRelations['knowledge_bases']
-): { knowledgeBases: KnowledgeBase<ConfigInstance>[]; agentConfigs: AgentKnowledgeBaseWithConfigs[] } {
-    if (!agentKnowledgeBases || agentKnowledgeBases.length === 0) {
-        return { knowledgeBases: [], agentConfigs: [] };
-    }
-
-    // Create knowledge base instances and maintain pairing with agent configs
-    const knowledgeBases: KnowledgeBase<ConfigInstance>[] = [];
-    const agentConfigs: AgentKnowledgeBaseWithConfigs[] = [];
-    
-    for (const agentKnowledgeBase of agentKnowledgeBases) {
-        const kb = KnowledgeBaseFactory.createKnowledgeBase(agentKnowledgeBase.config_type);
-        if (kb) {
-            knowledgeBases.push(kb);
-            agentConfigs.push(agentKnowledgeBase as AgentKnowledgeBaseWithConfigs);
-        }
-    }
-    
-    return { knowledgeBases, agentConfigs };
-}
 
 export async function initializeRealtimeSocket(server: HttpServer): Promise<Server> {
     logger.info("Initializing realtime socket", { address: server.address()?.toString() });
@@ -236,7 +214,7 @@ export async function initializeRealtimeSocket(server: HttpServer): Promise<Serv
             emitCacheInvalidationWithWildcard(user.id, 'chatHistory', runId);
 
             // Create knowledge bases from agent configuration
-            const { knowledgeBases } = createKnowledgeBases(agent.knowledge_bases || []);
+            const knowledgeBases = KnowledgeBaseFactory.createKnowledgeBasesFromAgent(agent.knowledge_bases || []);
 
             const runContext: RunContext = { runId };
             const channelAgent = new ChannelAgent(session, outputs, knowledgeBases, agent, runContext);

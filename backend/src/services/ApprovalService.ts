@@ -1,5 +1,5 @@
 import { db } from "../prismaClient";
-import { AgentWithRelations, AgentKnowledgeBaseWithConfigs } from "../types/prisma";
+import { AgentWithRelations } from "../types/prisma";
 import { getInputConfigInclude, getOutputConfigInclude, getKnowledgeBaseConfigInclude } from "../utility/prismaIncludes";
 import { OutputFactory } from "../outputs/abstract/OutputFactory";
 import { Output } from "../outputs/abstract/Output";
@@ -82,28 +82,6 @@ export class ApprovalService {
         agent: AgentWithRelations
     ): Output<ConfigInstance>[] {
         return OutputFactory.createOutputsFromAgent(agent);
-    }
-
-    private static createKnowledgeBases(
-        agentKnowledgeBases: AgentWithRelations['knowledge_bases']
-    ): { knowledgeBases: KnowledgeBase<ConfigInstance>[]; agentConfigs: AgentKnowledgeBaseWithConfigs[] } {
-        if (!agentKnowledgeBases || agentKnowledgeBases.length === 0) {
-            return { knowledgeBases: [], agentConfigs: [] };
-        }
-
-        // Create knowledge base instances and maintain pairing with agent configs
-        const knowledgeBases: KnowledgeBase<ConfigInstance>[] = [];
-        const agentConfigs: AgentKnowledgeBaseWithConfigs[] = [];
-        
-        for (const agentKnowledgeBase of agentKnowledgeBases) {
-            const kb = KnowledgeBaseFactory.createKnowledgeBase(agentKnowledgeBase.config_type);
-            if (kb) {
-                knowledgeBases.push(kb);
-                agentConfigs.push(agentKnowledgeBase as AgentKnowledgeBaseWithConfigs);
-            }
-        }
-        
-        return { knowledgeBases, agentConfigs };
     }
 
     /**
@@ -254,7 +232,7 @@ export class ApprovalService {
             };
 
             // Create knowledge bases from agent configuration
-            const { knowledgeBases } = this.createKnowledgeBases(agent.knowledge_bases || []);
+            const knowledgeBases = KnowledgeBaseFactory.createKnowledgeBasesFromAgent(agent.knowledge_bases || []);
 
             // Ensure run status is 'in_progress' for streaming
             if (runRecord.status !== 'in_progress') {
