@@ -359,7 +359,8 @@ export default function ChannelSetupTab({
                                         prompt={prompt}
                                         setPrompt={setPrompt}
                                         channelInputs={channelInputs}
-                                        channelOutput={channelOutputs.length > 0 ? channelOutputs[0] : undefined}
+                                        channelOutputs={channelOutputs}
+                                        knowledgeBases={channelKnowledgeBases}
                                         isIncomplete={promptIncomplete}
                                     />
                                 </div>

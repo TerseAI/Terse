@@ -95,9 +95,7 @@ async function upsertNotificationSettings(
 }
 
 export async function applyChannelForUser(userId: string, draft: ChannelDraft): Promise<{ id: string }> {
-    const { name, inputs, knowledgeBases, prompt, isActive = true, requireApproval = false, notificationSettings } = draft;
-    // Handle both legacy single output and new multiple outputs format
-    const outputs = (draft as any).outputs || ((draft as any).output ? [(draft as any).output] : []);
+    const { name, inputs, outputs, knowledgeBases, prompt, isActive = true, requireApproval = false, notificationSettings } = draft;
     
     logger.debug("Outputs from frontend", { outputs: JSON.stringify(outputs, null, 2), userId });
     logger.debug("Inputs from frontend", { inputs: JSON.stringify(inputs, null, 2), userId });
@@ -259,8 +257,6 @@ export async function updateChannelForUser(
     update: Partial<ChannelUpdate>
 ): Promise<{ id: string }> {
     const { name, inputs, outputs, knowledgeBases, prompt, isActive, requireApproval, notificationSettings } = update;
-    // Handle legacy single output format
-    const outputsArray = (update as any).output ? [(update as any).output] : (outputs || []);
 
     const prisma = db();
     const existingChannel: ChannelWithInputRelations | null = await prisma.automations.findFirst({
@@ -348,14 +344,14 @@ export async function updateChannelForUser(
         }
 
         // Update outputs if provided
-        if (outputsArray.length > 0) {
+        if (outputs && outputs.length > 0) {
             // Delete old outputs (configs cascade delete)
             await tx.automation_outputs.deleteMany({
                 where: { automation_id: channelId }
             });
 
             // Create new outputs
-            for (const output of outputsArray) {
+            for (const output of outputs) {
                 const outputIntegrationType = output.config.integrationType;
                 if (!outputIntegrationType) {
                     throw new Error(`Unknown integration type: ${output.config.integrationType}`);

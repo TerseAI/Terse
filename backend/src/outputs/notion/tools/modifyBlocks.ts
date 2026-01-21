@@ -2,7 +2,7 @@ import { RunContext, tool } from "@openai/agents";
 import { z } from "zod";
 import { Client } from '@notionhq/client';
 import { IntegrationType } from "../../../shared/Integrations";
-import { getBlockTypeName, describeBlocks } from "../../../utility/notion";
+import { getBlockTypeName, describeBlocks, extractPageTitle } from "../../../utility/notion";
 import { SessionWithTracking } from "../../../agent/ChannelAgent/ChannelAgent";
 import { formatError, needsApproval } from "../../../tools/toolUtils";
 import { ConfigType } from "../../../shared/Configs";
@@ -97,10 +97,10 @@ Example delete: "{\"operation\": \"delete\", \"block_id\": \"abc123\"}"`),
             auth: accessToken,
         });
 
-        const pageName = 'Notion page';
         const pageInfo = await notion.pages.retrieve({
             page_id: pageId,
         });
+        const pageName = extractPageTitle(pageInfo);
         const pageUrl = 'url' in pageInfo ? pageInfo.url : undefined;
 
         try {

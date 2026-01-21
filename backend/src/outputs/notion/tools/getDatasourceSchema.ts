@@ -1,6 +1,7 @@
 import { RunContext, tool } from "@openai/agents";
 import { z } from "zod";
 import { Client } from '@notionhq/client';
+import { GetDataSourceResponse } from '@notionhq/client/build/src/api-endpoints';
 import { IntegrationType } from "../../../shared/Integrations";
 import { SessionWithTracking } from "../../../agent/ChannelAgent/ChannelAgent";
 import { formatError } from "../../../tools/toolUtils";
@@ -92,7 +93,7 @@ The schema information returned by this tool should be used to properly format p
 
         // Fetch data source schema using the Notion API
         // The database_id in the config is actually the data_source_id
-        const dataSourceInfo = await notion.dataSources.retrieve({
+        const dataSourceInfo: GetDataSourceResponse = await notion.dataSources.retrieve({
             data_source_id: databaseId,
         });
 
@@ -103,8 +104,8 @@ The schema information returned by this tool should be used to properly format p
         }
 
         // Push run action to track the API call
-        const databaseName: string = 'name' in dataSourceInfo ? (dataSourceInfo.name as string) : 'Unknown Database';
-        const dataSourceUrl = 'url' in dataSourceInfo ? (dataSourceInfo.url as string | undefined) : undefined;
+        const databaseName = 'title' in dataSourceInfo ? (dataSourceInfo.title?.[0]?.plain_text || 'Unknown Database') : 'Unknown Database';
+        const dataSourceUrl = 'url' in dataSourceInfo ? dataSourceInfo.url : undefined;
         runContext.context.trackAction({
             action: 'Retrieved schema',
             integration: IntegrationType.NOTION,

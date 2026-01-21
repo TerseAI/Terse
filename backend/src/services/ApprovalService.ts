@@ -68,8 +68,7 @@ export class ApprovalService {
                     include: getKnowledgeBaseConfigInclude(),
                 },
             },
-            // @ts-ignore - Prisma client types are cached, but schema has 'outputs' (plural)
-        } as any) as ChannelWithRelations | null;
+        });
 
         if (!channel) {
             throw new Error(`Channel not found for automation id: ${runRecord.automation.id}`);

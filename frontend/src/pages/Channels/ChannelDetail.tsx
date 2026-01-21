@@ -53,8 +53,7 @@ function ChannelDetail() {
                 setIsActive(templateHydratedState.isActive);
                 setRequireApproval(templateHydratedState.requireApproval);
                 setInputs(templateHydratedState.inputs);
-                // Handle legacy single output format from templates
-                setOutputs(templateHydratedState.output ? [templateHydratedState.output] : (templateHydratedState.outputs || []));
+                setOutputs(templateHydratedState.outputs);
                 setKnowledgeBases(templateHydratedState.knowledgeBases);
                 setNotificationSettings(templateHydratedState.notificationSettings);
                 setTemplateHydrated(templateId);

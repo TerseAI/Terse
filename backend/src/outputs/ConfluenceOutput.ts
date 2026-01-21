@@ -286,8 +286,11 @@ To find the correct position, first call confluence_query_page to see the page c
 
             const commentResponse = await response.json() as InlineCommentResponse;
 
+            // Extract metadata to get page name
+            const metadata = extractPageMetadata(pageInfo);
+            const pageNameDisplay = metadata.title || pageId;
+            
             // Report action
-            const pageNameDisplay = 'Confluence page';
             const commentPreview = comment_text.length > 60 
                 ? comment_text.substring(0, 60) + '...' 
                 : comment_text;

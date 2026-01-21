@@ -1,6 +1,7 @@
 import { RunContext, tool } from "@openai/agents";
 import { z } from "zod";
 import { Client } from '@notionhq/client';
+import { GetDataSourceResponse } from '@notionhq/client/build/src/api-endpoints';
 import { IntegrationType } from "../../../shared/Integrations";
 import { SessionWithTracking } from "../../../agent/ChannelAgent/ChannelAgent";
 import { formatError, needsApproval } from "../../../tools/toolUtils";
@@ -83,6 +84,19 @@ IMPORTANT:
         // Validate page_id - must be null or a valid UUID-like string (no slashes, periods, or other special chars)
         const validPageId = page_id && page_id.length > 30 && !page_id.includes('/') && page_id !== '.' ? page_id : null;
 
+        // Helper function to get database name from data source
+        const getDatabaseName = async (dataSourceId: string): Promise<string> => {
+            try {
+                const dataSourceInfo: GetDataSourceResponse = await notion.dataSources.retrieve({
+                    data_source_id: dataSourceId,
+                });
+                return 'title' in dataSourceInfo ? (dataSourceInfo.title?.[0]?.plain_text || 'Unknown Database') : 'Unknown Database';
+            } catch (error) {
+                logger.warn('Failed to retrieve data source info for database name', { dataSourceId, error });
+                return 'Unknown Database';
+            }
+        };
+
         try {
             if (validPageId) {
                 // Update existing page
@@ -90,8 +104,19 @@ IMPORTANT:
                     page_id: validPageId,
                     properties: properties as Record<string, any>,
                 });
-                // Report action (no DB writes here)
-                const databaseName = 'Notion database';
+                
+                // Get database name from page's parent
+                let databaseName = 'Unknown Database';
+                if ('parent' in response && response.parent && 'type' in response.parent) {
+                    if (response.parent.type === 'data_source_id' && 'data_source_id' in response.parent) {
+                        databaseName = await getDatabaseName(response.parent.data_source_id);
+                    } else if (response.parent.type === 'database_id' && 'database_id' in response.parent) {
+                        // For database_id parent, we can try to retrieve it, but it might be a database not a data source
+                        // In this case, we'll use a fallback
+                        databaseName = 'Notion database';
+                    }
+                }
+                
                 const pageUrl = 'url' in response ? response.url : undefined;
                 runContext.context.trackAction({
                     action: 'Updated page',
@@ -108,7 +133,9 @@ IMPORTANT:
                     url: pageUrl
                 };
             } else {
-                // Create new page
+                // Create new page - get database name first
+                const databaseName = await getDatabaseName(databaseId);
+                
                 const response = await notion.pages.create({
                     parent: {
                         type: 'data_source_id',
@@ -117,8 +144,7 @@ IMPORTANT:
                     properties: properties as Record<string, any>,
                 });
                 logger.info("Notion database modified successfully", { pageId: page_id ?? '(new page)', databaseId });
-                // Report action (no DB writes here)
-                const databaseName = 'Notion database';
+                
                 const pageUrl = 'url' in response ? response.url : undefined;
                 runContext.context.trackAction({
                     action: 'Created page',
