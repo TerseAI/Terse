@@ -8,6 +8,7 @@ import { LinearTicketOutput } from "../linear/LinearTicketOutput";
 import { JiraTicketOutput } from "../jira/JiraTicketOutput";
 import { SlackOutput } from "../slack/SlackOutput";
 import { ChannelOutputWithConfigs, ChannelWithRelations } from "../../types/prisma";
+import { GmailOutput } from "../gmail/GmailOutput";
 
 /**
  * Factory for creating Output instances based on IntegrationType.
@@ -21,7 +22,8 @@ export class OutputFactory {
         [OutputConfigType.CONFLUENCE, () => new ConfluenceOutput()],
         [OutputConfigType.LINEAR_TICKET, () => new LinearTicketOutput()],
         [OutputConfigType.JIRA_TICKET, () => new JiraTicketOutput()],
-        [OutputConfigType.SLACK_CHANNEL, () => new SlackOutput()]
+        [OutputConfigType.SLACK_CHANNEL, () => new SlackOutput()],
+        [OutputConfigType.GMAIL, () => new GmailOutput()]
     ]);
 
     static createOutput(integrationType: OutputConfigType): Output<ConfigInstance> | null {

@@ -6,6 +6,7 @@ import express, { Request, Response, NextFunction } from "express";
 import { createServer } from "http";
 // Import settings early to validate environment variables at startup
 import "./config/settings";
+import { settings } from "./config/settings";
 import { requestSessionSocketToken } from "./agent/socket";
 import { getActivityFeed, getDailyActivitySummary } from "./routes/activity";
 import { authMiddleware, login, logout, setSession } from "./routes/auth";
