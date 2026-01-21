@@ -223,7 +223,6 @@ When explaining code to the user:
 - Link related concepts together
 - Suggest next areas to explore if relevant`);
 
-        console.log('GitHub KB system instructions', sections.join('\n'));
         return sections.join('\n');
     }
 }
