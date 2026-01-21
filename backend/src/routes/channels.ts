@@ -95,7 +95,7 @@ async function upsertNotificationSettings(
 }
 
 export async function applyChannelForUser(userId: string, draft: ChannelDraft): Promise<{ id: string }> {
-    const { name, inputs, outputs, knowledgeBases, prompt, isActive = true, requireApproval = false, notificationSettings } = draft;
+    const { name, inputs, outputs, knowledgeBases, prompt, isActive = true, requireApproval = false, notificationSettings, toolApprovalSettings } = draft;
     
     logger.debug("Outputs from frontend", { outputs: JSON.stringify(outputs, null, 2), userId });
     logger.debug("Inputs from frontend", { inputs: JSON.stringify(inputs, null, 2), userId });
@@ -226,6 +226,25 @@ export async function applyChannelForUser(userId: string, draft: ChannelDraft): 
             await upsertNotificationSettings(tx, newChannel.id, notificationSettings);
         }
 
+        // Upsert tool approval settings if provided
+        if (toolApprovalSettings && Array.isArray(toolApprovalSettings)) {
+            // Delete existing settings
+            await tx.automation_tool_approval_settings.deleteMany({
+                where: { automation_id: newChannel.id },
+            });
+
+            // Create new settings
+            if (toolApprovalSettings.length > 0) {
+                await tx.automation_tool_approval_settings.createMany({
+                    data: toolApprovalSettings.map(setting => ({
+                        automation_id: newChannel.id,
+                        tool_name: setting.toolName,
+                        requires_approval: setting.requiresApproval,
+                    })),
+                });
+            }
+        }
+
         return newChannel;
     });
 
@@ -256,7 +275,7 @@ export async function updateChannelForUser(
     channelId: string,
     update: Partial<ChannelUpdate>
 ): Promise<{ id: string }> {
-    const { name, inputs, outputs, knowledgeBases, prompt, isActive, requireApproval, notificationSettings } = update;
+    const { name, inputs, outputs, knowledgeBases, prompt, isActive, requireApproval, notificationSettings, toolApprovalSettings } = update;
 
     const prisma = db();
     const existingChannel: ChannelWithInputRelations | null = await prisma.automations.findFirst({
@@ -426,6 +445,25 @@ export async function updateChannelForUser(
         if (notificationSettings) {
             await upsertNotificationSettings(tx, channelId, notificationSettings);
         }
+
+        // Update tool approval settings if provided
+        if (toolApprovalSettings !== undefined) {
+            // Delete existing settings
+            await tx.automation_tool_approval_settings.deleteMany({
+                where: { automation_id: channelId },
+            });
+
+            // Create new settings if provided
+            if (Array.isArray(toolApprovalSettings) && toolApprovalSettings.length > 0) {
+                await tx.automation_tool_approval_settings.createMany({
+                    data: toolApprovalSettings.map(setting => ({
+                        automation_id: channelId,
+                        tool_name: setting.toolName,
+                        requires_approval: setting.requiresApproval,
+                    })),
+                });
+            }
+        }
     });
 
     const channelWithInputRelations: ChannelWithInputRelations | null = await prisma.automations.findFirst({
@@ -494,7 +532,8 @@ export async function getUserChannels(req: Request, res: Response) {
                 knowledge_bases: {
                     include: getKnowledgeBaseConfigInclude()
                 },
-                notification_settings: true
+                notification_settings: true,
+                tool_approval_settings: true
             },
             orderBy: { created_at: 'desc' },
             skip,
@@ -560,6 +599,7 @@ export async function getRecentChannels(req: Request, res: Response) {
                 knowledge_bases: {
                     include: getKnowledgeBaseConfigInclude()
                 },
+                tool_approval_settings: true
             },
                 orderBy: { updated_at: 'desc' },
                 take: limit
@@ -626,7 +666,8 @@ export async function getUserChannel(req: Request, res: Response) {
                 knowledge_bases: {
                     include: getKnowledgeBaseConfigInclude()
                 },
-                notification_settings: true
+                notification_settings: true,
+                tool_approval_settings: true
             }
         });
 
@@ -653,7 +694,7 @@ export async function createChannel(req: Request, res: Response) {
     }
 
     const userId = req.session.user.id;
-    const { name, inputs, outputs, knowledgeBases, prompt, isActive = true, requireApproval = false, notificationSettings } = req.body as Channel;
+    const { name, inputs, outputs, knowledgeBases, prompt, isActive = true, requireApproval = false, notificationSettings, toolApprovalSettings } = req.body as Channel;
 
     try {
         const { id } = await applyChannelForUser(userId, {
@@ -665,6 +706,7 @@ export async function createChannel(req: Request, res: Response) {
             isActive,
             requireApproval,
             notificationSettings,
+            toolApprovalSettings,
         });
 
         res.status(201).json({ success: true, id });
@@ -748,10 +790,118 @@ export async function deleteChannel(req: Request, res: Response) {
     }
 }
 
+// Helper function to get available tools for a channel
+async function getAvailableToolsForChannel(channelId: string, userId: string): Promise<Array<{
+    name: string;
+    description: string;
+    integration: IntegrationType;
+    isReadOnly: boolean;
+}>> {
+    const prisma = db();
+    
+    // Verify channel ownership
+    const channel = await prisma.automations.findFirst({
+        where: {
+            id: channelId,
+            user_id: userId,
+        },
+        include: {
+            outputs: {
+                include: getOutputConfigInclude(),
+            },
+            knowledge_bases: {
+                include: getKnowledgeBaseConfigInclude(),
+            },
+        },
+    });
+
+    if (!channel) {
+        throw new Error('Channel not found');
+    }
+
+    const tools: Array<{
+        name: string;
+        description: string;
+        integration: IntegrationType;
+        isReadOnly: boolean;
+    }> = [];
+
+    // Get tools from outputs
+    for (const output of channel.outputs || []) {
+        const outputConfig = convertPrismaOutputConfigToConfigInstance(output);
+        const outputInstance = OutputFactory.createOutputFromConfig(outputConfig);
+        
+        for (const entry of outputInstance.toolbox) {
+            tools.push({
+                name: entry.tool.name,
+                description: entry.tool.description || '',
+                integration: entry.integration,
+                isReadOnly: entry.isReadOnly,
+            });
+        }
+    }
+
+    // Get tools from knowledge bases
+    for (const kb of channel.knowledge_bases || []) {
+        const kbConfig = convertPrismaKnowledgeBaseConfigToConfigInstance(kb);
+        const kbInstance = KnowledgeBaseFactory.createKnowledgeBaseFromConfig(kbConfig);
+        
+        for (const entry of kbInstance.toolbox) {
+            tools.push({
+                name: entry.tool.name,
+                description: entry.tool.description || '',
+                integration: entry.integration,
+                isReadOnly: entry.isReadOnly,
+            });
+        }
+    }
+
+    // Remove duplicates (same tool name) and filter to only writable tools
+    const uniqueTools = new Map<string, typeof tools[0]>();
+    for (const tool of tools) {
+        // Only include writable tools (tools that can require approval)
+        if (!tool.isReadOnly && !uniqueTools.has(tool.name)) {
+            uniqueTools.set(tool.name, tool);
+        }
+    }
+
+    return Array.from(uniqueTools.values());
+}
+
+// GET /channels/:id/available-tools - Get available tools for a channel
+export async function getAvailableTools(req: Request, res: Response) {
+    if (!req.session?.user) {
+        res.status(401).json({ error: 'Unauthorized' });
+        return;
+    }
+
+    const userId = req.session.user.id;
+    const channelId = req.params.id;
+
+    try {
+        const tools = await getAvailableToolsForChannel(channelId, userId);
+        res.status(200).json(tools);
+    } catch (error) {
+        logger.error('Error fetching available tools', { error, userId, channelId });
+        res.status(500).json({ error: 'Failed to fetch available tools' });
+    }
+}
+
 // Helper function to transform ChannelWithRelations to frontend Channel format
 function transformChannelToFrontendFormat(channel: ChannelWithRelations & Partial<ChannelWithNotificationSettingsRelations>): Channel {
     if (!channel.outputs || channel.outputs.length === 0) {
         throw new Error(`Channel outputs not found for channel ${channel.id}`);
+    }
+
+    // Transform tool approval settings
+    const toolApprovalSettings: Array<{ toolName: string; requiresApproval: boolean }> = [];
+    if (channel.tool_approval_settings && Array.isArray(channel.tool_approval_settings)) {
+        for (const setting of channel.tool_approval_settings) {
+            toolApprovalSettings.push({
+                toolName: setting.tool_name,
+                requiresApproval: setting.requires_approval,
+            });
+        }
     }
 
     return {
@@ -759,6 +909,7 @@ function transformChannelToFrontendFormat(channel: ChannelWithRelations & Partia
         name: channel.name,
         isActive: channel.is_active,
         requireApproval: channel.require_approval ?? false,
+        toolApprovalSettings,
         prompt: channel.prompt ? { text: channel.prompt.content } : { text: '' },
         inputs: channel.inputs.map(input => ({
             id: input.id,

@@ -46,6 +46,35 @@ export type ErrorContext = {
 
 // MARK: - Approval
 
+/**
+ * Creates a needsApproval function for a specific tool.
+ * This function matches the OpenAI Agents SDK signature: (context, args) => Promise<boolean>
+ */
+export function createNeedsApprovalFunction(toolName: string) {
+    return async (context?: RunContext<unknown>, _args?: unknown): Promise<boolean> => {
+        // Type guard: safely access channel from SessionWithTracking
+        const sessionWithTracking = context?.context as SessionWithTracking<Session> | undefined;
+        const channel = sessionWithTracking?.channel;
+        
+        if (!channel) return false;
+        
+        // Check granular settings first (new system)
+        if (channel.toolApprovalSettings) {
+            const toolSetting = channel.toolApprovalSettings.get(toolName);
+            if (toolSetting !== undefined) {
+                return toolSetting;
+            }
+        }
+        
+        // Fallback to legacy boolean (backward compatibility)
+        return channel.requireApproval ?? false;
+    };
+}
+
+/**
+ * Legacy function for backward compatibility.
+ * @deprecated Use createNeedsApprovalFunction instead
+ */
 export async function needsApproval(context?: RunContext<unknown>): Promise<boolean> {
     // Type guard: safely access channel.requireApproval from SessionWithTracking
     const sessionWithTracking = context?.context as SessionWithTracking<Session> | undefined;

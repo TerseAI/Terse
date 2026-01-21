@@ -37,6 +37,7 @@ function ChannelDetail() {
     const [prompt, setPrompt] = useState<ChannelPrompt | undefined>(undefined);
     const [isActive, setIsActive] = useState<boolean>(true);
     const [requireApproval, setRequireApproval] = useState<boolean>(false);
+    const [toolApprovalSettings, setToolApprovalSettings] = useState<Array<{ toolName: string; requiresApproval: boolean }>>([]);
     const [notificationSettings, setNotificationSettings] = useState<ChannelNotificationSettings>({
         enabled: false,
         actionTypes: [],
@@ -52,6 +53,7 @@ function ChannelDetail() {
                 setPrompt(templateHydratedState.prompt);
                 setIsActive(templateHydratedState.isActive);
                 setRequireApproval(templateHydratedState.requireApproval);
+                setToolApprovalSettings([]);
                 setInputs(templateHydratedState.inputs);
                 setOutputs(templateHydratedState.outputs);
                 setKnowledgeBases(templateHydratedState.knowledgeBases);
@@ -71,6 +73,7 @@ function ChannelDetail() {
                     setPrompt(undefined);
                     setIsActive(true);
                     setRequireApproval(false);
+                    setToolApprovalSettings([]);
                     setNotificationSettings({ enabled: false, actionTypes: [] });
                 }
             }
@@ -82,6 +85,7 @@ function ChannelDetail() {
             setPrompt(channel.prompt);
             setIsActive(channel.isActive);
             setRequireApproval(channel.requireApproval ?? false);
+            setToolApprovalSettings(channel.toolApprovalSettings || []);
             setNotificationSettings(channel.notificationSettings ?? { enabled: false, actionTypes: [] });
         }
     }, [channel, channelId, templateId, templateFound, templateHydratedState, templateHydrated]);
@@ -122,6 +126,8 @@ function ChannelDetail() {
         setIsActive,
         requireApproval,
         setRequireApproval,
+        toolApprovalSettings,
+        setToolApprovalSettings,
         notificationSettings,
         setNotificationSettings,
         isLoading,

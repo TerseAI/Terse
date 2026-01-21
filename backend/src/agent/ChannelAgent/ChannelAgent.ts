@@ -43,6 +43,7 @@ export class ChannelAgent<
     private tools: Tool<SessionWithTracking<T>>[] = [];
     private runContext: RunContext;
     private toolMetadataMap: Map<string, ToolMetadata> = new Map();
+    private toolApprovalSettings: Map<string, boolean> = new Map();
     private memorySession: RunHistoryChatMemorySession;
     private maxTurns: number;
     private notificationManager: NotificationManager;
@@ -77,6 +78,7 @@ export class ChannelAgent<
 
         this.runContext = runContext;
         this.buildToolMetadataMap();
+        this.loadToolApprovalSettings();
         this.memorySession = new RunHistoryChatMemorySession({
             sessionId: runContext.runId,
         });
@@ -411,8 +413,20 @@ export class ChannelAgent<
             ...this.session,
             channel: {
                 requireApproval: this.channel.require_approval ?? false,
+                toolApprovalSettings: this.toolApprovalSettings,
             },
         };
+    }
+
+    private loadToolApprovalSettings(): void {
+        this.toolApprovalSettings.clear();
+        
+        // Load tool approval settings from channel relations
+        if (this.channel.tool_approval_settings && Array.isArray(this.channel.tool_approval_settings)) {
+            for (const setting of this.channel.tool_approval_settings) {
+                this.toolApprovalSettings.set(setting.tool_name, setting.requires_approval);
+            }
+        }
     }
 
     private buildUserMessage(inputEvent: InputEvent): (AgentInputText | AgentInputImage)[] {
@@ -621,6 +635,7 @@ ${inputEvent.formatForChannelAgent()}
 export type SessionWithTracking<T extends Session> = T & {
     channel: {
         requireApproval: boolean;
+        toolApprovalSettings?: Map<string, boolean>;
     };
 }
 

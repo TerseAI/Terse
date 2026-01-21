@@ -503,6 +503,7 @@ model automations {
   notification_settings      automation_notification_settings?
   output_change_attributions output_change_attributions[]
   knowledge_bases            automation_knowledge_bases[]
+  tool_approval_settings     automation_tool_approval_settings[]
 
   @@index([user_id])
   @@index([is_active])
@@ -1061,6 +1062,21 @@ model automation_notification_settings {
   updated_at    DateTime               @updatedAt
 
   automation automations @relation(fields: [automation_id], references: [id], onDelete: Cascade)
+}
+
+// Per-tool approval settings for granular control
+model automation_tool_approval_settings {
+  id               String   @id @default(cuid())
+  automation_id    String
+  tool_name        String   // Tool name (e.g., "gmail_send_email", "slack_send_message")
+  requires_approval Boolean  @default(false)
+  created_at       DateTime @default(now())
+  updated_at       DateTime @updatedAt
+
+  automation automations @relation(fields: [automation_id], references: [id], onDelete: Cascade)
+
+  @@unique([automation_id, tool_name])
+  @@index([automation_id])
 }
 
 model user_notification_destinations {

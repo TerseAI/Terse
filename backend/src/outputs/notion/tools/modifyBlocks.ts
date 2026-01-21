@@ -4,7 +4,7 @@ import { Client } from '@notionhq/client';
 import { IntegrationType } from "../../../shared/Integrations";
 import { getBlockTypeName, describeBlocks, extractPageTitle } from "../../../utility/notion";
 import { SessionWithTracking } from "../../../agent/ChannelAgent/ChannelAgent";
-import { formatError, needsApproval } from "../../../tools/toolUtils";
+import { formatError, createNeedsApprovalFunction } from "../../../tools/toolUtils";
 import { ConfigType } from "../../../shared/Configs";
 import logger from "../../../logger";
 import { Session } from "../../../server";
@@ -59,7 +59,7 @@ Example append: "{\"operation\": \"append\", \"blocks\": [{\"object\": \"block\"
 Example update: "{\"operation\": \"update\", \"block_id\": \"abc123\", \"block\": {\"paragraph\": {\"rich_text\": [{\"type\": \"text\", \"text\": {\"content\": \"Updated\"}}]}}}"
 Example delete: "{\"operation\": \"delete\", \"block_id\": \"abc123\"}"`),
     }),
-    needsApproval,
+    needsApproval: createNeedsApprovalFunction("notion_modify_blocks"),
     execute: async ({ integrationId, pageId, operation_json }, runContext?: RunContext<SessionWithTracking<Session>>) => {        
         // Parse the JSON string
         let op: {

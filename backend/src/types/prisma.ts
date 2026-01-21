@@ -34,6 +34,7 @@ import {
   identifiable_refs,
   automation_knowledge_bases,
   automation_jira_configs,
+  automation_tool_approval_settings,
 } from '@prisma/client';
 
 
@@ -223,8 +224,15 @@ export type AutomationWithKnowledgeBaseRelations = Prisma.automationsGetPayload<
 }>;
 export type ChannelWithKnowledgeBaseRelations = AutomationWithKnowledgeBaseRelations;
 
-export type AutomationWithRelations = AutomationWithInputRelations & AutomationWithOutputRelations & AutomationWithPromptRelations & Partial<AutomationWithKnowledgeBaseRelations>;
-export type ChannelWithRelations = ChannelWithInputRelations & ChannelWithOutputRelations & ChannelWithPromptRelations & Partial<ChannelWithKnowledgeBaseRelations>;
+export type AutomationWithToolApprovalSettingsRelations = Prisma.automationsGetPayload<{
+  include: {
+    tool_approval_settings: true;
+  }
+}>;
+export type ChannelWithToolApprovalSettingsRelations = AutomationWithToolApprovalSettingsRelations;
+
+export type AutomationWithRelations = AutomationWithInputRelations & AutomationWithOutputRelations & AutomationWithPromptRelations & Partial<AutomationWithKnowledgeBaseRelations> & Partial<AutomationWithToolApprovalSettingsRelations>;
+export type ChannelWithRelations = ChannelWithInputRelations & ChannelWithOutputRelations & ChannelWithPromptRelations & Partial<ChannelWithKnowledgeBaseRelations> & Partial<ChannelWithToolApprovalSettingsRelations>;
 
 // Extract the transaction type from PrismaClient
 export type PrismaTransaction = Parameters<Parameters<PrismaClient['$transaction']>[0]>[0];

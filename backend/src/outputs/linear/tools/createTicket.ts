@@ -5,7 +5,7 @@ import { IntegrationType } from "../../../shared/Integrations";
 import { SessionWithTracking } from "../../../agent/ChannelAgent/ChannelAgent";
 import type { IssueCreateInput } from "@linear/sdk/dist/_generated_documents";
 import { RunHistoryActionType } from "@prisma/client";
-import { formatError, needsApproval } from "../../../tools/toolUtils";
+import { formatError, createNeedsApprovalFunction } from "../../../tools/toolUtils";
 import logger from "../../../logger";
 import { Session } from "../../../server";
 import { LinearIntegrationManager } from "../../../integrations/LinearIntegration";
@@ -51,7 +51,7 @@ BEFORE USING THIS TOOL:
         estimate: z.number().nullable().optional().describe('The estimated complexity/story points of the issue. IMPORTANT: Do NOT set estimate to 0 - many Linear teams disallow 0 estimates. Valid values are positive numbers (1, 2, 3, 5, 8, etc.) or null/omit to skip. Only set an estimate if you have a meaningful value.'),
         subscriberIds: z.array(z.string()).nullable().optional().describe('The IDs of users subscribing to this ticket.'),
     }),
-    needsApproval,
+    needsApproval: createNeedsApprovalFunction("linear_create_ticket"),
     execute: async ({ 
         integrationId,
         teamId,

@@ -7,6 +7,7 @@ import { IntegrationType } from "../../../shared/Integrations";
 import { RunHistoryActionType } from "@prisma/client";
 import { SessionWithTracking } from "../../../agent/ChannelAgent/ChannelAgent";
 import { Session } from "../../../server";
+import { createNeedsApprovalFunction } from "../../../tools/toolUtils";
 
 /**
  * Tool for sending messages to Slack channels or DMs.
@@ -15,6 +16,7 @@ import { Session } from "../../../server";
 export const slackSendMessageTool = tool({
     name: "slack_send_message",
     description: `Send message to Slack channel. Supports plain text (mrkdwn) or Block Kit (JSON blocks).`,
+    needsApproval: createNeedsApprovalFunction("slack_send_message"),
     parameters: z.object({
         integrationId: z.string().describe('The integration ID of the Slack workspace to use.'),
         channelId: z.string().describe('The Slack channel ID to send the message to.'),

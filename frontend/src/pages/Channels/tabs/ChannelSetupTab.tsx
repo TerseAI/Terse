@@ -44,6 +44,8 @@ export type ChannelSetupTabProps = {
     setIsActive: (isActive: boolean) => void;
     requireApproval: boolean;
     setRequireApproval: (requireApproval: boolean) => void;
+    toolApprovalSettings: Array<{ toolName: string; requiresApproval: boolean }>;
+    setToolApprovalSettings: (settings: Array<{ toolName: string; requiresApproval: boolean }>) => void;
     notificationSettings: ChannelNotificationSettingsType;
     setNotificationSettings: (settings: ChannelNotificationSettingsType) => void;
     isLoading: boolean;
@@ -74,6 +76,7 @@ function SaveChannelButton({
     prompt: ChannelPrompt | undefined;
     isActive: boolean;
     requireApproval: boolean;
+    toolApprovalSettings: Array<{ toolName: string; requiresApproval: boolean }>;
     notificationSettings: ChannelNotificationSettingsType;
     mutate: KeyedMutator<Channel>;
     onSaveSuccess?: () => void;
@@ -107,6 +110,7 @@ function SaveChannelButton({
                 prompt,
                 isActive,
                 requireApproval,
+                toolApprovalSettings,
                 notificationSettings
             };
 
@@ -169,6 +173,8 @@ export default function ChannelSetupTab({
     isActive,
     requireApproval,
     setRequireApproval,
+    toolApprovalSettings,
+    setToolApprovalSettings,
     notificationSettings,
     setNotificationSettings,
     mutate,
@@ -383,7 +389,11 @@ export default function ChannelSetupTab({
                                         infoMessage="Configure approval requirements and notification settings for when the AI takes actions on your behalf."
                                     />
                                 </div>
-                                <ChannelApprovalSettings requireApproval={requireApproval} onChange={setRequireApproval} />
+                                <ChannelApprovalSettings 
+                                    channelId={channelId} 
+                                    toolApprovalSettings={toolApprovalSettings || []} 
+                                    onChange={setToolApprovalSettings} 
+                                />
                                 <ChannelNotificationSettings settings={notificationSettings} onChange={setNotificationSettings} />
                             </div>
                         )}

@@ -5,7 +5,7 @@ import { IntegrationType } from "../../../shared/Integrations";
 import { SessionWithTracking } from "../../../agent/ChannelAgent/ChannelAgent";
 import type { IssueUpdateInput } from "@linear/sdk/dist/_generated_documents";
 import { RunHistoryActionType } from "@prisma/client";
-import { formatError, needsApproval } from "../../../tools/toolUtils";
+import { formatError, createNeedsApprovalFunction } from "../../../tools/toolUtils";
 import logger from "../../../logger";
 import { Session } from "../../../server";
 import { LinearIntegrationManager } from "../../../integrations/LinearIntegration";
@@ -46,7 +46,7 @@ COMMON UPDATE OPERATIONS:
         subscriberIds: z.array(z.string()).nullable().optional().describe('The IDs of users subscribing to this ticket.'),
         trashed: z.boolean().nullable().optional().describe('Whether the issue has been trashed.'),
     }),
-    needsApproval,
+    needsApproval: createNeedsApprovalFunction("linear_update_ticket"),
     execute: async ({ 
         integrationId,
         issueId, 
