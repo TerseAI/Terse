@@ -22,6 +22,7 @@ type Props = {
     isFullscreen?: boolean;
     onFullscreenChange?: (fullscreen: boolean) => void;
     isInitialOpen?: boolean;
+    initialPrompt?: string;
 };
 
 export default function RunHistoryChatDrawer({
@@ -37,6 +38,7 @@ export default function RunHistoryChatDrawer({
     isFullscreen: externalIsFullscreen = false,
     onFullscreenChange,
     isInitialOpen = true,
+    initialPrompt,
 }: Props) {
     const [internalFullscreen, setInternalFullscreen] = useState(false);
     const prevRunIdRef = useRef<string | null>(null);
@@ -76,8 +78,8 @@ export default function RunHistoryChatDrawer({
                 !isActuallyInitialOpen && "[&[data-state=open]]:!animate-none [&[data-state=closed]]:!animate-none [&+*]:!animate-none"
             )}>
                 {isOpen && (
-                    <RunHistoryChatAdapter runId={runId} status={status}>
-                        {({ initialTurns, isLoading, subscribeToEvents, sendMessage, handleApprove, handleReject, currentStatus }) => {
+                    <RunHistoryChatAdapter runId={runId} status={status} initialPrompt={initialPrompt}>
+                        {({ initialTurns, isLoading, subscribeToEvents, sendMessage, handleApprove, handleReject, currentStatus, initialPrompt: prompt }) => {
                             const isFiltered = currentStatus === 'skipped';
                             
                             return (
@@ -105,6 +107,7 @@ export default function RunHistoryChatDrawer({
                                                     sendMessage={sendMessage}
                                                     onHandleApprove={handleApprove}
                                                     onHandleReject={handleReject}
+                                                    initialPrompt={prompt}
                                                     EmptyContentPlaceholder={
                                                         isLoading 
                                                             ? <div className="p-4 text-center text-muted-foreground">Loading history...</div> 

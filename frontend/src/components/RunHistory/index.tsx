@@ -27,8 +27,9 @@ export default function RunHistory({ channelId }: RunHistoryProps) {
         to: undefined
     });
     
-    // Get runId from URL params for deep linking
+    // Get runId and prompt from URL params for deep linking
     const urlRunId = searchParams.get('runId');
+    const urlPrompt = searchParams.get('prompt');
     const [openDrawerRunId, setOpenDrawerRunId] = useState<string | null>(urlRunId || null);
     const [isDrawerFullscreen, setIsDrawerFullscreen] = useState(false); // Keep drawer partially open when opened via deep link (e.g., from Slack)
     const [isInitialDrawerOpen, setIsInitialDrawerOpen] = useState(!!urlRunId);
@@ -168,6 +169,7 @@ export default function RunHistory({ channelId }: RunHistoryProps) {
                                 runs={paginatedRuns}
                                 currentRunIndex={index}
                                 isDrawerOpen={openDrawerRunId === run.id}
+                                initialPrompt={openDrawerRunId === run.id && urlPrompt ? decodeURIComponent(urlPrompt) : undefined}
                                 onDrawerOpenChange={(open) => {
                                     if (open) {
                                         setIsInitialDrawerOpen(true);
@@ -179,16 +181,17 @@ export default function RunHistory({ channelId }: RunHistoryProps) {
                                     } else {
                                         setOpenDrawerRunId(null);
                                         setIsDrawerFullscreen(false);
-                                        // Remove runId from URL when drawer closes
+                                        // Remove runId and prompt from URL when drawer closes
                                         const nextParams = new URLSearchParams(searchParams);
                                         nextParams.delete('runId');
+                                        nextParams.delete('prompt');
                                         setSearchParams(nextParams, { replace: true });
                                     }
                                 }}
                                 onNavigateToRun={(newRunId) => {
                                     setOpenDrawerRunId(newRunId);
                                     setIsInitialDrawerOpen(false);
-                                    // Update URL when navigating to a different run
+                                    // Update URL when navigating to a different run, preserve prompt if present
                                     const nextParams = new URLSearchParams(searchParams);
                                     nextParams.set('runId', newRunId);
                                     setSearchParams(nextParams, { replace: true });

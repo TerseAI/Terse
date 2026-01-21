@@ -12,6 +12,7 @@ import { filterOutThinkingOnlyTurns } from '@/components/chat/utils/turnUtils';
 type RunHistoryChatAdapterProps = {
     runId: string;
     status: RunHistoryStatus;
+    initialPrompt?: string;
     children?: (props: { 
         initialTurns: Turn[]; 
         isLoading: boolean; 
@@ -23,10 +24,11 @@ type RunHistoryChatAdapterProps = {
         handleApprove: (stepId: string) => void;
         handleReject: (stepId: string) => void;
         currentStatus: RunHistoryStatus;
+        initialPrompt?: string;
     }) => React.ReactNode;
 };
 
-export default function RunHistoryChatAdapter({ runId, status, children}: RunHistoryChatAdapterProps) {
+export default function RunHistoryChatAdapter({ runId, status, initialPrompt, children}: RunHistoryChatAdapterProps) {
     // Fetch History (API)
     const { events, isLoading, startTimestamp, endTimestamp} = useChatHistory(runId);
 
@@ -62,7 +64,7 @@ export default function RunHistoryChatAdapter({ runId, status, children}: RunHis
     };
 
     if (children) {
-        return <>{children({ initialTurns: turns, isLoading, runId, startTimestamp, endTimestamp, subscribeToEvents, sendMessage, currentStatus, handleApprove, handleReject })}</>;
+        return <>{children({ initialTurns: turns, isLoading, runId, startTimestamp, endTimestamp, subscribeToEvents, sendMessage, currentStatus, handleApprove, handleReject, initialPrompt })}</>;
     }
 
     return (
@@ -72,6 +74,7 @@ export default function RunHistoryChatAdapter({ runId, status, children}: RunHis
             sendMessage={sendMessage}
             onHandleApprove={handleApprove}
             onHandleReject={handleReject}
+            initialPrompt={initialPrompt}
             EmptyContentPlaceholder={isLoading ? <div className="p-4 text-center text-muted-foreground">Loading history...</div> : <div className="p-4 text-center text-muted-foreground">No events found</div>}
         />
     );

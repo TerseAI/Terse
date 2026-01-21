@@ -11,6 +11,7 @@ interface UseChatOptions {
     onUserMessage?: (message: string) => void;
     onToolCall?: (req: ToolCall) => void;
     onToolCallComplete?: (req: ToolCallComplete) => void;
+    initialPrompt?: string;
 }
 
 export function useChat({
@@ -20,6 +21,7 @@ export function useChat({
     onUserMessage,
     onToolCall,
     onToolCallComplete,
+    initialPrompt,
 }: UseChatOptions) {
     const {
         turns,
@@ -59,7 +61,8 @@ export function useChat({
         sendMessage: sendSocketMessage,
         onUserMessage: (message: string) => {
             onUserMessage?.(message);
-        }
+        },
+        initialPrompt,
     });
 
     return {

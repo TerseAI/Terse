@@ -16,6 +16,7 @@ type Props = {
     isFullscreen?: boolean;
     onFullscreenChange?: (fullscreen: boolean) => void;
     isInitialOpen?: boolean;
+    initialPrompt?: string;
 };
 
 export default function RunHistoryItem({ 
@@ -28,6 +29,7 @@ export default function RunHistoryItem({
     isFullscreen = false,
     onFullscreenChange,
     isInitialOpen = true,
+    initialPrompt,
 }: Props) {
     const handleDrawerOpen = () => {
         if (onDrawerOpenChange) {
@@ -85,6 +87,7 @@ export default function RunHistoryItem({
                 isFullscreen={isFullscreen}
                 onFullscreenChange={onFullscreenChange}
                 isInitialOpen={isInitialOpen}
+                initialPrompt={initialPrompt}
             />
         </div>
     );
