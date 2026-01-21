@@ -14,9 +14,9 @@ export async function getRunHistory(req: Request, res: Response) {
     const prisma: PrismaClient = db();
 
     // req.params contains URL path parameters (e.g., /run-history/:channelId)
-    const channelId = (req.params.channelId as string | undefined)?.trim();
-    if (!channelId) {
-      return res.status(400).json({ error: "channelId is required" });
+    const agentId = (req.params.agentId as string | undefined)?.trim();
+    if (!agentId) {
+      return res.status(400).json({ error: "agentId is required" });
     }
 
     const params = parseGetRunHistoryParams(req.query);
@@ -24,7 +24,7 @@ export async function getRunHistory(req: Request, res: Response) {
     const { page, pageSize, skip, take } = parsePageParams(req, 20, 100);
 
     // Build Prisma where clause (database column is still automation_id)
-    const where: Prisma.run_history_recordsWhereInput = { automation_id: channelId };
+    const where: Prisma.run_history_recordsWhereInput = { automation_id: agentId };
 
     if (params.start || params.end) {
       const startDate = parseDate(params.start);
