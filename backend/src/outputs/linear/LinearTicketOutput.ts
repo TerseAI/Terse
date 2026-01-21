@@ -37,7 +37,7 @@ export class LinearTicketOutput extends Output<LinearOutputConfig> {
         });
     }
 
-    getSystemInstructions(configs: ChannelOutputWithConfigs[]): string {
+    protected getSystemInstructionsForConfigs(configs: ChannelOutputWithConfigs[]): string {
         if (configs.length === 0) {
             throw new Error('No Linear configs provided');
         }

@@ -1,6 +1,6 @@
 import chalk from 'chalk';
 import { db } from '../../prismaClient';
-import { Channel, ChannelWithRelations, User, ChannelKnowledgeBaseWithConfigs, ChannelOutputWithConfigs } from '../../types/prisma';
+import { Channel, ChannelWithRelations, User } from '../../types/prisma';
 import { InputEvent } from '../../integrations/abstract/InputEvent';
 import { OutputFactory } from '../../outputs/abstract/OutputFactory';
 import { Output } from '../../outputs/abstract/Output';
@@ -109,24 +109,8 @@ export class EventProcessor {
 
     private createKnowledgeBases(
         channelKnowledgeBases: ChannelWithRelations['knowledge_bases']
-    ): { knowledgeBases: KnowledgeBase<ConfigInstance>[]; channelConfigs: ChannelKnowledgeBaseWithConfigs[] } {
-        if (!channelKnowledgeBases || channelKnowledgeBases.length === 0) {
-            return { knowledgeBases: [], channelConfigs: [] };
-        }
-
-        // Create knowledge base instances and maintain pairing with channel configs
-        const knowledgeBases: KnowledgeBase<ConfigInstance>[] = [];
-        const channelConfigs: ChannelKnowledgeBaseWithConfigs[] = [];
-        
-        for (const channelKnowledgeBase of channelKnowledgeBases) {
-            const kb = KnowledgeBaseFactory.createKnowledgeBase(channelKnowledgeBase.config_type);
-            if (kb) {
-                knowledgeBases.push(kb);
-                channelConfigs.push(channelKnowledgeBase as ChannelKnowledgeBaseWithConfigs);
-            }
-        }
-        
-        return { knowledgeBases, channelConfigs };
+    ): KnowledgeBase<ConfigInstance>[] {
+        return KnowledgeBaseFactory.createKnowledgeBasesFromChannel(channelKnowledgeBases);
     }
 
     private async processChannel(channel: ChannelWithRelations): Promise<ProcessorResult> {
@@ -151,15 +135,12 @@ export class EventProcessor {
         }
 
         // Create outputs from channel configuration
-        const outputs: Output<ConfigInstance>[] = [];
-        const outputChannelConfigs: ChannelOutputWithConfigs[] = [];
-        for (const outputIntegration of channel.outputs) {
-            const output = OutputFactory.createOutput(outputIntegration.config_type);
-            if (!output) {
-                return new ProcessorResult(false, `Output type ${outputIntegration.config_type} is not supported`, channel);
-            }
-            outputs.push(output);
-            outputChannelConfigs.push(outputIntegration as ChannelOutputWithConfigs);
+        let outputs: Output<ConfigInstance>[];
+        try {
+            outputs = OutputFactory.createOutputsFromChannel(channel);
+        } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+            return new ProcessorResult(false, `Failed to create outputs: ${errorMessage}`, channel);
         }
 
         // Create base session for ChannelAgent
@@ -222,11 +203,11 @@ export class EventProcessor {
         logger.info(`Event is relevant to channel "${channel.name}"`);
 
         // Create knowledge bases from channel configuration
-        const { knowledgeBases, channelConfigs } = this.createKnowledgeBases(channel.knowledge_bases || []);
+        const knowledgeBases = this.createKnowledgeBases(channel.knowledge_bases || []);
 
         // Create channel agent with the session and outputs
         const runContext: RunContext = { runId };
-        const channelAgent = new ChannelAgent(session, outputs, outputChannelConfigs, knowledgeBases, channelConfigs, channel, runContext);
+        const channelAgent = new ChannelAgent(session, outputs, knowledgeBases, channel, runContext);
         channelAgent.setInputEvent(this.inputEvent);
 
         // Run the channel agent with streaming parameters

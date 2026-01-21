@@ -34,7 +34,7 @@ export class SlackOutput extends Output<SlackOutputConfig> {
         });
     }
 
-    getSystemInstructions(configs: ChannelOutputWithConfigs[]): string {
+    protected getSystemInstructionsForConfigs(configs: ChannelOutputWithConfigs[]): string {
         if (configs.length === 0) {
             throw new Error('No Slack configs provided');
         }

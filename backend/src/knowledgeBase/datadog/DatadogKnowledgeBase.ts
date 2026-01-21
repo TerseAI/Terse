@@ -89,7 +89,7 @@ export class DatadogKnowledgeBase extends KnowledgeBase<DatadogConfig> {
      * Returns system instructions for Datadog knowledge base.
      * Provides guidance on when and how to use Datadog tools.
      */
-    getSystemInstructions(configs: ChannelKnowledgeBaseWithConfigs[]): string {
+    protected getSystemInstructionsForConfigs(configs: ChannelKnowledgeBaseWithConfigs[]): string {
         if (configs.length === 0) {
             throw new Error('No Datadog KB configs provided');
         }

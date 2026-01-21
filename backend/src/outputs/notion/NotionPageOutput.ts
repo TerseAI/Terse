@@ -35,7 +35,7 @@ export class NotionPageOutput extends Output<NotionPageConfig> {
         });
     }
 
-    getSystemInstructions(configs: ChannelOutputWithConfigs[]): string {
+    protected getSystemInstructionsForConfigs(configs: ChannelOutputWithConfigs[]): string {
         if (configs.length === 0) {
             throw new Error('No Notion page configs provided');
         }

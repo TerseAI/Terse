@@ -34,7 +34,7 @@ export class NotionDatabaseOutput extends Output<NotionConfig> {
         });
     }
 
-    getSystemInstructions(configs: ChannelOutputWithConfigs[]): string {
+    protected getSystemInstructionsForConfigs(configs: ChannelOutputWithConfigs[]): string {
         if (configs.length === 0) {
             throw new Error('No Notion database configs provided');
         }
