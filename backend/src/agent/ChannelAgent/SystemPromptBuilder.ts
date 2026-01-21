@@ -209,11 +209,17 @@ AVAILABLE LINK TYPES:
    Example: ${specificRunLink}
    Use when: Referencing a specific run execution
 
+4. Specific Run History with Pre-filled Prompt:
+   Format: ${frontendUrl}/app/channels/{channelId}?tab=history&runId={runId}&prompt={urlEncodedPrompt}
+   Example: ${frontendUrl}/app/channels/${channelId}?tab=history&runId=${runId}&prompt=Please%20analyze%20this%20run
+   Use when: You want to direct users to a specific run AND provide them with a pre-filled prompt in the chat input field. This allows users to quickly continue conversations or provide additional instructions without having to manually type the prompt.
+   Note: The prompt parameter must be URL-encoded. This is especially useful when you want to guide users to ask follow-up questions or provide additional context about a specific run.
+
 CURRENT CONTEXT:
 - Channel ID: ${channelId}
 - Current Run ID: ${runId}
 
-When explicitly asked by the user, include these links in your responses to help users navigate to relevant parts of the application. For example, you might include a link to the current run's history when explaining what actions were taken, or link to the channel page when referencing the automation configuration.`
+When explicitly asked by the user, include these links in your responses to help users navigate to relevant parts of the application. For example, you might include a link to the current run's history when explaining what actions were taken, or link to the channel page when referencing the automation configuration. When you want users to continue a conversation or provide follow-up instructions, use the prompt parameter to pre-fill the chat input with a helpful prompt.`
         };
     }
 
