@@ -9,8 +9,7 @@ export interface HydratedTemplateState {
     isActive: boolean;
     requireApproval: boolean;
     inputs: TransientChannelInput[];
-    output?: TransientChannelOutput | undefined; // Legacy single output
-    outputs?: TransientChannelOutput[]; // New multiple outputs
+    outputs: TransientChannelOutput[];
     knowledgeBases: TransientKnowledgeBase[];
     notificationSettings: ChannelNotificationSettings;
 }
@@ -73,8 +72,6 @@ export function useTemplateHydration(
             requireApproval: template.requireApproval,
             inputs: transientInputs,
             outputs: transientOutputs,
-            // Keep legacy output for backward compatibility
-            output: transientOutputs.length > 0 ? transientOutputs[0] : undefined,
             knowledgeBases: transientKBs,
             notificationSettings,
         },

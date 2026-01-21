@@ -1,6 +1,7 @@
 import { RunContext, tool } from "@openai/agents";
 import { z } from "zod";
 import { Client } from '@notionhq/client';
+import { GetDataSourceResponse } from '@notionhq/client/build/src/api-endpoints';
 import { IntegrationType } from "../../../shared/Integrations";
 import { SessionWithTracking } from "../../../agent/ChannelAgent/ChannelAgent";
 import { formatError } from "../../../tools/toolUtils";
@@ -273,11 +274,11 @@ EXAMPLES:
         const response = await notion.dataSources.query(queryParams);
 
         // Retrieve data source info to get the database URL
-        const dataSourceInfo = await notion.dataSources.retrieve({
+        const dataSourceInfo: GetDataSourceResponse = await notion.dataSources.retrieve({
             data_source_id: databaseId,
         });
-        const databaseUrl = 'url' in dataSourceInfo ? (dataSourceInfo.url as string | undefined) : undefined;
-        const databaseName: string = 'name' in dataSourceInfo ? (dataSourceInfo.name as string) : 'Unknown Database';
+        const databaseUrl = 'url' in dataSourceInfo ? dataSourceInfo.url : undefined;
+        const databaseName = 'title' in dataSourceInfo ? (dataSourceInfo.title?.[0]?.plain_text || 'Unknown Database') : 'Unknown Database';
 
         // Convert to readable format
         const pages = response.results.map((page: any) => {

@@ -78,6 +78,32 @@ export const slackSendMessageTool = tool({
 
             const client = new WebClient(slackIntegration.access_token);
 
+            // Get channel name from API
+            let channelName = channelId; // fallback to channelId
+            try {
+                const channelInfo = await client.conversations.info({ channel: channelId });
+                if (channelInfo.channel) {
+                    const channel = channelInfo.channel as { name?: string; is_im?: boolean; user?: string };
+                    if (channel.is_im && channel.user) {
+                        // For DMs, try to get the user's name
+                        try {
+                            const userInfo = await client.users.info({ user: channel.user });
+                            if (userInfo.user) {
+                                channelName = userInfo.user.real_name || userInfo.user.name || `DM with ${channel.user}`;
+                            }
+                        } catch (userError) {
+                            channelName = `DM with ${channel.user}`;
+                        }
+                    } else if (channel.name) {
+                        // For channels, prefix with #
+                        channelName = `#${channel.name}`;
+                    }
+                }
+            } catch (error) {
+                logger.warn('Failed to fetch Slack channel info for channel name', { error, channelId });
+                // Keep channelName as channelId fallback
+            }
+
             const result = await client.chat.postMessage({
                 channel: channelId,
                 text: message,
@@ -90,8 +116,6 @@ export const slackSendMessageTool = tool({
             if (!result.ok) {
                 throw new Error(`Failed to send message: ${result.error}`);
             }
-
-            const channelName = channelId;
             const messagePreview = message.length > 100 ? message.substring(0, 100) + '...' : message;
             const messageType = blocks ? 'Block Kit' : 'text';
             
