@@ -32,7 +32,6 @@ Examples:
 
 This is more precise than semantic search - use it when you know exactly what text to find.`,
     parameters: z.object({
-        integrationId: z.string().describe('The integration ID of the GitHub knowledge base to use. Required when multiple GitHub knowledge bases are configured.'),
         repositoryNames: z.array(z.string()).describe('Array of repository full names (owner/repo format) to search in.'),
         pattern: z.string().describe('The exact text pattern to search for. For function calls, include the opening parenthesis (e.g., "fetchUser("). For strings, include quotes if needed.'),
         fileExtension: z.union([z.string(), z.null()]).describe('Filter by file extension (e.g., "ts", "js", "py"). Do not include the dot. Use null to search all file types.'),
@@ -40,7 +39,7 @@ This is more precise than semantic search - use it when you know exactly what te
         perPage: z.number().describe('Number of results to return (default: 20, max: 100)'),
         page: z.union([z.number().int().min(1), z.null()]).describe('Page number for pagination (default: 1). Use this to fetch additional results if there are more than perPage results. Use null for page 1. Must be a positive integer >= 1.'),
     }),
-    execute: async ({ integrationId, repositoryNames, pattern, fileExtension, path, perPage = 20, page }, runContext?: RunContext<SessionWithTracking<Session>>) => {
+    execute: async ({ repositoryNames, pattern, fileExtension, path, perPage = 20, page }, runContext?: RunContext<SessionWithTracking<Session>>) => {
         if (!runContext?.context) {
             throw new Error("No context provided");
         }

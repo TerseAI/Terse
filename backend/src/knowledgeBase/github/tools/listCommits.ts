@@ -21,7 +21,6 @@ export const listGitHubCommitsTool = tool({
 
 The tool returns commit details including message, author, date, and SHA.`,
     parameters: z.object({
-        integrationId: z.string().describe('The integration ID of the GitHub knowledge base to use. Required when multiple GitHub knowledge bases are configured.'),
         repository: z.string().describe('Repository in "owner/repo" format (e.g., "facebook/react"). Must be one of the configured repositories.'),
         since: z.union([z.string(), z.null()]).describe('Start of time window (ISO date string, e.g., "2024-01-01" or "2024-01-15T00:00:00Z"). Only commits after this date are included. Use null for no start filter.'),
         until: z.union([z.string(), z.null()]).describe('End of time window (ISO date string). Only commits before this date are included. Use null for no end filter.'),
@@ -30,7 +29,7 @@ The tool returns commit details including message, author, date, and SHA.`,
         author: z.union([z.string(), z.null()]).describe('Filter commits by author (GitHub username or email). Use null for all authors.'),
         perPage: z.number().describe('Number of results to return (default: 30, max: 100)'),
     }),
-    execute: async ({ integrationId, repository, since, until, branch, path, author, perPage = 30 }, runContext?: RunContext<SessionWithTracking<Session>>) => {
+    execute: async ({ repository, since, until, branch, path, author, perPage = 30 }, runContext?: RunContext<SessionWithTracking<Session>>) => {
         if (!runContext?.context) {
             throw new Error("No context provided");
         }

@@ -34,7 +34,6 @@ Tips:
 - Use natural language or domain terms
 - Combine multiple terms for more specific results`,
     parameters: z.object({
-        integrationId: z.string().describe('The integration ID of the GitHub knowledge base to use. Required when multiple GitHub knowledge bases are configured.'),
         repositoryNames: z.array(z.string()).describe('Array of repository full names (owner/repo format) to search in.'),
         query: z.string().describe('The search query. Use natural language or code-specific terms. Examples: "authentication middleware", "class UserRepository", "handleSubmit form validation"'),
         language: z.union([z.string(), z.null()]).describe('Filter by programming language (e.g., "typescript", "python", "javascript"). Use null to search all languages.'),
@@ -43,7 +42,7 @@ Tips:
         perPage: z.number().describe('Number of results to return (default: 10, max: 100)'),
         page: z.union([z.number().int().min(1), z.null()]).describe('Page number for pagination (default: 1). Use this to fetch additional results if there are more than perPage results. Use null for page 1. Must be a positive integer >= 1.'),
     }),
-    execute: async ({ integrationId, repositoryNames, query, language, filename, path, perPage = 10, page }, runContext?: RunContext<SessionWithTracking<Session>>) => {
+    execute: async ({ repositoryNames, query, language, filename, path, perPage = 10, page }, runContext?: RunContext<SessionWithTracking<Session>>) => {
         if (!runContext?.context) {
             throw new Error("No context provided");
         }

@@ -92,8 +92,6 @@ export class GitHubKnowledgeBase extends KnowledgeBase<GitHubKBConfig> {
         if (configs.length === 0) {
             throw new Error('No GitHub KB configs provided');
         }
-
-        console.log('GitHub KB configs', JSON.stringify(configs, null, 2));
         
         const sections: string[] = [];
 
@@ -116,7 +114,7 @@ export class GitHubKnowledgeBase extends KnowledgeBase<GitHubKBConfig> {
         }
         sections.push('Available configurations:');
         sections.push(configList.join('\n'));
-        sections.push('\nWhen calling GitHub tools, you MUST include the `integrationId` parameter matching one of the integration IDs listed above.');
+        sections.push('\nNOTE: GitHub tools automatically use the user\'s GitHub access token. You do NOT need to provide an `integrationId` parameter when calling GitHub tools - the tools use the authenticated user\'s token internally.');
 
         // Available tools section
         sections.push(`
