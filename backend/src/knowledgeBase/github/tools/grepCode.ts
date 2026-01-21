@@ -1,12 +1,11 @@
 import { RunContext, tool } from "@openai/agents";
 import { z } from "zod";
 import logger from "../../../logger";
-import { createGitHubClient, searchCode } from "../githubApiClient";
-import { GitHubKBConfig } from "../../../shared/Configs";
+import { createGitHubClient, searchCode, getGitHubAccessToken } from "../githubApiClient";
 import { IntegrationType } from "../../../shared/Integrations";
 import { RunHistoryActionType } from "@prisma/client";
 import { SessionWithTracking } from "../../../agent/ChannelAgent/ChannelAgent";
-import { GitHubKnowledgeBaseSession } from "../GitHubKnowledgeBase";
+import { Session } from "../../../server";
 
 /**
  * Tool for grep-style exact text search in GitHub repositories.
@@ -33,24 +32,28 @@ Examples:
 
 This is more precise than semantic search - use it when you know exactly what text to find.`,
     parameters: z.object({
+        repositoryNames: z.array(z.string()).describe('Array of repository full names (owner/repo format) to search in.'),
         pattern: z.string().describe('The exact text pattern to search for. For function calls, include the opening parenthesis (e.g., "fetchUser("). For strings, include quotes if needed.'),
         fileExtension: z.union([z.string(), z.null()]).describe('Filter by file extension (e.g., "ts", "js", "py"). Do not include the dot. Use null to search all file types.'),
         path: z.union([z.string(), z.null()]).describe('Filter by directory path (e.g., "src/services" to only search in that directory). Use null to search everywhere.'),
         perPage: z.number().describe('Number of results to return (default: 20, max: 100)'),
         page: z.union([z.number().int().min(1), z.null()]).describe('Page number for pagination (default: 1). Use this to fetch additional results if there are more than perPage results. Use null for page 1. Must be a positive integer >= 1.'),
     }),
-    execute: async ({ pattern, fileExtension, path, perPage = 20, page }, runContext?: RunContext<SessionWithTracking<GitHubKnowledgeBaseSession>>) => {
+    execute: async ({ repositoryNames, pattern, fileExtension, path, perPage = 20, page }, runContext?: RunContext<SessionWithTracking<Session>>) => {
         if (!runContext?.context) {
             throw new Error("No context provided");
         }
 
-        const { githubKBConfig, githubAccessToken } = runContext.context;
-
-        if (githubKBConfig.repositoryNames.length === 0) {
-            throw new Error("No repositories configured for this knowledge base.");
+        if (repositoryNames.length === 0) {
+            throw new Error("No repositories provided. The repositoryNames parameter must contain at least one repository.");
         }
 
-        const client = createGitHubClient(githubAccessToken);
+        const accessToken = await getGitHubAccessToken(runContext.context.user.id);
+        if (!accessToken) {
+            throw new Error(`GitHub access token not found for user`);
+        }
+
+        const client = createGitHubClient(accessToken);
 
         // Build query - wrap in quotes for exact match if not already quoted
         let query = pattern;
@@ -73,7 +76,7 @@ This is more precise than semantic search - use it when you know exactly what te
             pattern,
             query,
             filters: { fileExtension, path },
-            repositories: githubKBConfig.repositoryNames,
+            repositories: repositoryNames,
             perPage: normalizedPerPage,
             page: pageNumber,
         };
@@ -84,7 +87,7 @@ This is more precise than semantic search - use it when you know exactly what te
             const results = await searchCode(
                 client,
                 query,
-                githubKBConfig.repositoryNames,
+                repositoryNames,
                 { perPage: normalizedPerPage, page: pageNumber }
             );
 
@@ -132,7 +135,7 @@ This is more precise than semantic search - use it when you know exactly what te
                 resultsReturned: formattedResults.length,
                 pattern,
                 query,
-                repositories: githubKBConfig.repositoryNames,
+                repositories: repositoryNames,
                 pagination: {
                     page: results.pagination.page,
                     perPage: results.pagination.perPage,
@@ -154,18 +157,21 @@ This is more precise than semantic search - use it when you know exactly what te
             });
             logger.debug('[GitHub KB] grepGitHubCode - Full response', { response });
 
-            // Track the action
-            runContext.context.trackAction({
+            // Return action as part of the result
+            const action = {
                 action: 'Searched GitHub code (exact match)',
                 integration: IntegrationType.GITHUB,
-                target: githubKBConfig.repositoryNames.join(', '),
+                target: repositoryNames.join(', '),
                 details: `Exact text search for "${pattern}": Found ${results.totalCount} file(s) containing pattern${results.pagination.hasMore ? ` (showing page ${results.pagination.page})` : ''}`,
                 url: `https://github.com/search?q=${encodeURIComponent(query)}&type=code`,
                 type: RunHistoryActionType.read,
                 isReadOnly: true,
-            });
+            };
 
-            return response;
+            return {
+                ...response,
+                actions: [action],
+            };
         } catch (error: any) {
             logger.error('[GitHub KB] grepGitHubCode - Failed', { 
                 pattern, 

@@ -23,6 +23,23 @@ export function formatAgentOutputForAgent(output: AgentOutput | AgentOutputWithC
     }
 }
 
+export function formatAgentOutputsForAgent(outputs: (AgentOutput | AgentOutputWithConfigs)[]): string {
+    if (outputs.length === 0) {
+        return 'No outputs configured';
+    }
+
+    if (outputs.length === 1) {
+        return formatAgentOutputForAgent(outputs[0]);
+    }
+
+    return outputs
+        .map((output, index) => {
+            const formatted = formatAgentOutputForAgent(output);
+            return `Output ${index + 1}:\n${formatted.split('\n').map(line => `  ${line}`).join('\n')}`;
+        })
+        .join('\n\n');
+}
+
 export function formatAgentInputsForAgent(inputs: (AgentInput | AgentInputWithConfigs)[]): string {
     if (inputs.length === 0) {
         return 'No triggers configured';

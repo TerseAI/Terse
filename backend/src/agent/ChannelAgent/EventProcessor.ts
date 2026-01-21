@@ -3,6 +3,7 @@ import { db } from '../../prismaClient';
 import { Agent as PrismaAgent, AgentWithRelations, User, AgentKnowledgeBaseWithConfigs } from '../../types/prisma';
 import { InputEvent } from '../../integrations/abstract/InputEvent';
 import { OutputFactory } from '../../outputs/abstract/OutputFactory';
+import { Output } from '../../outputs/abstract/Output';
 import { ChannelAgent, SessionWithTracking } from './ChannelAgent';
 import { filterEvent } from './EventFilter';
 import { createRunRecord, finalizeRunStatus, markRunFailed, markRunProcessed, markRunSkipped, appendRunAction } from './runHistory';
@@ -63,7 +64,7 @@ export class EventProcessor {
                 inputs: {
                     include: getInputConfigInclude()
                 },
-                output: {
+                outputs: {
                     include: getOutputConfigInclude()
                 },
                 knowledge_bases: {
@@ -108,13 +109,13 @@ export class EventProcessor {
 
     private createKnowledgeBases(
         agentKnowledgeBases: AgentWithRelations['knowledge_bases']
-    ): { knowledgeBases: KnowledgeBase<Session, ConfigInstance>[]; agentConfigs: AgentKnowledgeBaseWithConfigs[] } {
+    ): { knowledgeBases: KnowledgeBase<ConfigInstance>[]; agentConfigs: AgentKnowledgeBaseWithConfigs[] } {
         if (!agentKnowledgeBases || agentKnowledgeBases.length === 0) {
             return { knowledgeBases: [], agentConfigs: [] };
         }
 
         // Create knowledge base instances and maintain pairing with agent configs
-        const knowledgeBases: KnowledgeBase<Session, ConfigInstance>[] = [];
+        const knowledgeBases: KnowledgeBase<ConfigInstance>[] = [];
         const agentConfigs: AgentKnowledgeBaseWithConfigs[] = [];
         
         for (const agentKnowledgeBase of agentKnowledgeBases) {
@@ -144,35 +145,25 @@ export class EventProcessor {
         emitCacheInvalidationWithWildcard(this.user.id, 'runHistory', agent.id);
         emitCacheInvalidationWithKey(this.user.id, 'recentAgents');
 
-        // Get the output from agent relations (already fetched with config)
-        const outputIntegration = agent.output;
-
-        if (!outputIntegration) {
-            return new ProcessorResult(false, "No output integration found for this agent", agent);
+        // Get the outputs from agent relations (already fetched with config)
+        if (!agent.outputs || agent.outputs.length === 0) {
+            return new ProcessorResult(false, "No output integrations found for this agent", agent);
         }
 
-        // Use OutputFactory to create output based on config type (no hardcoded Notion logic)
-        const output = OutputFactory.createOutput(outputIntegration.config_type);
-        if (!output) {
-            return new ProcessorResult(false, `Output type ${outputIntegration.config_type} is not supported`, agent);
-        }
-
-        // Use output's config-aware session creation (no hardcoded config extraction)
-        // Each output type knows how to fetch its own integration and extract its config
-        let session: Session;
+        // Create outputs from agent configuration
+        let outputs: Output<ConfigInstance>[];
         try {
-            session = await output.createSessionFromConfig(
-                outputIntegration.integration_id,
-                outputIntegration,
-                this.user
-            );
+            outputs = OutputFactory.createOutputsFromAgent(agent);
         } catch (error) {
-            return new ProcessorResult(
-                false,
-                `Failed to create session: ${error instanceof Error ? error.message : 'Unknown error'}`,
-                agent
-            );
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+            return new ProcessorResult(false, `Failed to create outputs: ${errorMessage}`, agent);
         }
+
+        // Create base session for ChannelAgent
+        const session: Session = {
+            user: this.user,
+            isUserInitiated: true,
+        };
 
         // Filter the event using AI to see if it's relevant to this agent
         let filterResult;
@@ -228,11 +219,11 @@ export class EventProcessor {
         logger.info(`Event is relevant to agent "${agent.name}"`);
 
         // Create knowledge bases from agent configuration
-        const { knowledgeBases, agentConfigs } = this.createKnowledgeBases(agent.knowledge_bases || []);
+        const { knowledgeBases } = this.createKnowledgeBases(agent.knowledge_bases || []);
 
-        // Create agent with the session and output
+        // Create agent with the session and outputs
         const runContext: RunContext = { runId };
-        const channelAgent = new ChannelAgent(session, output, knowledgeBases, agentConfigs, agent, runContext);
+        const channelAgent = new ChannelAgent(session, outputs, knowledgeBases, agent, runContext);
         channelAgent.setInputEvent(this.inputEvent);
 
         // Run the agent with streaming parameters

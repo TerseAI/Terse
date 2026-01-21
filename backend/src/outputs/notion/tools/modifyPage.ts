@@ -1,11 +1,13 @@
 import { RunContext, tool } from "@openai/agents";
 import { z } from "zod";
 import { Client } from '@notionhq/client';
+import { GetDataSourceResponse } from '@notionhq/client/build/src/api-endpoints';
 import { IntegrationType } from "../../../shared/Integrations";
-import { NotionDatabaseSession } from "../NotionDatabaseOutput";
 import { SessionWithTracking } from "../../../agent/ChannelAgent/ChannelAgent";
 import { formatError, needsApproval } from "../../../tools/toolUtils";
 import logger from "../../../logger";
+import { Session } from "../../../server";
+import { NotionIntegrationManager } from "../../../integrations/NotionIntegration";
 
 export const notionModifyPageTool = tool({
     name: 'notion_modify_page',
@@ -48,11 +50,13 @@ IMPORTANT:
 - page_id must be null (not empty string, not ".") to create a new page
 - page_id must be a valid UUID from notion_query_database results to update`,
     parameters: z.object({
+        integrationId: z.string().describe('The integration ID of the Notion workspace to use.'),
+        databaseId: z.string().describe('The Notion database ID (data source ID). Required when creating a new page.'),
         page_id: z.string().nullable().describe('The ID of the page to update (from notion_query_database). MUST be null (not empty string, not period) to create a new page. Only provide a valid page ID string to update an existing page.'),
         properties_json: z.string().describe('JSON string with property names as keys and Notion-formatted values. Example: "{\\"Name\\": {\\"title\\": [{\\"text\\": {\\"content\\": \\"New Item\\"}}]}, \\"Status\\": {\\"select\\": {\\"name\\": \\"In Progress\\"}}}"'),
     }),
     needsApproval,
-    execute: async ({ page_id, properties_json }, runContext?: RunContext<SessionWithTracking<NotionDatabaseSession>>) => {
+    execute: async ({ integrationId, databaseId, page_id, properties_json }, runContext?: RunContext<SessionWithTracking<Session>>) => {
         logger.debug('🛠️ Executing notion_modify_page tool', { pageId: page_id ?? '(new page)', propertiesJson: properties_json });
 
         // Parse the JSON string
@@ -67,12 +71,31 @@ IMPORTANT:
             throw new Error("No context provided");
         }
 
+        const manager = new NotionIntegrationManager();
+        const accessToken = await manager.getAccessToken(integrationId);
+        if (!accessToken) {
+            throw new Error(`Notion integration not found or access denied for integrationId: ${integrationId}`);
+        }
+
         const notion = new Client({
-            auth: runContext.context.notionIntegration.integration_token,
+            auth: accessToken,
         });
 
         // Validate page_id - must be null or a valid UUID-like string (no slashes, periods, or other special chars)
         const validPageId = page_id && page_id.length > 30 && !page_id.includes('/') && page_id !== '.' ? page_id : null;
+
+        // Helper function to get database name from data source
+        const getDatabaseName = async (dataSourceId: string): Promise<string> => {
+            try {
+                const dataSourceInfo: GetDataSourceResponse = await notion.dataSources.retrieve({
+                    data_source_id: dataSourceId,
+                });
+                return 'title' in dataSourceInfo ? (dataSourceInfo.title?.[0]?.plain_text || 'Unknown Database') : 'Unknown Database';
+            } catch (error) {
+                logger.warn('Failed to retrieve data source info for database name', { dataSourceId, error });
+                return 'Unknown Database';
+            }
+        };
 
         try {
             if (validPageId) {
@@ -81,47 +104,61 @@ IMPORTANT:
                     page_id: validPageId,
                     properties: properties as Record<string, any>,
                 });
-                // Report action (no DB writes here)
-                const databaseName = runContext.context.notionConfig.database_name || 'Notion database';
+                
+                // Get database name from page's parent
+                let databaseName = 'Unknown Database';
+                if ('parent' in response && response.parent && 'type' in response.parent) {
+                    if (response.parent.type === 'data_source_id' && 'data_source_id' in response.parent) {
+                        databaseName = await getDatabaseName(response.parent.data_source_id);
+                    } else if (response.parent.type === 'database_id' && 'database_id' in response.parent) {
+                        // For database_id parent, we can try to retrieve it, but it might be a database not a data source
+                        // In this case, we'll use a fallback
+                        databaseName = 'Notion database';
+                    }
+                }
+                
                 const pageUrl = 'url' in response ? response.url : undefined;
-                runContext.context.trackAction({
+                const action = {
                     action: 'Updated page',
                     integration: IntegrationType.NOTION,
                     target: databaseName,
                     details: 'Updated page in database',
                     url: pageUrl,
                     type: 'update',
-                });
+                };
                 return {
                     success: true,
                     action: 'updated',
+                    actions: [action],
                     page_id: response.id,
                     url: pageUrl
                 };
             } else {
-                // Create new page
+                // Create new page - get database name first
+                const databaseName = await getDatabaseName(databaseId);
+                
                 const response = await notion.pages.create({
                     parent: {
                         type: 'data_source_id',
-                        data_source_id: runContext.context.notionConfig.database_id,
+                        data_source_id: databaseId,
                     },
                     properties: properties as Record<string, any>,
                 });
-                logger.info("Notion database modified successfully", { pageId: page_id ?? '(new page)', databaseId: runContext.context.notionConfig.database_id });
-                // Report action (no DB writes here)
-                const databaseName = runContext.context.notionConfig.database_name || 'Notion database';
+                logger.info("Notion database modified successfully", { pageId: page_id ?? '(new page)', databaseId });
+                
                 const pageUrl = 'url' in response ? response.url : undefined;
-                runContext.context.trackAction({
+                const action = {
                     action: 'Created page',
                     integration: IntegrationType.NOTION,
                     target: databaseName,
                     details: 'Created new page in database',
                     url: pageUrl,
                     type: 'create',
-                });
+                };
                 return {
                     success: true,
                     action: 'created',
+                    actions: [action],
                     page_id: response.id,
                     url: pageUrl
                 };

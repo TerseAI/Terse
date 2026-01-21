@@ -8,7 +8,7 @@ import {
     DialogTitle,
 } from "@/components/ui/dialog";
 import { Maximize2Icon, Sparkles, Info, AlertTriangleIcon } from "lucide-react";
-import { AgentInput, AgentOutput, AgentPrompt } from "@/shared/types";
+import { AgentInput, AgentOutput, AgentKnowledgeBase, AgentPrompt } from "@/shared/types";
 import { PromptBuilderModal } from "../../../components/PromptBuilder/PromptBuilderModal";
 import { Switch } from "../../../components/ui/switch";
 import { Label } from "../../../components/ui/label";
@@ -33,11 +33,12 @@ interface InstructionsEditorProps {
     prompt: AgentPrompt | undefined;
     setPrompt: (prompt: AgentPrompt | undefined) => void;
     channelInputs: AgentInput[];
-    channelOutput: AgentOutput | undefined;
+    channelOutputs: AgentOutput[];
+    knowledgeBases?: AgentKnowledgeBase[];
     isIncomplete?: boolean;
 }
 
-export function InstructionsEditor({ prompt, setPrompt, channelInputs, channelOutput, isIncomplete }: InstructionsEditorProps) {
+export function InstructionsEditor({ prompt, setPrompt, channelInputs, channelOutputs, knowledgeBases, isIncomplete }: InstructionsEditorProps) {
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [showPromptBuilder, setShowPromptBuilder] = useState(false);
     const [showMarkdown, setShowMarkdown] = useState(false);
@@ -140,7 +141,8 @@ export function InstructionsEditor({ prompt, setPrompt, channelInputs, channelOu
                 isOpen={showPromptBuilder}
                 onClose={() => setShowPromptBuilder(false)}
                 inputs={channelInputs}
-                output={channelOutput}
+                outputs={channelOutputs}
+                knowledgeBases={knowledgeBases}
                 existingPrompt={prompt?.text}
                 onPromptGenerated={(generatedPrompt) => {
                     setPrompt({ ...prompt, text: generatedPrompt });

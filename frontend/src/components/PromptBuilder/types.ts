@@ -1,11 +1,12 @@
-import { AgentInput, AgentOutput } from "@/shared/types";
+import { AgentInput, AgentOutput, AgentKnowledgeBase } from "@/shared/types";
 import { SurveyQuestion, SurveyAnswers, SurveyWriteInAnswers } from "@/shared/PromptBuilderTypes";
 
 export interface PromptBuilderModalProps {
     isOpen: boolean;
     onClose: () => void;
     inputs: AgentInput[];
-    output: AgentOutput | undefined;
+    outputs: AgentOutput[];
+    knowledgeBases?: AgentKnowledgeBase[];
     existingPrompt?: string;
     onPromptGenerated?: (prompt: string) => void;
 }

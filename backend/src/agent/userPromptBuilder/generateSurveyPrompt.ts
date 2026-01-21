@@ -12,7 +12,7 @@ export async function generateSurveyPrompt(request: GenerateSurveyPromptRequest)
       throw new Error('Questions are required to generate prompt');
     }
 
-    const configContext = formatConfigContext(request.inputConfigs, request.outputConfig);
+    const configContext = formatConfigContext(request.inputConfigs, request.outputConfigs, request.knowledgeBaseConfigs);
     const allAnswersText = formatSurveyAnswers(request.questions, request.answers, request.writeInAnswers);
 
     const systemPrompt = `You are an expert at creating detailed, effective prompts for AI automation agents.
@@ -25,7 +25,8 @@ IMPORTANT: Do not include any integration IDs, database IDs, channel IDs, projec
 
 Context:
 - Input Sources: ${request.inputConfigs?.length || 0} configured
-- Output Destination: ${request.outputConfig ? request.outputConfig.type : 'Not configured'}
+- Output Destinations: ${request.outputConfigs?.length || 0} configured
+- Knowledge Bases: ${request.knowledgeBaseConfigs?.length || 0} configured
 ${configContext}
 ${request.existingPrompt ? `- Existing Prompt (for reference): ${request.existingPrompt}` : '- No existing prompt'}
 

@@ -52,10 +52,10 @@ export function useChannels(params: AgentListArgs = {}) {
                         ...input,
                         config: deserializeConfig(input.config)
                     })),
-                    output: {
-                        ...agent.output,
-                        config: deserializeConfig(agent.output.config)
-                    },
+                    outputs: agent.outputs ? agent.outputs.map(output => ({
+                        ...output,
+                        config: deserializeConfig(output.config)
+                    })) : [],
                     knowledgeBases: agent.knowledgeBases?.map(kb => ({
                         ...kb,
                         config: deserializeConfig(kb.config)
@@ -92,10 +92,10 @@ export function useChannel(id: string | null) {
                     ...input,
                     config: deserializeConfig(input.config)
                 })),
-                output: {
-                    ...agent.output,
-                    config: deserializeConfig(agent.output.config)
-                },
+                outputs: agent.outputs ? agent.outputs.map(output => ({
+                    ...output,
+                    config: deserializeConfig(output.config)
+                })) : [],
                 knowledgeBases: agent.knowledgeBases?.map(kb => ({
                     ...kb,
                     config: deserializeConfig(kb.config)
@@ -170,10 +170,10 @@ export function useChannelMutations() {
                                 ...input,
                                 config: deserializeConfig(input.config)
                             })),
-                            output: {
-                                ...agent.output,
-                                config: deserializeConfig(agent.output.config)
-                            },
+                            outputs: agent.outputs ? agent.outputs.map(output => ({
+                                ...output,
+                                config: deserializeConfig(output.config)
+                            })) : [],
                             knowledgeBases: agent.knowledgeBases?.map(kb => ({
                                 ...kb,
                                 config: deserializeConfig(kb.config)

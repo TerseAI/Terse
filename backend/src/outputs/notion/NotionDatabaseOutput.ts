@@ -1,19 +1,13 @@
 import { Output, ToolboxEntry } from "../abstract/Output";
 import { Tool } from "@openai/agents";
-import { Session } from "../../server";
-import { NotionIntegration, AgentOutput, User, AgentNotionConfig, PrismaTransaction } from "../../types/prisma";
+import { AgentOutputWithConfigs, PrismaTransaction } from "../../types/prisma";
 import { db } from "../../prismaClient";
 import { NotionConfig } from "../../shared/Configs";
 import { OutputConfigType } from "@prisma/client";
 import { notionQueryDatabaseTool, notionModifyPageTool, notionGetSchemaTool } from "./tools";
 import { IntegrationType } from "../../shared/Integrations";
 
-export interface NotionDatabaseSession extends Session {
-    notionIntegration: NotionIntegration; // Top level integration record
-    notionConfig: AgentNotionConfig; // Configuration for the Specific Notion Database
-}
-
-export class NotionDatabaseOutput extends Output<NotionDatabaseSession, NotionConfig> {
+export class NotionDatabaseOutput extends Output<NotionConfig> {
     constructor() {
         const toolbox: ToolboxEntry[] = [
             { tool: notionGetSchemaTool as Tool, isReadOnly: true, integration: IntegrationType.NOTION },
@@ -21,36 +15,6 @@ export class NotionDatabaseOutput extends Output<NotionDatabaseSession, NotionCo
             { tool: notionModifyPageTool as Tool, isReadOnly: false, integration: IntegrationType.NOTION },
         ];
         super(OutputConfigType.NOTION_DATABASE, toolbox);
-    }
-
-    async createSessionFromConfig(
-        integrationId: string,
-        agentOutputConfig: AgentOutput,
-        user: User
-    ): Promise<NotionDatabaseSession> {
-        // NotionOutput knows how to fetch its own integration
-        const integration = await db().notion_integrations.findFirst({
-            where: { id: integrationId }
-        });
-
-        if (!integration) {
-            throw new Error(`Notion integration ${integrationId} not found`);
-        }
-
-        const notionConfig: AgentNotionConfig | null = await db().automation_notion_configs.findFirst({
-            where: { automation_output_id: agentOutputConfig.id }
-        });
-
-        if (!notionConfig) {
-            throw new Error(`Notion config for agent output ${agentOutputConfig.id} not found`);
-        }
-
-        return {
-            notionIntegration: integration,
-            notionConfig: notionConfig,
-            user: user,
-            isUserInitiated: true,
-        };
     }
 
     async validateConfig(output: NotionConfig, _userId: string): Promise<void> {
@@ -69,8 +33,28 @@ export class NotionDatabaseOutput extends Output<NotionDatabaseSession, NotionCo
         });
     }
 
-    getSystemInstructions(session: NotionDatabaseSession): string {
-        return `
+    protected getSystemInstructionsForConfigs(configs: AgentOutputWithConfigs[]): string {
+        if (configs.length === 0) {
+            throw new Error('No Notion database configs provided');
+        }
+        
+        const sections: string[] = [];
+        sections.push('=== NOTION DATABASE OUTPUT ===');
+        
+        // List all available configurations
+        const configList: string[] = [];
+        for (const config of configs) {
+            if (!config.notion_config) {
+                throw new Error('Notion database config not found');
+            }
+            const databaseId = config.notion_config.database_id;
+            const databaseName = config.notion_config.database_name;
+            configList.push(`  • Integration ID: ${config.integration_id} - Database Name: ${databaseName || 'N/A'}, Database ID: ${databaseId || 'N/A'}`);
+        }
+        sections.push('Available configurations:');
+        sections.push(configList.join('\n'));
+        sections.push('\nWhen calling Notion database tools, you MUST include the `integrationId` and `databaseId` parameters matching one of the configurations listed above.');
+        sections.push(`
 ==========================
 NOTION DATABASE OUTPUT INSTRUCTIONS
 ==========================
@@ -126,7 +110,9 @@ QUERY STRATEGY:
 - Extract key keywords from the content you're trying to match (e.g., ticket titles, project names) and search for those keywords
 
 This workflow ensures you work with the database correctly and prevents duplicate entries.
-`;
+`);
+        
+        return sections.join('\n');
     }
 }
 

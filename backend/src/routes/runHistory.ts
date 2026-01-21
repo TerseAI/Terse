@@ -65,24 +65,8 @@ export async function getRunHistory(req: Request, res: Response) {
     ]);
 
     // Transform Prisma rows (snake_case) to API format (camelCase)
-    const items: RunHistoryRecord[] = rows.map((runRecord: RunHistoryRecordWithActions) => ({
-      id: runRecord.id,
-      agentId: runRecord.automation_id, // Database column is automation_id, but API uses agentId
-      timestamp: runRecord.timestamp.toISOString(),
-      trigger: {
-        event: runRecord.event,
-        integration: convertPrismaIntegrationTypeToIntegrationTypeFromRunHistory(runRecord.trigger_integration),
-        source: runRecord.trigger_source,
-        title: runRecord.trigger_title ?? undefined,
-        subheader: runRecord.trigger_subheader ?? undefined,
-        url: runRecord.trigger_url ?? undefined,
-      },
-      filtered: runRecord.filtered,
-      decision: {
-        action: runRecord.decision_action,
-        reasoning: runRecord.decision_reason,
-      },
-      actions: runRecord.actions.map((action) => ({
+    const items: RunHistoryRecord[] = rows.map((runRecord: RunHistoryRecordWithActions) => {
+      const actions = runRecord.actions.map((action) => ({
         action: action.action,
         integration: convertPrismaIntegrationTypeToIntegrationTypeFromRunHistory(action.integration),
         target: action.target,
@@ -90,9 +74,29 @@ export async function getRunHistory(req: Request, res: Response) {
         url: action.url ?? undefined,
         step_id: action.step_id ?? undefined,
         type: action.type,
-      })),
-      status: runRecord.status,
-    }));
+      }));
+
+      return {
+        id: runRecord.id,
+        agentId: runRecord.automation_id, // Database column is automation_id, but API uses agentId
+        timestamp: runRecord.timestamp.toISOString(),
+        trigger: {
+          event: runRecord.event,
+          integration: convertPrismaIntegrationTypeToIntegrationTypeFromRunHistory(runRecord.trigger_integration),
+          source: runRecord.trigger_source,
+          title: runRecord.trigger_title ?? undefined,
+          subheader: runRecord.trigger_subheader ?? undefined,
+          url: runRecord.trigger_url ?? undefined,
+        },
+        filtered: runRecord.filtered,
+        decision: {
+          action: runRecord.decision_action,
+          reasoning: runRecord.decision_reason,
+        },
+        actions,
+        status: runRecord.status,
+      };
+    });
 
     const response: GetRunHistoryResponse = {
       items,

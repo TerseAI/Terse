@@ -21,7 +21,8 @@ export async function generateQuestionsRoute(req: Request, res: Response) {
       description: body.description.trim(),
       existingPrompt: body.existingPrompt,
       inputConfigs: body.inputConfigs,
-      outputConfig: body.outputConfig
+      outputConfigs: body.outputConfigs,
+      knowledgeBaseConfigs: body.knowledgeBaseConfigs
     });
 
     return res.json({ questions });
@@ -62,7 +63,8 @@ export async function generatePromptRoute(req: Request, res: Response) {
       writeInAnswers: body.writeInAnswers,
       existingPrompt: body.existingPrompt,
       inputConfigs: body.inputConfigs,
-      outputConfig: body.outputConfig
+      outputConfigs: body.outputConfigs,
+      knowledgeBaseConfigs: body.knowledgeBaseConfigs
     });
 
     return res.json({ prompt });

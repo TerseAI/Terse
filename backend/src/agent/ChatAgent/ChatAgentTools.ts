@@ -281,7 +281,7 @@ export const AgentSchema = z.object({
     requireApproval: z.boolean(),
     prompt: AgentPromptSchema,
     inputs: z.array(AgentTriggerSchema).min(1),
-    output: AgentOutputSchema,
+    outputs: z.array(AgentOutputSchema).min(1),
     knowledgeBases: z.array(AgentKnowledgeBaseSchema).nullable(),
     notificationSettings: AgentNotificationSettingsSchema.nullable(),
     updatedAt: z.string().nullable(),
@@ -317,11 +317,11 @@ function toAgentDraft(agent: AgentSchemaInput): AgentDraft {
             ...input,
             config: toConfigInstance(normalizeConfig(input.config)),
         })),
-        output: {
+        outputs: agent.outputs.map((output) => ({
             id: uuidv4().toString(),
-            ...agent.output,
-            config: toConfigInstance(normalizeConfig(agent.output.config)),
-        },
+            ...output,
+            config: toConfigInstance(normalizeConfig(output.config)),
+        })),
         knowledgeBases: agent.knowledgeBases?.map((kb) => ({
             id: uuidv4().toString(),
             ...kb,

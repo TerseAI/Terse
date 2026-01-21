@@ -1,21 +1,14 @@
 import { Tool } from "@openai/agents";
-import { AgentOutput, AgentJiraConfig, PrismaTransaction, User } from "../../types/prisma";
-import { Session } from "../../server";
+import { AgentOutputWithConfigs, PrismaTransaction } from "../../types/prisma";
 import { Output, ToolboxEntry } from "../abstract/Output";
-import { db } from "../../prismaClient";
 import { OutputConfigType } from "@prisma/client";
 import { JiraConfig } from "../../shared/Configs";
-import { IntegrationType, AtlassianIntegration } from "../../shared/Integrations";
+import { IntegrationType } from "../../shared/Integrations";
 import { jiraSearchTicketTool } from "./tools/searchTicket";
 import { jiraUpdateTicketTool } from "./tools/updateTicket";
 import { jiraCreateTicketTool } from "./tools/createTicket";
 
-export interface JiraTicketSession extends Session {
-    jiraIntegration: AtlassianIntegration; // Top level integration record
-    jiraConfig: AgentJiraConfig; // Configuration for the Specific Jira Ticket
-}
-
-export class JiraTicketOutput extends Output<JiraTicketSession, JiraConfig> {
+export class JiraTicketOutput extends Output<JiraConfig> {
     constructor() {
         const toolbox: ToolboxEntry[] = [
             { tool: jiraSearchTicketTool as Tool, isReadOnly: true, integration: IntegrationType.ATLASSIAN },
@@ -23,40 +16,6 @@ export class JiraTicketOutput extends Output<JiraTicketSession, JiraConfig> {
             { tool: jiraUpdateTicketTool as Tool, isReadOnly: false, integration: IntegrationType.ATLASSIAN },
         ];
         super(OutputConfigType.JIRA_TICKET, toolbox);
-    }
-
-    async createSessionFromConfig(
-        integrationId: string,
-        agentOutputConfig: AgentOutput,
-        user: User
-    ): Promise<JiraTicketSession> {
-        const integration = await db().atlassian_integrations.findFirst({
-            where: { id: integrationId }
-        });
-
-        if (!integration) {
-            throw new Error(`Atlassian integration ${integrationId} not found`);
-        }
-
-        const jiraConfigRecord = await db().automation_jira_configs.findFirst({
-            where: { automation_output_id: agentOutputConfig.id }
-        });
-
-        if (!jiraConfigRecord) {
-            throw new Error(`Jira config for automation output ${agentOutputConfig.id} not found`);
-        }
-
-        return { 
-            jiraIntegration: {
-                id: integration.id,
-                email: integration.jira_user_email,
-                baseUrl: integration.base_url,
-                siteName: integration.site_name || undefined,
-            }, 
-            jiraConfig: jiraConfigRecord, 
-            user: user, 
-            isUserInitiated: true 
-        };
     }
 
     async validateConfig(_output: JiraConfig, _userId: string): Promise<void> {
@@ -71,5 +30,30 @@ export class JiraTicketOutput extends Output<JiraTicketSession, JiraConfig> {
                 project_id: output.projectId || null,
             },
         });
+    }
+
+    protected getSystemInstructionsForConfigs(configs: AgentOutputWithConfigs[]): string {
+        if (configs.length === 0) {
+            throw new Error('No Jira configs provided');
+        }
+        
+        const sections: string[] = [];
+        sections.push('=== JIRA TICKET OUTPUT ===');
+        
+        // List all available configurations
+        const configList: string[] = [];
+        for (const config of configs) {
+            if (!config.jira_config) {
+                throw new Error('Jira config not found');
+            }
+            const projectKey = config.jira_config.project_key;
+            const projectId = config.jira_config.project_id;
+            configList.push(`  • Integration ID: ${config.integration_id} - Project Key: ${projectKey || 'N/A'}, Project ID: ${projectId || 'N/A'}`);
+        }
+        sections.push('Available configurations:');
+        sections.push(configList.join('\n'));
+        sections.push('\nWhen calling Jira tools, you MUST include the `integrationId` parameter matching one of the integration IDs listed above.');
+        
+        return sections.join('\n');
     }
 }

@@ -398,7 +398,7 @@ export type AgentTemplate = {
     description: string;
     prompt: AgentPrompt;
     inputs: TemplateInput[];
-    output: TemplateOutput;
+    outputs: TemplateOutput[];
     knowledgeBases?: TemplateKnowledgeBase[];
     requireApproval: boolean;
     isActive: boolean;
@@ -411,7 +411,7 @@ export type Agent = {
     requireApproval: boolean;
     prompt: AgentPrompt;
     inputs: AgentInput[];
-    output: AgentOutput;
+    outputs: AgentOutput[];
     knowledgeBases?: AgentKnowledgeBase[];
     notificationSettings?: AgentNotificationSettings;
     updatedAt?: string;
@@ -425,7 +425,7 @@ export type AgentNotificationSettings = {
 export type AgentUpdate = {
     name?: string;
     inputs?: AgentInput[];
-    output?: AgentOutput;
+    outputs?: AgentOutput[];
     prompt?: AgentPrompt;
     isActive?: boolean;
     requireApproval?: boolean;

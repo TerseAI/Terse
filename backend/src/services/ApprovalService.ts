@@ -2,6 +2,7 @@ import { db } from "../prismaClient";
 import { AgentWithRelations, AgentKnowledgeBaseWithConfigs } from "../types/prisma";
 import { getInputConfigInclude, getOutputConfigInclude, getKnowledgeBaseConfigInclude } from "../utility/prismaIncludes";
 import { OutputFactory } from "../outputs/abstract/OutputFactory";
+import { Output } from "../outputs/abstract/Output";
 import { KnowledgeBaseFactory } from "../knowledgeBase/abstract/KnowledgeBaseFactory";
 import { KnowledgeBase } from "../knowledgeBase/abstract/KnowledgeBase";
 import { ConfigInstance } from "../shared/Configs";
@@ -61,14 +62,14 @@ export class ApprovalService {
                 inputs: {
                     include: getInputConfigInclude(),
                 },
-                output: {
+                outputs: {
                     include: getOutputConfigInclude(),
                 },
                 knowledge_bases: {
                     include: getKnowledgeBaseConfigInclude(),
                 },
             },
-        })
+        });
 
         if (!agent) {
             throw new Error(`Agent not found for automation id: ${runRecord.automation.id}`);
@@ -77,53 +78,21 @@ export class ApprovalService {
         return { runRecord, agent };
     }
 
-    private static async createOutputAndSession(
-        agent: AgentWithRelations,
-        userId: string
-    ): Promise<{ output: ReturnType<typeof OutputFactory.createOutput>; session: Session }> {
-        const prisma = db();
-        
-        const outputIntegration = agent.output;
-        if (!outputIntegration) {
-            throw new Error(`No output integration found for agent: ${agent.id}`);
-        }
-
-        const output = OutputFactory.createOutput(outputIntegration.config_type);
-        if (!output) {
-            throw new Error(`Output type ${outputIntegration.config_type} is not supported`);
-        }
-
-        const user = await prisma.users.findUnique({
-            where: { id: userId },
-        });
-
-        if (!user) {
-            throw new Error(`User not found for userId: ${userId}`);
-        }
-
-        let session: Session;
-        try {
-            session = await output.createSessionFromConfig(
-                outputIntegration.integration_id,
-                outputIntegration,
-                user
-            );
-        } catch (error) {
-            throw new Error(`Failed to create session: ${error}`);
-        }
-
-        return { output, session };
+    private static createOutputs(
+        agent: AgentWithRelations
+    ): Output<ConfigInstance>[] {
+        return OutputFactory.createOutputsFromAgent(agent);
     }
 
     private static createKnowledgeBases(
         agentKnowledgeBases: AgentWithRelations['knowledge_bases']
-    ): { knowledgeBases: KnowledgeBase<Session, ConfigInstance>[]; agentConfigs: AgentKnowledgeBaseWithConfigs[] } {
+    ): { knowledgeBases: KnowledgeBase<ConfigInstance>[]; agentConfigs: AgentKnowledgeBaseWithConfigs[] } {
         if (!agentKnowledgeBases || agentKnowledgeBases.length === 0) {
             return { knowledgeBases: [], agentConfigs: [] };
         }
 
         // Create knowledge base instances and maintain pairing with agent configs
-        const knowledgeBases: KnowledgeBase<Session, ConfigInstance>[] = [];
+        const knowledgeBases: KnowledgeBase<ConfigInstance>[] = [];
         const agentConfigs: AgentKnowledgeBaseWithConfigs[] = [];
         
         for (const agentKnowledgeBase of agentKnowledgeBases) {
@@ -271,15 +240,21 @@ export class ApprovalService {
                 logger.info(`[ApprovalService] Stored rejection reason for runId: ${runId}, stepId: ${stepId}`);
             }
 
-            // Create output and session
-            const outputAndSession = await this.createOutputAndSession(agent, userId);
-            if (!outputAndSession.output) {
-                throw new Error(`Output type not supported`);
+            // Create outputs
+            const outputs = this.createOutputs(agent);
+            
+            // Create base session for ChannelAgent
+            const user = await db().users.findUnique({ where: { id: userId } });
+            if (!user) {
+                throw new Error(`User not found: ${userId}`);
             }
-            const { output, session } = outputAndSession;
+            const session: Session = {
+                user,
+                isUserInitiated: true,
+            };
 
             // Create knowledge bases from agent configuration
-            const { knowledgeBases, agentConfigs } = this.createKnowledgeBases(agent.knowledge_bases || []);
+            const { knowledgeBases } = this.createKnowledgeBases(agent.knowledge_bases || []);
 
             // Ensure run status is 'in_progress' for streaming
             if (runRecord.status !== 'in_progress') {
@@ -302,7 +277,7 @@ export class ApprovalService {
 
             // Create agent and resume from pending approval
             const runContext = { runId };
-            const channelAgent = new ChannelAgent(session, output, knowledgeBases, agentConfigs, agent, runContext);
+            const channelAgent = new ChannelAgent(session, outputs, knowledgeBases, agent, runContext);
             await channelAgent.initializeAgent();
 
             const decision: 'approve' | 'reject' = approved ? 'approve' : 'reject';

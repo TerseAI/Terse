@@ -895,10 +895,10 @@ export const BackendProvider: BackendService = {
                         ...input,
                         config: deserializeConfig(input.config)
                     })),
-                    output: {
-                        ...agent.output,
-                        config: deserializeConfig(agent.output.config)
-                    }
+                    outputs: agent.outputs ? agent.outputs.map(output => ({
+                        ...output,
+                        config: deserializeConfig(output.config)
+                    })) : []
                 }));
             })
             .catch(error => {

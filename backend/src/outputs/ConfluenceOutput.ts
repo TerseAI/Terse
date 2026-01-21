@@ -1,6 +1,5 @@
 import { AtlassianIntegration, IntegrationType } from "../shared/Integrations";
-import { AgentOutput, User, AgentConfluenceConfig, PrismaTransaction } from "../types/prisma";
-import { Session } from "../server";
+import { AgentOutputWithConfigs, PrismaTransaction } from "../types/prisma";
 import { Output, ToolboxEntry } from "./abstract/Output";
 import { db } from "../prismaClient";
 import { RunContext, Tool, tool } from "@openai/agents";
@@ -9,65 +8,20 @@ import chalk from "chalk";
 import { OutputConfigType, RunHistoryActionType } from "@prisma/client";
 import { ConfluenceConfig } from "../shared/Configs";
 import { SessionWithTracking } from "../agent/ChannelAgent/ChannelAgent";
+import { Session } from "../server";
 import { formatError, needsApproval } from "../tools/toolUtils";
 import logger from "../logger";
+import { AtlassianIntegrationManager } from "../integrations/AtlassianIntegration";
 
 // MARK: - Exports
 
-export interface ConfluenceSession extends Session {
-    atlassianIntegration: AtlassianIntegration; // Top level integration record
-    confluenceConfig: AgentConfluenceConfig; // Configuration for the Specific Confluence Database
-    apiToken: string; // API token stored separately (not in shared type for security)
-    cloudId?: string; // Cloud ID for OAuth API gateway access
-}
-
-export class ConfluenceOutput extends Output<ConfluenceSession, ConfluenceConfig> {
+export class ConfluenceOutput extends Output<ConfluenceConfig> {
     constructor() {
         const toolbox: ToolboxEntry[] = [
             { tool: confluenceQueryPageTool as Tool, isReadOnly: true, integration: IntegrationType.ATLASSIAN },
             { tool: confluenceAddCommentTool as Tool, isReadOnly: false, integration: IntegrationType.ATLASSIAN },
         ];
         super(OutputConfigType.CONFLUENCE, toolbox);
-    }
-
-    async createSessionFromConfig(
-        integrationId: string,
-        agentOutputConfig: AgentOutput,
-        user: User
-    ): Promise<ConfluenceSession> {
-        // Fetch OAuth integration
-        const oauthIntegration = await db().atlassian_integrations.findFirst({
-            where: { id: integrationId }
-        });
-
-        if (!oauthIntegration) {
-            throw new Error(`Confluence integration ${integrationId} not found`);
-        }
-
-        // Fetch Confluence configuration
-        const confluenceConfig = await db().automation_confluence_configs.findFirst({
-            where: { automation_output_id: agentOutputConfig.id }
-        });
-
-        if (!confluenceConfig) {
-            throw new Error(`Confluence config for automation output ${agentOutputConfig.id} not found`);
-        }
-
-        // Build Atlassian integration object
-        const atlassianIntegration: AtlassianIntegration = {
-            id: oauthIntegration.id,
-            email: oauthIntegration.jira_user_email,
-            baseUrl: oauthIntegration.base_url,
-        };
-
-        return { 
-            atlassianIntegration, 
-            confluenceConfig, 
-            apiToken: oauthIntegration.access_token,
-            cloudId: oauthIntegration.cloud_id || undefined,
-            user, 
-            isUserInitiated: true, 
-        };
     }
 
     async validateConfig(output: ConfluenceConfig, _userId: string): Promise<void> {
@@ -88,8 +42,29 @@ export class ConfluenceOutput extends Output<ConfluenceSession, ConfluenceConfig
         });
     }
 
-    getSystemInstructions(_session: ConfluenceSession): string {
-        return CONFLUENCE_FOOTER_INSTRUCTIONS;
+    protected getSystemInstructionsForConfigs(configs: AgentOutputWithConfigs[]): string {
+        if (configs.length === 0) {
+            throw new Error('No Confluence configs provided');
+        }
+        
+        const sections: string[] = [];
+        sections.push('=== CONFLUENCE OUTPUT ===');
+        
+        // List all available configurations
+        const configList: string[] = [];
+        for (const config of configs) {
+            if (!config.confluence_config) {
+                throw new Error('Confluence config not found');
+            }
+            const pageId = config.confluence_config.page_id;
+            const pageName = config.confluence_config.page_name;
+            configList.push(`  • Integration ID: ${config.integration_id} - Page Name: ${pageName || 'N/A'}, Page ID: ${pageId || 'N/A'}`);
+        }
+        sections.push('Available configurations:');
+        sections.push(configList.join('\n'));
+        sections.push('\nWhen calling Confluence tools, you MUST include the `integrationId` and `pageId` parameters matching one of the configurations listed above.');
+        
+        return sections.join('\n');
     }
 }
 
@@ -101,26 +76,45 @@ const confluenceQueryPageTool = tool({
 
 This tool returns the current state of the Confluence page including all metadata, properties, and content body.`,
     parameters: z.object({
-        // No parameters needed - returns complete page information from configuration
+        integrationId: z.string().describe('The integration ID of the Atlassian/Confluence integration to use.'),
+        pageId: z.string().describe('The Confluence page ID to query.'),
     }),
-    execute: async ({ }, runContext?: RunContext<SessionWithTracking<ConfluenceSession>>) => {
+    execute: async ({ integrationId, pageId }, runContext?: RunContext<SessionWithTracking<Session>>) => {
         logger.debug("Executing confluence_query_page tool");
         if (!runContext?.context) {
             throw new Error("No context provided");
         }
 
-        if (!runContext.context.cloudId) {
-            throw new Error("Cloud ID is required for Confluence API access");
+        const manager = new AtlassianIntegrationManager();
+        const userId = runContext.context.user.id;
+        const accessToken = await manager.getAccessToken(integrationId, userId);
+        if (!accessToken) {
+            throw new Error(`Atlassian integration not found or access denied for integrationId: ${integrationId}`);
         }
 
-        const pageId = runContext.context.confluenceConfig.page_id as string;
+        // Get cloudId from integration
+        const integration = await db().atlassian_integrations.findUnique({
+            where: { id: integrationId },
+            select: { cloud_id: true, base_url: true }
+        });
+
+        if (!integration || !integration.cloud_id) {
+            throw new Error(`Atlassian integration cloud ID not found for integrationId: ${integrationId}`);
+        }
+
+        if (!integration.base_url) {
+            throw new Error(`No base_url found in Atlassian integration for integrationId: ${integrationId}`);
+        }
+
+        const cloudId = integration.cloud_id;
+        const baseUrl = integration.base_url;
 
         try {
             // Fetch page using REST API v2
             const pageInfo = await fetchConfluencePage(
-                runContext.context.cloudId,
+                cloudId,
                 pageId,
-                runContext.context.apiToken,
+                accessToken,
                 'storage'
             );
 
@@ -130,23 +124,24 @@ This tool returns the current state of the Confluence page including all metadat
             const { ancestors, descendants } = extractAncestorsAndDescendants(pageInfo);
 
             const body_text = body.storage?.value || body.view?.value || body.export_view?.value || '';
-            const pageName = metadata.title || runContext.context.confluenceConfig.page_name || pageId;
+            const pageNameDisplay = metadata.title || pageId;
 
-            // Track the action
-            const pageUrl = `https://${runContext.context.atlassianIntegration.baseUrl}/wiki${pageInfo._links?.webui || ''}`;
-            runContext.context.trackAction({
+            // Return action as part of the result
+            const pageUrl = `https://${baseUrl}/wiki${pageInfo._links?.webui || ''}`;
+            const action = {
                 action: 'Queried Confluence page',
                 integration: IntegrationType.ATLASSIAN,
-                target: pageName,
+                target: pageNameDisplay,
                 details: `Retrieved page content: ${body_text.length} characters, ${ancestors.length} ancestor(s), ${descendants.length} descendant(s)`,
                 url: pageUrl,
                 type: RunHistoryActionType.read,
                 isReadOnly: true,
-            });
+            };
 
             return {
                 ...metadata,
                 body: body,
+                actions: [action],
                 body_text: body_text,
                 ancestors: ancestors,
                 descendants: descendants,
@@ -154,7 +149,7 @@ This tool returns the current state of the Confluence page including all metadat
                 descendants_count: descendants.length,
             };
         } catch (error) {
-            logger.error("Error fetching Confluence page", { error, pageId: runContext?.context?.confluenceConfig?.page_id });
+            logger.error("Error fetching Confluence page", { error, pageId });
             throw new Error(`Failed to fetch Confluence page: ${error instanceof Error ? error.message : String(error)}`);
         }
     },
@@ -169,30 +164,45 @@ This tool adds an inline comment attached to a specific text range in the page. 
 
 To find the correct position, first call confluence_query_page to see the page content, then identify the text range you want to comment on.`,
     parameters: z.object({
+        integrationId: z.string().describe('The integration ID of the Atlassian/Confluence integration to use.'),
+        pageId: z.string().describe('The Confluence page ID to add a comment to.'),
         comment_text: z.string().describe('The text content of the comment to add.'),
         text_to_comment_on: z.string().nullable().optional().describe('Optional: The specific text in the page that this comment refers to. If provided, the tool will try to find this text and attach the comment to it. If not provided, you must specify start_position and end_position.'),
         start_position: z.number().nullable().optional().describe('Optional: The start character position (offset) in the page storage format where the comment should be attached. Required if text_to_comment_on is not provided.'),
         end_position: z.number().nullable().optional().describe('Optional: The end character position (offset) in the page storage format where the comment should be attached. Required if text_to_comment_on is not provided.'),
     }),
     needsApproval,
-    execute: async ({ comment_text, text_to_comment_on, start_position, end_position }, runContext?: RunContext<SessionWithTracking<ConfluenceSession>>) => {
-        logger.debug("[Confluence Add Comment] Executing confluence_add_comment tool", { comment_text, text_to_comment_on, start_position, end_position });
+    execute: async ({ integrationId, pageId, comment_text, text_to_comment_on, start_position, end_position }, runContext?: RunContext<SessionWithTracking<Session>>) => {
+        logger.debug("[Confluence Add Comment] Executing confluence_add_comment tool", { integrationId, pageId, comment_text, text_to_comment_on, start_position, end_position });
         if (!runContext?.context) {
             throw new Error(chalk.red.bold("No context provided"));
         }
 
-        if (!runContext.context.cloudId) {
-            throw new Error("Cloud ID is required for Confluence API access");
+        const manager = new AtlassianIntegrationManager();
+        const userId = runContext.context.user.id;
+        const accessToken = await manager.getAccessToken(integrationId, userId);
+        if (!accessToken) {
+            throw new Error(`Atlassian integration not found or access denied for integrationId: ${integrationId}`);
         }
 
-        const pageId = runContext.context.confluenceConfig.page_id as string;
+        // Get cloudId from integration
+        const integration = await db().atlassian_integrations.findUnique({
+            where: { id: integrationId },
+            select: { cloud_id: true, base_url: true }
+        });
+
+        if (!integration || !integration.cloud_id) {
+            throw new Error(`Atlassian integration cloud ID not found for integrationId: ${integrationId}`);
+        }
+
+        const cloudId = integration.cloud_id;
 
         try {
             // Fetch the page content
             const pageInfo = await fetchConfluencePage(
-                runContext.context.cloudId,
+                cloudId,
                 pageId,
-                runContext.context.apiToken,
+                accessToken,
                 'storage'
             );
             
@@ -242,7 +252,7 @@ To find the correct position, first call confluence_query_page to see the page c
             );
 
             // Create inline comment via API
-            const apiUrl = `${getConfluenceApiBaseUrl(runContext.context.cloudId)}/inline-comments`;
+            const apiUrl = `${getConfluenceApiBaseUrl(cloudId)}/inline-comments`;
             const requestBody: InlineCommentRequestBody = {
                 pageId: pageId,
                 body: {
@@ -264,7 +274,7 @@ To find the correct position, first call confluence_query_page to see the page c
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    ...getConfluenceApiHeaders(runContext.context.apiToken),
+                    ...getConfluenceApiHeaders(accessToken),
                 },
                 body: JSON.stringify(requestBody)
             });
@@ -276,22 +286,26 @@ To find the correct position, first call confluence_query_page to see the page c
 
             const commentResponse = await response.json() as InlineCommentResponse;
 
+            // Extract metadata to get page name
+            const metadata = extractPageMetadata(pageInfo);
+            const pageNameDisplay = metadata.title || pageId;
+            
             // Report action
-            const pageName = runContext.context.confluenceConfig.page_name || 'Confluence page';
             const commentPreview = comment_text.length > 60 
                 ? comment_text.substring(0, 60) + '...' 
                 : comment_text;
-            runContext.context.trackAction({
+            const action = {
                 action: 'Added Inline comment',
                 integration: IntegrationType.ATLASSIAN,
-                target: pageName,
+                target: pageNameDisplay,
                 details: commentPreview,
                 type: 'create',
-            });
+            };
 
             return {
                 success: true,
                 comment_id: commentResponse.id,
+                actions: [action],
                 comment_text: comment_text,
                 position: {
                     start: startPos,

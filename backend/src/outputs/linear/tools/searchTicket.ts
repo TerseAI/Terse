@@ -1,14 +1,14 @@
 import { RunContext, tool } from "@openai/agents";
 import { z } from "zod";
 import { LinearClient } from "@linear/sdk";
-import chalk from "chalk";
 import { IntegrationType } from "../../../shared/Integrations";
-import { LinearTicketSession } from "../LinearTicketOutput";
 import { SessionWithTracking } from "../../../agent/ChannelAgent/ChannelAgent";
 import type { IssueFilter, SearchIssuesQueryVariables, PaginationOrderBy as PaginationOrderByType } from "@linear/sdk/dist/_generated_documents";
 import { RunHistoryActionType } from "@prisma/client";
 import { formatError } from "../../../tools/toolUtils";
 import logger from "../../../logger";
+import { Session } from "../../../server";
+import { LinearIntegrationManager } from "../../../integrations/LinearIntegration";
 
 
 export const linearSearchTicketTool = tool({
@@ -17,22 +17,23 @@ export const linearSearchTicketTool = tool({
 
 Use this tool to find existing Linear issues before creating new ones or to look up ticket information.`,
     parameters: z.object({
+        integrationId: z.string().describe('The integration ID of the Linear integration to use.'),
         issueDescription: z.string().describe('The search query or description to search for in Linear issues. This will search in issue titles, descriptions, and other fields.'),
         excludeDone: z.boolean().nullable().optional().describe('Whether to exclude issues with state "Done". Defaults to true if not provided.'),
         limit: z.number().nullable().optional().describe('Maximum number of issues to return. Defaults to 10 if not provided.'),
         after: z.string().nullable().optional().describe('Cursor for pagination. Use the endCursor from the previous response to fetch the next page of results.'),
     }),
-    execute: async ({ issueDescription, excludeDone = true, limit = 10, after }, runContext?: RunContext<SessionWithTracking<LinearTicketSession>>) => {
-        logger.debug('🛠️ Executing linear_search_ticket tool', { issueDescription, excludeDone, limit, after });
+    execute: async ({ integrationId, issueDescription, excludeDone = true, limit = 10, after }, runContext?: RunContext<SessionWithTracking<Session>>) => {
+        logger.debug('🛠️ Executing linear_search_ticket tool', { integrationId, issueDescription, excludeDone, limit, after });
 
         if (!runContext?.context) {
             throw new Error("No context provided");
         }
 
-        // Get the OAuth token from the Linear integration
-        const accessToken = runContext.context.linearIntegration.access_token;
+        const manager = new LinearIntegrationManager();
+        const accessToken = await manager.getAccessToken(integrationId);
         if (!accessToken) {
-            throw new Error("No access token found in Linear integration");
+            throw new Error(`Linear integration not found or access denied for integrationId: ${integrationId}`);
         }
 
         // Initialize Linear client with OAuth token
@@ -89,18 +90,19 @@ Use this tool to find existing Linear issues before creating new ones or to look
             const hasNextPage = pageInfo.hasNextPage || false;
             const endCursor = pageInfo.endCursor || null;
 
-            // Track the action
-            runContext.context.trackAction({
+            // Return action as part of the result
+            const action = {
                 action: 'Searched tickets',
                 integration: IntegrationType.LINEAR,
                 target: 'Linear workspace',
                 details: `Found ${results.length} issue(s) matching "${issueDescription}"${hasNextPage ? ' (more available)' : ''}`,
                 type: RunHistoryActionType.read,
-            });
+            };
 
             return {
                 success: true,
                 issues: results,
+                actions: [action],
                 count: results.length,
                 query: issueDescription,
                 pagination: {

@@ -1,12 +1,11 @@
 import { RunContext, tool } from "@openai/agents";
 import { z } from "zod";
-import chalk from "chalk";
 import { SessionWithTracking } from "../../../agent/ChannelAgent/ChannelAgent";
-import { NotionPageSession } from "../NotionPageOutput";
 import { AttributionStore } from "../../../rag/AttributionStore";
 import logger from "../../../logger";
 import { IntegrationType } from "../../../shared/Integrations";
 import { RunHistoryActionType } from "@prisma/client";
+import { Session } from "../../../server";
 
 /**
  * Fetches events that are related to a specific Notion block.
@@ -28,9 +27,11 @@ Use this when:
 
 The tool returns the source events (e.g., Slack messages, emails) that led to this block's creation or modification.`,
     parameters: z.object({
+        integrationId: z.string().describe('The integration ID of the Notion workspace to use.'),
+        pageId: z.string().describe('The Notion page ID (not used directly, but required for consistency).'),
         block_id: z.string().describe('The Notion block ID to fetch related events for'),
     }),
-    execute: async ({ block_id }, runContext?: RunContext<SessionWithTracking<NotionPageSession>>) => {
+    execute: async ({ integrationId, pageId, block_id }, runContext?: RunContext<SessionWithTracking<Session>>) => {
         logger.info('Fetching related events for block and user', { block_id, userId: runContext?.context?.user.display_name });
 
         if (!runContext?.context) {
@@ -67,8 +68,8 @@ The tool returns the source events (e.g., Slack messages, emails) that led to th
 
             logger.info('Successfully fetched and formatted events', { block_id, userId: runContext?.context?.user.display_name, events_count: hydratedEvents.length });
 
-            // Track the action
-            runContext.context.trackAction({
+            // Return action as part of the result
+            const action = {
                 action: 'Fetched related events',
                 integration: IntegrationType.NOTION,
                 target: block_id,
@@ -76,11 +77,12 @@ The tool returns the source events (e.g., Slack messages, emails) that led to th
                 url: undefined,
                 type: RunHistoryActionType.read,
                 isReadOnly: true,
-            });
+            };
 
             return {
                 success: true,
                 events_count: hydratedEvents.length,
+                actions: [action],
                 events: eventsText,
                 message: `Found ${hydratedEvents.length} related event(s). These events provide context about why this block was created or modified. Use this information to make informed decisions about modifications.`,
             };

@@ -2,12 +2,13 @@ import { RunContext, tool } from "@openai/agents";
 import { z } from "zod";
 import { Client } from '@notionhq/client';
 import { IntegrationType } from "../../../shared/Integrations";
-import { NotionPageSession } from "../NotionPageOutput";
-import { getBlockTypeName, describeBlocks } from "../../../utility/notion";
+import { getBlockTypeName, describeBlocks, extractPageTitle } from "../../../utility/notion";
 import { SessionWithTracking } from "../../../agent/ChannelAgent/ChannelAgent";
 import { formatError, needsApproval } from "../../../tools/toolUtils";
 import { ConfigType } from "../../../shared/Configs";
 import logger from "../../../logger";
+import { Session } from "../../../server";
+import { NotionIntegrationManager } from "../../../integrations/NotionIntegration";
 
 /**
  * Constructs a Notion deep link URL to a specific block.
@@ -46,6 +47,8 @@ Examples:
 - Delete block: {"operation": "delete", "block_id": "abc123"}
 - Move block: First append the block at new position, then delete the original block_id`,
     parameters: z.object({
+        integrationId: z.string().describe('The integration ID of the Notion workspace to use.'),
+        pageId: z.string().describe('The Notion page ID to modify.'),
         operation_json: z.string().describe(`JSON string with a single operation object containing:
 - operation: "append" | "update" | "delete"
 - For append: blocks (array of block objects) and optional parent_block_id
@@ -57,7 +60,7 @@ Example update: "{\"operation\": \"update\", \"block_id\": \"abc123\", \"block\"
 Example delete: "{\"operation\": \"delete\", \"block_id\": \"abc123\"}"`),
     }),
     needsApproval,
-    execute: async ({ operation_json }, runContext?: RunContext<SessionWithTracking<NotionPageSession>>) => {        
+    execute: async ({ integrationId, pageId, operation_json }, runContext?: RunContext<SessionWithTracking<Session>>) => {        
         // Parse the JSON string
         let op: {
             operation: 'append' | 'update' | 'delete';
@@ -84,15 +87,20 @@ Example delete: "{\"operation\": \"delete\", \"block_id\": \"abc123\"}"`),
             throw new Error("No context provided");
         }
 
+        const manager = new NotionIntegrationManager();
+        const accessToken = await manager.getAccessToken(integrationId);
+        if (!accessToken) {
+            throw new Error(`Notion integration not found or access denied for integrationId: ${integrationId}`);
+        }
+
         const notion = new Client({
-            auth: runContext.context.notionIntegration.integration_token,
+            auth: accessToken,
         });
 
-        const pageId = runContext.context.notionPageConfig.page_id as string;
-        const pageName = runContext.context.notionPageConfig.page_name || 'Notion page';
         const pageInfo = await notion.pages.retrieve({
             page_id: pageId,
         });
+        const pageName = extractPageTitle(pageInfo);
         const pageUrl = 'url' in pageInfo ? pageInfo.url : undefined;
 
         try {
@@ -112,10 +120,10 @@ Example delete: "{\"operation\": \"delete\", \"block_id\": \"abc123\"}"`),
                     children: op.blocks,
                 });
 
-                // Report action
+                // Return action as part of the result
                 const blockDescription = describeBlocks(op.blocks);
                 const blockIds = response.results.map((b: any) => b.id);
-                runContext.context.trackAction({
+                const action = {
                     action: 'Added content',
                     integration: IntegrationType.NOTION,
                     target: pageName,
@@ -126,11 +134,12 @@ Example delete: "{\"operation\": \"delete\", \"block_id\": \"abc123\"}"`),
                         output_item_id: blockId,
                         output_item_type: ConfigType.NOTION_PAGE
                     }))
-                });
+                };
 
                 return {
                     success: true,
                     operation: 'append',
+                    actions: [action],
                     block_ids: response.results.map((b: any) => b.id),
                     blocks_count: response.results.length,
                 };
@@ -156,9 +165,9 @@ Example delete: "{\"operation\": \"delete\", \"block_id\": \"abc123\"}"`),
                     ...op.block,
                 });
 
-                // Report action
+                // Return action as part of the result
                 const blockType = getBlockTypeName(op.block);
-                runContext.context.trackAction({
+                const action = {
                     action: 'Updated content',
                     integration: IntegrationType.NOTION,
                     target: pageName,
@@ -169,11 +178,12 @@ Example delete: "{\"operation\": \"delete\", \"block_id\": \"abc123\"}"`),
                         output_item_id: response.id,
                         output_item_type: ConfigType.NOTION_PAGE
                     }]
-                });
+                };
 
                 return {
                     success: true,
                     operation: 'update',
+                    actions: [action],
                     block_id: response.id,
                 };
             } else if (op.operation === 'delete') {
@@ -192,8 +202,8 @@ Example delete: "{\"operation\": \"delete\", \"block_id\": \"abc123\"}"`),
                     archived: true,
                 });
 
-                // Report action
-                runContext.context.trackAction({
+                // Return action as part of the result
+                const action = {
                     action: 'Removed content',
                     integration: IntegrationType.NOTION,
                     target: pageName,
@@ -204,11 +214,12 @@ Example delete: "{\"operation\": \"delete\", \"block_id\": \"abc123\"}"`),
                         output_item_id: response.id,
                         output_item_type: ConfigType.NOTION_PAGE
                     }]
-                });
+                };
 
                 return {
                     success: true,
                     operation: 'delete',
+                    actions: [action],
                     block_id: response.id,
                 };
             } else {

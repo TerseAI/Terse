@@ -45,7 +45,7 @@ importers:
         specifier: ^0.208.0
         version: 0.208.0(@opentelemetry/api@1.9.0)
       '@prisma/client':
-        specifier: ^6.19.0
+        specifier: 6.19.0
         version: 6.19.0(prisma@6.19.0(typescript@5.9.2))(typescript@5.9.2)
       '@slack/bolt':
         specifier: ^4.6.0

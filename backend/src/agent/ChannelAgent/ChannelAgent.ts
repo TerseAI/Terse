@@ -6,7 +6,7 @@ import { Output } from '../../outputs/abstract/Output';
 import { AgentInput, AgentOutput, AgentWithRelations } from '../../types/prisma';
 import { ConfigInstance } from '../../shared/Configs';
 import { settings } from '../../config/settings';
-import { formatAgentInputsForAgent, formatAgentOutputForAgent } from './formatContext';
+import { formatAgentInputsForAgent, formatAgentOutputsForAgent } from './formatContext';
 import { UserFormatter } from '../../utility/UserFormatter';
 import { transformAgentStreamToModelEvents } from '../streaming';
 import { getRealtimeSocket } from '../../realtimeSocket';
@@ -24,7 +24,6 @@ import { persistOutputAttributions, removeOutputAttributions } from './persistOu
 import logger from '../../logger';
 import { RunHistoryActionType } from '@prisma/client';
 import { KnowledgeBase } from '../../knowledgeBase/abstract/KnowledgeBase';
-import { AgentKnowledgeBaseWithConfigs } from '../../types/prisma';
 
 // Types from @openai/agents SDK for content items
 type AgentInputText = protocol.InputText;
@@ -32,48 +31,49 @@ type AgentInputImage = protocol.InputImage;
 
 export class ChannelAgent<
     T extends Session,
-    K extends Session,
     TConfig extends ConfigInstance,
     KBConfig extends ConfigInstance
 > {
     private session: T;
     private inputEvent: InputEvent | null = null;
     private agentConfig: AgentWithRelations;
-    private output: Output<T, TConfig>;
-    private knowledgeBases: KnowledgeBase<K, KBConfig>[];
-    private knowledgeBaseAgentConfigs: AgentKnowledgeBaseWithConfigs[];
-    private knowledgeBaseSessions: K[] = [];
-    private openaiAgent?: Agent<SessionWithTracking<T & K>, AgentOutputType>;
-    private tools: Tool<SessionWithTracking<T & K>>[] = [];
+    private outputs: Output<TConfig>[];
+    private knowledgeBases: KnowledgeBase<KBConfig>[];
+    private openaiAgent?: Agent<SessionWithTracking<T>, AgentOutputType>;
+    private tools: Tool<SessionWithTracking<T>>[] = [];
     private runContext: RunContext;
     private toolMetadataMap: Map<string, ToolMetadata> = new Map();
-    private pendingActions: RunHistoryAction[] = [];
     private memorySession: RunHistoryChatMemorySession;
     private maxTurns: number;
     private notificationManager: NotificationManager;
 
     constructor(
         session: T,
-        output: Output<T, TConfig>,
-        knowledgeBases: KnowledgeBase<K, KBConfig>[],
-        knowledgeBaseAgentConfigs: AgentKnowledgeBaseWithConfigs[],
+        outputs: Output<TConfig>[],
+        knowledgeBases: KnowledgeBase<KBConfig>[],
         agent: AgentWithRelations,
         runContext: RunContext,
         maxTurns: number = 50
     ) {
-        if (knowledgeBases.length !== knowledgeBaseAgentConfigs.length) {
-            throw new Error(`Mismatch between knowledge base instances (${knowledgeBases.length}) and agent configs (${knowledgeBaseAgentConfigs.length})`);
-        }
-
         this.session = session;
-        this.output = output;
+        this.outputs = outputs;
         this.knowledgeBases = knowledgeBases;
-        this.knowledgeBaseAgentConfigs = knowledgeBaseAgentConfigs;
         this.agentConfig = agent;
-        this.tools = [
-            ...output.toolbox.map(entry => entry.tool),
-            ...knowledgeBases.flatMap(kb => kb.toolbox.map(entry => entry.tool))
-        ];
+        const toolsMap = new Map<string, Tool<SessionWithTracking<T>>>();
+        
+        outputs.forEach(output => {
+            output.toolbox.forEach(entry => {
+                toolsMap.set(entry.tool.name, entry.tool);
+            });
+        });
+        
+        knowledgeBases.forEach(kb => {
+            kb.toolbox.forEach(entry => {
+                toolsMap.set(entry.tool.name, entry.tool);
+            });
+        });
+        
+        this.tools = Array.from(toolsMap.values());
 
         this.runContext = runContext;
         this.buildToolMetadataMap();
@@ -185,7 +185,7 @@ export class ChannelAgent<
         }
 
         // Deserialize the state first
-        const state = await RunState.fromString<SessionWithTracking<T & K>, Agent<SessionWithTracking<T & K>, AgentOutputType>>(this.openaiAgent!, pendingState.serializedState);
+        const state = await RunState.fromString<SessionWithTracking<T>, Agent<SessionWithTracking<T>, AgentOutputType>>(this.openaiAgent!, pendingState.serializedState);
 
         // Find the interruption from the stored interruptions array
         // We stored the full interruption objects, so we can use them directly
@@ -286,7 +286,7 @@ export class ChannelAgent<
 
         // Bug in the SDK where functions are not serialized properly.
         // This is a workaround to get the context to work.
-        const unifiedContext: SessionWithTracking<T & K> = {
+        const unifiedContext: SessionWithTracking<T> = {
             ...toolContext,
             ...state._context,
         }
@@ -309,21 +309,24 @@ export class ChannelAgent<
         this.inputEvent = event;
     }
 
-    queueAction(action: RunHistoryAction): void {
-        this.pendingActions.push(action);
-    }
-
-    async flushPendingActions(stepId: string, toolName: string): Promise<ChangedItem[]> {
+    async flushPendingActions(stepId: string, toolName: string, actions?: RunHistoryAction[]): Promise<ChangedItem[]> {
         const changedItems: ChangedItem[] = [];
         const toolMetadata = this.toolMetadataMap.get(toolName);
         const isReadOnly = toolMetadata?.isReadOnly ?? true;
 
-        for (const action of this.pendingActions) {
+        // Process actions from tool output
+        const actionsToFlush = actions || [];
+
+        for (const action of actionsToFlush) {
+            // Use the action's step_id if it exists, otherwise use the tool's step_id
+            const finalStepId = action.step_id || stepId;
+
             const actionId = await persistRunAction(this.runContext.runId, this.agentConfig, this.session, {
                 ...action,
-                step_id: stepId,
+                step_id: finalStepId,
                 isReadOnly,
             });
+            
             if (actionId) {
                 changedItems.push({
                     type_name: EntityType.RUN_HISTORY_ACTION,
@@ -354,16 +357,16 @@ export class ChannelAgent<
             }
         }
 
-        this.pendingActions = [];
         return changedItems;
     }
 
     private buildToolMetadataMap(): void {
-        // Populate metadata from output toolbox
-        this.output.toolbox.forEach(entry => {
-            this.toolMetadataMap.set(entry.tool.name, {
-                integration: entry.integration,
-                isReadOnly: entry.isReadOnly,
+        this.outputs.forEach(output => {
+            output.toolbox.forEach(entry => {
+                this.toolMetadataMap.set(entry.tool.name, {
+                    integration: entry.integration,
+                    isReadOnly: entry.isReadOnly,
+                });
             });
         });
 
@@ -383,39 +386,19 @@ export class ChannelAgent<
     }
 
     async initializeAgent(): Promise<void> {
-        // Pair each knowledge base instance with its corresponding agent config by index
-        this.knowledgeBaseSessions = await Promise.all(
-            this.knowledgeBases.map((kb, index) => {
-                const agentKnowledgeBaseConfig = this.knowledgeBaseAgentConfigs[index];
-                if (!agentKnowledgeBaseConfig) {
-                    throw new Error(`Agent knowledge base config not found at index ${index} for ${kb.integration}`);
-                }
-                // Verify the types match as a sanity check
-                if (agentKnowledgeBaseConfig.config_type !== kb.integration) {
-                    throw new Error(`Type mismatch: knowledge base at index ${index} is ${kb.integration} but agent config is ${agentKnowledgeBaseConfig.config_type}`);
-                }
-                return kb.createSessionFromConfig(
-                    agentKnowledgeBaseConfig.integration_id,
-                    agentKnowledgeBaseConfig,
-                    this.session.user
-                );
-            })
-        );
-
-        const deps: SystemPromptBuilderDependencies<T, TConfig, K, KBConfig> = {
+        const deps: SystemPromptBuilderDependencies<T, TConfig, KBConfig> = {
             session: this.session,
             agent: this.agentConfig,
-            output: this.output,
+            outputs: this.outputs,
             knowledgeBases: this.knowledgeBases,
-            knowledgeBaseSessions: this.knowledgeBaseSessions,
         };
 
-        const builder = new SystemPromptBuilder(deps, this.runContext)
+        const builder = new SystemPromptBuilder<T, TConfig, KBConfig>(deps, this.runContext)
             .withStandardSections();
 
         const fullSystemPrompt = await builder.build();
 
-        this.openaiAgent = new Agent<SessionWithTracking<T & K>, AgentOutputType>({
+        this.openaiAgent = new Agent<SessionWithTracking<T>, AgentOutputType>({
             name: 'Living Document Automator',
             instructions: fullSystemPrompt,
             model: this.chooseModel(),
@@ -423,13 +406,14 @@ export class ChannelAgent<
         });
     }
 
-    private getToolContext(): SessionWithTracking<T & K> {
+    private queueAction(action: RunHistoryAction): void {
+        // Actions are now processed directly in flushPendingActions from tool outputs
+        // This method exists for the trackAction callback but actions are handled elsewhere
+    }
+
+    private getToolContext(): SessionWithTracking<T> {
         return {
             ...this.session,
-            ...this.knowledgeBaseSessions.reduce(
-                (acc, kbSession) => ({ ...acc, ...kbSession }),
-                {} as K
-            ),
             trackAction: (action: RunHistoryAction) => this.queueAction(action),
             agent: {
                 requireApproval: this.agentConfig.require_approval ?? false,
@@ -465,9 +449,9 @@ ${this.agentConfig.prompt?.content || 'No instructions provided'}
 ${formatAgentInputsForAgent(this.agentConfig.inputs as AgentInput[])}
 </AGENT_TRIGGERS>
 
-<OUTPUT_DESTINATION>
-${formatAgentOutputForAgent(this.agentConfig.output as AgentOutput)}
-</OUTPUT_DESTINATION>
+<OUTPUT_DESTINATIONS>
+${formatAgentOutputsForAgent(this.agentConfig.outputs as AgentOutput[])}
+</OUTPUT_DESTINATIONS>
 
 <EVENT>
 ${inputEvent.formatForAgent()}
@@ -500,7 +484,9 @@ ${inputEvent.formatForAgent()}
 
         const eventStream = transformAgentStreamToModelEvents(result, {
             toolToIntegrationMap: this.getToolToIntegrationMap(),
-            onToolCallComplete: (callId, toolName) => this.flushPendingActions(callId, toolName),
+            onToolCallComplete: (callId, toolName, actions) => {
+                return this.flushPendingActions(callId, toolName, actions);
+            },
         });
 
         await processModelEventStream(eventStream, {

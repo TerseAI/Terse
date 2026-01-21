@@ -2,12 +2,12 @@ import { OutputConfigType } from "@prisma/client";
 import { Output } from "./Output";
 import { NotionDatabaseOutput } from "../notion/NotionDatabaseOutput";
 import { NotionPageOutput } from "../notion/NotionPageOutput";
-import { Session } from "../../server";
 import { ConfluenceOutput } from "../ConfluenceOutput";
 import { ConfigInstance } from "../../shared/Configs";
 import { LinearTicketOutput } from "../linear/LinearTicketOutput";
 import { JiraTicketOutput } from "../jira/JiraTicketOutput";
 import { SlackOutput } from "../slack/SlackOutput";
+import { AgentOutputWithConfigs, AgentWithRelations } from "../../types/prisma";
 import { GmailOutput } from "../gmail/GmailOutput";
 
 /**
@@ -16,7 +16,7 @@ import { GmailOutput } from "../gmail/GmailOutput";
  * No switch statements - each output type is registered independently.
  */
 export class OutputFactory {
-    public static readonly OUTPUT_REGISTRY: Map<OutputConfigType, () => Output<Session, ConfigInstance>> = new Map<OutputConfigType, () => Output<Session, ConfigInstance>>([
+    public static readonly OUTPUT_REGISTRY: Map<OutputConfigType, () => Output<ConfigInstance>> = new Map<OutputConfigType, () => Output<ConfigInstance>>([
         [OutputConfigType.NOTION_DATABASE, () => new NotionDatabaseOutput()],
         [OutputConfigType.NOTION_PAGE, () => new NotionPageOutput()],
         [OutputConfigType.CONFLUENCE, () => new ConfluenceOutput()],
@@ -26,12 +26,7 @@ export class OutputFactory {
         [OutputConfigType.GMAIL, () => new GmailOutput()]
     ]);
 
-    /**
-     * Create an Output instance for the given integration type.
-     * @param integrationType The integration type to create an output for
-     * @returns An Output instance, or null if the integration type is not supported
-     */
-    static createOutput(integrationType: OutputConfigType): Output<Session, ConfigInstance> | null {
+    static createOutput(integrationType: OutputConfigType): Output<ConfigInstance> | null {
         const factory = this.OUTPUT_REGISTRY.get(integrationType);
         if (!factory) {
             return null;
@@ -39,12 +34,40 @@ export class OutputFactory {
         return factory();
     }
 
-    /**
-     * Check if an integration type is supported as an output.
-     * @param integrationType The integration type to check
-     * @returns true if the integration type is supported as an output
-     */
-    static isSupported(integrationType: OutputConfigType): boolean {
-        return this.OUTPUT_REGISTRY.has(integrationType);
+    static createOutputWithConfigs(configType: OutputConfigType, configs: AgentOutputWithConfigs[]): Output<ConfigInstance> | null {
+        const output = this.createOutput(configType);
+        if (!output) {
+            return null;
+        }
+        output.configs = configs;
+        return output;
+    }
+
+    static createOutputsFromAgent(agent: AgentWithRelations): Output<ConfigInstance>[] {
+        if (!agent.outputs || agent.outputs.length === 0) {
+            throw new Error(`No output integrations found for agent: ${agent.id}`);
+        }
+
+        // Group configs by type
+        const configsByType = new Map<OutputConfigType, AgentOutputWithConfigs[]>();
+        for (const outputIntegration of agent.outputs) {
+            const configType = outputIntegration.config_type as OutputConfigType;
+            if (!configsByType.has(configType)) {
+                configsByType.set(configType, []);
+            }
+            configsByType.get(configType)!.push(outputIntegration as AgentOutputWithConfigs);
+        }
+
+        // Create one output instance per type with all configs of that type
+        const outputs: Output<ConfigInstance>[] = [];
+        for (const [configType, configs] of configsByType.entries()) {
+            const output = this.createOutputWithConfigs(configType, configs);
+            if (!output) {
+                throw new Error(`Output type ${configType} is not supported`);
+            }
+            outputs.push(output);
+        }
+
+        return outputs;
     }
 }
