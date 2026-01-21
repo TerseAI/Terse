@@ -4,16 +4,18 @@ import { Session } from "../server";
 import { randomString } from "../utility/strings";
 import { IntegrationType } from "../shared/Integrations";
 import { detectSerializedError, ErrorContext, parseSerializedError } from "../tools/toolUtils";
+import { RunHistoryAction } from "../shared/RunHistoryTypes";
 
 
 export async function* transformAgentStreamToModelEvents<T extends Session>(
     result: StreamedRunResult<T, Agent<T, any>>,
     options: {
         toolToIntegrationMap?: Map<string, string>;
+        onToolCall?: (stepId: string, toolName: string) => void;
         onToolCallComplete?: ToolCallCompleteHandler;
     } = {}
 ): AsyncGenerator<ModelEvent, void, unknown> {
-    const { toolToIntegrationMap, onToolCallComplete } = options;
+    const { toolToIntegrationMap, onToolCall, onToolCallComplete } = options;
 
     for await (const event of result as AsyncIterable<RunStreamEvent>) {
         // Try Thinking (reasoning start) - check early so users see activity immediately
@@ -33,6 +35,10 @@ export async function* transformAgentStreamToModelEvents<T extends Session>(
         // Try ToolCall
         const toolCall = tryExtractToolCall(event, toolToIntegrationMap);
         if (toolCall) {
+            // Type guard: ensure it's a ToolCall event
+            if (toolCall.type === 'ToolCall' && onToolCall) {
+                onToolCall(toolCall.step_id, toolCall.summary);
+            }
             yield toolCall;
             continue;
         }
@@ -41,7 +47,7 @@ export async function* transformAgentStreamToModelEvents<T extends Session>(
         const toolCompleteData = tryExtractToolCallCompleteData(event);
         if (toolCompleteData) {
             const changedItems = onToolCallComplete 
-                ? await onToolCallComplete(toolCompleteData.callId, toolCompleteData.name)
+                ? await onToolCallComplete(toolCompleteData.callId, toolCompleteData.name, toolCompleteData.actions)
                 : [];
             
             yield createToolCallCompleteEvent(toolCompleteData, changedItems, toolToIntegrationMap);
@@ -172,6 +178,47 @@ function extractErrorContext(outputString: string | null, status: string | undef
     return undefined;
 }
 
+/**
+ * Extracts actions from tool output if present.
+ * Tools can return { result, actions: [...] } and we extract the actions array.
+ * The SDK may stringify the output, so we need to handle both object and string formats.
+ */
+function extractActionsFromOutput(rawItem: any, item: RunToolCallOutputItem): RunHistoryAction[] | undefined {
+    // Try to get the raw output object (before stringification)
+    const topLevelOutput = (item as any).output;
+    let actualOutput = rawItem.output ?? topLevelOutput;
+
+    // If output is a string, try to parse it as JSON first
+    if (typeof actualOutput === "string") {
+        try {
+            actualOutput = JSON.parse(actualOutput);
+        } catch {
+            // Not JSON, return undefined
+            return undefined;
+        }
+    }
+
+    // Handle OpenAI Agents SDK output format: {type: "text", text: "..."}
+    if (actualOutput && typeof actualOutput === "object" && "text" in actualOutput && typeof actualOutput.text === "string") {
+        // Try to parse the text as JSON in case it contains the actions
+        try {
+            const parsed = JSON.parse(actualOutput.text);
+            if (parsed && typeof parsed === "object" && Array.isArray(parsed.actions)) {
+                return parsed.actions;
+            }
+        } catch {
+            // Not JSON, continue
+        }
+    }
+
+    // Check if output is an object with actions property
+    if (actualOutput && typeof actualOutput === "object" && Array.isArray(actualOutput.actions)) {
+        return actualOutput.actions;
+    }
+
+    return undefined;
+}
+
 export function tryExtractToolCallCompleteData(event: RunStreamEvent): ToolCallCompleteData | null {
     if (event.type === "run_item_stream_event" && event.name === "tool_output") {
         const item = event.item as RunToolCallOutputItem;
@@ -180,6 +227,7 @@ export function tryExtractToolCallCompleteData(event: RunStreamEvent): ToolCallC
         const outputString = extractOutputString(rawItem, item);
         const status = rawItem.status as string | undefined;
         const errorContext = extractErrorContext(outputString, status);
+        const actions = extractActionsFromOutput(rawItem, item);
         
         // Handle function call results (including hosted tool calls)
         if (rawItem.type === "function_call_result") {
@@ -187,7 +235,8 @@ export function tryExtractToolCallCompleteData(event: RunStreamEvent): ToolCallC
                 name: rawItem.name || "unknown",
                 callId: rawItem.callId || "unknown",
                 status: status || "unknown",
-                errorContext: errorContext
+                errorContext: errorContext,
+                actions: actions
             };
         }
         
@@ -197,7 +246,8 @@ export function tryExtractToolCallCompleteData(event: RunStreamEvent): ToolCallC
                 name: rawItem.name || "unknown",
                 callId: rawItem.id || rawItem.callId || "unknown",
                 status: status || "unknown",
-                errorContext: errorContext
+                errorContext: errorContext,
+                actions: actions
             };
         }
     }
@@ -291,11 +341,12 @@ export type ToolCallCompleteEvent = {
 
 export type AgentStreamEvent = RawModelStreamEvent | ToolCalledEvent | ToolCallCompleteEvent;
 
-export type ToolCallCompleteHandler = (callId: string, toolName: string) => Promise<ChangedItem[]>;
+export type ToolCallCompleteHandler = (callId: string, toolName: string, actions?: RunHistoryAction[]) => Promise<ChangedItem[]>;
 
 export type ToolCallCompleteData = {
     name: string;
     callId: string;
     status: string;
     errorContext?: ErrorContext;
+    actions?: RunHistoryAction[];
 };

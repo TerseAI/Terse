@@ -95,14 +95,15 @@ async function upsertNotificationSettings(
 }
 
 export async function applyChannelForUser(userId: string, draft: ChannelDraft): Promise<{ id: string }> {
-    const { name, inputs, output, knowledgeBases, prompt, isActive = true, requireApproval = false, notificationSettings } = draft;
-    logger.debug("Output from frontend", { output: JSON.stringify(output, null, 2), userId });
+    const { name, inputs, outputs, knowledgeBases, prompt, isActive = true, requireApproval = false, notificationSettings } = draft;
+    
+    logger.debug("Outputs from frontend", { outputs: JSON.stringify(outputs, null, 2), userId });
     logger.debug("Inputs from frontend", { inputs: JSON.stringify(inputs, null, 2), userId });
     logger.debug("Knowledge bases from frontend", { knowledgeBases: JSON.stringify(knowledgeBases, null, 2), userId });
     logger.debug("Notification settings from frontend", { notificationSettings: JSON.stringify(notificationSettings, null, 2), userId });
 
     // Validate request
-    if (!name || !inputs || inputs.length === 0 || !output || !prompt?.text) {
+    if (!name || !inputs || inputs.length === 0 || !outputs || outputs.length === 0 || !prompt?.text) {
         throw new Error('Invalid request: missing required fields');
     }
 
@@ -159,33 +160,35 @@ export async function applyChannelForUser(userId: string, draft: ChannelDraft): 
             await createInputConfig(tx, newInput.id, input, userId);
         }
 
-        // Create output
-        const outputIntegrationType = output.config.integrationType;
-        const outputConfigType = output.config.configType;
+        // Create outputs
+        for (const output of outputs) {
+            const outputIntegrationType = output.config.integrationType;
+            const outputConfigType = output.config.configType;
 
-        const outputIntegrationId = output.config.integrationId;
-        if (!outputIntegrationId) {
-            throw new Error(`Integration ID is required for ${output.config.integrationType}`);
-        }
-        const isOwner = await validateUserOwnsIntegration(userId, outputIntegrationType, outputIntegrationId);
-        if (!isOwner) {
-            throw new Error(`Integration ${output.config.integrationType} not found or not owned by user`);
-        }
-
-        logger.debug("Output integration ID", { outputIntegrationId, userId });
-        logger.debug("Output integration type", { outputIntegrationType, userId });
-        logger.debug("Creating new output", { output: JSON.stringify(output, null, 2), userId });
-
-        const newOutput = await tx.automation_outputs.create({
-            data: {
-                automation_id: newChannel.id,
-                config_type: convertConfigTypeToOutputConfigType(outputConfigType),
-                integration_id: outputIntegrationId
+            const outputIntegrationId = output.config.integrationId;
+            if (!outputIntegrationId) {
+                throw new Error(`Integration ID is required for ${output.config.integrationType}`);
             }
-        });
+            const isOwner = await validateUserOwnsIntegration(userId, outputIntegrationType, outputIntegrationId);
+            if (!isOwner) {
+                throw new Error(`Integration ${output.config.integrationType} not found or not owned by user`);
+            }
 
-        // Create config record if provided
-        await createOutputConfig(tx, newOutput.id, output.config, userId);
+            logger.debug("Output integration ID", { outputIntegrationId, userId });
+            logger.debug("Output integration type", { outputIntegrationType, userId });
+            logger.debug("Creating new output", { output: JSON.stringify(output, null, 2), userId });
+
+            const newOutput = await tx.automation_outputs.create({
+                data: {
+                    automation_id: newChannel.id,
+                    config_type: convertConfigTypeToOutputConfigType(outputConfigType),
+                    integration_id: outputIntegrationId
+                }
+            });
+
+            // Create config record if provided
+            await createOutputConfig(tx, newOutput.id, output.config, userId);
+        }
 
         // Create knowledge bases if provided
         if (knowledgeBases && knowledgeBases.length > 0) {
@@ -253,7 +256,7 @@ export async function updateChannelForUser(
     channelId: string,
     update: Partial<ChannelUpdate>
 ): Promise<{ id: string }> {
-    const { name, inputs, output, knowledgeBases, prompt, isActive, requireApproval, notificationSettings } = update;
+    const { name, inputs, outputs, knowledgeBases, prompt, isActive, requireApproval, notificationSettings } = update;
 
     const prisma = db();
     const existingChannel: ChannelWithInputRelations | null = await prisma.automations.findFirst({
@@ -340,45 +343,43 @@ export async function updateChannelForUser(
             }
         }
 
-        // Update output if provided
-        if (output) {
-            const outputIntegrationType = output.config.integrationType;
-            if (!outputIntegrationType) {
-                throw new Error(`Unknown integration type: ${output.config.integrationType}`);
-            }
-
-            const outputConfigType = output.config.configType;
-            const outputIntegrationId = output.config.integrationId;
-            if (!outputIntegrationId) {
-                throw new Error(`Integration ID is required for ${output.config.integrationType}`);
-            }
-
-            const isOwner = await validateUserOwnsIntegration(userId, outputIntegrationType, outputIntegrationId);
-            if (!isOwner) {
-                throw new Error(`Integration ${output.config.integrationType} not found or not owned by user`);
-            }
-
-            // Delete old output (configs cascade delete)
-            const existingOutput = await tx.automation_outputs.findUnique({
+        // Update outputs if provided
+        if (outputs && outputs.length > 0) {
+            // Delete old outputs (configs cascade delete)
+            await tx.automation_outputs.deleteMany({
                 where: { automation_id: channelId }
             });
-            if (existingOutput) {
-                await tx.automation_outputs.delete({
-                    where: { automation_id: channelId }
-                });
-            }
 
-            // Create new output
-            const newOutput = await tx.automation_outputs.create({
-                data: {
-                    automation_id: channelId,
-                    config_type: convertConfigTypeToOutputConfigType(outputConfigType),
-                    integration_id: outputIntegrationId
+            // Create new outputs
+            for (const output of outputs) {
+                const outputIntegrationType = output.config.integrationType;
+                if (!outputIntegrationType) {
+                    throw new Error(`Unknown integration type: ${output.config.integrationType}`);
                 }
-            });
 
-            // Create config record if provided
-            await createOutputConfig(tx, newOutput.id, output.config, userId);
+                const outputConfigType = output.config.configType;
+                const outputIntegrationId = output.config.integrationId;
+                if (!outputIntegrationId) {
+                    throw new Error(`Integration ID is required for ${output.config.integrationType}`);
+                }
+
+                const isOwner = await validateUserOwnsIntegration(userId, outputIntegrationType, outputIntegrationId);
+                if (!isOwner) {
+                    throw new Error(`Integration ${output.config.integrationType} not found or not owned by user`);
+                }
+
+                // Create new output
+                const newOutput = await tx.automation_outputs.create({
+                    data: {
+                        automation_id: channelId,
+                        config_type: convertConfigTypeToOutputConfigType(outputConfigType),
+                        integration_id: outputIntegrationId
+                    }
+                });
+
+                // Create config record if provided
+                await createOutputConfig(tx, newOutput.id, output.config, userId);
+            }
         }
 
         // Update knowledge bases if provided
@@ -487,7 +488,7 @@ export async function getUserChannels(req: Request, res: Response) {
                 inputs: {
                     include: getInputConfigInclude()
                 },
-                output: {
+                outputs: {
                     include: getOutputConfigInclude()
                 },
                 knowledge_bases: {
@@ -498,11 +499,11 @@ export async function getUserChannels(req: Request, res: Response) {
             orderBy: { created_at: 'desc' },
             skip,
             take
-        });
-
-        if (channels.length > 0 && !channels.some(channel => channel.output)) {
-            throw new Error(`Channel output not found`);
+        })
+        if (channels.length > 0 && !channels.some(channel => channel.outputs && channel.outputs.length > 0)) {
+            throw new Error(`Channel outputs not found`);
         }
+
 
         // Transform the data to match frontend format
         const response: ChannelsResponse = {
@@ -553,7 +554,7 @@ export async function getRecentChannels(req: Request, res: Response) {
                 inputs: {
                     include: getInputConfigInclude()
                 },
-                output: {
+                outputs: {
                     include: getOutputConfigInclude()
                 },
                 knowledge_bases: {
@@ -619,7 +620,7 @@ export async function getUserChannel(req: Request, res: Response) {
                 inputs: {
                     include: getInputConfigInclude()
                 },
-                output: {
+                outputs: {
                     include: getOutputConfigInclude()
                 },
                 knowledge_bases: {
@@ -629,7 +630,7 @@ export async function getUserChannel(req: Request, res: Response) {
             }
         });
 
-        if (!channel || !channel.output) {
+        if (!channel || !channel.outputs || channel.outputs.length === 0) {
             res.status(404).json({ error: 'Channel not found' });
             return;
         }
@@ -652,13 +653,13 @@ export async function createChannel(req: Request, res: Response) {
     }
 
     const userId = req.session.user.id;
-    const { name, inputs, output, knowledgeBases, prompt, isActive = true, requireApproval = false, notificationSettings } = req.body as Channel;
+    const { name, inputs, outputs, knowledgeBases, prompt, isActive = true, requireApproval = false, notificationSettings } = req.body as Channel;
 
     try {
         const { id } = await applyChannelForUser(userId, {
             name,
             inputs,
-            output,
+            outputs,
             knowledgeBases,
             prompt,
             isActive,
@@ -749,8 +750,8 @@ export async function deleteChannel(req: Request, res: Response) {
 
 // Helper function to transform ChannelWithRelations to frontend Channel format
 function transformChannelToFrontendFormat(channel: ChannelWithRelations & Partial<ChannelWithNotificationSettingsRelations>): Channel {
-    if (!channel.output) {
-        throw new Error(`Channel output not found for channel ${channel.id}`);
+    if (!channel.outputs || channel.outputs.length === 0) {
+        throw new Error(`Channel outputs not found for channel ${channel.id}`);
     }
 
     return {
@@ -763,10 +764,10 @@ function transformChannelToFrontendFormat(channel: ChannelWithRelations & Partia
             id: input.id,
             config: convertPrismaConfigToConfigInstance(input)
         })),
-        output: {
-            id: channel.output.id,
-            config: convertPrismaOutputConfigToConfigInstance(channel.output),
-        },
+        outputs: channel.outputs.map(output => ({
+            id: output.id,
+            config: convertPrismaOutputConfigToConfigInstance(output),
+        })),
         knowledgeBases: (channel as any).knowledge_bases && (channel as any).knowledge_bases.length > 0 ? (channel as any).knowledge_bases.map((kb: any) => ({
             id: kb.id,
             config: convertPrismaKnowledgeBaseConfigToConfigInstance(kb),

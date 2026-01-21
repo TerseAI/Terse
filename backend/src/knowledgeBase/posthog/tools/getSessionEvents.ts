@@ -1,13 +1,12 @@
 import { RunContext, tool } from "@openai/agents";
 import { z } from "zod";
 import logger from "../../../logger.js";
-import { db } from "../../../prismaClient.js";
-import { PosthogConfig } from "../../../shared/Configs.js";
 import { PostHogSessionService, SessionEventsResult } from "./eventDecoder.js";
 import { IntegrationType } from "../../../shared/Integrations.js";
 import { RunHistoryActionType } from "@prisma/client";
 import { SessionWithTracking } from "../../../agent/ChannelAgent/ChannelAgent.js";
-import { PosthogKnowledgeBaseSession } from "../PosthogKnowledgeBase.js";
+import { Session } from "../../../server.js";
+import { getPosthogApiKeyByIntegrationId } from "../posthogApiClient.js";
 
 /**
  * Tool for fetching and decoding PostHog session replay events.
@@ -18,32 +17,27 @@ export const getSessionEventsTool = tool({
     name: 'getPosthogSessionEvents',
     description: 'Fetch and decode session replay events from PostHog. Returns summarized meaningful events (clicks, inputs, scroll, console logs, network errors, navigation) within a specified time window. Use this to investigate what a user did during a session - what they clicked, what they typed, any errors that occurred, etc. The events are decoded and summarized for easy analysis.',
     parameters: z.object({
+        integrationId: z.string().describe('The integration ID of the PostHog knowledge base to use.'),
+        projectId: z.string().describe('The PostHog project ID.'),
+        canReadSessionRecordings: z.boolean().default(false).describe('Whether session recordings access is enabled for this knowledge base.'),
         sessionId: z.string().uuid().describe('The PostHog session ID (UUID format) to fetch events for. You can get this from searchPosthogSessions.'),
         startSeconds: z.union([z.number().min(0), z.null()]).describe('Optional: Start time in seconds from the beginning of the session. If not provided, starts from the beginning.'),
         endSeconds: z.union([z.number().min(0), z.null()]).describe('Optional: End time in seconds from the beginning of the session. If not provided, goes until the end.'),
     }),
-    execute: async ({ sessionId, startSeconds, endSeconds }, runContext?: RunContext<SessionWithTracking<PosthogKnowledgeBaseSession>>) => {
+    execute: async ({ integrationId, projectId, canReadSessionRecordings, sessionId, startSeconds, endSeconds }, runContext?: RunContext<SessionWithTracking<Session>>) => {
         if (!runContext?.context) {
             throw new Error("No context provided");
         }
 
-        const { posthogConfig } = runContext.context;
-
-        if (!posthogConfig.canReadSessionRecordings) {
+        if (canReadSessionRecordings !== true) {
             throw new Error("PostHog session recordings access is not enabled for this knowledge base.");
         }
 
-        // Get PostHog integration
-        const integration = await db().posthog_integrations.findUnique({
-            where: { id: posthogConfig.integrationId },
-        });
-
-        if (!integration) {
-            throw new Error(`PostHog integration not found: ${posthogConfig.integrationId}`);
+        const posthogApiKey = await getPosthogApiKeyByIntegrationId(integrationId, runContext.context.user.id);
+        if (!posthogApiKey) {
+            throw new Error(`PostHog integration not found or access denied for integrationId: ${integrationId}`);
         }
 
-        const posthogApiKey = integration.api_key;
-        const projectId = posthogConfig.projectId;
         const posthogHost = 'https://us.posthog.com';
 
         try {
@@ -52,7 +46,7 @@ export const getSessionEventsTool = tool({
                 startSeconds, 
                 endSeconds,
                 projectId,
-                integrationId: posthogConfig.integrationId 
+                integrationId 
             });
 
             // Create service and fetch events
@@ -92,8 +86,8 @@ export const getSessionEventsTool = tool({
                 message: `Retrieved ${result.events.length} meaningful events and ${result.consoleLogs.length} console logs from session. View full session: ${result.sessionUrl}`,
             };
 
-            // Track the action
-            runContext.context.trackAction({
+            // Return action as part of the result
+            const action = {
                 action: 'Retrieved PostHog session events',
                 integration: IntegrationType.POSTHOG,
                 target: sessionId,
@@ -101,9 +95,12 @@ export const getSessionEventsTool = tool({
                 url: result.sessionUrl,
                 type: RunHistoryActionType.read,
                 isReadOnly: true,
-            });
+            };
 
-            return response;
+            return {
+                ...response,
+                actions: [action],
+            };
         } catch (error: any) {
             logger.error('Error fetching PostHog session events', { 
                 error, 

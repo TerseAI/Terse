@@ -1,12 +1,11 @@
 import { RunContext, tool } from "@openai/agents";
 import { z } from "zod";
 import logger from "../../../logger";
-import { createGitHubClient, listCommits, parseRepoFullName } from "../githubApiClient";
-import { GitHubKBConfig } from "../../../shared/Configs";
+import { createGitHubClient, listCommits, parseRepoFullName, getGitHubAccessToken } from "../githubApiClient";
 import { IntegrationType } from "../../../shared/Integrations";
 import { RunHistoryActionType } from "@prisma/client";
 import { SessionWithTracking } from "../../../agent/ChannelAgent/ChannelAgent";
-import { GitHubKnowledgeBaseSession } from "../GitHubKnowledgeBase";
+import { Session } from "../../../server";
 
 /**
  * Tool for listing commits in GitHub repositories within a time window.
@@ -30,24 +29,17 @@ The tool returns commit details including message, author, date, and SHA.`,
         author: z.union([z.string(), z.null()]).describe('Filter commits by author (GitHub username or email). Use null for all authors.'),
         perPage: z.number().describe('Number of results to return (default: 30, max: 100)'),
     }),
-    execute: async ({ repository, since, until, branch, path, author, perPage = 30 }, runContext?: RunContext<SessionWithTracking<GitHubKnowledgeBaseSession>>) => {
+    execute: async ({ repository, since, until, branch, path, author, perPage = 30 }, runContext?: RunContext<SessionWithTracking<Session>>) => {
         if (!runContext?.context) {
             throw new Error("No context provided");
         }
 
-        const { githubKBConfig, githubAccessToken } = runContext.context;
-
-        // Validate that the repository is in the configured list
-        if (!githubKBConfig.repositoryNames.includes(repository)) {
-            return {
-                success: false,
-                error: `Repository "${repository}" is not configured for this knowledge base.`,
-                configuredRepositories: githubKBConfig.repositoryNames,
-                tip: `Use one of the configured repositories: ${githubKBConfig.repositoryNames.join(', ')}`,
-            };
+        const accessToken = await getGitHubAccessToken(runContext.context.user.id);
+        if (!accessToken) {
+            throw new Error(`GitHub access token not found for user`);
         }
 
-        const client = createGitHubClient(githubAccessToken);
+        const client = createGitHubClient(accessToken);
         const { owner, repo } = parseRepoFullName(repository);
 
         const requestParams = {
@@ -137,8 +129,8 @@ The tool returns commit details including message, author, date, and SHA.`,
             });
             logger.debug('[GitHub KB] listGitHubCommits - Full response', { response });
 
-            // Track the action
-            runContext.context.trackAction({
+            // Return action as part of the result
+            const action = {
                 action: 'Listed GitHub commits',
                 integration: IntegrationType.GITHUB,
                 target: repository,
@@ -146,9 +138,12 @@ The tool returns commit details including message, author, date, and SHA.`,
                 url: `https://github.com/${owner}/${repo}/commits/${branch || 'HEAD'}`,
                 type: RunHistoryActionType.read,
                 isReadOnly: true,
-            });
+            };
 
-            return response;
+            return {
+                ...response,
+                actions: [action],
+            };
         } catch (error: any) {
             logger.error('[GitHub KB] listGitHubCommits - Failed', { 
                 repository, 

@@ -180,7 +180,7 @@ export type ChannelWithInputRelations = AutomationWithInputRelations; // Alias f
 
 export type AutomationWithOutputRelations = Prisma.automationsGetPayload<{
   include: {
-    output: {
+    outputs: {
       include: {
         slack_config: true;
         notion_config: true;

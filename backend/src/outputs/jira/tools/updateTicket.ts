@@ -1,13 +1,13 @@
 import { RunContext, tool } from "@openai/agents";
 import { z } from "zod";
 import { IntegrationType } from "../../../shared/Integrations";
-import { JiraTicketSession } from "../JiraTicketOutput";
 import { SessionWithTracking } from "../../../agent/ChannelAgent/ChannelAgent";
 import { RunHistoryActionType } from "@prisma/client";
 import { formatError, needsApproval } from "../../../tools/toolUtils";
 import logger from "../../../logger";
 import { AtlassianIntegrationManager } from "../../../integrations/AtlassianIntegration";
 import { db } from "../../../prismaClient";
+import { Session } from "../../../server";
 
 // Atlassian Document Format (ADF) interfaces
 interface ADFText {
@@ -119,6 +119,7 @@ COMMON UPDATE OPERATIONS:
 - Set due date: Use dueDate in format "yyyy-MM-dd" (e.g., "2024-12-31"). Note: Jira requires the due date format to be yyyy-MM-dd.
 - Update description: Set description (supports plain text or markdown format)`,
     parameters: z.object({
+        integrationId: z.string().describe('The integration ID of the Atlassian/Jira integration to use.'),
         issueKey: z.string().describe('The key of the Jira issue to update (e.g., "PROJ-123"). This is required.'),
         title: z.string().nullable().optional().describe('The issue title/summary.'),
         description: z.string().nullable().optional().describe('The issue description in plain text or markdown format.'),
@@ -132,6 +133,7 @@ COMMON UPDATE OPERATIONS:
     }),
     needsApproval,
     execute: async ({ 
+        integrationId,
         issueKey,
         title,
         description,
@@ -140,35 +142,34 @@ COMMON UPDATE OPERATIONS:
         priority,
         labels,
         dueDate,
-    }, runContext?: RunContext<SessionWithTracking<JiraTicketSession>>) => {
-        logger.debug('🛠️ Executing jira_update_ticket tool', { issueKey, updates: { title, description, status, assignee, priority, labels, dueDate } });
+    }, runContext?: RunContext<SessionWithTracking<Session>>) => {
+        logger.debug('🛠️ Executing jira_update_ticket tool', { integrationId, issueKey, updates: { title, description, status, assignee, priority, labels, dueDate } });
 
         if (!runContext?.context) {
             throw new Error("No context provided");
         }
 
-        // Get the integration details
-        const integrationId = runContext.context.jiraIntegration.id;
         const integrationManager = new AtlassianIntegrationManager();
         
-        // Get valid access token
-        const accessToken = await integrationManager.getAccessToken(integrationId);
+        // Get valid access token with user ownership validation
+        const userId = runContext.context.user.id;
+        const accessToken = await integrationManager.getAccessToken(integrationId, userId);
         if (!accessToken) {
-            throw new Error("No valid access token found for Jira integration");
+            throw new Error(`Atlassian integration not found or access denied for integrationId: ${integrationId}`);
         }
 
         // Get cloud_id and base_url from the integration
         const integration = await db().atlassian_integrations.findUnique({
             where: { id: integrationId },
-            select: { cloud_id: true, base_url: true },
+            select: { cloud_id: true, base_url: true, jira_user_email: true },
         });
 
         if (!integration || !integration.cloud_id) {
-            throw new Error("No cloud_id found in Jira integration");
+            throw new Error(`Atlassian integration details not found for integrationId: ${integrationId}`);
         }
 
         if (!integration.base_url) {
-            throw new Error("No base_url found in Jira integration");
+            throw new Error(`No base_url found in Atlassian integration for integrationId: ${integrationId}`);
         }
 
         const cloudId = integration.cloud_id;
@@ -348,19 +349,20 @@ COMMON UPDATE OPERATIONS:
                 updatedAt: updatedIssue.fields.updated || undefined,
             };
 
-            // Track the action
+            // Return action as part of the result
             const updateSummary = Object.keys(fields).join(', ') + (status ? ', status' : '');
-            runContext.context.trackAction({
+            const action = {
                 action: 'Updated ticket',
                 integration: IntegrationType.ATLASSIAN,
                 target: issueKey,
                 details: `Updated fields: ${updateSummary}`,
                 url: issueUrl,
                 type: RunHistoryActionType.update,
-            });
+            };
 
             return {
                 success: true,
+                actions: [action],
                 issue: issueData,
                 updatedFields: Object.keys(fields).concat(status ? ['status'] : []),
             };

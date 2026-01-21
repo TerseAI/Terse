@@ -1,9 +1,10 @@
 import { RunContext, tool } from "@openai/agents";
 import { z } from "zod";
 import logger from "../../../logger";
-import { db } from "../../../prismaClient";
-import { LaunchDarklyConfig } from "../../../shared/Configs";
 import { IntegrationType } from "../../../shared/Integrations";
+import { Session } from "../../../server";
+import { SessionWithTracking } from "../../../agent/ChannelAgent/ChannelAgent";
+import { getLaunchDarklyApiKeyByIntegrationId } from "../launchdarklyApiClient";
 
 /**
  * Tool for getting detailed information about a specific LaunchDarkly feature flag.
@@ -13,6 +14,9 @@ export const getLaunchDarklyFlagDetailsTool = tool({
     name: 'getLaunchDarklyFlagDetails',
     description: 'Get detailed information about a specific feature flag including targeting rules, rollout strategies, variations, and per-environment configuration. Optionally includes change history when includeHistory=true.',
     parameters: z.object({
+        integrationId: z.string().describe('The integration ID of the LaunchDarkly knowledge base to use.'),
+        projectKey: z.string().describe('The LaunchDarkly project key.'),
+        environmentKeys: z.array(z.string()).describe('Array of environment keys to query.'),
         flagKey: z.string().describe('The flag key to retrieve.'),
         environmentKey: z.union([z.string(), z.null()]).optional().describe('Optional: Specific environment to get details for (if not provided, returns all configured environments).'),
         includeHistory: z.boolean().default(false).describe('If true, includes change history for the flag over the specified time window.'),
@@ -20,8 +24,11 @@ export const getLaunchDarklyFlagDetailsTool = tool({
         after: z.union([z.string(), z.null()]).optional().describe('Optional: ISO date - only return history entries after this date (only used if includeHistory is true).'),
         historyLimit: z.number().default(20).describe('Number of history entries to return if includeHistory is true (default: 20, max: 20).'),
     }),
-    execute: async ({ flagKey, environmentKey, includeHistory = false, before, after, historyLimit = 20 }, runContext?: RunContext<any>) => {
+    execute: async ({ integrationId, projectKey, environmentKeys, flagKey, environmentKey, includeHistory = false, before, after, historyLimit = 20 }, runContext?: RunContext<SessionWithTracking<Session>>) => {
         logger.info('[LaunchDarkly] getFeatureFlagDetails - Tool called', {
+            integrationId,
+            projectKey,
+            environmentKeys,
             flagKey,
             environmentKey,
             includeHistory,
@@ -35,46 +42,12 @@ export const getLaunchDarklyFlagDetailsTool = tool({
             throw new Error("No context provided");
         }
 
-        // Get LaunchDarkly config from context - must be set by the knowledge base session
-        const launchDarklyConfig = runContext.context.launchDarklyConfig as LaunchDarklyConfig | undefined;
-        if (!launchDarklyConfig) {
-            logger.error('[LaunchDarkly] getFeatureFlagDetails - LaunchDarkly config not found in context');
-            throw new Error("LaunchDarkly config not found in context. Ensure LaunchDarkly is configured as a knowledge base.");
+        const apiKey = await getLaunchDarklyApiKeyByIntegrationId(integrationId, runContext.context.user.id);
+        if (!apiKey) {
+            throw new Error(`LaunchDarkly integration not found or access denied for integrationId: ${integrationId}`);
         }
 
-        logger.debug('[LaunchDarkly] getFeatureFlagDetails - Config loaded', {
-            integrationId: launchDarklyConfig.integrationId,
-            projectKey: launchDarklyConfig.projectKey,
-            environmentKeys: launchDarklyConfig.environmentKeys
-        });
-
-        const user = runContext.context.user;
-        if (!user) {
-            logger.error('[LaunchDarkly] getFeatureFlagDetails - User not found in context');
-            throw new Error("User not found in context");
-        }
-
-        // Get LaunchDarkly integration
-        const integration = await db().launchdarkly_integrations.findUnique({
-            where: { id: launchDarklyConfig.integrationId },
-        });
-
-        if (!integration) {
-            logger.error('[LaunchDarkly] getFeatureFlagDetails - Integration not found', {
-                integrationId: launchDarklyConfig.integrationId
-            });
-            throw new Error(`LaunchDarkly integration not found: ${launchDarklyConfig.integrationId}`);
-        }
-
-        logger.debug('[LaunchDarkly] getFeatureFlagDetails - Integration loaded', {
-            integrationId: integration.id,
-            hasApiKey: !!integration.api_key,
-            apiKeyLength: integration.api_key?.length || 0
-        });
-
-        const apiKey = integration.api_key;
-        const projectKey = launchDarklyConfig.projectKey;
-        const environmentKeys = environmentKey ? [environmentKey] : launchDarklyConfig.environmentKeys;
+        const environmentKeysToUse = environmentKey ? [environmentKey] : environmentKeys;
         const launchDarklyHost = 'https://app.launchdarkly.com';
 
         try {
@@ -82,7 +55,7 @@ export const getLaunchDarklyFlagDetailsTool = tool({
                 projectKey,
                 flagKey,
                 environmentKey,
-                environmentKeys,
+                environmentKeys: environmentKeysToUse,
                 includeHistory
             });
 
@@ -156,7 +129,7 @@ export const getLaunchDarklyFlagDetailsTool = tool({
 
             // Extract per-environment configuration
             const environments: Record<string, any> = {};
-            for (const envKey of environmentKeys) {
+            for (const envKey of environmentKeysToUse) {
                 const envData = flagData.environments?.[envKey];
                 if (envData) {
                     environments[envKey] = {
@@ -182,7 +155,7 @@ export const getLaunchDarklyFlagDetailsTool = tool({
             }
 
             // Use first environment for the flag URL (or the specified environment)
-            const primaryEnv = environmentKey || (environmentKeys.length > 0 ? environmentKeys[0] : '');
+            const primaryEnv = environmentKey || (environmentKeysToUse.length > 0 ? environmentKeysToUse[0] : '');
             const flagUrl_ui = primaryEnv
                 ? `${launchDarklyHost}/projects/${projectKey}/flags/${flagKey}/targeting?env=${primaryEnv}&selected-env=${primaryEnv}`
                 : `${launchDarklyHost}/projects/${projectKey}/flags/${flagKey}`;
@@ -199,7 +172,7 @@ export const getLaunchDarklyFlagDetailsTool = tool({
                         before,
                         after,
                         historyLimit,
-                        configuredEnvironments: launchDarklyConfig.environmentKeys
+                        configuredEnvironments: environmentKeysToUse
                     });
 
                     // Build query parameters for audit log
@@ -305,8 +278,8 @@ export const getLaunchDarklyFlagDetailsTool = tool({
                         });
 
                         // Build monitoring URL for flag history
-                        if (launchDarklyConfig.environmentKeys.length > 0) {
-                            const firstEnv = launchDarklyConfig.environmentKeys[0];
+                        if (environmentKeysToUse.length > 0) {
+                            const firstEnv = environmentKeysToUse[0];
                             historyLink = `${launchDarklyHost}/projects/${projectKey}/flags/${flagKey}/monitoring?env=${encodeURIComponent(firstEnv)}&selected-env=${encodeURIComponent(firstEnv)}&contextKind=user&errorChartType=rate&errorContextKind=user&errorEventKey=%24ld%3Atelemetry%3Aerror`;
                             logger.debug('[LaunchDarkly] getFeatureFlagDetails - Built history link', { historyLink });
                         } else {
@@ -343,7 +316,7 @@ export const getLaunchDarklyFlagDetailsTool = tool({
                 ? `Retrieved details and ${historyEntries.length} history entries for flag "${flagKey}"`
                 : `Retrieved details for flag "${flagKey}"`;
             
-            runContext.context.trackAction({
+            const action = {
                 action: 'Retrieved flag details',
                 integration: IntegrationType.LAUNCHDARKLY,
                 target: flagKey,
@@ -351,10 +324,11 @@ export const getLaunchDarklyFlagDetailsTool = tool({
                 url: flagUrl_ui,
                 type: 'read',
                 isReadOnly: true,
-            });
+            };
 
             const result: any = {
                 success: true,
+                actions: [action],
                 projectKey,
                 flag: flagMetadata,
                 environments,

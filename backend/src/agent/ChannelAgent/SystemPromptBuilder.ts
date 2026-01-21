@@ -16,12 +16,11 @@ export interface RunContext {
     runId: string;
 }
 
-export interface SystemPromptBuilderDependencies<T extends Session, TConfig extends ConfigInstance, K extends Session, KBConfig extends ConfigInstance> {
+export interface SystemPromptBuilderDependencies<T extends Session, TConfig extends ConfigInstance, KBConfig extends ConfigInstance> {
     session: T;
     channel: ChannelWithRelations;
-    output: Output<T, TConfig>;
-    knowledgeBases?: KnowledgeBase<K, KBConfig>[];
-    knowledgeBaseSessions?: K[];
+    outputs: Output<TConfig>[];
+    knowledgeBases?: KnowledgeBase<KBConfig>[];
 }
 
 interface Section {
@@ -31,11 +30,11 @@ interface Section {
 
 type SectionBuilder = () => Section | null | Promise<Section | null>;
 
-export class SystemPromptBuilder<T extends Session, TConfig extends ConfigInstance, K extends Session, KBConfig extends ConfigInstance> {
+export class SystemPromptBuilder<T extends Session, TConfig extends ConfigInstance, KBConfig extends ConfigInstance> {
     private sections: SectionBuilder[] = [];
 
     constructor(
-        private deps: SystemPromptBuilderDependencies<T, TConfig, K, KBConfig>,
+        private deps: SystemPromptBuilderDependencies<T, TConfig, KBConfig>,
         private runContext: RunContext
     ) { }
 
@@ -51,8 +50,8 @@ export class SystemPromptBuilder<T extends Session, TConfig extends ConfigInstan
             .withSection(() => this.buildRunContextSection())
             .withSection(() => this.buildDirectivesSection())
             .withSection(() => this.buildDeepLinkingSection())
-            .withSection(() => this.buildOutputInstructions())
-            .withSection(() => this.buildKnowledgeBaseInstructions());
+            .withSection(() => this.buildOutputsSection())
+            .withSection(() => this.buildKnowledgeBasesSection());
     }
 
     /**
@@ -137,42 +136,7 @@ This is event #${eventPosition} processed by this automation.`
         };
     }
 
-    private buildOutputInstructions(): Section | null {
-        const instructions = this.deps.output.getSystemInstructions(this.deps.session);
-        if (!instructions) return null;
 
-        return {
-            header: 'OUTPUT-SPECIFIC INSTRUCTIONS',
-            content: instructions
-        };
-    }
-
-    private buildKnowledgeBaseInstructions(): Section | null {
-        if (!this.deps.knowledgeBases || !this.deps.knowledgeBaseSessions || 
-            this.deps.knowledgeBases.length === 0 || this.deps.knowledgeBaseSessions.length === 0) {
-            return null;
-        }
-
-        const instructions = this.deps.knowledgeBases.reduce<string[]>((acc, kb, i) => {
-            const kbSession = this.deps.knowledgeBaseSessions?.[i];
-            if (kb && kbSession) {
-                const kbInstructions = kb.getSystemInstructions(kbSession);
-                if (kbInstructions) {
-                    acc.push(kbInstructions);
-                }
-            }
-            return acc;
-        }, []);
-
-        if (instructions.length === 0) {
-            return null;
-        }
-
-        return {
-            header: 'KNOWLEDGE BASE INSTRUCTIONS',
-            content: instructions.join('\n\n')
-        };
-    }
 
     private buildCoreInstructions(): Section {
         return {
@@ -250,6 +214,58 @@ CURRENT CONTEXT:
 - Current Run ID: ${runId}
 
 When explicitly asked by the user, include these links in your responses to help users navigate to relevant parts of the application. For example, you might include a link to the current run's history when explaining what actions were taken, or link to the channel page when referencing the automation configuration.`
+        };
+    }
+
+    private buildOutputsSection(): Section | null {
+        if (!this.deps.outputs || this.deps.outputs.length === 0) {
+            return null;
+        }
+
+        const outputSections: string[] = [];
+
+        for (const output of this.deps.outputs) {
+            if (!output || output.configs.length === 0) {
+                continue;
+            }
+
+            const instructions = output.getSystemInstructions();
+            outputSections.push(instructions);
+        }
+
+        if (outputSections.length === 0) {
+            return null;
+        }
+
+        return {
+            header: 'OUTPUT INSTRUCTIONS',
+            content: outputSections.join('\n\n')
+        };
+    }
+
+    private buildKnowledgeBasesSection(): Section | null {
+        if (!this.deps.knowledgeBases || this.deps.knowledgeBases.length === 0) {
+            return null;
+        }
+
+        const kbSections: string[] = [];
+
+        for (const kb of this.deps.knowledgeBases) {
+            if (!kb || kb.configs.length === 0) {
+                continue;
+            }
+
+            const instructions = kb.getSystemInstructions();
+            kbSections.push(instructions);
+        }
+
+        if (kbSections.length === 0) {
+            return null;
+        }
+
+        return {
+            header: 'KNOWLEDGE BASE INSTRUCTIONS',
+            content: kbSections.join('\n\n')
         };
     }
 

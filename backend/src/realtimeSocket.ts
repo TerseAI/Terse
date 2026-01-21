@@ -8,9 +8,10 @@ import { SendModelRequest, ModelEvent, ModelRequest, ToolApprovalResponse } from
 import { db } from "./prismaClient";
 import { ChannelAgent } from "./agent/ChannelAgent/ChannelAgent";
 import { RunContext } from "./agent/ChannelAgent/SystemPromptBuilder";
-import { ChannelWithRelations, ChannelKnowledgeBaseWithConfigs } from "./types/prisma";
+import { ChannelWithRelations } from "./types/prisma";
 import { getInputConfigInclude, getOutputConfigInclude, getKnowledgeBaseConfigInclude } from './utility/prismaIncludes';
 import { OutputFactory } from "./outputs/abstract/OutputFactory";
+import { Output } from "./outputs/abstract/Output";
 import { KnowledgeBaseFactory } from "./knowledgeBase/abstract/KnowledgeBaseFactory";
 import { KnowledgeBase } from "./knowledgeBase/abstract/KnowledgeBase";
 import { ConfigInstance } from "./shared/Configs";
@@ -31,24 +32,8 @@ let sub: ReturnType<typeof createClient> | null = null;
 
 function createKnowledgeBases(
     channelKnowledgeBases: ChannelWithRelations['knowledge_bases']
-): { knowledgeBases: KnowledgeBase<Session, ConfigInstance>[]; channelConfigs: ChannelKnowledgeBaseWithConfigs[] } {
-    if (!channelKnowledgeBases || channelKnowledgeBases.length === 0) {
-        return { knowledgeBases: [], channelConfigs: [] };
-    }
-
-    // Create knowledge base instances and maintain pairing with channel configs
-    const knowledgeBases: KnowledgeBase<Session, ConfigInstance>[] = [];
-    const channelConfigs: ChannelKnowledgeBaseWithConfigs[] = [];
-    
-    for (const channelKnowledgeBase of channelKnowledgeBases) {
-        const kb = KnowledgeBaseFactory.createKnowledgeBase(channelKnowledgeBase.config_type);
-        if (kb) {
-            knowledgeBases.push(kb);
-            channelConfigs.push(channelKnowledgeBase as ChannelKnowledgeBaseWithConfigs);
-        }
-    }
-    
-    return { knowledgeBases, channelConfigs };
+): KnowledgeBase<ConfigInstance>[] {
+    return KnowledgeBaseFactory.createKnowledgeBasesFromChannel(channelKnowledgeBases);
 }
 
 export async function initializeRealtimeSocket(server: HttpServer): Promise<Server> {
@@ -172,7 +157,7 @@ export async function initializeRealtimeSocket(server: HttpServer): Promise<Serv
                     inputs: {
                         include: getInputConfigInclude()
                     },
-                    output: {
+                    outputs: {
                         include: getOutputConfigInclude()
                     },
                     knowledge_bases: {
@@ -186,16 +171,17 @@ export async function initializeRealtimeSocket(server: HttpServer): Promise<Serv
                 return;
             }
 
-            const outputIntegration = channel.output;
-            if (!outputIntegration) {
-                logger.error(`[channel:chat:message] No output integration found for channel: ${channel.id}`, { channelId: channel.id, userId });
+            if (!channel.outputs || channel.outputs.length === 0) {
+                logger.error(`[channel:chat:message] No output integrations found for channel: ${channel.id}`, { channelId: channel.id, userId });
                 return;
             }
 
-            // Use OutputFactory to create output based on config type (no hardcoded Notion logic)
-            const output = OutputFactory.createOutput(outputIntegration.config_type);
-            if (!output) {
-                logger.error(`[channel:chat:message] Output type ${outputIntegration.config_type} is not supported for channel: ${channel.id}`, { configType: outputIntegration.config_type, channelId: channel.id, userId });
+            // Create outputs from channel configuration
+            let outputs: Output<ConfigInstance>[];
+            try {
+                outputs = OutputFactory.createOutputsFromChannel(channel);
+            } catch (error) {
+                logger.error(`[channel:chat:message] Failed to create outputs for channel: ${channel.id}`, { error, channelId: channel.id, userId });
                 return;
             }
 
@@ -210,19 +196,11 @@ export async function initializeRealtimeSocket(server: HttpServer): Promise<Serv
             }
             
 
-            // Use output's config-aware session creation (no hardcoded config extraction)
-            // Each output type knows how to fetch its own integration and extract its config
-            let session: Session;
-            try {
-                session = await output.createSessionFromConfig(
-                    outputIntegration.integration_id,
-                    outputIntegration,
-                    user
-                );
-            } catch (error) {
-                logger.error(`[channel:chat:message] Failed to create session`, { error, channelId: channel.id, userId });
-                return;
-            }
+            // Create base session for ChannelAgent
+            const session: Session = {
+                user: user,
+                isUserInitiated: true,
+            };
 
             const userMessage = message.user_message;
 
@@ -242,10 +220,10 @@ export async function initializeRealtimeSocket(server: HttpServer): Promise<Serv
             emitCacheInvalidationWithWildcard(user.id, 'chatHistory', runId);
 
             // Create knowledge bases from channel configuration
-            const { knowledgeBases, channelConfigs } = createKnowledgeBases(channel.knowledge_bases || []);
+            const knowledgeBases = createKnowledgeBases(channel.knowledge_bases || []);
 
             const runContext: RunContext = { runId };
-            const channelAgent = new ChannelAgent(session, output, knowledgeBases, channelConfigs, channel, runContext);
+            const channelAgent = new ChannelAgent(session, outputs, knowledgeBases, channel, runContext);
             await channelAgent.initializeAgent();
             
             let result;

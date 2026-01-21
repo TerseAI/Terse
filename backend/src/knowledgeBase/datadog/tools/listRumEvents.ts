@@ -2,11 +2,12 @@ import { RunContext, tool } from "@openai/agents";
 import { z } from "zod";
 import { client, v2 } from "@datadog/datadog-api-client";
 import logger from "../../../logger";
-import { db } from "../../../prismaClient";
-import { DatadogConfig } from "../../../shared/Configs";
 import { getDatadogSite, getDatadogRumDeepLink, parseDatadogTimeString } from "../../../utility/datadog";
 import { IntegrationType } from "../../../shared/Integrations";
 import { RunHistoryActionType } from "@prisma/client";
+import { Session } from "../../../server";
+import { SessionWithTracking } from "../../../agent/ChannelAgent/ChannelAgent";
+import { getDatadogCredentialsByIntegrationId } from "../datadogApiClient";
 
 /**
  * Tool for listing Datadog RUM events using the simple GET endpoint.
@@ -18,6 +19,7 @@ export const listRumEventsTool = tool({
     name: 'listRumEvents',
     description: 'List recent Datadog RUM events. Use for discovery when unsure what to query. Returns sessions, views, actions, errors, resources, long tasks.',
     parameters: z.object({
+        integrationId: z.string().describe('The integration ID of the Datadog knowledge base to use.'),
         query: z.union([z.string(), z.null()]).optional().describe('Datadog RUM search query to filter events (e.g., @type:view)'),
         from: z.union([z.string(), z.null()]).optional().describe('Minimum timestamp (ISO8601 only, e.g., "2020-09-17T11:48:36+01:00")'),
         to: z.union([z.string(), z.null()]).optional().describe('Maximum timestamp (ISO8601 only). Defaults to now if not provided.'),
@@ -25,34 +27,17 @@ export const listRumEventsTool = tool({
         pageCursor: z.union([z.string(), z.null()]).optional().describe('Pagination cursor from previous response'),
         sort: z.enum(['timestamp', '-timestamp']).default('timestamp').describe('Sort order: "timestamp" (ascending) or "-timestamp" (descending)'),
     }),
-    execute: async ({ query, from, to, limit = 25, pageCursor, sort = 'timestamp' }, runContext?: RunContext<any>) => {
+    execute: async ({ integrationId, query, from, to, limit = 25, pageCursor, sort = 'timestamp' }, runContext?: RunContext<SessionWithTracking<Session>>) => {
         if (!runContext?.context) {
             throw new Error("No context provided");
         }
 
-        // Get Datadog config from context - must be set by the knowledge base session
-        const datadogConfig = runContext.context.datadogConfig as DatadogConfig | undefined;
-        if (!datadogConfig) {
-            throw new Error("Datadog config not found in context. Ensure Datadog is configured as a knowledge base.");
+        const credentials = await getDatadogCredentialsByIntegrationId(integrationId, runContext.context.user.id);
+        if (!credentials) {
+            throw new Error(`Datadog integration not found or access denied for integrationId: ${integrationId}`);
         }
 
-        const user = runContext.context.user;
-        if (!user) {
-            throw new Error("User not found in context");
-        }
-
-        // Get Datadog integration
-        const integration = await db().datadog_integrations.findUnique({
-            where: { id: datadogConfig.integrationId },
-        });
-
-        if (!integration) {
-            throw new Error(`Datadog integration not found: ${datadogConfig.integrationId}`);
-        }
-
-        const apiKey = integration.api_key;
-        const appKey = integration.app_key;
-        const region = integration.region;
+        const { apiKey, appKey, region } = credentials;
         const site = getDatadogSite(region);
 
         try {
@@ -127,8 +112,8 @@ export const listRumEventsTool = tool({
             // Log full request context (debug level)
             logger.debug('[Datadog] listRumEvents - Request details', {
                 tool: 'listRumEvents',
-                integrationId: datadogConfig.integrationId,
-                userId: user.id,
+                integrationId,
+                userId: runContext.context.user.id,
                 requestParams: {
                     query: query || null,
                     from,
@@ -294,8 +279,8 @@ export const listRumEventsTool = tool({
                 }))
             });
 
-            // Track the action
-            runContext.context.trackAction({
+            // Return action as part of the result
+            const action = {
                 action: 'Listed Datadog RUM events',
                 integration: IntegrationType.DATADOG,
                 target: 'RUM events',
@@ -303,10 +288,11 @@ export const listRumEventsTool = tool({
                 url: rumLink,
                 type: RunHistoryActionType.read,
                 isReadOnly: true,
-            });
+            };
 
             return {
                 success: true,
+                actions: [action],
                 query: query || null,
                 totalEvents: formattedEvents.length,
                 events: formattedEvents,

@@ -1,11 +1,13 @@
 import { RunContext, tool } from "@openai/agents";
 import { z } from "zod";
 import { Client } from '@notionhq/client';
-import { NotionDatabaseSession } from "../NotionDatabaseOutput";
+import { GetDataSourceResponse } from '@notionhq/client/build/src/api-endpoints';
 import { IntegrationType } from "../../../shared/Integrations";
 import { SessionWithTracking } from "../../../agent/ChannelAgent/ChannelAgent";
 import { formatError } from "../../../tools/toolUtils";
 import logger from "../../../logger";
+import { Session } from "../../../server";
+import { NotionIntegrationManager } from "../../../integrations/NotionIntegration";
 
 // Helper function to build property schema with format examples
 function buildPropertySchema(propertyName: string, propertyConfig: any): any {
@@ -70,22 +72,29 @@ Use this tool:
 
 The schema information returned by this tool should be used to properly format properties when calling notion_modify_page to create or update pages in the database.`,
     parameters: z.object({
-        // No parameters needed - uses the data_source_id (stored as database_id) from the session context
+        integrationId: z.string().describe('The integration ID of the Notion workspace to use.'),
+        databaseId: z.string().describe('The Notion database ID (data source ID) to get the schema for.'),
     }),
-    execute: async ({ }, runContext?: RunContext<SessionWithTracking<NotionDatabaseSession>>) => {
+    execute: async ({ integrationId, databaseId }, runContext?: RunContext<SessionWithTracking<Session>>) => {
         logger.debug("Executing notion_get_schema tool");
         if (!runContext?.context) {
             throw new Error("No context provided");
         }
 
+        const manager = new NotionIntegrationManager();
+        const accessToken = await manager.getAccessToken(integrationId);
+        if (!accessToken) {
+            throw new Error(`Notion integration not found or access denied for integrationId: ${integrationId}`);
+        }
+
         const notion = new Client({
-            auth: runContext.context.notionIntegration.integration_token,
+            auth: accessToken,
         });
 
         // Fetch data source schema using the Notion API
         // The database_id in the config is actually the data_source_id
-        const dataSourceInfo = await notion.dataSources.retrieve({
-            data_source_id: runContext.context.notionConfig.database_id,
+        const dataSourceInfo: GetDataSourceResponse = await notion.dataSources.retrieve({
+            data_source_id: databaseId,
         });
 
         // Extract schema information with format examples
@@ -95,19 +104,20 @@ The schema information returned by this tool should be used to properly format p
         }
 
         // Push run action to track the API call
-        const databaseName = runContext.context.notionConfig.database_name || 'Unknown Database';
+        const databaseName = 'title' in dataSourceInfo ? (dataSourceInfo.title?.[0]?.plain_text || 'Unknown Database') : 'Unknown Database';
         const dataSourceUrl = 'url' in dataSourceInfo ? dataSourceInfo.url : undefined;
-        runContext.context.trackAction({
+        const action = {
             action: 'Retrieved schema',
             integration: IntegrationType.NOTION,
             target: databaseName,
             details: `Retrieved schema with ${Object.keys(schema).length} properties`,
             url: dataSourceUrl,
             type: 'read',
-        })
+        };
         
         return {
-            data_source_id: runContext.context.notionConfig.database_id,
+            actions: [action],
+            data_source_id: databaseId,
             database_name: databaseName,
             schema: schema,
             property_count: Object.keys(schema).length,
