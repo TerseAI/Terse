@@ -6,6 +6,7 @@ import RunHistoryItem from "./RunHistoryItem";
 import RunHistoryLoadingState from "./RunHistoryLoadingState";
 import { RunHistoryStatus, RunHistoryRecord } from "../../shared/RunHistoryTypes";
 import { useRunHistory } from "../../hooks/api/useRunHistory";
+import { safeDecodeURIComponent } from "../../utility/urlUtils";
 
 // Remote data source only; no local mock
 
@@ -169,7 +170,7 @@ export default function RunHistory({ channelId }: RunHistoryProps) {
                                 runs={paginatedRuns}
                                 currentRunIndex={index}
                                 isDrawerOpen={openDrawerRunId === run.id}
-                                initialPrompt={openDrawerRunId === run.id && urlPrompt ? decodeURIComponent(urlPrompt) : undefined}
+                                initialPrompt={openDrawerRunId === run.id && urlPrompt ? safeDecodeURIComponent(urlPrompt) : undefined}
                                 onDrawerOpenChange={(open) => {
                                     if (open) {
                                         setIsInitialDrawerOpen(true);
@@ -191,9 +192,10 @@ export default function RunHistory({ channelId }: RunHistoryProps) {
                                 onNavigateToRun={(newRunId) => {
                                     setOpenDrawerRunId(newRunId);
                                     setIsInitialDrawerOpen(false);
-                                    // Update URL when navigating to a different run, preserve prompt if present
+                                    // Update URL when navigating to a different run, remove prompt as it was only for the original deep-linked run
                                     const nextParams = new URLSearchParams(searchParams);
                                     nextParams.set('runId', newRunId);
+                                    nextParams.delete('prompt');
                                     setSearchParams(nextParams, { replace: true });
                                 }}
                                 isFullscreen={isDrawerFullscreen}

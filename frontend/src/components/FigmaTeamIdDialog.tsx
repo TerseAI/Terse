@@ -11,6 +11,7 @@ import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "./ui/accordion";
 import { extractTeamIdFromFigmaUrl, extractFileKeyFromFigmaUrl, buildFigmaFileUrl } from "../utility/figmaUtils";
+import { safeDecodeURIComponent } from "../utility/urlUtils";
 import { Check } from "lucide-react";
 
 interface FigmaConfigDialogProps {
@@ -130,7 +131,7 @@ export function FigmaConfigDialog({
         const fileName = fileNamePart && fileNamePart.includes('?') 
             ? fileNamePart.split('?')[0] 
             : fileNamePart;
-        const cleanFileName = fileName && fileName !== extractedFileKey ? decodeURIComponent(fileName) : undefined;
+        const cleanFileName = fileName && fileName !== extractedFileKey ? safeDecodeURIComponent(fileName) : undefined;
 
         onSave(extractedFileKey, cleanFileName, extractedTeamId);
         onClose();
