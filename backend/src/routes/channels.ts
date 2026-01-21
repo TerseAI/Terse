@@ -14,7 +14,7 @@ import { emitCacheInvalidationWithKey } from "../realtimeSocket";
 import logger from "../logger";
 import { KnowledgeBaseFactory } from "../knowledgeBase/abstract/KnowledgeBaseFactory";
 
-export type ChannelDraft = Omit<Channel, "id"> & { id?: string };
+export type ChannelDraft = Omit<Channel, "id"> & { id?: string; toolApprovalSettings?: Array<{ toolName: string; requiresApproval: boolean }> };
 
 async function createInputConfig(
     tx: PrismaTransaction,
@@ -790,99 +790,46 @@ export async function deleteChannel(req: Request, res: Response) {
     }
 }
 
-// Helper function to get available tools for a channel
-async function getAvailableToolsForChannel(channelId: string, userId: string): Promise<Array<{
-    name: string;
-    description: string;
-    integration: IntegrationType;
-    isReadOnly: boolean;
-}>> {
-    const prisma = db();
-    
-    // Verify channel ownership
-    const channel = await prisma.automations.findFirst({
-        where: {
-            id: channelId,
-            user_id: userId,
-        },
-        include: {
-            outputs: {
-                include: getOutputConfigInclude(),
-            },
-            knowledge_bases: {
-                include: getKnowledgeBaseConfigInclude(),
-            },
-        },
-    });
-
-    if (!channel) {
-        throw new Error('Channel not found');
-    }
-
-    const tools: Array<{
-        name: string;
-        description: string;
-        integration: IntegrationType;
-        isReadOnly: boolean;
-    }> = [];
-
-    // Get tools from outputs
-    for (const output of channel.outputs || []) {
-        const outputConfig = convertPrismaOutputConfigToConfigInstance(output);
-        const outputInstance = OutputFactory.createOutputFromConfig(outputConfig);
-        
-        for (const entry of outputInstance.toolbox) {
-            tools.push({
-                name: entry.tool.name,
-                description: entry.tool.description || '',
-                integration: entry.integration,
-                isReadOnly: entry.isReadOnly,
-            });
-        }
-    }
-
-    // Get tools from knowledge bases
-    for (const kb of channel.knowledge_bases || []) {
-        const kbConfig = convertPrismaKnowledgeBaseConfigToConfigInstance(kb);
-        const kbInstance = KnowledgeBaseFactory.createKnowledgeBaseFromConfig(kbConfig);
-        
-        for (const entry of kbInstance.toolbox) {
-            tools.push({
-                name: entry.tool.name,
-                description: entry.tool.description || '',
-                integration: entry.integration,
-                isReadOnly: entry.isReadOnly,
-            });
-        }
-    }
-
-    // Remove duplicates (same tool name) and filter to only writable tools
-    const uniqueTools = new Map<string, typeof tools[0]>();
-    for (const tool of tools) {
-        // Only include writable tools (tools that can require approval)
-        if (!tool.isReadOnly && !uniqueTools.has(tool.name)) {
-            uniqueTools.set(tool.name, tool);
-        }
-    }
-
-    return Array.from(uniqueTools.values());
-}
-
-// GET /channels/:id/available-tools - Get available tools for a channel
-export async function getAvailableTools(req: Request, res: Response) {
+// POST /channels/available-tools - Get available tools for integrations
+export async function getAvailableToolsForOutputs(req: Request, res: Response) {
     if (!req.session?.user) {
         res.status(401).json({ error: 'Unauthorized' });
         return;
     }
 
-    const userId = req.session.user.id;
-    const channelId = req.params.id;
-
     try {
-        const tools = await getAvailableToolsForChannel(channelId, userId);
+        const { integrationTypes } = req.body;
+        
+        if (!Array.isArray(integrationTypes)) {
+            res.status(400).json({ error: 'integrationTypes must be an array' });
+            return;
+        }
+
+        const { OutputFactory } = await import('../outputs/abstract/OutputFactory');
+        const prismaClient = await import('@prisma/client');
+        const { IntegrationType } = await import('../shared/Integrations');
+        
+        // Map integration types to their output config types
+        const integrationToOutputConfig: Record<string, prismaClient.OutputConfigType[]> = {
+            [IntegrationType.SLACK]: [prismaClient.OutputConfigType.SLACK_CHANNEL],
+            [IntegrationType.GMAIL]: [prismaClient.OutputConfigType.GMAIL],
+            [IntegrationType.NOTION]: [prismaClient.OutputConfigType.NOTION_PAGE, prismaClient.OutputConfigType.NOTION_DATABASE],
+            [IntegrationType.LINEAR]: [prismaClient.OutputConfigType.LINEAR_TICKET],
+            [IntegrationType.ATLASSIAN]: [prismaClient.OutputConfigType.JIRA_TICKET, prismaClient.OutputConfigType.CONFLUENCE],
+        };
+
+        const outputConfigTypes: prismaClient.OutputConfigType[] = [];
+        for (const integrationType of integrationTypes) {
+            const configTypes = integrationToOutputConfig[integrationType];
+            if (configTypes) {
+                outputConfigTypes.push(...configTypes);
+            }
+        }
+
+        const tools = OutputFactory.getAvailableToolsForOutputTypes(outputConfigTypes);
         res.status(200).json(tools);
     } catch (error) {
-        logger.error('Error fetching available tools', { error, userId, channelId });
+        logger.error('Error fetching available tools for outputs', { error, userId: req.session?.user?.id });
         res.status(500).json({ error: 'Failed to fetch available tools' });
     }
 }

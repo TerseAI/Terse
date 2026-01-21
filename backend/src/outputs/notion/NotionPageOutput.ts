@@ -11,9 +11,9 @@ import { IntegrationType } from "../../shared/Integrations";
 export class NotionPageOutput extends Output<NotionPageConfig> {
     constructor() {
         const toolbox: ToolboxEntry[] = [
-            { tool: notionQueryPageTool as Tool, isReadOnly: true, integration: IntegrationType.NOTION },
-            { tool: notionModifyBlocksTool as Tool, isReadOnly: false, integration: IntegrationType.NOTION },
-            { tool: fetchRelatedEventsTool as Tool, isReadOnly: true, integration: IntegrationType.NOTION },
+            { tool: notionQueryPageTool as Tool, isReadOnly: true, integration: IntegrationType.NOTION, displayName: 'Querying page' },
+            { tool: notionModifyBlocksTool as Tool, isReadOnly: false, integration: IntegrationType.NOTION, displayName: 'Modifying a block' },
+            { tool: fetchRelatedEventsTool as Tool, isReadOnly: true, integration: IntegrationType.NOTION, displayName: 'Fetching related events' },
         ];
         super(OutputConfigType.NOTION_PAGE, toolbox);
     }

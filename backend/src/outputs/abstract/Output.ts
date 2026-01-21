@@ -8,6 +8,7 @@ export interface ToolboxEntry {
     tool: Tool;
     isReadOnly: boolean;
     integration: IntegrationType;
+    displayName: string;
 }
 
 export abstract class Output<TConfig extends ConfigInstance> {
@@ -45,6 +46,7 @@ export const defaultToolbox: readonly ToolboxEntry[] = [
             searchContextSize: 'medium',
         }),
         isReadOnly: true,
-        integration: IntegrationType.TERSE
+        integration: IntegrationType.TERSE,
+        displayName: 'Web Search'
     }
 ]

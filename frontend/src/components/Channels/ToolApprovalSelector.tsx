@@ -1,15 +1,16 @@
-import { useState, useEffect } from "react";
-import { Switch } from "../../components/ui/switch";
-import { Label } from "../../components/ui/label";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../components/ui/card";
-import { Badge } from "../../components/ui/badge";
+import { useState } from "react";
 import { IntegrationType } from "@/shared/Integrations";
 import { IconForIntegration } from "@/pages/Channels/components/Integration";
-import { Input } from "../../components/ui/input";
+import { Button } from "../../components/ui/button";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "../../components/ui/command";
+import { Popover, PopoverContent, PopoverTrigger } from "../../components/ui/popover";
+import { Check, ChevronDown, X } from "lucide-react";
+import { cn } from "../../lib/utils";
+import { Badge } from "../../components/ui/badge";
 
 export type AvailableTool = {
     name: string;
-    description: string;
+    displayName: string;
     integration: IntegrationType;
     isReadOnly: boolean;
 };
@@ -22,62 +23,32 @@ export type ToolApprovalSelectorProps = {
 };
 
 function ToolApprovalSelector({ tools, selectedTools, onChange, isLoading = false }: ToolApprovalSelectorProps) {
+    const [open, setOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState("");
-    const [filteredTools, setFilteredTools] = useState(tools);
 
-    useEffect(() => {
-        if (!searchQuery.trim()) {
-            setFilteredTools(tools);
-            return;
-        }
-
+    const filteredTools = tools.filter(tool => {
+        if (!searchQuery.trim()) return true;
         const query = searchQuery.toLowerCase();
-        setFilteredTools(
-            tools.filter(
-                tool =>
-                    tool.name.toLowerCase().includes(query) ||
-                    tool.description.toLowerCase().includes(query) ||
-                    tool.integration.toLowerCase().includes(query)
-            )
-        );
-    }, [searchQuery, tools]);
+        return tool.displayName.toLowerCase().includes(query) || 
+               tool.integration.toLowerCase().includes(query);
+    });
 
-    // Group tools by integration
-    const toolsByIntegration = filteredTools.reduce((acc, tool) => {
-        if (!acc[tool.integration]) {
-            acc[tool.integration] = [];
-        }
-        acc[tool.integration].push(tool);
-        return acc;
-    }, {} as Record<IntegrationType, AvailableTool[]>);
-
-    const handleToggle = (toolName: string, checked: boolean) => {
-        onChange(toolName, checked);
+    const handleToggle = (toolName: string) => {
+        const isSelected = selectedTools.has(toolName);
+        onChange(toolName, !isSelected);
     };
 
-    const handleSelectAll = () => {
-        filteredTools.forEach(tool => {
-            if (!selectedTools.has(tool.name)) {
-                onChange(tool.name, true);
-            }
-        });
+    const handleRemove = (toolName: string, e: React.MouseEvent) => {
+        e.stopPropagation();
+        onChange(toolName, false);
     };
 
-    const handleDeselectAll = () => {
-        filteredTools.forEach(tool => {
-            if (selectedTools.has(tool.name)) {
-                onChange(tool.name, false);
-            }
-        });
-    };
-
-    const allSelected = filteredTools.length > 0 && filteredTools.every(t => selectedTools.has(t.name));
-    const someSelected = filteredTools.some(t => selectedTools.has(t.name));
+    const selectedCount = selectedTools.size;
 
     if (isLoading) {
         return (
             <div className="flex flex-col gap-4 p-4 border rounded-lg">
-                <div className="text-sm text-muted-foreground">Loading tools...</div>
+                <div className="text-sm text-muted-foreground">Loading actions...</div>
             </div>
         );
     }
@@ -85,7 +56,7 @@ function ToolApprovalSelector({ tools, selectedTools, onChange, isLoading = fals
     if (tools.length === 0) {
         return (
             <div className="flex flex-col gap-4 p-4 border rounded-lg">
-                <div className="text-sm text-muted-foreground">No writable tools available. Add outputs to configure tool approvals.</div>
+                <div className="text-sm text-muted-foreground">Add skills to your agent to configure action approvals.</div>
             </div>
         );
     }
@@ -95,100 +66,95 @@ function ToolApprovalSelector({ tools, selectedTools, onChange, isLoading = fals
             <div className="flex flex-col gap-2">
                 <div className="flex items-center justify-between">
                     <div className="flex flex-col gap-1">
-                        <Label className="text-base font-medium">
-                            Tool-specific approval settings
-                        </Label>
+                        <label className="text-base font-medium">
+                            Approvals
+                        </label>
                         <p className="text-sm text-muted-foreground">
-                            Select which tools require approval before execution. Only writable tools are shown.
+                            Select which actions require approval.
                         </p>
                     </div>
                 </div>
-
-                {filteredTools.length > 0 && (
-                    <div className="flex items-center gap-2">
-                        <button
-                            type="button"
-                            onClick={handleSelectAll}
-                            disabled={allSelected}
-                            className="text-sm text-primary hover:underline disabled:text-muted-foreground disabled:no-underline"
-                        >
-                            Select all
-                        </button>
-                        <span className="text-muted-foreground">•</span>
-                        <button
-                            type="button"
-                            onClick={handleDeselectAll}
-                            disabled={!someSelected}
-                            className="text-sm text-primary hover:underline disabled:text-muted-foreground disabled:no-underline"
-                        >
-                            Deselect all
-                        </button>
-                    </div>
-                )}
-
-                {tools.length > 5 && (
-                    <Input
-                        type="text"
-                        placeholder="Search tools by name, description, or integration..."
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        className="max-w-md"
-                    />
-                )}
             </div>
 
-            <div className="flex flex-col gap-4">
-                {Object.entries(toolsByIntegration).map(([integration, integrationTools]) => (
-                    <Card key={integration}>
-                        <CardHeader className="pb-3">
-                            <div className="flex items-center gap-2">
-                                <div className="w-5 h-5">
-                                    <IconForIntegration integration={integration as IntegrationType} />
+            <Popover open={open} onOpenChange={setOpen}>
+                <PopoverTrigger asChild>
+                    <Button
+                        variant="outline"
+                        role="combobox"
+                        aria-expanded={open}
+                        className="w-full justify-between"
+                    >
+                        <span className="text-muted-foreground">
+                            {selectedCount === 0 
+                                ? "Select actions..." 
+                                : `${selectedCount} action${selectedCount === 1 ? '' : 's'} selected`}
+                        </span>
+                        <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
+                    <Command>
+                        <CommandInput 
+                            placeholder="Search actions..." 
+                            value={searchQuery}
+                            onValueChange={setSearchQuery}
+                        />
+                        <CommandList>
+                            <CommandEmpty>No actions found.</CommandEmpty>
+                            <CommandGroup>
+                                {filteredTools.map((tool) => {
+                                    const isSelected = selectedTools.has(tool.name);
+                                    return (
+                                        <CommandItem
+                                            key={tool.name}
+                                            value={tool.name}
+                                            onSelect={() => handleToggle(tool.name)}
+                                            className="flex items-center gap-2"
+                                        >
+                                            <div className="w-5 h-5 flex-shrink-0">
+                                                <IconForIntegration integration={tool.integration} />
+                                            </div>
+                                            <span className="flex-1">{tool.displayName}</span>
+                                            <Check
+                                                className={cn(
+                                                    "h-4 w-4 flex-shrink-0",
+                                                    isSelected ? "opacity-100" : "opacity-0"
+                                                )}
+                                            />
+                                        </CommandItem>
+                                    );
+                                })}
+                            </CommandGroup>
+                        </CommandList>
+                    </Command>
+                </PopoverContent>
+            </Popover>
+
+            {selectedCount > 0 && (
+                <div className="flex flex-wrap gap-2">
+                    {Array.from(selectedTools).map(toolName => {
+                        const tool = tools.find(t => t.name === toolName);
+                        if (!tool) return null;
+                        return (
+                            <Badge
+                                key={toolName}
+                                variant="secondary"
+                                className="flex items-center gap-1.5 px-2 py-1"
+                            >
+                                <div className="w-4 h-4 flex-shrink-0">
+                                    <IconForIntegration integration={tool.integration} />
                                 </div>
-                                <CardTitle className="text-sm font-medium capitalize">
-                                    {integration.replace(/_/g, ' ')}
-                                </CardTitle>
-                                <Badge variant="secondary" className="ml-auto">
-                                    {integrationTools.length} {integrationTools.length === 1 ? 'tool' : 'tools'}
-                                </Badge>
-                            </div>
-                        </CardHeader>
-                        <CardContent className="pt-0">
-                            <div className="flex flex-col gap-3">
-                                {integrationTools.map((tool) => (
-                                    <div
-                                        key={tool.name}
-                                        className="flex items-start justify-between gap-4 p-3 rounded-lg border"
-                                    >
-                                        <div className="flex-1 flex flex-col gap-1">
-                                            <Label
-                                                htmlFor={`tool-${tool.name}`}
-                                                className="text-sm font-medium"
-                                            >
-                                                {tool.name}
-                                            </Label>
-                                            {tool.description && (
-                                                <p className="text-xs text-muted-foreground">
-                                                    {tool.description}
-                                                </p>
-                                            )}
-                                        </div>
-                                        <Switch
-                                            id={`tool-${tool.name}`}
-                                            checked={selectedTools.has(tool.name)}
-                                            onCheckedChange={(checked) => handleToggle(tool.name, checked)}
-                                        />
-                                    </div>
-                                ))}
-                            </div>
-                        </CardContent>
-                    </Card>
-                ))}
-            </div>
-
-            {filteredTools.length === 0 && searchQuery && (
-                <div className="text-sm text-muted-foreground text-center py-4">
-                    No tools found matching "{searchQuery}"
+                                <span>{tool.displayName}</span>
+                                <button
+                                    type="button"
+                                    onClick={(e) => handleRemove(toolName, e)}
+                                    className="ml-1 rounded-full hover:bg-muted-foreground/20 p-0.5"
+                                >
+                                    <X className="h-3 w-3" />
+                                </button>
+                            </Badge>
+                        );
+                    })}
                 </div>
             )}
         </div>

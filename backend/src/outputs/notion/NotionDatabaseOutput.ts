@@ -10,9 +10,9 @@ import { IntegrationType } from "../../shared/Integrations";
 export class NotionDatabaseOutput extends Output<NotionConfig> {
     constructor() {
         const toolbox: ToolboxEntry[] = [
-            { tool: notionGetSchemaTool as Tool, isReadOnly: true, integration: IntegrationType.NOTION },
-            { tool: notionQueryDatabaseTool as Tool, isReadOnly: true, integration: IntegrationType.NOTION },
-            { tool: notionModifyPageTool as Tool, isReadOnly: false, integration: IntegrationType.NOTION },
+            { tool: notionGetSchemaTool as Tool, isReadOnly: true, integration: IntegrationType.NOTION, displayName: 'Getting schema' },
+            { tool: notionQueryDatabaseTool as Tool, isReadOnly: true, integration: IntegrationType.NOTION, displayName: 'Querying database' },
+            { tool: notionModifyPageTool as Tool, isReadOnly: false, integration: IntegrationType.NOTION, displayName: 'Modifying a page' },
         ];
         super(OutputConfigType.NOTION_DATABASE, toolbox);
     }

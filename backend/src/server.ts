@@ -29,7 +29,7 @@ import {
   getUserChannel,
   getUserChannels,
   updateChannel,
-  getAvailableTools,
+  getAvailableToolsForOutputs,
 } from "./routes/channels";
 import {
   getInstallationUrl,
@@ -506,8 +506,8 @@ app.get("/channels/:id", authMiddleware, async (req, res) => {
   getUserChannel(req, res);
 });
 
-app.get("/channels/:id/available-tools", authMiddleware, async (req, res) => {
-  getAvailableTools(req, res);
+app.post("/channels/available-tools", authMiddleware, async (req, res) => {
+  getAvailableToolsForOutputs(req, res);
 });
 
 app.post("/channels", authMiddleware, async (req, res) => {

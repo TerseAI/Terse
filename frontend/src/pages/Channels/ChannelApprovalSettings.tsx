@@ -1,18 +1,20 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { BackendProvider } from "../../services/backend";
-import ToolApprovalSelector, { AvailableTool } from "../../components/channels/ToolApprovalSelector";
-import { Channel } from "@/shared/types";
+import ToolApprovalSelector, { AvailableTool } from "../../components/Channels/ToolApprovalSelector";
+import { TransientChannelOutput } from "@/shared/types";
 
 export type ChannelApprovalSettingsProps = {
-    channelId: string | null;
+    outputs: TransientChannelOutput[];
     toolApprovalSettings: Array<{ toolName: string; requiresApproval: boolean }>;
+    requireApproval?: boolean; // Legacy boolean flag
     onChange: (toolApprovalSettings: Array<{ toolName: string; requiresApproval: boolean }>) => void;
 };
 
-function ChannelApprovalSettings({ channelId, toolApprovalSettings, onChange }: ChannelApprovalSettingsProps) {
+function ChannelApprovalSettings({ outputs, toolApprovalSettings, requireApproval = false, onChange }: ChannelApprovalSettingsProps) {
     const [availableTools, setAvailableTools] = useState<AvailableTool[]>([]);
     const [isLoading, setIsLoading] = useState(false);
     const [selectedTools, setSelectedTools] = useState<Set<string>>(new Set());
+    const [hasMigratedLegacy, setHasMigratedLegacy] = useState(false);
 
     // Initialize selected tools from props
     useEffect(() => {
@@ -25,15 +27,39 @@ function ChannelApprovalSettings({ channelId, toolApprovalSettings, onChange }: 
         setSelectedTools(selected);
     }, [toolApprovalSettings]);
 
-    // Load available tools when channelId changes
+    // Migrate from legacy requireApproval when tools are loaded
     useEffect(() => {
-        if (!channelId) {
+        // Legacy case: requireApproval is true but no toolApprovalSettings (empty array)
+        // Auto-select all available tools
+        if (requireApproval && 
+            toolApprovalSettings.length === 0 && 
+            availableTools.length > 0 && 
+            !hasMigratedLegacy) {
+            const allToolNames = availableTools.map(tool => tool.name);
+            setSelectedTools(new Set(allToolNames));
+            setHasMigratedLegacy(true);
+            // Notify parent of the migration
+            onChange(availableTools.map(tool => ({ toolName: tool.name, requiresApproval: true })));
+        }
+    }, [requireApproval, toolApprovalSettings.length, availableTools, hasMigratedLegacy, onChange]);
+
+    // Derive integration types from configured outputs (only complete ones)
+    const integrationTypes = useMemo(() => {
+        return outputs
+            .filter(output => output.config?.isComplete?.())
+            .map(output => output.config!.integrationType)
+            .filter((type, index, self) => self.indexOf(type) === index); // Remove duplicates
+    }, [outputs]);
+
+    // Load available tools when integration types change
+    useEffect(() => {
+        if (integrationTypes.length === 0) {
             setAvailableTools([]);
             return;
         }
 
         setIsLoading(true);
-        BackendProvider.getAvailableTools(channelId)
+        BackendProvider.getAvailableToolsForOutputs(integrationTypes)
             .then(tools => {
                 setAvailableTools(tools);
             })
@@ -44,7 +70,7 @@ function ChannelApprovalSettings({ channelId, toolApprovalSettings, onChange }: 
             .finally(() => {
                 setIsLoading(false);
             });
-    }, [channelId]);
+    }, [integrationTypes]);
 
     const handleToolToggle = (toolName: string, requiresApproval: boolean) => {
         const newSelected = new Set(selectedTools);

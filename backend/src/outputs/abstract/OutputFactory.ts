@@ -70,4 +70,45 @@ export class OutputFactory {
 
         return outputs;
     }
+
+    /**
+     * Gets available tools for a list of output config types.
+     * Returns only writable tools (isReadOnly: false) since those are the ones that can require approval.
+     */
+    static getAvailableToolsForOutputTypes(outputTypes: OutputConfigType[]): Array<{
+        name: string;
+        displayName: string;
+        integration: string;
+        isReadOnly: boolean;
+    }> {
+        const tools: Array<{
+            name: string;
+            displayName: string;
+            integration: string;
+            isReadOnly: boolean;
+        }> = [];
+        const seenToolNames = new Set<string>();
+
+        for (const outputType of outputTypes) {
+            const output = this.createOutput(outputType);
+            if (!output) {
+                continue;
+            }
+
+            for (const entry of output.toolbox) {
+                // Only include writable tools (those that can require approval)
+                if (!entry.isReadOnly && !seenToolNames.has(entry.tool.name)) {
+                    tools.push({
+                        name: entry.tool.name,
+                        displayName: entry.displayName,
+                        integration: entry.integration,
+                        isReadOnly: entry.isReadOnly,
+                    });
+                    seenToolNames.add(entry.tool.name);
+                }
+            }
+        }
+
+        return tools;
+    }
 }

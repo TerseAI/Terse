@@ -10,7 +10,7 @@ import { IntegrationType } from "../../shared/Integrations";
 export class SlackOutput extends Output<SlackOutputConfig> {
     constructor() {
         const toolbox: ToolboxEntry[] = [
-            { tool: slackSendMessageTool as Tool, isReadOnly: false, integration: IntegrationType.SLACK },
+            { tool: slackSendMessageTool as Tool, isReadOnly: false, integration: IntegrationType.SLACK, displayName: 'Sending a message' },
         ];
         super(OutputConfigType.SLACK_CHANNEL, toolbox);
     }

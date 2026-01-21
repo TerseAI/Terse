@@ -390,8 +390,9 @@ export default function ChannelSetupTab({
                                     />
                                 </div>
                                 <ChannelApprovalSettings 
-                                    channelId={channelId} 
+                                    outputs={outputs} 
                                     toolApprovalSettings={toolApprovalSettings || []} 
+                                    requireApproval={requireApproval}
                                     onChange={setToolApprovalSettings} 
                                 />
                                 <ChannelNotificationSettings settings={notificationSettings} onChange={setNotificationSettings} />

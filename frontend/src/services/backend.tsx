@@ -296,7 +296,7 @@ interface BackendService {
      * Gets all channels for the user with pagination
      */
     getUserChannels(page?: number, limit?: number, isActive?: boolean, search?: string): Promise<ChannelsResponse>;
-    getAvailableTools(channelId: string): Promise<Array<{ name: string; description: string; integration: IntegrationType; isReadOnly: boolean }>>;
+    getAvailableToolsForOutputs(integrationTypes: string[]): Promise<Array<{ name: string; displayName: string; integration: IntegrationType; isReadOnly: boolean }>>;
 
     /**
      * Gets recently modified channels with last event processed time
@@ -307,11 +307,6 @@ interface BackendService {
      * Gets a single channel by ID
      */
     getChannelById(id: string): Promise<Channel>;
-
-    /**
-     * Gets available tools for a channel
-     */
-    getAvailableTools(channelId: string): Promise<Array<{ name: string; description: string; integration: IntegrationType; isReadOnly: boolean }>>;
 
     /**
      * Creates a new channel
@@ -885,14 +880,15 @@ export const BackendProvider: BackendService = {
             });
     },
 
-    getAvailableTools: (channelId: string) => {
-        return axios.get<Array<{ name: string; description: string; integration: IntegrationType; isReadOnly: boolean }>>(
-            `${backendBaseUrl}/channels/${channelId}/available-tools`,
+    getAvailableToolsForOutputs: (integrationTypes: string[]) => {
+        return axios.post<Array<{ name: string; displayName: string; integration: IntegrationType; isReadOnly: boolean }>>(
+            `${backendBaseUrl}/channels/available-tools`,
+            { integrationTypes },
             { withCredentials: true }
         )
             .then(response => response.data)
             .catch(error => {
-                console.error('Error getting available tools:', error);
+                console.error('Error getting available tools for outputs:', error);
                 throw error;
             });
     },

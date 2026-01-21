@@ -18,8 +18,8 @@ import { AtlassianIntegrationManager } from "../integrations/AtlassianIntegratio
 export class ConfluenceOutput extends Output<ConfluenceConfig> {
     constructor() {
         const toolbox: ToolboxEntry[] = [
-            { tool: confluenceQueryPageTool as Tool, isReadOnly: true, integration: IntegrationType.ATLASSIAN },
-            { tool: confluenceAddCommentTool as Tool, isReadOnly: false, integration: IntegrationType.ATLASSIAN },
+            { tool: confluenceQueryPageTool as Tool, isReadOnly: true, integration: IntegrationType.ATLASSIAN, displayName: 'Querying page' },
+            { tool: confluenceAddCommentTool as Tool, isReadOnly: false, integration: IntegrationType.ATLASSIAN, displayName: 'Adding a comment' },
         ];
         super(OutputConfigType.CONFLUENCE, toolbox);
     }

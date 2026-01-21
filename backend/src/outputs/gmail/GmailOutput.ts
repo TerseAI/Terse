@@ -9,7 +9,7 @@ import { IntegrationType } from "../../shared/Integrations";
 export class GmailOutput extends Output<GmailOutputConfig> {
     constructor() {
         const toolbox: ToolboxEntry[] = [
-            { tool: gmailSendEmailTool as Tool, isReadOnly: false, integration: IntegrationType.GMAIL },
+            { tool: gmailSendEmailTool as Tool, isReadOnly: false, integration: IntegrationType.GMAIL, displayName: 'Sending an email' },
         ];
         super(OutputConfigType.GMAIL, toolbox);
     }
