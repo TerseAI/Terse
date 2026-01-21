@@ -1,10 +1,10 @@
 import { useNavigate } from 'react-router-dom';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
-import { ChannelTemplate } from '@/shared/types';
+import { AgentTemplate } from '@/shared/types';
 import { TemplateAppsList } from './TemplateAppsList';
 
 interface TemplateCardProps {
-    template: ChannelTemplate;
+    template: AgentTemplate;
     templateIndex: number;
 }
 
@@ -12,7 +12,7 @@ export function TemplateCard({ template, templateIndex }: TemplateCardProps) {
     const navigate = useNavigate();
 
     const handleClick = () => {
-        navigate(`/app/channels/new/template/${templateIndex}`);
+        navigate(`/app/agents/new/template/${templateIndex}`);
     };
 
     return (

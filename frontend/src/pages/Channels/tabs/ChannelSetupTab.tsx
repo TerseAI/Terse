@@ -2,14 +2,14 @@ import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import EditableTextField from '../../../components/ui/EditableTextField';
-import { ChannelKnowledgeBase, ChannelNotificationSettings as ChannelNotificationSettingsType, ChannelUpdate, TransientChannelInput, TransientChannelOutput } from "@/shared/types";
+import { AgentKnowledgeBase, AgentNotificationSettings as AgentNotificationSettingsType, AgentUpdate, TransientAgentInput, TransientAgentOutput } from "@/shared/types";
 import { toast } from "sonner";
 import { getDefaultChannelName, toChannelInput, toChannelOutput, toChannelKnowledgeBase } from "@/utility/ChannelUtils";
 import { getNotionUrl } from "@/utility/notionUtils";
 import { useChannelCount } from "@/hooks/api/useChannelCount";
 import { useChannelMutations } from "@/hooks/api/useChannels";
 import { type KeyedMutator } from 'swr';
-import { Channel, ChannelInput, ChannelOutput, ChannelPrompt, TransientKnowledgeBase } from "@/shared/types";
+import { Agent, AgentInput, AgentOutput, AgentPrompt, TransientKnowledgeBase } from "@/shared/types";
 import { AddInputModal } from "../components/AddInputModal";
 import { AddKnowledgeBaseModal } from "../components/AddKnowledgeBaseModal";
 import { KnowledgeBaseSelector } from "../components/KnowledgeBaseSelector";
@@ -33,22 +33,22 @@ export type ChannelSetupTabProps = {
     channelId: string | null;
     name: string | null;
     setName: (name: string) => void;
-    inputs: TransientChannelInput[];
-    setInputs: (inputs: TransientChannelInput[]) => void;
-    output: TransientChannelOutput | undefined;
-    setOutput: (output: TransientChannelOutput | undefined) => void;
+    inputs: TransientAgentInput[];
+    setInputs: (inputs: TransientAgentInput[]) => void;
+    output: TransientAgentOutput | undefined;
+    setOutput: (output: TransientAgentOutput | undefined) => void;
     knowledgeBases: TransientKnowledgeBase[];
     setKnowledgeBases: (knowledgeBases: TransientKnowledgeBase[]) => void;
-    prompt: ChannelPrompt | undefined;
-    setPrompt: (prompt: ChannelPrompt | undefined) => void;
+    prompt: AgentPrompt | undefined;
+    setPrompt: (prompt: AgentPrompt | undefined) => void;
     isActive: boolean;
     setIsActive: (isActive: boolean) => void;
     requireApproval: boolean;
     setRequireApproval: (requireApproval: boolean) => void;
-    notificationSettings: ChannelNotificationSettingsType;
-    setNotificationSettings: (settings: ChannelNotificationSettingsType) => void;
+    notificationSettings: AgentNotificationSettingsType;
+    setNotificationSettings: (settings: AgentNotificationSettingsType) => void;
     isLoading: boolean;
-    mutate: KeyedMutator<Channel>;
+    mutate: KeyedMutator<Agent>;
     updatedAt?: string;
 };
 
@@ -69,14 +69,14 @@ function SaveChannelButton({
     defaultName: string;
     channelId: string | null;
     name: string | null;
-    inputs: ChannelInput[];
-    output: ChannelOutput | undefined;
-    knowledgeBases: ChannelKnowledgeBase[];
-    prompt: ChannelPrompt | undefined;
+    inputs: AgentInput[];
+    output: AgentOutput | undefined;
+    knowledgeBases: AgentKnowledgeBase[];
+    prompt: AgentPrompt | undefined;
     isActive: boolean;
     requireApproval: boolean;
-    notificationSettings: ChannelNotificationSettingsType;
-    mutate: KeyedMutator<Channel>;
+    notificationSettings: AgentNotificationSettingsType;
+    mutate: KeyedMutator<Agent>;
     onSaveSuccess?: () => void;
 }) {
     const navigate = useNavigate();
@@ -99,7 +99,7 @@ function SaveChannelButton({
 
         setIsSaving(true);
         try {
-            const channelData: ChannelUpdate = {
+            const channelData: AgentUpdate = {
                 name: name || defaultName || '',
                 inputs,
                 output,
@@ -111,22 +111,22 @@ function SaveChannelButton({
             };
 
             if (isEditMode) {
-                // Update existing channel
+                // Update existing agent
                 await updateChannel({
                     id: channelId!,
                     data: channelData,
-                    mutateChannel: mutate,
+                    mutateAgent: mutate,
                 });
             } else if (isComplete && channelData.output && channelData.inputs && channelData.inputs.length > 0) {
-                // Create new channel
+                // Create new agent
                 const creation = await createChannel(channelData);
 
                 if (creation?.id) {
-                    navigate(`/app/channels/${creation.id}`, { replace: true });
+                    navigate(`/app/agents/${creation.id}`, { replace: true });
                 }
             }
 
-            toast.success('Channel saved successfully');
+            toast.success('Agent saved successfully');
 
             // Notify parent that save was successful
             onSaveSuccess?.();
@@ -136,8 +136,8 @@ function SaveChannelButton({
                 setSaveSuccess(false);
             }, 1000);
         } catch (error) {
-            console.error('Error saving channel:', error);
-            alert('Failed to save channel. Please try again.');
+            console.error('Error saving agent:', error);
+            alert('Failed to save agent. Please try again.');
         } finally {
             setIsSaving(false);
         }
@@ -176,9 +176,9 @@ export default function ChannelSetupTab({
     const { totalCount } = useChannelCount();
     const defaultName = getDefaultChannelName(totalCount);
 
-    const channelInputs = inputs.map(toChannelInput).filter((i): i is ChannelInput => i !== null);
+    const channelInputs = inputs.map(toChannelInput).filter((i): i is AgentInput => i !== null);
     const channelOutput = toChannelOutput(output);
-    const channelKnowledgeBases = knowledgeBases.map(toChannelKnowledgeBase).filter((kb): kb is ChannelKnowledgeBase => kb !== null);
+    const channelKnowledgeBases = knowledgeBases.map(toChannelKnowledgeBase).filter((kb): kb is AgentKnowledgeBase => kb !== null);
 
     type SetupSection = 'triggers' | 'knowledgeBase' | 'prompt' | 'skills' | 'alerts';
     const [activeSection, setActiveSection] = useState<SetupSection>('triggers');
@@ -196,8 +196,8 @@ export default function ChannelSetupTab({
         !!output && output.config && output.config.isComplete() &&
         !!prompt?.text;
 
-    // Create a minimal channel-like object for AppsList
-    // Only create if we have an output (required by Channel type)
+    // Create a minimal agent-like object for AppsList
+    // Only create if we have an output (required by Agent type)
     const channelForAppsList = channelOutput ? {
         id: channelId || '',
         name: name || defaultName || '',
@@ -434,13 +434,13 @@ function WarningIcon({ content }: { content: string }) {
     );
 }
 
-function InputLayout({ inputs, setInputs, isIncomplete }: { inputs: TransientChannelInput[], setInputs: (inputs: TransientChannelInput[]) => void, isIncomplete: boolean }) {
+function InputLayout({ inputs, setInputs, isIncomplete }: { inputs: TransientAgentInput[], setInputs: (inputs: TransientAgentInput[]) => void, isIncomplete: boolean }) {
     const [showAddModal, setShowAddModal] = useState(false);
 
     const handleSelectPlatform = (config: ConfigType) => {
         const newInputId = uuidv4(); // We need to mint a placeholder ID for the new input so that we can identify it later.
-        const newInput: TransientChannelInput = { id: newInputId, config: undefined, configType: config };
-        const newInputs: TransientChannelInput[] = [...inputs, newInput];
+        const newInput: TransientAgentInput = { id: newInputId, config: undefined, configType: config };
+        const newInputs: TransientAgentInput[] = [...inputs, newInput];
         setInputs(newInputs);
         setShowAddModal(false);
     };
@@ -476,7 +476,7 @@ function InputLayout({ inputs, setInputs, isIncomplete }: { inputs: TransientCha
     )
 }
 
-function Input({ input, inputs, setInputs, handleRemove }: { input: TransientChannelInput, inputs: TransientChannelInput[], setInputs: (inputs: TransientChannelInput[]) => void, handleRemove: (id: string) => void }) {
+function Input({ input, inputs, setInputs, handleRemove }: { input: TransientAgentInput, inputs: TransientAgentInput[], setInputs: (inputs: TransientAgentInput[]) => void, handleRemove: (id: string) => void }) {
     const isPlaceholder = input.config === undefined;
     const needsConfiguration = !input.config || !input.config.isComplete();
     const [showDetailsDialog, setShowDetailsDialog] = useState(false);
@@ -560,7 +560,7 @@ function Input({ input, inputs, setInputs, handleRemove }: { input: TransientCha
     )
 }
 
-function getOutputUrl(output: TransientChannelOutput | undefined): string | undefined {
+function getOutputUrl(output: TransientAgentOutput | undefined): string | undefined {
     if (!output?.config) return undefined;
 
     if (output.configType === ConfigType.NOTION_DATABASE) {
@@ -576,10 +576,10 @@ function getOutputUrl(output: TransientChannelOutput | undefined): string | unde
     return undefined;
 }
 
-function OutputLayout({ output, setOutput, isIncomplete }: { output: TransientChannelOutput | undefined, setOutput: (output: TransientChannelOutput | undefined) => void, isIncomplete: boolean }) {
+function OutputLayout({ output, setOutput, isIncomplete }: { output: TransientAgentOutput | undefined, setOutput: (output: TransientAgentOutput | undefined) => void, isIncomplete: boolean }) {
     const handleSelectPlatform = (configType: ConfigType) => {
         // Clear all configs when switching platform (new integration type)
-        const newOutput: TransientChannelOutput = {
+        const newOutput: TransientAgentOutput = {
             id: uuidv4(),
             config: undefined,
             configType: configType,

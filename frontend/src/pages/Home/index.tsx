@@ -36,7 +36,7 @@ function Home() {
     const eventsPerDay = stats?.dailyEvents || [];
     const timezone = stats?.timezone;
 
-    const recentActions: (RunHistoryAction & { timestamp: string; channelName: string })[] = stats?.recentActions
+    const recentActions: (RunHistoryAction & { timestamp: string; agentName: string })[] = stats?.recentActions
         ? stats.recentActions.map((action) => ({
             action: action.action,
             integration: action.integration as IntegrationType,
@@ -44,7 +44,7 @@ function Home() {
             details: action.details,
             url: action.url,
             timestamp: formatRelativeTime(action.timestamp),
-            channelName: action.channelName,
+            agentName: action.agentName,
             type: action.type,
         }))
         : [];

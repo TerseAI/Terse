@@ -20,7 +20,7 @@ export function HomeEmptyState() {
             <div className="text-center space-y-2">
                 <h1 className="text-3xl font-bold">Welcome to Terse</h1>
                 <p className="text-muted-foreground text-lg">
-                    Let's get you set up with your first automation channel
+                    Let's get you set up with your first automation agent
                 </p>
             </div>
 
@@ -69,7 +69,7 @@ export function HomeEmptyState() {
                     </CardContent>
                 </Card>
 
-                {/* Step 2: Create a channel */}
+                {/* Step 2: Create an agent */}
                 <Card className={`transition-colors ${hasActiveIntegrations ? 'border-primary/50 bg-primary/5' : ''}`}>
                     <CardHeader>
                         <div className="flex items-start gap-4">
@@ -78,9 +78,9 @@ export function HomeEmptyState() {
                             </div>
                             <div className="space-y-1">
                                 <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Step 2</span>
-                                <CardTitle className="text-lg">Create your first channel</CardTitle>
+                                <CardTitle className="text-lg">Create your first agent</CardTitle>
                                 <CardDescription>
-                                    Channels are automations that listen for events and take action using AI
+                                    Agents are automations that listen for events and take action using AI
                                 </CardDescription>
                             </div>
                         </div>
@@ -88,11 +88,11 @@ export function HomeEmptyState() {
                     <CardContent>
                         <Button
                             variant={hasActiveIntegrations ? "default" : "outline"}
-                            onClick={() => navigate('/app/channels/setup')}
+                            onClick={() => navigate('/app/agents/setup')}
                             className="w-full"
                         >
                             <Zap className="h-4 w-4" />
-                            Create Channel
+                            Create Agent
                             <ArrowRight className="h-4 w-4 ml-auto" />
                         </Button>
                     </CardContent>
@@ -109,7 +109,7 @@ export function HomeEmptyState() {
                     <div>
                         <h2 className="text-xl font-semibold">Quick start with a template</h2>
                         <p className="text-sm text-muted-foreground">
-                            Pre-configured channels for common workflows
+                            Pre-configured agents for common workflows
                         </p>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -125,7 +125,7 @@ export function HomeEmptyState() {
                         <div className="text-center">
                             <Button
                                 variant="ghost"
-                                onClick={() => navigate('/app/channels/setup')}
+                                onClick={() => navigate('/app/agents/setup')}
                             >
                                 View all templates
                                 <ArrowRight className="h-4 w-4" />

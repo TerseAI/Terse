@@ -6,7 +6,7 @@ import ChannelRunHistoryTab from "./tabs/ChannelRunHistoryTab";
 import { useEffect, useState } from "react";
 import { useChannel } from "../../hooks/api/useChannels";
 import { useTemplates } from "../../hooks/api/useTemplates";
-import { ChannelNotificationSettings, ChannelPrompt, TransientChannelInput, TransientChannelOutput, TransientKnowledgeBase } from "../../shared/types";
+import { AgentNotificationSettings, AgentPrompt, TransientAgentInput, TransientAgentOutput, TransientKnowledgeBase } from "../../shared/types";
 import { toTransientChannelInput, toTransientChannelOutput, toTransientKnowledgeBase } from "../../utility/ChannelUtils";
 import { useTemplateHydration } from "../../hooks/useTemplateHydration";
 
@@ -31,13 +31,13 @@ function ChannelDetail() {
 
     // Local state for editing - use transient types for the editing interface
     const [name, setName] = useState<string | null>(null);
-    const [inputs, setInputs] = useState<TransientChannelInput[]>([]);
-    const [output, setOutput] = useState<TransientChannelOutput | undefined>(undefined);
+    const [inputs, setInputs] = useState<TransientAgentInput[]>([]);
+    const [output, setOutput] = useState<TransientAgentOutput | undefined>(undefined);
     const [knowledgeBases, setKnowledgeBases] = useState<TransientKnowledgeBase[]>([]);
-    const [prompt, setPrompt] = useState<ChannelPrompt | undefined>(undefined);
+    const [prompt, setPrompt] = useState<AgentPrompt | undefined>(undefined);
     const [isActive, setIsActive] = useState<boolean>(true);
     const [requireApproval, setRequireApproval] = useState<boolean>(false);
-    const [notificationSettings, setNotificationSettings] = useState<ChannelNotificationSettings>({
+    const [notificationSettings, setNotificationSettings] = useState<AgentNotificationSettings>({
         enabled: false,
         actionTypes: [],
     });
@@ -105,7 +105,7 @@ function ChannelDetail() {
     const isLoading = isFetching || (!!templateId && (isLoadingTemplates || !templateFound || templateHydrated !== templateId));
 
     // Prepare props for child components
-    // Note: inputs and output are already in TransientChannelInput/Output format
+    // Note: inputs and output are already in TransientAgentInput/Output format
     const channelProps: ChannelSetupTabProps = {
         channelId,
         name,

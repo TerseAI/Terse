@@ -1,4 +1,4 @@
-import { ChannelInput, ChannelOutput, TransientChannelInput, TransientChannelOutput, ChannelKnowledgeBase, TransientKnowledgeBase } from "@/shared/types";
+import { AgentInput, AgentOutput, TransientAgentInput, TransientAgentOutput, AgentKnowledgeBase, TransientKnowledgeBase } from "@/shared/types";
 
 export function getDefaultChannelName(
     totalCount: number = 0
@@ -8,10 +8,10 @@ export function getDefaultChannelName(
 }
 
 /**
- * Converts AutomationInput to TransientAutomationInput
- * AutomationInput has a required config, TransientAutomationInput has optional config but requires configType
+ * Converts AgentInput to TransientAgentInput
+ * AgentInput has a required config, TransientAgentInput has optional config but requires configType
  */
-export function toTransientChannelInput(input: ChannelInput): TransientChannelInput {
+export function toTransientChannelInput(input: AgentInput): TransientAgentInput {
     return {
         id: input.id,
         config: input.config,
@@ -20,10 +20,10 @@ export function toTransientChannelInput(input: ChannelInput): TransientChannelIn
 }
 
 /**
- * Converts AutomationOutput to TransientAutomationOutput
- * AutomationOutput has a required config, TransientAutomationOutput has optional config but requires configType
+ * Converts AgentOutput to TransientAgentOutput
+ * AgentOutput has a required config, TransientAgentOutput has optional config but requires configType
  */
-export function toTransientChannelOutput(output: ChannelOutput): TransientChannelOutput {
+export function toTransientChannelOutput(output: AgentOutput): TransientAgentOutput {
     return {
         id: output.id,
         config: output.config,
@@ -32,10 +32,10 @@ export function toTransientChannelOutput(output: ChannelOutput): TransientChanne
 }
 
 /**
- * Converts TransientAutomationInput to AutomationInput
+ * Converts TransientAgentInput to AgentInput
  * Only converts if config is present (filters out incomplete inputs)
  */
-export function toChannelInput(input: TransientChannelInput): ChannelInput | null {
+export function toChannelInput(input: TransientAgentInput): AgentInput | null {
     if (!input.config) {
         return null;
     }
@@ -46,10 +46,10 @@ export function toChannelInput(input: TransientChannelInput): ChannelInput | nul
 }
 
 /**
- * Converts TransientAutomationOutput to AutomationOutput
+ * Converts TransientAgentOutput to AgentOutput
  * Only converts if config is present
  */
-export function toChannelOutput(output: TransientChannelOutput | undefined): ChannelOutput | undefined {
+export function toChannelOutput(output: TransientAgentOutput | undefined): AgentOutput | undefined {
     if (!output || !output.config) {
         return undefined;
     }
@@ -60,9 +60,9 @@ export function toChannelOutput(output: TransientChannelOutput | undefined): Cha
 }
 
 /**
- * Converts ChannelKnowledgeBase to TransientKnowledgeBase
+ * Converts AgentKnowledgeBase to TransientKnowledgeBase
  */
-export function toTransientKnowledgeBase(kb: ChannelKnowledgeBase): TransientKnowledgeBase {
+export function toTransientKnowledgeBase(kb: AgentKnowledgeBase): TransientKnowledgeBase {
     return {
         id: kb.id,
         config: kb.config,
@@ -71,10 +71,10 @@ export function toTransientKnowledgeBase(kb: ChannelKnowledgeBase): TransientKno
 }
 
 /**
- * Converts TransientKnowledgeBase to ChannelKnowledgeBase
+ * Converts TransientKnowledgeBase to AgentKnowledgeBase
  * Only converts if config is present (filters out incomplete knowledge bases)
  */
-export function toChannelKnowledgeBase(kb: TransientKnowledgeBase): ChannelKnowledgeBase | null {
+export function toChannelKnowledgeBase(kb: TransientKnowledgeBase): AgentKnowledgeBase | null {
     if (!kb.config) {
         return null;
     }

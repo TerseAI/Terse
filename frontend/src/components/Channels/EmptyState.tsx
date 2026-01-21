@@ -35,7 +35,7 @@ export function EmptyState({ hasFilters }: EmptyStateProps) {
                         <div>
                             <h2 className="text-xl font-semibold">Quick start with a template</h2>
                             <p className="text-sm text-muted-foreground">
-                                Pre-configured channels for common workflows
+                                Pre-configured agents for common workflows
                             </p>
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -51,7 +51,7 @@ export function EmptyState({ hasFilters }: EmptyStateProps) {
                             <div className="text-center">
                                 <Button
                                     variant="ghost"
-                                    onClick={() => navigate('/app/channels/setup')}
+                                    onClick={() => navigate('/app/agents/setup')}
                                 >
                                     View all templates
                                     <ArrowRight className="h-4 w-4" />
@@ -71,7 +71,7 @@ export function EmptyState({ hasFilters }: EmptyStateProps) {
                 {/* Start from Scratch Section */}
                 <Card
                     className="cursor-pointer transition-colors hover:bg-accent/50"
-                    onClick={() => navigate('/app/channels/new')}
+                    onClick={() => navigate('/app/agents/new')}
                 >
                     <CardHeader>
                         <div className="flex items-center gap-3">
@@ -81,7 +81,7 @@ export function EmptyState({ hasFilters }: EmptyStateProps) {
                             <div>
                                 <CardTitle className="text-base">Start from scratch</CardTitle>
                                 <CardDescription>
-                                    Create a custom channel with your own configuration
+                                    Create a custom agent with your own configuration
                                 </CardDescription>
                             </div>
                             <div className="ml-auto">
@@ -100,7 +100,7 @@ export function EmptyState({ hasFilters }: EmptyStateProps) {
                 <EmptyMedia variant="icon">
                     <Settings className="text-primary" />
                 </EmptyMedia>
-                <EmptyTitle>No channels found</EmptyTitle>
+                <EmptyTitle>No agents found</EmptyTitle>
                 <EmptyDescription>
                     Try adjusting your search or filters
                 </EmptyDescription>

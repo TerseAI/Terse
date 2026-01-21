@@ -1,9 +1,9 @@
 import { Switch } from '@/components/ui/switch';
-import { Channel } from '../../shared/types';
+import { Agent } from '../../shared/types';
 
 interface StatusToggleProps {
-    channel: Channel;
-    onToggle: (channel: Channel) => void;
+    channel: Agent;
+    onToggle: (channel: Agent) => void;
 }
 
 export function StatusToggle({ channel, onToggle }: StatusToggleProps) {

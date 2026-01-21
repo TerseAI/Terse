@@ -2,16 +2,16 @@ import { ChevronRight } from 'lucide-react';
 import { IconForIntegration } from '../../pages/Channels/components/Integration';
 import { IntegrationType } from "@/shared/Integrations";
 import { capitalize } from '../../lib/utils';
-import { ChannelTemplate } from '@/shared/types';
+import { AgentTemplate, TemplateInput, TemplateKnowledgeBase } from '@/shared/types';
 
 interface TemplateAppsListProps {
-    template: ChannelTemplate;
+    template: AgentTemplate;
 }
 
 export function TemplateAppsList({ template }: TemplateAppsListProps) {
     // Count input integrations using a hashmap
     const inputIntegrationCounts = new Map<IntegrationType, number>();
-    template.inputs.forEach(input => {
+    template.inputs.forEach((input: TemplateInput) => {
         const integrationType = input.config.integrationType;
         const count = inputIntegrationCounts.get(integrationType) || 0;
         inputIntegrationCounts.set(integrationType, count + 1);
@@ -19,7 +19,7 @@ export function TemplateAppsList({ template }: TemplateAppsListProps) {
 
     // Count knowledge base integrations using a hashmap
     const knowledgeBaseIntegrationCounts = new Map<IntegrationType, number>();
-    template.knowledgeBases?.forEach(kb => {
+    template.knowledgeBases?.forEach((kb: TemplateKnowledgeBase) => {
         const integrationType = kb.config.integrationType;
         const count = knowledgeBaseIntegrationCounts.get(integrationType) || 0;
         knowledgeBaseIntegrationCounts.set(integrationType, count + 1);

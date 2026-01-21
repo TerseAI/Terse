@@ -1,4 +1,4 @@
-import { TransientChannelOutput } from "../../shared/types";
+import { TransientAgentOutput } from "../../shared/types";
 import { AlertTriangle } from "lucide-react";
 import { IntegrationSelector } from "../../components/IntegrationSelector";
 import { Button } from "@/components/ui/button";
@@ -12,7 +12,7 @@ export function OutputCard({
     output, 
     handleRemove,
     setOutput
-}: { output: TransientChannelOutput, handleRemove: () => void, setOutput: (output: TransientChannelOutput) => void }) {
+}: { output: TransientAgentOutput, handleRemove: () => void, setOutput: (output: TransientAgentOutput) => void }) {
 
     function onSelect(config: ConfigInstance) {
         setOutput({ ...output, config: config, configType: config.configType });

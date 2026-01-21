@@ -4,7 +4,7 @@ import {
     getCoreRowModel,
     useReactTable,
 } from '@tanstack/react-table';
-import { Channel } from '../shared/types';
+import { Agent } from '../shared/types';
 import {
     LoadingState,
     EmptyState,
@@ -17,8 +17,8 @@ import {
 import { useChannels, useChannelMutations } from '@/hooks/api/useChannels';
 
 type ChannelsTableProps = {
-    onEdit: (channel: Channel) => void;
-    onDelete: (channel: Channel) => void;
+    onEdit: (channel: Agent) => void;
+    onDelete: (channel: Agent) => void;
     onCreateNew?: () => void;
     searchQuery?: string;
     statusFilter?: boolean;
@@ -48,7 +48,7 @@ export function ChannelsTable({ onEdit, onDelete, onCreateNew, searchQuery, stat
         setPage(1); // Reset to first page when changing limit
     };
 
-    const handleToggleStatus = async (channel: Channel) => {
+    const handleToggleStatus = async (channel: Agent) => {
         try {
             await toggleChannelActive(channel, {
                 mutateList: mutate,
@@ -64,7 +64,7 @@ export function ChannelsTable({ onEdit, onDelete, onCreateNew, searchQuery, stat
         }
     };
 
-    const columns: ColumnDef<Channel>[] = [
+    const columns: ColumnDef<Agent>[] = [
         {
             accessorKey: 'isActive',
             header: 'Status',

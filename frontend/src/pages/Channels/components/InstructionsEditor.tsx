@@ -8,7 +8,7 @@ import {
     DialogTitle,
 } from "@/components/ui/dialog";
 import { Maximize2Icon, Sparkles, Info, AlertTriangleIcon } from "lucide-react";
-import { ChannelInput, ChannelOutput, ChannelPrompt } from "@/shared/types";
+import { AgentInput, AgentOutput, AgentPrompt } from "@/shared/types";
 import { PromptBuilderModal } from "../../../components/PromptBuilder/PromptBuilderModal";
 import { Switch } from "../../../components/ui/switch";
 import { Label } from "../../../components/ui/label";
@@ -30,10 +30,10 @@ Be specific about:
 • The tone or style for generated content`;
 
 interface InstructionsEditorProps {
-    prompt: ChannelPrompt | undefined;
-    setPrompt: (prompt: ChannelPrompt | undefined) => void;
-    channelInputs: ChannelInput[];
-    channelOutput: ChannelOutput | undefined;
+    prompt: AgentPrompt | undefined;
+    setPrompt: (prompt: AgentPrompt | undefined) => void;
+    channelInputs: AgentInput[];
+    channelOutput: AgentOutput | undefined;
     isIncomplete?: boolean;
 }
 

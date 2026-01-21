@@ -1,24 +1,24 @@
 import { ChevronRight } from 'lucide-react';
-import { Channel } from '../../shared/types';
+import { Agent, AgentInput, AgentKnowledgeBase } from '../../shared/types';
 import { IconForIntegration } from '../../pages/Channels/components/Integration';
 import { IntegrationType } from "@/shared/Integrations"
 import { capitalize } from '../../lib/utils';
 
 interface AppsListProps {
-    channel: Channel;
+    channel: Agent;
 }
 
 export function AppsList({ channel }: AppsListProps) {
     // Count input integrations using a hashmap
     const inputIntegrationCounts = new Map<IntegrationType, number>();
-    channel.inputs.forEach(input => {
+    channel.inputs.forEach((input: AgentInput) => {
         const count = inputIntegrationCounts.get(input.config.integrationType) || 0;
         inputIntegrationCounts.set(input.config.integrationType, count + 1);
     });
 
     // Count knowledge base integrations using a hashmap
     const knowledgeBaseIntegrationCounts = new Map<IntegrationType, number>();
-    channel.knowledgeBases?.forEach(kb => {
+    channel.knowledgeBases?.forEach((kb: AgentKnowledgeBase) => {
         const count = knowledgeBaseIntegrationCounts.get(kb.config.integrationType) || 0;
         knowledgeBaseIntegrationCounts.set(kb.config.integrationType, count + 1);
     });

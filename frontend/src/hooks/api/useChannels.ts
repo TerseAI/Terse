@@ -1,44 +1,44 @@
 import useSWR, { mutate, type KeyedMutator } from 'swr';
 import { BackendProvider } from '@/services/backend';
 import type {
-    Channel,
-    ChannelsResponse,
-    ChannelUpdate,
+    Agent,
+    AgentsResponse,
+    AgentUpdate,
 } from '@/shared/types';
 import { deserializeConfig } from '@/utility/ConfigUtils';
 
-type ChannelListArgs = {
+type AgentListArgs = {
     page?: number;
     limit?: number;
     isActive?: boolean;
     search?: string;
 };
 
-type UpdateChannelArgs = {
+type UpdateAgentArgs = {
     id: string;
-    data: ChannelUpdate;
-    mutateChannel?: KeyedMutator<Channel>;
+    data: AgentUpdate;
+    mutateAgent?: KeyedMutator<Agent>;
 };
 
 type ListMutationContext = {
-    params: ChannelListArgs;
-    mutateList: KeyedMutator<ChannelsResponse>;
+    params: AgentListArgs;
+    mutateList: KeyedMutator<AgentsResponse>;
 };
 
-const channelListKey = ({ page = 1, limit = 25, isActive, search }: ChannelListArgs = {}): readonly [string, ChannelListArgs] => [
-    'channels',
+const agentListKey = ({ page = 1, limit = 25, isActive, search }: AgentListArgs = {}): readonly [string, AgentListArgs] => [
+    'agents',
     { page, limit, isActive, search },
 ];
 
-const channelDetailKey = (id: string | null): readonly [string, { id: string }] | null => {
+const agentDetailKey = (id: string | null): readonly [string, { id: string }] | null => {
     if (!id) return null;
-    return ['channel', { id }];
+    return ['agent', { id }];
 };
 
-export function useChannels(params: ChannelListArgs = {}) {
-    const key = channelListKey(params);
+export function useChannels(params: AgentListArgs = {}) {
+    const key = agentListKey(params);
 
-    const { data, error, isValidating, mutate } = useSWR<ChannelsResponse>(
+    const { data, error, isValidating, mutate } = useSWR<AgentsResponse>(
         key,
         async () => {
             const { page = 1, limit = 25, isActive, search } = params;
@@ -46,17 +46,17 @@ export function useChannels(params: ChannelListArgs = {}) {
             // Deserialize configs from JSON to class instances
             return {
                 ...response,
-                channels: response.channels.map(channel => ({
-                    ...channel,
-                    inputs: channel.inputs.map(input => ({
+                agents: response.agents.map(agent => ({
+                    ...agent,
+                    inputs: agent.inputs.map(input => ({
                         ...input,
                         config: deserializeConfig(input.config)
                     })),
                     output: {
-                        ...channel.output,
-                        config: deserializeConfig(channel.output.config)
+                        ...agent.output,
+                        config: deserializeConfig(agent.output.config)
                     },
-                    knowledgeBases: channel.knowledgeBases?.map(kb => ({
+                    knowledgeBases: agent.knowledgeBases?.map(kb => ({
                         ...kb,
                         config: deserializeConfig(kb.config)
                     }))
@@ -69,7 +69,7 @@ export function useChannels(params: ChannelListArgs = {}) {
     );
 
     return {
-        channels: data?.channels ?? [],
+        channels: data?.agents ?? [],
         pagination: data?.pagination,
         isLoading: !data && !error,
         isError: error,
@@ -79,24 +79,24 @@ export function useChannels(params: ChannelListArgs = {}) {
 }
 
 export function useChannel(id: string | null) {
-    const key = channelDetailKey(id);
+    const key = agentDetailKey(id);
 
-    const { data, error, isValidating, mutate } = useSWR<Channel>(
+    const { data, error, isValidating, mutate } = useSWR<Agent>(
         key,
         id ? async () => {
-            const channel = await BackendProvider.getChannelById(id);
+            const agent = await BackendProvider.getChannelById(id);
             // Deserialize configs from JSON to class instances
             return {
-                ...channel,
-                inputs: channel.inputs.map(input => ({
+                ...agent,
+                inputs: agent.inputs.map(input => ({
                     ...input,
                     config: deserializeConfig(input.config)
                 })),
                 output: {
-                    ...channel.output,
-                    config: deserializeConfig(channel.output.config)
+                    ...agent.output,
+                    config: deserializeConfig(agent.output.config)
                 },
-                knowledgeBases: channel.knowledgeBases?.map(kb => ({
+                knowledgeBases: agent.knowledgeBases?.map(kb => ({
                     ...kb,
                     config: deserializeConfig(kb.config)
                 }))
@@ -114,25 +114,25 @@ export function useChannel(id: string | null) {
 }
 
 function invalidateChannelLists() {
-    return mutate((key) => Array.isArray(key) && key[0] === 'channels');
+    return mutate((key) => Array.isArray(key) && key[0] === 'agents');
 }
 
 function invalidateChannelDetail(id: string) {
-    return mutate(channelDetailKey(id));
+    return mutate(agentDetailKey(id));
 }
 
 export function useChannelMutations() {
-    const createChannel = async (data: ChannelUpdate) => {
+    const createChannel = async (data: AgentUpdate) => {
         const result = await BackendProvider.createChannel(data);
         await invalidateChannelLists();
         return result;
     };
 
-    const updateChannel = async ({ id, data, mutateChannel }: UpdateChannelArgs) => {
+    const updateChannel = async ({ id, data, mutateAgent }: UpdateAgentArgs) => {
         await BackendProvider.updateChannel(id, data);
 
-        if (mutateChannel) {
-            await mutateChannel();
+        if (mutateAgent) {
+            await mutateAgent();
         } else {
             await invalidateChannelDetail(id);
         }
@@ -148,33 +148,33 @@ export function useChannelMutations() {
     };
 
     const toggleChannelActive = async (
-        channel: Channel,
+        agent: Agent,
         listContext?: ListMutationContext,
     ) => {
-        const newStatus = !channel.isActive;
+        const newStatus = !agent.isActive;
 
         if (listContext) {
             const { mutateList, params } = listContext;
 
             await mutateList(
                 async () => {
-                    await BackendProvider.updateChannel(channel.id, { isActive: newStatus });
+                    await BackendProvider.updateChannel(agent.id, { isActive: newStatus });
                     const { page = 1, limit = 25, isActive, search } = params;
                     const response = await BackendProvider.getUserChannels(page, limit, isActive, search);
                     // Deserialize configs from JSON to class instances
                     return {
                         ...response,
-                        channels: response.channels.map(channel => ({
-                            ...channel,
-                            inputs: channel.inputs.map(input => ({
+                        agents: response.agents.map(agent => ({
+                            ...agent,
+                            inputs: agent.inputs.map(input => ({
                                 ...input,
                                 config: deserializeConfig(input.config)
                             })),
                             output: {
-                                ...channel.output,
-                                config: deserializeConfig(channel.output.config)
+                                ...agent.output,
+                                config: deserializeConfig(agent.output.config)
                             },
-                            knowledgeBases: channel.knowledgeBases?.map(kb => ({
+                            knowledgeBases: agent.knowledgeBases?.map(kb => ({
                                 ...kb,
                                 config: deserializeConfig(kb.config)
                             }))
@@ -182,9 +182,9 @@ export function useChannelMutations() {
                     };
                 },
                 {
-                    optimisticData: (currentData?: ChannelsResponse, displayedData?: ChannelsResponse) => {
+                    optimisticData: (currentData?: AgentsResponse, displayedData?: AgentsResponse) => {
                         const snapshot = currentData ?? displayedData ?? {
-                            channels: [],
+                            agents: [],
                             pagination: {
                                 page: params.page ?? 1,
                                 limit: params.limit ?? 25,
@@ -195,8 +195,8 @@ export function useChannelMutations() {
 
                         return {
                             ...snapshot,
-                            channels: snapshot.channels.map((item) =>
-                                item.id === channel.id ? { ...item, isActive: newStatus } : item,
+                            agents: snapshot.agents.map((item) =>
+                                item.id === agent.id ? { ...item, isActive: newStatus } : item,
                             ),
                         };
                     },
@@ -205,13 +205,13 @@ export function useChannelMutations() {
                 },
             );
         } else {
-            await BackendProvider.updateChannel(channel.id, { isActive: newStatus });
+            await BackendProvider.updateChannel(agent.id, { isActive: newStatus });
         }
 
-        await invalidateChannelDetail(channel.id);
+        await invalidateChannelDetail(agent.id);
         await invalidateChannelLists();
 
-        return { ...channel, isActive: newStatus };
+        return { ...agent, isActive: newStatus };
     };
 
     return {
@@ -224,5 +224,5 @@ export function useChannelMutations() {
     };
 }
 
-export type { ChannelListArgs };
+export type { AgentListArgs };
 

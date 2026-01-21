@@ -1,11 +1,11 @@
-import { ChannelInput, ChannelOutput } from "@/shared/types";
+import { AgentInput, AgentOutput } from "@/shared/types";
 import { SurveyQuestion, SurveyAnswers, SurveyWriteInAnswers } from "@/shared/PromptBuilderTypes";
 
 export interface PromptBuilderModalProps {
     isOpen: boolean;
     onClose: () => void;
-    inputs: ChannelInput[];
-    output: ChannelOutput | undefined;
+    inputs: AgentInput[];
+    output: AgentOutput | undefined;
     existingPrompt?: string;
     onPromptGenerated?: (prompt: string) => void;
 }

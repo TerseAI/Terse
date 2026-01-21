@@ -5,14 +5,15 @@ import { ChevronDownIcon } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "./ui/dropdown-menu";
 import { useChannel } from "@/hooks/api/useChannels";
 import { useChannels } from "@/hooks/api/useChannels";
+import { Agent } from "@/shared/types";
 
 // Route path to display name mapping
 const routeLabels: Record<string, string> = {
     "": "Home",
     "app": "Home",
     "activity": "Activity Feed",
-    "channels": "Channels",
-    "new": "New Channel",
+    "channels": "Agents",
+    "new": "New Agent",
     "integrations": "Integrations",
     "notifications": "Notifications",
 };
@@ -24,8 +25,8 @@ function BreadCrumb() {
     // Parse path segments
     const pathSegments = location.pathname.split('/').filter(Boolean);
 
-    // Get channel if we're on an channel detail page
-    const channelId = params.id && location.pathname.includes('/channels/') && params.id !== 'new' 
+    // Get agent if we're on an agent detail page
+    const channelId = params.id && location.pathname.includes('/agents/') && params.id !== 'new' 
         ? params.id 
         : null;
     const { channel, isLoading } = useChannel(channelId);
@@ -52,29 +53,29 @@ function BreadCrumb() {
 
             items.push(<BreadcrumbSeparator key={`sep-${i}`} />);
 
-            // Special handling for channel routes
-            if (segment === 'channels') {
+            // Special handling for agent routes
+            if (segment === 'agents') {
                 // Check if next segment is an ID or 'new'
                 const nextSegment = appSegments[i + 1];
 
                 if (nextSegment === 'new') {
-                    // New channel page
+                    // New agent page
                     items.push(
                         <BreadcrumbItem key="channels">
                             <BreadcrumbLink asChild>
-                                <Link to="/app/channels">Channels</Link>
+                                <Link to="/app/agents">Agents</Link>
                             </BreadcrumbLink>
                         </BreadcrumbItem>
                     );
                     items.push(<BreadcrumbSeparator key="sep-new" />);
                     items.push(
                         <BreadcrumbItem key="new-channel">
-                            <BreadcrumbPage>New Channel</BreadcrumbPage>
+                            <BreadcrumbPage>New Agent</BreadcrumbPage>
                         </BreadcrumbItem>
                     );
                     break; // We've handled both segments
                 } else if (params.id && nextSegment === params.id) {
-                    // Channel detail page
+                    // Agent detail page
                     items.push(
                         <BreadcrumbItem key="channels">
                             <ChannelDropdownMenu />
@@ -90,10 +91,10 @@ function BreadCrumb() {
                     );
                     break; // We've handled both segments
                 } else {
-                    // Just the channels list page
+                    // Just the agents list page
                     items.push(
                         <BreadcrumbItem key="channels">
-                            <BreadcrumbPage>Channels</BreadcrumbPage>
+                            <BreadcrumbPage>Agents</BreadcrumbPage>
                         </BreadcrumbItem>
                     );
                     break;
@@ -156,7 +157,7 @@ function ChannelDropdownMenu() {
     if (isLoading || !channels.length) {
         return (
             <BreadcrumbLink asChild>
-                <Link to="/app/channels">Channels</Link>
+                <Link to="/app/agents">Agents</Link>
             </BreadcrumbLink>
         )
     }
@@ -164,13 +165,13 @@ function ChannelDropdownMenu() {
     return (
         <DropdownMenu>
             <DropdownMenuTrigger className="flex items-center gap-1 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-3.5">
-                Channels
+                Agents
                 <ChevronDownIcon />
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start">
-                {channels.map(channel => (
+                {channels.map((channel: Agent) => (
                     <DropdownMenuItem key={channel.id}>
-                        <Link to={`/app/channels/${channel.id}`}>{channel.name}</Link>
+                        <Link to={`/app/agents/${channel.id}`}>{channel.name}</Link>
                     </DropdownMenuItem>
                 ))}
             </DropdownMenuContent>

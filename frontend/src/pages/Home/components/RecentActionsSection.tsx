@@ -6,7 +6,7 @@ import { ActionItem } from "./ActionItem";
 import { RunHistoryAction } from "../../../shared/RunHistoryTypes";
 
 interface RecentActionsSectionProps {
-    recentActions: (RunHistoryAction & { timestamp: string; channelName: string })[];
+    recentActions: (RunHistoryAction & { timestamp: string; agentName: string })[];
 }
 
 export function RecentActionsSection({ recentActions }: RecentActionsSectionProps) {
@@ -34,7 +34,7 @@ export function RecentActionsSection({ recentActions }: RecentActionsSectionProp
                                 </EmptyMedia>
                                 <EmptyTitle>No actions yet</EmptyTitle>
                                 <EmptyDescription>
-                                    Actions taken by your channels will appear here once they start processing events
+                                    Actions taken by your agents will appear here once they start processing events
                                 </EmptyDescription>
                             </EmptyHeader>
                         </Empty>

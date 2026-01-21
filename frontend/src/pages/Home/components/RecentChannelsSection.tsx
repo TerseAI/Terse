@@ -3,12 +3,12 @@ import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTi
 import { Settings, Plus } from "lucide-react";
 import { Button } from "../../../components/ui/button";
 import { ChannelCard } from "./ChannelCard";
-import { Channel } from "../../../shared/types";
+import { Agent } from "../../../shared/types";
 import { useNavigate } from "react-router-dom";
 
 interface RecentChannelsSectionProps {
     isLoading: boolean;
-    channels: (Channel & { lastEdited: string; lastEventProcessedAt: string })[];
+    channels: (Agent & { lastEdited: string; lastEventProcessedAt: string })[];
 }
 
 export function RecentChannelsSection({ isLoading, channels }: RecentChannelsSectionProps) {
@@ -16,7 +16,7 @@ export function RecentChannelsSection({ isLoading, channels }: RecentChannelsSec
 
     return (
         <div>
-            <h2 className="text-2xl font-bold mb-4">Recently Edited Channels</h2>
+            <h2 className="text-2xl font-bold mb-4">Recently Edited Agents</h2>
             {isLoading ? (
                 <Card>
                     <CardContent className="py-12">
@@ -35,18 +35,18 @@ export function RecentChannelsSection({ isLoading, channels }: RecentChannelsSec
                         <EmptyMedia variant="icon">
                             <Settings className="text-primary" />
                         </EmptyMedia>
-                        <EmptyTitle>No channels yet</EmptyTitle>
+                        <EmptyTitle>No agents yet</EmptyTitle>
                         <EmptyDescription>
-                            Create your first channel to start automating your workflow
+                            Create your first agent to start automating your workflow
                         </EmptyDescription>
                     </EmptyHeader>
                     <EmptyContent>
                         <Button
                             variant="default"
-                            onClick={() => navigate('/app/channels/setup')}
+                            onClick={() => navigate('/app/agents/setup')}
                         >
                             <Plus className="h-4 w-4" />
-                            Create Channel
+                            Create Agent
                         </Button>
                     </EmptyContent>
                 </Empty>

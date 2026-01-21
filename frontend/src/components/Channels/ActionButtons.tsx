@@ -1,10 +1,10 @@
 import { Trash, Pencil } from 'lucide-react';
-import { Channel } from '../../shared/types';
+import { Agent } from '../../shared/types';
 
 interface ActionButtonsProps {
-    channel: Channel;
-    onEdit: (channel: Channel) => void;
-    onDelete: (channel: Channel) => void;
+    channel: Agent;
+    onEdit: (channel: Agent) => void;
+    onDelete: (channel: Agent) => void;
 }
 
 export function ActionButtons({ channel, onEdit, onDelete }: ActionButtonsProps) {
@@ -16,7 +16,7 @@ export function ActionButtons({ channel, onEdit, onDelete }: ActionButtonsProps)
                     onEdit(channel);
                 }}
                 className="p-1 text-primary hover:scale-110 rounded transition-colors cursor-pointer"
-                title="Edit channel"
+                title="Edit agent"
             >
                 <Pencil className="h-5 w-5" />
             </button>
@@ -26,7 +26,7 @@ export function ActionButtons({ channel, onEdit, onDelete }: ActionButtonsProps)
                     onDelete(channel);
                 }}
                 className="p-1 text-destructive hover:scale-110 rounded transition-colors cursor-pointer"
-                title="Delete channel"
+                title="Delete agent"
             >
                 <Trash className="h-5 w-5" />
             </button>

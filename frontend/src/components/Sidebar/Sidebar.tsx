@@ -15,7 +15,7 @@ import {
     SidebarMenuSubItem,
 } from "@/components/ui/sidebar"
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Channel } from "@/shared/types";
+import { Agent } from "@/shared/types";
 import { Button } from "@/components/ui/button";
 import { AppSidebarHeader } from "./SidebarHeader";
 import { AppSidebarFooter } from "./SidebarFooter";
@@ -49,7 +49,7 @@ export function AppSidebar() {
 }
 
 interface ApplicationNavigationProps {
-    channels: Channel[];
+    channels: Agent[];
     loading: boolean;
 }
 
@@ -68,7 +68,7 @@ function ApplicationNavigation({ channels, loading }: ApplicationNavigationProps
                             <span>{item.title}</span>
                         </Link>
                     </SidebarMenuButton>
-                    {item.title === "Channels" && (
+                    {item.title === "Agents" && (
                         <ChannelsList channels={channels} loading={loading} />
                     )}
                 </SidebarMenuItem>
@@ -97,7 +97,7 @@ function SettingsNavigation() {
 }
 
 interface ChannelsListProps {
-    channels: Channel[];
+    channels: Agent[];
     loading: boolean;
 }
 function ChannelsList({ channels, loading }: ChannelsListProps) {
@@ -130,10 +130,10 @@ function ChannelsList({ channels, loading }: ChannelsListProps) {
                         variant="ghost"
                         size="sm"
                         className="gap-1 text-xs text-muted-foreground"
-                        onClick={() => navigate('/app/channels/setup')}
+                        onClick={() => navigate('/app/agents/setup')}
                     >
                         <Plus className="size-3 !text-muted-foreground hover:!text-foreground" color="currentColor"/>
-                        Add Channel
+                        Add Agent
                     </Button>
                 </SidebarMenuSubButton>
             </SidebarMenuSubItem>
@@ -142,17 +142,17 @@ function ChannelsList({ channels, loading }: ChannelsListProps) {
 }
 
 interface ChannelListItemProps {
-    channel: Channel;
+    channel: Agent;
 }
 
 function ChannelListItem({ channel }: ChannelListItemProps) {
     const location = useLocation();
-    const isActive = location.pathname === `/app/channels/${channel.id}`;
+    const isActive = location.pathname === `/app/agents/${channel.id}`;
 
     return (
         <SidebarMenuSubItem>
             <SidebarMenuSubButton asChild isActive={isActive}>
-                <Link to={`/app/channels/${channel.id}`}>
+                <Link to={`/app/agents/${channel.id}`}>
                     <span>{channel.name}</span>
                 </Link>
             </SidebarMenuSubButton>
@@ -177,8 +177,8 @@ const DefaultApplicationItems: NavItem[] = [
         iconColor: "text-primary",
     },
     {
-        title: "Channels",
-        url: "/app/channels",
+        title: "Agents",
+        url: "/app/agents",
         icon: Zap,
         iconColor: "text-primary",
     }
@@ -198,8 +198,8 @@ const BirdsEyeApplicationItems: NavItem[] = [
         iconColor: "text-primary",
     },
     {
-        title: "Channels",
-        url: "/app/channels",
+        title: "Agents",
+        url: "/app/agents",
         icon: Zap,
         iconColor: "text-primary",
     }

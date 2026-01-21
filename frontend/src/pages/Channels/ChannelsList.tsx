@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChannelsTable } from '../../components/ChannelsTable';
 import { ChannelsHeader, SearchBar, StatusFilter, DeletingModal } from '../../components/Channels';
-import { Channel } from '../../shared/types';
+import { Agent } from '../../shared/types';
 import { useChannelMutations } from '@/hooks/api/useChannels';
 
 const statusOptions = [
@@ -19,12 +19,12 @@ export default function ChannelsList() {
     const { deleteChannel } = useChannelMutations();
     const selectedOption = statusOptions.find(opt => opt.value === statusFilter) || statusOptions[0];
 
-    const handleEdit = (channel: Channel) => {
+    const handleEdit = (channel: Agent) => {
         // Navigate to edit page
-        navigate(`/app/channels/${channel.id}`);
+        navigate(`/app/agents/${channel.id}`);
     };
 
-    const handleDelete = async (channel: Channel) => {
+    const handleDelete = async (channel: Agent) => {
         if (!window.confirm(`Are you sure you want to delete "${channel.name}"?`)) {
             return;
         }
@@ -33,15 +33,15 @@ export default function ChannelsList() {
             setDeletingId(channel.id);
             await deleteChannel(channel.id);
         } catch (error) {
-            console.error('Failed to delete channel:', error);
-            alert('Failed to delete channel. Please try again.');
+            console.error('Failed to delete agent:', error);
+            alert('Failed to delete agent. Please try again.');
         } finally {
             setDeletingId(null);
         }
     };
 
     const handleCreateNew = () => {
-        navigate('/app/channels/setup');
+        navigate('/app/agents/setup');
     };
 
     return (
@@ -51,7 +51,7 @@ export default function ChannelsList() {
                     <ChannelsHeader onCreateNew={handleCreateNew} />
 
                     <div className="grid grid-cols-20 sm:grid-flow-row gap-3">
-                        <SearchBar searchQuery={searchQuery} placeholder="Search channels by name..." className="col-span-16" onSearchChange={setSearchQuery} />
+                        <SearchBar searchQuery={searchQuery} placeholder="Search agents by name..." className="col-span-16" onSearchChange={setSearchQuery} />
                         <StatusFilter
                             statusOptions={statusOptions}
                             selectedOption={selectedOption}

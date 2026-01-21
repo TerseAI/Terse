@@ -1,7 +1,6 @@
 import { RunStreamEvent } from "@openai/agents";
 import { ConfigType } from "../../shared/Configs";
 import { IntegrationType } from "../../shared/Integrations";
-import { AgentDraft } from "../../routes/channels";
 
 abstract class ChatInterface {
     abstract name: string;

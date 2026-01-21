@@ -1,9 +1,9 @@
 import axios from 'axios';
 import type { RunHistoryModelEvent, RunHistoryActionWithId } from "../shared/RunHistoryTypes";
 import {
-    Channel,
-    ChannelsResponse,
-    ChannelUpdate,
+    Agent,
+    AgentsResponse,
+    AgentUpdate,
     ConfluenceResourcesResponse,
     GetGithubRepositoriesForIntegrationResponse,
     OAuthInstallationDetails,
@@ -15,11 +15,11 @@ import {
     LaunchDarklyProjectsResponse,
     LaunchDarklyEnvironmentsResponse,
     DatadogIndexesResponse,
-    RecentChannel,
+    RecentAgent,
     SlackChannelsResponse,
     StatsResponse,
     SlackUsersResponse,
-    ChannelTemplate,
+    AgentTemplate,
 } from "../shared/types";
 import { GenerateSurveyQuestionsRequest, GenerateSurveyQuestionsResponse, GenerateSurveyPromptRequest, GenerateSurveyPromptResponse } from "../shared/PromptBuilderTypes";
 import {
@@ -293,29 +293,29 @@ interface BackendService {
     requestSessionSocketToken(): Promise<string>;
 
     /**
-     * Gets all channels for the user with pagination
+     * Gets all agents for the user with pagination
      */
-    getUserChannels(page?: number, limit?: number, isActive?: boolean, search?: string): Promise<ChannelsResponse>;
+    getUserChannels(page?: number, limit?: number, isActive?: boolean, search?: string): Promise<AgentsResponse>;
 
     /**
-     * Gets recently modified channels with last event processed time
+     * Gets recently modified agents with last event processed time
      */
-    getRecentChannels(limit?: number): Promise<RecentChannel[]>;
+    getRecentChannels(limit?: number): Promise<RecentAgent[]>;
 
     /**
-     * Gets a single channel by ID
+     * Gets a single agent by ID
      */
-    getChannelById(id: string): Promise<Channel>;
+    getChannelById(id: string): Promise<Agent>;
 
     /**
-     * Creates a new channel
+     * Creates a new agent
      */
-    createChannel(data: ChannelUpdate): Promise<{ success: boolean; id: string }>;
+    createChannel(data: AgentUpdate): Promise<{ success: boolean; id: string }>;
 
     /**
-     * Updates an existing channel
+     * Updates an existing agent
      */
-    updateChannel(id: string, data: ChannelUpdate): Promise<{ success: boolean; id: string }>;
+    updateChannel(id: string, data: AgentUpdate): Promise<{ success: boolean; id: string }>;
 
     /**
      * Deletes a channel
@@ -370,7 +370,7 @@ interface BackendService {
     /**
      * Gets all available channel templates
      */
-    getTemplates(): Promise<ChannelTemplate[]>;
+    getTemplates(): Promise<AgentTemplate[]>;
 
     /**
      * Manually triggers a scheduled automation input
@@ -871,10 +871,13 @@ export const BackendProvider: BackendService = {
             params.append('search', search);
         }
 
-        return axios.get<ChannelsResponse>(`${backendBaseUrl}/channels?${params.toString()}`, { withCredentials: true })
-            .then(response => response.data)
+        return axios.get<AgentsResponse>(`${backendBaseUrl}/channels?${params.toString()}`, { withCredentials: true })
+            .then(response => ({
+                ...response.data,
+                agents: response.data.agents
+            }))
             .catch(error => {
-                console.error('Error getting channels:', error);
+                console.error('Error getting agents:', error);
                 throw error;
             });
     },
@@ -883,56 +886,56 @@ export const BackendProvider: BackendService = {
         const params = new URLSearchParams();
         params.append('limit', limit.toString());
 
-        return axios.get<RecentChannel[]>(`${backendBaseUrl}/channels/recent?${params.toString()}`, { withCredentials: true })
+        return axios.get<RecentAgent[]>(`${backendBaseUrl}/channels/recent?${params.toString()}`, { withCredentials: true })
             .then(response => {
                 // Deserialize configs from JSON to class instances
-                return response.data.map(channel => ({
-                    ...channel,
-                    inputs: channel.inputs.map(input => ({
+                return response.data.map(agent => ({
+                    ...agent,
+                    inputs: agent.inputs.map(input => ({
                         ...input,
                         config: deserializeConfig(input.config)
                     })),
                     output: {
-                        ...channel.output,
-                        config: deserializeConfig(channel.output.config)
+                        ...agent.output,
+                        config: deserializeConfig(agent.output.config)
                     }
                 }));
             })
             .catch(error => {
-                console.error('Error getting recent channels:', error);
+                console.error('Error getting recent agents:', error);
                 throw error;
             });
     },
 
     getChannelById: (id: string) => {
-        return axios.get<Channel>(`${backendBaseUrl}/channels/${id}`, { withCredentials: true })
+        return axios.get<Agent>(`${backendBaseUrl}/channels/${id}`, { withCredentials: true })
             .then(response => response.data)
             .catch(error => {
-                console.error('Error getting channel:', error);
+                console.error('Error getting agent:', error);
                 throw error;
             });
     },
 
-    createChannel: (data: Channel) => {
+    createChannel: (data: AgentUpdate) => {
         return axios.post<{ success: boolean; id: string }>(`${backendBaseUrl}/channels`,
             data,
             { withCredentials: true }
         )
             .then(response => response.data)
             .catch(error => {
-                console.error('Error creating channel:', error);
+                console.error('Error creating agent:', error);
                 throw error;
             });
     },
 
-    updateChannel: (id: string, data: ChannelUpdate) => {
+    updateChannel: (id: string, data: AgentUpdate) => {
         return axios.patch<{ success: boolean; id: string }>(`${backendBaseUrl}/channels/${id}`,
             data,
             { withCredentials: true }
         )
             .then(response => response.data)
             .catch(error => {
-                console.error('Error updating channel:', error);
+                console.error('Error updating agent:', error);
                 throw error;
             });
     },
@@ -1048,7 +1051,7 @@ export const BackendProvider: BackendService = {
     },
 
     getTemplates: () => {
-        return axios.get<ChannelTemplate[]>(`${backendBaseUrl}/templates`, { withCredentials: true })
+        return axios.get<AgentTemplate[]>(`${backendBaseUrl}/templates`, { withCredentials: true })
             .then(response => response.data)
             .catch(error => {
                 console.error('Error getting templates:', error);

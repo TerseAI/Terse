@@ -2,18 +2,18 @@ import { Card, CardContent, CardHeader, CardTitle } from "../../../components/ui
 import { Badge } from "../../../components/ui/badge";
 import { Clock } from "lucide-react";
 import { AppsList } from "../../../components/Channels/AppsList";
-import { Channel } from "../../../shared/types";
+import { Agent } from "../../../shared/types";
 import { useNavigate } from "react-router-dom";
 
 export interface ChannelCardProps {
-    channel: Channel & { lastEdited: string; lastEventProcessedAt: string };
+    channel: Agent & { lastEdited: string; lastEventProcessedAt: string };
 }
 
 export function ChannelCard({ channel }: ChannelCardProps) {
     const navigate = useNavigate();
 
     const handleClick = () => {
-        navigate(`/app/channels/${channel.id}`);
+        navigate(`/app/agents/${channel.id}`);
     };
 
     return (

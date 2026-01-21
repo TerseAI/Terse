@@ -1,6 +1,6 @@
 import { Switch } from "../../components/ui/switch";
 import { RunHistoryActionType } from "../../shared/RunHistoryTypes";
-import { ChannelNotificationSettings as ChannelNotificationSettingsType } from "../../shared/types";
+import { AgentNotificationSettings as AgentNotificationSettingsType } from "../../shared/types";
 import { Plus, Pencil, Trash2, Eye, AlertTriangle } from "lucide-react";
 import { Label } from "../../components/ui/label";
 import { Button } from "../../components/ui/button";
@@ -9,8 +9,8 @@ import { AddNotificationDestination } from "../../components/Notifications/AddNo
 import { MultiSelect } from "../../components/MultiSelect";
 
 export type ChannelNotificationSettingsProps = {
-    settings: ChannelNotificationSettingsType;
-    onChange: (settings: ChannelNotificationSettingsType) => void;
+    settings: AgentNotificationSettingsType;
+    onChange: (settings: AgentNotificationSettingsType) => void;
 };
 
 function ChannelNotificationSettings({ settings, onChange }: ChannelNotificationSettingsProps) {

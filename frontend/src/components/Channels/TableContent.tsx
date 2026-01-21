@@ -1,5 +1,5 @@
 import { flexRender, Table } from '@tanstack/react-table';
-import { Channel } from '../../shared/types';
+import { Agent } from '../../shared/types';
 import {
     Table as ShadcnTable,
     TableBody,
@@ -10,8 +10,8 @@ import {
 } from '../ui/table';
 
 interface TableContentProps {
-    table: Table<Channel>;
-    onEdit: (channel: Channel) => void;
+    table: Table<Agent>;
+    onEdit: (channel: Agent) => void;
 }
 
 export function TableContent({ table, onEdit }: TableContentProps) {
