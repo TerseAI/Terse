@@ -28,6 +28,7 @@ export function IconForConfigType({ type }: { type: ConfigType }) {
         case ConfigType.SLACK_OUTPUT:
             return <SlackIcon />;
         case ConfigType.GMAIL:
+        case ConfigType.GMAIL_OUTPUT:
             return <GmailIcon />;
         case ConfigType.NOTION_DATABASE:
         case ConfigType.NOTION_PAGE:

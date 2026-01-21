@@ -1,5 +1,6 @@
 import { InputConfigSelectorProps } from './types';
 import { GmailIntegration } from './GmailIntegration';
+import { GmailOutputIntegration } from './GmailOutputIntegration';
 import { NotionIntegration } from './NotionIntegration';
 import { SlackIntegration } from './SlackIntegration';
 import { SlackOutputIntegration } from './SlackOutputIntegration';
@@ -16,6 +17,15 @@ export function IntegrationSelector(props: InputConfigSelectorProps) {
     switch (props.input.config?.configType || props.input.configType) {
         case ConfigType.GMAIL:
             return <GmailIntegration {...props} />;
+
+        case ConfigType.GMAIL_OUTPUT:
+            return (
+                <GmailOutputIntegration
+                    input={props.input}
+                    variant={props.variant}
+                    setConfig={props.setConfig}
+                />
+            );
 
         case ConfigType.NOTION_DATABASE:
         case ConfigType.NOTION_PAGE:
