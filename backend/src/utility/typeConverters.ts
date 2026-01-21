@@ -472,6 +472,27 @@ export const convertOutputConfigTypeToIntegrationType = (outputConfigType: Outpu
     }
 }
 
+/**
+ * Converts IntegrationType to OutputConfigType[].
+ * Maps integration types to their corresponding output configuration types.
+ */
+export const convertIntegrationTypeToOutputConfigTypes = (integrationType: IntegrationType): OutputConfigType[] => {
+    switch (integrationType) {
+        case IntegrationType.SLACK:
+            return [OutputConfigType.SLACK_CHANNEL];
+        case IntegrationType.GMAIL:
+            return [OutputConfigType.GMAIL];
+        case IntegrationType.NOTION:
+            return [OutputConfigType.NOTION_PAGE, OutputConfigType.NOTION_DATABASE];
+        case IntegrationType.LINEAR:
+            return [OutputConfigType.LINEAR_TICKET];
+        case IntegrationType.ATLASSIAN:
+            return [OutputConfigType.JIRA_TICKET, OutputConfigType.CONFLUENCE];
+        default:
+            return [];
+    }
+}
+
 export const convertConfigTypeToKnowledgeBaseConfigType = (configType: ConfigType): KnowledgeBaseConfigType => {
     switch (configType) {
         case ConfigType.POSTHOG:

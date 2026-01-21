@@ -69,7 +69,8 @@ export class EventProcessor {
                 },
                 knowledge_bases: {
                     include: getKnowledgeBaseConfigInclude()
-                }
+                },
+                tool_approval_settings: true
             }
         })
 

@@ -1,7 +1,6 @@
-import { useState, useEffect, useMemo } from "react";
-import { BackendProvider } from "../../services/backend";
-import ToolApprovalSelector, { AvailableTool } from "../../components/Channels/ToolApprovalSelector";
+import ToolApprovalSelector from "../../components/Channels/ToolApprovalSelector";
 import { TransientChannelOutput } from "@/shared/types";
+import { useAvailableTools } from "@/hooks/api/useAvailableTools";
 
 export type ChannelApprovalSettingsProps = {
     outputs: TransientChannelOutput[];
@@ -10,49 +9,22 @@ export type ChannelApprovalSettingsProps = {
 };
 
 function ChannelApprovalSettings({ outputs, toolApprovalSettings, onChange }: ChannelApprovalSettingsProps) {
-    const [availableTools, setAvailableTools] = useState<AvailableTool[]>([]);
-    const [isLoading, setIsLoading] = useState(false);
-    const [selectedTools, setSelectedTools] = useState<Set<string>>(new Set());
-
-    // Initialize selected tools from props
-    useEffect(() => {
-        const selected = new Set<string>();
-        toolApprovalSettings.forEach(setting => {
-            if (setting.requiresApproval) {
-                selected.add(setting.toolName);
-            }
-        });
-        setSelectedTools(selected);
-    }, [toolApprovalSettings]);
-
     // Derive integration types from configured outputs (only complete ones)
-    const integrationTypes = useMemo(() => {
-        return outputs
-            .filter(output => output.config?.isComplete?.())
-            .map(output => output.config!.integrationType)
-            .filter((type, index, self) => self.indexOf(type) === index); // Remove duplicates
-    }, [outputs]);
+    const integrationTypes = outputs
+        .filter(output => output.config?.isComplete?.())
+        .map(output => output.config!.integrationType)
+        .filter((type, index, self) => self.indexOf(type) === index); // Remove duplicates
 
-    // Load available tools when integration types change
-    useEffect(() => {
-        if (integrationTypes.length === 0) {
-            setAvailableTools([]);
-            return;
+    // Fetch available tools
+    const { availableTools, isLoading } = useAvailableTools(integrationTypes);
+
+    // Compute selected tools from props
+    const selectedTools = new Set<string>();
+    toolApprovalSettings.forEach(setting => {
+        if (setting.requiresApproval) {
+            selectedTools.add(setting.toolName);
         }
-
-        setIsLoading(true);
-        BackendProvider.getAvailableToolsForOutputs(integrationTypes)
-            .then(tools => {
-                setAvailableTools(tools);
-            })
-            .catch(error => {
-                console.error('Error loading available tools:', error);
-                setAvailableTools([]);
-            })
-            .finally(() => {
-                setIsLoading(false);
-            });
-    }, [integrationTypes]);
+    });
 
     const handleToolToggle = (toolName: string, requiresApproval: boolean) => {
         const newSelected = new Set(selectedTools);
@@ -61,7 +33,6 @@ function ChannelApprovalSettings({ outputs, toolApprovalSettings, onChange }: Ch
         } else {
             newSelected.delete(toolName);
         }
-        setSelectedTools(newSelected);
 
         // Update parent with new settings
         const newSettings = Array.from(newSelected).map(name => ({

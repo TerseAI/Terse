@@ -4,7 +4,8 @@ import { Channel, ChannelInput, ChannelsResponse, ChannelNotificationSettings, C
 import { parsePageParams } from "../utility/pagination";
 import { ChannelWithInputRelations, PrismaTransaction, ChannelWithRelations, ChannelWithNotificationSettingsRelations, RunHistoryActionType } from "../types/prisma";
 import { IntegrationType } from "../shared/Integrations";
-import { convertConfigTypeToInputConfigType, convertConfigTypeToOutputConfigType, convertConfigTypeToKnowledgeBaseConfigType, convertPrismaConfigToConfigInstance, convertPrismaOutputConfigToConfigInstance, convertPrismaKnowledgeBaseConfigToConfigInstance, convertPlainObjectToKnowledgeBaseConfigInstance } from "../utility/typeConverters";
+import { convertConfigTypeToInputConfigType, convertConfigTypeToOutputConfigType, convertConfigTypeToKnowledgeBaseConfigType, convertPrismaConfigToConfigInstance, convertPrismaOutputConfigToConfigInstance, convertPrismaKnowledgeBaseConfigToConfigInstance, convertPlainObjectToKnowledgeBaseConfigInstance, convertIntegrationTypeToOutputConfigTypes } from "../utility/typeConverters";
+import { OutputConfigType } from "@prisma/client";
 import { ConfigInstance, ConfigType } from "../shared/Configs";
 import { getInputConfigInclude, getOutputConfigInclude, getKnowledgeBaseConfigInclude } from "../utility/prismaIncludes";
 import { INPUT_REGISTRY } from "../inputs/InputRegistry";
@@ -805,23 +806,10 @@ export async function getAvailableToolsForOutputs(req: Request, res: Response) {
             return;
         }
 
-        const { OutputFactory } = await import('../outputs/abstract/OutputFactory');
-        const prismaClient = await import('@prisma/client');
-        const { IntegrationType } = await import('../shared/Integrations');
-        
-        // Map integration types to their output config types
-        const integrationToOutputConfig: Record<string, prismaClient.OutputConfigType[]> = {
-            [IntegrationType.SLACK]: [prismaClient.OutputConfigType.SLACK_CHANNEL],
-            [IntegrationType.GMAIL]: [prismaClient.OutputConfigType.GMAIL],
-            [IntegrationType.NOTION]: [prismaClient.OutputConfigType.NOTION_PAGE, prismaClient.OutputConfigType.NOTION_DATABASE],
-            [IntegrationType.LINEAR]: [prismaClient.OutputConfigType.LINEAR_TICKET],
-            [IntegrationType.ATLASSIAN]: [prismaClient.OutputConfigType.JIRA_TICKET, prismaClient.OutputConfigType.CONFLUENCE],
-        };
-
-        const outputConfigTypes: prismaClient.OutputConfigType[] = [];
+        const outputConfigTypes: OutputConfigType[] = [];
         for (const integrationType of integrationTypes) {
-            const configTypes = integrationToOutputConfig[integrationType];
-            if (configTypes) {
+            const configTypes = convertIntegrationTypeToOutputConfigTypes(integrationType);
+            if (configTypes.length > 0) {
                 outputConfigTypes.push(...configTypes);
             }
         }
