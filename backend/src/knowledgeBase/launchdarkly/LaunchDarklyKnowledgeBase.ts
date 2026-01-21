@@ -75,7 +75,7 @@ export class LaunchDarklyKnowledgeBase extends KnowledgeBase<LaunchDarklyConfig>
                 throw new Error('LaunchDarkly config not found');
             }
             const projectKey = config.launchdarkly_config.project_key;
-            const environmentKeys = config.launchdarkly_config.environment_keys;
+            const environmentKeys = config.launchdarkly_config.environment_keys || [];
             configList.push(`  • Integration ID: ${config.integration_id} - Project: ${projectKey}, Environments: ${environmentKeys.join(', ')}`);
         }
         sections.push('Available configurations:');

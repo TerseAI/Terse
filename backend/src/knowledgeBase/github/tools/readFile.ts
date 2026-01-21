@@ -21,13 +21,12 @@ export const readGitHubFileTool = tool({
 
 Note: This reads from the default branch (main/master). Large files may be truncated.`,
     parameters: z.object({
-        integrationId: z.string().describe('The integration ID of the GitHub knowledge base to use. Required when multiple GitHub knowledge bases are configured.'),
         repository: z.string().describe('The repository in "owner/repo" format (e.g., "facebook/react"). Must be one of the configured repositories.'),
         path: z.string().describe('The file path within the repository (e.g., "src/components/Button.tsx" or "README.md")'),
         startLine: z.union([z.number(), z.null()]).describe('Start reading from this line number (1-indexed). Use with endLine for partial file reads. Use null to start from beginning.'),
         endLine: z.union([z.number(), z.null()]).describe('Stop reading at this line number (1-indexed, inclusive). Use with startLine for partial file reads. Use null to read to end.'),
     }),
-    execute: async ({ integrationId, repository, path, startLine, endLine }, runContext?: RunContext<SessionWithTracking<Session>>) => {
+    execute: async ({ repository, path, startLine, endLine }, runContext?: RunContext<SessionWithTracking<Session>>) => {
         if (!runContext?.context) {
             throw new Error("No context provided");
         }
