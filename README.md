@@ -1,4 +1,4 @@
-# Terse - The best Tool For Keeping Notion Up to Date With External Data
+# Terse - The best Agent Builder For Software Teams
 
 ## Package Manager
 
@@ -17,6 +17,23 @@ pnpm install
 # In /backend
 pnpm install
 ```
+
+## Local Dev
+
+you will need to make an ngrok account and get a dedicated dev url + access token. Then set the following env variables in backend/.env
+
+NGROK_AUTH_TOKEN=38Zg3QagX6X9AnYc6WKqwedwefdGCY21_2nVjhcyeynHFNmnr7ijBw
+NGROK_DOMAIN=abbie-smoking-yetta.ngrok-free.dev
+
+Then, install ngrok with brew
+
+```
+brew install ngrok
+```
+
+After that, simply run pnpm run dev:tunnel and the rest will be taken care of.
+
+Make sure to set your test apps (Slack github etc...) to the ngrok url.
 
 ## Database Migrations
 
