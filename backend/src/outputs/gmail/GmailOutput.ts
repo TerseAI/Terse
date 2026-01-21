@@ -1,59 +1,17 @@
 import { Tool } from "@openai/agents";
-import { ChannelOutput, PrismaTransaction, User, GmailIntegration } from "../../types/prisma";
-import { automation_gmail_configs } from "@prisma/client";
-import { Session } from "../../server";
+import { ChannelOutputWithConfigs, PrismaTransaction } from "../../types/prisma";
 import { Output, ToolboxEntry } from "../abstract/Output";
-import { db } from "../../prismaClient";
 import { OutputConfigType } from "@prisma/client";
 import { GmailOutputConfig } from "../../shared/Configs";
 import { gmailSendEmailTool } from "./tools/sendEmail";
 import { IntegrationType } from "../../shared/Integrations";
 
-export interface GmailSession extends Session {
-    gmailIntegration: GmailIntegration; // User's Gmail integration record
-    gmailConfig: automation_gmail_configs; // Configuration for the Gmail output
-}
-
-export class GmailOutput extends Output<GmailSession, GmailOutputConfig> {
+export class GmailOutput extends Output<GmailOutputConfig> {
     constructor() {
         const toolbox: ToolboxEntry[] = [
             { tool: gmailSendEmailTool as Tool, isReadOnly: false, integration: IntegrationType.GMAIL },
         ];
         super(OutputConfigType.GMAIL, toolbox);
-    }
-
-    async createSessionFromConfig(
-        integrationId: string,
-        channelOutputConfig: ChannelOutput,
-        user: User
-    ): Promise<GmailSession> {
-        // For Gmail, integrationId is the gmail_integrations.id
-        const gmailIntegration = await db().gmail_integrations.findFirst({
-            where: { 
-                id: integrationId,
-                user_id: user.id,
-                is_active: true,
-            },
-        });
-
-        if (!gmailIntegration) {
-            throw new Error(`Gmail integration ${integrationId} not found for user or is inactive`);
-        }
-
-        const gmailConfigRecord = await db().automation_gmail_configs.findFirst({
-            where: { automation_output_id: channelOutputConfig.id }
-        });
-
-        if (!gmailConfigRecord) {
-            throw new Error(`Gmail config for automation output ${channelOutputConfig.id} not found`);
-        }
-
-        return { 
-            gmailIntegration: gmailIntegration, 
-            gmailConfig: gmailConfigRecord, 
-            user: user, 
-            isUserInitiated: true 
-        };
     }
 
     async validateConfig(output: GmailOutputConfig, _userId: string): Promise<void> {
@@ -70,8 +28,27 @@ export class GmailOutput extends Output<GmailSession, GmailOutputConfig> {
         });
     }
 
-    getSystemInstructions(_session: GmailSession): string {
-        return GMAIL_OUTPUT_INSTRUCTIONS;
+    protected getSystemInstructionsForConfigs(configs: ChannelOutputWithConfigs[]): string {
+        if (configs.length === 0) {
+            throw new Error('No Gmail configs provided');
+        }
+        
+        const sections: string[] = [];
+        
+        // List all available configurations
+        const configList: string[] = [];
+        for (const config of configs) {
+            if (!config.gmail_config) {
+                throw new Error('Gmail config not found');
+            }
+            configList.push(`  • Integration ID: ${config.integration_id}`);
+        }
+        sections.push('Available configurations:');
+        sections.push(configList.join('\n'));
+        sections.push('\nWhen calling Gmail tools, you MUST include the `integrationId` parameter matching one of the integration IDs listed above.');
+        sections.push('\n' + GMAIL_OUTPUT_INSTRUCTIONS);
+        
+        return sections.join('\n');
     }
 }
 

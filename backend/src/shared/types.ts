@@ -398,7 +398,7 @@ export type ChannelTemplate = {
     description: string;
     prompt: ChannelPrompt;
     inputs: TemplateInput[];
-    output: TemplateOutput;
+    outputs: TemplateOutput[];
     knowledgeBases?: TemplateKnowledgeBase[];
     requireApproval: boolean;
     isActive: boolean;
@@ -411,7 +411,7 @@ export type Channel = {
     requireApproval: boolean;
     prompt: ChannelPrompt;
     inputs: ChannelInput[];
-    output: ChannelOutput;
+    outputs: ChannelOutput[];
     knowledgeBases?: ChannelKnowledgeBase[];
     notificationSettings?: ChannelNotificationSettings;
     updatedAt?: string;
@@ -425,7 +425,7 @@ export type ChannelNotificationSettings = {
 export type ChannelUpdate = {
     name?: string;
     inputs?: ChannelInput[];
-    output?: ChannelOutput;
+    outputs?: ChannelOutput[];
     prompt?: ChannelPrompt;
     isActive?: boolean;
     requireApproval?: boolean;

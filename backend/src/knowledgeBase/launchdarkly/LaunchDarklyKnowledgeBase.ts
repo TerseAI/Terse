@@ -5,33 +5,27 @@ import { LaunchDarklyConfig } from "../../shared/Configs";
 import { IntegrationType } from "../../shared/Integrations";
 import { ToolboxEntry } from "../../outputs/abstract/Output";
 import { KnowledgeBase } from "../abstract/KnowledgeBase";
+import { Tool } from "@openai/agents";
 import { listLaunchDarklyFlagsTool } from "./tools/listFeatureFlags";
 import { getLaunchDarklyFlagDetailsTool } from "./tools/getFeatureFlagDetails";
 import { db } from "../../prismaClient";
 import logger from "../../logger";
 
-/**
- * Session type for LaunchDarkly knowledge base.
- * Extends the base Session with LaunchDarkly-specific configuration.
- */
-export interface LaunchDarklyKnowledgeBaseSession extends Session {
-    launchDarklyConfig: LaunchDarklyConfig;
-}
 
 /**
  * LaunchDarkly Knowledge Base implementation.
  * Provides tools for querying LaunchDarkly feature flags and their states.
  */
-export class LaunchDarklyKnowledgeBase extends KnowledgeBase<LaunchDarklyKnowledgeBaseSession, LaunchDarklyConfig> {
+export class LaunchDarklyKnowledgeBase extends KnowledgeBase<LaunchDarklyConfig> {
     constructor() {
         const toolbox: ToolboxEntry[] = [
             {
-                tool: listLaunchDarklyFlagsTool,
+                tool: listLaunchDarklyFlagsTool as Tool,
                 isReadOnly: true,
                 integration: IntegrationType.LAUNCHDARKLY
             },
             {
-                tool: getLaunchDarklyFlagDetailsTool,
+                tool: getLaunchDarklyFlagDetailsTool as Tool,
                 isReadOnly: true,
                 integration: IntegrationType.LAUNCHDARKLY
             }
@@ -40,56 +34,6 @@ export class LaunchDarklyKnowledgeBase extends KnowledgeBase<LaunchDarklyKnowled
         super(KnowledgeBaseConfigType.LAUNCHDARKLY, toolbox);
     }
 
-    /**
-     * Creates a LaunchDarkly knowledge base session from the configuration.
-     * Loads the LaunchDarkly integration and configures the session with credentials.
-     */
-    async createSessionFromConfig(
-        integrationId: string,
-        channelKnowledgeBase: ChannelKnowledgeBaseWithConfigs,
-        user: User
-    ): Promise<LaunchDarklyKnowledgeBaseSession> {
-        // Load the LaunchDarkly integration
-        const integration = await db().launchdarkly_integrations.findUnique({
-            where: { id: integrationId },
-        });
-
-        if (!integration) {
-            throw new Error(`LaunchDarkly integration not found: ${integrationId}`);
-        }
-
-        // Load the LaunchDarkly config from the channel knowledge base
-        if (!channelKnowledgeBase.launchdarkly_config) {
-            throw new Error('LaunchDarkly config not found in channel knowledge base');
-        }
-
-        const launchdarklyConfig = channelKnowledgeBase.launchdarkly_config;
-
-        // Create the LaunchDarkly config instance
-        const config = new LaunchDarklyConfig(
-            integrationId,
-            launchdarklyConfig.project_key,
-            launchdarklyConfig.environment_keys
-        );
-
-        // Verify that the config is complete
-        if (!config.isComplete()) {
-            logger.warn('LaunchDarkly knowledge base configured but config is incomplete', {
-                integrationId,
-                projectKey: config.projectKey,
-                environmentKeys: config.environmentKeys
-            });
-        }
-
-        // Create the session with LaunchDarkly config
-        const session: LaunchDarklyKnowledgeBaseSession = {
-            user,
-            isUserInitiated: true,
-            launchDarklyConfig: config,
-        };
-
-        return session;
-    }
 
     async validateConfig(knowledgeBase: LaunchDarklyConfig, _userId: string): Promise<void> {
         if (!knowledgeBase.projectKey) {
@@ -114,14 +58,29 @@ export class LaunchDarklyKnowledgeBase extends KnowledgeBase<LaunchDarklyKnowled
      * Returns system instructions for LaunchDarkly knowledge base.
      * Provides guidance on how to use LaunchDarkly tools effectively.
      */
-    getSystemInstructions(session: LaunchDarklyKnowledgeBaseSession): string {
-        const { launchDarklyConfig } = session;
+    protected getSystemInstructionsForConfigs(configs: ChannelKnowledgeBaseWithConfigs[]): string {
+        if (configs.length === 0) {
+            throw new Error('No LaunchDarkly KB configs provided');
+        }
+        
         const sections: string[] = [];
 
         // Header
         sections.push('=== LAUNCHDARKLY KNOWLEDGE BASE ===');
-        sections.push(`Project: ${launchDarklyConfig.projectKey}`);
-        sections.push(`Environments: ${launchDarklyConfig.environmentKeys.join(', ')}`);
+        
+        // List all available configurations
+        const configList: string[] = [];
+        for (const config of configs) {
+            if (!config.launchdarkly_config) {
+                throw new Error('LaunchDarkly config not found');
+            }
+            const projectKey = config.launchdarkly_config.project_key;
+            const environmentKeys = config.launchdarkly_config.environment_keys || [];
+            configList.push(`  • Integration ID: ${config.integration_id} - Project: ${projectKey}, Environments: ${environmentKeys.join(', ')}`);
+        }
+        sections.push('Available configurations:');
+        sections.push(configList.join('\n'));
+        sections.push('\nWhen calling LaunchDarkly tools, you MUST include the `integrationId` parameter matching one of the integration IDs listed above.');
 
         // Usage strategy
         sections.push(`

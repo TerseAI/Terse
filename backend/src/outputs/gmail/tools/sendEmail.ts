@@ -2,13 +2,13 @@ import { tool, RunContext } from "@openai/agents";
 import { z } from "zod";
 import { google } from "googleapis";
 import { db } from "../../../prismaClient";
-import { GmailSession } from "../GmailOutput";
 import logger from "../../../logger";
 import { IntegrationType } from "../../../shared/Integrations";
 import { RunHistoryActionType } from "@prisma/client";
 import { SessionWithTracking } from "../../../agent/ChannelAgent/ChannelAgent";
 import { getOAuth2Client, GmailIntegrationManager } from "../../../integrations/GmailIntegration";
 import { formatError, needsApproval } from "../../../tools/toolUtils";
+import { Session } from "../../../server";
 
 /**
  * Tool for sending emails or replying to email threads via Gmail.
@@ -18,6 +18,7 @@ export const gmailSendEmailTool = tool({
     name: "gmail_send_email",
     description: `Send email or reply to an existing email thread via Gmail. Use thread_id (the Gmail Thread ID, not the Message-ID) to reply to an existing thread, or omit it to send a new email.`,
     parameters: z.object({
+        integrationId: z.string().describe('The integration ID of the Gmail account to use.'),
         to: z.string().describe("Recipient email address(es). Multiple addresses can be comma-separated."),
         subject: z.string().describe("Email subject line"),
         body: z.string().describe("Email body content (plain text)"),
@@ -26,26 +27,28 @@ export const gmailSendEmailTool = tool({
         bcc: z.string().nullable().optional().describe("BCC recipient email address(es). Multiple addresses can be comma-separated."),
     }),
     needsApproval,
-    execute: async (args, runContext?: RunContext<SessionWithTracking<GmailSession>>) => {
+    execute: async ({ integrationId, to, subject, body, thread_id, cc, bcc }, runContext?: RunContext<SessionWithTracking<Session>>) => {
         if (!runContext?.context) {
             throw new Error("No context provided");
         }
-        const session = runContext.context;
-        
-        if (!session.gmailIntegration || !session.gmailConfig) {
-            throw new Error("Gmail session is not properly configured");
-        }
-
-        const { to, subject, body, thread_id, cc, bcc } = args;
 
         if (!to || !subject || !body) {
             throw new Error("to, subject, and body are required");
         }
 
         try {
+            // Get Gmail integration to access refresh token
+            const gmailIntegration = await db().gmail_integrations.findUnique({
+                where: { id: integrationId },
+            });
+
+            if (!gmailIntegration || !gmailIntegration.is_active) {
+                throw new Error(`Gmail integration ${integrationId} not found or is inactive`);
+            }
+
             // Get access token (will refresh if needed)
             const gmailIntegrationManager = new GmailIntegrationManager();
-            const accessToken = await gmailIntegrationManager.getAccessToken(session.gmailIntegration.id);
+            const accessToken = await gmailIntegrationManager.getAccessToken(integrationId);
 
             if (!accessToken) {
                 throw new Error("Failed to get Gmail access token");
@@ -55,7 +58,7 @@ export const gmailSendEmailTool = tool({
             const oauth2Client = getOAuth2Client();
             oauth2Client.setCredentials({
                 access_token: accessToken,
-                refresh_token: session.gmailIntegration.refresh_token,
+                refresh_token: gmailIntegration.refresh_token,
             });
 
             const gmail = google.gmail({ version: 'v1', auth: oauth2Client });
@@ -180,14 +183,19 @@ export const gmailSendEmailTool = tool({
                 ? `https://mail.google.com/mail/u/0/#inbox/${thread_id}`
                 : `https://mail.google.com/mail/u/0/#inbox/${messageId}`;
             
-            // Track the action
-            runContext.context.trackAction({
+            // Return action as part of the result
+            const action = {
                 action: `Sent Gmail ${emailType}`,
                 integration: IntegrationType.GMAIL,
                 target: to,
                 details: `Sent ${emailType} to ${to}: "${subject}" - ${emailPreview}`,
                 url: gmailUrl,
                 type: RunHistoryActionType.create,
+            };
+            
+            logger.debug('[gmail_send_email] Returning action in result', {
+                userId: runContext?.context?.user?.id || 'unknown',
+                action,
             });
             
             logger.info(`[Gmail Output] ${emailType} sent`, { 
@@ -195,7 +203,7 @@ export const gmailSendEmailTool = tool({
                 threadId: thread_id,
                 to,
                 subject,
-                integrationId: session.gmailIntegration.id,
+                integrationId,
             });
 
             return {
@@ -206,6 +214,7 @@ export const gmailSendEmailTool = tool({
                 subject,
                 summary: `${emailType} sent to ${to}: "${subject}"`,
                 is_reply: !!thread_id,
+                actions: [action],
             };
         } catch (error: any) {
             logger.error(`[Gmail Output] Failed to send email`, { 
@@ -213,7 +222,7 @@ export const gmailSendEmailTool = tool({
                 to,
                 subject,
                 thread_id,
-                integrationId: session.gmailIntegration.id,
+                integrationId,
             });
             
             // Provide helpful error messages

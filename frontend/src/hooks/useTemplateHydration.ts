@@ -1,6 +1,6 @@
 import { v4 as uuidv4 } from "uuid";
 import { ChannelTemplate } from "../hooks/api/useTemplates";
-import { ChannelNotificationSettings, ChannelPrompt, TemplateInput, TemplateKnowledgeBase, TransientChannelInput, TransientChannelOutput, TransientKnowledgeBase } from "../shared/types";
+import { ChannelNotificationSettings, ChannelPrompt, TemplateInput, TemplateOutput, TemplateKnowledgeBase, TransientChannelInput, TransientChannelOutput, TransientKnowledgeBase } from "../shared/types";
 import { ConfigType } from "../shared/Configs";
 
 export interface HydratedTemplateState {
@@ -9,7 +9,7 @@ export interface HydratedTemplateState {
     isActive: boolean;
     requireApproval: boolean;
     inputs: TransientChannelInput[];
-    output: TransientChannelOutput | undefined;
+    outputs: TransientChannelOutput[];
     knowledgeBases: TransientKnowledgeBase[];
     notificationSettings: ChannelNotificationSettings;
 }
@@ -42,14 +42,14 @@ export function useTemplateHydration(
         config: undefined, // User needs to select integration
     }));
 
-    // Convert template output to transient output
-    const transientOutput: TransientChannelOutput | undefined = template.output
-        ? {
+    // Convert template outputs to transient outputs
+    const transientOutputs: TransientChannelOutput[] = template.outputs && template.outputs.length > 0
+        ? template.outputs.map((output: TemplateOutput) => ({
               id: uuidv4(),
-              configType: template.output.config.configType as ConfigType,
+              configType: output.config.configType as ConfigType,
               config: undefined, // User needs to select integration
-          }
-        : undefined;
+          }))
+        : [];
 
     // Convert template knowledge bases to transient knowledge bases
     const transientKBs: TransientKnowledgeBase[] =
@@ -71,7 +71,7 @@ export function useTemplateHydration(
             isActive: template.isActive,
             requireApproval: template.requireApproval,
             inputs: transientInputs,
-            output: transientOutput,
+            outputs: transientOutputs,
             knowledgeBases: transientKBs,
             notificationSettings,
         },

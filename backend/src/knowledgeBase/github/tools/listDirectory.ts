@@ -1,12 +1,11 @@
 import { RunContext, tool } from "@openai/agents";
 import { z } from "zod";
 import logger from "../../../logger";
-import { createGitHubClient, listDirectory, parseRepoFullName, getRepositoryInfo, getTree, getBranch } from "../githubApiClient";
-import { GitHubKBConfig } from "../../../shared/Configs";
+import { createGitHubClient, listDirectory, parseRepoFullName, getRepositoryInfo, getTree, getBranch, getGitHubAccessToken } from "../githubApiClient";
 import { IntegrationType } from "../../../shared/Integrations";
 import { RunHistoryActionType } from "@prisma/client";
 import { SessionWithTracking } from "../../../agent/ChannelAgent/ChannelAgent";
-import { GitHubKnowledgeBaseSession } from "../GitHubKnowledgeBase";
+import { Session } from "../../../server";
 
 /**
  * Tool for listing directory contents in GitHub repositories.
@@ -26,24 +25,17 @@ Start with the root directory (empty path) to see the top-level structure, then 
         path: z.string().describe('The directory path to list (e.g., "src/components"). Use empty string "" for root directory.'),
         recursive: z.boolean().describe('If true, list all files recursively (can be large for big repos). Use false for single-level listing.'),
     }),
-    execute: async ({ repository, path = '', recursive = false }, runContext?: RunContext<SessionWithTracking<GitHubKnowledgeBaseSession>>) => {
+    execute: async ({ repository, path = '', recursive = false }, runContext?: RunContext<SessionWithTracking<Session>>) => {
         if (!runContext?.context) {
             throw new Error("No context provided");
         }
 
-        const { githubKBConfig, githubAccessToken } = runContext.context;
-
-        // Validate that the repository is in the configured list
-        if (!githubKBConfig.repositoryNames.includes(repository)) {
-            return {
-                success: false,
-                error: `Repository "${repository}" is not configured for this knowledge base.`,
-                configuredRepositories: githubKBConfig.repositoryNames,
-                tip: 'Use one of the configured repositories listed above.',
-            };
+        const accessToken = await getGitHubAccessToken(runContext.context.user.id);
+        if (!accessToken) {
+            throw new Error(`GitHub access token not found for user`);
         }
 
-        const client = createGitHubClient(githubAccessToken);
+        const client = createGitHubClient(accessToken);
         const { owner, repo } = parseRepoFullName(repository);
 
         const requestParams = {
@@ -139,8 +131,8 @@ Start with the root directory (empty path) to see the top-level structure, then 
                 });
                 logger.debug('[GitHub KB] listGitHubDirectory - Full response', { response });
 
-                // Track the action
-                runContext.context.trackAction({
+                // Return action as part of the result
+                const action = {
                     action: 'Listed GitHub directory',
                     integration: IntegrationType.GITHUB,
                     target: repository,
@@ -148,9 +140,12 @@ Start with the root directory (empty path) to see the top-level structure, then 
                     url: `https://github.com/${owner}/${repo}/tree/${repoInfo.defaultBranch}/${path || ''}`,
                     type: RunHistoryActionType.read,
                     isReadOnly: true,
-                });
+                };
 
-                return response;
+                return {
+                    ...response,
+                    actions: [action],
+                };
             } else {
                 // Use Contents API for non-recursive listing
                 const entries = await listDirectory(client, owner, repo, path);
@@ -199,10 +194,10 @@ Start with the root directory (empty path) to see the top-level structure, then 
                 });
                 logger.debug('[GitHub KB] listGitHubDirectory - Full response', { response });
 
-                // Track the action
+                // Return action as part of the result
                 const repoInfo = await getRepositoryInfo(client, owner, repo);
                 const defaultBranch = repoInfo?.defaultBranch || 'HEAD';
-                runContext.context.trackAction({
+                const action = {
                     action: 'Listed GitHub directory',
                     integration: IntegrationType.GITHUB,
                     target: repository,
@@ -210,9 +205,12 @@ Start with the root directory (empty path) to see the top-level structure, then 
                     url: `https://github.com/${owner}/${repo}/tree/${defaultBranch}/${path || ''}`,
                     type: RunHistoryActionType.read,
                     isReadOnly: true,
-                });
+                };
 
-                return response;
+                return {
+                    ...response,
+                    actions: [action],
+                };
             }
         } catch (error: any) {
             logger.error('[GitHub KB] listGitHubDirectory - Failed', { 

@@ -5,6 +5,7 @@ import { DatadogConfig } from "../../shared/Configs";
 import { IntegrationType } from "../../shared/Integrations";
 import { ToolboxEntry } from "../../outputs/abstract/Output";
 import { KnowledgeBase } from "../abstract/KnowledgeBase";
+import { Tool } from "@openai/agents";
 import { searchDatadogLogsTool } from "./tools/searchLogs";
 import { searchRumEventsTool } from "./tools/searchRumEvents";
 import { listRumEventsTool } from "./tools/listRumEvents";
@@ -12,38 +13,31 @@ import { aggregateRumEventsTool } from "./tools/aggregateRumEvents";
 import { db } from "../../prismaClient";
 import logger from "../../logger";
 
-/**
- * Session type for Datadog knowledge base.
- * Extends the base Session with Datadog-specific configuration.
- */
-export interface DatadogKnowledgeBaseSession extends Session {
-    datadogConfig: DatadogConfig;
-}
 
 /**
  * Datadog Knowledge Base implementation.
  * Provides tools for querying Datadog logs and RUM events.
  */
-export class DatadogKnowledgeBase extends KnowledgeBase<DatadogKnowledgeBaseSession, DatadogConfig> {
+export class DatadogKnowledgeBase extends KnowledgeBase<DatadogConfig> {
     constructor() {
         const toolbox: ToolboxEntry[] = [
             {
-                tool: searchDatadogLogsTool,
+                tool: searchDatadogLogsTool as Tool,
                 isReadOnly: true,
                 integration: IntegrationType.DATADOG
             },
             {
-                tool: listRumEventsTool,
+                tool: listRumEventsTool as Tool,
                 isReadOnly: true,
                 integration: IntegrationType.DATADOG
             },
             {
-                tool: searchRumEventsTool,
+                tool: searchRumEventsTool as Tool,
                 isReadOnly: true,
                 integration: IntegrationType.DATADOG
             },
             {
-                tool: aggregateRumEventsTool,
+                tool: aggregateRumEventsTool as Tool,
                 isReadOnly: true,
                 integration: IntegrationType.DATADOG
             }
@@ -52,48 +46,6 @@ export class DatadogKnowledgeBase extends KnowledgeBase<DatadogKnowledgeBaseSess
         super(KnowledgeBaseConfigType.DATADOG, toolbox);
     }
 
-    /**
-     * Creates a Datadog knowledge base session from the configuration.
-     * Loads the Datadog integration and configures the session with credentials.
-     */
-    async createSessionFromConfig(
-        integrationId: string,
-        channelKnowledgeBase: ChannelKnowledgeBaseWithConfigs,
-        user: User
-    ): Promise<DatadogKnowledgeBaseSession> {
-        // Load the Datadog integration
-        const integration = await db().datadog_integrations.findUnique({
-            where: { id: integrationId },
-        });
-
-        if (!integration) {
-            throw new Error(`Datadog integration not found: ${integrationId}`);
-        }
-
-        // Load the Datadog config from the channel knowledge base
-        if (!channelKnowledgeBase.datadog_config) {
-            throw new Error('Datadog config not found in channel knowledge base');
-        }
-
-        const datadogConfig = channelKnowledgeBase.datadog_config;
-
-        // Create the Datadog config instance
-        const config = new DatadogConfig(
-            integrationId,
-            datadogConfig.default_indexes && datadogConfig.default_indexes.length > 0 
-                ? datadogConfig.default_indexes 
-                : ["main"]
-        );
-
-        // Create the session with Datadog config
-        const session: DatadogKnowledgeBaseSession = {
-            user,
-            isUserInitiated: true,
-            datadogConfig: config,
-        };
-
-        return session;
-    }
 
     async addKnowledgeBaseToChannel(tx: PrismaTransaction, channelKnowledgeBaseId: string, knowledgeBase: DatadogConfig): Promise<void> {
         // Use unchecked input to bypass relation checks
@@ -137,13 +89,28 @@ export class DatadogKnowledgeBase extends KnowledgeBase<DatadogKnowledgeBaseSess
      * Returns system instructions for Datadog knowledge base.
      * Provides guidance on when and how to use Datadog tools.
      */
-    getSystemInstructions(session: DatadogKnowledgeBaseSession): string {
-        const { datadogConfig } = session;
+    protected getSystemInstructionsForConfigs(configs: ChannelKnowledgeBaseWithConfigs[]): string {
+        if (configs.length === 0) {
+            throw new Error('No Datadog KB configs provided');
+        }
+        
         const sections: string[] = [];
 
         // Header
         sections.push('=== DATADOG KNOWLEDGE BASE ===');
-        sections.push(`Default indexes: ${datadogConfig.defaultIndexes.join(', ')}`);
+        
+        // List all available configurations
+        const configList: string[] = [];
+        for (const config of configs) {
+            if (!config.datadog_config) {
+                throw new Error('Datadog config not found');
+            }
+            const defaultIndexes = config.datadog_config.default_indexes || ["main"];
+            configList.push(`  • Integration ID: ${config.integration_id} - Default indexes: ${defaultIndexes.join(', ')}`);
+        }
+        sections.push('Available configurations:');
+        sections.push(configList.join('\n'));
+        sections.push('\nWhen calling Datadog tools, you MUST include the `integrationId` parameter matching one of the integration IDs listed above.');
 
         // Available tools section
         sections.push(`

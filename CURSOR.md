@@ -204,7 +204,7 @@ Execute these steps **in order**, running builds after each major section:
   - System instructions should focus on workflow, strategy, and best practices—not re-describe what tools do
   - Keep system instructions concise (~15-20 lines) focusing on when to use which tool and how
 - [ ] Create tool files in `tools/` directory
-- [ ] Each tool must call `runContext.context.trackAction()` on success
+- [ ] Each tool must return actions in the `actions` array of the return value (e.g., `return { success: true, result: {...}, actions: [{ action: '...', integration: ..., ... }] }`)
 - [ ] Add to `KnowledgeBaseFactory.ts` registry
 
 #### 5. Backend Routes (`backend/src/routes/`)
@@ -333,7 +333,7 @@ cd frontend && pnpm run build
 7. ❌ **Missing invalidation key** - SWR hooks need invalidation keys
 8. ❌ **Not running builds** - Always build both frontend and backend to catch errors
 9. ❌ **Missing Prisma types update** - `ChannelKnowledgeBaseWithConfigs` must include new config type
-10. ❌ **Not calling `trackAction`** - All knowledge base tools must track successful runs
+10. ❌ **Not returning actions** - All tools must return actions in the `actions` array of their return value
 11. ❌ **Not following existing patterns** - Study PostHog/GitHub implementations first
 12. ❌ **Expecting users to type IDs or keys** - Always query the API and present selectable options (e.g., projects, environments) in Select dropdowns instead of text inputs
 13. ❌ **Showing IDs to users** - Always show human-readable names (token names, workspace names, project names) instead of integration IDs or database IDs
@@ -343,7 +343,7 @@ cd frontend && pnpm run build
 
 - **Tool descriptions should be concise** - Single-line descriptions for agent tools
 - **Avoid repetition between tools and system prompts** - Tool descriptions are already available to the LLM, so system instructions should focus on workflow/strategy, not re-describe tools
-- **Always call `trackAction`** - Every successful tool execution must be tracked
+- **Always return actions** - Every successful tool execution must return actions in the `actions` array of the return value
 - **Create session-specific types** - Knowledge bases need custom session interfaces (e.g., `LaunchDarklyKnowledgeBaseSession`)
 - **Icons can be images** - Use JPEG/PNG in `public/` if SVG isn't available
 - **Type safety is critical** - TypeScript exhaustive checks will catch missing cases

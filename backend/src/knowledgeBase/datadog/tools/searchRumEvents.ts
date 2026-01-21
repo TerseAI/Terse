@@ -2,11 +2,12 @@ import { RunContext, tool } from "@openai/agents";
 import { z } from "zod";
 import { client, v2 } from "@datadog/datadog-api-client";
 import logger from "../../../logger";
-import { db } from "../../../prismaClient";
-import { DatadogConfig } from "../../../shared/Configs";
 import { getDatadogSite, getDatadogRumDeepLink } from "../../../utility/datadog";
 import { IntegrationType } from "../../../shared/Integrations";
 import { RunHistoryActionType } from "@prisma/client";
+import { Session } from "../../../server";
+import { SessionWithTracking } from "../../../agent/ChannelAgent/ChannelAgent";
+import { getDatadogCredentialsByIntegrationId } from "../datadogApiClient";
 
 /**
  * Tool for querying Datadog RUM events with flexible filtering options.
@@ -17,6 +18,7 @@ export const searchRumEventsTool = tool({
     name: 'searchRumEvents',
     description: 'Query Datadog RUM events. Filter by query string, time range. Returns sessions, views, actions, errors, resources, long tasks.',
     parameters: z.object({
+        integrationId: z.string().describe('The integration ID of the Datadog knowledge base to use.'),
         query: z.union([z.string(), z.null()]).optional().describe('Datadog RUM search query (e.g., @type:error AND @error.source:network)'),
         from: z.string().describe('Start time (ISO8601 or relative like "now-15m")'),
         to: z.union([z.string(), z.null()]).optional().describe('End time (ISO8601). Defaults to "now" if not provided.'),
@@ -25,34 +27,17 @@ export const searchRumEventsTool = tool({
         sort: z.enum(['timestamp', '-timestamp']).default('timestamp').describe('Sort order: "timestamp" (ascending) or "-timestamp" (descending)'),
         timezone: z.string().default('GMT').describe('Timezone for time-based queries (default: "GMT")'),
     }),
-    execute: async ({ query, from, to = 'now', limit = 25, pageCursor, sort = 'timestamp', timezone = 'GMT' }, runContext?: RunContext<any>) => {
+    execute: async ({ integrationId, query, from, to = 'now', limit = 25, pageCursor, sort = 'timestamp', timezone = 'GMT' }, runContext?: RunContext<SessionWithTracking<Session>>) => {
         if (!runContext?.context) {
             throw new Error("No context provided");
         }
 
-        // Get Datadog config from context - must be set by the knowledge base session
-        const datadogConfig = runContext.context.datadogConfig as DatadogConfig | undefined;
-        if (!datadogConfig) {
-            throw new Error("Datadog config not found in context. Ensure Datadog is configured as a knowledge base.");
+        const credentials = await getDatadogCredentialsByIntegrationId(integrationId, runContext.context.user.id);
+        if (!credentials) {
+            throw new Error(`Datadog integration not found or access denied for integrationId: ${integrationId}`);
         }
 
-        const user = runContext.context.user;
-        if (!user) {
-            throw new Error("User not found in context");
-        }
-
-        // Get Datadog integration
-        const integration = await db().datadog_integrations.findUnique({
-            where: { id: datadogConfig.integrationId },
-        });
-
-        if (!integration) {
-            throw new Error(`Datadog integration not found: ${datadogConfig.integrationId}`);
-        }
-
-        const apiKey = integration.api_key;
-        const appKey = integration.app_key;
-        const region = integration.region;
+        const { apiKey, appKey, region } = credentials;
         const site = getDatadogSite(region);
 
         try {
@@ -98,8 +83,8 @@ export const searchRumEventsTool = tool({
             // Log full request context (debug level)
             logger.debug('[Datadog] searchRumEvents - Request details', {
                 tool: 'searchRumEvents',
-                integrationId: datadogConfig.integrationId,
-                userId: user.id,
+                integrationId,
+                userId: runContext.context.user.id,
                 requestParams: {
                     query: query || null,
                     from,
@@ -119,7 +104,6 @@ export const searchRumEventsTool = tool({
             // Parse response
             const eventsData = response.data || [];
             const meta = response.meta;
-            const links = response.links;
 
             // Format RUM event entries - RUM events have different structures based on type
             const formattedEvents = eventsData.map((event: any) => {
@@ -261,8 +245,8 @@ export const searchRumEventsTool = tool({
                 }))
             });
 
-            // Track the action
-            runContext.context.trackAction({
+            // Return action as part of the result
+            const action = {
                 action: 'Searched Datadog RUM events',
                 integration: IntegrationType.DATADOG,
                 target: 'RUM events',
@@ -270,10 +254,11 @@ export const searchRumEventsTool = tool({
                 url: rumLink,
                 type: RunHistoryActionType.read,
                 isReadOnly: true,
-            });
+            };
 
             return {
                 success: true,
+                actions: [action],
                 query: query || null,
                 totalEvents: formattedEvents.length,
                 events: formattedEvents,

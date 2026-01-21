@@ -40,6 +40,7 @@ export async function getGitHubAccessToken(userId: string): Promise<string | nul
     return githubToken.access_token;
 }
 
+
 /**
  * Get repository information including the default branch
  */
