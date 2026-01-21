@@ -18,7 +18,7 @@ export const searchDatadogLogsTool = tool({
     description: 'Query Datadog logs. Filter by query string, indexes, time range. Returns logs with timestamps, status, messages, hosts, services, tags.',
     parameters: z.object({
         integrationId: z.string().describe('The integration ID of the Datadog knowledge base to use.'),
-        defaultIndexes: z.array(z.string()).optional().describe('Default log indexes to search (e.g., ["main"]). Falls back to ["main"] if not provided.'),
+        defaultIndexes: z.union([z.array(z.string()), z.null()]).optional().describe('Default log indexes to search (e.g., ["main"]). Falls back to ["main"] if not provided.'),
         query: z.union([z.string(), z.null()]).optional().describe('Datadog log search query (e.g., service:web AND @status:error)'),
         indexes: z.union([z.array(z.string()), z.null()]).optional().describe('Log indexes to search (e.g., ["main"]). Defaults to defaultIndexes if not provided.'),
         from: z.union([z.string(), z.null()]).optional().describe('Start time (ISO8601 or relative like "now-1h")'),

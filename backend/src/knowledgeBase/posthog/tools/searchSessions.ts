@@ -17,7 +17,7 @@ export const searchSessionsTool = tool({
     parameters: z.object({
         integrationId: z.string().describe('The integration ID of the PostHog knowledge base to use.'),
         projectId: z.string().describe('The PostHog project ID.'),
-        canReadSessionRecordings: z.boolean().optional().describe('Whether session recordings access is enabled for this knowledge base.'),
+        canReadSessionRecordings: z.boolean().default(false).describe('Whether session recordings access is enabled for this knowledge base.'),
         userEmail: z.string().email().describe('The email address of the user to query session recordings for. Must be a valid email address.'),
         limit: z.number().default(10).describe('Maximum number of session recordings to return (default: 10, max: 100)'),
         offset: z.number().default(0).describe('Offset for pagination (default: 0)'),

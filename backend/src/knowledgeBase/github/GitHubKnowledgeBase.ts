@@ -92,6 +92,8 @@ export class GitHubKnowledgeBase extends KnowledgeBase<GitHubKBConfig> {
         if (configs.length === 0) {
             throw new Error('No GitHub KB configs provided');
         }
+
+        console.log('GitHub KB configs', JSON.stringify(configs, null, 2));
         
         const sections: string[] = [];
 
@@ -223,6 +225,7 @@ When explaining code to the user:
 - Link related concepts together
 - Suggest next areas to explore if relevant`);
 
+        console.log('GitHub KB system instructions', sections.join('\n'));
         return sections.join('\n');
     }
 }

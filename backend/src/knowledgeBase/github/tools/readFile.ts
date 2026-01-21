@@ -1,7 +1,7 @@
 import { RunContext, tool } from "@openai/agents";
 import { z } from "zod";
 import logger from "../../../logger";
-import { createGitHubClient, getFileContents, parseRepoFullName, getGitHubAccessTokenByIntegrationId } from "../githubApiClient";
+import { createGitHubClient, getFileContents, parseRepoFullName, getGitHubAccessToken } from "../githubApiClient";
 import { IntegrationType } from "../../../shared/Integrations";
 import { RunHistoryActionType } from "@prisma/client";
 import { SessionWithTracking } from "../../../agent/ChannelAgent/ChannelAgent";
@@ -32,9 +32,9 @@ Note: This reads from the default branch (main/master). Large files may be trunc
             throw new Error("No context provided");
         }
 
-        const accessToken = await getGitHubAccessTokenByIntegrationId(integrationId, runContext.context.user.id);
+        const accessToken = await getGitHubAccessToken(runContext.context.user.id);
         if (!accessToken) {
-            throw new Error(`GitHub integration not found or access denied for integrationId: ${integrationId}`);
+            throw new Error(`GitHub access token not found for user`);
         }
 
         const client = createGitHubClient(accessToken);
