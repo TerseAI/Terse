@@ -1,7 +1,7 @@
 import { RunContext, tool } from "@openai/agents";
 import { z } from "zod";
 import logger from "../../../logger";
-import { createGitHubClient, searchCode, getGitHubAccessTokenByIntegrationId } from "../githubApiClient";
+import { createGitHubClient, searchCode, getGitHubAccessToken } from "../githubApiClient";
 import { IntegrationType } from "../../../shared/Integrations";
 import { RunHistoryActionType } from "@prisma/client";
 import { SessionWithTracking } from "../../../agent/ChannelAgent/ChannelAgent";
@@ -49,9 +49,9 @@ This is more precise than semantic search - use it when you know exactly what te
             throw new Error("No repositories provided. The repositoryNames parameter must contain at least one repository.");
         }
 
-        const accessToken = await getGitHubAccessTokenByIntegrationId(integrationId, runContext.context.user.id);
+        const accessToken = await getGitHubAccessToken(runContext.context.user.id);
         if (!accessToken) {
-            throw new Error(`GitHub integration not found or access denied for integrationId: ${integrationId}`);
+            throw new Error(`GitHub access token not found for user`);
         }
 
         const client = createGitHubClient(accessToken);

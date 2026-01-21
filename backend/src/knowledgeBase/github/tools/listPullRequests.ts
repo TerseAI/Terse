@@ -1,7 +1,7 @@
 import { RunContext, tool } from "@openai/agents";
 import { z } from "zod";
 import logger from "../../../logger";
-import { createGitHubClient, listPullRequests, parseRepoFullName, getGitHubAccessTokenByIntegrationId } from "../githubApiClient";
+import { createGitHubClient, listPullRequests, parseRepoFullName, getGitHubAccessToken } from "../githubApiClient";
 import { IntegrationType } from "../../../shared/Integrations";
 import { RunHistoryActionType } from "@prisma/client";
 import { SessionWithTracking } from "../../../agent/ChannelAgent/ChannelAgent";
@@ -53,9 +53,9 @@ Dates are specified in YYYY-MM-DD format (e.g., "2024-01-15"). The since date is
             throw new Error("No context provided");
         }
 
-        const accessToken = await getGitHubAccessTokenByIntegrationId(integrationId, runContext.context.user.id);
+        const accessToken = await getGitHubAccessToken(runContext.context.user.id);
         if (!accessToken) {
-            throw new Error(`GitHub integration not found or access denied for integrationId: ${integrationId}`);
+            throw new Error(`GitHub access token not found for user`);
         }
 
         const client = createGitHubClient(accessToken);

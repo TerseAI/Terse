@@ -40,27 +40,6 @@ export async function getGitHubAccessToken(userId: string): Promise<string | nul
     return githubToken.access_token;
 }
 
-/**
- * Get GitHub access token by integration ID
- * Validates that the integration belongs to the user
- */
-export async function getGitHubAccessTokenByIntegrationId(integrationId: string, userId: string): Promise<string | null> {
-    const githubToken = await db().github_app_tokens.findUnique({
-        where: { id: integrationId },
-    });
-
-    if (!githubToken) {
-        logger.warn('GitHub integration not found', { integrationId, userId });
-        return null;
-    }
-
-    if (githubToken.user_id !== userId) {
-        logger.warn('GitHub integration does not belong to user', { integrationId, userId, tokenUserId: githubToken.user_id });
-        return null;
-    }
-
-    return githubToken.access_token;
-}
 
 /**
  * Get repository information including the default branch

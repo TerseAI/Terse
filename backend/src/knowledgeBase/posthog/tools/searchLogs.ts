@@ -17,7 +17,7 @@ export const searchLogsTool = tool({
     parameters: z.object({
         integrationId: z.string().describe('The integration ID of the PostHog knowledge base to use.'),
         projectId: z.string().describe('The PostHog project ID.'),
-        canReadLogs: z.boolean().optional().describe('Whether logs access is enabled for this knowledge base.'),
+        canReadLogs: z.boolean().default(false).describe('Whether logs access is enabled for this knowledge base.'),
         userEmail: z.union([z.string(), z.null()]).optional().describe('Optional: User email to filter logs by (e.g., "user@example.com").'),
         severityLevels: z.union([z.array(z.enum(['error', 'warn', 'info', 'debug'])), z.null()]).describe('Optional: Array of log severity levels to filter by (e.g., ["error", "warn"]). If not provided, all severity levels are included.'),
         messageSearch: z.union([z.string(), z.null()]).describe('Optional: Text to search for within log messages. Searches are case-insensitive and match partial text.'),

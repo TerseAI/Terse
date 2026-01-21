@@ -1,7 +1,7 @@
 import { RunContext, tool } from "@openai/agents";
 import { z } from "zod";
 import logger from "../../../logger";
-import { createGitHubClient, listDirectory, parseRepoFullName, getRepositoryInfo, getTree, getBranch, getGitHubAccessTokenByIntegrationId } from "../githubApiClient";
+import { createGitHubClient, listDirectory, parseRepoFullName, getRepositoryInfo, getTree, getBranch, getGitHubAccessToken } from "../githubApiClient";
 import { IntegrationType } from "../../../shared/Integrations";
 import { RunHistoryActionType } from "@prisma/client";
 import { SessionWithTracking } from "../../../agent/ChannelAgent/ChannelAgent";
@@ -31,9 +31,9 @@ Start with the root directory (empty path) to see the top-level structure, then 
             throw new Error("No context provided");
         }
 
-        const accessToken = await getGitHubAccessTokenByIntegrationId(integrationId, runContext.context.user.id);
+        const accessToken = await getGitHubAccessToken(runContext.context.user.id);
         if (!accessToken) {
-            throw new Error(`GitHub integration not found or access denied for integrationId: ${integrationId}`);
+            throw new Error(`GitHub access token not found for user`);
         }
 
         const client = createGitHubClient(accessToken);
