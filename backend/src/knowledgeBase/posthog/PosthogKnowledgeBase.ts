@@ -67,7 +67,7 @@ export class PosthogKnowledgeBase extends KnowledgeBase<PosthogConfig> {
      * Returns system instructions for PostHog knowledge base.
      * Provides guidance on when and how to use PostHog tools with an investigative mindset.
      */
-    getSystemInstructions(configs: ChannelKnowledgeBaseWithConfigs[]): string {
+    protected getSystemInstructionsForConfigs(configs: ChannelKnowledgeBaseWithConfigs[]): string {
         if (configs.length === 0) {
             throw new Error('No PostHog KB configs provided');
         }

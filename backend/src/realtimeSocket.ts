@@ -8,7 +8,7 @@ import { SendModelRequest, ModelEvent, ModelRequest, ToolApprovalResponse } from
 import { db } from "./prismaClient";
 import { ChannelAgent } from "./agent/ChannelAgent/ChannelAgent";
 import { RunContext } from "./agent/ChannelAgent/SystemPromptBuilder";
-import { ChannelWithRelations, ChannelKnowledgeBaseWithConfigs, ChannelOutputWithConfigs } from "./types/prisma";
+import { ChannelWithRelations } from "./types/prisma";
 import { getInputConfigInclude, getOutputConfigInclude, getKnowledgeBaseConfigInclude } from './utility/prismaIncludes';
 import { OutputFactory } from "./outputs/abstract/OutputFactory";
 import { Output } from "./outputs/abstract/Output";
@@ -32,24 +32,8 @@ let sub: ReturnType<typeof createClient> | null = null;
 
 function createKnowledgeBases(
     channelKnowledgeBases: ChannelWithRelations['knowledge_bases']
-): { knowledgeBases: KnowledgeBase<ConfigInstance>[]; channelConfigs: ChannelKnowledgeBaseWithConfigs[] } {
-    if (!channelKnowledgeBases || channelKnowledgeBases.length === 0) {
-        return { knowledgeBases: [], channelConfigs: [] };
-    }
-
-    // Create knowledge base instances and maintain pairing with channel configs
-    const knowledgeBases: KnowledgeBase<ConfigInstance>[] = [];
-    const channelConfigs: ChannelKnowledgeBaseWithConfigs[] = [];
-    
-    for (const channelKnowledgeBase of channelKnowledgeBases) {
-        const kb = KnowledgeBaseFactory.createKnowledgeBase(channelKnowledgeBase.config_type);
-        if (kb) {
-            knowledgeBases.push(kb);
-            channelConfigs.push(channelKnowledgeBase as ChannelKnowledgeBaseWithConfigs);
-        }
-    }
-    
-    return { knowledgeBases, channelConfigs };
+): KnowledgeBase<ConfigInstance>[] {
+    return KnowledgeBaseFactory.createKnowledgeBasesFromChannel(channelKnowledgeBases);
 }
 
 export async function initializeRealtimeSocket(server: HttpServer): Promise<Server> {
@@ -193,16 +177,12 @@ export async function initializeRealtimeSocket(server: HttpServer): Promise<Serv
             }
 
             // Create outputs from channel configuration
-            const outputs: Output<ConfigInstance>[] = [];
-            const outputChannelConfigs: ChannelOutputWithConfigs[] = [];
-            for (const outputIntegration of channel.outputs) {
-                const output = OutputFactory.createOutput(outputIntegration.config_type);
-                if (!output) {
-                    logger.error(`[channel:chat:message] Output type ${outputIntegration.config_type} is not supported for channel: ${channel.id}`, { configType: outputIntegration.config_type, channelId: channel.id, userId });
-                    return;
-                }
-                outputs.push(output);
-                outputChannelConfigs.push(outputIntegration as ChannelOutputWithConfigs);
+            let outputs: Output<ConfigInstance>[];
+            try {
+                outputs = OutputFactory.createOutputsFromChannel(channel);
+            } catch (error) {
+                logger.error(`[channel:chat:message] Failed to create outputs for channel: ${channel.id}`, { error, channelId: channel.id, userId });
+                return;
             }
 
             const user = await prisma.users.findUnique({
@@ -240,10 +220,10 @@ export async function initializeRealtimeSocket(server: HttpServer): Promise<Serv
             emitCacheInvalidationWithWildcard(user.id, 'chatHistory', runId);
 
             // Create knowledge bases from channel configuration
-            const { knowledgeBases, channelConfigs } = createKnowledgeBases(channel.knowledge_bases || []);
+            const knowledgeBases = createKnowledgeBases(channel.knowledge_bases || []);
 
             const runContext: RunContext = { runId };
-            const channelAgent = new ChannelAgent(session, outputs, outputChannelConfigs, knowledgeBases, channelConfigs, channel, runContext);
+            const channelAgent = new ChannelAgent(session, outputs, knowledgeBases, channel, runContext);
             await channelAgent.initializeAgent();
             
             let result;

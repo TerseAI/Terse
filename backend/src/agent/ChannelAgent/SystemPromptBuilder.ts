@@ -1,5 +1,5 @@
 import { Session } from '../../server';
-import { ChannelWithRelations, ChannelKnowledgeBaseWithConfigs, ChannelOutputWithConfigs } from '../../types/prisma';
+import { ChannelWithRelations } from '../../types/prisma';
 import { Output } from '../../outputs/abstract/Output';
 import { ConfigInstance } from '../../shared/Configs';
 import { db } from '../../prismaClient';
@@ -20,9 +20,7 @@ export interface SystemPromptBuilderDependencies<T extends Session, TConfig exte
     session: T;
     channel: ChannelWithRelations;
     outputs: Output<TConfig>[];
-    outputConfigs?: ChannelOutputWithConfigs[];
     knowledgeBases?: KnowledgeBase<KBConfig>[];
-    knowledgeBaseConfigs?: ChannelKnowledgeBaseWithConfigs[];
 }
 
 interface Section {
@@ -219,56 +217,56 @@ When explicitly asked by the user, include these links in your responses to help
         };
     }
 
-    private groupOutputConfigsByType(): Map<string, ChannelOutputWithConfigs[]> {
-        const configsByType = new Map<string, ChannelOutputWithConfigs[]>();
-        if (!this.deps.outputConfigs) {
-            return configsByType;
+    private groupOutputsByType(): Map<string, Output<TConfig>[]> {
+        const outputsByType = new Map<string, Output<TConfig>[]>();
+        if (!this.deps.outputs) {
+            return outputsByType;
         }
 
-        for (const config of this.deps.outputConfigs) {
-            const configType = config.config_type;
-            if (!configsByType.has(configType)) {
-                configsByType.set(configType, []);
+        for (const output of this.deps.outputs) {
+            const outputType = output.integration;
+            if (!outputsByType.has(outputType)) {
+                outputsByType.set(outputType, []);
             }
-            configsByType.get(configType)!.push(config);
+            outputsByType.get(outputType)!.push(output);
         }
 
-        return configsByType;
+        return outputsByType;
     }
 
-    private groupKnowledgeBaseConfigsByType(): Map<string, ChannelKnowledgeBaseWithConfigs[]> {
-        const configsByType = new Map<string, ChannelKnowledgeBaseWithConfigs[]>();
-        if (!this.deps.knowledgeBaseConfigs) {
-            return configsByType;
+    private groupKnowledgeBasesByType(): Map<string, KnowledgeBase<KBConfig>[]> {
+        const kbsByType = new Map<string, KnowledgeBase<KBConfig>[]>();
+        if (!this.deps.knowledgeBases) {
+            return kbsByType;
         }
 
-        for (const config of this.deps.knowledgeBaseConfigs) {
-            const configType = config.config_type;
-            if (!configsByType.has(configType)) {
-                configsByType.set(configType, []);
+        for (const kb of this.deps.knowledgeBases) {
+            const kbType = kb.integration;
+            if (!kbsByType.has(kbType)) {
+                kbsByType.set(kbType, []);
             }
-            configsByType.get(configType)!.push(config);
+            kbsByType.get(kbType)!.push(kb);
         }
 
-        return configsByType;
+        return kbsByType;
     }
 
     private buildOutputsSection(): Section | null {
-        if (!this.deps.outputConfigs || !this.deps.outputs || 
-            this.deps.outputConfigs.length === 0 || this.deps.outputs.length === 0) {
+        if (!this.deps.outputs || this.deps.outputs.length === 0) {
             return null;
         }
 
-        const configsByType = this.groupOutputConfigsByType();
+        const outputsByType = this.groupOutputsByType();
         const outputSections: string[] = [];
 
-        Array.from(configsByType.entries()).forEach(([configType, configs]) => {
-            const output = this.deps.outputs.find(o => o.integration === configType);
-            if (!output || configs.length === 0) {
+        Array.from(outputsByType.entries()).forEach(([outputType, outputs]) => {
+            // All outputs of the same type should have the same configs, so we can use the first one
+            const output = outputs[0];
+            if (!output || output.configs.length === 0) {
                 return;
             }
 
-            const instructions = output.getSystemInstructions(configs);
+            const instructions = output.getSystemInstructions();
             outputSections.push(instructions);
         });
 
@@ -283,21 +281,21 @@ When explicitly asked by the user, include these links in your responses to help
     }
 
     private buildKnowledgeBasesSection(): Section | null {
-        if (!this.deps.knowledgeBases || !this.deps.knowledgeBaseConfigs || 
-            this.deps.knowledgeBases.length === 0 || this.deps.knowledgeBaseConfigs.length === 0) {
+        if (!this.deps.knowledgeBases || this.deps.knowledgeBases.length === 0) {
             return null;
         }
 
-        const configsByType = this.groupKnowledgeBaseConfigsByType();
+        const kbsByType = this.groupKnowledgeBasesByType();
         const kbSections: string[] = [];
 
-        Array.from(configsByType.entries()).forEach(([configType, configs]) => {
-            const kb = this.deps.knowledgeBases?.find(k => k.integration === configType);
-            if (!kb || configs.length === 0) {
+        Array.from(kbsByType.entries()).forEach(([kbType, kbs]) => {
+            // All knowledge bases of the same type should have the same configs, so we can use the first one
+            const kb = kbs[0];
+            if (!kb || kb.configs.length === 0) {
                 return;
             }
 
-            const instructions = kb.getSystemInstructions(configs);
+            const instructions = kb.getSystemInstructions();
             kbSections.push(instructions);
         });
 

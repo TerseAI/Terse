@@ -58,7 +58,7 @@ export class LaunchDarklyKnowledgeBase extends KnowledgeBase<LaunchDarklyConfig>
      * Returns system instructions for LaunchDarkly knowledge base.
      * Provides guidance on how to use LaunchDarkly tools effectively.
      */
-    getSystemInstructions(configs: ChannelKnowledgeBaseWithConfigs[]): string {
+    protected getSystemInstructionsForConfigs(configs: ChannelKnowledgeBaseWithConfigs[]): string {
         if (configs.length === 0) {
             throw new Error('No LaunchDarkly KB configs provided');
         }

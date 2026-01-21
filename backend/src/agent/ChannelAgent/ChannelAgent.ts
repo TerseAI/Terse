@@ -24,7 +24,6 @@ import { persistOutputAttributions, removeOutputAttributions } from './persistOu
 import logger from '../../logger';
 import { RunHistoryActionType } from '@prisma/client';
 import { KnowledgeBase } from '../../knowledgeBase/abstract/KnowledgeBase';
-import { ChannelKnowledgeBaseWithConfigs, ChannelOutputWithConfigs } from '../../types/prisma';
 
 // Types from @openai/agents SDK for content items
 type AgentInputText = protocol.InputText;
@@ -39,9 +38,7 @@ export class ChannelAgent<
     private inputEvent: InputEvent | null = null;
     private channel: ChannelWithRelations;
     private outputs: Output<TConfig>[];
-    private outputChannelConfigs: ChannelOutputWithConfigs[];
     private knowledgeBases: KnowledgeBase<KBConfig>[];
-    private knowledgeBaseChannelConfigs: ChannelKnowledgeBaseWithConfigs[];
     private agent?: Agent<SessionWithTracking<T>, AgentOutputType>;
     private tools: Tool<SessionWithTracking<T>>[] = [];
     private runContext: RunContext;
@@ -54,25 +51,14 @@ export class ChannelAgent<
     constructor(
         session: T,
         outputs: Output<TConfig>[],
-        outputChannelConfigs: ChannelOutputWithConfigs[],
         knowledgeBases: KnowledgeBase<KBConfig>[],
-        knowledgeBaseChannelConfigs: ChannelKnowledgeBaseWithConfigs[],
         channel: ChannelWithRelations,
         runContext: RunContext,
         maxTurns: number = 50
     ) {
-        if (knowledgeBases.length !== knowledgeBaseChannelConfigs.length) {
-            throw new Error(`Mismatch between knowledge base instances (${knowledgeBases.length}) and channel configs (${knowledgeBaseChannelConfigs.length})`);
-        }
-        if (outputs.length !== outputChannelConfigs.length) {
-            throw new Error(`Mismatch between output instances (${outputs.length}) and channel configs (${outputChannelConfigs.length})`);
-        }
-
         this.session = session;
         this.outputs = outputs;
-        this.outputChannelConfigs = outputChannelConfigs;
         this.knowledgeBases = knowledgeBases;
-        this.knowledgeBaseChannelConfigs = knowledgeBaseChannelConfigs;
         this.channel = channel;
         
         // Collect all tools and deduplicate by name to avoid duplicate registrations
@@ -409,9 +395,7 @@ export class ChannelAgent<
             session: this.session,
             channel: this.channel,
             outputs: this.outputs,
-            outputConfigs: this.outputChannelConfigs,
             knowledgeBases: this.knowledgeBases,
-            knowledgeBaseConfigs: this.knowledgeBaseChannelConfigs,
         };
 
         const builder = new SystemPromptBuilder<T, TConfig, KBConfig>(deps, this.runContext)

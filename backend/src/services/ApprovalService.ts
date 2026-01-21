@@ -1,7 +1,8 @@
 import { db } from "../prismaClient";
-import { ChannelWithRelations, ChannelKnowledgeBaseWithConfigs, ChannelOutputWithConfigs } from "../types/prisma";
+import { ChannelWithRelations } from "../types/prisma";
 import { getInputConfigInclude, getOutputConfigInclude, getKnowledgeBaseConfigInclude } from "../utility/prismaIncludes";
 import { OutputFactory } from "../outputs/abstract/OutputFactory";
+import { Output } from "../outputs/abstract/Output";
 import { KnowledgeBaseFactory } from "../knowledgeBase/abstract/KnowledgeBaseFactory";
 import { KnowledgeBase } from "../knowledgeBase/abstract/KnowledgeBase";
 import { ConfigInstance } from "../shared/Configs";
@@ -79,46 +80,14 @@ export class ApprovalService {
 
     private static createOutputs(
         channel: ChannelWithRelations
-    ): { outputs: NonNullable<ReturnType<typeof OutputFactory.createOutput>>[], outputChannelConfigs: ChannelOutputWithConfigs[] } {
-        if (!channel.outputs || channel.outputs.length === 0) {
-            throw new Error(`No output integrations found for channel: ${channel.id}`);
-        }
-
-        const outputs: NonNullable<ReturnType<typeof OutputFactory.createOutput>>[] = [];
-        const outputChannelConfigs: ChannelOutputWithConfigs[] = [];
-
-        for (const outputIntegration of channel.outputs) {
-            const output = OutputFactory.createOutput(outputIntegration.config_type);
-            if (!output) {
-                throw new Error(`Output type ${outputIntegration.config_type} is not supported`);
-            }
-            outputs.push(output);
-            outputChannelConfigs.push(outputIntegration as ChannelOutputWithConfigs);
-        }
-
-        return { outputs, outputChannelConfigs };
+    ): Output<ConfigInstance>[] {
+        return OutputFactory.createOutputsFromChannel(channel);
     }
 
     private static createKnowledgeBases(
         channelKnowledgeBases: ChannelWithRelations['knowledge_bases']
-    ): { knowledgeBases: KnowledgeBase<ConfigInstance>[]; channelConfigs: ChannelKnowledgeBaseWithConfigs[] } {
-        if (!channelKnowledgeBases || channelKnowledgeBases.length === 0) {
-            return { knowledgeBases: [], channelConfigs: [] };
-        }
-
-        // Create knowledge base instances and maintain pairing with channel configs
-        const knowledgeBases: KnowledgeBase<ConfigInstance>[] = [];
-        const channelConfigs: ChannelKnowledgeBaseWithConfigs[] = [];
-        
-        for (const channelKnowledgeBase of channelKnowledgeBases) {
-            const kb = KnowledgeBaseFactory.createKnowledgeBase(channelKnowledgeBase.config_type);
-            if (kb) {
-                knowledgeBases.push(kb);
-                channelConfigs.push(channelKnowledgeBase as ChannelKnowledgeBaseWithConfigs);
-            }
-        }
-        
-        return { knowledgeBases, channelConfigs };
+    ): KnowledgeBase<ConfigInstance>[] {
+        return KnowledgeBaseFactory.createKnowledgeBasesFromChannel(channelKnowledgeBases);
     }
 
     /**
@@ -256,7 +225,7 @@ export class ApprovalService {
             }
 
             // Create outputs
-            const { outputs, outputChannelConfigs } = this.createOutputs(channel);
+            const outputs = this.createOutputs(channel);
             
             // Create base session for ChannelAgent
             const user = await db().users.findUnique({ where: { id: userId } });
@@ -269,7 +238,7 @@ export class ApprovalService {
             };
 
             // Create knowledge bases from channel configuration
-            const { knowledgeBases, channelConfigs } = this.createKnowledgeBases(channel.knowledge_bases || []);
+            const knowledgeBases = this.createKnowledgeBases(channel.knowledge_bases || []);
 
             // Ensure run status is 'in_progress' for streaming
             if (runRecord.status !== 'in_progress') {
@@ -292,7 +261,7 @@ export class ApprovalService {
 
             // Create channel agent and resume from pending approval
             const runContext = { runId };
-            const channelAgent = new ChannelAgent(session, outputs, outputChannelConfigs, knowledgeBases, channelConfigs, channel, runContext);
+            const channelAgent = new ChannelAgent(session, outputs, knowledgeBases, channel, runContext);
             await channelAgent.initializeAgent();
 
             const decision: 'approve' | 'reject' = approved ? 'approve' : 'reject';

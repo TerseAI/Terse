@@ -88,7 +88,7 @@ export class GitHubKnowledgeBase extends KnowledgeBase<GitHubKBConfig> {
      * Returns system instructions for GitHub knowledge base.
      * Provides guidance on how to effectively explore and understand codebases.
      */
-    getSystemInstructions(configs: ChannelKnowledgeBaseWithConfigs[]): string {
+    protected getSystemInstructionsForConfigs(configs: ChannelKnowledgeBaseWithConfigs[]): string {
         if (configs.length === 0) {
             throw new Error('No GitHub KB configs provided');
         }
