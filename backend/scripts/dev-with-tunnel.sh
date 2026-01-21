@@ -1,10 +1,12 @@
 #!/bin/bash
 
-# Script to start Smee tunnel, update .env with BACKEND_URL, and optionally start backend server
+# Script to start ngrok tunnel, update .env with BACKEND_URL, and optionally start backend server
 # Usage: ./dev-with-tunnel.sh [--tunnel-only|-t]
-# Requires SMEE_URL to be set in .env file or as an environment variable (e.g., https://smee.io/your-channel)
+# Requires NGROK_AUTH_TOKEN to be set (optional, for persistent URLs)
 
 set -e
+# Enable error tracing for debugging
+set -o pipefail
 
 # Check for tunnel-only flag
 TUNNEL_ONLY=false
@@ -49,76 +51,147 @@ update_env_var() {
     fi
 }
 
-# Try to read SMEE_URL from environment variable first (takes precedence), then from .env file
-# Check environment variable first (takes precedence) - use printenv to avoid local variable shadowing
-SMEE_URL=$(printenv SMEE_URL 2>/dev/null)
+# Check if ngrok is installed
+if ! command -v ngrok >/dev/null 2>&1; then
+    echo -e "${RED}❌ Error: ngrok is not installed${NC}"
+    echo -e "${YELLOW}Please install ngrok:${NC}"
+    echo -e "${YELLOW}  macOS: brew install ngrok/ngrok/ngrok${NC}"
+    echo -e "${YELLOW}  Or download from: https://ngrok.com/download${NC}"
+    exit 1
+fi
 
-# If not set in environment, try reading from .env file
-if [ -z "$SMEE_URL" ] && [ -f "$ENV_FILE" ]; then
-    # Read SMEE_URL from .env file (handle quoted and unquoted values)
-    ENV_SMEE_URL=$(grep "^SMEE_URL=" "$ENV_FILE" 2>/dev/null | cut -d '=' -f2- | sed 's/^["'\'']//; s/["'\'']$//' | xargs)
-    if [ -n "$ENV_SMEE_URL" ]; then
-        SMEE_URL="$ENV_SMEE_URL"
+# Check for NGROK_AUTH_TOKEN (required for reserved domains)
+NGROK_AUTH_TOKEN=$(printenv NGROK_AUTH_TOKEN 2>/dev/null || true)
+if [ -z "$NGROK_AUTH_TOKEN" ] && [ -f "$ENV_FILE" ]; then
+    # Read from .env file - handle cases with or without quotes
+    ENV_LINE=$(grep "^NGROK_AUTH_TOKEN=" "$ENV_FILE" 2>/dev/null | head -n 1 || true)
+    if [ -n "$ENV_LINE" ]; then
+        NGROK_AUTH_TOKEN=$(echo "$ENV_LINE" | cut -d '=' -f2- | sed -e 's/^[" ]*//' -e 's/[" ]*$//' || true)
     fi
 fi
 
-# If still not set, show error
-if [ -z "$SMEE_URL" ]; then
-    echo -e "${RED}❌ Error: SMEE_URL is not set${NC}"
-    echo -e "${YELLOW}Please set SMEE_URL in your .env file or as an environment variable${NC}"
-    echo -e "${YELLOW}Example: SMEE_URL=https://smee.io/your-channel${NC}"
-    echo -e "${YELLOW}You can create a new channel at https://smee.io/new${NC}"
-    exit 1
+# Check for NGROK_DOMAIN (reserved domain for persistent URL)
+NGROK_DOMAIN=$(printenv NGROK_DOMAIN 2>/dev/null || true)
+if [ -z "$NGROK_DOMAIN" ] && [ -f "$ENV_FILE" ]; then
+    # Read from .env file - handle cases with or without quotes
+    ENV_LINE=$(grep "^NGROK_DOMAIN=" "$ENV_FILE" 2>/dev/null | head -n 1 || true)
+    if [ -n "$ENV_LINE" ]; then
+        NGROK_DOMAIN=$(echo "$ENV_LINE" | cut -d '=' -f2- | sed -e 's/^[" ]*//' -e 's/[" ]*$//' || true)
+    fi
 fi
 
-# Validate SMEE_URL format
-if [[ ! "$SMEE_URL" =~ ^https://smee\.io/ ]]; then
-    echo -e "${RED}❌ Error: SMEE_URL must be a valid Smee URL (e.g., https://smee.io/your-channel)${NC}"
-    exit 1
-fi
 
-# Save SMEE_URL to .env file so it persists
-update_env_var "SMEE_URL" "$SMEE_URL"
-
-echo -e "${BLUE}🚀 Starting Smee tunnel...${NC}"
-echo -e "${BLUE}📡 Smee URL: ${SMEE_URL}${NC}"
-echo -e "${BLUE}🎯 Target: http://localhost:3001${NC}"
-
-# Start smee in the background
-# Using pnpm exec to run smee from devDependencies (v4+ uses 'smee' command)
-cd "$BACKEND_DIR"
-if command -v pnpm >/dev/null 2>&1 && pnpm exec --help >/dev/null 2>&1; then
-    pnpm exec smee -u "$SMEE_URL" -t http://localhost:3001 > /tmp/smee.log 2>&1 &
+if [ -z "$NGROK_AUTH_TOKEN" ]; then
+    echo -e "${YELLOW}⚠️  NGROK_AUTH_TOKEN not set${NC}"
+    echo -e "${YELLOW}   Without an auth token, you'll have limited session time and random URLs${NC}"
+    echo -e "${YELLOW}   Get your token from: https://dashboard.ngrok.com/get-started/your-authtoken${NC}"
+    echo -e "${YELLOW}   Add it to your .env file: NGROK_AUTH_TOKEN=your_token_here${NC}"
+    echo ""
 else
-    npx --yes smee-client -u "$SMEE_URL" -t http://localhost:3001 > /tmp/smee.log 2>&1 &
+    # Configure ngrok with auth token
+    ngrok config add-authtoken "$NGROK_AUTH_TOKEN" >/dev/null 2>&1 || true
+    echo -e "${GREEN}✅ ngrok auth token configured${NC}"
 fi
-SMEE_PID=$!
 
-# Give smee a moment to start
-sleep 2
+if [ -z "$NGROK_DOMAIN" ]; then
+    echo -e "${YELLOW}⚠️  NGROK_DOMAIN not set - URL will change each time${NC}"
+    echo -e "${YELLOW}   To get a persistent URL, reserve a domain at: https://dashboard.ngrok.com/cloud-edge/domains${NC}"
+    echo -e "${YELLOW}   Then set NGROK_DOMAIN in your .env file (e.g., NGROK_DOMAIN=your-domain.ngrok-free.app)${NC}"
+    echo ""
+fi
+
+echo -e "${BLUE}🚀 Starting ngrok tunnel...${NC}"
+echo -e "${BLUE}🎯 Target: http://localhost:3001${NC}"
+if [ -n "$NGROK_DOMAIN" ]; then
+    echo -e "${BLUE}🔒 Using reserved domain: ${NGROK_DOMAIN}${NC}"
+fi
+
+# Kill any existing ngrok processes first
+pkill -f "ngrok.*3001" 2>/dev/null || true
+sleep 1
+
+# Start ngrok in the background
+cd "$BACKEND_DIR"
+if [ -n "$NGROK_DOMAIN" ]; then
+    # Use reserved domain for persistent URL
+    echo -e "${BLUE}Starting ngrok with domain: ${NGROK_DOMAIN}${NC}"
+    ngrok http 3001 --domain="$NGROK_DOMAIN" --log=stdout > /tmp/ngrok.log 2>&1 &
+else
+    # Use random URL (will change each time)
+    echo -e "${BLUE}Starting ngrok with random URL${NC}"
+    ngrok http 3001 --log=stdout > /tmp/ngrok.log 2>&1 &
+fi
+NGROK_PID=$!
+
+# Give ngrok a moment to start
+sleep 3
+
+# Check if ngrok process started successfully
+if ! kill -0 $NGROK_PID 2>/dev/null; then
+    echo -e "${RED}❌ Error: ngrok process failed to start${NC}"
+    echo -e "${YELLOW}Last 20 lines of ngrok output:${NC}"
+    tail -n 20 /tmp/ngrok.log 2>/dev/null || echo "No log file found"
+    exit 1
+fi
 
 # Function to cleanup on exit
 cleanup() {
-    echo -e "\n${YELLOW}🛑 Shutting down Smee tunnel...${NC}"
-    kill $SMEE_PID 2>/dev/null || true
+    echo -e "\n${YELLOW}🛑 Shutting down ngrok tunnel...${NC}"
+    kill $NGROK_PID 2>/dev/null || true
+    pkill -f "ngrok.*3001" 2>/dev/null || true
     exit
 }
 
 # Trap Ctrl+C and cleanup
 trap cleanup INT TERM
 
-# Check if smee process is still running
-if ! kill -0 $SMEE_PID 2>/dev/null; then
-    echo -e "${RED}❌ Error: Smee tunnel failed to start${NC}"
-    echo -e "${YELLOW}Last 20 lines of Smee output:${NC}"
-    tail -n 20 /tmp/smee.log 2>/dev/null || echo "No log file found"
+# Check if ngrok process is still running
+if ! kill -0 $NGROK_PID 2>/dev/null; then
+    echo -e "${RED}❌ Error: ngrok tunnel failed to start${NC}"
+    echo -e "${YELLOW}Last 20 lines of ngrok output:${NC}"
+    tail -n 20 /tmp/ngrok.log 2>/dev/null || echo "No log file found"
     exit 1
 fi
 
-echo -e "${GREEN}✅ Smee tunnel is running${NC}"
+# Extract the public URL from ngrok API (local API runs on 4040)
+echo -e "${BLUE}⏳ Waiting for ngrok URL...${NC}"
+TUNNEL_URL=""
+MAX_ATTEMPTS=10
+ATTEMPT=0
 
-# Use SMEE_URL as the BACKEND_URL (this is the public URL that services should use)
-TUNNEL_URL="$SMEE_URL"
+while [ -z "$TUNNEL_URL" ] && [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
+    sleep 1
+    ATTEMPT=$((ATTEMPT + 1))
+    
+    # Try to get URL from ngrok local API
+    API_RESPONSE=$(curl -s http://localhost:4040/api/tunnels 2>/dev/null || echo "")
+    if [ -n "$API_RESPONSE" ]; then
+        # Try to extract URL from JSON response
+        TUNNEL_URL=$(echo "$API_RESPONSE" | grep -oE '"public_url":"https://[^"]+' | cut -d'"' -f4 | head -n 1)
+        if [ -z "$TUNNEL_URL" ]; then
+            # Fallback: try regex pattern
+            TUNNEL_URL=$(echo "$API_RESPONSE" | grep -oE 'https://[a-zA-Z0-9-]+\.ngrok(-free|-dev)?\.app' | head -n 1)
+        fi
+    fi
+done
+
+if [ -z "$TUNNEL_URL" ]; then
+    if [ -n "$NGROK_DOMAIN" ]; then
+        # If we have a reserved domain, construct the URL
+        TUNNEL_URL="https://${NGROK_DOMAIN}"
+        echo -e "${YELLOW}⚠️  Could not verify URL from API, using configured domain: ${TUNNEL_URL}${NC}"
+    else
+        echo -e "${YELLOW}⚠️  Could not extract ngrok URL automatically${NC}"
+        echo -e "${YELLOW}Please check ngrok web interface at http://localhost:4040${NC}"
+        echo -e "${YELLOW}Or check logs: tail -f /tmp/ngrok.log${NC}"
+        cleanup
+        exit 1
+    fi
+fi
+
+echo -e "${GREEN}✅ ngrok tunnel is running${NC}"
+echo -e "${GREEN}🌐 Public URL: ${TUNNEL_URL}${NC}"
+echo -e "${BLUE}📋 Slack Events URL: ${TUNNEL_URL}/slack/events${NC}"
 
 # Update BACKEND_URL in .env file
 update_env_var "BACKEND_URL" "$TUNNEL_URL"
@@ -131,9 +204,10 @@ echo ""
 
 if [ "$TUNNEL_ONLY" = true ]; then
     echo -e "${GREEN}✅ Tunnel is running. Press Ctrl+C to stop.${NC}"
+    echo -e "${BLUE}📊 View tunnel status: http://localhost:4040${NC}"
     echo ""
     # Keep the script running and wait for the tunnel process or Ctrl+C
-    wait $SMEE_PID || true
+    wait $NGROK_PID || true
     cleanup
 else
     echo -e "${BLUE}🚀 Starting backend server...${NC}"

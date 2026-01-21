@@ -174,9 +174,6 @@ importers:
       prisma:
         specifier: ^6.19.0
         version: 6.19.0(typescript@5.9.2)
-      smee-client:
-        specifier: ^4.4.3
-        version: 4.4.3
       ts-node-dev:
         specifier: ^2.0.0
         version: 2.0.0(@types/node@24.3.0)(typescript@5.9.2)
@@ -1341,10 +1338,6 @@ packages:
     resolution: {integrity: sha512-CRT1WTyuQoD771GW56XEZFQ/ZoSfWid1alKGDYMmkt2yl8UXrVR4pspqWNEcqKvVIzg6PAltWjxcSSPrboA4iA==}
     engines: {node: '>=18.0.0'}
 
-  eventsource@4.1.0:
-    resolution: {integrity: sha512-2GuF51iuHX6A9xdTccMTsNb7VO0lHZihApxhvQzJB5A03DvHDd2FQepodbMaztPBmBcE/ox7o2gqaxGhYB9LhQ==}
-    engines: {node: '>=20.0.0'}
-
   express-rate-limit@7.5.1:
     resolution: {integrity: sha512-7iN8iPMDzOMHPUYllBEsQdWVB6fPDMPqwjBaFrgr4Jgr/+okjvzAy+UHlYYL/Vs0OsOrMkwS6PJDkFlJwoxUnw==}
     engines: {node: '>= 16'}
@@ -2229,11 +2222,6 @@ packages:
     resolution: {integrity: sha512-94hK0Hh8rPqQl2xXc3HsaBoOXKV20MToPkcXvwbISWLEs+64sBq5kFgn2kJDHb1Pry9yrP0dxrCI9RRci7RXKg==}
     engines: {node: '>= 6.0.0', npm: '>= 3.0.0'}
 
-  smee-client@4.4.3:
-    resolution: {integrity: sha512-WiFtn/KrlQlGbQG5k1sSm2bgNDlWdLYCy9xofh7ntFbYaUp/81MJfjHdG/l1Kma7ULL76uYgPLUvAloSkNrLlg==}
-    engines: {node: ^20.18 || >= 22}
-    hasBin: true
-
   socket.io-adapter@2.5.5:
     resolution: {integrity: sha512-eLDQas5dzPgOWCk9GuuJC2lBqItuhKI4uxGgo9aIV7MYbk2h9Q6uULEh8WBzThoI7l+qU9Ast9fVUmkqPP9wYg==}
 
@@ -2454,10 +2442,6 @@ packages:
 
   v8-compile-cache-lib@3.0.1:
     resolution: {integrity: sha512-wa7YjyUGfNZngI/vtK0UHAN+lgDCxBPCylVXGp0zu59Fz5aiGtNXaq3DhIov063MorB+VfufLh3JlF2KdTK3xg==}
-
-  validator@13.15.26:
-    resolution: {integrity: sha512-spH26xU080ydGggxRyR1Yhcbgx+j3y5jbNXk/8L+iRvdIEQ4uTRH2Sgf2dokud6Q4oAtsbNvJ1Ft+9xmm6IZcA==}
-    engines: {node: '>= 0.10'}
 
   vary@1.1.2:
     resolution: {integrity: sha512-BNGbWLfd0eUPabhkXUVm0j8uuvREyTh5ovRa/dyow/BqAbZJyC+5fU+IzQOzmAKzYqYRAISoRhdQr3eIZ/PXqg==}
@@ -3814,16 +3798,13 @@ snapshots:
 
   eventemitter3@5.0.1: {}
 
-  eventsource-parser@3.0.5: {}
+  eventsource-parser@3.0.5:
+    optional: true
 
   eventsource@3.0.7:
     dependencies:
       eventsource-parser: 3.0.5
     optional: true
-
-  eventsource@4.1.0:
-    dependencies:
-      eventsource-parser: 3.0.5
 
   express-rate-limit@7.5.1(express@5.1.0):
     dependencies:
@@ -4871,12 +4852,6 @@ snapshots:
 
   smart-buffer@4.2.0: {}
 
-  smee-client@4.4.3:
-    dependencies:
-      eventsource: 4.1.0
-      undici: 7.16.0
-      validator: 13.15.26
-
   socket.io-adapter@2.5.5:
     dependencies:
       debug: 4.3.7
@@ -5121,8 +5096,6 @@ snapshots:
   uuid@8.3.2: {}
 
   v8-compile-cache-lib@3.0.1: {}
-
-  validator@13.15.26: {}
 
   vary@1.1.2: {}
 
