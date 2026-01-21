@@ -249,8 +249,8 @@ export const aggregateRumEventsTool = tool({
                 }))
             });
 
-            // Track the action
-            runContext.context.trackAction({
+            // Return action as part of the result
+            const action = {
                 action: 'Aggregated Datadog RUM events',
                 integration: IntegrationType.DATADOG,
                 target: 'RUM events',
@@ -258,10 +258,11 @@ export const aggregateRumEventsTool = tool({
                 url: rumLink,
                 type: RunHistoryActionType.read,
                 isReadOnly: true,
-            });
+            };
 
             return {
                 success: true,
+                actions: [action],
                 query: query || null,
                 from,
                 to,

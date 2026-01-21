@@ -194,8 +194,8 @@ export const searchDatadogLogsTool = tool({
                 }))
             });
 
-            // Track the action
-            runContext.context.trackAction({
+            // Return action as part of the result
+            const action = {
                 action: 'Searched Datadog logs',
                 integration: IntegrationType.DATADOG,
                 target: indexesToUse.length > 0 ? `Datadog logs (indexes: ${indexesToUse.join(', ')})` : 'Datadog logs',
@@ -203,10 +203,11 @@ export const searchDatadogLogsTool = tool({
                 url: logsLink,
                 type: RunHistoryActionType.read,
                 isReadOnly: true,
-            });
+            };
 
             return {
                 success: true,
+                actions: [action],
                 query: query || null,
                 indexes: indexesToUse,
                 totalLogs: formattedLogs.length,

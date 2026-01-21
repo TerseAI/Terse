@@ -106,16 +106,17 @@ The schema information returned by this tool should be used to properly format p
         // Push run action to track the API call
         const databaseName = 'title' in dataSourceInfo ? (dataSourceInfo.title?.[0]?.plain_text || 'Unknown Database') : 'Unknown Database';
         const dataSourceUrl = 'url' in dataSourceInfo ? dataSourceInfo.url : undefined;
-        runContext.context.trackAction({
+        const action = {
             action: 'Retrieved schema',
             integration: IntegrationType.NOTION,
             target: databaseName,
             details: `Retrieved schema with ${Object.keys(schema).length} properties`,
             url: dataSourceUrl,
             type: 'read',
-        })
+        };
         
         return {
+            actions: [action],
             data_source_id: databaseId,
             database_name: databaseName,
             schema: schema,

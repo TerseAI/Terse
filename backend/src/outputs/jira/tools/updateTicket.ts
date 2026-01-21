@@ -349,19 +349,20 @@ COMMON UPDATE OPERATIONS:
                 updatedAt: updatedIssue.fields.updated || undefined,
             };
 
-            // Track the action
+            // Return action as part of the result
             const updateSummary = Object.keys(fields).join(', ') + (status ? ', status' : '');
-            runContext.context.trackAction({
+            const action = {
                 action: 'Updated ticket',
                 integration: IntegrationType.ATLASSIAN,
                 target: issueKey,
                 details: `Updated fields: ${updateSummary}`,
                 url: issueUrl,
                 type: RunHistoryActionType.update,
-            });
+            };
 
             return {
                 success: true,
+                actions: [action],
                 issue: issueData,
                 updatedFields: Object.keys(fields).concat(status ? ['status'] : []),
             };

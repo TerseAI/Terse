@@ -248,11 +248,11 @@ You can optionally provide high-level context about what you're looking for in t
                 summaryLength: summary.length,
             });
 
-            // Track the action
+            // Return action as part of the result
             const fileCount = prDiff.filesChanged.length;
             const additions = isPaginated ? pageAdditions : prDiff.additions;
             const deletions = isPaginated ? pageDeletions : prDiff.deletions;
-            runContext.context.trackAction({
+            const action = {
                 action: 'Summarized GitHub PR diff',
                 integration: IntegrationType.GITHUB,
                 target: `${owner}/${repo}`,
@@ -260,9 +260,12 @@ You can optionally provide high-level context about what you're looking for in t
                 url: prDiff.htmlUrl,
                 type: RunHistoryActionType.read,
                 isReadOnly: true,
-            });
+            };
 
-            return response;
+            return {
+                ...response,
+                actions: [action],
+            };
         } catch (error: any) {
             logger.error('[GitHub KB] summarizeGitHubPullRequestDiff - Failed', { 
                 repository, 

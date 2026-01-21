@@ -120,10 +120,10 @@ Example delete: "{\"operation\": \"delete\", \"block_id\": \"abc123\"}"`),
                     children: op.blocks,
                 });
 
-                // Report action
+                // Return action as part of the result
                 const blockDescription = describeBlocks(op.blocks);
                 const blockIds = response.results.map((b: any) => b.id);
-                runContext.context.trackAction({
+                const action = {
                     action: 'Added content',
                     integration: IntegrationType.NOTION,
                     target: pageName,
@@ -134,11 +134,12 @@ Example delete: "{\"operation\": \"delete\", \"block_id\": \"abc123\"}"`),
                         output_item_id: blockId,
                         output_item_type: ConfigType.NOTION_PAGE
                     }))
-                });
+                };
 
                 return {
                     success: true,
                     operation: 'append',
+                    actions: [action],
                     block_ids: response.results.map((b: any) => b.id),
                     blocks_count: response.results.length,
                 };
@@ -164,9 +165,9 @@ Example delete: "{\"operation\": \"delete\", \"block_id\": \"abc123\"}"`),
                     ...op.block,
                 });
 
-                // Report action
+                // Return action as part of the result
                 const blockType = getBlockTypeName(op.block);
-                runContext.context.trackAction({
+                const action = {
                     action: 'Updated content',
                     integration: IntegrationType.NOTION,
                     target: pageName,
@@ -177,11 +178,12 @@ Example delete: "{\"operation\": \"delete\", \"block_id\": \"abc123\"}"`),
                         output_item_id: response.id,
                         output_item_type: ConfigType.NOTION_PAGE
                     }]
-                });
+                };
 
                 return {
                     success: true,
                     operation: 'update',
+                    actions: [action],
                     block_id: response.id,
                 };
             } else if (op.operation === 'delete') {
@@ -200,8 +202,8 @@ Example delete: "{\"operation\": \"delete\", \"block_id\": \"abc123\"}"`),
                     archived: true,
                 });
 
-                // Report action
-                runContext.context.trackAction({
+                // Return action as part of the result
+                const action = {
                     action: 'Removed content',
                     integration: IntegrationType.NOTION,
                     target: pageName,
@@ -212,11 +214,12 @@ Example delete: "{\"operation\": \"delete\", \"block_id\": \"abc123\"}"`),
                         output_item_id: response.id,
                         output_item_type: ConfigType.NOTION_PAGE
                     }]
-                });
+                };
 
                 return {
                     success: true,
                     operation: 'delete',
+                    actions: [action],
                     block_id: response.id,
                 };
             } else {

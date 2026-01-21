@@ -245,8 +245,8 @@ export const searchRumEventsTool = tool({
                 }))
             });
 
-            // Track the action
-            runContext.context.trackAction({
+            // Return action as part of the result
+            const action = {
                 action: 'Searched Datadog RUM events',
                 integration: IntegrationType.DATADOG,
                 target: 'RUM events',
@@ -254,10 +254,11 @@ export const searchRumEventsTool = tool({
                 url: rumLink,
                 type: RunHistoryActionType.read,
                 isReadOnly: true,
-            });
+            };
 
             return {
                 success: true,
+                actions: [action],
                 query: query || null,
                 totalEvents: formattedEvents.length,
                 events: formattedEvents,

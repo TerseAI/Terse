@@ -299,16 +299,16 @@ EXAMPLES:
             };
         }).filter(Boolean);
 
-        // Push run action to track the API call
+        // Return action as part of the result
         const filterDescription = filter ? 'with filters' : 'without filters';
-        runContext.context.trackAction({
+        const action = {
             action: 'Queried database',
             integration: IntegrationType.NOTION,
             target: databaseName,
             details: `Queried database ${filterDescription} and retrieved ${pages.length} ${pages.length === 1 ? 'page' : 'pages'}`,
             url: databaseUrl as string | undefined,
             type: 'read',
-        });
+        };
 
         logger.debug("Notion query database tool response", { 
             pages_count: pages.length, 
@@ -319,6 +319,7 @@ EXAMPLES:
         return {
             pages: pages,
             total_returned: pages.length,
+            actions: [action],
             has_more: response.has_more || false,
             next_cursor: response.next_cursor || null,
         };

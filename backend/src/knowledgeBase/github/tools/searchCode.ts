@@ -153,8 +153,8 @@ Tips:
             const urlQuery = `${enhancedQuery} ${repoFilter}`;
             const searchUrl = `https://github.com/search?q=${encodeURIComponent(urlQuery)}&type=code`;
 
-            // Track the action
-            runContext.context.trackAction({
+            // Return action as part of the result
+            const action = {
                 action: 'Searched GitHub code',
                 integration: IntegrationType.GITHUB,
                 target: repositoryNames.join(', '),
@@ -162,9 +162,17 @@ Tips:
                 url: searchUrl,
                 type: RunHistoryActionType.read,
                 isReadOnly: true,
+            };
+            
+            logger.debug('[github_searchCode] Returning action in result', {
+                userId: runContext?.context?.user?.id || 'unknown',
+                action,
             });
 
-            return response;
+            return {
+                ...response,
+                actions: [action],
+            };
         } catch (error: any) {
             logger.error('[GitHub KB] searchGitHubCode - Failed', { 
                 query: enhancedQuery, 

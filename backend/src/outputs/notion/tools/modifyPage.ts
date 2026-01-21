@@ -118,17 +118,18 @@ IMPORTANT:
                 }
                 
                 const pageUrl = 'url' in response ? response.url : undefined;
-                runContext.context.trackAction({
+                const action = {
                     action: 'Updated page',
                     integration: IntegrationType.NOTION,
                     target: databaseName,
                     details: 'Updated page in database',
                     url: pageUrl,
                     type: 'update',
-                });
+                };
                 return {
                     success: true,
                     action: 'updated',
+                    actions: [action],
                     page_id: response.id,
                     url: pageUrl
                 };
@@ -146,17 +147,18 @@ IMPORTANT:
                 logger.info("Notion database modified successfully", { pageId: page_id ?? '(new page)', databaseId });
                 
                 const pageUrl = 'url' in response ? response.url : undefined;
-                runContext.context.trackAction({
+                const action = {
                     action: 'Created page',
                     integration: IntegrationType.NOTION,
                     target: databaseName,
                     details: 'Created new page in database',
                     url: pageUrl,
                     type: 'create',
-                });
+                };
                 return {
                     success: true,
                     action: 'created',
+                    actions: [action],
                     page_id: response.id,
                     url: pageUrl
                 };

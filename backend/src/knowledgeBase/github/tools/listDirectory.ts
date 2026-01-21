@@ -132,8 +132,8 @@ Start with the root directory (empty path) to see the top-level structure, then 
                 });
                 logger.debug('[GitHub KB] listGitHubDirectory - Full response', { response });
 
-                // Track the action
-                runContext.context.trackAction({
+                // Return action as part of the result
+                const action = {
                     action: 'Listed GitHub directory',
                     integration: IntegrationType.GITHUB,
                     target: repository,
@@ -141,9 +141,12 @@ Start with the root directory (empty path) to see the top-level structure, then 
                     url: `https://github.com/${owner}/${repo}/tree/${repoInfo.defaultBranch}/${path || ''}`,
                     type: RunHistoryActionType.read,
                     isReadOnly: true,
-                });
+                };
 
-                return response;
+                return {
+                    ...response,
+                    actions: [action],
+                };
             } else {
                 // Use Contents API for non-recursive listing
                 const entries = await listDirectory(client, owner, repo, path);
@@ -192,10 +195,10 @@ Start with the root directory (empty path) to see the top-level structure, then 
                 });
                 logger.debug('[GitHub KB] listGitHubDirectory - Full response', { response });
 
-                // Track the action
+                // Return action as part of the result
                 const repoInfo = await getRepositoryInfo(client, owner, repo);
                 const defaultBranch = repoInfo?.defaultBranch || 'HEAD';
-                runContext.context.trackAction({
+                const action = {
                     action: 'Listed GitHub directory',
                     integration: IntegrationType.GITHUB,
                     target: repository,
@@ -203,9 +206,12 @@ Start with the root directory (empty path) to see the top-level structure, then 
                     url: `https://github.com/${owner}/${repo}/tree/${defaultBranch}/${path || ''}`,
                     type: RunHistoryActionType.read,
                     isReadOnly: true,
-                });
+                };
 
-                return response;
+                return {
+                    ...response,
+                    actions: [action],
+                };
             }
         } catch (error: any) {
             logger.error('[GitHub KB] listGitHubDirectory - Failed', { 

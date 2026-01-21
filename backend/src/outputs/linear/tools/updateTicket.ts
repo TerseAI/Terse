@@ -154,19 +154,20 @@ COMMON UPDATE OPERATIONS:
                 updatedAt: updatedIssue.updatedAt,
             };
 
-            // Track the action
+            // Return action as part of the result
             const updateSummary = Object.keys(updateInput).join(', ');
-            runContext.context.trackAction({
+            const action = {
                 action: 'Updated ticket',
                 integration: IntegrationType.LINEAR,
                 target: updatedIssue.identifier || issueId,
                 details: `Updated fields: ${updateSummary}`,
                 url: updatedIssue.url,
                 type: RunHistoryActionType.update,
-            });
+            };
 
             return {
                 success: true,
+                actions: [action],
                 issue: issueData,
                 updatedFields: Object.keys(updateInput),
             };

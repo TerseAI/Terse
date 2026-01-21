@@ -316,7 +316,7 @@ export const getLaunchDarklyFlagDetailsTool = tool({
                 ? `Retrieved details and ${historyEntries.length} history entries for flag "${flagKey}"`
                 : `Retrieved details for flag "${flagKey}"`;
             
-            runContext.context.trackAction({
+            const action = {
                 action: 'Retrieved flag details',
                 integration: IntegrationType.LAUNCHDARKLY,
                 target: flagKey,
@@ -324,10 +324,11 @@ export const getLaunchDarklyFlagDetailsTool = tool({
                 url: flagUrl_ui,
                 type: 'read',
                 isReadOnly: true,
-            });
+            };
 
             const result: any = {
                 success: true,
+                actions: [action],
                 projectKey,
                 flag: flagMetadata,
                 environments,

@@ -43,7 +43,6 @@ export class ChannelAgent<
     private tools: Tool<SessionWithTracking<T>>[] = [];
     private runContext: RunContext;
     private toolMetadataMap: Map<string, ToolMetadata> = new Map();
-    private pendingActions: RunHistoryAction[] = [];
     private memorySession: RunHistoryChatMemorySession;
     private maxTurns: number;
     private notificationManager: NotificationManager;
@@ -310,21 +309,24 @@ export class ChannelAgent<
         this.inputEvent = event;
     }
 
-    queueAction(action: RunHistoryAction): void {
-        this.pendingActions.push(action);
-    }
-
-    async flushPendingActions(stepId: string, toolName: string): Promise<ChangedItem[]> {
+    async flushPendingActions(stepId: string, toolName: string, actions?: RunHistoryAction[]): Promise<ChangedItem[]> {
         const changedItems: ChangedItem[] = [];
         const toolMetadata = this.toolMetadataMap.get(toolName);
         const isReadOnly = toolMetadata?.isReadOnly ?? true;
 
-        for (const action of this.pendingActions) {
+        // Process actions from tool output
+        const actionsToFlush = actions || [];
+
+        for (const action of actionsToFlush) {
+            // Use the action's step_id if it exists, otherwise use the tool's step_id
+            const finalStepId = action.step_id || stepId;
+
             const actionId = await persistRunAction(this.runContext.runId, this.channel, this.session, {
                 ...action,
-                step_id: stepId,
+                step_id: finalStepId,
                 isReadOnly,
             });
+            
             if (actionId) {
                 changedItems.push({
                     type_name: EntityType.RUN_HISTORY_ACTION,
@@ -355,7 +357,6 @@ export class ChannelAgent<
             }
         }
 
-        this.pendingActions = [];
         return changedItems;
     }
 
@@ -408,7 +409,6 @@ export class ChannelAgent<
     private getToolContext(): SessionWithTracking<T> {
         return {
             ...this.session,
-            trackAction: (action: RunHistoryAction) => this.queueAction(action),
             channel: {
                 requireApproval: this.channel.require_approval ?? false,
             },
@@ -474,7 +474,9 @@ ${inputEvent.formatForChannelAgent()}
 
         const eventStream = transformAgentStreamToModelEvents(result, {
             toolToIntegrationMap: this.getToolToIntegrationMap(),
-            onToolCallComplete: (callId, toolName) => this.flushPendingActions(callId, toolName),
+            onToolCallComplete: (callId, toolName, actions) => {
+                return this.flushPendingActions(callId, toolName, actions);
+            },
         });
 
         await processModelEventStream(eventStream, {
@@ -617,7 +619,6 @@ ${inputEvent.formatForChannelAgent()}
 }
 
 export type SessionWithTracking<T extends Session> = T & {
-    trackAction(action: RunHistoryAction): void;
     channel: {
         requireApproval: boolean;
     };

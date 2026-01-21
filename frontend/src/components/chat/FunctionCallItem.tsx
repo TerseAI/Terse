@@ -69,7 +69,6 @@ function ToolResultInput({ toolName, parameters, onSubmit }: { toolName: string;
     const [submittedValue, setSubmittedValue] = useState('');
 
     const handleSubmit = (e: React.FormEvent) => {
-        console.log('🔍 Tool result input submitted:', result);
         e.preventDefault();
         if (result.trim()) {
             setSubmittedValue(result.trim());
@@ -245,9 +244,7 @@ export default function FunctionCallItem({ call, isTurnFailure = false, index, o
                 <ToolResultInput
                     toolName={call.name}
                     parameters={call.parameters}
-                    onSubmit={(result) => {
-                        console.log('🔍 Tool result submitted:', result);
-                    }}
+                    onSubmit={() => {}}
                 />
             )}
             {call.isWaitingForApproval && !call.isRejected && (

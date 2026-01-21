@@ -130,8 +130,8 @@ The tool returns commit details including message, author, date, and SHA.`,
             });
             logger.debug('[GitHub KB] listGitHubCommits - Full response', { response });
 
-            // Track the action
-            runContext.context.trackAction({
+            // Return action as part of the result
+            const action = {
                 action: 'Listed GitHub commits',
                 integration: IntegrationType.GITHUB,
                 target: repository,
@@ -139,9 +139,12 @@ The tool returns commit details including message, author, date, and SHA.`,
                 url: `https://github.com/${owner}/${repo}/commits/${branch || 'HEAD'}`,
                 type: RunHistoryActionType.read,
                 isReadOnly: true,
-            });
+            };
 
-            return response;
+            return {
+                ...response,
+                actions: [action],
+            };
         } catch (error: any) {
             logger.error('[GitHub KB] listGitHubCommits - Failed', { 
                 repository, 
