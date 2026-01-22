@@ -10,7 +10,7 @@ export default function AgentSetup() {
     const { templates, isLoading } = useTemplates();
 
     const handleStartFromScratch = () => {
-        navigate('/app/channels/new');
+        navigate('/app/agents/new');
     };
 
     return (

@@ -35,11 +35,11 @@ function App() {
             <Route path="/app" element={<Content />}>
               <Route index element={ hasBirdsEyeFlag ? <BirdsEyeViewHomepage /> : <Home />} />
               <Route path="activity" element={<ActivityFeed />} />
-              <Route path="channels" element={<AgentsList />} />
-              <Route path="channels/setup" element={<AgentSetup />} />
-              <Route path="channels/new" element={<AgentDetail />} />
-              <Route path="channels/new/template/:templateId" element={<AgentDetail />} />
-              <Route path="channels/:id" element={<AgentDetail />} />
+              <Route path="agents" element={<AgentsList />} />
+              <Route path="agents/setup" element={<AgentSetup />} />
+              <Route path="agents/new" element={<AgentDetail />} />
+              <Route path="agents/new/template/:templateId" element={<AgentDetail />} />
+              <Route path="agents/:id" element={<AgentDetail />} />
               <Route path="integrations" element={<IntegrationPage />} />
               <Route path="notifications" element={<NotificationsPage />} />
             </Route>

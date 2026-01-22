@@ -124,7 +124,7 @@ export async function sendSlackApprovalMessage(
     let runHistoryLink: string | undefined;
     if (automationId) {
         const frontendUrl = settings.urls.frontend;
-        runHistoryLink = `${frontendUrl}/app/channels/${automationId}?tab=history&runId=${runId}`;
+        runHistoryLink = `${frontendUrl}/app/agents/${automationId}?tab=history&runId=${runId}`;
     }
 
     const blocks = createApprovalMessage({
@@ -235,7 +235,7 @@ export async function updateSlackApprovalMessage(
     let runHistoryLink: string | undefined;
     if (automationId && runId) {
         const frontendUrl = settings.urls.frontend;
-        runHistoryLink = `${frontendUrl}/app/channels/${automationId}?tab=history&runId=${runId}`;
+        runHistoryLink = `${frontendUrl}/app/agents/${automationId}?tab=history&runId=${runId}`;
     }
 
     const blocks = createUpdatedApprovalMessage({
