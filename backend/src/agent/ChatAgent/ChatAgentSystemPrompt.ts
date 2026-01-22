@@ -44,6 +44,22 @@ export async function buildChatAgentSystemPrompt(userId: string, userTimezone?: 
         ? `\n- ${integrationInstanceDescriptions.join('\n- ')}`
         : '\nYou currently have no integrations connected.';
 
+    const currentUserAgents = await db().automations.findMany({
+        where: {
+            user_id: userId,
+        },
+        select: {
+            id: true,
+            name: true,
+            inputs: true,
+            outputs: true,
+            knowledge_bases: true,
+            prompt: true,
+        },
+    });
+
+    const currentUserAgentsList = currentUserAgents.map(agent => `- ${agent.name} (ID: ${agent.id})`).join('\n');
+
     return `
 
     ## Introduction
@@ -91,6 +107,11 @@ export async function buildChatAgentSystemPrompt(userId: string, userTimezone?: 
     Current Date/Time (User TZ): ${currentTimeLocal ?? "Unavailable"}
     Current Date (UTC): ${currentDateUtc}
     Current Date/Time (UTC): ${currentTimeUtc}
+
+
+    ## User's Existing Agents
+
+    You currently have the following agents created:${currentUserAgentsList}. You can modify these with the users permissions.
 
     ## User's Existing Integrations
 
