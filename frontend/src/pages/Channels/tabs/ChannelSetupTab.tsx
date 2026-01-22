@@ -203,6 +203,7 @@ export default function ChannelSetupTab({
         id: channelId || '',
         name: name || defaultName || '',
         isActive,
+        requireApproval: false,
         prompt: prompt || { text: '' },
         inputs: channelInputs,
         outputs: channelOutputs,
