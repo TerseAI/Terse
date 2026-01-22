@@ -321,7 +321,7 @@ function makeSectionBlock(text: string): KnownBlock {
 function buildRichTextBlocks(text: string): KnownBlock[] {
     const trimmed = text.trim();
     if (!trimmed) {
-        return [makeSectionBlock("_No response._")];
+        return [];
     }
     const normalized = normalizeSlackMrkdwn(trimmed);
     const paragraphs = normalized.split(/\n{2,}/).map((paragraph) => paragraph.trim());
