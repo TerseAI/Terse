@@ -14,7 +14,7 @@ export async function getRunHistory(req: Request, res: Response) {
     const prisma: PrismaClient = db();
 
     // req.params contains URL path parameters (e.g., /run-history/:channelId)
-    const channelId = (req.params.channelId as string | undefined)?.trim();
+    const channelId = (req.params.agentId as string | undefined)?.trim();
     if (!channelId) {
       return res.status(400).json({ error: "channelId is required" });
     }
