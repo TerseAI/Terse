@@ -1,28 +1,22 @@
 import { Request, Response } from "express";
 import { Prisma } from "@prisma/client";
 import { db, PrismaClient } from "../prismaClient";
-import type { GetRunHistoryParams, GetRunHistoryResponse, RunHistoryRecord, RunHistoryStatus } from "../shared/RunHistoryTypes";
+import type { GetRunHistoryParams, GetRunHistoryParamsRequest, GetRunHistoryResponse, RunHistoryRecord, RunHistoryStatus } from "../shared/RunHistoryTypes";
 import { parsePageParams } from "../utility/pagination";
 import { convertPrismaIntegrationTypeToIntegrationTypeFromRunHistory } from "../utility/typeConverters";
 import { ModelEvent } from "../shared/ModelEvents";
 import logger from "../logger";
 
-// Type for the getRunHistory request with typed params
-interface GetRunHistoryRequest extends Request {
-  params: {
-    agentId: string;
-  };
-  query: Request["query"]; // Query is parsed separately, so we keep the base type
-}
 
 // Valid status values for validation
 const VALID_STATUSES: RunHistoryStatus[] = ["success", "failed", "skipped", "in_progress", "awaiting_approval"];
 
-export async function getRunHistory(req: GetRunHistoryRequest, res: Response) {
+export async function getRunHistory(req: Request, res: Response) {
   try {
     const prisma: PrismaClient = db();
+    const paramsRequest: GetRunHistoryParamsRequest = req.params as GetRunHistoryParamsRequest;
 
-    const agentId = req.params.agentId?.trim();
+    const agentId = paramsRequest.agentId?.trim();
     if (!agentId) {
       return res.status(400).json({ error: "channelId is required" });
     }

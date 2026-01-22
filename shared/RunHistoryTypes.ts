@@ -66,6 +66,10 @@ export type RunHistoryRecord = {
     status: RunHistoryStatus;
 };
 
+export type GetRunHistoryParamsRequest = {
+    agentId: string;
+};
+
 export type GetRunHistoryParams = {
     q?: string;
     start?: string; // ISO date string
@@ -73,16 +77,6 @@ export type GetRunHistoryParams = {
     status?: RunHistoryStatus[];
     page?: number;
     pageSize?: number;
-};
-
-// Query string representation for Express request.query (all values are strings or string arrays)
-export type GetRunHistoryQueryParams = {
-    q?: string | string[];
-    start?: string | string[];
-    end?: string | string[];
-    status?: string | string[]; // Comma-separated string that gets parsed into RunHistoryStatus[]
-    page?: string | string[];
-    pageSize?: string | string[];
 };
 
 export type GetRunHistoryResponse = {
