@@ -57,8 +57,8 @@ The tool returns the source events (e.g., Slack messages, emails) that led to th
             logger.info('Found related events', { block_id, userId: runContext?.context?.user.display_name, events_count: hydratedEvents.length });
 
             const formattedEvents = hydratedEvents.map((event, index) => {
-                if ('formatForChannelAgent' in event && typeof event.formatForChannelAgent === 'function') {
-                    return `Event ${index + 1}:\n${event.formatForChannelAgent()}`;
+                if ('formatForAgentRunner' in event && typeof event.formatForAgentRunner === 'function') {
+                    return `Event ${index + 1}:\n${event.formatForAgentRunner()}`;
                 }
 
                 return `Event ${index + 1}:\n${JSON.stringify(event, null, 2)}`;
