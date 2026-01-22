@@ -21,6 +21,8 @@ import { fetchConfluenceResources } from "../../routes/confluence";
 import { fetchJiraResources } from "../../routes/jira";
 import { fetchLinearTeams } from "../../routes/linear";
 import { fetchPosthogProjects } from "../../routes/posthog";
+import { fetchLaunchDarklyProjects, fetchLaunchDarklyEnvironments } from "../../routes/launchdarkly";
+import { LaunchDarklyIntegrationManager } from "../../integrations/LaunchDarklyIntegration";
 import { uuidv4 } from "zod/v4";
 
 export type ChatAgentContext = {
@@ -193,6 +195,13 @@ const PosthogConfigSchema = BaseConfigSchema.extend({
     canReadSessionRecordings: z.boolean().nullable(),
 });
 
+const LaunchDarklyConfigSchema = BaseConfigSchema.extend({
+    configType: z.literal(ConfigType.LAUNCHDARKLY),
+    integrationType: z.literal(IntegrationType.LAUNCHDARKLY),
+    projectKey: NonEmptyString,
+    environmentKeys: z.array(NonEmptyString).min(1),
+});
+
 const TimeTriggerConfigSchema = BaseConfigSchema.extend({
     configType: z.literal(ConfigType.TIME_TRIGGER),
     integrationType: z.literal(IntegrationType.CRON_JOB),
@@ -248,6 +257,7 @@ const OutputConfigSchema = z.discriminatedUnion("configType", [
 const KnowledgeBaseConfigSchema = z.discriminatedUnion("configType", [
     GitHubKnowledgeBaseConfigSchema,
     PosthogConfigSchema,
+    LaunchDarklyConfigSchema,
 ]).superRefine((value, ctx) => {
     enforceNonSystemIntegrationId(value, ctx);
 });
@@ -427,11 +437,30 @@ async function fetchResourcesForIntegrationType(
             }));
             return JSON.stringify({ integrations, resources });
         }
+        case IntegrationType.LAUNCHDARKLY: {
+            const manager = new LaunchDarklyIntegrationManager();
+            const integrations = await manager.getInstancesForUser(userId);
+            const resources = await Promise.all(integrations.map(async (integration) => {
+                const projectsResponse = await fetchLaunchDarklyProjects(userId, integration.id, query ?? "");
+                const projectsWithEnvironments = await Promise.all(
+                    projectsResponse.projects.map(async (project) => {
+                        const envsResponse = await fetchLaunchDarklyEnvironments(userId, integration.id, project.key);
+                        return { ...project, environments: envsResponse.environments };
+                    })
+                );
+                return { integration, projects: projectsWithEnvironments };
+            }));
+            return JSON.stringify({ integrations, resources });
+        }
         case IntegrationType.GMAIL:
         case IntegrationType.FIGMA:
         case IntegrationType.CRON_JOB:
         case IntegrationType.TERSE:
-        default:
+        case IntegrationType.DATADOG:
             return JSON.stringify("This is a system integration. No config is needed.");
+        default: {
+            const _exhaustive: never = integrationType;
+            throw new Error(`Unhandled integration type: ${_exhaustive}`);
+        }
     }
 }
