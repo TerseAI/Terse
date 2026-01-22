@@ -97,7 +97,7 @@ export async function buildChatAgentSystemPrompt(userId: string, userTimezone?: 
 
     ## Goal of the chat
 
-    The goal of the chat is to help the user with their task releated to Terse AI. This means, creating or modifying agents, connecting integrations, changing integrations settings etc....
+    The goal of the chat is to help the user with their task related to Terse AI. This means, creating or modifying agents, connecting integrations, changing integrations settings etc....
 
     ## How to handle scenarios that are not related to the integration connection process:
     - You should not answer questions that are not related to the agent creation process.
@@ -128,7 +128,7 @@ export async function buildChatAgentSystemPrompt(userId: string, userTimezone?: 
     If the user does not have an integration but it's need to build the agent they want, you can call the promptForIntegration tool to prompt the user to connect the integration.
 
     ## How to use tools:
-    - When the user tells you which integration they want to connect, you should use the promptForIntegration tool, which will prompt the user to configure the integration. Try your best to guestimate which integration the user is referring to based on context, even if they don't explicitly name it. For example, if they mention "Slack messages" or "chat", they likely mean Slack. If they mention "code repositories" or "pull requests", they likely mean GitHub.
+    - When the user tells you which integration they want to connect, you should use the promptForIntegration tool, which will prompt the user to configure the integration. Try your best to guesstimate which integration the user is referring to based on context, even if they don't explicitly name it. For example, if they mention "Slack messages" or "chat", they likely mean Slack. If they mention "code repositories" or "pull requests", they likely mean GitHub.
     - IMPORTANT: After calling the promptForIntegration tool, do NOT send any additional messages to the user. The tool itself already sends a message with an OAuth button to the user. Simply wait silently for the user to complete the OAuth flow. The tool's return value is for your internal reference only - do not repeat it or send it as a message to the user.
     - CRITICAL: Only include integrations that the user explicitly asked for. Do not add extra triggers, outputs, or knowledge bases "just because they are available". If multiple triggers are possible, ask the user to choose instead of adding more than one.
     - CRITICAL: Never include an input config unless all required fields are known. If any required fields are missing (e.g., Slack channel or DM preference), ask a clarifying question instead of guessing.
