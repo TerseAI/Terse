@@ -28,107 +28,122 @@ export function deserializeConfig(jsonConfig: any): ConfigInstance {
             return new GmailConfig(integrationId);
 
         case ConfigType.FIGMA:
+            const figmaConfig = jsonConfig as FigmaConfig;
             return new FigmaConfig(
                 integrationId,
-                jsonConfig.fileKey || '',
-                jsonConfig.fileName || '',
-                jsonConfig.teamId || ''
+                figmaConfig.fileKey,
+                figmaConfig.fileName,
+                figmaConfig.teamId
             );
 
         case ConfigType.SLACK:
+            const slackConfig = jsonConfig as SlackConfig;
             return new SlackConfig(
                 integrationId,
-                jsonConfig.channelId,
-                jsonConfig.channelName,
-                jsonConfig.listenToUserDms || false,
-                jsonConfig.userIds || []
+                slackConfig.channelId,
+                slackConfig.channelName,
+                slackConfig.listenToUserDms,
+                slackConfig.userIds
             );
 
         case ConfigType.NOTION_DATABASE:
+            const notionConfig = jsonConfig as NotionConfig;
             return new NotionConfig(
                 integrationId,
-                jsonConfig.databaseId,
-                jsonConfig.databaseName
+                notionConfig.databaseId,
+                notionConfig.databaseName
             );
 
         case ConfigType.NOTION_PAGE:
+            const notionPageConfig = jsonConfig as NotionPageConfig;
             return new NotionPageConfig(
                 integrationId,
-                jsonConfig.pageId,
-                jsonConfig.pageName
+                notionPageConfig.pageId,
+                notionPageConfig.pageName
             );
 
         case ConfigType.LINEAR_INPUT:
+            const linearInputConfig = jsonConfig as LinearInputConfig;
             return new LinearInputConfig(
                 integrationId,
-                jsonConfig.projectId,
-                jsonConfig.projectName
+                linearInputConfig.projectId,
+                linearInputConfig.projectName
             );
         case ConfigType.LINEAR_OUTPUT:
+            const linearOutputConfig = jsonConfig as LinearOutputConfig;
             return new LinearOutputConfig(
                 integrationId,
-                jsonConfig.teamId,
-                jsonConfig.teamName
+                linearOutputConfig.teamId,
+                linearOutputConfig.teamName
             );
         case ConfigType.GITHUB:
+            const githubConfig = jsonConfig as GitHubConfig;
             return new GitHubConfig(
                 integrationId,
-                jsonConfig.repositoryIds || []
+                githubConfig.repositoryIds
             );
 
         case ConfigType.JIRA:
+            const jiraConfig = jsonConfig as JiraConfig;
             return new JiraConfig(
                 integrationId,
-                jsonConfig.projectKey,
-                jsonConfig.projectId
+                jiraConfig.projectKey,
+                jiraConfig.projectId
             );
 
         case ConfigType.CONFLUENCE:
+            const confluenceConfig = jsonConfig as ConfluenceConfig;
             return new ConfluenceConfig(
                 integrationId,
-                jsonConfig.spaceName || '',
-                jsonConfig.spaceId || '',
-                jsonConfig.pageId || '',
-                jsonConfig.pageName || ''
+                confluenceConfig.spaceName,
+                confluenceConfig.spaceId,
+                confluenceConfig.pageId,
+                confluenceConfig.pageName
             );
         case ConfigType.POSTHOG:
+            const posthogConfig = jsonConfig as PosthogConfig;
             return new PosthogConfig(
                 integrationId,
-                jsonConfig.projectId || '',
-                jsonConfig.projectName || undefined,
-                jsonConfig.canReadLogs ?? false,
-                jsonConfig.canReadSessionRecordings ?? false
+                posthogConfig.projectId,
+                posthogConfig.projectName,
+                posthogConfig.canReadLogs,
+                posthogConfig.canReadSessionRecordings
             );
         case ConfigType.TIME_TRIGGER:
+            const timeTriggerConfig = jsonConfig as TimeTriggerConfig;
             return new TimeTriggerConfig(
-                jsonConfig.cronExpression || ''
+                timeTriggerConfig.cronExpression
             );
         case ConfigType.GITHUB_KB:
+            const githubKBConfig = jsonConfig as GitHubKBConfig;
             return new GitHubKBConfig(
                 integrationId,
-                jsonConfig.repositoryIds || [],
-                jsonConfig.repositoryNames || []
+                githubKBConfig.repositoryIds,
+                githubKBConfig.repositoryNames
             );
         case ConfigType.SLACK_OUTPUT:
+            const slackOutputConfig = jsonConfig as SlackOutputConfig;
             return new SlackOutputConfig(
                 integrationId,
-                jsonConfig.channelId,
-                jsonConfig.channelName
+                slackOutputConfig.channelId,
+                slackOutputConfig.channelName
             );
         case ConfigType.GMAIL_OUTPUT:
             return new GmailOutputConfig(
                 integrationId
             );
         case ConfigType.LAUNCHDARKLY:
+            const launchDarklyConfig = jsonConfig as LaunchDarklyConfig;
             return new LaunchDarklyConfig(
                 integrationId,
-                jsonConfig.projectKey || '',
-                jsonConfig.environmentKeys || []
+                launchDarklyConfig.projectKey,
+                launchDarklyConfig.environmentKeys
             );
         case ConfigType.DATADOG:
+            const datadogConfig = jsonConfig as DatadogConfig;
             return new DatadogConfig(
                 integrationId,
-                jsonConfig.defaultIndexes || []
+                datadogConfig.defaultIndexes
             );
 
         default:
