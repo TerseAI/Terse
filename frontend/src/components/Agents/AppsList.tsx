@@ -1,0 +1,103 @@
+import { ChevronRight } from 'lucide-react';
+import { Agent } from '../../shared/types';
+import { IconForIntegration } from '../../pages/Agents/components/Integration';
+import { IntegrationType } from "@/shared/Integrations"
+import { capitalize } from '../../lib/utils';
+
+interface AppsListProps {
+    agent: Agent;
+}
+
+export function AppsList({ agent }: AppsListProps) {
+    // Count trigger integrations using a hashmap
+    const triggerIntegrationCounts = new Map<IntegrationType, number>();
+    agent.triggers.forEach(trigger => {
+        const count = triggerIntegrationCounts.get(trigger.config.integrationType) || 0;
+        triggerIntegrationCounts.set(trigger.config.integrationType, count + 1);
+    });
+
+    // Count knowledge base integrations using a hashmap
+    const knowledgeBaseIntegrationCounts = new Map<IntegrationType, number>();
+    agent.knowledgeBases?.forEach(kb => {
+        const count = knowledgeBaseIntegrationCounts.get(kb.config.integrationType) || 0;
+        knowledgeBaseIntegrationCounts.set(kb.config.integrationType, count + 1);
+    });
+
+    // Count output integrations using a hashmap
+    const outputIntegrationCounts = new Map<IntegrationType, number>();
+    if (agent.outputs && agent.outputs.length > 0) {
+        agent.outputs.forEach(output => {
+            const count = outputIntegrationCounts.get(output.config.integrationType) || 0;
+            outputIntegrationCounts.set(output.config.integrationType, count + 1);
+        });
+    }
+
+    const hasTriggers = triggerIntegrationCounts.size > 0;
+    const hasKnowledgeBases = knowledgeBaseIntegrationCounts.size > 0;
+    const hasOutput = outputIntegrationCounts.size > 0;
+
+    return (
+        <div className="flex items-center gap-1.5">
+            {/* Triggers */}
+            {Array.from(triggerIntegrationCounts.entries()).map(([integration, count], idx) => (
+                <div key={idx} className="flex items-center">
+                    <div
+                        className="relative w-7 h-7 flex items-center justify-center rounded bg-card p-1"
+                        title={capitalize(integration)}
+                    >
+                        <IconForIntegration integration={integration} />
+                        {count > 1 && (
+                            <sup className="absolute -top-1.5 -right-1.5 text-[9px] font-mono tabular-nums leading-none z-10 text-primary-foreground rounded-full w-4 h-4 flex items-center justify-center shadow-md backdrop-blur-sm">
+                                {count}
+                            </sup>
+                        )}
+                    </div>
+                </div>
+            ))}
+
+            {/* Arrow between triggers and knowledge bases/outputs */}
+            {hasTriggers && (hasKnowledgeBases || hasOutput) && (
+                <ChevronRight className="w-3 h-3 text-muted-foreground mx-0.5" />
+            )}
+
+            {/* Knowledge Bases */}
+            {Array.from(knowledgeBaseIntegrationCounts.entries()).map(([integration, count], idx) => (
+                <div key={idx} className="flex items-center">
+                    <div
+                        className="relative w-7 h-7 flex items-center justify-center rounded bg-card p-1"
+                        title={capitalize(integration)}
+                    >
+                        <IconForIntegration integration={integration} />
+                        {count > 1 && (
+                            <sup className="absolute -top-1.5 -right-1.5 text-[9px] font-mono tabular-nums leading-none z-10 text-primary-foreground rounded-full w-4 h-4 flex items-center justify-center shadow-md backdrop-blur-sm">
+                                {count}
+                            </sup>
+                        )}
+                    </div>
+                </div>
+            ))}
+
+            {/* Arrow between knowledge bases and outputs */}
+            {hasKnowledgeBases && hasOutput && (
+                <ChevronRight className="w-3 h-3 text-muted-foreground mx-0.5" />
+            )}
+
+            {/* Outputs */}
+            {Array.from(outputIntegrationCounts.entries()).map(([integration, count], idx) => (
+                <div key={idx} className="flex items-center">
+                    <div
+                        className="relative w-7 h-7 flex items-center justify-center rounded bg-card p-1"
+                        title={capitalize(integration)}
+                    >
+                        <IconForIntegration integration={integration} />
+                        {count > 1 && (
+                            <sup className="absolute -top-1.5 -right-1.5 text-[9px] font-mono tabular-nums leading-none z-10 text-primary-foreground rounded-full w-4 h-4 flex items-center justify-center shadow-md backdrop-blur-sm">
+                                {count}
+                            </sup>
+                        )}
+                    </div>
+                </div>
+            ))}
+        </div>
+    );
+}

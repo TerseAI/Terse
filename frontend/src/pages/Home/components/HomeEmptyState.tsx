@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { useTemplates } from "@/hooks/api/useTemplates";
 import { useIntegrations } from "@/hooks/api/useIntegrations";
-import { TemplateCard } from "@/components/Channels/TemplateCard";
+import { TemplateCard } from "@/components/Agents/TemplateCard";
 import { Loader2 } from "lucide-react";
 
 export function HomeEmptyState() {

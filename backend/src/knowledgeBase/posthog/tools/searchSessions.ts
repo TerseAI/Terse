@@ -3,7 +3,7 @@ import { z } from "zod";
 import logger from "../../../logger";
 import { IntegrationType } from "../../../shared/Integrations";
 import { RunHistoryActionType } from "@prisma/client";
-import { SessionWithTracking } from "../../../agent/ChannelAgent/ChannelAgent";
+import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner";
 import { Session } from "../../../server";
 import { getPosthogApiKeyByIntegrationId } from "../posthogApiClient";
 

@@ -78,7 +78,7 @@ export async function getRunHistory(req: Request, res: Response) {
 
       return {
         id: runRecord.id,
-        channelId: runRecord.automation_id, // Database column is automation_id, but API uses channelId
+        agentId: runRecord.automation_id, // Database column is automation_id, but API uses channelId
         timestamp: runRecord.timestamp.toISOString(),
         trigger: {
           event: runRecord.event,
@@ -107,7 +107,7 @@ export async function getRunHistory(req: Request, res: Response) {
 
     res.json(response);
   } catch (err) {
-    logger.error("Failed to fetch run history", { error: err instanceof Error ? err.message : String(err), stack: err instanceof Error ? err.stack : undefined, channelId: req.params.channelId });
+    logger.error("Failed to fetch run history", { error: err instanceof Error ? err.message : String(err), stack: err instanceof Error ? err.stack : undefined, agentId: req.params.channelId });
     res.status(500).json({ error: "Failed to fetch run history" });
   }
 }

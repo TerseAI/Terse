@@ -201,7 +201,7 @@ export async function getStats(req: Request, res: Response) {
         details: action.details,
         url: action.url ?? undefined,
         timestamp: action.run_history_record.timestamp.toISOString(),
-        channelName: action.run_history_record.automation.name,
+        agentName: action.run_history_record.automation.name,
         type: action.type,
     }));
 
@@ -210,8 +210,8 @@ export async function getStats(req: Request, res: Response) {
         totalEventsProcessedChange: totalEventsChange,
         actionsTaken: currentActionsCount,
         actionsTakenChange: actionsTakenChange,
-        numberOfChannels: currentChannelsCount,
-        numberOfChannelsChange: channelsChangeString,
+        numberOfAgents: currentChannelsCount,
+        numberOfAgentsChange: channelsChangeString,
         dailyEvents,
         recentActions,
         timezone,

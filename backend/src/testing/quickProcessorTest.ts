@@ -1,4 +1,4 @@
-import { EventProcessor } from '../agent/ChannelAgent/EventProcessor';
+import { EventProcessor } from '../agent/AgentRunner/EventProcessor';
 import { GmailEvent, GmailEventData } from '../integrations/GmailIntegration';
 import { db } from '../prismaClient';
 import chalk from 'chalk';
@@ -102,14 +102,14 @@ async function runQuickTest() {
                 if (result.success) {
                     console.log(chalk.green('  ✓ Success'));
                     console.log(chalk.gray('  Message:'), result.message);
-                    if (result.channel) {
-                        console.log(chalk.gray('  Channel:'), result.channel.name);
+                    if (result.agentConfig) {
+                        console.log(chalk.gray('  Agent:'), result.agentConfig.name);
                     }
                 } else {
                     console.log(chalk.red('  ✗ Failed'));
                     console.log(chalk.gray('  Message:'), result.message);
-                    if (result.channel) {
-                        console.log(chalk.gray('  Channel:'), result.channel.name);
+                    if (result.agentConfig) {
+                        console.log(chalk.gray('  Agent:'), result.agentConfig.name);
                     }
                 }
             }

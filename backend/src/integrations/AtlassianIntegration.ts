@@ -2,7 +2,7 @@ import { Integration, OAuthIntegrationInstallation, ConfigurationFieldDefinition
 import { db } from "../prismaClient";
 import { AtlassianIntegration, AtlassianIntegrationMetadata } from "../shared/Integrations";
 import { IntegrationType, InstallationOptionsFor, AdditionalStateParams } from "../shared/Integrations";
-import { ChannelInputWithConfigs } from "../types/prisma";
+import { AgentTriggerWithConfigs } from "../types/prisma";
 import { OAuthInstallationDetails } from "../shared/types";
 import jwt from "jsonwebtoken";
 import { settings } from "../config/settings";
@@ -13,7 +13,7 @@ import { JiraWebhookPayload } from "../utility/JiraWebhookPayload";
 import { InputEvent } from "./abstract/InputEvent";
 import { InputConfigType } from "@prisma/client";
 import { RunHistoryTrigger } from "../shared/RunHistoryTypes";
-import { EventProcessor } from "../agent/ChannelAgent/EventProcessor";
+import { EventProcessor } from "../agent/AgentRunner/EventProcessor";
 import logger, { runWithUserContext } from "../logger";
 import { createOAuthStateToken } from "../utility/oauth";
 import { integrationTaskQueue } from "./IntegrationTaskQueues";
@@ -476,7 +476,7 @@ export class AtlassianIntegrationManager implements Integration<AtlassianIntegra
         }
     }
 
-    async setupChannelInput(integrationId: string, automationInput: ChannelInputWithConfigs): Promise<void> {
+    async setupAgentTrigger(integrationId: string, automationInput: AgentTriggerWithConfigs): Promise<void> {
         try {
             // Get the integration
             const integration = await db().atlassian_integrations.findUnique({
@@ -645,7 +645,7 @@ export class AtlassianIntegrationManager implements Integration<AtlassianIntegra
         }
     }
 
-    async teardownChannelInput(integrationId: string, automationInput: ChannelInputWithConfigs): Promise<void> {
+    async teardownAgentTrigger(integrationId: string, automationInput: AgentTriggerWithConfigs): Promise<void> {
         try {
             // Get the integration
             const integration = await db().atlassian_integrations.findUnique({
@@ -969,7 +969,7 @@ export class JiraEvent extends InputEvent {
         this.integrationId = integrationId;
     }
 
-    formatForChannelAgent(): string {
+    formatForAgentRunner(): string {
         const indentMultiline = (text: string): string =>
             text
                 .split('\n')
@@ -1070,7 +1070,7 @@ export class JiraEvent extends InputEvent {
         return `Jira ${this.data.webhookEvent}`;
     }
 
-    matchesChannelInput(automationInput: ChannelInputWithConfigs): boolean {
+    matchesAgentTrigger(automationInput: AgentTriggerWithConfigs): boolean {
         logger.debug(`Checking if Jira event matches automation input: ${automationInput.config_type}`, { configType: automationInput.config_type });
         // Check if integration type matches
         if (automationInput.config_type !== InputConfigType.JIRA) {

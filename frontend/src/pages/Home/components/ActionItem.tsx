@@ -1,9 +1,9 @@
 import { ExternalLink } from "lucide-react";
 import { RunHistoryAction } from "../../../shared/RunHistoryTypes";
-import { IconForIntegration } from "../../Channels/components/Integration";
+import { IconForIntegration } from "../../Agents/components/Integration";
 
 export interface ActionItemProps {
-    action: RunHistoryAction & { timestamp: string; channelName: string };
+    action: RunHistoryAction & { timestamp: string; agentName: string };
 }
 
 export function ActionItem({ action }: ActionItemProps) {
@@ -34,7 +34,7 @@ export function ActionItem({ action }: ActionItemProps) {
                     </span>
                 </div>
                 <p className="text-xs text-muted-foreground mb-1">
-                    {action.channelName} • {action.details}
+                    {action.agentName} • {action.details}
                 </p>
             </div>
         </div>

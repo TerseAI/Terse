@@ -4,7 +4,7 @@ import logger from "../../../logger";
 import { createGitHubClient, listCommits, parseRepoFullName, getGitHubAccessToken } from "../githubApiClient";
 import { IntegrationType } from "../../../shared/Integrations";
 import { RunHistoryActionType } from "@prisma/client";
-import { SessionWithTracking } from "../../../agent/ChannelAgent/ChannelAgent";
+import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner";
 import { Session } from "../../../server";
 
 /**

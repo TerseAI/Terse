@@ -1,7 +1,7 @@
 import { useState } from "react";
 import type { RunHistoryStatus } from "../../shared/RunHistoryTypes";
 import RunHistoryPagination from "./RunHistoryPagination";
-import { SearchBar } from "../Channels/SearchBar";
+import { SearchBar } from "../Agents/SearchBar";
 import DateRangePicker from "./DatePicker";
 import StatusFilter from "./StatusFilter";
 import {

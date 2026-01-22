@@ -2,14 +2,14 @@ import { RunContext, tool } from "@openai/agents";
 import { z } from "zod";
 import { LinearClient } from "@linear/sdk";
 import { IntegrationType } from "../../../shared/Integrations";
-import { SessionWithTracking } from "../../../agent/ChannelAgent/ChannelAgent";
+import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner";
 import type { IssueCreateInput } from "@linear/sdk/dist/_generated_documents";
 import { RunHistoryActionType } from "@prisma/client";
 import { formatError, needsApproval } from "../../../tools/toolUtils";
 import logger from "../../../logger";
 import { Session } from "../../../server";
 import { LinearIntegrationManager } from "../../../integrations/LinearIntegration";
-import { ChannelOutputWithConfigs } from "../../../types/prisma";
+import { AgentOutputWithConfigs } from "../../../types/prisma";
 
 export const linearCreateTicketTool = tool({
     name: 'linear_create_ticket',

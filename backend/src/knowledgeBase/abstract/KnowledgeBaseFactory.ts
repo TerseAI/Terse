@@ -5,7 +5,7 @@ import { PosthogKnowledgeBase } from "../posthog/PosthogKnowledgeBase";
 import { GitHubKnowledgeBase } from "../github/GitHubKnowledgeBase";
 import { LaunchDarklyKnowledgeBase } from "../launchdarkly/LaunchDarklyKnowledgeBase";
 import { DatadogKnowledgeBase } from "../datadog/DatadogKnowledgeBase";
-import { ChannelKnowledgeBaseWithConfigs, ChannelWithRelations } from "../../types/prisma";
+import { AgentKnowledgeBaseWithConfigs, AgentWithRelations } from "../../types/prisma";
 
 
 export class KnowledgeBaseFactory {
@@ -29,7 +29,7 @@ export class KnowledgeBaseFactory {
         return factory();
     }
 
-    static createKnowledgeBaseWithConfigs(kbType: KnowledgeBaseConfigType, configs: ChannelKnowledgeBaseWithConfigs[]): KnowledgeBase<ConfigInstance> | null {
+    static createKnowledgeBaseWithConfigs(kbType: KnowledgeBaseConfigType, configs: AgentKnowledgeBaseWithConfigs[]): KnowledgeBase<ConfigInstance> | null {
         const kb = this.createKnowledgeBase(kbType);
         if (!kb) {
             return null;
@@ -38,21 +38,21 @@ export class KnowledgeBaseFactory {
         return kb;
     }
 
-    static createKnowledgeBasesFromChannel(
-        channelKnowledgeBases: ChannelWithRelations['knowledge_bases']
+    static createKnowledgeBasesFromAgent(
+        agentKnowledgeBases: AgentWithRelations['knowledge_bases']
     ): KnowledgeBase<ConfigInstance>[] {
-        if (!channelKnowledgeBases || channelKnowledgeBases.length === 0) {
+        if (!agentKnowledgeBases || agentKnowledgeBases.length === 0) {
             return [];
         }
 
         // Group configs by type
-        const configsByType = new Map<KnowledgeBaseConfigType, ChannelKnowledgeBaseWithConfigs[]>();
-        for (const channelKnowledgeBase of channelKnowledgeBases) {
-            const configType = channelKnowledgeBase.config_type as KnowledgeBaseConfigType;
+        const configsByType = new Map<KnowledgeBaseConfigType, AgentKnowledgeBaseWithConfigs[]>();
+        for (const agentKnowledgeBase of agentKnowledgeBases) {
+            const configType = agentKnowledgeBase.config_type as KnowledgeBaseConfigType;
             if (!configsByType.has(configType)) {
                 configsByType.set(configType, []);
             }
-            configsByType.get(configType)!.push(channelKnowledgeBase as ChannelKnowledgeBaseWithConfigs);
+            configsByType.get(configType)!.push(agentKnowledgeBase as AgentKnowledgeBaseWithConfigs);
         }
 
         // Create one knowledge base instance per type with all configs of that type

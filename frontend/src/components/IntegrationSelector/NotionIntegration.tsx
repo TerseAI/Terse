@@ -9,7 +9,7 @@ import { InputConfigSelectorProps } from './types';
 import { useNotionIntegrations } from '@/hooks/api/useNotionIntegrations';
 import { useOAuthConnection } from '@/hooks/useOAuthConnection';
 import { useIntegrationId } from '@/hooks/useIntegrationId';
-import { IconForConfigType } from '../../pages/Channels/components/Integration';
+import { IconForConfigType } from '../../pages/Agents/components/Integration';
 import { useEffect } from 'react';
 
 export function NotionIntegration({

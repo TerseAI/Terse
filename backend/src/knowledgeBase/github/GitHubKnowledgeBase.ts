@@ -1,6 +1,6 @@
 import { Tool } from "@openai/agents";
 import { Session } from "../../server";
-import { ChannelKnowledgeBaseWithConfigs, PrismaTransaction, User } from "../../types/prisma";
+import { AgentKnowledgeBaseWithConfigs, PrismaTransaction, User } from "../../types/prisma";
 import { KnowledgeBaseConfigType } from "@prisma/client";
 import { GitHubKBConfig } from "../../shared/Configs";
 import { IntegrationType } from "../../shared/Integrations";
@@ -74,7 +74,7 @@ export class GitHubKnowledgeBase extends KnowledgeBase<GitHubKBConfig> {
         });
     }
 
-    async addKnowledgeBaseToChannel(tx: PrismaTransaction, channelKnowledgeBaseId: string, knowledgeBase: GitHubKBConfig): Promise<void> {
+    async addKnowledgeBaseToAgent(tx: PrismaTransaction, channelKnowledgeBaseId: string, knowledgeBase: GitHubKBConfig): Promise<void> {
         await tx.automation_github_kb_configs.create({
             data: {
                 automation_knowledge_base_id: channelKnowledgeBaseId,
@@ -88,7 +88,7 @@ export class GitHubKnowledgeBase extends KnowledgeBase<GitHubKBConfig> {
      * Returns system instructions for GitHub knowledge base.
      * Provides guidance on how to effectively explore and understand codebases.
      */
-    protected getSystemInstructionsForConfigs(configs: ChannelKnowledgeBaseWithConfigs[]): string {
+    protected getSystemInstructionsForConfigs(configs: AgentKnowledgeBaseWithConfigs[]): string {
         if (configs.length === 0) {
             throw new Error('No GitHub KB configs provided');
         }

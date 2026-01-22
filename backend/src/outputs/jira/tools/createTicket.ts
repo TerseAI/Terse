@@ -1,7 +1,7 @@
 import { RunContext, tool } from "@openai/agents";
 import { z } from "zod";
 import { IntegrationType } from "../../../shared/Integrations";
-import { SessionWithTracking } from "../../../agent/ChannelAgent/ChannelAgent";
+import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner";
 import { RunHistoryActionType } from "@prisma/client";
 import { formatError, needsApproval } from "../../../tools/toolUtils";
 import logger from "../../../logger";

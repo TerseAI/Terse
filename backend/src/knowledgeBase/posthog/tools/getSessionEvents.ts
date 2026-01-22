@@ -4,7 +4,7 @@ import logger from "../../../logger.js";
 import { PostHogSessionService, SessionEventsResult } from "./eventDecoder.js";
 import { IntegrationType } from "../../../shared/Integrations.js";
 import { RunHistoryActionType } from "@prisma/client";
-import { SessionWithTracking } from "../../../agent/ChannelAgent/ChannelAgent.js";
+import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner.js";
 import { Session } from "../../../server.js";
 import { getPosthogApiKeyByIntegrationId } from "../posthogApiClient.js";
 

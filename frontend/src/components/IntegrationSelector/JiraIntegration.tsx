@@ -18,7 +18,7 @@ import {
 } from "../ui/select";
 import { useEffect } from 'react';
 import { ConfigType } from '../../shared/Configs';
-import { IconForConfigType } from '../../pages/Channels/components/Integration';
+import { IconForConfigType } from '../../pages/Agents/components/Integration';
 
 export function JiraIntegration({
     input,

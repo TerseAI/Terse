@@ -2,7 +2,7 @@ import { Runner } from "@openai/agents-core";
 
 
 type RunnerConfig = {
-    channelId: string;
+    agentId: string;
     runId: string;
     userId: string;
     env: string;
@@ -11,12 +11,12 @@ type RunnerConfig = {
 /**
  * Creates a new runner instance with the given configuration, enabling visibility into an agent run in the UI.
  * @param config - The configuration for the runner.
- * @returns 
+ * @returns
  */
 export function runnerFactory(config: RunnerConfig): Runner {
     return new Runner({
         traceMetadata: {
-            channelId: config.channelId,
+            agentId: config.agentId,
             runId: config.runId,
             userId: config.userId,
             env: config.env,

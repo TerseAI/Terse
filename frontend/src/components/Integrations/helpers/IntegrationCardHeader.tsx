@@ -1,4 +1,4 @@
-import { IntegrationTitle } from "@/pages/Channels/components/IntegrationTitle";
+import { IntegrationTitle } from "@/pages/Agents/components/IntegrationTitle";
 import { CardHeader, CardTitle } from "../../ui/card";
 import { Badge } from "../../ui/badge";
 import { BadgeCheckIcon } from "lucide-react";

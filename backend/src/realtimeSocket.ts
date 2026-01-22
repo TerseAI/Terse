@@ -6,9 +6,9 @@ import { Jwt } from "./utility/jwt";
 import { urls, nodeEnv, optional } from "./config/settings";
 import { SendModelRequest, ModelEvent, ModelRequest, ToolApprovalResponse } from "./shared/ModelEvents";
 import { db } from "./prismaClient";
-import { ChannelAgent } from "./agent/ChannelAgent/ChannelAgent";
-import { RunContext } from "./agent/ChannelAgent/SystemPromptBuilder";
-import { ChannelWithRelations } from "./types/prisma";
+import { AgentRunner } from "./agent/AgentRunner/AgentRunner";
+import { RunContext } from "./agent/AgentRunner/SystemPromptBuilder";
+import { AgentWithRelations } from "./types/prisma";
 import { getInputConfigInclude, getOutputConfigInclude, getKnowledgeBaseConfigInclude } from './utility/prismaIncludes';
 import { OutputFactory } from "./outputs/abstract/OutputFactory";
 import { Output } from "./outputs/abstract/Output";
@@ -16,7 +16,7 @@ import { KnowledgeBaseFactory } from "./knowledgeBase/abstract/KnowledgeBaseFact
 import { KnowledgeBase } from "./knowledgeBase/abstract/KnowledgeBase";
 import { ConfigInstance } from "./shared/Configs";
 import { Session } from "./server";
-import { storeChatEvent, markRunFailed, finalizeRunStatus } from "./agent/ChannelAgent/runHistory";
+import { storeChatEvent, markRunFailed, finalizeRunStatus } from "./agent/AgentRunner/runHistory";
 import { DirectiveTask, directiveTaskQueue } from "./agent/DirectiveAgent/DirectiveAgent";
 import { ApprovalService } from "./services/ApprovalService";
 import logger from "./logger";
@@ -31,9 +31,9 @@ let pub: ReturnType<typeof createClient> | null = null;
 let sub: ReturnType<typeof createClient> | null = null;
 
 function createKnowledgeBases(
-    channelKnowledgeBases: ChannelWithRelations['knowledge_bases']
+    agentKnowledgeBases: AgentWithRelations['knowledge_bases']
 ): KnowledgeBase<ConfigInstance>[] {
-    return KnowledgeBaseFactory.createKnowledgeBasesFromChannel(channelKnowledgeBases);
+    return KnowledgeBaseFactory.createKnowledgeBasesFromAgent(agentKnowledgeBases);
 }
 
 export async function initializeRealtimeSocket(server: HttpServer): Promise<Server> {
@@ -147,7 +147,7 @@ export async function initializeRealtimeSocket(server: HttpServer): Promise<Serv
                 return;
             }
 
-            const channel: ChannelWithRelations | null = await prisma.automations.findUnique({
+            const agent: AgentWithRelations | null = await prisma.automations.findUnique({
                 where: {
                     id: runRecord.automation.id,
                     user_id: userId
@@ -166,22 +166,22 @@ export async function initializeRealtimeSocket(server: HttpServer): Promise<Serv
                 }
             })
 
-            if (!channel) {
-                logger.error(`[channel:chat:message] Channel not found for automation id: ${runRecord.automation.id}`, { automationId: runRecord.automation.id, userId });
+            if (!agent) {
+                logger.error(`[agent:chat:message] Agent not found for automation id: ${runRecord.automation.id}`, { automationId: runRecord.automation.id, userId });
                 return;
             }
 
-            if (!channel.outputs || channel.outputs.length === 0) {
-                logger.error(`[channel:chat:message] No output integrations found for channel: ${channel.id}`, { channelId: channel.id, userId });
+            if (!agent.outputs || agent.outputs.length === 0) {
+                logger.error(`[agent:chat:message] No output integrations found for agent: ${agent.id}`, { agentId: agent.id, userId });
                 return;
             }
 
-            // Create outputs from channel configuration
+            // Create outputs from agent configuration
             let outputs: Output<ConfigInstance>[];
             try {
-                outputs = OutputFactory.createOutputsFromChannel(channel);
+                outputs = OutputFactory.createOutputsFromAgent(agent);
             } catch (error) {
-                logger.error(`[channel:chat:message] Failed to create outputs for channel: ${channel.id}`, { error, channelId: channel.id, userId });
+                logger.error(`[agent:chat:message] Failed to create outputs for agent: ${agent.id}`, { error, agentId: agent.id, userId });
                 return;
             }
 
@@ -196,7 +196,7 @@ export async function initializeRealtimeSocket(server: HttpServer): Promise<Serv
             }
             
 
-            // Create base session for ChannelAgent
+            // Create base session for AgentRunner
             const session: Session = {
                 user: user,
                 isUserInitiated: true,
@@ -216,31 +216,31 @@ export async function initializeRealtimeSocket(server: HttpServer): Promise<Serv
                 message: userMessage,
             };
             const userMessageEventId = await storeChatEvent(runId, userMessageEvent);
-            emitCacheInvalidationWithWildcard(user.id, 'runHistory', channel.id);
+            emitCacheInvalidationWithWildcard(user.id, 'runHistory', agent.id);
             emitCacheInvalidationWithWildcard(user.id, 'chatHistory', runId);
 
-            // Create knowledge bases from channel configuration
-            const knowledgeBases = createKnowledgeBases(channel.knowledge_bases || []);
+            // Create knowledge bases from agent configuration
+            const knowledgeBases = createKnowledgeBases(agent.knowledge_bases || []);
 
             const runContext: RunContext = { runId };
-            const channelAgent = new ChannelAgent(session, outputs, knowledgeBases, channel, runContext);
-            await channelAgent.initializeAgent();
-            
+            const agentRunner = new AgentRunner(session, outputs, knowledgeBases, agent, runContext);
+            await agentRunner.initializeAgent();
+
             let result;
             try {
-                result = await channelAgent.userMessageRun(userMessage, {
+                result = await agentRunner.userMessageRun(userMessage, {
                     runId,
                     userId: userId,
-                    channelId: channel.id,
+                    agentId: agent.id,
                 });
             } catch (error) {
                 // Log the error and update run history
                 const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-                logger.error(`[channel:chat:message] Error running channel agent: ${errorMessage}`, { error, runId, channelId: channel.id, userId });
-                
+                logger.error(`[agent:chat:message] Error running agent: ${errorMessage}`, { error, runId, agentId: agent.id, userId });
+
                 try {
                     await markRunFailed(runId, errorMessage, 'agent');
-                    emitCacheInvalidationWithWildcard(userId, 'runHistory', channel.id);
+                    emitCacheInvalidationWithWildcard(userId, 'runHistory', agent.id);
                 } catch (e) {
                     logger.error('Failed to mark run as failed', { error: e, runId });
                 }
@@ -252,14 +252,14 @@ export async function initializeRealtimeSocket(server: HttpServer): Promise<Serv
                 const hasFinalOutput = Boolean(result.result?.finalOutput);
                 try {
                     await finalizeRunStatus(runId, hasFinalOutput ? 'success' : 'failed');
-                    emitCacheInvalidationWithWildcard(userId, 'runHistory', channel.id);
+                    emitCacheInvalidationWithWildcard(userId, 'runHistory', agent.id);
                 } catch (e) {
                     logger.error('Failed to finalize run status', { error: e, runId });
                 }
             }
 
             directiveTaskQueue.emit(new DirectiveTask(
-                channel.id,
+                agent.id,
                 runId,
                 userMessageEventId,
                 userId,

@@ -1,6 +1,6 @@
 import { Tool } from "@openai/agents";
 import { Session } from "../../server";
-import { ChannelKnowledgeBaseWithConfigs, PrismaTransaction, User } from "../../types/prisma";
+import { AgentKnowledgeBaseWithConfigs, PrismaTransaction, User } from "../../types/prisma";
 import { KnowledgeBaseConfigType } from "@prisma/client";
 import { ConfigInstance, PosthogConfig } from "../../shared/Configs";
 import { IntegrationType } from "../../shared/Integrations";
@@ -50,7 +50,7 @@ export class PosthogKnowledgeBase extends KnowledgeBase<PosthogConfig> {
         }
     }
 
-    async addKnowledgeBaseToChannel(tx: PrismaTransaction, channelKnowledgeBaseId: string, knowledgeBase: PosthogConfig): Promise<void> {
+    async addKnowledgeBaseToAgent(tx: PrismaTransaction, channelKnowledgeBaseId: string, knowledgeBase: PosthogConfig): Promise<void> {
         // Use unchecked input to bypass relation checks
         await tx.automation_posthog_configs.create({
             data: {
@@ -67,7 +67,7 @@ export class PosthogKnowledgeBase extends KnowledgeBase<PosthogConfig> {
      * Returns system instructions for PostHog knowledge base.
      * Provides guidance on when and how to use PostHog tools with an investigative mindset.
      */
-    protected getSystemInstructionsForConfigs(configs: ChannelKnowledgeBaseWithConfigs[]): string {
+    protected getSystemInstructionsForConfigs(configs: AgentKnowledgeBaseWithConfigs[]): string {
         if (configs.length === 0) {
             throw new Error('No PostHog KB configs provided');
         }

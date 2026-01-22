@@ -1,6 +1,6 @@
 import { RunContext, tool } from "@openai/agents";
 import { z } from "zod";
-import { SessionWithTracking } from "../../../agent/ChannelAgent/ChannelAgent";
+import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner";
 import { AttributionStore } from "../../../rag/AttributionStore";
 import logger from "../../../logger";
 import { IntegrationType } from "../../../shared/Integrations";

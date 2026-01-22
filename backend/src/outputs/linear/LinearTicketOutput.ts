@@ -1,6 +1,6 @@
 
 import { Tool } from "@openai/agents";
-import { ChannelOutputWithConfigs, PrismaTransaction, User } from "../../types/prisma";
+import { AgentOutputWithConfigs, PrismaTransaction, User } from "../../types/prisma";
 import { Output, ToolboxEntry } from "../abstract/Output";
 import { db } from "../../prismaClient";
 import { OutputConfigType } from "@prisma/client";
@@ -27,7 +27,7 @@ export class LinearTicketOutput extends Output<LinearOutputConfig> {
         }
     }
 
-    async addOutputToChannel(tx: PrismaTransaction, channelOutputId: string, output: LinearOutputConfig): Promise<void> {
+    async addOutputToAgent(tx: PrismaTransaction, channelOutputId: string, output: LinearOutputConfig): Promise<void> {
         await tx.automation_linear_configs.create({
             data: {
                 automation_output_id: channelOutputId,
@@ -37,7 +37,7 @@ export class LinearTicketOutput extends Output<LinearOutputConfig> {
         });
     }
 
-    protected getSystemInstructionsForConfigs(configs: ChannelOutputWithConfigs[]): string {
+    protected getSystemInstructionsForConfigs(configs: AgentOutputWithConfigs[]): string {
         if (configs.length === 0) {
             throw new Error('No Linear configs provided');
         }

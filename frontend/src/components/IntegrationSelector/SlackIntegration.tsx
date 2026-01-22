@@ -192,12 +192,12 @@ export function SlackIntegration({
                             showListenToDMsOption={!isBotUser}
                             showUserFilter={!isBotUser}
                             isBotToken={isBotUser}
-                            onSelectChannel={(channelId, channelName) => {
+                            onSelectChannel={(channelId, agentName) => {
                                 const hasChannel = channelId && channelId.trim() !== '';
                                 const updatedConfig = new SlackConfig(
                                     selectedIntegrationId,
                                     hasChannel ? channelId : undefined,
-                                    hasChannel ? channelName : undefined,
+                                    hasChannel ? agentName : undefined,
                                     hasChannel ? false : currentConfig?.listenToUserDms,
                                     currentConfig?.userIds
                                 );

@@ -5,11 +5,11 @@ import { Request, Response } from "express";
 import { slack as slackConfig, jwt as jwtConfig, urls } from '../config/settings';
 import crypto from 'crypto';
 import chalk from "chalk";
-import { EventProcessor } from "../agent/ChannelAgent/EventProcessor";
+import { EventProcessor } from "../agent/AgentRunner/EventProcessor";
 import { db } from "../prismaClient";
 import { LogLevel, WebClient } from "@slack/web-api";
 import { RunHistoryTrigger } from "../shared/RunHistoryTypes";
-import { ChannelInputWithConfigs, UserSlackIntegration, UserSlackIntegrationWithUser } from "../types/prisma";
+import { AgentTriggerWithConfigs, UserSlackIntegration, UserSlackIntegrationWithUser } from "../types/prisma";
 import { InputEvent } from "./abstract/InputEvent";
 import jwt from "jsonwebtoken";
 import axios from "axios";
@@ -393,12 +393,12 @@ export class SlackIntegrationManager implements Integration<SlackIntegration, Sl
         return Promise.resolve();
     }
 
-    async setupChannelInput(integrationId: string, channelInput: ChannelInputWithConfigs): Promise<void> {
+    async setupAgentTrigger(integrationId: string, agentTrigger: AgentTriggerWithConfigs): Promise<void> {
         // Slack doesn't require any setup for channel inputs
         // Webhooks are managed at the integration level
     }
 
-    async teardownChannelInput(integrationId: string, channelInput: ChannelInputWithConfigs): Promise<void> {
+    async teardownAgentTrigger(integrationId: string, agentTrigger: AgentTriggerWithConfigs): Promise<void> {
         // Slack doesn't require any teardown for channel inputs
         // Webhooks are managed at the integration level
     }
@@ -448,7 +448,7 @@ export class SlackEvent extends InputEvent implements Identifiable {
         this.entityId = data.permalink || '';
     }
 
-    formatForChannelAgent(): string {
+    formatForAgentRunner(): string {
         // Extract rich content from blocks and attachments (used by third-party apps)
         const blockContent = this.data.blocks 
             ? extractTextFromBlocks(this.data.blocks) 
@@ -523,15 +523,15 @@ export class SlackEvent extends InputEvent implements Identifiable {
         return `Slack Event: ${isDM ? 'DM' : this.data.channelName || this.data.channelId} - ${this.data.userName || this.data.userId}}`;
     }
 
-    matchesChannelInput(channelInput: ChannelInputWithConfigs): boolean {
+    matchesAgentTrigger(agentTrigger: AgentTriggerWithConfigs): boolean {
         // Check if integration type matches
-        if (channelInput.config_type !== InputConfigType.SLACK) {
+        if (agentTrigger.config_type !== InputConfigType.SLACK) {
             return false;
         }
 
-        // If channelInput has slack_config with channel_id, filter by channel
+        // If agentTrigger has slack_config with channel_id, filter by channel
         // Otherwise, all Slack events match (no channel filtering)
-        const slackConfig = channelInput.slack_config;
+        const slackConfig = agentTrigger.slack_config;
         if (!slackConfig) {
             return false;
         }
@@ -908,14 +908,14 @@ async function handleSlackMessage(event: SlackMessageEvent, teamId: string, auth
                     const results = await eventProcessor.process();
 
                     // Log results for this user
-                    if (results.length > 0 && results.some(r => r.success || r.channel !== null)) {
-                        totalMatches += results.filter(r => r.success || r.channel !== null).length;
+                    if (results.length > 0 && results.some(r => r.success || r.agentConfig !== null)) {
+                        totalMatches += results.filter(r => r.success || r.agentConfig !== null).length;
                         logger.info(`User ${userSlackIntegration.user.email}: ${results.length} automation(s) matched`, { userId: userSlackIntegration.user.id, email: userSlackIntegration.user.email, resultsCount: results.length, teamId });
                         for (const result of results) {
                             if (result.success) {
-                                logger.debug(`  ✓ Channel "${result.channel?.name}" processed successfully`, { channelName: result.channel?.name, userId: userSlackIntegration.user.id });
-                            } else if (result.channel) {
-                                logger.warn(`  ⚠ Channel "${result.channel?.name}": ${result.message}`, { channelName: result.channel?.name, message: result.message, userId: userSlackIntegration.user.id });
+                                logger.debug(`  ✓ Agent "${result.agentConfig?.name}" processed successfully`, { agentName: result.agentConfig?.name, userId: userSlackIntegration.user.id });
+                            } else if (result.agentConfig) {
+                                logger.warn(`  ⚠ Agent "${result.agentConfig?.name}": ${result.message}`, { agentName: result.agentConfig?.name, message: result.message, userId: userSlackIntegration.user.id });
                             }
                         }
                     }

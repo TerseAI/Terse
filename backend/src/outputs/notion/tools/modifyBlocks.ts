@@ -3,7 +3,7 @@ import { z } from "zod";
 import { Client } from '@notionhq/client';
 import { IntegrationType } from "../../../shared/Integrations";
 import { getBlockTypeName, describeBlocks, extractPageTitle } from "../../../utility/notion";
-import { SessionWithTracking } from "../../../agent/ChannelAgent/ChannelAgent";
+import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner";
 import { formatError, needsApproval } from "../../../tools/toolUtils";
 import { ConfigType } from "../../../shared/Configs";
 import logger from "../../../logger";
