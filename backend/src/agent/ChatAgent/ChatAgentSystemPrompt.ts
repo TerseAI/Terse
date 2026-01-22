@@ -124,6 +124,8 @@ export async function buildChatAgentSystemPrompt(userId: string, userTimezone?: 
 
     You currently have the following integrations connected:${existingIntegrationsList}
 
+    You can also modify these integrations with the user's permissions. Just call promptForIntegration tool to prompt the user to configure the integration.
+
     If the user does not have an integration but it's need to build the agent they want, you can call the promptForIntegration tool to prompt the user to connect the integration.
 
     ## How to use tools:
