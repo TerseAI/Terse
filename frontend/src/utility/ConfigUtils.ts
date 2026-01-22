@@ -38,8 +38,8 @@ export function deserializeConfig(jsonConfig: any): ConfigInstance {
         case ConfigType.SLACK:
             return new SlackConfig(
                 integrationId,
-                jsonConfig.agentId,
-                jsonConfig.agentName,
+                jsonConfig.channelId,
+                jsonConfig.channelName,
                 jsonConfig.listenToUserDms || false,
                 jsonConfig.userIds || []
             );
@@ -112,8 +112,8 @@ export function deserializeConfig(jsonConfig: any): ConfigInstance {
         case ConfigType.SLACK_OUTPUT:
             return new SlackOutputConfig(
                 integrationId,
-                jsonConfig.agentId,
-                jsonConfig.agentName
+                jsonConfig.channelId,
+                jsonConfig.channelName
             );
         case ConfigType.GMAIL_OUTPUT:
             return new GmailOutputConfig(
