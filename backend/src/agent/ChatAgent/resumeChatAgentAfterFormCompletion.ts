@@ -59,6 +59,10 @@ export async function resumeChatAgentAfterFormCompletion(
         const message = `The ${integrationName} integration has been successfully connected. Integration ID: ${integrationId}`;
         await chatAgent.run(message);
 
+        if (messageTs) {
+            await removeWorkingReaction(client, channel, messageTs);
+        }
+
         logger.info('ChatAgent resumed after form completion', { userId, chatId, channel, integrationType, integrationId });
     } catch (error) {
         logger.error('Error resuming ChatAgent after form completion', { error, userId, chatId, channel, integrationType, integrationId });
@@ -100,5 +104,21 @@ async function showIntegrationSuccessMessage(
         });
     } catch (error) {
         logger.warn('Failed to update message or add reaction after form completion', { error, messageTs });
+    }
+}
+
+async function removeWorkingReaction(
+    client: WebClient,
+    channel: string,
+    messageTs: string
+): Promise<void> {
+    try {
+        await client.reactions.remove({
+            channel,
+            timestamp: messageTs,
+            name: 'eyes',
+        });
+    } catch (error) {
+        logger.warn('Failed to remove working reaction', { error, messageTs });
     }
 }
