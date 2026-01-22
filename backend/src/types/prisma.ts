@@ -211,6 +211,14 @@ export type AutomationWithNotificationSettingsRelations = Prisma.automationsGetP
 }>;
 export type AgentWithNotificationSettingsRelations = AutomationWithNotificationSettingsRelations; // Alias for rebranding (formerly ChannelWithNotificationSettingsRelations)
 
+export type AutomationWithToolApprovalsRelations = Prisma.automationsGetPayload<{
+  include: {
+    tool_approvals: true;
+  }
+}>;
+
+export type AgentWithToolApprovalsRelations = AutomationWithToolApprovalsRelations;
+
 export type AutomationWithKnowledgeBaseRelations = Prisma.automationsGetPayload<{
   include: {
     knowledge_bases: {
@@ -223,8 +231,8 @@ export type AutomationWithKnowledgeBaseRelations = Prisma.automationsGetPayload<
 }>;
 export type AgentWithKnowledgeBaseRelations = AutomationWithKnowledgeBaseRelations;
 
-export type AutomationWithRelations = AutomationWithInputRelations & AutomationWithOutputRelations & AutomationWithPromptRelations & Partial<AutomationWithKnowledgeBaseRelations>;
-export type AgentWithRelations = AgentWithTriggerRelations & AgentWithOutputRelations & AgentWithPromptRelations & Partial<AgentWithKnowledgeBaseRelations>;
+export type AutomationWithRelations = AutomationWithInputRelations & AutomationWithOutputRelations & AutomationWithPromptRelations & Partial<AutomationWithKnowledgeBaseRelations> & Partial<AutomationWithToolApprovalsRelations>;
+export type AgentWithRelations = AgentWithTriggerRelations & AgentWithOutputRelations & AgentWithPromptRelations & Partial<AgentWithKnowledgeBaseRelations> & Partial<AgentWithToolApprovalsRelations>;
 
 // Extract the transaction type from PrismaClient
 export type PrismaTransaction = Parameters<Parameters<PrismaClient['$transaction']>[0]>[0];

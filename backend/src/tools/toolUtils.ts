@@ -46,8 +46,23 @@ export type ErrorContext = {
 
 // MARK: - Approval
 
-export async function needsApproval(context?: RunContext<unknown>): Promise<boolean> {
+export async function needsApproval(
+    context?: RunContext<unknown>,
+    toolName?: string
+): Promise<boolean> {
     // Type guard: safely access agent.requireApproval from SessionWithTracking
     const sessionWithTracking = context?.context as SessionWithTracking<Session> | undefined;
-    return sessionWithTracking?.agent?.requireApproval ?? false;
+    const agent = sessionWithTracking?.agent;
+    
+    if (!agent) {
+        return false;
+    }
+
+    // If toolApprovals is defined and has items, check if this tool requires approval
+    if (toolName && agent.toolApprovals && agent.toolApprovals.length > 0) {
+        return agent.toolApprovals.includes(toolName);
+    }
+
+    // Fall back to requireApproval flag for backward compatibility
+    return agent.requireApproval ?? false;
 }

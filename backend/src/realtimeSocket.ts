@@ -163,7 +163,8 @@ export async function initializeRealtimeSocket(server: HttpServer): Promise<Serv
                     },
                     knowledge_bases: {
                         include: getKnowledgeBaseConfigInclude()
-                    }
+                    },
+                    tool_approvals: true
                 }
             })
 

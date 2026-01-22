@@ -7,13 +7,14 @@ import { IntegrationType } from "../../../shared/Integrations";
 import { RunHistoryActionType } from "@prisma/client";
 import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner";
 import { Session } from "../../../server";
+import { ToolName } from "../../../tools/ToolNames";
 
 /**
  * Tool for sending messages to Slack channels or DMs.
  * Messages are sent as the Terse bot.
  */
 export const slackSendMessageTool = tool({
-    name: "slack_send_message",
+    name: ToolName.SLACK_SEND_MESSAGE,
     description: `Send message to Slack channel. Supports plain text (mrkdwn) or Block Kit (JSON blocks).`,
     parameters: z.object({
         integrationId: z.string().describe('The integration ID of the Slack workspace to use.'),

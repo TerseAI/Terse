@@ -295,6 +295,7 @@ export const AgentSchema = z.object({
     outputs: z.array(AgentOutputSchema).min(1),
     knowledgeBases: z.array(AgentKnowledgeBaseSchema).nullable(),
     notificationSettings: AgentNotificationSettingsSchema.nullable(),
+    toolApprovals: z.array(z.string()).optional(),
     updatedAt: z.string().nullable(),
 }).strict();
 
@@ -339,6 +340,7 @@ function toAgentDraft(agent: AgentSchemaInput): AgentDraft {
             config: toConfigInstance(normalizeConfig(kb.config)),
         })) ?? undefined,
         notificationSettings: agent.notificationSettings ?? undefined,
+        toolApprovals: agent.toolApprovals ?? undefined,
         updatedAt: agent.updatedAt ?? undefined,
     };
 }

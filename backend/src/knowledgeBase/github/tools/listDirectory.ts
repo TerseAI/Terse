@@ -6,13 +6,14 @@ import { IntegrationType } from "../../../shared/Integrations";
 import { RunHistoryActionType } from "@prisma/client";
 import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner";
 import { Session } from "../../../server";
+import { ToolName } from "../../../tools/ToolNames";
 
 /**
  * Tool for listing directory contents in GitHub repositories.
  * Uses GitHub's Contents API and Git Trees API.
  */
 export const listGitHubDirectoryTool = tool({
-    name: 'listGitHubDirectory',
+    name: ToolName.GITHUB_LIST_DIRECTORY,
     description: `List files and directories in a GitHub repository. Use this to:
 - Explore the repository structure
 - Find where specific types of files are located

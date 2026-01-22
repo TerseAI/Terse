@@ -6,6 +6,7 @@ import { IntegrationType } from "../../../shared/Integrations";
 import { RunHistoryActionType } from "@prisma/client";
 import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner";
 import { Session } from "../../../server";
+import { ToolName } from "../../../tools/ToolNames";
 
 // Helper functions
 const normalizePerPage = (perPage?: number): number => Math.min(perPage || 20, 100);
@@ -30,7 +31,7 @@ const calculateSummary = (prs: Array<{ merged: boolean; state: string }>) => {
 };
 
 export const listGitHubPullRequestsTool = tool({
-    name: 'listGitHubPullRequests',
+    name: ToolName.GITHUB_LIST_PULL_REQUESTS,
     description: `List pull requests in GitHub repositories within a time window. Use this to:
 - Find recently merged PRs to understand recent changes
 - Review what work has been completed in a given period

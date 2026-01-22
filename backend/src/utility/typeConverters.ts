@@ -340,6 +340,7 @@ export const convertPrismaOutputConfigToConfigInstance = (channelOutput: AgentOu
         case OutputConfigType.JIRA_TICKET:
         case OutputConfigType.SLACK_CHANNEL:
         case OutputConfigType.GMAIL:
+        case OutputConfigType.TERSE:
             break;
         default:
             throw channelOutput.config_type satisfies never;
@@ -467,6 +468,8 @@ export const convertOutputConfigTypeToIntegrationType = (outputConfigType: Outpu
             return IntegrationType.SLACK;
         case OutputConfigType.GMAIL:
             return IntegrationType.GMAIL;
+        case OutputConfigType.TERSE:
+            return IntegrationType.TERSE;
         default:
             throw outputConfigType satisfies never;
     }

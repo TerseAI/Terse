@@ -23,41 +23,13 @@ import { validateGithubRepositoryIds } from "../../integrations/githubValidation
 export class GitHubKnowledgeBase extends KnowledgeBase<GitHubKBConfig> {
     constructor() {
         const toolbox: ToolboxEntry[] = [
-            {
-                tool: searchGitHubCodeTool as Tool,
-                isReadOnly: true,
-                integration: IntegrationType.GITHUB
-            },
-            {
-                tool: grepGitHubCodeTool as Tool,
-                isReadOnly: true,
-                integration: IntegrationType.GITHUB
-            },
-            {
-                tool: readGitHubFileTool as Tool,
-                isReadOnly: true,
-                integration: IntegrationType.GITHUB
-            },
-            {
-                tool: listGitHubDirectoryTool as Tool,
-                isReadOnly: true,
-                integration: IntegrationType.GITHUB
-            },
-            {
-                tool: listGitHubPullRequestsTool as Tool,
-                isReadOnly: true,
-                integration: IntegrationType.GITHUB
-            },
-            {
-                tool: listGitHubCommitsTool as Tool,
-                isReadOnly: true,
-                integration: IntegrationType.GITHUB
-            },
-            {
-                tool: summarizeGitHubPullRequestDiffTool as Tool,
-                isReadOnly: true,
-                integration: IntegrationType.GITHUB
-            }
+            { tool: searchGitHubCodeTool as Tool, isReadOnly: true, integration: IntegrationType.GITHUB, displayName: 'Search code' },
+            { tool: grepGitHubCodeTool as Tool, isReadOnly: true, integration: IntegrationType.GITHUB, displayName: 'Grep code' },
+            { tool: readGitHubFileTool as Tool, isReadOnly: true, integration: IntegrationType.GITHUB, displayName: 'Read file' },
+            { tool: listGitHubDirectoryTool as Tool, isReadOnly: true, integration: IntegrationType.GITHUB, displayName: 'List directory' },
+            { tool: listGitHubPullRequestsTool as Tool, isReadOnly: true, integration: IntegrationType.GITHUB, displayName: 'List pull requests' },
+            { tool: listGitHubCommitsTool as Tool, isReadOnly: true, integration: IntegrationType.GITHUB, displayName: 'List commits' },
+            { tool: summarizeGitHubPullRequestDiffTool as Tool, isReadOnly: true, integration: IntegrationType.GITHUB, displayName: 'Summarize PR diff' },
         ];
 
         super(KnowledgeBaseConfigType.GITHUB, toolbox);

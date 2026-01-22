@@ -37,6 +37,7 @@ function AgentDetail() {
     const [prompt, setPrompt] = useState<AgentPrompt | undefined>(undefined);
     const [isActive, setIsActive] = useState<boolean>(true);
     const [requireApproval, setRequireApproval] = useState<boolean>(false);
+    const [toolApprovals, setToolApprovals] = useState<string[]>([]);
     const [notificationSettings, setNotificationSettings] = useState<AgentNotificationSettings>({
         enabled: false,
         actionTypes: [],
@@ -52,6 +53,7 @@ function AgentDetail() {
                 setPrompt(templateHydratedState.prompt);
                 setIsActive(templateHydratedState.isActive);
                 setRequireApproval(templateHydratedState.requireApproval);
+                setToolApprovals(templateHydratedState.toolApprovals || []);
                 setInputs(templateHydratedState.inputs);
                 setOutputs(templateHydratedState.outputs);
                 setKnowledgeBases(templateHydratedState.knowledgeBases);
@@ -71,6 +73,7 @@ function AgentDetail() {
                     setPrompt(undefined);
                     setIsActive(true);
                     setRequireApproval(false);
+                    setToolApprovals([]);
                     setNotificationSettings({ enabled: false, actionTypes: [] });
                 }
             }
@@ -82,6 +85,7 @@ function AgentDetail() {
             setPrompt(agent.prompt);
             setIsActive(agent.isActive);
             setRequireApproval(agent.requireApproval ?? false);
+            setToolApprovals(agent.toolApprovals || []);
             setNotificationSettings(agent.notificationSettings ?? { enabled: false, actionTypes: [] });
         }
     }, [agent, agentId, templateId, templateFound, templateHydratedState, templateHydrated]);
@@ -122,6 +126,8 @@ function AgentDetail() {
         setIsActive,
         requireApproval,
         setRequireApproval,
+        toolApprovals,
+        setToolApprovals,
         notificationSettings,
         setNotificationSettings,
         isLoading,

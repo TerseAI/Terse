@@ -5,6 +5,7 @@ import { GetDataSourceResponse } from '@notionhq/client/build/src/api-endpoints'
 import { IntegrationType } from "../../../shared/Integrations";
 import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner";
 import { formatError } from "../../../tools/toolUtils";
+import { ToolName } from "../../../tools/ToolNames";
 import logger from "../../../logger";
 import { Session } from "../../../server";
 import { NotionIntegrationManager } from "../../../integrations/NotionIntegration";
@@ -46,7 +47,7 @@ function extractPropertyValue(property: any): any {
 }
 
 export const notionQueryDatabaseTool = tool({
-    name: 'notion_query_database',
+    name: ToolName.NOTION_QUERY_DATABASE,
     description: `Query a Notion data source (database) to retrieve pages that match specific criteria.
 
 WHEN TO USE THIS TOOL:

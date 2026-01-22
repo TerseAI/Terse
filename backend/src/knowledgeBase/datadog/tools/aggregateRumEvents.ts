@@ -8,6 +8,7 @@ import { RunHistoryActionType } from "@prisma/client";
 import { Session } from "../../../server";
 import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner";
 import { getDatadogCredentialsByIntegrationId } from "../datadogApiClient";
+import { ToolName } from "../../../tools/ToolNames";
 
 /**
  * Tool for aggregating Datadog RUM events into computed metrics and timeseries.
@@ -16,7 +17,7 @@ import { getDatadogCredentialsByIntegrationId } from "../datadogApiClient";
  * user behavior patterns, or any aggregated metrics over RUM events.
  */
 export const aggregateRumEventsTool = tool({
-    name: 'aggregateRumEvents',
+    name: ToolName.DATADOG_AGGREGATE_RUM_EVENTS,
     description: 'Aggregate Datadog RUM events into metrics. Compute percentiles, averages, sums, etc. Group by facets for breakdowns. Use for performance trends and error rates.',
     parameters: z.object({
         query: z.union([z.string(), z.null()]).describe('Datadog RUM search query to filter events before aggregation (e.g., @type:view)'),

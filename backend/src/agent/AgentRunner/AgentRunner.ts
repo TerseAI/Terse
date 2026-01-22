@@ -408,10 +408,15 @@ export class AgentRunner<
     }
 
     private getToolContext(): SessionWithTracking<T> {
+        const toolApprovals = this.agentConfig.tool_approvals && this.agentConfig.tool_approvals.length > 0
+            ? this.agentConfig.tool_approvals.map((ta: any) => ta.tool_name)
+            : undefined;
+
         return {
             ...this.session,
             agent: {
                 requireApproval: this.agentConfig.require_approval ?? false,
+                toolApprovals: toolApprovals,
             },
         };
     }
@@ -622,6 +627,7 @@ ${inputEvent.formatForAgentRunner()}
 export type SessionWithTracking<T extends Session> = T & {
     agent: {
         requireApproval: boolean;
+        toolApprovals?: string[];
     };
 }
 

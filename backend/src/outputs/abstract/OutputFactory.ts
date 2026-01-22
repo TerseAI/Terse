@@ -9,6 +9,7 @@ import { JiraTicketOutput } from "../jira/JiraTicketOutput";
 import { SlackOutput } from "../slack/SlackOutput";
 import { AgentOutputWithConfigs, AgentWithRelations } from "../../types/prisma";
 import { GmailOutput } from "../gmail/GmailOutput";
+import { TerseSkillsOutput } from "../terse/TerseSkillsOutput";
 
 /**
  * Factory for creating Output instances based on IntegrationType.
@@ -23,7 +24,8 @@ export class OutputFactory {
         [OutputConfigType.LINEAR_TICKET, () => new LinearTicketOutput()],
         [OutputConfigType.JIRA_TICKET, () => new JiraTicketOutput()],
         [OutputConfigType.SLACK_CHANNEL, () => new SlackOutput()],
-        [OutputConfigType.GMAIL, () => new GmailOutput()]
+        [OutputConfigType.GMAIL, () => new GmailOutput()],
+        [OutputConfigType.TERSE, () => new TerseSkillsOutput()]
     ]);
 
     static createOutput(integrationType: OutputConfigType): Output<ConfigInstance> | null {
@@ -52,6 +54,10 @@ export class OutputFactory {
         const configsByType = new Map<OutputConfigType, AgentOutputWithConfigs[]>();
         for (const outputIntegration of agent.outputs) {
             const configType = outputIntegration.config_type as OutputConfigType;
+            // Skip TERSE - it's always included automatically
+            if (configType === OutputConfigType.TERSE) {
+                continue;
+            }
             if (!configsByType.has(configType)) {
                 configsByType.set(configType, []);
             }
@@ -66,6 +72,12 @@ export class OutputFactory {
                 throw new Error(`Output type ${configType} is not supported`);
             }
             outputs.push(output);
+        }
+
+        // Always include TerseSkillsOutput (no config needed)
+        const terseSkills = this.createOutput(OutputConfigType.TERSE);
+        if (terseSkills) {
+            outputs.push(terseSkills);
         }
 
         return outputs;

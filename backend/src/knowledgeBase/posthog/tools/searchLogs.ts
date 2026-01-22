@@ -6,13 +6,14 @@ import { RunHistoryActionType } from "@prisma/client";
 import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner";
 import { Session } from "../../../server";
 import { getPosthogApiKeyByIntegrationId } from "../posthogApiClient";
+import { ToolName } from "../../../tools/ToolNames";
 
 /**
  * Tool for querying PostHog logs with flexible filtering options.
  * This tool queries the PostHog Logs product API to find logs. You can filter by user, log level, message content, or combinations thereof.
  */
 export const searchLogsTool = tool({
-    name: 'searchPosthogLogs',
+    name: ToolName.POSTHOG_SEARCH_LOGS,
     description: 'Query PostHog logs with flexible filtering. Returns logs data and a link to view logs in PostHog. You can filter by user email, log severity levels (error, warn, info, debug), message text search, or combinations. At least one filter (user email, severity levels, or message search) should be provided to avoid overly broad queries. Use this when you need to investigate user activity, errors, or events in PostHog logs.',
     parameters: z.object({
         integrationId: z.string().describe('The integration ID of the PostHog knowledge base to use.'),
