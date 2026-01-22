@@ -181,9 +181,9 @@ Follow these directives in addition to the USER INSTRUCTIONS provided in each me
         const agentId = this.deps.agent.id;
         const runId = this.runContext.runId;
 
-        const channelLink = `${frontendUrl}/app/channels/${agentId}`;
-        const channelHistoryLink = `${frontendUrl}/app/channels/${agentId}?tab=history`;
-        const specificRunLink = `${frontendUrl}/app/channels/${agentId}?tab=history&runId=${runId}`;
+        const channelLink = `${frontendUrl}/app/agents/${agentId}`;
+        const channelHistoryLink = `${frontendUrl}/app/agents/${agentId}?tab=history`;
+        const specificRunLink = `${frontendUrl}/app/agents/${agentId}?tab=history&runId=${runId}`;
 
         return {
             header: 'DEEP LINKING TO TERSE APPLICATION',
@@ -195,17 +195,17 @@ The base URL is automatically determined from the environment (localhost for dev
 AVAILABLE LINK TYPES:
 
 1. Channel Detail Page:
-   Format: ${frontendUrl}/app/channels/{agentId}
+   Format: ${frontendUrl}/app/agents/{agentId}
    Example: ${channelLink}
    Use when: Referencing a specific automation/channel
 
 2. Run History (Channel Activity Tab):
-   Format: ${frontendUrl}/app/channels/{agentId}?tab=history
+   Format: ${frontendUrl}/app/agents/{agentId}?tab=history
    Example: ${channelHistoryLink}
    Use when: Directing users to view all runs for a channel
 
 3. Specific Run History:
-   Format: ${frontendUrl}/app/channels/{agentId}?tab=history&runId={runId}
+   Format: ${frontendUrl}/app/agents/{agentId}?tab=history&runId={runId}
    Example: ${specificRunLink}
    Use when: Referencing a specific run execution
 

@@ -122,7 +122,7 @@ function SaveAgentButton({
                 const creation = await createAgent(agentData);
 
                 if (creation?.id) {
-                    navigate(`/app/channels/${creation.id}`, { replace: true });
+                    navigate(`/app/agents/${creation.id}`, { replace: true });
                 }
             }
 

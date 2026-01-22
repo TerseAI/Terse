@@ -43,7 +43,7 @@ export function RecentAgentsSection({ isLoading, agents }: RecentAgentsSectionPr
                     <EmptyContent>
                         <Button
                             variant="default"
-                            onClick={() => navigate('/app/channels/setup')}
+                            onClick={() => navigate('/app/agents/setup')}
                         >
                             <Plus className="h-4 w-4" />
                             Create Agent
