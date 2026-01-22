@@ -24,6 +24,7 @@ import { fetchPosthogProjects } from "../../routes/posthog";
 import { fetchLaunchDarklyProjects, fetchLaunchDarklyEnvironments } from "../../routes/launchdarkly";
 import { LaunchDarklyIntegrationManager } from "../../integrations/LaunchDarklyIntegration";
 import { uuidv4 } from "zod/v4";
+import { FrontendRoutes } from "../../shared/FrontendRoutes";
 
 export type ChatAgentContext = {
     chatInterface: ChatInterface;
@@ -53,7 +54,7 @@ export function buildChatAgentTools(chatInterface: ChatInterface): Tool<ChatAgen
                     const result = id
                         ? await updateAgentForUser(userId, id, draft)
                         : await applyAgentForUser(userId, draft);
-                    await chatInterface.buildButton("View Automation", `${frontendUrl}/app/agents/${result.id}`);
+                    await chatInterface.buildButton("View Automation", `${frontendUrl}${FrontendRoutes.AGENTS.DETAIL(result.id)}`);
                     return `Agent applied successfully (${result.id})`;
                 } catch (error) {
                     logger.error('applyAgent failed', { error, userId, agent });

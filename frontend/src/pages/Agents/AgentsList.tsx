@@ -4,6 +4,7 @@ import { AgentsTable } from '../../components/AgentsTable';
 import { AgentsHeader, SearchBar, StatusFilter, DeletingModal } from '../../components/Agents';
 import { Agent } from '../../shared/types';
 import { useAgentMutations } from '@/hooks/api/useAgents';
+import { FrontendRoutes } from '@/shared/FrontendRoutes';
 
 const statusOptions = [
     { value: undefined, label: 'All' },
@@ -21,7 +22,7 @@ export default function AgentsList() {
 
     const handleEdit = (agent: Agent) => {
         // Navigate to edit page
-        navigate(`/app/agents/${agent.id}`);
+        navigate(FrontendRoutes.AGENTS.DETAIL(agent.id));
     };
 
     const handleDelete = async (agent: Agent) => {
@@ -41,7 +42,7 @@ export default function AgentsList() {
     };
 
     const handleCreateNew = () => {
-        navigate('/app/agents/setup');
+        navigate(FrontendRoutes.AGENTS.SETUP);
     };
 
     return (

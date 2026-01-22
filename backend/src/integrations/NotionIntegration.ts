@@ -11,6 +11,7 @@ import logger from "../logger";
 import { createOAuthStateToken } from "../utility/oauth";
 import { integrationTaskQueue } from "./IntegrationTaskQueues";
 import { IntegrationCompletedTask } from "./IntegrationCompletedTask";
+import { FrontendRoutes } from "../shared/FrontendRoutes";
 
 export class NotionIntegrationManager implements Integration<NotionIntegration, never, typeof NotionIntegrationMetadata>, OAuthIntegrationInstallation<IntegrationType.NOTION> {
     constructor() { }
@@ -98,7 +99,7 @@ export class NotionIntegrationManager implements Integration<NotionIntegration, 
 
         if (error) {
             logger.error("Notion OAuth error", { error: String(error) });
-            res.redirect(`${urls.frontend}/oauth/error`);
+            res.redirect(`${urls.frontend}${FrontendRoutes.OAUTH.ERROR}`);
             return;
         }
 
@@ -187,10 +188,10 @@ export class NotionIntegrationManager implements Integration<NotionIntegration, 
             ));
 
             // Redirect to success page which will auto-close the popup
-            res.redirect(`${urls.frontend}/oauth/success`);
+            res.redirect(`${urls.frontend}${FrontendRoutes.OAUTH.SUCCESS}`);
         } catch (error) {
             logger.error("Error in Notion OAuth callback", { error });
-            res.redirect(`${urls.frontend}/oauth/error`);
+            res.redirect(`${urls.frontend}${FrontendRoutes.OAUTH.ERROR}`);
         }
     }
 

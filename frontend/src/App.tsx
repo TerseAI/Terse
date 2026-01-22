@@ -22,6 +22,7 @@ import BreadCrumb from "./components/BreadCrumb";
 import { initializeSocket, disconnectSocket } from "./socket";
 import { useFeatureFlag } from "./hooks/useFeatureFlag";
 import NotificationsPage from "./pages/Notifications";
+import { FrontendRoutes } from "./shared/FrontendRoutes";
 
 function App() {
   const hasBirdsEyeFlag = useFeatureFlag('Birds-eye-view-homepage');
@@ -31,21 +32,21 @@ function App() {
       <AuthProvider>
         <Router>
           <Routes>
-            <Route path="/" element={<Navigate to="/app" replace />} />
-            <Route path="/app" element={<Content />}>
+            <Route path="/" element={<Navigate to={FrontendRoutes.APP} replace />} />
+            <Route path={FrontendRoutes.APP} element={<Content />}>
               <Route index element={ hasBirdsEyeFlag ? <BirdsEyeViewHomepage /> : <Home />} />
               <Route path="activity" element={<ActivityFeed />} />
               <Route path="agents" element={<AgentsList />} />
               <Route path="agents/setup" element={<AgentSetup />} />
               <Route path="agents/new" element={<AgentDetail />} />
-              <Route path="agents/new/template/:templateId" element={<AgentDetail />} />
-              <Route path="agents/:id" element={<AgentDetail />} />
+              <Route path={FrontendRoutes.AGENTS.NEW_WITH_TEMPLATE.pattern} element={<AgentDetail />} />
+              <Route path={FrontendRoutes.AGENTS.BY_ID.pattern} element={<AgentDetail />} />
               <Route path="integrations" element={<IntegrationPage />} />
               <Route path="notifications" element={<NotificationsPage />} />
             </Route>
             <Route path="/changelog" element={<LandingPageChangelog />} />
-            <Route path="/oauth/success" element={<OAuthSuccess />} />
-            <Route path="/oauth/error" element={<OAuthError />} />
+            <Route path={FrontendRoutes.OAUTH.SUCCESS} element={<OAuthSuccess />} />
+            <Route path={FrontendRoutes.OAUTH.ERROR} element={<OAuthError />} />
             <Route path="*" element={<div>Not Found</div>} />
           </Routes>
         </Router>
@@ -77,7 +78,7 @@ function Content() {
 
   // If user is not part of an organization, redirect to onboarding
   if (user != null && user.is_placeholder) {
-    window.location.href = '/onboard';
+    window.location.href = FrontendRoutes.ONBOARD;
   }
 
   return (

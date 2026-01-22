@@ -9,6 +9,8 @@ import { EventProcessor } from "../agent/AgentRunner/EventProcessor";
 import { InputEvent } from "./abstract/InputEvent";
 import { RunHistoryTrigger } from "../shared/RunHistoryTypes";
 import { InputConfigType } from "@prisma/client";
+import { ApiRoutes } from "../shared/ApiRoutes";
+import { FrontendRoutes } from "../shared/FrontendRoutes";
 
 export interface ScheduleWebhookEvent {
     inputId: string;
@@ -224,7 +226,7 @@ export class CronJobIntegrationManager implements
 
     private getWebhookUrl(inputId: string): string {
         const baseUrl = settings.urls.backend;
-        return `${baseUrl}/webhooks/schedule/${inputId}`;
+        return `${baseUrl}${ApiRoutes.WEBHOOKS.SCHEDULE_BY_INPUT_ID.build(inputId)}`;
     }
 }
 
@@ -288,7 +290,7 @@ export class CronJobEvent extends InputEvent {
             source: isManualTrigger ? "Manual Trigger" : "Scheduled Job",
             title: isManualTrigger ? "Manual Trigger" : "Scheduled Job",
             subheader: isManualTrigger ? "Triggered manually by user" : "Scheduled Job",
-            url: `https://terse.ai/agents/${this.data.inputId}`,
+            url: FrontendRoutes.AGENTS.BY_ID_RELATIVE(this.data.inputId),
         };
     }
 

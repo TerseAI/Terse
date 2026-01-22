@@ -7,6 +7,7 @@ import { User2 } from "lucide-react";
 import { ChevronUp } from "lucide-react";
 import { User } from "@/types/User";
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
+import { FrontendRoutes } from "@/shared/FrontendRoutes";
 
 export function AppSidebarFooter() {
     const { user, logout } = useAuth();
@@ -15,7 +16,7 @@ export function AppSidebarFooter() {
 
     const handleLogout = async () => {
         await logout();
-        navigate('/app');
+        navigate(FrontendRoutes.APP);
     }
 
     const userName = user?.display_name || user?.email || 'User';

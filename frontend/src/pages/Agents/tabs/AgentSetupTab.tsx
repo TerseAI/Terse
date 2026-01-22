@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { FrontendRoutes } from "@/shared/FrontendRoutes";
 import EditableTextField from '../../../components/ui/EditableTextField';
 import { AgentKnowledgeBase, AgentNotificationSettings as AgentNotificationSettingsType, AgentUpdate, TransientAgentTrigger, TransientAgentOutput } from "@/shared/types";
 import { toast } from "sonner";
@@ -122,7 +123,7 @@ function SaveAgentButton({
                 const creation = await createAgent(agentData);
 
                 if (creation?.id) {
-                    navigate(`/app/agents/${creation.id}`, { replace: true });
+                    navigate(FrontendRoutes.AGENTS.DETAIL(creation.id), { replace: true });
                 }
             }
 

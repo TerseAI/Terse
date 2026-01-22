@@ -25,6 +25,8 @@ import logger, { runWithUserContext } from "../logger";
 import { createOAuthStateToken } from "../utility/oauth";
 import { integrationTaskQueue } from "./IntegrationTaskQueues";
 import { IntegrationCompletedTask } from "./IntegrationCompletedTask";
+import { FrontendRoutes } from "../shared/FrontendRoutes";
+import { ApiRoutes } from "../shared/ApiRoutes";
 
 export class FigmaIntegrationManager implements Integration<FigmaIntegration, FigmaWebhookEvent, typeof FigmaIntegrationMetadata>, OAuthIntegrationInstallation<IntegrationType.FIGMA> {
   constructor() { }
@@ -144,7 +146,7 @@ export class FigmaIntegrationManager implements Integration<FigmaIntegration, Fi
 
     if (error) {
       logger.error("Figma OAuth error", { error: String(error) });
-      res.redirect(`${urls.frontend}/oauth/error`);
+      res.redirect(`${urls.frontend}${FrontendRoutes.OAUTH.ERROR}`);
       return;
     }
 
@@ -260,10 +262,10 @@ export class FigmaIntegrationManager implements Integration<FigmaIntegration, Fi
       ));
 
       // Redirect to success page which will auto-close the popup
-      res.redirect(`${urls.frontend}/oauth/success`);
+      res.redirect(`${urls.frontend}${FrontendRoutes.OAUTH.SUCCESS}`);
     } catch (error) {
       logger.error("Error in Figma OAuth callback", { error });
-      res.redirect(`${urls.frontend}/oauth/error`);
+      res.redirect(`${urls.frontend}${FrontendRoutes.OAUTH.ERROR}`);
     }
   }
 
@@ -303,7 +305,7 @@ export class FigmaIntegrationManager implements Integration<FigmaIntegration, Fi
     }
 
     // Build webhook endpoint URL
-    const webhookEndpoint = `${urls.backend}/webhooks/figma`;
+    const webhookEndpoint = `${urls.backend}${ApiRoutes.WEBHOOKS.FIGMA}`;
 
     // Event types to monitor: comments
     const eventTypes = ['FILE_COMMENT'];

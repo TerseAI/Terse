@@ -2,6 +2,7 @@ import { useNavigate } from 'react-router-dom';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { AgentTemplate } from '@/shared/types';
 import { TemplateAppsList } from './TemplateAppsList';
+import { FrontendRoutes } from '@/shared/FrontendRoutes';
 
 interface TemplateCardProps {
     template: AgentTemplate;
@@ -12,7 +13,7 @@ export function TemplateCard({ template, templateIndex }: TemplateCardProps) {
     const navigate = useNavigate();
 
     const handleClick = () => {
-        navigate(`/app/agents/new/template/${templateIndex}`);
+        navigate(FrontendRoutes.AGENTS.NEW_WITH_TEMPLATE.build(templateIndex.toString()));
     };
 
     return (

@@ -11,6 +11,7 @@ import logger from '../../logger';
 import { KnowledgeBase } from '../../knowledgeBase/abstract/KnowledgeBase';
 import { RunHistoryStatus } from '@prisma/client';
 import { settings } from '../../config/settings';
+import { FrontendRoutes } from '../../shared/FrontendRoutes';
 
 export interface RunContext {
     runId: string;
@@ -181,9 +182,9 @@ Follow these directives in addition to the USER INSTRUCTIONS provided in each me
         const agentId = this.deps.agent.id;
         const runId = this.runContext.runId;
 
-        const channelLink = `${frontendUrl}/app/agents/${agentId}`;
-        const channelHistoryLink = `${frontendUrl}/app/agents/${agentId}?tab=history`;
-        const specificRunLink = `${frontendUrl}/app/agents/${agentId}?tab=history&runId=${runId}`;
+        const channelLink = `${frontendUrl}${FrontendRoutes.AGENTS.DETAIL(agentId)}`;
+        const channelHistoryLink = `${frontendUrl}${FrontendRoutes.AGENTS.HISTORY(agentId)}`;
+        const specificRunLink = `${frontendUrl}${FrontendRoutes.AGENTS.RUN_HISTORY(agentId, runId)}`;
 
         return {
             header: 'DEEP LINKING TO TERSE APPLICATION',
@@ -195,17 +196,17 @@ The base URL is automatically determined from the environment (localhost for dev
 AVAILABLE LINK TYPES:
 
 1. Channel Detail Page:
-   Format: ${frontendUrl}/app/agents/{agentId}
+   Format: ${frontendUrl}${FrontendRoutes.AGENTS.DETAIL('{agentId}')}
    Example: ${channelLink}
    Use when: Referencing a specific automation/channel
 
 2. Run History (Channel Activity Tab):
-   Format: ${frontendUrl}/app/agents/{agentId}?tab=history
+   Format: ${frontendUrl}${FrontendRoutes.AGENTS.HISTORY('{agentId}')}
    Example: ${channelHistoryLink}
    Use when: Directing users to view all runs for a channel
 
 3. Specific Run History:
-   Format: ${frontendUrl}/app/agents/{agentId}?tab=history&runId={runId}
+   Format: ${frontendUrl}${FrontendRoutes.AGENTS.RUN_HISTORY('{agentId}', '{runId}')}
    Example: ${specificRunLink}
    Use when: Referencing a specific run execution
 
