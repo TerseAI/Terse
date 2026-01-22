@@ -7,6 +7,7 @@ import { Team, User, UserContext, Organization } from "../shared/TicketSystem";
 import { IssueFilter, IssuesQueryVariables } from "@linear/sdk/dist/_generated_documents";
 import { generateWebhookSecret } from '../utility/webhookSecrets';
 import { urls } from "../config/settings";
+import { ApiRoutes } from "../shared/ApiRoutes";
 
 export class LinearAdapter implements TicketManager {
     type: TicketSystemType = TicketSystemType.Linear;
@@ -79,7 +80,7 @@ export class LinearAdapter implements TicketManager {
         const backendUrl = urls.backend;
 
         const webhook = await this.client.createWebhook({
-            url: `${backendUrl}/webhooks/linear/${user.id}`,
+            url: `${backendUrl}${ApiRoutes.WEBHOOKS.LINEAR_BY_USER_ID.build(user.id)}`,
             secret: webhookSecret,
             allPublicTeams: true,
             resourceTypes: ['Issue', 'Comment', 'Project', 'IssueLabel', 'User']

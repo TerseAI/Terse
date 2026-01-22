@@ -6,6 +6,7 @@ import { useTemplates } from "@/hooks/api/useTemplates";
 import { useIntegrations } from "@/hooks/api/useIntegrations";
 import { TemplateCard } from "@/components/Agents/TemplateCard";
 import { Loader2 } from "lucide-react";
+import { FrontendRoutes } from "@/shared/FrontendRoutes";
 
 export function HomeEmptyState() {
     const navigate = useNavigate();
@@ -58,7 +59,7 @@ export function HomeEmptyState() {
                         ) : (
                             <Button
                                 variant={hasActiveIntegrations ? "outline" : "default"}
-                                onClick={() => navigate('/app/integrations')}
+                                onClick={() => navigate(FrontendRoutes.INTEGRATIONS)}
                                 className="w-full"
                             >
                                 <Plug className="h-4 w-4" />
@@ -88,7 +89,7 @@ export function HomeEmptyState() {
                     <CardContent>
                         <Button
                             variant={hasActiveIntegrations ? "default" : "outline"}
-                            onClick={() => navigate('/app/agents/setup')}
+                            onClick={() => navigate(FrontendRoutes.AGENTS.SETUP)}
                             className="w-full"
                         >
                             <Zap className="h-4 w-4" />
@@ -125,7 +126,7 @@ export function HomeEmptyState() {
                         <div className="text-center">
                             <Button
                                 variant="ghost"
-                                onClick={() => navigate('/app/agents/setup')}
+                                onClick={() => navigate(FrontendRoutes.AGENTS.SETUP)}
                             >
                                 View all templates
                                 <ArrowRight className="h-4 w-4" />

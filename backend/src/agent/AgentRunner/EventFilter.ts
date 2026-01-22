@@ -12,6 +12,7 @@ import { settings } from '../../config/settings';
 import { runnerFactory } from '../runner';
 import logger from '../../logger';
 import { IntegrationType } from '../../shared/Integrations';
+import { SocketEvents, SocketRooms } from '../../shared/SocketEvents';
 
 export interface EventFilterResult {
     isRelevant: boolean;
@@ -152,7 +153,7 @@ export async function filterEvent(
         // Handle streaming and channel management if streamingParams are provided
         if (streamingParams?.runId && streamingParams?.userId && streamingParams?.agentId) {
             const io = getRealtimeSocket();
-            const userRoom = `user:${streamingParams.userId}`;
+            const userRoom = SocketRooms.user(streamingParams.userId);
 
             try {
                 for await (const modelEvent of transformAgentStreamToModelEvents(result)) {
@@ -176,7 +177,7 @@ export async function filterEvent(
                             agentId: streamingParams.agentId,
                             runHistoryModelEvent,
                         };
-                        io.to(userRoom).emit('agent:chat:event', payload);
+                        io.to(userRoom).emit(SocketEvents.AGENT_CHAT_EVENT, payload);
                     }
                 }
             } catch (error) {

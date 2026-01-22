@@ -16,6 +16,7 @@ import logger, { runWithUserContext } from "../logger";
 import { integrationTaskQueue } from "./IntegrationTaskQueues";
 import { IntegrationCompletedTask } from "./IntegrationCompletedTask";
 import { createOAuthStateToken, decodeOAuthStateToken, OAuthStateEncodingFormat } from "../utility/oauth";
+import { FrontendRoutes } from "../shared/FrontendRoutes";
 
 
 // OAuth2 scopes for Gmail
@@ -228,7 +229,7 @@ export class GmailIntegrationManager implements Integration<GmailIntegration, Gm
         logger.debug("Gmail OAuth callback received");
 
         if (!code || !state) {
-            res.redirect(`${urls.frontend}/oauth/error`);
+            res.redirect(`${urls.frontend}${FrontendRoutes.OAUTH.ERROR}`);
             return;
         }
 
@@ -238,7 +239,7 @@ export class GmailIntegrationManager implements Integration<GmailIntegration, Gm
             const userId = stateData.userId;
 
             if (!userId) {
-                res.redirect(`${urls.frontend}/oauth/error`);
+                res.redirect(`${urls.frontend}${FrontendRoutes.OAUTH.ERROR}`);
                 return;
             }
 
@@ -249,7 +250,7 @@ export class GmailIntegrationManager implements Integration<GmailIntegration, Gm
             oauth2Client.setCredentials(tokens);
 
             if (!tokens.access_token || !tokens.refresh_token) {
-                res.redirect(`${urls.frontend}/oauth/error`);
+                res.redirect(`${urls.frontend}${FrontendRoutes.OAUTH.ERROR}`);
                 return;
             }
 
@@ -259,7 +260,7 @@ export class GmailIntegrationManager implements Integration<GmailIntegration, Gm
             const emailAddress = profile.data.emailAddress;
 
             if (!emailAddress) {
-                res.redirect(`${urls.frontend}/oauth/error`);
+                res.redirect(`${urls.frontend}${FrontendRoutes.OAUTH.ERROR}`);
                 return;
             }
 
@@ -277,7 +278,7 @@ export class GmailIntegrationManager implements Integration<GmailIntegration, Gm
             const expiration = watchResponse.data.expiration;
 
             if (!historyId || !expiration) {
-                res.redirect(`${urls.frontend}/oauth/error`);
+                res.redirect(`${urls.frontend}${FrontendRoutes.OAUTH.ERROR}`);
                 return;
             }
 
@@ -328,10 +329,10 @@ export class GmailIntegrationManager implements Integration<GmailIntegration, Gm
             ));
 
             // Redirect to success page which will auto-close the popup
-            res.redirect(`${urls.frontend}/oauth/success`);
+            res.redirect(`${urls.frontend}${FrontendRoutes.OAUTH.SUCCESS}`);
         } catch (error) {
             logger.error("Gmail OAuth error", { error });
-            res.redirect(`${urls.frontend}/oauth/error`);
+            res.redirect(`${urls.frontend}${FrontendRoutes.OAUTH.ERROR}`);
         }
     }
 

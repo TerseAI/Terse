@@ -5,6 +5,7 @@ import type { RunHistoryModelEvent, RunHistoryModelSocketEvent, RunHistoryStream
 import { randomString } from '../../utility/strings';
 import { emitCacheInvalidationWithWildcard } from '../../realtimeSocket';
 import logger from '../../logger';
+import { SocketEvents, SocketRooms } from '../../shared/SocketEvents';
 
 export class TextDeltaAggregator {
     private accumulatedDeltas = new Map<string, AccumulatedDelta>();
@@ -78,7 +79,10 @@ export class StreamEventEmitter {
 
     constructor(io: Server | null, params: RunHistoryStreamingParams) {
         this.io = io;
-        this.userRoom = `user:${params.userId}`;
+        if (!params.userId) {
+            throw new Error('userId is required for StreamEventEmitter');
+        }
+        this.userRoom = SocketRooms.user(params.userId);
         this.runId = params.runId!;
         this.agentId = params.agentId!;
     }
@@ -98,7 +102,7 @@ export class StreamEventEmitter {
             runHistoryModelEvent,
         };
 
-        this.io.to(this.userRoom).emit('agent:chat:event', payload);
+        this.io.to(this.userRoom).emit(SocketEvents.AGENT_CHAT_EVENT, payload);
     }
 
     async storeAndEmit(event: ModelEvent, timestamp: string): Promise<string> {
@@ -116,7 +120,7 @@ export class StreamEventEmitter {
                 agentId: this.agentId,
                 runHistoryModelEvent,
             };
-            this.io.to(this.userRoom).emit('agent:chat:event', payload);
+            this.io.to(this.userRoom).emit(SocketEvents.AGENT_CHAT_EVENT, payload);
         }
 
         return eventId;
