@@ -5,6 +5,8 @@ import logger from "../../logger";
 import { initializeSlackWebClient } from "../../integrations/SlackIntegration";
 import { IntegrationType } from "../../shared/Integrations";
 import { WebClient } from "@slack/web-api";
+import { addEyesReaction, removeEyesReaction } from "../../slack/blockKitHelpers";
+import { GenericMessageEvent } from "@slack/types";
 
 export async function resumeChatAgentAfterFormCompletion(
     userId: string,
@@ -60,7 +62,7 @@ export async function resumeChatAgentAfterFormCompletion(
         await chatAgent.run(message);
 
         if (messageTs) {
-            await removeWorkingReaction(client, channel, messageTs);
+            await removeEyesReaction(client, { channel, ts: messageTs } as GenericMessageEvent);
         }
 
         logger.info('ChatAgent resumed after form completion', { userId, chatId, channel, integrationType, integrationId });
@@ -97,28 +99,8 @@ async function showIntegrationSuccessMessage(
             }],
         });
 
-        await client.reactions.add({
-            channel,
-            timestamp: messageTs,
-            name: 'eyes',
-        });
+        await addEyesReaction(client, { channel, ts: messageTs } as GenericMessageEvent);
     } catch (error) {
-        logger.warn('Failed to update message or add reaction after form completion', { error, messageTs });
-    }
-}
-
-async function removeWorkingReaction(
-    client: WebClient,
-    channel: string,
-    messageTs: string
-): Promise<void> {
-    try {
-        await client.reactions.remove({
-            channel,
-            timestamp: messageTs,
-            name: 'eyes',
-        });
-    } catch (error) {
-        logger.warn('Failed to remove working reaction', { error, messageTs });
+        logger.warn('Failed to update message after form completion', { error, messageTs });
     }
 }
