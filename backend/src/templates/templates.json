@@ -77,12 +77,14 @@
         }
       }
     ],
-    "output": {
-      "config": {
-        "configType": "notion_page",
-        "integrationType": "notion"
+    "outputs": [
+      {
+        "config": {
+          "configType": "notion_page",
+          "integrationType": "notion"
+        }
       }
-    },
+    ],
     "requireApproval": false,
     "isActive": true
   },
