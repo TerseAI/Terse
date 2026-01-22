@@ -25,7 +25,7 @@ function BreadCrumb() {
     const pathSegments = location.pathname.split('/').filter(Boolean);
 
     // Get channel if we're on an channel detail page
-    const channelId = params.id && location.pathname.includes('/channels/') && params.id !== 'new' 
+    const channelId = params.id && location.pathname.includes('/agents/') && params.id !== 'new' 
         ? params.id 
         : null;
     const { agent, isLoading } = useAgent(channelId);
@@ -62,7 +62,7 @@ function BreadCrumb() {
                     items.push(
                         <BreadcrumbItem key="channels">
                             <BreadcrumbLink asChild>
-                                <Link to="/app/channels">Channels</Link>
+                                <Link to="/app/agents">Agents</Link>
                             </BreadcrumbLink>
                         </BreadcrumbItem>
                     );
@@ -156,7 +156,7 @@ function ChannelDropdownMenu() {
     if (isLoading || !agents.length) {
         return (
             <BreadcrumbLink asChild>
-                <Link to="/app/channels">Channels</Link>
+                <Link to="/app/agents">Agents</Link>
             </BreadcrumbLink>
         )
     }
@@ -170,7 +170,7 @@ function ChannelDropdownMenu() {
             <DropdownMenuContent align="start">
                 {agents.map(agent => (
                     <DropdownMenuItem key={agent.id}>
-                        <Link to={`/app/channels/${agent.id}`}>{agent.name}</Link>
+                        <Link to={`/app/agents/${agent.id}`}>{agent.name}</Link>
                     </DropdownMenuItem>
                 ))}
             </DropdownMenuContent>

@@ -271,10 +271,10 @@ Execute these steps **in order**, running builds after each major section:
   - Use appropriate icon (from lucide-react or custom)
   - Add tooltip with link to API keys page (if applicable)
   - Import and use in `IntegrationCard.tsx`
-- [ ] **Knowledge Base Selector** (`frontend/src/pages/Channels/components/KnowledgeBaseSelector.tsx`):
+- [ ] **Knowledge Base Selector** (`frontend/src/pages/Agents/components/KnowledgeBaseSelector.tsx`):
   - Add case for new config type
   - Render knowledge base integration component
-- [ ] **Knowledge Base Integration Component** (`frontend/src/pages/Channels/components/`):
+- [ ] **Knowledge Base Integration Component** (`frontend/src/pages/Agents/components/`):
   - Create component for configuring knowledge base
   - Handle API key input (if form-based)
   - **Query API for selectable options** (e.g., projects, environments, workspaces) - use Select dropdowns instead of text inputs
@@ -297,7 +297,7 @@ Execute these steps **in order**, running builds after each major section:
 - [ ] Update `IconForIntegration` switch
 - [ ] If using image, ensure file exists in `public/` directory
 
-#### 14. Frontend Integration Mapping (`frontend/src/pages/Channels/components/Integration.tsx`)
+#### 14. Frontend Integration Mapping (`frontend/src/pages/Agents/components/Integration.tsx`)
 
 - [ ] Add case to `IconForConfigType` switch
 - [ ] Add case to `IconForIntegration` switch

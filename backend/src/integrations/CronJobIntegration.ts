@@ -288,7 +288,7 @@ export class CronJobEvent extends InputEvent {
             source: isManualTrigger ? "Manual Trigger" : "Scheduled Job",
             title: isManualTrigger ? "Manual Trigger" : "Scheduled Job",
             subheader: isManualTrigger ? "Triggered manually by user" : "Scheduled Job",
-            url: `https://terse.ai/channels/${this.data.inputId}`,
+            url: `https://terse.ai/agents/${this.data.inputId}`,
         };
     }
 

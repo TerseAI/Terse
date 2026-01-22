@@ -13,7 +13,7 @@ export function AgentCard({ agent }: AgentCardProps) {
     const navigate = useNavigate();
 
     const handleClick = () => {
-        navigate(`/app/channels/${agent.id}`);
+        navigate(`/app/agents/${agent.id}`);
     };
 
     return (

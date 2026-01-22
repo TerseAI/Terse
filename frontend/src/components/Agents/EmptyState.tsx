@@ -51,7 +51,7 @@ export function EmptyState({ hasFilters }: EmptyStateProps) {
                             <div className="text-center">
                                 <Button
                                     variant="ghost"
-                                    onClick={() => navigate('/app/channels/setup')}
+                                    onClick={() => navigate('/app/agents/setup')}
                                 >
                                     View all templates
                                     <ArrowRight className="h-4 w-4" />
@@ -71,7 +71,7 @@ export function EmptyState({ hasFilters }: EmptyStateProps) {
                 {/* Start from Scratch Section */}
                 <Card
                     className="cursor-pointer transition-colors hover:bg-accent/50"
-                    onClick={() => navigate('/app/channels/new')}
+                    onClick={() => navigate('/app/agents/new')}
                 >
                     <CardHeader>
                         <div className="flex items-center gap-3">
