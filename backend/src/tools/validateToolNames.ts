@@ -20,9 +20,9 @@ export function validateAllToolNames(): void {
     const invalidToolNames: Array<{ toolName: string; source: 'output' | 'knowledgeBase'; configType: string }> = [];
 
     // Collect tools from all outputs
-    for (const [outputConfigType, factory] of OutputFactory.OUTPUT_REGISTRY.entries()) {
+    OutputFactory.OUTPUT_REGISTRY.forEach((factory, outputConfigType) => {
         const output = factory();
-        for (const entry of output.toolbox) {
+        output.toolbox.forEach((entry) => {
             const toolName = entry.tool.name;
             
             // Check if tool name is in the enum
@@ -42,13 +42,13 @@ export function validateAllToolNames(): void {
                 source: 'output',
                 configType: outputConfigType,
             });
-        }
-    }
+        });
+    });
 
     // Collect tools from all knowledge bases
-    for (const [kbConfigType, factory] of KnowledgeBaseFactory.KNOWLEDGE_BASE_REGISTRY.entries()) {
+    KnowledgeBaseFactory.KNOWLEDGE_BASE_REGISTRY.forEach((factory, kbConfigType) => {
         const kb = factory();
-        for (const entry of kb.toolbox) {
+        kb.toolbox.forEach((entry) => {
             const toolName = entry.tool.name;
             
             // Check if tool name is in the enum
@@ -68,8 +68,8 @@ export function validateAllToolNames(): void {
                 source: 'knowledgeBase',
                 configType: kbConfigType,
             });
-        }
-    }
+        });
+    });
 
     // Check for invalid tool names (not in enum)
     if (invalidToolNames.length > 0) {
@@ -84,12 +84,9 @@ export function validateAllToolNames(): void {
     }
 
     // Check for duplicates
-    const duplicates: Array<{ toolName: string; occurrences: ToolOccurrence[] }> = [];
-    for (const [toolName, occurrences] of toolOccurrences.entries()) {
-        if (occurrences.length > 1) {
-            duplicates.push({ toolName, occurrences });
-        }
-    }
+    const duplicates = Array.from(toolOccurrences.entries())
+        .filter(([, occurrences]) => occurrences.length > 1)
+        .map(([toolName, occurrences]) => ({ toolName, occurrences }));
 
     if (duplicates.length > 0) {
         const errorMessages = duplicates.map(({ toolName, occurrences }) => {
@@ -122,19 +119,19 @@ export function validateWriteToolsHaveNeedsApproval(): void {
         }
     };
 
-    for (const [outputConfigType, factory] of OutputFactory.OUTPUT_REGISTRY.entries()) {
+    OutputFactory.OUTPUT_REGISTRY.forEach((factory, outputConfigType) => {
         const output = factory();
-        for (const entry of output.toolbox) {
+        output.toolbox.forEach((entry) => {
             check('output', outputConfigType, entry);
-        }
-    }
+        });
+    });
 
-    for (const [kbConfigType, factory] of KnowledgeBaseFactory.KNOWLEDGE_BASE_REGISTRY.entries()) {
+    KnowledgeBaseFactory.KNOWLEDGE_BASE_REGISTRY.forEach((factory, kbConfigType) => {
         const kb = factory();
-        for (const entry of kb.toolbox) {
+        kb.toolbox.forEach((entry) => {
             check('knowledgeBase', kbConfigType, entry);
-        }
-    }
+        });
+    });
 
     if (missing.length > 0) {
         const messages = missing.map(

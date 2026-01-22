@@ -1,11 +1,10 @@
-import { useState, useEffect } from "react";
 import { Label } from "../../components/ui/label";
 import { TransientAgentOutput, TransientKnowledgeBase } from "@/shared/types";
-import { BackendProvider } from "@/services/backend";
 import { TerseTool } from "@/shared/ToolsTypes";
 import { IconForConfigType } from "./components/Integration";
 import { Loader2 } from "lucide-react";
 import { MultiSelect, type MultiSelectOption } from "../../components/MultiSelect";
+import { useToolsThatRequireApprovals } from "../../hooks/api/useToolsThatRequireApprovals";
 
 export type AgentApprovalSettingsProps = {
     outputs: TransientAgentOutput[];
@@ -35,10 +34,6 @@ function AgentApprovalSettings({
     toolApprovals,
     onToolApprovalsChange,
 }: AgentApprovalSettingsProps) {
-    const [toolsThatRequireApprovals, setToolsThatRequireApprovals] = useState<TerseTool[]>([]);
-    const [isLoading, setIsLoading] = useState(false);
-    const [error, setError] = useState<string | null>(null);
-
     const outputConfigTypes = outputs
         .filter((output) => output.config && output.config.isComplete())
         .map((output) => output.configType);
@@ -47,29 +42,11 @@ function AgentApprovalSettings({
         .filter((kb) => kb.config && kb.config.isComplete())
         .map((kb) => kb.configType);
 
-    useEffect(() => {
-        if (outputConfigTypes.length === 0) {
-            setToolsThatRequireApprovals([]);
-            return;
-        }
+    const request = outputConfigTypes.length > 0
+        ? { skills: outputConfigTypes, knowledgeBases: knowledgeBaseConfigTypes }
+        : null;
 
-        setIsLoading(true);
-        setError(null);
-
-        BackendProvider.getToolsThatRequireApprovals({
-            skills: outputConfigTypes,
-            knowledgeBases: knowledgeBaseConfigTypes,
-        })
-            .then((response) => {
-                setToolsThatRequireApprovals(response.tools);
-                setIsLoading(false);
-            })
-            .catch((err) => {
-                console.error("Error fetching tools that require approvals:", err);
-                setError("Failed to load tools that require approvals");
-                setIsLoading(false);
-            });
-    }, [outputConfigTypes.join(","), knowledgeBaseConfigTypes.join(",")]);
+    const { tools: toolsThatRequireApprovals, isLoading, isError } = useToolsThatRequireApprovals(request);
 
     const options = toolsThatRequireApprovals.map(toolToOption);
 
@@ -91,8 +68,8 @@ function AgentApprovalSettings({
             );
         }
 
-        if (error) {
-            return <p className="text-sm text-destructive">{error}</p>;
+        if (isError) {
+            return <p className="text-sm text-destructive">Failed to load tools that require approvals</p>;
         }
 
         if (toolsThatRequireApprovals.length === 0) {
