@@ -2,7 +2,7 @@ import { Request, Response } from "express";
 import { db } from "../prismaClient";
 import { Agent, AgentTrigger, AgentsResponse, AgentNotificationSettings, AgentUpdate, AgentKnowledgeBase } from "../shared/types";
 import { parsePageParams } from "../utility/pagination";
-import { AgentWithTriggerRelations, PrismaTransaction, AgentWithRelations, AgentWithNotificationSettingsRelations, RunHistoryActionType } from "../types/prisma";
+import { AgentWithTriggerRelations, PrismaTransaction, AgentWithRelations, AgentWithNotificationSettingsRelations, RunHistoryActionType, AgentWithToolApprovalsRelations } from "../types/prisma";
 import { IntegrationType } from "../shared/Integrations";
 import { convertConfigTypeToInputConfigType, convertConfigTypeToOutputConfigType, convertConfigTypeToKnowledgeBaseConfigType, convertPrismaConfigToConfigInstance, convertPrismaOutputConfigToConfigInstance, convertPrismaKnowledgeBaseConfigToConfigInstance, convertPlainObjectToKnowledgeBaseConfigInstance } from "../utility/typeConverters";
 import { ConfigInstance, ConfigType } from "../shared/Configs";
@@ -228,7 +228,7 @@ export async function applyAgentForUser(userId: string, draft: AgentDraft): Prom
 
         // Create tool approvals if provided
         if (toolApprovals && toolApprovals.length > 0) {
-            await (tx as any).automation_tool_approvals.createMany({
+            await tx.automation_tool_approvals.createMany({
                 data: toolApprovals.map(toolName => ({
                     automation_id: newAgent.id,
                     tool_name: toolName,
@@ -440,13 +440,13 @@ export async function updateAgentForUser(
         // Update tool approvals if provided
         if (toolApprovals !== undefined) {
             // Delete all existing tool approvals
-            await (tx as any).automation_tool_approvals.deleteMany({
+            await tx.automation_tool_approvals.deleteMany({
                 where: { automation_id: agentId }
             });
 
             // Insert new tool approvals if provided
             if (toolApprovals.length > 0) {
-                await (tx as any).automation_tool_approvals.createMany({
+                await tx.automation_tool_approvals.createMany({
                     data: toolApprovals.map(toolName => ({
                         automation_id: agentId,
                         tool_name: toolName,
@@ -639,8 +639,8 @@ export async function getUserAgent(req: Request, res: Response) {
     const userId = req.session.user.id;
     const agentId = req.params.id;
 
-    try {
-        const agent = await db().automations.findFirst({
+        try {
+            const agent: AgentWithRelations | null = await db().automations.findFirst({
             where: {
                 id: agentId,
                 user_id: userId
