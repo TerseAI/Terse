@@ -55,6 +55,7 @@ export async function buildChatAgentSystemPrompt(userId: string, userTimezone?: 
             outputs: true,
             knowledge_bases: true,
             prompt: true,
+            tool_approvals: true,
         },
     });
 
