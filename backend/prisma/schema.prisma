@@ -557,8 +557,6 @@ model automation_outputs {
 
   automation automations @relation(fields: [automation_id], references: [id], onDelete: Cascade)
 
-  @@index([automation_id])
-
   // Configuration relations (one per integration type)
   slack_config       automation_slack_configs?
   notion_config      automation_notion_configs?
@@ -570,6 +568,7 @@ model automation_outputs {
   gmail_config       automation_gmail_configs?
   figma_config       automation_figma_configs?
 
+  @@index([automation_id])
   @@index([config_type, integration_id])
 }
 
