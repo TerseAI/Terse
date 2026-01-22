@@ -3,7 +3,7 @@ import { z } from "zod";
 import logger from "../../../logger";
 import { IntegrationType } from "../../../shared/Integrations";
 import { Session } from "../../../server";
-import { SessionWithTracking } from "../../../agent/ChannelAgent/ChannelAgent";
+import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner";
 import { getLaunchDarklyApiKeyByIntegrationId } from "../launchdarklyApiClient";
 
 /**

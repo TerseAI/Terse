@@ -7,7 +7,7 @@ import { InputConfigSelectorProps } from './types';
 import { useGmailIntegrations } from '@/hooks/api/useGmailIntegrations';
 import { useOAuthConnection } from '@/hooks/useOAuthConnection';
 import { useIntegrationId } from '@/hooks/useIntegrationId';
-import { IconForConfigType } from '../../pages/Channels/components/Integration';
+import { IconForConfigType } from '../../pages/Agents/components/Integration';
 import { StatusOption } from '../ui/DropdownSelect';
 
 export function GmailOutputIntegration({

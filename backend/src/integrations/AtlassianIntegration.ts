@@ -2,7 +2,7 @@ import { Integration, OAuthIntegrationInstallation, ConfigurationFieldDefinition
 import { db } from "../prismaClient";
 import { AtlassianIntegration, AtlassianIntegrationMetadata } from "../shared/Integrations";
 import { IntegrationType, InstallationOptionsFor, AdditionalStateParams } from "../shared/Integrations";
-import { ChannelInputWithConfigs } from "../types/prisma";
+import { AgentTriggerWithConfigs } from "../types/prisma";
 import { OAuthInstallationDetails } from "../shared/types";
 import jwt from "jsonwebtoken";
 import { settings } from "../config/settings";
@@ -13,11 +13,13 @@ import { JiraWebhookPayload } from "../utility/JiraWebhookPayload";
 import { InputEvent } from "./abstract/InputEvent";
 import { InputConfigType } from "@prisma/client";
 import { RunHistoryTrigger } from "../shared/RunHistoryTypes";
-import { EventProcessor } from "../agent/ChannelAgent/EventProcessor";
+import { EventProcessor } from "../agent/AgentRunner/EventProcessor";
 import logger, { runWithUserContext } from "../logger";
 import { createOAuthStateToken } from "../utility/oauth";
 import { integrationTaskQueue } from "./IntegrationTaskQueues";
 import { IntegrationCompletedTask } from "./IntegrationCompletedTask";
+import { FrontendRoutes } from "../shared/FrontendRoutes";
+import { ApiRoutes } from "../shared/ApiRoutes";
 
 const OAUTH_TOKEN_REFRESH_THRESHOLD_MS = 1000 * 60 * 30; // 30 minutes (expires access token after 1 hour)
 
@@ -82,7 +84,7 @@ export class AtlassianIntegrationManager implements Integration<AtlassianIntegra
 
         if (error) {
             logger.error("Atlassian OAuth error", { error: String(error) });
-            res.redirect(`${urls.frontend}/oauth/error`);
+            res.redirect(`${urls.frontend}${FrontendRoutes.OAUTH.ERROR}`);
             return;
         }
 
@@ -149,7 +151,7 @@ export class AtlassianIntegrationManager implements Integration<AtlassianIntegra
 
             if (!resources || resources.length === 0) {
                 logger.error("No accessible resources found");
-                res.redirect(`${urls.frontend}/oauth/error`);
+                res.redirect(`${urls.frontend}${FrontendRoutes.OAUTH.ERROR}`);
                 return;
             }
 
@@ -285,10 +287,10 @@ export class AtlassianIntegrationManager implements Integration<AtlassianIntegra
             ));
 
             // Redirect to success page which will auto-close the popup
-            res.redirect(`${urls.frontend}/oauth/success`);
+            res.redirect(`${urls.frontend}${FrontendRoutes.OAUTH.SUCCESS}`);
         } catch (error) {
             logger.error("Error in Atlassian OAuth callback", { error });
-            res.redirect(`${urls.frontend}/oauth/error`);
+            res.redirect(`${urls.frontend}${FrontendRoutes.OAUTH.ERROR}`);
         }
     }
 
@@ -476,7 +478,7 @@ export class AtlassianIntegrationManager implements Integration<AtlassianIntegra
         }
     }
 
-    async setupChannelInput(integrationId: string, automationInput: ChannelInputWithConfigs): Promise<void> {
+    async setupAgentTrigger(integrationId: string, automationInput: AgentTriggerWithConfigs): Promise<void> {
         try {
             // Get the integration
             const integration = await db().atlassian_integrations.findUnique({
@@ -645,7 +647,7 @@ export class AtlassianIntegrationManager implements Integration<AtlassianIntegra
         }
     }
 
-    async teardownChannelInput(integrationId: string, automationInput: ChannelInputWithConfigs): Promise<void> {
+    async teardownAgentTrigger(integrationId: string, automationInput: AgentTriggerWithConfigs): Promise<void> {
         try {
             // Get the integration
             const integration = await db().atlassian_integrations.findUnique({
@@ -851,7 +853,7 @@ export class AtlassianIntegrationManager implements Integration<AtlassianIntegra
             'comment_deleted',          // Comments removed
         ];
 
-        const webhookUrl = `${backendUrl}/webhooks/jira/${accountId}`;
+        const webhookUrl = `${backendUrl}${ApiRoutes.WEBHOOKS.JIRA_BY_ACCOUNT_ID.build(accountId)}`;
 
         // For Jira Cloud OAuth 2.0 apps, use the REST API v3 webhook endpoint
         // Documentation: https://developer.atlassian.com/cloud/jira/platform/webhooks/
@@ -969,7 +971,7 @@ export class JiraEvent extends InputEvent {
         this.integrationId = integrationId;
     }
 
-    formatForChannelAgent(): string {
+    formatForAgentRunner(): string {
         const indentMultiline = (text: string): string =>
             text
                 .split('\n')
@@ -1070,7 +1072,7 @@ export class JiraEvent extends InputEvent {
         return `Jira ${this.data.webhookEvent}`;
     }
 
-    matchesChannelInput(automationInput: ChannelInputWithConfigs): boolean {
+    matchesAgentTrigger(automationInput: AgentTriggerWithConfigs): boolean {
         logger.debug(`Checking if Jira event matches automation input: ${automationInput.config_type}`, { configType: automationInput.config_type });
         // Check if integration type matches
         if (automationInput.config_type !== InputConfigType.JIRA) {

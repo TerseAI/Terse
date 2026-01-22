@@ -271,10 +271,10 @@ Execute these steps **in order**, running builds after each major section:
   - Use appropriate icon (from lucide-react or custom)
   - Add tooltip with link to API keys page (if applicable)
   - Import and use in `IntegrationCard.tsx`
-- [ ] **Knowledge Base Selector** (`frontend/src/pages/Channels/components/KnowledgeBaseSelector.tsx`):
+- [ ] **Knowledge Base Selector** (`frontend/src/pages/Agents/components/KnowledgeBaseSelector.tsx`):
   - Add case for new config type
   - Render knowledge base integration component
-- [ ] **Knowledge Base Integration Component** (`frontend/src/pages/Channels/components/`):
+- [ ] **Knowledge Base Integration Component** (`frontend/src/pages/Agents/components/`):
   - Create component for configuring knowledge base
   - Handle API key input (if form-based)
   - **Query API for selectable options** (e.g., projects, environments, workspaces) - use Select dropdowns instead of text inputs
@@ -297,7 +297,7 @@ Execute these steps **in order**, running builds after each major section:
 - [ ] Update `IconForIntegration` switch
 - [ ] If using image, ensure file exists in `public/` directory
 
-#### 14. Frontend Integration Mapping (`frontend/src/pages/Channels/components/Integration.tsx`)
+#### 14. Frontend Integration Mapping (`frontend/src/pages/Agents/components/Integration.tsx`)
 
 - [ ] Add case to `IconForConfigType` switch
 - [ ] Add case to `IconForIntegration` switch
@@ -453,3 +453,81 @@ export async function getUserChannels(req: Request, res: Response) {
 9. ❌ Stray strings allowed UNLESS absolutely necessary (e.g., `const tokenType = authed_user?.token_type || 'user';` where `'user'` is outputted from an API and could be an enum type)
 10. ❌ Defining variables as `false` or `true` where you could just use a not operator (e.g., `const actualIsBotUser = isUserType && authed_user.access_token ? false : true;` should be `const actualIsBotUser = !(isUserType && authed_user.access_token);`)
 11. ❌ Non-exhaustive maps—when defining maps, ensure they're exhaustive using TypeScript's type system (see `shared/Configs.ts` lines 401-427 for an example with `ConfigMetadataMap`)
+
+## URL and Socket Event Standards
+
+**CRITICAL: Always use centralized constants for URLs and socket events. Never use magic strings.**
+
+### API Routes
+
+All backend API routes must use constants from `shared/ApiRoutes.ts`:
+
+- **Backend route definitions**: Use `.pattern` for Express routes
+  ```typescript
+  app.get(ApiRoutes.AGENTS.BY_ID.pattern, authMiddleware, handler);
+  ```
+
+- **Frontend API calls**: Use `.build(...)` for actual URLs
+  ```typescript
+  axios.get(`${backendBaseUrl}${ApiRoutes.AGENTS.BY_ID.build(id)}`);
+  ```
+
+- **Dynamic routes**: Use route objects with both `pattern` and `build` functions
+  ```typescript
+  ApiRoutes.AGENTS.BY_ID.pattern  // '/agents/:id' for Express
+  ApiRoutes.AGENTS.BY_ID.build(id)  // '/agents/123' for actual URL
+  ```
+
+### Frontend Routes
+
+All frontend routes must use constants from `shared/FrontendRoutes.ts`:
+
+- **React Router definitions**: Use route constants
+  ```typescript
+  <Route path={FrontendRoutes.AGENTS.BY_ID.pattern} element={<AgentDetail />} />
+  ```
+
+- **Navigation calls**: Use route builders
+  ```typescript
+  navigate(FrontendRoutes.AGENTS.DETAIL(agentId));
+  ```
+
+- **Deep links in backend**: Combine with `urls.frontend`
+  ```typescript
+  const link = `${urls.frontend}${FrontendRoutes.AGENTS.RUN_HISTORY(agentId, runId)}`;
+  ```
+
+### Socket Events
+
+All socket event names must use constants from `shared/SocketEvents.ts`:
+
+- **Event names**: Use `SocketEvents` constants
+  ```typescript
+  socket.on(SocketEvents.AGENT_CHAT_EVENT, handler);
+  socket.emit(SocketEvents.AGENT_CHAT_MESSAGE, payload);
+  ```
+
+- **Socket rooms**: Use `SocketRooms` helpers
+  ```typescript
+  io.to(SocketRooms.user(userId)).emit(SocketEvents.INVALIDATE, { key });
+  ```
+
+### OAuth Redirects
+
+OAuth redirect URLs must use `FrontendRoutes`:
+
+```typescript
+res.redirect(`${urls.frontend}${FrontendRoutes.OAUTH.SUCCESS}`);
+res.redirect(`${urls.frontend}${FrontendRoutes.OAUTH.ERROR}`);
+```
+
+### Webhook URLs
+
+Webhook URLs must use `ApiRoutes.WEBHOOKS`:
+
+```typescript
+const webhookUrl = `${urls.backend}${ApiRoutes.WEBHOOKS.FIGMA}`;
+const webhookUrl = `${urls.backend}${ApiRoutes.WEBHOOKS.SCHEDULE_BY_INPUT_ID.build(inputId)}`;
+```
+
+**Why**: This ensures frontend and backend stay in sync, prevents typos, enables easy refactoring, and provides type safety.

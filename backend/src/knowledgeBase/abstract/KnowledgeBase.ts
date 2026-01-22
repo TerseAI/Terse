@@ -1,6 +1,6 @@
 // MARK: - Output Integrations
 
-import { ChannelKnowledgeBaseWithConfigs, PrismaTransaction, User } from "../../types/prisma";
+import { AgentKnowledgeBaseWithConfigs, PrismaTransaction, User } from "../../types/prisma";
 import { KnowledgeBaseConfigType } from "@prisma/client";
 import { ConfigInstance } from "../../shared/Configs";
 import { ToolboxEntry } from "../../outputs/abstract/Output";
@@ -8,7 +8,7 @@ import { ToolboxEntry } from "../../outputs/abstract/Output";
 export abstract class KnowledgeBase<KBConfig extends ConfigInstance> {
     integration: KnowledgeBaseConfigType;
     readonly toolbox: readonly ToolboxEntry[];
-    configs: ChannelKnowledgeBaseWithConfigs[] = [];
+    configs: AgentKnowledgeBaseWithConfigs[] = [];
 
     constructor(integration: KnowledgeBaseConfigType, toolbox: readonly ToolboxEntry[]) {
         this.integration = integration;
@@ -17,12 +17,12 @@ export abstract class KnowledgeBase<KBConfig extends ConfigInstance> {
 
     abstract validateConfig(knowledgeBase: KBConfig, userId: string): Promise<void>;
 
-    abstract addKnowledgeBaseToChannel(tx: PrismaTransaction, channelKnowledgeBaseId: string, knowledgeBase: KBConfig): Promise<void>;
+    abstract addKnowledgeBaseToAgent(tx: PrismaTransaction, agentKnowledgeBaseId: string, knowledgeBase: KBConfig): Promise<void>;
 
 
     getSystemInstructions(): string {
         return this.getSystemInstructionsForConfigs(this.configs);
     }
 
-    protected abstract getSystemInstructionsForConfigs(configs: ChannelKnowledgeBaseWithConfigs[]): string;
+    protected abstract getSystemInstructionsForConfigs(configs: AgentKnowledgeBaseWithConfigs[]): string;
 }

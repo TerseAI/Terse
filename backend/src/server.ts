@@ -23,13 +23,13 @@ import {
   googleLoginURL,
 } from "./routes/auth/googleAuth";
 import {
-  createChannel,
-  deleteChannel,
-  getRecentChannels,
-  getUserChannel,
-  getUserChannels,
-  updateChannel,
-} from "./routes/channels";
+  createAgent,
+  deleteAgent,
+  getRecentAgents,
+  getUserAgent,
+  getUserAgents,
+  updateAgent,
+} from "./routes/agents";
 import {
   getInstallationUrl,
   githubAppUnifiedEvent,
@@ -97,6 +97,7 @@ import { getDatadogIntegrations, createOrUpdateDatadogIntegration, getDatadogInd
 import { handleScheduleWebhook, handleManualTrigger } from "./routes/schedule";
 import { getTemplates } from "./routes/templates";
 import "./integrations/IntegrationTaskHandler"; // Import to trigger listener registration
+import { ApiRoutes } from "./shared/ApiRoutes";
 
 export type Session = {
   user: User;
@@ -193,104 +194,104 @@ app.use(cookieParser());
 
 // MARK: AUTH
 
-app.get("/me", authMiddleware, (req, res) => {
+app.get(ApiRoutes.AUTH.ME, authMiddleware, (req, res) => {
   res.send(req.session?.user);
 });
 
-app.get("/auth/github-app", async (req, res) => {
+app.get(ApiRoutes.AUTH.GITHUB_APP, async (req, res) => {
   githubAppOAuth(req, res);
 });
 
-app.get("/auth/google", async (req, res) => {
+app.get(ApiRoutes.AUTH.GOOGLE, async (req, res) => {
   googleLogin(req, res);
 });
 
-app.post("/auth/set-session", async (req, res) => {
+app.post(ApiRoutes.AUTH.SET_SESSION, async (req, res) => {
   setSession(req, res);
 });
 
-app.get("/auth/github-login/callback", async (req, res) => {
+app.get(ApiRoutes.AUTH.GITHUB_LOGIN_CALLBACK, async (req, res) => {
   githubCallback(req, res);
 });
 
 // GITHUB Will call this immediately after the user installs the app.
-app.get("/auth/github-app/callback", async (req, res) => {
+app.get(ApiRoutes.AUTH.GITHUB_APP_CALLBACK, async (req, res) => {
   githubAppCallbackIntegrate(req, res);
 });
 
-app.get("/auth/google/callback", async (req, res) => {
+app.get(ApiRoutes.AUTH.GOOGLE_CALLBACK, async (req, res) => {
   googleCallback(req, res);
 });
 
-app.get("/auth/github/login-url", (req, res) => {
+app.get(ApiRoutes.AUTH.GITHUB_LOGIN_URL, (req, res) => {
   githubLoginURL(req, res);
 });
 
-app.get("/auth/google/login-url", (req, res) => {
+app.get(ApiRoutes.AUTH.GOOGLE_LOGIN_URL, (req, res) => {
   googleLoginURL(req, res);
 });
 
-app.post("/login", async (req, res) => {
+app.post(ApiRoutes.AUTH.LOGIN, async (req, res) => {
   login(req, res);
 });
 
-app.post("/logout", async (req, res) => {
+app.post(ApiRoutes.AUTH.LOGOUT, async (req, res) => {
   logout(req, res);
 });
 
 // MARK ACTIVITY FEED
 
-app.get("/activity-feed", authMiddleware, async (req, res) => {
+app.get(ApiRoutes.ACTIVITY.FEED, authMiddleware, async (req, res) => {
   getActivityFeed(req, res);
 });
 
 // Add daily summary route
-app.get("/activity/daily-summary", authMiddleware, async (req, res) => {
+app.get(ApiRoutes.ACTIVITY.DAILY_SUMMARY, authMiddleware, async (req, res) => {
   getDailyActivitySummary(req, res);
 });
 
 // MARK: STATS
-app.get("/stats", authMiddleware, async (req, res) => {
+app.get(ApiRoutes.STATS, authMiddleware, async (req, res) => {
   getStats(req, res);
 });
 
 // MARK: RUN HISTORY
 
-app.get("/run-history/actions", authMiddleware, async (req, res) => {
+app.get(ApiRoutes.RUN_HISTORY.ACTIONS, authMiddleware, async (req, res) => {
   getRunHistoryActions(req, res);
 });
 
-app.get("/run-history/:channelId", authMiddleware, async (req, res) => {
+app.get(ApiRoutes.RUN_HISTORY.BY_AGENT_ID.pattern, authMiddleware, async (req, res) => {
   getRunHistory(req, res);
 });
 
-app.get("/run-history/:runId/chat", authMiddleware, async (req, res) => {
+app.get(ApiRoutes.RUN_HISTORY.CHAT_BY_RUN_ID.pattern, authMiddleware, async (req, res) => {
   getChatHistory(req, res);
 });
 
 // MARK: SESSION
 
-app.get("/session/token", authMiddleware, async (req, res) => {
+app.get(ApiRoutes.SESSION.TOKEN, authMiddleware, async (req, res) => {
   requestSessionSocketToken(req, res);
 });
 
 // MARK: GITHUB APP
 
-app.get("/github/integrations", authMiddleware, async (req, res) => {
+app.get(ApiRoutes.GITHUB.INTEGRATIONS, authMiddleware, async (req, res) => {
   getGithubIntegrations(req, res);
 })
 
-app.get("/github/installation-url", authMiddleware, async (req, res) => {
+app.get(ApiRoutes.GITHUB.INSTALLATION_URL, authMiddleware, async (req, res) => {
   getInstallationUrl(req, res);
 });
 
-app.get("/github/get-repositories-for-integration", authMiddleware, async (req, res) => {
+app.get(ApiRoutes.GITHUB.GET_REPOSITORIES_FOR_INTEGRATION, authMiddleware, async (req, res) => {
   getGithubRepositoriesForIntegration(req, res);
 });
 
 // THIS IS FOR THE PROBOT APP!
 app.post(
-  "/github/installation-callback",
+  ApiRoutes.GITHUB.INSTALLATION_CALLBACK,
   githubAppAuthMiddleware,
   async (req, res) => {
     processsGithubAppInstallationWebhook(req, res);
@@ -298,223 +299,223 @@ app.post(
 );
 
 app.post(
-  "/github/installation-deleted",
+  ApiRoutes.GITHUB.INSTALLATION_DELETED,
   githubAppAuthMiddleware,
   async (req, res) => {
     githubAppInstallationDeleted(req, res);
   }
 );
 
-app.post("/github/unified-event", async (req, res) => {
+app.post(ApiRoutes.GITHUB.UNIFIED_EVENT, async (req, res) => {
   await githubAppUnifiedEvent(req, res);
 });
 
 // MARK: JIRA
 
 // MARK: ATLASSIAN
-app.get("/atlassian/integrations", authMiddleware, async (req, res) => {
+app.get(ApiRoutes.ATLASSIAN.INTEGRATIONS, authMiddleware, async (req, res) => {
   getAtlassianIntegrations(req, res);
 });
 
-app.get("/jira/resources", authMiddleware, async (req, res) => {
+app.get(ApiRoutes.JIRA.RESOURCES, authMiddleware, async (req, res) => {
   getJiraResources(req, res);
 });
 
 // OAuth endpoints
-app.get("/atlassian/oauth/callback", async (req, res) => {
+app.get(ApiRoutes.ATLASSIAN.OAUTH_CALLBACK, async (req, res) => {
   atlassianOAuthCallback(req, res);
 });
 
 // MARK: CONFLUENCE
 
-app.get("/confluence/integrations", authMiddleware, async (req, res) => {
+app.get(ApiRoutes.CONFLUENCE.INTEGRATIONS, authMiddleware, async (req, res) => {
   getConfluenceIntegrations(req, res);
 });
 
-app.get("/confluence/resources", authMiddleware, async (req, res) => {
+app.get(ApiRoutes.CONFLUENCE.RESOURCES, authMiddleware, async (req, res) => {
   getConfluenceResources(req, res);
 });
 
 // MARK: GMAIL
-app.get("/gmail/integrations", authMiddleware, async (req, res) => {
+app.get(ApiRoutes.GMAIL.INTEGRATIONS, authMiddleware, async (req, res) => {
   getGmailIntegrations(req, res);
 });
 
-app.get("/gmail/callback", async (req, res) => {
+app.get(ApiRoutes.GMAIL.CALLBACK, async (req, res) => {
   gmailCallback(req, res);
 });
 
-app.delete("/gmail/delete-integration", authMiddleware, async (req, res) => {
+app.delete(ApiRoutes.GMAIL.DELETE_INTEGRATION, authMiddleware, async (req, res) => {
   deleteGmailIntegration(req, res);
 });
 
-app.post("/webhooks/gmail", async (req, res) => {
+app.post(ApiRoutes.WEBHOOKS.GMAIL, async (req, res) => {
   handleGmailWebhook(req, res);
 });
 // MARK: REFRESH TOKENS
 
-app.post("/refresh-tokens", async (req, res) => {
+app.post(ApiRoutes.REFRESH_TOKENS, async (req, res) => {
   refreshAllTokens(req, res);
 });
 
 // MARK: NOTION
 
-app.get("/notion/integrations", authMiddleware, async (req, res) => {
+app.get(ApiRoutes.NOTION.INTEGRATIONS, authMiddleware, async (req, res) => {
   getNotionIntegrations(req, res);
 })
 
 // OAuth endpoints
 
-app.get("/notion/oauth/callback", async (req, res) => {
+app.get(ApiRoutes.NOTION.OAUTH_CALLBACK, async (req, res) => {
   notionOAuthCallback(req, res);
 });
 
-app.get("/notion/resources", authMiddleware, async (req, res) => {
+app.get(ApiRoutes.NOTION.RESOURCES, authMiddleware, async (req, res) => {
   getNotionResources(req, res);
 });
 
 // MARK: FIGMA
 
-app.get("/figma/integrations", authMiddleware, async (req, res) => {
+app.get(ApiRoutes.FIGMA.INTEGRATIONS, authMiddleware, async (req, res) => {
   getFigmaIntegrations(req, res);
 })
 
-app.get("/figma/oauth/callback", async (req, res) => {
+app.get(ApiRoutes.FIGMA.OAUTH_CALLBACK, async (req, res) => {
   figmaOAuthCallback(req, res);
 });
 
-app.post("/webhooks/figma", async (req, res) => {
+app.post(ApiRoutes.WEBHOOKS.FIGMA, async (req, res) => {
   handleFigmaWebhook(req, res);
 });
 
 // MARK: LINEAR
 
-app.get("/linear/oauth/callback", async (req, res) => {
+app.get(ApiRoutes.LINEAR.OAUTH_CALLBACK, async (req, res) => {
   linearOAuthCallback(req, res);
 });
 
 // Linear webhook needs raw body for signature verification
-app.use("/linear/webhook", express.raw({ type: "application/json" }));
+app.use(ApiRoutes.LINEAR.WEBHOOK, express.raw({ type: "application/json" }));
 
-app.post("/linear/webhook", async (req, res) => {
+app.post(ApiRoutes.LINEAR.WEBHOOK, async (req, res) => {
   handleLinearWebhook(req, res);
 });
 
-app.get("/linear/integrations", authMiddleware, async (req, res) => {
+app.get(ApiRoutes.LINEAR.INTEGRATIONS, authMiddleware, async (req, res) => {
   getLinearIntegrations(req, res);
 });
 
-app.get("/linear/teams", authMiddleware, async (req, res) => {
+app.get(ApiRoutes.LINEAR.TEAMS, authMiddleware, async (req, res) => {
   getLinearTeams(req, res);
 });
 
-app.post("/webhooks/jira/:accountId", async (req, res) => {
+app.post(ApiRoutes.WEBHOOKS.JIRA_BY_ACCOUNT_ID.pattern, async (req, res) => {
   // Use the new webhook handler which verifies authenticity and processes the event
   handleJiraWebhook(req, res);
 });
 
 // MARK: SCHEDULE (Cloud Scheduler)
-app.post("/webhooks/schedule/:inputId", async (req, res) => {
+app.post(ApiRoutes.WEBHOOKS.SCHEDULE_BY_INPUT_ID.pattern, async (req, res) => {
   handleScheduleWebhook(req, res);
 });
 
 // Manual trigger endpoint (authenticated)
-app.post("/schedule/trigger/:inputId", authMiddleware, async (req, res) => {
+app.post(ApiRoutes.SCHEDULE.TRIGGER_BY_INPUT_ID.pattern, authMiddleware, async (req, res) => {
   handleManualTrigger(req, res);
 });
 
 // MARK: SLACK
 
-app.get("/slack/integrations", authMiddleware, async (req, res) => {
+app.get(ApiRoutes.SLACK.INTEGRATIONS, authMiddleware, async (req, res) => {
   getSlackIntegrations(req, res);
 })
 
-app.get("/slack/get-current-integration", authMiddleware, async (req, res) => {
+app.get(ApiRoutes.SLACK.GET_CURRENT_INTEGRATION, authMiddleware, async (req, res) => {
   getCurrentSlackIntegration(req, res);
 });
 
-app.get("/slack/oauth-callback", async (req, res) => {
+app.get(ApiRoutes.SLACK.OAUTH_CALLBACK, async (req, res) => {
   slackOAuthCallback(req, res);
 });
 
-app.get("/slack/channels", authMiddleware, async (req, res) => {
+app.get(ApiRoutes.SLACK.CHANNELS, authMiddleware, async (req, res) => {
   getSlackChannels(req, res);
 });
 
-app.get("/slack/users", authMiddleware, async (req, res) => {
+app.get(ApiRoutes.SLACK.USERS, authMiddleware, async (req, res) => {
   getSlackUsers(req, res);
 });
 
 // MARK: POSTHOG
 
-app.get("/posthog/integrations", authMiddleware, async (req, res) => {
+app.get(ApiRoutes.POSTHOG.INTEGRATIONS, authMiddleware, async (req, res) => {
   getPosthogIntegrations(req, res);
 });
 
-app.post("/posthog/integrations", authMiddleware, async (req, res) => {
+app.post(ApiRoutes.POSTHOG.INTEGRATIONS, authMiddleware, async (req, res) => {
   createOrUpdatePosthogIntegration(req, res);
 });
 
-app.get("/posthog/projects", authMiddleware, async (req, res) => {
+app.get(ApiRoutes.POSTHOG.PROJECTS, authMiddleware, async (req, res) => {
   getPosthogProjects(req, res);
 });
 
 // MARK: LAUNCHDARKLY
 
-app.get("/launchdarkly/integrations", authMiddleware, async (req, res) => {
+app.get(ApiRoutes.LAUNCHDARKLY.INTEGRATIONS, authMiddleware, async (req, res) => {
   getLaunchDarklyIntegrations(req, res);
 });
 
-app.post("/launchdarkly/integrations", authMiddleware, async (req, res) => {
+app.post(ApiRoutes.LAUNCHDARKLY.INTEGRATIONS, authMiddleware, async (req, res) => {
   createOrUpdateLaunchDarklyIntegration(req, res);
 });
 
-app.get("/launchdarkly/integrations/:integrationId/projects", authMiddleware, async (req, res) => {
+app.get(ApiRoutes.LAUNCHDARKLY.PROJECTS_BY_INTEGRATION_ID.pattern, authMiddleware, async (req, res) => {
   getLaunchDarklyProjects(req, res);
 });
 
-app.get("/launchdarkly/integrations/:integrationId/projects/:projectKey/environments", authMiddleware, async (req, res) => {
+app.get(ApiRoutes.LAUNCHDARKLY.ENVIRONMENTS_BY_INTEGRATION_AND_PROJECT.pattern, authMiddleware, async (req, res) => {
   getLaunchDarklyEnvironments(req, res);
 });
 
 // MARK: DATADOG
 
-app.get("/datadog/integrations", authMiddleware, async (req, res) => {
+app.get(ApiRoutes.DATADOG.INTEGRATIONS, authMiddleware, async (req, res) => {
   getDatadogIntegrations(req, res);
 });
 
-app.post("/datadog/integrations", authMiddleware, async (req, res) => {
+app.post(ApiRoutes.DATADOG.INTEGRATIONS, authMiddleware, async (req, res) => {
   createOrUpdateDatadogIntegration(req, res);
 });
 
-app.get("/datadog/indexes", authMiddleware, async (req, res) => {
+app.get(ApiRoutes.DATADOG.INDEXES, authMiddleware, async (req, res) => {
   getDatadogIndexes(req, res);
 });
 
-// MARK: CHANNELS
+// MARK: AGENTS
 
-app.get("/channels", authMiddleware, async (req, res) => {
-  getUserChannels(req, res);
+app.get("/agents", authMiddleware, async (req, res) => {
+  getUserAgents(req, res);
 });
 
-app.get("/channels/recent", authMiddleware, async (req, res) => {
-  getRecentChannels(req, res);
+app.get("/agents/recent", authMiddleware, async (req, res) => {
+  getRecentAgents(req, res);
 });
 
-app.get("/channels/:id", authMiddleware, async (req, res) => {
-  getUserChannel(req, res);
+app.get(ApiRoutes.AGENTS.BY_ID.pattern, authMiddleware, async (req, res) => {
+  getUserAgent(req, res);
 });
 
-app.post("/channels", authMiddleware, async (req, res) => {
-  createChannel(req, res);
+app.post("/agents", authMiddleware, async (req, res) => {
+  createAgent(req, res);
 });
 
-app.patch("/channels/:id", authMiddleware, async (req, res) => {
-  updateChannel(req, res);
+app.patch(ApiRoutes.AGENTS.BY_ID.pattern, authMiddleware, async (req, res) => {
+  updateAgent(req, res);
 });
 
-app.delete("/channels/:id", authMiddleware, async (req, res) => {
-  deleteChannel(req, res);
+app.delete(ApiRoutes.AGENTS.BY_ID.pattern, authMiddleware, async (req, res) => {
+  deleteAgent(req, res);
 });
 
 // MARK: TEMPLATES
@@ -535,7 +536,7 @@ app.post("/prompt-builder/generate-prompt", authMiddleware, async (req, res) => 
 
 // MARK: INTEGRATIONS
 
-app.get("/integrations/:integrationType/installation-details", authMiddleware, async (req, res) => {
+app.get(ApiRoutes.INTEGRATIONS.INSTALLATION_DETAILS_BY_TYPE.pattern, authMiddleware, async (req, res) => {
   getIntegrationInstallationDetails(req, res);
 });
 
@@ -557,11 +558,11 @@ app.post("/notification-destinations", authMiddleware, async (req, res) => {
   createNotificationDestination(req, res);
 });
 
-app.put("/notification-destinations/:id", authMiddleware, async (req, res) => {
+app.put(ApiRoutes.NOTIFICATION_DESTINATIONS.BY_ID.pattern, authMiddleware, async (req, res) => {
   updateNotificationDestination(req, res);
 });
 
-app.delete("/notification-destinations/:id", authMiddleware, async (req, res) => {
+app.delete(ApiRoutes.NOTIFICATION_DESTINATIONS.BY_ID.pattern, authMiddleware, async (req, res) => {
   deleteNotificationDestination(req, res);
 });
 

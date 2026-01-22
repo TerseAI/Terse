@@ -5,6 +5,7 @@ import { initializeSlackWebClient } from "../integrations/SlackIntegration";
 import { settings } from "../config/settings";
 import logger from "../logger";
 import { createNotificationMessage, createApprovalMessage, createUpdatedApprovalMessage } from "../slack/blockKitHelpers";
+import { FrontendRoutes } from "../shared/FrontendRoutes";
 
 export interface SlackMessage {
     text: string;
@@ -124,7 +125,7 @@ export async function sendSlackApprovalMessage(
     let runHistoryLink: string | undefined;
     if (automationId) {
         const frontendUrl = settings.urls.frontend;
-        runHistoryLink = `${frontendUrl}/app/channels/${automationId}?tab=history&runId=${runId}`;
+        runHistoryLink = `${frontendUrl}${FrontendRoutes.AGENTS.RUN_HISTORY(automationId, runId)}`;
     }
 
     const blocks = createApprovalMessage({
@@ -235,7 +236,7 @@ export async function updateSlackApprovalMessage(
     let runHistoryLink: string | undefined;
     if (automationId && runId) {
         const frontendUrl = settings.urls.frontend;
-        runHistoryLink = `${frontendUrl}/app/channels/${automationId}?tab=history&runId=${runId}`;
+        runHistoryLink = `${frontendUrl}${FrontendRoutes.AGENTS.RUN_HISTORY(automationId, runId)}`;
     }
 
     const blocks = createUpdatedApprovalMessage({

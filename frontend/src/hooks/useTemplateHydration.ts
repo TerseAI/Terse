@@ -1,22 +1,22 @@
 import { v4 as uuidv4 } from "uuid";
-import { ChannelTemplate } from "../hooks/api/useTemplates";
-import { ChannelNotificationSettings, ChannelPrompt, TemplateInput, TemplateOutput, TemplateKnowledgeBase, TransientChannelInput, TransientChannelOutput, TransientKnowledgeBase } from "../shared/types";
+import { AgentTemplate } from "../hooks/api/useTemplates";
+import { AgentNotificationSettings, AgentPrompt, TemplateTrigger, TemplateOutput, TemplateKnowledgeBase, TransientAgentTrigger, TransientAgentOutput, TransientKnowledgeBase } from "../shared/types";
 import { ConfigType } from "../shared/Configs";
 
 export interface HydratedTemplateState {
     name: string | null;
-    prompt: ChannelPrompt | undefined;
+    prompt: AgentPrompt | undefined;
     isActive: boolean;
     requireApproval: boolean;
-    inputs: TransientChannelInput[];
-    outputs: TransientChannelOutput[];
+    inputs: TransientAgentTrigger[];
+    outputs: TransientAgentOutput[];
     knowledgeBases: TransientKnowledgeBase[];
-    notificationSettings: ChannelNotificationSettings;
+    notificationSettings: AgentNotificationSettings;
 }
 
 export function useTemplateHydration(
     templateId: string | undefined,
-    templates: ChannelTemplate[]
+    templates: AgentTemplate[]
 ): { hydratedState: HydratedTemplateState | null; templateFound: boolean } {
     if (!templateId || templates.length === 0) {
         return {
@@ -36,14 +36,14 @@ export function useTemplateHydration(
     }
 
     // Convert template inputs to transient inputs (config will be undefined, user needs to configure)
-    const transientInputs: TransientChannelInput[] = template.inputs.map((input: TemplateInput) => ({
+    const transientInputs: TransientAgentTrigger[] = template.triggers.map((input: TemplateTrigger) => ({
         id: uuidv4(),
         configType: input.config.configType as ConfigType,
         config: undefined, // User needs to select integration
     }));
 
     // Convert template outputs to transient outputs
-    const transientOutputs: TransientChannelOutput[] = template.outputs && template.outputs.length > 0
+    const transientOutputs: TransientAgentOutput[] = template.outputs && template.outputs.length > 0
         ? template.outputs.map((output: TemplateOutput) => ({
               id: uuidv4(),
               configType: output.config.configType as ConfigType,
@@ -62,7 +62,7 @@ export function useTemplateHydration(
             : [];
 
     // Handle notification settings from template
-    const notificationSettings: ChannelNotificationSettings = { enabled: false, actionTypes: [] };
+    const notificationSettings: AgentNotificationSettings = { enabled: false, actionTypes: [] };
 
     return {
         hydratedState: {

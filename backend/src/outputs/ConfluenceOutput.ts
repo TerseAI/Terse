@@ -1,5 +1,5 @@
 import { AtlassianIntegration, IntegrationType } from "../shared/Integrations";
-import { ChannelOutputWithConfigs, PrismaTransaction } from "../types/prisma";
+import { AgentOutputWithConfigs, PrismaTransaction } from "../types/prisma";
 import { Output, ToolboxEntry } from "./abstract/Output";
 import { db } from "../prismaClient";
 import { RunContext, Tool, tool } from "@openai/agents";
@@ -7,7 +7,7 @@ import { z } from "zod";
 import chalk from "chalk";
 import { OutputConfigType, RunHistoryActionType } from "@prisma/client";
 import { ConfluenceConfig } from "../shared/Configs";
-import { SessionWithTracking } from "../agent/ChannelAgent/ChannelAgent";
+import { SessionWithTracking } from "../agent/AgentRunner/AgentRunner";
 import { Session } from "../server";
 import { formatError, needsApproval } from "../tools/toolUtils";
 import logger from "../logger";
@@ -31,10 +31,10 @@ export class ConfluenceOutput extends Output<ConfluenceConfig> {
         }
     }
 
-    async addOutputToChannel(tx: PrismaTransaction, channelOutputId: string, output: ConfluenceConfig): Promise<void> {
+    async addOutputToAgent(tx: PrismaTransaction, agentOutputId: string, output: ConfluenceConfig): Promise<void> {
         await tx.automation_confluence_configs.create({
             data: {
-                automation_output_id: channelOutputId,
+                automation_output_id: agentOutputId,
                 space_name: output.spaceName,
                 space_id: output.spaceId,
                 page_id: output.pageId,
@@ -43,7 +43,7 @@ export class ConfluenceOutput extends Output<ConfluenceConfig> {
         });
     }
 
-    protected getSystemInstructionsForConfigs(configs: ChannelOutputWithConfigs[]): string {
+    protected getSystemInstructionsForConfigs(configs: AgentOutputWithConfigs[]): string {
         if (configs.length === 0) {
             throw new Error('No Confluence configs provided');
         }

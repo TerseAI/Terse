@@ -15,15 +15,16 @@ import {
     SidebarMenuSubItem,
 } from "@/components/ui/sidebar"
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Channel } from "@/shared/types";
+import { Agent } from "@/shared/types";
 import { Button } from "@/components/ui/button";
 import { AppSidebarHeader } from "./SidebarHeader";
 import { AppSidebarFooter } from "./SidebarFooter";
-import { useChannels } from "@/hooks/api/useChannels";
+import { useAgents } from "@/hooks/api/useAgents";
 import { useFeatureFlag } from "@/hooks/useFeatureFlag";
+import { FrontendRoutes } from "@/shared/FrontendRoutes";
 
 export function AppSidebar() {
-    const { channels, isLoading } = useChannels({ limit: 100 });
+    const { agents, isLoading } = useAgents({ limit: 100 });
 
     return (
         <Sidebar>
@@ -32,7 +33,7 @@ export function AppSidebar() {
                 <SidebarGroup>
                     <SidebarGroupLabel>Application</SidebarGroupLabel>
                     <SidebarGroupContent>
-                        <ApplicationNavigation channels={channels} loading={isLoading} />
+                        <ApplicationNavigation agents={agents} loading={isLoading} />
                     </SidebarGroupContent>
                 </SidebarGroup>
 
@@ -49,11 +50,11 @@ export function AppSidebar() {
 }
 
 interface ApplicationNavigationProps {
-    channels: Channel[];
+    agents: Agent[];
     loading: boolean;
 }
 
-function ApplicationNavigation({ channels, loading }: ApplicationNavigationProps) {
+function ApplicationNavigation({ agents, loading }: ApplicationNavigationProps) {
     const location = useLocation();
     const hasBirdsEyeFlag = useFeatureFlag('Birds-eye-view-homepage');
     const applicationItems = hasBirdsEyeFlag ? BirdsEyeApplicationItems : DefaultApplicationItems;
@@ -68,8 +69,8 @@ function ApplicationNavigation({ channels, loading }: ApplicationNavigationProps
                             <span>{item.title}</span>
                         </Link>
                     </SidebarMenuButton>
-                    {item.title === "Channels" && (
-                        <ChannelsList channels={channels} loading={loading} />
+                    {item.title === "Agents" && (
+                        <AgentsList agents={agents} loading={loading} />
                     )}
                 </SidebarMenuItem>
             ))}
@@ -96,11 +97,11 @@ function SettingsNavigation() {
     )
 }
 
-interface ChannelsListProps {
-    channels: Channel[];
+interface AgentsListProps {
+    agents: Agent[];
     loading: boolean;
 }
-function ChannelsList({ channels, loading }: ChannelsListProps) {
+function AgentsList({ agents, loading }: AgentsListProps) {
     const navigate = useNavigate();
 
     if (loading) {
@@ -121,8 +122,8 @@ function ChannelsList({ channels, loading }: ChannelsListProps) {
 
     return (
         <SidebarMenuSub>
-            {channels.map((channel) => (
-                <ChannelListItem key={channel.id} channel={channel} />
+            {agents.map((agent) => (
+                <AgentListItem key={agent.id} agent={agent} />
             ))}
             <SidebarMenuSubItem>
                 <SidebarMenuSubButton asChild>
@@ -130,10 +131,10 @@ function ChannelsList({ channels, loading }: ChannelsListProps) {
                         variant="ghost"
                         size="sm"
                         className="gap-1 text-xs text-muted-foreground"
-                        onClick={() => navigate('/app/channels/setup')}
+                        onClick={() => navigate(FrontendRoutes.AGENTS.SETUP)}
                     >
                         <Plus className="size-3 !text-muted-foreground hover:!text-foreground" color="currentColor"/>
-                        Add Channel
+                        Add Agent
                     </Button>
                 </SidebarMenuSubButton>
             </SidebarMenuSubItem>
@@ -141,19 +142,19 @@ function ChannelsList({ channels, loading }: ChannelsListProps) {
     )
 }
 
-interface ChannelListItemProps {
-    channel: Channel;
+interface AgentListItemProps {
+    agent: Agent;
 }
 
-function ChannelListItem({ channel }: ChannelListItemProps) {
+function AgentListItem({ agent }: AgentListItemProps) {
     const location = useLocation();
-    const isActive = location.pathname === `/app/channels/${channel.id}`;
+    const isActive = location.pathname === FrontendRoutes.AGENTS.DETAIL(agent.id);
 
     return (
         <SidebarMenuSubItem>
             <SidebarMenuSubButton asChild isActive={isActive}>
-                <Link to={`/app/channels/${channel.id}`}>
-                    <span>{channel.name}</span>
+                <Link to={FrontendRoutes.AGENTS.DETAIL(agent.id)}>
+                    <span>{agent.name}</span>
                 </Link>
             </SidebarMenuSubButton>
         </SidebarMenuSubItem>
@@ -172,13 +173,13 @@ interface NavItem {
 const DefaultApplicationItems: NavItem[] = [
     {
         title: "Home",
-        url: "/app",
+        url: FrontendRoutes.APP,
         icon: Home,
         iconColor: "text-primary",
     },
     {
-        title: "Channels",
-        url: "/app/channels",
+        title: "Agents",
+        url: FrontendRoutes.AGENTS.LIST,
         icon: Zap,
         iconColor: "text-primary",
     }
@@ -193,13 +194,13 @@ const BirdsEyeApplicationItems: NavItem[] = [
     },
     {
         title: "Home",
-        url: "/app",
+        url: FrontendRoutes.APP,
         icon: Home,
         iconColor: "text-primary",
     },
     {
         title: "Channels",
-        url: "/app/channels",
+        url: FrontendRoutes.AGENTS.LIST,
         icon: Zap,
         iconColor: "text-primary",
     }
@@ -208,13 +209,13 @@ const BirdsEyeApplicationItems: NavItem[] = [
 const SettingsItems: NavItem[] = [
     {
         title: "Integrations",
-        url: "/app/integrations",
+        url: FrontendRoutes.INTEGRATIONS,
         icon: Plug,
         iconColor: "text-primary",
     },
     {
         title: "Notifications",
-        url: "/app/notifications",
+        url: FrontendRoutes.NOTIFICATIONS,
         icon: Bell,
         iconColor: "text-primary",
     },

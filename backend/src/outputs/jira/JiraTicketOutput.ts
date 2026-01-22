@@ -1,5 +1,5 @@
 import { Tool } from "@openai/agents";
-import { ChannelOutputWithConfigs, PrismaTransaction } from "../../types/prisma";
+import { AgentOutputWithConfigs, PrismaTransaction } from "../../types/prisma";
 import { Output, ToolboxEntry } from "../abstract/Output";
 import { OutputConfigType } from "@prisma/client";
 import { JiraConfig } from "../../shared/Configs";
@@ -23,7 +23,7 @@ export class JiraTicketOutput extends Output<JiraConfig> {
         // No additional config validation beyond integration ownership.
     }
 
-    async addOutputToChannel(tx: PrismaTransaction, channelOutputId: string, output: JiraConfig): Promise<void> {
+    async addOutputToAgent(tx: PrismaTransaction, channelOutputId: string, output: JiraConfig): Promise<void> {
         await tx.automation_jira_configs.create({
             data: {
                 automation_output_id: channelOutputId,
@@ -33,7 +33,7 @@ export class JiraTicketOutput extends Output<JiraConfig> {
         });
     }
 
-    protected getSystemInstructionsForConfigs(configs: ChannelOutputWithConfigs[]): string {
+    protected getSystemInstructionsForConfigs(configs: AgentOutputWithConfigs[]): string {
         if (configs.length === 0) {
             throw new Error('No Jira configs provided');
         }

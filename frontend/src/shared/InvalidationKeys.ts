@@ -102,13 +102,13 @@ export const slackIntegrationsKey = (): readonly [string] => {
 };
 
 export const runHistoryKey = (
-    channelId: string,
+    agentId: string,
     params?: GetRunHistoryParams
 ): readonly [string, string, string] | readonly [string, string] => {
     if (!params || Object.keys(params).length === 0) {
-        return ['runHistory', channelId] as const;
+        return ['runHistory', agentId] as const;
     }
-    
+
     // Yea we may need to rethink how we do this. I think it may be better to just fetch all params and fiter on the client.
     // But I see why it as done this way. It makes more sense if you support text search.
     const sortedKeys = Object.keys(params).sort();
@@ -120,14 +120,14 @@ export const runHistoryKey = (
         }
     }
     const serializedParams = JSON.stringify(sortedParams);
-    return ['runHistory', channelId, serializedParams] as const;
+    return ['runHistory', agentId, serializedParams] as const;
 };
 
-export const recentChannelsKey = (limit?: number): readonly [string, number] | readonly [string] => {
+export const recentAgentsKey = (limit?: number): readonly [string, number] | readonly [string] => {
     if (limit !== undefined) {
-        return ['recentChannels', limit] as const;
+        return ['recentAgents', limit] as const;
     }
-    return ['recentChannels'] as const;
+    return ['recentAgents'] as const;
 };
 
 export const statsKey = (timezone: string): readonly [string, string] => {

@@ -6,9 +6,9 @@ import { Jwt } from "./utility/jwt";
 import { urls, nodeEnv, optional } from "./config/settings";
 import { SendModelRequest, ModelEvent, ModelRequest, ToolApprovalResponse } from "./shared/ModelEvents";
 import { db } from "./prismaClient";
-import { ChannelAgent } from "./agent/ChannelAgent/ChannelAgent";
-import { RunContext } from "./agent/ChannelAgent/SystemPromptBuilder";
-import { ChannelWithRelations } from "./types/prisma";
+import { AgentRunner } from "./agent/AgentRunner/AgentRunner";
+import { RunContext } from "./agent/AgentRunner/SystemPromptBuilder";
+import { AgentWithRelations } from "./types/prisma";
 import { getInputConfigInclude, getOutputConfigInclude, getKnowledgeBaseConfigInclude } from './utility/prismaIncludes';
 import { OutputFactory } from "./outputs/abstract/OutputFactory";
 import { Output } from "./outputs/abstract/Output";
@@ -16,10 +16,11 @@ import { KnowledgeBaseFactory } from "./knowledgeBase/abstract/KnowledgeBaseFact
 import { KnowledgeBase } from "./knowledgeBase/abstract/KnowledgeBase";
 import { ConfigInstance } from "./shared/Configs";
 import { Session } from "./server";
-import { storeChatEvent, markRunFailed, finalizeRunStatus } from "./agent/ChannelAgent/runHistory";
+import { storeChatEvent, markRunFailed, finalizeRunStatus } from "./agent/AgentRunner/runHistory";
 import { DirectiveTask, directiveTaskQueue } from "./agent/DirectiveAgent/DirectiveAgent";
 import { ApprovalService } from "./services/ApprovalService";
 import logger from "./logger";
+import { SocketEvents, SocketRooms } from "./shared/SocketEvents";
 
 // Extended Socket type with userId property
 interface AuthenticatedSocket extends Socket {
@@ -31,9 +32,9 @@ let pub: ReturnType<typeof createClient> | null = null;
 let sub: ReturnType<typeof createClient> | null = null;
 
 function createKnowledgeBases(
-    channelKnowledgeBases: ChannelWithRelations['knowledge_bases']
+    agentKnowledgeBases: AgentWithRelations['knowledge_bases']
 ): KnowledgeBase<ConfigInstance>[] {
-    return KnowledgeBaseFactory.createKnowledgeBasesFromChannel(channelKnowledgeBases);
+    return KnowledgeBaseFactory.createKnowledgeBasesFromAgent(agentKnowledgeBases);
 }
 
 export async function initializeRealtimeSocket(server: HttpServer): Promise<Server> {
@@ -117,20 +118,20 @@ export async function initializeRealtimeSocket(server: HttpServer): Promise<Serv
     });
 
     // Connection handler
-    io.on("connection", (socket: Socket) => {
+    io.on(SocketEvents.CONNECT, (socket: Socket) => {
         const authenticatedSocket = socket as AuthenticatedSocket;
         const userId = authenticatedSocket.userId;
-        const room = `user:${userId}`;
+        const room = SocketRooms.user(userId);
         logger.info(`Socket.IO connection established for user ${userId}`, { userId, room });
 
         socket.join(room);
 
-        // Listen for channel chat messages
-        socket.on("channel:chat:message", async (payload: { runId: string | null; message: SendModelRequest }) => {
+        // Listen for agent chat messages
+        socket.on(SocketEvents.AGENT_CHAT_MESSAGE, async (payload: { runId: string | null; message: SendModelRequest }) => {
             const { runId, message } = payload;
-            logger.info(`[channel:chat:message] Received message for runId: ${runId}`, { runId, userId, message });
+            logger.info(`[agent:chat:message] Received message for runId: ${runId}`, { runId, userId, message });
             if (!runId) {
-                logger.error(`[channel:chat:message] No runId provided for message`, { message, userId });
+                logger.error(`[agent:chat:message] No runId provided for message`, { message, userId });
                 return;
             }
             const prisma = db();
@@ -143,11 +144,11 @@ export async function initializeRealtimeSocket(server: HttpServer): Promise<Serv
                 }
             });
             if (!runRecord || !runRecord.automation || runRecord.automation.user_id !== userId) {
-                logger.error(`[channel:chat:message] Run record not found for runId: ${runId} or user does not have access to this run`, { runId, userId });
+                logger.error(`[agent:chat:message] Run record not found for runId: ${runId} or user does not have access to this run`, { runId, userId });
                 return;
             }
 
-            const channel: ChannelWithRelations | null = await prisma.automations.findUnique({
+            const agent: AgentWithRelations | null = await prisma.automations.findUnique({
                 where: {
                     id: runRecord.automation.id,
                     user_id: userId
@@ -166,22 +167,22 @@ export async function initializeRealtimeSocket(server: HttpServer): Promise<Serv
                 }
             })
 
-            if (!channel) {
-                logger.error(`[channel:chat:message] Channel not found for automation id: ${runRecord.automation.id}`, { automationId: runRecord.automation.id, userId });
+            if (!agent) {
+                logger.error(`[agent:chat:message] Agent not found for automation id: ${runRecord.automation.id}`, { automationId: runRecord.automation.id, userId });
                 return;
             }
 
-            if (!channel.outputs || channel.outputs.length === 0) {
-                logger.error(`[channel:chat:message] No output integrations found for channel: ${channel.id}`, { channelId: channel.id, userId });
+            if (!agent.outputs || agent.outputs.length === 0) {
+                logger.error(`[agent:chat:message] No output integrations found for agent: ${agent.id}`, { agentId: agent.id, userId });
                 return;
             }
 
-            // Create outputs from channel configuration
+            // Create outputs from agent configuration
             let outputs: Output<ConfigInstance>[];
             try {
-                outputs = OutputFactory.createOutputsFromChannel(channel);
+                outputs = OutputFactory.createOutputsFromAgent(agent);
             } catch (error) {
-                logger.error(`[channel:chat:message] Failed to create outputs for channel: ${channel.id}`, { error, channelId: channel.id, userId });
+                logger.error(`[agent:chat:message] Failed to create outputs for agent: ${agent.id}`, { error, agentId: agent.id, userId });
                 return;
             }
 
@@ -191,12 +192,12 @@ export async function initializeRealtimeSocket(server: HttpServer): Promise<Serv
                 }
             });
             if(!user) {
-                logger.error(`[channel:chat:message] User not found for userId: ${userId}`, { userId });
+                logger.error(`[agent:chat:message] User not found for userId: ${userId}`, { userId });
                 return;
             }
             
 
-            // Create base session for ChannelAgent
+            // Create base session for AgentRunner
             const session: Session = {
                 user: user,
                 isUserInitiated: true,
@@ -216,31 +217,31 @@ export async function initializeRealtimeSocket(server: HttpServer): Promise<Serv
                 message: userMessage,
             };
             const userMessageEventId = await storeChatEvent(runId, userMessageEvent);
-            emitCacheInvalidationWithWildcard(user.id, 'runHistory', channel.id);
+            emitCacheInvalidationWithWildcard(user.id, 'runHistory', agent.id);
             emitCacheInvalidationWithWildcard(user.id, 'chatHistory', runId);
 
-            // Create knowledge bases from channel configuration
-            const knowledgeBases = createKnowledgeBases(channel.knowledge_bases || []);
+            // Create knowledge bases from agent configuration
+            const knowledgeBases = createKnowledgeBases(agent.knowledge_bases || []);
 
             const runContext: RunContext = { runId };
-            const channelAgent = new ChannelAgent(session, outputs, knowledgeBases, channel, runContext);
-            await channelAgent.initializeAgent();
-            
+            const agentRunner = new AgentRunner(session, outputs, knowledgeBases, agent, runContext);
+            await agentRunner.initializeAgent();
+
             let result;
             try {
-                result = await channelAgent.userMessageRun(userMessage, {
+                result = await agentRunner.userMessageRun(userMessage, {
                     runId,
                     userId: userId,
-                    channelId: channel.id,
+                    agentId: agent.id,
                 });
             } catch (error) {
                 // Log the error and update run history
                 const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-                logger.error(`[channel:chat:message] Error running channel agent: ${errorMessage}`, { error, runId, channelId: channel.id, userId });
-                
+                logger.error(`[agent:chat:message] Error running agent: ${errorMessage}`, { error, runId, agentId: agent.id, userId });
+
                 try {
                     await markRunFailed(runId, errorMessage, 'agent');
-                    emitCacheInvalidationWithWildcard(userId, 'runHistory', channel.id);
+                    emitCacheInvalidationWithWildcard(userId, 'runHistory', agent.id);
                 } catch (e) {
                     logger.error('Failed to mark run as failed', { error: e, runId });
                 }
@@ -252,14 +253,14 @@ export async function initializeRealtimeSocket(server: HttpServer): Promise<Serv
                 const hasFinalOutput = Boolean(result.result?.finalOutput);
                 try {
                     await finalizeRunStatus(runId, hasFinalOutput ? 'success' : 'failed');
-                    emitCacheInvalidationWithWildcard(userId, 'runHistory', channel.id);
+                    emitCacheInvalidationWithWildcard(userId, 'runHistory', agent.id);
                 } catch (e) {
                     logger.error('Failed to finalize run status', { error: e, runId });
                 }
             }
 
             directiveTaskQueue.emit(new DirectiveTask(
-                channel.id,
+                agent.id,
                 runId,
                 userMessageEventId,
                 userId,
@@ -269,12 +270,12 @@ export async function initializeRealtimeSocket(server: HttpServer): Promise<Serv
         });
 
         // Listen for tool approval responses
-        socket.on("channel:chat:approval", async (payload: { runId: string; message: ToolApprovalResponse }) => {
+        socket.on(SocketEvents.AGENT_CHAT_APPROVAL, async (payload: { runId: string; message: ToolApprovalResponse }) => {
             const { runId, message } = payload;
-            logger.info(`[channel:chat:approval] Received approval response`, { message, userId, runId });
+            logger.info(`[agent:chat:approval] Received approval response`, { message, userId, runId });
 
             if (!runId) {
-                logger.error(`[channel:chat:approval] No runId provided`);
+                logger.error(`[agent:chat:approval] No runId provided`);
                 return;
             }
 
@@ -287,9 +288,9 @@ export async function initializeRealtimeSocket(server: HttpServer): Promise<Serv
             });
 
             if (result.status === 'failed' && result.error) {
-                logger.error(`[channel:chat:approval] Approval processing failed: ${result.error}`);
+                logger.error(`[agent:chat:approval] Approval processing failed: ${result.error}`);
             } else {
-                logger.info(`[channel:chat:approval] Successfully processed approval for runId: ${runId}`);
+                logger.info(`[agent:chat:approval] Successfully processed approval for runId: ${runId}`);
             }
         });
 
@@ -302,7 +303,7 @@ export async function initializeRealtimeSocket(server: HttpServer): Promise<Serv
                 25_000
             );
 
-            socket.on("disconnect", () => {
+            socket.on(SocketEvents.DISCONNECT, () => {
                 clearInterval(refresh);
                 // Optional: check if other sockets for this user still exist before deleting presence
                 // Otherwise let TTL expire naturally.
@@ -325,7 +326,7 @@ export function emitCacheInvalidationWithKey(
         logger.warn("Socket.IO server not initialized");
         return;
     }
-    io.to(`user:${userId}`).emit("invalidate", { key });
+    io.to(SocketRooms.user(userId)).emit(SocketEvents.INVALIDATE, { key });
 }
 
 export function emitCacheInvalidationWithWildcard(
@@ -340,7 +341,7 @@ export function emitCacheInvalidationWithWildcard(
     // Send tag-based invalidation payload
     // If id is provided, frontend will match on both tag and id
     // If id is not provided, frontend will match on tag only
-    io.to(`user:${userId}`).emit("invalidate", { key, id });
+    io.to(SocketRooms.user(userId)).emit(SocketEvents.INVALIDATE, { key, id });
 }
 
 function getSocketCorsOrigin(): boolean | string | string[] {

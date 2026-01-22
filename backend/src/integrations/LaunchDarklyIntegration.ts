@@ -2,7 +2,7 @@ import { FormIntegrationInstallation, Integration, FormFieldDefinition, FormSubm
 import { db } from "../prismaClient";
 import { LaunchDarklyIntegration, LaunchDarklyIntegrationMetadata } from "../shared/Integrations";
 import { IntegrationType } from "../shared/Integrations";
-import { ChannelInputWithConfigs } from "../types/prisma";
+import { AgentTriggerWithConfigs } from "../types/prisma";
 import logger from "../logger";
 
 export class LaunchDarklyIntegrationManager implements Integration<LaunchDarklyIntegration, never, typeof LaunchDarklyIntegrationMetadata>, FormIntegrationInstallation<IntegrationType.LAUNCHDARKLY> {
@@ -62,11 +62,11 @@ export class LaunchDarklyIntegrationManager implements Integration<LaunchDarklyI
         return Promise.resolve();
     }
 
-    async setupChannelInput(integrationId: string, automationInput: ChannelInputWithConfigs): Promise<void> {
+    async setupAgentTrigger(integrationId: string, automationInput: AgentTriggerWithConfigs): Promise<void> {
 
     }
 
-    async teardownChannelInput(integrationId: string, automationInput: ChannelInputWithConfigs): Promise<void> {
+    async teardownAgentTrigger(integrationId: string, automationInput: AgentTriggerWithConfigs): Promise<void> {
     }
 
     getFormFields(): FormFieldDefinition[] {

@@ -3,8 +3,8 @@ import { SidebarTrigger } from "./ui/sidebar";
 import { useLocation, useParams, Link } from "react-router-dom";
 import { ChevronDownIcon } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "./ui/dropdown-menu";
-import { useChannel } from "@/hooks/api/useChannels";
-import { useChannels } from "@/hooks/api/useChannels";
+import { useAgent } from "@/hooks/api/useAgents";
+import { useAgents } from "@/hooks/api/useAgents";
 
 // Route path to display name mapping
 const routeLabels: Record<string, string> = {
@@ -25,10 +25,10 @@ function BreadCrumb() {
     const pathSegments = location.pathname.split('/').filter(Boolean);
 
     // Get channel if we're on an channel detail page
-    const channelId = params.id && location.pathname.includes('/channels/') && params.id !== 'new' 
+    const channelId = params.id && location.pathname.includes('/agents/') && params.id !== 'new' 
         ? params.id 
         : null;
-    const { channel, isLoading } = useChannel(channelId);
+    const { agent, isLoading } = useAgent(channelId);
 
     // Build breadcrumb items
     const buildBreadcrumbItems = () => {
@@ -62,7 +62,7 @@ function BreadCrumb() {
                     items.push(
                         <BreadcrumbItem key="channels">
                             <BreadcrumbLink asChild>
-                                <Link to="/app/channels">Channels</Link>
+                                <Link to="/app/agents">Agents</Link>
                             </BreadcrumbLink>
                         </BreadcrumbItem>
                     );
@@ -84,7 +84,7 @@ function BreadCrumb() {
                     items.push(
                         <BreadcrumbItem key="channel-detail">
                             <BreadcrumbPage>
-                                {isLoading ? "Loading..." : (channel?.name || params.id)}
+                                {isLoading ? "Loading..." : (agent?.name || params.id)}
                             </BreadcrumbPage>
                         </BreadcrumbItem>
                     );
@@ -151,12 +151,12 @@ function BreadCrumb() {
 }
 
 function ChannelDropdownMenu() {
-    const { channels, isLoading } = useChannels();
+    const { agents, isLoading } = useAgents();
 
-    if (isLoading || !channels.length) {
+    if (isLoading || !agents.length) {
         return (
             <BreadcrumbLink asChild>
-                <Link to="/app/channels">Channels</Link>
+                <Link to="/app/agents">Agents</Link>
             </BreadcrumbLink>
         )
     }
@@ -168,9 +168,9 @@ function ChannelDropdownMenu() {
                 <ChevronDownIcon />
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start">
-                {channels.map(channel => (
-                    <DropdownMenuItem key={channel.id}>
-                        <Link to={`/app/channels/${channel.id}`}>{channel.name}</Link>
+                {agents.map(agent => (
+                    <DropdownMenuItem key={agent.id}>
+                        <Link to={`/app/agents/${agent.id}`}>{agent.name}</Link>
                     </DropdownMenuItem>
                 ))}
             </DropdownMenuContent>

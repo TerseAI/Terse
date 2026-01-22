@@ -1,5 +1,5 @@
 import { Session } from "../../server";
-import { ChannelKnowledgeBaseWithConfigs, PrismaTransaction, User } from "../../types/prisma";
+import { AgentKnowledgeBaseWithConfigs, PrismaTransaction, User } from "../../types/prisma";
 import { KnowledgeBaseConfigType } from "@prisma/client";
 import { DatadogConfig } from "../../shared/Configs";
 import { IntegrationType } from "../../shared/Integrations";
@@ -47,7 +47,7 @@ export class DatadogKnowledgeBase extends KnowledgeBase<DatadogConfig> {
     }
 
 
-    async addKnowledgeBaseToChannel(tx: PrismaTransaction, channelKnowledgeBaseId: string, knowledgeBase: DatadogConfig): Promise<void> {
+    async addKnowledgeBaseToAgent(tx: PrismaTransaction, channelKnowledgeBaseId: string, knowledgeBase: DatadogConfig): Promise<void> {
         // Use unchecked input to bypass relation checks
         await tx.automation_datadog_configs.create({
             data: {
@@ -89,7 +89,7 @@ export class DatadogKnowledgeBase extends KnowledgeBase<DatadogConfig> {
      * Returns system instructions for Datadog knowledge base.
      * Provides guidance on when and how to use Datadog tools.
      */
-    protected getSystemInstructionsForConfigs(configs: ChannelKnowledgeBaseWithConfigs[]): string {
+    protected getSystemInstructionsForConfigs(configs: AgentKnowledgeBaseWithConfigs[]): string {
         if (configs.length === 0) {
             throw new Error('No Datadog KB configs provided');
         }
