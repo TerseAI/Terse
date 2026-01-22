@@ -1,6 +1,9 @@
 import { INTEGRATION_METADATA, IntegrationInstance, IntegrationType } from "../../shared/Integrations";
 import { INTEGRATION_REGISTRY, isSystemIntegration } from "../../integrations/abstract/IntegrationRegistry";
 import { db } from "../../prismaClient";
+import { formatAgentForSystemPrompt } from "../AgentRunner/formatContext";
+import { AgentWithRelations } from "../../types/prisma";
+import { getInputConfigInclude, getKnowledgeBaseConfigInclude, getOutputConfigInclude } from "../../utility/prismaIncludes";
 
 export async function buildChatAgentSystemPrompt(userId: string, userTimezone?: string | null): Promise<string> {
 
@@ -44,21 +47,25 @@ export async function buildChatAgentSystemPrompt(userId: string, userTimezone?: 
         ? `\n- ${integrationInstanceDescriptions.join('\n- ')}`
         : '\nYou currently have no integrations connected.';
 
-    const currentUserAgents = await db().automations.findMany({
+    const currentUserAgents: AgentWithRelations[] = await db().automations.findMany({
         where: {
             user_id: userId,
         },
-        select: {
-            id: true,
-            name: true,
-            inputs: true,
-            outputs: true,
-            knowledge_bases: true,
+        include: {
             prompt: true,
-        },
+            inputs: {
+                include: getInputConfigInclude()
+            },
+            outputs: {
+                include: getOutputConfigInclude()
+            },
+            knowledge_bases: {
+                include: getKnowledgeBaseConfigInclude()
+            }
+        }
     });
 
-    const currentUserAgentsList = currentUserAgents.map(agent => `- ${agent.name} (ID: ${agent.id})`).join('\n');
+    const currentUserAgentsList = currentUserAgents.map(agent => formatAgentForSystemPrompt(agent)).join('\n');
 
     return `
 

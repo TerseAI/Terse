@@ -11,8 +11,8 @@ const routeLabels: Record<string, string> = {
     "": "Home",
     "app": "Home",
     "activity": "Activity Feed",
-    "channels": "Channels",
-    "new": "New Channel",
+    "agents": "Agents",
+    "new": "New Agent",
     "integrations": "Integrations",
     "notifications": "Notifications",
 };
@@ -52,8 +52,8 @@ function BreadCrumb() {
 
             items.push(<BreadcrumbSeparator key={`sep-${i}`} />);
 
-            // Special handling for channel routes
-            if (segment === 'channels') {
+            // Special handling for agent routes
+            if (segment === 'agents') {
                 // Check if next segment is an ID or 'new'
                 const nextSegment = appSegments[i + 1];
 
@@ -69,7 +69,7 @@ function BreadCrumb() {
                     items.push(<BreadcrumbSeparator key="sep-new" />);
                     items.push(
                         <BreadcrumbItem key="new-channel">
-                            <BreadcrumbPage>New Channel</BreadcrumbPage>
+                            <BreadcrumbPage>New Agent</BreadcrumbPage>
                         </BreadcrumbItem>
                     );
                     break; // We've handled both segments
@@ -93,7 +93,7 @@ function BreadCrumb() {
                     // Just the channels list page
                     items.push(
                         <BreadcrumbItem key="channels">
-                            <BreadcrumbPage>Channels</BreadcrumbPage>
+                            <BreadcrumbPage>Agents</BreadcrumbPage>
                         </BreadcrumbItem>
                     );
                     break;
@@ -164,7 +164,7 @@ function ChannelDropdownMenu() {
     return (
         <DropdownMenu>
             <DropdownMenuTrigger className="flex items-center gap-1 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-3.5">
-                Channels
+                Agents
                 <ChevronDownIcon />
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start">

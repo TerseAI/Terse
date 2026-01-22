@@ -19,9 +19,9 @@ export default function AgentSetup() {
             <div className="flex-1 overflow-y-auto">
                 <div className="mx-auto space-y-8 max-w-5xl">
                     <div>
-                        <h1 className="text-2xl font-bold text-foreground">Create a New Channel</h1>
+                        <h1 className="text-2xl font-bold text-foreground">Create a New Agent</h1>
                         <p className="text-muted-foreground mt-1">
-                            Choose a template to get started quickly, or start from scratch with a blank channel.
+                            Choose a template to get started quickly, or start from scratch with a blank Agent.
                         </p>
                     </div>
 
@@ -30,7 +30,7 @@ export default function AgentSetup() {
                         <div>
                             <h2 className="text-lg font-semibold">Start with a template</h2>
                             <p className="text-sm text-muted-foreground">
-                                Pre-configured channels for common workflows
+                                Pre-configured Agents for common workflows
                             </p>
                         </div>
 
@@ -79,7 +79,7 @@ export default function AgentSetup() {
                                 <div>
                                     <CardTitle className="text-base">Start from scratch</CardTitle>
                                     <CardDescription>
-                                        Create a custom channel with your own configuration
+                                        Create a custom Agent with your own configuration
                                     </CardDescription>
                                 </div>
                                 <div className="ml-auto">
