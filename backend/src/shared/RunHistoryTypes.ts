@@ -66,6 +66,10 @@ export type RunHistoryRecord = {
     status: RunHistoryStatus;
 };
 
+export type GetRunHistoryParamsRequest = {
+    agentId: string;
+};
+
 export type GetRunHistoryParams = {
     q?: string;
     start?: string; // ISO date string
