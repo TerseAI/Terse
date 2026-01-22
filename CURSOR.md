@@ -347,6 +347,52 @@ cd frontend && pnpm run build
 - **Create session-specific types** - Knowledge bases need custom session interfaces (e.g., `LaunchDarklyKnowledgeBaseSession`)
 - **Icons can be images** - Use JPEG/PNG in `public/` if SVG isn't available
 - **Type safety is critical** - TypeScript exhaustive checks will catch missing cases
+
+## Tool Name and Write Approval Validation
+
+When creating or modifying tools in the Terse codebase, you **MUST** comply with the following server-side validation checks. These validations run at server startup and will prevent the application from starting if violated.
+
+### Tool Name Requirements
+
+1. **All tool names must be defined in the ToolName enum**
+   - Location: `backend/src/tools/ToolNames.ts`
+   - Every tool's `name` property must use a value from the `ToolName` enum
+   - If you need a new tool name, you MUST add it to the enum first
+   - The validation function `validateAllToolNames()` will throw an error if any tool uses a name not in the enum
+
+2. **Tool names must be unique across all outputs and knowledge bases**
+   - No two tools (across any output or knowledge base) can have the same name
+   - The validation will detect duplicates and prevent server startup
+   - If you need to reuse functionality, consider creating separate tools with distinct names
+
+### Write Tool Approval Requirements
+
+3. **All write tools (non-read-only) must have a `needsApproval` function**
+   - Write tools are tools where `isReadOnly === false`
+   - Every write tool MUST define a `needsApproval` function that determines if the tool requires approval
+   - Use `createNeedsApprovalFunction(ToolName.X)` helper to create the approval function
+   - The validation function `validateWriteToolsHaveNeedsApproval()` will throw an error if any write tool is missing this function
+
+### Validation Location
+
+These validations are enforced in:
+- `backend/src/tools/validateToolNames.ts`
+- Called at server startup via `runStartupValidations()`
+
+### What NOT to Do
+
+❌ **DO NOT** create tools with names not in the ToolName enum  
+❌ **DO NOT** create duplicate tool names across different outputs/knowledge bases  
+❌ **DO NOT** create write tools without a `needsApproval` function  
+❌ **DO NOT** bypass these validations - they are critical for system integrity
+
+### What TO Do
+
+✅ **DO** add new tool names to `ToolName` enum before using them  
+✅ **DO** ensure all tool names are unique  
+✅ **DO** add `needsApproval` function to all write tools using `createNeedsApprovalFunction()`  
+✅ **DO** run the server locally to verify validations pass before committing
+
 ## Code Style Guidelines
 
 ### General
