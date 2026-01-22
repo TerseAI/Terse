@@ -103,6 +103,55 @@ export function validateAllToolNames(): void {
         logger.error('Tool name validation failed - duplicates', { duplicates });
         throw new Error(errorMessage);
     }
+}
 
-    logger.info('Tool name validation passed - all tool names are unique and valid');
+type WriteToolMissingApproval = {
+    toolName: string;
+    source: 'output' | 'knowledgeBase';
+    configType: string;
+};
+
+export function validateWriteToolsHaveNeedsApproval(): void {
+    const missing: WriteToolMissingApproval[] = [];
+
+    const check = (source: 'output' | 'knowledgeBase', configType: string, entry: { tool: { name: string }; isReadOnly: boolean }) => {
+        if (entry.isReadOnly) return;
+        const t = entry.tool as { name: string; needsApproval?: (ctx: unknown) => Promise<boolean> | boolean };
+        if (typeof t.needsApproval !== 'function') {
+            missing.push({ toolName: t.name, source, configType });
+        }
+    };
+
+    for (const [outputConfigType, factory] of OutputFactory.OUTPUT_REGISTRY.entries()) {
+        const output = factory();
+        for (const entry of output.toolbox) {
+            check('output', outputConfigType, entry);
+        }
+    }
+
+    for (const [kbConfigType, factory] of KnowledgeBaseFactory.KNOWLEDGE_BASE_REGISTRY.entries()) {
+        const kb = factory();
+        for (const entry of kb.toolbox) {
+            check('knowledgeBase', kbConfigType, entry);
+        }
+    }
+
+    if (missing.length > 0) {
+        const messages = missing.map(
+            ({ toolName, source, configType }) =>
+                `Write tool '${toolName}' (${source === 'output' ? 'OutputFactory' : 'KnowledgeBaseFactory'}, ${configType}) is missing needsApproval`
+        );
+        const errorMessage = `Write tools missing needsApproval. All non-read-only tools must define needsApproval.\n\n${messages.join('\n')}\n\nAdd needsApproval: createNeedsApprovalFunction(ToolName.X) to each write tool.`;
+        logger.error('Write tool validation failed - missing needsApproval', { missing });
+        throw new Error(errorMessage);
+    }
+}
+
+/**
+ * Runs all startup validations (tool names, write-tool approvals, etc.).
+ * Throws if any validation fails. Call once before the server listens.
+ */
+export function runStartupValidations(): void {
+    validateAllToolNames();
+    validateWriteToolsHaveNeedsApproval();
 }

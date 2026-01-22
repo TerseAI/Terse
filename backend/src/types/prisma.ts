@@ -232,7 +232,7 @@ export type AutomationWithKnowledgeBaseRelations = Prisma.automationsGetPayload<
 export type AgentWithKnowledgeBaseRelations = AutomationWithKnowledgeBaseRelations;
 
 export type AutomationWithRelations = AutomationWithInputRelations & AutomationWithOutputRelations & AutomationWithPromptRelations & Partial<AutomationWithKnowledgeBaseRelations> & Partial<AutomationWithToolApprovalsRelations>;
-export type AgentWithRelations = AgentWithTriggerRelations & AgentWithOutputRelations & AgentWithPromptRelations & Partial<AgentWithKnowledgeBaseRelations> & Partial<AgentWithToolApprovalsRelations>;
+export type AgentWithRelations = AgentWithTriggerRelations & AgentWithOutputRelations & AgentWithPromptRelations & Partial<AgentWithKnowledgeBaseRelations> & AgentWithToolApprovalsRelations;
 
 // Extract the transaction type from PrismaClient
 export type PrismaTransaction = Parameters<Parameters<PrismaClient['$transaction']>[0]>[0];

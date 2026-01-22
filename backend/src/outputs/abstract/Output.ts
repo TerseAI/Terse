@@ -18,7 +18,6 @@ export abstract class Output<TConfig extends ConfigInstance> {
 
     constructor(integration: OutputConfigType, toolbox: readonly ToolboxEntry[]) {
         this.integration = integration;
-        // Don't include defaultToolbox anymore - TerseSkills handles common tools
         this.toolbox = toolbox;
     }
 

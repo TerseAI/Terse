@@ -46,23 +46,34 @@ export type ErrorContext = {
 
 // MARK: - Approval
 
-export async function needsApproval(
-    context?: RunContext<unknown>,
-    toolName?: string
-): Promise<boolean> {
+/**
+ * Creates a needsApproval function for a specific tool.
+ * This function matches the OpenAI Agents SDK signature: (context, args) => Promise<boolean>
+ */
+export function createNeedsApprovalFunction(toolName: string) {
+    return async (context?: RunContext<unknown>, _args?: unknown): Promise<boolean> => {
+        // Type guard: safely access agent from SessionWithTracking
+        const sessionWithTracking = context?.context as SessionWithTracking<Session> | undefined;
+        const agent = sessionWithTracking?.agent;
+        
+        if (!agent) return false;
+        
+        // Check granular settings first (new system)
+        if (toolName && agent.toolApprovals && agent.toolApprovals.length > 0) {
+            return agent.toolApprovals.includes(toolName);
+        }
+        
+        // Fallback to legacy boolean (backward compatibility)
+        return agent.requireApproval ?? false;
+    };
+}
+
+/**
+ * Legacy function for backward compatibility.
+ * @deprecated Use createNeedsApprovalFunction instead
+ */
+export async function needsApproval(context?: RunContext<unknown>): Promise<boolean> {
     // Type guard: safely access agent.requireApproval from SessionWithTracking
     const sessionWithTracking = context?.context as SessionWithTracking<Session> | undefined;
-    const agent = sessionWithTracking?.agent;
-    
-    if (!agent) {
-        return false;
-    }
-
-    // If toolApprovals is defined and has items, check if this tool requires approval
-    if (toolName && agent.toolApprovals && agent.toolApprovals.length > 0) {
-        return agent.toolApprovals.includes(toolName);
-    }
-
-    // Fall back to requireApproval flag for backward compatibility
-    return agent.requireApproval ?? false;
+    return sessionWithTracking?.agent?.requireApproval ?? false;
 }

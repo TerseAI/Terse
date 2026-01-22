@@ -522,7 +522,8 @@ export async function getUserAgents(req: Request, res: Response) {
                 knowledge_bases: {
                     include: getKnowledgeBaseConfigInclude()
                 },
-                notification_settings: true
+                notification_settings: true,
+                tool_approvals: true
             },
             orderBy: { created_at: 'desc' },
             skip,
@@ -588,6 +589,7 @@ export async function getRecentAgents(req: Request, res: Response) {
                 knowledge_bases: {
                     include: getKnowledgeBaseConfigInclude()
                 },
+                tool_approvals: true
             },
                 orderBy: { updated_at: 'desc' },
                 take: limit
@@ -806,9 +808,7 @@ function transformAgentToFrontendFormat(agent: AgentWithRelations & Partial<Agen
             enabled: agent.notification_settings.enabled,
             actionTypes: agent.notification_settings.action_types,
         } : undefined,
-        toolApprovals: agent.tool_approvals && agent.tool_approvals.length > 0 
-            ? agent.tool_approvals.map((ta: any) => ta.tool_name)
-            : undefined,
+        toolApprovals: agent.tool_approvals.map((ta: any) => ta.tool_name),
         updatedAt: agent.updated_at.toISOString(),
     };
 }

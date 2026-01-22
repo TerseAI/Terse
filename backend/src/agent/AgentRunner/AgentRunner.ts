@@ -3,7 +3,7 @@ import { Session } from '../../server';
 import { SystemPromptBuilder, RunContext, SystemPromptBuilderDependencies } from './SystemPromptBuilder';
 import { InputEvent } from '../../integrations/abstract/InputEvent';
 import { Output } from '../../outputs/abstract/Output';
-import { AgentTrigger, AgentOutput, AgentWithRelations } from '../../types/prisma';
+import { AgentWithRelations } from '../../types/prisma';
 import { ConfigInstance } from '../../shared/Configs';
 import { settings } from '../../config/settings';
 import { formatAgentTriggersForAgent } from './formatContext';
@@ -408,9 +408,7 @@ export class AgentRunner<
     }
 
     private getToolContext(): SessionWithTracking<T> {
-        const toolApprovals = this.agentConfig.tool_approvals && this.agentConfig.tool_approvals.length > 0
-            ? this.agentConfig.tool_approvals.map((ta: any) => ta.tool_name)
-            : undefined;
+        const toolApprovals = this.agentConfig.tool_approvals.map((ta: any) => ta.tool_name)
 
         return {
             ...this.session,

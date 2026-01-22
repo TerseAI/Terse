@@ -3,7 +3,7 @@ import { z } from "zod";
 import { IntegrationType } from "../../../shared/Integrations";
 import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner";
 import { RunHistoryActionType } from "@prisma/client";
-import { formatError, needsApproval } from "../../../tools/toolUtils";
+import { formatError, createNeedsApprovalFunction } from "../../../tools/toolUtils";
 import { ToolName } from "../../../tools/ToolNames";
 import logger from "../../../logger";
 import { AtlassianIntegrationManager } from "../../../integrations/AtlassianIntegration";
@@ -132,7 +132,7 @@ COMMON UPDATE OPERATIONS:
         labels: z.union([z.array(z.string()), z.null()]).optional().describe('The labels for the ticket (array of label names). This replaces all existing labels.'),
         dueDate: z.string().nullable().optional().describe('The due date for the ticket in format "yyyy-MM-dd" (e.g., "2024-12-31"). Note: Jira requires the due date format to be yyyy-MM-dd. Set to null to remove due date.'),
     }),
-    needsApproval: (context) => needsApproval(context, ToolName.JIRA_UPDATE_TICKET),
+    needsApproval: createNeedsApprovalFunction(ToolName.JIRA_UPDATE_TICKET),
     execute: async ({ 
         integrationId,
         issueKey,

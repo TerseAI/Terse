@@ -9,7 +9,7 @@ import { OutputConfigType, RunHistoryActionType } from "@prisma/client";
 import { ConfluenceConfig } from "../shared/Configs";
 import { SessionWithTracking } from "../agent/AgentRunner/AgentRunner";
 import { Session } from "../server";
-import { formatError, needsApproval } from "../tools/toolUtils";
+import { formatError, createNeedsApprovalFunction } from "../tools/toolUtils";
 import { ToolName } from "../tools/ToolNames";
 import logger from "../logger";
 import { AtlassianIntegrationManager } from "../integrations/AtlassianIntegration";
@@ -173,7 +173,7 @@ To find the correct position, first call confluence_query_page to see the page c
         start_position: z.number().nullable().optional().describe('Optional: The start character position (offset) in the page storage format where the comment should be attached. Required if text_to_comment_on is not provided.'),
         end_position: z.number().nullable().optional().describe('Optional: The end character position (offset) in the page storage format where the comment should be attached. Required if text_to_comment_on is not provided.'),
     }),
-    needsApproval: (context) => needsApproval(context, ToolName.CONFLUENCE_ADD_COMMENT),
+    needsApproval: createNeedsApprovalFunction(ToolName.CONFLUENCE_ADD_COMMENT),
     execute: async ({ integrationId, pageId, comment_text, text_to_comment_on, start_position, end_position }, runContext?: RunContext<SessionWithTracking<Session>>) => {
         logger.debug("[Confluence Add Comment] Executing confluence_add_comment tool", { integrationId, pageId, comment_text, text_to_comment_on, start_position, end_position });
         if (!runContext?.context) {

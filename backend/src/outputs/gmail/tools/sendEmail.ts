@@ -7,7 +7,7 @@ import { IntegrationType } from "../../../shared/Integrations";
 import { RunHistoryActionType } from "@prisma/client";
 import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner";
 import { getOAuth2Client, GmailIntegrationManager } from "../../../integrations/GmailIntegration";
-import { formatError, needsApproval } from "../../../tools/toolUtils";
+import { formatError, createNeedsApprovalFunction } from "../../../tools/toolUtils";
 import { ToolName } from "../../../tools/ToolNames";
 import { Session } from "../../../server";
 
@@ -27,7 +27,7 @@ export const gmailSendEmailTool = tool({
         cc: z.string().nullable().optional().describe("CC recipient email address(es). Multiple addresses can be comma-separated."),
         bcc: z.string().nullable().optional().describe("BCC recipient email address(es). Multiple addresses can be comma-separated."),
     }),
-    needsApproval: (context) => needsApproval(context, ToolName.GMAIL_SEND_EMAIL),
+    needsApproval: createNeedsApprovalFunction(ToolName.GMAIL_SEND_EMAIL),
     execute: async ({ integrationId, to, subject, body, thread_id, cc, bcc }, runContext?: RunContext<SessionWithTracking<Session>>) => {
         if (!runContext?.context) {
             throw new Error("No context provided");

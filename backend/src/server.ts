@@ -98,7 +98,7 @@ import { handleScheduleWebhook, handleManualTrigger } from "./routes/schedule";
 import { getTemplates } from "./routes/templates";
 import "./integrations/IntegrationTaskHandler"; // Import to trigger listener registration
 import { ApiRoutes } from "./shared/ApiRoutes";
-import { validateAllToolNames } from "./tools/validateToolNames";
+import { runStartupValidations } from "./tools/validateToolNames";
 import { toolsThatRequireApprovalsRoute } from "./routes/tools";
 
 export type Session = {
@@ -602,11 +602,10 @@ process.on("unhandledRejection", (reason: unknown, promise: Promise<unknown>) =>
   // Log but don't crash - this is a safety net for promises we might have missed
 });
 
-// Validate tool names at startup - crash if duplicates found
 try {
-  validateAllToolNames();
+  runStartupValidations();
 } catch (error) {
-  logger.error("❌ Startup validation failed - duplicate tool names detected", { error });
+  logger.error("❌ Startup validation failed", { error });
   process.exit(1);
 }
 

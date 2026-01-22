@@ -4,16 +4,9 @@ import { AgentOutputWithConfigs, PrismaTransaction } from "../../types/prisma";
 import { Output, ToolboxEntry } from "../abstract/Output";
 import { OutputConfigType } from "@prisma/client";
 import { IntegrationType } from "../../shared/Integrations";
-import { ToolName } from "../../tools/ToolNames";
 import { ConfigInstance } from "../../shared/Configs";
 
-/**
- * TerseSkillsOutput provides common skills/tools that are always available
- * to all agents, such as web search. These tools don't require any configuration
- * and are automatically included for every agent.
- * 
- * This output is hidden from the UI - users don't need to configure it.
- */
+
 export class TerseSkillsOutput extends Output<ConfigInstance> {
     constructor() {
         const toolbox: ToolboxEntry[] = [
