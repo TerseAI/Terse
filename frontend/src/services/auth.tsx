@@ -3,6 +3,7 @@ import { BackendProvider } from "./backend";
 import { User } from "../types/User";
 import { posthog } from "posthog-js";
 import { PosthogEvents } from "../utility/PosthogEvents";
+import { FrontendRoutes } from "../shared/FrontendRoutes";
 
 interface AuthContextType {
   user: User | null;
@@ -128,7 +129,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           email: user?.email || 'unknown',
         });
         setIsLoading(false);
-        window.location.href = '/app';
+        window.location.href = FrontendRoutes.APP;
       }
     });
   };
@@ -158,7 +159,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           email: user?.email || 'unknown',
         });
         setIsLoading(false);
-        window.location.href = '/app';
+        window.location.href = FrontendRoutes.APP;
       }
     });
   };

@@ -4,13 +4,14 @@ import { useTemplates } from '@/hooks/api/useTemplates';
 import { TemplateCard } from '@/components/Agents/TemplateCard';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Loader2 } from 'lucide-react';
+import { FrontendRoutes } from '@/shared/FrontendRoutes';
 
 export default function AgentSetup() {
     const navigate = useNavigate();
     const { templates, isLoading } = useTemplates();
 
     const handleStartFromScratch = () => {
-        navigate('/app/agents/new');
+        navigate(FrontendRoutes.AGENTS.NEW);
     };
 
     return (

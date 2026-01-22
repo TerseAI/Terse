@@ -3,6 +3,7 @@ import { SlackInstallationOptions, SlackIntegration, SlackIntegrationMetadata, I
 import { Integration, OAuthIntegrationInstallation, ConfigurationFieldDefinition } from "./abstract/Integration";
 import { Request, Response } from "express";
 import { slack as slackConfig, jwt as jwtConfig, urls } from '../config/settings';
+import { FrontendRoutes } from "../shared/FrontendRoutes";
 import crypto from 'crypto';
 import chalk from "chalk";
 import { EventProcessor } from "../agent/AgentRunner/EventProcessor";
@@ -193,7 +194,7 @@ export class SlackIntegrationManager implements Integration<SlackIntegration, Sl
         // Check if Slack returned an error (user denied access, etc.)
         if (req.query.error) {
             logger.error("Slack OAuth error", { error: String(req.query.error) });
-            res.redirect(`${frontendUrl}/oauth/error`);
+            res.redirect(`${frontendUrl}${FrontendRoutes.OAUTH.ERROR}`);
             return;
         }
 
@@ -203,7 +204,7 @@ export class SlackIntegrationManager implements Integration<SlackIntegration, Sl
 
         if (!code || !state) {
             logger.error("Missing code or state in OAuth callback");
-            res.redirect(`${frontendUrl}/oauth/error`);
+            res.redirect(`${frontendUrl}${FrontendRoutes.OAUTH.ERROR}`);
             return;
         }
 
@@ -212,7 +213,7 @@ export class SlackIntegrationManager implements Integration<SlackIntegration, Sl
 
         if (!user) {
             logger.error("Invalid or expired state token");
-            res.redirect(`${frontendUrl}/oauth/error`);
+            res.redirect(`${frontendUrl}${FrontendRoutes.OAUTH.ERROR}`);
             return;
         }
 
@@ -222,7 +223,7 @@ export class SlackIntegrationManager implements Integration<SlackIntegration, Sl
             decoded = jwt.verify(state, jwtConfig.secret);
         } catch (error) {
             logger.error("Error decoding JWT state", { error });
-            res.redirect(`${frontendUrl}/oauth/error`);
+            res.redirect(`${frontendUrl}${FrontendRoutes.OAUTH.ERROR}`);
             return;
         }
         const isBotUser = decoded.isBotUser ?? true; // Default to true for backward compatibility
@@ -251,7 +252,7 @@ export class SlackIntegrationManager implements Integration<SlackIntegration, Sl
 
             if (!response.data.ok || !team || !team.id) {
                 logger.error("Slack OAuth response not ok", { data: response.data });
-                res.redirect(`${frontendUrl}/oauth/error`);
+                res.redirect(`${frontendUrl}${FrontendRoutes.OAUTH.ERROR}`);
                 return;
             }
 
@@ -351,7 +352,7 @@ export class SlackIntegrationManager implements Integration<SlackIntegration, Sl
 
             if (!userSlackIntegration) {
                 logger.error("Failed to find user_slack_integration after OAuth", { userId: user.id, teamId: team.id });
-                res.redirect(`${frontendUrl}/oauth/error`);
+                res.redirect(`${frontendUrl}${FrontendRoutes.OAUTH.ERROR}`);
                 return;
             }
 
@@ -365,10 +366,10 @@ export class SlackIntegrationManager implements Integration<SlackIntegration, Sl
             ));
 
             logger.info("Slack OAuth completed successfully", { userId: user.id, teamId: team.id, integrationId: userSlackIntegration.id });
-            res.redirect(`${frontendUrl}/oauth/success`);
+            res.redirect(`${frontendUrl}${FrontendRoutes.OAUTH.SUCCESS}`);
         } catch (error) {
             logger.error('Error exchanging code for access token', { error });
-            res.redirect(`${frontendUrl}/oauth/error`);
+            res.redirect(`${frontendUrl}${FrontendRoutes.OAUTH.ERROR}`);
         }
     }
 

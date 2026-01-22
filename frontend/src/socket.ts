@@ -3,6 +3,7 @@ import { mutate } from 'swr';
 import { BackendProvider } from './services/backend';
 import type { RunHistoryModelSocketEvent } from './shared/RunHistoryTypes';
 import { ModelRequest } from './shared/ModelEvents';
+import { SocketEvents } from './shared/SocketEvents';
 
 let socket: Socket | null = null;
 
@@ -26,15 +27,15 @@ export async function initializeSocket() {
         withCredentials: true,
     });
 
-    socket.on('connect', () => {
+    socket.on(SocketEvents.CONNECT, () => {
         console.log('Socket.IO connected');
     });
 
-    socket.on('disconnect', () => {
+    socket.on(SocketEvents.DISCONNECT, () => {
         console.log('Socket.IO disconnected');
     });
 
-    socket.on('connect_error', (error) => {
+    socket.on(SocketEvents.CONNECT_ERROR, (error) => {
         console.error('Socket.IO connection error:', error);
         console.error('Error details:', {
             message: error.message,
@@ -48,7 +49,7 @@ export async function initializeSocket() {
     // keys: array of serialized SWR keys (JSON strings that can be parsed back to tuples)
     // tag: prefix to match against the first element of tuple keys (e.g., 'runHistory' matches ['runHistory', ...])
     // id: optional second element to match (e.g., automationId for runHistory queries)
-    socket.on('invalidate', (payload: { key?: string; id?: string }) => {
+    socket.on(SocketEvents.INVALIDATE, (payload: { key?: string; id?: string }) => {
         const { key, id } = payload || {};
         if (key && id) {
             console.log('Invalidating key and id:', [key, id]);
@@ -74,7 +75,7 @@ function setupChatEventListener() {
         return;
     }
 
-    socket.on('channel:chat:event', (payload: RunHistoryModelSocketEvent) => {
+    socket.on(SocketEvents.AGENT_CHAT_EVENT, (payload: RunHistoryModelSocketEvent) => {
         const callbacks = chatEventCallbacks.get(payload.runId);
         if (callbacks) {
             callbacks.forEach((cb) => cb(payload));
@@ -123,7 +124,7 @@ export function sendChatMessage(runId: string | null, message: ModelRequest): vo
         console.warn('Socket not connected, cannot send message');
         return;
     }
-    socket.emit('channel:chat:message', { runId, message });
+    socket.emit(SocketEvents.AGENT_CHAT_MESSAGE, { runId, message });
 }
 
 export function sendToolApprovalResponse(runId: string, stepId: string, approved: boolean): void {
@@ -131,7 +132,7 @@ export function sendToolApprovalResponse(runId: string, stepId: string, approved
         console.warn('Socket not connected, cannot send approval response');
         return;
     }
-    socket.emit('channel:chat:approval', {
+    socket.emit(SocketEvents.AGENT_CHAT_APPROVAL, {
         runId,
         message: {
             type: 'ToolApprovalResponse',

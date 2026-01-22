@@ -11,6 +11,7 @@ import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/ca
 import { useNavigate } from "react-router-dom";
 import { useTemplates } from "@/hooks/api/useTemplates";
 import { TemplateCard } from "@/components/Agents/TemplateCard";
+import { FrontendRoutes } from "@/shared/FrontendRoutes";
 
 interface EmptyStateProps {
     hasFilters: boolean;
@@ -51,7 +52,7 @@ export function EmptyState({ hasFilters }: EmptyStateProps) {
                             <div className="text-center">
                                 <Button
                                     variant="ghost"
-                                    onClick={() => navigate('/app/agents/setup')}
+                                    onClick={() => navigate(FrontendRoutes.AGENTS.SETUP)}
                                 >
                                     View all templates
                                     <ArrowRight className="h-4 w-4" />
@@ -71,7 +72,7 @@ export function EmptyState({ hasFilters }: EmptyStateProps) {
                 {/* Start from Scratch Section */}
                 <Card
                     className="cursor-pointer transition-colors hover:bg-accent/50"
-                    onClick={() => navigate('/app/agents/new')}
+                    onClick={() => navigate(FrontendRoutes.AGENTS.NEW)}
                 >
                     <CardHeader>
                         <div className="flex items-center gap-3">

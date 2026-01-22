@@ -24,6 +24,7 @@ import { persistOutputAttributions, removeOutputAttributions } from './persistOu
 import logger from '../../logger';
 import { RunHistoryActionType } from '@prisma/client';
 import { KnowledgeBase } from '../../knowledgeBase/abstract/KnowledgeBase';
+import { SocketEvents, SocketRooms } from '../../shared/SocketEvents';
 
 // Types from @openai/agents SDK for content items
 type AgentInputText = protocol.InputText;
@@ -565,7 +566,7 @@ ${inputEvent.formatForAgentRunner()}
                     // Store and emit the approval request
                     const eventId = await storeChatEvent(this.runContext.runId, approvalRequest);
 
-                    if (io) {
+                    if (io && streamingParams.userId) {
                         const runHistoryModelEvent: RunHistoryModelEvent = {
                             ...approvalRequest,
                             id: eventId,
@@ -576,7 +577,7 @@ ${inputEvent.formatForAgentRunner()}
                             agentId: streamingParams.agentId!,
                             runHistoryModelEvent,
                         };
-                        io.to(`user:${streamingParams.userId}`).emit('agent:chat:event', payload);
+                        io.to(SocketRooms.user(streamingParams.userId)).emit(SocketEvents.AGENT_CHAT_EVENT, payload);
                     }
 
                     // Send notification for approval request

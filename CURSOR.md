@@ -453,3 +453,81 @@ export async function getUserChannels(req: Request, res: Response) {
 9. ❌ Stray strings allowed UNLESS absolutely necessary (e.g., `const tokenType = authed_user?.token_type || 'user';` where `'user'` is outputted from an API and could be an enum type)
 10. ❌ Defining variables as `false` or `true` where you could just use a not operator (e.g., `const actualIsBotUser = isUserType && authed_user.access_token ? false : true;` should be `const actualIsBotUser = !(isUserType && authed_user.access_token);`)
 11. ❌ Non-exhaustive maps—when defining maps, ensure they're exhaustive using TypeScript's type system (see `shared/Configs.ts` lines 401-427 for an example with `ConfigMetadataMap`)
+
+## URL and Socket Event Standards
+
+**CRITICAL: Always use centralized constants for URLs and socket events. Never use magic strings.**
+
+### API Routes
+
+All backend API routes must use constants from `shared/ApiRoutes.ts`:
+
+- **Backend route definitions**: Use `.pattern` for Express routes
+  ```typescript
+  app.get(ApiRoutes.AGENTS.BY_ID.pattern, authMiddleware, handler);
+  ```
+
+- **Frontend API calls**: Use `.build(...)` for actual URLs
+  ```typescript
+  axios.get(`${backendBaseUrl}${ApiRoutes.AGENTS.BY_ID.build(id)}`);
+  ```
+
+- **Dynamic routes**: Use route objects with both `pattern` and `build` functions
+  ```typescript
+  ApiRoutes.AGENTS.BY_ID.pattern  // '/agents/:id' for Express
+  ApiRoutes.AGENTS.BY_ID.build(id)  // '/agents/123' for actual URL
+  ```
+
+### Frontend Routes
+
+All frontend routes must use constants from `shared/FrontendRoutes.ts`:
+
+- **React Router definitions**: Use route constants
+  ```typescript
+  <Route path={FrontendRoutes.AGENTS.BY_ID.pattern} element={<AgentDetail />} />
+  ```
+
+- **Navigation calls**: Use route builders
+  ```typescript
+  navigate(FrontendRoutes.AGENTS.DETAIL(agentId));
+  ```
+
+- **Deep links in backend**: Combine with `urls.frontend`
+  ```typescript
+  const link = `${urls.frontend}${FrontendRoutes.AGENTS.RUN_HISTORY(agentId, runId)}`;
+  ```
+
+### Socket Events
+
+All socket event names must use constants from `shared/SocketEvents.ts`:
+
+- **Event names**: Use `SocketEvents` constants
+  ```typescript
+  socket.on(SocketEvents.AGENT_CHAT_EVENT, handler);
+  socket.emit(SocketEvents.AGENT_CHAT_MESSAGE, payload);
+  ```
+
+- **Socket rooms**: Use `SocketRooms` helpers
+  ```typescript
+  io.to(SocketRooms.user(userId)).emit(SocketEvents.INVALIDATE, { key });
+  ```
+
+### OAuth Redirects
+
+OAuth redirect URLs must use `FrontendRoutes`:
+
+```typescript
+res.redirect(`${urls.frontend}${FrontendRoutes.OAUTH.SUCCESS}`);
+res.redirect(`${urls.frontend}${FrontendRoutes.OAUTH.ERROR}`);
+```
+
+### Webhook URLs
+
+Webhook URLs must use `ApiRoutes.WEBHOOKS`:
+
+```typescript
+const webhookUrl = `${urls.backend}${ApiRoutes.WEBHOOKS.FIGMA}`;
+const webhookUrl = `${urls.backend}${ApiRoutes.WEBHOOKS.SCHEDULE_BY_INPUT_ID.build(inputId)}`;
+```
+
+**Why**: This ensures frontend and backend stay in sync, prevents typos, enables easy refactoring, and provides type safety.
