@@ -23,17 +23,20 @@ export class PosthogKnowledgeBase extends KnowledgeBase<PosthogConfig> {
             {
                 tool: searchLogsTool as Tool,
                 isReadOnly: true,
-                integration: IntegrationType.POSTHOG
+                integration: IntegrationType.POSTHOG,
+                displayName: 'Search Logs'
             },
             {
                 tool: searchSessionsTool as Tool,
                 isReadOnly: true,
-                integration: IntegrationType.POSTHOG
+                integration: IntegrationType.POSTHOG,
+                displayName: 'Search Sessions'
             },
             {
                 tool: getSessionEventsTool as Tool,
                 isReadOnly: true,
-                integration: IntegrationType.POSTHOG
+                integration: IntegrationType.POSTHOG,
+                displayName: 'Get Session Events'
             }
         ];
 

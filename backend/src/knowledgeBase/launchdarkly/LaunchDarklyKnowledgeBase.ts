@@ -22,12 +22,14 @@ export class LaunchDarklyKnowledgeBase extends KnowledgeBase<LaunchDarklyConfig>
             {
                 tool: listLaunchDarklyFlagsTool as Tool,
                 isReadOnly: true,
-                integration: IntegrationType.LAUNCHDARKLY
+                integration: IntegrationType.LAUNCHDARKLY,
+                displayName: 'List Flags'
             },
             {
                 tool: getLaunchDarklyFlagDetailsTool as Tool,
                 isReadOnly: true,
-                integration: IntegrationType.LAUNCHDARKLY
+                integration: IntegrationType.LAUNCHDARKLY,
+                displayName: 'Get Flag Details'
             }
         ];
 

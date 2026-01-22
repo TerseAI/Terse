@@ -26,37 +26,44 @@ export class GitHubKnowledgeBase extends KnowledgeBase<GitHubKBConfig> {
             {
                 tool: searchGitHubCodeTool as Tool,
                 isReadOnly: true,
-                integration: IntegrationType.GITHUB
+                integration: IntegrationType.GITHUB,
+                displayName: 'Search Code'
             },
             {
                 tool: grepGitHubCodeTool as Tool,
                 isReadOnly: true,
-                integration: IntegrationType.GITHUB
+                integration: IntegrationType.GITHUB,
+                displayName: 'Grep Code'
             },
             {
                 tool: readGitHubFileTool as Tool,
                 isReadOnly: true,
-                integration: IntegrationType.GITHUB
+                integration: IntegrationType.GITHUB,
+                displayName: 'Read File'
             },
             {
                 tool: listGitHubDirectoryTool as Tool,
                 isReadOnly: true,
-                integration: IntegrationType.GITHUB
+                integration: IntegrationType.GITHUB,
+                displayName: 'List Directory'
             },
             {
                 tool: listGitHubPullRequestsTool as Tool,
                 isReadOnly: true,
-                integration: IntegrationType.GITHUB
+                integration: IntegrationType.GITHUB,
+                displayName: 'List Pull Requests'
             },
             {
                 tool: listGitHubCommitsTool as Tool,
                 isReadOnly: true,
-                integration: IntegrationType.GITHUB
+                integration: IntegrationType.GITHUB,
+                displayName: 'List Commits'
             },
             {
                 tool: summarizeGitHubPullRequestDiffTool as Tool,
                 isReadOnly: true,
-                integration: IntegrationType.GITHUB
+                integration: IntegrationType.GITHUB,
+                displayName: 'Summarize Pull Request Diff'
             }
         ];
 

@@ -24,22 +24,26 @@ export class DatadogKnowledgeBase extends KnowledgeBase<DatadogConfig> {
             {
                 tool: searchDatadogLogsTool as Tool,
                 isReadOnly: true,
-                integration: IntegrationType.DATADOG
+                integration: IntegrationType.DATADOG,
+                displayName: 'Search Logs'
             },
             {
                 tool: listRumEventsTool as Tool,
                 isReadOnly: true,
-                integration: IntegrationType.DATADOG
+                integration: IntegrationType.DATADOG,
+                displayName: 'List RUM Events'
             },
             {
                 tool: searchRumEventsTool as Tool,
                 isReadOnly: true,
-                integration: IntegrationType.DATADOG
+                integration: IntegrationType.DATADOG,
+                displayName: 'Search RUM Events'
             },
             {
                 tool: aggregateRumEventsTool as Tool,
                 isReadOnly: true,
-                integration: IntegrationType.DATADOG
+                integration: IntegrationType.DATADOG,
+                displayName: 'Aggregate RUM Events'
             }
         ];
 
