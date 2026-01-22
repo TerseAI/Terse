@@ -6,16 +6,24 @@ import { parsePageParams } from "../utility/pagination";
 import { convertPrismaIntegrationTypeToIntegrationTypeFromRunHistory } from "../utility/typeConverters";
 import { ModelEvent } from "../shared/ModelEvents";
 import logger from "../logger";
+
+// Type for the getRunHistory request with typed params
+interface GetRunHistoryRequest extends Request {
+  params: {
+    agentId: string;
+  };
+  query: Request["query"]; // Query is parsed separately, so we keep the base type
+}
+
 // Valid status values for validation
 const VALID_STATUSES: RunHistoryStatus[] = ["success", "failed", "skipped", "in_progress", "awaiting_approval"];
 
-export async function getRunHistory(req: Request, res: Response) {
+export async function getRunHistory(req: GetRunHistoryRequest, res: Response) {
   try {
     const prisma: PrismaClient = db();
 
-    // req.params contains URL path parameters (e.g., /run-history/:channelId)
-    const channelId = (req.params.agentId as string | undefined)?.trim();
-    if (!channelId) {
+    const agentId = req.params.agentId?.trim();
+    if (!agentId) {
       return res.status(400).json({ error: "channelId is required" });
     }
 
@@ -24,7 +32,7 @@ export async function getRunHistory(req: Request, res: Response) {
     const { page, pageSize, skip, take } = parsePageParams(req, 20, 100);
 
     // Build Prisma where clause (database column is still automation_id)
-    const where: Prisma.run_history_recordsWhereInput = { automation_id: channelId };
+    const where: Prisma.run_history_recordsWhereInput = { automation_id: agentId };
 
     if (params.start || params.end) {
       const startDate = parseDate(params.start);
@@ -107,7 +115,7 @@ export async function getRunHistory(req: Request, res: Response) {
 
     res.json(response);
   } catch (err) {
-    logger.error("Failed to fetch run history", { error: err instanceof Error ? err.message : String(err), stack: err instanceof Error ? err.stack : undefined, agentId: req.params.channelId });
+    logger.error("Failed to fetch run history", { error: err instanceof Error ? err.message : String(err), stack: err instanceof Error ? err.stack : undefined, agentId: req.params.agentId });
     res.status(500).json({ error: "Failed to fetch run history" });
   }
 }

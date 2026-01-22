@@ -75,6 +75,16 @@ export type GetRunHistoryParams = {
     pageSize?: number;
 };
 
+// Query string representation for Express request.query (all values are strings or string arrays)
+export type GetRunHistoryQueryParams = {
+    q?: string | string[];
+    start?: string | string[];
+    end?: string | string[];
+    status?: string | string[]; // Comma-separated string that gets parsed into RunHistoryStatus[]
+    page?: string | string[];
+    pageSize?: string | string[];
+};
+
 export type GetRunHistoryResponse = {
     items: RunHistoryRecord[];
     page: number;
