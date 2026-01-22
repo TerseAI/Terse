@@ -18,6 +18,7 @@ import logger, { runWithUserContext } from "../logger";
 import { integrationTaskQueue } from "./IntegrationTaskQueues";
 import { IntegrationCompletedTask } from "./IntegrationCompletedTask";
 import { createOAuthStateToken, decodeOAuthStateToken, OAuthStatePayload, OAuthStateEncodingFormat } from "../utility/oauth";
+import { FrontendRoutes } from "../shared/FrontendRoutes";
 
 export class GithubIntegrationManager implements Integration<GithubIntegration, GithubAppUnifiedEventRequest, typeof GithubIntegrationMetadata>, OAuthIntegrationInstallation<IntegrationType.GITHUB> {
     constructor() { }
@@ -161,7 +162,7 @@ export class GithubIntegrationManager implements Integration<GithubIntegration, 
             new Date()
         ));
 
-        res.redirect(`${urls.frontend}/oauth/success`);
+        res.redirect(`${urls.frontend}${FrontendRoutes.OAUTH.SUCCESS}`);
     }
 
     deleteInstallation(integrationId: string): Promise<void> {

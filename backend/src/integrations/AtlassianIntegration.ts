@@ -18,6 +18,8 @@ import logger, { runWithUserContext } from "../logger";
 import { createOAuthStateToken } from "../utility/oauth";
 import { integrationTaskQueue } from "./IntegrationTaskQueues";
 import { IntegrationCompletedTask } from "./IntegrationCompletedTask";
+import { FrontendRoutes } from "../shared/FrontendRoutes";
+import { ApiRoutes } from "../shared/ApiRoutes";
 
 const OAUTH_TOKEN_REFRESH_THRESHOLD_MS = 1000 * 60 * 30; // 30 minutes (expires access token after 1 hour)
 
@@ -82,7 +84,7 @@ export class AtlassianIntegrationManager implements Integration<AtlassianIntegra
 
         if (error) {
             logger.error("Atlassian OAuth error", { error: String(error) });
-            res.redirect(`${urls.frontend}/oauth/error`);
+            res.redirect(`${urls.frontend}${FrontendRoutes.OAUTH.ERROR}`);
             return;
         }
 
@@ -149,7 +151,7 @@ export class AtlassianIntegrationManager implements Integration<AtlassianIntegra
 
             if (!resources || resources.length === 0) {
                 logger.error("No accessible resources found");
-                res.redirect(`${urls.frontend}/oauth/error`);
+                res.redirect(`${urls.frontend}${FrontendRoutes.OAUTH.ERROR}`);
                 return;
             }
 
@@ -285,10 +287,10 @@ export class AtlassianIntegrationManager implements Integration<AtlassianIntegra
             ));
 
             // Redirect to success page which will auto-close the popup
-            res.redirect(`${urls.frontend}/oauth/success`);
+            res.redirect(`${urls.frontend}${FrontendRoutes.OAUTH.SUCCESS}`);
         } catch (error) {
             logger.error("Error in Atlassian OAuth callback", { error });
-            res.redirect(`${urls.frontend}/oauth/error`);
+            res.redirect(`${urls.frontend}${FrontendRoutes.OAUTH.ERROR}`);
         }
     }
 
@@ -851,7 +853,7 @@ export class AtlassianIntegrationManager implements Integration<AtlassianIntegra
             'comment_deleted',          // Comments removed
         ];
 
-        const webhookUrl = `${backendUrl}/webhooks/jira/${accountId}`;
+        const webhookUrl = `${backendUrl}${ApiRoutes.WEBHOOKS.JIRA_BY_ACCOUNT_ID.build(accountId)}`;
 
         // For Jira Cloud OAuth 2.0 apps, use the REST API v3 webhook endpoint
         // Documentation: https://developer.atlassian.com/cloud/jira/platform/webhooks/

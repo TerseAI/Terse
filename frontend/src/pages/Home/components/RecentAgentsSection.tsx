@@ -5,6 +5,7 @@ import { Button } from "../../../components/ui/button";
 import { AgentCard } from "./AgentCard";
 import { Agent } from "../../../shared/types";
 import { useNavigate } from "react-router-dom";
+import { FrontendRoutes } from "@/shared/FrontendRoutes";
 
 interface RecentAgentsSectionProps {
     isLoading: boolean;
@@ -43,7 +44,7 @@ export function RecentAgentsSection({ isLoading, agents }: RecentAgentsSectionPr
                     <EmptyContent>
                         <Button
                             variant="default"
-                            onClick={() => navigate('/app/agents/setup')}
+                            onClick={() => navigate(FrontendRoutes.AGENTS.SETUP)}
                         >
                             <Plus className="h-4 w-4" />
                             Create Agent

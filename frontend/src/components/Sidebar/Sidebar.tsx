@@ -21,6 +21,7 @@ import { AppSidebarHeader } from "./SidebarHeader";
 import { AppSidebarFooter } from "./SidebarFooter";
 import { useAgents } from "@/hooks/api/useAgents";
 import { useFeatureFlag } from "@/hooks/useFeatureFlag";
+import { FrontendRoutes } from "@/shared/FrontendRoutes";
 
 export function AppSidebar() {
     const { agents, isLoading } = useAgents({ limit: 100 });
@@ -130,7 +131,7 @@ function AgentsList({ agents, loading }: AgentsListProps) {
                         variant="ghost"
                         size="sm"
                         className="gap-1 text-xs text-muted-foreground"
-                        onClick={() => navigate('/app/agents/setup')}
+                        onClick={() => navigate(FrontendRoutes.AGENTS.SETUP)}
                     >
                         <Plus className="size-3 !text-muted-foreground hover:!text-foreground" color="currentColor"/>
                         Add Agent
@@ -147,12 +148,12 @@ interface AgentListItemProps {
 
 function AgentListItem({ agent }: AgentListItemProps) {
     const location = useLocation();
-    const isActive = location.pathname === `/app/agents/${agent.id}`;
+    const isActive = location.pathname === FrontendRoutes.AGENTS.DETAIL(agent.id);
 
     return (
         <SidebarMenuSubItem>
             <SidebarMenuSubButton asChild isActive={isActive}>
-                <Link to={`/app/agents/${agent.id}`}>
+                <Link to={FrontendRoutes.AGENTS.DETAIL(agent.id)}>
                     <span>{agent.name}</span>
                 </Link>
             </SidebarMenuSubButton>
@@ -172,13 +173,13 @@ interface NavItem {
 const DefaultApplicationItems: NavItem[] = [
     {
         title: "Home",
-        url: "/app",
+        url: FrontendRoutes.APP,
         icon: Home,
         iconColor: "text-primary",
     },
     {
         title: "Agents",
-        url: "/app/agents",
+        url: FrontendRoutes.AGENTS.LIST,
         icon: Zap,
         iconColor: "text-primary",
     }
@@ -193,13 +194,13 @@ const BirdsEyeApplicationItems: NavItem[] = [
     },
     {
         title: "Home",
-        url: "/app",
+        url: FrontendRoutes.APP,
         icon: Home,
         iconColor: "text-primary",
     },
     {
         title: "Channels",
-        url: "/app/agents",
+        url: FrontendRoutes.AGENTS.LIST,
         icon: Zap,
         iconColor: "text-primary",
     }
@@ -208,13 +209,13 @@ const BirdsEyeApplicationItems: NavItem[] = [
 const SettingsItems: NavItem[] = [
     {
         title: "Integrations",
-        url: "/app/integrations",
+        url: FrontendRoutes.INTEGRATIONS,
         icon: Plug,
         iconColor: "text-primary",
     },
     {
         title: "Notifications",
-        url: "/app/notifications",
+        url: FrontendRoutes.NOTIFICATIONS,
         icon: Bell,
         iconColor: "text-primary",
     },

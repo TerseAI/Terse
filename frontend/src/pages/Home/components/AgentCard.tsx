@@ -4,6 +4,7 @@ import { Clock } from "lucide-react";
 import { AppsList } from "../../../components/Agents/AppsList";
 import { Agent } from "../../../shared/types";
 import { useNavigate } from "react-router-dom";
+import { FrontendRoutes } from "@/shared/FrontendRoutes";
 
 export interface AgentCardProps {
     agent: Agent & { lastEdited: string; lastEventProcessedAt: string };
@@ -13,7 +14,7 @@ export function AgentCard({ agent }: AgentCardProps) {
     const navigate = useNavigate();
 
     const handleClick = () => {
-        navigate(`/app/agents/${agent.id}`);
+        navigate(FrontendRoutes.AGENTS.DETAIL(agent.id));
     };
 
     return (
