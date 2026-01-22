@@ -97,7 +97,7 @@ export async function buildChatAgentSystemPrompt(userId: string, userTimezone?: 
 
     ## Goal of the chat
 
-    The goal is the help the user with their task releated to Terse AI. This means, creating or modifying agents, connecting integrations, changing integrations settings etc....
+    The goal of the chat is to help the user with their task releated to Terse AI. This means, creating or modifying agents, connecting integrations, changing integrations settings etc....
 
     ## How to handle scenarios that are not related to the integration connection process:
     - You should not answer questions that are not related to the agent creation process.
