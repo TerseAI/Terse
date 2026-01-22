@@ -68,7 +68,7 @@ function ApplicationNavigation({ agents, loading }: ApplicationNavigationProps) 
                             <span>{item.title}</span>
                         </Link>
                     </SidebarMenuButton>
-                    {item.title === "Channels" && (
+                    {item.title === "Agents" && (
                         <AgentsList agents={agents} loading={loading} />
                     )}
                 </SidebarMenuItem>
@@ -130,10 +130,10 @@ function AgentsList({ agents, loading }: AgentsListProps) {
                         variant="ghost"
                         size="sm"
                         className="gap-1 text-xs text-muted-foreground"
-                        onClick={() => navigate('/app/channels/setup')}
+                        onClick={() => navigate('/app/agents/setup')}
                     >
                         <Plus className="size-3 !text-muted-foreground hover:!text-foreground" color="currentColor"/>
-                        Add Channel
+                        Add Agent
                     </Button>
                 </SidebarMenuSubButton>
             </SidebarMenuSubItem>
@@ -147,12 +147,12 @@ interface AgentListItemProps {
 
 function AgentListItem({ agent }: AgentListItemProps) {
     const location = useLocation();
-    const isActive = location.pathname === `/app/channels/${agent.id}`;
+    const isActive = location.pathname === `/app/agents/${agent.id}`;
 
     return (
         <SidebarMenuSubItem>
             <SidebarMenuSubButton asChild isActive={isActive}>
-                <Link to={`/app/channels/${agent.id}`}>
+                <Link to={`/app/agents/${agent.id}`}>
                     <span>{agent.name}</span>
                 </Link>
             </SidebarMenuSubButton>
@@ -177,8 +177,8 @@ const DefaultApplicationItems: NavItem[] = [
         iconColor: "text-primary",
     },
     {
-        title: "Channels",
-        url: "/app/channels",
+        title: "Agents",
+        url: "/app/agents",
         icon: Zap,
         iconColor: "text-primary",
     }
@@ -199,7 +199,7 @@ const BirdsEyeApplicationItems: NavItem[] = [
     },
     {
         title: "Channels",
-        url: "/app/channels",
+        url: "/app/agents",
         icon: Zap,
         iconColor: "text-primary",
     }

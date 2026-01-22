@@ -88,7 +88,7 @@ export function HomeEmptyState() {
                     <CardContent>
                         <Button
                             variant={hasActiveIntegrations ? "default" : "outline"}
-                            onClick={() => navigate('/app/channels/setup')}
+                            onClick={() => navigate('/app/agents/setup')}
                             className="w-full"
                         >
                             <Zap className="h-4 w-4" />
@@ -125,7 +125,7 @@ export function HomeEmptyState() {
                         <div className="text-center">
                             <Button
                                 variant="ghost"
-                                onClick={() => navigate('/app/channels/setup')}
+                                onClick={() => navigate('/app/agents/setup')}
                             >
                                 View all templates
                                 <ArrowRight className="h-4 w-4" />

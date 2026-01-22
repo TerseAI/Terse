@@ -12,7 +12,7 @@ export function TemplateCard({ template, templateIndex }: TemplateCardProps) {
     const navigate = useNavigate();
 
     const handleClick = () => {
-        navigate(`/app/channels/new/template/${templateIndex}`);
+        navigate(`/app/agents/new/template/${templateIndex}`);
     };
 
     return (
