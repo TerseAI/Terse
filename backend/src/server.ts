@@ -23,13 +23,13 @@ import {
   googleLoginURL,
 } from "./routes/auth/googleAuth";
 import {
-  createChannel,
-  deleteChannel,
-  getRecentChannels,
-  getUserChannel,
-  getUserChannels,
-  updateChannel,
-} from "./routes/channels";
+  createAgent,
+  deleteAgent,
+  getRecentAgents,
+  getUserAgent,
+  getUserAgents,
+  updateAgent,
+} from "./routes/agents";
 import {
   getInstallationUrl,
   githubAppUnifiedEvent,
@@ -260,7 +260,7 @@ app.get("/run-history/actions", authMiddleware, async (req, res) => {
   getRunHistoryActions(req, res);
 });
 
-app.get("/run-history/:channelId", authMiddleware, async (req, res) => {
+app.get("/run-history/:agentId", authMiddleware, async (req, res) => {
   getRunHistory(req, res);
 });
 
@@ -491,30 +491,30 @@ app.get("/datadog/indexes", authMiddleware, async (req, res) => {
   getDatadogIndexes(req, res);
 });
 
-// MARK: CHANNELS
+// MARK: AGENTS
 
-app.get("/channels", authMiddleware, async (req, res) => {
-  getUserChannels(req, res);
+app.get("/agents", authMiddleware, async (req, res) => {
+  getUserAgents(req, res);
 });
 
-app.get("/channels/recent", authMiddleware, async (req, res) => {
-  getRecentChannels(req, res);
+app.get("/agents/recent", authMiddleware, async (req, res) => {
+  getRecentAgents(req, res);
 });
 
-app.get("/channels/:id", authMiddleware, async (req, res) => {
-  getUserChannel(req, res);
+app.get("/agents/:id", authMiddleware, async (req, res) => {
+  getUserAgent(req, res);
 });
 
-app.post("/channels", authMiddleware, async (req, res) => {
-  createChannel(req, res);
+app.post("/agents", authMiddleware, async (req, res) => {
+  createAgent(req, res);
 });
 
-app.patch("/channels/:id", authMiddleware, async (req, res) => {
-  updateChannel(req, res);
+app.patch("/agents/:id", authMiddleware, async (req, res) => {
+  updateAgent(req, res);
 });
 
-app.delete("/channels/:id", authMiddleware, async (req, res) => {
-  deleteChannel(req, res);
+app.delete("/agents/:id", authMiddleware, async (req, res) => {
+  deleteAgent(req, res);
 });
 
 // MARK: TEMPLATES

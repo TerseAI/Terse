@@ -15,15 +15,15 @@ import {
     SidebarMenuSubItem,
 } from "@/components/ui/sidebar"
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Channel } from "@/shared/types";
+import { Agent } from "@/shared/types";
 import { Button } from "@/components/ui/button";
 import { AppSidebarHeader } from "./SidebarHeader";
 import { AppSidebarFooter } from "./SidebarFooter";
-import { useChannels } from "@/hooks/api/useChannels";
+import { useAgents } from "@/hooks/api/useAgents";
 import { useFeatureFlag } from "@/hooks/useFeatureFlag";
 
 export function AppSidebar() {
-    const { channels, isLoading } = useChannels({ limit: 100 });
+    const { agents, isLoading } = useAgents({ limit: 100 });
 
     return (
         <Sidebar>
@@ -32,7 +32,7 @@ export function AppSidebar() {
                 <SidebarGroup>
                     <SidebarGroupLabel>Application</SidebarGroupLabel>
                     <SidebarGroupContent>
-                        <ApplicationNavigation channels={channels} loading={isLoading} />
+                        <ApplicationNavigation agents={agents} loading={isLoading} />
                     </SidebarGroupContent>
                 </SidebarGroup>
 
@@ -49,11 +49,11 @@ export function AppSidebar() {
 }
 
 interface ApplicationNavigationProps {
-    channels: Channel[];
+    agents: Agent[];
     loading: boolean;
 }
 
-function ApplicationNavigation({ channels, loading }: ApplicationNavigationProps) {
+function ApplicationNavigation({ agents, loading }: ApplicationNavigationProps) {
     const location = useLocation();
     const hasBirdsEyeFlag = useFeatureFlag('Birds-eye-view-homepage');
     const applicationItems = hasBirdsEyeFlag ? BirdsEyeApplicationItems : DefaultApplicationItems;
@@ -69,7 +69,7 @@ function ApplicationNavigation({ channels, loading }: ApplicationNavigationProps
                         </Link>
                     </SidebarMenuButton>
                     {item.title === "Channels" && (
-                        <ChannelsList channels={channels} loading={loading} />
+                        <AgentsList agents={agents} loading={loading} />
                     )}
                 </SidebarMenuItem>
             ))}
@@ -96,11 +96,11 @@ function SettingsNavigation() {
     )
 }
 
-interface ChannelsListProps {
-    channels: Channel[];
+interface AgentsListProps {
+    agents: Agent[];
     loading: boolean;
 }
-function ChannelsList({ channels, loading }: ChannelsListProps) {
+function AgentsList({ agents, loading }: AgentsListProps) {
     const navigate = useNavigate();
 
     if (loading) {
@@ -121,8 +121,8 @@ function ChannelsList({ channels, loading }: ChannelsListProps) {
 
     return (
         <SidebarMenuSub>
-            {channels.map((channel) => (
-                <ChannelListItem key={channel.id} channel={channel} />
+            {agents.map((agent) => (
+                <AgentListItem key={agent.id} agent={agent} />
             ))}
             <SidebarMenuSubItem>
                 <SidebarMenuSubButton asChild>
@@ -141,19 +141,19 @@ function ChannelsList({ channels, loading }: ChannelsListProps) {
     )
 }
 
-interface ChannelListItemProps {
-    channel: Channel;
+interface AgentListItemProps {
+    agent: Agent;
 }
 
-function ChannelListItem({ channel }: ChannelListItemProps) {
+function AgentListItem({ agent }: AgentListItemProps) {
     const location = useLocation();
-    const isActive = location.pathname === `/app/channels/${channel.id}`;
+    const isActive = location.pathname === `/app/channels/${agent.id}`;
 
     return (
         <SidebarMenuSubItem>
             <SidebarMenuSubButton asChild isActive={isActive}>
-                <Link to={`/app/channels/${channel.id}`}>
-                    <span>{channel.name}</span>
+                <Link to={`/app/channels/${agent.id}`}>
+                    <span>{agent.name}</span>
                 </Link>
             </SidebarMenuSubButton>
         </SidebarMenuSubItem>

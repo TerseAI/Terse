@@ -1,5 +1,5 @@
 import { db } from "../prismaClient";
-import { ChannelWithRelations } from "../types/prisma";
+import { AgentWithRelations } from "../types/prisma";
 import { getInputConfigInclude, getOutputConfigInclude, getKnowledgeBaseConfigInclude } from "../utility/prismaIncludes";
 import { OutputFactory } from "../outputs/abstract/OutputFactory";
 import { Output } from "../outputs/abstract/Output";
@@ -7,8 +7,8 @@ import { KnowledgeBaseFactory } from "../knowledgeBase/abstract/KnowledgeBaseFac
 import { KnowledgeBase } from "../knowledgeBase/abstract/KnowledgeBase";
 import { ConfigInstance } from "../shared/Configs";
 import { Session } from "../server";
-import { storeChatEvent, markRunFailed, finalizeRunStatus, markRunInProgress } from "../agent/ChannelAgent/runHistory";
-import { ChannelAgent } from "../agent/ChannelAgent/ChannelAgent";
+import { storeChatEvent, markRunFailed, finalizeRunStatus, markRunInProgress } from "../agent/AgentRunner/runHistory";
+import { AgentRunner } from "../agent/AgentRunner/AgentRunner";
 import { ModelEvent } from "../shared/ModelEvents";
 import { emitCacheInvalidationWithWildcard } from "../realtimeSocket";
 import { updateSlackApprovalMessage } from "../utility/slack";
@@ -39,7 +39,7 @@ export type ApprovalResult = {
 export class ApprovalService {
     private static async validateUserAccess(runId: string, userId: string): Promise<{
         runRecord: { id: string; status: string; automation: { id: string; user_id: string } };
-        channel: ChannelWithRelations;
+        channel: AgentWithRelations;
     }> {
         const prisma = db();
         
@@ -79,15 +79,15 @@ export class ApprovalService {
     }
 
     private static createOutputs(
-        channel: ChannelWithRelations
+        channel: AgentWithRelations
     ): Output<ConfigInstance>[] {
-        return OutputFactory.createOutputsFromChannel(channel);
+        return OutputFactory.createOutputsFromAgent(channel);
     }
 
     private static createKnowledgeBases(
-        channelKnowledgeBases: ChannelWithRelations['knowledge_bases']
+        channelKnowledgeBases: AgentWithRelations['knowledge_bases']
     ): KnowledgeBase<ConfigInstance>[] {
-        return KnowledgeBaseFactory.createKnowledgeBasesFromChannel(channelKnowledgeBases);
+        return KnowledgeBaseFactory.createKnowledgeBasesFromAgent(channelKnowledgeBases);
     }
 
     /**
@@ -227,7 +227,7 @@ export class ApprovalService {
             // Create outputs
             const outputs = this.createOutputs(channel);
             
-            // Create base session for ChannelAgent
+            // Create base session for AgentRunner
             const user = await db().users.findUnique({ where: { id: userId } });
             if (!user) {
                 throw new Error(`User not found: ${userId}`);
@@ -237,7 +237,7 @@ export class ApprovalService {
                 isUserInitiated: true,
             };
 
-            // Create knowledge bases from channel configuration
+            // Create knowledge bases from agent configuration
             const knowledgeBases = this.createKnowledgeBases(channel.knowledge_bases || []);
 
             // Ensure run status is 'in_progress' for streaming
@@ -259,19 +259,19 @@ export class ApprovalService {
             emitCacheInvalidationWithWildcard(userId, 'runHistory', channel.id);
             emitCacheInvalidationWithWildcard(userId, 'chatHistory', runId);
 
-            // Create channel agent and resume from pending approval
+            // Create agent runner and resume from pending approval
             const runContext = { runId };
-            const channelAgent = new ChannelAgent(session, outputs, knowledgeBases, channel, runContext);
-            await channelAgent.initializeAgent();
+            const agentRunner = new AgentRunner(session, outputs, knowledgeBases, channel, runContext);
+            await agentRunner.initializeAgent();
 
             const decision: 'approve' | 'reject' = approved ? 'approve' : 'reject';
-            const result = await channelAgent.resumeFromPendingApproval(
+            const result = await agentRunner.resumeFromPendingApproval(
                 decision,
                 stepId,
                 {
                     runId,
                     userId: userId,
-                    channelId: channel.id,
+                    agentId: channel.id,
                 },
                 rejectionReason,
                 hardReject
@@ -316,7 +316,7 @@ export class ApprovalService {
                 };
             }
 
-            // Defensive fallback: unknown status from ChannelAgent
+            // Defensive fallback: unknown status from AgentRunner
             logger.warn(`[ApprovalService] Unexpected agent status after resuming approval`, {
                 runId,
                 stepId,

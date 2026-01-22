@@ -6,7 +6,7 @@ import { ActionItem } from "./ActionItem";
 import { RunHistoryAction } from "../../../shared/RunHistoryTypes";
 
 interface RecentActionsSectionProps {
-    recentActions: (RunHistoryAction & { timestamp: string; channelName: string })[];
+    recentActions: (RunHistoryAction & { timestamp: string; agentName: string })[];
 }
 
 export function RecentActionsSection({ recentActions }: RecentActionsSectionProps) {

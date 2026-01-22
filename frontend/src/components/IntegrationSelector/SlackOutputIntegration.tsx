@@ -7,7 +7,7 @@ import { InputConfigSelectorProps } from './types';
 import { useSlackIntegrations } from '@/hooks/api/useSlackIntegrations';
 import { useOAuthConnection } from '@/hooks/useOAuthConnection';
 import { useIntegrationId } from '@/hooks/useIntegrationId';
-import { IconForConfigType } from '../../pages/Channels/components/Integration';
+import { IconForConfigType } from '../../pages/Agents/components/Integration';
 import { useSlackChannels } from '@/hooks/api/useSlackChannels';
 import { RefreshButton } from '../RefreshButton';
 import { SlackChannel } from '@/shared/types';

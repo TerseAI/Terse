@@ -338,33 +338,33 @@ export interface FigmaCommentEventData {
   imageUrls?: FigmaCommentImageUrls;
 }
 
-export type ChannelInput = {
+export type AgentTrigger = {
   id: string;
   config: ConfigInstance;
 };
 
-export type ChannelOutput = {
+export type AgentOutput = {
   id: string;
   config: ConfigInstance;
 };
 
-export type ChannelPrompt = {
+export type AgentPrompt = {
   text: string;
 };
 
-export type TransientChannelInput = {
+export type TransientAgentTrigger = {
   id: string;
   config?: ConfigInstance;
   configType: ConfigType;
 };
 
-export type TransientChannelOutput = {
+export type TransientAgentOutput = {
   id: string;
   config?: ConfigInstance;
   configType: ConfigType;
 };
 
-export type ChannelKnowledgeBase = {
+export type AgentKnowledgeBase = {
     id: string;
     config: ConfigInstance;
 };
@@ -381,7 +381,7 @@ export type TemplateConfigRef = {
     integrationType: IntegrationType;
 };
 
-export type TemplateInput = {
+export type TemplateTrigger = {
     config: TemplateConfigRef;
 };
 
@@ -393,48 +393,48 @@ export type TemplateKnowledgeBase = {
     config: TemplateConfigRef;
 };
 
-export type ChannelTemplate = {
+export type AgentTemplate = {
     name: string;
     description: string;
-    prompt: ChannelPrompt;
-    inputs: TemplateInput[];
+    prompt: AgentPrompt;
+    triggers: TemplateTrigger[];
     outputs: TemplateOutput[];
     knowledgeBases?: TemplateKnowledgeBase[];
     requireApproval: boolean;
     isActive: boolean;
 };
 
-export type Channel = {
+export type Agent = {
     id: string;
     name: string;
     isActive: boolean;
     requireApproval: boolean;
-    prompt: ChannelPrompt;
-    inputs: ChannelInput[];
-    outputs: ChannelOutput[];
-    knowledgeBases?: ChannelKnowledgeBase[];
-    notificationSettings?: ChannelNotificationSettings;
+    prompt: AgentPrompt;
+    triggers: AgentTrigger[];
+    outputs: AgentOutput[];
+    knowledgeBases?: AgentKnowledgeBase[];
+    notificationSettings?: AgentNotificationSettings;
     updatedAt?: string;
 };
 
-export type ChannelNotificationSettings = {
+export type AgentNotificationSettings = {
     enabled: boolean;
     actionTypes: RunHistoryActionType[];
 };
 
-export type ChannelUpdate = {
+export type AgentUpdate = {
     name?: string;
-    inputs?: ChannelInput[];
-    outputs?: ChannelOutput[];
-    prompt?: ChannelPrompt;
+    triggers?: AgentTrigger[];
+    outputs?: AgentOutput[];
+    prompt?: AgentPrompt;
     isActive?: boolean;
     requireApproval?: boolean;
-    knowledgeBases?: ChannelKnowledgeBase[];
-    notificationSettings?: ChannelNotificationSettings;
+    knowledgeBases?: AgentKnowledgeBase[];
+    notificationSettings?: AgentNotificationSettings;
 };
 
-export type ChannelsResponse = {
-    channels: Channel[];
+export type AgentsResponse = {
+    agents: Agent[];
     pagination: {
         page: number;
         limit: number;
@@ -443,7 +443,7 @@ export type ChannelsResponse = {
     };
 };
 
-export type RecentChannel = Channel & {
+export type RecentAgent = Agent & {
   updatedAt: string;
   lastEventProcessedAt: string | null;
 };
@@ -496,7 +496,7 @@ export interface RecentAction {
   details: string;
   url?: string;
   timestamp: string; // ISO date string
-  channelName: string;
+  agentName: string;
   type: RunHistoryActionType;
 }
 
@@ -505,8 +505,8 @@ export interface StatsResponse {
   totalEventsProcessedChange: string; // Percentage change from previous period
   actionsTaken: number;
   actionsTakenChange: string; // Percentage change from previous period
-  numberOfChannels: number;
-  numberOfChannelsChange: string; // Absolute change (e.g., "+2")
+  numberOfAgents: number;
+  numberOfAgentsChange: string; // Absolute change (e.g., "+2")
   dailyEvents: DailyEventCount[]; // Events per day for the last 7 days
   recentActions: RecentAction[]; // Recent actions (last 10)
   timezone: string; // Timezone used for daily events grouping (e.g., "America/New_York" or "UTC")

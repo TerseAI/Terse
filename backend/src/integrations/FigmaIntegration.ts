@@ -1,10 +1,10 @@
 import { Integration, OAuthIntegrationInstallation, ConfigurationFieldDefinition } from "./abstract/Integration";
 import { db } from "../prismaClient";
-import { User, ChannelInputWithConfigs } from "../types/prisma";
+import { User, AgentTriggerWithConfigs } from "../types/prisma";
 import { figma_integrations, InputConfigType } from "@prisma/client";
 import { generateWebhookPasscode } from "../utility/webhookSecrets";
 import { nodeEnv } from "../config/settings";
-import { EventProcessor } from "../agent/ChannelAgent/EventProcessor";
+import { EventProcessor } from "../agent/AgentRunner/EventProcessor";
 import { RunHistoryTrigger } from "../shared/RunHistoryTypes";
 import { InputEvent } from "./abstract/InputEvent";
 import {
@@ -271,17 +271,17 @@ export class FigmaIntegrationManager implements Integration<FigmaIntegration, Fi
     return Promise.resolve();
   }
 
-  async setupChannelInput(integrationId: string, channelInput: ChannelInputWithConfigs): Promise<void> {
+  async setupAgentTrigger(integrationId: string, agentTrigger: AgentTriggerWithConfigs): Promise<void> {
     // Check if figma_config exists at all
-    if (!channelInput.figma_config) {
-      logger.warn(`⚠️  No Figma config found for input ${channelInput.id}. Skipping webhook setup.`, { inputId: channelInput.id });
+    if (!agentTrigger.figma_config) {
+      logger.warn(`⚠️  No Figma config found for input ${agentTrigger.id}. Skipping webhook setup.`, { inputId: agentTrigger.id });
       return;
     }
 
-    const fileKey = channelInput.figma_config.file_key;
+    const fileKey = agentTrigger.figma_config.file_key;
 
     if (!fileKey) {
-      logger.warn(`⚠️  No file_key specified in Figma config for input ${channelInput.id}`, { inputId: channelInput.id });
+      logger.warn(`⚠️  No file_key specified in Figma config for input ${agentTrigger.id}`, { inputId: agentTrigger.id });
       return;
     }
 
@@ -296,7 +296,7 @@ export class FigmaIntegrationManager implements Integration<FigmaIntegration, Fi
     }
 
     // Get team ID from config - required for webhook creation
-    const teamId = channelInput.figma_config.team_id;
+    const teamId = agentTrigger.figma_config.team_id;
 
     if (!teamId) {
       throw new Error(`team_id is required for creating Figma webhooks. Please provide a team ID in the Figma configuration for file ${fileKey}.`);
@@ -412,11 +412,11 @@ export class FigmaIntegrationManager implements Integration<FigmaIntegration, Fi
     }
   }
 
-  async teardownChannelInput(integrationId: string, channelInput: ChannelInputWithConfigs): Promise<void> {
-    const teamId = channelInput.figma_config?.team_id;
+  async teardownAgentTrigger(integrationId: string, agentTrigger: AgentTriggerWithConfigs): Promise<void> {
+    const teamId = agentTrigger.figma_config?.team_id;
 
     if (!teamId) {
-      logger.info(`ℹ️  No team_id in config, skipping webhook cleanup for channel input ${channelInput.id}`, { inputId: channelInput.id });
+      logger.info(`ℹ️  No team_id in config, skipping webhook cleanup for channel input ${agentTrigger.id}`, { inputId: agentTrigger.id });
       return;
     }
 
@@ -438,7 +438,7 @@ export class FigmaIntegrationManager implements Integration<FigmaIntegration, Fi
           is_active: true,
         },
         NOT: {
-          id: channelInput.id,
+          id: agentTrigger.id,
         },
       },
       include: {
@@ -832,7 +832,7 @@ export class FigmaCommentEvent extends InputEvent {
     this.data = data;
   }
 
-  formatForChannelAgent(): string {
+  formatForAgentRunner(): string {
     const indentMultiline = (text: string): string =>
       text
         .split('\n')
@@ -963,14 +963,14 @@ export class FigmaCommentEvent extends InputEvent {
     return `Figma Comment Event: File ${this.data.fileKey} - ${this.data.author.handle} - ${this.data.message.substring(0, 50)}`;
   }
 
-  matchesChannelInput(channelInput: ChannelInputWithConfigs): boolean {
+  matchesAgentTrigger(agentTrigger: AgentTriggerWithConfigs): boolean {
     // Check if integration type matches
-    if (channelInput.config_type !== InputConfigType.FIGMA) {
+    if (agentTrigger.config_type !== InputConfigType.FIGMA) {
       return false;
     }
 
     // Require file_key to be configured and match the event's file_key
-    const figmaConfig = channelInput.figma_config;
+    const figmaConfig = agentTrigger.figma_config;
     if (!figmaConfig?.file_key) {
       // No file_key configured means this channel should not match any events
       return false;

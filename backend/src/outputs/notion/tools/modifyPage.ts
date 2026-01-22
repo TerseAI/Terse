@@ -3,7 +3,7 @@ import { z } from "zod";
 import { Client } from '@notionhq/client';
 import { GetDataSourceResponse } from '@notionhq/client/build/src/api-endpoints';
 import { IntegrationType } from "../../../shared/Integrations";
-import { SessionWithTracking } from "../../../agent/ChannelAgent/ChannelAgent";
+import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner";
 import { formatError, needsApproval } from "../../../tools/toolUtils";
 import logger from "../../../logger";
 import { Session } from "../../../server";

@@ -26,7 +26,7 @@ interface SlackChannelSelectorProps {
     showListenToDMsOption?: boolean; // Only show DM option for user tokens
     showUserFilter?: boolean; // Only show user filter for user tokens
     isBotToken?: boolean; // Whether this is a bot token (vs user token)
-    onSelectChannel: (channelId: string, channelName?: string) => void;
+    onSelectChannel: (channelId: string, agentName?: string) => void;
     onListenToUserDmsChange: (listenToUserDms: boolean) => void;
     onSelectUsers: (userIds: string[]) => void;
 }

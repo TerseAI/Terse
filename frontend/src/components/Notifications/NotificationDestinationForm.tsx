@@ -181,9 +181,9 @@ export function NotificationDestinationForm({ existingDestination, onSuccess, on
                     isBotUser={selectedSlackIntegration?.isBotUser}
                     initialChannelId={selectedChannelId}
                     initialChannelName={selectedChannelName}
-                    onSelectChannel={(channelId, channelName) => {
+                    onSelectChannel={(channelId, agentName) => {
                         setSelectedChannelId(channelId);
-                        setSelectedChannelName(channelName);
+                        setSelectedChannelName(agentName);
                     }} 
                 />
             )}
@@ -209,7 +209,7 @@ interface SelectSlackChannelFormProps {
     isBotUser?: boolean;
     initialChannelId?: string;
     initialChannelName?: string;
-    onSelectChannel: (channelId: string, channelName: string) => void;
+    onSelectChannel: (channelId: string, agentName: string) => void;
 }
 
 function SelectSlackChannelForm({ integrationId, isBotUser, initialChannelId, initialChannelName, onSelectChannel }: SelectSlackChannelFormProps) {
@@ -258,10 +258,10 @@ function SelectSlackChannelForm({ integrationId, isBotUser, initialChannelId, in
         setSendAsDirectMessage(false);
     };
 
-    const handleSelectChannel = (channelId: string, channelName: string) => {
+    const handleSelectChannel = (channelId: string, agentName: string) => {
         setSelectedChannelId(channelId);
-        setSelectedChannelName(channelName);
-        onSelectChannel(channelId, channelName);
+        setSelectedChannelName(agentName);
+        onSelectChannel(channelId, agentName);
     };
 
     // Show selected channel with option to change
@@ -310,7 +310,7 @@ function SelectSlackChannelForm({ integrationId, isBotUser, initialChannelId, in
     );
 }
 
-function ChannelSelector({ channels, selectedChannelId, onChannelSelect }: { channels: SlackChannel[], selectedChannelId: string | undefined, onChannelSelect: (channelId: string, channelName: string) => void }) {
+function ChannelSelector({ channels, selectedChannelId, onChannelSelect }: { channels: SlackChannel[], selectedChannelId: string | undefined, onChannelSelect: (channelId: string, agentName: string) => void }) {
     const publicChannels = channels.filter(ch => !ch.isPrivate && !ch.isArchived);
     const privateChannels = channels.filter(ch => ch.isPrivate && !ch.isArchived);
 

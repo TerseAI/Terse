@@ -108,7 +108,7 @@ async function classifyDirective(
   const runner = runnerFactory({
     runId: task.runHistoryId,
     userId: task.userId,
-    channelId: task.automationId,
+    agentId: task.automationId,
     env: settings.nodeEnv,
 })
 

@@ -4,7 +4,7 @@ import type { GetRunHistoryParams, GetRunHistoryResponse, RunHistoryStatus } fro
 import { runHistoryKey } from '@/shared/InvalidationKeys';
 
 type UseRunHistoryParams = {
-    channelId: string | null | undefined;
+    agentId: string | null | undefined;
     page?: number;
     pageSize?: number;
     searchQuery?: string;
@@ -13,7 +13,7 @@ type UseRunHistoryParams = {
 };
 
 export function useRunHistory({
-    channelId,
+    agentId,
     page = 1,
     pageSize = 10,
     searchQuery = '',
@@ -40,8 +40,8 @@ export function useRunHistory({
         end: toLocalEndISOString(dateRange.to ?? dateRange.from),
         status: Array.from(selectedStatuses).sort(),
     };
-    
-    if (!channelId) {
+
+    if (!agentId) {
         return {
             runs: [],
             total: 0,
@@ -53,14 +53,14 @@ export function useRunHistory({
             mutate: () => {},
         };
     }
-    
-    const key = runHistoryKey(channelId, params);
+
+    const key = runHistoryKey(agentId, params);
 
 
     const { data, error, isValidating, mutate } = useSWR<GetRunHistoryResponse>(
         key,
-        channelId ? async () => {
-            return BackendProvider.getRunHistory(channelId, params);
+        agentId ? async () => {
+            return BackendProvider.getRunHistory(agentId, params);
         } : null,
         {
             keepPreviousData: true,
@@ -72,7 +72,7 @@ export function useRunHistory({
         total: data?.total ?? 0,
         page: data?.page ?? page,
         pageSize: data?.pageSize ?? pageSize,
-        isLoading: !data && !error && !!channelId,
+        isLoading: !data && !error && !!agentId,
         isError: error,
         isValidating,
         mutate,

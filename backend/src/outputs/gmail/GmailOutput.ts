@@ -1,5 +1,5 @@
 import { Tool } from "@openai/agents";
-import { ChannelOutputWithConfigs, PrismaTransaction } from "../../types/prisma";
+import { AgentOutputWithConfigs, PrismaTransaction } from "../../types/prisma";
 import { Output, ToolboxEntry } from "../abstract/Output";
 import { OutputConfigType } from "@prisma/client";
 import { GmailOutputConfig } from "../../shared/Configs";
@@ -20,7 +20,7 @@ export class GmailOutput extends Output<GmailOutputConfig> {
         }
     }
 
-    async addOutputToChannel(tx: PrismaTransaction, channelOutputId: string, _output: GmailOutputConfig): Promise<void> {
+    async addOutputToAgent(tx: PrismaTransaction, channelOutputId: string, _output: GmailOutputConfig): Promise<void> {
         await tx.automation_gmail_configs.create({
             data: {
                 automation_output_id: channelOutputId,
@@ -28,7 +28,7 @@ export class GmailOutput extends Output<GmailOutputConfig> {
         });
     }
 
-    protected getSystemInstructionsForConfigs(configs: ChannelOutputWithConfigs[]): string {
+    protected getSystemInstructionsForConfigs(configs: AgentOutputWithConfigs[]): string {
         if (configs.length === 0) {
             throw new Error('No Gmail configs provided');
         }

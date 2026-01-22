@@ -1,42 +1,42 @@
-import { useRecentChannels } from "../../hooks/api/useRecentChannels";
+import { useRecentAgents } from "../../hooks/api/useRecentAgents";
 import { useStats } from "../../hooks/api/useStats";
-import { useChannels } from "../../hooks/api/useChannels";
+import { useAgents } from "../../hooks/api/useAgents";
 import { formatRelativeTime } from "../../utility/timeUtils";
 import { IntegrationType } from "../../shared/Integrations";
 import { RunHistoryAction } from "../../shared/RunHistoryTypes";
 import { StatsMetricsSection } from "./components/StatsMetricsSection";
 import { DailyEventsChart } from "./components/DailyEventsChart";
 import { RecentActionsSection } from "./components/RecentActionsSection";
-import { RecentChannelsSection } from "./components/RecentChannelsSection";
+import { RecentAgentsSection } from "./components/RecentAgentsSection";
 import { HomeEmptyState } from "./components/HomeEmptyState";
 import { transformStatsToMetrics } from "./utils";
 
 function Home() {
-    const { channels: allChannels, isLoading: isLoadingAllChannels } = useChannels({ limit: 1 });
-    const { channels: recentChannelsData, isLoading: isLoadingChannels } = useRecentChannels(3);
+    const { agents: allAgents, isLoading: isLoadingAllAgents } = useAgents({ limit: 1 });
+    const { agents: recentAgentsData, isLoading: isLoadingAgents } = useRecentAgents(3);
     const { stats, isLoading: isLoadingStats } = useStats();
 
-    const hasNoChannels = !isLoadingAllChannels && allChannels.length === 0;
+    const hasNoAgents = !isLoadingAllAgents && allAgents.length === 0;
 
-    // Show empty state if user has no channels
-    if (hasNoChannels) {
+    // Show empty state if user has no agents
+    if (hasNoAgents) {
         return <HomeEmptyState />;
     }
 
     const metrics = transformStatsToMetrics(stats);
 
-    const recentChannels = recentChannelsData.map(channel => ({
-        ...channel,
-        lastEdited: formatRelativeTime(channel.updatedAt),
-        lastEventProcessedAt: channel.lastEventProcessedAt
-            ? formatRelativeTime(channel.lastEventProcessedAt)
+    const recentAgents = recentAgentsData.map(agent => ({
+        ...agent,
+        lastEdited: formatRelativeTime(agent.updatedAt),
+        lastEventProcessedAt: agent.lastEventProcessedAt
+            ? formatRelativeTime(agent.lastEventProcessedAt)
             : "Never",
     }));
 
     const eventsPerDay = stats?.dailyEvents || [];
     const timezone = stats?.timezone;
 
-    const recentActions: (RunHistoryAction & { timestamp: string; channelName: string })[] = stats?.recentActions
+    const recentActions: (RunHistoryAction & { timestamp: string; agentName: string })[] = stats?.recentActions
         ? stats.recentActions.map((action) => ({
             action: action.action,
             integration: action.integration as IntegrationType,
@@ -44,7 +44,7 @@ function Home() {
             details: action.details,
             url: action.url,
             timestamp: formatRelativeTime(action.timestamp),
-            channelName: action.channelName,
+            agentName: action.agentName,
             type: action.type,
         }))
         : [];
@@ -58,9 +58,9 @@ function Home() {
                 <RecentActionsSection recentActions={recentActions} />
             </div>
 
-            <RecentChannelsSection
-                isLoading={isLoadingChannels}
-                channels={recentChannels}
+            <RecentAgentsSection
+                isLoading={isLoadingAgents}
+                agents={recentAgents}
             />
         </div>
     );

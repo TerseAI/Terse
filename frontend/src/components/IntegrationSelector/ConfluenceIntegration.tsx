@@ -9,7 +9,7 @@ import { useAtlassianIntegrations } from '@/hooks/api/useAtlassianIntegrations';
 import { useOAuthConnection } from '@/hooks/useOAuthConnection';
 import { useIntegrationId } from '@/hooks/useIntegrationId';
 import { StatusOption } from '../ui/DropdownSelect';
-import { IconForConfigType } from '../../pages/Channels/components/Integration';
+import { IconForConfigType } from '../../pages/Agents/components/Integration';
 
 export function ConfluenceIntegration({
     input,

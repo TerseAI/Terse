@@ -8,7 +8,7 @@ import { runnerFactory } from "../../../agent/runner";
 import { settings } from "../../../config/settings";
 import { IntegrationType } from "../../../shared/Integrations";
 import { RunHistoryActionType } from "@prisma/client";
-import { SessionWithTracking } from "../../../agent/ChannelAgent/ChannelAgent";
+import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner";
 
 /**
  * Tool for summarizing pull request diffs using a compact sub-agent.
@@ -115,13 +115,13 @@ You can optionally provide high-level context about what you're looking for in t
             // Extract available context from the tool context (which is the merged session)
             const toolContext = runContext?.context as any;
             const userId = toolContext?.user?.id || toolContext?.userId || '';
-            const channelId = toolContext?.channel?.id || toolContext?.channelId || '';
+            const agentId = toolContext?.agent?.id || toolContext?.agentId || '';
             // Generate a unique runId for the sub-agent
             const subAgentRunId = `pr-summary-${Date.now()}-${pullNumber}`;
 
             // Create runner for the sub-agent
             const runner = runnerFactory({
-                channelId: channelId,
+                agentId: agentId,
                 runId: subAgentRunId,
                 userId: userId,
                 env: settings.nodeEnv,

@@ -5,8 +5,8 @@ import { z } from "zod";
 import { IntegrationType } from "../../shared/Integrations";
 import { ConfigType } from "../../shared/Configs";
 import logger from "../../logger";
-import { applyChannelForUser, updateChannelForUser } from "../../routes/channels";
-import type { ChannelDraft } from "../../routes/channels";
+import { applyAgentForUser, updateAgentForUser } from "../../routes/agents";
+import type { AgentDraft } from "../../routes/agents";
 import type { ConfigInstance } from "../../shared/Configs";
 import { GithubIntegrationManager } from "../../integrations/GithubIntegration";
 import { SlackIntegrationManager } from "../../integrations/SlackIntegration";
@@ -33,28 +33,28 @@ const frontendUrl = process.env.FRONTEND_URL;
 export function buildChatAgentTools(chatInterface: ChatInterface): Tool<ChatAgentContext>[] {
     return [
         tool({
-            name: 'applyChannel',
-            description: 'Once you have all the information you need, you can use this tool to persist and apply the automation. You can use this to create and update channels. If you are creating, just leave the id empty.',
+            name: 'applyAgent',
+            description: 'Once you have all the information you need, you can use this tool to persist and apply the automation. You can use this to create and update agents. If you are creating, just leave the id empty.',
             parameters: z.object({
-                channel: ChannelSchema,
-                id: z.string().nullable().describe('The ID of the channel to update. If not provided, a new channel will be created.'),
+                agent: AgentSchema,
+                id: z.string().nullable().describe('The ID of the agent to update. If not provided, a new agent will be created.'),
             }),
-            execute: async ({ channel, id }, runContext?: RunContext<ChatAgentContext>): Promise<string> => {
-                logger.info('Slack chat interface applyChannel', { channel, id });
+            execute: async ({ agent, id }, runContext?: RunContext<ChatAgentContext>): Promise<string> => {
+                logger.info('Slack chat interface applyAgent', { agent, id });
                 const userId = runContext?.context?.userId;
                 if (!userId) {
-                    throw new Error("User ID is required to apply channel");
+                    throw new Error("User ID is required to apply agent");
                 }
 
                 try {
-                    const draft = toChannelDraft(channel);
+                    const draft = toAgentDraft(agent);
                     const result = id
-                        ? await updateChannelForUser(userId, id, draft)
-                        : await applyChannelForUser(userId, draft);
-                    await chatInterface.buildButton("View Automation", `${frontendUrl}/app/channels/${result.id}`);
-                    return `Channel applied successfully (${result.id})`;
+                        ? await updateAgentForUser(userId, id, draft)
+                        : await applyAgentForUser(userId, draft);
+                    await chatInterface.buildButton("View Automation", `${frontendUrl}/app/agents/${result.id}`);
+                    return `Agent applied successfully (${result.id})`;
                 } catch (error) {
-                    logger.error('applyChannel failed', { error, userId, channel });
+                    logger.error('applyAgent failed', { error, userId, agent });
                     throw error;
                 }
             },
@@ -71,7 +71,7 @@ export function buildChatAgentTools(chatInterface: ChatInterface): Tool<ChatAgen
         }), 
         tool({
             name: 'fetchResourcesForIntegration',
-            description: 'Call this when you need to see what configs you have access to. It returns display names and canonical IDs you can use for the Channel object in applyChannel. IMPORTANT: Do not add integrations unless the user explicitly asked for them.',
+            description: 'Call this when you need to see what configs you have access to. It returns display names and canonical IDs you can use for the Agent object in applyAgent. IMPORTANT: Do not add integrations unless the user explicitly asked for them.',
             parameters: z.object({
                 integrationType: z.nativeEnum(IntegrationType).describe('The integration type to fetch resources for'),
                 query: z.string().nullable().describe('Optional query to filter resources by name/title'),
@@ -252,42 +252,42 @@ const KnowledgeBaseConfigSchema = z.discriminatedUnion("configType", [
     enforceNonSystemIntegrationId(value, ctx);
 });
 
-const ChannelInputSchema = z.object({
+const AgentTriggerSchema = z.object({
     config: InputConfigSchema,
 }).strict();
 
-const ChannelOutputSchema = z.object({
+const AgentOutputSchema = z.object({
     config: OutputConfigSchema,
 }).strict();
 
-const ChannelPromptSchema = z.object({
+const AgentPromptSchema = z.object({
     text: NonEmptyString,
 }).strict();
 
-const ChannelKnowledgeBaseSchema = z.object({
+const AgentKnowledgeBaseSchema = z.object({
     config: KnowledgeBaseConfigSchema,
 }).strict();
 
 const RunHistoryActionTypeSchema = z.enum(["create", "update", "delete", "read"]);
 
-const ChannelNotificationSettingsSchema = z.object({
+const AgentNotificationSettingsSchema = z.object({
     enabled: z.boolean(),
     actionTypes: z.array(RunHistoryActionTypeSchema),
 }).strict();
 
-export const ChannelSchema = z.object({
+export const AgentSchema = z.object({
     name: NonEmptyString,
     isActive: z.boolean(),
     requireApproval: z.boolean(),
-    prompt: ChannelPromptSchema,
-    inputs: z.array(ChannelInputSchema).min(1),
-    outputs: z.array(ChannelOutputSchema).min(1),
-    knowledgeBases: z.array(ChannelKnowledgeBaseSchema).nullable(),
-    notificationSettings: ChannelNotificationSettingsSchema.nullable(),
+    prompt: AgentPromptSchema,
+    triggers: z.array(AgentTriggerSchema).min(1),
+    outputs: z.array(AgentOutputSchema).min(1),
+    knowledgeBases: z.array(AgentKnowledgeBaseSchema).nullable(),
+    notificationSettings: AgentNotificationSettingsSchema.nullable(),
     updatedAt: z.string().nullable(),
 }).strict();
 
-type ChannelSchemaInput = z.infer<typeof ChannelSchema>;
+type AgentSchemaInput = z.infer<typeof AgentSchema>;
 
 function toConfigInstance<T extends Record<string, any>>(config: T): T & ConfigInstance {
     return {
@@ -309,26 +309,26 @@ function normalizeConfig<T extends Record<string, any>>(config: T): T {
     return config;
 }
 
-function toChannelDraft(channel: ChannelSchemaInput): ChannelDraft {
+function toAgentDraft(agent: AgentSchemaInput): AgentDraft {
     return {
-        ...channel,
-        inputs: channel.inputs.map((input) => ({
+        ...agent,
+        triggers: agent.triggers.map((trigger) => ({
             id: uuidv4().toString(),
-            ...input,
-            config: toConfigInstance(normalizeConfig(input.config)),
+            ...trigger,
+            config: toConfigInstance(normalizeConfig(trigger.config)),
         })),
-        outputs: channel.outputs.map((output) => ({
+        outputs: agent.outputs.map((output) => ({
             id: uuidv4().toString(),
             ...output,
             config: toConfigInstance(normalizeConfig(output.config)),
         })),
-        knowledgeBases: channel.knowledgeBases?.map((kb) => ({
+        knowledgeBases: agent.knowledgeBases?.map((kb) => ({
             id: uuidv4().toString(),
             ...kb,
             config: toConfigInstance(normalizeConfig(kb.config)),
         })) ?? undefined,
-        notificationSettings: channel.notificationSettings ?? undefined,
-        updatedAt: channel.updatedAt ?? undefined,
+        notificationSettings: agent.notificationSettings ?? undefined,
+        updatedAt: agent.updatedAt ?? undefined,
     };
 }
 

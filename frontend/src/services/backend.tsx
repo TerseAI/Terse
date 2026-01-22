@@ -1,9 +1,9 @@
 import axios from 'axios';
 import type { RunHistoryModelEvent, RunHistoryActionWithId } from "../shared/RunHistoryTypes";
 import {
-    Channel,
-    ChannelsResponse,
-    ChannelUpdate,
+    Agent,
+    AgentsResponse,
+    AgentUpdate,
     ConfluenceResourcesResponse,
     GetGithubRepositoriesForIntegrationResponse,
     OAuthInstallationDetails,
@@ -15,11 +15,11 @@ import {
     LaunchDarklyProjectsResponse,
     LaunchDarklyEnvironmentsResponse,
     DatadogIndexesResponse,
-    RecentChannel,
+    RecentAgent,
     SlackChannelsResponse,
     StatsResponse,
     SlackUsersResponse,
-    ChannelTemplate,
+    AgentTemplate,
 } from "../shared/types";
 import { GenerateSurveyQuestionsRequest, GenerateSurveyQuestionsResponse, GenerateSurveyPromptRequest, GenerateSurveyPromptResponse } from "../shared/PromptBuilderTypes";
 import {
@@ -293,39 +293,39 @@ interface BackendService {
     requestSessionSocketToken(): Promise<string>;
 
     /**
-     * Gets all channels for the user with pagination
+     * Gets all agents for the user with pagination
      */
-    getUserChannels(page?: number, limit?: number, isActive?: boolean, search?: string): Promise<ChannelsResponse>;
+    getUserAgents(page?: number, limit?: number, isActive?: boolean, search?: string): Promise<AgentsResponse>;
 
     /**
-     * Gets recently modified channels with last event processed time
+     * Gets recently modified agents with last event processed time
      */
-    getRecentChannels(limit?: number): Promise<RecentChannel[]>;
+    getRecentAgents(limit?: number): Promise<RecentAgent[]>;
 
     /**
-     * Gets a single channel by ID
+     * Gets a single agent by ID
      */
-    getChannelById(id: string): Promise<Channel>;
+    getAgentById(id: string): Promise<Agent>;
 
     /**
-     * Creates a new channel
+     * Creates a new agent
      */
-    createChannel(data: ChannelUpdate): Promise<{ success: boolean; id: string }>;
+    createAgent(data: AgentUpdate): Promise<{ success: boolean; id: string }>;
 
     /**
-     * Updates an existing channel
+     * Updates an existing agent
      */
-    updateChannel(id: string, data: ChannelUpdate): Promise<{ success: boolean; id: string }>;
+    updateAgent(id: string, data: AgentUpdate): Promise<{ success: boolean; id: string }>;
 
     /**
-     * Deletes a channel
+     * Deletes an agent
      */
-    deleteChannel(id: string): Promise<{ success: boolean; message: string }>;
+    deleteAgent(id: string): Promise<{ success: boolean; message: string }>;
 
     /**
-     * Fetch run history for a specific channel with filters and pagination
+     * Fetch run history for a specific agent with filters and pagination
      */
-    getRunHistory(channelId: string, params: GetRunHistoryParams): Promise<GetRunHistoryResponse>;
+    getRunHistory(agentId: string, params: GetRunHistoryParams): Promise<GetRunHistoryResponse>;
 
     /**
      * Fetch chat history for a specific run
@@ -368,16 +368,16 @@ interface BackendService {
     deleteNotificationDestination(destination: NotificationDestination): Promise<void>;
 
     /**
-     * Gets all available channel templates
+     * Gets all available agent templates
      */
-    getTemplates(): Promise<ChannelTemplate[]>;
+    getTemplates(): Promise<AgentTemplate[]>;
 
     /**
-     * Manually triggers a scheduled automation input
-     * @param inputId - The ID of the time trigger input to trigger
+     * Manually triggers a scheduled automation trigger
+     * @param triggerId - The ID of the time trigger to trigger
      * @param context - Optional context explaining why the trigger is being run manually
      */
-    triggerManually(inputId: string, context?: string): Promise<{ received: boolean; message: string }>;
+    triggerManually(triggerId: string, context?: string): Promise<{ received: boolean; message: string }>;
 }
 
 export const BackendProvider: BackendService = {
@@ -860,7 +860,7 @@ export const BackendProvider: BackendService = {
             });
     },
 
-    getUserChannels: (page = 1, limit = 10, isActive?: boolean, search?: string) => {
+    getUserAgents: (page = 1, limit = 10, isActive?: boolean, search?: string) => {
         const params = new URLSearchParams();
         params.append('page', page.toString());
         params.append('limit', limit.toString());
@@ -871,82 +871,82 @@ export const BackendProvider: BackendService = {
             params.append('search', search);
         }
 
-        return axios.get<ChannelsResponse>(`${backendBaseUrl}/channels?${params.toString()}`, { withCredentials: true })
+        return axios.get<AgentsResponse>(`${backendBaseUrl}/agents?${params.toString()}`, { withCredentials: true })
             .then(response => response.data)
             .catch(error => {
-                console.error('Error getting channels:', error);
+                console.error('Error getting agents:', error);
                 throw error;
             });
     },
 
-    getRecentChannels: (limit = 3) => {
+    getRecentAgents: (limit = 3) => {
         const params = new URLSearchParams();
         params.append('limit', limit.toString());
 
-        return axios.get<RecentChannel[]>(`${backendBaseUrl}/channels/recent?${params.toString()}`, { withCredentials: true })
+        return axios.get<RecentAgent[]>(`${backendBaseUrl}/agents/recent?${params.toString()}`, { withCredentials: true })
             .then(response => {
                 // Deserialize configs from JSON to class instances
-                return response.data.map(channel => ({
-                    ...channel,
-                    inputs: channel.inputs.map(input => ({
-                        ...input,
-                        config: deserializeConfig(input.config)
+                return response.data.map(agent => ({
+                    ...agent,
+                    triggers: agent.triggers.map(trigger => ({
+                        ...trigger,
+                        config: deserializeConfig(trigger.config)
                     })),
-                    outputs: channel.outputs ? channel.outputs.map(output => ({
+                    outputs: agent.outputs ? agent.outputs.map(output => ({
                         ...output,
                         config: deserializeConfig(output.config)
                     })) : []
                 }));
             })
             .catch(error => {
-                console.error('Error getting recent channels:', error);
+                console.error('Error getting recent agents:', error);
                 throw error;
             });
     },
 
-    getChannelById: (id: string) => {
-        return axios.get<Channel>(`${backendBaseUrl}/channels/${id}`, { withCredentials: true })
+    getAgentById: (id: string) => {
+        return axios.get<Agent>(`${backendBaseUrl}/agents/${id}`, { withCredentials: true })
             .then(response => response.data)
             .catch(error => {
-                console.error('Error getting channel:', error);
+                console.error('Error getting agent:', error);
                 throw error;
             });
     },
 
-    createChannel: (data: Channel) => {
-        return axios.post<{ success: boolean; id: string }>(`${backendBaseUrl}/channels`,
+    createAgent: (data: Agent) => {
+        return axios.post<{ success: boolean; id: string }>(`${backendBaseUrl}/agents`,
             data,
             { withCredentials: true }
         )
             .then(response => response.data)
             .catch(error => {
-                console.error('Error creating channel:', error);
+                console.error('Error creating agent:', error);
                 throw error;
             });
     },
 
-    updateChannel: (id: string, data: ChannelUpdate) => {
-        return axios.patch<{ success: boolean; id: string }>(`${backendBaseUrl}/channels/${id}`,
+    updateAgent: (id: string, data: AgentUpdate) => {
+        return axios.patch<{ success: boolean; id: string }>(`${backendBaseUrl}/agents/${id}`,
             data,
             { withCredentials: true }
         )
             .then(response => response.data)
             .catch(error => {
-                console.error('Error updating channel:', error);
+                console.error('Error updating agent:', error);
                 throw error;
             });
     },
 
-    deleteChannel: (id: string) => {
-        return axios.delete<{ success: boolean; message: string }>(`${backendBaseUrl}/channels/${id}`, { withCredentials: true })
+    deleteAgent: (id: string) => {
+        return axios.delete<{ success: boolean; message: string }>(`${backendBaseUrl}/agents/${id}`, { withCredentials: true })
             .then(response => response.data)
             .catch(error => {
-                console.error('Error deleting channel:', error);
+                console.error('Error deleting agent:', error);
                 throw error;
             });
     },
 
-    getRunHistory: (channelId, params) => {
+    getRunHistory: (agentId, params) => {
         const usp = new URLSearchParams();
         if (params.page) usp.append('page', String(params.page));
         if (params.pageSize) usp.append('pageSize', String(params.pageSize));
@@ -954,7 +954,7 @@ export const BackendProvider: BackendService = {
         if (params.start) usp.append('start', params.start);
         if (params.end) usp.append('end', params.end);
         if (params.status && params.status.length) usp.append('status', params.status.join(','));
-        const url = `${backendBaseUrl}/run-history/${encodeURIComponent(channelId)}${usp.toString() ? `?${usp.toString()}` : ''}`;
+        const url = `${backendBaseUrl}/run-history/${encodeURIComponent(agentId)}${usp.toString() ? `?${usp.toString()}` : ''}`;
         return axios.get<GetRunHistoryResponse>(url, { withCredentials: true })
             .then(r => r.data)
             .catch(error => {
@@ -1048,7 +1048,7 @@ export const BackendProvider: BackendService = {
     },
 
     getTemplates: () => {
-        return axios.get<ChannelTemplate[]>(`${backendBaseUrl}/templates`, { withCredentials: true })
+        return axios.get<AgentTemplate[]>(`${backendBaseUrl}/templates`, { withCredentials: true })
             .then(response => response.data)
             .catch(error => {
                 console.error('Error getting templates:', error);
@@ -1056,9 +1056,9 @@ export const BackendProvider: BackendService = {
             });
     },
 
-    triggerManually: (inputId: string, context?: string) => {
+    triggerManually: (triggerId: string, context?: string) => {
         return axios.post<{ received: boolean; message: string }>(
-            `${backendBaseUrl}/schedule/trigger/${encodeURIComponent(inputId)}`,
+            `${backendBaseUrl}/schedule/trigger/${encodeURIComponent(triggerId)}`,
             { context },
             { withCredentials: true }
         )

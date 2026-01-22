@@ -45,9 +45,9 @@ export function transformStatsToMetrics(stats: StatsResponse | null): MetricData
         },
         {
             label: "Number of Channels",
-            value: formatNumber(stats.numberOfChannels),
-            change: stats.numberOfChannelsChange,
-            trend: getTrend(stats.numberOfChannelsChange),
+            value: formatNumber(stats.numberOfAgents),
+            change: stats.numberOfAgentsChange,
+            trend: getTrend(stats.numberOfAgentsChange),
             description: "Total active channels",
             subtext: "Change from previous month",
             icon: Hash,

@@ -10,10 +10,10 @@ import { useRunHistory } from "../../hooks/api/useRunHistory";
 // Remote data source only; no local mock
 
 type RunHistoryProps = {
-    channelId: string | null;
+    agentId: string | null;
 };
 
-export default function RunHistory({ channelId }: RunHistoryProps) {
+export default function RunHistory({ agentId }: RunHistoryProps) {
     const [searchParams, setSearchParams] = useSearchParams();
     const [currentPage, setCurrentPage] = useState(1);
     const [runsPerPage, setRunsPerPage] = useState(10);
@@ -37,7 +37,7 @@ export default function RunHistory({ channelId }: RunHistoryProps) {
     const pinnedRunRef = useRef<RunHistoryRecord | null>(null);
 
     const { runs: remoteRuns, total, isLoading } = useRunHistory({
-        channelId,
+        agentId,
         page: currentPage,
         pageSize: runsPerPage,
         searchQuery,

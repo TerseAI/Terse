@@ -1,5 +1,5 @@
 import { Tool } from "@openai/agents";
-import { ChannelOutputWithConfigs, PrismaTransaction, User } from "../../types/prisma";
+import { AgentOutputWithConfigs, PrismaTransaction, User } from "../../types/prisma";
 import { Output, ToolboxEntry } from "../abstract/Output";
 import { db } from "../../prismaClient";
 import { OutputConfigType } from "@prisma/client";
@@ -22,7 +22,7 @@ export class SlackOutput extends Output<SlackOutputConfig> {
         }
     }
 
-    async addOutputToChannel(tx: PrismaTransaction, channelOutputId: string, output: SlackOutputConfig): Promise<void> {
+    async addOutputToAgent(tx: PrismaTransaction, channelOutputId: string, output: SlackOutputConfig): Promise<void> {
         await tx.automation_slack_configs.create({
             data: {
                 automation_output_id: channelOutputId,
@@ -34,7 +34,7 @@ export class SlackOutput extends Output<SlackOutputConfig> {
         });
     }
 
-    protected getSystemInstructionsForConfigs(configs: ChannelOutputWithConfigs[]): string {
+    protected getSystemInstructionsForConfigs(configs: AgentOutputWithConfigs[]): string {
         if (configs.length === 0) {
             throw new Error('No Slack configs provided');
         }
