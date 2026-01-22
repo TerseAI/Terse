@@ -5,7 +5,7 @@ import {
     OutputConfigType,
     KnowledgeBaseConfigType,
 } from "@prisma/client";
-import { ChannelInputWithConfigs, ChannelOutputWithConfigs, ChannelKnowledgeBaseWithConfigs } from "../types/prisma";
+import { AgentTriggerWithConfigs, AgentOutputWithConfigs, AgentKnowledgeBaseWithConfigs } from "../types/prisma";
 import { 
     ConfigInstance, 
     GmailConfig, 
@@ -165,7 +165,7 @@ export const convertPrismaIntegrationTypeToIntegrationTypeFromRunHistory = (pris
     }
 }
 
-export const convertPrismaConfigToConfigInstance = (channelInput: ChannelInputWithConfigs): ConfigInstance => {
+export const convertPrismaConfigToConfigInstance = (channelInput: AgentTriggerWithConfigs): ConfigInstance => {
     const integrationId = channelInput.integration_id;
 
     // Determine which config is present and create the appropriate ConfigInstance
@@ -272,7 +272,7 @@ export const convertPrismaConfigToConfigInstance = (channelInput: ChannelInputWi
  * Converts a ChannelOutput with configs to a ConfigInstance.
  * Similar to convertPrismaConfigToConfigInstance but for outputs.
  */
-export const convertPrismaOutputConfigToConfigInstance = (channelOutput: ChannelOutputWithConfigs): ConfigInstance => {
+export const convertPrismaOutputConfigToConfigInstance = (channelOutput: AgentOutputWithConfigs): ConfigInstance => {
     const integrationId = channelOutput.integration_id;
 
     // Determine which config is present and create the appropriate ConfigInstance
@@ -490,7 +490,7 @@ export const convertConfigTypeToKnowledgeBaseConfigType = (configType: ConfigTyp
 /**
  * Converts a ChannelKnowledgeBase with configs to a ConfigInstance.
  */
-export const convertPrismaKnowledgeBaseConfigToConfigInstance = (channelKnowledgeBase: ChannelKnowledgeBaseWithConfigs): ConfigInstance => {
+export const convertPrismaKnowledgeBaseConfigToConfigInstance = (channelKnowledgeBase: AgentKnowledgeBaseWithConfigs): ConfigInstance => {
     const integrationId = channelKnowledgeBase.integration_id;
 
     if (channelKnowledgeBase.posthog_config) {

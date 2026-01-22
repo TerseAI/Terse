@@ -2,7 +2,7 @@ import { Integration, OAuthIntegrationInstallation, ConfigurationFieldDefinition
 import { db } from "../prismaClient";
 import { LinearIntegration, LinearIntegrationMetadata } from "../shared/Integrations";
 import { IntegrationType, InstallationOptionsFor, AdditionalStateParams } from "../shared/Integrations";
-import { ChannelInputWithConfigs } from "../types/prisma";
+import { AgentTriggerWithConfigs } from "../types/prisma";
 import { OAuthInstallationDetails } from "../shared/types";
 import jwt from "jsonwebtoken";
 import { settings, OAUTH_TOKEN_REFRESH_THRESHOLD_MS } from "../config/settings";
@@ -13,11 +13,12 @@ import { LinearWebhookPayload } from "../utility/LinearWebhookPayload";
 import { InputEvent } from "./abstract/InputEvent";
 import { InputConfigType } from "@prisma/client";
 import { RunHistoryTrigger } from "../shared/RunHistoryTypes";
-import { EventProcessor } from "../agent/ChannelAgent/EventProcessor";
+import { EventProcessor } from "../agent/AgentRunner/EventProcessor";
 import logger, { runWithUserContext } from "../logger";
 import { createOAuthStateToken } from "../utility/oauth";
 import { integrationTaskQueue } from "./IntegrationTaskQueues";
 import { IntegrationCompletedTask } from "./IntegrationCompletedTask";
+import { FrontendRoutes } from "../shared/FrontendRoutes";
 
 export class LinearIntegrationManager implements Integration<LinearIntegration, LinearWebhookPayload, typeof LinearIntegrationMetadata>, OAuthIntegrationInstallation<IntegrationType.LINEAR> {
     constructor() { }
@@ -179,7 +180,7 @@ export class LinearIntegrationManager implements Integration<LinearIntegration, 
 
         if (error) {
             logger.error("Linear OAuth error", { error: String(error) });
-            res.redirect(`${urls.frontend}/oauth/error`);
+            res.redirect(`${urls.frontend}${FrontendRoutes.OAUTH.ERROR}`);
             return;
         }
 
@@ -287,10 +288,10 @@ export class LinearIntegrationManager implements Integration<LinearIntegration, 
             ));
 
             // Redirect to success page which will auto-close the popup
-            res.redirect(`${urls.frontend}/oauth/success`);
+            res.redirect(`${urls.frontend}${FrontendRoutes.OAUTH.SUCCESS}`);
         } catch (error) {
             logger.error("Error in Linear OAuth callback", { error });
-            res.redirect(`${urls.frontend}/oauth/error`);
+            res.redirect(`${urls.frontend}${FrontendRoutes.OAUTH.ERROR}`);
         }
     }
 
@@ -298,12 +299,12 @@ export class LinearIntegrationManager implements Integration<LinearIntegration, 
         return Promise.resolve();
     }
 
-    async setupChannelInput(integrationId: string, channelInput: ChannelInputWithConfigs): Promise<void> {
+    async setupAgentTrigger(integrationId: string, agentTrigger: AgentTriggerWithConfigs): Promise<void> {
         // Linear doesn't require any setup for channel inputs
         // Webhooks are managed at the integration level
     }
 
-    async teardownChannelInput(integrationId: string, channelInput: ChannelInputWithConfigs): Promise<void> {
+    async teardownAgentTrigger(integrationId: string, agentTrigger: AgentTriggerWithConfigs): Promise<void> {
         // Linear doesn't require any teardown for channel inputs
         // Webhooks are managed at the integration level
     }
@@ -452,7 +453,7 @@ export class LinearEvent extends InputEvent {
         this.integrationId = integrationId;
     }
 
-    formatForChannelAgent(): string {
+    formatForAgentRunner(): string {
         const indentMultiline = (text: string): string =>
             text
                 .split('\n')
@@ -527,10 +528,10 @@ export class LinearEvent extends InputEvent {
         return `Linear ${this.data.type} Event: ${this.data.action}`;
     }
 
-    matchesChannelInput(channelInput: ChannelInputWithConfigs): boolean {
-        logger.debug(`Checking if Linear event matches channel input: ${channelInput.config_type}`, { configType: channelInput.config_type, eventType: this.data.type, action: this.data.action });
+    matchesAgentTrigger(agentTrigger: AgentTriggerWithConfigs): boolean {
+        logger.debug(`Checking if Linear event matches channel input: ${agentTrigger.config_type}`, { configType: agentTrigger.config_type, eventType: this.data.type, action: this.data.action });
         // Check if integration type matches
-        if (channelInput.config_type !== InputConfigType.LINEAR) {
+        if (agentTrigger.config_type !== InputConfigType.LINEAR) {
             return false;
         }
 

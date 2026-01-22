@@ -1,13 +1,13 @@
 import { Integration, OAuthIntegrationInstallation, ConfigurationFieldDefinition } from "./abstract/Integration";
 import crypto from "crypto";
 import { db } from "../prismaClient";
-import { ChannelInputWithConfigs, GmailIntegration as PrismaGmailIntegration, User } from "../types/prisma";
+import { AgentTriggerWithConfigs, GmailIntegration as PrismaGmailIntegration, User } from "../types/prisma";
 import { OAuthInstallationDetails } from "../shared/types";
 import { GmailIntegration, GmailIntegrationMetadata, IntegrationType, InstallationOptionsFor, AdditionalStateParams } from "../shared/Integrations";
 import { gmail_v1, google } from "googleapis";
 import { OAuth2Client } from "google-auth-library";
 import { gmail as gmailConfig, urls, OAUTH_TOKEN_REFRESH_THRESHOLD_MS } from "../config/settings";
-import { EventProcessor } from "../agent/ChannelAgent/EventProcessor";
+import { EventProcessor } from "../agent/AgentRunner/EventProcessor";
 import { InputConfigType } from "@prisma/client";
 import { RunHistoryTrigger } from "../shared/RunHistoryTypes";
 import { InputEvent } from "./abstract/InputEvent";
@@ -16,6 +16,7 @@ import logger, { runWithUserContext } from "../logger";
 import { integrationTaskQueue } from "./IntegrationTaskQueues";
 import { IntegrationCompletedTask } from "./IntegrationCompletedTask";
 import { createOAuthStateToken, decodeOAuthStateToken, OAuthStateEncodingFormat } from "../utility/oauth";
+import { FrontendRoutes } from "../shared/FrontendRoutes";
 
 
 // OAuth2 scopes for Gmail
@@ -164,10 +165,10 @@ export class GmailIntegrationManager implements Integration<GmailIntegration, Gm
                         let hasSuccess = false;
                         for (const result of results) {
                             if (result.success) {
-                                logger.info(`Email processed successfully by channel: ${result.channel?.name || 'unknown'}`, { channelName: result.channel?.name, integrationId: integration.id, messageId: parsedEmail.id });
+                                logger.info(`Email processed successfully by agent: ${result.agentConfig?.name || 'unknown'}`, { agentName: result.agentConfig?.name, integrationId: integration.id, messageId: parsedEmail.id });
                                 hasSuccess = true;
                             } else {
-                                logger.debug(`Channel "${result.channel?.name || 'unknown'}" skipped: ${result.message}`, { channelName: result.channel?.name, message: result.message, integrationId: integration.id });
+                                logger.debug(`Agent "${result.agentConfig?.name || 'unknown'}" skipped: ${result.message}`, { agentName: result.agentConfig?.name, message: result.message, integrationId: integration.id });
                             }
                         }
 
@@ -228,7 +229,7 @@ export class GmailIntegrationManager implements Integration<GmailIntegration, Gm
         logger.debug("Gmail OAuth callback received");
 
         if (!code || !state) {
-            res.redirect(`${urls.frontend}/oauth/error`);
+            res.redirect(`${urls.frontend}${FrontendRoutes.OAUTH.ERROR}`);
             return;
         }
 
@@ -238,7 +239,7 @@ export class GmailIntegrationManager implements Integration<GmailIntegration, Gm
             const userId = stateData.userId;
 
             if (!userId) {
-                res.redirect(`${urls.frontend}/oauth/error`);
+                res.redirect(`${urls.frontend}${FrontendRoutes.OAUTH.ERROR}`);
                 return;
             }
 
@@ -249,7 +250,7 @@ export class GmailIntegrationManager implements Integration<GmailIntegration, Gm
             oauth2Client.setCredentials(tokens);
 
             if (!tokens.access_token || !tokens.refresh_token) {
-                res.redirect(`${urls.frontend}/oauth/error`);
+                res.redirect(`${urls.frontend}${FrontendRoutes.OAUTH.ERROR}`);
                 return;
             }
 
@@ -259,7 +260,7 @@ export class GmailIntegrationManager implements Integration<GmailIntegration, Gm
             const emailAddress = profile.data.emailAddress;
 
             if (!emailAddress) {
-                res.redirect(`${urls.frontend}/oauth/error`);
+                res.redirect(`${urls.frontend}${FrontendRoutes.OAUTH.ERROR}`);
                 return;
             }
 
@@ -277,7 +278,7 @@ export class GmailIntegrationManager implements Integration<GmailIntegration, Gm
             const expiration = watchResponse.data.expiration;
 
             if (!historyId || !expiration) {
-                res.redirect(`${urls.frontend}/oauth/error`);
+                res.redirect(`${urls.frontend}${FrontendRoutes.OAUTH.ERROR}`);
                 return;
             }
 
@@ -328,10 +329,10 @@ export class GmailIntegrationManager implements Integration<GmailIntegration, Gm
             ));
 
             // Redirect to success page which will auto-close the popup
-            res.redirect(`${urls.frontend}/oauth/success`);
+            res.redirect(`${urls.frontend}${FrontendRoutes.OAUTH.SUCCESS}`);
         } catch (error) {
             logger.error("Gmail OAuth error", { error });
-            res.redirect(`${urls.frontend}/oauth/error`);
+            res.redirect(`${urls.frontend}${FrontendRoutes.OAUTH.ERROR}`);
         }
     }
 
@@ -339,12 +340,12 @@ export class GmailIntegrationManager implements Integration<GmailIntegration, Gm
         return Promise.resolve();
     }
 
-    async setupChannelInput(integrationId: string, channelInput: ChannelInputWithConfigs): Promise<void> {
+    async setupAgentTrigger(integrationId: string, agentTrigger: AgentTriggerWithConfigs): Promise<void> {
         // Gmail doesn't require any setup for channel inputs
         // Webhooks are managed at the integration level
     }
 
-    async teardownChannelInput(integrationId: string, channelInput: ChannelInputWithConfigs): Promise<void> {
+    async teardownAgentTrigger(integrationId: string, agentTrigger: AgentTriggerWithConfigs): Promise<void> {
         // Gmail doesn't require any teardown for channel inputs
         // Webhooks are managed at the integration level
     }
@@ -469,7 +470,7 @@ export class GmailEvent extends InputEvent {
         this.integrationId = integrationId;
     }
 
-    formatForChannelAgent(): string {
+    formatForAgentRunner(): string {
         return `
         Incoming Email Event.
 
@@ -489,9 +490,9 @@ export class GmailEvent extends InputEvent {
         return `Gmail Event: ${this.data.subject} message ID: ${this.data.messageId}`;
     }
 
-    matchesChannelInput(channelInput: ChannelInputWithConfigs): boolean {
+    matchesAgentTrigger(agentTrigger: AgentTriggerWithConfigs): boolean {
         // Check if integration type matches
-        if (channelInput.config_type !== InputConfigType.GMAIL) {
+        if (agentTrigger.config_type !== InputConfigType.GMAIL) {
             return false;
         }
 
@@ -503,8 +504,8 @@ export class GmailEvent extends InputEvent {
 
         // If integrationId is set, it must match the automation's integration_id
         // This ensures automations are only triggered by emails from their configured integration
-        if (this.integrationId && channelInput.integration_id !== this.integrationId) {
-            logger.debug(`Skipping email ${this.data.messageId} - integration ID mismatch: event from ${this.integrationId}, channel expects ${channelInput.integration_id}`, { messageId: this.data.messageId, eventIntegrationId: this.integrationId, channelIntegrationId: channelInput.integration_id });
+        if (this.integrationId && agentTrigger.integration_id !== this.integrationId) {
+            logger.debug(`Skipping email ${this.data.messageId} - integration ID mismatch: event from ${this.integrationId}, channel expects ${agentTrigger.integration_id}`, { messageId: this.data.messageId, eventIntegrationId: this.integrationId, channelIntegrationId: agentTrigger.integration_id });
             return false;
         }
 

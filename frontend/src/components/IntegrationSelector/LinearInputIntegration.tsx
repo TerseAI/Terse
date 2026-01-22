@@ -7,7 +7,7 @@ import { InputConfigSelectorProps } from './types';
 import { useLinearIntegrations } from '@/hooks/api/useLinearIntegrations';
 import { useOAuthConnection } from '@/hooks/useOAuthConnection';
 import { useIntegrationId } from '@/hooks/useIntegrationId';
-import { IconForConfigType } from '../../pages/Channels/components/Integration';
+import { IconForConfigType } from '../../pages/Agents/components/Integration';
 
 export function LinearInputIntegration({
     input,

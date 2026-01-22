@@ -1,12 +1,12 @@
 import { Integration, OAuthIntegrationInstallation, ConfigurationFieldDefinition } from "./abstract/Integration";
 import { db } from "../prismaClient";
-import { EventProcessor } from "../agent/ChannelAgent/EventProcessor";
+import { EventProcessor } from "../agent/AgentRunner/EventProcessor";
 import { InputEvent } from "./abstract/InputEvent";
 import { GithubIntegration, GithubIntegrationMetadata, IntegrationType, InstallationOptionsFor, AdditionalStateParams } from "../shared/Integrations";
 import { GithubAppInstallationRepository, GithubAppInstallationRepositoryResponse, GithubAppInstallationResponse, GithubAppUnifiedEventRequest } from "../routes/GithubTypes";
 import { resolveUsersForGithubInstallation } from "../routes/github";
 import { User } from "../types/prisma";
-import { ChannelInputWithConfigs } from "../types/prisma";
+import { AgentTriggerWithConfigs } from "../types/prisma";
 import { RunHistoryTrigger } from "../shared/RunHistoryTypes";
 import { OAuthInstallationDetails } from "../shared/types";
 import { githubApp, urls } from "../config/settings";
@@ -18,6 +18,7 @@ import logger, { runWithUserContext } from "../logger";
 import { integrationTaskQueue } from "./IntegrationTaskQueues";
 import { IntegrationCompletedTask } from "./IntegrationCompletedTask";
 import { createOAuthStateToken, decodeOAuthStateToken, OAuthStatePayload, OAuthStateEncodingFormat } from "../utility/oauth";
+import { FrontendRoutes } from "../shared/FrontendRoutes";
 
 export class GithubIntegrationManager implements Integration<GithubIntegration, GithubAppUnifiedEventRequest, typeof GithubIntegrationMetadata>, OAuthIntegrationInstallation<IntegrationType.GITHUB> {
     constructor() { }
@@ -161,19 +162,19 @@ export class GithubIntegrationManager implements Integration<GithubIntegration, 
             new Date()
         ));
 
-        res.redirect(`${urls.frontend}/oauth/success`);
+        res.redirect(`${urls.frontend}${FrontendRoutes.OAUTH.SUCCESS}`);
     }
 
     deleteInstallation(integrationId: string): Promise<void> {
         return Promise.resolve();
     }
 
-    async setupChannelInput(integrationId: string, channelInput: ChannelInputWithConfigs): Promise<void> {
+    async setupAgentTrigger(integrationId: string, agentTrigger: AgentTriggerWithConfigs): Promise<void> {
         // GitHub doesn't require any setup for channel inputs
         // Webhooks are managed at the integration level
     }
 
-    async teardownChannelInput(integrationId: string, channelInput: ChannelInputWithConfigs): Promise<void> {
+    async teardownAgentTrigger(integrationId: string, agentTrigger: AgentTriggerWithConfigs): Promise<void> {
         // GitHub doesn't require any teardown for channel inputs
         // Webhooks are managed at the integration level
     }
@@ -222,7 +223,7 @@ export class GithubEvent extends InputEvent {
         this.data = data;
     }
 
-    formatForChannelAgent(): string {
+    formatForAgentRunner(): string {
         const indentMultiline = (text: string): string =>
             text
                 .split('\n')
@@ -338,15 +339,15 @@ export class GithubEvent extends InputEvent {
         return `GitHub Event: ${this.data.eventType} - ${this.data.repositoryName} - ${this.data.username}`;
     }
 
-    matchesChannelInput(channelInput: ChannelInputWithConfigs): boolean {
-        if (channelInput.config_type !== InputConfigType.GITHUB) {
+    matchesAgentTrigger(agentTrigger: AgentTriggerWithConfigs): boolean {
+        if (agentTrigger.config_type !== InputConfigType.GITHUB) {
             return false;
         }
-        const githubConfig = channelInput.github_config;
+        const githubConfig = agentTrigger.github_config;
 
         // Make sure the repository is in the list of repositories configured for the channel
         if (!githubConfig?.repository_ids.includes(this.data.repository.id)) {
-            logger.debug('GithubEvent matchesChannelInput - repository not found in channel', { repositoryId: this.data.repository.id, repositoryIds: githubConfig?.repository_ids, channelInputId: channelInput.id });
+            logger.debug('GithubEvent matchesAgentTrigger - repository not found in channel', { repositoryId: this.data.repository.id, repositoryIds: githubConfig?.repository_ids, agentTriggerId: agentTrigger.id });
             return false;
         }
 

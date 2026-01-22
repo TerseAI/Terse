@@ -2,7 +2,7 @@ import { RunContext, tool } from "@openai/agents";
 import { z } from "zod";
 import { LinearClient } from "@linear/sdk";
 import { IntegrationType } from "../../../shared/Integrations";
-import { SessionWithTracking } from "../../../agent/ChannelAgent/ChannelAgent";
+import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner";
 import type { IssueFilter, SearchIssuesQueryVariables, PaginationOrderBy as PaginationOrderByType } from "@linear/sdk/dist/_generated_documents";
 import { RunHistoryActionType } from "@prisma/client";
 import { formatError } from "../../../tools/toolUtils";

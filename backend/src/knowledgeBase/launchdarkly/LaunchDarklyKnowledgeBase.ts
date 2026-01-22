@@ -1,5 +1,5 @@
 import { Session } from "../../server";
-import { ChannelKnowledgeBaseWithConfigs, PrismaTransaction, User } from "../../types/prisma";
+import { AgentKnowledgeBaseWithConfigs, PrismaTransaction, User } from "../../types/prisma";
 import { KnowledgeBaseConfigType } from "@prisma/client";
 import { LaunchDarklyConfig } from "../../shared/Configs";
 import { IntegrationType } from "../../shared/Integrations";
@@ -44,7 +44,7 @@ export class LaunchDarklyKnowledgeBase extends KnowledgeBase<LaunchDarklyConfig>
         }
     }
 
-    async addKnowledgeBaseToChannel(tx: PrismaTransaction, channelKnowledgeBaseId: string, knowledgeBase: LaunchDarklyConfig): Promise<void> {
+    async addKnowledgeBaseToAgent(tx: PrismaTransaction, channelKnowledgeBaseId: string, knowledgeBase: LaunchDarklyConfig): Promise<void> {
         await tx.automation_launchdarkly_configs.create({
             data: {
                 automation_knowledge_base_id: channelKnowledgeBaseId,
@@ -58,7 +58,7 @@ export class LaunchDarklyKnowledgeBase extends KnowledgeBase<LaunchDarklyConfig>
      * Returns system instructions for LaunchDarkly knowledge base.
      * Provides guidance on how to use LaunchDarkly tools effectively.
      */
-    protected getSystemInstructionsForConfigs(configs: ChannelKnowledgeBaseWithConfigs[]): string {
+    protected getSystemInstructionsForConfigs(configs: AgentKnowledgeBaseWithConfigs[]): string {
         if (configs.length === 0) {
             throw new Error('No LaunchDarkly KB configs provided');
         }

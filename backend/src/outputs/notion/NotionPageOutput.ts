@@ -1,6 +1,6 @@
 
 import { Tool } from "@openai/agents";
-import { ChannelOutputWithConfigs, PrismaTransaction, User } from "../../types/prisma";
+import { AgentOutputWithConfigs, PrismaTransaction, User } from "../../types/prisma";
 import { Output, ToolboxEntry } from "../abstract/Output";
 import { db } from "../../prismaClient";
 import { OutputConfigType } from "@prisma/client";
@@ -25,7 +25,7 @@ export class NotionPageOutput extends Output<NotionPageConfig> {
         }
     }
 
-    async addOutputToChannel(tx: PrismaTransaction, channelOutputId: string, output: NotionPageConfig): Promise<void> {
+    async addOutputToAgent(tx: PrismaTransaction, channelOutputId: string, output: NotionPageConfig): Promise<void> {
         await tx.automation_notion_page_configs.create({
             data: {
                 automation_output_id: channelOutputId,
@@ -35,7 +35,7 @@ export class NotionPageOutput extends Output<NotionPageConfig> {
         });
     }
 
-    protected getSystemInstructionsForConfigs(configs: ChannelOutputWithConfigs[]): string {
+    protected getSystemInstructionsForConfigs(configs: AgentOutputWithConfigs[]): string {
         if (configs.length === 0) {
             throw new Error('No Notion page configs provided');
         }

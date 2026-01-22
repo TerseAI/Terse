@@ -1,6 +1,6 @@
 import { RunContext } from "@openai/agents";
 import { Session } from "../server";
-import { SessionWithTracking } from "../agent/ChannelAgent/ChannelAgent";
+import { SessionWithTracking } from "../agent/AgentRunner/AgentRunner";
 import logger from "../logger";
 
 // MARK: - Error Handling
@@ -19,10 +19,10 @@ export function parseSerializedError(error: string): ErrorContext {
     try {
         // Strip the [TERSE ERROR]: prefix before parsing
         const prefix = "[TERSE ERROR]:";
-        const jsonString = error.startsWith(prefix) 
-            ? error.slice(prefix.length) 
+        const jsonString = error.startsWith(prefix)
+            ? error.slice(prefix.length)
             : error;
-        
+
         const errorJson = JSON.parse(jsonString)
         return {
             context: errorJson.context as RunContext,
@@ -47,8 +47,7 @@ export type ErrorContext = {
 // MARK: - Approval
 
 export async function needsApproval(context?: RunContext<unknown>): Promise<boolean> {
-    // Type guard: safely access channel.requireApproval from SessionWithTracking
+    // Type guard: safely access agent.requireApproval from SessionWithTracking
     const sessionWithTracking = context?.context as SessionWithTracking<Session> | undefined;
-    return sessionWithTracking?.channel?.requireApproval ?? false;
+    return sessionWithTracking?.agent?.requireApproval ?? false;
 }
-

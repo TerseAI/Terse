@@ -16,7 +16,7 @@ export type RunHistoryAction = {
    // Justification for the action or extra details about why the AI did this.
    details: string;
    // Link to the thing that got operated on.
-   url?: string; 
+   url?: string;
    // The step_id of the tool call that generated this action
    step_id?: string;
    // The type of action that was taken
@@ -57,13 +57,17 @@ export type RunHistoryDecision = {
 
 export type RunHistoryRecord = {
     id: string;
-    channelId: string;
+    agentId: string;
     timestamp: string;
     trigger: RunHistoryTrigger;
     filtered: boolean;
     decision: RunHistoryDecision;
     actions?: RunHistoryAction[];
     status: RunHistoryStatus;
+};
+
+export type GetRunHistoryParamsRequest = {
+    agentId: string;
 };
 
 export type GetRunHistoryParams = {
@@ -86,17 +90,16 @@ export type RunHistoryModelEvent = ModelEvent & { id: string; timestamp?: string
 
 export type RunHistoryModelSocketEvent = {
     runId: string;
-    channelId: string;
+    agentId: string;
     runHistoryModelEvent: RunHistoryModelEvent;
 };
 
 export type RunHistoryStreamingParams = {
     runId?: string;
     userId?: string;
-    channelId?: string;
+    agentId?: string;
 };
 
 export type RunHistoryStreamingParamsWithCallback = RunHistoryStreamingParams & {
     onEvent?: (event: ModelEvent) => Promise<void>;
 };
-

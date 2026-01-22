@@ -7,7 +7,7 @@ import { ConfigInstance } from "../../shared/Configs";
 import { LinearTicketOutput } from "../linear/LinearTicketOutput";
 import { JiraTicketOutput } from "../jira/JiraTicketOutput";
 import { SlackOutput } from "../slack/SlackOutput";
-import { ChannelOutputWithConfigs, ChannelWithRelations } from "../../types/prisma";
+import { AgentOutputWithConfigs, AgentWithRelations } from "../../types/prisma";
 import { GmailOutput } from "../gmail/GmailOutput";
 
 /**
@@ -34,7 +34,7 @@ export class OutputFactory {
         return factory();
     }
 
-    static createOutputWithConfigs(configType: OutputConfigType, configs: ChannelOutputWithConfigs[]): Output<ConfigInstance> | null {
+    static createOutputWithConfigs(configType: OutputConfigType, configs: AgentOutputWithConfigs[]): Output<ConfigInstance> | null {
         const output = this.createOutput(configType);
         if (!output) {
             return null;
@@ -43,19 +43,19 @@ export class OutputFactory {
         return output;
     }
 
-    static createOutputsFromChannel(channel: ChannelWithRelations): Output<ConfigInstance>[] {
-        if (!channel.outputs || channel.outputs.length === 0) {
-            throw new Error(`No output integrations found for channel: ${channel.id}`);
+    static createOutputsFromAgent(agent: AgentWithRelations): Output<ConfigInstance>[] {
+        if (!agent.outputs || agent.outputs.length === 0) {
+            throw new Error(`No output integrations found for agent: ${agent.id}`);
         }
 
         // Group configs by type
-        const configsByType = new Map<OutputConfigType, ChannelOutputWithConfigs[]>();
-        for (const outputIntegration of channel.outputs) {
+        const configsByType = new Map<OutputConfigType, AgentOutputWithConfigs[]>();
+        for (const outputIntegration of agent.outputs) {
             const configType = outputIntegration.config_type as OutputConfigType;
             if (!configsByType.has(configType)) {
                 configsByType.set(configType, []);
             }
-            configsByType.get(configType)!.push(outputIntegration as ChannelOutputWithConfigs);
+            configsByType.get(configType)!.push(outputIntegration as AgentOutputWithConfigs);
         }
 
         // Create one output instance per type with all configs of that type

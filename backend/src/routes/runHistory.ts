@@ -1,21 +1,23 @@
 import { Request, Response } from "express";
 import { Prisma } from "@prisma/client";
 import { db, PrismaClient } from "../prismaClient";
-import type { GetRunHistoryParams, GetRunHistoryResponse, RunHistoryRecord, RunHistoryStatus } from "../shared/RunHistoryTypes";
+import type { GetRunHistoryParams, GetRunHistoryParamsRequest, GetRunHistoryResponse, RunHistoryRecord, RunHistoryStatus } from "../shared/RunHistoryTypes";
 import { parsePageParams } from "../utility/pagination";
 import { convertPrismaIntegrationTypeToIntegrationTypeFromRunHistory } from "../utility/typeConverters";
 import { ModelEvent } from "../shared/ModelEvents";
 import logger from "../logger";
+
+
 // Valid status values for validation
 const VALID_STATUSES: RunHistoryStatus[] = ["success", "failed", "skipped", "in_progress", "awaiting_approval"];
 
 export async function getRunHistory(req: Request, res: Response) {
   try {
     const prisma: PrismaClient = db();
+    const paramsRequest: GetRunHistoryParamsRequest = req.params as GetRunHistoryParamsRequest;
 
-    // req.params contains URL path parameters (e.g., /run-history/:channelId)
-    const channelId = (req.params.channelId as string | undefined)?.trim();
-    if (!channelId) {
+    const agentId = paramsRequest.agentId?.trim();
+    if (!agentId) {
       return res.status(400).json({ error: "channelId is required" });
     }
 
@@ -24,7 +26,7 @@ export async function getRunHistory(req: Request, res: Response) {
     const { page, pageSize, skip, take } = parsePageParams(req, 20, 100);
 
     // Build Prisma where clause (database column is still automation_id)
-    const where: Prisma.run_history_recordsWhereInput = { automation_id: channelId };
+    const where: Prisma.run_history_recordsWhereInput = { automation_id: agentId };
 
     if (params.start || params.end) {
       const startDate = parseDate(params.start);
@@ -78,7 +80,7 @@ export async function getRunHistory(req: Request, res: Response) {
 
       return {
         id: runRecord.id,
-        channelId: runRecord.automation_id, // Database column is automation_id, but API uses channelId
+        agentId: runRecord.automation_id, // Database column is automation_id, but API uses channelId
         timestamp: runRecord.timestamp.toISOString(),
         trigger: {
           event: runRecord.event,
@@ -107,7 +109,7 @@ export async function getRunHistory(req: Request, res: Response) {
 
     res.json(response);
   } catch (err) {
-    logger.error("Failed to fetch run history", { error: err instanceof Error ? err.message : String(err), stack: err instanceof Error ? err.stack : undefined, channelId: req.params.channelId });
+    logger.error("Failed to fetch run history", { error: err instanceof Error ? err.message : String(err), stack: err instanceof Error ? err.stack : undefined, agentId: req.params.agentId });
     res.status(500).json({ error: "Failed to fetch run history" });
   }
 }

@@ -6,7 +6,7 @@ import { getDatadogSite, getDatadogRumDeepLink } from "../../../utility/datadog"
 import { IntegrationType } from "../../../shared/Integrations";
 import { RunHistoryActionType } from "@prisma/client";
 import { Session } from "../../../server";
-import { SessionWithTracking } from "../../../agent/ChannelAgent/ChannelAgent";
+import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner";
 import { getDatadogCredentialsByIntegrationId } from "../datadogApiClient";
 
 /**

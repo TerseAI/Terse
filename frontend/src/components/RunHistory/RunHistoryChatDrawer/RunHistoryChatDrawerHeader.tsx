@@ -1,4 +1,4 @@
-import { IconForIntegration } from '@/pages/Channels/components/Integration';
+import { IconForIntegration } from '@/pages/Agents/components/Integration';
 import { RunHistoryStatus, RunHistoryTrigger } from '@/shared/RunHistoryTypes';
 import { ExternalLink, ChevronLeft, ChevronRight, Maximize2, Minimize2 } from 'lucide-react';
 import RunHistoryStatusBadge from '../RunHistoryStatusBadge';

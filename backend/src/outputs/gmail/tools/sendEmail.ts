@@ -5,7 +5,7 @@ import { db } from "../../../prismaClient";
 import logger from "../../../logger";
 import { IntegrationType } from "../../../shared/Integrations";
 import { RunHistoryActionType } from "@prisma/client";
-import { SessionWithTracking } from "../../../agent/ChannelAgent/ChannelAgent";
+import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner";
 import { getOAuth2Client, GmailIntegrationManager } from "../../../integrations/GmailIntegration";
 import { formatError, needsApproval } from "../../../tools/toolUtils";
 import { Session } from "../../../server";
