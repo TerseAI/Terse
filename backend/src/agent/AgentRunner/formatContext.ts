@@ -5,8 +5,9 @@ import logger from '../../logger';
 export function formatAgentForSystemPrompt(agent: AgentWithRelations): string {
     const sections: string[] = [];
 
-    // Header with name and status
+    // Header with name, ID, and status
     sections.push(`Agent: "${agent.name}"`);
+    sections.push(`ID: ${agent.id}`);
     sections.push(`Status: ${agent.is_active ? 'Active' : 'Inactive'}`);
     sections.push(`Requires Approval: ${agent.require_approval ? 'Yes' : 'No'}`);
 
