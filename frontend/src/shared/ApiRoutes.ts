@@ -171,6 +171,11 @@ export const ApiRoutes = {
     GENERATE_PROMPT: '/prompt-builder/generate-prompt',
   },
 
+  // Tools routes
+  TOOLS: {
+    THAT_REQUIRE_APPROVALS: '/tools/that-require-approvals',
+  },
+
   // Integrations routes
   INTEGRATIONS: {
     INSTALLATION_DETAILS_BY_TYPE: {

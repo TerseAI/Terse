@@ -4,13 +4,14 @@ import { Client } from '@notionhq/client';
 import { GetDataSourceResponse } from '@notionhq/client/build/src/api-endpoints';
 import { IntegrationType } from "../../../shared/Integrations";
 import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner";
-import { formatError, needsApproval } from "../../../tools/toolUtils";
+import { formatError, createNeedsApprovalFunction } from "../../../tools/toolUtils";
+import { ToolName } from "../../../tools/ToolNames";
 import logger from "../../../logger";
 import { Session } from "../../../server";
 import { NotionIntegrationManager } from "../../../integrations/NotionIntegration";
 
 export const notionModifyPageTool = tool({
-    name: 'notion_modify_page',
+    name: ToolName.NOTION_MODIFY_PAGE,
     description: `Create a new page (row) in the Notion database or update an existing page. This tool writes data to the database.
 
 WHEN TO USE THIS TOOL:
@@ -55,7 +56,7 @@ IMPORTANT:
         page_id: z.string().nullable().describe('The ID of the page to update (from notion_query_database). MUST be null (not empty string, not period) to create a new page. Only provide a valid page ID string to update an existing page.'),
         properties_json: z.string().describe('JSON string with property names as keys and Notion-formatted values. Example: "{\\"Name\\": {\\"title\\": [{\\"text\\": {\\"content\\": \\"New Item\\"}}]}, \\"Status\\": {\\"select\\": {\\"name\\": \\"In Progress\\"}}}"'),
     }),
-    needsApproval,
+    needsApproval: createNeedsApprovalFunction(ToolName.NOTION_MODIFY_PAGE),
     execute: async ({ integrationId, databaseId, page_id, properties_json }, runContext?: RunContext<SessionWithTracking<Session>>) => {
         logger.debug('🛠️ Executing notion_modify_page tool', { pageId: page_id ?? '(new page)', propertiesJson: properties_json });
 

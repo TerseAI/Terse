@@ -9,6 +9,7 @@ import { settings } from "../../../config/settings";
 import { IntegrationType } from "../../../shared/Integrations";
 import { RunHistoryActionType } from "@prisma/client";
 import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner";
+import { ToolName } from "../../../tools/ToolNames";
 
 /**
  * Tool for summarizing pull request diffs using a compact sub-agent.
@@ -17,7 +18,7 @@ import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner";
  * and provides a concise summary.
  */
 export const summarizeGitHubPullRequestDiffTool = tool({
-    name: 'summarizeGitHubPullRequestDiff',
+    name: ToolName.GITHUB_SUMMARIZE_PULL_REQUEST_DIFF,
     description: `Summarize the diff of a pull request from a GitHub repository using an intelligent sub-agent. Use this to:
 - Understand what changes were made in a specific PR without loading the full diff into context
 - Get a concise summary of code changes before merging

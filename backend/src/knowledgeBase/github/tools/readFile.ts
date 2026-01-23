@@ -6,13 +6,14 @@ import { IntegrationType } from "../../../shared/Integrations";
 import { RunHistoryActionType } from "@prisma/client";
 import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner";
 import { Session } from "../../../server";
+import { ToolName } from "../../../tools/ToolNames";
 
 /**
  * Tool for reading file contents from GitHub repositories.
  * Uses GitHub's Contents API to fetch file contents from the default branch.
  */
 export const readGitHubFileTool = tool({
-    name: 'readGitHubFile',
+    name: ToolName.GITHUB_READ_FILE,
     description: `Read the full contents of a file from a GitHub repository. Use this after finding relevant files via search to:
 - Understand the complete implementation of a function or class
 - See imports and dependencies

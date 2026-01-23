@@ -6,13 +6,14 @@ import { IntegrationType } from "../../../shared/Integrations";
 import { RunHistoryActionType } from "@prisma/client";
 import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner";
 import { Session } from "../../../server";
+import { ToolName } from "../../../tools/ToolNames";
 
 /**
  * Tool for grep-style exact text search in GitHub repositories.
  * Uses GitHub's Code Search API with exact match patterns.
  */
 export const grepGitHubCodeTool = tool({
-    name: 'grepGitHubCode',
+    name: ToolName.GITHUB_GREP_CODE,
     description: `Search GitHub repositories for EXACT TEXT MATCHES (like grep). Use this when you KNOW the exact string you're looking for.
 
 Use grepGitHubCode for:

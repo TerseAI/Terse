@@ -6,6 +6,7 @@ import logger from "../../../logger";
 import { IntegrationType } from "../../../shared/Integrations";
 import { RunHistoryActionType } from "@prisma/client";
 import { Session } from "../../../server";
+import { ToolName } from "../../../tools/ToolNames";
 
 /**
  * Fetches events that are related to a specific Notion block.
@@ -15,7 +16,7 @@ import { Session } from "../../../server";
  * the context and avoid recency bias.
  */
 export const fetchRelatedEventsTool = tool({
-    name: 'notion_fetch_related_events',
+    name: ToolName.NOTION_FETCH_RELATED_EVENTS,
     description: `Fetch source events that are related to a specific Notion block. This provides important context about what caused the block to be created or modified.
 
 CRITICAL: You MUST call this tool before calling notion_modify_blocks to understand the context and avoid recency bias. The events returned will help you make informed decisions about how to modify the block.

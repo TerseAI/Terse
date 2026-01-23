@@ -5,6 +5,7 @@ import { GetDataSourceResponse } from '@notionhq/client/build/src/api-endpoints'
 import { IntegrationType } from "../../../shared/Integrations";
 import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner";
 import { formatError } from "../../../tools/toolUtils";
+import { ToolName } from "../../../tools/ToolNames";
 import logger from "../../../logger";
 import { Session } from "../../../server";
 import { NotionIntegrationManager } from "../../../integrations/NotionIntegration";
@@ -60,7 +61,7 @@ function buildPropertySchema(propertyName: string, propertyConfig: any): any {
 }
 
 export const notionGetSchemaTool = tool({
-    name: 'notion_get_schema',
+    name: ToolName.NOTION_GET_SCHEMA,
     description: `Gets the schema/structure of the Notion data source. This tool retrieves all property definitions including property names, types, valid options for select/status fields, and exact format examples for how to construct each property when writing to the database.
 
 Use this tool:
