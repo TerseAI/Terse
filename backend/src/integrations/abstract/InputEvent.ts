@@ -1,8 +1,9 @@
 import { IntegrationType } from "../../shared/Integrations";
-import { AgentTriggerWithConfigs } from "../../types/prisma";
+import { AgentTriggerWithConfigs, User } from "../../types/prisma";
 import { RunHistoryTrigger } from "../../shared/RunHistoryTypes";
 import { Identifiable } from "../../rag/Hydrator";
 import { ConfigInstance } from "../../shared/Configs";
+import { SampleEvent } from "../../shared/SampleEvents";
 
 export abstract class InputEvent {
     abstract readonly integrationType: IntegrationType;
@@ -43,7 +44,11 @@ export abstract class InputEvent {
      * 
      * Get sample events for the given config that can be used for testing.
      */
-    static async getSampleEvents(config: ConfigInstance): Promise<InputEvent[]> {
+    static async getSampleEvents(config: ConfigInstance): Promise<SampleEvent[]> {
+        throw new Error('Method not implemented! Use derived class');
+    }
+
+    static async sendSampleEventToAgent(sampleEvent: SampleEvent, user: User): Promise<void> {
         throw new Error('Method not implemented! Use derived class');
     }
 

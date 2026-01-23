@@ -1,5 +1,5 @@
-
-
+import { ConfigType } from "./Configs";
+import { RunHistoryTrigger } from "./RunHistoryTypes";
 
 export interface GmailEventData {
     id: string;
@@ -15,5 +15,13 @@ export interface GmailEventData {
     labelIds: string[];
 }
 
+export type GmailSampleEvent = {
+    configType: ConfigType;
+    eventData: GmailEventData;
+    trigger: RunHistoryTrigger;
+    integrationId: string;
+}
+
+
 // union type for all sample event data
-export type SampleEventData = GmailEventData;
+export type SampleEvent = GmailSampleEvent;

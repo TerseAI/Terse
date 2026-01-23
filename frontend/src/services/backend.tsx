@@ -43,9 +43,8 @@ import { deserializeConfig } from '../utility/ConfigUtils';
 import { CreateNotificationDestinationRequest, NotificationDestination } from '../shared/Notifications';
 import { ApiRoutes } from '../shared/ApiRoutes';
 import { GetToolsThatRequireApprovalsRequest, GetToolsThatRequireApprovalsResponse } from '../shared/ToolsTypes';
-
-import { SampleEventData } from '../shared/SampleEvents';
 import { ConfigInstanceImplementation } from '../shared/Configs';
+import { SampleEvent } from '../shared/SampleEvents';
 
 const backendBaseUrl = '/api';
 
@@ -389,7 +388,9 @@ interface BackendService {
      */
     getToolsThatRequireApprovals(request: GetToolsThatRequireApprovalsRequest): Promise<GetToolsThatRequireApprovalsResponse>;
 
-    getSampleEvents(config: ConfigInstanceImplementation): Promise<SampleEventData[]>;
+    getSampleEvents(config: ConfigInstanceImplementation): Promise<SampleEvent[]>;
+
+    sendSampleEvent(runHistoryTrigger: SampleEvent): Promise<void>;
 }
 
 export const BackendProvider: BackendService = {
@@ -1091,10 +1092,19 @@ export const BackendProvider: BackendService = {
     },
 
     getSampleEvents: (config: ConfigInstanceImplementation) => {
-        return axios.post<SampleEventData[]>(`${backendBaseUrl}${ApiRoutes.SAMPLE_EVENTS}`, config, { withCredentials: true })
+        return axios.post<SampleEvent[]>(`${backendBaseUrl}${ApiRoutes.SAMPLE_EVENTS}`, config, { withCredentials: true })
             .then(response => response.data)
             .catch(error => {
                 console.error('Error getting sample events:', error);
+                throw error;
+            });
+    },
+
+    sendSampleEvent: (sampleEvent: SampleEvent) => {
+        return axios.post<void>(`${backendBaseUrl}${ApiRoutes.SAMPLE_EVENTS_SEND_TO_AGENT}`, sampleEvent, { withCredentials: true })
+            .then(response => response.data)
+            .catch(error => {
+                console.error('Error sending sample event:', error);
                 throw error;
             });
     },

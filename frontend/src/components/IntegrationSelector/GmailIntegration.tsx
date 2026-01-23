@@ -9,6 +9,9 @@ import { useIntegrationId } from '@/hooks/useIntegrationId';
 import { GmailConfig, ConfigType } from '@/shared/Configs';
 import { StatusOption } from '../ui/DropdownSelect';
 import { BackendProvider } from '../../services/backend';
+import { useState } from 'react';
+import RunHistoryItemTriggerHeader from '../RunHistory/RunHistoryItem/RunHistoryItemTriggerHeader';
+import { SampleEvent } from '../../shared/SampleEvents';
 
 export function GmailIntegration({
     input,
@@ -19,6 +22,8 @@ export function GmailIntegration({
     const { connect: connectOAuth, isConnecting: isOAuthConnecting } = useOAuthConnection<IntegrationType.GMAIL>(IntegrationType.GMAIL, {});
     const currentConfig = input.config as GmailConfig | undefined;
     const [selectedIntegrationId] = useIntegrationId(currentConfig, ConfigType.GMAIL);
+    const [sampleEvents, setSampleEvents] = useState<SampleEvent[]>([]);
+    const [showSampleEvents, setShowSampleEvents] = useState(false);
 
     function onSelect(value: string) {
         const integration = integrations.find((integration: GmailIntegrationType) => integration.id === value);
@@ -94,6 +99,14 @@ export function GmailIntegration({
         );
     }
 
+    if (showSampleEvents) {
+        return (
+            <div className="flex flex-col gap-3">
+                <SampleEventsDialog sampleEvents={sampleEvents} onClose={() => setShowSampleEvents(false)} />
+            </div>
+        );
+    }
+
     // Dialog variant: full view
     return (
         <div className="flex flex-col gap-3">
@@ -118,23 +131,64 @@ export function GmailIntegration({
                 {isOAuthConnecting ? 'Connecting...' : "Connect Another Gmail"}
             </Button>
             {selectedOption &&
-                SampleEventsButton(selectedOption, false)
+                <SampleEventsButton selectedOption={selectedOption} setSampleEvents={setSampleEvents} setShowSampleEvents={setShowSampleEvents} />
             }
         </div>
     );
 }
 
 
-const SampleEventsButton = (selectedOption: StatusOption, disabled: boolean) => {
+function SampleEventsDialog(props: { sampleEvents: SampleEvent[], onClose: () => void}) {
+    const { sampleEvents, onClose } = props;
+    const [selectedSampleEventIndex, setSelectedSampleEventIndex] = useState<number | undefined>(undefined);
+
+    const onClick = (index: number) => {
+        setSelectedSampleEventIndex(index);
+    }
+
+    const onCloseDialog = () => {
+        setSelectedSampleEventIndex(undefined);
+        onClose();
+    }
+
+    const onSelectSampleEvent = () => {
+        if (selectedSampleEventIndex !== undefined) {
+            BackendProvider.sendSampleEvent(sampleEvents[selectedSampleEventIndex]);
+        }
+    }
+
+    return (
+        <div className="flex flex-col gap-3">
+            <div className="flex items-center gap-3">
+                <Button className="w-20 bg-secondary" onClick={onCloseDialog}>Back</Button>
+                {selectedSampleEventIndex !== undefined && (
+                    <Button className="w-30 bg-primary" onClick={onSelectSampleEvent}>Send to Agent</Button>
+                )}
+            </div>
+            <div className="flex flex-col gap-5 max-w-md">
+                <label className="font-medium">Sample Events</label>
+                {sampleEvents.map((sampleEvent, index) => (
+                    <RunHistoryItemTriggerHeader key={index} trigger={sampleEvent.trigger} onClick={onClick} selected={selectedSampleEventIndex === index} index={index} />
+                ))}
+            </div>
+        </div>
+    );
+}
+
+
+function SampleEventsButton(
+    props: { selectedOption: StatusOption, setSampleEvents: (sampleEvents: SampleEvent[]) => void, setShowSampleEvents: (showSampleEvents: boolean) => void }
+) {
+    const { selectedOption, setSampleEvents, setShowSampleEvents } = props;
     const onClick = async () => {
         const sampleEvents = await BackendProvider.getSampleEvents(new GmailConfig(selectedOption.value));
-        console.log('sample events', sampleEvents);
+        setSampleEvents(sampleEvents);
+        setShowSampleEvents(true);
     }
 
     return (
         <Button
             onClick={onClick}
-            disabled={disabled}
             variant="outline"
         >
             <TestTube className="w-4 h-4" />

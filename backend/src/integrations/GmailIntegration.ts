@@ -17,7 +17,8 @@ import { integrationTaskQueue } from "./IntegrationTaskQueues";
 import { IntegrationCompletedTask } from "./IntegrationCompletedTask";
 import { createOAuthStateToken, decodeOAuthStateToken, OAuthStateEncodingFormat } from "../utility/oauth";
 import { FrontendRoutes } from "../shared/FrontendRoutes";
-import { GmailConfig } from "../shared/Configs";
+import { ConfigType, GmailConfig } from "../shared/Configs";
+import { SampleEvent } from "../shared/SampleEvents";
 
 
 // OAuth2 scopes for Gmail
@@ -459,7 +460,6 @@ export class GmailIntegrationManager implements Integration<GmailIntegration, Gm
     }
 }
 
-
 export class GmailEvent extends InputEvent {
     readonly integrationType: IntegrationType = IntegrationType.GMAIL;
     data: GmailEventData;
@@ -540,7 +540,7 @@ export class GmailEvent extends InputEvent {
      * 
      * Get sample events for the given config that can be used for testing.
      */
-    static async getSampleEvents(config: GmailConfig): Promise<GmailEventData[]> {
+    static async getSampleEvents(config: GmailConfig): Promise<SampleEvent[]> {
         const prisma = db();
 
         const gmailIntegration = await prisma.gmail_integrations.findUnique({
@@ -577,7 +577,25 @@ export class GmailEvent extends InputEvent {
             }
             return new GmailEvent(eventData, config.integrationId);
         }));
-        return sampleEvents.filter(event => event !== null).map(event => event?.data) as GmailEventData[];
+        return sampleEvents.filter(event => event !== null).map(event => ({
+            configType: ConfigType.GMAIL,
+            eventData: event.data,
+            trigger: event.createTriggerMetadata(),
+            integrationId: config.integrationId,
+        }));
+    }
+
+    static async sendSampleEventToAgent(sampleEvent: SampleEvent, user: User): Promise<void> {
+        const { eventData, integrationId } = sampleEvent;
+        const integration = await db().gmail_integrations.findUnique({
+            where: { id: integrationId },
+        });
+        if (!integration) {
+            throw new Error(`Gmail integration ${integrationId} not found`);
+        }
+        const event = new GmailEvent(eventData, integrationId);
+        const eventProcessor = new EventProcessor(event, user);
+        await eventProcessor.process();
     }
 }
 

@@ -242,5 +242,6 @@ export const ApiRoutes = {
 
   // Sample events routes
   SAMPLE_EVENTS: '/sample-events',
+  SAMPLE_EVENTS_SEND_TO_AGENT: '/sample-events/send-to-agent',
 
 } as const;

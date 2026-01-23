@@ -100,7 +100,7 @@ import "./integrations/IntegrationTaskHandler"; // Import to trigger listener re
 import { ApiRoutes } from "./shared/ApiRoutes";
 import { runStartupValidations } from "./tools/validateToolNames";
 import { toolsThatRequireApprovalsRoute } from "./routes/tools";
-import { getSampleEvents } from "./routes/sampleEvents";
+import { getSampleEvents, sendSampleEventToAgent } from "./routes/sampleEvents";
 
 export type Session = {
   user: User;
@@ -579,6 +579,10 @@ app.post(ApiRoutes.TOOLS.THAT_REQUIRE_APPROVALS, authMiddleware, async (req, res
 
 app.post(ApiRoutes.SAMPLE_EVENTS, authMiddleware, async (req, res) => {
   getSampleEvents(req, res);
+});
+
+app.post(ApiRoutes.SAMPLE_EVENTS_SEND_TO_AGENT, authMiddleware, async (req, res) => {
+  sendSampleEventToAgent(req, res);
 });
 
 /**
