@@ -7,18 +7,35 @@ import { FrontendRoutes } from "@/shared/FrontendRoutes";
 import { BackendProvider } from "@/services/backend";
 import { IntegrationType } from "@/shared/Integrations";
 
+enum OnboardingStep {
+    CONNECT_SLACK = 1,
+    ADD_INTEGRATION = 2,
+    CREATE_AGENT = 3,
+}
+
+function deriveOnboardingStep(
+    hasSlackIntegration: boolean,
+    hasOtherIntegrations: boolean
+): OnboardingStep {
+    if (!hasSlackIntegration) return OnboardingStep.CONNECT_SLACK;
+    if (!hasOtherIntegrations) return OnboardingStep.ADD_INTEGRATION;
+    return OnboardingStep.CREATE_AGENT;
+}
+
 export function HomeEmptyState() {
     const navigate = useNavigate();
     const { integrations: activeIntegrations } = useIntegrations();
     const [isConnectingSlack, setIsConnectingSlack] = useState(false);
 
     const hasSlackIntegration = activeIntegrations?.some(
-        (integration) => integration.toLowerCase() === IntegrationType.SLACK
-    );
-    const hasOtherIntegrations = activeIntegrations && activeIntegrations.length > (hasSlackIntegration ? 1 : 0);
+        (integration) => integration.toLowerCase() === 'slack'
+    ) ?? false;
 
-    // Determine current step (1-indexed for display)
-    const currentStep = !hasSlackIntegration ? 1 : !hasOtherIntegrations ? 2 : 3;
+    const hasOtherIntegrations = activeIntegrations
+        ? activeIntegrations.length > (hasSlackIntegration ? 1 : 0)
+        : false;
+
+    const currentStep = deriveOnboardingStep(hasSlackIntegration, hasOtherIntegrations);
 
     const connectSlack = async () => {
         setIsConnectingSlack(true);
@@ -42,7 +59,7 @@ export function HomeEmptyState() {
 
     const steps = [
         {
-            number: 1,
+            step: OnboardingStep.CONNECT_SLACK,
             title: "Connect Slack",
             description: "Chat with your agents and receive notifications directly in Slack. Manage everything through natural conversation.",
             icon: <MessageSquare className="h-5 w-5" />,
@@ -52,7 +69,7 @@ export function HomeEmptyState() {
             disabled: isConnectingSlack,
         },
         {
-            number: 2,
+            step: OnboardingStep.ADD_INTEGRATION,
             title: "Add an integration",
             description: "Connect GitHub, Linear, or other tools. These integrations trigger your agents and let them take action.",
             icon: <GitBranch className="h-5 w-5" />,
@@ -61,7 +78,7 @@ export function HomeEmptyState() {
             buttonText: "Add Integration",
         },
         {
-            number: 3,
+            step: OnboardingStep.CREATE_AGENT,
             title: "Create your first agent",
             description: "Build an AI agent that listens for events and automates your workflows. Start from scratch or use a template.",
             icon: <Zap className="h-5 w-5" />,
@@ -86,14 +103,14 @@ export function HomeEmptyState() {
 
                 {/* Steps */}
                 <div className="space-y-3">
-                    {steps.map((step, index) => {
-                        const isActive = step.number === currentStep;
-                        const isPast = step.number < currentStep;
-                        const isFuture = step.number > currentStep;
+                    {steps.map((stepConfig, index) => {
+                        const isActive = stepConfig.step === currentStep;
+                        const isPast = stepConfig.step < currentStep;
+                        const isFuture = stepConfig.step > currentStep;
 
                         return (
                             <div
-                                key={step.number}
+                                key={stepConfig.step}
                                 className={`
                                     relative border rounded-xl p-5 transition-all
                                     ${isActive ? 'border-foreground/20 bg-muted/30' : 'border-border'}
@@ -104,35 +121,35 @@ export function HomeEmptyState() {
                                     {/* Step indicator */}
                                     <div className={`
                                         flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-medium
-                                        ${step.completed ? 'bg-foreground text-background' : isActive ? 'bg-foreground text-background' : 'bg-muted text-muted-foreground'}
+                                        ${stepConfig.completed ? 'bg-foreground text-background' : isActive ? 'bg-foreground text-background' : 'bg-muted text-muted-foreground'}
                                     `}>
-                                        {step.completed ? <Check className="h-4 w-4" /> : step.number}
+                                        {stepConfig.completed ? <Check className="h-4 w-4" /> : stepConfig.step}
                                     </div>
 
                                     {/* Content */}
                                     <div className="flex-1 min-w-0">
                                         <div className="flex items-center gap-2 mb-1">
-                                            <h3 className="font-medium">{step.title}</h3>
-                                            {step.completed && (
+                                            <h3 className="font-medium">{stepConfig.title}</h3>
+                                            {stepConfig.completed && (
                                                 <span className="text-xs text-muted-foreground">Complete</span>
                                             )}
                                         </div>
                                         <p className="text-sm text-muted-foreground mb-4">
-                                            {step.description}
+                                            {stepConfig.description}
                                         </p>
 
                                         {isActive && (
                                             <Button
-                                                onClick={step.action}
+                                                onClick={stepConfig.action}
                                                 size="sm"
-                                                disabled={step.disabled}
+                                                disabled={stepConfig.disabled}
                                             >
-                                                {step.buttonText}
+                                                {stepConfig.buttonText}
                                                 <ArrowRight className="h-3.5 w-3.5" />
                                             </Button>
                                         )}
 
-                                        {step.completed && (
+                                        {stepConfig.completed && (
                                             <Button
                                                 variant="ghost"
                                                 size="sm"
