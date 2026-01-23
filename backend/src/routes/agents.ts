@@ -13,6 +13,7 @@ import { OutputFactory } from "../outputs/abstract/OutputFactory";
 import { emitCacheInvalidationWithKey } from "../realtimeSocket";
 import logger from "../logger";
 import { KnowledgeBaseFactory } from "../knowledgeBase/abstract/KnowledgeBaseFactory";
+import { isValidToolName } from "../tools/ToolNames";
 
 export type AgentDraft = Omit<Agent, "id"> & { id?: string };
 
@@ -92,6 +93,20 @@ async function upsertNotificationSettings(
             action_types: settings.actionTypes,
         },
     });
+}
+
+
+function validateAndDeduplicateToolApprovals(toolApprovals: string[]): string[] {
+    // Deduplicate tool approvals to prevent unique constraint violations
+    const uniqueToolApprovals = Array.from(new Set(toolApprovals));
+    
+    // Validate all tool names
+    const invalidToolNames = uniqueToolApprovals.filter(toolName => !isValidToolName(toolName));
+    if (invalidToolNames.length > 0) {
+        throw new Error(`Invalid tool names: ${invalidToolNames.join(', ')}`);
+    }
+    
+    return uniqueToolApprovals;
 }
 
 export async function applyAgentForUser(userId: string, draft: AgentDraft): Promise<{ id: string }> {
@@ -228,8 +243,10 @@ export async function applyAgentForUser(userId: string, draft: AgentDraft): Prom
 
         // Create tool approvals if provided
         if (toolApprovals && toolApprovals.length > 0) {
+            const uniqueToolApprovals = validateAndDeduplicateToolApprovals(toolApprovals);
+
             await tx.automation_tool_approvals.createMany({
-                data: toolApprovals.map(toolName => ({
+                data: uniqueToolApprovals.map(toolName => ({
                     automation_id: newAgent.id,
                     tool_name: toolName,
                 })),
@@ -439,15 +456,17 @@ export async function updateAgentForUser(
 
         // Update tool approvals if provided
         if (toolApprovals !== undefined) {
+            const uniqueToolApprovals = validateAndDeduplicateToolApprovals(toolApprovals);
+
             // Delete all existing tool approvals
             await tx.automation_tool_approvals.deleteMany({
                 where: { automation_id: agentId }
             });
 
             // Insert new tool approvals if provided
-            if (toolApprovals.length > 0) {
+            if (uniqueToolApprovals.length > 0) {
                 await tx.automation_tool_approvals.createMany({
-                    data: toolApprovals.map(toolName => ({
+                    data: uniqueToolApprovals.map(toolName => ({
                         automation_id: agentId,
                         tool_name: toolName,
                     })),
