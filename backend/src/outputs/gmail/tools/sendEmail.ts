@@ -182,10 +182,9 @@ export const gmailSendEmailTool = tool({
             // Build Gmail message URL using the thread ID with #all
             // Format: https://mail.google.com/mail/u/0/#all/{threadId}
             // Using #all instead of #inbox ensures the link works regardless of label
-            const sentThreadId = thread_id || result.data.threadId;
-            const gmailUrl = sentThreadId
-                ? `https://mail.google.com/mail/u/0/#all/${sentThreadId}`
-                : undefined;
+            // Fallback to messageId if threadId is not available (rare but possible edge case)
+            const sentThreadId = thread_id || result.data.threadId || messageId;
+            const gmailUrl = `https://mail.google.com/mail/u/0/#all/${sentThreadId}`;
             
             // Return action as part of the result
             const action = {
