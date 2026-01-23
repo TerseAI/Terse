@@ -122,6 +122,12 @@ export async function setupSlackBolt() {
             const slackChatInterface = new SlackChatInterface(messageEvent.channel, client, userId, messageEvent.user, threadTs);
             const chatAgent = new ChatAgent(slackChatInterface, threadTs, userId);
             await chatAgent.run(messageEvent.text);
+          } catch(error) {
+            logger.error('Error processing Slack thread reply:', { error });
+            await say({
+              text: 'An error occurred while processing your request. Please try again later.',
+              thread_ts: threadTs,
+            });
           } finally {
             removeEyesReaction(client, messageEvent);
           }
@@ -192,6 +198,12 @@ export async function setupSlackBolt() {
       const messageWithContext = await buildSlackChannelContextMessage(client, message, event.channel);
 
       await chatAgent.run(messageWithContext);
+    } catch(error) {
+      logger.error('Error processing Slack app_mention:', { error });
+      await say({
+        text: 'An error occurred while processing your request. Please try again later.',
+        thread_ts: chatId,
+      });
     } finally {
       removeEyesReaction(client, event as AppMentionEvent);
     }
