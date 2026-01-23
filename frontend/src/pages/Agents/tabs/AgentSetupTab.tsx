@@ -351,7 +351,7 @@ export default function AgentSetupTab({
                     <div className="h-full min-h-0 overflow-y-auto pr-1">
                         {activeSection === 'triggers' && (
                             <div className="max-w-3xl flex flex-col gap-4">
-                                <InputLayout inputs={inputs} setInputs={setInputs} isIncomplete={triggersIncomplete} />
+                                <InputLayout inputs={inputs} setInputs={setInputs} isIncomplete={triggersIncomplete} agentId={agentId} />
                             </div>
                         )}
 
@@ -378,7 +378,7 @@ export default function AgentSetupTab({
 
                         {activeSection === 'skills' && (
                             <div className="max-w-3xl flex flex-col gap-4 pr-6">
-                                <OutputLayout outputs={outputs} setOutputs={setOutputs} isIncomplete={skillsIncomplete} />
+                                <OutputLayout outputs={outputs} setOutputs={setOutputs} isIncomplete={skillsIncomplete} agentId={agentId} />
                             </div>
                         )}
 
@@ -450,7 +450,7 @@ function WarningIcon({ content }: { content: string }) {
     );
 }
 
-function InputLayout({ inputs, setInputs, isIncomplete }: { inputs: TransientAgentTrigger[], setInputs: (inputs: TransientAgentTrigger[]) => void, isIncomplete: boolean }) {
+function InputLayout({ inputs, setInputs, isIncomplete, agentId }: { inputs: TransientAgentTrigger[], setInputs: (inputs: TransientAgentTrigger[]) => void, isIncomplete: boolean, agentId: string | null }) {
     const [showAddModal, setShowAddModal] = useState(false);
 
     const handleSelectPlatform = (config: ConfigType) => {
@@ -477,7 +477,7 @@ function InputLayout({ inputs, setInputs, isIncomplete }: { inputs: TransientAge
             </div>
             <div className="grid grid-cols-[repeat(auto-fill,minmax(10rem,1fr))] gap-4 items-stretch">
                 {inputs.map((input) => (
-                    <Input key={input.id} input={input} inputs={inputs} setInputs={setInputs} handleRemove={handleRemove} />
+                    <Input key={input.id} input={input} inputs={inputs} setInputs={setInputs} handleRemove={handleRemove} agentId={agentId} />
                 ))}
                 <Button variant="outline" onClick={() => setShowAddModal(true)} className="w-full aspect-square h-auto">
                     <PlusIcon className={cn("size-5", inputs.length > 0 ? "text-primary" : "text-muted-foreground")} />
@@ -492,17 +492,16 @@ function InputLayout({ inputs, setInputs, isIncomplete }: { inputs: TransientAge
     )
 }
 
-function Input({ input, inputs, setInputs, handleRemove }: { input: TransientAgentTrigger, inputs: TransientAgentTrigger[], setInputs: (inputs: TransientAgentTrigger[]) => void, handleRemove: (id: string) => void }) {
+function Input({ input, inputs, setInputs, handleRemove, agentId }: { input: TransientAgentTrigger, inputs: TransientAgentTrigger[], setInputs: (inputs: TransientAgentTrigger[]) => void, handleRemove: (id: string) => void, agentId: string | null }) {
     const isPlaceholder = input.config === undefined;
     const needsConfiguration = !input.config || !input.config.isComplete();
     const [showDetailsDialog, setShowDetailsDialog] = useState(false);
-
-    console.log("input", input);
 
     const selectorProps: InputConfigSelectorProps = {
         input: input,
         setConfig: (config: ConfigInstance) => setInputs(inputs.map(i => i.id === input.id ? { ...i, config, configType: config.configType } : i)),
         variant: "card",
+        agentId: agentId,
     };
 
     let cardContent;
@@ -528,7 +527,7 @@ function Input({ input, inputs, setInputs, handleRemove }: { input: TransientAge
                 </div>
 
                 <Badge variant="outline" className="mt-auto self-center max-w-full px-3 py-1 border-yellow-500 text-yellow-600 dark:text-yellow-500 whitespace-normal text-center">
-                    <IntegrationSelector {...selectorProps} variant="card" />
+                    <IntegrationSelector {...selectorProps} variant="card" agentId={agentId} />
                 </Badge>
             </div>
         );
@@ -576,7 +575,7 @@ function Input({ input, inputs, setInputs, handleRemove }: { input: TransientAge
     )
 }
 
-function OutputLayout({ outputs, setOutputs, isIncomplete }: { outputs: TransientAgentOutput[], setOutputs: (outputs: TransientAgentOutput[]) => void, isIncomplete: boolean }) {
+function OutputLayout({ outputs, setOutputs, isIncomplete, agentId }: { outputs: TransientAgentOutput[], setOutputs: (outputs: TransientAgentOutput[]) => void, isIncomplete: boolean, agentId: string | null }) {
     const [showAddModal, setShowAddModal] = useState(false);
 
     const handleSelectOutput = (configType: ConfigType) => {
@@ -607,7 +606,7 @@ function OutputLayout({ outputs, setOutputs, isIncomplete }: { outputs: Transien
             </div>
             <div className="grid grid-cols-[repeat(auto-fill,minmax(10rem,1fr))] gap-4 items-stretch">
                 {outputs.map((output) => (
-                    <OutputCard key={output.id} output={output} outputs={outputs} setOutputs={setOutputs} handleRemove={handleRemove} />
+                    <OutputCard key={output.id} output={output} outputs={outputs} setOutputs={setOutputs} handleRemove={handleRemove} agentId={agentId} />
                 ))}
                 <Button variant="outline" onClick={() => setShowAddModal(true)} className="w-full aspect-square h-auto">
                     <PlusIcon className={cn("size-5", outputs.length > 0 ? "text-primary" : "text-muted-foreground")} />
@@ -622,7 +621,7 @@ function OutputLayout({ outputs, setOutputs, isIncomplete }: { outputs: Transien
     )
 }
 
-function OutputCard({ output, outputs, setOutputs, handleRemove }: { output: TransientAgentOutput, outputs: TransientAgentOutput[], setOutputs: (outputs: TransientAgentOutput[]) => void, handleRemove: (id: string) => void }) {
+function OutputCard({ output, outputs, setOutputs, handleRemove, agentId }: { output: TransientAgentOutput, outputs: TransientAgentOutput[], setOutputs: (outputs: TransientAgentOutput[]) => void, handleRemove: (id: string) => void, agentId: string | null }) {
     const [showDetailsDialog, setShowDetailsDialog] = useState(false);
     const isPlaceholder = output.config === undefined;
     const needsConfiguration = !output.config || !output.config.isComplete();
@@ -631,6 +630,7 @@ function OutputCard({ output, outputs, setOutputs, handleRemove }: { output: Tra
         input: output,
         setConfig: (config: ConfigInstance) => setOutputs(outputs.map(o => o.id === output.id ? { ...o, config, configType: config.configType } : o)),
         variant: "card",
+        agentId: agentId,
     };
 
     let cardContent;
@@ -682,7 +682,7 @@ function OutputCard({ output, outputs, setOutputs, handleRemove }: { output: Tra
                 </div>
 
                 <Badge variant="outline" className="mt-auto self-center max-w-full px-3 py-1 whitespace-normal text-center">
-                    <IntegrationSelector {...selectorProps} variant="card" />
+                    <IntegrationSelector {...selectorProps} variant="card" agentId={agentId} />
                 </Badge>
             </div>
         );
@@ -697,7 +697,7 @@ function OutputCard({ output, outputs, setOutputs, handleRemove }: { output: Tra
                     <DialogHeader>
                         <DialogTitle>{needsConfiguration ? "Configure Skill" : "Skill Details"}</DialogTitle>
                     </DialogHeader>
-                    <IntegrationSelector {...selectorProps} variant="dialog" />
+                    <IntegrationSelector {...selectorProps} variant="dialog" agentId={agentId} />
                 </DialogContent>
             </Dialog>
         </>

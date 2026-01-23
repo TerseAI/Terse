@@ -577,15 +577,22 @@ export class GmailEvent extends InputEvent {
             }
             return new GmailEvent(eventData, config.integrationId);
         }));
-        return sampleEvents.filter(event => event !== null).map(event => ({
+        const sampleEventsFiltered = sampleEvents.filter(event => event !== null).map(event => ({
             configType: ConfigType.GMAIL,
             eventData: event.data,
             trigger: event.createTriggerMetadata(),
             integrationId: config.integrationId,
         }));
+
+        // Sort by date descending
+        sampleEventsFiltered.sort((a, b) => {
+            return new Date(b.eventData.date).getTime() - new Date(a.eventData.date).getTime();
+        });
+
+        return sampleEventsFiltered;
     }
 
-    static async sendSampleEventToAgent(sampleEvent: SampleEvent, user: User): Promise<void> {
+    static async sendSampleEventToAgent(sampleEvent: SampleEvent, agentId: string, user: User): Promise<void> {
         const { eventData, integrationId } = sampleEvent;
         const integration = await db().gmail_integrations.findUnique({
             where: { id: integrationId },
@@ -595,7 +602,18 @@ export class GmailEvent extends InputEvent {
         }
         const event = new GmailEvent(eventData, integrationId);
         const eventProcessor = new EventProcessor(event, user);
-        await eventProcessor.process();
+
+        const agent = await eventProcessor.findAgent(agentId);
+        if (!agent) {
+            throw new Error(`Agent ${agentId} not found`);
+        }
+
+        // Process asynchronously
+        eventProcessor.processAgent(agent).then(() => {
+            logger.info(`Sample event ${sampleEvent.eventData.messageId} sent to agent`, { sampleEvent });
+        }).catch((error) => {
+            logger.error(`Error sending sample event ${sampleEvent.eventData.messageId} to agent`, { error, sampleEvent });
+        });
     }
 }
 

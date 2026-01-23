@@ -25,3 +25,9 @@ export type GmailSampleEvent = {
 
 // union type for all sample event data
 export type SampleEvent = GmailSampleEvent;
+
+
+export type AgentSampleEvent = {
+    agentId: string;
+    sampleEvent: SampleEvent;
+}

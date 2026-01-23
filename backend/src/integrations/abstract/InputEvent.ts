@@ -48,7 +48,7 @@ export abstract class InputEvent {
         throw new Error('Method not implemented! Use derived class');
     }
 
-    static async sendSampleEventToAgent(sampleEvent: SampleEvent, user: User): Promise<void> {
+    static async sendSampleEventToAgent(sampleEvent: SampleEvent, agentId: string, user: User): Promise<void> {
         throw new Error('Method not implemented! Use derived class');
     }
 

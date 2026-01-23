@@ -18,9 +18,10 @@ type InputsSectionProps = {
     inputs: TransientAgentTrigger[];
     setInputs: (inputs: TransientAgentTrigger[]) => void;
     isLoading: boolean;
+    agentId: string | null;
 };
 
-export const InputsSection = forwardRef<Map<string, HTMLDivElement>, InputsSectionProps>(({ inputs, setInputs, isLoading }, ref) => {
+export const InputsSection = forwardRef<Map<string, HTMLDivElement>, InputsSectionProps>(({ inputs, setInputs, isLoading, agentId }, ref) => {
     const [showAddModal, setShowAddModal] = useState(false);
     const inputRefs = useRef<Map<string, HTMLDivElement>>(new Map());
 
@@ -65,6 +66,7 @@ export const InputsSection = forwardRef<Map<string, HTMLDivElement>, InputsSecti
                     handleRemove={handleRemove} 
                     setShowAddModal={setShowAddModal}
                     inputRefs={inputRefs}
+                    agentId={agentId}
                 />
             )}
 
@@ -83,14 +85,16 @@ function InputCardsLayout({
     setInputs, 
     handleRemove, 
     setShowAddModal,
-    inputRefs
+    inputRefs,
+    agentId
 }: {
     inputs: TransientAgentTrigger[], 
     handleSelectIntegration: (integrationId: string, input: TransientAgentTrigger) => void, 
     setInputs: (inputs: TransientAgentTrigger[]) => void, 
     handleRemove: (id: string) => void, 
     setShowAddModal: (show: boolean) => void,
-    inputRefs: React.MutableRefObject<Map<string, HTMLDivElement>>
+    inputRefs: React.MutableRefObject<Map<string, HTMLDivElement>>,
+    agentId: string | null
 }) {
     const isSingleInput = inputs.length === 1;
     
@@ -106,6 +110,7 @@ function InputCardsLayout({
                                 inputs={inputs}
                                 setInputs={setInputs} 
                                 handleRemove={handleRemove}
+                                agentId={agentId}
                                 ref={(el) => {
                                     if (el && input.config?.isComplete()) {
                                         inputRefs.current.set(input.id, el);
@@ -136,6 +141,7 @@ function InputCardsLayout({
                         inputs={inputs}
                         setInputs={setInputs} 
                         handleRemove={handleRemove}
+                        agentId={agentId}
                         ref={(el) => {
                             if (el && input.config?.isComplete()) {
                                 inputRefs.current.set(input.id, el);
@@ -157,12 +163,14 @@ export const InputCard = forwardRef<HTMLDivElement, {
     input: TransientAgentTrigger,
     inputs: TransientAgentTrigger[],
     setInputs: (inputs: TransientAgentTrigger[]) => void, 
-    handleRemove: (id: string) => void
+    handleRemove: (id: string) => void,
+    agentId: string | null
 }>(({
     input,
     inputs,
     setInputs,
-    handleRemove
+    handleRemove,
+    agentId
 }, ref) => {
     const [showDetailsDialog, setShowDetailsDialog] = useState(false);
 
@@ -170,6 +178,7 @@ export const InputCard = forwardRef<HTMLDivElement, {
         input: input,
         setConfig: (config: ConfigInstance) => setInputs(inputs.map(i => i.id === input.id ? { ...i, config, configType: config.configType } : i)),
         variant: "card",
+        agentId: agentId
     };
     // Input needs configuration if there's no config OR if the config is not complete
     const needsConfiguration = !input.config || !input.config.isComplete();

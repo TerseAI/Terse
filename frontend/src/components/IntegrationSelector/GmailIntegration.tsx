@@ -12,9 +12,12 @@ import { BackendProvider } from '../../services/backend';
 import { useState } from 'react';
 import RunHistoryItemTriggerHeader from '../RunHistory/RunHistoryItem/RunHistoryItemTriggerHeader';
 import { SampleEvent } from '../../shared/SampleEvents';
+import Spin from '../loading/Spin';
+import { toast } from 'sonner';
 
 export function GmailIntegration({
     input,
+    agentId,
     variant,
     setConfig
 }: InputConfigSelectorProps) {
@@ -24,6 +27,7 @@ export function GmailIntegration({
     const [selectedIntegrationId] = useIntegrationId(currentConfig, ConfigType.GMAIL);
     const [sampleEvents, setSampleEvents] = useState<SampleEvent[]>([]);
     const [showSampleEvents, setShowSampleEvents] = useState(false);
+    const [isSampleLoading, setIsSampleLoading] = useState(false);
 
     function onSelect(value: string) {
         const integration = integrations.find((integration: GmailIntegrationType) => integration.id === value);
@@ -102,7 +106,7 @@ export function GmailIntegration({
     if (showSampleEvents) {
         return (
             <div className="flex flex-col gap-3">
-                <SampleEventsDialog sampleEvents={sampleEvents} onClose={() => setShowSampleEvents(false)} />
+                <SampleEventsDialog sampleEvents={sampleEvents} onClose={() => setShowSampleEvents(false)} isLoading={isSampleLoading} setIsLoading={setIsSampleLoading} agentId={agentId} />
             </div>
         );
     }
@@ -131,15 +135,15 @@ export function GmailIntegration({
                 {isOAuthConnecting ? 'Connecting...' : "Connect Another Gmail"}
             </Button>
             {selectedOption &&
-                <SampleEventsButton selectedOption={selectedOption} setSampleEvents={setSampleEvents} setShowSampleEvents={setShowSampleEvents} />
+                <SampleEventsButton selectedOption={selectedOption} setSampleEvents={setSampleEvents} setShowSampleEvents={setShowSampleEvents} isLoading={isSampleLoading} setIsLoading={setIsSampleLoading} />
             }
         </div>
     );
 }
 
 
-function SampleEventsDialog(props: { sampleEvents: SampleEvent[], onClose: () => void}) {
-    const { sampleEvents, onClose } = props;
+function SampleEventsDialog(props: { sampleEvents: SampleEvent[], onClose: () => void, isLoading: boolean, setIsLoading: (isLoading: boolean) => void, agentId: string | null }) {
+    const { sampleEvents, onClose, isLoading, setIsLoading, agentId } = props;
     const [selectedSampleEventIndex, setSelectedSampleEventIndex] = useState<number | undefined>(undefined);
 
     const onClick = (index: number) => {
@@ -152,8 +156,19 @@ function SampleEventsDialog(props: { sampleEvents: SampleEvent[], onClose: () =>
     }
 
     const onSelectSampleEvent = () => {
-        if (selectedSampleEventIndex !== undefined) {
-            BackendProvider.sendSampleEvent(sampleEvents[selectedSampleEventIndex]);
+        if (selectedSampleEventIndex !== undefined && agentId) {
+            setIsLoading(true);
+            const sampleEvent = sampleEvents[selectedSampleEventIndex];
+            BackendProvider.sendSampleEvent({
+                agentId: agentId,
+                sampleEvent: sampleEvent
+            }).then(() => {
+                setIsLoading(false);
+                toast.success('Sample event sent to agent, check out the activity log to see it running')
+            }).catch((error) => {
+                setIsLoading(false);
+                toast.error('Error sending sample event to agent', { description: error.message });
+            });
         }
     }
 
@@ -162,12 +177,15 @@ function SampleEventsDialog(props: { sampleEvents: SampleEvent[], onClose: () =>
             <div className="flex items-center gap-3">
                 <Button className="w-20 bg-secondary" onClick={onCloseDialog}>Back</Button>
                 {selectedSampleEventIndex !== undefined && (
-                    <Button className="w-30 bg-primary" onClick={onSelectSampleEvent}>Send to Agent</Button>
+                    <Button className="w-30 bg-primary" onClick={onSelectSampleEvent} disabled={isLoading}>
+                        Send to Agent
+                    </Button>
                 )}
             </div>
             <div className="flex flex-col gap-5 max-w-md">
                 <label className="font-medium">Sample Events</label>
-                {sampleEvents.map((sampleEvent, index) => (
+                {isLoading ? <Spin /> : null}
+                {!isLoading && sampleEvents.map((sampleEvent, index) => (
                     <RunHistoryItemTriggerHeader key={index} trigger={sampleEvent.trigger} onClick={onClick} selected={selectedSampleEventIndex === index} index={index} />
                 ))}
             </div>
@@ -177,13 +195,19 @@ function SampleEventsDialog(props: { sampleEvents: SampleEvent[], onClose: () =>
 
 
 function SampleEventsButton(
-    props: { selectedOption: StatusOption, setSampleEvents: (sampleEvents: SampleEvent[]) => void, setShowSampleEvents: (showSampleEvents: boolean) => void }
+    props: { selectedOption: StatusOption, setSampleEvents: (sampleEvents: SampleEvent[]) => void, setShowSampleEvents: (showSampleEvents: boolean) => void, isLoading: boolean, setIsLoading: (isLoading: boolean) => void }
 ) {
-    const { selectedOption, setSampleEvents, setShowSampleEvents } = props;
+    const { selectedOption, setSampleEvents, setShowSampleEvents, isLoading, setIsLoading } = props;
     const onClick = async () => {
-        const sampleEvents = await BackendProvider.getSampleEvents(new GmailConfig(selectedOption.value));
-        setSampleEvents(sampleEvents);
         setShowSampleEvents(true);
+        setIsLoading(true);
+        BackendProvider.getSampleEvents(new GmailConfig(selectedOption.value)).then((sampleEvents) => {
+            setSampleEvents(sampleEvents);
+            setIsLoading(false);
+        }).catch(() => {
+            toast.error('Error getting sample events');
+            setIsLoading(false);
+        });
     }
 
     return (
@@ -191,7 +215,7 @@ function SampleEventsButton(
             onClick={onClick}
             variant="outline"
         >
-            <TestTube className="w-4 h-4" />
+            {isLoading ? <Spin /> : <TestTube className="w-4 h-4" />}
             Get Sample Events
         </Button>
     )

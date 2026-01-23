@@ -108,13 +108,29 @@ export class EventProcessor {
         return results;
     }
 
-    private createKnowledgeBases(
-        agentKnowledgeBases: AgentWithRelations['knowledge_bases']
-    ): KnowledgeBase<ConfigInstance>[] {
-        return KnowledgeBaseFactory.createKnowledgeBasesFromAgent(agentKnowledgeBases);
+    async findAgent(agentId: string): Promise<AgentWithRelations | null> {
+        return await db().automations.findUnique({
+            where: {
+                id: agentId,
+                user_id: this.user.id
+            },
+            include: {
+                prompt: true,
+                inputs: {
+                    include: getInputConfigInclude()
+                },
+                outputs: {
+                    include: getOutputConfigInclude()
+                },
+                knowledge_bases: {
+                    include: getKnowledgeBaseConfigInclude()
+                },
+                tool_approvals: true
+            }
+        })
     }
 
-    private async processAgent(agent: AgentWithRelations): Promise<ProcessorResult> {
+    async processAgent(agent: AgentWithRelations): Promise<ProcessorResult> {
         logger.info(`Processing agent: ${agent.name} (${agent.id})`);
 
         if (!agent.prompt) {
@@ -243,6 +259,14 @@ export class EventProcessor {
             return new ProcessorResult<SessionWithTracking<Session>>(false, "Agent awaiting approval", agent, result);
         }
     }
+
+    private createKnowledgeBases(
+        agentKnowledgeBases: AgentWithRelations['knowledge_bases']
+    ): KnowledgeBase<ConfigInstance>[] {
+        return KnowledgeBaseFactory.createKnowledgeBasesFromAgent(agentKnowledgeBases);
+    }
+
+
 }
 
 async function persistRunResult<T extends Session>(

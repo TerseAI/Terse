@@ -44,7 +44,7 @@ import { CreateNotificationDestinationRequest, NotificationDestination } from '.
 import { ApiRoutes } from '../shared/ApiRoutes';
 import { GetToolsThatRequireApprovalsRequest, GetToolsThatRequireApprovalsResponse } from '../shared/ToolsTypes';
 import { ConfigInstanceImplementation } from '../shared/Configs';
-import { SampleEvent } from '../shared/SampleEvents';
+import { SampleEvent, AgentSampleEvent } from '../shared/SampleEvents';
 
 const backendBaseUrl = '/api';
 
@@ -390,7 +390,7 @@ interface BackendService {
 
     getSampleEvents(config: ConfigInstanceImplementation): Promise<SampleEvent[]>;
 
-    sendSampleEvent(runHistoryTrigger: SampleEvent): Promise<void>;
+    sendSampleEvent(agentSampleEvent: AgentSampleEvent): Promise<void>;
 }
 
 export const BackendProvider: BackendService = {
@@ -1100,8 +1100,8 @@ export const BackendProvider: BackendService = {
             });
     },
 
-    sendSampleEvent: (sampleEvent: SampleEvent) => {
-        return axios.post<void>(`${backendBaseUrl}${ApiRoutes.SAMPLE_EVENTS_SEND_TO_AGENT}`, sampleEvent, { withCredentials: true })
+    sendSampleEvent: (agentSampleEvent: AgentSampleEvent) => {
+        return axios.post<void>(`${backendBaseUrl}${ApiRoutes.SAMPLE_EVENTS_SEND_TO_AGENT}`, agentSampleEvent, { withCredentials: true })
             .then(response => response.data)
             .catch(error => {
                 console.error('Error sending sample event:', error);
