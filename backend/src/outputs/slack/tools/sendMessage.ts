@@ -9,6 +9,7 @@ import { SessionWithTracking } from "../../../agent/AgentRunner/AgentRunner";
 import { Session } from "../../../server";
 import { ToolName } from "../../../tools/ToolNames";
 import { createNeedsApprovalFunction } from "../../../tools/toolUtils";
+import { isValidEpochTimestamp } from "../../../utility/strings"
 
 /**
  * Tool for sending messages to Slack channels or DMs.
@@ -21,7 +22,7 @@ export const slackSendMessageTool = tool({
         integrationId: z.string().describe('The integration ID of the Slack workspace to use.'),
         channelId: z.string().describe('The Slack channel ID to send the message to.'),
         message: z.string().describe("Message content (mrkdwn). Used as fallback for Block Kit or main message."),
-        thread_ts: z.string().nullable().optional().describe("Thread timestamp to reply to existing thread"),
+        thread_ts: z.string().nullable().optional().describe("Thread timestamp to reply to existing thread. If sending a message to a thread, this should be the timestamp of the thread to reply to. If sending an unthreaded message, this should be set to null."),
         blocks: z.string().nullable().optional().describe("Block Kit JSON array string for interactive messages with buttons, structured layouts"),
     }),
     needsApproval: createNeedsApprovalFunction(ToolName.SLACK_SEND_MESSAGE),
@@ -105,6 +106,17 @@ export const slackSendMessageTool = tool({
             } catch (error) {
                 logger.warn('Failed to fetch Slack channel info for channel name', { error, channelId });
                 // Keep channelName as channelId fallback
+            }
+
+            let validThreadTs;
+            if(thread_ts && thread_ts.length > 0) {
+                if(isValidEpochTimestamp(thread_ts)) {
+                    validThreadTs = thread_ts;
+                } else {
+                    logger.warn('Invalid thread timestamp', { thread_ts });
+                }
+            } else {
+                validThreadTs = undefined;
             }
 
             const result = await client.chat.postMessage({

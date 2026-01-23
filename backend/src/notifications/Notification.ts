@@ -60,11 +60,6 @@ export class NotificationManager {
     }
 
     async notifyApprovalRequest(runId: string, runAction: RunHistoryAction) {
-        if (!this.agent.require_approval) {
-            logger.debug(`Channel ${this.agent.name} does not require approval. Skipping approval notification.`);
-            return;
-        }
-
         if (!runAction.step_id) {
             logger.debug(`No step_id found in runAction. Cannot send approval notification.`);
             return;
