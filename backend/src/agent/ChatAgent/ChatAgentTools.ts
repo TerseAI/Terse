@@ -295,7 +295,7 @@ export const AgentSchema = z.object({
     outputs: z.array(AgentOutputSchema).min(1),
     knowledgeBases: z.array(AgentKnowledgeBaseSchema).nullable(),
     notificationSettings: AgentNotificationSettingsSchema.nullable(),
-    toolApprovals: z.array(z.string()).optional(),
+    toolApprovals: z.array(z.string()).nullable(),
     updatedAt: z.string().nullable(),
 }).strict();
 
