@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Check, MessageSquare, GitBranch, Zap, ArrowRight } from "lucide-react";
+import { Check, MessageSquare, GitBranch, Zap, ArrowRight, HelpCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { useIntegrations } from "@/hooks/api/useIntegrations";
 import { FrontendRoutes } from "@/shared/FrontendRoutes";
 import { BackendProvider } from "@/services/backend";
@@ -62,6 +63,7 @@ export function HomeEmptyState() {
             step: OnboardingStep.CONNECT_SLACK,
             title: "Connect Slack",
             description: "Chat with your agents and receive notifications directly in Slack. Manage everything through natural conversation.",
+            tooltip: "Manage all your agents directly from Slack. Create, run, and monitor agents without leaving your workspace.",
             icon: <MessageSquare className="h-5 w-5" />,
             completed: hasSlackIntegration,
             action: connectSlack,
@@ -72,6 +74,7 @@ export function HomeEmptyState() {
             step: OnboardingStep.ADD_INTEGRATION,
             title: "Add an integration",
             description: "Connect GitHub, Linear, or other tools. These integrations trigger your agents and let them take action.",
+            tooltip: "Integrations give your agents abilities. Connect tools so agents can read issues, comment on PRs, update tasks, and more.",
             icon: <GitBranch className="h-5 w-5" />,
             completed: hasOtherIntegrations,
             action: () => navigate(FrontendRoutes.INTEGRATIONS),
@@ -81,6 +84,7 @@ export function HomeEmptyState() {
             step: OnboardingStep.CREATE_AGENT,
             title: "Create your first agent",
             description: "Build an AI agent that listens for events and automates your workflows. Start from scratch or use a template.",
+            tooltip: "Agents automate repetitive tasks. They listen for events and take action so you can focus on what matters.",
             icon: <Zap className="h-5 w-5" />,
             completed: false,
             action: () => navigate(FrontendRoutes.AGENTS.SETUP),
@@ -130,6 +134,14 @@ export function HomeEmptyState() {
                                     <div className="flex-1 min-w-0">
                                         <div className="flex items-center gap-2 mb-1">
                                             <h3 className="font-medium">{stepConfig.title}</h3>
+                                            <Tooltip>
+                                                <TooltipTrigger asChild>
+                                                    <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+                                                </TooltipTrigger>
+                                                <TooltipContent side="top" className="max-w-[250px]">
+                                                    {stepConfig.tooltip}
+                                                </TooltipContent>
+                                            </Tooltip>
                                             {stepConfig.completed && (
                                                 <span className="text-xs text-muted-foreground">Complete</span>
                                             )}
@@ -163,10 +175,10 @@ export function HomeEmptyState() {
                                     </div>
                                 </div>
 
-                                {/* Connector line */}
+                                {/* Connector line - centered on the 40px circle: p-5 (20px) + half of w-10 (20px) - half of line width (1px) */}
                                 {index < steps.length - 1 && (
                                     <div className={`
-                                        absolute left-[2.05rem] top-[4.25rem] w-0.5 h-[calc(100%-2.5rem)]
+                                        absolute left-[calc(1.25rem+1.25rem-1px)] top-[4.25rem] w-0.5 h-[calc(100%-2.5rem)]
                                         ${isPast ? 'bg-foreground' : 'bg-border'}
                                     `} />
                                 )}
