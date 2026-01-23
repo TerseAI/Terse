@@ -100,6 +100,7 @@ import "./integrations/IntegrationTaskHandler"; // Import to trigger listener re
 import { ApiRoutes } from "./shared/ApiRoutes";
 import { runStartupValidations } from "./tools/validateToolNames";
 import { toolsThatRequireApprovalsRoute } from "./routes/tools";
+import { getSampleEvents } from "./routes/sampleEvents";
 
 export type Session = {
   user: User;
@@ -572,6 +573,12 @@ app.delete(ApiRoutes.NOTIFICATION_DESTINATIONS.BY_ID.pattern, authMiddleware, as
 
 app.post(ApiRoutes.TOOLS.THAT_REQUIRE_APPROVALS, authMiddleware, async (req, res) => {
   toolsThatRequireApprovalsRoute(req, res);
+});
+
+// MARK: SAMPLE EVENTS
+
+app.post(ApiRoutes.SAMPLE_EVENTS, authMiddleware, async (req, res) => {
+  getSampleEvents(req, res);
 });
 
 /**

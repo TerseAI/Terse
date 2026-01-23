@@ -1,4 +1,4 @@
-import { Plus, AlertTriangleIcon } from 'lucide-react';
+import { Plus, AlertTriangleIcon, TestTube } from 'lucide-react';
 import { Button } from '../ui/button';
 import DropdownSelect from '../ui/DropdownSelect';
 import { IntegrationType, GmailIntegration as GmailIntegrationType } from "@/shared/Integrations"
@@ -8,6 +8,7 @@ import { useOAuthConnection } from '@/hooks/useOAuthConnection';
 import { useIntegrationId } from '@/hooks/useIntegrationId';
 import { GmailConfig, ConfigType } from '@/shared/Configs';
 import { StatusOption } from '../ui/DropdownSelect';
+import { BackendProvider } from '../../services/backend';
 
 export function GmailIntegration({
     input,
@@ -116,7 +117,28 @@ export function GmailIntegration({
                 <Plus className="w-4 h-4" />
                 {isOAuthConnecting ? 'Connecting...' : "Connect Another Gmail"}
             </Button>
+            {selectedOption &&
+                SampleEventsButton(selectedOption, false)
+            }
         </div>
     );
 }
 
+
+const SampleEventsButton = (selectedOption: StatusOption, disabled: boolean) => {
+    const onClick = async () => {
+        const sampleEvents = await BackendProvider.getSampleEvents(new GmailConfig(selectedOption.value));
+        console.log('sample events', sampleEvents);
+    }
+
+    return (
+        <Button
+            onClick={onClick}
+            disabled={disabled}
+            variant="outline"
+        >
+            <TestTube className="w-4 h-4" />
+            Get Sample Events
+        </Button>
+    )
+}

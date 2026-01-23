@@ -2,6 +2,7 @@ import { IntegrationType } from "../../shared/Integrations";
 import { AgentTriggerWithConfigs } from "../../types/prisma";
 import { RunHistoryTrigger } from "../../shared/RunHistoryTypes";
 import { Identifiable } from "../../rag/Hydrator";
+import { ConfigInstance } from "../../shared/Configs";
 
 export abstract class InputEvent {
     abstract readonly integrationType: IntegrationType;
@@ -37,6 +38,14 @@ export abstract class InputEvent {
      * @returns Array of image URL strings. Empty array if no images are available.
      */
     abstract getImageUrls(): string[];
+
+    /**
+     * 
+     * Get sample events for the given config that can be used for testing.
+     */
+    static async getSampleEvents(config: ConfigInstance): Promise<InputEvent[]> {
+        throw new Error('Method not implemented! Use derived class');
+    }
 
     /**
      * Check if this InputEvent implements Identifiable.

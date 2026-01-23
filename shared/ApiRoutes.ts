@@ -239,4 +239,8 @@ export const ApiRoutes = {
       params: { id: 'string' } as const,
     },
   },
+
+  // Sample events routes
+  SAMPLE_EVENTS: '/sample-events',
+
 } as const;

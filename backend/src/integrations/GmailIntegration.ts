@@ -17,6 +17,7 @@ import { integrationTaskQueue } from "./IntegrationTaskQueues";
 import { IntegrationCompletedTask } from "./IntegrationCompletedTask";
 import { createOAuthStateToken, decodeOAuthStateToken, OAuthStateEncodingFormat } from "../utility/oauth";
 import { FrontendRoutes } from "../shared/FrontendRoutes";
+import { GmailConfig } from "../shared/Configs";
 
 
 // OAuth2 scopes for Gmail
@@ -533,6 +534,50 @@ export class GmailEvent extends InputEvent {
     getImageUrls(): string[] {
         // Gmail events don't include images
         return [];
+    }
+
+    /**
+     * 
+     * Get sample events for the given config that can be used for testing.
+     */
+    static async getSampleEvents(config: GmailConfig): Promise<GmailEventData[]> {
+        const prisma = db();
+
+        const gmailIntegration = await prisma.gmail_integrations.findUnique({
+            where: {
+                id: config.integrationId
+            }
+        })
+        if (!gmailIntegration) {
+            throw new Error(`Gmail integration ${config.integrationId} not found`);
+        }
+
+        const accessToken = await refreshAccessTokenIfNeeded(gmailIntegration);
+        const oauth2Client = getOAuth2Client();
+        oauth2Client.setCredentials({
+            access_token: accessToken,
+            refresh_token: gmailIntegration.refresh_token,
+        });
+        const gmail = google.gmail({ version: "v1", auth: oauth2Client });
+
+        const emailSampleEvents = await gmail.users.messages.list({
+            userId: "me",
+            labelIds: ["INBOX"],
+            maxResults: 3,
+        });
+
+        const messages = emailSampleEvents.data.messages || [];
+        const sampleEvents = await Promise.all(messages.map(async (message) => {
+            if (!message.id) {
+                return null;
+            }
+            const eventData = await fetchAndParseEmail(gmail, message.id);
+            if (!eventData) {
+                return null;
+            }
+            return new GmailEvent(eventData, config.integrationId);
+        }));
+        return sampleEvents.filter(event => event !== null).map(event => event?.data) as GmailEventData[];
     }
 }
 

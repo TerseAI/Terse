@@ -44,6 +44,9 @@ import { CreateNotificationDestinationRequest, NotificationDestination } from '.
 import { ApiRoutes } from '../shared/ApiRoutes';
 import { GetToolsThatRequireApprovalsRequest, GetToolsThatRequireApprovalsResponse } from '../shared/ToolsTypes';
 
+import { SampleEventData } from '../shared/SampleEvents';
+import { ConfigInstanceImplementation } from '../shared/Configs';
+
 const backendBaseUrl = '/api';
 
 interface BackendService {
@@ -385,6 +388,8 @@ interface BackendService {
      * Gets write-only tools that require approval for the given skills and knowledge bases
      */
     getToolsThatRequireApprovals(request: GetToolsThatRequireApprovalsRequest): Promise<GetToolsThatRequireApprovalsResponse>;
+
+    getSampleEvents(config: ConfigInstanceImplementation): Promise<SampleEventData[]>;
 }
 
 export const BackendProvider: BackendService = {
@@ -1081,6 +1086,15 @@ export const BackendProvider: BackendService = {
             .then(response => response.data)
             .catch(error => {
                 console.error('Error getting tools that require approvals:', error);
+                throw error;
+            });
+    },
+
+    getSampleEvents: (config: ConfigInstanceImplementation) => {
+        return axios.post<SampleEventData[]>(`${backendBaseUrl}${ApiRoutes.SAMPLE_EVENTS}`, config, { withCredentials: true })
+            .then(response => response.data)
+            .catch(error => {
+                console.error('Error getting sample events:', error);
                 throw error;
             });
     },

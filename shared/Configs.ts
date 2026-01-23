@@ -712,3 +712,5 @@ export const CONFIG_METADATA: ConfigMetadataMap = {
     [ConfigType.TIME_TRIGGER]: TimeTriggerConfig,
     [ConfigType.LAUNCHDARKLY]: LaunchDarklyConfig,
 } as const satisfies ConfigMetadataMap;
+
+type ConfigInstanceImplementation = GmailConfig | FigmaConfig | SlackConfig | SlackOutputConfig | GmailOutputConfig | NotionPageConfig | NotionConfig | LinearInputConfig | LinearOutputConfig | GitHubConfig | GitHubKBConfig | JiraConfig | ConfluenceConfig | PosthogConfig | DatadogConfig | TimeTriggerConfig | LaunchDarklyConfig;
