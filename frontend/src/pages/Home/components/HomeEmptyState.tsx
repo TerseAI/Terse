@@ -13,7 +13,7 @@ export function HomeEmptyState() {
     const [isConnectingSlack, setIsConnectingSlack] = useState(false);
 
     const hasSlackIntegration = activeIntegrations?.some(
-        (integration) => integration.type.toLowerCase() === 'slack'
+        (integration) => integration.toLowerCase() === IntegrationType.SLACK
     );
     const hasOtherIntegrations = activeIntegrations && activeIntegrations.length > (hasSlackIntegration ? 1 : 0);
 
