@@ -1,7 +1,7 @@
 import { PrismaClient } from '@prisma/client';
-import { getToolsThatRequireApprovals } from '../backend/src/tools/availableTools';
-import { ConfigType } from '../shared/Configs';
-import logger from '../backend/src/logger';
+import { getToolsThatRequireApprovals } from '../src/tools/availableTools';
+import { ConfigType } from '../src/shared/Configs';
+import logger from '../src/logger';
 
 const prisma = new PrismaClient();
 
